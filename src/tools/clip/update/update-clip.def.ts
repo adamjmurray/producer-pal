@@ -27,18 +27,13 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe("bar|beat position where loop/clip region begins"),
-    length: z
-      .string()
-      .optional()
-      .describe(
-        "duration in bar:beat format. When looping, this is the loop duration (from start to end). When not looping, this is the clip duration (from start to end). end = start + length",
-      ),
+    length: z.string().optional().describe("duration in bar:beat format"),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     firstStart: z
       .string()
       .optional()
       .describe(
-        "bar|beat position for initial playback start (only for looping clips, only needed when different from start)",
+        "bar|beat playback start (looping clips, when different from start)",
       ),
     arrangementStart: z
       .string()
@@ -49,13 +44,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     arrangementLength: z
       .string()
       .optional()
-      .describe(
-        "bar:beat duration for arrangement span (visible region in timeline). " +
-          "Shortening preserves all data. " +
-          "Lengthening to expose hidden content recreates clip (envelope loss). " +
-          "Lengthening via tiling requires arrangementLength >= clip.length. " +
-          "Arrangement clips only.",
-      ),
+      .describe("bar:beat duration in timeline (arrangement clips only)"),
     split: z
       .string()
       .optional()

@@ -6,18 +6,18 @@
  * Shared Anthropic tool handling utilities
  */
 
-import type {
-  ContentBlock,
-  MessageParam,
-  Tool,
-  ToolResultBlockParam,
-  ToolUseBlock,
+import {
+  type ContentBlock,
+  type MessageParam,
+  type Tool,
+  type ToolResultBlockParam,
+  type ToolUseBlock,
 } from "@anthropic-ai/sdk/resources/messages/messages";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { isQuietMode } from "#evals/eval/helpers/output-config.ts";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { isQuietMode } from "#evals/scenarios/helpers/output-config.ts";
 import { truncate } from "../shared/formatting.ts";
 import { extractToolResultText } from "../shared/mcp.ts";
-import type { TurnResult } from "../shared/types.ts";
+import { type TurnResult } from "../shared/types.ts";
 
 /** MCP tool format returned by getMcpToolsForAnthropic */
 export interface McpAnthropicTool {

@@ -1,16 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import * as tilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 
 interface NoteOptions {
   /** Note duration in beats */
@@ -65,116 +65,140 @@ export const mockContext = {
   holdingAreaStartBeats: 40000,
 };
 
-/**
- * Setup function for mock Live API implementations used across update-clip tests.
- * Should be called in a beforeEach hook in each test file.
- */
-export function setupMocks(): void {
-  // Track added notes per clip ID for get_notes_extended mocking
-  const addedNotesByClipId: Record<string, unknown[]> = {};
-
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    switch (this._path) {
-      case "id 123":
-        return "123";
-      case "id 456":
-        return "456";
-      case "id 789":
-        return "789";
-      case "id 999":
-        return "999";
-      default:
-        return this._id;
-    }
-  });
-
-  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-    switch (this._id) {
-      case "123":
-        return "live_set tracks 0 clip_slots 0 clip";
-      case "456":
-        return "live_set tracks 1 clip_slots 1 clip";
-      case "789":
-        return "live_set tracks 2 arrangement_clips 0";
-      case "999":
-        return "live_set tracks 3 arrangement_clips 1";
-      default:
-        return this._path;
-    }
-  });
-
-  // Mock liveApiCall to track added notes and return them for get_notes_extended
-  liveApiCall.mockImplementation(function (
-    this: MockLiveAPIContext,
-    method: string,
-    ...args: unknown[]
-  ) {
-    const id = this.id ?? this._id;
-
-    if (method === "add_new_notes") {
-      // Store the notes for this clip ID
-      const firstArg = args[0] as { notes?: unknown[] } | undefined;
-
-      if (id) {
-        addedNotesByClipId[id] = firstArg?.notes ?? [];
-      }
-    } else if (method === "get_notes_extended") {
-      // Return the notes that were previously added for this clip
-      const notes = id ? (addedNotesByClipId[id] ?? []) : [];
-
-      return JSON.stringify({ notes });
-    }
-  });
+export interface UpdateClipMocks {
+  clip123: RegisteredMockObject;
+  clip456: RegisteredMockObject;
+  clip789: RegisteredMockObject;
+  clip999: RegisteredMockObject;
 }
 
 /**
- * Setup liveApiPath mock for arrangement clip tests.
+ * Create note-tracking method implementations for a clip.
+ * Tracks notes added via add_new_notes and returns them for get_notes_extended.
+ * @returns Method implementations for registerMockObject
+ */
+function createNoteTrackingMethods(): Record<
+  string,
+  (...args: unknown[]) => unknown
+> {
+  let notes: unknown[] = [];
+
+  return {
+    add_new_notes: (arg: unknown) => {
+      const data = arg as { notes?: unknown[] } | null | undefined;
+
+      notes = data?.notes ?? [];
+    },
+    get_notes_extended: () => JSON.stringify({ notes }),
+  };
+}
+
+/**
+ * Setup function for mock Live API implementations used across update-clip tests.
+ * Registers 4 clip objects with note tracking. Should be called in beforeEach.
+ * @returns Mocks for the 4 registered clip objects
+ */
+export function setupUpdateClipMocks(): UpdateClipMocks {
+  return {
+    clip123: registerMockObject("123", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      methods: createNoteTrackingMethods(),
+    }),
+    clip456: registerMockObject("456", {
+      path: livePath.track(1).clipSlot(1).clip(),
+      methods: createNoteTrackingMethods(),
+    }),
+    clip789: registerMockObject("789", {
+      path: livePath.track(2).arrangementClip(0),
+      methods: createNoteTrackingMethods(),
+    }),
+    clip999: registerMockObject("999", {
+      path: livePath.track(3).arrangementClip(1),
+      methods: createNoteTrackingMethods(),
+    }),
+  };
+}
+
+/**
+ * Register arrangement clip path for tests. Also registers LiveSet and Track objects
+ * for production code lookups. Re-registers each clipId with the arrangement path.
  * @param trackIndex - Track index
- * @param clipIds - Array of clip IDs that should return the track's arrangement_clips path, or predicate function
+ * @param clipIds - Arrangement clip IDs. First entry is source clip; remaining
+ * entries are the duplicate clip IDs expected in call order.
+ * @returns Map of clip ID to registered mock (re-registered clips have fresh mocks)
  */
 export function setupArrangementClipPath(
   trackIndex: number,
-  clipIds: string[] | ((id: string | undefined) => boolean),
-): void {
-  const matchesClipId: (id: string | undefined) => boolean = Array.isArray(
-    clipIds,
-  )
-    ? (id) =>
-        id !== undefined &&
-        (clipIds.includes(id) || clipIds.includes(String(id)))
-    : clipIds;
+  clipIds: string[],
+): Map<string, RegisteredMockObject> {
+  registerMockObject("live-set", {
+    path: "live_set",
+    type: "Song",
+  });
+  const clips = new Map<string, RegisteredMockObject>();
+  const duplicateIds = clipIds.slice(1);
+  let duplicateIndex = 0;
+  let tempMidiCounter = 0;
 
-  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-    if (matchesClipId(this._id)) {
-      return `live_set tracks ${trackIndex} arrangement_clips 0`;
-    }
+  for (const id of clipIds) {
+    const clip = setupArrangementClip(trackIndex, id);
 
-    if (this._path === "live_set") {
-      return "live_set";
-    }
+    clips.set(id, clip);
+  }
 
-    if (this._path === `live_set tracks ${trackIndex}`) {
-      return `live_set tracks ${trackIndex}`;
-    }
+  registerMockObject(`track-${trackIndex}`, {
+    path: livePath.track(trackIndex),
+    type: "Track",
+    properties: {
+      track_index: trackIndex,
+    },
+    methods: {
+      duplicate_clip_to_arrangement: () => {
+        const id = duplicateIds[duplicateIndex];
 
-    return this._path;
+        if (id == null) {
+          throw new Error(
+            `Test setup error: missing duplicate clip ID for call ${String(duplicateIndex + 1)} on track ${String(trackIndex)}`,
+          );
+        }
+
+        duplicateIndex += 1;
+
+        return `id ${id}`;
+      },
+      create_midi_clip: () => {
+        tempMidiCounter += 1;
+
+        return `id temp_midi_${String(tempMidiCounter)}`;
+      },
+      delete_clip: () => null,
+    },
+  });
+
+  return clips;
+}
+
+function setupArrangementClip(
+  trackIndex: number,
+  id: string,
+): RegisteredMockObject {
+  return registerMockObject(id, {
+    path: livePath.track(trackIndex).arrangementClip(0),
+    type: "Clip",
+    methods: createNoteTrackingMethods(),
   });
 }
 
 /**
  * Assert that source clip end_marker was set correctly.
- * @param clipId - Source clip ID (without "id " prefix)
+ * @param clip - Registered mock clip
  * @param expectedEndMarker - Expected end marker value
  */
 export function assertSourceClipEndMarker(
-  clipId: string,
+  clip: RegisteredMockObject,
   expectedEndMarker: number,
 ): void {
-  expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
-    "end_marker",
-    expectedEndMarker,
-  );
+  expect(clip.set).toHaveBeenCalledWith("end_marker", expectedEndMarker);
 }
 
 interface MidiClipMockOptions {
@@ -186,44 +210,174 @@ interface MidiClipMockOptions {
 }
 
 /**
- * Setup mockLiveApiGet for a standard session MIDI clip.
- * @param clipId - Clip ID
+ * Override a clip's get mock for a standard session MIDI clip.
+ * Preserves the clip's call mock (e.g., note tracking from setupUpdateClipMocks).
+ * @param clip - Registered mock clip
  * @param opts - Additional clip properties
  * @param opts.looping - Whether clip is looping (0 or 1)
  * @param opts.length - Clip length in beats
  */
 export function setupMidiClipMock(
-  clipId: string,
+  clip: RegisteredMockObject,
   opts: MidiClipMockOptions = {},
 ): void {
-  mockLiveApiGet({
-    [clipId]: {
-      is_arrangement_clip: 0,
-      is_midi_clip: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      ...opts,
-    },
+  const properties: Record<string, unknown> = {
+    is_arrangement_clip: 0,
+    is_midi_clip: 1,
+    signature_numerator: 4,
+    signature_denominator: 4,
+    ...opts,
+  };
+  const callCounts: Record<string, number> = {};
+
+  clip.get.mockImplementation((prop: string) => {
+    const value = properties[prop];
+
+    if (value !== undefined) {
+      if (value instanceof MockSequence) {
+        const index = callCounts[prop] ?? 0;
+
+        callCounts[prop] = index + 1;
+
+        return [value[index]];
+      }
+
+      return [value];
+    }
+
+    return [0];
   });
 }
 
 /**
- * Setup mockLiveApiGet for a standard session audio clip.
- * @param clipId - Clip ID
+ * Override a clip's get mock for a standard session audio clip.
+ * Preserves the clip's call mock (e.g., note tracking from setupUpdateClipMocks).
+ * @param clip - Registered mock clip
  * @param opts - Additional clip properties
  */
 export function setupAudioClipMock(
-  clipId: string,
+  clip: RegisteredMockObject,
   opts: Record<string, unknown> = {},
 ): void {
-  mockLiveApiGet({
-    [clipId]: {
-      is_arrangement_clip: 0,
-      is_midi_clip: 0,
-      is_audio_clip: 1,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      ...opts,
-    },
+  const properties: Record<string, unknown> = {
+    is_arrangement_clip: 0,
+    is_midi_clip: 0,
+    is_audio_clip: 1,
+    signature_numerator: 4,
+    signature_denominator: 4,
+    ...opts,
+  };
+  const callCounts: Record<string, number> = {};
+
+  clip.get.mockImplementation((prop: string) => {
+    const value = properties[prop];
+
+    if (value !== undefined) {
+      if (value instanceof MockSequence) {
+        const index = callCounts[prop] ?? 0;
+
+        callCounts[prop] = index + 1;
+
+        return [value[index]];
+      }
+
+      return [value];
+    }
+
+    return [0];
   });
+}
+
+/**
+ * Override a clip's get mock for an arrangement audio clip.
+ * @param clip - Registered mock clip
+ * @param opts - Additional clip properties
+ */
+export function setupArrangementAudioClipMock(
+  clip: RegisteredMockObject,
+  opts: Record<string, unknown> = {},
+): void {
+  setupAudioClipMock(clip, {
+    is_arrangement_clip: 1,
+    ...opts,
+  });
+}
+
+/**
+ * Override a clip's get mock for an arrangement MIDI clip.
+ * @param clip - Registered mock clip
+ * @param opts - Additional clip properties
+ */
+export function setupArrangementMidiClipMock(
+  clip: RegisteredMockObject,
+  opts: MidiClipMockOptions = {},
+): void {
+  setupMidiClipMock(clip, {
+    is_arrangement_clip: 1,
+    ...opts,
+  });
+}
+
+/**
+ * Set up properties on a mock object, preserving existing property logic for
+ * properties not specified in `props`. Supports MockSequence.
+ * @param mock - Registered mock object
+ * @param props - Properties to set on the mock
+ */
+export function setupMockProperties(
+  mock: RegisteredMockObject,
+  props: Record<string, unknown>,
+): void {
+  const fallbackGet = mock.get.getMockImplementation();
+  const callCounts: Record<string, number> = {};
+
+  mock.get.mockImplementation((prop: string) => {
+    const value = props[prop];
+
+    if (value !== undefined) {
+      if (value instanceof MockSequence) {
+        const index = callCounts[prop] ?? 0;
+
+        callCounts[prop] = index + 1;
+
+        return [value[index]];
+      }
+
+      return [value];
+    }
+
+    if (fallbackGet) {
+      return fallbackGet(prop);
+    }
+
+    return [0];
+  });
+}
+
+/**
+ * Set up mocks for session-based file content boundary detection.
+ * @param fileContentBoundary - File's actual content length (returned by getProperty("end_marker"))
+ * @returns Mock objects for assertions
+ */
+export function setupSessionTilingMock(fileContentBoundary = 8.0) {
+  const sessionClip = {
+    id: "session-temp",
+    set: vi.fn(),
+    getProperty: vi.fn().mockImplementation((prop: string) => {
+      if (prop === "end_marker") return fileContentBoundary;
+
+      return null;
+    }),
+  };
+  const sessionSlot = {
+    call: vi.fn(),
+  };
+  const mockCreate = vi
+    .spyOn(tilingHelpers, "createAudioClipInSession")
+    .mockReturnValue({
+      clip: sessionClip as unknown as LiveAPI,
+      slot: sessionSlot as unknown as LiveAPI,
+    });
+
+  return { mockCreate, sessionClip, sessionSlot };
 }

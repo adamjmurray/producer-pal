@@ -3,16 +3,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
-import type { Provider, UseSettingsReturn } from "#webui/types/settings";
+import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import {
   buildAllProviderSettings,
   checkHasApiKey,
-  createAllToolsDisabled,
-  createAllToolsEnabled,
   DEFAULT_SETTINGS,
   loadAllProviderSettings,
   loadCurrentProvider,
   loadEnabledTools,
+  loadProviderSettings,
   type ProviderSettings,
   saveCurrentSettings,
 } from "./settings-helpers";
@@ -54,25 +53,25 @@ export function useSettings(): UseSettingsReturn {
   );
   const [enabledTools, setEnabledToolsState] =
     useState<Record<string, boolean>>(loadEnabledTools);
-  const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.gemini,
+  const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("gemini"),
   );
-  const [openaiSettings, setOpenaiSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.openai,
+  const [openaiSettings, setOpenaiSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("openai"),
   );
-  const [mistralSettings, setMistralSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.mistral,
+  const [mistralSettings, setMistralSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("mistral"),
   );
   const [openrouterSettings, setOpenrouterSettings] =
-    useState<ProviderSettings>(DEFAULT_SETTINGS.openrouter);
+    useState<ProviderSettings>(() => loadProviderSettings("openrouter"));
   const [lmstudioSettings, setLmstudioSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.lmstudio,
+    () => loadProviderSettings("lmstudio"),
   );
-  const [ollamaSettings, setOllamaSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.ollama,
+  const [ollamaSettings, setOllamaSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("ollama"),
   );
-  const [customSettings, setCustomSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.custom,
+  const [customSettings, setCustomSettings] = useState<ProviderSettings>(() =>
+    loadProviderSettings("custom"),
   );
 
   // Mapping of providers to their state setters
@@ -178,12 +177,8 @@ export function useSettings(): UseSettingsReturn {
     setProviderState(newProvider);
   }, []);
   const hasApiKey = checkHasApiKey(provider);
-  const toolsUtils = useMemo(
-    () => ({
-      enableAll: () => setEnabledToolsState(createAllToolsEnabled()),
-      disableAll: () => setEnabledToolsState(createAllToolsDisabled()),
-      isEnabled: (toolId: string) => enabledTools[toolId] ?? true,
-    }),
+  const isToolEnabled = useCallback(
+    (toolId: string) => enabledTools[toolId] ?? true,
     [enabledTools],
   );
   const resetBehaviorToDefaults = useCallback(() => {
@@ -215,9 +210,7 @@ export function useSettings(): UseSettingsReturn {
     settingsConfigured,
     enabledTools,
     setEnabledTools: setEnabledToolsState,
-    enableAllTools: toolsUtils.enableAll,
-    disableAllTools: toolsUtils.disableAll,
     resetBehaviorToDefaults,
-    isToolEnabled: toolsUtils.isEnabled,
+    isToolEnabled,
   };
 }

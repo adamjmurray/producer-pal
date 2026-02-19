@@ -2,41 +2,19 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { VERSION } from "#src/shared/version.ts";
 import {
   readClip,
   type ReadClipResult,
 } from "#src/tools/clip/read/read-clip.ts";
-import { STATE } from "#src/tools/constants.ts";
-import { cleanupInternalDrumPads } from "#src/tools/shared/device/device-reader.ts";
+import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
+import { getDeviceType } from "#src/tools/shared/device/device-reader.ts";
 import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
 import {
   processAvailableRouting,
   processCurrentRouting,
 } from "#src/tools/track/helpers/track-routing-helpers.ts";
-
-interface MinimalTrackIncludeFlags {
-  includeSessionClips: boolean;
-  includeArrangementClips: boolean;
-  includeAllClips?: boolean;
-}
-
-interface MinimalTrackResult {
-  id: string | null;
-  type: string | null;
-  trackIndex: number;
-  sessionClips?: ReadClipResult[];
-  sessionClipCount?: number;
-  arrangementClips?: ReadClipResult[];
-  arrangementClipCount?: number;
-}
-
-interface DeviceResult {
-  midiEffects?: object[];
-  instrument?: object | null;
-  audioEffects?: object[];
-}
 
 interface SendInfo {
   gainDb: unknown;
@@ -70,6 +48,7 @@ export function readSessionClips(
       readClip({
         trackIndex,
         sceneIndex,
+        suppressEmptyWarning: true,
         ...(include && { include }),
       }),
     )
@@ -90,7 +69,10 @@ export function countSessionClips(
     .getChildIds("clip_slots")
     .map((_clipSlotId, sceneIndex) => {
       const clip = LiveAPI.from(
-        `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+        livePath
+          .track(trackIndex as number)
+          .clipSlot(sceneIndex)
+          .clip(),
       );
 
       return clip.exists() ? clip : null;
@@ -129,60 +111,24 @@ export function countArrangementClips(track: LiveAPI): number {
 }
 
 /**
- * Read minimal track information for auto-inclusion when clips are requested.
- * Returns only id, type, trackIndex, and clip arrays/counts based on include flags.
- * @param args - The parameters
- * @param args.trackIndex - Track index
- * @param args.includeFlags - Parsed include flags
- * @returns Minimal track information
+ * Find the first instrument device on a track and return its class_display_name
+ * @param devices - Array of LiveAPI device objects from track
+ * @returns The instrument's class_display_name, or null if no instrument found
  */
-export function readTrackMinimal({
-  trackIndex,
-  includeFlags,
-}: {
-  trackIndex: number;
-  includeFlags: MinimalTrackIncludeFlags;
-}): MinimalTrackResult {
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+export function getInstrumentName(devices: LiveAPI[]): string | null {
+  for (const device of devices) {
+    const deviceType = getDeviceType(device);
 
-  if (!track.exists()) {
-    throw new Error(`readTrack: trackIndex ${trackIndex} does not exist`);
-  }
-
-  const isMidiTrack = (track.getProperty("has_midi_input") as number) > 0;
-
-  const result: MinimalTrackResult = {
-    id: track.id,
-    type: isMidiTrack ? "midi" : "audio",
-    trackIndex,
-  };
-
-  // Session clips - only for regular tracks
-  if (includeFlags.includeSessionClips || includeFlags.includeAllClips) {
-    result.sessionClips = readSessionClips(track, trackIndex);
-  } else {
-    result.sessionClipCount = countSessionClips(track, trackIndex);
-  }
-
-  // Arrangement clips - exclude group tracks which have no arrangement clips
-  const isGroup = (track.getProperty("is_foldable") as number) > 0;
-
-  if (isGroup) {
-    if (includeFlags.includeArrangementClips || includeFlags.includeAllClips) {
-      result.arrangementClips = [];
-    } else {
-      result.arrangementClipCount = 0;
+    if (
+      deviceType === DEVICE_TYPE.INSTRUMENT ||
+      deviceType === DEVICE_TYPE.INSTRUMENT_RACK ||
+      deviceType === DEVICE_TYPE.DRUM_RACK
+    ) {
+      return device.getProperty("class_display_name") as string;
     }
-  } else if (
-    includeFlags.includeArrangementClips ||
-    includeFlags.includeAllClips
-  ) {
-    result.arrangementClips = readArrangementClips(track);
-  } else {
-    result.arrangementClipCount = countArrangementClips(track);
   }
 
-  return result;
+  return null;
 }
 
 /**
@@ -245,32 +191,6 @@ export function addCategoryIndex(
     result.trackIndex = trackIndex;
   } else if (category === "return") {
     result.returnTrackIndex = trackIndex;
-  }
-}
-
-/**
- * Clean up device chains from result
- * @param result - Result object containing device chains
- */
-export function cleanupDeviceChains(
-  result: Record<string, unknown> & DeviceResult,
-): void {
-  if (result.midiEffects) {
-    result.midiEffects = cleanupInternalDrumPads(
-      result.midiEffects,
-    ) as object[];
-  }
-
-  if (result.instrument) {
-    result.instrument = cleanupInternalDrumPads(result.instrument) as
-      | object
-      | null;
-  }
-
-  if (result.audioEffects) {
-    result.audioEffects = cleanupInternalDrumPads(
-      result.audioEffects,
-    ) as object[];
   }
 }
 
@@ -362,7 +282,6 @@ export function addProducerPalHostInfo(
 ): void {
   if (isProducerPalHost) {
     result.hasProducerPalDevice = true;
-    result.producerPalVersion = VERSION;
   }
 }
 
@@ -395,7 +314,10 @@ export function readMixerProperties(
   const panningMode = mixer.getProperty("panning_mode");
   const isSplitMode = panningMode === 1;
 
-  result.panningMode = isSplitMode ? "split" : "stereo";
+  // Only include panningMode when non-default (split)
+  if (isSplitMode) {
+    result.panningMode = "split";
+  }
 
   // Read panning based on mode
   if (isSplitMode) {
@@ -425,11 +347,11 @@ export function readMixerProperties(
     let names = returnTrackNames;
 
     if (!names) {
-      const liveSet = LiveAPI.from("live_set");
+      const liveSet = LiveAPI.from(livePath.liveSet);
       const returnTrackIds = liveSet.getChildIds("return_tracks");
 
       names = returnTrackIds.map((_, idx) => {
-        const rt = LiveAPI.from(`live_set return_tracks ${idx}`);
+        const rt = LiveAPI.from(livePath.returnTrack(idx));
 
         return rt.getProperty("name") as string;
       });

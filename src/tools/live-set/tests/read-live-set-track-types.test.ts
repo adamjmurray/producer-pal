@@ -1,82 +1,67 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  children,
-  liveApiId,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
+import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
 describe("readLiveSet - track types", () => {
   it("conditionally includes return tracks and master track", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set return_tracks 0":
-          return "return1";
-        case "live_set return_tracks 1":
-          return "return2";
-        case "live_set master_track":
-          return "master1";
-        default:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Track Types Test Set",
-        tracks: children("track1"),
-        return_tracks: children("return1", "return2"),
-        scenes: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        [String(livePath.track(0))]: "track1",
+        [String(livePath.returnTrack(0))]: "return1",
+        [String(livePath.returnTrack(1))]: "return2",
+        [String(livePath.masterTrack())]: "master1",
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Regular Track",
-        clip_slots: children(),
-        arrangement_clips: children(),
-        devices: [],
-      },
-      "live_set return_tracks 0": {
-        has_midi_input: 0,
-        name: "Return A",
-        clip_slots: children(), // Return tracks don't have clip slots in actual Live
-        arrangement_clips: children(),
-        devices: [],
-      },
-      "live_set return_tracks 1": {
-        has_midi_input: 0,
-        name: "Return B",
-        clip_slots: children(),
-        arrangement_clips: children(),
-        devices: [],
-      },
-      "live_set master_track": {
-        has_midi_input: 0,
-        name: "Master",
-        clip_slots: children(), // Master track doesn't have clip slots in actual Live
-        arrangement_clips: children(),
-        devices: [],
+      objects: {
+        LiveSet: {
+          name: "Track Types Test Set",
+          tracks: children("track1"),
+          return_tracks: children("return1", "return2"),
+          scenes: [],
+        },
+        [String(livePath.track(0))]: {
+          has_midi_input: 1,
+          name: "Regular Track",
+          clip_slots: children(),
+          arrangement_clips: children(),
+          devices: [],
+        },
+        [String(livePath.returnTrack(0))]: {
+          has_midi_input: 0,
+          name: "Return A",
+          clip_slots: children(),
+          arrangement_clips: children(),
+          devices: [],
+        },
+        [String(livePath.returnTrack(1))]: {
+          has_midi_input: 0,
+          name: "Return B",
+          clip_slots: children(),
+          arrangement_clips: children(),
+          devices: [],
+        },
+        [String(livePath.masterTrack())]: {
+          has_midi_input: 0,
+          name: "Master",
+          clip_slots: children(),
+          arrangement_clips: children(),
+          devices: [],
+        },
       },
     });
 
-    // Test with all track types included
+    // Test with tracks included
     const resultAll = readLiveSet({
-      include: [
-        "regular-tracks",
-        "return-tracks",
-        "master-track",
-        "instruments",
-      ],
+      include: ["tracks"],
     });
 
     expect(resultAll).toStrictEqual(
@@ -85,6 +70,7 @@ describe("readLiveSet - track types", () => {
           expect.objectContaining({
             id: "track1",
             name: "Regular Track",
+            type: "midi",
             trackIndex: 0,
           }),
         ],
@@ -92,117 +78,116 @@ describe("readLiveSet - track types", () => {
           expect.objectContaining({
             id: "return1",
             name: "Return A",
+            type: "return",
             returnTrackIndex: 0,
-            sessionClipCount: 0, // Return tracks don't have session clips
-            arrangementClipCount: 0, // Return tracks don't have arrangement clips
           }),
           expect.objectContaining({
             id: "return2",
             name: "Return B",
+            type: "return",
             returnTrackIndex: 1,
-            sessionClipCount: 0, // Return tracks don't have session clips
-            arrangementClipCount: 0, // Return tracks don't have arrangement clips
           }),
         ],
         masterTrack: expect.objectContaining({
           id: "master1",
           name: "Master",
-          sessionClipCount: 0, // Master track doesn't have session clips
-          arrangementClipCount: 0, // Master track doesn't have arrangement clips
+          type: "master",
         }),
       }),
     );
+  });
 
-    // Test with only return tracks included
-    const resultReturnOnly = readLiveSet({
-      include: ["return-tracks", "instruments"],
+  it("returns counts when tracks not included", () => {
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        [String(livePath.track(0))]: "track1",
+        [String(livePath.returnTrack(0))]: "return1",
+        [String(livePath.returnTrack(1))]: "return2",
+      },
+      objects: {
+        LiveSet: {
+          name: "Track Types Test Set",
+          tracks: children("track1"),
+          return_tracks: children("return1", "return2"),
+          scenes: [],
+        },
+        [String(livePath.returnTrack(0))]: {
+          has_midi_input: 0,
+          name: "Return A",
+        },
+        [String(livePath.returnTrack(1))]: {
+          has_midi_input: 0,
+          name: "Return B",
+        },
+      },
     });
 
-    expect(resultReturnOnly.tracks).toBeUndefined();
-    expect(resultReturnOnly.returnTracks).toHaveLength(2);
-    expect(resultReturnOnly.masterTrack).toBeUndefined();
-
-    // Test with only master track included
-    const resultMasterOnly = readLiveSet({
-      include: ["master-track", "instruments"],
-    });
-
-    expect(resultMasterOnly.tracks).toBeUndefined();
-    expect(resultMasterOnly.returnTracks).toBeUndefined();
-    expect(resultMasterOnly.masterTrack).toBeDefined();
-
-    // Test default behavior (should include regular tracks by default)
+    // Default: all counts, no arrays
     const resultDefault = readLiveSet();
 
-    expect(resultDefault.tracks).toHaveLength(1);
+    expect(resultDefault.regularTrackCount).toBe(1);
+    expect(resultDefault.returnTrackCount).toBe(2);
+    expect(resultDefault.tracks).toBeUndefined();
     expect(resultDefault.returnTracks).toBeUndefined();
     expect(resultDefault.masterTrack).toBeUndefined();
   });
 
   it("includes all available options when '*' is used", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set return_tracks 0":
-          return "return1";
-        case "live_set master_track":
-          return "master1";
-        case "live_set scenes 0":
-          return "scene1";
-        case "live_set tracks 0 devices 0":
-          return "synth1";
-        default:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Wildcard Test Set",
-        tracks: children("track1"),
-        return_tracks: children("return1"),
-        scenes: children("scene1"),
-        cue_points: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        [String(livePath.track(0))]: "track1",
+        [String(livePath.returnTrack(0))]: "return1",
+        [String(livePath.masterTrack())]: "master1",
+        [livePath.scene(0)]: "scene1",
+        [String(livePath.track(0).device(0))]: "synth1",
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: children(),
-        arrangement_clips: children(),
-        devices: children("synth1"),
-        ...createSimpleRoutingMock(),
-      },
-      "live_set return_tracks 0": {
-        has_midi_input: 0,
-        name: "Return A",
-        arrangement_clips: children(),
-        devices: [],
-      },
-      "live_set master_track": {
-        has_midi_input: 0,
-        name: "Master",
-        arrangement_clips: children(),
-        devices: [],
-      },
-      "live_set scenes 0": {
-        name: "Scene 1",
-        is_empty: 0,
-        tempo_enabled: 0,
-        time_signature_enabled: 0,
-        is_triggered: 0,
-        color: 16777215,
-      },
-      synth1: {
-        name: "Analog",
-        class_name: "UltraAnalog",
-        class_display_name: "Analog",
-        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        is_active: 1,
-        can_have_chains: 0,
-        can_have_drum_pads: 0,
+      objects: {
+        LiveSet: {
+          name: "Wildcard Test Set",
+          tracks: children("track1"),
+          return_tracks: children("return1"),
+          scenes: children("scene1"),
+          cue_points: [],
+        },
+        [String(livePath.track(0))]: {
+          has_midi_input: 1,
+          name: "Test Track",
+          clip_slots: children(),
+          arrangement_clips: children(),
+          devices: children("synth1"),
+          ...createSimpleRoutingMock(),
+        },
+        [String(livePath.returnTrack(0))]: {
+          has_midi_input: 0,
+          name: "Return A",
+          arrangement_clips: children(),
+          devices: [],
+        },
+        [String(livePath.masterTrack())]: {
+          has_midi_input: 0,
+          name: "Master",
+          arrangement_clips: children(),
+          devices: [],
+        },
+        [livePath.scene(0)]: {
+          name: "Scene 1",
+          is_empty: 0,
+          tempo_enabled: 0,
+          time_signature_enabled: 0,
+          is_triggered: 0,
+          color: 16777215,
+        },
+        synth1: {
+          name: "Analog",
+          class_name: "UltraAnalog",
+          class_display_name: "Analog",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
       },
     });
 
@@ -213,23 +198,7 @@ describe("readLiveSet - track types", () => {
 
     // Test explicit list - should produce identical result
     const resultExplicit = readLiveSet({
-      include: [
-        "drum-pads",
-        "clip-notes",
-        "chains",
-        "scenes",
-        "midi-effects",
-        "instruments",
-        "audio-effects",
-        "routings",
-        "session-clips",
-        "arrangement-clips",
-        "regular-tracks",
-        "return-tracks",
-        "master-track",
-        "color",
-        "locators",
-      ],
+      include: ["scenes", "routings", "tracks", "color", "locators", "mixer"],
     });
 
     // Results should be identical
@@ -245,16 +214,16 @@ describe("readLiveSet - track types", () => {
       }),
     );
 
-    // Verify track has all expected properties
+    // Verify track has routing and color from propagation
     const tracks = resultWildcard.tracks as unknown[];
 
     expect(tracks[0]).toStrictEqual(
       expect.objectContaining({
-        instrument: expect.any(Object),
+        instrument: "Analog",
         inputRoutingChannel: expect.any(Object),
-        sessionClips: expect.any(Array),
-        arrangementClips: expect.any(Array),
         color: expect.any(String),
+        sessionClipCount: expect.any(Number),
+        arrangementClipCount: expect.any(Number),
       }),
     );
   });

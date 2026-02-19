@@ -4,7 +4,11 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { AnthropicTool, ChatTool, ResponsesTool } from "./types.ts";
+import {
+  type AnthropicTool,
+  type ChatTool,
+  type ResponsesTool,
+} from "./types.ts";
 
 const DEFAULT_MCP_URL = "http://localhost:3350/mcp";
 

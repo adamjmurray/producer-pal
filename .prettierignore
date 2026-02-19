@@ -1,0 +1,15 @@
+# generated files:
+.claude
+coverage
+knowledge-base
+src/**/generated-*-parser.js
+max-for-live-device
+claude-desktop-extension
+npm/*.js
+npm/*.svg
+npm/LICENSE
+npm/licenses
+release
+docs/.vitepress/cache
+docs/.vitepress/dist
+test-results

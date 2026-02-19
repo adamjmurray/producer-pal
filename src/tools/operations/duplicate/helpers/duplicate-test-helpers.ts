@@ -1,138 +1,52 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { expect, type Mock } from "vitest";
-// Import for use in helper functions below
+import { expect } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiPath,
-  liveApiType,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 
-// Re-export mock utilities from mock-live-api for convenience
-export {
-  children,
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  liveApiType,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
-
-/** Default arrangement clip path for testing */
-const DEFAULT_ARRANGEMENT_CLIP = "live_set tracks 0 arrangement_clips 0";
+export { children };
+export { type RegisteredMockObject, registerMockObject };
 
 /**
- * Setup liveApiPath mock for track duplication tests.
- * @param trackId - Track ID (e.g., "track1")
- * @param trackIndex - Track index (e.g., 0)
+ * Register a clip slot and optionally its clip in the mock registry.
+ * @param trackIndex - Track index
+ * @param sceneIndex - Scene index
+ * @param hasClip - Whether the clip slot has a clip
+ * @param clipProperties - Optional clip properties (registered only if hasClip)
+ * @returns The clip handle if hasClip and clipProperties, otherwise the slot handle
  */
-export function setupTrackPath(trackId: string, trackIndex = 0): void {
-  (liveApiPath as Mock).mockImplementation(function (
-    this: MockLiveAPIContext,
-  ): string | undefined {
-    if (this._id === trackId) {
-      return `live_set tracks ${trackIndex}`;
-    }
+export function registerClipSlot(
+  trackIndex: number,
+  sceneIndex: number,
+  hasClip: boolean,
+  clipProperties?: Record<string, unknown>,
+): RegisteredMockObject {
+  const slot = registerMockObject(
+    `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}`,
+    {
+      path: livePath.track(trackIndex).clipSlot(sceneIndex),
+      properties: { has_clip: hasClip ? 1 : 0 },
+    },
+  );
 
-    return this._path;
-  });
-}
+  if (hasClip && clipProperties) {
+    return registerMockObject(
+      `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}/clip`,
+      {
+        path: livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
+        properties: clipProperties,
+      },
+    );
+  }
 
-/**
- * Setup liveApiPath mock for scene duplication tests (matches by id).
- * @param sceneId - Scene ID (e.g., "scene1")
- * @param sceneIndex - Scene index (e.g., 0)
- */
-export function setupScenePath(sceneId: string, sceneIndex = 0): void {
-  (liveApiPath as Mock).mockImplementation(function (
-    this: MockLiveAPIContext,
-  ): string | undefined {
-    if (this._id === sceneId) {
-      return `live_set scenes ${sceneIndex}`;
-    }
-
-    return this._path;
-  });
-}
-
-/**
- * Setup liveApiPath mock for scene tests where LiveAPI.from(sceneId) is used.
- * This handles the case where the instance has _path = sceneId (from LiveAPI.from).
- * @param sceneId - Scene ID used in LiveAPI.from() (e.g., "scene1")
- * @param sceneIndex - Scene index (e.g., 0)
- */
-export function setupScenePathFromId(sceneId: string, sceneIndex = 0): void {
-  (liveApiPath as Mock).mockImplementation(function (
-    this: MockLiveAPIContext,
-  ): string | undefined {
-    // LiveAPI.from(sceneId) creates instance with _path = sceneId
-    if (this._path === sceneId) {
-      return `live_set scenes ${sceneIndex}`;
-    }
-
-    return this._path;
-  });
-}
-
-/**
- * Setup arrangement clip mocks for scene-to-arrangement tests.
- * Extends existing liveApiPath and liveApiGet mocks to handle arrangement clips.
- * @param opts - Options
- * @param opts.getStartTime - Function to get start time for a path
- */
-export function setupArrangementClipMocks(
-  opts: { getStartTime?: (path: string) => number } = {},
-): void {
-  const { getStartTime = () => 16 } = opts;
-
-  const originalGet = (liveApiGet as Mock).getMockImplementation() as
-    | ((this: MockLiveAPIContext, prop: string) => unknown[])
-    | undefined;
-  const originalPath = (liveApiPath as Mock).getMockImplementation() as
-    | ((this: MockLiveAPIContext) => string | undefined)
-    | undefined;
-
-  (liveApiPath as Mock).mockImplementation(function (
-    this: MockLiveAPIContext,
-  ): string | undefined {
-    // For arrangement clips created by ID, return a proper path
-    if (
-      this._path?.startsWith("id live_set tracks") &&
-      this._path.includes("arrangement_clips")
-    ) {
-      return this._path.slice(3); // Remove "id " prefix
-    }
-
-    return originalPath ? originalPath.call(this) : this._path;
-  });
-
-  (liveApiGet as Mock).mockImplementation(function (
-    this: MockLiveAPIContext,
-    prop: string,
-  ): unknown[] {
-    // Check if this is an arrangement clip requesting is_arrangement_clip
-    if (
-      this._path?.includes("arrangement_clips") &&
-      prop === "is_arrangement_clip"
-    ) {
-      return [1];
-    }
-
-    // Check if this is an arrangement clip requesting start_time
-    if (this._path?.includes("arrangement_clips") && prop === "start_time") {
-      return [getStartTime(this._path)];
-    }
-
-    // Otherwise use the original mock implementation
-    return originalGet ? originalGet.call(this, prop) : [];
-  });
+  return slot;
 }
 
 interface SourceTrackMock {
@@ -147,7 +61,32 @@ interface SourceTrackMock {
 }
 
 /**
- * Setup mock for routeToSource track tests.
+ * Returns mock data for a standard MIDI clip used in scene duplication tests.
+ * @param opts - Options
+ * @param opts.length - Clip length
+ * @param opts.name - Clip name
+ * @returns Mock data object for the clip
+ */
+export function createStandardMidiClipMock(
+  opts: { length?: number; name?: string } = {},
+): Record<string, unknown> {
+  const { length = 8, name = "Scene Clip" } = opts;
+
+  return {
+    length,
+    name,
+    color: 4047616,
+    signature_numerator: 4,
+    signature_denominator: 4,
+    looping: 0,
+    loop_start: 0,
+    loop_end: length,
+    is_midi_clip: 1,
+  };
+}
+
+/**
+ * Setup mock property data for routeToSource track tests.
  * @param opts - Options
  * @param opts.trackName - Track name
  * @param opts.monitoringState - Monitoring state value
@@ -185,114 +124,17 @@ export function setupRouteToSourceMock(
   }
 
   return {
-    "live_set tracks 0": sourceTrackMock as unknown as Record<string, unknown>,
-    "live_set tracks 1": {
+    [livePath.track(0).toString()]: sourceTrackMock as unknown as Record<
+      string,
+      unknown
+    >,
+    [livePath.track(1).toString()]: {
       available_output_routing_types: [
         { display_name: "Master", identifier: "master_id" },
         { display_name: trackName, identifier: "source_track_id" },
       ],
     },
   };
-}
-
-/**
- * Setup liveApiPath mock for session clip validation tests.
- * @param clipId - Clip ID (e.g., "clip1")
- * @param clipPath - Clip path (default: "live_set tracks 0 clip_slots 0 clip")
- */
-export function setupSessionClipPath(
-  clipId: string,
-  clipPath = "live_set tracks 0 clip_slots 0 clip",
-): void {
-  (liveApiPath as Mock).mockImplementation(function (
-    this: MockLiveAPIContext,
-  ): string | undefined {
-    if (this._id === clipId) return clipPath;
-
-    return this._path;
-  });
-}
-
-/**
- * Setup liveApiCall mock for arrangement clip duplication.
- * Handles duplicate_clip_to_arrangement and get_notes_extended methods.
- * @param opts - Options
- * @param opts.returnClipId - Clip ID to return
- * @param opts.includeNotes - Whether to include notes
- */
-export function setupArrangementDuplicationMock(
-  opts: { returnClipId?: string; includeNotes?: boolean } = {},
-): void {
-  const { returnClipId = DEFAULT_ARRANGEMENT_CLIP, includeNotes = true } = opts;
-
-  (liveApiCall as Mock).mockImplementation(function (
-    method: string,
-  ): string[] | string | null {
-    if (method === "duplicate_clip_to_arrangement") {
-      return ["id", returnClipId];
-    }
-
-    if (includeNotes && method === "get_notes_extended") {
-      return JSON.stringify({ notes: [] });
-    }
-
-    return null;
-  });
-}
-
-/**
- * Returns mock data for a standard MIDI clip used in scene duplication tests.
- * @param opts - Options
- * @param opts.length - Clip length
- * @param opts.name - Clip name
- * @returns Mock data object for the clip
- */
-export function createStandardMidiClipMock(
-  opts: { length?: number; name?: string } = {},
-): Record<string, unknown> {
-  const { length = 8, name = "Scene Clip" } = opts;
-
-  return {
-    length,
-    name,
-    color: 4047616,
-    signature_numerator: 4,
-    signature_denominator: 4,
-    looping: 0,
-    loop_start: 0,
-    loop_end: length,
-    is_midi_clip: 1,
-  };
-}
-
-/**
- * Setup mocks for device duplication tests.
- * @param deviceId - Device ID
- * @param devicePath - Device path
- * @param deviceType - Device type
- */
-export function setupDeviceDuplicationMocks(
-  deviceId: string,
-  devicePath: string,
-  deviceType = "PluginDevice",
-): void {
-  (liveApiPath as Mock).mockImplementation(function (
-    this: MockLiveAPIContext,
-  ): string | undefined {
-    if (this._id === deviceId) {
-      return devicePath;
-    }
-
-    return this._path;
-  });
-
-  (liveApiType as Mock).mockImplementation(function (
-    this: MockLiveAPIContext,
-  ): string | undefined {
-    if (this._id === deviceId) {
-      return deviceType;
-    }
-  });
 }
 
 /**
@@ -329,75 +171,71 @@ export function createTrackResultArray(
 
 /**
  * Verify that delete_device was called for each device in reverse order.
- * @param trackPath - Track path (e.g., "live_set tracks 1")
+ * @param track - Mock object handle for the track
  * @param deviceCount - Number of devices that should have been deleted
  */
 export function expectDeleteDeviceCalls(
-  trackPath: string,
+  track: RegisteredMockObject,
   deviceCount: number,
 ): void {
-  // Devices are deleted in reverse order
   for (let i = deviceCount - 1; i >= 0; i--) {
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: trackPath }),
-      "delete_device",
-      i,
-    );
+    expect(track.call).toHaveBeenCalledWith("delete_device", i);
   }
 }
 
 /**
- * Setup mock for time signature duration conversion tests.
- * @param opts - Options
- * @param opts.clipId - Clip ID
- * @param opts.clipPath - Clip path
+ * Sets up mocks for Producer Pal device tests with 3 devices on track 1
+ * @returns Handles for liveSet and newTrack mocks
  */
-export function setupTimeSignatureDurationMock(
-  opts: { clipId?: string; clipPath?: string } = {},
-): void {
-  const { clipId = "clip1", clipPath = "live_set tracks 0 clip_slots 0 clip" } =
-    opts;
-
-  (liveApiPath as Mock).mockImplementation(function (
-    this: MockLiveAPIContext,
-  ): string | undefined {
-    if (this._id === clipId) {
-      return clipPath;
-    }
-
-    if (this._path === `id ${DEFAULT_ARRANGEMENT_CLIP}`) {
-      return DEFAULT_ARRANGEMENT_CLIP;
-    }
-
-    return this._path;
+export function setupProducerPalDeviceMocks(): {
+  liveSet: RegisteredMockObject;
+  newTrack: RegisteredMockObject;
+} {
+  registerMockObject("track1", { path: livePath.track(0) });
+  registerMockObject("this_device", {
+    path: livePath.track(0).device(1),
+  });
+  const liveSet = registerMockObject("live_set", {
+    path: livePath.liveSet,
+  });
+  const newTrack = registerMockObject("live_set/tracks/1", {
+    path: livePath.track(1),
+    properties: {
+      devices: children("device0", "device1", "device2"),
+      clip_slots: [],
+      arrangement_clips: [],
+    },
   });
 
-  (liveApiCall as Mock).mockImplementation(function (
-    this: MockLiveAPIContext,
-    method: string,
-  ): string[] | string | null {
-    if (method === "create_midi_clip") {
-      let trackIndex = "0";
+  return { liveSet, newTrack };
+}
 
-      if (this.path) {
-        const trackMatch = this.path.match(/live_set tracks (\d+)/);
+/**
+ * Setup common mocks for routeToSource track tests
+ * @param opts - Options for setupRouteToSourceMock
+ * @returns Handles for sourceTrack and newTrack mocks
+ */
+export function setupRoutingMocks(
+  opts: Parameters<typeof setupRouteToSourceMock>[0] = {},
+): { sourceTrack: RegisteredMockObject; newTrack: RegisteredMockObject } {
+  registerMockObject("track1", { path: livePath.track(0) });
+  registerMockObject("live_set", { path: livePath.liveSet });
 
-        if (trackMatch) {
-          trackIndex = trackMatch[1] as string;
-        }
-      }
+  const mockData = setupRouteToSourceMock(opts);
 
-      return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
-    }
-
-    if (method === "get_notes_extended") {
-      return JSON.stringify({ notes: [] });
-    }
-
-    if (method === "duplicate_clip_to_arrangement") {
-      return ["id", DEFAULT_ARRANGEMENT_CLIP];
-    }
-
-    return null;
+  const sourceTrack = registerMockObject("live_set/tracks/0", {
+    path: livePath.track(0),
+    properties: mockData[String(livePath.track(0))] as Record<string, unknown>,
   });
+  const newTrack = registerMockObject("live_set/tracks/1", {
+    path: livePath.track(1),
+    properties: {
+      ...(mockData[String(livePath.track(1))] as Record<string, unknown>),
+      devices: [],
+      clip_slots: [],
+      arrangement_clips: [],
+    },
+  });
+
+  return { sourceTrack, newTrack };
 }

@@ -7,13 +7,15 @@ import {
   barBeatDurationToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
+  type TilingContext,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats
@@ -90,7 +92,7 @@ export function getMinimalClipInfo(
 
     const arrangementStartBeats = clip.getProperty("start_time") as number;
     // Convert to bar|beat format using song time signature
-    const liveSet = LiveAPI.from("live_set");
+    const liveSet = LiveAPI.from(livePath.liveSet);
     const timeSigNum = liveSet.getProperty("signature_numerator") as number;
     const timeSigDenom = liveSet.getProperty("signature_denominator") as number;
     const arrangementStart = abletonBeatsToBarBeat(
@@ -190,7 +192,7 @@ export function createClipsForLength(
     // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
     const newClipResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${sourceClip.id}`,
+      toLiveApiId(sourceClip.id),
       arrangementStartBeats,
     ) as string;
     const newClip = LiveAPI.from(newClipResult);
@@ -287,7 +289,7 @@ export function duplicateClipSlot(
 ): MinimalClipInfo {
   // Get source clip slot
   const sourceClipSlot = LiveAPI.from(
-    `live_set tracks ${sourceTrackIndex} clip_slots ${sourceSceneIndex}`,
+    livePath.track(sourceTrackIndex).clipSlot(sourceSceneIndex),
   );
 
   if (!sourceClipSlot.exists()) {
@@ -304,7 +306,7 @@ export function duplicateClipSlot(
 
   // Get destination clip slot
   const destClipSlot = LiveAPI.from(
-    `live_set tracks ${toTrackIndex} clip_slots ${toSceneIndex}`,
+    livePath.track(toTrackIndex).clipSlot(toSceneIndex),
   );
 
   if (!destClipSlot.exists()) {
@@ -314,11 +316,11 @@ export function duplicateClipSlot(
   }
 
   // Use duplicate_clip_to to copy the clip to the destination
-  sourceClipSlot.call("duplicate_clip_to", `id ${destClipSlot.id}`);
+  sourceClipSlot.call("duplicate_clip_to", toLiveApiId(destClipSlot.id));
 
   // Get the newly created clip
   const newClip = LiveAPI.from(
-    `live_set tracks ${toTrackIndex} clip_slots ${toSceneIndex} clip`,
+    livePath.track(toTrackIndex).clipSlot(toSceneIndex).clip(),
   );
 
   if (name != null) {
@@ -364,7 +366,7 @@ export function duplicateClipToArrangement(
     );
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
   const duplicatedClips: MinimalClipInfo[] = [];
 
   if (arrangementLength != null) {
@@ -396,7 +398,7 @@ export function duplicateClipToArrangement(
     // No length specified - use original behavior
     const newClipResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${clip.id}`,
+      toLiveApiId(clip.id),
       arrangementStartBeats,
     ) as string;
     const newClip = LiveAPI.from(newClipResult);

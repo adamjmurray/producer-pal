@@ -6,6 +6,8 @@
  * Configuration utilities for MCP server settings
  */
 
+import { TOOL_NAMES } from "#src/mcp-server/create-mcp-server.ts";
+
 const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
 
 export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
@@ -14,12 +16,13 @@ export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
  * Configuration options that can be set via the /config endpoint
  */
 export interface ConfigOptions {
-  useProjectNotes?: boolean;
-  projectNotes?: string;
-  projectNotesWritable?: boolean;
+  memoryEnabled?: boolean;
+  memoryContent?: string;
+  memoryWritable?: boolean;
   smallModelMode?: boolean;
   jsonOutput?: boolean;
   sampleFolder?: string;
+  tools?: string[];
 }
 
 /**
@@ -45,10 +48,11 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
 export async function resetConfig(): Promise<void> {
   await setConfig({
     smallModelMode: false,
-    useProjectNotes: false,
-    projectNotes: "",
-    projectNotesWritable: false,
+    memoryEnabled: false,
+    memoryContent: "",
+    memoryWritable: false,
     jsonOutput: true,
     sampleFolder: "",
+    tools: [...TOOL_NAMES],
   });
 }

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { Provider } from "#webui/types/settings";
+import { type Provider } from "#webui/types/settings";
 
 interface ProviderSelectorProps {
   provider: Provider;

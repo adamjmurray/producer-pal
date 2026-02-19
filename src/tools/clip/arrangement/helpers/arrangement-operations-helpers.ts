@@ -2,11 +2,13 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createAudioClipInSession,
   tileClipToRange,
+  type TilingContext,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
 
 export interface ArrangementContext {
@@ -107,7 +109,7 @@ export function handleArrangementLengthening({
     );
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
 
   // Handle unlooped clips separately from looped clips
   if (!isLooping) {
@@ -336,7 +338,7 @@ export function handleArrangementShortening({
     );
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
 
   // Create temporary clip to truncate
   truncateWithTempClip({
@@ -389,7 +391,7 @@ function truncateWithTempClip({
     );
     const tempResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${sessionClip.id}`,
+      toLiveApiId(sessionClip.id),
       position,
     ) as string;
     const tempClip = LiveAPI.from(tempResult);
@@ -399,7 +401,7 @@ function truncateWithTempClip({
     }
 
     slot.call("delete_clip");
-    track.call("delete_clip", `id ${tempClip.id}`);
+    track.call("delete_clip", toLiveApiId(tempClip.id));
   } else {
     const tempClipResult = track.call(
       "create_midi_clip",
@@ -408,6 +410,6 @@ function truncateWithTempClip({
     ) as string;
     const tempClip = LiveAPI.from(tempClipResult);
 
-    track.call("delete_clip", `id ${tempClip.id}`);
+    track.call("delete_clip", toLiveApiId(tempClip.id));
   }
 }

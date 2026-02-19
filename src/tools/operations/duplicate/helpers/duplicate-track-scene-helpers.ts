@@ -3,15 +3,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import {
   getMinimalClipInfo,
   createClipsForLength,
   parseArrangementLength,
+  type MinimalClipInfo,
 } from "./duplicate-helpers.ts";
-import type { MinimalClipInfo } from "./duplicate-helpers.ts";
 import { configureRouting } from "./duplicate-routing-helpers.ts";
 
 /**
@@ -36,7 +37,7 @@ function forEachClipInScene(
 ): void {
   for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
     const clipSlot = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+      livePath.track(trackIndex).clipSlot(sceneIndex),
     );
 
     if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
@@ -212,12 +213,12 @@ export function duplicateTrack(
   routeToSource?: boolean,
   sourceTrackIndex?: number,
 ): { id: string; trackIndex: number; clips: MinimalClipInfo[] } {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_track", trackIndex);
 
   const newTrackIndex = trackIndex + 1;
-  const newTrack = LiveAPI.from(`live_set tracks ${newTrackIndex}`);
+  const newTrack = LiveAPI.from(livePath.track(newTrackIndex));
 
   if (name != null) {
     newTrack.set("name", name);
@@ -252,12 +253,12 @@ export function duplicateScene(
   name?: string,
   withoutClips?: boolean,
 ): { id: string; sceneIndex: number; clips: MinimalClipInfo[] } {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_scene", sceneIndex);
 
   const newSceneIndex = sceneIndex + 1;
-  const newScene = LiveAPI.from(`live_set scenes ${newSceneIndex}`);
+  const newScene = LiveAPI.from(livePath.scene(newSceneIndex));
 
   if (name != null) {
     newScene.set("name", name);
@@ -293,7 +294,7 @@ export function duplicateScene(
  * @returns Length in Ableton beats
  */
 export function calculateSceneLength(sceneIndex: number): number {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const trackIds = liveSet.getChildIds("tracks");
 
   let maxLength = 4; // Default minimum scene length
@@ -356,7 +357,7 @@ export function duplicateSceneToArrangement(
     );
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const trackIds = liveSet.getChildIds("tracks");
 
   const duplicatedClips: MinimalClipInfo[] = [];
@@ -379,7 +380,7 @@ export function duplicateSceneToArrangement(
     // Only duplicate clips if withoutClips is not explicitly true
     // Find all clips in this scene and duplicate them to arrangement
     forEachClipInScene(sceneIndex, trackIds, (clip, _clipSlot, trackIndex) => {
-      const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+      const track = LiveAPI.from(livePath.track(trackIndex));
 
       // Use the new length-aware clip creation logic
       // Omit arrangementStart since all clips share the same start time

@@ -4,7 +4,7 @@
 
 import { expect } from "vitest";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
-import type { NoteEvent } from "#src/notation/types.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 
 /**
  * Creates a standard test note with common defaults.
@@ -84,8 +84,8 @@ export function createContext(overrides: {
 }
 
 /**
- * Tests that a transform string produces an error and returns empty result.
- * Used for testing validation errors in math functions, waveforms, etc.
+ * Tests that a transform string produces a runtime error and returns empty result.
+ * Used for testing runtime validation errors (argument count, zero period, etc.).
  *
  * @param transformString - The transform string to test
  */

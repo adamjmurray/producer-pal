@@ -8,7 +8,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/preact";
 import { useConversationLock } from "./use-conversation-lock";
-import type { Provider } from "#webui/types/settings";
+import { type Provider } from "#webui/types/settings";
 
 function createMockChat(name: string) {
   return {
@@ -101,6 +101,12 @@ describe("useConversationLock", () => {
     const { result } = renderConversationLock("openrouter");
 
     expect(result.current.chat.name).toBe("openai");
+  });
+
+  it("routes lmstudio provider to responses chat", () => {
+    const { result } = renderConversationLock("lmstudio");
+
+    expect(result.current.chat.name).toBe("responses");
   });
 
   it("does not re-lock provider on subsequent messages", async () => {

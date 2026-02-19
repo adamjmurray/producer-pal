@@ -112,6 +112,8 @@ export interface ResponsesStreamState {
   toolResults: Map<string, string>;
   hasToolCalls: boolean;
   outputItems: ResponsesOutputItem[];
+  /** Index of streaming reasoning item in conversation, null if not yet created */
+  streamingReasoningIndex: number | null;
   /** Index of streaming placeholder message in conversation, null if not yet created */
   streamingItemIndex: number | null;
 }

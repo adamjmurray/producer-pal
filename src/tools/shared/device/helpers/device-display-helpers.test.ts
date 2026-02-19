@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiGet } from "#src/test/mocks/mock-live-api.ts";
 import {
   AUTOMATION_STATE_MAP,
   PARAM_STATE_MAP,
@@ -17,6 +16,9 @@ import {
 } from "./device-display-helpers.ts";
 
 describe("device-display-helpers", () => {
+  const mockGet = vi.fn();
+  const mockCall = vi.fn();
+
   describe("parseLabel", () => {
     describe("frequency (Hz)", () => {
       it("parses kHz and converts to Hz", () => {
@@ -251,7 +253,7 @@ describe("device-display-helpers", () => {
     });
 
     it("returns id and name for a parameter", () => {
-      liveApiGet.mockImplementation((prop: string) => {
+      mockGet.mockImplementation((prop: string) => {
         if (prop === "name") return ["Volume"];
         if (prop === "original_name") return ["Volume"];
 
@@ -260,8 +262,8 @@ describe("device-display-helpers", () => {
 
       const mockParamApi = {
         id: "param_1",
-        get: liveApiGet,
-        getProperty: (prop: string) => liveApiGet(prop)?.[0],
+        get: mockGet,
+        getProperty: (prop: string) => mockGet(prop)?.[0],
       };
 
       const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
@@ -273,7 +275,7 @@ describe("device-display-helpers", () => {
     });
 
     it("formats name with original_name for rack macros", () => {
-      liveApiGet.mockImplementation((prop: string) => {
+      mockGet.mockImplementation((prop: string) => {
         if (prop === "name") return ["Reverb"];
         if (prop === "original_name") return ["Macro 1"];
 
@@ -282,8 +284,8 @@ describe("device-display-helpers", () => {
 
       const mockParamApi = {
         id: "param_2",
-        get: liveApiGet,
-        getProperty: (prop: string) => liveApiGet(prop)?.[0],
+        get: mockGet,
+        getProperty: (prop: string) => mockGet(prop)?.[0],
       };
 
       const result = readParameterBasic(mockParamApi as unknown as LiveAPI);
@@ -303,12 +305,12 @@ describe("device-display-helpers", () => {
     const createMockParamApi = (id: string) =>
       ({
         id,
-        get: liveApiGet,
-        getProperty: (prop: string) => liveApiGet(prop)?.[0],
-        call: liveApiCall,
+        get: mockGet,
+        getProperty: (prop: string) => mockGet(prop)?.[0],
+        call: mockCall,
       }) as unknown as LiveAPI;
 
-    // Helper to setup liveApiGet mock for parameter tests
+    // Helper to setup mockGet mock for parameter tests
     interface ParamMockProps {
       name?: string;
       state?: number;
@@ -334,7 +336,7 @@ describe("device-display-helpers", () => {
         valueItems,
       } = props;
 
-      liveApiGet.mockImplementation((prop: string) => {
+      mockGet.mockImplementation((prop: string) => {
         if (prop === "name") return [name];
         if (prop === "original_name") return [name];
         if (prop === "state") return [state];
@@ -353,7 +355,7 @@ describe("device-display-helpers", () => {
     it("reads quantized parameter with value_items", () => {
       const valueItems = ["Off", "On", "Auto"];
 
-      liveApiGet.mockImplementation((prop) => {
+      mockGet.mockImplementation((prop) => {
         if (prop === "name") return ["Mode"];
         if (prop === "original_name") return ["Mode"];
         if (prop === "state") return [0]; // active
@@ -377,7 +379,7 @@ describe("device-display-helpers", () => {
     });
 
     it("reads continuous parameter with dB unit", () => {
-      liveApiGet.mockImplementation((prop) => {
+      mockGet.mockImplementation((prop) => {
         if (prop === "name") return ["Volume"];
         if (prop === "original_name") return ["Volume"];
         if (prop === "state") return [0]; // active
@@ -391,7 +393,7 @@ describe("device-display-helpers", () => {
         return [0];
       });
 
-      liveApiCall.mockImplementation((method, value) => {
+      mockCall.mockImplementation((method, value) => {
         if (method === "str_for_value") {
           if (value === 0.85) return "0 dB";
           if (value === 0) return "-inf dB";
@@ -414,7 +416,7 @@ describe("device-display-helpers", () => {
     });
 
     it("reads pan parameter and normalizes to -1 to 1", () => {
-      liveApiGet.mockImplementation((prop) => {
+      mockGet.mockImplementation((prop) => {
         if (prop === "name") return ["Pan"];
         if (prop === "original_name") return ["Pan"];
         if (prop === "state") return [0];
@@ -428,7 +430,7 @@ describe("device-display-helpers", () => {
         return [0];
       });
 
-      liveApiCall.mockImplementation((method, value) => {
+      mockCall.mockImplementation((method, value) => {
         if (method === "str_for_value") {
           if (value === 0.25) return "25L";
           if (value === 0) return "50L";
@@ -452,7 +454,7 @@ describe("device-display-helpers", () => {
 
     it("includes state flag when not active", () => {
       setupParamMock({ name: "Cutoff", state: 1 });
-      liveApiCall.mockReturnValue("0.5");
+      mockCall.mockReturnValue("0.5");
 
       const result = readParameter(createMockParamApi("param_6"));
 
@@ -461,7 +463,7 @@ describe("device-display-helpers", () => {
 
     it("includes automation flag when active", () => {
       setupParamMock({ name: "Filter", automationState: 1 });
-      liveApiCall.mockReturnValue("0.5");
+      mockCall.mockReturnValue("0.5");
 
       const result = readParameter(createMockParamApi("param_7"));
 
@@ -470,7 +472,7 @@ describe("device-display-helpers", () => {
 
     it("includes enabled=false when parameter is disabled", () => {
       setupParamMock({ isEnabled: 0 });
-      liveApiCall.mockReturnValue("0.5");
+      mockCall.mockReturnValue("0.5");
 
       const result = readParameter(createMockParamApi("param_8"));
 
@@ -480,7 +482,7 @@ describe("device-display-helpers", () => {
     it("reads division parameter with enum-like value and options", () => {
       // Division params like Echo's L Division have raw values -6 to 0
       // that map to "1/64" through "1"
-      liveApiGet.mockImplementation((prop: string) => {
+      mockGet.mockImplementation((prop: string) => {
         if (prop === "name") return ["L Division"];
         if (prop === "original_name") return ["L Division"];
         if (prop === "state") return [0];
@@ -505,7 +507,7 @@ describe("device-display-helpers", () => {
         "0": 1, // Note: returns number, not string
       };
 
-      liveApiCall.mockImplementation((method: string, value: number) => {
+      mockCall.mockImplementation((method: string, value: number) => {
         if (method === "str_for_value") {
           return divisionMap[String(value)] ?? "";
         }
@@ -525,7 +527,7 @@ describe("device-display-helpers", () => {
 
     it("handles division param detected via minLabel", () => {
       // Edge case: current value is "1" (not a fraction) but min is "1/64"
-      liveApiGet.mockImplementation((prop: string) => {
+      mockGet.mockImplementation((prop: string) => {
         if (prop === "name") return ["Division"];
         if (prop === "original_name") return ["Division"];
         if (prop === "state") return [0];
@@ -545,7 +547,7 @@ describe("device-display-helpers", () => {
         "0": 1,
       };
 
-      liveApiCall.mockImplementation((method: string, value: number) => {
+      mockCall.mockImplementation((method: string, value: number) => {
         if (method === "str_for_value") {
           return divisionMap[String(value)] ?? "";
         }

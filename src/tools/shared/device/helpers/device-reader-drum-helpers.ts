@@ -43,10 +43,10 @@ export interface DrumPadInfo {
 
 /**
  * Build path for a drum rack chain based on its in_note and position within that note group
- * @param parentPath - Parent device path (e.g., "0/0")
+ * @param parentPath - Parent device path (e.g., "t0/d0")
  * @param inNote - Chain's in_note property (-1 for catch-all, >=0 for specific note)
  * @param indexWithinNote - Index within chains having the same in_note
- * @returns Chain path (e.g., "0/0/pC1/0" or "0/0/p[star]/0" for catch-all)
+ * @returns Chain path (e.g., "t0/d0/pC1/c0" or catch-all form `t0/d0/p*` + `/c0`)
  */
 function buildDrumChainPath(
   parentPath: string,
@@ -54,19 +54,19 @@ function buildDrumChainPath(
   indexWithinNote: number,
 ): string {
   if (inNote === -1) {
-    // Catch-all chain: p*/0, p*/1, etc.
-    return `${parentPath}/p*/${indexWithinNote}`;
+    // Catch-all chain: p*/c0, p*/c1, etc.
+    return `${parentPath}/p*/c${indexWithinNote}`;
   }
 
   const noteName = midiToNoteName(inNote);
 
   if (noteName == null) {
     // Invalid note - use catch-all notation with index
-    return `${parentPath}/p*/${indexWithinNote}`;
+    return `${parentPath}/p*/c${indexWithinNote}`;
   }
 
-  // Note-specific chain: pC1/0, pC1/1, etc.
-  return `${parentPath}/p${noteName}/${indexWithinNote}`;
+  // Note-specific chain: pC1/c0, pC1/c1, etc.
+  return `${parentPath}/p${noteName}/c${indexWithinNote}`;
 }
 
 /**
@@ -97,8 +97,23 @@ function processDrumRackChain(
     : null;
 
   const chainDevices = chain.getChildren("devices");
+
+  // At depth limit, show deviceCount instead of expanding devices
+  if (depth >= maxDepth) {
+    const chainInfo = buildChainInfo(chain, {
+      path: chainPath,
+      deviceCount: chainDevices.length,
+    });
+
+    // Add in_note for internal tracking
+    chainInfo._inNote = inNote;
+    chainInfo._hasInstrument = false; // Can't determine without expanding
+
+    return chainInfo;
+  }
+
   const processedDevices = chainDevices.map((chainDevice, deviceIndex) => {
-    const devicePath = chainPath ? `${chainPath}/${deviceIndex}` : null;
+    const devicePath = chainPath ? `${chainPath}/d${deviceIndex}` : null;
 
     return readDeviceFn(chainDevice, {
       includeChains: includeDrumPads && includeChains,

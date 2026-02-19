@@ -1,13 +1,23 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { ExpressionNode } from "./parser/transform-parser.ts";
-import type {
-  TimeRange,
-  NoteProperties,
+import { type ExpressionNode } from "./parser/transform-parser.ts";
+import {
+  type TimeRange,
+  type NoteProperties,
 } from "./transform-evaluator-helpers.ts";
 import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
+import {
+  evaluateChoose,
+  evaluateCurve,
+  evaluateMathFunction,
+  evaluateMinMax,
+  evaluatePow,
+  evaluateQuant,
+  evaluateRand,
+} from "./transform-functions-helpers.ts";
 import * as waveforms from "./transform-waveforms.ts";
 
 export type EvaluateExpressionFn = (
@@ -19,10 +29,21 @@ export type EvaluateExpressionFn = (
   noteProperties?: NoteProperties,
 ) => number;
 
+// Dispatch map for functions with the standard (args, pos, num, den, range, props, eval) signature
+const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
+  rand: evaluateRand,
+  choose: evaluateChoose,
+  quant: evaluateQuant,
+  pow: evaluatePow,
+  curve: evaluateCurve,
+  ramp: evaluateRamp,
+};
+
 /**
  * Evaluate a function call
  * @param name - Function name
  * @param args - Function arguments
+ * @param sync - Whether to sync phase to arrangement timeline
  * @param position - Note position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -34,6 +55,7 @@ export type EvaluateExpressionFn = (
 export function evaluateFunction(
   name: string,
   args: ExpressionNode[],
+  sync: boolean,
   position: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -41,13 +63,29 @@ export function evaluateFunction(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
-  // noise() has no arguments
-  if (name === "noise") {
-    return waveforms.noise();
+  // Functions with standard signature: (args, pos, num, den, range, props, eval)
+  const standardFn = standardFnDispatch[name];
+
+  if (standardFn) {
+    return standardFn(
+      args,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
   }
 
-  // Math functions - single argument (round, floor, abs)
-  if (name === "round" || name === "floor" || name === "abs") {
+  // Math functions with name dispatch (round, floor, ceil, abs, clamp)
+  if (
+    name === "round" ||
+    name === "floor" ||
+    name === "ceil" ||
+    name === "abs" ||
+    name === "clamp"
+  ) {
     return evaluateMathFunction(
       name,
       args,
@@ -74,23 +112,11 @@ export function evaluateFunction(
     );
   }
 
-  // ramp() is special - it uses timeRange instead of period
-  if (name === "ramp") {
-    return evaluateRamp(
-      args,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-      evaluateExpression,
-    );
-  }
-
   // All other waveforms require at least a period argument
   return evaluateWaveform(
     name,
     args,
+    sync,
     position,
     timeSigNumerator,
     timeSigDenominator,
@@ -120,10 +146,9 @@ function evaluateRamp(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
-  // ramp() requires start and end arguments
-  if (args.length < 2) {
+  if (args.length < 2 || args.length > 3) {
     throw new Error(
-      `Function ramp() requires start and end arguments: ramp(start, end, speed?)`,
+      `Function ramp() requires 2-3 arguments: ramp(start, end, speed?)`,
     );
   }
 
@@ -176,9 +201,10 @@ function evaluateRamp(
 }
 
 /**
- * Evaluate waveform function (cos, tri, saw, square)
+ * Evaluate waveform function (cos, sin, tri, saw, square)
  * @param name - Waveform function name
  * @param args - Function arguments
+ * @param sync - Whether to sync phase to arrangement timeline
  * @param position - Note position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -190,6 +216,7 @@ function evaluateRamp(
 function evaluateWaveform(
   name: string,
   args: ExpressionNode[],
+  sync: boolean,
   position: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -214,8 +241,23 @@ function evaluateWaveform(
     name,
   );
 
+  // Sync: use absolute arrangement position for phase
+  let effectivePosition = position;
+
+  if (sync) {
+    const arrangementStart = noteProperties["clip:position"];
+
+    if (arrangementStart == null) {
+      throw new Error(
+        "sync requires an arrangement clip (no clip.position available)",
+      );
+    }
+
+    effectivePosition = position + arrangementStart;
+  }
+
   // Calculate phase from position and period
-  const basePhase = (position / period) % 1.0;
+  const basePhase = (effectivePosition / period) % 1.0;
 
   // Optional second argument: phase offset
   let phaseOffset = 0;
@@ -237,6 +279,9 @@ function evaluateWaveform(
   switch (name) {
     case "cos":
       return waveforms.cos(phase);
+
+    case "sin":
+      return waveforms.sin(phase);
 
     case "tri":
       return waveforms.tri(phase);
@@ -315,91 +360,4 @@ function parsePeriod(
   }
 
   return period;
-}
-
-/**
- * Evaluate single-argument math function (round, floor, abs)
- * @param name - Function name
- * @param args - Function arguments
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
- * @returns Math function result
- */
-function evaluateMathFunction(
-  name: string,
-  args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
-): number {
-  if (args.length === 0) {
-    throw new Error(`Function ${name}() requires one argument`);
-  }
-
-  const value = evaluateExpression(
-    args[0] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-
-  switch (name) {
-    case "round":
-      return Math.round(value);
-    case "floor":
-      return Math.floor(value);
-    case "abs":
-      return Math.abs(value);
-    default:
-      throw new Error(`Unknown math function: ${name}()`);
-  }
-}
-
-/**
- * Evaluate min/max function (variadic - accepts 2+ arguments)
- * @param name - Function name ("min" or "max")
- * @param args - Function arguments
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access
- * @param evaluateExpression - Expression evaluator function
- * @returns Min or max of all arguments
- */
-function evaluateMinMax(
-  name: string,
-  args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
-): number {
-  if (args.length < 2) {
-    throw new Error(`Function ${name}() requires at least 2 arguments`);
-  }
-
-  const values = args.map((arg) =>
-    evaluateExpression(
-      arg,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-    ),
-  );
-
-  return name === "min" ? Math.min(...values) : Math.max(...values);
 }

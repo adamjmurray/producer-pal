@@ -4,7 +4,7 @@
 
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
 import { getModelName } from "#webui/lib/config";
-import type { Provider } from "#webui/types/settings";
+import { type Provider } from "#webui/types/settings";
 
 interface ChatHeaderProps {
   mcpStatus: "connected" | "connecting" | "error";

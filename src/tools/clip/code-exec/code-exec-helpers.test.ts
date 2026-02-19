@@ -4,8 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { NoteEvent } from "#src/notation/types.ts";
-import type { CodeNote } from "./code-exec-types.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { type CodeNote } from "./code-exec-types.ts";
 import {
   buildCodeExecutionContext,
   codeNoteToNoteEvent,
@@ -213,7 +214,7 @@ describe("code-exec-helpers", () => {
     it("should build context for session clip", () => {
       const mockClip = {
         id: "clip-123",
-        path: "live_set tracks 1 clip_slots 2 clip",
+        path: livePath.track(1).clipSlot(2).clip(),
         getProperty: vi.fn((prop: string) => {
           const props: Record<string, unknown> = {
             name: "Test Clip",
@@ -230,7 +231,9 @@ describe("code-exec-helpers", () => {
       // Mock LiveAPI.from
       const originalFrom = LiveAPI.from;
 
-      LiveAPI.from = vi.fn((path: string) => {
+      LiveAPI.from = vi.fn((pathLike: unknown) => {
+        const path = String(pathLike);
+
         if (path.includes("tracks 1") && !path.includes("clip")) {
           return {
             getProperty: vi.fn((prop: string) => {
@@ -301,7 +304,7 @@ describe("code-exec-helpers", () => {
     it("should build context for arrangement clip", () => {
       const mockClip = {
         id: "clip-456",
-        path: "live_set tracks 0 arrangement_clips 3",
+        path: livePath.track(0).arrangementClip(3),
         getProperty: vi.fn((prop: string) => {
           const props: Record<string, unknown> = {
             name: "Arr Clip",
@@ -317,7 +320,9 @@ describe("code-exec-helpers", () => {
 
       const originalFrom = LiveAPI.from;
 
-      LiveAPI.from = vi.fn((path: string) => {
+      LiveAPI.from = vi.fn((pathLike: unknown) => {
+        const path = String(pathLike);
+
         if (path.includes("tracks 0") && !path.includes("arrangement")) {
           return {
             getProperty: vi.fn((prop: string) => {
@@ -374,7 +379,7 @@ describe("code-exec-helpers", () => {
   describe("getClipLocationInfo", () => {
     it("should return session view info for session clip", () => {
       const mockClip = {
-        path: "live_set tracks 0 clip_slots 2 clip",
+        path: livePath.track(0).clipSlot(2).clip(),
         getProperty: vi.fn().mockReturnValue(0), // is_arrangement_clip = 0
       };
 
@@ -385,7 +390,7 @@ describe("code-exec-helpers", () => {
 
     it("should return arrangement view info for arrangement clip", () => {
       const mockClip = {
-        path: "live_set tracks 0 arrangement_clips 3",
+        path: livePath.track(0).arrangementClip(3),
         getProperty: vi.fn((prop: string) => {
           if (prop === "is_arrangement_clip") return 1;
           if (prop === "start_time") return 16;

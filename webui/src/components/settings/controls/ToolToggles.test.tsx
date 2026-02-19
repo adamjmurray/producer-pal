@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -7,19 +8,25 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { TOOLS } from "#webui/lib/constants/tools";
+import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
 import { ToolToggles } from "./ToolToggles";
+
+const TEST_TOOLS: McpTool[] = [
+  { id: "ppal-connect", name: "Connect to Ableton" },
+  { id: "ppal-read-live-set", name: "Read Live Set" },
+  { id: "ppal-create-track", name: "Create Track" },
+];
 
 describe("ToolToggles", () => {
   const defaultProps = {
-    enabledTools: TOOLS.reduce<Record<string, boolean>>((acc, tool) => {
-      acc[tool.id] = true;
-
-      return acc;
-    }, {}),
+    tools: TEST_TOOLS,
+    mcpStatus: "connected" as const,
+    enabledTools: {
+      "ppal-connect": true,
+      "ppal-read-live-set": true,
+      "ppal-create-track": true,
+    },
     setEnabledTools: vi.fn(),
-    enableAllTools: vi.fn(),
-    disableAllTools: vi.fn(),
   };
 
   describe("basic rendering", () => {
@@ -38,42 +45,68 @@ describe("ToolToggles", () => {
       expect(screen.getByRole("button", { name: "Disable all" })).toBeDefined();
     });
 
-    it("renders all non-conditional tools", () => {
+    it("renders all tools", () => {
       render(<ToolToggles {...defaultProps} />);
 
-      // Check for a few tools (not Raw Live API which is conditional)
-      expect(screen.getByLabelText("Connect to Ableton Live")).toBeDefined();
-      expect(screen.getByLabelText("Project Notes")).toBeDefined();
+      expect(screen.getByLabelText("Connect to Ableton")).toBeDefined();
       expect(screen.getByLabelText("Read Live Set")).toBeDefined();
       expect(screen.getByLabelText("Create Track")).toBeDefined();
     });
   });
 
-  describe("button interactions", () => {
-    it("calls enableAllTools when Enable all button is clicked", () => {
-      const enableAllTools = vi.fn();
+  describe("loading and error states", () => {
+    it("shows loading message when tools are null and connecting", () => {
+      render(
+        <ToolToggles {...defaultProps} tools={null} mcpStatus="connecting" />,
+      );
 
-      render(<ToolToggles {...defaultProps} enableAllTools={enableAllTools} />);
+      expect(screen.getByText("Loading tools...")).toBeDefined();
+      expect(screen.queryByRole("checkbox")).toBeNull();
+    });
+
+    it("shows error message when tools are null and status is error", () => {
+      render(<ToolToggles {...defaultProps} tools={null} mcpStatus="error" />);
+
+      expect(screen.getByText("Tools cannot be loaded")).toBeDefined();
+      expect(screen.queryByRole("checkbox")).toBeNull();
+    });
+  });
+
+  describe("button interactions", () => {
+    it("calls setEnabledTools with all enabled when Enable all is clicked", () => {
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
+      );
 
       const button = screen.getByRole("button", { name: "Enable all" });
 
       fireEvent.click(button);
 
-      expect(enableAllTools).toHaveBeenCalledOnce();
+      expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith({
+        "ppal-connect": true,
+        "ppal-read-live-set": true,
+        "ppal-create-track": true,
+      });
     });
 
-    it("calls disableAllTools when Disable all button is clicked", () => {
-      const disableAllTools = vi.fn();
+    it("calls setEnabledTools with all disabled except session when Disable all is clicked", () => {
+      const setEnabledTools = vi.fn();
 
       render(
-        <ToolToggles {...defaultProps} disableAllTools={disableAllTools} />,
+        <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
       );
 
       const button = screen.getByRole("button", { name: "Disable all" });
 
       fireEvent.click(button);
 
-      expect(disableAllTools).toHaveBeenCalledOnce();
+      expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith({
+        "ppal-connect": true,
+        "ppal-read-live-set": false,
+        "ppal-create-track": false,
+      });
     });
   });
 
@@ -82,7 +115,7 @@ describe("ToolToggles", () => {
       render(<ToolToggles {...defaultProps} />);
 
       const checkbox = screen.getByLabelText(
-        "Connect to Ableton Live",
+        "Connect to Ableton",
       ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(true);
@@ -91,13 +124,13 @@ describe("ToolToggles", () => {
     it("checkbox is unchecked when tool is disabled", () => {
       const enabledTools = {
         ...defaultProps.enabledTools,
-        "ppal-connect": false,
+        "ppal-read-live-set": false,
       };
 
       render(<ToolToggles {...defaultProps} enabledTools={enabledTools} />);
 
       const checkbox = screen.getByLabelText(
-        "Connect to Ableton Live",
+        "Read Live Set",
       ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(false);
@@ -108,7 +141,7 @@ describe("ToolToggles", () => {
       render(<ToolToggles {...defaultProps} enabledTools={{}} />);
 
       const checkbox = screen.getByLabelText(
-        "Connect to Ableton Live",
+        "Read Live Set",
       ) as HTMLInputElement;
 
       expect(checkbox.checked).toBe(true);
@@ -121,24 +154,44 @@ describe("ToolToggles", () => {
         <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
       );
 
-      const checkbox = screen.getByLabelText("Connect to Ableton Live");
+      const checkbox = screen.getByLabelText("Read Live Set");
 
       fireEvent.click(checkbox);
 
       expect(setEnabledTools).toHaveBeenCalledOnce();
-      // Check that it was called with the tool toggled
       const call = setEnabledTools.mock.calls[0]?.[0];
 
-      expect(call?.["ppal-connect"]).toBe(false); // Was true, now false
+      expect(call?.["ppal-read-live-set"]).toBe(false); // Was true, now false
     });
-  });
 
-  describe("Raw Live API conditional rendering", () => {
-    it("does not render Raw Live API when env var is false", () => {
-      // Default test environment has ENABLE_RAW_LIVE_API = false
-      render(<ToolToggles {...defaultProps} />);
+    it("connect tool checkbox is always checked and disabled", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          enabledTools={{ "ppal-connect": false }}
+        />,
+      );
 
-      expect(screen.queryByLabelText("Raw Live API")).toBeNull();
+      const checkbox = screen.getByLabelText(
+        "Connect to Ableton",
+      ) as HTMLInputElement;
+
+      expect(checkbox.checked).toBe(true);
+      expect(checkbox.disabled).toBe(true);
+    });
+
+    it("does not call setEnabledTools when connect tool checkbox is clicked", () => {
+      const setEnabledTools = vi.fn();
+
+      render(
+        <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
+      );
+
+      const checkbox = screen.getByLabelText("Connect to Ableton");
+
+      fireEvent.click(checkbox);
+
+      expect(setEnabledTools).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,17 +1,20 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
 } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import type { ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
+import { type ResolvedPath } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import {
   parseCommaSeparatedIds,
+  toLiveApiId,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
@@ -72,7 +75,11 @@ export function deleteObject(
   }
 
   if (objectIds.length === 0) {
-    throw new Error("delete failed: ids or path is required");
+    if (!ids && !path) {
+      throw new Error("delete failed: ids or path is required");
+    }
+
+    return [];
   }
 
   const deletedObjects: DeleteResult[] = [];
@@ -117,7 +124,7 @@ function deleteTrackObject(id: string, object: LiveAPI): void {
 
   if (returnMatch) {
     const returnTrackIndex = Number(returnMatch[1]);
-    const liveSet = LiveAPI.from("live_set");
+    const liveSet = LiveAPI.from(livePath.liveSet);
 
     liveSet.call("delete_return_track", returnTrackIndex);
 
@@ -141,7 +148,7 @@ function deleteTrackObject(id: string, object: LiveAPI): void {
     );
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("delete_track", trackIndex);
 }
@@ -160,7 +167,7 @@ function deleteSceneObject(id: string, object: LiveAPI): void {
     );
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("delete_scene", sceneIndex);
 }
@@ -179,9 +186,9 @@ function deleteClipObject(id: string, object: LiveAPI): void {
     );
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(Number(trackIndex)));
 
-  track.call("delete_clip", `id ${object.id}`);
+  track.call("delete_clip", toLiveApiId(object.id));
 }
 
 /**
@@ -224,7 +231,7 @@ function deleteDeviceObject(id: string, object: LiveAPI): void {
  * @param object - The object to delete
  */
 function deleteDrumPadObject(_id: string, object: LiveAPI): void {
-  const drumPad = LiveAPI.from(`id ${object.id}`);
+  const drumPad = LiveAPI.from(toLiveApiId(object.id));
 
   drumPad.call("delete_all_chains");
 }

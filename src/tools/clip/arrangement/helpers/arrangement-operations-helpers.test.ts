@@ -3,12 +3,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  liveApiCall,
-  liveApiPath,
-  liveApiSet,
-  mockLiveApiGet,
-} from "#src/test/mocks/mock-live-api.ts";
+  overrideCall,
+  requireMockObject,
+  USE_CALL_FALLBACK,
+} from "#src/test/helpers/mock-registry-test-helpers.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
   createMockClip,
@@ -27,9 +28,6 @@ describe("arrangement-operations-helpers", () => {
 
   describe("handleArrangementLengthening", () => {
     it("should throw error when trackIndex is null", () => {
-      // Mock clip that returns null for trackIndex (path doesn't have tracks pattern)
-      liveApiPath.mockReturnValue("live_set");
-      mockLiveApiGet({ 123: {} });
       const mockClip = createMockClip({ id: "123", trackIndex: null });
 
       expect(() =>
@@ -83,6 +81,7 @@ describe("arrangement-operations-helpers", () => {
         clipProps,
         extraMocks: { [sessionClipId]: {}, [arrangementClipId]: {} },
       });
+      const track = requireMockObject(livePath.track(0));
 
       const mockCreateAudioClip = vi
         .spyOn(arrangementTiling, "createAudioClipInSession")
@@ -94,10 +93,12 @@ describe("arrangement-operations-helpers", () => {
         .spyOn(arrangementTiling, "tileClipToRange")
         .mockReturnValue([{ id: "tile1" }]);
 
-      liveApiCall.mockImplementation((method) => {
+      overrideCall(track, (method: string) => {
         if (method === "duplicate_clip_to_arrangement") {
           return `id ${arrangementClipId}`;
         }
+
+        return USE_CALL_FALLBACK;
       });
 
       const mockClip = createMockClip({ props: clipProps });
@@ -206,8 +207,6 @@ describe("arrangement-operations-helpers", () => {
 
   describe("handleArrangementShortening", () => {
     it("should throw error when trackIndex is null", () => {
-      liveApiPath.mockReturnValue("live_set");
-
       expect(() =>
         handleArrangementShortening({
           clip: { id: "456", trackIndex: null } as unknown as LiveAPI,
@@ -225,20 +224,27 @@ describe("arrangement-operations-helpers", () => {
       const arrangementClipId = "arr-456";
 
       setupArrangementClipPath("789");
+      const track = requireMockObject(livePath.track(0));
+      const arrangementClip = registerMockObject(arrangementClipId, {
+        path: livePath.track(0).arrangementClip(1),
+        type: "Clip",
+      });
+      const mockSlotCall = vi.fn();
 
       const mockCreateAudioClip = vi
         .spyOn(arrangementTiling, "createAudioClipInSession")
         .mockReturnValue({
           clip: { id: sessionClipId } as unknown as LiveAPI,
-          slot: { call: vi.fn() } as unknown as LiveAPI,
+          slot: { call: mockSlotCall } as unknown as LiveAPI,
         });
 
-      liveApiCall.mockImplementation((method) => {
+      overrideCall(track, (method: string) => {
         if (method === "duplicate_clip_to_arrangement") {
           return `id ${arrangementClipId}`;
         }
+
+        return USE_CALL_FALLBACK;
       });
-      liveApiSet.mockImplementation(() => {});
 
       handleArrangementShortening({
         clip: { id: "789", trackIndex: 0 } as unknown as LiveAPI,
@@ -256,21 +262,25 @@ describe("arrangement-operations-helpers", () => {
         "/test.wav",
       );
 
-      // Should set warping, looping, and loop_end on the temp clip
-      expect(liveApiSet).toHaveBeenCalledWith("warping", 1);
-      expect(liveApiSet).toHaveBeenCalledWith("looping", 1);
-      expect(liveApiSet).toHaveBeenCalledWith("loop_end", 4.0);
+      // Should set warping, looping, and loop_end on the duplicated arrangement clip
+      expect(arrangementClip.set).toHaveBeenCalledWith("warping", 1);
+      expect(arrangementClip.set).toHaveBeenCalledWith("looping", 1);
+      expect(arrangementClip.set).toHaveBeenCalledWith("loop_end", 4.0);
+      expect(mockSlotCall).toHaveBeenCalledWith("delete_clip");
 
       mockCreateAudioClip.mockRestore();
     });
 
     it("should shorten midi clip using create_midi_clip", () => {
       setupArrangementClipPath("789");
+      const track = requireMockObject(livePath.track(0));
 
-      liveApiCall.mockImplementation((method) => {
+      overrideCall(track, (method: string) => {
         if (method === "create_midi_clip") {
           return "id temp-midi";
         }
+
+        return USE_CALL_FALLBACK;
       });
 
       handleArrangementShortening({
@@ -283,9 +293,9 @@ describe("arrangement-operations-helpers", () => {
       });
 
       // Should call create_midi_clip
-      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 4.0, 4.0);
+      expect(track.call).toHaveBeenCalledWith("create_midi_clip", 4.0, 4.0);
       // Should delete the temp clip
-      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id temp-midi");
+      expect(track.call).toHaveBeenCalledWith("delete_clip", "id temp-midi");
     });
   });
 });

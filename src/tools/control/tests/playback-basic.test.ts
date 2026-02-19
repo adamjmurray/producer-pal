@@ -1,30 +1,30 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
-  children,
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  liveApiType,
-  LiveAPI,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  mockNonExistentObjects,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
 import {
   expectLiveSetProperty,
   setupClipWithNoTrackPath,
   setupDefaultTimeSignature,
   setupMultiClipMocks,
+  setupPlaybackLiveSet,
 } from "./playback-test-helpers.ts";
 
 describe("transport", () => {
+  let liveSet: RegisteredMockObject;
+
   beforeEach(() => {
-    setupDefaultTimeSignature();
+    liveSet = setupDefaultTimeSignature();
   });
 
   it("should throw an error when action is missing", () => {
@@ -38,51 +38,25 @@ describe("transport", () => {
   });
 
   it("should handle play-arrangement action", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-        tracks: children("track1", "track2"),
-      },
-      track1: { back_to_arranger: 0 },
-      track2: { back_to_arranger: 1 },
-    });
+    liveSet = setupPlaybackLiveSet();
 
     const result = playback({
       action: "play-arrangement",
       startTime: "5|1",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "start_playing",
-    );
-    expectLiveSetProperty("start_time", 16); // bar 5 = 16 beats in 4/4
+    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+    expectLiveSetProperty(liveSet, "start_time", 16); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
       playing: true,
       currentTime: "5|1",
-      arrangementFollowerTrackIds: "track1",
     });
   });
 
   it("should handle update-arrangement action with loop settings", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 1,
-        current_song_time: 10,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-        tracks: children("track1", "track2", "track3"),
-      },
-      track1: { back_to_arranger: 0 },
-      track2: { back_to_arranger: 1 },
-      track3: { back_to_arranger: 0 },
+    liveSet = setupPlaybackLiveSet({
+      is_playing: 1,
+      current_song_time: 10,
     });
 
     const result = playback({
@@ -92,11 +66,11 @@ describe("transport", () => {
       loopEnd: "7|1",
     });
 
-    expectLiveSetProperty("loop", true);
-    expectLiveSetProperty("loop_start", 8); // bar 3 = 8 beats
-    expectLiveSetProperty("loop_length", 16); // 24 - 8 = 16 beats
+    expectLiveSetProperty(liveSet, "loop", true);
+    expectLiveSetProperty(liveSet, "loop_start", 8); // bar 3 = 8 beats
+    expectLiveSetProperty(liveSet, "loop_length", 16); // 24 - 8 = 16 beats
     // Only loop settings should be called - no back_to_arranger calls for update-arrangement
-    expect(liveApiSet).toHaveBeenCalledTimes(3); // 3 for loop/start/length only
+    expect(liveSet.set).toHaveBeenCalledTimes(3); // 3 for loop/start/length only
 
     expect(result).toStrictEqual({
       playing: true,
@@ -105,19 +79,14 @@ describe("transport", () => {
         start: "3|1",
         end: "7|1",
       },
-      arrangementFollowerTrackIds: "track1,track3",
     });
   });
 
   it("should handle different time signatures", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 3,
-        signature_denominator: 4,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 3,
-      },
+    liveSet = setupPlaybackLiveSet({
+      signature_numerator: 3,
+      signature_denominator: 4,
+      loop_length: 3,
     });
 
     const result = playback({
@@ -125,32 +94,19 @@ describe("transport", () => {
       startTime: "3|1",
     });
 
-    expectLiveSetProperty("start_time", 6); // bar 3 = 6 beats in 3/4
+    expectLiveSetProperty(liveSet, "start_time", 6); // bar 3 = 6 beats in 3/4
     expect(result.currentTime).toBe("3|1");
     // Loop is off, so no arrangementLoop property
     expect(result.arrangementLoop).toBeUndefined();
   });
 
   it("should handle play-session-clips action with single clip", () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 1 },
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
+    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(0).clip(),
     });
-
-    // Mock the clip to be a path that resolves to track 0, scene 0
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
+    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
+      path: livePath.track(0).clipSlot(0),
     });
 
     const result = playback({
@@ -158,50 +114,42 @@ describe("transport", () => {
       clipIds: "clip1",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "fire",
-    );
-    expect(liveApiCall).toHaveBeenCalledTimes(1); // Only 1 fire call, no stop/start for single clip
+    expect(clipSlot0.call).toHaveBeenCalledWith("fire");
+    expect(clipSlot0.call).toHaveBeenCalledTimes(1);
 
     // Verify NO quantization fix for single clip (stop/start should NOT be called)
-    expect(liveApiCall).not.toHaveBeenCalledWith("stop_playing");
-    expect(liveApiCall).not.toHaveBeenCalledWith("start_playing");
+    expect(liveSet.call).not.toHaveBeenCalledWith("stop_playing");
+    expect(liveSet.call).not.toHaveBeenCalledWith("start_playing");
 
     expect(result).toStrictEqual({
       playing: true,
       currentTime: "2|2",
-      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
   it("should handle play-session-clips action with multiple clips", () => {
-    setupMultiClipMocks();
+    const { liveSet: ls, clipSlots } = setupMultiClipMocks();
+
+    liveSet = ls;
 
     playback({
       action: "play-session-clips",
       clipIds: "clip1,clip2,clip3",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
-      "fire",
-    );
-    expect(liveApiCall).toHaveBeenCalledTimes(5); // 3 fire calls + stop_playing + start_playing
+    for (const clipSlot of clipSlots) {
+      expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    }
 
     // Verify quantization fix: stop_playing and start_playing should be called for multiple clips
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "stop_playing",
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "start_playing",
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
+    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
   });
 
   it("should handle whitespace in clipIds", () => {
-    setupMultiClipMocks();
+    const { liveSet: ls, clipSlots } = setupMultiClipMocks();
+
+    liveSet = ls;
 
     playback({
       action: "play-session-clips",
@@ -209,21 +157,13 @@ describe("transport", () => {
     });
 
     // Should fire all 3 clips despite whitespace
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
-      "fire",
-    );
-    expect(liveApiCall).toHaveBeenCalledTimes(5); // 3 fire calls + stop_playing + start_playing
+    for (const clipSlot of clipSlots) {
+      expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    }
 
     // Verify quantization fix is applied for multiple clips
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "stop_playing",
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "start_playing",
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
+    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
   });
 
   it("should throw error when required parameters are missing for play-session-clips", () => {
@@ -233,7 +173,7 @@ describe("transport", () => {
   });
 
   it("should log warning when clip doesn't exist for play-session-clips", () => {
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     const result = playback({
       action: "play-session-clips",
@@ -248,22 +188,11 @@ describe("transport", () => {
   });
 
   it("should throw error when clip slot doesn't exist for play-session-clips", () => {
-    // Mock a clip that exists but its slot doesn't
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "clip1") {
-        return "live_set tracks 99 clip_slots 0 clip"; // Track 99 doesn't exist
-      }
-
-      return this._path;
+    registerMockObject("clip1", {
+      path: livePath.track(99).clipSlot(0).clip(),
     });
-
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set tracks 99 clip_slots 0") {
-        return "id 0"; // This makes the clip slot not exist
-      }
-
-      return "id clip1";
-    });
+    // Clip slot at tracks 99 is NOT registered — falls through to shared mock
+    mockNonExistentObjects();
 
     expect(() =>
       playback({
@@ -276,34 +205,10 @@ describe("transport", () => {
   });
 
   it("should handle play-scene action", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-        tracks: children("track1", "track2"),
-      },
-      Track: {
-        back_to_arranger: 0, // 0 means following arrangement
-      },
-    });
-    liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") {
-        return "LiveSet";
-      }
+    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
 
-      if (this._path === "live_set scenes 0") {
-        return "Scene";
-      }
-
-      if (this._path === "id track1" || this._path === "id track2") {
-        return "Track";
-      }
-
-      return this.type; // Fall back to default MockLiveAPI logic
+    const scene0 = registerMockObject(livePath.scene(0), {
+      path: livePath.scene(0),
     });
 
     const result = playback({
@@ -311,14 +216,10 @@ describe("transport", () => {
       sceneIndex: 0,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set scenes 0" }),
-      "fire",
-    );
+    expect(scene0.call).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       playing: true,
       currentTime: "2|2",
-      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
@@ -342,25 +243,12 @@ describe("transport", () => {
   });
 
   it("should handle stop-session-clips action with single clip", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 1,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
+    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(0).clip(),
     });
-
-    // Mock the clip to be a path that resolves to track 0
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
+    const track0 = registerMockObject(livePath.track(0), {
+      path: livePath.track(0),
     });
 
     const result = playback({
@@ -368,45 +256,32 @@ describe("transport", () => {
       clipIds: "clip1",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0" }),
-      "stop_all_clips",
-    );
+    expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       playing: true, // transport/arrangement can still be playing
       currentTime: "2|2",
-      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
   it("should handle stop-session-clips action with multiple clips", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 1,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
+    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(0).clip(),
     });
-
-    // Mock the clips to be paths that resolve to different tracks
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      if (this._path === "clip2") {
-        return "live_set tracks 1 clip_slots 1 clip";
-      }
-
-      if (this._path === "clip3") {
-        return "live_set tracks 2 clip_slots 2 clip";
-      }
-
-      return this._path;
+    registerMockObject("clip2", {
+      path: livePath.track(1).clipSlot(1).clip(),
+    });
+    registerMockObject("clip3", {
+      path: livePath.track(2).clipSlot(2).clip(),
+    });
+    const track0 = registerMockObject(livePath.track(0), {
+      path: livePath.track(0),
+    });
+    const track1 = registerMockObject(livePath.track(1), {
+      path: livePath.track(1),
+    });
+    const track2 = registerMockObject(livePath.track(2), {
+      path: livePath.track(2),
     });
 
     playback({
@@ -414,11 +289,9 @@ describe("transport", () => {
       clipIds: "clip1,clip2,clip3",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: expect.stringContaining("tracks") }),
-      "stop_all_clips",
-    );
-    expect(liveApiCall).toHaveBeenCalledTimes(3); // 3 stop_all_clips calls
+    expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
+    expect(track1.call).toHaveBeenCalledWith("stop_all_clips");
+    expect(track2.call).toHaveBeenCalledWith("stop_all_clips");
   });
 
   it("should throw an error when required parameters are missing for stop-session-clips", () => {
@@ -428,7 +301,7 @@ describe("transport", () => {
   });
 
   it("should log warning when clip doesn't exist for stop-session-clips", () => {
-    liveApiId.mockReturnValue("id 0");
+    mockNonExistentObjects();
 
     const result = playback({
       action: "stop-session-clips",
@@ -451,7 +324,7 @@ describe("transport", () => {
         clipIds: "clip1",
       }),
     ).toThrow(
-      "playback play-session-clips action failed: could not determine track/scene for clipId=id clip1",
+      "playback play-session-clips action failed: could not determine track/scene for clipId=clip1",
     );
   });
 
@@ -464,36 +337,16 @@ describe("transport", () => {
         clipIds: "clip1",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: could not determine track for clipId=id clip1",
+      "playback stop-session-clips action failed: could not determine track for clipId=clip1",
     );
   });
 
   it("should throw error when track does not exist for stop-session-clips", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
+    registerMockObject("clip1", {
+      path: livePath.track(99).clipSlot(0).clip(),
     });
-
-    // Mock the clip to resolve to a valid track path
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "clip1") {
-        return "live_set tracks 0 clip_slots 0 clip";
-      }
-
-      return this._path;
-    });
-
-    // Mock track to not exist
-    const g = globalThis as Record<string, unknown>;
-    const originalExists = (g.LiveAPI as typeof LiveAPI).prototype.exists;
-
-    (g.LiveAPI as typeof LiveAPI).prototype.exists = vi.fn(function (
-      this: MockLiveAPIContext,
-    ) {
-      return !this._path?.startsWith("live_set tracks");
-    }) as unknown as () => boolean;
+    // Track at index 99 is NOT registered — make unregistered objects non-existent
+    mockNonExistentObjects();
 
     expect(() =>
       playback({
@@ -503,71 +356,35 @@ describe("transport", () => {
     ).toThrow(
       "playback stop-session-clips action failed: track for clip path does not exist",
     );
-
-    (g.LiveAPI as typeof LiveAPI).prototype.exists = originalExists;
   });
 
   it("should handle stop-all-clips action", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_playing: 1,
-        current_song_time: 5,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
+    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
 
     const result = playback({ action: "stop-all-session-clips" });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "stop_all_clips",
-    );
+    expect(liveSet.call).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       playing: true, // transport/arrangement can still be playing
       currentTime: "2|2",
-      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
   it("should handle stop action", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
+    liveSet = setupPlaybackLiveSet();
 
     const result = playback({ action: "stop" });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "stop_playing",
-    );
-    expectLiveSetProperty("start_time", 0);
+    expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
+    expectLiveSetProperty(liveSet, "start_time", 0);
     expect(result).toStrictEqual({
       playing: false,
       currentTime: "1|1",
-      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
   it("should handle loop end calculation correctly", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        loop: 0,
-        loop_start: 8,
-        loop_length: 16,
-      },
-    });
+    liveSet = setupPlaybackLiveSet({ loop_start: 8, loop_length: 16 });
 
     const result = playback({
       action: "update-arrangement",
@@ -575,20 +392,16 @@ describe("transport", () => {
     });
 
     // loopEnd 9|1 = 32 beats, loopStart is 8 beats, so length should be 24
-    expectLiveSetProperty("loop_length", 24);
+    expectLiveSetProperty(liveSet, "loop_length", 24);
     // Loop is off in the mock, so no arrangementLoop property
     expect(result.arrangementLoop).toBeUndefined();
   });
 
   it("should handle 6/8 time signature conversions", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 6,
-        signature_denominator: 8,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 3,
-      },
+    liveSet = setupPlaybackLiveSet({
+      signature_numerator: 6,
+      signature_denominator: 8,
+      loop_length: 3,
     });
 
     const result = playback({
@@ -599,9 +412,9 @@ describe("transport", () => {
     });
 
     // In 6/8, bar 2 = 3 Ableton beats (6 musical beats * 4/8)
-    expectLiveSetProperty("start_time", 3);
-    expectLiveSetProperty("loop_start", 0);
-    expectLiveSetProperty("loop_length", 6); // 2 bars = 6 Ableton beats
+    expectLiveSetProperty(liveSet, "start_time", 3);
+    expectLiveSetProperty(liveSet, "loop_start", 0);
+    expectLiveSetProperty(liveSet, "loop_length", 6); // 2 bars = 6 Ableton beats
 
     expect(result.currentTime).toBe("2|1");
     // Loop is off in the mock (loop: 0), so no arrangementLoop property
@@ -609,26 +422,15 @@ describe("transport", () => {
   });
 
   it("should handle play-arrangement action without startTime (defaults to 0)", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
+    liveSet = setupPlaybackLiveSet();
 
     const result = playback({
       action: "play-arrangement",
       // no startTime provided
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "start_playing",
-    );
-    expectLiveSetProperty("start_time", 0);
+    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+    expectLiveSetProperty(liveSet, "start_time", 0);
     expect(result.currentTime).toBe("1|1");
   });
 });

@@ -4,31 +4,37 @@
 
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
-import type { Request, Response, NextFunction, Express } from "express";
-import express from "express";
+import express, {
+  type Request,
+  type Response,
+  type NextFunction,
+  type Express,
+} from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import { createMcpServer } from "./create-mcp-server.ts";
+import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 
 interface ProducerPalConfig {
-  useProjectNotes: boolean;
-  projectNotes: string;
-  projectNotesWritable: boolean;
+  memoryEnabled: boolean;
+  memoryContent: string;
+  memoryWritable: boolean;
   smallModelMode: boolean;
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
+  tools: string[];
 }
 
 const config: ProducerPalConfig = {
-  useProjectNotes: false,
-  projectNotes: "",
-  projectNotesWritable: false,
+  memoryEnabled: false,
+  memoryContent: "",
+  memoryWritable: false,
   smallModelMode: false,
   jsonOutput: false,
   sampleFolder: "",
+  tools: [...TOOL_NAMES],
 };
 
 let chatUIEnabled = true; // default
@@ -45,7 +51,7 @@ Max.addHandler("smallModelMode", (enabled: unknown) => {
 
 Max.addHandler("projectNotesEnabled", (enabled: unknown) => {
   // console.log(`[node] Setting projectNotesEnabled ${Boolean(enabled)}`);
-  config.useProjectNotes = Boolean(enabled);
+  config.memoryEnabled = Boolean(enabled);
 });
 
 Max.addHandler("projectNotes", (content: unknown) => {
@@ -53,12 +59,12 @@ Max.addHandler("projectNotes", (content: unknown) => {
   const value = content === "bang" ? "" : String(content ?? "");
 
   // console.log(`[node] Setting projectNotes ${value}`);
-  config.projectNotes = value;
+  config.memoryContent = value;
 });
 
 Max.addHandler("projectNotesWritable", (writable: unknown) => {
   // console.log(`[node] Setting projectNotesWritable ${Boolean(writable)}`);
-  config.projectNotesWritable = Boolean(writable);
+  config.memoryWritable = Boolean(writable);
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
@@ -133,6 +139,7 @@ export function createExpressApp(): Express {
 
       const server = createMcpServer(callLiveApi, {
         smallModelMode: config.smallModelMode,
+        tools: config.tools,
       });
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
@@ -187,28 +194,24 @@ export function createExpressApp(): Express {
     const incoming = req.body as Partial<ProducerPalConfig>;
     const outlets: Array<() => Promise<void>> = [];
 
-    if (incoming.useProjectNotes !== undefined) {
-      config.useProjectNotes = Boolean(incoming.useProjectNotes);
+    if (incoming.memoryEnabled !== undefined) {
+      config.memoryEnabled = Boolean(incoming.memoryEnabled);
       outlets.push(() =>
-        Max.outlet("config", "projectNotesEnabled", config.useProjectNotes),
+        Max.outlet("config", "projectNotesEnabled", config.memoryEnabled),
       );
     }
 
-    if (incoming.projectNotes !== undefined) {
-      config.projectNotes = incoming.projectNotes ?? "";
+    if (incoming.memoryContent !== undefined) {
+      config.memoryContent = incoming.memoryContent ?? "";
       outlets.push(() =>
-        Max.outlet("config", "projectNotes", config.projectNotes),
+        Max.outlet("config", "projectNotes", config.memoryContent),
       );
     }
 
-    if (incoming.projectNotesWritable !== undefined) {
-      config.projectNotesWritable = Boolean(incoming.projectNotesWritable);
+    if (incoming.memoryWritable !== undefined) {
+      config.memoryWritable = Boolean(incoming.memoryWritable);
       outlets.push(() =>
-        Max.outlet(
-          "config",
-          "projectNotesWritable",
-          config.projectNotesWritable,
-        ),
+        Max.outlet("config", "projectNotesWritable", config.memoryWritable),
       );
     }
 
@@ -233,6 +236,21 @@ export function createExpressApp(): Express {
       );
     }
 
+    if (incoming.tools !== undefined) {
+      const validationError = validateTools(incoming.tools);
+
+      if (validationError) {
+        res.status(400).json(validationError);
+
+        return;
+      }
+
+      config.tools = incoming.tools.map(String);
+      outlets.push(() =>
+        Max.outlet("config", "tools", JSON.stringify(config.tools)),
+      );
+    }
+
     // Emit all config updates to V8 (after synchronously updating config)
     for (const emit of outlets) {
       await emit();
@@ -242,4 +260,44 @@ export function createExpressApp(): Express {
   });
 
   return app;
+}
+
+const VALID_TOOL_SET = new Set<string>(TOOL_NAMES);
+
+/**
+ * Validate the tools array from a config update request.
+ * Returns an error object if invalid, or null if valid.
+ *
+ * @param tools - The tools value from the request body
+ * @returns Error response body or null
+ */
+function validateTools(
+  tools: unknown,
+): { error: string; validToolNames: string[] } | null {
+  if (!Array.isArray(tools)) {
+    return {
+      error: "tools must be an array of tool names",
+      validToolNames: [...TOOL_NAMES],
+    };
+  }
+
+  const list = tools.map(String);
+  const invalid = list.filter((name) => !VALID_TOOL_SET.has(name));
+
+  if (invalid.length > 0) {
+    return {
+      error: `Invalid tool name(s): ${invalid.join(", ")}`,
+      validToolNames: [...TOOL_NAMES],
+    };
+  }
+
+  if (!list.includes("ppal-connect")) {
+    return {
+      error:
+        "ppal-connect must be included in tools (it is the required entry point)",
+      validToolNames: [...TOOL_NAMES],
+    };
+  }
+
+  return null;
 }

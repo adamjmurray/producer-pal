@@ -4,6 +4,10 @@
 
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
+import {
+  drumPatternNotation,
+  drumPatternNotes,
+} from "#src/notation/barbeat/barbeat-test-fixtures.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 
 describe("bar|beat interpretNotation() - core functionality", () => {
@@ -195,7 +199,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   });
 
   it("handles sub-beat timing", () => {
-    const result = interpretNotation("C3 1|1.5 D3 |2.25");
+    const result = interpretNotation("C3 1|1.5 D3 1|2.25");
 
     expect(result).toStrictEqual([
       createNote({ start_time: 0.5 }), // beat 1.5 = 0.5 beats from start
@@ -205,7 +209,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("handles complex state combinations", () => {
     const result = interpretNotation(
-      "v100 t0.25 p0.9 C3 D3 1|1 v80-120 t1.0 p0.7 E3 F3 |2",
+      "v100 t0.25 p0.9 C3 D3 1|1 v80-120 t1.0 p0.7 E3 F3 1|2",
     );
 
     expect(result).toStrictEqual([
@@ -229,37 +233,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   });
 
   it("handles drum pattern example with probability and velocity range", () => {
-    const result = interpretNotation(`
-      v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1
-      p0.6 Gb1 |1.5
-      v90 p1.0 D1 v100 p0.9 Gb1 |2
-    `);
+    const result = interpretNotation(drumPatternNotation);
 
-    expect(result).toStrictEqual([
-      createNote({ pitch: 36, duration: 0.25 }), // C1 (kick)
-      createNote({
-        pitch: 42,
-        duration: 0.25,
-        velocity: 80,
-        probability: 0.8,
-        velocity_deviation: 20,
-      }), // Gb1 (hihat)
-      createNote({
-        pitch: 42,
-        start_time: 0.5,
-        duration: 0.25,
-        velocity: 80,
-        probability: 0.6,
-        velocity_deviation: 20,
-      }), // Gb1 (hihat)
-      createNote({ pitch: 38, start_time: 1, duration: 0.25, velocity: 90 }), // D1 (snare)
-      createNote({
-        pitch: 42,
-        start_time: 1,
-        duration: 0.25,
-        probability: 0.9,
-      }), // Gb1 (hihat)
-    ]);
+    expect(result).toStrictEqual(drumPatternNotes);
   });
   it("maintains state across multiple bar boundaries", () => {
     const result = interpretNotation("v80 t0.5 p0.8 C3 1|1 D3 3|2 E3 5|1");

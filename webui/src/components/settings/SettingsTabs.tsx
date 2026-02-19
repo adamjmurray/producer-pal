@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { VNode } from "preact";
+import { type VNode } from "preact";
 import { useState } from "preact/hooks";
 
 export type TabId = "connection" | "behavior" | "tools" | "appearance";

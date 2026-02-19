@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 
 /**
  * Validates a single ID matches expected type
  * @param id - The ID to validate
- * @param expectedType - Expected Live API type (case-insensitive)
+ * @param expectedType - Tool-level type (e.g., "track", "device", "drum-pad")
  * @param toolName - Name of calling tool for error messages
  * @returns The LiveAPI instance for the validated ID
  * @throws If ID doesn't exist or type doesn't match
@@ -39,7 +40,7 @@ interface ValidateIdTypesOptions {
 /**
  * Validates multiple IDs match expected type
  * @param ids - Array of IDs to validate
- * @param expectedType - Expected Live API type (case-insensitive)
+ * @param expectedType - Tool-level type (e.g., "track", "device", "drum-pad")
  * @param toolName - Name of calling tool for error messages
  * @param options - Validation options
  * @param options.skipInvalid - If true, log warnings and skip invalid IDs
@@ -110,28 +111,28 @@ export function validateExclusiveParams(
 }
 
 /**
- * Checks if the actual type matches the expected type.
+ * Checks if the Live API type matches the expected tool-level type.
  * Handles device subclasses (e.g., "HybridReverbDevice" matches "device").
- * @param actualType - The actual type from the Live API object
- * @param expectedType - The expected type to match against
+ * @param actualType - The Live API object type (e.g., "Track", "Eq8Device")
+ * @param expectedType - The tool-level type (e.g., "track", "device", "drum-pad")
  * @returns True if types match
  */
-function isTypeMatch(actualType: string, expectedType: string): boolean {
-  const actual = actualType.toLowerCase();
-  const expected = expectedType.toLowerCase();
-
-  if (actual === expected) return true;
-
-  // Device subclass match: "hybridreverbdevice" matches "device"
-  if (expected === "device" && actual.endsWith("device")) return true;
-
-  // DrumPad/DrumChain match: both "drumpad" and "drumchain" match "drum-pad"
-  // Drum pads are now represented as chains with in_note property
-  if (
-    expected === "drum-pad" &&
-    (actual === "drumpad" || actual === "drumchain")
-  )
-    return true;
-
-  return false;
+function isTypeMatch(
+  actualType: LiveObjectType,
+  expectedType: string,
+): boolean {
+  switch (expectedType) {
+    case "track":
+      return actualType === "Track";
+    case "scene":
+      return actualType === "Scene";
+    case "clip":
+      return actualType === "Clip";
+    case "device":
+      return actualType.endsWith("Device");
+    case "drum-pad":
+      return actualType === "DrumPad" || actualType === "DrumChain";
+    default:
+      return false;
+  }
 }

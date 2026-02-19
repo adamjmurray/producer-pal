@@ -86,10 +86,68 @@ describe("Transform Evaluator - Math Functions", () => {
     });
   });
 
+  describe("ceil", () => {
+    it.each([
+      ["10.1", 11, "positive decimal"],
+      ["-2.7", -2, "negative (toward +infinity)"],
+      ["5", 5, "integer unchanged"],
+    ])("ceil(%s) = %d (%s)", (input, expected) => {
+      const result = evaluateTransform(`velocity = ceil(${input})`, CTX);
+
+      expect(result.velocity!.value).toBe(expected);
+    });
+  });
+
+  describe("clamp", () => {
+    it.each([
+      ["clamp(50, 0, 100)", 50, "within range"],
+      ["clamp(-10, 0, 100)", 0, "below min"],
+      ["clamp(150, 0, 100)", 100, "above max"],
+      ["clamp(50, 100, 0)", 50, "swapped bounds"],
+      ["clamp(50, 50, 50)", 50, "equal bounds"],
+    ])("%s = %d (%s)", (expr, expected) => {
+      const result = evaluateTransform(`velocity = ${expr}`, CTX);
+
+      expect(result.velocity!.value).toBe(expected);
+    });
+
+    it("clamps variable to range", () => {
+      const result = evaluateTransform(
+        "velocity = clamp(note.velocity, 40, 100)",
+        CTX,
+        { velocity: 20 },
+      );
+
+      expect(result.velocity!.value).toBe(40);
+    });
+  });
+
+  describe("pow", () => {
+    it.each([
+      ["pow(2, 3)", 8, "basic power"],
+      ["pow(9, 0.5)", 3, "square root"],
+      ["pow(2, 0)", 1, "zero exponent"],
+    ])("%s = %d (%s)", (expr, expected) => {
+      const result = evaluateTransform(`velocity = ${expr}`, CTX);
+
+      expect(result.velocity!.value).toBe(expected);
+    });
+
+    it("works with expressions", () => {
+      const result = evaluateTransform(
+        "velocity = pow(note.velocity, 2)",
+        CTX,
+        { velocity: 3 },
+      );
+
+      expect(result.velocity!.value).toBe(9);
+    });
+  });
+
   describe("nested functions", () => {
-    it("round(12 * noise()) returns integer in range", () => {
+    it("round(12 * rand()) returns integer in range", () => {
       for (let i = 0; i < 10; i++) {
-        const result = evaluateTransform("pitch += round(12 * noise())", {
+        const result = evaluateTransform("pitch += round(12 * rand())", {
           position: i,
           timeSig: { numerator: 4, denominator: 4 },
         });

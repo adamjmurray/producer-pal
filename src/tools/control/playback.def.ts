@@ -6,7 +6,7 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
-  title: "Playback Controls",
+  title: "Playback",
   description: "Control playback of the arrangement and session scenes/clips",
 
   annotations: {
@@ -65,11 +65,6 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("locator name for loop end"),
-    autoFollow: z
-      .boolean()
-      .optional()
-      .default(true)
-      .describe("tracks auto-follow arrangement?"),
     clipIds: z.coerce
       .string()
       .optional()
@@ -95,7 +90,6 @@ stop: session and arrangement`,
       "loopStartLocatorName",
       "loopEndLocatorId",
       "loopEndLocatorName",
-      "autoFollow",
     ],
   },
 });

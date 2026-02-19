@@ -1,6 +1,64 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
+
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
+
+export class MockSequence extends Array<unknown> {}
+
+// Exact path → type mappings
+const EXACT_PATH_TYPES = new Map<string, LiveObjectType>([
+  ["live_set", "Song"],
+  ["live_set view", "Song.View"],
+  ["live_app", "Application"],
+  ["live_app view", "Application.View"],
+  ["live_set master_track", "Track"],
+  ["live_set view selected_track", "Track"],
+  ["live_set view selected_scene", "Scene"],
+  ["live_set view detail_clip", "Clip"],
+  ["live_set view highlighted_clip_slot", "ClipSlot"],
+]);
+
+// Regex patterns matched against the full path or path suffix.
+// Order matters: more specific patterns (clip_slots \d+ clip) before less specific (clip_slots \d+).
+const PATH_PATTERNS: [RegExp, LiveObjectType][] = [
+  [/^live_set (?:return_)?tracks \d+$/, "Track"],
+  [/^live_set scenes \d+$/, "Scene"],
+  [/^live_set cue_points \d+$/, "CuePoint"],
+  [/clip_slots \d+ clip$/, "Clip"],
+  [/clip_slots \d+$/, "ClipSlot"],
+  [/arrangement_clips \d+$/, "Clip"],
+  [/devices \d+$/, "Device"],
+  [/drum_pads \d+$/, "DrumPad"],
+  [/parameters \d+$/, "DeviceParameter"],
+  [/mixer_device$/, "MixerDevice"],
+  [
+    /mixer_device (?:volume|panning|left_split_stereo|right_split_stereo|crossfader|song_tempo)$/,
+    "DeviceParameter",
+  ],
+];
+
+/**
+ * Detect Live API type from path using standard Live API path patterns.
+ * @param path - Live API object path
+ * @param id - Optional bare ID for chain detection
+ * @returns Detected Live API object type
+ */
+export function detectTypeFromPath(path: string, id?: string): LiveObjectType {
+  const exactMatch = EXACT_PATH_TYPES.get(path);
+
+  if (exactMatch) return exactMatch;
+
+  for (const [pattern, type] of PATH_PATTERNS) {
+    if (pattern.test(path)) return type;
+  }
+
+  // Chain detection (broad match - after more specific terminal patterns)
+  if (path.includes("chain") || id?.includes("chain")) return "Chain";
+
+  return "Device";
+}
 
 /**
  * Create Live API children array format from child IDs
@@ -12,7 +70,7 @@ export function children(...childIds: string[]): string[] {
 }
 
 /**
- * Get mock property value for LiveSet objects
+ * Get mock property value for Song (live_set) objects
  * @param prop - Property name to retrieve
  * @returns Mock property value
  */
@@ -32,7 +90,7 @@ export function getLiveSetProperty(prop: string): unknown[] | null {
 }
 
 /**
- * Get mock property value for AppView objects
+ * Get mock property value for Application.View objects
  * @param prop - Property name to retrieve
  * @returns Mock property value
  */
@@ -186,20 +244,20 @@ function getDeviceParameterProperty(prop: string): unknown[] | null {
 
 /**
  * Get mock property value based on Live API object type
- * @param type - Live API object type (LiveSet, Track, Scene, etc.)
+ * @param type - Live API object type (Song, Track, Scene, etc.)
  * @param prop - Property name to retrieve
  * @param _path - Object path (currently unused but kept for API consistency)
  * @returns Mock property value
  */
 export function getPropertyByType(
-  type: string,
+  type: LiveObjectType,
   prop: string,
   _path: string,
 ): unknown[] | null {
   switch (type) {
-    case "LiveSet":
+    case "Song":
       return getLiveSetProperty(prop);
-    case "AppView":
+    case "Application.View":
       return getAppViewProperty(prop);
     case "Track":
       return getTrackProperty(prop);

@@ -1,64 +1,46 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { updateTrack } from "./update-track.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 describe("updateTrack - mixer properties", () => {
-  beforeEach(() => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "123";
-        case "id 456":
-          return "456";
-        case "live_set tracks 0 mixer_device":
-        case "live_set tracks 1 mixer_device":
-          return this._path.includes("tracks 0") ? "mixer_1" : "mixer_2";
-        case "live_set tracks 0 mixer_device volume":
-          return "volume_param_1";
-        case "live_set tracks 1 mixer_device volume":
-          return "volume_param_2";
-        case "live_set tracks 0 mixer_device panning":
-          return "panning_param_1";
-        case "live_set tracks 1 mixer_device panning":
-          return "panning_param_2";
-        default:
-          return this._id!;
-      }
-    });
+  let track123: RegisteredMockObject;
+  let mixer1: RegisteredMockObject;
+  let volumeParam1: RegisteredMockObject;
+  let volumeParam2: RegisteredMockObject;
+  let panningParam1: RegisteredMockObject;
+  let panningParam2: RegisteredMockObject;
 
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._id) {
-        case "123":
-          return "live_set tracks 0";
-        case "456":
-          return "live_set tracks 1";
-        case "mixer_1":
-          return "live_set tracks 0 mixer_device";
-        case "mixer_2":
-          return "live_set tracks 1 mixer_device";
-        case "volume_param_1":
-          return "live_set tracks 0 mixer_device volume";
-        case "volume_param_2":
-          return "live_set tracks 1 mixer_device volume";
-        case "panning_param_1":
-          return "live_set tracks 0 mixer_device panning";
-        case "panning_param_2":
-          return "live_set tracks 1 mixer_device panning";
-        default:
-          return this._path;
-      }
+  beforeEach(() => {
+    track123 = registerMockObject("123", { path: livePath.track(0) });
+    registerMockObject("456", { path: livePath.track(1) });
+    mixer1 = registerMockObject("mixer_1", {
+      path: livePath.track(0).mixerDevice(),
+    });
+    registerMockObject("mixer_2", {
+      path: livePath.track(1).mixerDevice(),
+    });
+    volumeParam1 = registerMockObject("volume_param_1", {
+      path: `${livePath.track(0).mixerDevice()} volume`,
+    });
+    volumeParam2 = registerMockObject("volume_param_2", {
+      path: `${livePath.track(1).mixerDevice()} volume`,
+    });
+    panningParam1 = registerMockObject("panning_param_1", {
+      path: `${livePath.track(0).mixerDevice()} panning`,
+    });
+    panningParam2 = registerMockObject("panning_param_2", {
+      path: `${livePath.track(1).mixerDevice()} panning`,
     });
   });
 
@@ -68,11 +50,7 @@ describe("updateTrack - mixer properties", () => {
       gainDb: -6,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "volume_param_1" }),
-      "display_value",
-      -6,
-    );
+    expect(volumeParam1.set).toHaveBeenCalledWith("display_value", -6);
   });
 
   it("should update pan only", () => {
@@ -81,11 +59,7 @@ describe("updateTrack - mixer properties", () => {
       pan: 0.5,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "panning_param_1" }),
-      "value",
-      0.5,
-    );
+    expect(panningParam1.set).toHaveBeenCalledWith("value", 0.5);
   });
 
   it("should update both gain and pan", () => {
@@ -95,16 +69,8 @@ describe("updateTrack - mixer properties", () => {
       pan: -0.25,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "volume_param_1" }),
-      "display_value",
-      -3,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "panning_param_1" }),
-      "value",
-      -0.25,
-    );
+    expect(volumeParam1.set).toHaveBeenCalledWith("display_value", -3);
+    expect(panningParam1.set).toHaveBeenCalledWith("value", -0.25);
   });
 
   it("should update gain/pan with other properties", () => {
@@ -116,26 +82,10 @@ describe("updateTrack - mixer properties", () => {
       mute: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "name",
-      "Test Track",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "volume_param_1" }),
-      "display_value",
-      -12,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "panning_param_1" }),
-      "value",
-      1,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "mute",
-      true,
-    );
+    expect(track123.set).toHaveBeenCalledWith("name", "Test Track");
+    expect(volumeParam1.set).toHaveBeenCalledWith("display_value", -12);
+    expect(panningParam1.set).toHaveBeenCalledWith("value", 1);
+    expect(track123.set).toHaveBeenCalledWith("mute", true);
   });
 
   it("should handle minimum gain value", () => {
@@ -144,11 +94,7 @@ describe("updateTrack - mixer properties", () => {
       gainDb: -70,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "volume_param_1" }),
-      "display_value",
-      -70,
-    );
+    expect(volumeParam1.set).toHaveBeenCalledWith("display_value", -70);
   });
 
   it("should handle maximum gain value", () => {
@@ -157,11 +103,7 @@ describe("updateTrack - mixer properties", () => {
       gainDb: 6,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "volume_param_1" }),
-      "display_value",
-      6,
-    );
+    expect(volumeParam1.set).toHaveBeenCalledWith("display_value", 6);
   });
 
   it("should handle minimum pan value (full left)", () => {
@@ -170,11 +112,7 @@ describe("updateTrack - mixer properties", () => {
       pan: -1,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "panning_param_1" }),
-      "value",
-      -1,
-    );
+    expect(panningParam1.set).toHaveBeenCalledWith("value", -1);
   });
 
   it("should handle maximum pan value (full right)", () => {
@@ -183,11 +121,7 @@ describe("updateTrack - mixer properties", () => {
       pan: 1,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "panning_param_1" }),
-      "value",
-      1,
-    );
+    expect(panningParam1.set).toHaveBeenCalledWith("value", 1);
   });
 
   it("should handle zero gain and center pan", () => {
@@ -197,16 +131,8 @@ describe("updateTrack - mixer properties", () => {
       pan: 0,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "volume_param_1" }),
-      "display_value",
-      0,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "panning_param_1" }),
-      "value",
-      0,
-    );
+    expect(volumeParam1.set).toHaveBeenCalledWith("display_value", 0);
+    expect(panningParam1.set).toHaveBeenCalledWith("value", 0);
   });
 
   it("should update mixer properties for multiple tracks", () => {
@@ -216,38 +142,16 @@ describe("updateTrack - mixer properties", () => {
       pan: 0.5,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "volume_param_1" }),
-      "display_value",
-      -6,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "panning_param_1" }),
-      "value",
-      0.5,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "volume_param_2" }),
-      "display_value",
-      -6,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "panning_param_2" }),
-      "value",
-      0.5,
-    );
+    expect(volumeParam1.set).toHaveBeenCalledWith("display_value", -6);
+    expect(panningParam1.set).toHaveBeenCalledWith("value", 0.5);
+    expect(volumeParam2.set).toHaveBeenCalledWith("display_value", -6);
+    expect(panningParam2.set).toHaveBeenCalledWith("value", 0.5);
   });
 
   it("should handle missing mixer device gracefully", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "123";
-        case "live_set tracks 0 mixer_device":
-          return "id 0"; // Non-existent mixer
-        default:
-          return this._id!;
-      }
+    // Override mixer to be non-existent for this test
+    registerMockObject("id 0", {
+      path: livePath.track(0).mixerDevice(),
     });
 
     updateTrack({
@@ -257,8 +161,8 @@ describe("updateTrack - mixer properties", () => {
     });
 
     // Should not attempt to set mixer properties when mixer doesn't exist
-    expect(liveApiSet).not.toHaveBeenCalledWith("display_value", -6);
-    expect(liveApiSet).not.toHaveBeenCalledWith("value", 0.5);
+    expect(volumeParam1.set).not.toHaveBeenCalled();
+    expect(panningParam1.set).not.toHaveBeenCalled();
   });
 
   it("should set panning mode to split", () => {
@@ -267,11 +171,7 @@ describe("updateTrack - mixer properties", () => {
       panningMode: "split",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "mixer_1" }),
-      "panning_mode",
-      1,
-    );
+    expect(mixer1.set).toHaveBeenCalledWith("panning_mode", 1);
   });
 
   it("should set panning mode to stereo", () => {
@@ -280,33 +180,21 @@ describe("updateTrack - mixer properties", () => {
       panningMode: "stereo",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "mixer_1" }),
-      "panning_mode",
-      0,
-    );
+    expect(mixer1.set).toHaveBeenCalledWith("panning_mode", 0);
   });
 
   it("should update leftPan and rightPan in split mode", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "123";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device left_split_stereo":
-          return "left_split_param_1";
-        case "live_set tracks 0 mixer_device right_split_stereo":
-          return "right_split_param_1";
-        default:
-          return this._id!;
-      }
+    const leftSplitParam1 = registerMockObject("left_split_param_1", {
+      path: `${livePath.track(0).mixerDevice()} left_split_stereo`,
+    });
+    const rightSplitParam1 = registerMockObject("right_split_param_1", {
+      path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
     });
 
-    mockLiveApiGet({
-      mixer_1: {
-        panning_mode: 1, // Split mode
-      },
+    mixer1.get.mockImplementation((prop: string) => {
+      if (prop === "panning_mode") return [1]; // Split mode
+
+      return [0];
     });
 
     updateTrack({
@@ -315,25 +203,17 @@ describe("updateTrack - mixer properties", () => {
       rightPan: 0.5,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "left_split_param_1" }),
-      "value",
-      -0.75,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "right_split_param_1" }),
-      "value",
-      0.5,
-    );
+    expect(leftSplitParam1.set).toHaveBeenCalledWith("value", -0.75);
+    expect(rightSplitParam1.set).toHaveBeenCalledWith("value", 0.5);
   });
 
   it("should warn when setting pan in split mode", () => {
     const errorSpy = vi.spyOn(console, "warn");
 
-    mockLiveApiGet({
-      mixer_1: {
-        panning_mode: 1, // Split mode
-      },
+    mixer1.get.mockImplementation((prop: string) => {
+      if (prop === "panning_mode") return [1]; // Split mode
+
+      return [0];
     });
 
     updateTrack({
@@ -351,11 +231,7 @@ describe("updateTrack - mixer properties", () => {
   it("should warn when setting leftPan/rightPan in stereo mode", () => {
     const errorSpy = vi.spyOn(console, "warn");
 
-    mockLiveApiGet({
-      mixer_1: {
-        panning_mode: 0, // Stereo mode
-      },
-    });
+    // Default panning_mode is 0 (stereo) from createGetMock fallback
 
     updateTrack({
       ids: "123",
@@ -373,26 +249,14 @@ describe("updateTrack - mixer properties", () => {
   });
 
   it("should switch mode and update panning in one call", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "123";
-        case "live_set tracks 0 mixer_device":
-          return "mixer_1";
-        case "live_set tracks 0 mixer_device left_split_stereo":
-          return "left_split_param_1";
-        case "live_set tracks 0 mixer_device right_split_stereo":
-          return "right_split_param_1";
-        default:
-          return this._id!;
-      }
+    const leftSplitParam1 = registerMockObject("left_split_param_1", {
+      path: `${livePath.track(0).mixerDevice()} left_split_stereo`,
+    });
+    const rightSplitParam1 = registerMockObject("right_split_param_1", {
+      path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
     });
 
-    mockLiveApiGet({
-      mixer_1: {
-        panning_mode: 0, // Start in stereo mode
-      },
-    });
+    // Start in stereo mode (default)
 
     updateTrack({
       ids: "123",
@@ -402,22 +266,10 @@ describe("updateTrack - mixer properties", () => {
     });
 
     // Should set mode first
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "mixer_1" }),
-      "panning_mode",
-      1,
-    );
+    expect(mixer1.set).toHaveBeenCalledWith("panning_mode", 1);
 
     // Then apply split panning
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "left_split_param_1" }),
-      "value",
-      -1,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "right_split_param_1" }),
-      "value",
-      1,
-    );
+    expect(leftSplitParam1.set).toHaveBeenCalledWith("value", -1);
+    expect(rightSplitParam1.set).toHaveBeenCalledWith("value", 1);
   });
 });

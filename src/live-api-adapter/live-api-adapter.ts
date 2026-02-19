@@ -23,13 +23,12 @@ import { playback } from "#src/tools/control/playback.ts";
 import { rawLiveApi } from "#src/tools/control/raw-live-api.ts";
 import { select } from "#src/tools/control/select.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
-import { readDevice } from "#src/tools/device/read-device.ts";
+import { readDevice } from "#src/tools/device/read/read-device.ts";
 import { updateDevice } from "#src/tools/device/update/update-device.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { deleteObject } from "#src/tools/operations/delete/delete.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
-import { readSamples } from "#src/tools/samples/read-samples.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
 import { readScene } from "#src/tools/scene/read-scene.ts";
 import { updateScene } from "#src/tools/scene/update-scene.ts";
@@ -37,7 +36,7 @@ import { createTrack } from "#src/tools/track/create/create-track.ts";
 import { readTrack } from "#src/tools/track/read/read-track.ts";
 import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { connect } from "#src/tools/workflow/connect.ts";
-import { memory } from "#src/tools/workflow/memory.ts";
+import { context as contextTool } from "#src/tools/workflow/context.ts";
 import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
 
 // Configure 2 outlets: MCP responses (0) and warnings (1)
@@ -46,7 +45,7 @@ setoutletassist(0, "tool call results");
 setoutletassist(1, "tool call warnings");
 
 const context: ToolContext = {
-  projectNotes: {
+  memory: {
     enabled: false,
     writable: false,
     content: "",
@@ -101,8 +100,7 @@ const tools: Record<string, (args: unknown) => unknown> = {
 
     return duplicate(args as any, context);
   },
-  "ppal-memory": (args) => memory(args as any, context),
-  "ppal-read-samples": (args) => readSamples(args as any, context),
+  "ppal-context": (args) => contextTool(args as any, context),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
@@ -156,7 +154,7 @@ export function smallModelMode(enabled: unknown): void {
  */
 export function projectNotesEnabled(enabled: unknown): void {
   // console.log(`[v8] Setting projectNotesEnabled ${Boolean(enabled)}`);
-  context.projectNotes.enabled = Boolean(enabled);
+  context.memory.enabled = Boolean(enabled);
 }
 
 /**
@@ -166,7 +164,7 @@ export function projectNotesEnabled(enabled: unknown): void {
  */
 export function projectNotesWritable(writable: unknown): void {
   // console.log(`[v8] Setting projectNotesWritable ${Boolean(writable)}`);
-  context.projectNotes.writable = Boolean(writable);
+  context.memory.writable = Boolean(writable);
 }
 
 /**
@@ -179,7 +177,7 @@ export function projectNotes(content: unknown): void {
   const value = content === "bang" ? "" : String(content ?? "");
 
   // console.log(`[v8] Setting projectNotes "${value}"`);
-  context.projectNotes.content = value;
+  context.memory.content = value;
 }
 
 /**

@@ -21,13 +21,13 @@ import {
 import { connectMcp, getMcpToolsForChat } from "../mcp.ts";
 import { createMessageSource } from "../message-source.ts";
 import { createReadline, runChatLoop } from "../readline.ts";
-import type {
-  ChatOptions,
-  ChatTool,
-  OpenRouterMessage,
-  OpenRouterResponse,
-  OpenRouterStreamChunk,
-  TurnResult,
+import {
+  type ChatOptions,
+  type ChatTool,
+  type OpenRouterMessage,
+  type OpenRouterResponse,
+  type OpenRouterStreamChunk,
+  type TurnResult,
 } from "../types.ts";
 import {
   createStreamState,

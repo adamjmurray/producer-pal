@@ -61,7 +61,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "duration in bar:beat format. When looping, this is the loop duration (from start to end). When not looping, this is the clip duration (from start to end). end = start + length. Defaults to next full bar after latest note start.",
+        "duration in bar:beat format (default: next full bar after latest note)",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
@@ -70,7 +70,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "bar|beat position for initial playback start (only for looping clips, only needed when different from start)",
+        "bar|beat playback start (looping clips, when different from start)",
       ),
 
     notes: z

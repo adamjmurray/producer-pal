@@ -1,12 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  type TrackPath,
+  livePath,
+} from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { toLiveApiView } from "#src/tools/shared/utils.ts";
+import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-
-const MASTER_TRACK_PATH = "live_set master_track";
 
 export type TrackCategory = "regular" | "return" | "master";
 
@@ -65,19 +68,27 @@ interface UpdateHighlightedClipSlotOptions {
 export function buildTrackPath(
   category?: string | null,
   trackIndex?: number | null,
-): string | null {
+): TrackPath | null {
   const finalCategory = category ?? "regular";
 
   if (finalCategory === "regular") {
-    return `live_set tracks ${trackIndex}`;
+    if (trackIndex == null) {
+      return null;
+    }
+
+    return livePath.track(trackIndex);
   }
 
   if (finalCategory === "return") {
-    return `live_set return_tracks ${trackIndex}`;
+    if (trackIndex == null) {
+      return null;
+    }
+
+    return livePath.returnTrack(trackIndex);
   }
 
   if (finalCategory === "master") {
-    return MASTER_TRACK_PATH;
+    return livePath.masterTrack();
   }
 
   return null;
@@ -124,7 +135,7 @@ export function validateParameters({
     if (trackPath) {
       const trackAPI = LiveAPI.from(trackPath);
 
-      if (trackAPI.exists() && trackAPI.id !== trackId) {
+      if (trackAPI.exists() && !isSameLiveApiId(trackAPI.id, trackId)) {
         throw new Error("trackId and trackIndex refer to different tracks");
       }
     }
@@ -132,9 +143,9 @@ export function validateParameters({
 
   // Cross-validation for scene ID vs index
   if (sceneId != null && sceneIndex != null) {
-    const sceneAPI = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+    const sceneAPI = LiveAPI.from(livePath.scene(sceneIndex));
 
-    if (sceneAPI.exists() && sceneAPI.id !== sceneId) {
+    if (sceneAPI.exists() && !isSameLiveApiId(sceneAPI.id, sceneId)) {
       throw new Error("sceneId and sceneIndex refer to different scenes");
     }
   }
@@ -157,12 +168,13 @@ export function updateTrackSelection({
 }: UpdateTrackSelectionOptions): TrackSelectionResult {
   const result: TrackSelectionResult = {};
   let trackAPI: LiveAPI | null = null;
-  let finalTrackId = trackId;
 
   if (trackId != null) {
     trackAPI = validateIdType(trackId, "track", "select");
-    songView.setProperty("selected_track", trackAPI.id);
-    result.selectedTrackId = trackId;
+    const liveApiTrackId = toLiveApiId(trackAPI.id);
+
+    songView.setProperty("selected_track", liveApiTrackId);
+    result.selectedTrackId = liveApiTrackId;
 
     if (category != null) {
       result.selectedCategory = category;
@@ -179,9 +191,10 @@ export function updateTrackSelection({
       trackAPI = LiveAPI.from(trackPath);
 
       if (trackAPI.exists()) {
-        finalTrackId = trackAPI.id;
-        songView.setProperty("selected_track", trackAPI.id);
-        result.selectedTrackId = finalTrackId;
+        const liveApiTrackId = toLiveApiId(trackAPI.id);
+
+        songView.setProperty("selected_track", liveApiTrackId);
+        result.selectedTrackId = liveApiTrackId;
         result.selectedCategory = finalCategory;
 
         if (finalCategory !== "master" && trackIndex != null) {
@@ -211,20 +224,21 @@ export function updateSceneSelection({
 
   if (sceneId != null) {
     const sceneAPI = validateIdType(sceneId, "scene", "select");
+    const liveApiSceneId = toLiveApiId(sceneAPI.id);
 
-    songView.setProperty("selected_scene", sceneAPI.id);
-    result.selectedSceneId = sceneId;
+    songView.setProperty("selected_scene", liveApiSceneId);
+    result.selectedSceneId = liveApiSceneId;
 
     if (sceneIndex != null) {
       result.selectedSceneIndex = sceneIndex;
     }
   } else if (sceneIndex != null) {
-    const sceneAPI = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+    const sceneAPI = LiveAPI.from(livePath.scene(sceneIndex));
 
     if (sceneAPI.exists()) {
-      const finalSceneId = sceneAPI.id;
+      const finalSceneId = toLiveApiId(sceneAPI.id);
 
-      songView.setProperty("selected_scene", sceneAPI.id);
+      songView.setProperty("selected_scene", finalSceneId);
       result.selectedSceneId = finalSceneId;
       result.selectedSceneIndex = sceneIndex;
     }
@@ -247,13 +261,9 @@ export function updateDeviceSelection({
 }: UpdateDeviceSelectionOptions): void {
   if (deviceId != null) {
     validateIdType(deviceId, "device", "select");
-    const songView = LiveAPI.from("live_set view");
-    const deviceIdStr = deviceId.toString();
-    const deviceIdForApi = deviceIdStr.startsWith("id ")
-      ? deviceIdStr
-      : `id ${deviceIdStr}`;
+    const songView = LiveAPI.from(livePath.view.song);
 
-    songView.call("select_device", deviceIdForApi);
+    songView.call("select_device", toLiveApiId(deviceId));
   } else if (instrument === true) {
     let trackPath = buildTrackPath(
       trackSelectionResult.selectedCategory,
@@ -261,7 +271,7 @@ export function updateDeviceSelection({
     );
 
     if (!trackPath) {
-      const selectedTrackAPI = LiveAPI.from("live_set view selected_track");
+      const selectedTrackAPI = LiveAPI.from(livePath.view.selectedTrack);
 
       if (selectedTrackAPI.exists()) {
         const category = selectedTrackAPI.category;
@@ -297,11 +307,14 @@ export function updateHighlightedClipSlot({
   if (clipSlot != null) {
     const { trackIndex, sceneIndex } = clipSlot;
     const clipSlotAPI = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+      livePath.track(trackIndex).clipSlot(sceneIndex),
     );
 
     if (clipSlotAPI.exists()) {
-      songView.setProperty("highlighted_clip_slot", clipSlotAPI.id);
+      songView.setProperty(
+        "highlighted_clip_slot",
+        toLiveApiId(clipSlotAPI.id),
+      );
     }
   }
 }
@@ -343,7 +356,7 @@ export function updateClipSelection({
   // (Live API ignores detail_clip set if in wrong view)
   appView.call("show_view", toLiveApiView(requiredView));
 
-  songView.setProperty("detail_clip", clipAPI.id);
+  songView.setProperty("detail_clip", toLiveApiId(clipAPI.id));
 
   // For session clips, also highlight the clip slot
   if (isSessionClip) {
@@ -355,4 +368,12 @@ export function updateClipSelection({
       },
     });
   }
+}
+
+function normalizeLiveApiId(id: string): string {
+  return id.startsWith("id ") ? id.slice(3) : id;
+}
+
+function isSameLiveApiId(idA: string, idB: string): boolean {
+  return normalizeLiveApiId(idA) === normalizeLiveApiId(idB);
 }

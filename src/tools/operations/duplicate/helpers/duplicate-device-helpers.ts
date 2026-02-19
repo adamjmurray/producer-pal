@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { moveDeviceToPath } from "#src/tools/device/update/update-device-helpers.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
@@ -44,13 +45,13 @@ export function duplicateDevice(
   const devicePathWithinTrack = extractDevicePathWithinTrack(device.path);
 
   // 3. Duplicate the track
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("duplicate_track", trackIndex);
   const tempTrackIndex = trackIndex + 1;
 
   // 4. Find the corresponding device on the temp track
-  const tempDevicePath = `live_set tracks ${tempTrackIndex} ${devicePathWithinTrack}`;
+  const tempDevicePath = `${livePath.track(tempTrackIndex)} ${devicePathWithinTrack}`;
   const tempDevice = LiveAPI.from(tempDevicePath);
 
   if (!tempDevice.exists()) {

@@ -5,10 +5,10 @@
 import { barBeatToBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import type {
-  ExpressionNode,
-  TransformAssignment,
-  PitchRange,
+import {
+  type ExpressionNode,
+  type TransformAssignment,
+  type PitchRange,
 } from "./parser/transform-parser.ts";
 import { evaluateFunction } from "./transform-functions.ts";
 
@@ -32,6 +32,15 @@ export interface NoteContext {
 }
 
 export type NoteProperties = Record<string, number | undefined>;
+
+export interface ClipContext {
+  clipDuration: number; // musical beats
+  clipIndex: number; // 0-based in multi-clip operation
+  clipCount: number; // total clips in operation
+  arrangementStart?: number; // musical beats; undefined for session clips
+  barDuration: number; // musical beats per bar (timeSigNumerator)
+  scalePitchClassMask?: number; // bitmask of in-scale pitch classes (bit N = pitch class N)
+}
 
 export interface TransformResult {
   operator: "add" | "set";
@@ -314,13 +323,17 @@ export function evaluateExpression(
       );
     }
 
-    if (noteProperties[node.name] == null) {
+    // Determine lookup key: note.* uses bare name, clip.* uses prefixed keys
+    const lookupKey =
+      node.namespace === "note" ? node.name : `${node.namespace}:${node.name}`;
+
+    if (noteProperties[lookupKey] == null) {
       throw new Error(
-        `Variable "note.${node.name}" is not available in this context`,
+        `Variable "${node.namespace}.${node.name}" is not available in this context`,
       );
     }
 
-    return noteProperties[node.name] as number;
+    return noteProperties[lookupKey];
   }
 
   // Arithmetic operators
@@ -346,6 +359,7 @@ export function evaluateExpression(
     return evaluateFunction(
       node.name,
       node.args,
+      node.sync,
       position,
       timeSigNumerator,
       timeSigDenominator,

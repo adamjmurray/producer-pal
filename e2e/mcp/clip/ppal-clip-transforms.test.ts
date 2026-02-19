@@ -21,6 +21,12 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
+import {
+  applyTransform as applyTransformHelper,
+  createMidiClip as createMidiClipHelper,
+  emptyMidiTrack,
+  readClipNotes as readClipNotesHelper,
+} from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 
@@ -57,18 +63,18 @@ async function createAudioTrackWithClip(trackName: string): Promise<{
 async function readClipGain(clipId: string): Promise<number> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["warp-markers"] },
+    arguments: { clipId, include: ["sample"] },
   });
   const clip = parseToolResult<ReadClipResult>(result);
 
-  return clip.gainDb!;
+  return clip.gainDb ?? 0;
 }
 
 /** Reads clip and returns pitchShift value. */
 async function readClipPitchShift(clipId: string): Promise<number> {
   const result = await ctx.client!.callTool({
     name: "ppal-read-clip",
-    arguments: { clipId, include: ["warp-markers"] },
+    arguments: { clipId, include: ["sample"] },
   });
   const clip = parseToolResult<ReadClipResult>(result);
 
@@ -80,14 +86,7 @@ async function applyTransform(
   clipId: string,
   transform: string,
 ): Promise<unknown> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-update-clip",
-    arguments: { ids: clipId, transforms: transform },
-  });
-
-  await sleep(100);
-
-  return result;
+  return applyTransformHelper(ctx, clipId, transform);
 }
 
 // =============================================================================
@@ -125,6 +124,13 @@ describe("ppal-clip-transforms (audio gain)", () => {
     // Clamping above maximum: 50 → 24
     await applyTransform(clipId, "gain = 50");
     expect(await readClipGain(clipId)).toBeCloseTo(24, 0);
+
+    // Curve: logarithmic fade in from -24 to 0
+    await applyTransform(clipId, "gain = curve(-24, 0, 0.5)");
+    const curveGain = await readClipGain(clipId);
+
+    expect(curveGain).toBeGreaterThanOrEqual(-24);
+    expect(curveGain).toBeLessThanOrEqual(0);
   });
 });
 
@@ -210,8 +216,8 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     expect(await readClipGain(clip1.id)).toBeCloseTo(-6, 0);
     expect(await readClipPitchShift(clip1.id)).toBeCloseTo(5, 1);
 
-    // noise() function: result should be in range [-10, 0]
-    await applyTransform(clip1.id, "gain = -5 + 5 * noise()");
+    // rand() function: result should be in range [-10, 0]
+    await applyTransform(clip1.id, "gain = -5 + 5 * rand()");
     const gain = await readClipGain(clip1.id);
 
     expect(gain).toBeGreaterThanOrEqual(-10);
@@ -223,39 +229,17 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
 // MIDI Transform Tests (update-clip)
 // =============================================================================
 
-const emptyMidiTrack = 8; // t8 "9-MIDI" from e2e-test-set
-
 /** Creates a MIDI clip with specified notes on the empty MIDI track. */
 async function createMidiClip(
   sceneIndex: number,
   notes: string,
 ): Promise<string> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
-    arguments: {
-      view: "session",
-      trackIndex: emptyMidiTrack,
-      sceneIndex: String(sceneIndex),
-      notes,
-      length: "2:0.0",
-    },
-  });
-  const clip = parseToolResult<CreateClipResult>(result);
-
-  await sleep(100);
-
-  return clip.id;
+  return createMidiClipHelper(ctx, sceneIndex, notes);
 }
 
 /** Reads clip notes as a string. */
 async function readClipNotes(clipId: string): Promise<string> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-clip",
-    arguments: { clipId, include: ["clip-notes"] },
-  });
-  const clip = parseToolResult<ReadClipResult>(result);
-
-  return clip.notes ?? "";
+  return readClipNotesHelper(ctx, clipId);
 }
 
 describe("ppal-clip-transforms (midi velocity)", () => {
@@ -273,15 +257,15 @@ describe("ppal-clip-transforms (midi velocity)", () => {
     notes = await readClipNotes(clipId);
     expect(notes).toContain("v84");
 
-    // Clamp below minimum (0 → 1)
-    await applyTransform(clipId, "velocity = 0");
-    notes = await readClipNotes(clipId);
-    expect(notes).toContain("v1");
-
     // Clamp above maximum (200 → 127)
     await applyTransform(clipId, "velocity = 200");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("v127");
+
+    // Velocity below 1 deletes the note
+    await applyTransform(clipId, "velocity = 0");
+    notes = await readClipNotes(clipId);
+    expect(notes).toBe("");
   });
 });
 
@@ -305,15 +289,15 @@ describe("ppal-clip-transforms (midi timing and duration)", () => {
     notes = await readClipNotes(clipId);
     expect(notes).toContain("t2");
 
-    // Duration: very small clamps to minimum (0.001)
-    await applyTransform(clipId, "duration = -1");
-    notes = await readClipNotes(clipId);
-    expect(notes).toContain("t0.001");
-
     // Duration: multiply (set to 0.5)
     await applyTransform(clipId, "duration = 0.5");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("t0.5");
+
+    // Duration below 0 deletes the note
+    await applyTransform(clipId, "duration = -1");
+    notes = await readClipNotes(clipId);
+    expect(notes).toBe("");
   });
 });
 
@@ -476,11 +460,41 @@ describe("ppal-clip-transforms (math functions)", () => {
     notes = await readClipNotes(clipId);
     expect(notes).toContain("v50");
 
+    // ceil(): round up to steps
+    clipId = await createMidiClip(12, "v63 C3 1|1");
+    await applyTransform(clipId, "velocity = ceil(note.velocity / 10) * 10");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v70"); // ceil(6.3) * 10 = 70
+
+    // pow(): exponential scaling
+    clipId = await createMidiClip(25, "v100 C3 1|1");
+    await applyTransform(clipId, "velocity = pow(3, 2)");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v9"); // 3^2 = 9
+
     // Nested: max(60, min(100, value))
-    clipId = await createMidiClip(12, "v50 C3 1|1");
+    clipId = await createMidiClip(26, "v50 C3 1|1");
     await applyTransform(clipId, "velocity = max(60, min(100, note.velocity))");
     notes = await readClipNotes(clipId);
     expect(notes).toContain("v60"); // max(60, 50) = 60
+
+    // clamp(): constrain to range
+    clipId = await createMidiClip(35, "v30 C3 1|1");
+    await applyTransform(clipId, "velocity = clamp(note.velocity, 50, 100)");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v50"); // clamp(30, 50, 100) = 50
+
+    // clamp(): value within range passes through
+    clipId = await createMidiClip(36, "v75 C3 1|1");
+    await applyTransform(clipId, "velocity = clamp(note.velocity, 50, 100)");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v75"); // clamp(75, 50, 100) = 75
+
+    // clamp(): swapped bounds auto-corrected
+    clipId = await createMidiClip(37, "v75 C3 1|1");
+    await applyTransform(clipId, "velocity = clamp(note.velocity, 100, 50)");
+    notes = await readClipNotes(clipId);
+    expect(notes).toContain("v75"); // bounds sorted, clamp(75, 50, 100) = 75
   });
 
   it("uses modulo operator", async () => {
@@ -694,5 +708,131 @@ describe("ppal-clip-transforms (create-clip)", () => {
     expect(notes).toContain("v64"); // First note has transformed velocity
     // Second note at 1|3 should have default velocity (no v prefix shown)
     expect(notes).toMatch(/C3 1\|3/); // Second note unchanged
+  });
+});
+
+// =============================================================================
+// Randomization and Curve Function Tests
+// =============================================================================
+
+describe("ppal-clip-transforms (rand, choose, curve)", () => {
+  it("rand() randomizes velocity within default range [-1, 1]", async () => {
+    const clipId = await createMidiClip(20, "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
+
+    await applyTransform(clipId, "velocity += 10 * rand()");
+    const notes = await readClipNotes(clipId);
+
+    // Each note should have velocity in [90, 110] (100 ± 10)
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    for (const v of velocities) {
+      expect(v).toBeGreaterThanOrEqual(90);
+      expect(v).toBeLessThanOrEqual(110);
+    }
+  });
+
+  it("rand(min, max) randomizes within specified range", async () => {
+    const clipId = await createMidiClip(21, "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
+
+    await applyTransform(clipId, "velocity = rand(60, 120)");
+    const notes = await readClipNotes(clipId);
+
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    for (const v of velocities) {
+      expect(v).toBeGreaterThanOrEqual(60);
+      expect(v).toBeLessThanOrEqual(120);
+    }
+
+    // Nested: round(rand()) for integer random transpose
+    await applyTransform(clipId, "pitch = 60 + round(rand(0, 12))");
+    const transposedNotes = await readClipNotes(clipId);
+    const pitchMatches = [...transposedNotes.matchAll(/([A-G][#b]?\d)/g)];
+
+    // All pitches should be C3 (60) through C4 (72)
+    expect(pitchMatches.length).toBeGreaterThan(0);
+
+    // Duration with rand and multiply operator
+    await applyTransform(clipId, "duration = rand(0.5, 1.5)");
+    const durNotes = await readClipNotes(clipId);
+    const durations = [...durNotes.matchAll(/t([\d.]+)/g)].map((m) =>
+      Number(m[1]),
+    );
+
+    for (const d of durations) {
+      expect(d).toBeGreaterThanOrEqual(0.5);
+      expect(d).toBeLessThanOrEqual(1.5);
+    }
+
+    // square() with custom pulse width: high for 75% of cycle, low for 25%
+    // Phases 0, 0.25, 0.5 → high (v114), phase 0.75 → low (v14)
+    await applyTransform(clipId, "velocity = 64 + 50 * square(4t, 0, 0.75)");
+    const sqNotes = await readClipNotes(clipId);
+
+    // Note format uses state changes: v114 at start, v14 only at beat 1|4
+    expect(sqNotes).toMatch(/^v114\b/); // first 3 notes are high
+    expect(sqNotes).toMatch(/v14\b.*1\|4/); // last note is low
+  });
+
+  it("choose() selects from provided values", async () => {
+    const clipId = await createMidiClip(22, "v99 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
+
+    await applyTransform(clipId, "velocity = choose(60, 80, 100, 120)");
+    const notes = await readClipNotes(clipId);
+
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+    const validChoices = [60, 80, 100, 120];
+
+    for (const v of velocities) {
+      expect(validChoices).toContain(v);
+    }
+  });
+
+  it("curve() applies exponential shape over clip duration", async () => {
+    const clipId = await createMidiClip(
+      23,
+      "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4 C3 2|1 C3 2|2 C3 2|3 C3 2|4",
+    );
+
+    // Exponent 2: slow start, fast end
+    await applyTransform(clipId, "velocity = curve(40, 120, 2)");
+    const notes = await readClipNotes(clipId);
+
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    // First note should be at/near start value
+    expect(velocities[0]).toBe(40);
+    // Middle notes should be below linear midpoint (80)
+    expect(velocities[3]!).toBeLessThan(80);
+    // Later notes should be accelerating toward end
+    expect(velocities[6]!).toBeGreaterThan(80);
+    // Velocities should be monotonically increasing
+
+    for (let i = 1; i < velocities.length; i++) {
+      expect(velocities[i]!).toBeGreaterThanOrEqual(velocities[i - 1]!);
+    }
+  });
+
+  it("curve() with exponent < 1 applies logarithmic shape", async () => {
+    const clipId = await createMidiClip(
+      24,
+      "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4 C3 2|1 C3 2|2 C3 2|3 C3 2|4",
+    );
+
+    // Exponent 0.5: fast start, slow end
+    await applyTransform(clipId, "velocity = curve(40, 120, 0.5)");
+    const notes = await readClipNotes(clipId);
+
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    // First note should be at start value
+    expect(velocities[0]).toBe(40);
+    // Middle notes should be above linear midpoint (80) — fast start
+    expect(velocities[3]!).toBeGreaterThan(80);
+    // Velocities should be monotonically increasing
+
+    for (let i = 1; i < velocities.length; i++) {
+      expect(velocities[i]!).toBeGreaterThanOrEqual(velocities[i - 1]!);
+    }
   });
 });

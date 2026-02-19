@@ -42,7 +42,7 @@ export interface ASTElement {
   duration?: number | string;
   probability?: number;
   pitch?: number;
-  bar?: number | null;
+  bar?: number;
   beat?: number | RepeatPattern;
   clearBuffer?: boolean;
   destination?: BarCopyDestination;

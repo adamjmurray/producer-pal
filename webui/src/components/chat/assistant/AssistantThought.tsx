@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { marked } from "marked";
@@ -9,6 +10,9 @@ interface AssistantThoughtProps {
   isOpen?: boolean;
   isResponding?: boolean;
 }
+
+const baseClasses =
+  "p-2 text-xs bg-gray-200 dark:bg-gray-700 rounded border-l-3 border-green-500";
 
 /**
  * Collapsible thought/reasoning display
@@ -23,30 +27,43 @@ export function AssistantThought({
   isOpen,
   isResponding,
 }: AssistantThoughtProps) {
+  const trimmed = content.trim();
+  // split always returns ≥1 element
+  const firstLine = trimmed.split("\n")[0] as string;
+
+  // Active thinking — disclosure open with pulse animation
+  if (isOpen) {
+    return (
+      <details
+        className={`${baseClasses}${isResponding ? " animate-pulse" : ""}`}
+        open
+      >
+        <summary className="font-semibold truncate">💭 Thinking...</summary>
+        <div
+          className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ __html: marked(trimmed) as string }}
+        />
+      </details>
+    );
+  }
+
+  // Completed thought — summary swaps content via group-open
   return (
-    <details
-      className={`p-2 text-xs bg-gray-200 dark:bg-gray-700 rounded border-l-3 border-green-500 ${
-        isOpen && isResponding ? "animate-pulse" : ""
-      }`}
-      open={isOpen}
-    >
-      <summary
-        className="font-semibold truncate"
-        dangerouslySetInnerHTML={{
-          __html: isOpen
-            ? "💭 Thinking..."
-            : (marked.parseInline(
-                `💭 Thought about: ${content.trim().split("\n")[0]}`,
-              ) as string),
-        }}
-      />
+    <details className={`group ${baseClasses}`}>
+      <summary className="font-semibold truncate">
+        <span
+          className="group-open:hidden"
+          dangerouslySetInnerHTML={{
+            __html: marked.parseInline(
+              `💭 Thought about: ${firstLine}`,
+            ) as string,
+          }}
+        />
+        <span className="hidden group-open:inline">💭 Thought about:</span>
+      </summary>
       <div
         className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"
-        dangerouslySetInnerHTML={{
-          __html: (isOpen
-            ? marked(content.trim())
-            : marked(content.trim().split("\n").slice(1).join("\n"))) as string,
-        }}
+        dangerouslySetInnerHTML={{ __html: marked(trimmed) as string }}
       />
     </details>
   );

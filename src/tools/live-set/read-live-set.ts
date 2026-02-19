@@ -1,7 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
@@ -9,11 +11,10 @@ import {
 import { readScene } from "#src/tools/scene/read-scene.ts";
 import { readLocators } from "#src/tools/shared/locator/locator-helpers.ts";
 import {
-  includeArrayFromFlags,
+  type IncludeFlags,
   parseIncludeArray,
   READ_SONG_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
-import { readTrackMinimal } from "#src/tools/track/read/helpers/read-track-helpers.ts";
 import {
   readTrack,
   readTrackGeneric,
@@ -34,22 +35,23 @@ export function readLiveSet(
   _context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
-  const includeArray = includeArrayFromFlags(includeFlags);
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const trackIds = liveSet.getChildIds("tracks");
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
+  // Build include array to propagate to track/scene readers
+  const trackInclude = buildTrackInclude(includeFlags);
+
   // Compute return track names once for efficiency (used for sends in mixer data)
   const returnTrackNames: string[] = returnTrackIds.map((_, idx) => {
-    const rt = LiveAPI.from(`live_set return_tracks ${idx}`);
+    const rt = LiveAPI.from(livePath.returnTrack(idx));
 
     return rt.getProperty("name") as string;
   });
 
   const liveSetName = liveSet.getProperty("name");
   const result: Record<string, unknown> = {
-    id: liveSet.id,
     ...(liveSetName ? { name: liveSetName } : {}),
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
@@ -58,7 +60,7 @@ export function readLiveSet(
   // Include full scene details or just the count
   if (includeFlags.includeScenes) {
     result.scenes = sceneIds.map((_sceneId, sceneIndex) =>
-      readScene({ sceneIndex, include: includeArray }),
+      readScene({ sceneIndex, include: trackInclude }),
     );
   } else {
     result.sceneCount = sceneIds.length;
@@ -71,56 +73,42 @@ export function readLiveSet(
     result.isPlaying = isPlaying;
   }
 
-  // Conditionally include track arrays based on include parameters
-  if (includeFlags.includeRegularTracks) {
+  // Tracks: full details or counts
+  if (includeFlags.includeTracks) {
     result.tracks = trackIds.map((_trackId, trackIndex) =>
       readTrack({
         trackIndex,
-        include: includeArray,
+        include: trackInclude,
         returnTrackNames,
       }),
     );
-  } else if (
-    includeFlags.includeSessionClips ||
-    includeFlags.includeArrangementClips
-  ) {
-    // Auto-include minimal track info when clips are requested without explicit track inclusion
-    result.tracks = trackIds.map((_trackId, trackIndex) =>
-      readTrackMinimal({
-        trackIndex,
-        includeFlags,
-      }),
-    );
-  }
-
-  if (includeFlags.includeReturnTracks) {
     result.returnTracks = returnTrackIds.map(
       (_returnTrackId, returnTrackIndex) => {
         const returnTrack = LiveAPI.from(
-          `live_set return_tracks ${returnTrackIndex}`,
+          livePath.returnTrack(returnTrackIndex),
         );
 
         return readTrackGeneric({
           track: returnTrack,
           trackIndex: returnTrackIndex,
           category: "return",
-          include: includeArray,
+          include: trackInclude,
           returnTrackNames,
         });
       },
     );
-  }
-
-  if (includeFlags.includeMasterTrack) {
-    const masterTrack = LiveAPI.from("live_set master_track");
+    const masterTrack = LiveAPI.from(livePath.masterTrack());
 
     result.masterTrack = readTrackGeneric({
       track: masterTrack,
       trackIndex: null,
       category: "master",
-      include: includeArray,
+      include: trackInclude,
       returnTrackNames,
     });
+  } else {
+    result.regularTrackCount = trackIds.length;
+    result.returnTrackCount = returnTrackIds.length;
   }
 
   // Only include scale properties when scale is enabled
@@ -157,4 +145,19 @@ export function readLiveSet(
   }
 
   return result;
+}
+
+/**
+ * Build include array to propagate to track/scene readers
+ * @param flags - Parsed include flags
+ * @returns Array of include options recognized by readTrack/readScene
+ */
+function buildTrackInclude(flags: IncludeFlags): string[] {
+  const include: string[] = [];
+
+  if (flags.includeRoutings) include.push("routings");
+  if (flags.includeMixer) include.push("mixer");
+  if (flags.includeColor) include.push("color");
+
+  return include;
 }

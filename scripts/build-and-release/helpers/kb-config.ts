@@ -37,11 +37,11 @@ function createItemsArray(): KbItem[] {
     { src: "SECURITY.md" },
     { src: "package.json" },
 
-    // Dev docs (entire directory, exclude img and AI-Chat-Project-Instructions)
+    // Dev docs (entire directory, exclude img)
     {
-      src: "dev-docs",
+      src: "dev",
       isDir: true,
-      exclude: ["img", "AI-Chat-Project-Instructions.md"],
+      exclude: ["img"],
     },
 
     // User docs (entire directory, exclude .vitepress)
@@ -63,7 +63,7 @@ function createItemsArray(): KbItem[] {
     { src: "e2e/live-sets/e2e-test-set-spec.md" },
 
     // Eval scenarios
-    { src: "evals/eval/scenario-defs", isDir: true },
+    { src: "evals/scenarios/defs", isDir: true },
   ];
 }
 

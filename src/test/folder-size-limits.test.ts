@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import path from "node:path";
 import {
   assertFolderSizeLimit,
+  assertTestFileRatio,
   projectRoot,
 } from "./helpers/meta-test-helpers.ts";
 
@@ -22,6 +23,21 @@ describe("Folder size limits", () => {
     const dirPath = path.join(projectRoot, relativePath);
 
     assertFolderSizeLimit(dirPath, MAX_ITEMS_PER_FOLDER, expect);
+    expect(true).toBe(true); // Satisfy vitest/expect-expect rule
+  });
+});
+
+describe("Test file ratio", () => {
+  it.each([
+    ["src/", "src"],
+    ["webui/src/", "webui/src"],
+    ["scripts/", "scripts"],
+    ["evals/", "evals"],
+    ["e2e/", "e2e"],
+  ])("should not have test-heavy folders in %s", (_name, relativePath) => {
+    const dirPath = path.join(projectRoot, relativePath);
+
+    assertTestFileRatio(dirPath, expect);
     expect(true).toBe(true); // Satisfy vitest/expect-expect rule
   });
 });

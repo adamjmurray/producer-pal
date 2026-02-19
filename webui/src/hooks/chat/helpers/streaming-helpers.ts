@@ -6,12 +6,12 @@ import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
 import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
 import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
-import type {
-  GeminiMessage,
-  OpenAIMessage,
-  UIMessage,
+import {
+  type GeminiMessage,
+  type OpenAIMessage,
+  type UIMessage,
 } from "#webui/types/messages";
-import type { ResponsesConversationItem } from "#webui/types/responses-api";
+import { type ResponsesConversationItem } from "#webui/types/responses-api";
 
 /**
  * Generic streaming handler for chat messages.

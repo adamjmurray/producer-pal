@@ -55,9 +55,7 @@ export function readLocators(
   const locators: LocatorInfo[] = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
-    const locator = LiveAPI.from(
-      assertDefined(locatorIds[i], `locator id at index ${i}`),
-    );
+    const locator = getLocatorAt(locatorIds, i);
     const name = locator.getProperty("name") as string;
     const timeInBeats = locator.getProperty("time") as number;
     const timeFormatted = abletonBeatsToBarBeat(
@@ -91,9 +89,7 @@ export function findLocator(
   const locatorIds = liveSet.getChildIds("cue_points");
 
   for (let i = 0; i < locatorIds.length; i++) {
-    const locator = LiveAPI.from(
-      assertDefined(locatorIds[i], `locator id at index ${i}`),
-    );
+    const locator = getLocatorAt(locatorIds, i);
 
     if (locatorId != null && getLocatorId(i) === locatorId) {
       return { locator, index: i };
@@ -125,9 +121,7 @@ export function findLocatorsByName(
   const matches: LocatorMatchWithTime[] = [];
 
   for (let i = 0; i < locatorIds.length; i++) {
-    const locator = LiveAPI.from(
-      assertDefined(locatorIds[i], `locator id at index ${i}`),
-    );
+    const locator = getLocatorAt(locatorIds, i);
     const name = locator.getProperty("name");
 
     if (name === locatorName) {
@@ -183,4 +177,16 @@ export function resolveLocatorToBeats(
   }
 
   throw new Error(`${toolName} failed: locatorId or locatorName is required`);
+}
+
+/**
+ * Get a LiveAPI object for a locator at a given index
+ * @param locatorIds - Array of locator IDs from getChildIds("cue_points")
+ * @param index - Index into the locator IDs array
+ * @returns LiveAPI object for the locator
+ */
+function getLocatorAt(locatorIds: (string | number)[], index: number): LiveAPI {
+  return LiveAPI.from(
+    assertDefined(locatorIds[index], `locator id at index ${index}`),
+  );
 }

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_WARP_MODE_BEATS,
@@ -46,14 +47,14 @@ export function resolveClip(
   }
 
   // Validate track exists
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex as number));
 
   if (!track.exists()) {
     throw new Error(`trackIndex ${trackIndex} does not exist`);
   }
 
   // Validate scene exists
-  const scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+  const scene = LiveAPI.from(livePath.scene(sceneIndex as number));
 
   if (!scene.exists()) {
     throw new Error(`sceneIndex ${sceneIndex} does not exist`);
@@ -61,14 +62,13 @@ export function resolveClip(
 
   // Track and scene exist - check if clip slot has a clip
   const clip = LiveAPI.from(
-    `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+    livePath
+      .track(trackIndex as number)
+      .clipSlot(sceneIndex as number)
+      .clip(),
   );
 
   if (!clip.exists()) {
-    console.warn(
-      `no clip at trackIndex ${trackIndex}, sceneIndex ${sceneIndex}`,
-    );
-
     return {
       found: false,
       emptySlotResponse: {

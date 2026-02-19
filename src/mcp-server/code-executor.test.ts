@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { SandboxResult } from "#src/tools/clip/code-exec/code-exec-types.ts";
+import { type SandboxResult } from "#src/tools/clip/code-exec/code-exec-types.ts";
 import { executeSandboxedCode } from "./code-executor.ts";
 
 /**

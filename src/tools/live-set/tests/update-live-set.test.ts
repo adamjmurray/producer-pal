@@ -1,42 +1,29 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiSet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 
 const scaleChangeNote =
   "Scale applied to selected clips and defaults for new clips.";
 
-const liveSetMatcher = expect.objectContaining({ path: "live_set" });
-
-function expectLiveSetSet(prop: string, value: unknown): void {
-  expect(liveApiSet).toHaveBeenCalledWithThis(liveSetMatcher, prop, value);
-}
-
-function expectLiveSetGet(prop: string): void {
-  expect(liveApiGet).toHaveBeenCalledWithThis(liveSetMatcher, prop);
-}
-
 describe("updateLiveSet", () => {
+  let liveSet: RegisteredMockObject;
   let mockRootNote = 0; // Track the root note state across tests
 
   beforeEach(() => {
-    liveApiId.mockReturnValue("live_set_id");
+    liveSet = registerMockObject("live_set_id", { path: livePath.liveSet });
     mockRootNote = 0; // Reset to C for each test
 
     // Mock scale_intervals and root_note for tests that need it
-    liveApiGet.mockImplementation(function (
-      this: MockLiveAPIContext,
-      property,
-    ) {
+    liveSet.get.mockImplementation(function (property: string) {
       if (property === "scale_intervals") {
         return [0, 2, 4, 5, 7, 9, 11]; // Major scale intervals
       }
@@ -45,28 +32,21 @@ describe("updateLiveSet", () => {
         return [mockRootNote]; // Return array with the current mock root note
       }
 
-      return this._id;
+      return [0];
     });
 
     // Mock the set method to update our mock root note
-    liveApiSet.mockImplementation(function (
-      this: MockLiveAPIContext,
-      property,
-      value,
-    ) {
+    liveSet.set.mockImplementation(function (property: string, value: unknown) {
       if (property === "root_note") {
-        mockRootNote = value;
+        mockRootNote = value as number;
       }
-
-      // Return the id to keep the mock consistent
-      return this._id;
     });
   });
 
   it("should update tempo", async () => {
     const result = await updateLiveSet({ tempo: 140 });
 
-    expectLiveSetSet("tempo", 140);
+    expect(liveSet.set).toHaveBeenCalledWith("tempo", 140);
     expect(result).toStrictEqual({
       id: "live_set_id",
       tempo: 140,
@@ -86,8 +66,8 @@ describe("updateLiveSet", () => {
   it("should update time signature", async () => {
     const result = await updateLiveSet({ timeSignature: "3/4" });
 
-    expectLiveSetSet("signature_numerator", 3);
-    expectLiveSetSet("signature_denominator", 4);
+    expect(liveSet.set).toHaveBeenCalledWith("signature_numerator", 3);
+    expect(liveSet.set).toHaveBeenCalledWith("signature_denominator", 4);
     expect(result).toStrictEqual({
       id: "live_set_id",
       timeSignature: "3/4",
@@ -109,9 +89,9 @@ describe("updateLiveSet", () => {
       timeSignature: "6/8",
     });
 
-    expectLiveSetSet("tempo", 125);
-    expectLiveSetSet("signature_numerator", 6);
-    expectLiveSetSet("signature_denominator", 8);
+    expect(liveSet.set).toHaveBeenCalledWith("tempo", 125);
+    expect(liveSet.set).toHaveBeenCalledWith("signature_numerator", 6);
+    expect(liveSet.set).toHaveBeenCalledWith("signature_denominator", 8);
     expect(result).toStrictEqual({
       id: "live_set_id",
       tempo: 125,
@@ -122,8 +102,8 @@ describe("updateLiveSet", () => {
   it("should update scale with combined scaleRoot + scaleName format", async () => {
     const result = await updateLiveSet({ scale: "D Major" });
 
-    expectLiveSetSet("root_note", 2);
-    expectLiveSetSet("scale_name", "Major");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 2);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Major");
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "D Major",
@@ -150,8 +130,8 @@ describe("updateLiveSet", () => {
   it("should update scale with different root note", async () => {
     const result = await updateLiveSet({ scale: "C Dorian" });
 
-    expectLiveSetSet("root_note", 0);
-    expectLiveSetSet("scale_name", "Dorian");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 0);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "C Dorian",
@@ -173,20 +153,20 @@ describe("updateLiveSet", () => {
   it("should handle case insensitive scale input and normalize the output", async () => {
     const result1 = await updateLiveSet({ scale: "c major" });
 
-    expectLiveSetSet("root_note", 0);
-    expectLiveSetSet("scale_name", "Major");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 0);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Major");
     expect(result1.scale).toBe("C Major");
 
     const result2 = await updateLiveSet({ scale: "D# MINOR" });
 
-    expectLiveSetSet("root_note", 3);
-    expectLiveSetSet("scale_name", "Minor");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 3);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
     expect(result2.scale).toBe("D# Minor");
 
     const result3 = await updateLiveSet({ scale: "bB DoRiAn" });
 
-    expectLiveSetSet("root_note", 10);
-    expectLiveSetSet("scale_name", "Dorian");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 10);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
     expect(result3.scale).toBe("Bb Dorian");
   });
 
@@ -194,29 +174,29 @@ describe("updateLiveSet", () => {
     // Test with tab
     const result1 = await updateLiveSet({ scale: "C\tMajor" });
 
-    expectLiveSetSet("root_note", 0);
-    expectLiveSetSet("scale_name", "Major");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 0);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Major");
     expect(result1.scale).toBe("C Major");
 
     // Test with multiple spaces
     const result2 = await updateLiveSet({ scale: "D   Minor" });
 
-    expectLiveSetSet("root_note", 2);
-    expectLiveSetSet("scale_name", "Minor");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 2);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
     expect(result2.scale).toBe("D Minor");
 
     // Test with mixed whitespace
     const result3 = await updateLiveSet({ scale: "F# \t Dorian" });
 
-    expectLiveSetSet("root_note", 6);
-    expectLiveSetSet("scale_name", "Dorian");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 6);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
     expect(result3.scale).toBe("F# Dorian");
   });
 
   it("should disable scale when given empty string", async () => {
     const result = await updateLiveSet({ scale: "" });
 
-    expectLiveSetSet("scale_mode", 0);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_mode", 0);
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "",
@@ -227,8 +207,8 @@ describe("updateLiveSet", () => {
   it("should update complex scale names", async () => {
     const result = await updateLiveSet({ scale: "D Dorian" });
 
-    expectLiveSetSet("root_note", 2);
-    expectLiveSetSet("scale_name", "Dorian");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 2);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "D Dorian",
@@ -244,12 +224,12 @@ describe("updateLiveSet", () => {
       scale: "G Mixolydian",
     });
 
-    expectLiveSetSet("tempo", 125);
-    expectLiveSetSet("signature_numerator", 6);
-    expectLiveSetSet("signature_denominator", 8);
-    expectLiveSetSet("root_note", 7);
-    expectLiveSetSet("scale_name", "Mixolydian");
-    expectLiveSetSet("scale_mode", 1);
+    expect(liveSet.set).toHaveBeenCalledWith("tempo", 125);
+    expect(liveSet.set).toHaveBeenCalledWith("signature_numerator", 6);
+    expect(liveSet.set).toHaveBeenCalledWith("signature_denominator", 8);
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 7);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Mixolydian");
+    expect(liveSet.set).toHaveBeenCalledWith("scale_mode", 1);
     expect(result).toStrictEqual({
       id: "live_set_id",
       tempo: 125,
@@ -263,8 +243,8 @@ describe("updateLiveSet", () => {
   it("should return only song ID when no properties are updated", async () => {
     const result = await updateLiveSet({});
 
-    expect(liveApiSet).not.toHaveBeenCalled();
-    expect(liveApiCall).not.toHaveBeenCalled();
+    expect(liveSet.set).not.toHaveBeenCalled();
+    expect(liveSet.call).not.toHaveBeenCalled();
     expect(result).toStrictEqual({
       id: "live_set_id",
     });
@@ -273,9 +253,9 @@ describe("updateLiveSet", () => {
   it("should return scalePitches when scale is set", async () => {
     const result = await updateLiveSet({ scale: "C Major" });
 
-    expectLiveSetSet("root_note", 0);
-    expectLiveSetSet("scale_name", "Major");
-    expectLiveSetGet("scale_intervals");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 0);
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Major");
+    expect(liveSet.get).toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "C Major",
@@ -287,8 +267,8 @@ describe("updateLiveSet", () => {
   it("should parse scale correctly for different roots", async () => {
     const result = await updateLiveSet({ scale: "D Major" });
 
-    expectLiveSetSet("root_note", 2);
-    expectLiveSetGet("scale_intervals");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 2);
+    expect(liveSet.get).toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "D Major",
@@ -300,9 +280,9 @@ describe("updateLiveSet", () => {
   it("should handle minor scales correctly", async () => {
     const result = await updateLiveSet({ scale: "A Minor" });
 
-    expectLiveSetSet("scale_name", "Minor");
-    expectLiveSetSet("root_note", 9);
-    expectLiveSetGet("scale_intervals");
+    expect(liveSet.set).toHaveBeenCalledWith("scale_name", "Minor");
+    expect(liveSet.set).toHaveBeenCalledWith("root_note", 9);
+    expect(liveSet.get).toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "A Minor",
@@ -314,7 +294,7 @@ describe("updateLiveSet", () => {
   it("should NOT return scalePitches when no scale-related parameters are set", async () => {
     const result = await updateLiveSet({ tempo: 140 });
 
-    expect(liveApiGet).not.toHaveBeenCalledWith("scale_intervals");
+    expect(liveSet.get).not.toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
       tempo: 140,
@@ -324,7 +304,7 @@ describe("updateLiveSet", () => {
   it("should NOT return scalePitches when scale is disabled with empty string", async () => {
     const result = await updateLiveSet({ scale: "" });
 
-    expect(liveApiGet).not.toHaveBeenCalledWith("scale_intervals");
+    expect(liveSet.get).not.toHaveBeenCalledWith("scale_intervals");
     expect(result).toStrictEqual({
       id: "live_set_id",
       scale: "",
@@ -335,7 +315,7 @@ describe("updateLiveSet", () => {
   it("should set arrangementFollower to true (all tracks follow arrangement) - hidden from interface but implementation remains", async () => {
     const result = await updateLiveSet({ arrangementFollower: true });
 
-    expectLiveSetSet("back_to_arranger", 0); // 0 = following arrangement
+    expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 0); // 0 = following arrangement
     expect(result).toStrictEqual({
       id: "live_set_id",
       arrangementFollower: true,
@@ -345,7 +325,7 @@ describe("updateLiveSet", () => {
   it("should set arrangementFollower to false (tracks don't follow arrangement) - hidden from interface but implementation remains", async () => {
     const result = await updateLiveSet({ arrangementFollower: false });
 
-    expectLiveSetSet("back_to_arranger", 1); // 1 = not following arrangement
+    expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 1); // 1 = not following arrangement
     expect(result).toStrictEqual({
       id: "live_set_id",
       arrangementFollower: false,
@@ -359,10 +339,10 @@ describe("updateLiveSet", () => {
       timeSignature: "3/4",
     });
 
-    expectLiveSetSet("tempo", 130);
-    expectLiveSetSet("back_to_arranger", 0);
-    expectLiveSetSet("signature_numerator", 3);
-    expectLiveSetSet("signature_denominator", 4);
+    expect(liveSet.set).toHaveBeenCalledWith("tempo", 130);
+    expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 0);
+    expect(liveSet.set).toHaveBeenCalledWith("signature_numerator", 3);
+    expect(liveSet.set).toHaveBeenCalledWith("signature_denominator", 4);
     expect(result).toStrictEqual({
       id: "live_set_id",
       tempo: 130,

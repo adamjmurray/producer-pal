@@ -129,6 +129,23 @@ describe("ResponsesClient constructor", () => {
 
     expect(client.mcpUrl).toBe("http://custom:8080");
   });
+
+  it("passes baseUrl to OpenAI client", () => {
+    const client = new ResponsesClient("test-key", {
+      model: "gpt-5.2",
+      baseUrl: "http://localhost:1234/v1",
+    });
+
+    expect(client.ai.baseURL).toBe("http://localhost:1234/v1");
+  });
+
+  it("uses default OpenAI URL when baseUrl is not provided", () => {
+    const client = new ResponsesClient("test-key", {
+      model: "gpt-5.2",
+    });
+
+    expect(client.ai.baseURL).toBe("https://api.openai.com/v1");
+  });
 });
 
 describe("ResponsesClient chatHistory alias", () => {

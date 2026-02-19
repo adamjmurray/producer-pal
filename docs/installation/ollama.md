@@ -18,7 +18,7 @@ Download a model that supports tools. Some good options include:
 
 - `qwen3`
 - `devstral-small-2`
-- `gpt-oss`
+- `glm-4.7-flash`
 
 Browse [models with tool support](https://ollama.com/search?c=tools) on the
 Ollama website.

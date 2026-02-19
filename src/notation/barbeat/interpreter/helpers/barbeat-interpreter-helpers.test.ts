@@ -3,9 +3,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import type { BarCopyNote, NoteEvent } from "#src/notation/types.ts";
-import type { InterpreterState } from "./barbeat-interpreter-buffer-helpers.ts";
+import { type BarCopyNote, type NoteEvent } from "#src/notation/types.ts";
 import {
+  type InterpreterState,
   clearPitchBuffer,
   trackStateChange,
   updateBufferedPitches,
@@ -345,7 +345,6 @@ describe("barbeat-interpreter-helpers", () => {
 
       expect(result).toStrictEqual({
         currentTime: { bar: 2, beat: 1 },
-        hasExplicitBarNumber: true,
       });
       expect(events).toHaveLength(1);
       expect(events[0]!.start_time).toBe(4); // Bar 2 starts at beat 4

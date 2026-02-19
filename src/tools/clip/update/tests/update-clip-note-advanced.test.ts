@@ -1,73 +1,64 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
-  liveApiCall,
-  liveApiSet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
-import {
   note,
   setupAudioClipMock,
   setupMidiClipMock,
-  setupMocks,
+  setupUpdateClipMocks,
+  type UpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
-function expectNoteUpdateCalls(clipId: string, expectedNotes: unknown[]): void {
-  expect(liveApiCall).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
+function expectNoteUpdateCalls(
+  clip: UpdateClipMocks["clip123"],
+  expectedNotes: unknown[],
+): void {
+  expect(clip.call).toHaveBeenCalledWith(
     "get_notes_extended",
     0,
     128,
     0,
     1000000,
   );
-  expect(liveApiCall).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
+  expect(clip.call).toHaveBeenCalledWith(
     "remove_notes_extended",
     0,
     128,
     0,
     1000000,
   );
-  expect(liveApiCall).toHaveBeenCalledWithThis(
-    expect.objectContaining({ id: clipId }),
-    "add_new_notes",
-    { notes: expectedNotes },
-  );
+  expect(clip.call).toHaveBeenCalledWith("add_new_notes", {
+    notes: expectedNotes,
+  });
 }
 
 describe("updateClip - Advanced note operations", () => {
+  let mocks: UpdateClipMocks;
+
   beforeEach(() => {
-    setupMocks();
+    mocks = setupUpdateClipMocks();
   });
 
   it("should set loop start when start is provided", async () => {
-    setupMidiClipMock("123", { looping: 1 });
+    setupMidiClipMock(mocks.clip123, { looping: 1 });
 
     await updateClip({
       ids: "123",
       start: "1|3",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "loop_start",
-      2,
-    );
+    expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 2);
   });
 
   it("should delete specific notes with v0 when noteUpdateMode is 'merge'", async () => {
-    setupMidiClipMock("123");
+    setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in the clip
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-    ) {
+    mocks.clip123.call.mockImplementation((method: string) => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
@@ -88,8 +79,7 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     // Should call get_notes_extended to read existing notes
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.call).toHaveBeenCalledWith(
       "get_notes_extended",
       0,
       128,
@@ -98,8 +88,7 @@ describe("updateClip - Advanced note operations", () => {
     );
 
     // Should remove all notes
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.call).toHaveBeenCalledWith(
       "remove_notes_extended",
       0,
       128,
@@ -108,7 +97,7 @@ describe("updateClip - Advanced note operations", () => {
     );
 
     // Should add back filtered existing notes plus new regular notes
-    const addNewNotesCall = liveApiCall.mock.calls.find(
+    const addNewNotesCall = mocks.clip123.call.mock.calls.find(
       (call) => call[0] === "add_new_notes",
     ) as unknown[] | undefined;
 
@@ -124,13 +113,10 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should handle v0 notes when no existing notes match", async () => {
-    setupMidiClipMock("123");
+    setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes that don't match the v0 note
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-    ) {
+    mocks.clip123.call.mockImplementation((method: string) => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [note(62, 1, { velocity: 80 })], // D3 at 1|2 - no match
@@ -147,17 +133,14 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     // Should still read existing notes and remove/add them back
-    expectNoteUpdateCalls("123", [note(62, 1, { velocity: 80 })]); // Original note preserved
+    expectNoteUpdateCalls(mocks.clip123, [note(62, 1, { velocity: 80 })]); // Original note preserved
   });
 
   it("should call get_notes_extended in merge mode to format existing notes", async () => {
-    setupMidiClipMock("123");
+    setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-    ) {
+    mocks.clip123.call.mockImplementation((method: string) => {
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: [] });
       }
@@ -172,11 +155,11 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     // Should call get_notes_extended in merge mode
-    expectNoteUpdateCalls("123", [note(60, 0)]);
+    expectNoteUpdateCalls(mocks.clip123, [note(60, 0)]);
   });
 
   it("should support bar copy with existing notes in merge mode", async () => {
-    setupMidiClipMock("123");
+    setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in bar 1, then return added notes after add_new_notes
     const existingNotes = [
@@ -185,21 +168,19 @@ describe("updateClip - Advanced note operations", () => {
     ];
     let addedNotes = existingNotes;
 
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-      ...args: unknown[]
-    ) {
-      if (method === "add_new_notes") {
-        const arg = args[0] as { notes?: typeof existingNotes } | undefined;
+    mocks.clip123.call.mockImplementation(
+      (method: string, ...args: unknown[]) => {
+        if (method === "add_new_notes") {
+          const arg = args[0] as { notes?: typeof existingNotes } | undefined;
 
-        addedNotes = arg?.notes ?? [];
-      } else if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: addedNotes });
-      }
+          addedNotes = arg?.notes ?? [];
+        } else if (method === "get_notes_extended") {
+          return JSON.stringify({ notes: addedNotes });
+        }
 
-      return {};
-    });
+        return {};
+      },
+    );
 
     const result = await updateClip({
       ids: "123",
@@ -208,52 +189,46 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     // Should add existing notes + copied notes
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      {
-        notes: [
-          // Existing notes in bar 1
-          note(60, 0),
-          note(64, 1, { velocity: 80 }),
-          // Copied to bar 2 (starts at beat 4)
-          note(60, 4),
-          note(64, 5, { velocity: 80 }),
-        ],
-      },
-    );
+    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        // Existing notes in bar 1
+        note(60, 0),
+        note(64, 1, { velocity: 80 }),
+        // Copied to bar 2 (starts at beat 4)
+        note(60, 4),
+        note(64, 5, { velocity: 80 }),
+      ],
+    });
 
     expect(result).toStrictEqual({ id: "123", noteCount: 4 }); // 2 existing + 2 copied
   });
 
   it("should report noteCount only for notes within clip playback region when length is set", async () => {
-    setupMidiClipMock("123", { length: 8 }); // 2 bars
+    setupMidiClipMock(mocks.clip123, { length: 8 }); // 2 bars
 
     // Mock to track added notes and return subset based on length parameter
     let allAddedNotes: Array<{ start_time: number }> = [];
 
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-      ...args: unknown[]
-    ) {
-      if (method === "add_new_notes") {
-        const arg = args[0] as { notes?: typeof allAddedNotes } | undefined;
+    mocks.clip123.call.mockImplementation(
+      (method: string, ...args: unknown[]) => {
+        if (method === "add_new_notes") {
+          const arg = args[0] as { notes?: typeof allAddedNotes } | undefined;
 
-        allAddedNotes = arg?.notes ?? [];
-      } else if (method === "get_notes_extended") {
-        // First call returns empty (replace mode), second call filters by length
-        const startBeat = (args[2] as number | undefined) ?? 0;
-        const endBeat = (args[3] as number | undefined) ?? Infinity;
-        const notesInRange = allAddedNotes.filter(
-          (n) => n.start_time >= startBeat && n.start_time < endBeat,
-        );
+          allAddedNotes = arg?.notes ?? [];
+        } else if (method === "get_notes_extended") {
+          // First call returns empty (replace mode), second call filters by length
+          const startBeat = (args[2] as number | undefined) ?? 0;
+          const endBeat = (args[3] as number | undefined) ?? Infinity;
+          const notesInRange = allAddedNotes.filter(
+            (n) => n.start_time >= startBeat && n.start_time < endBeat,
+          );
 
-        return JSON.stringify({ notes: notesInRange });
-      }
+          return JSON.stringify({ notes: notesInRange });
+        }
 
-      return {};
-    });
+        return {};
+      },
+    );
 
     const result = await updateClip({
       ids: "123",
@@ -271,7 +246,7 @@ describe("updateClip - Advanced note operations", () => {
     expect(result).toStrictEqual({ id: "123", noteCount: 2 });
 
     // Verify get_notes_extended was called with the clip's length (8 beats)
-    expect(liveApiCall).toHaveBeenCalledWith(
+    expect(mocks.clip123.call).toHaveBeenCalledWith(
       "get_notes_extended",
       0,
       128,
@@ -281,13 +256,10 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should support bar copy with v0 deletions in merge mode", async () => {
-    setupMidiClipMock("123");
+    setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in bar 1
-    liveApiCall.mockImplementation(function (
-      this: MockLiveAPIContext,
-      method: string,
-    ) {
+    mocks.clip123.call.mockImplementation((method: string) => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
@@ -307,32 +279,27 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     // Should have E3 in bar 1 and E3 copied to bar 2 (C3 deleted by v0)
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      {
-        notes: [
-          // E3 remains in bar 1 (C3 deleted)
-          note(64, 1, { velocity: 80 }),
-          // E3 copied to bar 2 (beat 5)
-          note(64, 5, { velocity: 80 }),
-        ],
-      },
-    );
+    expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        // E3 remains in bar 1 (C3 deleted)
+        note(64, 1, { velocity: 80 }),
+        // E3 copied to bar 2 (beat 5)
+        note(64, 5, { velocity: 80 }),
+      ],
+    });
 
     expect(result).toStrictEqual({ id: "123", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
   });
 
   it("should update warp mode for audio clips", async () => {
-    setupAudioClipMock("123");
+    setupAudioClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
       warpMode: "complex",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "warp_mode",
       4, // Complex mode = 4
     );
@@ -341,15 +308,14 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should update warping on/off for audio clips", async () => {
-    setupAudioClipMock("123");
+    setupAudioClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
       warping: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "warping",
       1, // true = 1
     );
@@ -358,7 +324,7 @@ describe("updateClip - Advanced note operations", () => {
   });
 
   it("should update both warp mode and warping together", async () => {
-    setupAudioClipMock("123");
+    setupAudioClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
@@ -366,13 +332,11 @@ describe("updateClip - Advanced note operations", () => {
       warping: false,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "warp_mode",
       0, // Beats mode = 0
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
+    expect(mocks.clip123.set).toHaveBeenCalledWith(
       "warping",
       0, // false = 0
     );

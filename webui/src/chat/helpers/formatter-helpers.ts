@@ -5,7 +5,7 @@
 /**
  * Shared utilities for message formatters.
  */
-import type { UIMessage } from "#webui/types/messages";
+import { type UIMessage } from "#webui/types/messages";
 
 /**
  * Mark the last thought part as open if it exists.

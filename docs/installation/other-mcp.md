@@ -43,23 +43,17 @@ This option requires [Node.js 20+](https://nodejs.org/en/download).
 
 ::: details Using a small/local model?
 
-If you're using a small local model with
-[Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended)
-enabled in the device, enable the `SMALL_MODEL_MODE` environment variable in
-your MCP server settings:
+Add the `-s` flag to enable
+[Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended),
+which simplifies the tool interface for smaller LLMs and automatically enables
+it on the device when connected:
 
 ```json
 {
   "command": "npx",
-  "args": ["-y", "producer-pal"],
-  "env": {
-    "SMALL_MODEL_MODE": "true"
-  }
+  "args": ["-y", "producer-pal", "-s"]
 }
 ```
-
-This ensures the AI won't cache large model tool definitions if a conversation
-is started before Ableton Live and the Producer Pal device are running.
 
 :::
 
@@ -102,23 +96,17 @@ This option requires [Node.js 20+](https://nodejs.org/en/download).
 
 ::: details Using a small/local model?
 
-If you're using a small local model with
-[Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended)
-enabled in the device, enable the `SMALL_MODEL_MODE` environment variable in
-your MCP server settings:
+Add the `-s` flag to enable
+[Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended),
+which simplifies the tool interface for smaller LLMs and automatically enables
+it on the device when connected:
 
 ```json
 {
   "command": "node",
-  "args": ["/path/to/producer-pal-portal.js"],
-  "env": {
-    "SMALL_MODEL_MODE": "true"
-  }
+  "args": ["/path/to/producer-pal-portal.js", "-s"]
 }
 ```
-
-This ensures the AI won't cache large model tool definitions if a conversation
-is started before Ableton Live and the Producer Pal device are running.
 
 :::
 

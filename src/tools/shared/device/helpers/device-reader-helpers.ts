@@ -64,6 +64,40 @@ export function isRedundantDeviceClassName(
 }
 
 /**
+ * Build chain info with depth-controlled device expansion
+ * At depth limit, shows deviceCount instead of expanding devices
+ * @param chain - Chain LiveAPI object
+ * @param chainPath - Resolved chain path
+ * @param depth - Current depth
+ * @param maxDepth - Max depth for device expansion
+ * @param readDeviceFn - readDevice function for recursive expansion
+ * @param deviceOptions - Options passed to readDeviceFn for nested devices
+ * @returns Chain info object
+ */
+function buildChainAtDepth(
+  chain: LiveAPI,
+  chainPath: string | null,
+  depth: number,
+  maxDepth: number,
+  readDeviceFn: ReadDeviceFn,
+  deviceOptions: Record<string, unknown>,
+): Record<string, unknown> {
+  if (depth >= maxDepth) {
+    const deviceCount = chain.getChildren("devices").length;
+
+    return buildChainInfo(chain, { path: chainPath, deviceCount });
+  }
+
+  const devices = chain.getChildren("devices").map((d, deviceIndex) => {
+    const nestedDevicePath = chainPath ? `${chainPath}/d${deviceIndex}` : null;
+
+    return readDeviceFn(d, { ...deviceOptions, parentPath: nestedDevicePath });
+  });
+
+  return buildChainInfo(chain, { path: chainPath, devices });
+}
+
+/**
  * Process regular (non-drum) rack chains
  * @param device - Device object
  * @param deviceInfo - Device info to update
@@ -90,25 +124,24 @@ function processRegularChains(
   );
 
   if (includeChains) {
+    const deviceOptions = {
+      includeChains,
+      includeDrumPads,
+      depth: depth + 1,
+      maxDepth,
+    };
+
     deviceInfo.chains = chains.map((chain, index) => {
       const chainPath = devicePath ? buildChainPath(devicePath, index) : null;
-      const devices = chain
-        .getChildren("devices")
-        .map((chainDevice, deviceIndex) => {
-          const nestedDevicePath = chainPath
-            ? `${chainPath}/${deviceIndex}`
-            : null;
 
-          return readDeviceFn(chainDevice, {
-            includeChains,
-            includeDrumPads,
-            depth: depth + 1,
-            maxDepth,
-            parentPath: nestedDevicePath,
-          });
-        });
-
-      return buildChainInfo(chain, { path: chainPath, devices });
+      return buildChainAtDepth(
+        chain,
+        chainPath,
+        depth,
+        maxDepth,
+        readDeviceFn,
+        deviceOptions,
+      );
     });
   }
 
@@ -212,23 +245,26 @@ function processReturnChains(
 
   if (returnChains.length === 0) return;
 
+  const deviceOptions = {
+    includeChains,
+    includeReturnChains,
+    depth: depth + 1,
+    maxDepth,
+  };
+
   deviceInfo.returnChains = returnChains.map((chain, index) => {
     const chainPath = devicePath
       ? buildReturnChainPath(devicePath, index)
       : null;
-    const devices = chain.getChildren("devices").map((d, deviceIndex) => {
-      const nestedDevicePath = chainPath ? `${chainPath}/${deviceIndex}` : null;
 
-      return readDeviceFn(d, {
-        includeChains,
-        includeReturnChains,
-        depth: depth + 1,
-        maxDepth,
-        parentPath: nestedDevicePath,
-      });
-    });
-
-    return buildChainInfo(chain, { path: chainPath, devices });
+    return buildChainAtDepth(
+      chain,
+      chainPath,
+      depth,
+      maxDepth,
+      readDeviceFn,
+      deviceOptions,
+    );
   });
 }
 

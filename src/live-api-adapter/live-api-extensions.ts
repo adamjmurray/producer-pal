@@ -4,16 +4,17 @@
 
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic property handling requires any */
+import { type PathLike } from "#src/shared/live-api-path-builders.ts";
 import { parseIdOrPath } from "./live-api-path-utils.ts";
 
 if (typeof LiveAPI !== "undefined") {
   /**
    * Create a LiveAPI instance from an ID or path, automatically handling ID prefixing
-   * @param idOrPath - ID number/string, full path, or ["id", "123"] array
+   * @param idOrPath - ID number/string, full path, PathLike, or ["id", "123"] array
    * @returns New LiveAPI instance
    */
   LiveAPI.from = function (
-    idOrPath: string | number | [string, string | number],
+    idOrPath: string | number | [string, string | number] | PathLike,
   ): LiveAPI {
     return new LiveAPI(parseIdOrPath(idOrPath));
   };

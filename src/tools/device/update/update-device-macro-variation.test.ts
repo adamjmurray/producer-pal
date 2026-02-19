@@ -1,61 +1,38 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  liveApiType,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { updateDevice } from "./update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - macroVariation", () => {
+  let rackDevice: RegisteredMockObject;
+  let nonRackDevice: RegisteredMockObject;
+
   beforeEach(() => {
-    vi.clearAllMocks();
-
-    // macroVariation requires RackDevice type
-    liveApiType.mockImplementation(() => "RackDevice");
-
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "123";
-        case "id 456":
-          return "456";
-        default:
-          return "0";
-      }
-    });
-
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "id 123":
-          return "live_set tracks 0 devices 0";
-        case "id 456":
-          return "live_set tracks 0 devices 1";
-        default:
-          return this._path;
-      }
-    });
-
     // Default: rack device with 3 variations, variation 1 selected
-    liveApiGet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-      if (this._path === "id 123") {
-        if (prop === "can_have_chains") return [1];
-        if (prop === "variation_count") return [3];
-        if (prop === "selected_variation_index") return [1];
-      }
+    rackDevice = registerMockObject("123", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        can_have_chains: 1,
+        variation_count: 3,
+        selected_variation_index: 1,
+      },
+    });
 
-      // Non-rack device (id 456)
-      if (this._path === "id 456" && prop === "can_have_chains") return [0];
-
-      return [0];
+    // Non-rack device (can_have_chains = 0)
+    nonRackDevice = registerMockObject("456", {
+      path: livePath.track(0).device(1),
+      type: "RackDevice",
+      properties: { can_have_chains: 0 },
     });
   });
 
@@ -69,7 +46,7 @@ describe("updateDevice - macroVariation", () => {
       1,
       "updateDevice: macro variations only available on rack devices",
     );
-    expect(liveApiCall).not.toHaveBeenCalled();
+    expect(nonRackDevice.call).not.toHaveBeenCalled();
     expect(result).toStrictEqual({ id: "456" });
   });
 
@@ -84,8 +61,7 @@ describe("updateDevice - macroVariation", () => {
       1,
       "updateDevice: variation index 5 out of range (3 available)",
     );
-    expect(liveApiSet).not.toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id 123" }),
+    expect(rackDevice.set).not.toHaveBeenCalledWith(
       "selected_variation_index",
       expect.anything(),
     );
@@ -98,10 +74,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariation: "create",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id 123" }),
-      "store_variation",
-    );
+    expect(rackDevice.call).toHaveBeenCalledWith("store_variation");
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -112,10 +85,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariationIndex: 1,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id 123" }),
-      "recall_selected_variation",
-    );
+    expect(rackDevice.call).toHaveBeenCalledWith("recall_selected_variation");
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -125,10 +95,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariation: "revert",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id 123" }),
-      "recall_last_used_variation",
-    );
+    expect(rackDevice.call).toHaveBeenCalledWith("recall_last_used_variation");
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -139,10 +106,7 @@ describe("updateDevice - macroVariation", () => {
       macroVariationIndex: 1,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id 123" }),
-      "delete_selected_variation",
-    );
+    expect(rackDevice.call).toHaveBeenCalledWith("delete_selected_variation");
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -152,27 +116,18 @@ describe("updateDevice - macroVariation", () => {
       macroVariation: "randomize",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id 123" }),
-      "randomize_macros",
-    );
+    expect(rackDevice.call).toHaveBeenCalledWith("randomize_macros");
     expect(result).toStrictEqual({ id: "123" });
   });
 
   it("should set index before executing action for 'load'", () => {
-    const callOrder: Array<{
-      method: string;
-      path: string | undefined;
-      prop?: string;
-      fn?: string;
-    }> = [];
+    const callOrder: string[] = [];
 
-    liveApiSet.mockImplementation(function (this: MockLiveAPIContext, prop) {
-      callOrder.push({ method: "set", path: this._path, prop });
+    rackDevice.set.mockImplementation(() => {
+      callOrder.push("set");
     });
-
-    liveApiCall.mockImplementation(function (this: MockLiveAPIContext, method) {
-      callOrder.push({ method: "call", path: this._path, fn: method });
+    rackDevice.call.mockImplementation(() => {
+      callOrder.push("call");
     });
 
     updateDevice({
@@ -181,10 +136,9 @@ describe("updateDevice - macroVariation", () => {
       macroVariation: "load",
     });
 
-    expect(callOrder).toStrictEqual([
-      { method: "set", path: "id 123", prop: "selected_variation_index" },
-      { method: "call", path: "id 123", fn: "recall_selected_variation" },
-    ]);
+    expect(callOrder).toStrictEqual(["set", "call"]);
+    expect(rackDevice.set).toHaveBeenCalledWith("selected_variation_index", 0);
+    expect(rackDevice.call).toHaveBeenCalledWith("recall_selected_variation");
   });
 
   it("should warn and ignore when macroVariationIndex provided alone", () => {
@@ -197,8 +151,7 @@ describe("updateDevice - macroVariation", () => {
       1,
       "updateDevice: macroVariationIndex requires macroVariation 'load' or 'delete'",
     );
-    expect(liveApiSet).not.toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id 123" }),
+    expect(rackDevice.set).not.toHaveBeenCalledWith(
       "selected_variation_index",
       expect.anything(),
     );
@@ -215,7 +168,7 @@ describe("updateDevice - macroVariation", () => {
       1,
       "updateDevice: macroVariation 'load' requires macroVariationIndex",
     );
-    expect(liveApiCall).not.toHaveBeenCalled();
+    expect(rackDevice.call).not.toHaveBeenCalled();
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -229,7 +182,7 @@ describe("updateDevice - macroVariation", () => {
       1,
       "updateDevice: macroVariation 'delete' requires macroVariationIndex",
     );
-    expect(liveApiCall).not.toHaveBeenCalled();
+    expect(rackDevice.call).not.toHaveBeenCalled();
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -244,10 +197,7 @@ describe("updateDevice - macroVariation", () => {
       1,
       "updateDevice: macroVariationIndex ignored for 'create' (variations always appended)",
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id 123" }),
-      "store_variation",
-    );
+    expect(rackDevice.call).toHaveBeenCalledWith("store_variation");
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -262,10 +212,7 @@ describe("updateDevice - macroVariation", () => {
       1,
       "updateDevice: macroVariationIndex ignored for 'revert'",
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id 123" }),
-      "recall_last_used_variation",
-    );
+    expect(rackDevice.call).toHaveBeenCalledWith("recall_last_used_variation");
     expect(result).toStrictEqual({ id: "123" });
   });
 
@@ -280,10 +227,7 @@ describe("updateDevice - macroVariation", () => {
       1,
       "updateDevice: macroVariationIndex ignored for 'randomize'",
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "id 123" }),
-      "randomize_macros",
-    );
+    expect(rackDevice.call).toHaveBeenCalledWith("randomize_macros");
     expect(result).toStrictEqual({ id: "123" });
   });
 });

@@ -3,32 +3,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  liveApiType,
-} from "#src/test/mocks/mock-live-api.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
+import {
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import {
   resolveDrumPadFromPath,
   resolveInsertionPath,
 } from "./device-path-helpers.ts";
 
-// Type for mock LiveAPI instance context
-interface MockLiveApiContext {
-  _path?: string;
-  _id?: string;
-  id?: string;
-}
-
 // Type for chain properties
 interface ChainProperties {
   [chainId: string]: {
     inNote?: number;
-    type?: string;
+    type?: LiveObjectType;
     deviceIds?: string[];
   };
 }
@@ -54,49 +44,28 @@ describe("device-path-helpers", () => {
         chainProperties = {},
       } = config;
 
-      liveApiId.mockImplementation(function (this: MockLiveApiContext) {
-        if (this._path === "live_set tracks 1 devices 0") return deviceId;
-
-        return this._id ?? "0";
+      registerMockObject(deviceId, {
+        path: "live_set tracks 1 devices 0",
+        type: "RackDevice",
+        properties: {
+          chains: chainIds.flatMap((c: string) => ["id", c]),
+        },
       });
 
-      liveApiType.mockImplementation(function (this: MockLiveApiContext) {
-        const id = this._id ?? this.id;
+      for (const chainId of chainIds) {
+        const chainProps = chainProperties[chainId] ?? {};
 
-        if (id?.startsWith("chain-"))
-          return chainProperties[id]?.type ?? "DrumChain";
-        if (id?.startsWith("device-")) return "Device";
-
-        return "RackDevice";
-      });
-
-      liveApiGet.mockImplementation(function (
-        this: MockLiveApiContext,
-        prop: string,
-      ) {
-        const id = this._id ?? this.id;
-
-        // Device returns chains
-        if (
-          (id === deviceId || this._path?.includes("devices 0")) &&
-          prop === "chains"
-        )
-          return chainIds.flatMap((c: string) => ["id", c]);
-
-        // Chain properties
-        if (id?.startsWith("chain-")) {
-          const chainProps = chainProperties[id] ?? {};
-
-          if (prop === "in_note") return [chainProps.inNote ?? 36];
-          if (prop === "devices")
-            return (chainProps.deviceIds ?? []).flatMap((d: string) => [
+        registerMockObject(chainId, {
+          type: chainProps.type ?? "DrumChain",
+          properties: {
+            in_note: chainProps.inNote ?? 36,
+            devices: (chainProps.deviceIds ?? []).flatMap((d: string) => [
               "id",
               d,
-            ]);
-        }
-
-        return [];
-      });
+            ]),
+          },
+        });
+      }
     };
 
     it("returns chain when no remaining segments (defaults to chain 0)", () => {
@@ -221,7 +190,7 @@ describe("device-path-helpers", () => {
     });
 
     it("returns null when device does not exist", () => {
-      liveApiId.mockReturnValue("0"); // Makes exists() return false
+      registerMockObject("0", { path: "live_set tracks 99 devices 0" });
 
       const result = resolveDrumPadFromPath(
         "live_set tracks 99 devices 0",
@@ -257,60 +226,26 @@ describe("device-path-helpers", () => {
       const nestedRackId = "nested-rack";
       const nestedChainId = "nested-chain-36";
 
-      liveApiId.mockImplementation(function (this: MockLiveApiContext) {
-        if (this._path === outerPath) return "outer-rack";
-        if (this._path === nestedPath) return nestedRackId;
-        if (this._path?.startsWith("id ")) return this._path.slice(3);
-
-        return this._id ?? "0";
+      registerMockObject("outer-rack", {
+        path: outerPath,
+        type: "RackDevice",
+        properties: { chains: ["id", catchAllChainId] },
       });
 
-      liveApiPath.mockImplementation(function (this: MockLiveApiContext) {
-        const id = this._id ?? this.id;
-
-        if (id === nestedRackId) return nestedPath;
-
-        return this._path;
+      registerMockObject(catchAllChainId, {
+        type: "DrumChain",
+        properties: { in_note: -1, devices: ["id", nestedRackId] },
       });
 
-      liveApiType.mockImplementation(function (this: MockLiveApiContext) {
-        const id = this._id ?? this.id;
-
-        if (id === catchAllChainId) return "DrumChain";
-        if (id === nestedChainId) return "DrumChain";
-        if (id === nestedRackId || this._path === nestedPath)
-          return "DrumGroupDevice";
-
-        return "RackDevice";
+      registerMockObject(nestedRackId, {
+        path: nestedPath,
+        type: "RackDevice",
+        properties: { chains: ["id", nestedChainId] },
       });
 
-      liveApiGet.mockImplementation(function (
-        this: MockLiveApiContext,
-        prop: string,
-      ) {
-        const id = this._id ?? this.id;
-
-        // Outer drum rack returns catch-all chain
-        if (this._path === outerPath && prop === "chains")
-          return ["id", catchAllChainId];
-
-        // Catch-all chain properties
-        if (id === catchAllChainId) {
-          if (prop === "in_note") return [-1]; // Catch-all
-          if (prop === "devices") return ["id", nestedRackId];
-        }
-
-        // Nested drum rack returns C1 chain
-        if (
-          (id === nestedRackId || this._path === nestedPath) &&
-          prop === "chains"
-        )
-          return ["id", nestedChainId];
-
-        // Nested C1 chain properties
-        if (id === nestedChainId && prop === "in_note") return [36]; // C1
-
-        return [];
+      registerMockObject(nestedChainId, {
+        type: "DrumChain",
+        properties: { in_note: 36 },
       });
 
       // Path: p*/c0/d0/pC1 means:
@@ -332,59 +267,33 @@ describe("device-path-helpers", () => {
     // Setup for instrument rack inside drum pad (shared helper):
     // drum rack → C1 chain → instrument rack → rack chain → device
     const setupInstrumentRackInDrumPad = () => {
-      const drumRackPath = "live_set tracks 1 devices 0";
       const drumChainId = "drum-chain-36";
       const instrRackId = "instr-rack";
       const rackChainId = "rack-chain";
       const finalDeviceId = "final-device";
 
-      liveApiId.mockImplementation(function (this: MockLiveApiContext) {
-        if (this._path === drumRackPath) return "drum-rack";
-        if (this._path?.startsWith("id ")) return this._path.slice(3);
-
-        return this._id ?? "0";
+      registerMockObject("drum-rack", {
+        path: "live_set tracks 1 devices 0",
+        type: "RackDevice",
+        properties: { chains: ["id", drumChainId] },
       });
 
-      liveApiPath.mockImplementation(function (this: MockLiveApiContext) {
-        return this._path;
+      registerMockObject(drumChainId, {
+        type: "DrumChain",
+        properties: { in_note: 36, devices: ["id", instrRackId] },
       });
 
-      liveApiType.mockImplementation(function (this: MockLiveApiContext) {
-        const id = this._id ?? this.id;
-
-        if (id === drumChainId) return "DrumChain";
-        if (id === rackChainId) return "Chain";
-        if (id === instrRackId) return "InstrumentGroupDevice";
-        if (id === finalDeviceId) return "PluginDevice";
-
-        return "DrumGroupDevice";
+      registerMockObject(instrRackId, {
+        type: "RackDevice",
+        properties: { chains: ["id", rackChainId] },
       });
 
-      liveApiGet.mockImplementation(function (
-        this: MockLiveApiContext,
-        prop: string,
-      ) {
-        const id = this._id ?? this.id;
-
-        // Drum rack returns C1 chain
-        if (this._path === drumRackPath && prop === "chains")
-          return ["id", drumChainId];
-
-        // Drum chain properties
-        if (id === drumChainId) {
-          if (prop === "in_note") return [36]; // C1
-          if (prop === "devices") return ["id", instrRackId];
-        }
-
-        // Instrument rack returns chain
-        if (id === instrRackId && prop === "chains") return ["id", rackChainId];
-
-        // Rack chain returns device
-        if (id === rackChainId && prop === "devices")
-          return ["id", finalDeviceId];
-
-        return [];
+      registerMockObject(rackChainId, {
+        type: "Chain",
+        properties: { devices: ["id", finalDeviceId] },
       });
+
+      registerMockObject(finalDeviceId, { type: "PluginDevice" });
 
       return { drumChainId, instrRackId, rackChainId, finalDeviceId };
     };
@@ -493,9 +402,10 @@ describe("device-path-helpers", () => {
     }
 
     /**
-     * Setup mocks for auto-creation tests
+     * Setup mocks for auto-creation tests.
+     * Uses mutable chainIdArray so insert_chain updates are visible to get("chains").
      * @param config - Configuration for mock setup
-     * @returns Chain IDs and properties for verification
+     * @returns Device mock and created chain mocks for assertions
      */
     function setupAutoCreationMocks(config: AutoCreateConfig = {}) {
       const {
@@ -503,84 +413,64 @@ describe("device-path-helpers", () => {
         chainProperties = {},
         includeCreationMocks = true,
       } = config;
-      const deviceId = "drum-rack-1";
 
-      liveApiId.mockImplementation(function (this: MockLiveApiContext) {
-        if (this._path === "live_set tracks 0") return "track-0";
-        if (this._path === "live_set tracks 0 devices 0") return deviceId;
-        if (this._path?.startsWith("id ")) return this._path.slice(3);
+      // Mutable flat array — insert_chain pushes to it, get("chains") reads it
+      const chainIdArray: string[] = chainIds.flatMap((c) => ["id", c]);
+      const createdChainMocks: RegisteredMockObject[] = [];
 
-        return this._id ?? "0";
+      const deviceMock = registerMockObject("drum-rack-1", {
+        path: "live_set tracks 0 devices 0",
+        type: "RackDevice",
+        properties: { chains: chainIdArray },
+        methods: includeCreationMocks
+          ? {
+              insert_chain: () => {
+                const newId = `chain-new-${chainIdArray.length / 2}`;
+
+                chainIdArray.push("id", newId);
+
+                // Register new chain with mutable props so set("in_note") is visible to get
+                const props: Record<string, unknown> = { in_note: -1 };
+                const mock = registerMockObject(newId, {
+                  type: "DrumChain",
+                  properties: props,
+                });
+
+                mock.set.mockImplementation((prop: string, value: unknown) => {
+                  props[prop] = value;
+                });
+                createdChainMocks.push(mock);
+              },
+            }
+          : undefined,
       });
 
-      liveApiType.mockImplementation(function (this: MockLiveApiContext) {
-        const id = this._id ?? this.id;
+      // Register existing chains
+      for (const chainId of chainIds) {
+        const chainProps = chainProperties[chainId] ?? {};
 
-        if (id?.startsWith("chain-")) return "DrumChain";
-
-        return "DrumGroupDevice";
-      });
-
-      liveApiGet.mockImplementation(function (
-        this: MockLiveApiContext,
-        prop: string,
-      ) {
-        const id = this._id ?? this.id;
-
-        if (
-          (id === deviceId || this._path?.includes("devices 0")) &&
-          prop === "chains"
-        )
-          return chainIds.flatMap((c) => ["id", c]);
-
-        if (id?.startsWith("chain-")) {
-          const chainProps = chainProperties[id] ?? {};
-
-          if (prop === "in_note") return [chainProps.inNote ?? 36];
-        }
-
-        return [];
-      });
-
-      if (includeCreationMocks) {
-        liveApiCall.mockImplementation(function (method: string) {
-          if (method === "insert_chain") {
-            const newId = `chain-new-${chainIds.length}`;
-
-            chainIds.push(newId);
-            chainProperties[newId] = { inNote: -1 };
-          }
-        });
-
-        liveApiSet.mockImplementation(function (
-          this: MockLiveApiContext,
-          prop: string,
-          value: number,
-        ) {
-          const id = this._id ?? this.id;
-
-          if (prop === "in_note" && id?.startsWith("chain-")) {
-            chainProperties[id] = { inNote: value };
-          }
+        registerMockObject(chainId, {
+          type: "DrumChain",
+          properties: { in_note: chainProps.inNote ?? 36 },
         });
       }
 
-      return { chainIds, chainProperties };
+      return { deviceMock, createdChainMocks };
     }
 
     it("auto-creates first chain when no chain exists for note", () => {
-      setupAutoCreationMocks();
+      const { deviceMock, createdChainMocks } = setupAutoCreationMocks();
 
       const result = resolveInsertionPath("t0/d0/pC1"); // MIDI 36
 
-      expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
-      expect(liveApiSet).toHaveBeenCalledWith("in_note", 36);
+      expect(deviceMock.call).toHaveBeenCalledWith("insert_chain");
+      expect(createdChainMocks[0]!.set).toHaveBeenCalledWith("in_note", 36);
       expect(result.container).not.toBeNull();
       expect(result.position).toBeNull();
     });
 
     it("auto-creates multiple chains for layering", () => {
-      setupAutoCreationMocks({
+      const { deviceMock } = setupAutoCreationMocks({
         chainIds: ["chain-existing"],
         chainProperties: { "chain-existing": { inNote: 36 } },
       });
@@ -589,7 +479,7 @@ describe("device-path-helpers", () => {
       // Path "t0/d0/pC1/c2" means chain index 2 with no device position
       const result = resolveInsertionPath("t0/d0/pC1/c2");
 
-      expect(liveApiCall).toHaveBeenCalledTimes(2); // Create 2 chains
+      expect(deviceMock.call).toHaveBeenCalledTimes(2); // Create 2 chains
       expect(result.container).not.toBeNull();
     });
 
@@ -603,7 +493,7 @@ describe("device-path-helpers", () => {
     });
 
     it("does not auto-create when chain already exists", () => {
-      setupAutoCreationMocks({
+      const { deviceMock } = setupAutoCreationMocks({
         chainIds: ["chain-36"],
         chainProperties: { "chain-36": { inNote: 36 } },
         includeCreationMocks: false,
@@ -611,29 +501,33 @@ describe("device-path-helpers", () => {
 
       const result = resolveInsertionPath("t0/d0/pC1");
 
-      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(deviceMock.call).not.toHaveBeenCalled();
       expect(result.container).not.toBeNull();
       expect(result.container!.id).toBe("chain-36");
     });
 
     it("returns null for invalid note name during auto-creation", () => {
-      setupAutoCreationMocks({ includeCreationMocks: false });
+      const { deviceMock } = setupAutoCreationMocks({
+        includeCreationMocks: false,
+      });
 
       // Invalid note name (not a valid MIDI note)
       const result = resolveInsertionPath("t0/d0/pInvalidNote");
 
       expect(result.container).toBeNull();
-      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(deviceMock.call).not.toHaveBeenCalled();
     });
 
     it("returns null for negative chain index during auto-creation", () => {
-      setupAutoCreationMocks({ includeCreationMocks: false });
+      const { deviceMock } = setupAutoCreationMocks({
+        includeCreationMocks: false,
+      });
 
       // Negative chain index is invalid
       const result = resolveInsertionPath("t0/d0/pC1/c-1");
 
       expect(result.container).toBeNull();
-      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(deviceMock.call).not.toHaveBeenCalled();
     });
   });
 });

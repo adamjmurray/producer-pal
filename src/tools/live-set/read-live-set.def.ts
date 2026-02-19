@@ -7,8 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
   title: "Read Live Set",
-  description: `Read Live Set global settings, tracks, scenes, devices, clips.
-Re-read after moves/deletes for updated state.`,
+  description: `Read Live Set global settings, track/scene overview.
+Returns overview by default. Use include to add detail.`,
 
   annotations: {
     readOnlyHint: true,
@@ -18,40 +18,25 @@ Re-read after moves/deletes for updated state.`,
     include: z
       .array(
         z.enum([
-          "regular-tracks",
-          "return-tracks",
-          "master-track",
-          "all-tracks",
-          "routings",
+          "tracks",
           "scenes",
-          "midi-effects",
-          "instruments",
-          "audio-effects",
-          "all-devices",
-          "chains",
-          "return-chains",
-          "drum-pads",
-          "drum-maps",
-          "session-clips",
-          "arrangement-clips",
-          "all-clips",
-          "clip-notes",
-          "color",
+          "routings",
           "mixer",
+          "color",
           "locators",
           "*",
         ]),
       )
-      .default(["regular-tracks", "instruments", "drum-maps"])
+      .default([])
       .describe(
-        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, color, locators, "*" for all (avoid in big sets).',
+        'tracks, scenes = lists. routings, mixer, color = track detail (use with tracks). locators = arrangement markers. "*" = all',
       ),
   },
 
   smallModelModeConfig: {
     descriptionOverrides: {
       include:
-        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, color, "*" for all (avoid in big sets).',
+        'tracks, scenes = lists. routings, mixer, color = track detail (use with tracks). locators = arrangement markers. "*" = all',
     },
   },
 });

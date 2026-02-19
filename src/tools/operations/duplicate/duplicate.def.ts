@@ -6,7 +6,7 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
-  title: "Duplicate Track/Scene/Clip/Device",
+  title: "Duplicate",
   description: "Duplicate an object",
 
   annotations: {
@@ -83,9 +83,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     toPath: z
       .string()
       .optional()
-      .describe(
-        "device destination: t=track, rt=return, mt=master, d=device index, c=chain (e.g., 't1/d0')",
-      ),
+      .describe("device destination path (e.g., 't1/d0')"),
   },
   smallModelModeConfig: {
     excludeParams: [

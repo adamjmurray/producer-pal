@@ -5,12 +5,17 @@
 /**
  * @vitest-environment happy-dom
  */
-import type { RenderResult } from "@testing-library/preact";
-import { render, screen, fireEvent } from "@testing-library/preact";
-import type { Mock } from "vitest";
-import { describe, expect, it, vi } from "vitest";
-import type { ThinkingSettingsProps } from "./ThinkingSettings";
-import { ThinkingSettings } from "./ThinkingSettings";
+import {
+  type RenderResult,
+  render,
+  screen,
+  fireEvent,
+} from "@testing-library/preact";
+import { type Mock, describe, expect, it, vi } from "vitest";
+import {
+  type ThinkingSettingsProps,
+  ThinkingSettings,
+} from "./ThinkingSettings";
 
 type RenderProps = Partial<ThinkingSettingsProps> & {
   setThinking?: Mock;
@@ -95,6 +100,46 @@ describe("ThinkingSettings", () => {
       renderThinkingSettings({
         provider: "openai",
         model: "gpt-5-2025-08-07",
+        thinking: "Low",
+      });
+      expectCheckboxHidden();
+    });
+  });
+
+  describe("Ollama provider", () => {
+    it("renders all thinking options", () => {
+      renderThinkingSettings({
+        provider: "ollama",
+        model: "qwen3",
+        thinking: "Off",
+      });
+      expectAllThinkingOptions();
+    });
+
+    it("does not show checkbox for Ollama provider", () => {
+      renderThinkingSettings({
+        provider: "ollama",
+        model: "qwen3",
+        thinking: "Low",
+      });
+      expectCheckboxHidden();
+    });
+  });
+
+  describe("LM Studio provider", () => {
+    it("renders all thinking options", () => {
+      renderThinkingSettings({
+        provider: "lmstudio",
+        model: "gpt-oss",
+        thinking: "Off",
+      });
+      expectAllThinkingOptions();
+    });
+
+    it("does not show checkbox for LM Studio provider", () => {
+      renderThinkingSettings({
+        provider: "lmstudio",
+        model: "gpt-oss",
         thinking: "Low",
       });
       expectCheckboxHidden();

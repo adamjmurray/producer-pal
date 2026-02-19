@@ -8,9 +8,9 @@ import {
 } from "#webui/chat/gemini/client";
 import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
 import { buildGeminiConfig } from "#webui/hooks/settings/config-builders";
-import type { GeminiMessage } from "#webui/types/messages";
+import { type GeminiMessage } from "#webui/types/messages";
 import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
-import type { ChatAdapter } from "./use-chat";
+import { type ChatAdapter } from "./use-chat";
 
 /**
  * Gemini provider adapter for use with the generic useChat hook

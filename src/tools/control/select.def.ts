@@ -6,7 +6,7 @@ import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefSelect = defineTool("ppal-select", {
-  title: "Selection Controls",
+  title: "Select",
   description: "Read selection/view state (no args), or update it",
 
   annotations: {

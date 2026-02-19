@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import type OpenAI from "openai";
-import type { OpenAIToolCall } from "#webui/types/messages";
+import { type OpenAIToolCall } from "#webui/types/messages";
 
 type Delta = OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
@@ -12,8 +12,9 @@ type Delta = OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
  * These fields exist at runtime but aren't in official openai types yet.
  */
 interface DeltaWithReasoning extends Delta {
-  reasoning_content?: string;
-  reasoning_details?: ReasoningDetail[];
+  reasoning?: string; // Ollama OpenAI-compatible format
+  reasoning_content?: string; // DeepSeek format
+  reasoning_details?: ReasoningDetail[]; // OpenAI/OpenRouter format
 }
 
 /**
@@ -43,13 +44,17 @@ export interface OpenAIAssistantMessageWithReasoning {
 
 /**
  * Processes a streaming delta chunk to extract reasoning content.
- * Handles both OpenAI's reasoning_content field and OpenRouter's reasoning_details array.
+ * Handles Ollama's reasoning field, DeepSeek's reasoning_content, and OpenRouter's reasoning_details array.
  *
  * @param delta - The delta object from a streaming chunk
  * @returns The reasoning text from this delta, or empty string if none
  */
 export function extractReasoningFromDelta(delta: Delta): string {
   const d = delta as DeltaWithReasoning;
+
+  if (d.reasoning) {
+    return d.reasoning;
+  }
 
   if (d.reasoning_content) {
     return d.reasoning_content;
@@ -71,6 +76,55 @@ export function extractReasoningFromDelta(delta: Delta): string {
 }
 
 /**
+ * Accumulates a string reasoning value into the map as a synthetic reasoning.text entry.
+ * Used for Ollama's `reasoning` and DeepSeek's `reasoning_content` fields.
+ * @param text - Reasoning string from the delta
+ * @param reasoningDetailsMap - Map of reasoning blocks by type-index key
+ */
+function accumulateStringReasoning(
+  text: string,
+  reasoningDetailsMap: Map<string, ReasoningDetail>,
+): void {
+  const key = "reasoning.text-0";
+  const existing = reasoningDetailsMap.get(key);
+
+  if (existing) {
+    existing.text = (existing.text ?? "") + text;
+  } else {
+    reasoningDetailsMap.set(key, {
+      type: "reasoning.text",
+      text,
+      index: 0,
+    });
+  }
+}
+
+/**
+ * Merges a new reasoning detail chunk into an existing entry.
+ * Accumulates text and merges new/empty fields from later chunks.
+ * @param existing - Existing reasoning detail entry
+ * @param detail - New detail chunk to merge
+ */
+function mergeReasoningDetail(
+  existing: ReasoningDetail,
+  detail: ReasoningDetail,
+): void {
+  if (detail.text) existing.text = (existing.text ?? "") + detail.text;
+
+  // Merge NEW fields from later chunks (e.g., thought_signature, signature)
+  // Also overwrite empty strings - Anthropic sends signature:"" first, real value later
+  for (const field of Object.keys(detail)) {
+    if (field === "text" || field === "index") continue;
+    const existingVal = existing[field];
+    const newVal = detail[field];
+
+    if (existingVal === undefined || (existingVal === "" && newVal)) {
+      existing[field] = newVal;
+    }
+  }
+}
+
+/**
  * Processes reasoning delta from a stream chunk and accumulates blocks by type-index key.
  * Preserves full block structure for API round-tripping.
  * @param delta - Delta object from stream chunk
@@ -80,7 +134,16 @@ export function processReasoningDelta(
   delta: Delta,
   reasoningDetailsMap: Map<string, ReasoningDetail>,
 ): void {
-  const details = (delta as DeltaWithReasoning).reasoning_details;
+  const d = delta as DeltaWithReasoning;
+
+  // Handle string-based reasoning fields (Ollama's `reasoning`, DeepSeek's `reasoning_content`)
+  const reasoningString = d.reasoning ?? d.reasoning_content;
+
+  if (reasoningString) {
+    accumulateStringReasoning(reasoningString, reasoningDetailsMap);
+  }
+
+  const details = d.reasoning_details;
 
   if (!details) return;
 
@@ -90,19 +153,7 @@ export function processReasoningDelta(
     const existing = reasoningDetailsMap.get(key);
 
     if (existing) {
-      if (detail.text) existing.text = (existing.text ?? "") + detail.text;
-
-      // Merge NEW fields from later chunks (e.g., thought_signature, signature)
-      // Also overwrite empty strings - Anthropic sends signature:"" first, real value later
-      for (const field of Object.keys(detail)) {
-        if (field === "text" || field === "index") continue;
-        const existingVal = existing[field];
-        const newVal = detail[field];
-
-        if (existingVal === undefined || (existingVal === "" && newVal)) {
-          existing[field] = newVal;
-        }
-      }
+      mergeReasoningDetail(existing, detail);
     } else {
       reasoningDetailsMap.set(key, { ...detail });
     }

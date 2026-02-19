@@ -7,11 +7,11 @@
  * Converts Responses API format to UI-friendly UIMessage format.
  */
 import { markLastThoughtAsOpen } from "#webui/chat/helpers/formatter-helpers";
-import type { UIMessage, UIPart } from "#webui/types/messages";
-import type {
-  ResponsesConversationItem,
-  ResponsesFunctionCallItem,
-  ResponsesOutputItem,
+import { type UIMessage, type UIPart } from "#webui/types/messages";
+import {
+  type ResponsesConversationItem,
+  type ResponsesFunctionCallItem,
+  type ResponsesOutputItem,
 } from "#webui/types/responses-api";
 import { extractReasoningText } from "./responses-streaming";
 

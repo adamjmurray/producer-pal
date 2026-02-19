@@ -4,11 +4,11 @@
 
 import * as console from "#src/shared/v8-max-console.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
-import type { NoteEvent, BarCopyNote } from "../../../types.ts";
-import type {
-  PitchState,
-  InterpreterState,
-  TimePosition,
+import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
+import {
+  type PitchState,
+  type InterpreterState,
+  type TimePosition,
 } from "./barbeat-interpreter-buffer-helpers.ts";
 
 export interface RepeatPattern {
@@ -18,7 +18,7 @@ export interface RepeatPattern {
 }
 
 export interface TimeElement {
-  bar?: number | null;
+  bar?: number;
   beat?: number | RepeatPattern;
 }
 
@@ -139,21 +139,15 @@ function emitPitchAtPosition(
 function emitPitchesAtPositions(
   positions: TimePosition[],
   currentPitches: PitchState[],
-  element: TimeElement,
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
   events: NoteEvent[],
   notesByBar: Map<number, BarCopyNote[]>,
-): { currentTime: TimePosition | null; hasExplicitBarNumber: boolean } {
+): { currentTime: TimePosition | null } {
   let currentTime: TimePosition | null = null;
-  let hasExplicitBarNumber = false;
 
   for (const position of positions) {
     currentTime = position;
-
-    if (element.bar !== null) {
-      hasExplicitBarNumber = true;
-    }
 
     for (const pitchState of currentPitches) {
       emitPitchAtPosition(
@@ -167,7 +161,7 @@ function emitPitchesAtPositions(
     }
   }
 
-  return { currentTime, hasExplicitBarNumber };
+  return { currentTime };
 }
 
 /**
@@ -182,20 +176,18 @@ export function calculatePositions(
   state: InterpreterState,
   beatsPerBar: number,
 ): TimePosition[] {
-  if (typeof element.beat === "object") {
-    const currentBar =
-      element.bar ?? (state.hasExplicitBarNumber ? state.currentTime.bar : 1);
+  // bar is always defined when this function is called (checked at barbeat-interpreter.ts dispatch)
+  const bar = element.bar as number;
 
+  if (typeof element.beat === "object") {
     return expandRepeatPattern(
       element.beat,
-      currentBar,
+      bar,
       beatsPerBar,
       state.currentDuration,
     );
   }
 
-  const bar =
-    element.bar ?? (state.hasExplicitBarNumber ? state.currentTime.bar : 1);
   const beat = element.beat as number;
 
   return [{ bar, beat }];
@@ -205,7 +197,6 @@ export function calculatePositions(
  * Handle pitch emission or warn if no pitches
  * @param positions - Array of time positions
  * @param state - Interpreter state
- * @param element - Time element
  * @param beatsPerBar - Beats per bar
  * @param timeSigDenominator - Time signature denominator
  * @param events - Output events array
@@ -214,7 +205,6 @@ export function calculatePositions(
 export function handlePitchEmission(
   positions: TimePosition[],
   state: InterpreterState,
-  element: TimeElement,
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
   events: NoteEvent[],
@@ -245,7 +235,6 @@ export function handlePitchEmission(
   const emitResult = emitPitchesAtPositions(
     positions,
     state.currentPitches,
-    element,
     beatsPerBar,
     timeSigDenominator,
     events,
@@ -254,10 +243,6 @@ export function handlePitchEmission(
 
   if (emitResult.currentTime != null) {
     state.currentTime = emitResult.currentTime;
-  }
-
-  if (emitResult.hasExplicitBarNumber) {
-    state.hasExplicitBarNumber = true;
   }
 
   state.pitchesEmitted = true;

@@ -1,17 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
-import { setupCuePointMocksBase } from "#src/test/helpers/cue-point-mock-helpers.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { setupCuePointMocksRegistry } from "#src/test/helpers/cue-point-mock-helpers.ts";
 import {
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  liveApiType,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 
 interface LiveSetConfig {
   numerator?: number;
@@ -38,59 +36,77 @@ interface ClipPathMapping {
   path: string;
 }
 
+interface MultiClipMockResult {
+  liveSet: RegisteredMockObject;
+  clipSlots: RegisteredMockObject[];
+}
+
 /**
- * Setup default time signature mock (4/4) for playback tests.
- * Use in beforeEach to initialize standard test state.
+ * Setup a live_set mock with standard transport properties (4/4, loop off).
+ * Override any property via the overrides parameter.
+ * @param overrides - Properties to override on the live_set mock
+ * @returns RegisteredMockObject for the live_set object
  */
-export function setupDefaultTimeSignature(): void {
-  mockLiveApiGet({
-    LiveSet: {
+export function setupPlaybackLiveSet(
+  overrides: Record<string, unknown> = {},
+): RegisteredMockObject {
+  return registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: {
       signature_numerator: 4,
       signature_denominator: 4,
+      loop: 0,
+      loop_start: 0,
+      loop_length: 4,
+      ...overrides,
     },
   });
 }
 
 /**
+ * Setup default time signature mock (4/4) for playback tests.
+ * Registers live_set and default tracks. Use in beforeEach to initialize standard test state.
+ * @returns RegisteredMockObject for the live_set object
+ */
+export function setupDefaultTimeSignature(): RegisteredMockObject {
+  const liveSet = registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+    },
+  });
+
+  // Register default tracks (fallback getLiveSetProperty returns children("track1", "track2"))
+  registerMockObject("track1", { path: livePath.track(0), type: "Track" });
+  registerMockObject("track2", { path: livePath.track(1), type: "Track" });
+
+  return liveSet;
+}
+
+/**
  * Setup mock for a clip that exists but has no track/scene info in its path
  * @param clipId - The clip ID to mock
+ * @returns RegisteredMockObject for the clip
  */
-export function setupClipWithNoTrackPath(clipId: string): void {
-  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._id === clipId) {
-      return "some_invalid_path"; // No track info in path
-    }
-
-    return this._path;
-  });
-
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._id === clipId) {
-      return `id ${clipId}`;
-    }
-
-    return "id 1";
-  });
-
-  liveApiType.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._id === clipId) {
-      return "Clip";
-    }
-
-    return "LiveSet";
+export function setupClipWithNoTrackPath(clipId: string): RegisteredMockObject {
+  return registerMockObject(clipId, {
+    path: "some_invalid_path",
+    type: "Clip",
   });
 }
 
 /**
- * Setup mocks for playback tests with cue points
+ * Setup registry-based mocks for playback tests with cue points.
  * @param options - Configuration options
  * @param options.cuePoints - Cue point definitions
  * @param options.liveSet - Live set properties
+ * @returns RegisteredMockObject for the live_set object
  */
 export function setupCuePointMocks({
   cuePoints,
   liveSet = {},
-}: SetupCuePointMocksOptions): void {
+}: SetupCuePointMocksOptions): RegisteredMockObject {
   const {
     numerator = 4,
     denominator = 4,
@@ -100,7 +116,7 @@ export function setupCuePointMocks({
     tracks = [],
   } = liveSet;
 
-  setupCuePointMocksBase({
+  const { liveSet: liveSetHandle } = setupCuePointMocksRegistry({
     cuePoints,
     liveSetProps: {
       signature_numerator: numerator,
@@ -111,36 +127,40 @@ export function setupCuePointMocks({
       tracks,
     },
   });
+
+  return liveSetHandle;
 }
 
 /**
- * Assert that a Live set property was set via liveApiSet.
+ * Assert that a Live set property was set via a handle's instance mock.
+ * @param handle - RegisteredMockObject for the live_set object
  * @param property - Property name
  * @param value - Expected value
  */
-export function expectLiveSetProperty(property: string, value: unknown): void {
-  expect(liveApiSet).toHaveBeenCalledWithThis(
-    expect.objectContaining({ path: "live_set" }),
-    property,
-    value,
-  );
+export function expectLiveSetProperty(
+  handle: RegisteredMockObject,
+  property: string,
+  value: unknown,
+): void {
+  expect(handle.set).toHaveBeenCalledWith(property, value);
 }
 
 /**
  * Setup mocks for multiple clip path resolutions in playback tests.
- * Configures both the LiveSet state and clip path mappings.
+ * Registers live_set, clips, and clip slots via mock registry.
  * @param clipMappings - Array of clip ID to path mappings (defaults to 3 clips)
+ * @returns Handles for live_set and clip slots
  */
 export function setupMultiClipMocks(
   clipMappings: ClipPathMapping[] = [
-    { clipId: "clip1", path: "live_set tracks 0 clip_slots 0 clip" },
-    { clipId: "clip2", path: "live_set tracks 1 clip_slots 1 clip" },
-    { clipId: "clip3", path: "live_set tracks 2 clip_slots 2 clip" },
+    { clipId: "clip1", path: livePath.track(0).clipSlot(0).clip() },
+    { clipId: "clip2", path: livePath.track(1).clipSlot(1).clip() },
+    { clipId: "clip3", path: livePath.track(2).clipSlot(2).clip() },
   ],
-): void {
-  mockLiveApiGet({
-    ClipSlot: { has_clip: 1 },
-    LiveSet: {
+): MultiClipMockResult {
+  const liveSet = registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: {
       signature_numerator: 4,
       signature_denominator: 4,
       current_song_time: 5,
@@ -150,13 +170,19 @@ export function setupMultiClipMocks(
     },
   });
 
-  liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-    for (const mapping of clipMappings) {
-      if (this._path === mapping.clipId) {
-        return mapping.path;
-      }
-    }
+  // Register default tracks
+  registerMockObject("track1", { path: livePath.track(0), type: "Track" });
+  registerMockObject("track2", { path: livePath.track(1), type: "Track" });
 
-    return this._path;
-  });
+  const clipSlots: RegisteredMockObject[] = [];
+
+  for (const mapping of clipMappings) {
+    registerMockObject(mapping.clipId, { path: mapping.path });
+
+    const clipSlotPath = mapping.path.replace(/ clip$/, "");
+
+    clipSlots.push(registerMockObject(clipSlotPath, { path: clipSlotPath }));
+  }
+
+  return { liveSet, clipSlots };
 }

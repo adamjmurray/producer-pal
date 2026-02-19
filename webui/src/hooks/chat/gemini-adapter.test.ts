@@ -8,7 +8,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { geminiAdapter } from "./gemini-adapter";
 import { GeminiClient } from "#webui/chat/gemini/client";
-import type { GeminiMessage } from "#webui/types/messages";
+import { type GeminiMessage } from "#webui/types/messages";
 import { buildGeminiConfig } from "#webui/hooks/settings/config-builders";
 import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
 import { createGeminiErrorMessage } from "./helpers/streaming-helpers";

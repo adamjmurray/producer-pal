@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { Provider } from "#webui/types/settings";
+import { type Provider } from "#webui/types/settings";
 
 export interface ThinkingSettingsProps {
   provider: Provider;
@@ -32,11 +32,13 @@ export function ThinkingSettings({
   showThoughts,
   setShowThoughts,
 }: ThinkingSettingsProps) {
-  // Only show thinking settings for Gemini, OpenAI, and OpenRouter
+  // Only show thinking settings for providers that support it
   if (
     provider !== "gemini" &&
     provider !== "openai" &&
-    provider !== "openrouter"
+    provider !== "openrouter" &&
+    provider !== "ollama" &&
+    provider !== "lmstudio"
   ) {
     return null;
   }

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import type { OpenAIMessage } from "#webui/types/messages";
+import { type OpenAIMessage } from "#webui/types/messages";
 import { openaiChatAdapter } from "./openai-chat-adapter";
 
 describe("openaiChatAdapter", () => {

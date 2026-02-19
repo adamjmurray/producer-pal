@@ -4,11 +4,12 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { Server } from "node:http";
-import type { AddressInfo } from "node:net";
+import { type Server } from "node:http";
+import { type AddressInfo } from "node:net";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
+import { TOOL_NAMES } from "./create-mcp-server.ts";
 import { setTimeoutForTesting } from "./max-api-adapter.ts";
 
 // Type for mock Max module with test-specific properties
@@ -124,26 +125,25 @@ describe("MCP Express App", () => {
 
       expect(toolNames).toStrictEqual([
         "ppal-connect",
+        "ppal-context",
         "ppal-read-live-set",
         "ppal-update-live-set",
-        "ppal-create-track",
         "ppal-read-track",
+        "ppal-create-track",
         "ppal-update-track",
-        "ppal-create-scene",
         "ppal-read-scene",
+        "ppal-create-scene",
         "ppal-update-scene",
-        "ppal-create-clip",
         "ppal-read-clip",
+        "ppal-create-clip",
         "ppal-update-clip",
-        "ppal-create-device",
         "ppal-read-device",
+        "ppal-create-device",
         "ppal-update-device",
-        "ppal-playback",
-        "ppal-select",
         "ppal-delete",
         "ppal-duplicate",
-        "ppal-memory",
-        "ppal-read-samples",
+        "ppal-select",
+        "ppal-playback",
         "ppal-raw-live-api",
       ]);
     });
@@ -186,7 +186,7 @@ describe("MCP Express App", () => {
       const readLiveSetDesc = toolsByName["ppal-read-live-set"]!.description;
 
       expect(readLiveSetDesc).toContain("global settings");
-      expect(readLiveSetDesc).toContain("tracks, scenes, devices");
+      expect(readLiveSetDesc).toContain("track/scene overview");
     });
 
     it("should have valid input schemas for all tools", async () => {
@@ -284,7 +284,7 @@ describe("MCP Express App", () => {
         "mcp_request",
         expect.stringMatching(/^[\da-f-]{36}$/), // requestId (UUID format)
         "ppal-read-track", // tool name
-        '{"category":"regular","trackIndex":1,"include":["session-clips","arrangement-clips","clip-notes","instruments","drum-maps"]}', // argsJSON
+        '{"category":"regular","trackIndex":1,"include":[]}', // argsJSON
         expect.stringContaining("silenceWavPath"), // contextJSON
       );
     });
@@ -535,12 +535,13 @@ describe("MCP Express App", () => {
       const config = await response.json();
 
       expect(config).toMatchObject({
-        useProjectNotes: expect.any(Boolean),
-        projectNotes: expect.any(String),
-        projectNotesWritable: expect.any(Boolean),
+        memoryEnabled: expect.any(Boolean),
+        memoryContent: expect.any(String),
+        memoryWritable: expect.any(Boolean),
         smallModelMode: expect.any(Boolean),
         jsonOutput: expect.any(Boolean),
         sampleFolder: expect.any(String),
+        tools: expect.any(Array),
       });
     });
 
@@ -581,17 +582,17 @@ describe("MCP Express App", () => {
       const getResponse = await fetch(configUrl);
       const before = await getResponse.json();
 
-      // Only update useProjectNotes
+      // Only update memoryEnabled
       const response = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ useProjectNotes: true }),
+        body: JSON.stringify({ memoryEnabled: true }),
       });
 
       expect(response.status).toBe(200);
       const after = await response.json();
 
-      expect(after.useProjectNotes).toBe(true);
+      expect(after.memoryEnabled).toBe(true);
       // Other values should remain unchanged
       expect(after.smallModelMode).toBe(before.smallModelMode);
       expect(after.jsonOutput).toBe(before.jsonOutput);
@@ -600,49 +601,49 @@ describe("MCP Express App", () => {
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ useProjectNotes: false }),
+        body: JSON.stringify({ memoryEnabled: false }),
       });
     });
 
-    it("should update projectNotes string", async () => {
+    it("should update memoryContent string", async () => {
       const testNotes = "Test project notes content";
 
       const response = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectNotes: testNotes }),
+        body: JSON.stringify({ memoryContent: testNotes }),
       });
 
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      expect(config.projectNotes).toBe(testNotes);
+      expect(config.memoryContent).toBe(testNotes);
 
       // Clear notes
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectNotes: "" }),
+        body: JSON.stringify({ memoryContent: "" }),
       });
     });
 
-    it("should update projectNotesWritable", async () => {
+    it("should update memoryWritable", async () => {
       const response = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectNotesWritable: true }),
+        body: JSON.stringify({ memoryWritable: true }),
       });
 
       expect(response.status).toBe(200);
       const config = await response.json();
 
-      expect(config.projectNotesWritable).toBe(true);
+      expect(config.memoryWritable).toBe(true);
 
       // Restore
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectNotesWritable: false }),
+        body: JSON.stringify({ memoryWritable: false }),
       });
     });
 
@@ -666,6 +667,111 @@ describe("MCP Express App", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sampleFolder: "" }),
       });
+    });
+
+    it("should update tools whitelist", async () => {
+      const subset = ["ppal-connect", "ppal-read-live-set", "ppal-playback"];
+
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tools: subset }),
+      });
+
+      expect(response.status).toBe(200);
+      const config = await response.json();
+
+      expect(config.tools).toStrictEqual(subset);
+
+      // Restore
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tools: [...TOOL_NAMES] }),
+      });
+    });
+
+    it("should return 400 for invalid tool names", async () => {
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tools: ["ppal-connect", "ppal-nonexistent"],
+        }),
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+
+      expect(body.error).toContain("ppal-nonexistent");
+      expect(body.validToolNames).toStrictEqual([...TOOL_NAMES]);
+    });
+
+    it("should return 400 when ppal-connect is omitted", async () => {
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tools: ["ppal-read-live-set", "ppal-playback"],
+        }),
+      });
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+
+      expect(body.error).toContain("ppal-connect");
+      expect(body.validToolNames).toStrictEqual([...TOOL_NAMES]);
+    });
+  });
+
+  describe("Tools Whitelist Filtering", () => {
+    let configUrl: string;
+
+    beforeAll(() => {
+      configUrl = serverUrl.replace("/mcp", "/config");
+    });
+
+    it("should only include specified tools in listTools", async () => {
+      const headers = { "Content-Type": "application/json" };
+      const postConfig = (body: object) =>
+        fetch(configUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(body),
+        });
+
+      // Set tools to a subset (without ppal-delete and ppal-select)
+      const subset = [...TOOL_NAMES].filter(
+        (name) => name !== "ppal-delete" && name !== "ppal-select",
+      );
+
+      await postConfig({ tools: subset });
+
+      const client1 = new Client({ name: "test-client", version: "1.0.0" });
+      const transport1 = new StreamableHTTPClientTransport(new URL(serverUrl));
+
+      await client1.connect(transport1);
+      const filtered = await client1.listTools();
+      const filteredNames = filtered.tools.map((t) => t.name);
+
+      expect(filteredNames).not.toContain("ppal-delete");
+      expect(filteredNames).not.toContain("ppal-select");
+      expect(filteredNames).toContain("ppal-connect");
+      await transport1.close();
+
+      // Restore all tools and verify
+      await postConfig({ tools: [...TOOL_NAMES] });
+
+      const client2 = new Client({ name: "test-client", version: "1.0.0" });
+      const transport2 = new StreamableHTTPClientTransport(new URL(serverUrl));
+
+      await client2.connect(transport2);
+      const restored = await client2.listTools();
+      const restoredNames = restored.tools.map((t) => t.name);
+
+      expect(restoredNames).toContain("ppal-delete");
+      expect(restoredNames).toContain("ppal-select");
+      await transport2.close();
     });
   });
 
@@ -725,7 +831,7 @@ describe("MCP Express App", () => {
       handler(0);
     });
 
-    it("should set projectNotes with string input", () => {
+    it("should set memoryContent with string input", () => {
       const handler = mockMax.handlers.get("projectNotes") as (
         input: unknown,
       ) => void;
@@ -735,7 +841,7 @@ describe("MCP Express App", () => {
       handler("");
     });
 
-    it("should set projectNotesWritable with various inputs", () => {
+    it("should set memoryWritable with various inputs", () => {
       const handler = mockMax.handlers.get("projectNotesWritable") as (
         input: unknown,
       ) => void;

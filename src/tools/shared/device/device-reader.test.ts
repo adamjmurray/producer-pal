@@ -469,6 +469,7 @@ describe("device-reader", () => {
 
       const result = readDevice(device as unknown as LiveAPI, {
         includeChains: false,
+        includeSample: true,
       });
 
       expect(result.multisample).toBe(true);

@@ -9,17 +9,18 @@
  */
 
 import { DEFAULT_VELOCITY } from "#src/notation/barbeat/barbeat-config.ts";
-import type { NoteEvent } from "#src/notation/types.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
-import type {
-  CodeClipContext,
-  CodeExecutionContext,
-  CodeExecutionResult,
-  CodeLiveSetContext,
-  CodeLocationContext,
-  CodeNote,
-  CodeTrackContext,
+import {
+  type CodeClipContext,
+  type CodeExecutionContext,
+  type CodeExecutionResult,
+  type CodeLiveSetContext,
+  type CodeLocationContext,
+  type CodeNote,
+  type CodeTrackContext,
 } from "./code-exec-types.ts";
 
 /**
@@ -120,20 +121,8 @@ export function codeNoteToNoteEvent(note: CodeNote): NoteEvent {
   };
 }
 
-/**
- * Get the note count within the playable region of a clip.
- *
- * @param clip - LiveAPI clip object
- * @returns Number of notes in the playable region
- */
-export function getClipNoteCount(clip: LiveAPI): number {
-  const lengthBeats = clip.getProperty("length") as number;
-  const notesResult = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, lengthBeats) as string,
-  );
-
-  return notesResult?.notes?.length ?? 0;
-}
+/** @see getPlayableNoteCount - re-exported for code-exec API compatibility */
+export { getPlayableNoteCount as getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
 
 /**
  * Validate a raw sandbox result as a notes array.
@@ -253,7 +242,7 @@ function buildTrackContext(clip: LiveAPI): CodeTrackContext {
   const trackMatch = clipPath.match(/tracks (\d+)/);
   const trackIndex = trackMatch?.[1] ? Number.parseInt(trackMatch[1], 10) : 0;
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
 
   const name = track.getProperty("name") as string;
   const hasMidiInput = (track.getProperty("has_midi_input") as number) > 0;
@@ -303,7 +292,7 @@ function buildLocationContext(
 }
 
 function buildLiveSetContext(): CodeLiveSetContext {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   const tempo = liveSet.getProperty("tempo") as number;
   const sigNum = liveSet.getProperty("signature_numerator") as number;

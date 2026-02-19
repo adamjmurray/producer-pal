@@ -176,7 +176,7 @@ describe("ppal-read-device", () => {
     // Test macros: t1/d0 "Layered Bass" has 1 mapped macro
     const macroResult = await ctx.client!.callTool({
       name: "ppal-read-device",
-      arguments: { path: "t1/d0" },
+      arguments: { path: "t1/d0", include: ["params"] },
     });
     const macroRack = parseToolResult<ReadDeviceResult>(macroResult);
 

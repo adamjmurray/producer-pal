@@ -2,8 +2,8 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { type CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z, type ZodType } from "zod";
 import { filterSchemaForSmallModel } from "#src/tools/shared/tool-framework/filter-schema.ts";
 
@@ -38,6 +38,15 @@ type CallLiveApiFunction = (
   data: Record<string, unknown>,
 ) => Promise<object>;
 
+export interface ToolDefFunction {
+  (
+    server: McpServer,
+    callLiveApi: CallLiveApiFunction,
+    mcpOptions?: McpOptions,
+  ): void;
+  toolName: string;
+}
+
 /**
  * Defines an MCP tool with validation and small model mode support
  * @param name - Tool name
@@ -47,12 +56,12 @@ type CallLiveApiFunction = (
 export function defineTool(
   name: string,
   options: ToolOptions,
-): (
-  server: McpServer,
-  callLiveApi: CallLiveApiFunction,
-  mcpOptions?: McpOptions,
-) => void {
-  return (server, callLiveApi, mcpOptions = {}) => {
+): ToolDefFunction {
+  const fn = (
+    server: McpServer,
+    callLiveApi: CallLiveApiFunction,
+    mcpOptions: McpOptions = {},
+  ): void => {
     const { smallModelMode = false } = mcpOptions;
     const { inputSchema, smallModelModeConfig, ...toolConfig } = options;
 
@@ -105,4 +114,8 @@ export function defineTool(
       },
     );
   };
+
+  fn.toolName = name;
+
+  return fn;
 }

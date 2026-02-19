@@ -11,7 +11,7 @@ import {
   evaluateExpression,
   evaluateTransformAST,
 } from "#src/notation/transform/transform-evaluator-helpers.ts";
-import type { TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
+import { type TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
 import { evaluateFunction } from "#src/notation/transform/transform-functions.ts";
 import {
   createTestNote,
@@ -21,46 +21,39 @@ import {
 
 describe("Transform Evaluator Error Handling", () => {
   describe("applyTransforms parsing errors", () => {
-    it("handles invalid transform string gracefully", () => {
+    it("throws on invalid transform string", () => {
       const notes = createTestNote();
 
-      // Invalid syntax should trigger parse error
-      applyTransforms(notes, "invalid @@ syntax", 4, 4);
-
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("Transform parse error"),
+      expect(() => applyTransforms(notes, "invalid @@ syntax", 4, 4)).toThrow(
+        /transform syntax error/,
       );
-      // Notes should be unchanged
+      // Notes should be unchanged (throw happened before any modification)
       expect(notes[0]!.velocity).toBe(100);
     });
 
-    it("handles completely malformed transform string", () => {
+    it("throws on completely malformed transform string", () => {
       const notes = createTestNote();
 
-      applyTransforms(notes, "{ this is not valid", 4, 4);
-
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-      expect(notes[0]!.velocity).toBe(100);
+      expect(() =>
+        applyTransforms(notes, "{ this is not valid", 4, 4),
+      ).toThrow();
     });
   });
 
   describe("evaluateTransform parsing errors", () => {
-    it("handles invalid transform string gracefully", () => {
-      const result = evaluateTransform("invalid @@ syntax", DEFAULT_CONTEXT);
-
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("Transform parse error"),
-      );
-      expect(result).toStrictEqual({});
+    it("throws on invalid transform string", () => {
+      expect(() =>
+        evaluateTransform("invalid @@ syntax", DEFAULT_CONTEXT),
+      ).toThrow(/transform syntax error/);
     });
   });
 
   describe("variable reference errors", () => {
-    it("returns empty object when variable is not available", () => {
-      // Try to reference a note variable that doesn't exist
-      expectTransformError("velocity += note.nonexistent");
+    it("throws on invalid note property name", () => {
+      // note.nonexistent is a parse error (not in grammar's allowed names)
+      expect(() =>
+        evaluateTransform("velocity += note.nonexistent", DEFAULT_CONTEXT),
+      ).toThrow(/transform syntax error/);
     });
 
     it("evaluates successfully when variable is available", () => {
@@ -77,12 +70,18 @@ describe("Transform Evaluator Error Handling", () => {
   });
 
   describe("unknown waveform function errors", () => {
-    it("handles unknown function gracefully", () => {
-      expectTransformError("velocity += unknown_func(1t)");
+    it("throws on unknown function name", () => {
+      // unknown_func is a parse error (not in grammar's function name lists)
+      expect(() =>
+        evaluateTransform("velocity += unknown_func(1t)", DEFAULT_CONTEXT),
+      ).toThrow(/transform syntax error/);
     });
 
-    it("handles typo in waveform name", () => {
-      expectTransformError("velocity += coss(1t)");
+    it("throws on typo in waveform name", () => {
+      // coss is a parse error (not in grammar's function name lists)
+      expect(() =>
+        evaluateTransform("velocity += coss(1t)", DEFAULT_CONTEXT),
+      ).toThrow(/transform syntax error/);
     });
   });
 
@@ -95,6 +94,18 @@ describe("Transform Evaluator Error Handling", () => {
 
       expect(outlet).toHaveBeenCalledWith(1, expect.anything());
       expect(result).toStrictEqual({});
+    });
+
+    it("handles rand with too many arguments", () => {
+      expectTransformError("velocity = rand(0, 100, 50)");
+    });
+
+    it("handles ramp with too few arguments", () => {
+      expectTransformError("velocity = ramp(100)");
+    });
+
+    it("handles ramp with too many arguments", () => {
+      expectTransformError("velocity = ramp(0, 100, 1, 2)");
     });
 
     it("handles waveform with zero period gracefully", () => {
@@ -174,6 +185,7 @@ describe("Transform Evaluator Error Handling", () => {
             type: "function" as const,
             name: "unknown_func",
             args: [{ type: "period" as const, bars: 0, beats: 1 }],
+            sync: false,
           },
         },
       ];
@@ -199,6 +211,7 @@ describe("Transform Evaluator Error Handling", () => {
         evaluateFunction(
           "unknown_waveform",
           [1], // Simple number period in beats
+          false,
           0,
           4,
           4,
@@ -213,6 +226,7 @@ describe("Transform Evaluator Error Handling", () => {
       const result = evaluateFunction(
         "cos",
         [1], // Simple number period in beats
+        false,
         0,
         4,
         4,
@@ -230,8 +244,15 @@ describe("Transform Evaluator Error Handling", () => {
       ["round()", "round with no arguments"],
       ["floor()", "floor with no arguments"],
       ["abs()", "abs with no arguments"],
+      ["ceil()", "ceil with no arguments"],
+      ["pow(2)", "pow with only one argument"],
+      ["pow(0, -1)", "pow producing Infinity"],
+      ["pow(-1, 0.5)", "pow producing NaN"],
       ["min(60)", "min with only one argument"],
       ["max(60)", "max with only one argument"],
+      ["clamp(50)", "clamp with only one argument"],
+      ["clamp(50, 0)", "clamp with only two arguments"],
+      ["clamp(50, 0, 100, 200)", "clamp with four arguments"],
     ])("handles %s error", (expr) => {
       expectTransformError(`velocity = ${expr}`);
     });

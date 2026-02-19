@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
-  getArrangementFollowerTrackIds,
   getCurrentLoopState,
   handlePlayArrangement,
   handlePlayScene,
@@ -14,15 +14,14 @@ import {
   resolveLoopStart,
   resolveStartTime,
   validateLocatorOrTime,
+  type PlaybackState,
 } from "./playback-helpers.ts";
-import type { PlaybackState } from "./playback-helpers.ts";
 import { select } from "./select.ts";
 
 interface PlaybackActionParams {
   startTime?: string;
   startTimeBeats?: number;
   useLocatorStart: boolean;
-  autoFollow: boolean;
   sceneIndex?: number;
   clipIds?: string;
 }
@@ -39,7 +38,6 @@ interface PlaybackArgs {
   loopEnd?: string;
   loopEndLocatorId?: string;
   loopEndLocatorName?: string;
-  autoFollow?: boolean;
   sceneIndex?: number;
   clipIds?: string;
   switchView?: boolean;
@@ -49,7 +47,6 @@ interface PlaybackResult {
   playing: boolean;
   currentTime: string;
   arrangementLoop?: { start: string; end: string };
-  arrangementFollowerTrackIds?: string;
 }
 
 interface BuildPlaybackResultParams {
@@ -61,13 +58,10 @@ interface BuildPlaybackResultParams {
   currentLoopStart: string;
   currentLoopEnd: string;
   liveSet: LiveAPI;
-  arrangementFollowerTrackIds: string;
 }
 
 /**
  * Unified control for all playback functionality in both Arrangement and Session views.
- * IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently.
- * When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.
  * @param args - The parameters
  * @param args.action - Action to perform
  * @param args.startTime - Position in bar|beat format
@@ -80,7 +74,6 @@ interface BuildPlaybackResultParams {
  * @param args.loopEnd - Loop end position in bar|beat format
  * @param args.loopEndLocatorId - Locator ID for loop end
  * @param args.loopEndLocatorName - Locator name for loop end
- * @param args.autoFollow - Whether all tracks should automatically follow the arrangement
  * @param args.sceneIndex - Scene index for Session view operations
  * @param args.clipIds - Comma-separated clip IDs for Session view operations
  * @param args.switchView - Automatically switch to the appropriate view
@@ -100,7 +93,6 @@ export function playback(
     loopEnd,
     loopEndLocatorId,
     loopEndLocatorName,
-    autoFollow = true,
     sceneIndex,
     clipIds,
     switchView,
@@ -131,7 +123,7 @@ export function playback(
     "loopEnd",
   );
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   // Get song time signature for bar|beat conversions
   const songTimeSigNumerator = liveSet.getProperty(
@@ -182,7 +174,6 @@ export function playback(
       startTime,
       startTimeBeats,
       useLocatorStart,
-      autoFollow,
       sceneIndex,
       clipIds,
     },
@@ -208,8 +199,6 @@ export function playback(
 
   handleViewSwitch(action, switchView);
 
-  const arrangementFollowerTrackIds = getArrangementFollowerTrackIds(liveSet);
-
   return buildPlaybackResult({
     isPlaying,
     currentTime,
@@ -219,7 +208,6 @@ export function playback(
     currentLoopStart: currentLoop.start,
     currentLoopEnd: currentLoop.end,
     liveSet,
-    arrangementFollowerTrackIds,
   });
 }
 
@@ -249,7 +237,6 @@ function handleViewSwitch(action: string, switchView?: boolean): void {
  * @param params.currentLoopStart - Current loop start
  * @param params.currentLoopEnd - Current loop end
  * @param params.liveSet - The live_set LiveAPI object
- * @param params.arrangementFollowerTrackIds - Track IDs following arrangement
  * @returns Playback result
  */
 function buildPlaybackResult({
@@ -261,7 +248,6 @@ function buildPlaybackResult({
   currentLoopStart,
   currentLoopEnd,
   liveSet,
-  arrangementFollowerTrackIds,
 }: BuildPlaybackResultParams): PlaybackResult {
   const result: PlaybackResult = {
     playing: isPlaying,
@@ -276,8 +262,6 @@ function buildPlaybackResult({
       end: loopEnd ?? currentLoopEnd,
     };
   }
-
-  result.arrangementFollowerTrackIds = arrangementFollowerTrackIds;
 
   return result;
 }
@@ -319,12 +303,12 @@ function handlePlaySessionClips(
     }
 
     const clipSlot = LiveAPI.from(
-      `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+      livePath.track(trackIndex).clipSlot(sceneIndex),
     );
 
     if (!clipSlot.exists()) {
       throw new Error(
-        `playback play-session-clips action failed: clip slot for clipId=${clip.id.replace(/^id /, "")} does not exist`,
+        `playback play-session-clips action failed: clip slot for clipId=${clip.id} does not exist`,
       );
     }
 
@@ -377,7 +361,7 @@ function handleStopSessionClips(
       );
     }
 
-    const trackPath = `live_set tracks ${trackIndex}`;
+    const trackPath = livePath.track(trackIndex).toString();
 
     tracksToStop.add(trackPath);
   }
@@ -413,14 +397,8 @@ function handlePlaybackAction(
   params: PlaybackActionParams,
   state: PlaybackState,
 ): PlaybackState {
-  const {
-    startTime,
-    startTimeBeats,
-    useLocatorStart,
-    autoFollow,
-    sceneIndex,
-    clipIds,
-  } = params;
+  const { startTime, startTimeBeats, useLocatorStart, sceneIndex, clipIds } =
+    params;
 
   switch (action) {
     case "play-arrangement":
@@ -429,7 +407,6 @@ function handlePlaybackAction(
         startTime,
         startTimeBeats,
         useLocatorStart,
-        autoFollow,
         state,
       );
 

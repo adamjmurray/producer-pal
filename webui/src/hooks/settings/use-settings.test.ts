@@ -93,6 +93,27 @@ describe("useSettings", () => {
     expect(result.current.model).toBe("gemini-2.5-flash-lite");
   });
 
+  it("loads saved Ollama thinking on first render", () => {
+    localStorage.setItem("producer_pal_current_provider", "ollama");
+    localStorage.setItem(
+      "producer_pal_provider_ollama",
+      JSON.stringify({
+        apiKey: "",
+        model: "qwen3",
+        baseUrl: "http://localhost:11434",
+        thinking: "High",
+        temperature: 1.0,
+        showThoughts: true,
+      }),
+    );
+
+    const { result } = renderHook(() => useSettings());
+
+    // Must be "High" on first render (not "Off" default) so that
+    // ChatScreen's useState(defaultThinking) captures the saved value
+    expect(result.current.thinking).toBe("High");
+  });
+
   it("updates apiKey when setApiKey is called", async () => {
     const { result } = renderHook(() => useSettings());
 
@@ -494,46 +515,6 @@ describe("useSettings", () => {
 
     // Unknown tools default to enabled
     expect(result.current.isToolEnabled("unknown-tool")).toBe(true);
-  });
-
-  it("enableAllTools sets all tools to enabled", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    // First disable some tools
-    await act(() => {
-      result.current.setEnabledTools({
-        "ppal-connect": false,
-        "ppal-read-live-set": false,
-      });
-    });
-
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
-
-    // Enable all tools
-    await act(() => {
-      result.current.enableAllTools();
-    });
-
-    // All tools should now be enabled
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
-    expect(result.current.isToolEnabled("ppal-read-live-set")).toBe(true);
-  });
-
-  it("disableAllTools sets all tools to disabled", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    // Tools start enabled by default
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
-
-    // Disable all tools
-    await act(() => {
-      result.current.disableAllTools();
-    });
-
-    // All tools should now be disabled
-    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
-    expect(result.current.isToolEnabled("ppal-read-live-set")).toBe(false);
-    expect(result.current.isToolEnabled("ppal-create-clip")).toBe(false);
   });
 
   it("setShowThoughts works for mistral provider", async () => {

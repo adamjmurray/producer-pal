@@ -12,7 +12,7 @@
  * Contains runtime state managed by the live-api-adapter.
  */
 interface ToolContext {
-  projectNotes: {
+  memory: {
     enabled: boolean;
     writable: boolean;
     content: string;

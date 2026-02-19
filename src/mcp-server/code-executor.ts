@@ -9,8 +9,10 @@
  */
 
 import vm from "node:vm";
-import { CODE_EXEC_TIMEOUT_MS } from "#src/tools/clip/code-exec/code-exec-types.ts";
-import type { SandboxResult } from "#src/tools/clip/code-exec/code-exec-types.ts";
+import {
+  CODE_EXEC_TIMEOUT_MS,
+  type SandboxResult,
+} from "#src/tools/clip/code-exec/code-exec-types.ts";
 
 /**
  * Safe builtins exposed to user code.

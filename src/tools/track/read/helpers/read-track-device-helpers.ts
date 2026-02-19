@@ -4,8 +4,10 @@
 
 import * as console from "#src/shared/v8-max-console.ts";
 import { DEVICE_TYPE } from "#src/tools/constants.ts";
-import { readDevice } from "#src/tools/shared/device/device-reader.ts";
-import type { DeviceWithDrumPads } from "#src/tools/shared/device/device-reader.ts";
+import {
+  readDevice,
+  type DeviceWithDrumPads,
+} from "#src/tools/shared/device/device-reader.ts";
 
 export interface CategorizedDevices {
   midiEffects: DeviceWithDrumPads[];
@@ -75,14 +77,25 @@ export function categorizeDevices(
 }
 
 /**
- * Removes chains property from a device object
- * @param device - Device object to strip chains from
- * @returns Device object without chains property
+ * Read all devices as a flat ordered list (preserving original track device order).
+ * Returns undefined for Producer Pal host tracks with no devices.
+ * @param devices - Array of Live API device objects
+ * @param isProducerPalHost - Whether this is the Producer Pal host track
+ * @returns Flat array of device objects, or undefined
  */
-export function stripChains<T extends { chains?: unknown }>(
-  device: T,
-): Omit<T, "chains"> {
-  const { chains: _chains, ...rest } = device;
+export function readDevicesFlat(
+  devices: LiveAPI[],
+  isProducerPalHost: boolean,
+): Record<string, unknown>[] | undefined {
+  if (isProducerPalHost && devices.length === 0) {
+    return undefined;
+  }
 
-  return rest;
+  return devices.map((device) =>
+    readDevice(device, {
+      includeChains: false,
+      includeReturnChains: false,
+      includeDrumPads: false,
+    }),
+  );
 }

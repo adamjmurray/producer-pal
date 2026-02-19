@@ -1,15 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
+  clearMockRegistry,
+  registerMockObject,
+  type RegisteredMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import {
+  LiveAPI,
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -17,25 +19,25 @@ import {
   type RawApiOperation,
 } from "#src/tools/control/raw-live-api.ts";
 
-// Type-safe way to access global LiveAPI
-const g = globalThis as Record<string, unknown>;
-
 describe("rawLiveApi", () => {
+  let defaultMock: RegisteredMockObject;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    clearMockRegistry();
 
-    // Set up default mock behaviors for extension methods
-    liveApiCall.mockImplementation(function (method, ...args) {
-      switch (method) {
-        case "get_current_beats_song_time":
-          return "001.01.01.000";
-        default:
-          return `called_${method}_with_${args.join("_")}`;
-      }
+    // Register default mock for "live_set" path (rawLiveApi's default)
+    // Use ID "1" so api.id returns "id 1"
+    defaultMock = registerMockObject("1", {
+      path: livePath.liveSet,
+      type: "Song",
+      methods: {
+        get_current_beats_song_time: () => "001.01.01.000",
+      },
     });
 
     // Mock LiveAPI extensions that get added to instances
-    (g.LiveAPI as typeof LiveAPI).prototype.getProperty = vi.fn(function (
+    LiveAPI.prototype.getProperty = vi.fn(function (
       this: MockLiveAPIContext & { get: (prop: string) => unknown },
       property: string,
     ) {
@@ -44,40 +46,33 @@ describe("rawLiveApi", () => {
       return Array.isArray(result) ? result[0] : result;
     }) as (property: string) => unknown;
 
-    (g.LiveAPI as typeof LiveAPI).prototype.getChildIds = vi.fn(
-      (childType: string) => {
-        if (!childType) {
-          throw new Error("Missing child type");
-        }
+    LiveAPI.prototype.getChildIds = vi.fn((childType: string) => {
+      if (!childType) {
+        throw new Error("Missing child type");
+      }
 
-        return [`id_${childType}_1`, `id_${childType}_2`];
-      },
-    ) as (name: string) => string[];
+      return [`id_${childType}_1`, `id_${childType}_2`];
+    }) as (name: string) => string[];
 
-    (g.LiveAPI as typeof LiveAPI).prototype.exists = vi.fn(
-      () => true,
-    ) as () => boolean;
+    LiveAPI.prototype.exists = vi.fn(() => true) as () => boolean;
 
-    (g.LiveAPI as typeof LiveAPI).prototype.getColor = vi.fn(
-      () => "#FF0000",
-    ) as () => string;
+    LiveAPI.prototype.getColor = vi.fn(() => "#FF0000") as () => string;
 
-    (g.LiveAPI as typeof LiveAPI).prototype.setColor = vi.fn(
-      (color: string) => color,
-    ) as (color: string) => string;
+    LiveAPI.prototype.setColor = vi.fn((color: string) => color) as (
+      color: string,
+    ) => string;
 
     // goto is not on the mock LiveAPI type, so cast to assign it
-    (
-      (g.LiveAPI as typeof LiveAPI).prototype as unknown as Record<
-        string,
-        unknown
-      >
-    ).goto = vi.fn(function (this: MockLiveAPIContext, path: string) {
-      this._path = path;
-      this._id = path.replaceAll(/\s+/g, "/");
+    (LiveAPI.prototype as unknown as Record<string, unknown>).goto = vi.fn(
+      function (this: MockLiveAPIContext, path: string) {
+        this._path = path;
+        this._id = path.replaceAll(/\s+/g, "/");
+        // Clear registration so getters use updated _path/_id
+        this._registered = undefined;
 
-      return 1;
-    });
+        return 1;
+      },
+    );
   });
 
   describe("input validation", () => {
@@ -110,15 +105,13 @@ describe("rawLiveApi", () => {
 
   describe("core operations", () => {
     it("should handle get_property operation", () => {
-      liveApiId.mockReturnValue("test-id");
-
       const result = rawLiveApi({
         operations: [{ type: "get_property", property: "id" }],
       });
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.operation.type).toBe("get_property");
-      expect(result.results[0]!.result).toBe("test-id");
+      expect(result.results[0]!.result).toBe("1"); // Default mock has bare id "1"
     });
 
     it("should throw error for get_property without property", () => {
@@ -156,7 +149,7 @@ describe("rawLiveApi", () => {
     });
 
     it("should handle call_method operation", () => {
-      liveApiGet.mockReturnValueOnce([120]);
+      defaultMock.get.mockReturnValueOnce([120]);
 
       const result = rawLiveApi({
         operations: [{ type: "call_method", method: "get", args: ["tempo"] }],
@@ -165,7 +158,7 @@ describe("rawLiveApi", () => {
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.operation.type).toBe("call_method");
       expect(result.results[0]!.result).toStrictEqual([120]);
-      expect(liveApiGet).toHaveBeenCalledWith("tempo");
+      expect(defaultMock.get).toHaveBeenCalledWith("tempo");
     });
 
     it("should throw error for call_method without method", () => {
@@ -189,7 +182,7 @@ describe("rawLiveApi", () => {
 
   describe("convenience shortcuts", () => {
     it("should handle get operation", () => {
-      liveApiGet.mockReturnValueOnce([120]);
+      defaultMock.get.mockReturnValueOnce([120]);
 
       const result = rawLiveApi({
         operations: [{ type: "get", property: "tempo" }],
@@ -197,7 +190,7 @@ describe("rawLiveApi", () => {
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.result).toStrictEqual([120]);
-      expect(liveApiGet).toHaveBeenCalledWith("tempo");
+      expect(defaultMock.get).toHaveBeenCalledWith("tempo");
     });
 
     it("should throw error for get without property", () => {
@@ -209,7 +202,7 @@ describe("rawLiveApi", () => {
     });
 
     it("should handle set operation", () => {
-      liveApiSet.mockReturnValueOnce(1);
+      defaultMock.set.mockReturnValueOnce(1);
 
       const result = rawLiveApi({
         operations: [{ type: "set", property: "tempo", value: 130 }],
@@ -217,7 +210,7 @@ describe("rawLiveApi", () => {
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.result).toBe(1);
-      expect(liveApiSet).toHaveBeenCalledWith("tempo", 130);
+      expect(defaultMock.set).toHaveBeenCalledWith("tempo", 130);
     });
 
     it("should throw error for set without property", () => {
@@ -243,7 +236,9 @@ describe("rawLiveApi", () => {
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.result).toBe("001.01.01.000");
-      expect(liveApiCall).toHaveBeenCalledWith("get_current_beats_song_time");
+      expect(defaultMock.call).toHaveBeenCalledWith(
+        "get_current_beats_song_time",
+      );
     });
 
     it("should throw error for call without method", () => {
@@ -255,13 +250,19 @@ describe("rawLiveApi", () => {
     });
 
     it("should handle goto operation", () => {
+      // Register mock for the goto target path
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+
       const result = rawLiveApi({
-        operations: [{ type: "goto", value: "live_set tracks 0" }],
+        operations: [{ type: "goto", value: String(livePath.track(0)) }],
       });
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.result).toBe(1);
-      expect(result.path).toBe("live_set tracks 0");
+      expect(result.path).toBe(String(livePath.track(0)));
     });
 
     it("should throw error for goto without value", () => {
@@ -275,7 +276,7 @@ describe("rawLiveApi", () => {
     it("should handle info operation", () => {
       const mockInfo = "Mock LiveAPI info";
 
-      Object.defineProperty((g.LiveAPI as typeof LiveAPI).prototype, "info", {
+      Object.defineProperty(LiveAPI.prototype, "info", {
         get: () => mockInfo,
         configurable: true,
       });
@@ -291,7 +292,7 @@ describe("rawLiveApi", () => {
 
   describe("extension shortcuts", () => {
     it("should handle getProperty operation", () => {
-      liveApiGet.mockReturnValueOnce(["Test Track"]);
+      defaultMock.get.mockReturnValueOnce(["Test Track"]);
 
       const result = rawLiveApi({
         operations: [{ type: "getProperty", property: "name" }],
@@ -299,9 +300,7 @@ describe("rawLiveApi", () => {
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.result).toBe("Test Track");
-      expect(
-        (g.LiveAPI as typeof LiveAPI).prototype.getProperty,
-      ).toHaveBeenCalledWith("name");
+      expect(LiveAPI.prototype.getProperty).toHaveBeenCalledWith("name");
     });
 
     it("should throw error for getProperty without property", () => {
@@ -322,9 +321,7 @@ describe("rawLiveApi", () => {
         "id_clip_slots_1",
         "id_clip_slots_2",
       ]);
-      expect(
-        (g.LiveAPI as typeof LiveAPI).prototype.getChildIds,
-      ).toHaveBeenCalledWith("clip_slots");
+      expect(LiveAPI.prototype.getChildIds).toHaveBeenCalledWith("clip_slots");
     });
 
     it("should throw error for getChildIds without property", () => {
@@ -342,7 +339,7 @@ describe("rawLiveApi", () => {
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.result).toBe(true);
-      expect((g.LiveAPI as typeof LiveAPI).prototype.exists).toHaveBeenCalled();
+      expect(LiveAPI.prototype.exists).toHaveBeenCalled();
     });
 
     it("should handle getColor operation", () => {
@@ -352,9 +349,7 @@ describe("rawLiveApi", () => {
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.result).toBe("#FF0000");
-      expect(
-        (g.LiveAPI as typeof LiveAPI).prototype.getColor,
-      ).toHaveBeenCalled();
+      expect(LiveAPI.prototype.getColor).toHaveBeenCalled();
     });
 
     it("should handle setColor operation", () => {
@@ -364,9 +359,7 @@ describe("rawLiveApi", () => {
 
       expect(result.results).toHaveLength(1);
       expect(result.results[0]!.result).toBe("#00FF00");
-      expect(
-        (g.LiveAPI as typeof LiveAPI).prototype.setColor,
-      ).toHaveBeenCalledWith("#00FF00");
+      expect(LiveAPI.prototype.setColor).toHaveBeenCalledWith("#00FF00");
     });
 
     it("should throw error for setColor without value", () => {
@@ -380,14 +373,23 @@ describe("rawLiveApi", () => {
 
   describe("path handling", () => {
     it("should create LiveAPI with path when provided", () => {
-      liveApiPath.mockReturnValue("live_set tracks 0");
+      const trackMock = registerMockObject("track-0", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+
+      Object.defineProperty(LiveAPI.prototype, "info", {
+        get: () => "Track info",
+        configurable: true,
+      });
 
       const result = rawLiveApi({
-        path: "live_set tracks 0",
+        path: String(livePath.track(0)),
         operations: [{ type: "info" }],
       });
 
-      expect(result.path).toBe("live_set tracks 0");
+      expect(result.path).toBe(String(livePath.track(0)));
+      expect(trackMock).toBeDefined();
     });
 
     it("should create LiveAPI without path when not provided", () => {
@@ -402,9 +404,8 @@ describe("rawLiveApi", () => {
 
   describe("multiple operations", () => {
     it("should handle multiple operations sequentially", () => {
-      liveApiId.mockReturnValue("test-id");
-      liveApiGet.mockReturnValueOnce([120]);
-      Object.defineProperty((g.LiveAPI as typeof LiveAPI).prototype, "info", {
+      defaultMock.get.mockReturnValueOnce([120]);
+      Object.defineProperty(LiveAPI.prototype, "info", {
         get: () => "Mock info",
         configurable: true,
       });
@@ -424,7 +425,7 @@ describe("rawLiveApi", () => {
     });
 
     it("should return operation details with each result", () => {
-      liveApiGet.mockReturnValueOnce([120]);
+      defaultMock.get.mockReturnValueOnce([120]);
 
       const result = rawLiveApi({
         operations: [{ type: "get", property: "tempo" }],
@@ -440,20 +441,18 @@ describe("rawLiveApi", () => {
 
   describe("return format", () => {
     it("should return path, id, and results", () => {
-      liveApiPath.mockReturnValue("live_set");
-      liveApiId.mockReturnValue("1");
-      Object.defineProperty((g.LiveAPI as typeof LiveAPI).prototype, "info", {
+      Object.defineProperty(LiveAPI.prototype, "info", {
         get: () => "Mock LiveAPI info",
         configurable: true,
       });
 
       const result = rawLiveApi({
-        path: "live_set",
+        path: livePath.liveSet,
         operations: [{ type: "info" }],
       });
 
       expect(result).toStrictEqual({
-        path: "live_set",
+        path: livePath.liveSet,
         id: "1",
         results: [
           {

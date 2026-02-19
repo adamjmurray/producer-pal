@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ExpectStatic } from "vitest";
+import { type ExpectStatic } from "vitest";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -86,6 +86,99 @@ export function assertFolderSizeLimit(
   }
 }
 
+interface TestHeavyFolder {
+  path: string;
+  testCount: number;
+  sourceCount: number;
+}
+
+/** Directories that are expected to contain mostly test files */
+const TEST_HEAVY_SKIP_DIRS: Set<string> = new Set([
+  "node_modules",
+  "tests",
+  "test",
+  "test-cases",
+  "test-utils",
+]);
+
+/**
+ * Recursively find folders where test files outnumber source files
+ * @param dirPath - Directory to scan
+ * @param minTestFiles - Minimum test files to trigger (default 3)
+ * @returns Folders where testFiles >= 2 * sourceFiles
+ */
+export function findTestHeavyFolders(
+  dirPath: string,
+  minTestFiles: number = 3,
+): TestHeavyFolder[] {
+  const results: TestHeavyFolder[] = [];
+
+  if (!fs.existsSync(dirPath)) return results;
+
+  const items = fs.readdirSync(dirPath);
+  let testCount = 0;
+  let sourceCount = 0;
+
+  for (const item of items) {
+    const fullPath = path.join(dirPath, item);
+    const stat = fs.statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      if (!TEST_HEAVY_SKIP_DIRS.has(item)) {
+        results.push(...findTestHeavyFolders(fullPath, minTestFiles));
+      }
+    } else if (SOURCE_EXTENSIONS.has(path.extname(item))) {
+      if (isTestFile(item)) {
+        testCount++;
+      } else {
+        sourceCount++;
+      }
+    }
+  }
+
+  if (
+    testCount >= minTestFiles &&
+    sourceCount > 0 &&
+    testCount >= 2 * sourceCount
+  ) {
+    results.push({
+      path: path.relative(projectRoot, dirPath),
+      testCount,
+      sourceCount,
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Assert that no folders have test files outnumbering source files
+ * @param dirPath - Directory to check
+ * @param expect - Vitest expect function
+ */
+export function assertTestFileRatio(
+  dirPath: string,
+  expect: ExpectStatic,
+): void {
+  if (!fs.existsSync(dirPath)) return;
+
+  const violations = findTestHeavyFolders(dirPath);
+
+  if (violations.length > 0) {
+    const details = violations
+      .map(
+        (f) =>
+          `  - ${f.path}: ${f.testCount} test files, ${f.sourceCount} source files`,
+      )
+      .join("\n");
+
+    expect.fail(
+      `Found ${violations.length} folder(s) where test files outnumber source files:\n${details}\n\n` +
+        `Move test files to a tests/ subdirectory.`,
+    );
+  }
+}
+
 interface PatternMatch {
   file: string;
   line: number;
@@ -146,14 +239,14 @@ export function isTestFile(filename: string): boolean {
 }
 
 /**
- * Recursively find all source files in a directory
+ * Recursively find files in a directory matching a filter
  * @param dirPath - Directory to scan
- * @param excludeTests - Whether to exclude test files
+ * @param filter - Function that receives a filename and returns true to include it
  * @returns Array of file paths
  */
-export function findSourceFiles(
+function findFilesRecursive(
   dirPath: string,
-  excludeTests: boolean = false,
+  filter: (filename: string) => boolean,
 ): string[] {
   const results: string[] = [];
 
@@ -168,9 +261,8 @@ export function findSourceFiles(
     const stat = fs.statSync(fullPath);
 
     if (stat.isDirectory()) {
-      results.push(...findSourceFiles(fullPath, excludeTests));
-    } else if (SOURCE_EXTENSIONS.has(path.extname(item))) {
-      if (excludeTests && isTestFile(item)) continue;
+      results.push(...findFilesRecursive(fullPath, filter));
+    } else if (filter(item)) {
       results.push(fullPath);
     }
   }
@@ -179,31 +271,32 @@ export function findSourceFiles(
 }
 
 /**
+ * Recursively find all source files in a directory
+ * @param dirPath - Directory to scan
+ * @param excludeTests - Whether to exclude test files
+ * @returns Array of file paths
+ */
+export function findSourceFiles(
+  dirPath: string,
+  excludeTests: boolean = false,
+): string[] {
+  return findFilesRecursive(dirPath, (item) => {
+    if (!SOURCE_EXTENSIONS.has(path.extname(item))) return false;
+
+    return !excludeTests || !isTestFile(item);
+  });
+}
+
+/**
  * Recursively find all test files in a directory
  * @param dirPath - Directory to scan
  * @returns Array of test file paths
  */
 export function findTestFiles(dirPath: string): string[] {
-  const results: string[] = [];
-
-  if (!fs.existsSync(dirPath)) return results;
-
-  const items = fs.readdirSync(dirPath);
-
-  for (const item of items) {
-    if (item === "node_modules") continue;
-
-    const fullPath = path.join(dirPath, item);
-    const stat = fs.statSync(fullPath);
-
-    if (stat.isDirectory()) {
-      results.push(...findTestFiles(fullPath));
-    } else if (SOURCE_EXTENSIONS.has(path.extname(item)) && isTestFile(item)) {
-      results.push(fullPath);
-    }
-  }
-
-  return results;
+  return findFilesRecursive(
+    dirPath,
+    (item) => SOURCE_EXTENSIONS.has(path.extname(item)) && isTestFile(item),
+  );
 }
 
 /**

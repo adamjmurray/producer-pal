@@ -16,34 +16,44 @@ const ctx = setupMcpTestContext({ once: true });
 
 describe("ppal-read-live-set", () => {
   it("reads basic live set info and tracks", async () => {
-    // Test: Default call (no include param)
+    // Test 1: Default call (no include param) - returns counts, not arrays
     const defaultResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
       arguments: {},
     });
     const defaultParsed = parseToolResult<ReadLiveSetResult>(defaultResult);
 
-    // Basic live set info
-    expect(defaultParsed.id).toBeDefined();
+    // Basic live set info (id is not included by default)
     expect(defaultParsed.tempo).toBeGreaterThan(0);
     expect(defaultParsed.timeSignature).toMatch(/^\d+\/\d+$/);
     expect(typeof defaultParsed.sceneCount).toBe("number");
     expect(defaultParsed.sceneCount).toBeGreaterThanOrEqual(1);
 
-    // Tracks included by default (12 regular tracks in e2e-test-set)
-    expect(Array.isArray(defaultParsed.tracks)).toBe(true);
-    expect(defaultParsed.tracks?.length).toBe(12);
+    // Default returns counts, not track arrays
+    expect(typeof defaultParsed.regularTrackCount).toBe("number");
+    expect(defaultParsed.regularTrackCount).toBe(12);
+    expect(defaultParsed.tracks).toBeUndefined();
+
+    // Test 2: With include: ["tracks"] - returns full track array
+    const tracksResult = await ctx.client!.callTool({
+      name: "ppal-read-live-set",
+      arguments: { include: ["tracks"] },
+    });
+    const tracksParsed = parseToolResult<ReadLiveSetResult>(tracksResult);
+
+    expect(Array.isArray(tracksParsed.tracks)).toBe(true);
+    expect(tracksParsed.tracks?.length).toBe(12);
 
     // Verify track structure
-    const firstTrack = defaultParsed.tracks?.[0];
+    const firstTrack = tracksParsed.tracks?.[0];
 
     expect(firstTrack?.id).toBeDefined();
     expect(typeof firstTrack?.name).toBe("string");
     expect(["midi", "audio"]).toContain(firstTrack?.type);
     expect(typeof firstTrack?.trackIndex).toBe("number");
 
-    // Instruments included by default (can be null for audio tracks)
-    expect("instrument" in (firstTrack ?? {})).toBe(true);
+    // Instrument is always included when the track has one
+    expect(firstTrack?.instrument).toBeDefined();
   });
 
   it("reads live set with scenes include", async () => {
@@ -65,10 +75,10 @@ describe("ppal-read-live-set", () => {
   });
 
   it("reads return tracks and locators", async () => {
-    // Test 1: With return-tracks include
+    // Test 1: With tracks include - verify return tracks
     const returnResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: { include: ["return-tracks"] },
+      arguments: { include: ["tracks"] },
     });
     const returnParsed = parseToolResult<ReadLiveSetResult>(returnResult);
 
@@ -97,11 +107,12 @@ describe("ppal-read-live-set", () => {
  * Type for ppal-read-live-set result
  */
 interface ReadLiveSetResult {
-  id: string;
+  id?: string;
   name?: string;
   tempo: number;
   timeSignature: string;
   sceneCount?: number;
+  regularTrackCount?: number;
   scenes?: Array<{ id: string; name: string; sceneIndex: number }>;
   tracks?: Array<{
     id: string;

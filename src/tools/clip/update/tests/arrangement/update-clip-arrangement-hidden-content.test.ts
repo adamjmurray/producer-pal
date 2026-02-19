@@ -3,38 +3,44 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
-import { setupArrangementClipPath } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
+import {
+  setupArrangementClipPath,
+  setupMockProperties,
+} from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 
 describe("updateClip - arrangementLength (expose hidden content)", () => {
   it("should preserve envelopes by tiling when exposing hidden content", async () => {
     const trackIndex = 0;
+    const handles = setupArrangementClipPath(trackIndex, [
+      "789",
+      "1000",
+      "2000",
+      "3000",
+    ]);
+    const sourceClip = handles.get("789");
 
-    setupArrangementClipPath(
-      trackIndex,
-      (id) => id === "789" || id === "1000" || id === "2000" || id === "3000",
-    );
+    expect(sourceClip).toBeDefined();
 
-    mockLiveApiGet({
-      789: {
-        is_arrangement_clip: 1,
-        is_midi_clip: 1,
-        is_audio_clip: 0,
-        start_time: 1,
-        end_time: 5,
-        loop_start: 0,
-        loop_end: 4,
-        looping: 0,
-        length: 6.5,
-        name: "Test Clip",
-        color_index: 5,
-        muted: 0,
-        playing_status: 1,
-      },
+    if (sourceClip == null) {
+      throw new Error("Expected source clip mock for 789");
+    }
+
+    setupMockProperties(sourceClip, {
+      is_arrangement_clip: 1,
+      is_midi_clip: 1,
+      is_audio_clip: 0,
+      start_time: 1,
+      end_time: 5,
+      loop_start: 0,
+      loop_end: 4,
+      looping: 0,
+      length: 6.5,
+      name: "Test Clip",
+      color_index: 5,
+      muted: 0,
+      playing_status: 1,
     });
-
-    liveApiCall.mockImplementation(() => {});
 
     const result = await updateClip({
       ids: "789",

@@ -9,9 +9,10 @@ import {
   callLiveApi,
   handleLiveApiResult,
   setTimeoutForTesting,
-} from "./max-api-adapter.ts";
+} from "./max-api-adapter.ts"; // eslint-disable-line import/no-duplicates -- separate side-effect import below registers handler
 
 // Make sure the module's handler is registered
+// eslint-disable-next-line import/no-duplicates -- intentional side-effect import
 import "./max-api-adapter.ts";
 
 // Mock the code-exec-protocol module so we can verify the handler delegates correctly

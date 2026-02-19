@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { z, type ZodRawShape } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { defineTool, type ToolOptions } from "./define-tool.ts";
 
 type MockServer = McpServer & { registerTool: Mock };
@@ -75,6 +75,15 @@ function getRegisteredHandler(mockServer: MockServer) {
 }
 
 describe("defineTool", () => {
+  it("should expose toolName on the returned function", () => {
+    const toolRegistrar = defineTool("my-custom-tool", {
+      description: "Test",
+      inputSchema: { param: z.string() },
+    });
+
+    expect(toolRegistrar.toolName).toBe("my-custom-tool");
+  });
+
   it("should register tool with correct config", () => {
     const { mockServer } = registerTestTool({
       title: "Test Tool",

@@ -3,7 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, LiveAPI } from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   handleQuantization,
   QUANTIZE_GRID,
@@ -62,7 +63,7 @@ describe("handleQuantization", () => {
 
     // Override LiveAPI.from to return our mock for live_set
     vi.spyOn(LiveAPI, "from").mockImplementation((path) => {
-      if (path === "live_set") {
+      if (path === livePath.liveSet) {
         return mockLiveSet;
       }
 
@@ -72,10 +73,10 @@ describe("handleQuantization", () => {
 
     mockClip = {
       id: "321",
-      call: liveApiCall,
+      call: vi.fn(),
       getProperty: vi.fn(),
     };
-    liveApiCall.mockReturnValue(["id", 0]);
+    mockClip.call.mockReturnValue(["id", 0]);
   });
 
   it("should do nothing when quantize is undefined", () => {

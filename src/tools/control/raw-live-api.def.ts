@@ -8,13 +8,10 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {
   title: "Live API",
   description:
-    "Provides direct, low-level access to the Live API for research, development, and debugging purposes.\n" +
-    "This tool exposes full LiveAPI capabilities including built-in properties, methods, and extensions. " +
+    "Direct Live API access for R&D/debugging. " +
     "Execute multiple operations sequentially on a LiveAPI instance. " +
-    "Core operations (explicit): get_property, set_property, call_method. " +
-    "Convenience shortcuts: get (calls get method), set (calls set method), call (calls call method), goto (calls goto method), info (gets info property), getProperty (calls getProperty extension), getChildIds (calls getChildIds extension), exists (calls exists extension), getColor (calls getColor extension), setColor (calls setColor extension). " +
-    "NOTE: When running multiple operations, Live API warnings appear at the end without indicating which operation triggered them. For debugging warnings, run operations individually. " +
-    "DEVELOPMENT ONLY - not available in production builds.",
+    "Debug warnings by running operations individually. " +
+    "DEVELOPMENT ONLY.",
 
   annotations: {
     readOnlyHint: false,
@@ -45,9 +42,7 @@ export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {
               "getColor",
               "setColor",
             ])
-            .describe(
-              "Operation type: Core operations (get_property, set_property, call_method) or convenience shortcuts (get, set, call, goto, info, getProperty, getChildIds, exists, getColor, setColor)",
-            ),
+            .describe("operation type"),
           property: z
             .string()
             .optional()

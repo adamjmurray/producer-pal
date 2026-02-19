@@ -4,9 +4,11 @@
 
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
+import { type ClipContext } from "#src/notation/transform/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
+import { getPlayableNoteCount } from "#src/tools/shared/clip-notes.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 import {
@@ -19,7 +21,10 @@ import {
   calculateBeatPositions,
   getTimeSignature,
 } from "./update-clip-timing-helpers.ts";
-import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
+import {
+  applyTransformsToExistingNotes,
+  buildClipContext,
+} from "./update-clip-transform-helpers.ts";
 
 interface ClipResult {
   id: string;
@@ -170,6 +175,7 @@ function buildClipPropertiesToSet({
  * @param noteUpdateMode - 'merge' or 'replace'
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
+ * @param clipContext - Clip-level context for transform variables
  * @returns Final note count, or null if notes not modified
  */
 function handleNoteUpdates(
@@ -179,6 +185,7 @@ function handleNoteUpdates(
   noteUpdateMode: string,
   timeSigNumerator: number,
   timeSigDenominator: number,
+  clipContext: ClipContext,
 ): number | null {
   // Only skip if BOTH are null
   if (notationString == null && transformString == null) {
@@ -193,6 +200,7 @@ function handleNoteUpdates(
       transformString as string,
       timeSigNumerator,
       timeSigDenominator,
+      clipContext,
     );
   }
 
@@ -221,7 +229,13 @@ function handleNoteUpdates(
   });
 
   // Apply transforms to notes if provided
-  applyTransforms(notes, transformString, timeSigNumerator, timeSigDenominator);
+  applyTransforms(
+    notes,
+    transformString,
+    timeSigNumerator,
+    timeSigDenominator,
+    clipContext,
+  );
 
   // Remove all notes and add new notes
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
@@ -230,27 +244,10 @@ function handleNoteUpdates(
     clip.call("add_new_notes", { notes });
   }
 
-  // Query actual note count within playback region
-  const lengthBeats = clip.getProperty("length") as number;
-  const actualNotesResult = JSON.parse(
-    clip.call("get_notes_extended", 0, 128, 0, lengthBeats) as string,
-  );
-
-  return actualNotesResult?.notes?.length ?? 0;
+  return getPlayableNoteCount(clip);
 }
 
-export interface ProcessSingleClipUpdateParams {
-  clip: LiveAPI;
-  notationString?: string;
-  transformString?: string;
-  noteUpdateMode: string;
-  name?: string;
-  color?: string;
-  timeSignature?: string;
-  start?: string;
-  length?: string;
-  firstStart?: string;
-  looping?: boolean;
+export interface ClipAudioWarpQuantizeParams {
   gainDb?: number;
   pitchShift?: number;
   warpMode?: string;
@@ -263,6 +260,22 @@ export interface ProcessSingleClipUpdateParams {
   quantizeGrid?: string;
   quantizeSwing?: number;
   quantizePitch?: string;
+}
+
+export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizeParams {
+  clip: LiveAPI;
+  clipIndex: number;
+  clipCount: number;
+  notationString?: string;
+  transformString?: string;
+  noteUpdateMode: string;
+  name?: string;
+  color?: string;
+  timeSignature?: string;
+  start?: string;
+  length?: string;
+  firstStart?: string;
+  looping?: boolean;
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
   context: Partial<ToolContext>;
@@ -307,6 +320,8 @@ export function processSingleClipUpdate(
 ): void {
   const {
     clip,
+    clipIndex,
+    clipCount,
     notationString,
     transformString,
     noteUpdateMode,
@@ -340,6 +355,7 @@ export function processSingleClipUpdate(
     timeSignature,
     clip,
   );
+
   let finalNoteCount: number | null = null;
 
   // Determine looping state
@@ -386,12 +402,14 @@ export function processSingleClipUpdate(
     verifyColorQuantization(clip, color);
   }
 
-  // Audio-specific parameters
+  // Build context for transform variables (clip.*, bar.*)
   const isAudioClip = (clip.getProperty("is_audio_clip") as number) > 0;
+  // prettier-ignore
+  const clipContext = buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator);
 
   if (isAudioClip) {
     setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
-    applyAudioTransforms(clip, transformString);
+    applyAudioTransforms(clip, transformString, clipContext);
   }
 
   // Handle note updates (transforms already applied for audio clips above)
@@ -402,6 +420,7 @@ export function processSingleClipUpdate(
     noteUpdateMode,
     timeSigNumerator,
     timeSigDenominator,
+    clipContext,
   );
 
   // Handle quantization (after notes so newly merged notes get quantized)

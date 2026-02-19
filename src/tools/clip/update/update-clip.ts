@@ -16,16 +16,19 @@ import {
 import {
   prepareSplitParams,
   performSplitting,
+  type SplittingContext,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
-import type { SplittingContext } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
-import { processSingleClipUpdate } from "./helpers/update-clip-helpers.ts";
+import {
+  type ClipAudioWarpQuantizeParams,
+  processSingleClipUpdate,
+} from "./helpers/update-clip-helpers.ts";
 
-interface UpdateClipArgs {
+interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   ids?: string;
   notes?: string;
   transforms?: string;
@@ -40,18 +43,6 @@ interface UpdateClipArgs {
   arrangementStart?: string;
   arrangementLength?: string;
   split?: string;
-  gainDb?: number;
-  pitchShift?: number;
-  warpMode?: string;
-  warping?: boolean;
-  warpOp?: string;
-  warpBeatTime?: number;
-  warpSampleTime?: number;
-  warpDistance?: number;
-  quantize?: number;
-  quantizeGrid?: string;
-  quantizeSwing?: number;
-  quantizePitch?: string;
   code?: string;
 }
 
@@ -163,7 +154,9 @@ export async function updateClip(
   const updatedClips: ClipResult[] = [];
   const tracksWithMovedClips = new Map<number, number>();
 
-  for (const clip of mutableClips) {
+  for (let i = 0; i < mutableClips.length; i++) {
+    const clip = mutableClips[i] as LiveAPI;
+
     if (isDeadlineExceeded(deadline)) {
       console.warn(
         `Deadline exceeded after updating ${updatedClips.length} of ${mutableClips.length} clips`,
@@ -175,6 +168,8 @@ export async function updateClip(
 
     processSingleClipUpdate({
       clip,
+      clipIndex: i,
+      clipCount: mutableClips.length,
       notationString,
       transformString,
       noteUpdateMode,

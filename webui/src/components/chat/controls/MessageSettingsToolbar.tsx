@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import type { Provider } from "#webui/types/settings";
+import { type Provider } from "#webui/types/settings";
 
 export interface MessageSettingsToolbarProps {
   provider: Provider;

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 export interface RoutingType {
@@ -80,7 +81,7 @@ export function findRoutingOptionForDuplicateNames(
   }
 
   // Multiple matches - need to find the correct one
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const allTrackIds = liveSet.getChildIds("tracks");
 
   // Find all tracks with the same name and their info
@@ -207,7 +208,8 @@ export function configureRouting(
   newTrack: LiveAPI,
   sourceTrackIndex: number | undefined,
 ): void {
-  const sourceTrack = LiveAPI.from(`live_set tracks ${sourceTrackIndex}`);
+  // sourceTrackIndex is guaranteed by caller when routeToSource is true
+  const sourceTrack = LiveAPI.from(livePath.track(sourceTrackIndex as number));
   const sourceTrackName = sourceTrack.getProperty("name") as string;
 
   configureSourceTrackInput(sourceTrack, sourceTrackName);

@@ -18,11 +18,11 @@ import {
 } from "../shared/formatting.ts";
 import { extractToolResultText } from "../shared/mcp.ts";
 import { type McpClient, parseToolArgs } from "../shared/tool-execution.ts";
-import type {
-  OpenAIConversationItem,
-  OpenAIResponseOutput,
-  OpenAIStreamEvent,
-  OpenAIStreamState,
+import {
+  type OpenAIConversationItem,
+  type OpenAIResponseOutput,
+  type OpenAIStreamEvent,
+  type OpenAIStreamState,
 } from "../shared/types.ts";
 
 /**

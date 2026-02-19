@@ -1,21 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import {
   children,
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiPath,
-  liveApiSet,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
-import {
   expectDeleteDeviceCalls,
-  setupScenePathFromId,
+  type RegisteredMockObject,
+  registerClipSlot,
+  registerMockObject,
 } from "./duplicate-test-helpers.ts";
 import {
   calculateSceneLength,
@@ -80,46 +76,19 @@ describe("duplicate-track-scene-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this.path === "live_set") {
-        return "id 1";
-      }
-
-      return `id ${Math.random()}`;
-    });
-
-    liveApiGet.mockImplementation(function (
-      this: MockLiveAPIContext,
-      property: string,
-    ) {
-      if (this.path === "live_set" && property === "tracks") {
-        return ["id", "10", "id", "11", "id", "12"];
-      }
-
-      return [];
-    });
-
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      return this._path;
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: ["id", "10", "id", "11", "id", "12"] },
     });
   });
 
   describe("calculateSceneLength", () => {
     it("should return default minimum length when scene has no clips", () => {
-      liveApiGet.mockImplementation(function (
-        this: MockLiveAPIContext,
-        property: string,
-      ) {
-        if (property === "tracks") {
-          return ["id", "10"];
-        }
-
-        if (property === "has_clip") {
-          return [0];
-        }
-
-        return [];
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: children("10") },
       });
+      registerClipSlot(0, 0, false);
 
       const length = calculateSceneLength(0);
 
@@ -127,30 +96,12 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should return length of longest clip in scene", () => {
-      liveApiGet.mockImplementation(function (
-        this: MockLiveAPIContext,
-        property: string,
-      ) {
-        if (this.path === "live_set" && property === "tracks") {
-          return ["id", "10", "id", "11"];
-        }
-
-        if (property === "has_clip") {
-          return [1];
-        }
-
-        if (property === "length") {
-          if (this.path?.includes("tracks 0")) {
-            return [8];
-          }
-
-          if (this.path?.includes("tracks 1")) {
-            return [12];
-          }
-        }
-
-        return [];
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: children("10", "11") },
       });
+      registerClipSlot(0, 0, true, { length: 8 });
+      registerClipSlot(1, 0, true, { length: 12 });
 
       const length = calculateSceneLength(0);
 
@@ -160,12 +111,14 @@ describe("duplicate-track-scene-helpers", () => {
 
   describe("duplicateTrack", () => {
     it("should duplicate a track and return basic info", () => {
-      mockLiveApiGet({
-        "live_set tracks 1": {
-          devices: [],
-          clip_slots: [],
-          arrangement_clips: [],
-        },
+      const liveSet = registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: ["id", "10", "id", "11", "id", "12"] },
+      });
+
+      registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
 
       const result = duplicateTrack(0);
@@ -175,34 +128,24 @@ describe("duplicate-track-scene-helpers", () => {
         clips: [],
       });
 
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "duplicate_track",
-        0,
-      );
+      expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
     });
 
     it("should set name when provided", () => {
-      mockLiveApiGet({
-        "live_set tracks 1": {
-          devices: [],
-          clip_slots: [],
-          arrangement_clips: [],
-        },
+      const newTrack = registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
 
       duplicateTrack(0, "New Track");
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 1" }),
-        "name",
-        "New Track",
-      );
+      expect(newTrack.set).toHaveBeenCalledWith("name", "New Track");
     });
 
     it("should delete all devices when withoutDevices is true", () => {
-      mockLiveApiGet({
-        "live_set tracks 1": {
+      const newTrack = registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: {
           devices: children("device0", "device1", "device2"),
           clip_slots: [],
           arrangement_clips: [],
@@ -211,37 +154,38 @@ describe("duplicate-track-scene-helpers", () => {
 
       duplicateTrack(0, undefined, false, true);
 
-      expectDeleteDeviceCalls("live_set tracks 1", 3);
+      expectDeleteDeviceCalls(newTrack, 3);
     });
 
     it("should delete clips when withoutClips is true", () => {
-      mockLiveApiGet({
-        "live_set tracks 1": {
+      const newTrack = registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: {
           devices: [],
           clip_slots: children("slot0", "slot1"),
           arrangement_clips: children("arrClip0"),
         },
-        "id slot0": { has_clip: 1 },
-        "id slot1": { has_clip: 0 },
+      });
+
+      registerMockObject("slot0", {
+        path: livePath.track(1).clipSlot(0),
+        properties: { has_clip: 1 },
+      });
+      registerMockObject("slot1", {
+        path: livePath.track(1).clipSlot(1),
+        properties: { has_clip: 0 },
       });
 
       duplicateTrack(0, undefined, true);
 
       // Should delete arrangement clips on the track
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 1" }),
-        "delete_clip",
-        "id arrClip0",
-      );
+      expect(newTrack.call).toHaveBeenCalledWith("delete_clip", "id arrClip0");
     });
 
     it("should return empty clips array when no clips exist", () => {
-      mockLiveApiGet({
-        "live_set tracks 1": {
-          devices: [],
-          clip_slots: [],
-          arrangement_clips: [],
-        },
+      registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: { devices: [], clip_slots: [], arrangement_clips: [] },
       });
 
       const result = duplicateTrack(0);
@@ -250,8 +194,9 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should configure routing when routeToSource is true", () => {
-      mockLiveApiGet({
-        "live_set tracks 0": {
+      const sourceTrack = registerMockObject("live_set/tracks/0", {
+        path: livePath.track(0),
+        properties: {
           name: "Source Track",
           arm: 0,
           input_routing_type: { display_name: "Audio In" },
@@ -259,7 +204,11 @@ describe("duplicate-track-scene-helpers", () => {
             { display_name: "No Input", identifier: "no_input_id" },
           ],
         },
-        "live_set tracks 1": {
+      });
+
+      registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: {
           devices: [],
           clip_slots: [],
           arrangement_clips: [],
@@ -272,11 +221,7 @@ describe("duplicate-track-scene-helpers", () => {
       duplicateTrack(0, undefined, false, false, true, 0);
 
       // Should arm source track
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0" }),
-        "arm",
-        1,
-      );
+      expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
     });
 
     interface SourceConfig {
@@ -293,38 +238,44 @@ describe("duplicate-track-scene-helpers", () => {
       identifier: string;
     }
 
-    // Helper to setup routing mock config with JSON-encoded routing properties
-    const routingMock = (
+    // Helper to register routing mocks with JSON-encoded routing properties
+    function setupRoutingMocks(
       sourceConfig: SourceConfig,
       outputRoutingTypes: OutputRoutingType[],
-    ) => ({
-      "live_set tracks 0": {
-        name: "Source Track",
-        ...sourceConfig,
-        input_routing_type: JSON.stringify({
-          input_routing_type: sourceConfig.input_routing_type,
-        }),
-        available_input_routing_types: JSON.stringify({
-          available_input_routing_types:
-            sourceConfig.available_input_routing_types ?? [],
-        }),
-      },
-      "live_set tracks 1": {
-        devices: [],
-        clip_slots: [],
-        arrangement_clips: [],
-        available_output_routing_types: JSON.stringify({
-          available_output_routing_types: outputRoutingTypes,
-        }),
-      },
-    });
+    ): { sourceTrack: RegisteredMockObject; newTrack: RegisteredMockObject } {
+      const sourceTrack = registerMockObject("live_set/tracks/0", {
+        path: livePath.track(0),
+        properties: {
+          name: "Source Track",
+          arm: sourceConfig.arm ?? 0,
+          input_routing_type: JSON.stringify({
+            input_routing_type: sourceConfig.input_routing_type,
+          }),
+          available_input_routing_types: JSON.stringify({
+            available_input_routing_types:
+              sourceConfig.available_input_routing_types ?? [],
+          }),
+        },
+      });
+      const newTrack = registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: {
+          devices: [],
+          clip_slots: [],
+          arrangement_clips: [],
+          available_output_routing_types: JSON.stringify({
+            available_output_routing_types: outputRoutingTypes,
+          }),
+        },
+      });
+
+      return { sourceTrack, newTrack };
+    }
 
     it("should not log arming when track is already armed", () => {
-      mockLiveApiGet(
-        routingMock(
-          { arm: 1, input_routing_type: { display_name: "No Input" } },
-          [{ display_name: "Source Track", identifier: "source_track_id" }],
-        ),
+      setupRoutingMocks(
+        { arm: 1, input_routing_type: { display_name: "No Input" } },
+        [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
       duplicateTrack(0, undefined, false, false, true, 0);
@@ -336,11 +287,9 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should warn when track routing option is not found", () => {
-      mockLiveApiGet(
-        routingMock(
-          { arm: 1, input_routing_type: { display_name: "No Input" } },
-          [{ display_name: "Other Track", identifier: "other_track_id" }],
-        ),
+      setupRoutingMocks(
+        { arm: 1, input_routing_type: { display_name: "No Input" } },
+        [{ display_name: "Other Track", identifier: "other_track_id" }],
       );
 
       duplicateTrack(0, undefined, false, false, true, 0);
@@ -354,14 +303,12 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should warn when duplicate track names prevent routing", () => {
-      mockLiveApiGet(
-        routingMock(
-          { arm: 1, input_routing_type: { display_name: "No Input" } },
-          [
-            { display_name: "Source Track", identifier: "source_track_id_1" },
-            { display_name: "Source Track", identifier: "source_track_id_2" },
-          ],
-        ),
+      setupRoutingMocks(
+        { arm: 1, input_routing_type: { display_name: "No Input" } },
+        [
+          { display_name: "Source Track", identifier: "source_track_id_1" },
+          { display_name: "Source Track", identifier: "source_track_id_2" },
+        ],
       );
 
       duplicateTrack(0, undefined, false, false, true, 0);
@@ -375,18 +322,16 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should change source track input routing from non-'No Input' to 'No Input'", () => {
-      mockLiveApiGet(
-        routingMock(
-          {
-            arm: 0,
-            input_routing_type: { display_name: "Audio In" },
-            available_input_routing_types: [
-              { display_name: "No Input", identifier: "no_input_id" },
-              { display_name: "Audio In", identifier: "audio_in_id" },
-            ],
-          },
-          [{ display_name: "Source Track", identifier: "source_track_id" }],
-        ),
+      setupRoutingMocks(
+        {
+          arm: 0,
+          input_routing_type: { display_name: "Audio In" },
+          available_input_routing_types: [
+            { display_name: "No Input", identifier: "no_input_id" },
+            { display_name: "Audio In", identifier: "audio_in_id" },
+          ],
+        },
+        [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
       duplicateTrack(0, undefined, false, false, true, 0);
@@ -400,17 +345,15 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should warn when No Input routing option is not available", () => {
-      mockLiveApiGet(
-        routingMock(
-          {
-            arm: 0,
-            input_routing_type: { display_name: "Audio In" },
-            available_input_routing_types: [
-              { display_name: "Audio In", identifier: "audio_in_id" },
-            ],
-          },
-          [{ display_name: "Source Track", identifier: "source_track_id" }],
-        ),
+      setupRoutingMocks(
+        {
+          arm: 0,
+          input_routing_type: { display_name: "Audio In" },
+          available_input_routing_types: [
+            { display_name: "Audio In", identifier: "audio_in_id" },
+          ],
+        },
+        [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
       duplicateTrack(0, undefined, false, false, true, 0);
@@ -424,58 +367,48 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should delete session clips when withoutClips is true", () => {
-      mockLiveApiGet({
-        "live_set tracks 1": {
+      registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: {
           devices: [],
           clip_slots: children("slot0"),
           arrangement_clips: [],
         },
-        "id slot0": { has_clip: 1 },
+      });
+      const slot0 = registerMockObject("slot0", {
+        path: livePath.track(1).clipSlot(0),
+        properties: { has_clip: 1 },
       });
 
       duplicateTrack(0, undefined, true);
 
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: expect.stringContaining("slot0") }),
-        "delete_clip",
-      );
+      expect(slot0.call).toHaveBeenCalledWith("delete_clip");
     });
 
     it("should collect arrangement clips when withoutClips is false", () => {
       const arrClipId = "arr_clip_456";
 
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        if (this._id === arrClipId || this._path?.includes(arrClipId)) {
-          return "live_set tracks 1 arrangement_clips 0";
-        }
-
-        return this._path;
-      });
-
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        if (
-          this._path === "live_set tracks 1 arrangement_clips 0" ||
-          this._id === arrClipId
-        ) {
-          return arrClipId;
-        }
-
-        return `id_${this._path ?? Math.random()}`;
-      });
-
-      mockLiveApiGet({
-        "live_set tracks 1": {
-          devices: [],
-          clip_slots: [], // No session clips to simplify test
-          arrangement_clips: children(arrClipId),
-        },
-        [arrClipId]: {
-          is_arrangement_clip: 1,
-          start_time: 8,
-        },
-        LiveSet: {
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: {
+          tracks: ["id", "10", "id", "11", "id", "12"],
           signature_numerator: 4,
           signature_denominator: 4,
+        },
+      });
+      registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: {
+          devices: [],
+          clip_slots: [],
+          arrangement_clips: children(arrClipId),
+        },
+      });
+      registerMockObject(arrClipId, {
+        path: livePath.track(1).arrangementClip(0),
+        properties: {
+          is_arrangement_clip: 1,
+          start_time: 8,
         },
       });
 
@@ -489,12 +422,13 @@ describe("duplicate-track-scene-helpers", () => {
 
   describe("duplicateScene", () => {
     it("should duplicate a scene and return basic info", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          tracks: children("track0"),
-        },
-        "live_set tracks 0 clip_slots 1": { has_clip: 0 },
+      const liveSet = registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: children("track0") },
       });
+
+      registerClipSlot(0, 1, false);
+      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
       const result = duplicateScene(0);
 
@@ -503,62 +437,60 @@ describe("duplicate-track-scene-helpers", () => {
         clips: [],
       });
 
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "duplicate_scene",
-        0,
-      );
+      expect(liveSet.call).toHaveBeenCalledWith("duplicate_scene", 0);
     });
 
     it("should set name when provided", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          tracks: children("track0"),
-        },
-        "live_set tracks 0 clip_slots 1": { has_clip: 0 },
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: children("track0") },
+      });
+      registerClipSlot(0, 1, false);
+      const scene = registerMockObject("live_set/scenes/1", {
+        path: livePath.scene(1),
       });
 
       duplicateScene(0, "New Scene");
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set scenes 1" }),
-        "name",
-        "New Scene",
-      );
+      expect(scene.set).toHaveBeenCalledWith("name", "New Scene");
     });
 
     it("should delete clips when withoutClips is true", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          tracks: children("track0", "track1"),
-        },
-        "live_set tracks 0 clip_slots 1": { has_clip: 1 },
-        "live_set tracks 1 clip_slots 1": { has_clip: 1 },
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: children("track0", "track1") },
       });
+      const slot0 = registerClipSlot(0, 1, true);
+
+      registerClipSlot(1, 1, true);
+      // Register clip objects so forEachClipInScene finds them
+      registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
+        path: livePath.track(0).clipSlot(1).clip(),
+      });
+      registerMockObject("live_set/tracks/1/clip_slots/1/clip", {
+        path: livePath.track(1).clipSlot(1).clip(),
+      });
+      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
       const result = duplicateScene(0, undefined, true);
 
       expect(result.clips).toHaveLength(0);
 
       // Should delete clips
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({
-          path: expect.stringContaining("clip_slots 1"),
-        }),
-        "delete_clip",
-      );
+      expect(slot0.call).toHaveBeenCalledWith("delete_clip");
     });
 
     it("should collect clips when withoutClips is not true", () => {
-      mockLiveApiGet({
-        LiveSet: {
-          tracks: children("track0"),
-        },
-        "live_set tracks 0 clip_slots 1": { has_clip: 1 },
-        Clip: {
-          is_arrangement_clip: 0,
-        },
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: children("track0") },
       });
+      registerClipSlot(0, 1, true);
+      registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
+        path: livePath.track(0).clipSlot(1).clip(),
+        properties: { is_arrangement_clip: 0 },
+      });
+      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
       const result = duplicateScene(0);
 
@@ -568,9 +500,7 @@ describe("duplicate-track-scene-helpers", () => {
 
   describe("duplicateSceneToArrangement", () => {
     it("should throw error when scene does not exist", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        return "id 0"; // Non-existent
-      });
+      mockNonExistentObjects();
 
       expect(() =>
         duplicateSceneToArrangement(
@@ -586,13 +516,7 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should throw error when scene has no sceneIndex", () => {
-      liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-        return "id 123";
-      });
-
-      liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-        return "some/invalid/path"; // No scenes pattern
-      });
+      registerMockObject("scene123", { path: "some/invalid/path" });
 
       expect(() =>
         duplicateSceneToArrangement(
@@ -608,13 +532,14 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should return empty clips when withoutClips is true", () => {
-      setupScenePathFromId("scene1", 0);
-
-      mockLiveApiGet({
-        LiveSet: {
-          tracks: children("track0"),
-        },
-        "live_set tracks 0 clip_slots 0": { has_clip: 1 },
+      registerMockObject("scene1", { path: livePath.scene(0) });
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: children("track0") },
+      });
+      registerClipSlot(0, 0, true);
+      registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
+        path: livePath.track(0).clipSlot(0).clip(),
       });
 
       const result = duplicateSceneToArrangement(
@@ -634,30 +559,29 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should use provided arrangementLength", () => {
-      setupScenePathFromId("scene1", 0);
-
-      mockLiveApiGet({
-        LiveSet: {
-          tracks: children("track0"),
-        },
-        "live_set tracks 0 clip_slots 0": { has_clip: 1 },
-        "live_set tracks 0 clip_slots 0 clip": {
-          length: 4,
-          signature_numerator: 4,
-          signature_denominator: 4,
-          is_midi_clip: 1,
+      registerMockObject("scene1", { path: livePath.scene(0) });
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: children("track0") },
+      });
+      registerClipSlot(0, 0, true, {
+        length: 4,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_midi_clip: 1,
+      });
+      registerMockObject("live_set/tracks/0", {
+        path: livePath.track(0),
+        methods: {
+          duplicate_clip_to_arrangement: () => [
+            "id",
+            livePath.track(0).arrangementClip(0),
+          ],
         },
       });
-
-      liveApiCall.mockImplementation(function (
-        this: MockLiveAPIContext,
-        method: string,
-      ) {
-        if (method === "duplicate_clip_to_arrangement") {
-          return ["id", "live_set tracks 0 arrangement_clips 0"];
-        }
-
-        return null;
+      registerMockObject(livePath.track(0).arrangementClip(0), {
+        path: livePath.track(0).arrangementClip(0),
+        properties: { is_arrangement_clip: 1, start_time: 16 },
       });
 
       const result = duplicateSceneToArrangement(
@@ -675,53 +599,33 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should use calculateSceneLength when arrangementLength is not provided", () => {
-      setupScenePathFromId("scene1", 0);
-
-      mockLiveApiGet({
-        LiveSet: {
+      registerMockObject("scene1", { path: livePath.scene(0) });
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: {
           tracks: children("track0"),
-        },
-        "live_set tracks 0 clip_slots 0": { has_clip: 1 },
-        "live_set tracks 0 clip_slots 0 clip": {
-          length: 8,
           signature_numerator: 4,
           signature_denominator: 4,
-          is_midi_clip: 1,
         },
       });
-
-      liveApiCall.mockImplementation(function (
-        this: MockLiveAPIContext,
-        method: string,
-      ) {
-        if (method === "duplicate_clip_to_arrangement") {
-          return ["id", "live_set tracks 0 arrangement_clips 0"];
-        }
-
-        return null;
+      registerClipSlot(0, 0, true, {
+        length: 8,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_midi_clip: 1,
       });
-
-      const originalGet = liveApiGet.getMockImplementation();
-
-      liveApiGet.mockImplementation(function (
-        this: MockLiveAPIContext,
-        prop: string,
-      ) {
-        if (
-          this._path?.includes("arrangement_clips") &&
-          prop === "is_arrangement_clip"
-        ) {
-          return [1];
-        }
-
-        if (
-          this._path?.includes("arrangement_clips") &&
-          prop === "start_time"
-        ) {
-          return [16];
-        }
-
-        return originalGet ? originalGet.call(this, prop) : [];
+      registerMockObject("live_set/tracks/0", {
+        path: livePath.track(0),
+        methods: {
+          duplicate_clip_to_arrangement: () => [
+            "id",
+            livePath.track(0).arrangementClip(0),
+          ],
+        },
+      });
+      registerMockObject(livePath.track(0).arrangementClip(0), {
+        path: livePath.track(0).arrangementClip(0),
+        properties: { is_arrangement_clip: 1, start_time: 16 },
       });
 
       const result = duplicateSceneToArrangement(

@@ -3,13 +3,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import {
   createAndDeleteTempClip,
   moveClipFromHolding,
+  type TilingContext,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
-import type { TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 const EPSILON = 0.001;
 
@@ -85,7 +87,7 @@ export function prepareSplitParams(
     return null;
   }
 
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const songTimeSigNumerator = liveSet.getProperty(
     "signature_numerator",
   ) as number;
@@ -183,7 +185,7 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     return false;
   }
 
-  const track = LiveAPI.from(`live_set tracks ${trackIndex}`);
+  const track = LiveAPI.from(livePath.track(trackIndex));
   const originalClipId = clip.id;
 
   splitClipRanges.set(originalClipId, {
@@ -201,12 +203,12 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
   const sourcePos = holdingAreaStart;
   const result = track.call(
     "duplicate_clip_to_arrangement",
-    `id ${originalClipId}`,
+    toLiveApiId(originalClipId),
     sourcePos,
   ) as [string, string | number];
   const sourceClip = LiveAPI.from(result);
 
-  if (sourceClip.id === "0") {
+  if (!sourceClip.exists()) {
     console.warn(
       `Failed to duplicate clip ${originalClipId} to holding area, aborting split`,
     );
@@ -300,7 +302,7 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): void {
     const workPos = holdingAreaStart + i * (clipLength + 4);
     const workResult = track.call(
       "duplicate_clip_to_arrangement",
-      `id ${sourceClipId}`,
+      toLiveApiId(sourceClipId),
       workPos,
     ) as [string, string | number];
     const workClipId = LiveAPI.from(workResult).id;
@@ -345,7 +347,7 @@ function rescanSplitClips(
   clips: LiveAPI[],
 ): void {
   for (const [oldClipId, range] of splitClipRanges) {
-    const track = LiveAPI.from(`live_set tracks ${range.trackIndex}`);
+    const track = LiveAPI.from(livePath.track(range.trackIndex));
     const trackClipIds = track.getChildIds("arrangement_clips");
     const freshClips = trackClipIds
       .map((id) => LiveAPI.from(id))

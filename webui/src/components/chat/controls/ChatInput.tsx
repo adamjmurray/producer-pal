@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import type { MessageOverrides } from "#webui/hooks/chat/use-chat";
+import { type MessageOverrides } from "#webui/hooks/chat/use-chat";
 import {
   MessageSettingsToolbar,
   type MessageSettingsToolbarProps,

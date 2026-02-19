@@ -24,7 +24,7 @@ describe("ppal-update-track", () => {
     // Setup: Get track IDs
     const liveSetResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["tracks"] },
     });
     const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
     const trackId = liveSet.tracks![0]!.id;
@@ -80,7 +80,7 @@ describe("ppal-update-track", () => {
     // Setup: Get track IDs and unsolo t5
     const liveSetResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["tracks"] },
     });
     const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
     const trackId = liveSet.tracks![0]!.id;
@@ -161,7 +161,7 @@ describe("ppal-update-track", () => {
     // Setup: Get track ID
     const liveSetResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["tracks"] },
     });
     const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
     const trackId = liveSet.tracks![0]!.id;
@@ -214,7 +214,7 @@ describe("ppal-update-track", () => {
     // Setup: Get track IDs and unsolo t5
     const liveSetResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["tracks"] },
     });
     const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
     const trackId = liveSet.tracks![0]!.id;
@@ -264,7 +264,7 @@ describe("ppal-update-track", () => {
     // Setup: Get track ID
     const liveSetResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
-      arguments: {},
+      arguments: { include: ["tracks"] },
     });
     const liveSet = parseToolResult<LiveSetResult>(liveSetResult);
     const trackId = liveSet.tracks![0]!.id;

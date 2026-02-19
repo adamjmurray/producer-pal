@@ -3,13 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  children,
-  liveApiId,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
+import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
 // Helper to set up mocks for a single track with mixer properties
 function setupSingleTrackMixerMock({
@@ -19,37 +16,48 @@ function setupSingleTrackMixerMock({
   displayValue: number;
   panValue: number;
 }) {
-  liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-    if (this._path === "live_set") return "live_set_id";
-    if (this._path === "live_set tracks 0") return "track1";
-    if (this._path === "live_set tracks 0 mixer_device") return "mixer_1";
-    if (this._path === "live_set tracks 0 mixer_device volume")
-      return "volume_param_1";
-    if (this._path === "live_set tracks 0 mixer_device panning")
-      return "panning_param_1";
-
-    return this._id;
-  });
-
-  mockLiveApiGet({
-    LiveSet: {
-      name: "Mixer Test Set",
-      tracks: children("track1"),
-      scenes: [],
+  setupLiveSetPathMappedMocks({
+    liveSetId: "live_set_id",
+    pathIdMap: {
+      [String(livePath.track(0))]: "track1",
+      [livePath.track(0).mixerDevice()]: "mixer_1",
+      [`${livePath.track(0).mixerDevice()} volume`]: "volume_param_1",
+      [`${livePath.track(0).mixerDevice()} panning`]: "panning_param_1",
+      [String(livePath.masterTrack())]: "master",
     },
-    "live_set tracks 0": {
-      has_midi_input: 1,
-      name: "Test Track",
-      mixer_device: children("mixer_1"),
-      clip_slots: [],
-      devices: [],
+    objects: {
+      LiveSet: {
+        name: "Mixer Test Set",
+        tracks: children("track1"),
+        return_tracks: children(),
+        scenes: [],
+      },
+      [String(livePath.track(0))]: {
+        has_midi_input: 1,
+        name: "Test Track",
+        mixer_device: children("mixer_1"),
+        clip_slots: [],
+        devices: [],
+      },
+      [String(livePath.masterTrack())]: {
+        has_midi_input: 0,
+        name: "Master",
+        mixer_device: children("master_mixer"),
+        devices: [],
+      },
+      [livePath.masterTrack().mixerDevice()]: {
+        volume: children("master_volume"),
+        panning: children("master_pan"),
+      },
+      master_volume: { display_value: 0 },
+      master_pan: { value: 0 },
+      [livePath.track(0).mixerDevice()]: {
+        volume: children("volume_param_1"),
+        panning: children("panning_param_1"),
+      },
+      volume_param_1: { display_value: displayValue },
+      panning_param_1: { value: panValue },
     },
-    MixerDevice: {
-      volume: children("volume_param_1"),
-      panning: children("panning_param_1"),
-    },
-    volume_param_1: { display_value: displayValue },
-    panning_param_1: { value: panValue },
   });
 }
 
@@ -58,7 +66,7 @@ describe("readLiveSet - mixer properties", () => {
     setupSingleTrackMixerMock({ displayValue: -6, panValue: 0.5 });
 
     const result = readLiveSet({
-      include: ["regular-tracks", "mixer"],
+      include: ["tracks", "mixer"],
     });
 
     const tracks = result.tracks as unknown[];
@@ -73,35 +81,36 @@ describe("readLiveSet - mixer properties", () => {
   });
 
   it("excludes mixer properties from tracks when mixer is not included", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") {
-        return "live_set_id";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "track1";
-      }
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Mixer Test Set",
-        tracks: children("track1"),
-        scenes: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        "live_set tracks 0": "track1",
+        [String(livePath.masterTrack())]: "master",
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        mixer_device: children("mixer_1"),
-        clip_slots: [],
-        devices: [],
+      objects: {
+        LiveSet: {
+          name: "Mixer Test Set",
+          tracks: children("track1"),
+          return_tracks: children(),
+          scenes: [],
+        },
+        "live_set tracks 0": {
+          has_midi_input: 1,
+          name: "Test Track",
+          mixer_device: children("mixer_1"),
+          clip_slots: [],
+          devices: [],
+        },
+        [String(livePath.masterTrack())]: {
+          has_midi_input: 0,
+          name: "Master",
+          devices: [],
+        },
       },
     });
 
     const result = readLiveSet({
-      include: ["regular-tracks"],
+      include: ["tracks"],
     });
 
     const tracks = result.tracks as unknown[];
@@ -111,57 +120,49 @@ describe("readLiveSet - mixer properties", () => {
   });
 
   it("includes mixer properties in return tracks", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") {
-        return "live_set_id";
-      }
-
-      if (this._path === "live_set return_tracks 0") {
-        return "return1";
-      }
-
-      if (this._path === "live_set return_tracks 0 mixer_device") {
-        return "mixer_1";
-      }
-
-      if (this._path === "live_set return_tracks 0 mixer_device volume") {
-        return "volume_param_1";
-      }
-
-      if (this._path === "live_set return_tracks 0 mixer_device panning") {
-        return "panning_param_1";
-      }
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Mixer Test Set",
-        return_tracks: children("return1"),
-        scenes: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        [String(livePath.returnTrack(0))]: "return1",
+        [livePath.returnTrack(0).mixerDevice()]: "mixer_1",
+        [`${livePath.returnTrack(0).mixerDevice()} volume`]: "volume_param_1",
+        [`${livePath.returnTrack(0).mixerDevice()} panning`]: "panning_param_1",
+        [String(livePath.masterTrack())]: "master",
       },
-      "live_set return_tracks 0": {
-        has_midi_input: 0,
-        name: "Return Track",
-        mixer_device: children("mixer_1"),
-        clip_slots: [],
-        devices: [],
-      },
-      MixerDevice: {
-        volume: children("volume_param_1"),
-        panning: children("panning_param_1"),
-      },
-      volume_param_1: {
-        display_value: -3,
-      },
-      panning_param_1: {
-        value: -0.25,
+      objects: {
+        LiveSet: {
+          name: "Mixer Test Set",
+          tracks: children(),
+          return_tracks: children("return1"),
+          scenes: [],
+        },
+        [String(livePath.masterTrack())]: {
+          has_midi_input: 0,
+          name: "Master",
+          devices: [],
+        },
+        [String(livePath.returnTrack(0))]: {
+          has_midi_input: 0,
+          name: "Return Track",
+          mixer_device: children("mixer_1"),
+          clip_slots: [],
+          devices: [],
+        },
+        [livePath.returnTrack(0).mixerDevice()]: {
+          volume: children("volume_param_1"),
+          panning: children("panning_param_1"),
+        },
+        volume_param_1: {
+          display_value: -3,
+        },
+        panning_param_1: {
+          value: -0.25,
+        },
       },
     });
 
     const result = readLiveSet({
-      include: ["return-tracks", "mixer"],
+      include: ["tracks", "mixer"],
     });
 
     const returnTracks = result.returnTracks as unknown[];
@@ -176,56 +177,41 @@ describe("readLiveSet - mixer properties", () => {
   });
 
   it("includes mixer properties in master track", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") {
-        return "live_set_id";
-      }
-
-      if (this._path === "live_set master_track") {
-        return "master";
-      }
-
-      if (this._path === "live_set master_track mixer_device") {
-        return "mixer_1";
-      }
-
-      if (this._path === "live_set master_track mixer_device volume") {
-        return "volume_param_1";
-      }
-
-      if (this._path === "live_set master_track mixer_device panning") {
-        return "panning_param_1";
-      }
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Mixer Test Set",
-        master_track: children("master"),
-        scenes: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        [String(livePath.masterTrack())]: "master",
+        [livePath.masterTrack().mixerDevice()]: "mixer_1",
+        [`${livePath.masterTrack().mixerDevice()} volume`]: "volume_param_1",
+        [`${livePath.masterTrack().mixerDevice()} panning`]: "panning_param_1",
       },
-      "live_set master_track": {
-        has_midi_input: 0,
-        name: "Master",
-        mixer_device: children("mixer_1"),
-        devices: [],
-      },
-      MixerDevice: {
-        volume: children("volume_param_1"),
-        panning: children("panning_param_1"),
-      },
-      volume_param_1: {
-        display_value: 0,
-      },
-      panning_param_1: {
-        value: 0,
+      objects: {
+        LiveSet: {
+          name: "Mixer Test Set",
+          tracks: children(),
+          scenes: [],
+        },
+        [String(livePath.masterTrack())]: {
+          has_midi_input: 0,
+          name: "Master",
+          mixer_device: children("mixer_1"),
+          devices: [],
+        },
+        [livePath.masterTrack().mixerDevice()]: {
+          volume: children("volume_param_1"),
+          panning: children("panning_param_1"),
+        },
+        volume_param_1: {
+          display_value: 0,
+        },
+        panning_param_1: {
+          value: 0,
+        },
       },
     });
 
     const result = readLiveSet({
-      include: ["master-track", "mixer"],
+      include: ["tracks", "mixer"],
     });
 
     expect(result.masterTrack).toStrictEqual(
@@ -256,82 +242,70 @@ describe("readLiveSet - mixer properties", () => {
   });
 
   it("includes mixer properties in multiple tracks", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") {
-        return "live_set_id";
-      }
-
-      if (this._path === "live_set tracks 0") {
-        return "track1";
-      }
-
-      if (this._path === "live_set tracks 1") {
-        return "track2";
-      }
-
-      if (this._path === "live_set tracks 0 mixer_device") {
-        return "mixer_1";
-      }
-
-      if (this._path === "live_set tracks 1 mixer_device") {
-        return "mixer_2";
-      }
-
-      if (this._path === "live_set tracks 0 mixer_device volume") {
-        return "volume_param_1";
-      }
-
-      if (this._path === "live_set tracks 1 mixer_device volume") {
-        return "volume_param_2";
-      }
-
-      if (this._path === "live_set tracks 0 mixer_device panning") {
-        return "panning_param_1";
-      }
-
-      if (this._path === "live_set tracks 1 mixer_device panning") {
-        return "panning_param_2";
-      }
-
-      return this._id;
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Mixer Test Set",
-        tracks: children("track1", "track2"),
-        scenes: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      pathIdMap: {
+        [String(livePath.track(0))]: "track1",
+        [String(livePath.track(1))]: "track2",
+        [livePath.track(0).mixerDevice()]: "mixer_1",
+        [livePath.track(1).mixerDevice()]: "mixer_2",
+        [`${livePath.track(0).mixerDevice()} volume`]: "volume_param_1",
+        [`${livePath.track(1).mixerDevice()} volume`]: "volume_param_2",
+        [`${livePath.track(0).mixerDevice()} panning`]: "panning_param_1",
+        [`${livePath.track(1).mixerDevice()} panning`]: "panning_param_2",
+        [String(livePath.masterTrack())]: "master",
       },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Track 1",
-        mixer_device: children("mixer_1"),
-        clip_slots: [],
-        devices: [],
-      },
-      "live_set tracks 1": {
-        has_midi_input: 1,
-        name: "Track 2",
-        mixer_device: children("mixer_2"),
-        clip_slots: [],
-        devices: [],
-      },
-      volume_param_1: {
-        display_value: -6,
-      },
-      panning_param_1: {
-        value: 0.5,
-      },
-      volume_param_2: {
-        display_value: -12,
-      },
-      panning_param_2: {
-        value: -0.75,
+      objects: {
+        LiveSet: {
+          name: "Mixer Test Set",
+          tracks: children("track1", "track2"),
+          return_tracks: children(),
+          scenes: [],
+        },
+        [String(livePath.masterTrack())]: {
+          has_midi_input: 0,
+          name: "Master",
+          devices: [],
+        },
+        [String(livePath.track(0))]: {
+          has_midi_input: 1,
+          name: "Track 1",
+          mixer_device: children("mixer_1"),
+          clip_slots: [],
+          devices: [],
+        },
+        [String(livePath.track(1))]: {
+          has_midi_input: 1,
+          name: "Track 2",
+          mixer_device: children("mixer_2"),
+          clip_slots: [],
+          devices: [],
+        },
+        [livePath.track(0).mixerDevice()]: {
+          volume: children("volume_param_1"),
+          panning: children("panning_param_1"),
+        },
+        [livePath.track(1).mixerDevice()]: {
+          volume: children("volume_param_2"),
+          panning: children("panning_param_2"),
+        },
+        volume_param_1: {
+          display_value: -6,
+        },
+        panning_param_1: {
+          value: 0.5,
+        },
+        volume_param_2: {
+          display_value: -12,
+        },
+        panning_param_2: {
+          value: -0.75,
+        },
       },
     });
 
     const result = readLiveSet({
-      include: ["regular-tracks", "mixer"],
+      include: ["tracks", "mixer"],
     });
 
     const tracks = result.tracks as unknown[];

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import {
   parseIncludeArray,
@@ -55,7 +56,7 @@ export function readScene(
     args.include,
     READ_SCENE_DEFAULTS,
   );
-  const liveSet = LiveAPI.from(`live_set`);
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
   let scene: LiveAPI;
   let resolvedSceneIndex: number | null | undefined = sceneIndex;
@@ -67,7 +68,8 @@ export function readScene(
     // Determine scene index from the scene's path
     resolvedSceneIndex = scene.sceneIndex;
   } else {
-    scene = LiveAPI.from(`live_set scenes ${sceneIndex}`);
+    // sceneIndex guaranteed defined here: null-check at function start covers sceneId==null case
+    scene = LiveAPI.from(livePath.scene(sceneIndex as number));
   }
 
   if (!scene.exists()) {
@@ -105,29 +107,51 @@ export function readScene(
   }
 
   if (includeClips) {
-    result.clips = liveSet
+    const clips = liveSet
       .getChildIds("tracks")
       .map((_trackId, trackIndex) =>
         readClip({
           trackIndex,
           sceneIndex: resolvedSceneIndex,
+          suppressEmptyWarning: true,
           include: args.include,
         }),
       )
       .filter((clip: ClipResult) => clip.id != null);
+
+    // Strip fields redundant with parent scene context
+    for (const clip of clips) {
+      delete (clip as unknown as Record<string, unknown>).sceneIndex;
+      delete (clip as unknown as Record<string, unknown>).view;
+    }
+
+    result.clips = clips;
   } else {
-    // When not including full clip details, just return the count
-    result.clipCount = liveSet
-      .getChildIds("tracks")
-      .map((_trackId, trackIndex) =>
-        readClip({
-          trackIndex,
-          sceneIndex: resolvedSceneIndex,
-          include: [],
-        }),
-      )
-      .filter((clip: ClipResult) => clip.id != null).length;
+    // Lightweight clip counting — only check existence instead of reading full clip properties
+    result.clipCount = countSceneClips(liveSet, sceneNum);
   }
 
   return result;
+}
+
+/**
+ * Count non-empty clips in a scene using lightweight existence checks
+ * @param liveSet - LiveAPI reference to the live set
+ * @param sceneIndex - Scene index (0-based)
+ * @returns Number of non-empty clips
+ */
+function countSceneClips(liveSet: LiveAPI, sceneIndex: number): number {
+  let count = 0;
+
+  for (const [trackIndex] of liveSet.getChildIds("tracks").entries()) {
+    const clip = LiveAPI.from(
+      livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
+    );
+
+    if (clip.exists()) {
+      count++;
+    }
+  }
+
+  return count;
 }

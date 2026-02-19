@@ -16,14 +16,14 @@ import {
   audioUnwarpedTestCases,
   midiLoopedTestCases,
   midiUnloopedTestCases,
-} from "./arrangement-clip-test-cases.ts";
-import { ARRANGEMENT_CLIP_TESTS_PATH } from "./arrangement-lengthening-test-helpers.ts";
+} from "./helpers/arrangement-clip-test-cases.ts";
+import { ARRANGEMENT_CLIP_TESTS_PATH } from "./helpers/arrangement-lengthening-test-helpers.ts";
 import {
   assertContiguousClips,
   assertSpanPreserved,
   splitClip,
   testSplitClip,
-} from "./arrangement-splitting-test-helpers.ts";
+} from "./helpers/arrangement-splitting-test-helpers.ts";
 import {
   type CreateTrackResult,
   parseToolResult,
@@ -78,14 +78,11 @@ describe.each(singleSplitSuites)(
     const filtered = cases.filter((c) => !RESERVED_TRACKS.has(c.track));
 
     it.each(filtered)("splits t$track: $name", async ({ track }) => {
-      const { initialClips, resultClips, warnings } = await testSplitClip(
-        ctx.client!,
-        track,
-        { sleepMs },
-      );
+      const { trackType, initialClips, resultClips, warnings } =
+        await testSplitClip(ctx.client!, track, { sleepMs });
 
       expect(resultClips.length).toBe(2);
-      expect(resultClips.every((c) => c.type === type)).toBe(true);
+      expect(trackType).toBe(type);
       expect(warnings).toHaveLength(0);
 
       assertContiguousClips(resultClips);
@@ -98,25 +95,34 @@ describe.each(singleSplitSuites)(
 
 describe("Multiple split points (1|2, 1|3)", () => {
   const multiSplitCases = [
-    { track: 0, type: "midi" as const, name: "MIDI looped" },
-    { track: 9, type: "midi" as const, name: "MIDI unlooped" },
-    { track: 15, type: "audio" as const, name: "audio looped warped" },
-    { track: 24, type: "audio" as const, name: "audio unlooped warped" },
-    { track: 30, type: "audio" as const, name: "audio unwarped" },
+    { track: 0, type: "midi" as const, name: "MIDI looped", sleepMs: 100 },
+    { track: 9, type: "midi" as const, name: "MIDI unlooped", sleepMs: 100 },
+    {
+      track: 15,
+      type: "audio" as const,
+      name: "audio looped warped",
+      sleepMs: 200,
+    },
+    {
+      track: 24,
+      type: "audio" as const,
+      name: "audio unlooped warped",
+      sleepMs: 200,
+    },
+    { track: 30, type: "audio" as const, name: "audio unwarped", sleepMs: 200 },
   ];
 
   it.each(multiSplitCases)(
     "splits t$track ($name) into 3 segments",
-    async ({ track, type }) => {
-      const sleepMs = type === "audio" ? 200 : 100;
-      const { initialClips, resultClips } = await testSplitClip(
+    async ({ track, type, sleepMs }) => {
+      const { trackType, initialClips, resultClips } = await testSplitClip(
         ctx.client!,
         track,
         { splitPoint: "1|2, 1|3", sleepMs },
       );
 
       expect(resultClips.length).toBe(3);
-      expect(resultClips.every((c) => c.type === type)).toBe(true);
+      expect(trackType).toBe(type);
 
       assertContiguousClips(resultClips);
       assertSpanPreserved(initialClips, resultClips);
@@ -129,15 +135,14 @@ describe("Multiple split points (1|2, 1|3)", () => {
 describe("Out-of-bounds split points", () => {
   it("ignores split points beyond clip length (t1)", async () => {
     // t1 has 1:0 arrangement length (4 beats). 10|1 = 36 beats is way beyond.
-    const { initialClips, resultClips, warnings } = await testSplitClip(
-      ctx.client!,
-      OOB_TRACK,
-      { splitPoint: "1|2, 10|1" },
-    );
+    const { trackType, initialClips, resultClips, warnings } =
+      await testSplitClip(ctx.client!, OOB_TRACK, {
+        splitPoint: "1|2, 10|1",
+      });
 
     // 10|1 should be filtered out, leaving only 1|2 → 2 segments
     expect(resultClips.length).toBe(2);
-    expect(resultClips.every((c) => c.type === "midi")).toBe(true);
+    expect(trackType).toBe("midi");
     expect(warnings).toHaveLength(0);
 
     assertContiguousClips(resultClips);
@@ -166,7 +171,7 @@ describe("Behavioral splitting tests", () => {
         view: "arrangement",
         trackIndex: dynamicTrackIndex,
         arrangementStart: "200|1",
-        notes: "1|1 C3\n2|1 D3\n3|1 E3\n4|1 F3",
+        notes: "C3 1|1\nD3 2|1\nE3 3|1\nF3 4|1",
         length: "4:0.0",
         looping: true,
       },
@@ -179,16 +184,17 @@ describe("Behavioral splitting tests", () => {
 
     expect(splitClips.length).toBe(4);
 
-    let totalNotes = 0;
+    let clipsWithNotes = 0;
 
     for (const s of splitClips) {
       await sleep(50);
-      const clip = await readClip(ctx.client!, s.id, ["clip-notes"]);
+      const clip = await readClip(ctx.client!, s.id, ["notes"]);
 
-      totalNotes += clip.noteCount ?? 0;
+      if (clip.notes) clipsWithNotes++;
     }
 
-    expect(totalNotes).toBeGreaterThanOrEqual(4);
+    // Each split segment should have at least 1 note (4 notes across 4 segments)
+    expect(clipsWithNotes).toBeGreaterThanOrEqual(4);
   });
 
   it("applies other updates along with splitting", async () => {

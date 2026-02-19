@@ -553,6 +553,55 @@ describe("config-builders", () => {
 
       expect(config.chatHistory).toStrictEqual(history);
     });
+
+    describe("Ollama", () => {
+      function buildOllamaConfig(
+        model: string,
+        thinking: string,
+      ): ReturnType<typeof buildOpenAIConfig> {
+        return buildOpenAIConfig(
+          model,
+          1.0,
+          thinking,
+          "http://localhost:11434/v1",
+          true,
+          {},
+          undefined,
+          "ollama",
+        );
+      }
+
+      it("should set ollamaThink to false for Off", () => {
+        const config = buildOllamaConfig("qwen3", "Off");
+
+        expect(config.ollamaThink).toBe(false);
+        expect(config.reasoningEffort).toBeUndefined();
+      });
+
+      it("should not set ollamaThink for Default", () => {
+        const config = buildOllamaConfig("qwen3", "Default");
+
+        expect(config.ollamaThink).toBeUndefined();
+      });
+
+      it("should set ollamaThink to true for non-GPT-OSS levels", () => {
+        expect(buildOllamaConfig("qwen3", "Low").ollamaThink).toBe(true);
+        expect(buildOllamaConfig("qwen3", "Medium").ollamaThink).toBe(true);
+        expect(buildOllamaConfig("qwen3", "High").ollamaThink).toBe(true);
+      });
+
+      it("should set ollamaThink to level strings for GPT-OSS", () => {
+        expect(buildOllamaConfig("gpt-oss", "Low").ollamaThink).toBe("low");
+        expect(buildOllamaConfig("gpt-oss", "Medium").ollamaThink).toBe(
+          "medium",
+        );
+        expect(buildOllamaConfig("gpt-oss", "High").ollamaThink).toBe("high");
+      });
+
+      it("should set provider on config", () => {
+        expect(buildOllamaConfig("qwen3", "Off").provider).toBe("ollama");
+      });
+    });
   });
 
   describe("buildResponsesConfig", () => {
@@ -632,6 +681,25 @@ describe("config-builders", () => {
       const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", {});
 
       expect(config.systemInstruction).toBeDefined();
+    });
+
+    it("should include baseUrl when provided", () => {
+      const config = buildResponsesConfig(
+        "gpt-5.2",
+        1.0,
+        "Off",
+        {},
+        undefined,
+        "http://localhost:1234/v1",
+      );
+
+      expect(config.baseUrl).toBe("http://localhost:1234/v1");
+    });
+
+    it("should have undefined baseUrl when not provided", () => {
+      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", {});
+
+      expect(config.baseUrl).toBeUndefined();
     });
   });
 });

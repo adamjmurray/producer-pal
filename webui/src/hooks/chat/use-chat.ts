@@ -9,8 +9,8 @@ import {
   shouldRetry,
   MAX_RETRY_ATTEMPTS,
 } from "#webui/lib/rate-limit";
-import type { UIMessage } from "#webui/types/messages";
-import type { Provider } from "#webui/types/settings";
+import { type UIMessage } from "#webui/types/messages";
+import { type Provider } from "#webui/types/settings";
 import {
   handleMessageStream,
   validateMcpConnection,

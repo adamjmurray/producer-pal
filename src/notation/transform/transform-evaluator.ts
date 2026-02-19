@@ -4,12 +4,12 @@
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
-import type { PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
+import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import type { NoteEvent } from "../types.ts";
+import { type NoteEvent } from "../types.ts";
 import * as parser from "./parser/transform-parser.ts";
 import {
+  type ClipContext,
   evaluateTransformAST,
   type NoteContext,
   type NoteProperties,
@@ -25,36 +25,20 @@ const AUDIO_PARAMETERS = new Set(["gain", "pitchShift"]);
  * @param transformString - Transform expression string
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
+ * @param clipContext - Optional clip-level context for clip/bar variables
  */
 export function applyTransforms(
   notes: NoteEvent[],
   transformString: string | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
+  clipContext?: ClipContext,
 ): void {
   if (!transformString || notes.length === 0) {
     return;
   }
 
-  // Parse the transform string once before processing notes
-  let ast;
-
-  try {
-    ast = parser.parse(transformString);
-  } catch (error) {
-    if (error instanceof Error && error.name === "SyntaxError") {
-      const formatted = formatParserError(
-        error as PeggySyntaxError,
-        "transform",
-      );
-
-      console.warn(`Transform parse error: ${formatted}`);
-    } else {
-      console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
-    }
-
-    return; // Early return - no point processing notes if parsing failed
-  }
+  const ast = tryParseTransform(transformString);
 
   // Check for audio parameters and warn
   const hasAudioParams = ast.some((a) => AUDIO_PARAMETERS.has(a.parameter));
@@ -63,6 +47,10 @@ export function applyTransforms(
     console.warn("Audio parameters (gain, pitchShift) ignored for MIDI clips");
   }
 
+  // Sort by start_time then pitch so note.index reflects musical order
+  // (Ableton's get_notes_extended returns notes sorted by pitch)
+  notes.sort((a, b) => a.start_time - b.start_time || a.pitch - b.pitch);
+
   // Calculate the overall clip timeRange in musical beats
   const firstNote = notes[0] as NoteEvent;
   const clipStartTime = firstNote.start_time * (timeSigDenominator / 4);
@@ -70,7 +58,8 @@ export function applyTransforms(
   const clipEndTime =
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
 
-  for (const note of notes) {
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i] as NoteEvent;
     const noteContext = buildNoteContext(
       note,
       timeSigNumerator,
@@ -79,7 +68,13 @@ export function applyTransforms(
       clipEndTime,
     );
 
-    const noteProperties = buildNoteProperties(note, timeSigDenominator);
+    const noteProperties = buildNoteProperties(
+      note,
+      i,
+      notes.length,
+      timeSigDenominator,
+      clipContext,
+    );
 
     // Evaluate transforms for this note using the pre-parsed AST
     const transforms = evaluateTransformAST(ast, noteContext, noteProperties);
@@ -91,6 +86,17 @@ export function applyTransforms(
     applyProbabilityTransform(note, transforms);
     applyDeviationTransform(note, transforms);
     applyPitchTransform(note, transforms);
+  }
+
+  // Delete notes where transforms reduced velocity below 1 or duration to 0 or below
+  // (consistent with v0 deletion in bar|beat notation)
+  const surviving = notes.filter(
+    (note) => note.velocity >= 1 && note.duration > 0,
+  );
+
+  if (surviving.length < notes.length) {
+    notes.length = 0;
+    notes.push(...surviving);
   }
 }
 
@@ -144,23 +150,49 @@ function buildNoteContext(
 }
 
 /**
- * Build note properties object
+ * Build note properties object including note and clip context
  * @param note - Note event
+ * @param noteIndex - 0-based note order in clip
+ * @param noteCount - Total number of notes in the clip
  * @param timeSigDenominator - Time signature denominator
- * @returns Note properties for variable access
+ * @param clipContext - Optional clip-level context
+ * @returns Properties for variable access (note.*, clip.*)
  */
 function buildNoteProperties(
   note: NoteEvent,
+  noteIndex: number,
+  noteCount: number,
   timeSigDenominator: number,
+  clipContext?: ClipContext,
 ): NoteProperties {
-  return {
+  const props: NoteProperties = {
     pitch: note.pitch,
     start: note.start_time * (timeSigDenominator / 4), // Convert to musical beats
     velocity: note.velocity,
     deviation: note.velocity_deviation ?? 0,
     duration: note.duration * (timeSigDenominator / 4), // Convert to musical beats
     probability: note.probability,
+    index: noteIndex,
+    count: noteCount,
   };
+
+  if (clipContext) {
+    props["clip:duration"] = clipContext.clipDuration;
+    props["clip:index"] = clipContext.clipIndex;
+    props["clip:count"] = clipContext.clipCount;
+
+    if (clipContext.arrangementStart != null) {
+      props["clip:position"] = clipContext.arrangementStart;
+    }
+
+    props["clip:barDuration"] = clipContext.barDuration;
+
+    if (clipContext.scalePitchClassMask != null) {
+      props["scale:mask"] = clipContext.scalePitchClassMask;
+    }
+  }
+
+  return props;
 }
 
 /**
@@ -176,15 +208,10 @@ function applyVelocityTransform(
     return;
   }
 
-  if (transforms.velocity.operator === "set") {
-    note.velocity = Math.max(1, Math.min(127, transforms.velocity.value));
-  } else {
-    // operator === "add"
-    note.velocity = Math.max(
-      1,
-      Math.min(127, note.velocity + transforms.velocity.value),
-    );
-  }
+  note.velocity =
+    transforms.velocity.operator === "set"
+      ? Math.min(127, transforms.velocity.value)
+      : Math.min(127, note.velocity + transforms.velocity.value);
 }
 
 /**
@@ -235,11 +262,10 @@ function applyDurationTransform(
   const musicalBeatsValue = transforms.duration.value;
   const abletonBeatsValue = musicalBeatsValue * (4 / timeSigDenominator);
 
-  // Clamp minimum duration in Ableton beats
   note.duration =
     transforms.duration.operator === "set"
-      ? Math.max(0.001, abletonBeatsValue)
-      : Math.max(0.001, note.duration + abletonBeatsValue);
+      ? abletonBeatsValue
+      : note.duration + abletonBeatsValue;
 }
 
 /**
@@ -337,24 +363,29 @@ export function evaluateTransform(
     return {};
   }
 
-  let ast;
-
-  try {
-    ast = parser.parse(transformString);
-  } catch (error) {
-    if (error instanceof Error && error.name === "SyntaxError") {
-      const formatted = formatParserError(
-        error as PeggySyntaxError,
-        "transform",
-      );
-
-      console.warn(`Transform parse error: ${formatted}`);
-    } else {
-      console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
-    }
-
-    return {};
-  }
+  const ast = tryParseTransform(transformString);
 
   return evaluateTransformAST(ast, noteContext, noteProperties);
+}
+
+/**
+ * Parse a transform string, returning the AST. Throws on parse errors.
+ * @param transformString - Transform expression string
+ * @returns Parsed AST
+ * @throws Error with formatted message if parsing fails
+ */
+function tryParseTransform(
+  transformString: string,
+): ReturnType<typeof parser.parse> {
+  try {
+    return parser.parse(transformString);
+  } catch (error) {
+    if (error instanceof Error && error.name === "SyntaxError") {
+      throw new Error(
+        formatParserError(error as PeggySyntaxError, "transform"),
+      );
+    }
+
+    throw error;
+  }
 }

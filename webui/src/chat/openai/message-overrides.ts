@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  mapThinkingToOllamaThink,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
   type ReasoningEffort,
@@ -25,6 +26,7 @@ export interface EffectiveSettings {
   temperature: number | undefined;
   reasoningEffort: ReasoningEffort | undefined;
   excludeReasoning: boolean | undefined;
+  ollamaThink: boolean | string | undefined;
 }
 
 /**
@@ -36,6 +38,8 @@ export interface EffectiveSettings {
  * @param {boolean} [config.excludeReasoning] - Default exclude setting
  * @param {string} [config.baseUrl] - Base URL for provider detection
  * @param {string} config.model - Model identifier
+ * @param {string} [config.provider] - Provider identifier
+ * @param {boolean | string} [config.ollamaThink] - Ollama think parameter from config
  * @returns {EffectiveSettings} - Effective temperature and reasoning effort
  */
 export function calculateEffectiveSettings(
@@ -46,6 +50,8 @@ export function calculateEffectiveSettings(
     excludeReasoning?: boolean;
     baseUrl?: string;
     model: string;
+    provider?: string;
+    ollamaThink?: boolean | string;
   },
 ): EffectiveSettings {
   // If no overrides, use config values
@@ -54,6 +60,7 @@ export function calculateEffectiveSettings(
       temperature: config.temperature,
       reasoningEffort: config.reasoningEffort,
       excludeReasoning: config.excludeReasoning,
+      ollamaThink: config.ollamaThink,
     };
   }
 
@@ -63,9 +70,12 @@ export function calculateEffectiveSettings(
   // Calculate effective reasoning effort if thinking override provided
   let reasoningEffort: ReasoningEffort | undefined = config.reasoningEffort;
   let excludeReasoning = config.excludeReasoning;
+  let ollamaThink: boolean | string | undefined = config.ollamaThink;
 
   if (overrides.thinking !== undefined) {
-    if (isOpenRouterProvider(config.baseUrl)) {
+    if (config.provider === "ollama") {
+      ollamaThink = mapThinkingToOllamaThink(overrides.thinking, config.model);
+    } else if (isOpenRouterProvider(config.baseUrl)) {
       reasoningEffort = mapThinkingToOpenRouterEffort(overrides.thinking);
       // Exclude reasoning when effort is "none"
       excludeReasoning = reasoningEffort === "none";
@@ -85,5 +95,5 @@ export function calculateEffectiveSettings(
     excludeReasoning = !overrides.showThoughts;
   }
 
-  return { temperature, reasoningEffort, excludeReasoning };
+  return { temperature, reasoningEffort, excludeReasoning, ollamaThink };
 }

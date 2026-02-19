@@ -473,17 +473,16 @@ G4-G5: velocity += 20`;
     });
 
     it("throws error for undefined variable", () => {
-      const result = evaluateTransform(
-        "velocity += note.invalid",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
-        {},
-      );
-
-      // Should skip the parameter due to error
-      expect(result).toStrictEqual({});
+      expect(() =>
+        evaluateTransform(
+          "velocity += note.invalid",
+          {
+            position: 0,
+            timeSig: { numerator: 4, denominator: 4 },
+          },
+          {},
+        ),
+      ).toThrow(/transform syntax error/);
     });
 
     it("handles variables in ramp function arguments", () => {

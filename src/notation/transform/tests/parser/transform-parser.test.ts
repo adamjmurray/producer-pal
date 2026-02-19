@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import type {
-  BinaryOpNode,
-  FunctionNode,
-  VariableNode,
+import {
+  type BinaryOpNode,
+  type FunctionNode,
+  type VariableNode,
 } from "#src/notation/transform/parser/transform-parser.ts";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 
@@ -298,6 +298,35 @@ describe("Transform Parser", () => {
       expect(result[0]!.operator).toBe("add");
     });
 
+    it("parses -= operator as add with negated expression", () => {
+      const result = parser.parse("velocity -= 30");
+
+      expect(result).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "velocity",
+          operator: "add",
+          expression: { type: "subtract", left: 0, right: 30 },
+        },
+      ]);
+    });
+
+    it("parses -= with pitch range", () => {
+      const result = parser.parse("F#1: velocity -= 30");
+
+      expect(result[0]!.pitchRange).toStrictEqual({
+        startPitch: 42,
+        endPitch: 42,
+      });
+      expect(result[0]!.operator).toBe("add");
+      expect(result[0]!.expression).toStrictEqual({
+        type: "subtract",
+        left: 0,
+        right: 30,
+      });
+    });
+
     it("rejects old : operator", () => {
       expect(() => parser.parse("velocity: 10")).toThrow();
     });
@@ -453,7 +482,7 @@ describe("Transform Parser", () => {
 
     it("parses multi-parameter transform", () => {
       const result = parser.parse(
-        "velocity += 20 * cos(1:0t) + 10 * noise()\ntiming += 0.03 * noise()\nprobability += 0.2 * cos(0:2t)",
+        "velocity += 20 * cos(1:0t) + 10 * rand()\ntiming += 0.03 * rand()\nprobability += 0.2 * cos(0:2t)",
       );
 
       expect(result).toHaveLength(3);
@@ -535,6 +564,8 @@ describe("Transform Parser", () => {
         "probability",
         "duration",
         "start",
+        "index",
+        "count",
       ];
 
       for (const prop of properties) {
@@ -546,12 +577,54 @@ describe("Transform Parser", () => {
       }
     });
 
+    it("parses clip.duration with namespace", () => {
+      const result = parser.parse("velocity = clip.duration");
+      const variable = result[0]!.expression as VariableNode;
+
+      expect(variable).toStrictEqual({
+        type: "variable",
+        namespace: "clip",
+        name: "duration",
+      });
+    });
+
+    it("parses all clip properties with namespace", () => {
+      const properties = ["duration", "index", "position", "count"];
+
+      for (const prop of properties) {
+        const result = parser.parse(`velocity = clip.${prop}`);
+        const variable = result[0]!.expression as VariableNode;
+
+        expect(variable.namespace).toBe("clip");
+        expect(variable.name).toBe(prop);
+      }
+    });
+
+    it("parses clip.barDuration", () => {
+      const result = parser.parse("velocity = clip.barDuration");
+      const variable = result[0]!.expression as VariableNode;
+
+      expect(variable).toStrictEqual({
+        type: "variable",
+        namespace: "clip",
+        name: "barDuration",
+      });
+    });
+
     it("rejects invalid audio property", () => {
       expect(() => parser.parse("gain = audio.velocity")).toThrow();
     });
 
     it("rejects invalid note property", () => {
       expect(() => parser.parse("velocity = note.gain")).toThrow();
+    });
+
+    it("rejects invalid clip property", () => {
+      expect(() => parser.parse("velocity = clip.invalid")).toThrow();
+    });
+
+    it("rejects invalid bar property", () => {
+      expect(() => parser.parse("velocity = bar.invalid")).toThrow();
     });
   });
 

@@ -7,7 +7,9 @@
  * These helpers reduce code duplication in test setups.
  */
 import { vi } from "vitest";
-import { liveApiPath, mockLiveApiGet } from "#src/test/mocks/mock-live-api.ts";
+import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { type LiveObjectType } from "#src/types/live-object-types.ts";
 
 interface ClipProps {
   looping?: number;
@@ -18,8 +20,18 @@ interface ClipProps {
   [key: string]: number | undefined;
 }
 
+interface RegisterOptions {
+  path?: PathLike;
+  type?: LiveObjectType;
+  properties?: Record<string, unknown>;
+}
+
+function setupArrangementMock(id: string, options: RegisterOptions = {}): void {
+  registerMockObject(id, options);
+}
+
 /**
- * Setup liveApiPath mock for arrangement clip tests with a given clip ID.
+ * Register arrangement clip and track handles for a given clip ID.
  * @param clipId - The clip ID to match (e.g., "789")
  * @param trackIndex - Track index for the returned path
  */
@@ -27,15 +39,13 @@ export function setupArrangementClipPath(
   clipId: string,
   trackIndex: number = 0,
 ): void {
-  liveApiPath.mockImplementation(function (this: {
-    _id: string;
-    _path: string;
-  }) {
-    if (this._id === clipId) {
-      return `live_set tracks ${trackIndex} arrangement_clips 0`;
-    }
-
-    return this._path;
+  setupArrangementMock(`track-${trackIndex}`, {
+    path: livePath.track(trackIndex),
+    type: "Track",
+  });
+  setupArrangementMock(clipId, {
+    path: livePath.track(trackIndex).arrangementClip(0),
+    type: "Clip",
   });
 }
 
@@ -95,12 +105,12 @@ interface SetupArrangementMocksOptions {
 
 /**
  * Setup common mocks for arrangement clip tests.
- * Combines path mock and mockLiveApiGet in one call.
+ * Combines path setup and property registration in one call.
  * @param options - Options
  * @param options.clipId - Clip ID
  * @param options.trackIndex - Track index
  * @param options.clipProps - Clip properties (passed to createClipProps)
- * @param options.extraMocks - Additional mocks for mockLiveApiGet
+ * @param options.extraMocks - Additional registered mock properties
  */
 export function setupArrangementMocks(
   options: SetupArrangementMocksOptions = {},
@@ -113,8 +123,13 @@ export function setupArrangementMocks(
   } = options;
 
   setupArrangementClipPath(clipId, trackIndex);
-  mockLiveApiGet({
-    [clipId]: createClipProps(clipProps),
-    ...extraMocks,
+  setupArrangementMock(clipId, {
+    path: livePath.track(trackIndex).arrangementClip(0),
+    type: "Clip",
+    properties: createClipProps(clipProps),
   });
+
+  for (const [id, properties] of Object.entries(extraMocks)) {
+    setupArrangementMock(id, { properties });
+  }
 }

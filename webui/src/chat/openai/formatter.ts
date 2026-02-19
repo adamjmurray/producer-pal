@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { markLastThoughtAsOpen } from "#webui/chat/helpers/formatter-helpers";
-import type { ReasoningDetail } from "#webui/chat/openai/client";
-import type {
-  OpenAIMessage,
-  OpenAIToolCall,
-  UIMessage,
-  UIPart,
+import { type ReasoningDetail } from "#webui/chat/openai/client";
+import {
+  type OpenAIMessage,
+  type OpenAIToolCall,
+  type UIMessage,
+  type UIPart,
 } from "#webui/types/messages";
 
 /**

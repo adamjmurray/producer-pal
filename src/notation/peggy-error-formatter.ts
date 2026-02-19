@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { PeggySyntaxError } from "./peggy-parser-types.ts";
+import { type PeggySyntaxError } from "./peggy-parser-types.ts";
 
 /**
  * Format a Peggy SyntaxError into a human-readable message

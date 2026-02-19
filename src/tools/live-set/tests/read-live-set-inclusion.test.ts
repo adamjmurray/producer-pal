@@ -1,54 +1,34 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  children,
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  mockLiveApiGet,
-  type MockLiveAPIContext,
-} from "#src/test/mocks/mock-live-api.ts";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
+import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
 
 describe("readLiveSet - inclusion", () => {
-  it("returns sceneCount when includeScenes is false", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this.path) {
-        case "live_set":
-          return "live_set_id";
-        case "live_set tracks 0":
-          return "track1";
-        default:
-          return "id 0";
-      }
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "Scene Count Test Set",
-        is_playing: 0,
-        back_to_arranger: 1,
-        scale_mode: 0,
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        tracks: children("track1"),
-        scenes: children("scene9", "scene10", "scene11"),
-      },
-      "live_set tracks 0": {
-        has_midi_input: 1,
-        name: "Test Track",
-        clip_slots: children(),
-        arrangement_clips: children(),
-        devices: [],
+  it("returns sceneCount when scenes not included", () => {
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set_id",
+      objects: {
+        LiveSet: {
+          name: "Scene Count Test Set",
+          is_playing: 0,
+          back_to_arranger: 1,
+          scale_mode: 0,
+          tempo: 120,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          tracks: children(),
+          scenes: children("scene9", "scene10", "scene11"),
+        },
       },
     });
 
-    // Call with default include (which doesn't include "scenes")
+    // Default include is [] which doesn't include "scenes"
     const result = readLiveSet();
 
     // Verify that sceneCount is returned instead of scenes array
@@ -57,185 +37,114 @@ describe("readLiveSet - inclusion", () => {
   });
 
   it("returns minimal data when include is an empty array", () => {
-    liveApiPath.mockImplementation(function (this: MockLiveAPIContext) {
-      return this._path;
-    });
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      return this._id ?? "test_id";
-    });
-
-    mockLiveApiGet({
-      live_set: {
-        tracks: children(),
-        return_tracks: children(),
-        scenes: children(),
-        name: "Test Set",
-        is_playing: 0,
-        back_to_arranger: 0,
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        scale_mode: 0,
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set",
+      objects: {
+        LiveSet: {
+          tracks: children(),
+          return_tracks: children(),
+          scenes: children(),
+          name: "Test Set",
+          is_playing: 0,
+          back_to_arranger: 0,
+          tempo: 120,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          scale_mode: 0,
+        },
       },
-    });
-
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "get_version_string") {
-        return "12.3";
-      }
-
-      return null;
     });
 
     const result = readLiveSet({ include: [] });
 
-    // Should have basic song properties
+    // Should have basic song properties with counts
     expect(result).toStrictEqual(
       expect.objectContaining({
-        id: "live_set",
         name: "Test Set",
         tempo: 120,
         timeSignature: "4/4",
-        sceneCount: 0, // No scenes exist in the Live Set
+        sceneCount: 0,
+        regularTrackCount: 0,
+        returnTrackCount: 0,
       }),
     );
 
-    // Should NOT include any of the optional properties
+    // Should NOT include id or any track/scene arrays
+    expect(result).not.toHaveProperty("id");
     expect(result).not.toHaveProperty("tracks");
     expect(result).not.toHaveProperty("returnTracks");
     expect(result).not.toHaveProperty("masterTrack");
     expect(result).not.toHaveProperty("scenes");
   });
 
-  it("uses drum-maps by default and strips chains", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      switch (this._path) {
-        case "live_set":
-          return "live_set";
-        case "live_set tracks 0":
-          return "track1";
-        case "live_set tracks 0 devices 0":
-          return "drumrack1";
-        case "live_set tracks 0 devices 0 chains 0":
-          return "chain1";
-        case "live_set tracks 0 devices 0 chains 0 devices 0":
-          return "kick_device";
-        case "live_app":
-          return "live_app";
-        default:
-          return this._id;
-      }
-    });
-
-    mockLiveApiGet({
-      live_set: {
-        name: "Test Song",
-        tracks: children("track1"),
-        return_tracks: [],
-        scenes: [],
-        back_to_arranger: 0,
-        tempo: 120,
-        time_signature_numerator: 4,
-        time_signature_denominator: 4,
-        scale_mode: 0, // Scale disabled
+  it("returns regularTrackCount when tracks not included", () => {
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set",
+      pathIdMap: {
+        [String(livePath.track(0))]: "track1",
+        [String(livePath.track(1))]: "track2",
       },
-      track1: {
-        has_midi_input: 1,
-        name: "Drums",
-        color: 16711680,
-        back_to_arranger: 0,
-        devices: children("drumrack1"),
-        clip_slots: [],
-        arrangement_clips: [],
-        can_be_armed: 1,
-        arm: 0,
-        is_foldable: 0,
-        is_grouped: 0,
-        group_track: ["id", "0"],
-        mute: 0,
-        solo: 0,
-        muted_via_solo: 0,
-        playing_slot_index: -1,
-        fired_slot_index: -1,
-      },
-      drumrack1: {
-        name: "Test Drum Rack",
-        class_name: "DrumGroupDevice",
-        class_display_name: "Drum Rack",
-        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-        is_active: 1,
-        can_have_chains: 1,
-        can_have_drum_pads: 1,
-        chains: children("chain1"), // Chains directly on drum rack with in_note
-        return_chains: [],
-      },
-      chain1: {
-        in_note: 60, // C3 - chains use in_note instead of pad note
-        name: "Test Kick",
-        mute: 0,
-        muted_via_solo: 0,
-        solo: 0,
-        devices: children("kick_device"),
-      },
-      kick_device: {
-        name: "Kick Instrument",
-        class_name: "Simpler",
-        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-      },
-      live_app: {
-        version_string: "12.2.5",
+      objects: {
+        LiveSet: {
+          name: "Count Test",
+          tracks: children("track1", "track2"),
+          return_tracks: children(),
+          scenes: children(),
+        },
       },
     });
 
-    // Call with NO arguments - should use defaults (including drum-maps)
-    const result = readLiveSet();
+    const result = readLiveSet({ include: [] });
 
-    // Should have drumMap on the track
-    const tracks = result.tracks as {
-      drumMap: Record<string, string>;
-      instrument: { id: string; name: string; type: string; chains?: unknown };
-    }[];
+    expect(result.regularTrackCount).toBe(2);
+    expect(result.tracks).toBeUndefined();
+  });
 
-    expect(tracks[0]!.drumMap).toStrictEqual({
-      C3: "Test Kick",
+  it("returns returnTrackCount when tracks not included", () => {
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set",
+      pathIdMap: {
+        [String(livePath.returnTrack(0))]: "return1",
+        [String(livePath.returnTrack(1))]: "return2",
+      },
+      objects: {
+        LiveSet: {
+          name: "Return Count Test",
+          tracks: children(),
+          return_tracks: children("return1", "return2"),
+          scenes: children(),
+        },
+        [String(livePath.returnTrack(0))]: {
+          has_midi_input: 0,
+          name: "Return A",
+        },
+        [String(livePath.returnTrack(1))]: {
+          has_midi_input: 0,
+          name: "Return B",
+        },
+      },
     });
 
-    // Should have instrument but NO chains (proving drum-maps is default, not chains)
-    expect(tracks[0]!.instrument).toStrictEqual({
-      id: "drumrack1",
-      name: "Test Drum Rack",
-      type: "drum-rack",
-      // drumPads: [ // Only included when drum-pads is requested
-      //   {
-      //     name: "Test Kick",
-      //     note: 60,
-      //   },
-      // ],
-    });
+    const result = readLiveSet({ include: [] });
 
-    // Critical: chains should be stripped due to drum-maps default
-    expect(tracks[0]!.instrument.chains).toBeUndefined();
+    expect(result.returnTrackCount).toBe(2);
+    expect(result.returnTracks).toBeUndefined();
   });
 
   it("omits name property when Live Set name is empty string", () => {
-    liveApiId.mockImplementation(function (this: MockLiveAPIContext) {
-      if (this._path === "live_set") {
-        return "live_set";
-      }
-
-      return "id 0";
-    });
-
-    mockLiveApiGet({
-      LiveSet: {
-        name: "", // Empty name
-        tempo: 120,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        back_to_arranger: 1,
-        is_playing: 0,
-        tracks: [],
-        scenes: [],
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set",
+      objects: {
+        LiveSet: {
+          name: "", // Empty name
+          tempo: 120,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          back_to_arranger: 1,
+          is_playing: 0,
+          tracks: [],
+          scenes: [],
+        },
       },
     });
 

@@ -62,8 +62,6 @@ describe("App", () => {
     setShowThoughts: vi.fn(),
     enabledTools: {},
     setEnabledTools: vi.fn(),
-    enableAllTools: vi.fn(),
-    disableAllTools: vi.fn(),
     resetBehaviorToDefaults: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
@@ -82,6 +80,10 @@ describe("App", () => {
     (useMcpConnection as ReturnType<typeof vi.fn>).mockReturnValue({
       mcpStatus: "connected",
       mcpError: null,
+      mcpTools: [
+        { id: "ppal-connect", name: "Connect to Ableton" },
+        { id: "ppal-read-live-set", name: "Read Live Set" },
+      ],
       checkMcpConnection: vi.fn(),
     });
     (useChat as ReturnType<typeof vi.fn>).mockReturnValue(mockChatHook);

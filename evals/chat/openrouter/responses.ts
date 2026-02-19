@@ -23,14 +23,14 @@ import {
   executeToolCallSafe,
   parseToolArgs,
 } from "../shared/tool-execution.ts";
-import type {
-  ChatOptions,
-  ResponsesAPIResponse,
-  ResponsesConversationItem,
-  ResponsesOutputItem,
-  ResponsesRequestBody,
-  ResponsesStreamState,
-  TurnResult,
+import {
+  type ChatOptions,
+  type ResponsesAPIResponse,
+  type ResponsesConversationItem,
+  type ResponsesOutputItem,
+  type ResponsesRequestBody,
+  type ResponsesStreamState,
+  type TurnResult,
 } from "../shared/types.ts";
 import { readSseStream } from "./responses-streaming.ts";
 

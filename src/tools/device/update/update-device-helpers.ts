@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
@@ -9,6 +10,7 @@ import {
   isPanLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 // ============================================================================
 // Device move helpers
@@ -39,13 +41,14 @@ export function moveDeviceToPath(device: LiveAPI, toPath: string): void {
     return;
   }
 
-  const liveSet = LiveAPI.from("live_set");
-  const deviceId = device.id.startsWith("id ") ? device.id : `id ${device.id}`;
-  const containerId = container.id.startsWith("id ")
-    ? container.id
-    : `id ${container.id}`;
+  const liveSet = LiveAPI.from(livePath.liveSet);
 
-  liveSet.call("move_device", deviceId, containerId, position ?? 0);
+  liveSet.call(
+    "move_device",
+    toLiveApiId(device.id),
+    toLiveApiId(container.id),
+    position ?? 0,
+  );
 }
 
 /**
@@ -92,24 +95,18 @@ export function moveDrumChainToPath(
 }
 
 // ============================================================================
-// Collapsed state
+// Collapsed state — kept for potential future use
 // ============================================================================
 
-/**
- * Update the collapsed state of a device view
- * @param device - Live API device object
- * @param collapsed - Whether to collapse the device view
- */
-export function updateCollapsedState(
-  device: LiveAPI,
-  collapsed: boolean,
-): void {
-  const deviceView = LiveAPI.from(`${device.path} view`);
-
-  if (deviceView.exists()) {
-    deviceView.set("is_collapsed", collapsed ? 1 : 0);
-  }
-}
+// export function updateCollapsedState(
+//   device: LiveAPI,
+//   collapsed: boolean,
+// ): void {
+//   const deviceView = LiveAPI.from(`${device.path} view`);
+//   if (deviceView.exists()) {
+//     deviceView.set("is_collapsed", collapsed ? 1 : 0);
+//   }
+// }
 
 // ============================================================================
 // Parameter values

@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import OpenAI from "openai";
-import type {
-  ResponseCreateParamsBase,
-  ResponseInput,
-  Tool,
+import {
+  type ResponseCreateParamsBase,
+  type ResponseInput,
+  type Tool,
 } from "openai/resources/responses/responses";
 import {
   applyResponsesOptions,
@@ -29,14 +29,14 @@ import {
   executeAndLogToolCall,
   parseToolArgs,
 } from "../shared/tool-execution.ts";
-import type {
-  ChatOptions,
-  OpenAIConversationItem,
-  OpenAIResponseOutput,
-  OpenAIResponsesResult,
-  OpenAIStreamEvent,
-  OpenAIStreamState,
-  TurnResult,
+import {
+  type ChatOptions,
+  type OpenAIConversationItem,
+  type OpenAIResponseOutput,
+  type OpenAIResponsesResult,
+  type OpenAIStreamEvent,
+  type OpenAIStreamState,
+  type TurnResult,
 } from "../shared/types.ts";
 import {
   extractReasoningText,

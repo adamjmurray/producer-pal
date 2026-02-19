@@ -7,14 +7,14 @@
  */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
 import {
   connectMcp,
   extractToolResultText,
   type McpConnection,
 } from "#evals/chat/shared/mcp.ts";
-import { openLiveSet } from "#evals/eval/open-live-set.ts";
+import { openLiveSet } from "#evals/scenarios/open-live-set.ts";
 import {
   CONFIG_URL,
   resetConfig,
@@ -38,9 +38,19 @@ export const SAMPLE_FILE = resolve(
 
 /**
  * Parse a tool result as JSON with type casting.
+ * Throws if the result contains unexpected warnings.
+ * Use parseToolResultWithWarnings() for results where warnings are expected.
  * Requires jsonOutput: true in config (set by resetConfig).
  */
 export function parseToolResult<T>(result: unknown): T {
+  const warnings = getToolWarnings(result);
+
+  if (warnings.length > 0) {
+    throw new Error(
+      `Unexpected warnings in tool result (use parseToolResultWithWarnings if expected): ${warnings.join(", ")}`,
+    );
+  }
+
   const text = extractToolResultText(result);
 
   try {
@@ -97,15 +107,22 @@ export interface ToolResultWithWarnings<T> {
 
 /**
  * Parse a tool result as JSON and extract any warnings.
- * Useful when tests need to verify both the result AND warning messages.
+ * Use this instead of parseToolResult() when warnings are expected.
  */
 export function parseToolResultWithWarnings<T>(
   result: unknown,
 ): ToolResultWithWarnings<T> {
-  return {
-    data: parseToolResult<T>(result),
-    warnings: getToolWarnings(result),
-  };
+  const text = extractToolResultText(result);
+  let data: T;
+
+  try {
+    data = JSON.parse(text) as T;
+  } catch (error) {
+    console.error("Failed to parse JSON response. Raw text:", text);
+    throw error;
+  }
+
+  return { data, warnings: getToolWarnings(result) };
 }
 
 export const MCP_URL = process.env.MCP_URL ?? "http://localhost:3350/mcp";
@@ -214,7 +231,7 @@ export interface CreateTrackResult {
 /** Result from ppal-read-clip tool (comprehensive interface for all test cases) */
 export interface ReadClipResult {
   id: string | null;
-  type: "midi" | "audio" | null;
+  type?: "midi" | "audio" | null;
   name?: string | null;
   view?: "session" | "arrangement";
   color?: string | null;

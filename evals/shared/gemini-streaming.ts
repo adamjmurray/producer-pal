@@ -11,8 +11,11 @@ import {
   formatToolResult,
 } from "#evals/chat/shared/formatting.ts";
 import { processThoughtText } from "#evals/chat/shared/thought-processing.ts";
-import { isQuietMode } from "#evals/eval/helpers/output-config.ts";
-import type { GeminiResponse, GeminiResponsePart } from "./gemini-types.ts";
+import { isQuietMode } from "#evals/scenarios/helpers/output-config.ts";
+import {
+  type GeminiResponse,
+  type GeminiResponsePart,
+} from "./gemini-types.ts";
 
 /** Tool call with optional result */
 export interface StreamToolCall {

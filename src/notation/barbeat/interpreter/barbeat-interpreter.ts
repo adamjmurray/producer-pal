@@ -11,17 +11,16 @@ import {
   DEFAULT_VELOCITY_DEVIATION,
 } from "#src/notation/barbeat/barbeat-config.ts";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
-import type { ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
+import { type ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import {
   barBeatDurationToMusicalBeats,
   parseBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
-import type { PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
+import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import type { NoteEvent, BarCopyNote } from "../../types.ts";
+import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
-  applyBarCopyResult,
   extractBufferState,
   handlePropertyUpdate,
   validateBufferedState,
@@ -203,7 +202,6 @@ function processTimePosition(
   handlePitchEmission(
     positions,
     state,
-    element as TimeElement,
     beatsPerBar,
     timeSigDenominator,
     events,
@@ -245,7 +243,10 @@ function processElementInLoop(
       extractBufferState(state),
     );
 
-    applyBarCopyResult(state, result);
+    if (result.currentTime) {
+      state.currentTime = result.currentTime;
+    }
+
     resetPitchBufferState(state);
   } else if (element.destination?.bar !== undefined) {
     const result = handleBarCopySingleDestination(
@@ -257,7 +258,10 @@ function processElementInLoop(
       extractBufferState(state),
     );
 
-    applyBarCopyResult(state, result);
+    if (result.currentTime) {
+      state.currentTime = result.currentTime;
+    }
+
     resetPitchBufferState(state);
   } else if (element.clearBuffer) {
     validateBufferedState(extractBufferState(state), "@clear");
@@ -319,7 +323,6 @@ export function interpretNotation(
       currentProbability: DEFAULT_PROBABILITY,
       currentVelocityMin: null,
       currentVelocityMax: null,
-      hasExplicitBarNumber: false,
       currentPitches: [],
       pitchGroupStarted: false,
       pitchesEmitted: false,

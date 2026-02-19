@@ -6,11 +6,11 @@
  * Streaming event handlers for OpenAI Responses API
  * Processes typed events from responses.create({ stream: true })
  */
-import type {
-  ResponsesConversationItem,
-  ResponsesOutputItem,
-  ResponsesStreamEvent,
-  ResponsesStreamState,
+import {
+  type ResponsesConversationItem,
+  type ResponsesOutputItem,
+  type ResponsesStreamEvent,
+  type ResponsesStreamState,
 } from "#webui/types/responses-api";
 
 type McpClient = {
@@ -32,6 +32,7 @@ export function createStreamState(): ResponsesStreamState {
     toolResults: new Map(),
     hasToolCalls: false,
     outputItems: [],
+    streamingReasoningIndex: null,
     streamingItemIndex: null,
   };
 }
@@ -52,6 +53,12 @@ interface StreamingMessageItem {
   type: "message";
   role: "assistant";
   content: string;
+}
+
+/** Streaming reasoning item type (formatter renders as thought) */
+interface StreamingReasoningItem {
+  type: "reasoning";
+  text: string;
 }
 
 /**
@@ -82,6 +89,31 @@ function getOrCreateStreamingMessage(
 }
 
 /**
+ * Get or create a streaming reasoning item in the conversation.
+ * Uses reasoning type so the formatter renders it as a thought/disclosure.
+ * @param state - Stream state
+ * @param conversation - Conversation array
+ * @returns The streaming reasoning item
+ */
+function getOrCreateStreamingReasoning(
+  state: ResponsesStreamState,
+  conversation: ResponsesConversationItem[],
+): StreamingReasoningItem {
+  if (state.streamingReasoningIndex != null) {
+    return conversation[
+      state.streamingReasoningIndex
+    ] as unknown as StreamingReasoningItem;
+  }
+
+  const item: StreamingReasoningItem = { type: "reasoning", text: "" };
+
+  state.streamingReasoningIndex = conversation.length;
+  conversation.push(item as unknown as ResponsesConversationItem);
+
+  return item;
+}
+
+/**
  * Handle reasoning delta event - updates state and conversation for streaming display
  * @param event - Stream event
  * @param state - Stream state to update
@@ -97,10 +129,33 @@ function handleReasoningDelta(
   if (text) {
     state.currentReasoning += text;
 
-    // Update streaming message for incremental UI updates
-    const msg = getOrCreateStreamingMessage(state, conversation);
+    const item = getOrCreateStreamingReasoning(state, conversation);
 
-    msg.content = state.currentReasoning;
+    item.text = state.currentReasoning;
+  }
+}
+
+/**
+ * Handle reasoning done event - finalizes reasoning with the complete text.
+ * Some providers (LM Studio) send the full reasoning in this event.
+ * @param event - Stream event with full text
+ * @param state - Stream state to update
+ * @param conversation - Conversation array to update
+ */
+function handleReasoningDone(
+  event: ResponsesStreamEvent,
+  state: ResponsesStreamState,
+  conversation: ResponsesConversationItem[],
+): void {
+  // The done event includes the complete text; use it as authoritative source
+  const text = (event as { text?: string }).text;
+
+  if (text) {
+    state.currentReasoning = text;
+
+    const item = getOrCreateStreamingReasoning(state, conversation);
+
+    item.text = text;
   }
 }
 
@@ -120,7 +175,6 @@ function handleTextDelta(
   if (text) {
     state.currentContent += text;
 
-    // Update streaming message for incremental UI updates
     const msg = getOrCreateStreamingMessage(state, conversation);
 
     msg.content = state.currentContent;
@@ -175,7 +229,31 @@ async function handleFunctionCallDone(
 }
 
 /**
- * Handle response completion - replace streaming placeholder with final outputs
+ * Remove streaming placeholders from conversation (higher index first to preserve indices).
+ * @param state - Stream state with placeholder indices
+ * @param conversation - Conversation array to modify
+ */
+function removeStreamingPlaceholders(
+  state: ResponsesStreamState,
+  conversation: ResponsesConversationItem[],
+): void {
+  // Remove in reverse index order so earlier indices stay valid
+  const indices = [state.streamingItemIndex, state.streamingReasoningIndex]
+    .filter((i): i is number => i != null)
+    .sort((a, b) => b - a);
+
+  for (const index of indices) {
+    conversation.splice(index, 1);
+  }
+
+  state.streamingItemIndex = null;
+  state.streamingReasoningIndex = null;
+}
+
+/**
+ * Handle response completion - replace streaming placeholders with final outputs.
+ * If reasoning was accumulated during streaming but the final output doesn't include
+ * a reasoning item (e.g., LM Studio), injects a synthetic reasoning item.
  * @param event - Stream event
  * @param state - Stream state to update
  * @param conversation - Conversation array to append to
@@ -185,17 +263,28 @@ function handleResponseCompleted(
   state: ResponsesStreamState,
   conversation: ResponsesConversationItem[],
 ): void {
-  // Remove streaming placeholder if present (will be replaced by final output)
-  if (state.streamingItemIndex != null) {
-    conversation.splice(state.streamingItemIndex, 1);
-    state.streamingItemIndex = null;
-  }
+  removeStreamingPlaceholders(state, conversation);
 
-  if (event.response?.output) {
-    state.outputItems = event.response.output;
-    conversation.push(
-      ...(event.response.output as unknown as ResponsesConversationItem[]),
-    );
+  const output = event.response?.output;
+
+  if (output) {
+    state.outputItems = output;
+
+    // If we accumulated reasoning but final output has no reasoning item, inject one
+    const hasReasoningOutput = output.some((item) => item.type === "reasoning");
+
+    if (state.currentReasoning && !hasReasoningOutput) {
+      const syntheticReasoning = {
+        type: "reasoning",
+        text: state.currentReasoning,
+      };
+
+      conversation.push(
+        syntheticReasoning as unknown as ResponsesConversationItem,
+      );
+    }
+
+    conversation.push(...(output as unknown as ResponsesConversationItem[]));
   }
 
   // Add tool results to conversation
@@ -227,7 +316,21 @@ export function extractReasoningText(item: ResponsesOutputItem): string {
       .join("\n");
   }
 
-  return (item as { text?: string }).text ?? "";
+  const text = (item as { text?: string }).text;
+
+  if (text) return text;
+
+  // LM Studio: content array with reasoning_text entries
+  const content: unknown = (item as { content?: unknown }).content;
+
+  if (Array.isArray(content) && content.length > 0) {
+    return (content as Array<{ text?: string }>)
+      .map((c) => c.text ?? "")
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  return "";
 }
 
 /**
@@ -246,7 +349,12 @@ export async function processStreamEvent(
 ): Promise<void> {
   switch (event.type) {
     case "response.reasoning.delta":
+    case "response.reasoning_text.delta": // LM Studio variant
       handleReasoningDelta(event, state, conversation);
+      break;
+    case "response.reasoning.done":
+    case "response.reasoning_text.done": // LM Studio variant
+      handleReasoningDone(event, state, conversation);
       break;
     case "response.output_text.delta":
       handleTextDelta(event, state, conversation);

@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import {
   createTestDevice,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -38,36 +39,18 @@ describe("ppal-update-device", () => {
 
     expect(namedDevice.name).toBe("My Compressor");
 
-    // Test 2: Update collapsed state to true
+    // Test 2: Update collapsed state (collapsed is not returned by read-device,
+    // so we just verify the update calls succeed without error)
     await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: { ids: deviceId, collapsed: true },
     });
-
-    await sleep(100);
-    const afterCollapse = await ctx.client!.callTool({
-      name: "ppal-read-device",
-      arguments: { deviceId },
-    });
-    const collapsedDevice = parseToolResult<ReadDeviceResult>(afterCollapse);
-
-    expect(collapsedDevice.collapsed).toBe(true);
 
     // Test 3: Update collapsed state to false (restore)
     await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: { ids: deviceId, collapsed: false },
     });
-
-    await sleep(100);
-    const afterExpand = await ctx.client!.callTool({
-      name: "ppal-read-device",
-      arguments: { deviceId },
-    });
-    const expandedDevice = parseToolResult<ReadDeviceResult>(afterExpand);
-
-    // When collapsed is false, the property may be omitted (undefined) or false
-    expect(expandedDevice.collapsed).toBeFalsy();
   });
 
   it("updates device parameters", async () => {
@@ -144,17 +127,19 @@ describe("ppal-update-device", () => {
     expect(Array.isArray(batch)).toBe(true);
     expect(batch).toHaveLength(2);
 
-    // Test 2: Update non-existent device - should return empty or warning
+    // Test 2: Update non-existent device - should return empty with warning
     const nonExistentResult = await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: { ids: "99999", name: "Won't Work" },
     });
-    const nonExistent =
-      parseToolResult<UpdateDeviceResult[]>(nonExistentResult);
+    const { data: nonExistent, warnings } =
+      parseToolResultWithWarnings<UpdateDeviceResult[]>(nonExistentResult);
 
     // Should be empty array (device not found, no error thrown)
     expect(Array.isArray(nonExistent)).toBe(true);
     expect(nonExistent).toHaveLength(0);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("target not found");
   });
 });
 

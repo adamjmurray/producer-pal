@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { UIPart } from "#webui/types/messages";
+import { type UIPart } from "#webui/types/messages";
 import { AssistantError } from "./AssistantError";
 import { AssistantText } from "./AssistantText";
 import { AssistantThought } from "./AssistantThought";

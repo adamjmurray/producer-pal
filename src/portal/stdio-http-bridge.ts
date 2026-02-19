@@ -11,8 +11,10 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-import type { CallLiveApiFunction } from "#src/mcp-server/create-mcp-server.ts";
-import { createMcpServer } from "#src/mcp-server/create-mcp-server.ts";
+import {
+  type CallLiveApiFunction,
+  createMcpServer,
+} from "#src/mcp-server/create-mcp-server.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { formatErrorResponse } from "#src/shared/mcp-response-utils.ts";
 import { VERSION } from "#src/shared/version.ts";
@@ -148,6 +150,10 @@ Tell the user to check ${SETUP_URL} for configuration help.
       await this.httpClient.connect(httpTransport);
       this.isConnected = true;
       console.error("[Bridge] Connected to HTTP MCP server");
+
+      if (this.smallModelMode) {
+        await this._pushSmallModelModeConfig();
+      }
     } catch (error) {
       logger.error(`HTTP connection failed: ${errorMessage(error)}`);
       this.isConnected = false;
@@ -166,6 +172,23 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
       throw new Error(
         `Failed to connect to Producer Pal MCP server at ${this.httpUrl}: ${errorMessage(error)}`,
+      );
+    }
+  }
+
+  private async _pushSmallModelModeConfig(): Promise<void> {
+    const configUrl = this.httpUrl.replace(/\/mcp$/, "/config");
+
+    try {
+      await fetch(configUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ smallModelMode: true }),
+      });
+      logger.info("Enabled small model mode on server");
+    } catch (error) {
+      logger.error(
+        `Failed to push small model mode config: ${errorMessage(error)}`,
       );
     }
   }

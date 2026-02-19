@@ -1,18 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, vi } from "vitest";
-import "./expect-extensions.ts";
 import { Folder, clearMockFolderStructure } from "./mocks/mock-folder.ts";
-import {
-  LiveAPI,
-  liveApiCall,
-  liveApiId,
-  liveApiPath,
-  liveApiType,
-  mockLiveApiGet,
-} from "./mocks/mock-live-api.ts";
+import { LiveAPI } from "./mocks/mock-live-api.ts";
+import { clearMockRegistry } from "./mocks/mock-registry.ts";
 import { Task } from "./mocks/mock-task.ts";
 
 const g = globalThis as Record<string, unknown>;
@@ -93,23 +87,6 @@ beforeEach(() => {
   // Clear mock folder structure
   clearMockFolderStructure();
 
-  // default mocking behaviors:
-  mockLiveApiGet();
-
-  // Set up default mock implementations for id, path, and type getters
-  // Return undefined to fall back to instance properties (_id, _path) and auto-detection
-  liveApiId.mockImplementation(() => {});
-  liveApiPath.mockImplementation(() => {});
-  liveApiType.mockImplementation(() => {});
-
-  liveApiCall.mockImplementation(function (method: string) {
-    switch (method) {
-      case "get_version_string":
-        return "12.3";
-      case "get_notes_extended":
-        return JSON.stringify({ notes: [] });
-      default:
-        return null;
-    }
-  });
+  // Clear registered mock objects
+  clearMockRegistry();
 });

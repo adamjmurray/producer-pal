@@ -4,11 +4,9 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  liveApiCall,
-  liveApiGet,
-  liveApiId,
-  liveApiType,
-} from "#src/test/mocks/mock-live-api.ts";
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 import {
   extractDevicePath,
@@ -399,15 +397,18 @@ describe("device-path-helpers", () => {
   });
 
   describe("resolveInsertionPath", () => {
+    let defaultDeviceMock: RegisteredMockObject;
+
     beforeEach(() => {
       vi.clearAllMocks();
-      liveApiId.mockReturnValue("valid-id");
-      // Default: chains exist so auto-creation isn't triggered
-      liveApiGet.mockImplementation(function (prop) {
-        if (prop === "chains") return ["id", "chain-0", "id", "chain-1"];
-        if (prop === "can_have_drum_pads") return [0];
-
-        return [];
+      // Default: device has chains so auto-creation isn't triggered
+      defaultDeviceMock = registerMockObject("default-device", {
+        path: "live_set tracks 0 devices 0",
+        properties: {
+          chains: ["id", "chain-0", "id", "chain-1"],
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+        },
       });
     });
 
@@ -432,22 +433,18 @@ describe("device-path-helpers", () => {
     it("resolves drum pad paths (append and with position)", () => {
       const drumChainId = "drum-chain-36";
 
-      liveApiId.mockImplementation(function (this: MockLiveApiContext) {
-        if (this._path === "live_set tracks 0 devices 0") return "drum-rack";
-
-        return this._path?.startsWith("id ")
-          ? this._path.slice(3)
-          : (this._id ?? "valid-id");
+      registerMockObject("drum-rack", {
+        path: "live_set tracks 0 devices 0",
+        type: "RackDevice",
+        properties: {
+          chains: ["id", drumChainId],
+        },
       });
-      liveApiType.mockReturnValue("DrumGroupDevice");
-      liveApiGet.mockImplementation(function (this: MockLiveApiContext, prop) {
-        if (this._path === "live_set tracks 0 devices 0" && prop === "chains")
-          return ["id", drumChainId];
-        if ((this._id ?? this.id) === drumChainId && prop === "in_note")
-          return [36];
-
-        return [];
+      registerMockObject(drumChainId, {
+        type: "DrumChain",
+        properties: { in_note: 36 },
       });
+
       expect(resolveInsertionPath("t0/d0/pC1").position).toBeNull();
       // "t0/d0/pC1/c2" means chain index 2 within C1 (no position)
       expect(resolveInsertionPath("t0/d0/pC1/c2").position).toBeNull();
@@ -492,62 +489,62 @@ describe("device-path-helpers", () => {
     describe("chain auto-creation", () => {
       /**
        * Sets up mocks for chain auto-creation tests.
-       * @returns {{ getChainCount: () => number }} Object with chainCount getter
+       * @param devicePath - Path to register the device at
+       * @returns Object with deviceMock and chainCount getter
        */
-      function setupChainAutoCreateMocks() {
-        let chainCount = 0;
+      function setupChainAutoCreateMocks(
+        devicePath = "live_set tracks 0 devices 0",
+      ) {
+        const chainIds: string[] = [];
 
-        liveApiGet.mockImplementation(function (prop) {
-          if (prop === "chains") {
-            const ids = [];
+        const deviceMock = registerMockObject(`device-${devicePath}`, {
+          path: devicePath,
+          properties: {
+            chains: chainIds,
+            can_have_chains: 1,
+            can_have_drum_pads: 0,
+          },
+          methods: {
+            insert_chain: () => {
+              const newId = `chain-${chainIds.length / 2}`;
 
-            for (let i = 0; i < chainCount; i++) ids.push("id", `chain-${i}`);
+              chainIds.push("id", newId);
 
-            return ids;
-          }
-
-          if (prop === "can_have_chains") return [1];
-          if (prop === "can_have_drum_pads") return [0];
-
-          return [];
-        });
-        liveApiCall.mockImplementation(function (method) {
-          if (method === "insert_chain") {
-            chainCount++;
-
-            return ["id", `chain-${chainCount - 1}`];
-          }
+              return ["id", newId];
+            },
+          },
         });
 
-        return { getChainCount: () => chainCount };
+        return { deviceMock, getChainCount: () => chainIds.length / 2 };
       }
 
       it("auto-creates chain when it does not exist", () => {
-        setupChainAutoCreateMocks();
+        const { deviceMock } = setupChainAutoCreateMocks();
 
         const result = resolveInsertionPath("t0/d0/c0");
 
-        expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
+        expect(deviceMock.call).toHaveBeenCalledWith("insert_chain");
         expect((result.container as MockLiveApiContext)._path).toBe(
           "live_set tracks 0 devices 0 chains 0",
         );
       });
 
       it("auto-creates multiple chains up to requested index", () => {
-        setupChainAutoCreateMocks();
+        const { deviceMock } = setupChainAutoCreateMocks();
 
         resolveInsertionPath("t0/d0/c2");
         // Should create chains 0, 1, 2
-        expect(liveApiCall).toHaveBeenCalledTimes(3);
+        expect(deviceMock.call).toHaveBeenCalledTimes(3);
       });
 
       it("throws for Drum Rack chain auto-creation", () => {
-        liveApiGet.mockImplementation(function (prop) {
-          if (prop === "chains") return []; // No chains
-          if (prop === "can_have_chains") return [1]; // Is a rack
-          if (prop === "can_have_drum_pads") return [1]; // Is drum rack
-
-          return [];
+        registerMockObject("drum-rack-device", {
+          path: "live_set tracks 0 devices 0",
+          properties: {
+            chains: [],
+            can_have_chains: 1,
+            can_have_drum_pads: 1,
+          },
         });
 
         expect(() => resolveInsertionPath("t0/d0/c0")).toThrow(
@@ -556,10 +553,9 @@ describe("device-path-helpers", () => {
       });
 
       it("throws for non-existent return chain", () => {
-        liveApiId.mockImplementation(function (this: MockLiveApiContext) {
-          if (this._path?.includes("return_chains")) return "0";
-
-          return "valid-id";
+        // Register return chain with id "0" so exists() returns false
+        registerMockObject("0", {
+          path: "live_set tracks 0 devices 0 return_chains 0",
         });
 
         expect(() => resolveInsertionPath("t0/d0/rc0")).toThrow(
@@ -568,25 +564,19 @@ describe("device-path-helpers", () => {
       });
 
       it("does not auto-create when chain already exists", () => {
-        liveApiGet.mockImplementation(function (prop) {
-          if (prop === "chains") return ["id", "chain-0", "id", "chain-1"];
-          if (prop === "can_have_chains") return [1]; // Is a rack
-          if (prop === "can_have_drum_pads") return [0];
-
-          return [];
-        });
-
+        // Default device already has chains at indices 0 and 1
         resolveInsertionPath("t0/d0/c0");
-        expect(liveApiCall).not.toHaveBeenCalledWith("insert_chain");
+        expect(defaultDeviceMock.call).not.toHaveBeenCalledWith("insert_chain");
       });
 
       it("throws when too many chains would be auto-created", () => {
-        liveApiGet.mockImplementation(function (prop) {
-          if (prop === "chains") return []; // No chains exist
-          if (prop === "can_have_chains") return [1]; // Is a rack
-          if (prop === "can_have_drum_pads") return [0];
-
-          return [];
+        registerMockObject("empty-rack", {
+          path: "live_set tracks 0 devices 0",
+          properties: {
+            chains: [],
+            can_have_chains: 1,
+            can_have_drum_pads: 0,
+          },
         });
 
         // Chain index 20 would require creating 21 chains (0-20), exceeds limit of 16
@@ -596,11 +586,12 @@ describe("device-path-helpers", () => {
       });
 
       it("throws for device that cannot have chains", () => {
-        liveApiGet.mockImplementation(function (prop) {
-          if (prop === "chains") return []; // No chains
-          if (prop === "can_have_chains") return [0]; // Not a rack
-
-          return [];
+        registerMockObject("non-rack-device", {
+          path: "live_set tracks 0 devices 0",
+          properties: {
+            chains: [],
+            can_have_chains: 0,
+          },
         });
 
         expect(() => resolveInsertionPath("t0/d0/c0")).toThrow(
@@ -609,17 +600,16 @@ describe("device-path-helpers", () => {
       });
 
       it("throws when insert_chain fails unexpectedly", () => {
-        liveApiGet.mockImplementation(function (prop) {
-          if (prop === "chains") return []; // No chains
-          if (prop === "can_have_chains") return [1]; // Is a rack
-          if (prop === "can_have_drum_pads") return [0];
-
-          return [];
-        });
-        liveApiCall.mockImplementation(function (method) {
-          if (method === "insert_chain") {
-            return 1; // Failure return value
-          }
+        registerMockObject("failing-rack", {
+          path: "live_set tracks 0 devices 0",
+          properties: {
+            chains: [],
+            can_have_chains: 1,
+            can_have_drum_pads: 0,
+          },
+          methods: {
+            insert_chain: () => 1, // Failure return value
+          },
         });
 
         expect(() => resolveInsertionPath("t0/d0/c0")).toThrow(
@@ -628,34 +618,35 @@ describe("device-path-helpers", () => {
       });
 
       it("auto-creates chain on master track device", () => {
-        setupChainAutoCreateMocks();
+        const { deviceMock } = setupChainAutoCreateMocks(
+          "live_set master_track devices 0",
+        );
 
         const result = resolveInsertionPath("mt/d0/c0");
 
-        expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
+        expect(deviceMock.call).toHaveBeenCalledWith("insert_chain");
         expect((result.container as MockLiveApiContext)._path).toBe(
           "live_set master_track devices 0 chains 0",
         );
       });
 
       it("auto-creates chain on return track device", () => {
-        setupChainAutoCreateMocks();
+        const { deviceMock } = setupChainAutoCreateMocks(
+          "live_set return_tracks 0 devices 0",
+        );
 
         const result = resolveInsertionPath("rt0/d0/c0");
 
-        expect(liveApiCall).toHaveBeenCalledWith("insert_chain");
+        expect(deviceMock.call).toHaveBeenCalledWith("insert_chain");
         expect((result.container as MockLiveApiContext)._path).toBe(
           "live_set return_tracks 0 devices 0 chains 0",
         );
       });
 
       it("throws when device does not exist during chain navigation", () => {
-        liveApiId.mockImplementation(function (this: MockLiveApiContext) {
-          // Track exists but device doesn't
-          if (this._path === "live_set tracks 0") return "track-id";
-          if (this._path === "live_set tracks 0 devices 0") return "0"; // Non-existent
-
-          return "valid-id";
+        // Override default device to be non-existent (id "0" makes exists() false)
+        registerMockObject("0", {
+          path: "live_set tracks 0 devices 0",
         });
 
         expect(() => resolveInsertionPath("t0/d0/c0")).toThrow(

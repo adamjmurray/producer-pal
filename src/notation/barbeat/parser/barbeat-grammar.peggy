@@ -47,9 +47,6 @@ timePoints "time position"
   = bar:oneOrMoreInt "|" beats:beatList {
     return beats.map(beat => ({ bar, beat }));
   }
-  / "|" beats:beatList {
-    return beats.map(beat => ({ bar: null, beat }));
-  }
 
 beatList "beat list"
   = head:beatSpec tail:("," beatSpec)* {

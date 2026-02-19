@@ -74,11 +74,11 @@ describe("transform timing/duration in non-4/4 time signatures", () => {
         expect(notes[0]!.duration).toBeCloseTo(3.0, 10);
       });
 
-      it("respects minimum duration clamping (0.001 Ableton beats)", () => {
+      it("deletes note when duration set to zero in 6/8", () => {
         const notes = createTestNote({ duration: 1.0 });
 
         applyTransforms(notes, "duration = 0", 6, 8);
-        expect(notes[0]!.duration).toBeCloseTo(0.001, 10);
+        expect(notes).toHaveLength(0);
       });
     });
 
@@ -304,18 +304,18 @@ describe("transform timing/duration in non-4/4 time signatures", () => {
   });
 
   describe("edge cases", () => {
-    it("minimum duration clamping works in 6/8", () => {
+    it("deletes note when duration set to negative in 6/8", () => {
       const notes = createTestNote({ duration: 1.0 });
 
       applyTransforms(notes, "duration = -10", 6, 8);
-      expect(notes[0]!.duration).toBeCloseTo(0.001, 10);
+      expect(notes).toHaveLength(0);
     });
 
-    it("minimum duration clamping works in 2/2", () => {
+    it("deletes note when duration drops below zero in 2/2", () => {
       const notes = createTestNote({ duration: 1.0 });
 
       applyTransforms(notes, "duration += -100", 2, 2);
-      expect(notes[0]!.duration).toBeCloseTo(0.001, 10);
+      expect(notes).toHaveLength(0);
     });
 
     it("handles very small timing increments in 6/8", () => {

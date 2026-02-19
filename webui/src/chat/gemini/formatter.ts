@@ -2,12 +2,12 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { FunctionResponse, Part } from "@google/genai/web";
-import type {
-  GeminiMessage,
-  UIMessage,
-  UIPart,
-  UIToolPart,
+import { type FunctionResponse, type Part } from "@google/genai/web";
+import {
+  type GeminiMessage,
+  type UIMessage,
+  type UIPart,
+  type UIToolPart,
 } from "#webui/types/messages";
 
 /**

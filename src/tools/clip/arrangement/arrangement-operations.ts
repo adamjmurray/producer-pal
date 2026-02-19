@@ -6,10 +6,8 @@ import * as console from "#src/shared/v8-max-console.ts";
 import {
   handleArrangementLengthening,
   handleArrangementShortening,
-} from "./helpers/arrangement-operations-helpers.ts";
-import type {
-  ArrangementContext,
-  ClipIdResult,
+  type ArrangementContext,
+  type ClipIdResult,
 } from "./helpers/arrangement-operations-helpers.ts";
 
 interface HandleArrangementLengthOperationArgs {

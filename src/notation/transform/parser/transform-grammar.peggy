@@ -15,6 +15,19 @@
     "A#": 10, "Bb": 10,
     "B": 11,
   };
+
+  // Maps transform parameters to their note/audio variable for *= and /= desugaring.
+  // timing uses note.start (absolute position) since there is no note.timing offset variable.
+  const PARAM_TO_VARIABLE = {
+    "velocity":    { namespace: "note",  name: "velocity"    },
+    "timing":      { namespace: "note",  name: "start"       },
+    "duration":    { namespace: "note",  name: "duration"    },
+    "probability": { namespace: "note",  name: "probability" },
+    "deviation":   { namespace: "note",  name: "deviation"   },
+    "pitch":       { namespace: "note",  name: "pitch"       },
+    "gain":        { namespace: "audio", name: "gain"        },
+    "pitchShift":  { namespace: "audio", name: "pitchShift"  },
+  };
 }}
 
 start
@@ -31,6 +44,14 @@ assignment "parameter assignment"
   = ranges:(rangeSelector _ ":" _)? parameter:parameter _ operator:operator _ expression:expression {
     const pitchRange = ranges?.[0]?.pitchRange ?? null;
     const timeRange = ranges?.[0]?.timeRange ?? null;
+    if (operator === "subtract") {
+      return { pitchRange, timeRange, parameter, operator: "add", expression: { type: "subtract", left: 0, right: expression } };
+    }
+    if (operator === "multiply" || operator === "divide") {
+      const varInfo = PARAM_TO_VARIABLE[parameter];
+      const currentValue = { type: "variable", namespace: varInfo.namespace, name: varInfo.name };
+      return { pitchRange, timeRange, parameter, operator: "set", expression: { type: operator, left: currentValue, right: expression } };
+    }
     return { pitchRange, timeRange, parameter, operator, expression };
   }
 
@@ -80,8 +101,11 @@ timeRange "time range"
   }
 
 operator
-  = "=" { return "set"; }
+  = "*=" { return "multiply"; }
+  / "/=" { return "divide"; }
+  / "-=" { return "subtract"; }
   / "+=" { return "add"; }
+  / "=" { return "set"; }
 
 parameter "parameter name"
   = "pitchShift" { return "pitchShift"; }
@@ -128,6 +152,9 @@ variable
   = "audio." name:audioPropertyName {
     return { type: "variable", namespace: "audio", name };
   }
+  / "clip." name:clipPropertyName {
+    return { type: "variable", namespace: "clip", name };
+  }
   / "note." name:notePropertyName {
     return { type: "variable", namespace: "note", name };
   }
@@ -137,30 +164,62 @@ notePropertyName
   / "velocity" { return "velocity"; }
   / "probability" { return "probability"; }
   / "duration" { return "duration"; }
+  / "index" { return "index"; }
   / "pitch" { return "pitch"; }
   / "start" { return "start"; }
+  / "count" { return "count"; }
 
 audioPropertyName
   = "gain" { return "gain"; }
   / "pitchShift" { return "pitchShift"; }
 
+clipPropertyName
+  = "barDuration" { return "barDuration"; }
+  / "position" { return "position"; }
+  / "duration" { return "duration"; }
+  / "index" { return "index"; }
+  / "count" { return "count"; }
+
 functionCall
-  = name:functionName "(" _ args:argumentList? _ ")" {
-    return { type: "function", name, args: args || [] };
+  = name:cyclicalFunctionName "(" _ args:syncArgumentList? _ ")" {
+    return { type: "function", name, args: args?.args ?? [], sync: args?.sync ?? false };
+  }
+  / name:otherFunctionName "(" _ args:argumentList? _ ")" {
+    return { type: "function", name, args: args || [], sync: false };
   }
 
-functionName
+cyclicalFunctionName
+  = "cos" { return "cos"; }
+  / "saw" { return "saw"; }
+  / "sin" { return "sin"; }
+  / "square" { return "square"; }
+  / "tri" { return "tri"; }
+
+otherFunctionName
   = "round" { return "round"; }
   / "floor" { return "floor"; }
+  / "ceil" { return "ceil"; }
   / "abs" { return "abs"; }
+  / "clamp" { return "clamp"; }
+  / "pow" { return "pow"; }
   / "min" { return "min"; }
   / "max" { return "max"; }
-  / "cos" { return "cos"; }
-  / "tri" { return "tri"; }
-  / "saw" { return "saw"; }
-  / "square" { return "square"; }
-  / "noise" { return "noise"; }
+  / "rand" { return "rand"; }
+  / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }
+  / "curve" { return "curve"; }
+  / "quant" { return "quant"; }
+
+syncArgumentList
+  = head:argument tail:(_ "," _ argument)* _ "," _ "sync" {
+    return { args: [head, ...tail.map(t => t[3])], sync: true };
+  }
+  / "sync" {
+    return { args: [], sync: true };
+  }
+  / head:argument tail:(_ "," _ argument)* {
+    return { args: [head, ...tail.map(t => t[3])], sync: false };
+  }
 
 argumentList
   = head:argument tail:(_ "," _ argument)* {

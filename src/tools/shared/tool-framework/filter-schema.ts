@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import type { ZodType } from "zod";
+import { type ZodType } from "zod";
 
 /**
  * Filters parameters from a Zod schema object based on excluded parameter names
