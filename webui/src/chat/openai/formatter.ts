@@ -1,8 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { markLastThoughtAsOpen } from "#webui/chat/helpers/formatter-helpers";
+import {
+  addTextContent,
+  isErrorResult,
+  markLastThoughtAsOpen,
+} from "#webui/chat/helpers/formatter-helpers";
 import { type ReasoningDetail } from "#webui/chat/openai/client";
 import {
   type OpenAIMessage,
@@ -66,30 +71,11 @@ function findToolResult(
         typeof nextMsg.content === "string" ? nextMsg.content : undefined;
       const result = toolContent ?? "";
 
-      // Basic heuristic: check if content contains error indicators
-      const isError =
-        result.includes('"error"') || result.includes('"isError":true');
-
-      return { result, isError };
+      return { result, isError: isErrorResult(result) };
     }
   }
 
   return { result: null, isError: false };
-}
-
-/**
- * Process text content and add to parts, merging with previous text part if needed
- * @param {UIPart[]} parts - Parts array to add text to
- * @param {string} content - Text content to add
- */
-function addTextContent(parts: UIPart[], content: string): void {
-  const lastPart = parts.at(-1);
-
-  if (lastPart?.type === "text") {
-    lastPart.content += content;
-  } else {
-    parts.push({ type: "text", content });
-  }
 }
 
 /**

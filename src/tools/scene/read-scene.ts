@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -8,6 +9,7 @@ import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { stripFields } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 interface ReadSceneArgs {
@@ -120,10 +122,11 @@ export function readScene(
       .filter((clip: ClipResult) => clip.id != null);
 
     // Strip fields redundant with parent scene context
-    for (const clip of clips) {
-      delete (clip as unknown as Record<string, unknown>).sceneIndex;
-      delete (clip as unknown as Record<string, unknown>).view;
-    }
+    stripFields(
+      clips as unknown as Record<string, unknown>[],
+      "sceneIndex",
+      "view",
+    );
 
     result.clips = clips;
   } else {
