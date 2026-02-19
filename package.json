@@ -84,7 +84,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.76.0",
-    "@google/genai": "^1.41.0",
+    "@google/genai": "^1.42.0",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.2.1",
