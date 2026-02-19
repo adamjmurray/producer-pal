@@ -215,14 +215,14 @@ export function toLiveApiId(id: string | number): string {
  * @param fields - Field names to delete
  */
 export function stripFields(
-  items: Record<string, unknown>[] | undefined,
+  items: unknown[] | undefined,
   ...fields: string[]
 ): void {
   if (!items) return;
 
   for (const item of items) {
     for (const field of fields) {
-      delete item[field];
+      delete (item as Record<string, unknown>)[field];
     }
   }
 }
