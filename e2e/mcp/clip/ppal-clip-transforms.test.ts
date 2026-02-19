@@ -795,22 +795,13 @@ describe("ppal-clip-transforms (rand, choose, curve)", () => {
     );
 
     // Exponent 2: slow start, fast end
+    // 8 notes at positions 0-7, clip range 0-8: v = 40 + 80 * (pos/8)^2
     await applyTransform(clipId, "velocity = curve(40, 120, 2)");
     const notes = await readClipNotes(clipId);
 
     const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
 
-    // First note should be at/near start value
-    expect(velocities[0]).toBe(40);
-    // Middle notes should be below linear midpoint (80)
-    expect(velocities[3]!).toBeLessThan(80);
-    // Later notes should be accelerating toward end
-    expect(velocities[6]!).toBeGreaterThan(80);
-    // Velocities should be monotonically increasing
-
-    for (let i = 1; i < velocities.length; i++) {
-      expect(velocities[i]!).toBeGreaterThanOrEqual(velocities[i - 1]!);
-    }
+    expect(velocities).toStrictEqual([40, 41, 45, 51, 60, 71, 85, 101]);
   });
 
   it("curve() with exponent < 1 applies logarithmic shape", async () => {
@@ -820,19 +811,46 @@ describe("ppal-clip-transforms (rand, choose, curve)", () => {
     );
 
     // Exponent 0.5: fast start, slow end
+    // 8 notes at positions 0-7, clip range 0-8: v = 40 + 80 * sqrt(pos/8)
     await applyTransform(clipId, "velocity = curve(40, 120, 0.5)");
     const notes = await readClipNotes(clipId);
 
     const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
 
-    // First note should be at start value
-    expect(velocities[0]).toBe(40);
-    // Middle notes should be above linear midpoint (80) — fast start
-    expect(velocities[3]!).toBeGreaterThan(80);
-    // Velocities should be monotonically increasing
+    expect(velocities).toStrictEqual([40, 68, 80, 89, 97, 103, 109, 115]);
+  });
 
-    for (let i = 1; i < velocities.length; i++) {
-      expect(velocities[i]!).toBeGreaterThanOrEqual(velocities[i - 1]!);
-    }
+  it("ramp() reaches end value on last 16th note with N|4.75 endpoint", async () => {
+    // 16 sixteenth notes across 1 bar
+    const clipId = await createMidiClip(41, "t/4 C3 1|1x16");
+
+    // Time filter ends on the last 16th note's start position (1|4.75)
+    await applyTransform(clipId, "1|1-1|4.75: velocity = ramp(20, 127)");
+    const notes = await readClipNotes(clipId);
+
+    // ramp(20, 127) over range 0-3.75 beats: each 16th note gets a unique velocity
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    // Linear ramp: v = 20 + 107 * (pos / 3.75), rounded to integer
+    expect(velocities).toStrictEqual([
+      20, 27, 34, 41, 49, 56, 63, 70, 77, 84, 91, 98, 106, 113, 120, 127,
+    ]);
+  });
+
+  it("curve() reaches end value on last 16th note with N|4.75 endpoint", async () => {
+    // 16 sixteenth notes across 1 bar
+    const clipId = await createMidiClip(42, "t/4 C3 1|1x16");
+
+    // Time filter ends on the last 16th note's start position (1|4.75)
+    await applyTransform(clipId, "1|1-1|4.75: velocity = curve(20, 127, 2)");
+    const notes = await readClipNotes(clipId);
+
+    // curve(20, 127, 2): v = 20 + 107 * (pos/3.75)^2, rounded to integer
+    // Notes 0 and 1 both round to v20, so the state-change format emits 15 v tokens
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    expect(velocities).toStrictEqual([
+      20, 22, 24, 28, 32, 37, 43, 50, 59, 68, 78, 88, 100, 113, 127,
+    ]);
   });
 });

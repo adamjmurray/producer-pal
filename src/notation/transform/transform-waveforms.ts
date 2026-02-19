@@ -105,8 +105,8 @@ export function ramp(
   end: number,
   speed = 1,
 ): number {
-  // Apply speed multiplier and normalize to 0-1 range
-  const scaledPhase = (phase * speed) % 1.0;
+  // Apply speed multiplier and clamp to 0-1 range (reaches end value at phase 1.0)
+  const scaledPhase = Math.min(phase * speed, 1.0);
 
   // Linear interpolation from start to end
   return start + (end - start) * scaledPhase;
@@ -148,8 +148,8 @@ export function curve(
   end: number,
   exponent: number,
 ): number {
-  const scaledPhase = phase % 1.0;
-  const curvedPhase = Math.pow(scaledPhase, exponent);
+  const clampedPhase = Math.min(phase, 1.0);
+  const curvedPhase = Math.pow(clampedPhase, exponent);
 
   return start + (end - start) * curvedPhase;
 }

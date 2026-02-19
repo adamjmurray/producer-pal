@@ -128,8 +128,9 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - \`cos(freq)\`, \`square(freq)\` - start at peak (1.0); \`sin(freq)\`, \`tri(freq)\`, \`saw(freq)\` - start at zero, rise to peak
 - \`rand([min], [max])\` - random value (no args: -1 to 1, one arg: 0 to max, two: min to max)
 - \`choose(a, b, ...)\` - random selection from arguments
-- \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
-- \`curve(start, end, exp)\` - exponential ramp (exp>1: slow start, exp<1: fast start, 1: linear)
+- \`ramp(start, end)\` - linear interpolation; reaches end value at time range end (or clip end)
+- \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
+- For ramp/curve, end the time filter on the last note's beat position. In 4/4: last 8th=N|4.5, last 16th=N|4.75
 - Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
 - \`sync\` keyword (last arg on periodic waves) syncs phase to arrangement timeline instead of clip start
 
@@ -140,7 +141,7 @@ velocity += 20 * cos(2t)       // cycle every 2 beats
 velocity += 20 * cos(4:0t, sync) // continuous across clips
 velocity += 20 * square(2t, 0, cos(1:0t) * 0.25 + 0.5) // dynamic PWM
 timing += 0.05 * rand()        // humanize timing
-velocity += ramp(0, 60)        // fade in over clip
+1|1-4|4.75: velocity = ramp(40, 127)  // crescendo over 4 bars (16th grid)
 C1-C2: velocity += 30          // accent bass notes
 1|1-2|4: velocity = 100        // forte in bars 1-2
 velocity = 60 + note.index * 5 // sequential crescendo
