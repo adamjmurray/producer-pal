@@ -144,6 +144,74 @@ export function createAndDeleteTempClip(
 }
 
 /**
+ * Workaround for Ableton Live crash: duplicate_clip_to_arrangement crashes when
+ * the source is an arrangement clip and any existing arrangement clip overlaps
+ * the target position. Affects both MIDI and audio. Set to false to test if
+ * Ableton fixed the bug, then remove this workaround when confirmed fixed.
+ */
+let arrangementDuplicateCrashWorkaround = true;
+
+/**
+ * Enable or disable the arrangement duplicate crash workaround.
+ * @param enabled - Whether the workaround should be active
+ */
+export function setArrangementDuplicateCrashWorkaround(enabled: boolean): void {
+  arrangementDuplicateCrashWorkaround = enabled;
+}
+
+/**
+ * Clear any existing arrangement clips at the target position to prevent
+ * the Ableton crash when duplicating an arrangement clip on top of them.
+ * Creates a temp clip the same size as the source to overwrite overlapping clips.
+ * No-op when: workaround is disabled or source is a session clip.
+ * @param track - LiveAPI track instance for the target track
+ * @param sourceClipId - ID of the source clip being duplicated
+ * @param targetPosition - Target position in beats
+ * @param isMidiClip - Whether the track is MIDI (true) or audio (false)
+ * @param context - Context with silenceWavPath for audio clip operations
+ */
+export function clearClipAtDuplicateTarget(
+  track: LiveAPI,
+  sourceClipId: string,
+  targetPosition: number,
+  isMidiClip: boolean,
+  context: TilingContext,
+): void {
+  if (!arrangementDuplicateCrashWorkaround) return;
+
+  const sourceClip = LiveAPI.from(toLiveApiId(sourceClipId));
+
+  if (sourceClip.getProperty("is_arrangement_clip") !== 1) return;
+
+  // Use the source clip's arrangement length to determine how much space to clear
+  const sourceStart = sourceClip.getProperty("start_time") as number;
+  const sourceEnd = sourceClip.getProperty("end_time") as number;
+  const sourceLength = sourceEnd - sourceStart;
+  const targetEnd = targetPosition + sourceLength;
+
+  const clipIds = track.getChildIds("arrangement_clips");
+
+  for (const clipId of clipIds) {
+    const clip = LiveAPI.from(clipId);
+    const clipStart = clip.getProperty("start_time") as number;
+    const clipEnd = clip.getProperty("end_time") as number;
+
+    // Check if any existing clip overlaps the target range
+    if (clipStart < targetEnd && clipEnd > targetPosition) {
+      createAndDeleteTempClip(
+        track,
+        targetPosition,
+        sourceLength,
+        isMidiClip,
+        context,
+      );
+
+      return;
+    }
+  }
+}
+
+/**
  * Creates a shortened copy of a clip in the holding area.
  * Uses the temp clip shortening technique to achieve the target length.
  *
@@ -207,14 +275,25 @@ export function createShortenedClipInHolding(
  * @param holdingClipId - ID of clip in holding area
  * @param track - LiveAPI track instance
  * @param targetPosition - Target position in beats
+ * @param isMidiClip - Whether the clip is MIDI (true) or audio (false)
+ * @param context - Context with silenceWavPath for audio clip operations
  * @returns The moved clip (LiveAPI instance)
  */
 export function moveClipFromHolding(
   holdingClipId: string,
   track: LiveAPI,
   targetPosition: number,
+  isMidiClip: boolean,
+  context: TilingContext,
 ): LiveAPI {
   // Duplicate holding clip to target position
+  clearClipAtDuplicateTarget(
+    track,
+    holdingClipId,
+    targetPosition,
+    isMidiClip,
+    context,
+  );
   const finalResult = track.call(
     "duplicate_clip_to_arrangement",
     toLiveApiId(holdingClipId),
@@ -304,7 +383,13 @@ export function createPartialTile(
   );
 
   // Move from holding to target position
-  const partialTile = moveClipFromHolding(holdingClipId, track, targetPosition);
+  const partialTile = moveClipFromHolding(
+    holdingClipId,
+    track,
+    targetPosition,
+    isMidiClip,
+    context,
+  );
 
   // Set start_marker to show correct portion of clip content
   const clipLoopStart = sourceClip.getProperty("loop_start") as number;
@@ -392,6 +477,13 @@ export function tileClipToRange(
     const freshTrack = LiveAPI.from(livePath.track(trackIndex as number));
 
     // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength)
+    clearClipAtDuplicateTarget(
+      freshTrack,
+      sourceClipId,
+      currentPosition,
+      isMidiClip,
+      context,
+    );
     const result = freshTrack.call(
       "duplicate_clip_to_arrangement",
       toLiveApiId(sourceClipId),

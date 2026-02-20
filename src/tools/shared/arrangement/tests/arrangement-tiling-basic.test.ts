@@ -250,7 +250,7 @@ describe("moveClipFromHolding", () => {
       delete_clip: [null],
     });
 
-    const result = moveClipFromHolding("200", track, 500);
+    const result = moveClipFromHolding("200", track, 500, true, mockContext);
 
     expect(track.call).toHaveBeenNthCalledWith(
       1,
@@ -269,7 +269,7 @@ describe("moveClipFromHolding", () => {
       delete_clip: [null],
     });
 
-    moveClipFromHolding("777", track, 1234);
+    moveClipFromHolding("777", track, 1234, true, mockContext);
 
     expect(track.call).toHaveBeenNthCalledWith(
       1,
