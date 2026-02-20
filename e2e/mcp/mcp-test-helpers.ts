@@ -36,6 +36,11 @@ export const SAMPLE_FILE = resolve(
   "../live-sets/samples/sample.aiff",
 );
 
+export const KICK_FILE = resolve(
+  __dirname,
+  "../live-sets/samples/drums/kick.aiff",
+);
+
 /**
  * Parse a tool result as JSON with type casting.
  * Throws if the result contains unexpected warnings.

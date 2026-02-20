@@ -101,6 +101,19 @@ deletions, moves). Always recreate objects from track/clip paths after
 modifications. Store clip IDs (strings) rather than LiveAPI objects across
 operations.
 
+### `duplicate_clip_to_arrangement` Crash Bug
+
+`duplicate_clip_to_arrangement` crashes Ableton when the source is an
+**arrangement clip** and any existing arrangement clip overlaps the target
+position. Session-to-arrangement duplication is unaffected. This bug was
+reported to Ableton and confirmed but not yet fixed.
+
+The workaround (`clearClipAtDuplicateTarget`) runs before every arrangement-to-
+arrangement duplication, clearing overlapping clips using the same splitting
+technique (dup-to-holding + edge trims) used by the splitting algorithm. See
+"Duplicate Crash Workaround" under Core Techniques. The workaround has a disable
+flag (`setArrangementDuplicateCrashWorkaround`) for periodic retesting.
+
 ### `duplicate_clip_to_arrangement` Return Format
 
 Returns an array like `["id", 726]`. The codebase casts the return
@@ -141,7 +154,7 @@ For audio clips, the temp clip is created via session (since arrangement audio
 creation doesn't support length control). For MIDI, `create_midi_clip` is used
 directly.
 
-Files: `arrangement-tiling.ts` (`createAndDeleteTempClip`),
+Files: `arrangement-tiling-helpers.ts` (`createAndDeleteTempClip`),
 `arrangement-operations-helpers.ts` (`truncateWithTempClip`)
 
 ### Session-Based Tiling
@@ -154,8 +167,29 @@ When you need an arrangement audio clip with a specific length:
    arrangement length
 4. Clean up session clip via `slot.call("delete_clip")`
 
-Files: `arrangement-tiling.ts` (`createAudioClipInSession`),
+Files: `arrangement-tiling-helpers.ts` (`createAudioClipInSession`),
 `arrangement-unlooped-helpers.ts` (`lengthenWarpedUnloopedAudio`)
+
+### Duplicate Crash Workaround
+
+Before every `duplicate_clip_to_arrangement` where the source is an arrangement
+clip, `clearClipAtDuplicateTarget()` checks for overlapping clips at the target
+position. If found, `clearOverlappingClip()` handles all four overlap cases
+uniformly:
+
+- **Full containment** (clip within target range): delete the clip
+- **Before only** (clip extends before target, ends within): right-trim with
+  temp clip
+- **After only** (clip starts within target, extends past): dup to holding,
+  delete original, left-trim holding, move "after" to target end
+- **Both sides** (mid-clip overlap): dup to holding, right-trim original,
+  left-trim holding, move "after" to target end
+
+This reuses the same holding area + edge trim primitives as the splitting
+algorithm. The workaround is guarded by a disable flag for periodic retesting.
+
+Files: `arrangement-tiling.ts` (`clearClipAtDuplicateTarget`,
+`clearOverlappingClip`)
 
 ### File Content Boundary Detection
 
@@ -319,14 +353,15 @@ Optimized algorithm using 2(N-1) duplications for N segments (not 2N):
 
 ## Source File Reference
 
-| File                                 | Role                                                              |
-| ------------------------------------ | ----------------------------------------------------------------- |
-| `arrangement-operations.ts`          | Top-level dispatcher (lengthen vs shorten)                        |
-| `arrangement-operations-helpers.ts`  | Looped lengthening, shortening, temp clip truncation              |
-| `arrangement-unlooped-helpers.ts`    | Unlooped lengthening (MIDI, warped audio, unwarped audio)         |
-| `arrangement-tiling.ts`              | Core techniques (holding area, temp clips, session clips, tiling) |
-| `arrangement-splitting.ts`           | Clip splitting algorithm                                          |
-| `update-clip-arrangement-helpers.ts` | Update-clip integration (move + lengthen orchestration)           |
+| File                                 | Role                                                      |
+| ------------------------------------ | --------------------------------------------------------- |
+| `arrangement-operations.ts`          | Top-level dispatcher (lengthen vs shorten)                |
+| `arrangement-operations-helpers.ts`  | Looped lengthening, shortening, temp clip truncation      |
+| `arrangement-unlooped-helpers.ts`    | Unlooped lengthening (MIDI, warped audio, unwarped audio) |
+| `arrangement-tiling.ts`              | Tiling, holding area, crash workaround, clip movement     |
+| `arrangement-tiling-helpers.ts`      | Low-level primitives (temp clips, session clip creation)  |
+| `arrangement-splitting.ts`           | Clip splitting algorithm                                  |
+| `update-clip-arrangement-helpers.ts` | Update-clip integration (move + lengthen orchestration)   |
 
 All arrangement source files are under `src/tools/shared/arrangement/` or
 `src/tools/clip/arrangement/helpers/`. Test files are colocated under `tests/`
