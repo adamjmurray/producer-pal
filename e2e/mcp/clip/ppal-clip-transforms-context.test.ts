@@ -19,6 +19,7 @@ import {
 } from "../mcp-test-helpers.ts";
 import {
   applyTransform as applyTransformHelper,
+  createArrangementClip as createArrangementClipHelper,
   createMidiClip as createMidiClipHelper,
   readClipNotes as readClipNotesHelper,
 } from "./helpers/ppal-clip-transforms-test-helpers.ts";
@@ -44,6 +45,15 @@ async function applyTransform(
   transform: string,
 ): Promise<unknown> {
   return applyTransformHelper(ctx, clipId, transform);
+}
+
+/** Creates a MIDI arrangement clip with notes at given position. */
+async function createArrangementClip(
+  arrangementStart: string,
+  notes: string,
+  length: string,
+): Promise<string> {
+  return createArrangementClipHelper(ctx, arrangementStart, notes, length);
 }
 
 /** Sets or disables the Live Set scale. */
@@ -74,7 +84,7 @@ describe("ppal-clip-transforms (context variables)", () => {
     expect(velocities[3]).toBe(90); // index 3
   });
 
-  it("clip.duration scales velocity based on clip length", async () => {
+  it("clip.duration uses content length for session clips", async () => {
     // 2:0.0 = 8 beats in 4/4
     const clipId = await createMidiClip(28, "v100 C3 1|1");
 
@@ -82,6 +92,17 @@ describe("ppal-clip-transforms (context variables)", () => {
     const notes = await readClipNotes(clipId);
 
     expect(notes).toContain("v80"); // 8 beats * 10 = 80
+  });
+
+  it("clip.duration uses arrangement length for arrangement clips", async () => {
+    // Create a 3:0.0 (12 beat) arrangement clip with a single note
+    const clipId = await createArrangementClip("1|1", "v100 C3 1|1", "3:0.0");
+
+    await applyTransform(clipId, "velocity = clip.duration * 10");
+    const notes = await readClipNotes(clipId);
+
+    // 12 arrangement beats * 10 = 120
+    expect(notes).toContain("v120");
   });
 
   it("clip.barDuration reflects time signature", async () => {

@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
+import {
+  applyTransformsToExistingNotes,
+  buildClipContext,
+} from "./update-clip-transform-helpers.ts";
 
 // Helper to create raw notes as returned by Live API (with extra properties)
 function rawNote(pitch: number, startTime: number, noteId: number) {
@@ -23,6 +26,43 @@ function rawNote(pitch: number, startTime: number, noteId: number) {
 describe("update-clip-transform-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe("buildClipContext", () => {
+    it("uses content length for session clips", () => {
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "length") return 8;
+          if (prop === "is_arrangement_clip") return 0;
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+
+      expect(ctx.clipDuration).toBe(8);
+      expect(ctx.arrangementStart).toBeUndefined();
+    });
+
+    it("uses arrangement length (end_time - start_time) for arrangement clips", () => {
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "is_arrangement_clip") return 1;
+          if (prop === "start_time") return 4; // starts at beat 4
+          if (prop === "end_time") return 20; // ends at beat 20
+          if (prop === "length") return 8; // content length (shorter)
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+
+      // Should use end_time - start_time = 16, NOT length = 8
+      expect(ctx.clipDuration).toBe(16);
+      expect(ctx.arrangementStart).toBe(4);
+    });
   });
 
   describe("applyTransformsToExistingNotes", () => {

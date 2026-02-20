@@ -98,12 +98,16 @@ export function buildClipContext(
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): ClipContext {
-  const lengthBeats = clip.getProperty("length") as number;
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
+  const durationBeats = isArrangementClip
+    ? (clip.getProperty("end_time") as number) -
+      (clip.getProperty("start_time") as number)
+    : (clip.getProperty("length") as number);
+
   return {
-    clipDuration: lengthBeats * (timeSigDenominator / 4),
+    clipDuration: durationBeats * (timeSigDenominator / 4),
     clipIndex,
     clipCount,
     arrangementStart: isArrangementClip
