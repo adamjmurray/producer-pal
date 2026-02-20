@@ -183,6 +183,8 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 - \`t0/d0/rc0/d0\` = first device in rack's return chain
 - \`t0/d0/pC1/d0\` = first device in Drum Rack's C1 pad
 
+Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
+
 ### Arrangement Clips
 
 \`arrangementStart\` moves clips; \`arrangementLength\` sets playback region. Moving clips changes their IDs - re-read to get new IDs.
