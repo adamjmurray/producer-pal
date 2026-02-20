@@ -205,6 +205,7 @@ otherFunctionName
   / "min" { return "min"; }
   / "max" { return "max"; }
   / "rand" { return "rand"; }
+  / "seq" { return "seq"; }
   / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }
   / "curve" { return "curve"; }

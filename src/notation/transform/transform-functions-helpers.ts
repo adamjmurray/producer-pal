@@ -117,6 +117,46 @@ export function evaluateChoose(
 }
 
 /**
+ * Evaluate seq function (cycle through values based on note/clip index)
+ * @param args - Function arguments (at least 1)
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access (index, clip:index)
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Value at current sequence position
+ */
+export function evaluateSeq(
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
+  if (args.length === 0) {
+    throw new Error("Function seq() requires at least 1 argument");
+  }
+
+  // MIDI: use note.index (per-note, resets per clip)
+  // Audio: use clip.index (per-clip)
+  const index = noteProperties.index ?? noteProperties["clip:index"] ?? 0;
+  const selectedIndex = index % args.length;
+
+  // Only evaluate the selected argument (lazy evaluation)
+  return evaluateExpression(
+    args[selectedIndex] as ExpressionNode,
+    position,
+    timeSigNumerator,
+    timeSigDenominator,
+    timeRange,
+    noteProperties,
+  );
+}
+
+/**
  * Evaluate curve function
  * @param args - Function arguments (exactly 3: start, end, exponent)
  * @param position - Note position in beats

@@ -17,6 +17,7 @@ import {
   evaluatePow,
   evaluateQuant,
   evaluateRand,
+  evaluateSeq,
 } from "./transform-functions-helpers.ts";
 import * as waveforms from "./transform-waveforms.ts";
 
@@ -32,6 +33,7 @@ export type EvaluateExpressionFn = (
 // Dispatch map for functions with the standard (args, pos, num, den, range, props, eval) signature
 const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
   rand: evaluateRand,
+  seq: evaluateSeq,
   choose: evaluateChoose,
   quant: evaluateQuant,
   pow: evaluatePow,

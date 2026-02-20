@@ -854,3 +854,107 @@ describe("ppal-clip-transforms (rand, choose, curve)", () => {
     ]);
   });
 });
+
+// =============================================================================
+// seq() Tests
+// =============================================================================
+
+describe("ppal-clip-transforms (seq)", () => {
+  it("seq() cycles velocity through values per note", async () => {
+    const clipId = await createMidiClip(43, "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
+
+    await applyTransform(clipId, "velocity = seq(60, 80, 100, 120)");
+    const notes = await readClipNotes(clipId);
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    expect(velocities).toStrictEqual([60, 80, 100, 120]);
+  });
+
+  it("seq() wraps around when note count exceeds arg count", async () => {
+    // 6 notes with 3-value seq: should produce 60,80,100,60,80,100
+    const clipId = await createMidiClip(
+      44,
+      "v100 C3 1|1 C3 1|1.5 C3 1|2 C3 1|2.5 C3 1|3 C3 1|3.5",
+    );
+
+    await applyTransform(clipId, "velocity = seq(60, 80, 100)");
+    const notes = await readClipNotes(clipId);
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    expect(velocities).toStrictEqual([60, 80, 100, 60, 80, 100]);
+  });
+
+  it("seq() works with nested expressions", async () => {
+    // seq of 2 values wrapping over 4 notes → 40,120,40,120
+    const clipId = await createMidiClip(45, "v100 C3 1|1 C3 1|2 C3 1|3 C3 1|4");
+
+    await applyTransform(clipId, "velocity = seq(20 + 20, 60 * 2)");
+    const notes = await readClipNotes(clipId);
+    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
+
+    expect(velocities).toStrictEqual([40, 120, 40, 120]);
+  });
+
+  it("seq() selects gain based on clip.index in multi-clip audio update", async () => {
+    // Create audio track with 2 clips
+    const trackResult = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "audio", name: "Seq Audio Test" },
+    });
+    const track = parseToolResult<CreateTrackResult>(trackResult);
+
+    await sleep(100);
+
+    const clip0Result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "session",
+        trackIndex: track.trackIndex,
+        sceneIndex: "0",
+        sampleFile: SAMPLE_FILE,
+      },
+    });
+    const clip0 = parseToolResult<{ id: string }>(clip0Result);
+
+    await sleep(100);
+
+    const clip1Result = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "session",
+        trackIndex: track.trackIndex,
+        sceneIndex: "1",
+        sampleFile: SAMPLE_FILE,
+      },
+    });
+    const clip1 = parseToolResult<{ id: string }>(clip1Result);
+
+    await sleep(100);
+
+    // Apply seq(-6, -12) to both clips: clip 0 → -6, clip 1 → -12
+    await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        ids: `${clip0.id},${clip1.id}`,
+        transforms: "gain = seq(-6, -12)",
+      },
+    });
+
+    await sleep(100);
+
+    const read0 = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: clip0.id, include: ["sample"] },
+    });
+    const readClip0 = parseToolResult<ReadClipResult>(read0);
+
+    const read1 = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: clip1.id, include: ["sample"] },
+    });
+    const readClip1 = parseToolResult<ReadClipResult>(read1);
+
+    expect(readClip0.gainDb).toBeCloseTo(-6, 0);
+    expect(readClip1.gainDb).toBeCloseTo(-12, 0);
+  });
+});
