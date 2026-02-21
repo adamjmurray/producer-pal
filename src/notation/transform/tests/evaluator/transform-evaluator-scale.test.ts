@@ -149,3 +149,153 @@ describe("Transform Evaluator - quant()", () => {
     });
   });
 });
+
+describe("Transform Evaluator - step()", () => {
+  describe("basic stepping with C Major scale", () => {
+    it("steps up by 2 from C3 to E3", () => {
+      const result = evaluateTransform("pitch = step(note.pitch, 2)", CTX, {
+        pitch: 60,
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      expect(result.pitch!.value).toBe(64); // C3 → E3
+    });
+
+    it("steps down by 2 from E3 to C3", () => {
+      const result = evaluateTransform("pitch = step(note.pitch, -2)", CTX, {
+        pitch: 64,
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      expect(result.pitch!.value).toBe(60); // E3 → C3
+    });
+
+    it("steps up by 7 for full octave", () => {
+      const result = evaluateTransform("pitch = step(note.pitch, 7)", CTX, {
+        pitch: 60,
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      expect(result.pitch!.value).toBe(72); // C3 → C4
+    });
+
+    it("returns quantized pitch for zero offset", () => {
+      const result = evaluateTransform("pitch = step(note.pitch, 0)", CTX, {
+        pitch: 60,
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      expect(result.pitch!.value).toBe(60);
+    });
+  });
+
+  describe("no-op cases (no scale)", () => {
+    it("falls back to chromatic (basePitch + offset) when no scale:mask", () => {
+      const result = evaluateTransform("pitch = step(note.pitch, 3)", CTX, {
+        pitch: 60,
+      });
+
+      expect(result.pitch!.value).toBe(63); // 60 + 3
+    });
+  });
+
+  describe("with expressions", () => {
+    it("evaluates both arguments as expressions", () => {
+      const result = evaluateTransform("pitch = step(C3, 2 + 1)", CTX, {
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      // C3 (60) + 3 steps → F3 (65)
+      expect(result.pitch!.value).toBe(65);
+    });
+
+    it("works with pitch literal as base", () => {
+      const result = evaluateTransform("pitch = step(C4, seq(0, 2, 4))", CTX, {
+        index: 1,
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      // seq at index 1 → 2, C4 (72) + 2 steps → E4 (76)
+      expect(result.pitch!.value).toBe(76);
+    });
+  });
+
+  describe("boundary clamping", () => {
+    it("clamps when stepping above MIDI range", () => {
+      const result = evaluateTransform("pitch = step(note.pitch, 100)", CTX, {
+        pitch: 120,
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      // Should clamp to highest in-scale pitch <= 127 (G8 = 127)
+      expect(result.pitch!.value).toBe(127);
+    });
+
+    it("clamps when stepping below MIDI range", () => {
+      const result = evaluateTransform("pitch = step(note.pitch, -100)", CTX, {
+        pitch: 5,
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      // Should clamp to lowest in-scale pitch >= 0 (C-2 = 0)
+      expect(result.pitch!.value).toBe(0);
+    });
+  });
+
+  describe("error handling", () => {
+    it("returns undefined for zero arguments", () => {
+      const result = evaluateTransform("pitch = step()", CTX, {
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      expect(result.pitch).toBeUndefined();
+    });
+
+    it("returns undefined for one argument", () => {
+      const result = evaluateTransform("pitch = step(60)", CTX, {
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      expect(result.pitch).toBeUndefined();
+    });
+
+    it("returns undefined for three arguments", () => {
+      const result = evaluateTransform("pitch = step(60, 2, 3)", CTX, {
+        "scale:mask": C_MAJOR_MASK,
+      });
+
+      expect(result.pitch).toBeUndefined();
+    });
+  });
+
+  describe("different scales", () => {
+    it("works with pentatonic scale", () => {
+      // C Minor Pentatonic: C Eb F G Bb → intervals 0,3,5,7,10
+      const mask = scaleIntervalsToPitchClassMask([0, 3, 5, 7, 10], 0);
+
+      const result = evaluateTransform("pitch = step(note.pitch, 1)", CTX, {
+        pitch: 60,
+        "scale:mask": mask,
+      });
+
+      // C3 + 1 pentatonic step → Eb3 (63)
+      expect(result.pitch!.value).toBe(63);
+    });
+
+    it("works with D Minor scale", () => {
+      // D Minor: D E F G A Bb C → intervals 0,2,3,5,7,8,10 from root D (2)
+      const dMinorMask = scaleIntervalsToPitchClassMask(
+        [0, 2, 3, 5, 7, 8, 10],
+        2,
+      );
+
+      const result = evaluateTransform("pitch = step(note.pitch, 3)", CTX, {
+        pitch: 62, // D3
+        "scale:mask": dMinorMask,
+      });
+
+      // D3 (62) + 3 steps in D minor → G3 (67)
+      expect(result.pitch!.value).toBe(67);
+    });
+  });
+});

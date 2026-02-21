@@ -122,7 +122,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
-- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), min(a,b,...), max(a,b,...), pow(base,exp), quant(pitch) (snap to Live Set scale; no-op if no scale)
+- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), min(a,b,...), max(a,b,...), pow(base,exp), quant(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms)
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
 - \`cos(freq)\`, \`square(freq)\` - start at peak (1.0); \`sin(freq)\`, \`tri(freq)\`, \`saw(freq)\` - start at zero, rise to peak
@@ -148,6 +148,7 @@ velocity = 60 + note.index * 5 // sequential crescendo
 pitch += clip.index * 7        // stacked fifths across clips
 gain = audio.gain - 6          // reduce audio clip by 6 dB
 pitch = quant(note.pitch + 7)  // transpose up fifth, snap to scale
+pitch = step(note.pitch, sin(4t) * 7)  // oscillate ±7 scale steps smoothly
 velocity *= 0.5                // halve all velocities
 C1-C2: duration /= 2           // halve duration of bass notes
 \`\`\`

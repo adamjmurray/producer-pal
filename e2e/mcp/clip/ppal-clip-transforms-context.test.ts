@@ -5,11 +5,11 @@
 
 /**
  * E2E tests for transform context variables (note.*, clip.*, bar.*),
- * function arity validation, and scale-dependent functions (quant).
+ * function arity validation, and scale-dependent functions (quant, step).
  * Uses: e2e-test-set - t8 is empty MIDI track
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
- * Run with: npm run e2e:mcp -- ppal-clip-transforms-context
+ * Run with: npm run e2e:mcp -- --testPathPattern ppal-clip-transforms-context
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -255,6 +255,67 @@ describe("ppal-clip-transforms (quant)", () => {
 
     // Notes should remain unchanged — no scale means quant is a no-op
     expect(notes).toContain("Db3");
+    expect(notes).toContain("Eb3");
+  });
+});
+
+// =============================================================================
+// Scale-Dependent Function Tests (step)
+// =============================================================================
+
+describe("ppal-clip-transforms (step)", () => {
+  it("steps up scale degrees in C Major", async () => {
+    await setScale("C Major");
+
+    // Create clip with C3, step up 2 scale degrees → E3
+    const clipId = await createMidiClip(50, "C3 1|1");
+
+    await applyTransform(clipId, "pitch = step(note.pitch, 2)");
+
+    const notes = await readClipNotes(clipId);
+
+    // C3(60) + 2 scale steps in C Major → E3(64)
+    expect(notes).toContain("E3");
+    expect(notes).not.toContain("C3");
+  });
+
+  it("steps down scale degrees", async () => {
+    await setScale("C Major");
+
+    const clipId = await createMidiClip(51, "E3 1|1");
+
+    await applyTransform(clipId, "pitch = step(note.pitch, -2)");
+
+    const notes = await readClipNotes(clipId);
+
+    // E3(64) - 2 scale steps in C Major → C3(60)
+    expect(notes).toContain("C3");
+    expect(notes).not.toContain("E3");
+  });
+
+  it("skips non-scale degrees in pentatonic", async () => {
+    await setScale("C Minor");
+
+    const clipId = await createMidiClip(52, "C3 1|1");
+
+    // In C Minor (C D Eb F G Ab Bb), step 1 from C → D, step 2 → Eb
+    await applyTransform(clipId, "pitch = step(note.pitch, 2)");
+
+    const notes = await readClipNotes(clipId);
+
+    expect(notes).toContain("Eb3");
+  });
+
+  it("is chromatic fallback when no scale is active", async () => {
+    await setScale("");
+
+    const clipId = await createMidiClip(53, "C3 1|1");
+
+    await applyTransform(clipId, "pitch = step(note.pitch, 3)");
+
+    const notes = await readClipNotes(clipId);
+
+    // No scale → chromatic: C3(60) + 3 = Eb3(63)
     expect(notes).toContain("Eb3");
   });
 });
