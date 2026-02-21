@@ -70,7 +70,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .default(false)
       .describe("auto-switch view?"),
-    toSlot: z.coerce
+    toSlot: z
       .string()
       .optional()
       .describe(
