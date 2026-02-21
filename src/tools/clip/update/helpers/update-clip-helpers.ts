@@ -278,6 +278,7 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   looping?: boolean;
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
+  nonSurvivorClipIds?: Set<string> | null;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   tracksWithMovedClips: Map<number, number>;
@@ -452,5 +453,6 @@ export function processSingleClipUpdate(
     context,
     updatedClips,
     finalNoteCount,
+    isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
 }

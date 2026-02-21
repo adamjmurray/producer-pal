@@ -85,6 +85,9 @@ export function clearClipAtDuplicateTarget(
   const sourceEnd = sourceClip.getProperty("end_time") as number;
   const targetEnd = targetPosition + (sourceEnd - sourceStart);
 
+  // Iterate all arrangement clips and clear any that overlap the target range.
+  // Arrangement clips on the same track never overlap each other, so a single
+  // pass handles all overlapping clips without needing to re-fetch IDs.
   const clipIds = track.getChildIds("arrangement_clips");
 
   for (const clipId of clipIds) {
@@ -102,8 +105,6 @@ export function clearClipAtDuplicateTarget(
         isMidiClip,
         context,
       );
-
-      return;
     }
   }
 }
