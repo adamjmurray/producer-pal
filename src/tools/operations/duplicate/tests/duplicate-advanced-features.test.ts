@@ -238,8 +238,7 @@ describe("duplicate - switchView functionality", () => {
       id: "clip1",
       destination: "session",
       switchView: true,
-      toTrackIndex: 0,
-      toSceneIndex: "1",
+      toSlot: "0/1",
     });
 
     expect(appView.call).toHaveBeenCalledWith("show_view", "Session");

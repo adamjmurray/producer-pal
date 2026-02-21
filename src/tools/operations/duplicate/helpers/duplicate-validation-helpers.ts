@@ -118,14 +118,12 @@ export function validateAndConfigureRouteToSource(
  * Validates clip-specific parameters
  * @param type - Type of object being duplicated
  * @param destination - Destination for clip duplication
- * @param toTrackIndex - Destination track index
- * @param toSceneIndex - Destination scene index(es), comma-separated
+ * @param toSlot - Destination clip slot(s) in trackIndex/sceneIndex format
  */
 export function validateClipParameters(
   type: string,
   destination: string | undefined,
-  toTrackIndex: number | undefined,
-  toSceneIndex: string | undefined,
+  toSlot: string | undefined,
 ): void {
   if (type !== "clip") {
     return;
@@ -144,18 +142,8 @@ export function validateClipParameters(
   }
 
   // Validate session clip destination parameters
-  if (destination === "session") {
-    if (toTrackIndex == null) {
-      throw new Error(
-        "duplicate failed: toTrackIndex is required for session clips",
-      );
-    }
-
-    if (toSceneIndex == null || toSceneIndex.trim() === "") {
-      throw new Error(
-        "duplicate failed: toSceneIndex is required for session clips",
-      );
-    }
+  if (destination === "session" && (toSlot == null || toSlot.trim() === "")) {
+    throw new Error("duplicate failed: toSlot is required for session clips");
   }
 }
 

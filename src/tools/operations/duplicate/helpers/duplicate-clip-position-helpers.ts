@@ -7,8 +7,8 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { resolveLocatorListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import { buildIndexedName } from "#src/tools/shared/utils.ts";
 import {
-  parseSceneIndexList,
   parseArrangementStartList,
+  parseSlotList,
 } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   duplicateClipSlot,
@@ -21,8 +21,7 @@ import {
  * @param object - Live API object to duplicate
  * @param id - ID of the object
  * @param name - Base name for duplicated clips
- * @param toTrackIndex - Destination track index
- * @param toSceneIndex - Comma-separated scene indices for session clips
+ * @param toSlot - Destination clip slot(s) in trackIndex/sceneIndex format
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
  * @param locatorId - Arrangement locator ID(s) for position
  * @param locatorName - Arrangement locator name(s) for position
@@ -35,8 +34,7 @@ export function duplicateClipWithPositions(
   object: LiveAPI,
   id: string,
   name: string | undefined,
-  toTrackIndex: number | undefined,
-  toSceneIndex: string | undefined,
+  toSlot: string | undefined,
   arrangementStart: string | undefined,
   locatorId: string | undefined,
   locatorName: string | undefined,
@@ -46,7 +44,7 @@ export function duplicateClipWithPositions(
   const createdObjects: object[] = [];
 
   if (destination === "session") {
-    const sceneIndices = parseSceneIndexList(toSceneIndex);
+    const slots = parseSlotList(toSlot);
     const trackIndex = object.trackIndex;
     const sourceSceneIndex = object.sceneIndex;
 
@@ -56,13 +54,15 @@ export function duplicateClipWithPositions(
       );
     }
 
-    for (let i = 0; i < sceneIndices.length; i++) {
-      const objectName = buildIndexedName(name, sceneIndices.length, i);
+    for (let i = 0; i < slots.length; i++) {
+      // bounded by slots.length
+      const slot = slots[i] as { trackIndex: number; sceneIndex: number };
+      const objectName = buildIndexedName(name, slots.length, i);
       const result = duplicateClipSlot(
         trackIndex,
         sourceSceneIndex,
-        toTrackIndex ?? trackIndex,
-        sceneIndices[i] as number,
+        slot.trackIndex,
+        slot.sceneIndex,
         objectName,
       );
 

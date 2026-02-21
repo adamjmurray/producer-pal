@@ -180,8 +180,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
         destination: "session",
-        toTrackIndex: emptyMidiTrack2,
-        toSceneIndex: "0",
+        toSlot: `${emptyMidiTrack2}/0`,
       },
     });
     const dupClipSession =
@@ -200,8 +199,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
         destination: "session",
-        toTrackIndex: 10, // t10 Child track has no clips
-        toSceneIndex: "0,1,2",
+        toSlot: "10/0, 10/1, 10/2",
       },
     });
     const dupClipMultiSlots = parseToolResult<DuplicateClipResult[]>(

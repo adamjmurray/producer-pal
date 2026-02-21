@@ -43,8 +43,7 @@ interface DuplicateArgs {
   withoutDevices?: boolean;
   routeToSource?: boolean;
   switchView?: boolean;
-  toTrackIndex?: number;
-  toSceneIndex?: string;
+  toSlot?: string;
   toPath?: string;
 }
 
@@ -56,8 +55,6 @@ interface DuplicateParams {
   withoutClips?: boolean;
   withoutDevices?: boolean;
   routeToSource?: boolean;
-  toTrackIndex?: number | null;
-  toSceneIndex?: string | null;
 }
 
 /**
@@ -76,8 +73,7 @@ interface DuplicateParams {
  * @param args.withoutDevices - Exclude devices
  * @param args.routeToSource - Route to source
  * @param args.switchView - Switch view
- * @param args.toTrackIndex - Destination track index
- * @param args.toSceneIndex - Destination scene index
+ * @param args.toSlot - Destination clip slot(s)
  * @param args.toPath - Destination path
  * @param context - Context object
  * @returns Result object(s)
@@ -97,8 +93,7 @@ export function duplicate(
     withoutDevices,
     routeToSource,
     switchView,
-    toTrackIndex,
-    toSceneIndex,
+    toSlot,
     toPath,
   }: DuplicateArgs,
   context: Partial<ToolContext> = {},
@@ -121,7 +116,7 @@ export function duplicate(
   const object = validateIdType(id, type, "duplicate");
 
   // Validate clip-specific parameters
-  validateClipParameters(type, destination, toTrackIndex, toSceneIndex);
+  validateClipParameters(type, destination, toSlot);
 
   // Validate destination parameter compatibility with type
   validateDestinationParameter(type, destination);
@@ -147,8 +142,7 @@ export function duplicate(
           object,
           id,
           name,
-          toTrackIndex,
-          toSceneIndex,
+          toSlot,
           arrangementStart,
           locatorId,
           locatorName,
@@ -170,8 +164,6 @@ export function duplicate(
             withoutClips,
             withoutDevices,
             routeToSource,
-            toTrackIndex: null,
-            toSceneIndex: null,
           },
           context,
         );

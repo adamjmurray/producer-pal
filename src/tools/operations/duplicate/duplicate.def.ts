@@ -70,17 +70,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .default(false)
       .describe("auto-switch view?"),
-    toTrackIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("destination track index (for session clips)"),
-    toSceneIndex: z.coerce
+    toSlot: z.coerce
       .string()
       .optional()
       .describe(
-        "destination scene index(es), comma-separated for multiple (e.g., '1' or '1,3,5')",
+        "destination clip slot(s), trackIndex/sceneIndex format, comma-separated for multiple (e.g., '0/1' or '0/1,2/3')",
       ),
     toPath: z
       .string()
