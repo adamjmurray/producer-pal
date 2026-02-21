@@ -26,7 +26,9 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .int()
       .min(1)
       .default(1)
-      .describe("number of copies (tracks/scenes only, ignored for clips/devices)"),
+      .describe(
+        "number of copies (tracks/scenes only, ignored for clips/devices)",
+      ),
 
     destination: z
       .enum(["session", "arrangement"])
