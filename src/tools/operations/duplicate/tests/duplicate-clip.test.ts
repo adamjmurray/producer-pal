@@ -173,7 +173,7 @@ describe("duplicate - clip duplication", () => {
       expect(() =>
         duplicate({ type: "clip", id: "clip1", destination: "arrangement" }),
       ).toThrow(
-        "duplicate failed: arrangementStart, arrangementLocatorId, or arrangementLocatorName is required when destination is 'arrangement'",
+        "duplicate failed: arrangementStart, locatorId, or locatorName is required when destination is 'arrangement'",
       );
     });
 

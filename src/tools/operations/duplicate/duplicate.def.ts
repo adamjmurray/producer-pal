@@ -38,16 +38,18 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "bar|beat position(s), comma-separated for multiple clips (e.g., '1|1' or '1|1,2|1,3|1')",
       ),
-    arrangementLocatorId: z
+    locatorId: z.coerce
       .string()
       .optional()
       .describe(
-        "place duplicate at locator position by ID (e.g., 'locator-0')",
+        "arrangement locator ID(s), comma-separated for multiple (e.g., 'locator-0' or 'locator-0,locator-2')",
       ),
-    arrangementLocatorName: z
+    locatorName: z
       .string()
       .optional()
-      .describe("place duplicate at first locator matching name"),
+      .describe(
+        "arrangement locator name(s), comma-separated for multiple (e.g., 'Verse' or 'Verse,Chorus')",
+      ),
     arrangementLength: z
       .string()
       .optional()
@@ -83,12 +85,14 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     toPath: z
       .string()
       .optional()
-      .describe("device destination path (e.g., 't1/d0')"),
+      .describe(
+        "device destination path(s), comma-separated for multiple (e.g., 't1/d0' or 't1/d0,t2/d0')",
+      ),
   },
   smallModelModeConfig: {
     excludeParams: [
-      "arrangementLocatorId",
-      "arrangementLocatorName",
+      "locatorId",
+      "locatorName",
       "withoutClips",
       "withoutDevices",
       "routeToSource",

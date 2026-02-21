@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { assertDefined } from "#src/tools/shared/utils.ts";
+import {
+  assertDefined,
+  parseCommaSeparatedIds,
+} from "#src/tools/shared/utils.ts";
 
 export interface LocatorInfo {
   id: string;
@@ -174,6 +177,55 @@ export function resolveLocatorToBeats(
 
     // Use the first matching locator
     return assertDefined(matches[0], "first matching locator").time;
+  }
+
+  throw new Error(`${toolName} failed: locatorId or locatorName is required`);
+}
+
+/**
+ * Resolve one or more locators by ID(s) or name(s) to their times in beats.
+ * Supports comma-separated values for both locatorId and locatorName.
+ * @param liveSet - The live_set LiveAPI object
+ * @param options - Locator identifier options
+ * @param options.locatorId - Comma-separated locator ID(s) to find
+ * @param options.locatorName - Comma-separated locator name(s) to find
+ * @param toolName - Name of the tool for error messages
+ * @returns Array of times in beats
+ * @throws If any locator is not found
+ */
+export function resolveLocatorListToBeats(
+  liveSet: LiveAPI,
+  { locatorId, locatorName }: ResolveLocatorOptions,
+  toolName: string,
+): number[] {
+  if (locatorId != null) {
+    const ids = parseCommaSeparatedIds(locatorId);
+
+    return ids.map((id) => {
+      const found = findLocator(liveSet, { locatorId: id });
+
+      if (!found) {
+        throw new Error(`${toolName} failed: locator not found: ${id}`);
+      }
+
+      return found.locator.getProperty("time") as number;
+    });
+  }
+
+  if (locatorName != null) {
+    const names = parseCommaSeparatedIds(locatorName);
+
+    return names.map((name) => {
+      const matches = findLocatorsByName(liveSet, name);
+
+      if (matches.length === 0) {
+        throw new Error(
+          `${toolName} failed: no locator found with name "${name}"`,
+        );
+      }
+
+      return assertDefined(matches[0], "first matching locator").time;
+    });
   }
 
   throw new Error(`${toolName} failed: locatorId or locatorName is required`);

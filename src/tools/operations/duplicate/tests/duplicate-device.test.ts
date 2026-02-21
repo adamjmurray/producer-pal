@@ -256,6 +256,27 @@ describe("duplicate - device duplication", () => {
     );
   });
 
+  it("should duplicate a device to multiple toPath destinations", () => {
+    registerMockObject("device1", {
+      path: livePath.track(0).device(1),
+      type: "PluginDevice",
+    });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("live_set/tracks/1/devices/1", {
+      path: livePath.track(1).device(1),
+    });
+
+    const result = duplicate({
+      type: "device",
+      id: "device1",
+      toPath: "t2/d0, t3/d0",
+    });
+
+    // Should call duplicateDevice twice (once per path)
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(2);
+  });
+
   it("should handle device path ending with chain segment (not device)", () => {
     // When extractDevicePath returns a path that ends with a chain (not device),
     // it should use the fallback of returning the simplified path as-is

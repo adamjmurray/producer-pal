@@ -4,39 +4,42 @@
 
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
+import { resolveLocatorListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 
 /**
- * Resolves arrangement position from bar|beat or locator
+ * Resolves arrangement positions from bar|beat or locator(s).
+ * Supports comma-separated locator IDs and names for multiple positions.
  * @param liveSet - The live_set LiveAPI object
  * @param arrangementStart - Bar|beat position
- * @param arrangementLocatorId - Locator ID for position
- * @param arrangementLocatorName - Locator name for position
+ * @param locatorId - Arrangement locator ID(s), comma-separated
+ * @param locatorName - Arrangement locator name(s), comma-separated
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns Position in beats
+ * @returns Array of positions in beats
  */
-export function resolveArrangementPosition(
+export function resolveArrangementPositions(
   liveSet: LiveAPI,
   arrangementStart: string | undefined,
-  arrangementLocatorId: string | undefined,
-  arrangementLocatorName: string | undefined,
+  locatorId: string | undefined,
+  locatorName: string | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
-): number {
-  if (arrangementLocatorId != null || arrangementLocatorName != null) {
-    return resolveLocatorToBeats(
+): number[] {
+  if (locatorId != null || locatorName != null) {
+    return resolveLocatorListToBeats(
       liveSet,
-      { locatorId: arrangementLocatorId, locatorName: arrangementLocatorName },
+      { locatorId, locatorName },
       "duplicate",
     );
   }
 
-  return barBeatToAbletonBeats(
-    arrangementStart as string,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+  return [
+    barBeatToAbletonBeats(
+      arrangementStart as string,
+      timeSigNumerator,
+      timeSigDenominator,
+    ),
+  ];
 }
 
 /**
@@ -180,35 +183,35 @@ export function validateDestinationParameter(
  * Validates arrangement-specific parameters
  * @param destination - Destination for duplication
  * @param arrangementStart - Start time in bar|beat format
- * @param arrangementLocatorId - Locator ID for arrangement position
- * @param arrangementLocatorName - Locator name for arrangement position
+ * @param locatorId - Arrangement locator ID(s) for position
+ * @param locatorName - Arrangement locator name(s) for position
  */
 export function validateArrangementParameters(
   destination: string | undefined,
   arrangementStart: string | undefined,
-  arrangementLocatorId: string | undefined,
-  arrangementLocatorName: string | undefined,
+  locatorId: string | undefined,
+  locatorName: string | undefined,
 ): void {
   if (destination !== "arrangement") {
     return;
   }
 
   const hasStart = arrangementStart != null && arrangementStart.trim() !== "";
-  const hasLocatorId = arrangementLocatorId != null;
-  const hasLocatorName = arrangementLocatorName != null;
+  const hasLocatorId = locatorId != null;
+  const hasLocatorName = locatorName != null;
   const positionCount = [hasStart, hasLocatorId, hasLocatorName].filter(
     Boolean,
   ).length;
 
   if (positionCount === 0) {
     throw new Error(
-      "duplicate failed: arrangementStart, arrangementLocatorId, or arrangementLocatorName is required when destination is 'arrangement'",
+      "duplicate failed: arrangementStart, locatorId, or locatorName is required when destination is 'arrangement'",
     );
   }
 
   if (positionCount > 1) {
     throw new Error(
-      "duplicate failed: arrangementStart, arrangementLocatorId, and arrangementLocatorName are mutually exclusive",
+      "duplicate failed: arrangementStart, locatorId, and locatorName are mutually exclusive",
     );
   }
 }

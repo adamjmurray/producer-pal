@@ -4,7 +4,7 @@
 
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
+import { resolveLocatorListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import { buildIndexedName } from "#src/tools/shared/utils.ts";
 import {
   parseSceneIndexList,
@@ -24,8 +24,8 @@ import {
  * @param toTrackIndex - Destination track index
  * @param toSceneIndex - Comma-separated scene indices for session clips
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
- * @param arrangementLocatorId - Locator ID for arrangement position
- * @param arrangementLocatorName - Locator name for arrangement position
+ * @param locatorId - Arrangement locator ID(s) for position
+ * @param locatorName - Arrangement locator name(s) for position
  * @param arrangementLength - Duration in bar|beat format
  * @param context - Context object with holdingAreaStartBeats
  * @returns Array of result objects
@@ -38,8 +38,8 @@ export function duplicateClipWithPositions(
   toTrackIndex: number | undefined,
   toSceneIndex: string | undefined,
   arrangementStart: string | undefined,
-  arrangementLocatorId: string | undefined,
-  arrangementLocatorName: string | undefined,
+  locatorId: string | undefined,
+  locatorName: string | undefined,
   arrangementLength: string | undefined,
   context: Partial<ToolContext>,
 ): object[] {
@@ -82,8 +82,8 @@ export function duplicateClipWithPositions(
     const positionsInBeats = resolveClipArrangementPositions(
       liveSet,
       arrangementStart,
-      arrangementLocatorId,
-      arrangementLocatorName,
+      locatorId,
+      locatorName,
       songTimeSigNumerator,
       songTimeSigDenominator,
     );
@@ -111,8 +111,8 @@ export function duplicateClipWithPositions(
  * Resolves clip arrangement positions from bar|beat or locator
  * @param liveSet - The live_set LiveAPI object
  * @param arrangementStart - Comma-separated bar|beat positions
- * @param arrangementLocatorId - Locator ID for position
- * @param arrangementLocatorName - Locator name for position
+ * @param locatorId - Arrangement locator ID(s) for position
+ * @param locatorName - Arrangement locator name(s) for position
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @returns Array of positions in beats
@@ -120,20 +120,18 @@ export function duplicateClipWithPositions(
 function resolveClipArrangementPositions(
   liveSet: LiveAPI,
   arrangementStart: string | undefined,
-  arrangementLocatorId: string | undefined,
-  arrangementLocatorName: string | undefined,
+  locatorId: string | undefined,
+  locatorName: string | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number[] {
-  // Locator-based: single position
-  if (arrangementLocatorId != null || arrangementLocatorName != null) {
-    const locatorBeats = resolveLocatorToBeats(
+  // Locator-based: supports comma-separated for multiple positions
+  if (locatorId != null || locatorName != null) {
+    return resolveLocatorListToBeats(
       liveSet,
-      { locatorId: arrangementLocatorId, locatorName: arrangementLocatorName },
+      { locatorId, locatorName },
       "duplicate",
     );
-
-    return [locatorBeats];
   }
 
   // Bar|beat positions: multiple positions supported
