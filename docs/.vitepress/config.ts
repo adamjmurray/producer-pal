@@ -136,8 +136,7 @@ export default defineConfig({
 
     footer: {
       message: "Released under the GPL-3.0 License.",
-      copyright:
-        'Copyright © 2025-present <a href="https://adammurray.link">Adam Murray</a>',
+      copyright: `Copyright © ${new Date().getFullYear()} <a href="https://adammurray.link">Adam Murray</a>`,
     },
   },
 });
