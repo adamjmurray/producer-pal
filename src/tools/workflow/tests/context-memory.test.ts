@@ -130,7 +130,7 @@ describe("context - memory actions", () => {
         writable: true,
         content: "new content",
       });
-      expect(outlet).toHaveBeenCalledWith(0, "updatenotes", "new content");
+      expect(outlet).toHaveBeenCalledWith(0, "updatememory", "new content");
     });
   });
 

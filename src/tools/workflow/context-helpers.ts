@@ -66,7 +66,7 @@ export function handleWriteMemory(
   memory.content = content;
 
   // Send update to Max patch via outlet
-  outlet(0, "updatenotes", content);
+  outlet(0, "updatememory", content);
 
   return {
     enabled: true,

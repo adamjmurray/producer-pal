@@ -606,7 +606,7 @@ describe("MCP Express App", () => {
     });
 
     it("should update memoryContent string", async () => {
-      const testNotes = "Test project notes content";
+      const testNotes = "Test memory content";
 
       const response = await fetch(configUrl, {
         method: "POST",
@@ -821,8 +821,8 @@ describe("MCP Express App", () => {
       smallModelHandler(false);
     });
 
-    it("should set projectNotesEnabled with various inputs", () => {
-      const handler = mockMax.handlers.get("projectNotesEnabled") as (
+    it("should set memoryEnabled with various inputs", () => {
+      const handler = mockMax.handlers.get("memoryEnabled") as (
         input: unknown,
       ) => void;
 
@@ -832,7 +832,7 @@ describe("MCP Express App", () => {
     });
 
     it("should set memoryContent with string input", () => {
-      const handler = mockMax.handlers.get("projectNotes") as (
+      const handler = mockMax.handlers.get("memoryContent") as (
         input: unknown,
       ) => void;
 
@@ -842,7 +842,7 @@ describe("MCP Express App", () => {
     });
 
     it("should set memoryWritable with various inputs", () => {
-      const handler = mockMax.handlers.get("projectNotesWritable") as (
+      const handler = mockMax.handlers.get("memoryWritable") as (
         input: unknown,
       ) => void;
 

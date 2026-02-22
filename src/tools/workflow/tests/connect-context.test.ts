@@ -16,7 +16,7 @@ vi.mock(
 );
 
 describe("connect", () => {
-  it("includes project notes when enabled", () => {
+  it("includes memory when enabled", () => {
     setupConnectMocks({ liveSetName: "Project with Notes" });
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
@@ -35,7 +35,7 @@ describe("connect", () => {
     );
   });
 
-  it("excludes project notes when context is disabled", () => {
+  it("excludes memory when context is disabled", () => {
     setupConnectMocks({ liveSetName: "Project without Notes" });
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 

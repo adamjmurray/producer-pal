@@ -148,35 +148,35 @@ export function smallModelMode(enabled: unknown): void {
 }
 
 /**
- * Enable or disable project notes feature
+ * Enable or disable memory feature
  *
- * @param enabled - Whether to enable project notes
+ * @param enabled - Whether to enable memory
  */
-export function projectNotesEnabled(enabled: unknown): void {
-  // console.log(`[v8] Setting projectNotesEnabled ${Boolean(enabled)}`);
+export function memoryEnabled(enabled: unknown): void {
+  // console.log(`[v8] Setting memoryEnabled ${Boolean(enabled)}`);
   context.memory.enabled = Boolean(enabled);
 }
 
 /**
- * Set whether project notes are writable
+ * Set whether memory is writable
  *
- * @param writable - Whether project notes should be writable
+ * @param writable - Whether memory should be writable
  */
-export function projectNotesWritable(writable: unknown): void {
-  // console.log(`[v8] Setting projectNotesWritable ${Boolean(writable)}`);
+export function memoryWritable(writable: unknown): void {
+  // console.log(`[v8] Setting memoryWritable ${Boolean(writable)}`);
   context.memory.writable = Boolean(writable);
 }
 
 /**
- * Set the project notes content
+ * Set the memory content
  *
- * @param content - Project notes content
+ * @param content - Memory content
  */
-export function projectNotes(content: unknown): void {
+export function memoryContent(content: unknown): void {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
-  // console.log(`[v8] Setting projectNotes "${value}"`);
+  // console.log(`[v8] Setting memoryContent "${value}"`);
   context.memory.content = value;
 }
 

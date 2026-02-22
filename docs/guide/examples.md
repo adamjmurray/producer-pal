@@ -111,8 +111,8 @@ care about unless you've saved a backup copy. Producer Pal can overwrite and
 delete things. If you make good progress, save it before you lose it.
 
 Keep your context window small for best results: start fresh conversations when
-needed (just say "connect to ableton" again), or use the project notes feature
-in the Max device to persist important context. For particularly complex tasks,
+needed (just say "connect to ableton" again), or use the memory feature in the
+Max device to persist important context. For particularly complex tasks,
 "extended thinking" or "high reasoning effort" features can help, though it's
 typically overkill and will hit usage limits faster.
 

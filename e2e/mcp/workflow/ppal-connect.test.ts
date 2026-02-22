@@ -88,16 +88,16 @@ describe("ppal-connect", () => {
   });
 
   describe("memory contents", () => {
-    const TEST_NOTES = "Test project notes content for e2e testing";
+    const TEST_NOTES = "Test memory content for e2e testing";
 
-    it("excludes projectNotes when disabled (default)", async () => {
+    it("excludes memory when disabled (default)", async () => {
       await setConfig({ memoryEnabled: false, memoryContent: "" });
       const parsed = await callConnect();
 
       expect(parsed.memoryContent).toBeUndefined();
     });
 
-    it("includes projectNotes when enabled with content", async () => {
+    it("includes memory when enabled with content", async () => {
       await setConfig({
         memoryEnabled: true,
         memoryContent: TEST_NOTES,
@@ -108,7 +108,7 @@ describe("ppal-connect", () => {
       expect(parsed.memoryContent).toBe(TEST_NOTES);
     });
 
-    it("excludes projectNotes when enabled but content is empty", async () => {
+    it("excludes memory when enabled but content is empty", async () => {
       await setConfig({
         memoryEnabled: true,
         memoryContent: "",

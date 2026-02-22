@@ -10,7 +10,7 @@ import {
   connectToAbleton,
   createAndEditClip,
   duplicate,
-  projectNotesWorkflow,
+  memoryWorkflow,
   trackAndDeviceWorkflow,
 } from "./defs/index.ts";
 import { type EvalScenario } from "./types.ts";
@@ -22,7 +22,7 @@ const allScenarios: EvalScenario[] = [
   connectToAbleton,
   createAndEditClip,
   trackAndDeviceWorkflow,
-  projectNotesWorkflow,
+  memoryWorkflow,
   duplicate,
 ];
 

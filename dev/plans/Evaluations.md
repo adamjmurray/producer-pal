@@ -111,12 +111,12 @@
 
 **Exercises:** `ppal-connect`, `ppal-context`, `ppal-delete`
 
-| Turn | Prompt                                                           | Features Tested     |
-| ---- | ---------------------------------------------------------------- | ------------------- |
-| 1    | "Connect to Ableton"                                             | Setup               |
-| 2    | "Save a note: 'This project uses C minor with jazzy 7th chords'" | Project notes write |
-| 3    | "What notes do I have saved about this project?"                 | Project notes read  |
-| 4    | "Delete the last track"                                          | Track deletion      |
+| Turn | Prompt                                                           | Features Tested |
+| ---- | ---------------------------------------------------------------- | --------------- |
+| 1    | "Connect to Ableton"                                             | Setup           |
+| 2    | "Save a note: 'This project uses C minor with jazzy 7th chords'" | Memory write    |
+| 3    | "What notes do I have saved about this project?"                 | Memory read     |
+| 4    | "Delete the last track"                                          | Track deletion  |
 
 ---
 

@@ -4,16 +4,29 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 9,
+			"revision" : 10,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 226.0, 326.0, 664.0, 519.0 ],
+		"rect" : [ 334.0, 326.0, 692.0, 506.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-26",
+					"linecount" : 3,
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 180.0, 383.0, 100.0, 49.0 ],
+					"text" : "script sendbox memoryWritable hidden $1"
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-25",
 					"maxclass" : "newobj",
@@ -43,7 +56,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 565.000000000000114, 178.0, 72.0, 22.0 ],
+					"patching_rect" : [ 583.0, 178.0, 72.0, 22.0 ],
 					"text" : "prepend set"
 				}
 
@@ -55,7 +68,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 516.0, 145.0, 72.0, 22.0 ],
+					"patching_rect" : [ 501.0, 145.0, 72.0, 22.0 ],
 					"text" : "prepend set"
 				}
 
@@ -75,13 +88,13 @@
 , 			{
 				"box" : 				{
 					"id" : "obj-21",
-					"linecount" : 3,
+					"linecount" : 2,
 					"maxclass" : "newobj",
 					"numinlets" : 4,
 					"numoutlets" : 4,
 					"outlettype" : [ "", "", "", "" ],
-					"patching_rect" : [ 467.0, 89.0, 166.000000000000114, 49.0 ],
-					"text" : "route projectNotes projectNotesEnabled projectNotesWritable"
+					"patching_rect" : [ 467.0, 89.0, 193.0, 35.0 ],
+					"text" : "route memoryContent memoryEnabled memoryWritable"
 				}
 
 			}
@@ -117,21 +130,8 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 308.0, 390.0, 152.0, 49.0 ],
-					"text" : "script sendbox projectNotesWritableLabel hidden $1"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-53",
-					"linecount" : 3,
-					"maxclass" : "message",
-					"numinlets" : 2,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 172.0, 390.0, 123.0, 49.0 ],
-					"text" : "script sendbox projectNotesWritable hidden $1"
+					"patching_rect" : [ 293.0, 383.0, 128.0, 49.0 ],
+					"text" : "script sendbox memoryWritableLabel hidden $1"
 				}
 
 			}
@@ -142,7 +142,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "" ],
-					"patching_rect" : [ 251.0, 476.0, 67.0, 22.0 ],
+					"patching_rect" : [ 247.0, 452.0, 67.0, 22.0 ],
 					"save" : [ "#N", "thispatcher", ";", "#Q", "end", ";" ],
 					"text" : "thispatcher"
 				}
@@ -155,8 +155,8 @@
 					"numinlets" : 0,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 372.5, 22.0, 131.0, 22.0 ],
-					"text" : "r ---project-notes-editor"
+					"patching_rect" : [ 372.5, 22.0, 105.0, 22.0 ],
+					"text" : "r ---memory-editor"
 				}
 
 			}
@@ -167,8 +167,8 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 376.0, 261.0, 167.0, 22.0 ],
-					"text" : "prepend projectNotesWritable"
+					"patching_rect" : [ 376.0, 261.0, 143.0, 22.0 ],
+					"text" : "prepend memoryWritable"
 				}
 
 			}
@@ -179,19 +179,19 @@
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 399.0, 230.0, 84.0, 18.0 ],
+					"patching_rect" : [ 399.0, 230.0, 93.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 139.0, 3.0, 84.0, 18.0 ],
-					"text" : "AI can edit notes",
+					"presentation_rect" : [ 139.0, 3.0, 98.0, 18.0 ],
+					"text" : "AI can edit memory",
 					"textjustification" : 0,
-					"varname" : "projectNotesWritableLabel"
+					"varname" : "memoryWritableLabel"
 				}
 
 			}
 , 			{
 				"box" : 				{
-					"annotation" : "Allow AI to update the project notes and remember important details about your project.",
-					"annotation_name" : "AI can edit notes",
+					"annotation" : "Allow AI to update the project memory and remember important details about your project.",
+					"annotation_name" : "AI can edit memory",
 					"hidden" : 1,
 					"id" : "obj-7",
 					"maxclass" : "live.toggle",
@@ -204,20 +204,20 @@
 					"presentation_rect" : [ 124.0, 3.0, 15.286624431610107, 17.363057315349579 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_annotation_name" : "AI can edit notes",
+							"parameter_annotation_name" : "AI can edit memory",
 							"parameter_enum" : [ "off", "on" ],
-							"parameter_info" : "Allow AI to update the project notes and remember important details about your project.",
+							"parameter_info" : "Allow AI to update the project memory and remember important details about your project.",
 							"parameter_invisible" : 1,
-							"parameter_longname" : "projectNotesWritable",
+							"parameter_longname" : "memoryWritable",
 							"parameter_mmax" : 1,
 							"parameter_modmode" : 0,
-							"parameter_shortname" : "projectNotesWritable",
+							"parameter_shortname" : "memoryWritable",
 							"parameter_type" : 2
 						}
 
 					}
 ,
-					"varname" : "projectNotesWritable"
+					"varname" : "memoryWritable"
 				}
 
 			}
@@ -279,8 +279,8 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 180.0, 261.0, 177.0, 22.0 ],
-					"text" : "prepend projectNotesEnabled"
+					"patching_rect" : [ 180.0, 261.0, 143.0, 22.0 ],
+					"text" : "prepend memoryEnabled"
 				}
 
 			}
@@ -291,8 +291,8 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 24.0, 261.0, 133.0, 22.0 ],
-					"text" : "prepend projectNotes"
+					"patching_rect" : [ 24.0, 261.0, 141.0, 22.0 ],
+					"text" : "prepend memoryContent"
 				}
 
 			}
@@ -321,8 +321,8 @@
 			}
 , 			{
 				"box" : 				{
-					"annotation" : "Share the project notes with AI to help it understand your project goals.",
-					"annotation_name" : "Use project notes",
+					"annotation" : "Share project information with AI to help it understand your goals.",
+					"annotation_name" : "Use project memory",
 					"id" : "obj-4",
 					"maxclass" : "live.toggle",
 					"numinlets" : 1,
@@ -334,27 +334,27 @@
 					"presentation_rect" : [ 1.0, 2.0, 15.286624, 17.363057000000001 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_annotation_name" : "Use project notes",
+							"parameter_annotation_name" : "Use project memory",
 							"parameter_enum" : [ "off", "on" ],
-							"parameter_info" : "Share the project notes with AI to help it understand your project goals.",
+							"parameter_info" : "Share project information with AI to help it understand your goals.",
 							"parameter_invisible" : 1,
-							"parameter_longname" : "projectNotesEnabled",
+							"parameter_longname" : "memoryEnabled",
 							"parameter_mmax" : 1,
 							"parameter_modmode" : 0,
-							"parameter_shortname" : "projectNotesEnabled",
+							"parameter_shortname" : "memoryEnabled",
 							"parameter_type" : 2
 						}
 
 					}
 ,
-					"varname" : "projectNotesEnabled"
+					"varname" : "memoryEnabled"
 				}
 
 			}
 , 			{
 				"box" : 				{
-					"annotation" : "Write anything that helps describe your project - song structure, creative direction, or todos. 'Use project notes' must be enabled to share with AI. Enable 'AI can edit notes' to let AI remember important details from your conversations.",
-					"annotation_name" : "Project notes",
+					"annotation" : "Information that describes your project context such as song structure, creative direction, or todos. 'Use memory' must be enabled to share with AI. Enable 'AI can edit memory' to let AI remember important details from your conversations.",
+					"annotation_name" : "Memory",
 					"id" : "obj-2",
 					"maxclass" : "textedit",
 					"nosymquotes" : 1,
@@ -369,18 +369,18 @@
 					"presentation_rect" : [ 0.0, 20.0, 249.704148411750793, 117.869826018810272 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_annotation_name" : "Project notes",
-							"parameter_info" : "Write anything that helps describe your project - song structure, creative direction, or todos. 'Use project notes' must be enabled to share with AI. Enable 'AI can edit notes' to let AI remember important details from your conversations.",
+							"parameter_annotation_name" : "Memory",
+							"parameter_info" : "Information that describes your project context such as song structure, creative direction, or todos. 'Use memory' must be enabled to share with AI. Enable 'AI can edit memory' to let AI remember important details from your conversations.",
 							"parameter_invisible" : 1,
-							"parameter_longname" : "projectNotes",
+							"parameter_longname" : "memoryContent",
 							"parameter_modmode" : 0,
-							"parameter_shortname" : "projectNotes",
+							"parameter_shortname" : "memoryContent",
 							"parameter_type" : 3
 						}
 
 					}
 ,
-					"varname" : "projectNotes"
+					"varname" : "memoryContent"
 				}
 
 			}
@@ -390,10 +390,10 @@
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 203.0, 230.0, 84.0, 18.0 ],
+					"patching_rect" : [ 203.0, 230.0, 107.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 15.0, 2.0, 84.0, 18.0 ],
-					"text" : "Use project notes",
+					"presentation_rect" : [ 15.0, 2.0, 98.0, 18.0 ],
+					"text" : "Use project memory",
 					"textjustification" : 0
 				}
 
@@ -499,7 +499,7 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-53", 0 ],
+					"destination" : [ "obj-26", 0 ],
 					"order" : 1,
 					"source" : [ "obj-20", 0 ]
 				}
@@ -565,6 +565,13 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-14", 0 ],
+					"source" : [ "obj-26", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-12", 0 ],
 					"order" : 1,
 					"source" : [ "obj-4", 0 ]
@@ -588,13 +595,6 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-14", 0 ],
-					"source" : [ "obj-53", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
 					"destination" : [ "obj-11", 0 ],
 					"source" : [ "obj-7", 0 ]
 				}
@@ -609,9 +609,9 @@
 			}
  ],
 		"parameters" : 		{
-			"obj-2" : [ "projectNotes", "projectNotes", 0 ],
-			"obj-4" : [ "projectNotesEnabled", "projectNotesEnabled", 0 ],
-			"obj-7" : [ "projectNotesWritable", "projectNotesWritable", 0 ],
+			"obj-2" : [ "memoryContent", "memoryContent", 0 ],
+			"obj-4" : [ "memoryEnabled", "memoryEnabled", 0 ],
+			"obj-7" : [ "memoryWritable", "memoryWritable", 0 ],
 			"parameterbanks" : 			{
 				"0" : 				{
 					"index" : 0,

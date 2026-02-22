@@ -49,21 +49,21 @@ Max.addHandler("smallModelMode", (enabled: unknown) => {
   config.smallModelMode = Boolean(enabled);
 });
 
-Max.addHandler("projectNotesEnabled", (enabled: unknown) => {
-  // console.log(`[node] Setting projectNotesEnabled ${Boolean(enabled)}`);
+Max.addHandler("memoryEnabled", (enabled: unknown) => {
+  // console.log(`[node] Setting memoryEnabled ${Boolean(enabled)}`);
   config.memoryEnabled = Boolean(enabled);
 });
 
-Max.addHandler("projectNotes", (content: unknown) => {
+Max.addHandler("memoryContent", (content: unknown) => {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
-  // console.log(`[node] Setting projectNotes ${value}`);
+  // console.log(`[node] Setting memoryContent ${value}`);
   config.memoryContent = value;
 });
 
-Max.addHandler("projectNotesWritable", (writable: unknown) => {
-  // console.log(`[node] Setting projectNotesWritable ${Boolean(writable)}`);
+Max.addHandler("memoryWritable", (writable: unknown) => {
+  // console.log(`[node] Setting memoryWritable ${Boolean(writable)}`);
   config.memoryWritable = Boolean(writable);
 });
 
@@ -197,21 +197,21 @@ export function createExpressApp(): Express {
     if (incoming.memoryEnabled !== undefined) {
       config.memoryEnabled = Boolean(incoming.memoryEnabled);
       outlets.push(() =>
-        Max.outlet("config", "projectNotesEnabled", config.memoryEnabled),
+        Max.outlet("config", "memoryEnabled", config.memoryEnabled),
       );
     }
 
     if (incoming.memoryContent !== undefined) {
       config.memoryContent = incoming.memoryContent ?? "";
       outlets.push(() =>
-        Max.outlet("config", "projectNotes", config.memoryContent),
+        Max.outlet("config", "memoryContent", config.memoryContent),
       );
     }
 
     if (incoming.memoryWritable !== undefined) {
       config.memoryWritable = Boolean(incoming.memoryWritable);
       outlets.push(() =>
-        Max.outlet("config", "projectNotesWritable", config.memoryWritable),
+        Max.outlet("config", "memoryWritable", config.memoryWritable),
       );
     }
 
