@@ -4,7 +4,7 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 9,
+			"revision" : 10,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
@@ -14,6 +14,23 @@
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"fontface" : 1,
+					"fontname" : "Ableton Sans Bold",
+					"fontsize" : 9.0,
+					"id" : "obj-10",
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 46.0, 52.0, 86.0, 17.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 172.0, 16.0, 24.0, 17.0 ],
+					"text" : "TM",
+					"textjustification" : 1
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-6",
 					"maxclass" : "newobj",
@@ -351,7 +368,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 267.0, 154.0, 78.0, 21.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 182.0, 28.0, 54.0, 21.0 ],
+					"presentation_rect" : [ 183.0, 28.0, 54.0, 21.0 ],
 					"text" : "vX.Y.Z",
 					"textjustification" : 1
 				}
@@ -474,16 +491,6 @@
 		"parameters" : 		{
 			"obj-32" : [ "live.text[3]", "live.text[3]", 0 ],
 			"obj-37" : [ "live.toggle", "live.toggle", 0 ],
-			"parameterbanks" : 			{
-				"0" : 				{
-					"index" : 0,
-					"name" : "",
-					"parameters" : [ "-", "-", "-", "-", "-", "-", "-", "-" ],
-					"buttons" : [ "-", "-", "-", "-", "-", "-", "-", "-" ]
-				}
-
-			}
-,
 			"inherited_shortname" : 1
 		}
 ,

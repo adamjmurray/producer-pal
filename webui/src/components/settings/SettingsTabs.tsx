@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type VNode } from "preact";
-import { useState } from "preact/hooks";
 
 export type TabId = "connection" | "behavior" | "tools" | "appearance";
 
@@ -13,6 +12,8 @@ interface Tab {
 }
 
 interface SettingsTabsProps {
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
   children: (activeTab: TabId) => VNode;
 }
 
@@ -26,12 +27,16 @@ const tabs: Tab[] = [
 /**
  * Tabbed navigation for settings sections
  * @param {SettingsTabsProps} props - Component props
+ * @param {TabId} props.activeTab - Currently active tab
+ * @param {(tab: TabId) => void} props.onTabChange - Callback when tab changes
  * @param {(activeTab: TabId) => VNode} props.children - Render function for tab content
  * @returns {JSX.Element} - React component
  */
-export function SettingsTabs({ children }: SettingsTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("connection");
-
+export function SettingsTabs({
+  activeTab,
+  onTabChange,
+  children,
+}: SettingsTabsProps) {
   return (
     <div>
       {/* Tab buttons */}
@@ -39,7 +44,7 @@ export function SettingsTabs({ children }: SettingsTabsProps) {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => onTabChange(tab.id)}
             className={`px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === tab.id
                 ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"

@@ -40,6 +40,16 @@ describe("ChatHeader", () => {
       render(<ChatHeader {...defaultProps} />);
       expect(screen.getByRole("button", { name: "Settings" })).toBeDefined();
     });
+
+    it("title links to docs site", () => {
+      render(<ChatHeader {...defaultProps} />);
+      const link = screen.getByText("Producer Pal Chat").closest("a");
+
+      expect(link).toBeDefined();
+      expect(link?.href).toBe("https://producer-pal.org/guide/chat-ui");
+      expect(link?.target).toBe("_blank");
+      expect(link?.rel).toBe("noopener noreferrer");
+    });
   });
 
   describe("mcpStatus display", () => {
