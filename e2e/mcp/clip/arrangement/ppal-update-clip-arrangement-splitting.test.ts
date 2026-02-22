@@ -16,21 +16,21 @@ import {
   audioUnwarpedTestCases,
   midiLoopedTestCases,
   midiUnloopedTestCases,
-} from "./helpers/arrangement-clip-test-cases.ts";
-import { ARRANGEMENT_CLIP_TESTS_PATH } from "./helpers/arrangement-lengthening-test-helpers.ts";
+} from "../helpers/arrangement-clip-test-cases.ts";
+import { ARRANGEMENT_CLIP_TESTS_PATH } from "../helpers/arrangement-lengthening-test-helpers.ts";
 import {
   assertContiguousClips,
   assertSpanPreserved,
   splitClip,
   testSplitClip,
-} from "./helpers/arrangement-splitting-test-helpers.ts";
+} from "../helpers/arrangement-splitting-test-helpers.ts";
 import {
   type CreateTrackResult,
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
 
 const ctx = setupMcpTestContext({
   once: true,

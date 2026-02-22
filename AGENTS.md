@@ -249,15 +249,15 @@ Live Set without saving the current one, which can destroy in-progress work in
 Ableton Live. Never run them without confirmation.
 
 **IMPORTANT:** Always run a single test file, not the full suite. The full suite
-takes several minutes. Use `--testPathPattern` to target the specific file:
+takes several minutes. Pass a matcher after `--` to target a specific file:
 
 ```bash
-npm run e2e:mcp -- --testPathPattern ppal-update-clip-arrangement-splitting
+npm run e2e:mcp -- ppal-update-clip-arrangement-splitting
 ```
 
 **Commands:**
 
-- `npm run e2e:mcp -- --testPathPattern <file>` - Run a single e2e test file
+- `npm run e2e:mcp -- <matcher>` - Run a single e2e test file
 - `npm run e2e:mcp` - Run all MCP e2e tests (avoid unless explicitly requested)
 
 **Adding tests:** See `e2e/mcp/README.md` for prerequisites and patterns.

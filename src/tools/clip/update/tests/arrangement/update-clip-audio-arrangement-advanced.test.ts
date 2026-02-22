@@ -130,6 +130,8 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
 
     // Unwarped clip: loop 0-3s, arrangement 0-6 beats, extending to 12 beats
     // After setting loop_end, end_time changes from 6.0 to 12.0
+    // MockSequence: 1st read by buildClipContext, 2nd by arrangement code (current),
+    // 3rd by arrangement code (after loop_end set)
     const clips = setupArrangementClipPath(0, [clipId]);
     const clip = clips.get(clipId);
 
@@ -139,7 +141,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
       looping: 0,
       warping: 0,
       start_time: 0.0,
-      end_time: new MockSequence(6.0, 12.0),
+      end_time: new MockSequence(6.0, 6.0, 12.0),
       start_marker: 0.0,
       end_marker: 6.0,
       loop_start: 0.0,
@@ -166,6 +168,8 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
 
     // Unwarped clip: loop 0-3s, arrangement 0-6 beats
     // After setting loop_end, end_time only goes to 9.6 (file boundary)
+    // MockSequence: 1st read by buildClipContext, 2nd by arrangement code (current),
+    // 3rd by arrangement code (after loop_end set)
     const clips = setupArrangementClipPath(0, [clipId]);
     const clip = clips.get(clipId);
 
@@ -175,7 +179,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
       looping: 0,
       warping: 0,
       start_time: 0.0,
-      end_time: new MockSequence(6.0, 9.6),
+      end_time: new MockSequence(6.0, 6.0, 9.6),
       start_marker: 0.0,
       end_marker: 6.0,
       loop_start: 0.0,

@@ -19,6 +19,7 @@ vi.mock(
     const s = await import("./setup.ts");
 
     return {
+      clearClipAtDuplicateTarget: vi.fn(),
       createShortenedClipInHolding: s.createShortenedClipInHoldingMock,
       moveClipFromHolding: s.moveClipFromHoldingMock,
     };

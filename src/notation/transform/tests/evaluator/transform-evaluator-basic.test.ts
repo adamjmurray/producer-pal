@@ -475,15 +475,15 @@ describe("Transform Evaluator", () => {
       expect(result.velocity!.value).toBe(0.5);
     });
 
-    it("evaluates ramp at position 4 (end of clip, wraps to start)", () => {
+    it("evaluates ramp at position 4 (end of clip, reaches end value)", () => {
       const result = evaluateTransform("velocity += ramp(0, 1)", {
         position: 4,
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
 
-      // Phase 1.0 wraps to 0.0 due to modulo in waveform
-      expect(result.velocity!.value).toBe(0);
+      // Phase 1.0 clamps to 1.0, reaching end value
+      expect(result.velocity!.value).toBe(1);
     });
 
     it("evaluates reverse ramp", () => {

@@ -26,7 +26,9 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .int()
       .min(1)
       .default(1)
-      .describe("number of copies (for tracks/scenes only, ignored for clips)"),
+      .describe(
+        "number of copies (tracks/scenes only, ignored for clips/devices)",
+      ),
 
     destination: z
       .enum(["session", "arrangement"])
@@ -38,16 +40,18 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "bar|beat position(s), comma-separated for multiple clips (e.g., '1|1' or '1|1,2|1,3|1')",
       ),
-    arrangementLocatorId: z
+    locatorId: z.coerce
       .string()
       .optional()
       .describe(
-        "place duplicate at locator position by ID (e.g., 'locator-0')",
+        "arrangement locator ID(s), comma-separated for multiple (e.g., 'locator-0' or 'locator-0,locator-2')",
       ),
-    arrangementLocatorName: z
+    locatorName: z
       .string()
       .optional()
-      .describe("place duplicate at first locator matching name"),
+      .describe(
+        "arrangement locator name(s), comma-separated for multiple (e.g., 'Verse' or 'Verse,Chorus')",
+      ),
     arrangementLength: z
       .string()
       .optional()
@@ -68,27 +72,23 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .default(false)
       .describe("auto-switch view?"),
-    toTrackIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("destination track index (for session clips)"),
-    toSceneIndex: z.coerce
+    toSlot: z
       .string()
       .optional()
       .describe(
-        "destination scene index(es), comma-separated for multiple (e.g., '1' or '1,3,5')",
+        "destination clip slot(s), trackIndex/sceneIndex format, comma-separated for multiple (e.g., '0/1' or '0/1,2/3')",
       ),
     toPath: z
       .string()
       .optional()
-      .describe("device destination path (e.g., 't1/d0')"),
+      .describe(
+        "device destination path(s), comma-separated for multiple (e.g., 't1/d0' or 't1/d0,t2/d0')",
+      ),
   },
   smallModelModeConfig: {
     excludeParams: [
-      "arrangementLocatorId",
-      "arrangementLocatorName",
+      "locatorId",
+      "locatorName",
       "withoutClips",
       "withoutDevices",
       "routeToSource",

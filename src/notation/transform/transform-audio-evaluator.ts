@@ -9,7 +9,10 @@ import {
   type TransformAssignment,
 } from "./parser/transform-parser.ts";
 import * as parser from "./parser/transform-parser.ts";
-import { type ClipContext } from "./transform-evaluator-helpers.ts";
+import {
+  type ClipContext,
+  type NoteProperties,
+} from "./transform-evaluator-helpers.ts";
 import { evaluateFunction } from "./transform-functions.ts";
 
 // Constants for gain clamping
@@ -190,6 +193,8 @@ function evaluateAudioExpression(
 
   // Use position=0 for audio context (clip-level transform)
   // Use a default time range of 0-4 beats (one bar in 4/4)
+  const clipProps = buildClipNoteProperties(clipContext);
+
   return evaluateFunction(
     funcNode.name,
     funcNode.args,
@@ -198,7 +203,7 @@ function evaluateAudioExpression(
     4, // timeSigNumerator
     4, // timeSigDenominator
     { start: 0, end: 4 }, // timeRange
-    {}, // noteProperties (empty for audio)
+    clipProps,
     (expr, pos, num, denom, range, _props) =>
       evaluateAudioExpressionWithContext(
         expr,
@@ -323,4 +328,26 @@ function evaluateAudioExpressionWithContext(
   _timeRange: { start: number; end: number },
 ): number {
   return evaluateAudioExpression(node, audioProperties, clipContext);
+}
+
+/**
+ * Build NoteProperties from ClipContext for function evaluation in audio context
+ * @param clipContext - Optional clip-level context
+ * @returns NoteProperties with clip-level values for function access
+ */
+function buildClipNoteProperties(clipContext?: ClipContext): NoteProperties {
+  if (!clipContext) return {};
+
+  const props: NoteProperties = {
+    "clip:index": clipContext.clipIndex,
+    "clip:count": clipContext.clipCount,
+    "clip:duration": clipContext.clipDuration,
+    "clip:barDuration": clipContext.barDuration,
+  };
+
+  if (clipContext.arrangementStart != null) {
+    props["clip:position"] = clipContext.arrangementStart;
+  }
+
+  return props;
 }

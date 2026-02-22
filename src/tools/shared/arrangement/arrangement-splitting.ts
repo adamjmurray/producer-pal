@@ -259,7 +259,13 @@ function splitSingleClip(args: SplitSingleClipArgs): boolean {
     );
   }
 
-  moveClipFromHolding(sourceClipId, track, lastSegFinalPos);
+  moveClipFromHolding(
+    sourceClipId,
+    track,
+    lastSegFinalPos,
+    isMidiClip,
+    tilingCtx,
+  );
 
   return true;
 }
@@ -333,7 +339,13 @@ function extractMiddleSegments(args: ExtractMiddleSegmentsArgs): void {
     }
 
     // Move to final arrangement position
-    moveClipFromHolding(workClipId, track, clipArrangementStart + segStart);
+    moveClipFromHolding(
+      workClipId,
+      track,
+      clipArrangementStart + segStart,
+      isMidiClip,
+      context,
+    );
   }
 }
 

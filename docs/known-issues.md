@@ -2,15 +2,6 @@
 
 This page documents known bugs and limitations in Producer Pal.
 
-## Crashes from Arrangement Clip Position Conflicts
-
-Moving an arrangement clip to the exact start position of another clip on the
-same track will crash Live. This is a bug in the Live API's
-`duplicate_clip_to_arrangement` function.
-
-**Workaround:** Avoid moving clips on top of existing clips. Delete the
-conflicting clip first, or use slightly offset positions.
-
 ## Lengthening Looped Arrangement Clips
 
 Looped arrangement clips cannot be directly lengthened. Instead, they are

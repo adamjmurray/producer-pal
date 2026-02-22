@@ -11,6 +11,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
+  clearClipAtDuplicateTarget,
   createShortenedClipInHolding,
   moveClipFromHolding,
   type TilingContext,
@@ -184,12 +185,21 @@ export function createClipsForLength(
       holdingClipId,
       track,
       arrangementStartBeats,
+      isMidiClip,
+      context as TilingContext,
     );
 
     if (name != null) newClip.set("name", name);
     duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
   } else {
     // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
+    clearClipAtDuplicateTarget(
+      track,
+      sourceClip.id,
+      arrangementStartBeats,
+      isMidiClip,
+      context as TilingContext,
+    );
     const newClipResult = track.call(
       "duplicate_clip_to_arrangement",
       toLiveApiId(sourceClip.id),
@@ -396,6 +406,15 @@ export function duplicateClipToArrangement(
     duplicatedClips.push(...clipsCreated);
   } else {
     // No length specified - use original behavior
+    const isMidiClip = clip.getProperty("is_midi_clip") === 1;
+
+    clearClipAtDuplicateTarget(
+      track,
+      clip.id,
+      arrangementStartBeats,
+      isMidiClip,
+      context as TilingContext,
+    );
     const newClipResult = track.call(
       "duplicate_clip_to_arrangement",
       toLiveApiId(clip.id),

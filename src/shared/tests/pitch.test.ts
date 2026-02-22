@@ -17,6 +17,7 @@ import {
   pitchClassToNumber,
   quantizePitchToScale,
   scaleIntervalsToPitchClassMask,
+  stepInScale,
 } from "#src/shared/pitch.ts";
 
 describe("PITCH_CLASS_NAMES", () => {
@@ -539,5 +540,114 @@ describe("quantizePitchToScale", () => {
     expect(quantizePitchToScale(61, cMinorPentMask)).toBe(60); // C# → C (closer)
     expect(quantizePitchToScale(62, cMinorPentMask)).toBe(63); // D → Eb (closer)
     expect(quantizePitchToScale(64, cMinorPentMask)).toBe(65); // E → F (closer)
+  });
+});
+
+describe("stepInScale", () => {
+  // C Major: C D E F G A B → pitch classes 0,2,4,5,7,9,11
+  const cMajorMask = scaleIntervalsToPitchClassMask([0, 2, 4, 5, 7, 9, 11], 0);
+
+  describe("stepping up", () => {
+    it("steps up by 1 from C3 to D3", () => {
+      expect(stepInScale(60, 1, cMajorMask)).toBe(62); // C3 → D3
+    });
+
+    it("steps up by 2 from C3 to E3", () => {
+      expect(stepInScale(60, 2, cMajorMask)).toBe(64); // C3 → E3
+    });
+
+    it("steps up by 7 to cross octave boundary", () => {
+      expect(stepInScale(60, 7, cMajorMask)).toBe(72); // C3 → C4
+    });
+
+    it("steps up from E3 by 1 to F3 (half step in scale)", () => {
+      expect(stepInScale(64, 1, cMajorMask)).toBe(65); // E3 → F3
+    });
+  });
+
+  describe("stepping down", () => {
+    it("steps down by 1 from D3 to C3", () => {
+      expect(stepInScale(62, -1, cMajorMask)).toBe(60); // D3 → C3
+    });
+
+    it("steps down by 2 from E3 to C3", () => {
+      expect(stepInScale(64, -2, cMajorMask)).toBe(60); // E3 → C3
+    });
+
+    it("steps down by 7 to cross octave boundary", () => {
+      expect(stepInScale(72, -7, cMajorMask)).toBe(60); // C4 → C3
+    });
+  });
+
+  describe("zero offset", () => {
+    it("returns quantized base pitch for zero offset", () => {
+      expect(stepInScale(60, 0, cMajorMask)).toBe(60);
+    });
+
+    it("quantizes out-of-scale base pitch with zero offset", () => {
+      // C# (61) quantizes to D (62)
+      expect(stepInScale(61, 0, cMajorMask)).toBe(62);
+    });
+  });
+
+  describe("fractional offset", () => {
+    it("rounds offset to nearest integer", () => {
+      expect(stepInScale(60, 1.4, cMajorMask)).toBe(62); // rounds to 1 → D3
+      expect(stepInScale(60, 1.6, cMajorMask)).toBe(64); // rounds to 2 → E3
+    });
+  });
+
+  describe("out-of-scale base pitch", () => {
+    it("quantizes base pitch first, then steps", () => {
+      // C# (61) → quantize to D (62) → step up 1 → E (64)
+      expect(stepInScale(61, 1, cMajorMask)).toBe(64);
+    });
+  });
+
+  describe("boundary clamping", () => {
+    it("clamps at upper MIDI boundary", () => {
+      // G8 (127) + 1 step: no in-scale pitch above 127
+      const result = stepInScale(127, 1, cMajorMask);
+
+      expect(result).toBe(127); // clamps to highest in-scale
+    });
+
+    it("clamps at lower MIDI boundary", () => {
+      // C-2 (0) - 1 step: no in-scale pitch below 0
+      const result = stepInScale(0, -1, cMajorMask);
+
+      expect(result).toBe(0); // clamps to lowest in-scale
+    });
+
+    it("clamps when stepping far beyond range", () => {
+      expect(stepInScale(120, 100, cMajorMask)).toBe(127);
+      expect(stepInScale(5, -100, cMajorMask)).toBe(0);
+    });
+  });
+
+  describe("different scales", () => {
+    it("works with pentatonic scale", () => {
+      // C Minor Pentatonic: C Eb F G Bb → pitch classes 0,3,5,7,10
+      const mask = scaleIntervalsToPitchClassMask([0, 3, 5, 7, 10], 0);
+
+      // C3 (60) + 1 step → Eb3 (63), skipping D
+      expect(stepInScale(60, 1, mask)).toBe(63);
+      // C3 (60) + 2 steps → F3 (65)
+      expect(stepInScale(60, 2, mask)).toBe(65);
+      // C3 (60) + 5 steps → C4 (72), full pentatonic octave
+      expect(stepInScale(60, 5, mask)).toBe(72);
+    });
+
+    it("works with chromatic scale", () => {
+      // Chromatic: every semitone
+      const mask = scaleIntervalsToPitchClassMask(
+        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        0,
+      );
+
+      // Step = semitone for chromatic
+      expect(stepInScale(60, 1, mask)).toBe(61);
+      expect(stepInScale(60, 12, mask)).toBe(72);
+    });
   });
 });

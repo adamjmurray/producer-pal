@@ -410,4 +410,54 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBe(-6);
     });
   });
+
+  describe("seq function", () => {
+    it("selects value based on clip.index", () => {
+      const result0 = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+        clipDuration: 8,
+        clipIndex: 0,
+        clipCount: 3,
+        barDuration: 4,
+      });
+
+      expect(result0.gain).toBe(-3);
+
+      const result1 = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+        clipDuration: 8,
+        clipIndex: 1,
+        clipCount: 3,
+        barDuration: 4,
+      });
+
+      expect(result1.gain).toBe(-6);
+
+      const result2 = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+        clipDuration: 8,
+        clipIndex: 2,
+        clipCount: 3,
+        barDuration: 4,
+      });
+
+      expect(result2.gain).toBe(-9);
+    });
+
+    it("wraps around when clip.index exceeds args count", () => {
+      const result = applyAudioTransform(0, 0, "gain = seq(-3, -6)", {
+        clipDuration: 8,
+        clipIndex: 3,
+        clipCount: 4,
+        barDuration: 4,
+      });
+
+      // 3 % 2 = 1 → -6
+      expect(result.gain).toBe(-6);
+    });
+
+    it("defaults to first value without clipContext", () => {
+      const result = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)");
+
+      // No clipContext, index defaults to 0
+      expect(result.gain).toBe(-3);
+    });
+  });
 });

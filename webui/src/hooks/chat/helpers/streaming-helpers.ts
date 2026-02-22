@@ -1,17 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
-import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
-import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
-import {
-  type GeminiMessage,
-  type OpenAIMessage,
-  type UIMessage,
-} from "#webui/types/messages";
-import { type ResponsesConversationItem } from "#webui/types/responses-api";
+import { type GeminiMessage, type UIMessage } from "#webui/types/messages";
 
 /**
  * Generic streaming handler for chat messages.
@@ -63,18 +57,19 @@ export function createGeminiErrorMessage(
 }
 
 /**
- * Creates an OpenAI error message from an exception and chat history
- * @param {OpenAIMessage[]} chatHistory - Current chat history
- * @param {unknown} error - Error object or message
- * @returns {any} - Hook return value
+ * Creates an error message by formatting chat history and appending an error entry
+ * @param history - Raw chat history for any provider
+ * @param formatter - Provider-specific formatter to convert raw history to UIMessages
+ * @param error - Error object or message
+ * @returns Formatted messages with error appended
  */
-export function createOpenAIErrorMessage(
-  chatHistory: OpenAIMessage[],
+export function createFormattedErrorMessage<T>(
+  history: T[],
+  formatter: (messages: T[]) => UIMessage[],
   error: unknown,
 ): UIMessage[] {
   const errorMessage = normalizeErrorMessage(error);
-
-  const formattedHistory = formatOpenAIMessages(chatHistory);
+  const formattedHistory = formatter(history);
 
   const errorMessage_ui: UIMessage = {
     role: "model",
@@ -85,7 +80,7 @@ export function createOpenAIErrorMessage(
         isError: true,
       },
     ],
-    rawHistoryIndex: chatHistory.length,
+    rawHistoryIndex: history.length,
     timestamp: Date.now(),
   };
 
@@ -109,33 +104,4 @@ export async function validateMcpConnection(
     await checkMcpConnection();
     throw new Error(`MCP connection failed: ${mcpError}`);
   }
-}
-
-/**
- * Creates a Responses API error message from an exception and conversation
- * @param conversation - Current conversation history
- * @param error - Error object or message
- * @returns Formatted messages with error appended
- */
-export function createResponsesErrorMessage(
-  conversation: ResponsesConversationItem[],
-  error: unknown,
-): UIMessage[] {
-  const errorMessage = normalizeErrorMessage(error);
-  const formattedHistory = formatResponsesMessages(conversation);
-
-  const errorMessage_ui: UIMessage = {
-    role: "model",
-    parts: [
-      {
-        type: "error",
-        content: errorMessage,
-        isError: true,
-      },
-    ],
-    rawHistoryIndex: conversation.length,
-    timestamp: Date.now(),
-  };
-
-  return [...formattedHistory, errorMessage_ui];
 }

@@ -6,6 +6,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
 import { buildClipResultObject } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import {
+  clearClipAtDuplicateTarget,
+  type TilingContext,
+} from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 interface ClipResult {
@@ -17,6 +21,9 @@ interface HandleArrangementStartArgs {
   clip: LiveAPI;
   arrangementStartBeats: number;
   tracksWithMovedClips: Map<number, number>;
+  isMidiClip: boolean;
+  context: TilingContext;
+  isNonSurvivor?: boolean;
 }
 
 /**
@@ -31,13 +38,20 @@ interface HandleArrangementStartArgs {
  * @param args.clip - The clip to move
  * @param args.arrangementStartBeats - New position in beats
  * @param args.tracksWithMovedClips - Track of clips moved per track
- * @returns The new clip ID after move, or original ID on failure
+ * @param args.isMidiClip - Whether the clip is MIDI
+ * @param args.context - Context with silenceWavPath for audio clip operations
+ * @param args.isNonSurvivor - When true, just delete the clip (optimization for
+ *   multi-clip moves where this clip would be overwritten by a later longer clip)
+ * @returns The new clip ID after move, original ID on failure, or null for non-survivors
  */
 export function handleArrangementStartOperation({
   clip,
   arrangementStartBeats,
   tracksWithMovedClips,
-}: HandleArrangementStartArgs): string {
+  isMidiClip,
+  context,
+  isNonSurvivor,
+}: HandleArrangementStartArgs): string | null {
   const isArrangementClip =
     (clip.getProperty("is_arrangement_clip") as number) > 0;
 
@@ -64,6 +78,22 @@ export function handleArrangementStartOperation({
   const moveCount = (tracksWithMovedClips.get(trackIndex) ?? 0) + 1;
 
   tracksWithMovedClips.set(trackIndex, moveCount);
+
+  // Non-survivor: just delete, don't bother moving (it would be overwritten)
+  if (isNonSurvivor) {
+    track.call("delete_clip", toLiveApiId(clip.id));
+
+    return null;
+  }
+
+  // Clear overlapping clips at target to prevent Ableton crash
+  clearClipAtDuplicateTarget(
+    track,
+    clip.id,
+    arrangementStartBeats,
+    isMidiClip,
+    context,
+  );
 
   // duplicate_clip_to_arrangement returns ["id", number] array format
   const newClipResult = track.call(
@@ -96,6 +126,7 @@ interface HandleArrangementOperationsArgs {
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
   finalNoteCount: number | null;
+  isNonSurvivor?: boolean;
 }
 
 /**
@@ -109,6 +140,7 @@ interface HandleArrangementOperationsArgs {
  * @param args.context - Tool execution context
  * @param args.updatedClips - Array to collect updated clips
  * @param args.finalNoteCount - Final note count for result
+ * @param args.isNonSurvivor - When true, clip is deleted without moving
  */
 export function handleArrangementOperations({
   clip,
@@ -119,9 +151,10 @@ export function handleArrangementOperations({
   context,
   updatedClips,
   finalNoteCount,
+  isNonSurvivor,
 }: HandleArrangementOperationsArgs): void {
   // Move FIRST so lengthening uses the new position
-  let finalClipId = clip.id;
+  let finalClipId: string | null = clip.id;
   let currentClip = clip;
 
   if (arrangementStartBeats != null) {
@@ -129,7 +162,16 @@ export function handleArrangementOperations({
       clip,
       arrangementStartBeats,
       tracksWithMovedClips,
+      isMidiClip: !isAudioClip,
+      context: context as TilingContext,
+      isNonSurvivor,
     });
+
+    // Non-survivor was deleted, skip adding to results
+    if (finalClipId == null) {
+      return;
+    }
+
     currentClip = LiveAPI.from(finalClipId);
   }
 

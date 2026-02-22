@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
@@ -9,7 +10,7 @@ import {
 import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
 import { buildOpenAIConfig } from "#webui/hooks/settings/config-builders";
 import { type OpenAIMessage } from "#webui/types/messages";
-import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
+import { createFormattedErrorMessage } from "./helpers/streaming-helpers";
 import { type ChatAdapter } from "./use-chat";
 
 /**
@@ -52,7 +53,11 @@ export const openaiChatAdapter: ChatAdapter<
   formatMessages: formatOpenAIMessages,
 
   createErrorMessage(error: unknown, chatHistory: OpenAIMessage[]) {
-    return createOpenAIErrorMessage(chatHistory, error);
+    return createFormattedErrorMessage(
+      chatHistory,
+      formatOpenAIMessages,
+      error,
+    );
   },
 
   extractUserMessage(message: OpenAIMessage): string | undefined {

@@ -70,7 +70,7 @@ describe("duplicate - input validation", () => {
 });
 
 describe("duplicate - clip session validation", () => {
-  it("should throw an error when toTrackIndex is missing for session destination", () => {
+  it("should throw an error when toSlot is missing for session destination", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
@@ -80,12 +80,11 @@ describe("duplicate - clip session validation", () => {
         type: "clip",
         id: "clip1",
         destination: "session",
-        toSceneIndex: "0",
       }),
-    ).toThrow("duplicate failed: toTrackIndex is required for session clips");
+    ).toThrow("duplicate failed: toSlot is required for session clips");
   });
 
-  it("should throw an error when toSceneIndex is missing for session destination", () => {
+  it("should throw an error when toSlot is empty for session destination", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
@@ -95,25 +94,9 @@ describe("duplicate - clip session validation", () => {
         type: "clip",
         id: "clip1",
         destination: "session",
-        toTrackIndex: 0,
+        toSlot: "  ",
       }),
-    ).toThrow("duplicate failed: toSceneIndex is required for session clips");
-  });
-
-  it("should throw an error when toSceneIndex is empty for session destination", () => {
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-    });
-
-    expect(() =>
-      duplicate({
-        type: "clip",
-        id: "clip1",
-        destination: "session",
-        toTrackIndex: 0,
-        toSceneIndex: "  ",
-      }),
-    ).toThrow("duplicate failed: toSceneIndex is required for session clips");
+    ).toThrow("duplicate failed: toSlot is required for session clips");
   });
 });
 

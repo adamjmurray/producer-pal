@@ -46,6 +46,37 @@ export async function createMidiClip(
 }
 
 /**
+ * Creates a MIDI arrangement clip with notes at given position.
+ * @param ctx - MCP test context with client
+ * @param arrangementStart - Bar|beat position for clip start
+ * @param notes - Notation string for notes
+ * @param length - Bar:beat duration for clip length
+ * @returns Clip ID
+ */
+export async function createArrangementClip(
+  ctx: { client: { callTool: CallToolFn } | null },
+  arrangementStart: string,
+  notes: string,
+  length: string,
+): Promise<string> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-create-clip",
+    arguments: {
+      view: "arrangement",
+      trackIndex: emptyMidiTrack,
+      arrangementStart,
+      notes,
+      length,
+    },
+  });
+  const clip = parseToolResult<CreateClipResult>(result);
+
+  await sleep(100);
+
+  return clip.id;
+}
+
+/**
  * Reads clip notes as a notation string.
  * @param ctx - MCP test context with client
  * @param clipId - Clip ID to read

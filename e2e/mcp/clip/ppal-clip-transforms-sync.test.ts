@@ -12,16 +12,11 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-sync
  */
 import { describe, expect, it } from "vitest";
-import {
-  type CreateClipResult,
-  getToolWarnings,
-  parseToolResult,
-  setupMcpTestContext,
-  sleep,
-} from "../mcp-test-helpers.ts";
+import { getToolWarnings, setupMcpTestContext } from "../mcp-test-helpers.ts";
 import {
   applyTransform as applyTransformHelper,
-  emptyMidiTrack,
+  createArrangementClip as createArrangementClipHelper,
+  createMidiClip as createMidiClipHelper,
   readClipNotes as readClipNotesHelper,
 } from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
@@ -33,21 +28,7 @@ async function createArrangementClip(
   notes: string,
   length: string,
 ): Promise<string> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
-    arguments: {
-      view: "arrangement",
-      trackIndex: emptyMidiTrack,
-      arrangementStart,
-      notes,
-      length,
-    },
-  });
-  const clip = parseToolResult<CreateClipResult>(result);
-
-  await sleep(100);
-
-  return clip.id;
+  return createArrangementClipHelper(ctx, arrangementStart, notes, length);
 }
 
 /** Creates a MIDI session clip with notes. */
@@ -55,21 +36,7 @@ async function createSessionClip(
   sceneIndex: number,
   notes: string,
 ): Promise<string> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
-    arguments: {
-      view: "session",
-      trackIndex: emptyMidiTrack,
-      sceneIndex: String(sceneIndex),
-      notes,
-      length: "2:0.0",
-    },
-  });
-  const clip = parseToolResult<CreateClipResult>(result);
-
-  await sleep(100);
-
-  return clip.id;
+  return createMidiClipHelper(ctx, sceneIndex, notes);
 }
 
 /** Applies a transform to a clip. Returns raw result for warning inspection. */

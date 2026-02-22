@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseArrangementStartList,
   parseSceneIndexList,
+  parseSlotList,
 } from "./position-parsing.ts";
 
 describe("parseSceneIndexList", () => {
@@ -36,6 +37,62 @@ describe("parseSceneIndexList", () => {
   it("should throw error for negative index in list", () => {
     expect(() => parseSceneIndexList("0,1,-2,3")).toThrow(
       'invalid sceneIndex "-2" - must be a non-negative integer',
+    );
+  });
+});
+
+describe("parseSlotList", () => {
+  it("should parse a single slot", () => {
+    expect(parseSlotList("0/1")).toStrictEqual([
+      { trackIndex: 0, sceneIndex: 1 },
+    ]);
+  });
+
+  it("should parse multiple comma-separated slots", () => {
+    expect(parseSlotList("0/1, 2/3")).toStrictEqual([
+      { trackIndex: 0, sceneIndex: 1 },
+      { trackIndex: 2, sceneIndex: 3 },
+    ]);
+  });
+
+  it("should handle whitespace around slots", () => {
+    expect(parseSlotList(" 1/2 , 3/4 ")).toStrictEqual([
+      { trackIndex: 1, sceneIndex: 2 },
+      { trackIndex: 3, sceneIndex: 4 },
+    ]);
+  });
+
+  it("should return empty array for null input", () => {
+    expect(parseSlotList(null)).toStrictEqual([]);
+  });
+
+  it("should throw for missing separator", () => {
+    expect(() => parseSlotList("01")).toThrow(
+      'invalid toSlot "01" - expected trackIndex/sceneIndex format',
+    );
+  });
+
+  it("should throw for too many separators", () => {
+    expect(() => parseSlotList("0/1/2")).toThrow(
+      'invalid toSlot "0/1/2" - expected trackIndex/sceneIndex format',
+    );
+  });
+
+  it("should throw for non-integer values", () => {
+    expect(() => parseSlotList("a/b")).toThrow(
+      'invalid toSlot "a/b" - trackIndex and sceneIndex must be integers',
+    );
+  });
+
+  it("should throw for negative trackIndex", () => {
+    expect(() => parseSlotList("-1/0")).toThrow(
+      'invalid toSlot "-1/0" - trackIndex and sceneIndex must be non-negative',
+    );
+  });
+
+  it("should throw for negative sceneIndex", () => {
+    expect(() => parseSlotList("0/-1")).toThrow(
+      'invalid toSlot "0/-1" - trackIndex and sceneIndex must be non-negative',
     );
   });
 });

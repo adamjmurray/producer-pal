@@ -284,6 +284,44 @@ export function quantizePitchToScale(pitch: number, scaleMask: number): number {
 }
 
 /**
+ * Move a pitch by N scale steps using a pitch class bitmask.
+ * Quantizes basePitch to the nearest in-scale pitch first, then walks
+ * the given number of steps up (positive) or down (negative) through the scale.
+ * @param basePitch - Starting pitch (will be quantized to nearest in-scale)
+ * @param offset - Number of scale steps to move (rounded to integer)
+ * @param scaleMask - Bitmask of in-scale pitch classes (bit N = pitch class N)
+ * @returns In-scale MIDI pitch (0-127)
+ */
+export function stepInScale(
+  basePitch: number,
+  offset: number,
+  scaleMask: number,
+): number {
+  const start = quantizePitchToScale(basePitch, scaleMask);
+  const steps = Math.round(offset);
+
+  if (steps === 0) return start;
+
+  const direction = steps > 0 ? 1 : -1;
+  let remaining = Math.abs(steps);
+  let current = start;
+
+  while (remaining > 0) {
+    current += direction;
+
+    if (current < 0 || current > 127) {
+      return clampToScaleBounds(current, scaleMask);
+    }
+
+    if ((scaleMask >> (((current % 12) + 12) % 12)) & 1) {
+      remaining--;
+    }
+  }
+
+  return current;
+}
+
+/**
  * Clamp a pitch to 0-127, snapping to the nearest in-scale pitch at boundaries.
  * @param pitch - Pitch to clamp
  * @param scaleMask - Bitmask of in-scale pitch classes

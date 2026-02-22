@@ -7,6 +7,47 @@ import {
   parseCommaSeparatedIndices,
 } from "#src/tools/shared/utils.ts";
 
+interface SlotPosition {
+  trackIndex: number;
+  sceneIndex: number;
+}
+
+/**
+ * Parses a comma-separated string of slot positions (trackIndex/sceneIndex format)
+ * @param input - Comma-separated slots (e.g., "0/1" or "0/1, 2/3")
+ * @returns Array of slot positions
+ */
+export function parseSlotList(input?: string | null): SlotPosition[] {
+  const entries = parseCommaSeparatedIds(input);
+
+  return entries.map((entry) => {
+    const parts = entry.split("/");
+
+    if (parts.length !== 2) {
+      throw new Error(
+        `invalid toSlot "${entry}" - expected trackIndex/sceneIndex format (e.g., "0/1")`,
+      );
+    }
+
+    const trackIndex = Number.parseInt(parts[0] as string);
+    const sceneIndex = Number.parseInt(parts[1] as string);
+
+    if (Number.isNaN(trackIndex) || Number.isNaN(sceneIndex)) {
+      throw new Error(
+        `invalid toSlot "${entry}" - trackIndex and sceneIndex must be integers`,
+      );
+    }
+
+    if (trackIndex < 0 || sceneIndex < 0) {
+      throw new Error(
+        `invalid toSlot "${entry}" - trackIndex and sceneIndex must be non-negative`,
+      );
+    }
+
+    return { trackIndex, sceneIndex };
+  });
+}
+
 /**
  * Parses a comma-separated string of scene indices into an array of integers
  * @param input - Comma-separated scene indices (e.g., "0" or "0,2,5")
