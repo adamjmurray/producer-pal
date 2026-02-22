@@ -4,6 +4,7 @@
 
 // the entry point / loader script for the MCP server running inside Ableton Live via Node for Max
 import Max from "max-api";
+import { checkForUpdate } from "#src/shared/version-check.ts";
 import { VERSION } from "#src/shared/version.ts";
 import { createExpressApp } from "./create-express-app.ts";
 import * as console from "./node-for-max-logger.ts";
@@ -49,6 +50,13 @@ appServer
     // We need to use our own started event because the Node for Max started
     // occurs too early, before our message handlers are registered.
     void Max.outlet("started");
+
+    void checkForUpdate(VERSION).then((update) => {
+      if (update) {
+        console.log(`Producer Pal update available: ${update.version}`);
+        void Max.outlet("update_available", update.version);
+      }
+    });
   })
   .on("error", (error: ServerError) => {
     throw new Error(
