@@ -33,7 +33,7 @@ export async function checkForUpdate(
 
     if (typeof tagName !== "string") return null;
 
-    const latest = stripV(tagName);
+    const latest = tagName.startsWith("v") ? tagName.slice(1) : tagName;
 
     if (isNewerVersion(currentVersion, latest)) {
       return { version: latest };
@@ -52,8 +52,8 @@ export async function checkForUpdate(
  * @returns True if latest is strictly newer than current
  */
 export function isNewerVersion(current: string, latest: string): boolean {
-  const currentParts = stripV(current).split(".").map(Number);
-  const latestParts = stripV(latest).split(".").map(Number);
+  const currentParts = parseVersionParts(current);
+  const latestParts = parseVersionParts(latest);
 
   for (let i = 0; i < 3; i++) {
     const c = currentParts[i] as number; // bounded by loop
@@ -66,6 +66,13 @@ export function isNewerVersion(current: string, latest: string): boolean {
   return false;
 }
 
-function stripV(version: string): string {
-  return version.startsWith("v") ? version.slice(1) : version;
+function parseVersionParts(version: string): number[] {
+  let cleaned = version.trim();
+
+  if (cleaned.startsWith("v")) {
+    cleaned = cleaned.slice(1);
+  }
+
+  // parseInt stops at first non-numeric char, handling suffixes like "4b7"
+  return cleaned.split(".").map((part) => Number.parseInt(part, 10));
 }

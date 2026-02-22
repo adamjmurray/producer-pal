@@ -35,6 +35,23 @@ describe("isNewerVersion", () => {
     expect(isNewerVersion("v1.0.0", "1.0.1")).toBe(true);
     expect(isNewerVersion("1.0.0", "v1.0.1")).toBe(true);
   });
+
+  it("compares 2-part version against 3-part version", () => {
+    expect(isNewerVersion("12.2", "12.3.0")).toBe(true);
+    expect(isNewerVersion("12.3", "12.3.0")).toBe(false);
+    expect(isNewerVersion("13.0", "12.3.0")).toBe(false);
+  });
+
+  it("ignores beta suffixes like 12.4b7", () => {
+    expect(isNewerVersion("12.4b7", "12.3.0")).toBe(false);
+    expect(isNewerVersion("12.2b3", "12.3.0")).toBe(true);
+    expect(isNewerVersion("12.3b1", "12.3.0")).toBe(false);
+  });
+
+  it("ignores trailing whitespace", () => {
+    expect(isNewerVersion("12.4b7   ", "12.3.0")).toBe(false);
+    expect(isNewerVersion("12.2   ", "12.3.0")).toBe(true);
+  });
 });
 
 describe("checkForUpdate", () => {

@@ -4,16 +4,117 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 7,
+			"revision" : 10,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 778.0, 273.0, 609.0, 410.0 ],
+		"rect" : [ 778.0, 273.0, 609.0, 544.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-15",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 118.0, 422.0, 267.0, 22.0 ],
+					"presentation_linecount" : 2,
+					"text" : "script sendbox min-live-version-not-met hidden 1"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-14",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "bang" ],
+					"patching_rect" : [ 76.0, 422.0, 22.0, 22.0 ],
+					"text" : "t b"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-6",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 76.0, 454.0, 267.0, 22.0 ],
+					"presentation_linecount" : 2,
+					"text" : "script sendbox min-live-version-not-met hidden 0"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"bubble" : 1,
+					"bubblepoint" : 0.0,
+					"bubbleside" : 2,
+					"fontsize" : 10.0,
+					"hidden" : 1,
+					"id" : "obj-1",
+					"linecount" : 2,
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 519.0, 275.0, 68.0, 48.0 ],
+					"presentation" : 1,
+					"presentation_linecount" : 2,
+					"presentation_rect" : [ 139.0, -1.0, 68.0, 48.0 ],
+					"text" : "See Max Console",
+					"textjustification" : 1,
+					"varname" : "see-console"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"bgcolor" : [ 0.572549019607843, 0.086274509803922, 0.086274509803922, 1.0 ],
+					"bubble_bgcolor" : [ 1.0, 0.0, 0.0, 1.0 ],
+					"fontsize" : 12.0,
+					"hidden" : 1,
+					"id" : "obj-5",
+					"linecount" : 2,
+					"maxclass" : "live.comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 343.0, 288.0, 157.0, 35.0 ],
+					"presentation" : 1,
+					"presentation_linecount" : 2,
+					"presentation_rect" : [ 6.0, 10.0, 147.0, 35.0 ],
+					"saved_attribute_attributes" : 					{
+						"textcolor" : 						{
+							"expression" : ""
+						}
+
+					}
+,
+					"text" : "WARNING: Ableton Live 12.3 or higher is required",
+					"textcolor" : [ 1.0, 1.0, 1.0, 1.0 ],
+					"textjustification" : 0,
+					"varname" : "min-live-version-not-met"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-3",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 76.0, 387.0, 163.0, 22.0 ],
+					"text" : "r ---min-live-version-not-met"
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"angle" : 270.0,
 					"annotation" : "Displays the current status of the Producer Pal server that AI uses to control Live. If it says anything other than \"Producer Pal Running\", AI will not be able to connect. Click the \"start\" button in the \"Setup\" tab to manually start the server.",
@@ -75,31 +176,9 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "" ],
-					"patching_rect" : [ 46.0, 383.0, 67.0, 22.0 ],
+					"patching_rect" : [ 46.0, 502.0, 67.0, 22.0 ],
 					"save" : [ "#N", "thispatcher", ";", "#Q", "end", ";" ],
 					"text" : "thispatcher"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"bubble" : 1,
-					"bubblepoint" : 0.0,
-					"bubbleside" : 2,
-					"fontsize" : 10.0,
-					"hidden" : 1,
-					"id" : "obj-1",
-					"linecount" : 2,
-					"maxclass" : "comment",
-					"numinlets" : 1,
-					"numoutlets" : 0,
-					"patching_rect" : [ 519.0, 275.0, 68.0, 48.0 ],
-					"presentation" : 1,
-					"presentation_linecount" : 2,
-					"presentation_rect" : [ 139.0, -1.0, 68.0, 48.0 ],
-					"text" : "See Max Console",
-					"textjustification" : 1,
-					"varname" : "see-console"
 				}
 
 			}
@@ -319,6 +398,20 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-6", 0 ],
+					"source" : [ "obj-14", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-43", 0 ],
+					"source" : [ "obj-15", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-24", 0 ],
 					"source" : [ "obj-25", 0 ]
 				}
@@ -369,6 +462,13 @@
 					"destination" : [ "obj-8", 0 ],
 					"order" : 2,
 					"source" : [ "obj-27", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-14", 0 ],
+					"source" : [ "obj-3", 0 ]
 				}
 
 			}
@@ -442,6 +542,13 @@
 				"patchline" : 				{
 					"destination" : [ "obj-43", 0 ],
 					"source" : [ "obj-53", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-43", 0 ],
+					"source" : [ "obj-6", 0 ]
 				}
 
 			}
