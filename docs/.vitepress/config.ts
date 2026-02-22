@@ -1,4 +1,5 @@
 import { defineConfig } from "vitepress";
+import { VERSION } from "../../src/shared/version.ts";
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -24,6 +25,7 @@ export default defineConfig({
       "link",
       { rel: "canonical", href: canonicalUrl },
     ]);
+    pageData.frontmatter.version = VERSION;
   },
 
   head: [["link", { rel: "icon", href: "/producer-pal-logo.svg" }]],

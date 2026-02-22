@@ -4,7 +4,7 @@ Choose your preferred AI platform to get started with Producer Pal™:
 
 ::: tip Prerequisites
 
-**Download:**&nbsp;
+**Download** v{{ $frontmatter.version }}**:**&nbsp;
 [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
 (the Producer Pal Max for Live device)
 
