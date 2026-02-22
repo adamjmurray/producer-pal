@@ -174,8 +174,8 @@ Apply complex changes to clips using math expressions:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
-- **Shapes**: LFO-like waveforms (sine, tri, saw), linear and exponential ramps
-  for fades, randomization (rand, choose) for humanization
+- **Shapes**: LFO waveforms (sine, tri, saw), ramps, curves, randomization with
+  arbitrary ranges, choose from sets of values (e.g. chord notes)
 - **Context variables**: Access note order (`note.index`), clip metadata
   (`clip.duration`, `clip.index`, `clip.position`, `clip.barDuration`) in
   expressions
