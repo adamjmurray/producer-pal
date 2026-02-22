@@ -186,8 +186,8 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 
 Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
 
-### Arrangement Clips
+### Moving Clips
 
-\`arrangementStart\` moves clips; \`arrangementLength\` sets playback region. Moving clips changes their IDs - re-read to get new IDs.
-\`split\` divides a clip at bar|beat positions (arrangement only).
+\`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, e.g., "2/3") moves session clips. Moving clips changes their IDs - re-read to get new IDs.
+\`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions.
 `;

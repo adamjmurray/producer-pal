@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyTransformsToExistingNotes,
   buildClipContext,
-} from "./update-clip-transform-helpers.ts";
+} from "../helpers/update-clip-transform-helpers.ts";
 
 // Helper to create raw notes as returned by Live API (with extra properties)
 function rawNote(pitch: number, startTime: number, noteId: number) {

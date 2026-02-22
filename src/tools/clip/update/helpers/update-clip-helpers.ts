@@ -10,13 +10,13 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import { getPlayableNoteCount } from "#src/tools/shared/clip-notes.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
-import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
 import {
   applyAudioTransforms,
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
 import { handleQuantization } from "./update-clip-quantization-helpers.ts";
+import { handlePositionOperations } from "./update-clip-session-helpers.ts";
 import {
   calculateBeatPositions,
   getTimeSignature,
@@ -278,6 +278,7 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   looping?: boolean;
   arrangementLengthBeats?: number | null;
   arrangementStartBeats?: number | null;
+  toSlot?: { trackIndex: number; sceneIndex: number } | null;
   nonSurvivorClipIds?: Set<string> | null;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
@@ -345,8 +346,6 @@ export function processSingleClipUpdate(
     quantizeGrid,
     quantizeSwing,
     quantizePitch,
-    arrangementLengthBeats,
-    arrangementStartBeats,
     context,
     updatedClips,
     tracksWithMovedClips,
@@ -443,12 +442,13 @@ export function processSingleClipUpdate(
     );
   }
 
-  // Handle arrangement operations (move FIRST, then length)
-  handleArrangementOperations({
+  // Handle position operations (session toSlot or arrangement start/length)
+  handlePositionOperations({
     clip,
     isAudioClip,
-    arrangementStartBeats,
-    arrangementLengthBeats,
+    toSlot: params.toSlot,
+    arrangementStartBeats: params.arrangementStartBeats,
+    arrangementLengthBeats: params.arrangementLengthBeats,
     tracksWithMovedClips,
     context,
     updatedClips,

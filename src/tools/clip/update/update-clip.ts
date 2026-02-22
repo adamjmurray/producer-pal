@@ -23,6 +23,7 @@ import {
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { computeNonSurvivorClipIds } from "./helpers/update-clip-arrangement-optimizer.ts";
 import {
   type ClipAudioWarpQuantizeParams,
@@ -43,6 +44,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   looping?: boolean;
   arrangementStart?: string;
   arrangementLength?: string;
+  toSlot?: string;
   split?: string;
   code?: string;
 }
@@ -69,6 +71,7 @@ interface ClipResult {
  * @param args.looping - Enable looping for the clip
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
  * @param args.arrangementLength - Bar:beat duration for arrangement span
+ * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
  * @param args.split - Comma-separated bar|beat positions to split clip
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)
  * @param args.pitchShift - Audio clip pitch shift in semitones (-48 to 48)
@@ -101,6 +104,7 @@ export async function updateClip(
     looping,
     arrangementStart,
     arrangementLength,
+    toSlot,
     split,
     gainDb,
     pitchShift,
@@ -124,20 +128,16 @@ export async function updateClip(
     throw new Error("updateClip failed: ids is required");
   }
 
-  const clipIds = parseCommaSeparatedIds(ids);
-  const clips = validateIdTypes(clipIds, "clip", "updateClip", {
-    skipInvalid: true,
-  });
-
-  // Standard update path
-  const warnings = new Set<string>();
-  let mutableClips = clips;
-
+  let mutableClips = validateIdTypes(
+    parseCommaSeparatedIds(ids),
+    "clip",
+    "updateClip",
+    { skipInvalid: true },
+  );
   const arrangementClips = mutableClips.filter(
     (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
   );
-
-  const splitPoints = prepareSplitParams(split, arrangementClips, warnings);
+  const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
 
   if (split != null && splitPoints != null && arrangementClips.length > 0) {
     performSplitting(
@@ -152,6 +152,7 @@ export async function updateClip(
   const { arrangementStartBeats, arrangementLengthBeats } =
     validateAndParseArrangementParams(arrangementStart, arrangementLength);
 
+  const parsedToSlot = parseToSlotParam(toSlot);
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
@@ -198,26 +199,61 @@ export async function updateClip(
       quantizePitch,
       arrangementLengthBeats,
       arrangementStartBeats,
+      toSlot: parsedToSlot,
       nonSurvivorClipIds,
       context,
       updatedClips,
       tracksWithMovedClips,
     });
 
-    // Apply code to each newly added clip result
-    if (code != null) {
-      for (let j = prevLen; j < updatedClips.length; j++) {
-        const clipResult = updatedClips[j] as ClipResult;
-        const noteCount = await applyCodeToSingleClip(clipResult.id, code);
-
-        if (noteCount != null) {
-          clipResult.noteCount = noteCount;
-        }
-      }
-    }
+    await applyCodeExecToNewClips(updatedClips, prevLen, code);
   }
 
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
 
   return unwrapSingleResult(updatedClips);
+}
+
+/**
+ * Parse the toSlot parameter, validating single destination
+ * @param toSlot - Raw toSlot string (trackIndex/sceneIndex format)
+ * @returns Parsed slot position or null
+ */
+function parseToSlotParam(
+  toSlot?: string,
+): { trackIndex: number; sceneIndex: number } | null {
+  if (toSlot == null) return null;
+
+  const slots = parseSlotList(toSlot);
+
+  if (slots.length === 0) return null;
+
+  if (slots.length > 1) {
+    console.warn("toSlot only supports a single destination - using first");
+  }
+
+  return slots[0] as { trackIndex: number; sceneIndex: number };
+}
+
+/**
+ * Apply code exec to newly added clip results
+ * @param updatedClips - Array of clip results
+ * @param prevLen - Length before new clips were added
+ * @param code - JavaScript code to execute
+ */
+async function applyCodeExecToNewClips(
+  updatedClips: ClipResult[],
+  prevLen: number,
+  code?: string,
+): Promise<void> {
+  if (code == null) return;
+
+  for (let j = prevLen; j < updatedClips.length; j++) {
+    const clipResult = updatedClips[j] as ClipResult;
+    const noteCount = await applyCodeToSingleClip(clipResult.id, code);
+
+    if (noteCount != null) {
+      clipResult.noteCount = noteCount;
+    }
+  }
 }

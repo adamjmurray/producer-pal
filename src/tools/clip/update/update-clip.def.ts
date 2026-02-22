@@ -45,6 +45,10 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe("bar:beat duration in timeline (arrangement clips only)"),
+    toSlot: z.coerce
+      .string()
+      .optional()
+      .describe("trackIndex/sceneIndex to move session clip (e.g., '2/3')"),
     split: z
       .string()
       .optional()

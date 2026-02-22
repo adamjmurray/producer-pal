@@ -28,6 +28,8 @@ export interface ArrangementParams {
 export interface ClipResult {
   id: string;
   noteCount?: number;
+  trackIndex?: number;
+  sceneIndex?: number;
 }
 
 /**
@@ -86,16 +88,25 @@ export function validateAndParseArrangementParams(
  * Build clip result object with optional noteCount
  * @param clipId - The clip ID
  * @param noteCount - Optional final note count
+ * @param slot - Optional slot position to include in result
+ * @param slot.trackIndex - Track index
+ * @param slot.sceneIndex - Scene index
  * @returns Result object with id and optionally noteCount
  */
 export function buildClipResultObject(
   clipId: string,
   noteCount: number | null,
+  slot?: { trackIndex: number; sceneIndex: number },
 ): ClipResult {
   const result: ClipResult = { id: clipId };
 
   if (noteCount != null) {
     result.noteCount = noteCount;
+  }
+
+  if (slot != null) {
+    result.trackIndex = slot.trackIndex;
+    result.sceneIndex = slot.sceneIndex;
   }
 
   return result;
