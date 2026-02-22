@@ -232,8 +232,9 @@ functions for clarity.
   - `console.log()` and `console.error()` do NOT appear in CLI output
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
   and linting issues), then `npm run check` (validates all checks pass), then
-  `npm run build` (verifies all production artifacts compile successfully). This
-  saves time and tokens by pre-emptively fixing likely errors before validation.
+  `npm run check:build` (verifies production artifacts and docs site compile
+  successfully). This saves time and tokens by pre-emptively fixing likely
+  errors before validation.
 - **Diagnosing coverage gaps**: If coverage thresholds fail, check
   `coverage/coverage-summary.txt` for per-file breakdown (console only shows
   totals). Look for files with low coverage percentages to identify what needs
