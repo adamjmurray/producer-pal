@@ -52,6 +52,14 @@ describe("ToolToggles", () => {
       expect(screen.getByLabelText("Read Live Set")).toBeDefined();
       expect(screen.getByLabelText("Create Track")).toBeDefined();
     });
+
+    it("renders group headers for each tool category", () => {
+      render(<ToolToggles {...defaultProps} />);
+
+      expect(screen.getByText("Core")).toBeDefined();
+      expect(screen.getByText("Live Set")).toBeDefined();
+      expect(screen.getByText("Track")).toBeDefined();
+    });
   });
 
   describe("loading and error states", () => {
