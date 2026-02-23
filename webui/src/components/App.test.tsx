@@ -222,7 +222,7 @@ describe("App", () => {
       // Open settings by finding the settings button in chat header (by text)
       const settingsButton = Array.from(
         container.querySelectorAll("button"),
-      ).find((btn) => btn.textContent === "Settings");
+      ).find((btn) => btn.textContent.includes("Settings"));
 
       expect(settingsButton).toBeDefined();
 
@@ -304,7 +304,7 @@ describe("App", () => {
       // Click settings button to open settings (by text)
       const settingsButton = Array.from(
         container.querySelectorAll("button"),
-      ).find((btn) => btn.textContent === "Settings");
+      ).find((btn) => btn.textContent.includes("Settings"));
 
       if (settingsButton) {
         fireEvent.click(settingsButton);
