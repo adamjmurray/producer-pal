@@ -7,11 +7,12 @@
  */
 import {
   type RenderResult,
+  act,
   fireEvent,
   render,
   screen,
 } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
 import { MessageList } from "./MessageList";
 
@@ -275,6 +276,115 @@ describe("MessageList", () => {
       renderMessageList(messages, false, handleRetryMock);
       fireEvent.click(screen.getByTitle("Retry from your last message"));
       expect(handleRetryMock).toHaveBeenCalledExactlyOnceWith(1);
+    });
+  });
+
+  describe("still thinking indicator", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("shows 'Still thinking...' after delay when responding with no content", async () => {
+      renderMessageList([], true);
+      expect(screen.queryByText("Still thinking...")).toBeNull();
+
+      await act(() => {
+        vi.advanceTimersByTime(4000);
+      });
+      expect(screen.getByText("Still thinking...")).toBeDefined();
+    });
+
+    it("does not show before delay elapses", async () => {
+      renderMessageList([], true);
+
+      await act(() => {
+        vi.advanceTimersByTime(3999);
+      });
+      expect(screen.queryByText("Still thinking...")).toBeNull();
+    });
+
+    it("disappears when assistant message gains content", async () => {
+      const { rerender } = renderMessageList([], true);
+
+      await act(() => {
+        vi.advanceTimersByTime(4000);
+      });
+      expect(screen.getByText("Still thinking...")).toBeDefined();
+
+      rerender(
+        <MessageList
+          messages={[createModelMessage("Hello")]}
+          isAssistantResponding={true}
+          handleRetry={vi.fn()}
+        />,
+      );
+      expect(screen.queryByText("Still thinking...")).toBeNull();
+    });
+
+    it("disappears when responding ends", async () => {
+      const { rerender } = renderMessageList([], true);
+
+      await act(() => {
+        vi.advanceTimersByTime(4000);
+      });
+      expect(screen.getByText("Still thinking...")).toBeDefined();
+
+      rerender(
+        <MessageList
+          messages={[]}
+          isAssistantResponding={false}
+          handleRetry={vi.fn()}
+        />,
+      );
+      expect(screen.queryByText("Still thinking...")).toBeNull();
+    });
+
+    it("does not appear if content arrives before delay", async () => {
+      const { rerender } = renderMessageList([], true);
+
+      await act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+
+      rerender(
+        <MessageList
+          messages={[createModelMessage("Fast response")]}
+          isAssistantResponding={true}
+          handleRetry={vi.fn()}
+        />,
+      );
+
+      await act(() => {
+        vi.advanceTimersByTime(2000);
+      });
+      expect(screen.queryByText("Still thinking...")).toBeNull();
+    });
+
+    it("reappears after content when messages stop updating", async () => {
+      const { rerender } = renderMessageList([], true);
+
+      // First thinking phase
+      await act(() => {
+        vi.advanceTimersByTime(4000);
+      });
+      expect(screen.getByText("Still thinking...")).toBeDefined();
+
+      // Content arrives (e.g., text + tool call)
+      const messagesWithContent = [createModelMessage("Calling tool...", 1)];
+
+      rerender(
+        <MessageList
+          messages={messagesWithContent}
+          isAssistantResponding={true}
+          handleRetry={vi.fn()}
+        />,
+      );
+      expect(screen.queryByText("Still thinking...")).toBeNull();
+
+      // Messages stop updating (model thinking again) — should reappear
+      await act(() => {
+        vi.advanceTimersByTime(4000);
+      });
+      expect(screen.getByText("Still thinking...")).toBeDefined();
     });
   });
 });
