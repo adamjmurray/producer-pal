@@ -139,29 +139,24 @@ export function ConnectionTab({
         </p>
       )}
 
-      {(provider === "openrouter" ||
-        provider === "ollama" ||
-        provider === "lmstudio" ||
-        provider === "custom") && (
-        <div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="smallModelMode"
-              checked={smallModelMode}
-              onChange={(e) =>
-                setSmallModelMode((e.target as HTMLInputElement).checked)
-              }
-            />
-            <label htmlFor="smallModelMode" className="text-sm">
-              Small model mode
-            </label>
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-5">
-            Simplifies tool descriptions and output for smaller models.
-          </p>
+      <div>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="smallModelMode"
+            checked={smallModelMode}
+            onChange={(e) =>
+              setSmallModelMode((e.target as HTMLInputElement).checked)
+            }
+          />
+          <label htmlFor="smallModelMode" className="text-sm">
+            Small model mode
+          </label>
         </div>
-      )}
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-5">
+          Fewer features, better compatibility with smaller models.
+        </p>
+      </div>
     </>
   );
 }

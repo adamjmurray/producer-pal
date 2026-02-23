@@ -534,69 +534,15 @@ describe("ConnectionTab", () => {
   });
 
   describe("small model mode toggle", () => {
-    it("does not render for gemini provider", () => {
-      const { container } = render(
-        <ConnectionTab {...defaultProps} provider="gemini" />,
-      );
-
-      expect(container.querySelector("#smallModelMode")).toBeNull();
-    });
-
-    it("does not render for openai provider", () => {
-      const { container } = render(
-        <ConnectionTab {...defaultProps} provider="openai" />,
-      );
-
-      expect(container.querySelector("#smallModelMode")).toBeNull();
-    });
-
-    it("does not render for mistral provider", () => {
-      const { container } = render(
-        <ConnectionTab {...defaultProps} provider="mistral" />,
-      );
-
-      expect(container.querySelector("#smallModelMode")).toBeNull();
-    });
-
-    it("renders for openrouter provider", () => {
-      const { container } = render(
-        <ConnectionTab {...defaultProps} provider="openrouter" />,
-      );
-
-      expect(container.querySelector("#smallModelMode")).toBeDefined();
-    });
-
-    it("renders for lmstudio provider", () => {
-      const { container } = render(
-        <ConnectionTab {...defaultProps} provider="lmstudio" />,
-      );
-
-      expect(container.querySelector("#smallModelMode")).toBeDefined();
-    });
-
-    it("renders for ollama provider", () => {
-      const { container } = render(
-        <ConnectionTab {...defaultProps} provider="ollama" />,
-      );
-
-      expect(container.querySelector("#smallModelMode")).toBeDefined();
-    });
-
-    it("renders for custom provider", () => {
-      const { container } = render(
-        <ConnectionTab {...defaultProps} provider="custom" />,
-      );
+    it("renders checkbox", () => {
+      const { container } = render(<ConnectionTab {...defaultProps} />);
 
       expect(container.querySelector("#smallModelMode")).toBeDefined();
     });
 
     it("reflects smallModelMode prop value", () => {
       const { container } = render(
-        <ConnectionTab
-          {...defaultProps}
-          provider="openrouter"
-          smallModelMode={true}
-        />,
+        <ConnectionTab {...defaultProps} smallModelMode={true} />,
       );
       const checkbox = container.querySelector(
         "#smallModelMode",
@@ -610,7 +556,6 @@ describe("ConnectionTab", () => {
       const { container } = render(
         <ConnectionTab
           {...defaultProps}
-          provider="openrouter"
           setSmallModelMode={setSmallModelMode}
         />,
       );
