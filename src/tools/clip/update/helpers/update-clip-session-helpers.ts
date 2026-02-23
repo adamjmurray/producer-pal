@@ -8,6 +8,7 @@ import * as console from "#src/shared/v8-max-console.ts";
 import {
   buildClipResultObject,
   type ClipResult,
+  type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { handleArrangementOperations } from "./update-clip-arrangement-helpers.ts";
@@ -26,7 +27,7 @@ interface HandlePositionOperationsArgs {
   tracksWithMovedClips: Map<number, number>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
-  finalNoteCount: number | null;
+  noteResult: NoteUpdateResult | null;
   isNonSurvivor: boolean;
 }
 
@@ -49,7 +50,7 @@ export function handlePositionOperations(
         clip,
         toSlot,
         updatedClips: args.updatedClips,
-        finalNoteCount: args.finalNoteCount,
+        noteResult: args.noteResult,
       });
 
       return;
@@ -68,7 +69,7 @@ export function handlePositionOperations(
     tracksWithMovedClips: args.tracksWithMovedClips,
     context: args.context,
     updatedClips: args.updatedClips,
-    finalNoteCount: args.finalNoteCount,
+    noteResult: args.noteResult,
     isNonSurvivor: args.isNonSurvivor,
   });
 }
@@ -77,7 +78,7 @@ interface HandleSessionSlotMoveArgs {
   clip: LiveAPI;
   toSlot: SlotPosition;
   updatedClips: ClipResult[];
-  finalNoteCount: number | null;
+  noteResult: NoteUpdateResult | null;
 }
 
 /**
@@ -86,20 +87,20 @@ interface HandleSessionSlotMoveArgs {
  * @param args.clip - The session clip to move
  * @param args.toSlot - Destination slot position
  * @param args.updatedClips - Array to collect results
- * @param args.finalNoteCount - Final note count for result
+ * @param args.noteResult - Note update result for result
  */
 export function handleSessionSlotMove({
   clip,
   toSlot,
   updatedClips,
-  finalNoteCount,
+  noteResult,
 }: HandleSessionSlotMoveArgs): void {
   const srcTrackIndex = clip.trackIndex;
   const srcSceneIndex = clip.sceneIndex;
 
   if (srcTrackIndex == null || srcSceneIndex == null) {
     console.warn(`could not determine slot position for clip ${clip.id}`);
-    updatedClips.push(buildClipResultObject(clip.id, finalNoteCount));
+    updatedClips.push(buildClipResultObject(clip.id, noteResult));
 
     return;
   }
@@ -109,7 +110,7 @@ export function handleSessionSlotMove({
     srcTrackIndex === toSlot.trackIndex &&
     srcSceneIndex === toSlot.sceneIndex
   ) {
-    updatedClips.push(buildClipResultObject(clip.id, finalNoteCount, toSlot));
+    updatedClips.push(buildClipResultObject(clip.id, noteResult, toSlot));
 
     return;
   }
@@ -122,7 +123,7 @@ export function handleSessionSlotMove({
     console.warn(
       `destination slot ${toSlot.trackIndex}/${toSlot.sceneIndex} does not exist`,
     );
-    updatedClips.push(buildClipResultObject(clip.id, finalNoteCount));
+    updatedClips.push(buildClipResultObject(clip.id, noteResult));
 
     return;
   }
@@ -144,5 +145,5 @@ export function handleSessionSlotMove({
     livePath.track(toSlot.trackIndex).clipSlot(toSlot.sceneIndex).clip(),
   );
 
-  updatedClips.push(buildClipResultObject(newClip.id, finalNoteCount, toSlot));
+  updatedClips.push(buildClipResultObject(newClip.id, noteResult, toSlot));
 }

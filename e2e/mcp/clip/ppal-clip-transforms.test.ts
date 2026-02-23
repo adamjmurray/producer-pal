@@ -20,6 +20,7 @@ import {
   SAMPLE_FILE,
   setupMcpTestContext,
   sleep,
+  type UpdateClipResult,
 } from "../mcp-test-helpers.ts";
 import {
   applyTransform as applyTransformHelper,
@@ -404,21 +405,27 @@ describe("ppal-clip-transforms (selectors and multi-note)", () => {
     expect(notes).toContain("A3");
     expect(notes).not.toContain("C3");
 
-    // Pitch selector: only transpose C3
+    // Pitch selector: only transpose C3 (verify transformed count)
     const clipId2 = await createMidiClip(5, "C3 1|1\nE3 1|2");
+    const u2 = parseToolResult<UpdateClipResult>(
+      await applyTransform(clipId2, "C3: pitch += 12"),
+    );
 
-    await applyTransform(clipId2, "C3: pitch += 12");
     notes = await readClipNotes(clipId2);
     expect(notes).toContain("C4"); // C3 became C4
     expect(notes).toContain("E3"); // E3 unchanged
+    expect(u2.transformed).toBe(1); // Only C3 matched
 
     // Time selector: only transpose notes in beats 1-2
     const clipId3 = await createMidiClip(6, "C3 1|1\nC3 1|3");
+    const u3 = parseToolResult<UpdateClipResult>(
+      await applyTransform(clipId3, "1|1-1|2: pitch += 12"),
+    );
 
-    await applyTransform(clipId3, "1|1-1|2: pitch += 12");
     notes = await readClipNotes(clipId3);
     expect(notes).toContain("C4 1|1"); // Transposed
     expect(notes).toContain("C3 1|3"); // Unchanged
+    expect(u3.transformed).toBe(1); // Only note at 1|1 matched
   });
 });
 
@@ -624,6 +631,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     let notes = await readClipNotes(clip1.id);
 
     expect(notes).toContain("v64"); // Velocity transformed from 100 to 64
+    expect(clip1.transformed).toBe(1); // No selector = all notes
 
     // Create clip with pitch transform (transposition)
     const result2 = await ctx.client!.callTool({
@@ -645,6 +653,8 @@ describe("ppal-clip-transforms (create-clip)", () => {
     expect(notes).toContain("D3");
     expect(notes).toMatch(/F#3|Gb3/);
     expect(notes).toContain("A3");
+    expect(clip2.noteCount).toBe(3);
+    expect(clip2.transformed).toBe(3); // All 3 notes transposed
 
     // Create clip with combined transforms
     const result3 = await ctx.client!.callTool({
@@ -687,6 +697,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
 
     expect(notes).toContain("C4"); // C3 became C4
     expect(notes).toContain("E3"); // E3 unchanged
+    expect(clip1.transformed).toBe(1); // Only C3 matched the selector
 
     // Create clip with time selector
     const result2 = await ctx.client!.callTool({
@@ -708,6 +719,8 @@ describe("ppal-clip-transforms (create-clip)", () => {
     expect(notes).toContain("v64"); // First note has transformed velocity
     // Second note at 1|3 should have default velocity (no v prefix shown)
     expect(notes).toMatch(/C3 1\|3/); // Second note unchanged
+    expect(clip2.noteCount).toBe(2);
+    expect(clip2.transformed).toBe(1); // Only note at 1|1 matched the time selector
   });
 });
 

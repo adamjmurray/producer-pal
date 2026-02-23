@@ -52,7 +52,7 @@ describe("handleSessionSlotMove", () => {
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 1, sceneIndex: 2 },
       updatedClips,
-      finalNoteCount: 5,
+      noteResult: { noteCount: 5 },
     });
 
     expect(sourceClipSlot.call).toHaveBeenCalledWith(
@@ -83,7 +83,7 @@ describe("handleSessionSlotMove", () => {
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 1, sceneIndex: 2 },
       updatedClips,
-      finalNoteCount: null,
+      noteResult: null,
     });
 
     expect(outlet).toHaveBeenCalledWith(
@@ -108,7 +108,7 @@ describe("handleSessionSlotMove", () => {
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 2, sceneIndex: 3 },
       updatedClips,
-      finalNoteCount: null,
+      noteResult: null,
     });
 
     expect(updatedClips).toHaveLength(1);
@@ -140,7 +140,7 @@ describe("handleSessionSlotMove", () => {
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 99, sceneIndex: 99 },
       updatedClips,
-      finalNoteCount: null,
+      noteResult: null,
     });
 
     expect(outlet).toHaveBeenCalledWith(
@@ -178,7 +178,7 @@ describe("handleSessionSlotMove", () => {
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 0, sceneIndex: 1 },
       updatedClips,
-      finalNoteCount: null,
+      noteResult: null,
     });
 
     expect(outlet).toHaveBeenCalledWith(1, "overwriting existing clip at 0/1");
@@ -217,7 +217,7 @@ describe("handleSessionSlotMove", () => {
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 0, sceneIndex: 1 },
       updatedClips,
-      finalNoteCount: 12,
+      noteResult: { noteCount: 12 },
     });
 
     expect(updatedClips[0]).toMatchObject({
@@ -254,7 +254,7 @@ describe("handleSessionSlotMove", () => {
       clip: mockClip as unknown as LiveAPI,
       toSlot: { trackIndex: 0, sceneIndex: 1 },
       updatedClips,
-      finalNoteCount: null,
+      noteResult: null,
     });
 
     expect(updatedClips[0]).not.toHaveProperty("noteCount");
@@ -281,7 +281,7 @@ describe("handlePositionOperations", () => {
       tracksWithMovedClips: new Map(),
       context: {},
       updatedClips,
-      finalNoteCount: null,
+      noteResult: null,
       isNonSurvivor: false,
     });
 
@@ -307,7 +307,7 @@ describe("handlePositionOperations", () => {
       tracksWithMovedClips: new Map(),
       context: {},
       updatedClips,
-      finalNoteCount: null,
+      noteResult: null,
       isNonSurvivor: false,
     });
 

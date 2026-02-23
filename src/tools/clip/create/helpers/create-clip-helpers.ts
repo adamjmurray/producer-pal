@@ -220,6 +220,7 @@ function createArrangementClip(
  * @param notes - Array of MIDI notes
  * @param length - Original length parameter
  * @param sampleFile - Audio file path (for audio clips)
+ * @param transformedCount - Number of notes matched by transform selectors
  * @returns Clip result for this iteration
  */
 export function processClipIteration(
@@ -242,6 +243,7 @@ export function processClipIteration(
   notes: MidiNote[],
   length: string | null,
   sampleFile: string | null,
+  transformedCount: number | undefined,
 ): object {
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
@@ -339,5 +341,6 @@ export function processClipIteration(
     timeSigNumerator,
     timeSigDenominator,
     sampleFile,
+    transformedCount,
   );
 }

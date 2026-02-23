@@ -102,7 +102,8 @@ describe("update-clip-transform-helpers", () => {
         4,
       );
 
-      expect(result).toBe(3);
+      expect(result.noteCount).toBe(3);
+      expect(result.transformed).toBe(3);
       expect(mockClip.call).toHaveBeenCalledWith(
         "remove_notes_extended",
         0,
@@ -150,7 +151,7 @@ describe("update-clip-transform-helpers", () => {
         4,
       );
 
-      expect(result).toBe(0);
+      expect(result.noteCount).toBe(0);
       expect(outlet).toHaveBeenCalledWith(
         1,
         expect.stringContaining("transforms ignored: clip has no notes"),

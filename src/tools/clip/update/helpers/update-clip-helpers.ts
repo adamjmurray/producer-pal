@@ -7,6 +7,7 @@ import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-int
 import { type ClipContext } from "#src/notation/transform/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import { getPlayableNoteCount } from "#src/tools/shared/clip-notes.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
@@ -29,6 +30,7 @@ import {
 interface ClipResult {
   id: string;
   noteCount?: number;
+  transformed?: number;
 }
 
 interface ClipPropsToSet {
@@ -176,7 +178,7 @@ function buildClipPropertiesToSet({
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables
- * @returns Final note count, or null if notes not modified
+ * @returns Note update result, or null if notes not modified
  */
 function handleNoteUpdates(
   clip: LiveAPI,
@@ -186,7 +188,7 @@ function handleNoteUpdates(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext: ClipContext,
-): number | null {
+): NoteUpdateResult | null {
   // Only skip if BOTH are null
   if (notationString == null && transformString == null) {
     return null;
@@ -229,7 +231,7 @@ function handleNoteUpdates(
   });
 
   // Apply transforms to notes if provided
-  applyTransforms(
+  const transformed = applyTransforms(
     notes,
     transformString,
     timeSigNumerator,
@@ -244,7 +246,7 @@ function handleNoteUpdates(
     clip.call("add_new_notes", { notes });
   }
 
-  return getPlayableNoteCount(clip);
+  return { noteCount: getPlayableNoteCount(clip), transformed };
 }
 
 export interface ClipAudioWarpQuantizeParams {
@@ -356,7 +358,7 @@ export function processSingleClipUpdate(
     clip,
   );
 
-  let finalNoteCount: number | null = null;
+  let noteResult: NoteUpdateResult | null = null;
 
   // Determine looping state
   const isLooping = looping ?? (clip.getProperty("looping") as number) > 0;
@@ -413,7 +415,7 @@ export function processSingleClipUpdate(
   }
 
   // Handle note updates (transforms already applied for audio clips above)
-  finalNoteCount = handleNoteUpdates(
+  noteResult = handleNoteUpdates(
     clip,
     notationString,
     isAudioClip ? undefined : transformString,
@@ -452,7 +454,7 @@ export function processSingleClipUpdate(
     tracksWithMovedClips,
     context,
     updatedClips,
-    finalNoteCount,
+    noteResult,
     isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
 }

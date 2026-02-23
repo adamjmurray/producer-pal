@@ -10,6 +10,7 @@ import {
   scaleIntervalsToPitchClassMask,
 } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import { getPlayableNoteCount } from "#src/tools/shared/clip-notes.ts";
 
@@ -39,7 +40,7 @@ function toNoteEvent(rawNote: Record<string, unknown>): NoteEvent {
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables
- * @returns Final note count
+ * @returns Note update result with count and transformed
  */
 export function applyTransformsToExistingNotes(
   clip: LiveAPI,
@@ -47,7 +48,7 @@ export function applyTransformsToExistingNotes(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext?: ClipContext,
-): number {
+): NoteUpdateResult {
   const existingNotesResult = JSON.parse(
     clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS) as string,
   );
@@ -59,13 +60,13 @@ export function applyTransformsToExistingNotes(
   if (rawNotes.length === 0) {
     console.warn("transforms ignored: clip has no notes to transform");
 
-    return 0;
+    return { noteCount: 0 };
   }
 
   // Convert raw notes to NoteEvent format (strips extra Live API properties)
   const notes: NoteEvent[] = rawNotes.map(toNoteEvent);
 
-  applyTransforms(
+  const transformed = applyTransforms(
     notes,
     transformString,
     timeSigNumerator,
@@ -79,7 +80,7 @@ export function applyTransformsToExistingNotes(
     clip.call("add_new_notes", { notes });
   }
 
-  return getPlayableNoteCount(clip);
+  return { noteCount: getPlayableNoteCount(clip), transformed };
 }
 
 /**

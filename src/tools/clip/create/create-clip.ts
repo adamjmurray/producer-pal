@@ -72,6 +72,7 @@ export interface CreateClipArgs {
 interface PreparedClipData {
   notes: MidiNote[];
   clipLength: number;
+  transformedCount: number | undefined;
 }
 
 /**
@@ -178,7 +179,11 @@ export async function createClip(
   );
 
   // Parse notation and determine clip length
-  const { notes, clipLength: initialClipLength } = prepareClipData(
+  const {
+    notes,
+    clipLength: initialClipLength,
+    transformedCount,
+  } = prepareClipData(
     sampleFile,
     notationString,
     transformString,
@@ -211,6 +216,7 @@ export async function createClip(
     sampleFile,
     deadline,
     code,
+    transformedCount,
   );
 
   // Handle automatic playback and view switching
@@ -247,6 +253,7 @@ export async function createClip(
  * @param sampleFile - Audio file path
  * @param deadline - Absolute deadline timestamp, or null if no deadline
  * @param code - JavaScript code to generate notes, or null
+ * @param transformedCount - Number of notes matched by transform selectors
  * @returns Array of created clips
  */
 async function createClips(
@@ -272,6 +279,7 @@ async function createClips(
   sampleFile: string | null,
   deadline: number | null,
   code: string | null,
+  transformedCount: number | undefined,
 ): Promise<object[]> {
   const createdClips: object[] = [];
   const positions = view === "session" ? sceneIndices : arrangementStarts;
@@ -325,6 +333,7 @@ async function createClips(
         notes,
         length,
         sampleFile,
+        transformedCount,
       );
 
       createdClips.push(clipResult);
@@ -383,7 +392,7 @@ function prepareClipData(
       : [];
 
   // Apply transforms to notes if provided
-  applyTransforms(
+  const transformedCount = applyTransforms(
     notes,
     transformString ?? undefined,
     timeSigNumerator,
@@ -406,5 +415,5 @@ function prepareClipData(
     );
   }
 
-  return { notes, clipLength };
+  return { notes, clipLength, transformedCount };
 }

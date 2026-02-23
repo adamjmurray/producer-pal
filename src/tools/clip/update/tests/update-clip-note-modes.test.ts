@@ -235,7 +235,7 @@ describe("updateClip - Note update modes", () => {
     });
 
     // Notes should still exist with modified velocity
-    expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    expect(result).toStrictEqual({ id: "123", noteCount: 2, transformed: 2 });
 
     // Verify add_new_notes was called with modified notes
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {

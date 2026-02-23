@@ -5,7 +5,10 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { handleArrangementLengthOperation } from "#src/tools/clip/arrangement/arrangement-operations.ts";
-import { buildClipResultObject } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import {
+  buildClipResultObject,
+  type NoteUpdateResult,
+} from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import {
   clearClipAtDuplicateTarget,
   type TilingContext,
@@ -15,6 +18,7 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 interface ClipResult {
   id: string;
   noteCount?: number;
+  transformed?: number;
 }
 
 interface HandleArrangementStartArgs {
@@ -125,7 +129,7 @@ interface HandleArrangementOperationsArgs {
   tracksWithMovedClips: Map<number, number>;
   context: Partial<ToolContext>;
   updatedClips: ClipResult[];
-  finalNoteCount: number | null;
+  noteResult: NoteUpdateResult | null;
   isNonSurvivor?: boolean;
 }
 
@@ -139,7 +143,7 @@ interface HandleArrangementOperationsArgs {
  * @param args.tracksWithMovedClips - Map of tracks with moved clips
  * @param args.context - Tool execution context
  * @param args.updatedClips - Array to collect updated clips
- * @param args.finalNoteCount - Final note count for result
+ * @param args.noteResult - Note update result for result
  * @param args.isNonSurvivor - When true, clip is deleted without moving
  */
 export function handleArrangementOperations({
@@ -150,7 +154,7 @@ export function handleArrangementOperations({
   tracksWithMovedClips,
   context,
   updatedClips,
-  finalNoteCount,
+  noteResult,
   isNonSurvivor,
 }: HandleArrangementOperationsArgs): void {
   // Move FIRST so lengthening uses the new position
@@ -193,6 +197,6 @@ export function handleArrangementOperations({
   }
 
   if (!hasArrangementLengthResults) {
-    updatedClips.push(buildClipResultObject(finalClipId, finalNoteCount));
+    updatedClips.push(buildClipResultObject(finalClipId, noteResult));
   }
 }

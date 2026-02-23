@@ -26,6 +26,7 @@ const AUDIO_PARAMETERS = new Set(["gain", "pitchShift"]);
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Optional clip-level context for clip/bar variables
+ * @returns Count of unique notes with at least one non-audio transform matched, or undefined if no transforms applied
  */
 export function applyTransforms(
   notes: NoteEvent[],
@@ -33,9 +34,9 @@ export function applyTransforms(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext?: ClipContext,
-): void {
+): number | undefined {
   if (!transformString || notes.length === 0) {
-    return;
+    return undefined;
   }
 
   const ast = tryParseTransform(transformString);
@@ -58,6 +59,9 @@ export function applyTransforms(
   const clipEndTime =
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
 
+  // Track which notes had at least one MIDI transform applied
+  const transformedIndices = new Set<number>();
+
   for (let i = 0; i < notes.length; i++) {
     const note = notes[i] as NoteEvent;
     const noteContext = buildNoteContext(
@@ -79,6 +83,15 @@ export function applyTransforms(
     // Evaluate transforms for this note using the pre-parsed AST
     const transforms = evaluateTransformAST(ast, noteContext, noteProperties);
 
+    // Track notes where any non-audio transform matched
+    const hasMidiTransform = Object.keys(transforms).some(
+      (k) => !AUDIO_PARAMETERS.has(k),
+    );
+
+    if (hasMidiTransform) {
+      transformedIndices.add(i);
+    }
+
     // Apply transforms with operator semantics and range clamping
     applyVelocityTransform(note, transforms);
     applyTimingTransform(note, transforms, timeSigDenominator);
@@ -98,6 +111,8 @@ export function applyTransforms(
     notes.length = 0;
     notes.push(...surviving);
   }
+
+  return transformedIndices.size;
 }
 
 /**

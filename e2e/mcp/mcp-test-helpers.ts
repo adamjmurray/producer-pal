@@ -225,6 +225,15 @@ export async function createTestDevice(
 /** Result from ppal-create-clip tool */
 export interface CreateClipResult {
   id: string;
+  noteCount?: number;
+  transformed?: number;
+}
+
+/** Result from ppal-update-clip tool (single clip) */
+export interface UpdateClipResult {
+  id: string;
+  noteCount?: number;
+  transformed?: number;
 }
 
 /** Result from ppal-create-track tool */

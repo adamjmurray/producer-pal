@@ -25,9 +25,15 @@ export interface ArrangementParams {
   arrangementLengthBeats: number | null;
 }
 
+export interface NoteUpdateResult {
+  noteCount: number;
+  transformed?: number;
+}
+
 export interface ClipResult {
   id: string;
   noteCount?: number;
+  transformed?: number;
   trackIndex?: number;
   sceneIndex?: number;
 }
@@ -85,23 +91,27 @@ export function validateAndParseArrangementParams(
 }
 
 /**
- * Build clip result object with optional noteCount
+ * Build clip result object with optional note stats
  * @param clipId - The clip ID
- * @param noteCount - Optional final note count
+ * @param noteResult - Optional note update result with count and transformed
  * @param slot - Optional slot position to include in result
  * @param slot.trackIndex - Track index
  * @param slot.sceneIndex - Scene index
- * @returns Result object with id and optionally noteCount
+ * @returns Result object with id and optionally noteCount/transformed
  */
 export function buildClipResultObject(
   clipId: string,
-  noteCount: number | null,
+  noteResult: NoteUpdateResult | null,
   slot?: { trackIndex: number; sceneIndex: number },
 ): ClipResult {
   const result: ClipResult = { id: clipId };
 
-  if (noteCount != null) {
-    result.noteCount = noteCount;
+  if (noteResult != null) {
+    result.noteCount = noteResult.noteCount;
+
+    if (noteResult.transformed != null) {
+      result.transformed = noteResult.transformed;
+    }
   }
 
   if (slot != null) {
