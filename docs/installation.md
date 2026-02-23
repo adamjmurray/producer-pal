@@ -11,6 +11,9 @@ Choose your preferred AI platform to get started with Producer Pal™:
 **Requires:** [Ableton Live 12.3+](https://www.ableton.com/live/) with
 [Max for Live](https://www.ableton.com/live/max-for-live/)
 
+Upgrading from a previous version? See the
+[upgrading guide](./installation/upgrading).
+
 :::
 
 ## Which AI Do You Use?
