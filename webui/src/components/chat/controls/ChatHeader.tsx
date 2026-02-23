@@ -14,6 +14,7 @@ interface ChatHeaderProps {
   provider: Provider;
   enabledToolsCount: number;
   totalToolsCount: number;
+  smallModelMode: boolean;
   hasMessages: boolean;
   onOpenSettings: () => void;
   onClearConversation: () => void;
@@ -51,6 +52,7 @@ function getProviderName(provider: Provider): string {
  * @param {Provider | null} props.activeProvider - Active provider
  * @param {number} props.enabledToolsCount - Number of enabled tools
  * @param {number} props.totalToolsCount - Total number of available tools
+ * @param {boolean} props.smallModelMode - Whether small model mode is active
  * @param {boolean} props.hasMessages - Whether conversation has messages
  * @param {() => void} props.onOpenSettings - Callback to open settings
  * @param {() => void} props.onClearConversation - Callback to clear conversation
@@ -64,6 +66,7 @@ export function ChatHeader({
   provider,
   enabledToolsCount,
   totalToolsCount,
+  smallModelMode,
   hasMessages,
   onOpenSettings,
   onClearConversation,
@@ -124,14 +127,24 @@ export function ChatHeader({
         }
       >
         <span className="text-xs text-gray-500 dark:text-gray-400">
-          <span className="hidden sm:inline">
+          <span className="hidden lg:inline">
             {getProviderName(activeProvider ?? provider)} |{" "}
           </span>
           {getModelName(activeModel ?? model)}
         </span>
-        <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400">
+        <span className="hidden lg:inline text-xs text-gray-500 dark:text-gray-400">
           {enabledToolsCount}/{totalToolsCount} tools
         </span>
+        {smallModelMode && (
+          <span className="text-xs text-amber-600 dark:text-amber-400">
+            <span className="hidden sm:inline" aria-label="Small model mode">
+              🐢 small model
+            </span>
+            <span className="sm:hidden" aria-label="Small model mode">
+              🐢
+            </span>
+          </span>
+        )}
         <button
           onClick={onOpenSettings}
           className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"

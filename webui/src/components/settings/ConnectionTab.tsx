@@ -37,6 +37,8 @@ interface ConnectionTabProps {
   model: string;
   setModel: (model: string) => void;
   providerLabel: string;
+  smallModelMode: boolean;
+  setSmallModelMode: (enabled: boolean) => void;
 }
 
 /**
@@ -51,6 +53,8 @@ interface ConnectionTabProps {
  * @param {string} props.model - Current model
  * @param {(model: string) => void} props.setModel - Model setter callback
  * @param {string} props.providerLabel - Display name for provider
+ * @param {boolean} props.smallModelMode - Whether small model mode is enabled
+ * @param {Function} props.setSmallModelMode - Function to toggle small model mode
  * @returns {JSX.Element} - React component
  */
 export function ConnectionTab({
@@ -63,6 +67,8 @@ export function ConnectionTab({
   model,
   setModel,
   providerLabel,
+  smallModelMode,
+  setSmallModelMode,
 }: ConnectionTabProps) {
   return (
     <>
@@ -131,6 +137,30 @@ export function ConnectionTab({
             {providerLabel} models
           </a>
         </p>
+      )}
+
+      {(provider === "openrouter" ||
+        provider === "ollama" ||
+        provider === "lmstudio" ||
+        provider === "custom") && (
+        <div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="smallModelMode"
+              checked={smallModelMode}
+              onChange={(e) =>
+                setSmallModelMode((e.target as HTMLInputElement).checked)
+              }
+            />
+            <label htmlFor="smallModelMode" className="text-sm">
+              Small model mode
+            </label>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-5">
+            Simplifies tool descriptions and output for smaller models.
+          </p>
+        </div>
       )}
     </>
   );

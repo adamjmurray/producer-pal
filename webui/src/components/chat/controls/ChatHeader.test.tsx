@@ -18,6 +18,7 @@ describe("ChatHeader", () => {
     provider: "gemini" as const,
     enabledToolsCount: 20,
     totalToolsCount: 20,
+    smallModelMode: false,
     hasMessages: false,
     onOpenSettings: vi.fn(),
     onClearConversation: vi.fn(),
@@ -296,6 +297,38 @@ describe("ChatHeader", () => {
         />,
       );
       expect(screen.getByText(/Custom \|/)).toBeDefined();
+    });
+  });
+
+  describe("small model mode indicator", () => {
+    it("does not show indicator when smallModelMode is false", () => {
+      render(<ChatHeader {...defaultProps} smallModelMode={false} />);
+      expect(screen.queryByLabelText("Small model mode")).toBeNull();
+    });
+
+    it("shows indicator when smallModelMode is true", () => {
+      render(<ChatHeader {...defaultProps} smallModelMode={true} />);
+      expect(
+        screen.getAllByLabelText("Small model mode").length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("shows full text at sm breakpoint", () => {
+      render(<ChatHeader {...defaultProps} smallModelMode={true} />);
+      const elements = screen.getAllByLabelText("Small model mode");
+      const fullText = elements.find((el) =>
+        el.textContent.includes("small model"),
+      );
+
+      expect(fullText).toBeDefined();
+    });
+
+    it("shows turtle-only variant for mobile", () => {
+      render(<ChatHeader {...defaultProps} smallModelMode={true} />);
+      const elements = screen.getAllByLabelText("Small model mode");
+      const mobileEl = elements.find((el) => el.textContent.trim() === "🐢");
+
+      expect(mobileEl).toBeDefined();
     });
   });
 

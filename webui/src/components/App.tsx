@@ -10,6 +10,7 @@ import { openaiChatAdapter } from "#webui/hooks/chat/openai-chat-adapter";
 import { responsesAdapter } from "#webui/hooks/chat/responses-adapter";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
+import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { ChatScreen } from "./chat/ChatScreen";
@@ -72,6 +73,7 @@ export function App() {
   const { theme, setTheme } = useTheme();
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
+  const { smallModelMode, setSmallModelMode } = useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
   // Use Gemini chat for Gemini provider
@@ -199,6 +201,8 @@ export function App() {
         setEnabledTools={settings.setEnabledTools}
         mcpTools={mcpTools}
         mcpStatus={mcpStatus}
+        smallModelMode={smallModelMode}
+        setSmallModelMode={setSmallModelMode}
         resetBehaviorToDefaults={settings.resetBehaviorToDefaults}
         saveSettings={handleSaveSettings}
         cancelSettings={handleCancelSettings}
@@ -223,6 +227,7 @@ export function App() {
       defaultShowThoughts={settings.showThoughts}
       enabledToolsCount={enabledToolsCount}
       totalToolsCount={totalToolsCount}
+      smallModelMode={smallModelMode}
       mcpStatus={mcpStatus}
       mcpError={mcpError}
       checkMcpConnection={checkMcpConnection}

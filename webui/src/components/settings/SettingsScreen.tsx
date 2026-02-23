@@ -38,6 +38,8 @@ interface SettingsScreenProps {
   setEnabledTools: (tools: Record<string, boolean>) => void;
   mcpTools: McpTool[] | null;
   mcpStatus: McpStatus;
+  smallModelMode: boolean;
+  setSmallModelMode: (enabled: boolean) => void;
   resetBehaviorToDefaults: () => void;
   saveSettings: () => void;
   cancelSettings: () => void;
@@ -91,6 +93,8 @@ function getProviderLabel(provider: string): string {
  * @param {Function} props.setEnabledTools - Function to update enabled tools
  * @param {McpTool[] | null} props.mcpTools - Available tools from MCP server
  * @param {McpStatus} props.mcpStatus - MCP connection status
+ * @param {boolean} props.smallModelMode - Whether small model mode is enabled
+ * @param {Function} props.setSmallModelMode - Function to toggle small model mode
  * @param {Function} props.resetBehaviorToDefaults - Function to reset behavior settings
  * @param {Function} props.saveSettings - Function to save settings
  * @param {Function} props.cancelSettings - Function to cancel settings changes
@@ -118,6 +122,8 @@ export function SettingsScreen({
   setEnabledTools,
   mcpTools,
   mcpStatus,
+  smallModelMode,
+  setSmallModelMode,
   resetBehaviorToDefaults,
   saveSettings,
   cancelSettings,
@@ -157,6 +163,8 @@ export function SettingsScreen({
                   model={model}
                   setModel={setModel}
                   providerLabel={providerLabel}
+                  smallModelMode={smallModelMode}
+                  setSmallModelMode={setSmallModelMode}
                 />
               )}
 

@@ -7,6 +7,14 @@ const DEFAULT_MCP_PORT = "3350";
 const DEFAULT_MCP_URL = `http://localhost:${DEFAULT_MCP_PORT}/mcp`;
 
 /**
+ * Gets the config endpoint URL based on the MCP URL.
+ * @returns {string} The config endpoint URL
+ */
+export function getConfigUrl(): string {
+  return getMcpUrl().replace(/\/mcp$/, "/config");
+}
+
+/**
  * Gets the MCP server URL based on the current page origin.
  * In dev mode (Vite on port 5173), falls back to localhost:3350.
  * @returns {string} The MCP server URL

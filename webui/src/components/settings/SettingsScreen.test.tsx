@@ -171,6 +171,8 @@ describe("SettingsScreen", () => {
       { id: "ppal-read-live-set", name: "Read Live Set" },
     ],
     mcpStatus: "connected" as const,
+    smallModelMode: false,
+    setSmallModelMode: vi.fn(),
     resetBehaviorToDefaults: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
