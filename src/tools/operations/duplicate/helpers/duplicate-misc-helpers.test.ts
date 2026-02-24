@@ -3,10 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  generateObjectName,
-  switchViewIfRequested,
-} from "./duplicate-misc-helpers.ts";
+import { switchViewIfRequested } from "./duplicate-misc-helpers.ts";
 
 // Mock the select module to avoid Live API dependencies
 vi.mock(import("#src/tools/control/select.ts"), () => ({
@@ -14,36 +11,6 @@ vi.mock(import("#src/tools/control/select.ts"), () => ({
 }));
 
 describe("duplicate-misc-helpers", () => {
-  describe("generateObjectName", () => {
-    it("returns undefined when baseName is undefined", () => {
-      expect(generateObjectName(undefined, 2, 0)).toBeUndefined();
-    });
-
-    it("returns undefined when baseName is null", () => {
-      expect(
-        generateObjectName(null as unknown as string, 2, 0),
-      ).toBeUndefined();
-    });
-
-    it("returns baseName unchanged when count is 1", () => {
-      expect(generateObjectName("My Track", 1, 0)).toBe("My Track");
-    });
-
-    it("returns baseName unchanged when index is 0 and count > 1", () => {
-      expect(generateObjectName("My Track", 3, 0)).toBe("My Track");
-    });
-
-    it("returns baseName with number suffix for index > 0", () => {
-      expect(generateObjectName("My Track", 3, 1)).toBe("My Track 2");
-      expect(generateObjectName("My Track", 3, 2)).toBe("My Track 3");
-    });
-
-    it("handles empty string baseName", () => {
-      expect(generateObjectName("", 1, 0)).toBe("");
-      expect(generateObjectName("", 3, 1)).toBe(" 2");
-    });
-  });
-
   describe("switchViewIfRequested", () => {
     let selectMock: ReturnType<typeof vi.fn>;
 

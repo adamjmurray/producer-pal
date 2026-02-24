@@ -118,7 +118,7 @@ describe("ppal-create-scene", () => {
     expect(batch[0]!.sceneIndex).toBe(5);
     expect(batch[1]!.sceneIndex).toBe(6);
 
-    // Test 2: Create multiple scenes with name (auto-numbered)
+    // Test 2: Create multiple scenes with name
     const multiNameResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
       arguments: { sceneIndex: 7, count: 2, name: "Multi" },

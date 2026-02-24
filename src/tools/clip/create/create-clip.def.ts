@@ -40,10 +40,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')",
       ),
 
-    name: z
-      .string()
-      .optional()
-      .describe("clip name (numbered suffix for multiple clips)"),
+    name: z.string().optional().describe("clip name"),
 
     color: z.string().optional().describe("#RRGGBB"),
 

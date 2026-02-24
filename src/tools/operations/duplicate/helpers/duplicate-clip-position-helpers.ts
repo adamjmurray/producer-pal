@@ -5,7 +5,6 @@
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { resolveLocatorListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
-import { buildIndexedName } from "#src/tools/shared/utils.ts";
 import {
   parseArrangementStartList,
   parseSlotList,
@@ -57,13 +56,12 @@ export function duplicateClipWithPositions(
     for (let i = 0; i < slots.length; i++) {
       // bounded by slots.length
       const slot = slots[i] as { trackIndex: number; sceneIndex: number };
-      const objectName = buildIndexedName(name, slots.length, i);
       const result = duplicateClipSlot(
         trackIndex,
         sourceSceneIndex,
         slot.trackIndex,
         slot.sceneIndex,
-        objectName,
+        name,
       );
 
       createdObjects.push(result);
@@ -89,11 +87,10 @@ export function duplicateClipWithPositions(
     );
 
     for (let i = 0; i < positionsInBeats.length; i++) {
-      const objectName = buildIndexedName(name, positionsInBeats.length, i);
       const result = duplicateClipToArrangement(
         id,
         positionsInBeats[i] as number,
-        objectName,
+        name,
         arrangementLength,
         songTimeSigNumerator,
         songTimeSigDenominator,

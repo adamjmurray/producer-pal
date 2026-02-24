@@ -5,33 +5,6 @@
 import { select } from "#src/tools/control/select.ts";
 
 /**
- * Generates a name for a duplicated object
- * @param baseName - Base name for the object
- * @param count - Total number of duplicates
- * @param index - Current duplicate index
- * @returns Generated name or undefined
- */
-export function generateObjectName(
-  baseName: string | undefined,
-  count: number,
-  index: number,
-): string | undefined {
-  if (baseName == null) {
-    return;
-  }
-
-  if (count === 1) {
-    return baseName;
-  }
-
-  if (index === 0) {
-    return baseName;
-  }
-
-  return `${baseName} ${index + 1}`;
-}
-
-/**
  * Determines the target view based on destination and type
  * @param destination - Destination for duplication
  * @param type - Type of object being duplicated

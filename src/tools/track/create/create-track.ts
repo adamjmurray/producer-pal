@@ -5,7 +5,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
-import { assertDefined, buildIndexedName } from "#src/tools/shared/utils.ts";
+import { assertDefined } from "#src/tools/shared/utils.ts";
 
 interface CreateTrackArgs {
   trackIndex?: number;
@@ -60,7 +60,6 @@ function createSingleTrack(
  */
 function buildTrackName(
   baseName: string | undefined,
-  count: number,
   index: number,
   parsedNames: string[] | null = null,
 ): string | undefined {
@@ -72,14 +71,11 @@ function buildTrackName(
       return parsedNames[index];
     }
 
-    // Fall back to numbering from the last name (starting from 2)
-    const lastName = parsedNames.at(-1);
-    const fallbackIndex = index - parsedNames.length + 2;
-
-    return `${lastName} ${fallbackIndex}`;
+    // No name for tracks beyond the comma-separated list
+    return;
   }
 
-  return buildIndexedName(baseName, count, index);
+  return baseName;
 }
 
 /**
@@ -239,7 +235,7 @@ export function createTrack(
     const track = LiveAPI.from(`id ${trackId}`);
 
     track.setAll({
-      name: buildTrackName(name, count, i, parsedNames),
+      name: buildTrackName(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
       mute,
       solo,

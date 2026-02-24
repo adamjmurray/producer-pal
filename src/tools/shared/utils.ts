@@ -94,26 +94,6 @@ export function parseCommaSeparatedFloats(values?: string | null): number[] {
 }
 
 /**
- * Builds an indexed name for batch-created items (clips, tracks, etc.)
- * First item keeps base name, subsequent items get numbered suffix.
- * @param baseName - Base name for the item
- * @param count - Total number of items being created
- * @param index - Current item index (0-based)
- * @returns Generated name or undefined if baseName is null
- */
-export function buildIndexedName(
-  baseName: string | null | undefined,
-  count: number,
-  index: number,
-): string | undefined {
-  if (baseName == null) return;
-  if (count === 1) return baseName;
-  if (index === 0) return baseName;
-
-  return `${baseName} ${index + 1}`;
-}
-
-/**
  * Unwraps a single-element array to its element, otherwise returns the array
  * Used for tool results that should return a single object when one item,
  * or an array when multiple items.

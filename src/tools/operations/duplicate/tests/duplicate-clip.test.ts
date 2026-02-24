@@ -140,7 +140,7 @@ describe("duplicate - clip duplication", () => {
       );
 
       expect(destClip1.set).toHaveBeenCalledWith("name", "Custom Clip");
-      expect(destClip2.set).toHaveBeenCalledWith("name", "Custom Clip 2");
+      expect(destClip2.set).toHaveBeenCalledWith("name", "Custom Clip");
     });
 
     it("should throw an error when trying to duplicate an arrangement clip to session", () => {

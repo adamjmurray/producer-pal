@@ -31,7 +31,7 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       .boolean()
       .default(false)
       .describe("copy playing session clips instead of creating empty?"),
-    name: z.string().optional().describe("name (appended with counts > 1)"),
+    name: z.string().optional().describe("name"),
     color: z.string().optional().describe("#RRGGBB"),
     tempo: z.coerce
       .number()

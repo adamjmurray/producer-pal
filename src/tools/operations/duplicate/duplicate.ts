@@ -3,17 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import {
-  buildIndexedName,
-  parseCommaSeparatedIds,
-} from "#src/tools/shared/utils.ts";
+import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
-import {
-  generateObjectName,
-  switchViewIfRequested,
-} from "./helpers/duplicate-misc-helpers.ts";
+import { switchViewIfRequested } from "./helpers/duplicate-misc-helpers.ts";
 import {
   duplicateTrack,
   duplicateScene,
@@ -200,9 +194,7 @@ function duplicateDeviceWithPaths(
     return duplicateDevice(object, toPath, name, count);
   }
 
-  return paths.map((path, i) =>
-    duplicateDevice(object, path, buildIndexedName(name, paths.length, i), 1),
-  );
+  return paths.map((path) => duplicateDevice(object, path, name, 1));
 }
 
 /**
@@ -244,14 +236,12 @@ function duplicateTrackOrSceneWithCount(
   const { withoutClips, withoutDevices, routeToSource } = params;
 
   for (let i = 0; i < count; i++) {
-    const objectName = generateObjectName(name, count, i);
-
     const result = duplicateTrackOrSceneToSession(
       type,
       object,
       id,
       i,
-      objectName,
+      name,
       withoutClips,
       withoutDevices,
       routeToSource,
@@ -329,12 +319,10 @@ function duplicateSceneToArrangementAtPositions(
   const createdObjects: object[] = [];
 
   for (let i = 0; i < allPositions.length; i++) {
-    const objectName = generateObjectName(name, allPositions.length, i);
-
     const result = duplicateSceneToArrangement(
       id,
       allPositions[i] as number, // bounded by loop
-      objectName,
+      name,
       withoutClips,
       arrangementLength,
       songTimeSigNumerator,

@@ -20,7 +20,6 @@ import {
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
-  buildClipName,
   convertTimingParameters,
   parseArrangementStartList,
   parseSceneIndexList,
@@ -294,7 +293,7 @@ async function createClips(
       break;
     }
 
-    const clipName = buildClipName(name, count, i);
+    const clipName = name ?? undefined;
 
     // Get position for this iteration
     let currentSceneIndex: number | null = null;

@@ -79,8 +79,8 @@ describe("createScene", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(3, "create_scene", 2);
 
     expect(scene0.set).toHaveBeenCalledWith("name", "Verse");
-    expect(scene1.set).toHaveBeenCalledWith("name", "Verse 2");
-    expect(scene2.set).toHaveBeenCalledWith("name", "Verse 3");
+    expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
+    expect(scene2.set).toHaveBeenCalledWith("name", "Verse");
 
     expect(result).toStrictEqual([
       { id: "live_set/scenes/0", sceneIndex: 0 },

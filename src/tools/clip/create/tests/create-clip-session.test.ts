@@ -259,8 +259,8 @@ describe("createClip - session view", () => {
     expect(slot2.call).toHaveBeenCalledWith("create_clip", 4);
     expect(slot3.call).toHaveBeenCalledWith("create_clip", 4);
     expect(clip1.set).toHaveBeenCalledWith("name", "Loop");
-    expect(clip2.set).toHaveBeenCalledWith("name", "Loop 2");
-    expect(clip3.set).toHaveBeenCalledWith("name", "Loop 3");
+    expect(clip2.set).toHaveBeenCalledWith("name", "Loop");
+    expect(clip3.set).toHaveBeenCalledWith("name", "Loop");
 
     expect(result).toStrictEqual([
       { id: "clip_0_1", trackIndex: 0, sceneIndex: 1 },

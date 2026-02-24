@@ -94,8 +94,6 @@ export function createScene(
     const sceneResult = createSingleScene(
       liveSet,
       currentIndex,
-      i,
-      count,
       name,
       color,
       tempo,
@@ -127,29 +125,6 @@ function applySceneProperties(scene: LiveAPI, props: SceneProperties): void {
 
   applyTempoProperty(scene, tempo);
   applyTimeSignatureProperty(scene, timeSignature);
-}
-
-/**
- * Builds the scene name based on index and count
- * @param name - Base name for the scene
- * @param index - 0-based index of the scene being created
- * @param count - Total count of scenes being created
- * @returns The computed scene name
- */
-function buildSceneName(
-  name: string | null | undefined,
-  index: number,
-  count: number,
-): string | undefined {
-  if (name == null) {
-    return;
-  }
-
-  if (count === 1 || index === 0) {
-    return name;
-  }
-
-  return `${name} ${index + 1}`;
 }
 
 /**
@@ -227,8 +202,6 @@ function applyCaptureProperties(
 function createSingleScene(
   liveSet: LiveAPI,
   sceneIndex: number,
-  creationIndex: number,
-  count: number,
   name: string | undefined,
   color: string | undefined,
   tempo?: number | null,
@@ -237,10 +210,8 @@ function createSingleScene(
   liveSet.call("create_scene", sceneIndex);
   const scene = LiveAPI.from(livePath.scene(sceneIndex));
 
-  const sceneName = buildSceneName(name, creationIndex, count);
-
-  if (sceneName != null) {
-    scene.set("name", sceneName);
+  if (name != null) {
+    scene.set("name", name);
   }
 
   applySceneProperties(scene, { color, tempo, timeSignature });
