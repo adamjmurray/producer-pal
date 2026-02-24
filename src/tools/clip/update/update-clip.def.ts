@@ -8,7 +8,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
-  description: "Update clip(s), MIDI notes, and warp markers (audio clips)",
+  description: "Update clip(s), MIDI notes, and warp settings (audio clips)",
 
   annotations: {
     readOnlyHint: false,
@@ -142,28 +142,34 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe("limit quantization to specific pitch (e.g., C3, D#4)"),
 
     // Warp marker parameters
-    warpOp: z
-      .enum(["add", "move", "remove"])
-      .optional()
-      .describe(
-        'warp marker operation: "add" (create at beat), "move" (shift by distance), "remove" (delete at beat)',
-      ),
-    warpBeatTime: z.coerce
-      .number()
-      .optional()
-      .describe(
-        "beat position from clip 1.1.1 (exact value from read-clip for move/remove, target for add)",
-      ),
-    warpSampleTime: z.coerce
-      .number()
-      .optional()
-      .describe(
-        "sample time in seconds (optional for add - omit to preserve timing)",
-      ),
-    warpDistance: z.coerce
-      .number()
-      .optional()
-      .describe("beats to shift (+forward, -backward) for move operation"),
+    ...(process.env.ENABLE_WARP_MARKERS === "true"
+      ? {
+          warpOp: z
+            .enum(["add", "move", "remove"])
+            .optional()
+            .describe(
+              'warp marker operation: "add" (create at beat), "move" (shift by distance), "remove" (delete at beat)',
+            ),
+          warpBeatTime: z.coerce
+            .number()
+            .optional()
+            .describe(
+              "beat position from clip 1.1.1 (exact value from read-clip for move/remove, target for add)",
+            ),
+          warpSampleTime: z.coerce
+            .number()
+            .optional()
+            .describe(
+              "sample time in seconds (optional for add - omit to preserve timing)",
+            ),
+          warpDistance: z.coerce
+            .number()
+            .optional()
+            .describe(
+              "beats to shift (+forward, -backward) for move operation",
+            ),
+        }
+      : {}),
   },
 
   smallModelModeConfig: {

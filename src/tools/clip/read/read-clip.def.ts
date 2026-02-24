@@ -34,7 +34,7 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .array(z.enum(["sample", "notes", "color", "timing", "warp", "*"]))
       .default([])
       .describe(
-        'notes = MIDI data. timing = loop/start/end markers. sample = audio file info. warp = warp markers. color. "*" = all',
+        'notes = MIDI data. timing = loop/start/end markers. sample = audio file info. warp = warp settings. color. "*" = all',
       ),
   },
 });
