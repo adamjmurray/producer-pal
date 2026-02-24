@@ -30,7 +30,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
       expect(result.message).toContain('contains "created successfully"');
     });
 
@@ -43,7 +43,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
       expect(result.message).toContain("Expected response to contain");
     });
 
@@ -56,7 +56,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("escapes regex special characters in string patterns", () => {
@@ -68,7 +68,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
   });
 
@@ -82,7 +82,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("fails when response does not match regex", () => {
@@ -94,7 +94,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
     });
 
     it("includes regex pattern in message", () => {
@@ -121,7 +121,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
       expect(result.message).toContain("not contains");
     });
 
@@ -135,7 +135,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
       expect(result.message).toContain("to not contain");
     });
   });
@@ -154,7 +154,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("fails when pattern not in specified turn", () => {
@@ -170,7 +170,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
     });
 
     it("checks all turns when turn is any or undefined", () => {
@@ -186,7 +186,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("handles out-of-range turn index gracefully", () => {
@@ -199,7 +199,7 @@ describe("assertResponseContains", () => {
 
       const result = assertResponseContains(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
     });
   });
 

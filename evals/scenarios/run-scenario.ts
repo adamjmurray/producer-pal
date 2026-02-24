@@ -27,7 +27,6 @@ import {
   getDefaultModel,
   type EvalSession,
 } from "./eval-session.ts";
-import { computeCorrectnessBreakdown } from "./helpers/correctness-score.ts";
 import { isQuietMode } from "./helpers/output-config.ts";
 import { openLiveSet } from "./open-live-set.ts";
 import {
@@ -40,6 +39,20 @@ import {
   type EvalProvider,
   type MatrixConfigValues,
 } from "./types.ts";
+
+/**
+ * Sum a numeric field across assertion results
+ *
+ * @param results - Assertion results to sum
+ * @param field - Field name to sum
+ * @returns Sum of the field values
+ */
+function sumField(
+  results: EvalAssertionResult[],
+  field: "earned" | "maxScore",
+): number {
+  return results.reduce((sum, r) => sum + r[field], 0);
+}
 
 const LIVE_SETS_DIR = "evals/live-sets";
 
@@ -147,21 +160,21 @@ export async function runScenario(
       correctnessAssertions,
       turns,
       session,
-      provider,
-      judgeOverride,
     );
 
-    // Print correctness summary
-    const { earned, max, score } =
-      computeCorrectnessBreakdown(correctnessResults);
+    // Print correctness subtotal
+    const correctnessEarned = sumField(correctnessResults, "earned");
+    const correctnessMax = sumField(correctnessResults, "maxScore");
 
-    if (max > 0) {
+    if (correctnessMax > 0) {
+      const pct = ((correctnessEarned / correctnessMax) * 100).toFixed(0);
+
       console.log(
-        `\nCorrectness: ${earned}/${max} points (${score.toFixed(2)}/5)`,
+        `\nCorrectness: ${correctnessEarned}/${correctnessMax} (${pct}%)`,
       );
     }
 
-    // Run LLM judge assertions (without printing pass/fail)
+    // Run LLM judge assertions
     const judgeResults = await runJudgeAssertions(
       judgeAssertions,
       turns,
@@ -170,14 +183,16 @@ export async function runScenario(
     );
 
     const assertionResults = [...correctnessResults, ...judgeResults];
-    const passed = assertionResults.every((r) => r.passed);
+    const earnedScore = sumField(assertionResults, "earned");
+    const maxScore = sumField(assertionResults, "maxScore");
 
     return {
       scenario,
       configProfileId: profileId,
       turns,
       assertions: assertionResults,
-      passed,
+      earnedScore,
+      maxScore,
       totalDurationMs: Date.now() - startTime,
     };
   } catch (error) {
@@ -186,7 +201,8 @@ export async function runScenario(
       configProfileId: options.configProfile?.id,
       turns,
       assertions: [],
-      passed: false,
+      earnedScore: 0,
+      maxScore: 0,
       totalDurationMs: Date.now() - startTime,
       error: error instanceof Error ? error.message : String(error),
     };
@@ -210,16 +226,12 @@ export async function runScenario(
  * @param assertions - Assertions to run
  * @param turns - Completed conversation turns
  * @param session - Active evaluation session
- * @param _provider - LLM provider (unused, kept for signature compatibility)
- * @param _judgeOverride - Judge override (unused, kept for signature compatibility)
  * @returns Array of assertion results
  */
 async function runAssertions(
   assertions: EvalAssertion[],
   turns: EvalTurnResult[],
   session: EvalSession,
-  _provider: EvalProvider,
-  _judgeOverride?: JudgeOverride,
 ): Promise<EvalAssertionResult[]> {
   const results: EvalAssertionResult[] = [];
 
@@ -230,7 +242,7 @@ async function runAssertions(
 
     // Show results in verbose mode
     if (!isQuietMode()) {
-      const status = result.passed ? "✓" : "✗";
+      const status = result.earned === result.maxScore ? "✓" : "✗";
 
       console.log(`  ${status} ${result.message}`);
     }
@@ -298,7 +310,8 @@ async function runCorrectnessAssertion(
     default:
       return {
         assertion,
-        passed: false,
+        earned: 0,
+        maxScore: 0,
         message: `Unknown assertion type: ${(assertion as EvalAssertion).type}`,
       };
   }

@@ -191,15 +191,6 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     }
 
     printSummary(resultsByScenario, modelSpecs, configProfiles);
-
-    // Exit with error code if any scenario failed
-    const allPassed = [...resultsByScenario.values()].every((modelResults) =>
-      [...modelResults.values()].every((configResults) =>
-        [...configResults.values()].every((r) => r.passed),
-      ),
-    );
-
-    process.exit(allPassed ? 0 : 1);
   } catch (error) {
     console.error(
       "Error:",
@@ -232,25 +223,32 @@ function printSummary(
   const allResults = [...resultsByScenario.values()].flatMap((modelMap) =>
     [...modelMap.values()].flatMap((configMap) => [...configMap.values()]),
   );
-  const passed = allResults.filter((r) => r.passed).length;
-  const failed = allResults.length - passed;
 
   console.log("\n" + "=".repeat(50));
-  console.log(`Summary: ${passed}/${allResults.length} passed`);
+  console.log("Summary:");
 
-  if (failed > 0) {
-    console.log(`\nFailed scenarios:`);
+  for (const result of allResults) {
+    const pct =
+      result.maxScore > 0
+        ? ((result.earnedScore / result.maxScore) * 100).toFixed(0)
+        : "100";
 
-    for (const result of allResults.filter((r) => !r.passed)) {
-      console.log(`  - ${result.scenario.id}`);
+    console.log(
+      `  ${result.scenario.id}: ${formatScore(result.earnedScore)}/${result.maxScore} (${pct}%)`,
+    );
 
-      if (result.error) {
-        console.log(`    Error: ${result.error}`);
-      }
-
-      for (const assertion of result.assertions.filter((a) => !a.passed)) {
-        console.log(`    ✗ ${assertion.message}`);
-      }
+    if (result.error) {
+      console.log(`    Error: ${result.error}`);
     }
   }
+}
+
+/**
+ * Format a score for display (integer if whole, 1 decimal otherwise)
+ *
+ * @param score - The score to format
+ * @returns Formatted score string
+ */
+function formatScore(score: number): string {
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
 }

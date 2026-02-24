@@ -54,7 +54,7 @@ describe("assertState", () => {
 
       const result = await assertState(assertion, mockClient);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
       expect(result.message).toContain("passed");
       expect(mockClient.callTool).toHaveBeenCalledWith({
         name: "read-track",
@@ -80,7 +80,7 @@ describe("assertState", () => {
 
       const result = await assertState(assertion, mockClient);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("fails when state does not match expected", async () => {
@@ -96,7 +96,7 @@ describe("assertState", () => {
 
       const result = await assertState(assertion, mockClient);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
       expect(result.message).toContain("failed");
       const details = result.details as StateDetails;
 
@@ -120,7 +120,7 @@ describe("assertState", () => {
 
       const result = await assertState(assertion, mockClient);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
     });
   });
 
@@ -142,7 +142,7 @@ describe("assertState", () => {
 
       const result = await assertState(assertion, mockClient);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
       const details = result.details as StateDetails;
 
       expect(details.expected).toBe("(custom function)");
@@ -165,7 +165,7 @@ describe("assertState", () => {
 
       const result = await assertState(assertion, mockClient);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
     });
   });
 
@@ -181,7 +181,7 @@ describe("assertState", () => {
 
       const result = await assertState(assertion, mockClient);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
       const details = result.details as StateDetails;
 
       expect(details.actual).toBe("Connected to Ableton");
@@ -198,7 +198,7 @@ describe("assertState", () => {
 
       const result = await assertState(assertion, mockClient);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
   });
 
@@ -216,7 +216,7 @@ describe("assertState", () => {
 
       const result = await assertState(assertion, mockClient);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
       expect(result.message).toContain("error");
       expect(result.message).toContain("Connection refused");
       const details = result.details as StateDetails;
@@ -237,7 +237,7 @@ describe("assertState", () => {
 
       const result = await assertState(assertion, mockClient);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
       const details = result.details as StateDetails;
 
       expect(details.error).toContain("string error");

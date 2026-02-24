@@ -39,6 +39,8 @@ export function assertResponseContains(
   const shouldFind = !assertion.negate;
   const passed = found === shouldFind;
 
+  const maxScore = assertion.score ?? 1;
+
   const patternDesc =
     typeof assertion.pattern === "string"
       ? `"${assertion.pattern}"`
@@ -48,7 +50,8 @@ export function assertResponseContains(
 
   return {
     assertion,
-    passed,
+    earned: passed ? maxScore : 0,
+    maxScore,
     message: passed
       ? `Response ${negateDesc}contains ${patternDesc}`
       : `Expected response to ${negateDesc}contain ${patternDesc}`,

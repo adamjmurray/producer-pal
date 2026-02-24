@@ -17,13 +17,13 @@ export const duplicate: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
 
     // Turn 1: Track duplication
-    { type: "tool_called", tool: "ppal-duplicate", turn: 1 },
+    { type: "tool_called", tool: "ppal-duplicate", turn: 1, score: 5 },
 
     // Verify response mentions duplication
-    { type: "response_contains", pattern: /duplicat/i, turn: 1 },
+    { type: "response_contains", pattern: /duplicat/i, turn: 1, score: 2 },
 
     // LLM quality check
     {
@@ -31,7 +31,7 @@ export const duplicate: EvalScenario = {
       prompt: `Evaluate if the assistant:
 1. Successfully duplicated the Drums track
 2. Confirmed the operation completed`,
-      minScore: 4,
+      score: 10,
     },
   ],
 };
