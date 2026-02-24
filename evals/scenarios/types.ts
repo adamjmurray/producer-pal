@@ -14,7 +14,12 @@ export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
 // Re-export ConfigOptions for convenience
 export type { ConfigOptions };
 
-export type EvalProvider = "anthropic" | "google" | "openai" | "openrouter";
+export type EvalProvider =
+  | "anthropic"
+  | "google"
+  | "local"
+  | "openai"
+  | "openrouter";
 
 /**
  * Config values that are orthogonal to scenarios and vary as a matrix dimension.

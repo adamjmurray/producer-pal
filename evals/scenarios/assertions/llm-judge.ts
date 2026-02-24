@@ -208,6 +208,10 @@ async function callJudgeLlm(
         model,
         criteria,
       );
+    case "local":
+      throw new Error(
+        "Local provider cannot be used as LLM judge. Set judgeProvider to a cloud provider.",
+      );
 
     default: {
       const _exhaustiveCheck: never = provider;

@@ -20,6 +20,7 @@ export interface ModelSpec {
 const VALID_PROVIDERS: EvalProvider[] = [
   "anthropic",
   "google",
+  "local",
   "openai",
   "openrouter",
 ];

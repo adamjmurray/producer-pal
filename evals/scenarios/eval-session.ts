@@ -14,6 +14,7 @@ import { type GeminiResponse } from "#evals/shared/gemini-types.ts";
 import {
   ANTHROPIC_CONFIG,
   GEMINI_CONFIG,
+  LOCAL_CONFIG,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
   validateApiKey,
@@ -40,6 +41,10 @@ export function getDefaultModel(provider: EvalProvider): string {
       return OPENAI_CONFIG.defaultModel;
     case "openrouter":
       return OPENROUTER_CONFIG.defaultModel;
+    case "local":
+      throw new Error(
+        "No default model for local provider. Specify with -m local/model-name",
+      );
 
     default: {
       const _exhaustiveCheck: never = provider;
@@ -95,6 +100,12 @@ export async function createEvalSession(
       return await createOpenAIProviderSession(
         mcpClient,
         OPENROUTER_CONFIG,
+        options,
+      );
+    case "local":
+      return await createOpenAIProviderSession(
+        mcpClient,
+        LOCAL_CONFIG,
         options,
       );
 

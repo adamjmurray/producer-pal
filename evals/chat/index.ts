@@ -7,6 +7,7 @@ import { Command } from "commander";
 import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
 import { runAnthropic } from "./anthropic.ts";
 import { runGemini } from "./gemini.ts";
+import { runLocal } from "./local/index.ts";
 import { runOpenAI } from "./openai/index.ts";
 import { runOpenRouter } from "./openrouter/index.ts";
 import { type ChatOptions } from "./shared/types.ts";
@@ -15,6 +16,7 @@ const program = new Command();
 
 interface RawChatOptions extends Omit<ChatOptions, "provider" | "model"> {
   model: string;
+  baseUrl?: string;
 }
 
 program
@@ -53,6 +55,10 @@ program
     "Multiple messages to send in sequence",
   )
   .option("-f, --file <path>", "File containing messages (one per line)")
+  .option(
+    "-b, --base-url <url>",
+    "Base URL for local provider (default: http://localhost:11434/v1)",
+  )
   .argument("[text...]", "Initial text to start conversation")
   .action(async (textArray: string[], rawOptions: RawChatOptions) => {
     const initialText = textArray.join(" ");
@@ -60,6 +66,11 @@ program
     // Parse model argument to get provider and model
     const { provider, model } = parseModelArg(rawOptions.model);
     const options: ChatOptions = { ...rawOptions, provider, model };
+
+    // Apply --base-url to env so LOCAL_CONFIG.createClient picks it up
+    if (rawOptions.baseUrl) {
+      process.env.LOCAL_BASE_URL = rawOptions.baseUrl;
+    }
 
     // Warn if --api is used with Anthropic/Google (only applies to openai/openrouter)
     if (
@@ -77,6 +88,9 @@ program
         break;
       case "google":
         await runGemini(initialText, options);
+        break;
+      case "local":
+        await runLocal(initialText, options);
         break;
       case "openai":
         await runOpenAI(initialText, options);
