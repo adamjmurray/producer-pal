@@ -16,11 +16,10 @@ describe("processThoughtText", () => {
       expect(result.text).toBeUndefined();
     });
 
-    it("formats thought content with box characters", () => {
+    it("formats thought content with header box", () => {
       const result = processThoughtText("thinking...", true, false);
 
       expect(result.output).toContain("╔");
-      expect(result.output).toContain("║");
     });
   });
 
@@ -30,7 +29,6 @@ describe("processThoughtText", () => {
 
       expect(result.inThought).toBe(true);
       expect(result.output).not.toContain("<THOUGHT>");
-      expect(result.output).toContain("║");
       expect(result.output).toContain("more thinking");
       expect(result.text).toBeUndefined();
     });
@@ -62,7 +60,6 @@ describe("processThoughtText", () => {
 
       expect(result.output).not.toContain("╔");
       expect(result.output).not.toContain("╚");
-      expect(result.output).not.toContain("║");
       expect(result.output).not.toContain("<THOUGHT>");
       expect(result.output).not.toContain("<end_thought>");
     });
@@ -81,8 +78,7 @@ describe("processThoughtText", () => {
       const result = processThoughtText("line1\nline2", true, true);
 
       expect(result.inThought).toBe(true);
-      expect(result.output).toContain("║ line1");
-      expect(result.output).toContain("║ line2");
+      expect(result.output).toContain("line1\nline2");
     });
   });
 });
