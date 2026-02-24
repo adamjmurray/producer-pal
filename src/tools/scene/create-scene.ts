@@ -90,12 +90,18 @@ export function createScene(
   const createdScenes: SceneResult[] = [];
   let currentIndex = validatedSceneIndex;
 
+  const parsedNames = parseCommaSeparated(name, count);
+  const parsedColors = parseCommaSeparated(color, count);
+
   for (let i = 0; i < count; i++) {
+    const sceneName = getNameForIndex(name, i, parsedNames);
+    const sceneColor = getColorForIndex(color, i, parsedColors);
+
     const sceneResult = createSingleScene(
       liveSet,
       currentIndex,
-      name,
-      color,
+      sceneName,
+      sceneColor,
       tempo,
       timeSignature,
     );
@@ -191,9 +197,7 @@ function applyCaptureProperties(
  * Creates a single scene with the specified properties
  * @param liveSet - The LiveAPI live_set object
  * @param sceneIndex - The scene index
- * @param creationIndex - 0-based index in the creation sequence
- * @param count - Total count of scenes being created
- * @param name - Base name for the scene
+ * @param name - Name for the scene
  * @param color - Color for the scene
  * @param tempo - Tempo for the scene
  * @param timeSignature - Time signature for the scene
@@ -220,4 +224,59 @@ function createSingleScene(
     id: scene.id,
     sceneIndex,
   };
+}
+
+/**
+ * Parse comma-separated string when count > 1
+ * @param value - Input string that may contain commas
+ * @param count - Number of scenes being created
+ * @returns Array of trimmed values, or null if not applicable
+ */
+function parseCommaSeparated(
+  value: string | undefined,
+  count: number,
+): string[] | null {
+  if (count <= 1 || !value?.includes(",")) {
+    return null;
+  }
+
+  return value.split(",").map((v) => v.trim());
+}
+
+/**
+ * Get name for a specific scene index in a batch
+ * @param baseName - Base name string
+ * @param index - Current scene index in the batch
+ * @param parsedNames - Comma-separated names (when count > 1), or null
+ * @returns Scene name, or undefined if no name should be set
+ */
+function getNameForIndex(
+  baseName: string | undefined,
+  index: number,
+  parsedNames: string[] | null,
+): string | undefined {
+  if (baseName == null) return;
+  if (parsedNames == null) return baseName;
+
+  return index < parsedNames.length
+    ? (parsedNames[index] as string)
+    : undefined;
+}
+
+/**
+ * Get color for a specific scene index, cycling through parsed colors
+ * @param color - Original color string
+ * @param index - Current scene index in the batch
+ * @param parsedColors - Comma-separated colors (when count > 1), or null
+ * @returns Color for this scene, or undefined
+ */
+function getColorForIndex(
+  color: string | undefined,
+  index: number,
+  parsedColors: string[] | null,
+): string | undefined {
+  if (color == null) return;
+  if (parsedColors == null) return color;
+
+  return parsedColors[index % parsedColors.length] as string;
 }

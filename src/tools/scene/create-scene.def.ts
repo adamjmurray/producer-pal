@@ -31,8 +31,8 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       .boolean()
       .default(false)
       .describe("copy playing session clips instead of creating empty?"),
-    name: z.string().optional().describe("name"),
-    color: z.string().optional().describe("#RRGGBB"),
+    name: z.string().optional().describe("name (comma-separated for multiple)"),
+    color: z.string().optional().describe("#RRGGBB (comma-separated cycles)"),
     tempo: z.coerce
       .number()
       .optional()

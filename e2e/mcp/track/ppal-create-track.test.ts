@@ -187,6 +187,32 @@ describe("ppal-create-track", () => {
     expect(kickTrack.name).toBe("Kick");
     expect(snareTrack.name).toBe("Snare");
 
+    // Test 3: Create multiple tracks with comma-separated colors
+    const multiColorResult = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { count: 2, name: "Red,Green", color: "#FF0000,#00FF00" },
+    });
+    const multiColor = parseToolResult<CreateTrackResult[]>(multiColorResult);
+
+    expect(multiColor).toHaveLength(2);
+
+    await sleep(100);
+    const verifyRed = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackId: multiColor[0]!.id, include: ["color"] },
+    });
+    const verifyGreen = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackId: multiColor[1]!.id, include: ["color"] },
+    });
+    const redTrack = parseToolResult<ReadTrackResult>(verifyRed);
+    const greenTrack = parseToolResult<ReadTrackResult>(verifyGreen);
+
+    expect(redTrack.name).toBe("Red");
+    expect(greenTrack.name).toBe("Green");
+    expect(redTrack.color).toBeDefined();
+    expect(greenTrack.color).toBeDefined();
+
     // Verify track count increased
     const finalResult = await ctx.client!.callTool({
       name: "ppal-read-live-set",
@@ -195,7 +221,7 @@ describe("ppal-create-track", () => {
     const final = parseToolResult<LiveSetResult>(finalResult);
     const finalTrackCount = final.tracks?.length ?? 0;
 
-    // Created: 2 batch + 2 multi-name = 4
+    // Created: 2 batch + 2 multi-name + 2 multi-color = 6
     expect(finalTrackCount).toBeGreaterThan(initialTrackCount);
   });
 });
