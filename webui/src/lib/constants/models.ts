@@ -56,12 +56,8 @@ export const OPENROUTER_MODELS = [
     value: "openai/gpt-5.2-codex",
     label: "[Paid] OpenAI GPT-5.2 Codex",
   },
-  { value: "x-ai/grok-4.1-fast", label: "[Paid] xAI Grok 4.1 Fast" },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "qwen/qwen3.5-397b-a17b", label: "[Paid] Qwen 3.5" },
-  { value: "minimax/minimax-m2.5", label: "[Paid] MiniMax M2.5" },
-  { value: "z-ai/glm-5", label: "[Paid] Z.AI GLM 5" },
-  { value: "moonshotai/kimi-k2.5", label: "[Paid] Kimi K2.5" },
   // Free models
   { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
   { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },
