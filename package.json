@@ -80,8 +80,10 @@
     "docs:test": "npm run docs:build && playwright test -c config/playwright.docs.config.ts",
     "docs:test:dev": "npm run docs:build && playwright test -c config/playwright.docs.config.ts --ui",
     "docs:test:headed": "npm run docs:build && playwright test -c config/playwright.docs.config.ts --headed",
+    "e2e:docs": "npm run docs:test",
     "e2e:mcp": "vitest run -c config/vitest.e2e.config.ts",
-    "e2e:mcp:watch": "vitest -c config/vitest.e2e.config.ts"
+    "e2e:mcp:watch": "vitest -c config/vitest.e2e.config.ts",
+    "e2e:webui": "npm run ui:test"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
