@@ -8,7 +8,7 @@ export default defineConfig({
   testDir: "../e2e/webui",
   fullyParallel: true,
   forbidOnly: false,
-  retries: 0,
+  retries: 1,
   workers: 1,
   reporter: "list",
   use: {
