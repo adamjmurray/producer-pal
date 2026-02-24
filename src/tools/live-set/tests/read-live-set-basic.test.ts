@@ -192,7 +192,7 @@ describe("readLiveSet - basic reading", () => {
       scenes: [
         {
           id: "scene1",
-          name: "Scene 1 (1)",
+          name: "Scene 1",
           sceneIndex: 0,
           clipCount: 2,
           tempo: 120,
@@ -200,14 +200,14 @@ describe("readLiveSet - basic reading", () => {
         },
         {
           id: "scene2",
-          name: "Scene 2 (2)",
+          name: "Scene 2",
           sceneIndex: 1,
           clipCount: 0,
           triggered: true,
         },
         {
           id: "scene3",
-          name: "Scene 3 (3)",
+          name: "Scene 3",
           sceneIndex: 2,
           clipCount: 1,
           tempo: 120,

@@ -185,10 +185,10 @@ describe("ppal-duplicate", () => {
       arguments: { sceneId: dupMultipleScenes[1]!.id },
     });
 
-    expect(parseToolResult<{ name: string }>(readScene1).name).toContain(
+    expect(parseToolResult<{ name: string }>(readScene1).name).toBe(
       "Batch Scene",
     );
-    expect(parseToolResult<{ name: string }>(readScene2).name).toContain(
+    expect(parseToolResult<{ name: string }>(readScene2).name).toBe(
       "Batch Scene",
     );
   });

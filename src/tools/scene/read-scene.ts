@@ -82,12 +82,11 @@ export function readScene(
   const isTimeSignatureEnabled =
     (scene.getProperty("time_signature_enabled") as number) > 0;
 
-  const sceneName = scene.getProperty("name") as string | null;
-  // resolvedSceneIndex is guaranteed to be a number at this point (either from sceneIndex param or scene.sceneIndex)
-  const sceneNum = resolvedSceneIndex as number;
+  const rawName = scene.getProperty("name") as string | null;
+  const sceneName = rawName === "" ? null : rawName;
   const result: ReadSceneResult = {
     id: scene.id,
-    name: sceneName ? `${sceneName} (${sceneNum + 1})` : `${sceneNum + 1}`,
+    name: sceneName ?? `${(resolvedSceneIndex as number) + 1}`,
     sceneIndex: resolvedSceneIndex,
     ...(includeColor && { color: scene.getColor() }),
   };
@@ -127,7 +126,7 @@ export function readScene(
     result.clips = clips;
   } else {
     // Lightweight clip counting — only check existence instead of reading full clip properties
-    result.clipCount = countSceneClips(liveSet, sceneNum);
+    result.clipCount = countSceneClips(liveSet, resolvedSceneIndex as number);
   }
 
   return result;

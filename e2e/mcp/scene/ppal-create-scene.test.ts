@@ -43,7 +43,7 @@ describe("ppal-create-scene", () => {
     });
     const namedScene = parseToolResult<ReadSceneResult>(verifyNamed);
 
-    expect(namedScene.name).toContain("Test Scene");
+    expect(namedScene.name).toBe("Test Scene");
 
     // Test 3: Create scene with color
     const coloredResult = await ctx.client!.callTool({
@@ -139,8 +139,8 @@ describe("ppal-create-scene", () => {
     const firstScene = parseToolResult<ReadSceneResult>(verifyFirst);
     const secondScene = parseToolResult<ReadSceneResult>(verifySecond);
 
-    expect(firstScene.name).toContain("Multi");
-    expect(secondScene.name).toContain("Multi");
+    expect(firstScene.name).toBe("Multi");
+    expect(secondScene.name).toBe("Multi");
 
     // Test 3: Create multiple scenes with comma-separated names and colors
     const csvResult = await ctx.client!.callTool({
@@ -168,8 +168,8 @@ describe("ppal-create-scene", () => {
     const csvScene1 = parseToolResult<ReadSceneResult>(verifyCsv1);
     const csvScene2 = parseToolResult<ReadSceneResult>(verifyCsv2);
 
-    expect(csvScene1.name).toContain("Intro");
-    expect(csvScene2.name).toContain("Verse");
+    expect(csvScene1.name).toBe("Intro");
+    expect(csvScene2.name).toBe("Verse");
     expect(csvScene1.color).toBeDefined();
     expect(csvScene2.color).toBeDefined();
 

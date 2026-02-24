@@ -43,7 +43,7 @@ describe("ppal-update-scene", () => {
     });
     const namedScene = parseToolResult<ReadSceneResult>(afterName);
 
-    expect(namedScene.name).toContain("Renamed Scene");
+    expect(namedScene.name).toBe("Renamed Scene");
 
     // Test 2: Update scene color
     await ctx.client!.callTool({
@@ -147,8 +147,8 @@ describe("ppal-update-scene", () => {
     const firstScene = parseToolResult<ReadSceneResult>(verifyFirst);
     const secondScene = parseToolResult<ReadSceneResult>(verifySecond);
 
-    expect(firstScene.name).toContain("BatchUpdated");
-    expect(secondScene.name).toContain("BatchUpdated");
+    expect(firstScene.name).toBe("BatchUpdated");
+    expect(secondScene.name).toBe("BatchUpdated");
   });
 });
 
