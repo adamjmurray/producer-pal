@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   applyTransformsToExistingNotes,
   buildClipContext,
@@ -43,6 +44,31 @@ describe("update-clip-transform-helpers", () => {
 
       expect(ctx.clipDuration).toBe(8);
       expect(ctx.arrangementStart).toBeUndefined();
+    });
+
+    it("includes scalePitchClassMask when scale is active", () => {
+      registerMockObject("live_set", {
+        path: "live_set",
+        type: "Song",
+        properties: {
+          scale_mode: 1,
+          root_note: 0,
+          scale_intervals: [0, 2, 4, 5, 7, 9, 11], // C major
+        },
+      });
+
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "length") return 8;
+          if (prop === "is_arrangement_clip") return 0;
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+
+      expect(ctx.scalePitchClassMask).toBe(2741);
     });
 
     it("uses arrangement length (end_time - start_time) for arrangement clips", () => {

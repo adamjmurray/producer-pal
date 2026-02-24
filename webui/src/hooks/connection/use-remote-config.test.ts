@@ -150,6 +150,19 @@ describe("useRemoteConfig", () => {
     });
   });
 
+  it("keeps default state when response is not ok", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+    } as Response);
+
+    const { result } = renderHook(() => useRemoteConfig("connected"));
+
+    // Wait for the fetch to resolve, then verify state stayed at default
+    await waitFor(() => {
+      expect(result.current.smallModelMode).toBe(false);
+    });
+  });
+
   it("handles fetch error on mount gracefully", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
 
