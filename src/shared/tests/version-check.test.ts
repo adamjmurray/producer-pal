@@ -52,6 +52,27 @@ describe("isNewerVersion", () => {
     expect(isNewerVersion("12.4b7   ", "12.3.0")).toBe(false);
     expect(isNewerVersion("12.2   ", "12.3.0")).toBe(true);
   });
+
+  it("treats dash-delimited pre-release as earlier than stable", () => {
+    // current is pre-release, latest is stable → latest is newer
+    expect(isNewerVersion("1.2.3-beta", "1.2.3")).toBe(true);
+    expect(isNewerVersion("1.2.3-rc1", "1.2.3")).toBe(true);
+  });
+
+  it("does not treat pre-release latest as newer than same stable", () => {
+    // latest has suffix, current doesn't → latest is NOT newer
+    expect(isNewerVersion("1.2.3", "1.2.3-beta")).toBe(false);
+  });
+
+  it("treats both pre-release versions as equal", () => {
+    expect(isNewerVersion("1.2.3-beta", "1.2.3-rc1")).toBe(false);
+    expect(isNewerVersion("1.2.3-rc1", "1.2.3-beta")).toBe(false);
+  });
+
+  it("numeric difference takes priority over pre-release suffix", () => {
+    expect(isNewerVersion("1.2.3", "1.2.4-beta")).toBe(true);
+    expect(isNewerVersion("1.2.4", "1.2.3-beta")).toBe(false);
+  });
 });
 
 describe("checkForUpdate", () => {

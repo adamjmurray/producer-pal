@@ -218,6 +218,7 @@ describe("update-clip-arrangement-helpers", () => {
 
       const mockClip = {
         id: "200",
+        exists: () => true,
         getProperty: vi.fn((prop) => {
           if (prop === "is_arrangement_clip") return 1;
 
@@ -244,6 +245,49 @@ describe("update-clip-arrangement-helpers", () => {
       expect(trackMock.call).not.toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         expect.anything(),
+        expect.anything(),
+      );
+      // Should still increment move count
+      expect(tracksWithMovedClips.get(trackIndex)).toBe(1);
+    });
+
+    it("should warn and skip deletion for already-deleted non-survivor clips", () => {
+      const trackIndex = 0;
+
+      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
+        path: `live_set tracks ${trackIndex}`,
+      });
+
+      const mockClip = {
+        id: "200",
+        exists: () => false,
+        getProperty: vi.fn((prop) => {
+          if (prop === "is_arrangement_clip") return 1;
+
+          return null;
+        }),
+        trackIndex,
+      };
+
+      const tracksWithMovedClips = new Map<number, number>();
+
+      const result = handleArrangementStartOperation({
+        clip: mockClip as unknown as LiveAPI,
+        arrangementStartBeats: 16,
+        tracksWithMovedClips,
+        isMidiClip: true,
+        context: mockContext,
+        isNonSurvivor: true,
+      });
+
+      expect(result).toBeNull();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "non-survivor clip 200 already deleted, skipping",
+      );
+      // Should NOT call delete_clip since clip doesn't exist
+      expect(trackMock.call).not.toHaveBeenCalledWith(
+        "delete_clip",
         expect.anything(),
       );
       // Should still increment move count

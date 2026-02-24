@@ -72,9 +72,13 @@ describe("parseSlotList", () => {
     );
   });
 
-  it("should throw for too many separators", () => {
-    expect(() => parseSlotList("0/1/2")).toThrow(
-      'invalid toSlot "0/1/2" - expected trackIndex/sceneIndex format',
+  it("should warn and use first two parts when extra separators present", () => {
+    const result = parseSlotList("0/1/2");
+
+    expect(result).toStrictEqual([{ trackIndex: 0, sceneIndex: 1 }]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'toSlot "0/1/2" has extra parts, using first two (trackIndex/sceneIndex)',
     );
   });
 

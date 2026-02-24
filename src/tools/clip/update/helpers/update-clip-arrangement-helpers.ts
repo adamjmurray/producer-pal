@@ -85,7 +85,11 @@ export function handleArrangementStartOperation({
 
   // Non-survivor: just delete, don't bother moving (it would be overwritten)
   if (isNonSurvivor) {
-    track.call("delete_clip", toLiveApiId(clip.id));
+    if (clip.exists()) {
+      track.call("delete_clip", toLiveApiId(clip.id));
+    } else {
+      console.warn(`non-survivor clip ${clip.id} already deleted, skipping`);
+    }
 
     return null;
   }

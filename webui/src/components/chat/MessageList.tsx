@@ -138,9 +138,11 @@ export function MessageList({
 }
 
 /**
- * Checks if message has content to display
+ * Checks if message has any parts to display. This checks for the presence of
+ * parts, not whether parts have non-empty content — messages with parts: []
+ * are system messages that shouldn't be rendered.
  * @param {UIMessage} message - Message to check
- * @returns {boolean} Whether the message has displayable content
+ * @returns {boolean} Whether the message has displayable parts
  */
 function hasContent(message: UIMessage): boolean {
   return message.parts.length > 0;

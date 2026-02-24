@@ -392,6 +392,26 @@ describe("Transform Waveforms", () => {
       expect(curve(0, 10, 20, 2)).toBe(10);
       expect(curve(0.5, 10, 20, 2)).toBeCloseTo(12.5, 10); // 10 + 10 * 0.25
     });
+
+    it("warns and clamps negative exponent to 0.001", () => {
+      const result = curve(0.5, 0, 1, -2);
+
+      expect(result).toBeCloseTo(curve(0.5, 0, 1, 0.001), 2);
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "curve() exponent must be > 0, got -2, clamping to 0.001",
+      );
+    });
+
+    it("warns and clamps zero exponent to 0.001", () => {
+      const result = curve(0.5, 0, 1, 0);
+
+      expect(result).toBeCloseTo(curve(0.5, 0, 1, 0.001), 2);
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "curve() exponent must be > 0, got 0, clamping to 0.001",
+      );
+    });
   });
 
   describe("ramp()", () => {
@@ -466,6 +486,23 @@ describe("Transform Waveforms", () => {
     it("uses default speed of 1", () => {
       expect(ramp(0.5, 0, 1)).toBe(0.5);
       expect(ramp(0.5, 0, 1, 1)).toBe(0.5);
+    });
+
+    it("warns and clamps negative speed to 0 (returns start value)", () => {
+      expect(ramp(0.5, 10, 20, -1)).toBe(10);
+      expect(ramp(0.5, 0, 1, -5)).toBe(0);
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "ramp() speed must be > 0, got -1, clamping to 0",
+      );
+    });
+
+    it("warns and clamps zero speed to 0 (returns start value)", () => {
+      expect(ramp(0.5, 10, 20, 0)).toBe(10);
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "ramp() speed must be > 0, got 0, clamping to 0",
+      );
     });
   });
 });

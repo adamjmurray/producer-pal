@@ -10,6 +10,8 @@
  * Phase is normalized (0.0-1.0 represents one complete cycle).
  */
 
+import * as console from "#src/shared/v8-max-console.ts";
+
 /**
  * Cosine wave generator
  * @param phase - Phase in cycles (0.0-1.0)
@@ -105,6 +107,11 @@ export function ramp(
   end: number,
   speed = 1,
 ): number {
+  if (speed <= 0) {
+    console.warn(`ramp() speed must be > 0, got ${speed}, clamping to 0`);
+    speed = 0;
+  }
+
   // Apply speed multiplier and clamp to 0-1 range (reaches end value at phase 1.0)
   const scaledPhase = Math.min(phase * speed, 1.0);
 
@@ -148,6 +155,13 @@ export function curve(
   end: number,
   exponent: number,
 ): number {
+  if (exponent <= 0) {
+    console.warn(
+      `curve() exponent must be > 0, got ${exponent}, clamping to 0.001`,
+    );
+    exponent = 0.001;
+  }
+
   const clampedPhase = Math.min(phase, 1.0);
   const curvedPhase = Math.pow(clampedPhase, exponent);
 

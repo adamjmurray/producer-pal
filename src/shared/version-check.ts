@@ -63,7 +63,9 @@ export function isNewerVersion(current: string, latest: string): boolean {
     if (l < c) return false;
   }
 
-  return false;
+  // Numeric parts are equal — check pre-release suffixes (e.g., "-beta", "-rc1").
+  // A version with a suffix is earlier than the same version without one.
+  return hasPreReleaseSuffix(current) && !hasPreReleaseSuffix(latest);
 }
 
 function parseVersionParts(version: string): number[] {
@@ -75,4 +77,20 @@ function parseVersionParts(version: string): number[] {
 
   // parseInt stops at first non-numeric char, handling suffixes like "4b7"
   return cleaned.split(".").map((part) => Number.parseInt(part, 10));
+}
+
+/**
+ * Checks if a version string has a semver pre-release suffix (dash-delimited).
+ * Detects "-beta", "-rc1", etc. but NOT Ableton-style "12.4b7" (no dash).
+ * @param version - Version string to check
+ * @returns True if version contains a dash-delimited pre-release suffix
+ */
+function hasPreReleaseSuffix(version: string): boolean {
+  let cleaned = version.trim();
+
+  if (cleaned.startsWith("v")) {
+    cleaned = cleaned.slice(1);
+  }
+
+  return cleaned.includes("-");
 }

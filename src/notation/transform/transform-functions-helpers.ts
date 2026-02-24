@@ -139,8 +139,9 @@ export function evaluateSeq(
     throw new Error("Function seq() requires at least 1 argument");
   }
 
-  // MIDI: use note.index (per-note, resets per clip)
-  // Audio: use clip.index (per-clip)
+  // MIDI transforms set noteProperties.index (per-note, resets per clip).
+  // Audio transforms set noteProperties["clip:index"] (per-clip, sequential).
+  // The ?? chain auto-selects the right one; 0 fallback for edge cases.
   const index = noteProperties.index ?? noteProperties["clip:index"] ?? 0;
   const selectedIndex = index % args.length;
 
