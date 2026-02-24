@@ -449,60 +449,10 @@ describe("Transform Waveforms", () => {
       expect(ramp(0.5, 10, 20)).toBe(15);
     });
 
-    it("supports speed = 2 (reaches end at midpoint, stays)", () => {
-      // Speed 2: reaches end value at phase 0.5, clamped thereafter
-      expect(ramp(0, 0, 1, 2)).toBe(0);
-      expect(ramp(0.25, 0, 1, 2)).toBe(0.5); // halfway to end
-      expect(ramp(0.5, 0, 1, 2)).toBe(1); // reaches end value
-      expect(ramp(0.75, 0, 1, 2)).toBe(1); // stays at end value
-    });
-
-    it("supports speed = 0.5 (half ramp over period)", () => {
-      // Speed 0.5: completes half a ramp over phase 0-1
-      expect(ramp(0, 0, 1, 0.5)).toBe(0);
-      expect(ramp(0.5, 0, 1, 0.5)).toBe(0.25);
-      expect(ramp(1, 0, 1, 0.5)).toBe(0.5); // only reaches halfway
-    });
-
-    it("supports speed = 3 (reaches end at 1/3, stays)", () => {
-      // Speed 3: reaches end value at phase 1/3, clamped thereafter
-      expect(ramp(0, 0, 1, 3)).toBe(0);
-      expect(ramp(1 / 3, 0, 1, 3)).toBeCloseTo(1, 10); // reaches end value
-      expect(ramp(0.5, 0, 1, 3)).toBeCloseTo(1, 10); // stays at end value
-      expect(ramp(2 / 3, 0, 1, 3)).toBeCloseTo(1, 10); // stays at end value
-    });
-
     it("clamps at end value for phase > 1.0", () => {
       expect(ramp(1.25, 0, 1)).toBe(1);
       expect(ramp(2.0, 0, 1)).toBe(1);
       expect(ramp(2.5, 0, 1)).toBe(1);
-    });
-
-    it("clamps at end value for phase > 1.0 with speed", () => {
-      // Speed 2 with phase > 1 — already clamped
-      expect(ramp(1.25, 0, 1, 2)).toBe(1);
-    });
-
-    it("uses default speed of 1", () => {
-      expect(ramp(0.5, 0, 1)).toBe(0.5);
-      expect(ramp(0.5, 0, 1, 1)).toBe(0.5);
-    });
-
-    it("warns and clamps negative speed to 0 (returns start value)", () => {
-      expect(ramp(0.5, 10, 20, -1)).toBe(10);
-      expect(ramp(0.5, 0, 1, -5)).toBe(0);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "ramp() speed must be > 0, got -1, clamping to 0",
-      );
-    });
-
-    it("warns and clamps zero speed to 0 (returns start value)", () => {
-      expect(ramp(0.5, 10, 20, 0)).toBe(10);
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        "ramp() speed must be > 0, got 0, clamping to 0",
-      );
     });
   });
 });

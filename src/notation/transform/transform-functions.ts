@@ -134,7 +134,7 @@ export function evaluateFunction(
 
 /**
  * Evaluate ramp function
- * @param args - Function arguments
+ * @param args - Function arguments (exactly 2: start, end)
  * @param position - Note position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -152,13 +152,12 @@ function evaluateRamp(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
-  if (args.length < 2 || args.length > 3) {
+  if (args.length !== 2) {
     throw new Error(
-      `Function ramp() requires 2-3 arguments: ramp(start, end, speed?)`,
+      `Function ramp() requires exactly 2 arguments: ramp(start, end)`,
     );
   }
 
-  // First argument: start value
   const start = evaluateExpression(
     args[0] as ExpressionNode,
     position,
@@ -168,7 +167,6 @@ function evaluateRamp(
     noteProperties,
   );
 
-  // Second argument: end value
   const end = evaluateExpression(
     args[1] as ExpressionNode,
     position,
@@ -178,24 +176,6 @@ function evaluateRamp(
     noteProperties,
   );
 
-  // Optional third argument: speed (default 1)
-  let speed = 1;
-
-  if (args.length >= 3) {
-    speed = evaluateExpression(
-      args[2] as ExpressionNode,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-    );
-
-    if (speed <= 0) {
-      throw new Error(`Function ramp() speed must be > 0, got ${speed}`);
-    }
-  }
-
   // Calculate phase based on position within timeRange
   const timeRangeDuration = timeRange.end - timeRange.start;
   const phase =
@@ -203,7 +183,7 @@ function evaluateRamp(
       ? (position - timeRange.start) / timeRangeDuration
       : 0;
 
-  return waveforms.ramp(phase, start, end, speed);
+  return waveforms.ramp(phase, start, end);
 }
 
 /**

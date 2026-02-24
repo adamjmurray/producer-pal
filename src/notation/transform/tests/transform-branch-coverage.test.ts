@@ -91,22 +91,6 @@ describe("Transform Branch Coverage", () => {
       expect(result.velocity).toBeDefined();
       expect(typeof result.velocity!.value).toBe("number");
     });
-
-    it("handles ramp with zero duration and speed parameter", () => {
-      const result = evaluateTransform(
-        "velocity += ramp(0, 100, 2)",
-        {
-          position: 7,
-          timeSig: { numerator: 4, denominator: 4 },
-          clipTimeRange: { start: 7, end: 7 }, // Zero duration
-        },
-        { pitch: 60, velocity: 100 },
-      );
-
-      // Should handle gracefully with phase = 0
-      expect(result.velocity).toBeDefined();
-      expect(typeof result.velocity!.value).toBe("number");
-    });
   });
 
   describe("transform-evaluator-helpers.js branch coverage", () => {

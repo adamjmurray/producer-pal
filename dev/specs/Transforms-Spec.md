@@ -10,7 +10,7 @@ saw(frequency, [phase], [sync]); // sawtooth wave
 square(frequency, [phase], [pulseWidth], [sync]); // square wave
 rand([min], [max]); // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
 choose(a, b, ...); // random pick from arguments (at least 1)
-ramp(start, end, [speed]); // linear ramp over clip/time range
+ramp(start, end); // linear ramp over clip/time range
 curve(start, end, exponent); // exponential ramp over clip/time range
 
 // Math functions
@@ -51,11 +51,6 @@ pow(base, exponent); // base raised to exponent
 
 - **start** (ramp/curve): starting value (can use expressions/variables)
 - **end** (ramp/curve): ending value (can use expressions/variables)
-- **speed** (ramp only): optional speed multiplier, default 1 (can use
-  expressions/variables)
-  - 1 = one complete ramp over the clip/time range
-  - 2 = two complete ramps
-  - 0.5 = half a ramp (reaches midpoint at end)
 - **exponent** (curve only): curve shape, must be > 0 (can use
   expressions/variables)
   - > 1 = slow start, fast end (exponential)
@@ -112,9 +107,8 @@ velocity += 20 * square(2t, 0, 0.75, sync)
 
 - **ramp(start, end)**: linearly interpolates from start to end
   - At the beginning of the clip/range: outputs start value
-  - At the end of the clip/range: wraps back to start (phase 1.0 % 1.0 = 0)
+  - At the end of the clip/range: reaches end value
   - Example: ramp(0, 127) in a 4-bar clip goes 0→127 over 4 bars
-  - With speed: ramp(0, 127, 2) completes two full 0→127 cycles
 
 - **curve(start, end, exponent)**: exponentially interpolates from start to end
   - exponent > 1: slow start, fast end (exponential growth)
@@ -306,9 +300,6 @@ velocity += ramp(127, 0);
 
 // Ramp with arbitrary range
 velocity += ramp(64, 100);
-
-// Two complete ramps over clip duration
-velocity += ramp(0, 127, 2);
 
 // Combine ramp with periodic modulation
 velocity += ramp(20, 100) + 10 * rand();

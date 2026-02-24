@@ -98,25 +98,12 @@ export function square(phase: number, pulseWidth = 0.5): number {
  * @param phase - Phase in cycles (0.0-1.0)
  * @param start - Starting value
  * @param end - Ending value
- * @param speed - Speed multiplier (must be > 0)
  * @returns Interpolated value between start and end
  */
-export function ramp(
-  phase: number,
-  start: number,
-  end: number,
-  speed = 1,
-): number {
-  if (speed <= 0) {
-    console.warn(`ramp() speed must be > 0, got ${speed}, clamping to 0`);
-    speed = 0;
-  }
+export function ramp(phase: number, start: number, end: number): number {
+  const clampedPhase = Math.min(phase, 1.0);
 
-  // Apply speed multiplier and clamp to 0-1 range (reaches end value at phase 1.0)
-  const scaledPhase = Math.min(phase * speed, 1.0);
-
-  // Linear interpolation from start to end
-  return start + (end - start) * scaledPhase;
+  return start + (end - start) * clampedPhase;
 }
 
 /**
