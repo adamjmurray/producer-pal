@@ -320,6 +320,25 @@ describe("formatOpenAIMessages", () => {
     });
   });
 
+  it("handles tool calls with malformed JSON arguments gracefully", () => {
+    const result = formatOpenAIMessages([
+      {
+        role: "assistant" as const,
+        content: null,
+        tool_calls: [
+          {
+            id: "call_bad",
+            type: "function" as const,
+            function: { name: "my_tool", arguments: "not json {{{" },
+          },
+        ],
+      },
+    ]);
+
+    // Should not throw; falls back to empty args
+    expect(result[0]!.parts[0]).toMatchObject({ name: "my_tool", args: {} });
+  });
+
   it("handles empty history", () => {
     const result = formatOpenAIMessages([]);
 

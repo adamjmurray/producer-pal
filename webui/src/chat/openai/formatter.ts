@@ -7,6 +7,7 @@ import {
   addTextContent,
   isErrorResult,
   markLastThoughtAsOpen,
+  safeParseToolArgs,
 } from "#webui/chat/helpers/formatter-helpers";
 import { type ReasoningDetail } from "#webui/chat/openai/client";
 import {
@@ -93,9 +94,7 @@ function addToolCall(
 ): void {
   if (toolCall.type !== "function") return;
 
-  const args = toolCall.function.arguments
-    ? JSON.parse(toolCall.function.arguments)
-    : {};
+  const args = safeParseToolArgs(toolCall.function.arguments);
 
   const { result, isError } = findToolResult(
     history,

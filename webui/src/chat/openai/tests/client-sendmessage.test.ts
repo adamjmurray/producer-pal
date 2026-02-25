@@ -235,6 +235,28 @@ describe("OpenAIClient.sendMessage", () => {
     expect(content.isError).toBe(true);
   });
 
+  it("handles malformed tool call arguments gracefully", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient({
+      tools: [{ name: "bad-tool", description: "Tool", inputSchema: {} }],
+    });
+    const toolChunk = createToolCallChunk("bad-tool", "not json", "call_bad");
+
+    setupMockClients(client, mcpClient, createToolThenDoneGenerator(toolChunk));
+
+    const historyUpdates = await collectHistoryUpdates(
+      client.sendMessage("Run bad tool"),
+    );
+    const finalHistory = historyUpdates.at(-1);
+    const toolMsg = finalHistory?.find(
+      (msg) => (msg as { role: string }).role === "tool",
+    ) as { content: string } | undefined;
+
+    expect(JSON.parse(toolMsg!.content).error).toContain(
+      "Failed to parse arguments",
+    );
+  });
+
   it("filters tools based on enabledTools config", async () => {
     const client = new OpenAIClient("test-key", {
       model: "gpt-4",

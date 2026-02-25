@@ -218,7 +218,18 @@ async function handleFunctionCallDone(
 
   if (!functionInfo) return;
 
-  const args = JSON.parse(event.arguments) as Record<string, unknown>;
+  let args: Record<string, unknown>;
+
+  try {
+    args = JSON.parse(event.arguments) as Record<string, unknown>;
+  } catch {
+    console.warn(
+      `Failed to parse tool arguments for ${functionInfo.name}: ${event.arguments}`,
+    );
+
+    return;
+  }
+
   const result = await mcpClient.callTool({
     name: functionInfo.name,
     arguments: args,

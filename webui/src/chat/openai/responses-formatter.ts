@@ -11,6 +11,7 @@ import {
   addTextContent,
   isErrorResult,
   markLastThoughtAsOpen,
+  safeParseToolArgs,
 } from "#webui/chat/helpers/formatter-helpers";
 import { type UIMessage, type UIPart } from "#webui/types/messages";
 import {
@@ -59,7 +60,7 @@ function processToolCall(
   conversation: ResponsesConversationItem[],
   index: number,
 ): UIPart {
-  const args = item.arguments ? JSON.parse(item.arguments) : {};
+  const args = safeParseToolArgs(item.arguments);
   const { result, isError } = findToolResult(
     conversation,
     item.call_id,

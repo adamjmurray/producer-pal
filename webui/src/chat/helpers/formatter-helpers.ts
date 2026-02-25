@@ -34,6 +34,24 @@ export function isErrorResult(result: string): boolean {
 }
 
 /**
+ * Safely parse tool call arguments JSON, returning empty object on failure.
+ * Prevents formatter crashes on malformed arguments from non-standard providers.
+ * @param argsString - JSON string of tool arguments
+ * @returns Parsed args object, or empty object if parsing fails
+ */
+export function safeParseToolArgs(
+  argsString: string | undefined | null,
+): Record<string, unknown> {
+  if (!argsString) return {};
+
+  try {
+    return JSON.parse(argsString) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Add text content to parts, merging with previous text part if consecutive
  * @param parts - Parts array to modify
  * @param content - Text content to add

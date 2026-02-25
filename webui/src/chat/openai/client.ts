@@ -424,7 +424,19 @@ export class OpenAIClient {
       throw new Error("Invalid tool call type");
     }
 
-    const args = JSON.parse(toolCall.function.arguments || "{}");
+    let args: Record<string, unknown>;
+
+    try {
+      args = JSON.parse(toolCall.function.arguments || "{}") as Record<
+        string,
+        unknown
+      >;
+    } catch {
+      throw new Error(
+        `Failed to parse arguments for tool "${toolCall.function.name}": ${toolCall.function.arguments}`,
+      );
+    }
+
     const result = await this.mcpClient?.callTool({
       name: toolCall.function.name,
       arguments: args,
