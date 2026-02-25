@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { children } from "#src/test/mocks/mock-live-api.ts";
 import { type LiveObjectType } from "#src/types/live-object-types.ts";
 import {
   type RegisteredMockObject,
@@ -472,29 +473,43 @@ describe("updateDevice with path parameter", () => {
     let param100: RegisteredMockObject;
     let param200: RegisteredMockObject;
 
+    const freqParamProps = {
+      properties: {
+        is_quantized: 0,
+        name: "Filter Freq",
+        original_name: "Filter Freq",
+        value: 500,
+        min: 20,
+        max: 20000,
+      },
+      methods: { str_for_value: (v: unknown) => `${String(v)} Hz` },
+    };
+
     beforeEach(() => {
       registerMockObject("device-100", {
         path: livePath.track(0).device(0),
         type: "Device",
+        properties: { parameters: children("param-100-5") },
       });
       param100 = registerMockObject("param-100-5", {
         path: livePath.track(0).device(0).parameter(5),
-        properties: { is_quantized: 0 },
+        ...freqParamProps,
       });
       registerMockObject("device-200", {
         path: livePath.track(1).device(0),
         type: "Device",
+        properties: { parameters: children("param-200-5") },
       });
       param200 = registerMockObject("param-200-5", {
         path: livePath.track(1).device(0).parameter(5),
-        properties: { is_quantized: 0 },
+        ...freqParamProps,
       });
     });
 
-    it("should update params on multiple devices using path-based param IDs", () => {
+    it("should update params on multiple devices using param names", () => {
       const result = updateDevice({
         path: "t0/d0, t1/d0",
-        params: `{"${livePath.track(0).device(0).parameter(5)}": 1000}`,
+        params: '{"Filter Freq": 1000}',
       });
 
       expect(param100.set).toHaveBeenCalledWith("display_value", 1000);

@@ -37,7 +37,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe(
-        'JSON: {"paramId": value}. Values in display units: enum string, note name, pan -1 to 1, or number',
+        'JSON: {"paramName": value}. Values in display units: enum string, note name, pan -1 to 1, or number',
       ),
     macroVariation: z
       .enum(["create", "load", "delete", "revert", "randomize"])
