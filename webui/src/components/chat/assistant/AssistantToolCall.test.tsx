@@ -6,16 +6,27 @@
  * @vitest-environment happy-dom
  */
 import { render, screen } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { AssistantToolCall } from "./AssistantToolCall";
 
-// Mock the config module
-vi.mock(import("#webui/lib/config"), () => ({
-  toolNames: {
-    "ppal-read-live-set": "Read Live Set",
-    "test-tool": "Test Tool",
-  },
-}));
+const TEST_TOOL_NAMES: Record<string, string> = {
+  "ppal-read-live-set": "Read Live Set",
+  "test-tool": "Test Tool",
+};
+
+/**
+ * Renders component wrapped in ToolNamesContext provider
+ * @param {preact.JSX.Element} ui - Component to render
+ * @returns {import("@testing-library/preact").RenderResult} Render result
+ */
+function renderWithToolNames(ui: preact.JSX.Element) {
+  return render(
+    <ToolNamesContext.Provider value={TEST_TOOL_NAMES}>
+      {ui}
+    </ToolNamesContext.Provider>,
+  );
+}
 
 describe("AssistantToolCall", () => {
   const defaultProps = {
@@ -44,14 +55,16 @@ describe("AssistantToolCall", () => {
   });
 
   describe("tool name display", () => {
-    it("shows friendly name from toolNames config", () => {
-      render(<AssistantToolCall {...defaultProps} name="test-tool" />);
+    it("shows friendly name from toolNames context", () => {
+      renderWithToolNames(
+        <AssistantToolCall {...defaultProps} name="test-tool" />,
+      );
       const summary = document.querySelector("summary");
 
       expect(summary!.textContent).toContain("Test Tool");
     });
 
-    it("shows raw name when not in toolNames config", () => {
+    it("shows raw name when not in toolNames context", () => {
       render(<AssistantToolCall {...defaultProps} name="unknown-tool" />);
       const summary = document.querySelector("summary");
 

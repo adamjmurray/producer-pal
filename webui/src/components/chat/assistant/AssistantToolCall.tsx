@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { toolNames } from "#webui/lib/config";
+import { useToolNames } from "#webui/hooks/connection/tool-names-context";
 import { truncateString } from "#webui/lib/utils/truncate-string";
 
 interface AssistantToolCallProps {
@@ -27,6 +27,8 @@ export function AssistantToolCall({
   result,
   isError,
 }: AssistantToolCallProps) {
+  const toolNames = useToolNames();
+
   return (
     <details
       className={`text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded ${
