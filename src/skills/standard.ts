@@ -127,6 +127,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
 - \`cos(freq)\`, \`square(freq)\` - start at peak (1.0); \`sin(freq)\`, \`tri(freq)\`, \`saw(freq)\` - start at zero, rise to peak
 - \`rand([min], [max])\` - random value (no args: -1 to 1, one arg: 0 to max, two: min to max)
+- \`seq(a, b, ...)\` - cycle through values by note.index (MIDI) or clip.index (audio)
 - \`choose(a, b, ...)\` - random selection from arguments
 - \`ramp(start, end)\` - linear interpolation; reaches end value at time range end (or clip end)
 - \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
@@ -144,6 +145,7 @@ timing += 0.05 * rand()        // humanize timing
 1|1-4|4.75: velocity = ramp(40, 127)  // crescendo over 4 bars (16th grid)
 C1-C2: velocity += 30          // accent bass notes
 1|1-2|4: velocity = 100        // forte in bars 1-2
+velocity = seq(100, 60, 80, 60) // cycle accents per note
 velocity = 60 + note.index * 5 // sequential crescendo
 pitch += clip.index * 7        // stacked fifths across clips
 gain = audio.gain - 6          // reduce audio clip by 6 dB
