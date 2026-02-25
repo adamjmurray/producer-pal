@@ -39,7 +39,7 @@ export const ANTHROPIC_CONFIG: ProviderConfig = {
 export const GEMINI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "GEMINI_KEY",
   providerName: "Gemini",
-  defaultModel: "gemini-2.5-flash-lite",
+  defaultModel: "gemini-3-flash-preview",
 };
 
 /** OpenAI provider configuration */

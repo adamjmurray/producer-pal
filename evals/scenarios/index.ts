@@ -13,6 +13,7 @@ import {
   parseModelArg,
   type ModelSpec,
 } from "#evals/shared/parse-model-arg.ts";
+import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { loadConfigProfiles, listConfigProfileIds } from "./config-profiles.ts";
 import { setQuietMode } from "./helpers/output-config.ts";
 import {
@@ -62,7 +63,7 @@ program
   )
   .option(
     "-m, --model <provider/model>",
-    "Model(s) to test (e.g., gemini-2.0-flash, anthropic/claude-sonnet-4-5)",
+    "Model(s) to test (e.g., gemini-3-flash-preview, local/qwen3-8b)",
     collectValues,
     [],
   )
@@ -74,7 +75,7 @@ program
   )
   .option(
     "-j, --judge <provider/model>",
-    "Override judge LLM (e.g., google/gemini-2.0-flash)",
+    `Override judge LLM (default: google/${GEMINI_CONFIG.defaultModel})`,
   )
   .option("-l, --list", "List available scenarios and config profiles")
   .option(
@@ -147,9 +148,9 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       process.exit(1);
     }
 
-    const judgeOverride = options.judge
-      ? parseModelArg(options.judge)
-      : undefined;
+    const judgeOverride = parseModelArg(
+      options.judge ?? GEMINI_CONFIG.defaultModel,
+    );
 
     const totalRuns =
       scenarios.length * modelSpecs.length * configProfiles.length;
