@@ -51,7 +51,30 @@ type ProcessAssignmentResult =
   | { skip: true }
   | { skip?: false; value: number; pitchRange: PitchRange | null };
 
-type TimeRangeResult = { skip: true } | { skip?: false; timeRange: TimeRange };
+export type TimeRangeResult =
+  | { skip: true }
+  | { skip?: false; timeRange: TimeRange };
+
+/**
+ * Resolve effective pitch ranges for each assignment in the AST.
+ * Handles "sticky" pitch range inheritance: once set, a pitch range persists
+ * to subsequent assignments until a new one is specified.
+ * @param ast - Transform assignments
+ * @returns Array of effective pitch ranges (one per assignment, null if none)
+ */
+export function resolveEffectivePitchRanges(
+  ast: TransformAssignment[],
+): (PitchRange | null)[] {
+  let current: PitchRange | null = null;
+
+  return ast.map((a) => {
+    if (a.pitchRange != null) {
+      current = a.pitchRange;
+    }
+
+    return current;
+  });
+}
 
 /**
  * Evaluate a pre-parsed transform AST for a specific note context
@@ -191,7 +214,7 @@ function processAssignment(
  * @param position - Note position in beats
  * @returns Time range result or skip indicator
  */
-function calculateActiveTimeRange(
+export function calculateActiveTimeRange(
   assignment: TransformAssignment,
   bar: number | undefined,
   beat: number | undefined,
