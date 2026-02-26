@@ -146,6 +146,7 @@ timing += 0.05 * rand()        // humanize timing
 C1-C2: velocity += 30          // accent bass notes
 1|1-2|4: velocity = 100        // forte in bars 1-2
 velocity = seq(100, 60, 80, 60) // cycle accents per note
+Gb1: pitch = seq(Gb1, Gb1, Gb1, Gb1, Ab1) // every 5th closed hat → open hat
 velocity = 60 + note.index * 5 // sequential crescendo
 pitch += clip.index * 7        // stacked fifths across clips
 gain = audio.gain - 6          // reduce audio clip by 6 dB
