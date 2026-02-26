@@ -31,8 +31,14 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       .boolean()
       .default(false)
       .describe("copy playing session clips instead of creating empty?"),
-    name: z.string().optional().describe("name (comma-separated for multiple)"),
-    color: z.string().optional().describe("#RRGGBB (comma-separated cycles)"),
+    name: z
+      .string()
+      .optional()
+      .describe("name (comma-separated when creating multiple)"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when creating multiple, cycles)"),
     tempo: z.coerce
       .number()
       .optional()
@@ -46,5 +52,13 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       .optional()
       .default(false)
       .describe("show session view?"),
+  },
+
+  smallModelModeConfig: {
+    excludeParams: ["count", "capture", "tempo", "timeSignature", "switchView"],
+    descriptionOverrides: {
+      name: "scene name",
+      color: "#RRGGBB",
+    },
   },
 });

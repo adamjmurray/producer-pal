@@ -186,9 +186,5 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "split",
       "code",
     ],
-    descriptionOverrides: {
-      arrangementLength:
-        "bar:beat duration in timeline (arrangement clips only)",
-    },
   },
 });

@@ -90,6 +90,7 @@ stop: session and arrangement`,
       "loopStartLocatorName",
       "loopEndLocatorId",
       "loopEndLocatorName",
+      "switchView",
     ],
   },
 });

@@ -92,6 +92,13 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       "withoutClips",
       "withoutDevices",
       "routeToSource",
+      "count",
+      "switchView",
     ],
+    descriptionOverrides: {
+      arrangementStart: "bar|beat position (e.g., '1|1')",
+      toSlot: "destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
+      toPath: "device destination path (e.g., 't1/d0')",
+    },
   },
 });

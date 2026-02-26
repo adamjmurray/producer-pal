@@ -16,9 +16,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
     ids: z.coerce
       .string()
       .optional()
-      .describe(
-        "comma-separated list of object IDs to delete (must be same type)",
-      ),
+      .describe("comma-separated ID(s) to delete (must be same type)"),
     path: z
       .string()
       .optional()
@@ -28,5 +26,12 @@ export const toolDefDelete = defineTool("ppal-delete", {
     type: z
       .enum(["track", "scene", "clip", "device", "drum-pad"])
       .describe("type of objects to delete"),
+  },
+
+  smallModelModeConfig: {
+    descriptionOverrides: {
+      ids: "object ID to delete",
+      path: "path to delete (e.g., 't0/d1')",
+    },
   },
 });

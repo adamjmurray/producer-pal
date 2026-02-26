@@ -112,6 +112,10 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   },
 
   smallModelModeConfig: {
-    excludeParams: ["transforms", "code"],
+    excludeParams: ["transforms", "code", "firstStart", "auto", "switchView"],
+    descriptionOverrides: {
+      sceneIndex: "0-based scene index",
+      arrangementStart: "bar|beat position (e.g., '1|1')",
+    },
   },
 });

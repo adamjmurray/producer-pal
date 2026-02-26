@@ -110,6 +110,11 @@ web UI architecture.
   automatically coerces. The MCP SDK validates schemas before our handler runs,
   so coercion must happen at the schema level.
 
+- **Small model mode**: When modifying tool definitions (`.def.ts` files) —
+  adding, removing, or renaming parameters, or changing descriptions — check
+  whether corresponding changes are needed in the `smallModelModeConfig`
+  (`excludeParams`, `descriptionOverrides`, `toolDescription`).
+
 - **Live API**: Always use `src/live-api-adapter/live-api-extensions.ts`
   interface instead of raw `.get("property")?.[0]` calls
 

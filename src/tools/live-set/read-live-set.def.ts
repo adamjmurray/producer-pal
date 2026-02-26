@@ -32,11 +32,4 @@ Returns overview by default. Use include to add detail.`,
         'tracks, scenes = lists. routings, mixer, color = track detail (use with tracks). locators = arrangement markers. "*" = all',
       ),
   },
-
-  smallModelModeConfig: {
-    descriptionOverrides: {
-      include:
-        'tracks, scenes = lists. routings, mixer, color = track detail (use with tracks). locators = arrangement markers. "*" = all',
-    },
-  },
 });
