@@ -22,6 +22,10 @@ import {
   type OpenAIAssistantMessageWithReasoning,
   type ReasoningDetail,
 } from "./reasoning-helpers";
+import {
+  accumulateToolCall,
+  sanitizeToolCallArguments,
+} from "./tool-call-helpers";
 
 // Re-export for external consumers
 export {
@@ -289,35 +293,8 @@ export class OpenAIClient {
     if (!delta.tool_calls) return;
 
     for (const tcDelta of delta.tool_calls) {
-      this.accumulateToolCall(tcDelta, toolCallsMap);
+      accumulateToolCall(tcDelta, toolCallsMap);
     }
-  }
-
-  /**
-   * Accumulates a single tool call delta into the tool calls map.
-   * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall} tcDelta - Tool call delta from stream
-   * @param {Map<number, OpenAIToolCall>} toolCallsMap - Map of tool calls being accumulated
-   */
-  private accumulateToolCall(
-    tcDelta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall,
-    toolCallsMap: Map<number, OpenAIToolCall>,
-  ): void {
-    if (!toolCallsMap.has(tcDelta.index)) {
-      toolCallsMap.set(tcDelta.index, {
-        id: tcDelta.id ?? "",
-        type: "function",
-        function: { name: "", arguments: "" },
-      });
-    }
-
-    const tc = toolCallsMap.get(tcDelta.index);
-
-    if (tc?.type !== "function") return;
-
-    if (tcDelta.id) tc.id = tcDelta.id;
-    if (tcDelta.function?.name) tc.function.name = tcDelta.function.name;
-    if (tcDelta.function?.arguments)
-      tc.function.arguments += tcDelta.function.arguments;
   }
 
   /**
@@ -335,13 +312,17 @@ export class OpenAIClient {
     reasoningDetailsMap: Map<string, ReasoningDetail>,
     finishReason: string | null,
   ): OpenAIAssistantMessageWithReasoning {
+    const rawToolCalls =
+      finishReason === "tool_calls" && toolCallsMap.size > 0
+        ? Array.from(toolCallsMap.values())
+        : undefined;
+
     const messageToAdd: OpenAIAssistantMessageWithReasoning = {
       ...currentMessage,
-      // Only include tool_calls when finish_reason indicates completion
-      tool_calls:
-        finishReason === "tool_calls" && toolCallsMap.size > 0
-          ? Array.from(toolCallsMap.values())
-          : undefined,
+      // Sanitize to prevent malformed arguments from corrupting conversation history
+      tool_calls: rawToolCalls
+        ? sanitizeToolCallArguments(rawToolCalls)
+        : undefined,
     };
 
     // Convert Map to sorted array (by index) preserving full block structure

@@ -200,6 +200,28 @@ export function createToolThenDoneGenerator(
   };
 }
 
+/**
+ * Creates stream chunks simulating Ollama parallel tool calls (all at index 0, different IDs).
+ * @param calls - Array of { name, args, id } for each tool call
+ * @returns Array of stream chunks ending with finish_reason: "tool_calls"
+ */
+export function createOllamaParallelToolCallChunks(
+  calls: Array<{ name: string; args: string; id: string }>,
+): StreamChunk[] {
+  return calls.map((call, idx) => ({
+    delta: {
+      tool_calls: [
+        {
+          index: 0,
+          id: call.id,
+          function: { name: call.name, arguments: call.args },
+        },
+      ],
+    },
+    finish_reason: idx === calls.length - 1 ? ("tool_calls" as const) : null,
+  }));
+}
+
 /** OpenAI tool call type for buildStreamMessage tests */
 export interface TestToolCall {
   id: string;
