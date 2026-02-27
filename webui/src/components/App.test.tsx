@@ -25,9 +25,14 @@ vi.mock(import("#webui/hooks/chat/use-chat"), () => ({
   useChat: vi.fn(),
 }));
 
+vi.mock(import("#webui/hooks/connection/use-remote-config"), () => ({
+  useRemoteConfig: vi.fn(),
+}));
+
 // Import mocked modules to access them in tests
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
+import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { App } from "./App";
@@ -87,6 +92,10 @@ describe("App", () => {
       checkMcpConnection: vi.fn(),
     });
     (useChat as ReturnType<typeof vi.fn>).mockReturnValue(mockChatHook);
+    (useRemoteConfig as ReturnType<typeof vi.fn>).mockReturnValue({
+      smallModelMode: false,
+      setSmallModelMode: vi.fn(),
+    });
   });
 
   describe("screen routing", () => {
