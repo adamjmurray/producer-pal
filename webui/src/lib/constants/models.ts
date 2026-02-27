@@ -19,7 +19,7 @@ export const GEMINI_MODELS = [
 
 export const OPENAI_MODELS = [
   { value: "gpt-5.2", label: "GPT-5.2" },
-  { value: "gpt-5.2-codex", label: "GPT-5.2 Codex" },
+  { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
   { value: "gpt-5", label: "GPT-5" },
   { value: "gpt-5-mini", label: "GPT-5 Mini" },
   { value: "OTHER", label: "Other..." },
