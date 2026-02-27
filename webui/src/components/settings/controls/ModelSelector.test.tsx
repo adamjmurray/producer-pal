@@ -47,13 +47,10 @@ describe("ModelSelector", () => {
   it("displays all model options", () => {
     renderModelSelector();
     expect(
-      screen.getByRole("option", { name: /^Gemini 2\.5 Pro$/ }),
+      screen.getByRole("option", { name: /^Gemini 3\.1 Pro$/ }),
     ).toBeDefined();
     expect(
-      screen.getByRole("option", { name: /^Gemini 2\.5 Flash$/ }),
-    ).toBeDefined();
-    expect(
-      screen.getByRole("option", { name: /^Gemini 2\.5 Flash-Lite$/ }),
+      screen.getByRole("option", { name: /^Gemini 3 Flash$/ }),
     ).toBeDefined();
   });
 
@@ -63,10 +60,8 @@ describe("ModelSelector", () => {
 
     expect(options[0]!.value).toBe("gemini-3-flash-preview");
     expect(options[1]!.value).toBe("gemini-3.1-pro-preview");
-    expect(options[2]!.value).toBe("gemini-3-pro-preview");
+    expect(options[2]!.value).toBe("gemini-2.5-flash");
     expect(options[3]!.value).toBe("gemini-2.5-pro");
-    expect(options[4]!.value).toBe("gemini-2.5-flash");
-    expect(options[5]!.value).toBe("gemini-2.5-flash-lite");
   });
 
   it("triggers setModel callback on change", () => {
@@ -76,10 +71,10 @@ describe("ModelSelector", () => {
     expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-2.5-pro");
   });
 
-  it("can select gemini-2.5-flash-lite", () => {
+  it("can select gemini-3-flash-preview", () => {
     const { setModel } = renderModelSelector();
 
-    expectModelSelected("gemini-2.5-flash-lite", setModel);
+    expectModelSelected("gemini-3-flash-preview", setModel);
   });
 
   describe("OpenAI provider", () => {

@@ -52,7 +52,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3-flash-preview",
         thinking: "Low",
         temperature: 1.5,
         showThoughts: false,
@@ -63,7 +63,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "new-key",
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-3-flash-preview",
       thinking: "Low",
       temperature: 1.5,
       showThoughts: false,
@@ -79,7 +79,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-2.5-flash-lite",
+        model: "gemini-3-flash-preview",
         thinking: "Default",
         temperature: 1.0,
         showThoughts: true,
@@ -90,7 +90,7 @@ describe("useSettings", () => {
 
     // Should use new format
     expect(result.current.apiKey).toBe("new-key");
-    expect(result.current.model).toBe("gemini-2.5-flash-lite");
+    expect(result.current.model).toBe("gemini-3-flash-preview");
   });
 
   it("loads saved Ollama thinking on first render", () => {
@@ -128,10 +128,10 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     await act(() => {
-      result.current.setModel("gemini-2.5-flash-lite");
+      result.current.setModel("gemini-3-flash-preview");
     });
 
-    expect(result.current.model).toBe("gemini-2.5-flash-lite");
+    expect(result.current.model).toBe("gemini-3-flash-preview");
   });
 
   it("updates thinking when setThinking is called", async () => {
@@ -169,7 +169,7 @@ describe("useSettings", () => {
 
     await act(() => {
       result.current.setApiKey("new-key");
-      result.current.setModel("gemini-2.5-flash-lite");
+      result.current.setModel("gemini-3-flash-preview");
       result.current.setThinking("Medium");
       result.current.setTemperature(0.8);
       result.current.setShowThoughts(false);
@@ -187,7 +187,7 @@ describe("useSettings", () => {
       JSON.parse(localStorage.getItem("producer_pal_provider_gemini") ?? "{}"),
     ).toMatchObject({
       apiKey: "new-key",
-      model: "gemini-2.5-flash-lite",
+      model: "gemini-3-flash-preview",
       thinking: "Medium",
       temperature: 0.8,
       showThoughts: false,

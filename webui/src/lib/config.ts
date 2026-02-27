@@ -17,7 +17,7 @@ export const getModelName = (modelId: string): string => {
       return "Gemini 2.5 Pro";
     case "gemini-2.5-flash":
       return "Gemini 2.5 Flash";
-    case "gemini-2.5-flash-lite":
+    case "gemini-3-flash-preview":
       return "Gemini 2.5 Flash-Lite";
     default:
       return modelId;

@@ -106,7 +106,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-2.5-flash-lite"
+          activeModel="gemini-3-flash-preview"
           activeProvider="gemini"
         />,
       );

@@ -27,8 +27,8 @@ describe("config", () => {
       expect(getModelName("gemini-2.5-flash")).toBe("Gemini 2.5 Flash");
     });
 
-    it("returns display name for gemini-2.5-flash-lite", () => {
-      expect(getModelName("gemini-2.5-flash-lite")).toBe(
+    it("returns display name for gemini-3-flash-preview", () => {
+      expect(getModelName("gemini-3-flash-preview")).toBe(
         "Gemini 2.5 Flash-Lite",
       );
     });
