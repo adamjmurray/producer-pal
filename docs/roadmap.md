@@ -21,12 +21,15 @@ reach out directly.
 
 ## In Progress
 
-### 1.5 - Customization and Optimization
+### 1.5 - Customization and Context Management
 
-- Custom skills, system prompts, and tool descriptions
 - Global context: add your own reference material and custom instructions across
   all Live projects
-- Task-focused personas to reduce context window usage
+- Global memory: Producer Pal can adapt over time to your needs and interaction
+  style
+- Custom skills, system prompts, tool sets, and tool descriptions
+- Task-focused personas and better optimized "small model mode" via
+  customization presets
 
 ## Changelog
 
@@ -79,7 +82,7 @@ manipulation and basic Live Set management.
 ## Future Features
 
 - Support new Live API features as they become available
-- Take lane and groove support
+- Take lane support
 - Persistent conversations in the built-in chat UI
 - Chord notation and pitches as scale/chord degrees
 - Voice interface
