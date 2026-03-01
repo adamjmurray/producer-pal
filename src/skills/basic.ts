@@ -6,13 +6,13 @@ export const skills = `# Producer Pal Skills
 
 ## MIDI Notation
 
-Pitches: C0-G8 with # or b (C3 = middle C)
+Pitches: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
 Format: pitch(es) bar|beat
 
 ### Melody (one note per beat across 2 bars)
 \`\`\`
-C3 1|1 D3 1|2 E3 1|3 F3 1|4
-G3 2|1 A3 2|2 G3 2|3 E3 2|4
+C3 1|1 D3 1|2 E3 1|3 F#3 1|4
+G3 2|1 A3 2|2 G#3 2|3 E3 2|4
 \`\`\`
 
 ### Chords (set duration with t, t4 = 4 beats = full bar in 4/4)
