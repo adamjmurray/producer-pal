@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CreateTrackResult,
   parseToolResult,
+  parseToolResultWithWarnings,
   type ReadClipResult,
   SAMPLE_FILE,
   setupMcpTestContext,
@@ -295,6 +296,62 @@ describe("ppal-update-clip", () => {
 
     expect(batchClip1.name).toBe("Batch Updated");
     expect(batchClip2.name).toBe("Batch Updated");
+  });
+
+  it("moves session clip with toSlot", async () => {
+    // Setup: Create a clip at scene 4 on the empty MIDI track
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        view: "session",
+        trackIndex: emptyMidiTrack,
+        sceneIndex: "4",
+        notes: "C3 D3 1|1",
+        name: "Move Me",
+      },
+    });
+    const clip = parseToolResult<{ id: string }>(createResult);
+
+    await sleep(100);
+
+    // Move clip from scene 4 to scene 5 on the same track
+    const moveResult = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: { ids: clip.id, toSlot: `${emptyMidiTrack}/5` },
+    });
+    const movedClip = parseToolResult<{
+      id: string;
+      trackIndex: number;
+      sceneIndex: number;
+    }>(moveResult);
+
+    // Update result should include destination slot info
+    expect(movedClip.trackIndex).toBe(emptyMidiTrack);
+    expect(movedClip.sceneIndex).toBe(5);
+    expect(movedClip.id).not.toBe(clip.id); // new clip ID after move
+
+    await sleep(100);
+
+    // Verify the clip is at the new location with correct properties
+    const verifyNew = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: movedClip.id },
+    });
+    const newClip = parseToolResult<ReadClipResult>(verifyNew);
+
+    expect(newClip.name).toBe("Move Me");
+    expect(newClip.trackIndex).toBe(emptyMidiTrack);
+    expect(newClip.sceneIndex).toBe(5);
+
+    // Verify the original slot is now empty
+    const verifyOld = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { trackIndex: emptyMidiTrack, sceneIndex: 4 },
+    });
+    const { data: oldSlot } =
+      parseToolResultWithWarnings<ReadClipResult>(verifyOld);
+
+    expect(oldSlot.id).toBeNull();
   });
 
   it("updates audio clip properties", async () => {

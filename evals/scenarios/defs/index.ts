@@ -13,5 +13,5 @@
 export { connectToAbleton } from "./connect-to-ableton.ts";
 export { createAndEditClip } from "./create-and-edit-clip.ts";
 export { duplicate } from "./duplicate.ts";
-export { projectNotesWorkflow } from "./project-notes-workflow.ts";
+export { memoryWorkflow } from "./memory-workflow.ts";
 export { trackAndDeviceWorkflow } from "./track-and-device-workflow.ts";

@@ -15,9 +15,13 @@ import {
   evaluateMathFunction,
   evaluateMinMax,
   evaluatePow,
-  evaluateQuant,
   evaluateRand,
+  evaluateSeq,
 } from "./transform-functions-helpers.ts";
+import {
+  evaluateQuant,
+  evaluateStep,
+} from "./transform-functions-scale-helpers.ts";
 import * as waveforms from "./transform-waveforms.ts";
 
 export type EvaluateExpressionFn = (
@@ -32,8 +36,10 @@ export type EvaluateExpressionFn = (
 // Dispatch map for functions with the standard (args, pos, num, den, range, props, eval) signature
 const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
   rand: evaluateRand,
+  seq: evaluateSeq,
   choose: evaluateChoose,
   quant: evaluateQuant,
+  step: evaluateStep,
   pow: evaluatePow,
   curve: evaluateCurve,
   ramp: evaluateRamp,
@@ -128,7 +134,7 @@ export function evaluateFunction(
 
 /**
  * Evaluate ramp function
- * @param args - Function arguments
+ * @param args - Function arguments (exactly 2: start, end)
  * @param position - Note position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -146,13 +152,12 @@ function evaluateRamp(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
-  if (args.length < 2 || args.length > 3) {
+  if (args.length !== 2) {
     throw new Error(
-      `Function ramp() requires 2-3 arguments: ramp(start, end, speed?)`,
+      `Function ramp() requires exactly 2 arguments: ramp(start, end)`,
     );
   }
 
-  // First argument: start value
   const start = evaluateExpression(
     args[0] as ExpressionNode,
     position,
@@ -162,7 +167,6 @@ function evaluateRamp(
     noteProperties,
   );
 
-  // Second argument: end value
   const end = evaluateExpression(
     args[1] as ExpressionNode,
     position,
@@ -172,24 +176,6 @@ function evaluateRamp(
     noteProperties,
   );
 
-  // Optional third argument: speed (default 1)
-  let speed = 1;
-
-  if (args.length >= 3) {
-    speed = evaluateExpression(
-      args[2] as ExpressionNode,
-      position,
-      timeSigNumerator,
-      timeSigDenominator,
-      timeRange,
-      noteProperties,
-    );
-
-    if (speed <= 0) {
-      throw new Error(`Function ramp() speed must be > 0, got ${speed}`);
-    }
-  }
-
   // Calculate phase based on position within timeRange
   const timeRangeDuration = timeRange.end - timeRange.start;
   const phase =
@@ -197,7 +183,7 @@ function evaluateRamp(
       ? (position - timeRange.start) / timeRangeDuration
       : 0;
 
-  return waveforms.ramp(phase, start, end, speed);
+  return waveforms.ramp(phase, start, end);
 }
 
 /**

@@ -1,12 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Formatter for OpenAI Responses API conversation items.
  * Converts Responses API format to UI-friendly UIMessage format.
  */
-import { markLastThoughtAsOpen } from "#webui/chat/helpers/formatter-helpers";
+import {
+  addTextContent,
+  isErrorResult,
+  markLastThoughtAsOpen,
+  safeParseToolArgs,
+} from "#webui/chat/helpers/formatter-helpers";
 import { type UIMessage, type UIPart } from "#webui/types/messages";
 import {
   type ResponsesConversationItem,
@@ -35,12 +41,8 @@ function findToolResult(
     if (item.call_id !== callId) continue;
 
     const result = item.output;
-    const errorIndicators = ['"error"', '"isError":true'];
-    const isError = errorIndicators.some((indicator) =>
-      result.includes(indicator),
-    );
 
-    return { result, isError };
+    return { result, isError: isErrorResult(result) };
   }
 
   return { result: null, isError: false };
@@ -58,7 +60,7 @@ function processToolCall(
   conversation: ResponsesConversationItem[],
   index: number,
 ): UIPart {
-  const args = item.arguments ? JSON.parse(item.arguments) : {};
+  const args = safeParseToolArgs(item.arguments);
   const { result, isError } = findToolResult(
     conversation,
     item.call_id,
@@ -88,22 +90,6 @@ function extractMessageText(
     .filter((part) => part.type === "output_text" || part.type === "input_text")
     .map((part) => part.text ?? "")
     .join("");
-}
-
-/**
- * Add text content to parts, merging with previous text part if needed
- * @param parts - Parts array to modify
- * @param content - Text content to add
- */
-function addTextContent(parts: UIPart[], content: string): void {
-  if (!content) return;
-  const lastPart = parts.at(-1);
-
-  if (lastPart?.type === "text") {
-    lastPart.content += content;
-  } else {
-    parts.push({ type: "text", content });
-  }
 }
 
 /**

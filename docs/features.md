@@ -142,13 +142,13 @@ create.
 
 - Get detailed info about any clip in Session or Arrangement
 - Read MIDI notes in musical notation (C3, D#4, etc.)
-- Get audio clip gain, pitch, warp settings, sample info
+- Get audio clip gain, pitch, warp settings, and sample info
 
 ### Update Clip (`ppal-update-clip`)
 
 - Change clip name, color, and loop settings
 - Add/remove MIDI notes and change note pitch, timing, velocity, and probability
-- Change audio clip gain, pitch shift, warp settings, and warp markers
+- Change audio clip gain, pitch shift, and warp settings
 - Move clips and change their length in the Arrangement
 - Split arrangement clips at specified positions
 - Update multiple clips at once
@@ -174,8 +174,8 @@ Apply complex changes to clips using math expressions:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
-- **Shapes**: LFO-like waveforms (sine, tri, saw), linear and exponential ramps
-  for fades, randomization (rand, choose) for humanization
+- **Shapes**: LFO waveforms (sine, tri, saw), ramps, curves, randomization with
+  arbitrary ranges, choose from sets of values (e.g. chord notes)
 - **Context variables**: Access note order (`note.index`), clip metadata
   (`clip.duration`, `clip.index`, `clip.position`, `clip.barDuration`) in
   expressions

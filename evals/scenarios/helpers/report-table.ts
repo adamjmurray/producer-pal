@@ -9,8 +9,6 @@
 
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type ConfigProfile, type EvalScenarioResult } from "../types.ts";
-import { computeCorrectnessScore } from "./correctness-score.ts";
-import { type JudgeResult } from "./judge-response-parser.ts";
 
 /** A composite column in the results table (model + config) */
 interface ColumnKey {
@@ -43,11 +41,11 @@ export function printResultsTable(
 
   // Calculate column widths
   const scenarioColWidth = Math.max(
-    9, // "Avg Score"
+    5, // "Avg %"
     ...scenarioIds.map((id) => id.length),
   );
   const colWidths = columns.map(
-    (col) => Math.max(col.label.length, 6), // min width for "✓ 4.5"
+    (col) => Math.max(col.label.length, 4), // min width for "85%"
   );
 
   // Build table
@@ -65,10 +63,9 @@ export function printResultsTable(
       const result = modelResults.get(col.modelKey)?.get(col.configId);
 
       if (!result) return "—";
-      const icon = result.passed ? "✓" : "✗";
-      const score = getAverageScore(result);
+      const pct = getScorePercentage(result);
 
-      return score !== null ? `${icon} ${score.toFixed(1)}` : icon;
+      return pct !== null ? `${pct.toFixed(0)}%` : "—";
     });
 
     console.log(buildRow(scenarioId, cells, scenarioColWidth, colWidths));
@@ -76,7 +73,7 @@ export function printResultsTable(
 
   // Summary rows
   console.log(separator);
-  printSummaryRows(resultsByScenario, columns, scenarioColWidth, colWidths);
+  printSummaryRow(resultsByScenario, columns, scenarioColWidth, colWidths);
   console.log(separator);
 }
 
@@ -111,93 +108,51 @@ function buildColumnKeys(
 }
 
 /**
- * Print passing and average score summary rows
+ * Print average percentage summary row
  *
  * @param resultsByScenario - 3D results map
  * @param columns - Composite column keys
  * @param scenarioColWidth - Width of scenario column
  * @param colWidths - Widths of data columns
  */
-function printSummaryRows(
+function printSummaryRow(
   resultsByScenario: ResultsByScenario,
   columns: ColumnKey[],
   scenarioColWidth: number,
   colWidths: number[],
 ): void {
-  // Passing row
-  const passing = columns.map((col) => {
-    let passed = 0;
-    let total = 0;
+  const avgPcts = columns.map((col) => {
+    const pcts: number[] = [];
 
     for (const modelResults of resultsByScenario.values()) {
       const result = modelResults.get(col.modelKey)?.get(col.configId);
 
       if (result) {
-        total++;
+        const pct = getScorePercentage(result);
 
-        if (result.passed) passed++;
+        if (pct !== null) pcts.push(pct);
       }
     }
 
-    return `${passed}/${total}`;
+    if (pcts.length === 0) return "—";
+    const avg = pcts.reduce((a, b) => a + b, 0) / pcts.length;
+
+    return `${avg.toFixed(0)}%`;
   });
 
-  console.log(buildRow("Passing", passing, scenarioColWidth, colWidths));
-
-  // Average score row
-  const avgScores = columns.map((col) => {
-    const scores: number[] = [];
-
-    for (const modelResults of resultsByScenario.values()) {
-      const result = modelResults.get(col.modelKey)?.get(col.configId);
-
-      if (result) {
-        const score = getAverageScore(result);
-
-        if (score !== null) scores.push(score);
-      }
-    }
-
-    if (scores.length === 0) return "—";
-    const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
-
-    return avg.toFixed(1);
-  });
-
-  console.log(buildRow("Avg Score", avgScores, scenarioColWidth, colWidths));
+  console.log(buildRow("Avg %", avgPcts, scenarioColWidth, colWidths));
 }
 
 /**
- * Get the combined average of all 5 dimensions (correctness + 4 LLM judge)
+ * Get the score percentage for a scenario result
  *
  * @param result - The scenario result
- * @returns Combined average score
+ * @returns Percentage (0-100) or null if no assertions
  */
-function getAverageScore(result: EvalScenarioResult): number | null {
-  const scores: number[] = [];
+function getScorePercentage(result: EvalScenarioResult): number | null {
+  if (result.maxScore === 0) return null;
 
-  // Add correctness score
-  scores.push(computeCorrectnessScore(result.assertions));
-
-  // Add LLM judge dimension scores
-  for (const assertion of result.assertions) {
-    if (assertion.assertion.type === "llm_judge") {
-      const details = assertion.details as JudgeResult | undefined;
-
-      if (details) {
-        scores.push(
-          details.accuracy.score,
-          details.reasoning.score,
-          details.efficiency.score,
-          details.naturalness.score,
-        );
-      }
-    }
-  }
-
-  if (scores.length === 0) return null;
-
-  return scores.reduce((a, b) => a + b, 0) / scores.length;
+  return (result.earnedScore / result.maxScore) * 100;
 }
 
 /**

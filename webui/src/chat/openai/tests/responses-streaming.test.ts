@@ -314,6 +314,30 @@ describe("processStreamEvent", () => {
     expect(mcpClient.callTool).not.toHaveBeenCalled();
   });
 
+  it("skips function call with malformed JSON arguments", async () => {
+    const state = createStreamState();
+
+    state.pendingFunctionCalls.set("item_bad", {
+      name: "bad_tool",
+      call_id: "call_bad",
+    });
+    const mcpClient = createMockMcpClient();
+
+    await processStreamEvent(
+      {
+        type: "response.function_call_arguments.done",
+        item_id: "item_bad",
+        arguments: "not valid json",
+      },
+      state,
+      mcpClient,
+      [],
+    );
+
+    expect(mcpClient.callTool).not.toHaveBeenCalled();
+    expect(state.toolResults.has("call_bad")).toBe(false);
+  });
+
   it("handles response completed", async () => {
     const state = createStreamState();
 

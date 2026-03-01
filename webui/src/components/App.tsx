@@ -3,13 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState, useEffect, useRef } from "preact/hooks";
+import { useState, useEffect, useMemo, useRef } from "preact/hooks";
 import { geminiAdapter } from "#webui/hooks/chat/gemini-adapter";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
 import { openaiChatAdapter } from "#webui/hooks/chat/openai-chat-adapter";
 import { responsesAdapter } from "#webui/hooks/chat/responses-adapter";
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
+import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { ChatScreen } from "./chat/ChatScreen";
@@ -72,6 +74,17 @@ export function App() {
   const { theme, setTheme } = useTheme();
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
+  const toolNamesMap = useMemo(() => {
+    if (!mcpTools) return {};
+    const map: Record<string, string> = {};
+
+    for (const tool of mcpTools) {
+      map[tool.id] = tool.name;
+    }
+
+    return map;
+  }, [mcpTools]);
+  const { smallModelMode, setSmallModelMode } = useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
   // Use Gemini chat for Gemini provider
@@ -178,57 +191,64 @@ export function App() {
 
   if (showSettings) {
     return (
-      <SettingsScreen
-        provider={settings.provider}
-        setProvider={settings.setProvider}
-        apiKey={settings.apiKey}
-        setApiKey={settings.setApiKey}
-        baseUrl={settings.baseUrl}
-        setBaseUrl={settings.setBaseUrl}
-        model={settings.model}
-        setModel={settings.setModel}
-        thinking={settings.thinking}
-        setThinking={settings.setThinking}
-        temperature={settings.temperature}
-        setTemperature={settings.setTemperature}
-        showThoughts={settings.showThoughts}
-        setShowThoughts={settings.setShowThoughts}
-        theme={theme}
-        setTheme={setTheme}
-        enabledTools={settings.enabledTools}
-        setEnabledTools={settings.setEnabledTools}
-        mcpTools={mcpTools}
-        mcpStatus={mcpStatus}
-        resetBehaviorToDefaults={settings.resetBehaviorToDefaults}
-        saveSettings={handleSaveSettings}
-        cancelSettings={handleCancelSettings}
-        settingsConfigured={settings.settingsConfigured}
-      />
+      <ToolNamesContext.Provider value={toolNamesMap}>
+        <SettingsScreen
+          provider={settings.provider}
+          setProvider={settings.setProvider}
+          apiKey={settings.apiKey}
+          setApiKey={settings.setApiKey}
+          baseUrl={settings.baseUrl}
+          setBaseUrl={settings.setBaseUrl}
+          model={settings.model}
+          setModel={settings.setModel}
+          thinking={settings.thinking}
+          setThinking={settings.setThinking}
+          temperature={settings.temperature}
+          setTemperature={settings.setTemperature}
+          showThoughts={settings.showThoughts}
+          setShowThoughts={settings.setShowThoughts}
+          theme={theme}
+          setTheme={setTheme}
+          enabledTools={settings.enabledTools}
+          setEnabledTools={settings.setEnabledTools}
+          mcpTools={mcpTools}
+          mcpStatus={mcpStatus}
+          smallModelMode={smallModelMode}
+          setSmallModelMode={setSmallModelMode}
+          resetBehaviorToDefaults={settings.resetBehaviorToDefaults}
+          saveSettings={handleSaveSettings}
+          cancelSettings={handleCancelSettings}
+          settingsConfigured={settings.settingsConfigured}
+        />
+      </ToolNamesContext.Provider>
     );
   }
 
   return (
-    <ChatScreen
-      messages={chat.messages}
-      isAssistantResponding={chat.isAssistantResponding}
-      rateLimitState={chat.rateLimitState}
-      handleSend={wrappedHandleSend}
-      handleRetry={chat.handleRetry}
-      activeModel={chat.activeModel}
-      activeProvider={chat.activeProvider}
-      provider={settings.provider}
-      model={settings.model}
-      defaultThinking={settings.thinking}
-      defaultTemperature={settings.temperature}
-      defaultShowThoughts={settings.showThoughts}
-      enabledToolsCount={enabledToolsCount}
-      totalToolsCount={totalToolsCount}
-      mcpStatus={mcpStatus}
-      mcpError={mcpError}
-      checkMcpConnection={checkMcpConnection}
-      onOpenSettings={() => setShowSettings(true)}
-      onClearConversation={wrappedClearConversation}
-      onStop={chat.stopResponse}
-    />
+    <ToolNamesContext.Provider value={toolNamesMap}>
+      <ChatScreen
+        messages={chat.messages}
+        isAssistantResponding={chat.isAssistantResponding}
+        rateLimitState={chat.rateLimitState}
+        handleSend={wrappedHandleSend}
+        handleRetry={chat.handleRetry}
+        activeModel={chat.activeModel}
+        activeProvider={chat.activeProvider}
+        provider={settings.provider}
+        model={settings.model}
+        defaultThinking={settings.thinking}
+        defaultTemperature={settings.temperature}
+        defaultShowThoughts={settings.showThoughts}
+        enabledToolsCount={enabledToolsCount}
+        totalToolsCount={totalToolsCount}
+        smallModelMode={smallModelMode}
+        mcpStatus={mcpStatus}
+        mcpError={mcpError}
+        checkMcpConnection={checkMcpConnection}
+        onOpenSettings={() => setShowSettings(true)}
+        onClearConversation={wrappedClearConversation}
+        onStop={chat.stopResponse}
+      />
+    </ToolNamesContext.Provider>
   );
 }

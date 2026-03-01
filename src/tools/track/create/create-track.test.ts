@@ -100,8 +100,8 @@ describe("createTrack", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(3, "create_midi_track", 4);
 
     expect(track2.set).toHaveBeenCalledWith("name", "Drum");
-    expect(track3.set).toHaveBeenCalledWith("name", "Drum 2");
-    expect(track4.set).toHaveBeenCalledWith("name", "Drum 3");
+    expect(track3.set).toHaveBeenCalledWith("name", "Drum");
+    expect(track4.set).toHaveBeenCalledWith("name", "Drum");
 
     expect(result).toStrictEqual([
       {
@@ -347,7 +347,7 @@ describe("createTrack", () => {
       expect(result).toHaveLength(3);
     });
 
-    it("should fall back to numbered naming when count exceeds names", () => {
+    it("should not set name for extras when count exceeds names", () => {
       const track0 = registerMockObject("midi_track_0", {});
       const track1 = registerMockObject("midi_track_1", {});
       const track2 = registerMockObject("midi_track_2", {});
@@ -362,7 +362,7 @@ describe("createTrack", () => {
       expect(track0.set).toHaveBeenCalledWith("name", "kick");
       expect(track1.set).toHaveBeenCalledWith("name", "snare");
       expect(track2.set).toHaveBeenCalledWith("name", "hat");
-      expect(track3.set).toHaveBeenCalledWith("name", "hat 2");
+      expect(track3.set).not.toHaveBeenCalledWith("name", expect.anything());
       expect(result).toHaveLength(4);
     });
 
@@ -413,7 +413,7 @@ describe("createTrack", () => {
       expect(track2.set).toHaveBeenCalledWith("name", "hat");
     });
 
-    it("should continue numbering from 2 when falling back", () => {
+    it("should not set name for extras beyond comma-separated list", () => {
       const track0 = registerMockObject("midi_track_0", {});
       const track1 = registerMockObject("midi_track_1", {});
       const track2 = registerMockObject("midi_track_2", {});
@@ -430,9 +430,9 @@ describe("createTrack", () => {
       expect(track0.set).toHaveBeenCalledWith("name", "kick");
       expect(track1.set).toHaveBeenCalledWith("name", "snare");
       expect(track2.set).toHaveBeenCalledWith("name", "hat");
-      // Subsequent tracks use "hat 2", "hat 3" (starting from 2)
-      expect(track3.set).toHaveBeenCalledWith("name", "hat 2");
-      expect(track4.set).toHaveBeenCalledWith("name", "hat 3");
+      // Subsequent tracks get no name (Ableton default)
+      expect(track3.set).not.toHaveBeenCalledWith("name", expect.anything());
+      expect(track4.set).not.toHaveBeenCalledWith("name", expect.anything());
     });
   });
 

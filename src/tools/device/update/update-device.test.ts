@@ -278,6 +278,88 @@ describe("updateDevice", () => {
     });
   });
 
+  describe("params - name-based lookup", () => {
+    let paramFreq: RegisteredMockObject;
+    let paramMacro: RegisteredMockObject;
+
+    beforeEach(() => {
+      registerMockObject("123", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: {
+          parameters: children("p-freq", "p-macro"),
+        },
+      });
+
+      paramFreq = registerMockObject("p-freq", {
+        properties: {
+          name: "Filter Freq",
+          original_name: "Filter Freq",
+          is_quantized: 0,
+          value: 500,
+          min: 20,
+          max: 20000,
+        },
+        methods: { str_for_value: (v: unknown) => `${String(v)} Hz` },
+      });
+
+      paramMacro = registerMockObject("p-macro", {
+        properties: {
+          name: "Reverb",
+          original_name: "Macro 1",
+          is_quantized: 0,
+          value: 0.5,
+          min: 0,
+          max: 1,
+        },
+        methods: { str_for_value: (v: unknown) => String(v) },
+      });
+    });
+
+    it("should resolve param by exact name", () => {
+      updateDevice({ ids: "123", params: '{"Filter Freq": 1000}' });
+
+      expect(paramFreq.set).toHaveBeenCalledWith("display_value", 1000);
+    });
+
+    it("should resolve param by name case-insensitively", () => {
+      updateDevice({ ids: "123", params: '{"filter freq": 1000}' });
+
+      expect(paramFreq.set).toHaveBeenCalledWith("display_value", 1000);
+    });
+
+    it("should resolve rack macro by raw name", () => {
+      updateDevice({ ids: "123", params: '{"Reverb": 0.8}' });
+
+      expect(paramMacro.set).toHaveBeenCalledWith("display_value", 0.8);
+    });
+
+    it("should resolve rack macro by formatted name", () => {
+      updateDevice({ ids: "123", params: '{"Reverb (Macro 1)": 0.8}' });
+
+      expect(paramMacro.set).toHaveBeenCalledWith("display_value", 0.8);
+    });
+
+    it("should resolve multiple params by name", () => {
+      updateDevice({
+        ids: "123",
+        params: '{"Filter Freq": 1000, "Reverb": 0.8}',
+      });
+
+      expect(paramFreq.set).toHaveBeenCalledWith("display_value", 1000);
+      expect(paramMacro.set).toHaveBeenCalledWith("display_value", 0.8);
+    });
+
+    it("should warn for unresolvable non-integer key", () => {
+      updateDevice({ ids: "123", params: '{"Nonexistent": 0.5}' });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'updateDevice: param "Nonexistent" not found on device',
+      );
+    });
+  });
+
   // Division params tests are in update-device-division-params.test.js
   // macroVariation tests are in update-device-macro-variation.test.js
   // Chain and DrumPad tests are in update-device-chains.test.js

@@ -25,11 +25,25 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
       .min(1)
       .default(1)
       .describe("number to create"),
-    name: z.string().optional().describe("name (comma-separated for multiple)"),
-    color: z.string().optional().describe("#RRGGBB (comma-separated cycles)"),
+    name: z
+      .string()
+      .optional()
+      .describe("name (comma-separated when creating multiple)"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when creating multiple, cycles)"),
     type: z.enum(["midi", "audio", "return"]).default("midi").describe("type"),
     mute: z.boolean().optional().describe("mutes?"),
     solo: z.boolean().optional().describe("soloed?"),
     arm: z.boolean().optional().describe("record armed?"),
+  },
+
+  smallModelModeConfig: {
+    excludeParams: ["count", "mute", "solo", "arm"],
+    descriptionOverrides: {
+      name: "track name",
+      color: "#RRGGBB",
+    },
   },
 });

@@ -3,12 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  SYSTEM_INSTRUCTION,
-  getModelName,
-  getThinkingBudget,
-  toolNames,
-} from "./config";
+import { SYSTEM_INSTRUCTION, getModelName, getThinkingBudget } from "./config";
 
 describe("config", () => {
   describe("SYSTEM_INSTRUCTION", () => {
@@ -32,10 +27,8 @@ describe("config", () => {
       expect(getModelName("gemini-2.5-flash")).toBe("Gemini 2.5 Flash");
     });
 
-    it("returns display name for gemini-2.5-flash-lite", () => {
-      expect(getModelName("gemini-2.5-flash-lite")).toBe(
-        "Gemini 2.5 Flash-Lite",
-      );
+    it("returns display name for gemini-3-flash-preview", () => {
+      expect(getModelName("gemini-3-flash-preview")).toBe("Gemini 3 Flash");
     });
 
     it("returns the modelId unchanged for unknown models", () => {
@@ -72,42 +65,6 @@ describe("config", () => {
     it("returns -1 (Auto) for unknown levels", () => {
       expect(getThinkingBudget("Unknown")).toBe(-1);
       expect(getThinkingBudget("VeryHigh")).toBe(-1);
-    });
-  });
-
-  describe("toolNames", () => {
-    it("is an object", () => {
-      expect(typeof toolNames).toBe("object");
-      expect(toolNames).not.toBeNull();
-    });
-
-    it("contains expected tool mappings", () => {
-      expect(toolNames).toMatchObject({
-        "ppal-connect": "Connect to Ableton",
-        "ppal-context": "Project Context",
-        "ppal-read-live-set": "Read Live Set",
-        "ppal-update-live-set": "Update Live Set",
-        "ppal-create-track": "Create Track",
-        "ppal-read-track": "Read Track",
-        "ppal-update-track": "Update Track",
-        "ppal-create-scene": "Create Scene",
-        "ppal-read-scene": "Read Scene",
-        "ppal-update-scene": "Update Scene",
-        "ppal-create-clip": "Create Clip",
-        "ppal-read-clip": "Read Clip",
-        "ppal-update-clip": "Update Clip",
-        "ppal-create-device": "Create Device",
-        "ppal-read-device": "Read Device",
-        "ppal-update-device": "Update Device",
-        "ppal-playback": "Playback Controls",
-        "ppal-select": "Select/View Control",
-        "ppal-delete": "Delete Track/Scene/Clip",
-        "ppal-duplicate": "Duplicate Track/Scene/Clip",
-      });
-    });
-
-    it("has 20 tool mappings", () => {
-      expect(Object.keys(toolNames)).toHaveLength(20);
     });
   });
 });

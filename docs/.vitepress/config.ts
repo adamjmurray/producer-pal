@@ -1,4 +1,5 @@
 import { defineConfig } from "vitepress";
+import { VERSION } from "../../src/shared/version.ts";
 
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
@@ -24,6 +25,7 @@ export default defineConfig({
       "link",
       { rel: "canonical", href: canonicalUrl },
     ]);
+    pageData.frontmatter.version = VERSION;
   },
 
   head: [["link", { rel: "icon", href: "/producer-pal-logo.svg" }]],
@@ -136,8 +138,7 @@ export default defineConfig({
 
     footer: {
       message: "Released under the GPL-3.0 License.",
-      copyright:
-        'Copyright © 2025-present <a href="https://adammurray.link">Adam Murray</a>',
+      copyright: `Copyright © ${new Date().getFullYear()} <a href="https://adammurray.link">Adam Murray</a>`,
     },
   },
 });

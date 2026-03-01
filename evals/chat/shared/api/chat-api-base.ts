@@ -46,6 +46,8 @@ export interface ChatProviderConfig {
   providerName: string;
   /** Default model to use */
   defaultModel: string;
+  /** If true, missing API key uses a fallback instead of exiting */
+  apiKeyOptional?: boolean;
   /** Create the OpenAI-compatible client */
   createClient: (apiKey: string) => OpenAI;
   /** Build reasoning/thinking configuration for request body */
@@ -86,13 +88,14 @@ export async function runChatSession(
   options: ChatOptions,
   config: ChatProviderConfig,
 ): Promise<void> {
-  const apiKey = process.env[config.apiKeyEnvVar];
+  const rawApiKey = process.env[config.apiKeyEnvVar];
 
-  if (!apiKey) {
+  if (!rawApiKey && !config.apiKeyOptional) {
     console.error(`Error: API key for ${config.providerName} is not set`);
     process.exit(1);
   }
 
+  const apiKey = rawApiKey ?? "local";
   const model = options.model;
   const client = config.createClient(apiKey);
 

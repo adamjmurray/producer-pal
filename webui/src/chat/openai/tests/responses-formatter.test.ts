@@ -236,6 +236,36 @@ describe("formatResponsesMessages", () => {
     expect(result).toStrictEqual([]);
   });
 
+  it("handles function_call with malformed JSON arguments", () => {
+    const conversation: ResponsesConversationItem[] = [
+      {
+        type: "function_call",
+        id: "fc_malformed",
+        call_id: "call_malformed",
+        name: "broken_args_tool",
+        arguments: "not valid json at all",
+      },
+    ];
+
+    const result = formatResponsesMessages(conversation);
+
+    expect(stripTimestamps(result)).toStrictEqual([
+      {
+        role: "model",
+        parts: [
+          {
+            type: "tool",
+            name: "broken_args_tool",
+            args: {},
+            result: null,
+            isError: undefined,
+          },
+        ],
+        rawHistoryIndex: 0,
+      },
+    ]);
+  });
+
   it("handles function_call with no arguments", () => {
     const conversation: ResponsesConversationItem[] = [
       {

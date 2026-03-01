@@ -171,11 +171,51 @@ describe("SettingsScreen", () => {
       { id: "ppal-read-live-set", name: "Read Live Set" },
     ],
     mcpStatus: "connected" as const,
+    smallModelMode: false,
+    setSmallModelMode: vi.fn(),
     resetBehaviorToDefaults: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     settingsConfigured: false,
   };
+
+  describe("help link", () => {
+    it("renders help link with connection tab anchor by default", () => {
+      render(<SettingsScreen {...defaultProps} />);
+      const link = screen.getByTitle("Help") as HTMLAnchorElement;
+
+      expect(link.href).toBe(
+        "https://producer-pal.org/guide/chat-ui#connection",
+      );
+      expect(link.target).toBe("_blank");
+    });
+
+    it("updates help link when switching to behavior tab", () => {
+      render(<SettingsScreen {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Behavior" }));
+      const link = screen.getByTitle("Help") as HTMLAnchorElement;
+
+      expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#behavior");
+    });
+
+    it("updates help link when switching to tools tab", () => {
+      render(<SettingsScreen {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Tools" }));
+      const link = screen.getByTitle("Help") as HTMLAnchorElement;
+
+      expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#tools");
+    });
+
+    it("updates help link when switching to appearance tab", () => {
+      render(<SettingsScreen {...defaultProps} />);
+      fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+      const link = screen.getByTitle("Help") as HTMLAnchorElement;
+
+      expect(link.href).toBe(
+        "https://producer-pal.org/guide/chat-ui#appearance",
+      );
+    });
+  });
 
   describe("basic rendering", () => {
     it("renders title", () => {

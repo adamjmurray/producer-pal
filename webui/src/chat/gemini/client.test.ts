@@ -145,7 +145,7 @@ describe("GeminiClient", () => {
       // Verify chat was created with default model
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: "gemini-2.5-flash-lite",
+          model: "gemini-3-flash-preview",
         }),
       );
     });

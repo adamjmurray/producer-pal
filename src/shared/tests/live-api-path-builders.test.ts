@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { livePath } from "./live-api-path-builders.ts";
+import { livePath } from "../live-api-path-builders.ts";
 
 describe("livePath", () => {
   describe("track", () => {

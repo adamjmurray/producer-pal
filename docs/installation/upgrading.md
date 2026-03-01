@@ -4,7 +4,8 @@ When installing a new version of Producer Pal, follow these steps:
 
 ## 1. Download New Files
 
-Get the latest version:
+Get the latest version (v{{ $frontmatter.version }}) —
+[what's new?](https://github.com/adamjmurray/producer-pal/releases/latest):
 
 - [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd) -
   Max for Live device
@@ -58,3 +59,9 @@ If Producer Pal stops working after upgrading:
 - Start a fresh conversation
 
 See the [Troubleshooting Guide](./troubleshooting) for more help.
+
+## Version History
+
+See the full
+[release history](https://github.com/adamjmurray/producer-pal/releases) on
+GitHub.

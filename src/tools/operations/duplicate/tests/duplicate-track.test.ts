@@ -35,7 +35,7 @@ describe("duplicate - track duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 0);
   });
 
-  it("should duplicate multiple tracks with auto-incrementing names", () => {
+  it("should duplicate multiple tracks with same name", () => {
     registerMockObject("track1", { path: livePath.track(0) });
     const liveSet = registerMockObject("live_set", {
       path: livePath.liveSet,
@@ -67,8 +67,8 @@ describe("duplicate - track duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_track", 2);
 
     expect(track1.set).toHaveBeenCalledWith("name", "Custom Track");
-    expect(track2.set).toHaveBeenCalledWith("name", "Custom Track 2");
-    expect(track3.set).toHaveBeenCalledWith("name", "Custom Track 3");
+    expect(track2.set).toHaveBeenCalledWith("name", "Custom Track");
+    expect(track3.set).toHaveBeenCalledWith("name", "Custom Track");
   });
 
   it("should duplicate a track without clips when withoutClips is true", () => {

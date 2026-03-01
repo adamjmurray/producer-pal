@@ -18,6 +18,7 @@ describe("ChatHeader", () => {
     provider: "gemini" as const,
     enabledToolsCount: 20,
     totalToolsCount: 20,
+    smallModelMode: false,
     hasMessages: false,
     onOpenSettings: vi.fn(),
     onClearConversation: vi.fn(),
@@ -38,7 +39,17 @@ describe("ChatHeader", () => {
 
     it("renders Settings button", () => {
       render(<ChatHeader {...defaultProps} />);
-      expect(screen.getByRole("button", { name: "Settings" })).toBeDefined();
+      expect(screen.getByRole("button", { name: /Settings/ })).toBeDefined();
+    });
+
+    it("title links to docs site", () => {
+      render(<ChatHeader {...defaultProps} />);
+      const link = screen.getByText("Producer Pal Chat").closest("a");
+
+      expect(link).toBeDefined();
+      expect(link?.href).toBe("https://producer-pal.org/guide/chat-ui");
+      expect(link?.target).toBe("_blank");
+      expect(link?.rel).toBe("noopener noreferrer");
     });
   });
 
@@ -63,7 +74,8 @@ describe("ChatHeader", () => {
     it("shows fallback model when activeModel is null", () => {
       render(<ChatHeader {...defaultProps} activeModel={null} />);
       // Falls back to model prop from settings
-      expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
+      expect(screen.getByText(/Google \|/)).toBeDefined();
+      expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
     });
 
     it("shows provider and model name when both are set", () => {
@@ -74,7 +86,8 @@ describe("ChatHeader", () => {
           activeProvider="gemini"
         />,
       );
-      expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
+      expect(screen.getByText(/Google \|/)).toBeDefined();
+      expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
     });
 
     it("shows Flash model with provider", () => {
@@ -85,18 +98,20 @@ describe("ChatHeader", () => {
           activeProvider="gemini"
         />,
       );
-      expect(screen.getByText("Google | Gemini 2.5 Flash")).toBeDefined();
+      expect(screen.getByText(/Google \|/)).toBeDefined();
+      expect(screen.getByText("Gemini 2.5 Flash")).toBeDefined();
     });
 
-    it("shows Flash-Lite model with provider", () => {
+    it("shows Gemini 3 Flash model with provider", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-2.5-flash-lite"
+          activeModel="gemini-3-flash-preview"
           activeProvider="gemini"
         />,
       );
-      expect(screen.getByText("Google | Gemini 2.5 Flash-Lite")).toBeDefined();
+      expect(screen.getByText(/Google \|/)).toBeDefined();
+      expect(screen.getByText("Gemini 3 Flash")).toBeDefined();
     });
 
     it("shows unknown model ID as-is with provider", () => {
@@ -107,7 +122,8 @@ describe("ChatHeader", () => {
           activeProvider="openai"
         />,
       );
-      expect(screen.getByText("OpenAI | unknown-model")).toBeDefined();
+      expect(screen.getByText(/OpenAI \|/)).toBeDefined();
+      expect(screen.getByText("unknown-model")).toBeDefined();
     });
 
     it("shows fallback provider when activeProvider is null", () => {
@@ -119,7 +135,8 @@ describe("ChatHeader", () => {
         />,
       );
       // Falls back to provider prop from settings
-      expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
+      expect(screen.getByText(/Google \|/)).toBeDefined();
+      expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
     });
   });
 
@@ -176,7 +193,7 @@ describe("ChatHeader", () => {
 
       render(<ChatHeader {...defaultProps} onOpenSettings={onOpenSettings} />);
 
-      const button = screen.getByRole("button", { name: "Settings" });
+      const button = screen.getByRole("button", { name: /Settings/ });
 
       fireEvent.click(button);
 
@@ -198,7 +215,8 @@ describe("ChatHeader", () => {
       );
 
       expect(screen.getByText("✓ Ready")).toBeDefined();
-      expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
+      expect(screen.getByText(/Google \|/)).toBeDefined();
+      expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
       expect(screen.getByText("18/20 tools")).toBeDefined();
     });
   });
@@ -279,6 +297,38 @@ describe("ChatHeader", () => {
         />,
       );
       expect(screen.getByText(/Custom \|/)).toBeDefined();
+    });
+  });
+
+  describe("small model mode indicator", () => {
+    it("does not show indicator when smallModelMode is false", () => {
+      render(<ChatHeader {...defaultProps} smallModelMode={false} />);
+      expect(screen.queryByLabelText("Small model mode")).toBeNull();
+    });
+
+    it("shows indicator when smallModelMode is true", () => {
+      render(<ChatHeader {...defaultProps} smallModelMode={true} />);
+      expect(
+        screen.getAllByLabelText("Small model mode").length,
+      ).toBeGreaterThan(0);
+    });
+
+    it("shows full text at sm breakpoint", () => {
+      render(<ChatHeader {...defaultProps} smallModelMode={true} />);
+      const elements = screen.getAllByLabelText("Small model mode");
+      const fullText = elements.find((el) =>
+        el.textContent.includes("small model"),
+      );
+
+      expect(fullText).toBeDefined();
+    });
+
+    it("shows turtle-only variant for mobile", () => {
+      render(<ChatHeader {...defaultProps} smallModelMode={true} />);
+      const elements = screen.getAllByLabelText("Small model mode");
+      const mobileEl = elements.find((el) => el.textContent.trim() === "🐢");
+
+      expect(mobileEl).toBeDefined();
     });
   });
 

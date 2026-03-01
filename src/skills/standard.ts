@@ -122,14 +122,16 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
-- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), min(a,b,...), max(a,b,...), pow(base,exp), quant(pitch) (snap to Live Set scale; no-op if no scale)
+- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), min(a,b,...), max(a,b,...), pow(base,exp), quant(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms)
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
 - \`cos(freq)\`, \`square(freq)\` - start at peak (1.0); \`sin(freq)\`, \`tri(freq)\`, \`saw(freq)\` - start at zero, rise to peak
 - \`rand([min], [max])\` - random value (no args: -1 to 1, one arg: 0 to max, two: min to max)
+- \`seq(a, b, ...)\` - cycle through values by note.index (MIDI) or clip.index (audio)
 - \`choose(a, b, ...)\` - random selection from arguments
-- \`ramp(start, end)\` - linear interpolation over time range (or whole clip if no time selector)
-- \`curve(start, end, exp)\` - exponential ramp (exp>1: slow start, exp<1: fast start, 1: linear)
+- \`ramp(start, end)\` - linear interpolation; reaches end value at time range end (or clip end)
+- \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
+- For ramp/curve, end the time filter on the last note's beat position. In 4/4: last 8th=N|4.5, last 16th=N|4.75
 - Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
 - \`sync\` keyword (last arg on periodic waves) syncs phase to arrangement timeline instead of clip start
 
@@ -140,13 +142,16 @@ velocity += 20 * cos(2t)       // cycle every 2 beats
 velocity += 20 * cos(4:0t, sync) // continuous across clips
 velocity += 20 * square(2t, 0, cos(1:0t) * 0.25 + 0.5) // dynamic PWM
 timing += 0.05 * rand()        // humanize timing
-velocity += ramp(0, 60)        // fade in over clip
+1|1-4|4.75: velocity = ramp(40, 127)  // crescendo over 4 bars (16th grid)
 C1-C2: velocity += 30          // accent bass notes
 1|1-2|4: velocity = 100        // forte in bars 1-2
+velocity = seq(100, 60, 80, 60) // cycle accents per note
+Gb1: pitch = seq(Gb1, Gb1, Gb1, Gb1, Ab1) // every 5th closed hat → open hat
 velocity = 60 + note.index * 5 // sequential crescendo
 pitch += clip.index * 7        // stacked fifths across clips
 gain = audio.gain - 6          // reduce audio clip by 6 dB
 pitch = quant(note.pitch + 7)  // transpose up fifth, snap to scale
+pitch = step(note.pitch, sin(4t) * 7)  // oscillate ±7 scale steps smoothly
 velocity *= 0.5                // halve all velocities
 C1-C2: duration /= 2           // halve duration of bass notes
 \`\`\`
@@ -182,8 +187,10 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 - \`t0/d0/rc0/d0\` = first device in rack's return chain
 - \`t0/d0/pC1/d0\` = first device in Drum Rack's C1 pad
 
-### Arrangement Clips
+Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
 
-\`arrangementStart\` moves clips; \`arrangementLength\` sets playback region. Moving clips changes their IDs - re-read to get new IDs.
-\`split\` divides a clip at bar|beat positions (arrangement only).
+### Moving Clips
+
+\`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, e.g., "2/3") moves session clips. Moving clips changes their IDs - re-read to get new IDs.
+\`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions.
 `;

@@ -115,16 +115,18 @@ export function moveDrumChainToPath(
 /**
  * Set parameter values from JSON string
  * @param device - LiveAPI device object to update
- * @param paramsJson - JSON object mapping param IDs to values
+ * @param paramsJson - JSON object mapping param names to values
  */
 export function setParamValues(device: LiveAPI, paramsJson: string): void {
   const paramValues = JSON.parse(paramsJson) as Record<string, string | number>;
 
-  for (const [paramId, inputValue] of Object.entries(paramValues)) {
-    const param = resolveParamForDevice(device, paramId);
+  for (const [key, inputValue] of Object.entries(paramValues)) {
+    const param =
+      resolveParamByName(device, key) ??
+      (/^\d+$/.test(key) ? resolveParamForDevice(device, key) : null);
 
     if (!param?.exists()) {
-      console.warn(`updateDevice: param "${paramId}" not found on device`);
+      console.warn(`updateDevice: param "${key}" not found on device`);
       continue;
     }
 
@@ -152,6 +154,38 @@ function resolveParamForDevice(
 
   // Default: use absolute ID resolution (backward compatible for single-device updates)
   return LiveAPI.from(paramId);
+}
+
+/**
+ * Resolve a parameter by name on a device (case-insensitive)
+ * @param device - LiveAPI device object
+ * @param name - Parameter name to find
+ * @returns LiveAPI param object or null
+ */
+function resolveParamByName(device: LiveAPI, name: string): LiveAPI | null {
+  const nameLower = name.toLowerCase();
+  const parameters = device.getChildren("parameters");
+
+  for (const param of parameters) {
+    const paramName = param.getProperty("name") as string;
+
+    if (paramName.toLowerCase() === nameLower) {
+      return param;
+    }
+
+    // Also match formatted name "name (original_name)" for rack macros
+    const originalName = param.getProperty("original_name") as string;
+
+    if (originalName !== paramName) {
+      const formatted = `${paramName} (${originalName})`;
+
+      if (formatted.toLowerCase() === nameLower) {
+        return param;
+      }
+    }
+  }
+
+  return null;
 }
 
 /**

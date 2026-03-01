@@ -205,10 +205,12 @@ otherFunctionName
   / "min" { return "min"; }
   / "max" { return "max"; }
   / "rand" { return "rand"; }
+  / "seq" { return "seq"; }
   / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }
   / "curve" { return "curve"; }
   / "quant" { return "quant"; }
+  / "step" { return "step"; }
 
 syncArgumentList
   = head:argument tail:(_ "," _ argument)* _ "," _ "sync" {

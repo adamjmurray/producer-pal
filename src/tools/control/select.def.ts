@@ -64,4 +64,8 @@ export const toolDefSelect = defineTool("ppal-select", {
       .describe("show selected clip's loop view?"),
     showBrowser: z.boolean().optional().describe("show browser view?"),
   },
+
+  smallModelModeConfig: {
+    excludeParams: ["instrument", "showLoop", "showBrowser"],
+  },
 });

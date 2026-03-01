@@ -317,10 +317,12 @@ function processAudioClip(
 
     result.warpMode = WARP_MODE_MAPPING[warpModeValue] ?? "unknown";
 
-    const warpMarkers = processWarpMarkers(clip);
+    if (process.env.ENABLE_WARP_MARKERS === "true") {
+      const warpMarkers = processWarpMarkers(clip);
 
-    if (warpMarkers !== undefined) {
-      result.warpMarkers = warpMarkers;
+      if (warpMarkers !== undefined) {
+        result.warpMarkers = warpMarkers;
+      }
     }
   }
 }

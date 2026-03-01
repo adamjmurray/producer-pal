@@ -8,9 +8,15 @@
  */
 
 import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
-import { type EvalScenarioResult, type LlmJudgeAssertion } from "../types.ts";
-import { computeCorrectnessScore } from "./correctness-score.ts";
+import { type EvalAssertionResult, type EvalScenarioResult } from "../types.ts";
 import { type JudgeResult } from "./judge-response-parser.ts";
+
+const DIMENSION_KEYS = [
+  "accuracy",
+  "reasoning",
+  "efficiency",
+  "naturalness",
+] as const;
 
 /**
  * Print result for a single scenario run
@@ -24,81 +30,96 @@ export function printResult(
   modelKey: string,
   configId: string,
 ): void {
-  const status = result.passed ? "PASSED" : "FAILED";
-
-  // Get scores
-  const correctness = computeCorrectnessScore(result.assertions);
-  const llmJudgeResult = result.assertions.find(
-    (a) => a.assertion.type === "llm_judge",
-  );
-  const llmDetails = llmJudgeResult?.details as JudgeResult | undefined;
-  const llmAssertion = llmJudgeResult?.assertion as
-    | LlmJudgeAssertion
-    | undefined;
-  const llmMinScore = llmAssertion?.minScore ?? 3;
-
   const configLabel = configId === "default" ? "" : ` [${configId}]`;
+  const percentage =
+    result.maxScore > 0
+      ? ((result.earnedScore / result.maxScore) * 100).toFixed(0)
+      : "100";
 
   console.log(`\n${formatSubsectionHeader("SUMMARY")}`);
   console.log(`${modelKey}: ${result.scenario.id}${configLabel}\n`);
   console.log(`Duration: ${result.totalDurationMs}ms`);
-  console.log(`Result: ${status}`);
 
   if (result.error) {
     console.log(`Error: ${result.error}`);
   }
 
-  // Print dimension table
-  printDimensionTable(correctness, llmDetails, llmMinScore);
+  if (result.assertions.length > 0) {
+    printScoreTable(result.assertions);
+  }
+
+  console.log(
+    `\nTotal: ${formatScore(result.earnedScore)}/${result.maxScore} (${percentage}%)`,
+  );
 }
 
 /**
- * Print the dimension score table
+ * Print score table showing each assertion with earned/max
  *
- * @param correctness - Correctness score from deterministic checks
- * @param llmDetails - LLM judge result with dimension scores
- * @param minScore - Minimum score threshold
+ * @param assertions - All assertion results
  */
-function printDimensionTable(
-  correctness: number,
-  llmDetails: JudgeResult | undefined,
-  minScore: number,
+function printScoreTable(assertions: EvalAssertionResult[]): void {
+  const typeWidth = 17;
+  const scoreWidth = 10;
+
+  console.log(
+    `\n┌─────┬${"─".repeat(typeWidth + 2)}┬${"─".repeat(scoreWidth + 2)}┐`,
+  );
+  console.log(
+    `│   # │ ${"Type".padEnd(typeWidth)} │ ${"Score".padStart(scoreWidth)} │`,
+  );
+  console.log(
+    `├─────┼${"─".repeat(typeWidth + 2)}┼${"─".repeat(scoreWidth + 2)}┤`,
+  );
+
+  for (const [i, a] of assertions.entries()) {
+    const num = String(i + 1).padStart(3);
+    const type = a.assertion.type.padEnd(typeWidth);
+    const score = `${formatScore(a.earned)}/${a.maxScore}`;
+
+    console.log(`│ ${num} │ ${type} │ ${score.padStart(scoreWidth)} │`);
+
+    // For LLM judge, show dimension breakdown
+    if (a.assertion.type === "llm_judge") {
+      printJudgeDimensions(a, typeWidth, scoreWidth);
+    }
+  }
+
+  console.log(
+    `└─────┴${"─".repeat(typeWidth + 2)}┴${"─".repeat(scoreWidth + 2)}┘`,
+  );
+}
+
+/**
+ * Print LLM judge dimension sub-rows
+ *
+ * @param assertion - The LLM judge assertion result
+ * @param typeWidth - Width of the type column
+ * @param scoreWidth - Width of the score column
+ */
+function printJudgeDimensions(
+  assertion: EvalAssertionResult,
+  typeWidth: number,
+  scoreWidth: number,
 ): void {
-  console.log(`\n┌───────────────┬───────┐`);
-  console.log(`│ Dimension     │ Score │`);
-  console.log(`├───────────────┼───────┤`);
-  console.log(`│ Correctness   │ ${correctness.toFixed(2).padStart(5)} │`);
+  const details = assertion.details as JudgeResult | undefined;
 
-  const scores = [correctness];
+  if (!details) return;
 
-  if (llmDetails) {
-    console.log(
-      `│ Accuracy      │ ${llmDetails.accuracy.score.toFixed(2).padStart(5)} │`,
-    );
-    console.log(
-      `│ Reasoning     │ ${llmDetails.reasoning.score.toFixed(2).padStart(5)} │`,
-    );
-    console.log(
-      `│ Efficiency    │ ${llmDetails.efficiency.score.toFixed(2).padStart(5)} │`,
-    );
-    console.log(
-      `│ Naturalness   │ ${llmDetails.naturalness.score.toFixed(2).padStart(5)} │`,
-    );
-    scores.push(
-      llmDetails.accuracy.score,
-      llmDetails.reasoning.score,
-      llmDetails.efficiency.score,
-      llmDetails.naturalness.score,
-    );
+  for (const dim of DIMENSION_KEYS) {
+    const dimScore = details[dim].score.toFixed(2);
+    const label = `  ${dim}`.padEnd(typeWidth);
+
+    console.log(`│     │ ${label} │ ${dimScore.padStart(scoreWidth)} │`);
   }
+}
 
-  const average = scores.reduce((a, b) => a + b, 0) / scores.length;
-
-  console.log(`├───────────────┼───────┤`);
-  console.log(`│ Average       │ ${average.toFixed(2).padStart(5)} │`);
-  console.log(`└───────────────┴───────┘`);
-
-  if (llmDetails) {
-    console.log(`\nMin score: ${minScore}`);
-  }
+/**
+ * Format a score for display (integer if whole, 1 decimal otherwise)
+ *
+ * @param score - The score to format
+ * @returns Formatted score string
+ */
+function formatScore(score: number): string {
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
 }

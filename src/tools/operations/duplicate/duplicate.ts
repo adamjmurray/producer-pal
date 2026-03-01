@@ -3,13 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
-import {
-  generateObjectName,
-  switchViewIfRequested,
-} from "./helpers/duplicate-misc-helpers.ts";
+import { switchViewIfRequested } from "./helpers/duplicate-misc-helpers.ts";
 import {
   duplicateTrack,
   duplicateScene,
@@ -17,7 +15,7 @@ import {
   duplicateSceneToArrangement,
 } from "./helpers/duplicate-track-scene-helpers.ts";
 import {
-  resolveArrangementPosition,
+  resolveArrangementPositions,
   validateBasicInputs,
   validateAndConfigureRouteToSource,
   validateClipParameters,
@@ -31,29 +29,26 @@ interface DuplicateArgs {
   count?: number;
   destination?: string;
   arrangementStart?: string;
-  arrangementLocatorId?: string;
-  arrangementLocatorName?: string;
+  locatorId?: string;
+  locatorName?: string;
   arrangementLength?: string;
   name?: string;
   withoutClips?: boolean;
   withoutDevices?: boolean;
   routeToSource?: boolean;
   switchView?: boolean;
-  toTrackIndex?: number;
-  toSceneIndex?: string;
+  toSlot?: string;
   toPath?: string;
 }
 
 interface DuplicateParams {
   arrangementStart?: string;
-  arrangementLocatorId?: string;
-  arrangementLocatorName?: string;
+  locatorId?: string;
+  locatorName?: string;
   arrangementLength?: string;
   withoutClips?: boolean;
   withoutDevices?: boolean;
   routeToSource?: boolean;
-  toTrackIndex?: number | null;
-  toSceneIndex?: string | null;
 }
 
 /**
@@ -64,16 +59,15 @@ interface DuplicateParams {
  * @param args.count - Number of duplicates
  * @param args.destination - Destination type
  * @param args.arrangementStart - Arrangement start position
- * @param args.arrangementLocatorId - Locator ID
- * @param args.arrangementLocatorName - Locator name
+ * @param args.locatorId - Arrangement locator ID(s)
+ * @param args.locatorName - Arrangement locator name(s)
  * @param args.arrangementLength - Arrangement length
  * @param args.name - Name for duplicates
  * @param args.withoutClips - Exclude clips
  * @param args.withoutDevices - Exclude devices
  * @param args.routeToSource - Route to source
  * @param args.switchView - Switch view
- * @param args.toTrackIndex - Destination track index
- * @param args.toSceneIndex - Destination scene index
+ * @param args.toSlot - Destination clip slot(s)
  * @param args.toPath - Destination path
  * @param context - Context object
  * @returns Result object(s)
@@ -85,16 +79,15 @@ export function duplicate(
     count = 1,
     destination,
     arrangementStart,
-    arrangementLocatorId,
-    arrangementLocatorName,
+    locatorId,
+    locatorName,
     arrangementLength,
     name,
     withoutClips,
     withoutDevices,
     routeToSource,
     switchView,
-    toTrackIndex,
-    toSceneIndex,
+    toSlot,
     toPath,
   }: DuplicateArgs,
   context: Partial<ToolContext> = {},
@@ -117,7 +110,7 @@ export function duplicate(
   const object = validateIdType(id, type, "duplicate");
 
   // Validate clip-specific parameters
-  validateClipParameters(type, destination, toTrackIndex, toSceneIndex);
+  validateClipParameters(type, destination, toSlot);
 
   // Validate destination parameter compatibility with type
   validateDestinationParameter(type, destination);
@@ -126,13 +119,13 @@ export function duplicate(
   validateArrangementParameters(
     destination,
     arrangementStart,
-    arrangementLocatorId,
-    arrangementLocatorName,
+    locatorId,
+    locatorName,
   );
 
-  // Handle device duplication separately (single copy only)
+  // Handle device duplication (supports comma-separated toPath for multiple destinations)
   if (type === "device") {
-    return duplicateDevice(object, toPath, name, count);
+    return duplicateDeviceWithPaths(object, toPath, name, count);
   }
 
   // For clips, use position-based iteration; for tracks/scenes, use count-based
@@ -143,11 +136,10 @@ export function duplicate(
           object,
           id,
           name,
-          toTrackIndex,
-          toSceneIndex,
+          toSlot,
           arrangementStart,
-          arrangementLocatorId,
-          arrangementLocatorName,
+          locatorId,
+          locatorName,
           arrangementLength,
           context,
         )
@@ -160,14 +152,12 @@ export function duplicate(
           name,
           {
             arrangementStart,
-            arrangementLocatorId,
-            arrangementLocatorName,
+            locatorId,
+            locatorName,
             arrangementLength,
             withoutClips,
             withoutDevices,
             routeToSource,
-            toTrackIndex: null,
-            toSceneIndex: null,
           },
           context,
         );
@@ -184,7 +174,31 @@ export function duplicate(
 }
 
 /**
- * Duplicates a track or scene using count-based iteration
+ * Duplicates a device to one or more destination paths.
+ * Supports comma-separated toPath for multiple destinations.
+ * @param object - LiveAPI device object
+ * @param toPath - Destination path(s), comma-separated for multiple
+ * @param name - Optional name for duplicated device(s)
+ * @param count - Number of copies (warns if > 1)
+ * @returns Result object or array of result objects
+ */
+function duplicateDeviceWithPaths(
+  object: LiveAPI,
+  toPath: string | undefined,
+  name: string | undefined,
+  count: number,
+): object | object[] {
+  const paths = parseCommaSeparatedIds(toPath);
+
+  if (paths.length <= 1) {
+    return duplicateDevice(object, toPath, name, count);
+  }
+
+  return paths.map((path) => duplicateDevice(object, path, name, 1));
+}
+
+/**
+ * Duplicates a track or scene using count-based or position-based iteration
  * @param type - Type of object (track or scene)
  * @param destination - Destination for duplication
  * @param object - Live API object to duplicate
@@ -205,43 +219,36 @@ function duplicateTrackOrSceneWithCount(
   params: DuplicateParams,
   context: Partial<ToolContext>,
 ): object[] {
+  // Scene to arrangement: use position-based iteration (supports multi-value locators)
+  if (type === "scene" && destination === "arrangement") {
+    return duplicateSceneToArrangementAtPositions(
+      object,
+      id,
+      count,
+      name,
+      params,
+      context,
+    );
+  }
+
+  // Count-based iteration for tracks and session scenes
   const createdObjects: object[] = [];
-  const {
-    arrangementStart,
-    arrangementLocatorId,
-    arrangementLocatorName,
-    arrangementLength,
-    withoutClips,
-    withoutDevices,
-    routeToSource,
-  } = params;
+  const { withoutClips, withoutDevices, routeToSource } = params;
 
   for (let i = 0; i < count; i++) {
-    const objectName = generateObjectName(name, count, i);
-
-    const newObjectMetadata = performDuplication(
+    const result = duplicateTrackOrSceneToSession(
       type,
-      destination,
       object,
       id,
       i,
-      objectName,
-      {
-        arrangementStart,
-        arrangementLocatorId,
-        arrangementLocatorName,
-        arrangementLength,
-        withoutClips,
-        withoutDevices,
-        routeToSource,
-        toTrackIndex: null,
-        toSceneIndex: null,
-      },
-      context,
+      name,
+      withoutClips,
+      withoutDevices,
+      routeToSource,
     );
 
-    if (newObjectMetadata != null) {
-      createdObjects.push(newObjectMetadata);
+    if (result != null) {
+      createdObjects.push(result);
     }
   }
 
@@ -249,32 +256,29 @@ function duplicateTrackOrSceneWithCount(
 }
 
 /**
- * Duplicates a scene to the arrangement view
- * @param object - Live API object to duplicate
- * @param id - ID of the object
- * @param i - Current duplicate index
- * @param objectName - Name for the duplicated object
- * @param arrangementStart - Start time in bar|beat format
- * @param arrangementLocatorId - Locator ID for arrangement position
- * @param arrangementLocatorName - Locator name for arrangement position
- * @param arrangementLength - Duration in bar|beat format
- * @param withoutClips - Whether to exclude clips
- * @param context - Context object with holdingAreaStartBeats
- * @returns Metadata about the duplicated object
+ * Duplicates a scene to the arrangement at one or more positions.
+ * Supports multiple positions from comma-separated locator IDs/names.
+ * When a single position is given with count > 1, places copies sequentially.
+ * @param object - Live API scene object
+ * @param id - Scene ID
+ * @param count - Number of copies (for sequential placement from a single position)
+ * @param name - Base name for duplicated objects
+ * @param params - Arrangement parameters (arrangementStart, locatorId, locatorName, etc.)
+ * @param context - Context object
+ * @returns Array of result objects
  */
-function duplicateSceneToArrangementView(
+function duplicateSceneToArrangementAtPositions(
   object: LiveAPI,
   id: string,
-  i: number,
-  objectName: string | undefined,
-  arrangementStart: string | undefined,
-  arrangementLocatorId: string | undefined,
-  arrangementLocatorName: string | undefined,
-  arrangementLength: string | undefined,
-  withoutClips: boolean | undefined,
+  count: number,
+  name: string | undefined,
+  params: DuplicateParams,
   context: Partial<ToolContext>,
-): object {
-  // All arrangement operations need song time signature for bar|beat conversion
+): object[] {
+  const { arrangementStart, locatorId, locatorName, arrangementLength } =
+    params;
+  const withoutClips = params.withoutClips;
+
   const liveSet = LiveAPI.from(livePath.liveSet);
   const songTimeSigNumerator = liveSet.getProperty(
     "signature_numerator",
@@ -283,12 +287,12 @@ function duplicateSceneToArrangementView(
     "signature_denominator",
   ) as number;
 
-  // Resolve arrangement start position from bar|beat or locator
-  const baseArrangementStartBeats = resolveArrangementPosition(
+  // Resolve all positions from bar|beat or locator(s)
+  const positions = resolveArrangementPositions(
     liveSet,
     arrangementStart,
-    arrangementLocatorId,
-    arrangementLocatorName,
+    locatorId,
+    locatorName,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -301,21 +305,35 @@ function duplicateSceneToArrangementView(
     );
   }
 
-  // For multiple scenes, place them sequentially to avoid overlap
+  // When single position + count > 1, expand to sequential positions
   const sceneLength = calculateSceneLength(sceneIndex);
-  const actualArrangementStartBeats =
-    baseArrangementStartBeats + i * sceneLength;
+  const allPositions =
+    positions.length === 1 && count > 1
+      ? Array.from(
+          { length: count },
+          // bounded by count, index always valid
+          (_, i) => (positions[0] as number) + i * sceneLength,
+        )
+      : positions;
 
-  return duplicateSceneToArrangement(
-    id,
-    actualArrangementStartBeats,
-    objectName,
-    withoutClips,
-    arrangementLength,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-    context,
-  );
+  const createdObjects: object[] = [];
+
+  for (let i = 0; i < allPositions.length; i++) {
+    const result = duplicateSceneToArrangement(
+      id,
+      allPositions[i] as number, // bounded by loop
+      name,
+      withoutClips,
+      arrangementLength,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      context,
+    );
+
+    createdObjects.push(result);
+  }
+
+  return createdObjects;
 }
 
 /**
@@ -341,7 +359,6 @@ function duplicateTrackOrSceneToSession(
   routeToSource: boolean | undefined,
 ): object | undefined {
   if (type === "track") {
-    // Session view operations (no bar|beat conversion needed)
     const trackIndex = object.trackIndex;
 
     if (trackIndex == null) {
@@ -350,7 +367,6 @@ function duplicateTrackOrSceneToSession(
       );
     }
 
-    // For multiple tracks, we need to account for previously created tracks
     const actualTrackIndex = trackIndex + i;
 
     return duplicateTrack(
@@ -359,7 +375,7 @@ function duplicateTrackOrSceneToSession(
       withoutClips,
       withoutDevices,
       routeToSource,
-      trackIndex, // Pass original source track index for routing
+      trackIndex,
     );
   } else if (type === "scene") {
     const sceneIndex = object.sceneIndex;
@@ -374,63 +390,4 @@ function duplicateTrackOrSceneToSession(
 
     return duplicateScene(actualSceneIndex, objectName, withoutClips);
   }
-}
-
-/**
- * Performs the duplication operation for tracks or scenes
- * @param type - Type of object being duplicated (track or scene)
- * @param destination - Destination for duplication
- * @param object - Live API object to duplicate
- * @param id - ID of the object
- * @param i - Current duplicate index
- * @param objectName - Name for the duplicated object
- * @param params - Additional parameters for duplication
- * @param context - Context object with holdingAreaStartBeats
- * @returns Metadata about the duplicated object
- */
-function performDuplication(
-  type: string,
-  destination: string | undefined,
-  object: LiveAPI,
-  id: string,
-  i: number,
-  objectName: string | undefined,
-  params: DuplicateParams,
-  context: Partial<ToolContext>,
-): object | undefined {
-  const {
-    arrangementStart,
-    arrangementLocatorId,
-    arrangementLocatorName,
-    arrangementLength,
-    withoutClips,
-    withoutDevices,
-    routeToSource,
-  } = params;
-
-  if (destination === "arrangement") {
-    return duplicateSceneToArrangementView(
-      object,
-      id,
-      i,
-      objectName,
-      arrangementStart,
-      arrangementLocatorId,
-      arrangementLocatorName,
-      arrangementLength,
-      withoutClips,
-      context,
-    );
-  }
-
-  return duplicateTrackOrSceneToSession(
-    type,
-    object,
-    id,
-    i,
-    objectName,
-    withoutClips,
-    withoutDevices,
-    routeToSource,
-  );
 }

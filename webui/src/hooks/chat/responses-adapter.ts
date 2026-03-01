@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -13,7 +14,7 @@ import {
 import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";
 import { buildResponsesConfig } from "#webui/hooks/settings/config-builders";
 import { type ResponsesConversationItem } from "#webui/types/responses-api";
-import { createResponsesErrorMessage } from "./helpers/streaming-helpers";
+import { createFormattedErrorMessage } from "./helpers/streaming-helpers";
 import { type ChatAdapter } from "./use-chat";
 
 /**
@@ -54,7 +55,11 @@ export const responsesAdapter: ChatAdapter<
     error: unknown,
     conversation: ResponsesConversationItem[],
   ) {
-    return createResponsesErrorMessage(conversation, error);
+    return createFormattedErrorMessage(
+      conversation,
+      formatResponsesMessages,
+      error,
+    );
   },
 
   extractUserMessage(item: ResponsesConversationItem): string | undefined {

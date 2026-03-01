@@ -4,23 +4,189 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 9,
+			"revision" : 10,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 827.0, 206.0, 505.0, 487.0 ],
+		"rect" : [ 371.0, 205.0, 597.0, 604.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-21",
+					"linecount" : 2,
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 416.0, 435.0, 166.0, 35.0 ],
+					"text" : "script sendbox \"Producer Pal update available\" hidden 1"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-17",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 243.0, 459.0, 75.0, 22.0 ],
+					"text" : "prepend text"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-20",
+					"linecount" : 2,
+					"maxclass" : "newobj",
+					"numinlets" : 4,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
+					"patching_rect" : [ 243.0, 411.0, 137.0, 35.0 ],
+					"text" : "combine v X.Y.Z \" \" available @triggers 1"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-24",
+					"linecount" : 2,
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 136.5, 535.0, 363.0, 35.0 ],
+					"text" : ";\rmax launch_browser https://producer-pal.org/installation/upgrading"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-15",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "bang", "" ],
+					"patching_rect" : [ 391.0, 290.0, 29.5, 22.0 ],
+					"text" : "t b l"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-14",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
+					"patching_rect" : [ 391.0, 381.0, 67.0, 22.0 ],
+					"save" : [ "#N", "thispatcher", ";", "#Q", "end", ";" ],
+					"text" : "thispatcher"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-53",
+					"linecount" : 2,
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 391.0, 329.0, 166.0, 35.0 ],
+					"text" : "script sendbox \"Producer Pal update available\" hidden 0"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"annotation" : "Click to get the latest version.",
+					"bgcolor" : [ 0.596078431372549, 0.933333333333333, 1.0, 1.0 ],
+					"fontface" : 0,
+					"hidden" : 1,
+					"hint" : "",
+					"id" : "obj-12",
+					"maxclass" : "textbutton",
+					"numinlets" : 1,
+					"numoutlets" : 3,
+					"outlettype" : [ "", "", "int" ],
+					"parameter_enable" : 0,
+					"patching_rect" : [ 243.0, 497.0, 100.0, 20.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 147.0, 4.0, 101.0, 22.0 ],
+					"rounded" : 8.0,
+					"text" : "Update available",
+					"textoncolor" : [ 0.129411764705882, 0.129411764705882, 0.129411764705882, 1.0 ],
+					"textovercolor" : [ 0.231372549019608, 0.03921568627451, 0.72156862745098, 1.0 ],
+					"underline" : 1,
+					"usetextovercolor" : 1,
+					"varname" : "Producer Pal update available"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-11",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 391.0, 257.0, 116.0, 22.0 ],
+					"text" : "r ---update-available"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"bgmode" : 0,
+					"border" : 0,
+					"clickthrough" : 1,
+					"enablehscroll" : 0,
+					"enablevscroll" : 0,
+					"id" : "obj-4",
+					"lockeddragscroll" : 0,
+					"lockedsize" : 0,
+					"maxclass" : "bpatcher",
+					"name" : "server-status.maxpat",
+					"numinlets" : 0,
+					"numoutlets" : 0,
+					"offset" : [ 0.0, 0.0 ],
+					"patching_rect" : [ 24.0, 91.0, 198.0, 71.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 28.0, 15.0, 213.0, 75.0 ],
+					"viewvisibility" : 1
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontface" : 1,
+					"fontname" : "Ableton Sans Bold",
+					"fontsize" : 9.0,
+					"id" : "obj-10",
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 46.0, 52.0, 86.0, 17.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 172.0, 16.0, 24.0, 17.0 ],
+					"text" : "TM",
+					"textjustification" : 1
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-6",
 					"maxclass" : "newobj",
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "outputvalue" ],
-					"patching_rect" : [ 370.0, 199.0, 77.0, 22.0 ],
+					"patching_rect" : [ 411.0, 75.0, 77.0, 22.0 ],
 					"text" : "t outputvalue"
 				}
 
@@ -32,7 +198,7 @@
 					"numinlets" : 0,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 370.0, 162.0, 95.0, 22.0 ],
+					"patching_rect" : [ 411.0, 38.0, 95.0, 22.0 ],
 					"text" : "r ---node-started"
 				}
 
@@ -49,7 +215,7 @@
 					"numoutlets" : 2,
 					"outlettype" : [ "", "" ],
 					"parameter_enable" : 1,
-					"patching_rect" : [ 52.0, 365.5, 83.0, 24.0 ],
+					"patching_rect" : [ 31.0, 344.0, 83.0, 24.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 85.0, 125.0, 80.0, 20.0 ],
 					"saved_attribute_attributes" : 					{
@@ -82,7 +248,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"parameter_enable" : 1,
-					"patching_rect" : [ 370.0, 242.0, 15.0, 15.0 ],
+					"patching_rect" : [ 411.0, 118.0, 15.0, 15.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 77.0, 103.0, 15.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
@@ -169,7 +335,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 370.0, 281.0, 104.0, 22.0 ],
+					"patching_rect" : [ 411.0, 157.0, 104.0, 22.0 ],
 					"text" : "chatUIEnabled $1"
 				}
 
@@ -180,7 +346,7 @@
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 387.0, 242.0, 87.0, 18.0 ],
+					"patching_rect" : [ 428.0, 118.0, 87.0, 18.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 93.0, 102.0, 79.397429999999986, 18.0 ],
 					"text" : "Enable Chat UI",
@@ -194,7 +360,7 @@
 					"maxclass" : "newobj",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 370.0, 322.0, 89.0, 22.0 ],
+					"patching_rect" : [ 411.0, 198.0, 89.0, 22.0 ],
 					"text" : "s ---node-script"
 				}
 
@@ -206,7 +372,7 @@
 					"numinlets" : 0,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 175.0, 323.0, 48.0, 22.0 ],
+					"patching_rect" : [ 154.0, 302.0, 48.0, 22.0 ],
 					"text" : "r ---port"
 				}
 
@@ -219,7 +385,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 175.0, 360.0, 171.0, 35.0 ],
+					"patching_rect" : [ 154.0, 339.0, 171.0, 35.0 ],
 					"text" : "sprintf \\; max launch_browser http://localhost:%d/chat"
 				}
 
@@ -232,7 +398,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 52.0, 411.0, 142.0, 49.0 ],
+					"patching_rect" : [ 31.0, 390.0, 142.0, 49.0 ],
 					"text" : ";\rmax launch_browser http://localhost:3350/chat"
 				}
 
@@ -259,28 +425,6 @@
 					"outlettype" : [ "", "" ],
 					"patching_rect" : [ 267.0, 75.0, 102.0, 35.0 ],
 					"text" : "combine v X.Y.Z @triggers 1"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"bgmode" : 0,
-					"border" : 0,
-					"clickthrough" : 1,
-					"enablehscroll" : 0,
-					"enablevscroll" : 0,
-					"id" : "obj-4",
-					"lockeddragscroll" : 0,
-					"lockedsize" : 0,
-					"maxclass" : "bpatcher",
-					"name" : "server-status.maxpat",
-					"numinlets" : 0,
-					"numoutlets" : 0,
-					"offset" : [ 0.0, 0.0 ],
-					"patching_rect" : [ 24.0, 91.0, 198.0, 71.0 ],
-					"presentation" : 1,
-					"presentation_rect" : [ 28.0, 15.0, 213.0, 75.0 ],
-					"viewvisibility" : 1
 				}
 
 			}
@@ -351,7 +495,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 267.0, 154.0, 78.0, 21.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 182.0, 28.0, 54.0, 21.0 ],
+					"presentation_rect" : [ 183.0, 28.0, 54.0, 21.0 ],
 					"text" : "vX.Y.Z",
 					"textjustification" : 1
 				}
@@ -395,8 +539,43 @@
  ],
 		"lines" : [ 			{
 				"patchline" : 				{
+					"destination" : [ "obj-15", 0 ],
+					"source" : [ "obj-11", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-24", 0 ],
+					"source" : [ "obj-12", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-71", 0 ],
 					"source" : [ "obj-13", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-20", 1 ],
+					"source" : [ "obj-15", 1 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-53", 0 ],
+					"source" : [ "obj-15", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-12", 0 ],
+					"source" : [ "obj-17", 0 ]
 				}
 
 			}
@@ -411,6 +590,20 @@
 				"patchline" : 				{
 					"destination" : [ "obj-8", 0 ],
 					"source" : [ "obj-2", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-17", 0 ],
+					"source" : [ "obj-20", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-14", 0 ],
+					"source" : [ "obj-21", 0 ]
 				}
 
 			}
@@ -432,6 +625,13 @@
 				"patchline" : 				{
 					"destination" : [ "obj-6", 0 ],
 					"source" : [ "obj-44", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-14", 0 ],
+					"source" : [ "obj-53", 0 ]
 				}
 
 			}
@@ -474,16 +674,6 @@
 		"parameters" : 		{
 			"obj-32" : [ "live.text[3]", "live.text[3]", 0 ],
 			"obj-37" : [ "live.toggle", "live.toggle", 0 ],
-			"parameterbanks" : 			{
-				"0" : 				{
-					"index" : 0,
-					"name" : "",
-					"parameters" : [ "-", "-", "-", "-", "-", "-", "-", "-" ],
-					"buttons" : [ "-", "-", "-", "-", "-", "-", "-", "-" ]
-				}
-
-			}
-,
 			"inherited_shortname" : 1
 		}
 ,

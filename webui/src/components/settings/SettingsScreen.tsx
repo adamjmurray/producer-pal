@@ -3,17 +3,19 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { useState } from "preact/hooks";
 import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
+import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 import { AppearanceTab } from "./AppearanceTab";
 import { BehaviorTab } from "./BehaviorTab";
 import { ConnectionTab } from "./ConnectionTab";
 import { ToolToggles } from "./controls/ToolToggles";
 import { SettingsFooter } from "./SettingsFooter";
-import { SettingsTabs } from "./SettingsTabs";
+import { type TabId, SettingsTabs } from "./SettingsTabs";
 
 interface SettingsScreenProps {
   provider: Provider;
@@ -36,6 +38,8 @@ interface SettingsScreenProps {
   setEnabledTools: (tools: Record<string, boolean>) => void;
   mcpTools: McpTool[] | null;
   mcpStatus: McpStatus;
+  smallModelMode: boolean;
+  setSmallModelMode: (enabled: boolean) => void;
   resetBehaviorToDefaults: () => void;
   saveSettings: () => void;
   cancelSettings: () => void;
@@ -89,6 +93,8 @@ function getProviderLabel(provider: string): string {
  * @param {Function} props.setEnabledTools - Function to update enabled tools
  * @param {McpTool[] | null} props.mcpTools - Available tools from MCP server
  * @param {McpStatus} props.mcpStatus - MCP connection status
+ * @param {boolean} props.smallModelMode - Whether small model mode is enabled
+ * @param {Function} props.setSmallModelMode - Function to toggle small model mode
  * @param {Function} props.resetBehaviorToDefaults - Function to reset behavior settings
  * @param {Function} props.saveSettings - Function to save settings
  * @param {Function} props.cancelSettings - Function to cancel settings changes
@@ -116,22 +122,34 @@ export function SettingsScreen({
   setEnabledTools,
   mcpTools,
   mcpStatus,
+  smallModelMode,
+  setSmallModelMode,
   resetBehaviorToDefaults,
   saveSettings,
   cancelSettings,
   settingsConfigured,
 }: SettingsScreenProps) {
   const providerLabel = getProviderLabel(provider);
+  const [activeTab, setActiveTab] = useState<TabId>("connection");
 
   return (
     <div className="flex justify-center min-h-screen p-4 pt-20">
-      <div className="max-w-md w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 self-start">
-        <h2 className="text-xl font-semibold mb-4">
-          Producer Pal Chat Settings
-        </h2>
+      <div className="max-w-lg w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 self-start">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
+          <a
+            href={`${CHAT_UI_DOCS_URL}#${activeTab}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-6 h-6 rounded-full border border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 flex items-center justify-center text-sm font-semibold"
+            title="Help"
+          >
+            ?
+          </a>
+        </div>
 
-        <SettingsTabs>
-          {(activeTab) => (
+        <SettingsTabs activeTab={activeTab} onTabChange={setActiveTab}>
+          {() => (
             <div className="space-y-4">
               {/* Connection Tab */}
               {activeTab === "connection" && (
@@ -145,6 +163,8 @@ export function SettingsScreen({
                   model={model}
                   setModel={setModel}
                   providerLabel={providerLabel}
+                  smallModelMode={smallModelMode}
+                  setSmallModelMode={setSmallModelMode}
                 />
               )}
 

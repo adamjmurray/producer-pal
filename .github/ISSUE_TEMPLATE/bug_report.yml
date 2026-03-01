@@ -77,6 +77,9 @@ body:
     id: additional
     attributes:
       label: Additional context
-      description: Optional — Logs, screenshots, or other relevant details
+      description:
+        Optional — Logs, screenshots, or other relevant details. Please mention
+        if you are not using the bundled Max application (as configured in
+        Live's settings).
     validations:
       required: false

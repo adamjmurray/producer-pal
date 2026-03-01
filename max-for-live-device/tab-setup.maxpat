@@ -4,7 +4,7 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 9,
+			"revision" : 10,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
@@ -14,6 +14,28 @@
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"bubble" : 1,
+					"bubblepoint" : 0.0,
+					"bubbleside" : 0,
+					"bubbletextmargin" : 2,
+					"fontsize" : 9.5,
+					"hidden" : 1,
+					"id" : "obj-38",
+					"linecount" : 2,
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 103.0, 418.0, 66.0, 41.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 13.0, 35.0, 92.0, 30.0 ],
+					"text" : "See Max Console",
+					"textjustification" : 1,
+					"varname" : "see-console"
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-75",
 					"maxclass" : "newobj",
@@ -669,27 +691,6 @@
 					"patching_rect" : [ 42.0, 531.0, 67.0, 22.0 ],
 					"save" : [ "#N", "thispatcher", ";", "#Q", "end", ";" ],
 					"text" : "thispatcher"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"bubble" : 1,
-					"bubblepoint" : 0.0,
-					"bubbleside" : 2,
-					"fontsize" : 9.5,
-					"hidden" : 1,
-					"id" : "obj-38",
-					"linecount" : 2,
-					"maxclass" : "comment",
-					"numinlets" : 1,
-					"numoutlets" : 0,
-					"patching_rect" : [ 103.0, 418.0, 66.0, 47.0 ],
-					"presentation" : 1,
-					"presentation_rect" : [ 49.0, 2.0, 92.0, 36.0 ],
-					"text" : "See Max Console",
-					"textjustification" : 1,
-					"varname" : "see-console"
 				}
 
 			}
@@ -2057,16 +2058,6 @@
 			"obj-70" : [ "live.text[1]", "live.text", 0 ],
 			"obj-72" : [ "sampleFolder", "sampleFolder", 0 ],
 			"obj-8" : [ "verbose-logs", "verbose-logs", 0 ],
-			"parameterbanks" : 			{
-				"0" : 				{
-					"index" : 0,
-					"name" : "",
-					"parameters" : [ "-", "-", "-", "-", "-", "-", "-", "-" ],
-					"buttons" : [ "-", "-", "-", "-", "-", "-", "-", "-" ]
-				}
-
-			}
-,
 			"inherited_shortname" : 1
 		}
 ,

@@ -26,17 +26,17 @@ error message.
 
 ![Startup error example](/producer-pal-startup-error.png)
 
-## Notes Tab
+## Context Tab
 
-<img src="/device-notes-tab.png" alt="Notes tab" width="500"/>
+<img src="/device-context-tab.png" alt="Context tab" width="500"/>
 
-Project notes provide context to help AI understand your creative goals and
-preferences. Notes are saved with your Ableton Live Set file.
+Project memory helps AI understand your creative goals and preferences. Memory
+is saved with your Ableton Live Set file.
 
-- **Use project notes** - Include these notes in the AI's context
-- **AI can edit notes** - Let the AI update notes to remember info across
+- **Use memory** - Include this memory in the AI's context
+- **AI can edit memory** - Let the AI update memory to remember info across
   sessions
-- **Notes text area** - Your project-specific instructions and preferences
+- **Memory text area** - Your project-specific instructions and preferences
 
 Example notes:
 

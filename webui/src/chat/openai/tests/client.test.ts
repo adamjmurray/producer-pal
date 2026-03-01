@@ -273,6 +273,43 @@ describe("OpenAIClient.buildStreamMessage", () => {
     expect(result.tool_calls).toBeUndefined();
   });
 
+  it("should sanitize malformed tool call arguments when finalized", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>([
+      [
+        0,
+        {
+          id: "call_1",
+          type: "function",
+          function: {
+            name: "create-track",
+            arguments: '{"name":"Drums"}{"name":"Bass"}',
+          },
+        },
+      ],
+    ]);
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      new Map<string, ReasoningDetail>(),
+      "tool_calls",
+    );
+
+    expect(result.tool_calls).toBeDefined();
+    const toolCall = result.tool_calls?.[0] as {
+      function: { arguments: string };
+    };
+
+    expect(toolCall.function.arguments).toBe("{}");
+  });
+
   it("should include reasoning_details when reasoning blocks are provided", () => {
     client = createTestClient();
 

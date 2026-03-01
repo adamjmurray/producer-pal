@@ -12,12 +12,15 @@
 import OpenAI from "openai";
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
 /** Provider configuration interface */
 export interface ProviderConfig {
   apiKeyEnvVar: string;
   providerName: string;
   defaultModel: string;
+  /** If true, missing API key returns a fallback instead of throwing */
+  apiKeyOptional?: boolean;
 }
 
 /** Extended config for OpenAI-compatible providers */
@@ -36,7 +39,7 @@ export const ANTHROPIC_CONFIG: ProviderConfig = {
 export const GEMINI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "GEMINI_KEY",
   providerName: "Gemini",
-  defaultModel: "gemini-2.5-flash-lite",
+  defaultModel: "gemini-3-flash-preview",
 };
 
 /** OpenAI provider configuration */
@@ -56,17 +59,31 @@ export const OPENROUTER_CONFIG: OpenAIProviderConfig = {
     new OpenAI({ apiKey, baseURL: OPENROUTER_BASE_URL }),
 };
 
+/** Local OpenAI-compatible server configuration (Ollama, LM Studio, etc.) */
+export const LOCAL_CONFIG: OpenAIProviderConfig = {
+  apiKeyEnvVar: "LOCAL_API_KEY",
+  providerName: "Local",
+  defaultModel: "",
+  apiKeyOptional: true,
+  createClient: (apiKey: string) =>
+    new OpenAI({
+      apiKey,
+      baseURL: process.env.LOCAL_BASE_URL ?? LOCAL_DEFAULT_BASE_URL,
+    }),
+};
+
 /**
  * Validate API key is present in environment
  *
  * @param config - Provider configuration
- * @returns The API key
- * @throws Error if API key is not set
+ * @returns The API key, or "local" fallback when apiKeyOptional is true
+ * @throws Error if API key is not set and not optional
  */
 export function validateApiKey(config: ProviderConfig): string {
   const apiKey = process.env[config.apiKeyEnvVar];
 
   if (!apiKey) {
+    if (config.apiKeyOptional) return "local";
     throw new Error(`API key for ${config.providerName} is not set`);
   }
 

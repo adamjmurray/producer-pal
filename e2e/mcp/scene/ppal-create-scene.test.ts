@@ -43,7 +43,7 @@ describe("ppal-create-scene", () => {
     });
     const namedScene = parseToolResult<ReadSceneResult>(verifyNamed);
 
-    expect(namedScene.name).toContain("Test Scene");
+    expect(namedScene.name).toBe("Test Scene");
 
     // Test 3: Create scene with color
     const coloredResult = await ctx.client!.callTool({
@@ -118,7 +118,7 @@ describe("ppal-create-scene", () => {
     expect(batch[0]!.sceneIndex).toBe(5);
     expect(batch[1]!.sceneIndex).toBe(6);
 
-    // Test 2: Create multiple scenes with name (auto-numbered)
+    // Test 2: Create multiple scenes with name
     const multiNameResult = await ctx.client!.callTool({
       name: "ppal-create-scene",
       arguments: { sceneIndex: 7, count: 2, name: "Multi" },
@@ -139,8 +139,39 @@ describe("ppal-create-scene", () => {
     const firstScene = parseToolResult<ReadSceneResult>(verifyFirst);
     const secondScene = parseToolResult<ReadSceneResult>(verifySecond);
 
-    expect(firstScene.name).toContain("Multi");
-    expect(secondScene.name).toContain("Multi");
+    expect(firstScene.name).toBe("Multi");
+    expect(secondScene.name).toBe("Multi");
+
+    // Test 3: Create multiple scenes with comma-separated names and colors
+    const csvResult = await ctx.client!.callTool({
+      name: "ppal-create-scene",
+      arguments: {
+        sceneIndex: 9,
+        count: 2,
+        name: "Intro,Verse",
+        color: "#FF0000,#00FF00",
+      },
+    });
+    const csv = parseToolResult<CreateSceneResult[]>(csvResult);
+
+    expect(csv).toHaveLength(2);
+
+    await sleep(100);
+    const verifyCsv1 = await ctx.client!.callTool({
+      name: "ppal-read-scene",
+      arguments: { sceneId: csv[0]!.id, include: ["color"] },
+    });
+    const verifyCsv2 = await ctx.client!.callTool({
+      name: "ppal-read-scene",
+      arguments: { sceneId: csv[1]!.id, include: ["color"] },
+    });
+    const csvScene1 = parseToolResult<ReadSceneResult>(verifyCsv1);
+    const csvScene2 = parseToolResult<ReadSceneResult>(verifyCsv2);
+
+    expect(csvScene1.name).toBe("Intro");
+    expect(csvScene2.name).toBe("Verse");
+    expect(csvScene1.color).toBeDefined();
+    expect(csvScene2.color).toBeDefined();
 
     // Verify scene count increased
     const finalResult = await ctx.client!.callTool({
@@ -150,7 +181,7 @@ describe("ppal-create-scene", () => {
     const final = parseToolResult<LiveSetResult>(finalResult);
     const finalSceneCount = final.sceneCount ?? 0;
 
-    // Created: 2 batch + 2 multiName = 4
+    // Created: 2 batch + 2 multiName + 2 csv = 6
     expect(finalSceneCount).toBeGreaterThan(initialSceneCount);
   });
 });

@@ -475,15 +475,15 @@ describe("Transform Evaluator", () => {
       expect(result.velocity!.value).toBe(0.5);
     });
 
-    it("evaluates ramp at position 4 (end of clip, wraps to start)", () => {
+    it("evaluates ramp at position 4 (end of clip, reaches end value)", () => {
       const result = evaluateTransform("velocity += ramp(0, 1)", {
         position: 4,
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },
       });
 
-      // Phase 1.0 wraps to 0.0 due to modulo in waveform
-      expect(result.velocity!.value).toBe(0);
+      // Phase 1.0 clamps to 1.0, reaching end value
+      expect(result.velocity!.value).toBe(1);
     });
 
     it("evaluates reverse ramp", () => {
@@ -493,17 +493,6 @@ describe("Transform Evaluator", () => {
         clipTimeRange: { start: 0, end: 4 },
       });
 
-      expect(result.velocity!.value).toBe(0.5);
-    });
-
-    it("evaluates ramp with speed = 2", () => {
-      const result = evaluateTransform("velocity += ramp(0, 1, 2)", {
-        position: 1,
-        timeSig: { numerator: 4, denominator: 4 },
-        clipTimeRange: { start: 0, end: 4 },
-      });
-
-      // position 1 out of 4 beats = phase 0.25 * speed 2 = phase 0.5
       expect(result.velocity!.value).toBe(0.5);
     });
 
@@ -547,18 +536,8 @@ describe("Transform Evaluator", () => {
       expect(result).toStrictEqual({});
     });
 
-    it("throws error when speed is <= 0", () => {
-      const result = evaluateTransform("velocity += ramp(0, 1, 0)", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-        clipTimeRange: { start: 0, end: 4 },
-      });
-
-      expect(result).toStrictEqual({});
-    });
-
-    it("throws error when speed is negative", () => {
-      const result = evaluateTransform("velocity += ramp(0, 1, -1)", {
+    it("throws error when too many arguments", () => {
+      const result = evaluateTransform("velocity += ramp(0, 1, 2)", {
         position: 0,
         timeSig: { numerator: 4, denominator: 4 },
         clipTimeRange: { start: 0, end: 4 },

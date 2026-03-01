@@ -33,6 +33,7 @@ interface ChatScreenProps {
   defaultShowThoughts: boolean;
   enabledToolsCount: number;
   totalToolsCount: number;
+  smallModelMode: boolean;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
@@ -58,6 +59,7 @@ interface ChatScreenProps {
  * @param {boolean} props.defaultShowThoughts - Default showThoughts from settings
  * @param {number} props.enabledToolsCount - Number of enabled tools
  * @param {number} props.totalToolsCount - Total number of available tools
+ * @param {boolean} props.smallModelMode - Whether small model mode is active
  * @param {"connected" | "connecting" | "error"} props.mcpStatus - MCP connection status
  * @param {string | null} props.mcpError - MCP error message
  * @param {() => Promise<void>} props.checkMcpConnection - Check MCP connection callback
@@ -82,6 +84,7 @@ export function ChatScreen({
   defaultShowThoughts,
   enabledToolsCount,
   totalToolsCount,
+  smallModelMode,
   mcpStatus,
   mcpError,
   checkMcpConnection,
@@ -117,6 +120,7 @@ export function ChatScreen({
         provider={provider}
         enabledToolsCount={enabledToolsCount}
         totalToolsCount={totalToolsCount}
+        smallModelMode={smallModelMode}
         hasMessages={messages.length > 0}
         onOpenSettings={onOpenSettings}
         onClearConversation={onClearConversation}

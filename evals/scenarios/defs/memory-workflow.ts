@@ -1,9 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Scenario: Write and read project notes
+ * Scenario: Write and read project memory
  */
 
 import { type EvalScenario } from "../types.ts";
@@ -11,12 +12,12 @@ import { type EvalScenario } from "../types.ts";
 const TOOL_CONNECT = "ppal-connect";
 const TOOL_CONTEXT = "ppal-context";
 
-export const projectNotesWorkflow: EvalScenario = {
-  id: "project-notes-workflow",
-  description: "Write and read project notes",
+export const memoryWorkflow: EvalScenario = {
+  id: "memory-workflow",
+  description: "Write and read project memory",
   liveSet: "basic-midi-4-track",
 
-  // Enable project notes feature for this scenario
+  // Enable memory feature for this scenario
   config: {
     memoryEnabled: true,
     memoryContent: "",
@@ -31,26 +32,26 @@ export const projectNotesWorkflow: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0, score: 5 },
 
-    // Turn 1: Write notes
-    { type: "tool_called", tool: TOOL_CONTEXT, turn: 1 },
+    // Turn 1: Write memory
+    { type: "tool_called", tool: TOOL_CONTEXT, turn: 1, score: 5 },
 
-    // Turn 2: Read notes
-    { type: "tool_called", tool: TOOL_CONTEXT, turn: 2 },
+    // Turn 2: Read memory
+    { type: "tool_called", tool: TOOL_CONTEXT, turn: 2, score: 5 },
 
     // Response should contain the saved content
-    { type: "response_contains", pattern: /c minor/i, turn: 2 },
-    { type: "response_contains", pattern: /7th chords/i, turn: 2 },
+    { type: "response_contains", pattern: /c minor/i, turn: 2, score: 2 },
+    { type: "response_contains", pattern: /7th chords/i, turn: 2, score: 2 },
 
     // LLM quality check
     {
       type: "llm_judge",
       prompt: `Evaluate if the assistant:
-1. Successfully saved the project note
+1. Successfully updated the project memory
 2. Retrieved and displayed the saved note content
 3. Included the key details: C minor and jazzy 7th chords`,
-      minScore: 4,
+      score: 10,
     },
   ],
 };

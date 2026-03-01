@@ -13,7 +13,6 @@ import {
   type MidiNote,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import { buildIndexedName } from "#src/tools/shared/utils.ts";
 import {
   parseSceneIndexList as parseSceneIndexListBase,
   parseArrangementStartList,
@@ -43,21 +42,6 @@ export function parseSceneIndexList(input: string | null): number[] {
 
     throw new Error(`createClip failed: ${message}`);
   }
-}
-
-/**
- * Builds a clip name based on count and iteration index
- * @param name - Base clip name
- * @param count - Total number of clips being created
- * @param i - Current iteration index (0-based)
- * @returns Generated clip name
- */
-export function buildClipName(
-  name: string | null,
-  count: number,
-  i: number,
-): string | undefined {
-  return buildIndexedName(name, count, i);
 }
 
 export interface TimingParameters {
@@ -220,6 +204,7 @@ function createArrangementClip(
  * @param notes - Array of MIDI notes
  * @param length - Original length parameter
  * @param sampleFile - Audio file path (for audio clips)
+ * @param transformedCount - Number of notes matched by transform selectors
  * @returns Clip result for this iteration
  */
 export function processClipIteration(
@@ -242,6 +227,7 @@ export function processClipIteration(
   notes: MidiNote[],
   length: string | null,
   sampleFile: string | null,
+  transformedCount: number | undefined,
 ): object {
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
@@ -339,5 +325,6 @@ export function processClipIteration(
     timeSigNumerator,
     timeSigDenominator,
     sampleFile,
+    transformedCount,
   );
 }

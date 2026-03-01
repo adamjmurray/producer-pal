@@ -211,13 +211,14 @@ describe("ppal-create-clip", () => {
   });
 
   it("creates multiple clips in batch", async () => {
-    // Test 1: Create multiple session clips (use t10 Child track which has no clips)
+    // Test 1: Create multiple session clips with name (use t10 Child track which has no clips)
     const multiSessionResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
         view: "session",
         trackIndex: 10,
         sceneIndex: "2,3,4",
+        name: "Batch Clip",
       },
     });
     const multiSession =
@@ -227,6 +228,20 @@ describe("ppal-create-clip", () => {
     expect(multiSession[0]?.id).toBeDefined();
     expect(multiSession[1]?.id).toBeDefined();
     expect(multiSession[2]?.id).toBeDefined();
+
+    // Verify all clips have the same name
+    await sleep(100);
+
+    for (const clip of multiSession) {
+      const readClip = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { clipId: clip.id },
+      });
+
+      expect(parseToolResult<{ name: string }>(readClip).name).toBe(
+        "Batch Clip",
+      );
+    }
 
     // Test 2: Create multiple arrangement clips (use empty positions)
     const multiArrangementResult = await ctx.client!.callTool({

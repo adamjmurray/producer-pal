@@ -9,10 +9,10 @@ import { describe, it, expect } from "vitest";
 import { parseJudgeResponse } from "./judge-response-parser.ts";
 
 const VALID_RESPONSE = {
-  accuracy: { score: 5, reasoning: "Correct" },
-  reasoning: { score: 4, reasoning: "Good logic" },
-  efficiency: { score: 4, reasoning: "Efficient" },
-  naturalness: { score: 3, reasoning: "Acceptable" },
+  accuracy: { score: 1.0, reasoning: "Correct" },
+  reasoning: { score: 0.8, reasoning: "Good logic" },
+  efficiency: { score: 0.8, reasoning: "Efficient" },
+  naturalness: { score: 0.6, reasoning: "Acceptable" },
 };
 
 const VALID_JSON = JSON.stringify(VALID_RESPONSE);
@@ -22,44 +22,47 @@ describe("parseJudgeResponse", () => {
     it("parses valid JSON with all dimensions", () => {
       const result = parseJudgeResponse(VALID_JSON);
 
-      expect(result.accuracy).toStrictEqual({ score: 5, reasoning: "Correct" });
+      expect(result.accuracy).toStrictEqual({
+        score: 1.0,
+        reasoning: "Correct",
+      });
       expect(result.reasoning).toStrictEqual({
-        score: 4,
+        score: 0.8,
         reasoning: "Good logic",
       });
       expect(result.efficiency).toStrictEqual({
-        score: 4,
+        score: 0.8,
         reasoning: "Efficient",
       });
       expect(result.naturalness).toStrictEqual({
-        score: 3,
+        score: 0.6,
         reasoning: "Acceptable",
       });
-      expect(result.overall).toBe(4);
+      expect(result.overall).toBe(0.8);
     });
 
     it("computes overall as average of 4 dimensions", () => {
       const input = {
-        accuracy: { score: 5, reasoning: "a" },
-        reasoning: { score: 5, reasoning: "b" },
-        efficiency: { score: 3, reasoning: "c" },
-        naturalness: { score: 3, reasoning: "d" },
+        accuracy: { score: 1.0, reasoning: "a" },
+        reasoning: { score: 1.0, reasoning: "b" },
+        efficiency: { score: 0.6, reasoning: "c" },
+        naturalness: { score: 0.6, reasoning: "d" },
       };
       const result = parseJudgeResponse(JSON.stringify(input));
 
-      expect(result.overall).toBe(4);
+      expect(result.overall).toBe(0.8);
     });
 
     it("handles decimal average", () => {
       const input = {
-        accuracy: { score: 5, reasoning: "a" },
-        reasoning: { score: 4, reasoning: "b" },
-        efficiency: { score: 4, reasoning: "c" },
-        naturalness: { score: 4, reasoning: "d" },
+        accuracy: { score: 1.0, reasoning: "a" },
+        reasoning: { score: 0.8, reasoning: "b" },
+        efficiency: { score: 0.8, reasoning: "c" },
+        naturalness: { score: 0.8, reasoning: "d" },
       };
       const result = parseJudgeResponse(JSON.stringify(input));
 
-      expect(result.overall).toBe(4.25);
+      expect(result.overall).toBeCloseTo(0.85);
     });
   });
 
@@ -68,38 +71,38 @@ describe("parseJudgeResponse", () => {
       const input = `Here is my response: ${VALID_JSON}`;
       const result = parseJudgeResponse(input);
 
-      expect(result.accuracy.score).toBe(5);
-      expect(result.overall).toBe(4);
+      expect(result.accuracy.score).toBe(1.0);
+      expect(result.overall).toBe(0.8);
     });
 
     it("extracts JSON from text with suffix", () => {
       const input = `${VALID_JSON} That is my evaluation.`;
       const result = parseJudgeResponse(input);
 
-      expect(result.accuracy.score).toBe(5);
+      expect(result.accuracy.score).toBe(1.0);
     });
 
     it("extracts JSON from markdown code block content", () => {
       const input = `\`\`\`json\n${VALID_JSON}\n\`\`\``;
       const result = parseJudgeResponse(input);
 
-      expect(result.accuracy.score).toBe(5);
+      expect(result.accuracy.score).toBe(1.0);
     });
 
     it("extracts JSON surrounded by whitespace and text", () => {
       const input = `\n\nBased on my analysis:\n${VALID_JSON}\n\nEnd.`;
       const result = parseJudgeResponse(input);
 
-      expect(result.accuracy.score).toBe(5);
+      expect(result.accuracy.score).toBe(1.0);
     });
   });
 
   describe("invalid format handling", () => {
     it("throws error for missing accuracy dimension", () => {
       const input = {
-        reasoning: { score: 4, reasoning: "b" },
-        efficiency: { score: 4, reasoning: "c" },
-        naturalness: { score: 4, reasoning: "d" },
+        reasoning: { score: 0.8, reasoning: "b" },
+        efficiency: { score: 0.8, reasoning: "c" },
+        naturalness: { score: 0.8, reasoning: "d" },
       };
 
       expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
@@ -109,9 +112,9 @@ describe("parseJudgeResponse", () => {
 
     it("throws error for missing reasoning dimension", () => {
       const input = {
-        accuracy: { score: 5, reasoning: "a" },
-        efficiency: { score: 4, reasoning: "c" },
-        naturalness: { score: 4, reasoning: "d" },
+        accuracy: { score: 1.0, reasoning: "a" },
+        efficiency: { score: 0.8, reasoning: "c" },
+        naturalness: { score: 0.8, reasoning: "d" },
       };
 
       expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
@@ -121,9 +124,9 @@ describe("parseJudgeResponse", () => {
 
     it("throws error for missing efficiency dimension", () => {
       const input = {
-        accuracy: { score: 5, reasoning: "a" },
-        reasoning: { score: 4, reasoning: "b" },
-        naturalness: { score: 4, reasoning: "d" },
+        accuracy: { score: 1.0, reasoning: "a" },
+        reasoning: { score: 0.8, reasoning: "b" },
+        naturalness: { score: 0.8, reasoning: "d" },
       };
 
       expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
@@ -133,9 +136,9 @@ describe("parseJudgeResponse", () => {
 
     it("throws error for missing naturalness dimension", () => {
       const input = {
-        accuracy: { score: 5, reasoning: "a" },
-        reasoning: { score: 4, reasoning: "b" },
-        efficiency: { score: 4, reasoning: "c" },
+        accuracy: { score: 1.0, reasoning: "a" },
+        reasoning: { score: 0.8, reasoning: "b" },
+        efficiency: { score: 0.8, reasoning: "c" },
       };
 
       expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
@@ -146,9 +149,9 @@ describe("parseJudgeResponse", () => {
     it("throws error for non-number score", () => {
       const input = {
         accuracy: { score: "high", reasoning: "a" },
-        reasoning: { score: 4, reasoning: "b" },
-        efficiency: { score: 4, reasoning: "c" },
-        naturalness: { score: 4, reasoning: "d" },
+        reasoning: { score: 0.8, reasoning: "b" },
+        efficiency: { score: 0.8, reasoning: "c" },
+        naturalness: { score: 0.8, reasoning: "d" },
       };
 
       expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
@@ -158,10 +161,10 @@ describe("parseJudgeResponse", () => {
 
     it("throws error for non-string reasoning", () => {
       const input = {
-        accuracy: { score: 5, reasoning: 123 },
-        reasoning: { score: 4, reasoning: "b" },
-        efficiency: { score: 4, reasoning: "c" },
-        naturalness: { score: 4, reasoning: "d" },
+        accuracy: { score: 1.0, reasoning: 123 },
+        reasoning: { score: 0.8, reasoning: "b" },
+        efficiency: { score: 0.8, reasoning: "c" },
+        naturalness: { score: 0.8, reasoning: "d" },
       };
 
       expect(() => parseJudgeResponse(JSON.stringify(input))).toThrow(
@@ -195,27 +198,30 @@ describe("parseJudgeResponse", () => {
   describe("edge cases", () => {
     it("handles reasoning with special characters", () => {
       const input = {
-        accuracy: { score: 5, reasoning: 'Contains "quotes" and \n newlines' },
-        reasoning: { score: 4, reasoning: "b" },
-        efficiency: { score: 4, reasoning: "c" },
-        naturalness: { score: 4, reasoning: "d" },
+        accuracy: {
+          score: 1.0,
+          reasoning: 'Contains "quotes" and \n newlines',
+        },
+        reasoning: { score: 0.8, reasoning: "b" },
+        efficiency: { score: 0.8, reasoning: "c" },
+        naturalness: { score: 0.8, reasoning: "d" },
       };
       const result = parseJudgeResponse(JSON.stringify(input));
 
-      expect(result.accuracy.score).toBe(5);
+      expect(result.accuracy.score).toBe(1.0);
       expect(result.accuracy.reasoning).toContain("quotes");
     });
 
     it("handles decimal scores", () => {
       const input = {
-        accuracy: { score: 4.5, reasoning: "a" },
-        reasoning: { score: 4.5, reasoning: "b" },
-        efficiency: { score: 4.5, reasoning: "c" },
-        naturalness: { score: 4.5, reasoning: "d" },
+        accuracy: { score: 0.9, reasoning: "a" },
+        reasoning: { score: 0.9, reasoning: "b" },
+        efficiency: { score: 0.9, reasoning: "c" },
+        naturalness: { score: 0.9, reasoning: "d" },
       };
       const result = parseJudgeResponse(JSON.stringify(input));
 
-      expect(result.overall).toBe(4.5);
+      expect(result.overall).toBe(0.9);
     });
 
     it("ignores extra fields in JSON", () => {
@@ -226,8 +232,8 @@ describe("parseJudgeResponse", () => {
       };
       const result = parseJudgeResponse(JSON.stringify(input));
 
-      expect(result.accuracy.score).toBe(5);
-      expect(result.overall).toBe(4);
+      expect(result.accuracy.score).toBe(1.0);
+      expect(result.overall).toBe(0.8);
     });
   });
 });

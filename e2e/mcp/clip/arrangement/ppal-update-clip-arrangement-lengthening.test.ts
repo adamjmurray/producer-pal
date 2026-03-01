@@ -16,16 +16,16 @@ import {
   audioUnwarpedTestCases,
   midiLoopedTestCases,
   midiUnloopedTestCases,
-} from "./helpers/arrangement-clip-test-cases.ts";
-import { expectedLengtheningClips } from "./helpers/arrangement-lengthening-expected.ts";
+} from "../helpers/arrangement-clip-test-cases.ts";
+import { expectedLengtheningClips } from "../helpers/arrangement-lengthening-expected.ts";
 import {
   ARRANGEMENT_CLIP_TESTS_PATH,
   assertClipDetails,
   calculateTotalLengthInBars,
   EPSILON,
   testLengthenClipTo4Bars,
-} from "./helpers/arrangement-lengthening-test-helpers.ts";
-import { setupMcpTestContext } from "../mcp-test-helpers.ts";
+} from "../helpers/arrangement-lengthening-test-helpers.ts";
+import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
 
 const ctx = setupMcpTestContext({
   once: true,

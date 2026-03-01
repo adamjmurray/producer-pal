@@ -109,26 +109,35 @@ features:
   </section>
 </div>
 
-## Demo
+## Demos
 
-Watch the Producer Pal walk-through video with Claude Desktop:
-
-<div style="position: relative; padding-bottom: 56.25%; height: 0; margin: 2em 0;">
-  <iframe
-    style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-    src="https://www.youtube.com/embed/IB19LqTZQDU?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s"
-    title="Producer Pal demo video"
-    frameborder="0"
-    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-    allowfullscreen>
-  </iframe>
+<div class="demo-grid">
+  <div>
+    <p class="demo-video-label">Ableton Live Project Management with Producer Pal</p>
+    <div class="demo-video">
+      <iframe
+        src="https://www.youtube.com/embed/_pB3qESiIhw?si=6vrojGs5YENHtHDS"
+        title="Ableton Live Project Management with Producer Pal"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
+  <div>
+    <p class="demo-video-label">Producer Pal Walk-through with Claude Desktop</p>
+    <div class="demo-video">
+      <iframe
+        src="https://www.youtube.com/embed/IB19LqTZQDU?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s"
+        title="Producer Pal walk-through with Claude Desktop"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </div>
 </div>
-
-**Video Chapters:**
-
-- [0:00 - Installation with Claude Desktop](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-- [2:29 - Connecting the AI to Ableton](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=149s)
-- [3:23 - Generating a 4-part, 8-bar loop from scratch](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s)
 
 **More helpful videos:**
 

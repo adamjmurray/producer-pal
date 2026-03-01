@@ -4,7 +4,7 @@
 
 /**
  * E2E tests for ppal-context tool (memory actions)
- * Tests project notes read/write functionality via MCP protocol.
+ * Tests memory read/write functionality via MCP protocol.
  *
  * Run with: npm run e2e:mcp
  */
@@ -34,7 +34,7 @@ async function callMemoryTool(
 
 describe("ppal-context (memory actions)", () => {
   describe("disabled state", () => {
-    it("returns enabled: false when project notes are disabled", async () => {
+    it("returns enabled: false when memory is disabled", async () => {
       await setConfig({ memoryEnabled: false, memoryContent: "" });
       const result = await callMemoryTool("read");
       const parsed = parseToolResult<MemoryResult>(result);
@@ -45,7 +45,7 @@ describe("ppal-context (memory actions)", () => {
 
   describe("read-only state", () => {
     it("reads content but rejects writes when not writable", async () => {
-      const TEST_CONTENT = "Read-only project notes for e2e testing";
+      const TEST_CONTENT = "Read-only memory content for e2e testing";
 
       await setConfig({
         memoryEnabled: true,

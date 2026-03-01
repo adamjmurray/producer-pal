@@ -71,7 +71,7 @@ describe("duplicate - scene duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_scene", 0);
   });
 
-  it("should duplicate multiple scenes with auto-incrementing names", () => {
+  it("should duplicate multiple scenes with same name", () => {
     registerMockObject("scene1", { path: livePath.scene(0) });
 
     const liveSet = registerMockObject("live_set", {
@@ -146,7 +146,7 @@ describe("duplicate - scene duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_scene", 1);
 
     expect(scene1.set).toHaveBeenCalledWith("name", "Custom Scene");
-    expect(scene2.set).toHaveBeenCalledWith("name", "Custom Scene 2");
+    expect(scene2.set).toHaveBeenCalledWith("name", "Custom Scene");
   });
 
   it("should duplicate a scene without clips when withoutClips is true", () => {
@@ -210,7 +210,7 @@ describe("duplicate - scene duplication", () => {
           destination: "arrangement",
         }),
       ).toThrow(
-        "duplicate failed: arrangementStart, arrangementLocatorId, or arrangementLocatorName is required when destination is 'arrangement'",
+        "duplicate failed: arrangementStart, locatorId, or locatorName is required when destination is 'arrangement'",
       );
     });
 
@@ -398,7 +398,7 @@ describe("duplicate - scene duplication", () => {
             {
               id: livePath.track(0).arrangementClip(1),
               trackIndex: 0,
-              name: "Scene Copy 2",
+              name: "Scene Copy",
             },
           ],
         },
@@ -408,7 +408,7 @@ describe("duplicate - scene duplication", () => {
             {
               id: livePath.track(0).arrangementClip(2),
               trackIndex: 0,
-              name: "Scene Copy 3",
+              name: "Scene Copy",
             },
           ],
         },

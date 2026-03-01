@@ -72,14 +72,14 @@ describe("ppal-update-device", () => {
 
     expect(ratioParam).toBeDefined();
 
-    // Update the ratio parameter
+    // Update the ratio parameter by name
     const newRatio = 4;
 
     await ctx.client!.callTool({
       name: "ppal-update-device",
       arguments: {
         ids: deviceId,
-        params: JSON.stringify({ [ratioParam!.id]: newRatio }),
+        params: JSON.stringify({ [ratioParam!.name]: newRatio }),
       },
     });
 

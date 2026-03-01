@@ -2,14 +2,18 @@
 
 This page documents known bugs and limitations in Producer Pal.
 
-## Crashes from Arrangement Clip Position Conflicts
+## Undo/Redo Behavior
 
-Moving an arrangement clip to the exact start position of another clip on the
-same track will crash Live. This is a bug in the Live API's
-`duplicate_clip_to_arrangement` function.
+Live groups all Live API changes into a single undo step until you interact with
+Live's UI (clicking, typing, etc.). So if you make multiple requests to Producer
+Pal without clicking in Live between them, Cmd+Z / Ctrl+Z may undo everything at
+once. On the other hand, heavier operations can get split across multiple undo
+steps, so you might need to press undo several times.
 
-**Workaround:** Avoid moving clips on top of existing clips. Delete the
-conflicting clip first, or use slightly offset positions.
+This is a Max for Live limitation, not specific to Producer Pal.
+
+**Workaround:** Save your Live Set before big changes. Click somewhere in Live's
+UI between requests if you want separate undo steps.
 
 ## Lengthening Looped Arrangement Clips
 

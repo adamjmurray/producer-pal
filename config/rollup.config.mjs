@@ -39,6 +39,9 @@ const envVarReplacements = {
     process.env.ENABLE_RAW_LIVE_API,
   ),
   "process.env.ENABLE_CODE_EXEC": JSON.stringify(process.env.ENABLE_CODE_EXEC),
+  "process.env.ENABLE_WARP_MARKERS": JSON.stringify(
+    process.env.ENABLE_WARP_MARKERS,
+  ),
 };
 
 // When code execution is disabled, substitute the real code-exec modules with

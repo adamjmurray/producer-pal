@@ -110,6 +110,11 @@ web UI architecture.
   automatically coerces. The MCP SDK validates schemas before our handler runs,
   so coercion must happen at the schema level.
 
+- **Small model mode**: When modifying tool definitions (`.def.ts` files) —
+  adding, removing, or renaming parameters, or changing descriptions — check
+  whether corresponding changes are needed in the `smallModelModeConfig`
+  (`excludeParams`, `descriptionOverrides`, `toolDescription`).
+
 - **Live API**: Always use `src/live-api-adapter/live-api-extensions.ts`
   interface instead of raw `.get("property")?.[0]` calls
 
@@ -232,8 +237,9 @@ functions for clarity.
   - `console.log()` and `console.error()` do NOT appear in CLI output
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
   and linting issues), then `npm run check` (validates all checks pass), then
-  `npm run build` (verifies all production artifacts compile successfully). This
-  saves time and tokens by pre-emptively fixing likely errors before validation.
+  `npm run check:build` (verifies production artifacts and docs site compile
+  successfully). This saves time and tokens by pre-emptively fixing likely
+  errors before validation.
 - **Diagnosing coverage gaps**: If coverage thresholds fail, check
   `coverage/coverage-summary.txt` for per-file breakdown (console only shows
   totals). Look for files with low coverage percentages to identify what needs
@@ -249,15 +255,15 @@ Live Set without saving the current one, which can destroy in-progress work in
 Ableton Live. Never run them without confirmation.
 
 **IMPORTANT:** Always run a single test file, not the full suite. The full suite
-takes several minutes. Use `--testPathPattern` to target the specific file:
+takes several minutes. Pass a matcher after `--` to target a specific file:
 
 ```bash
-npm run e2e:mcp -- --testPathPattern ppal-update-clip-arrangement-splitting
+npm run e2e:mcp -- ppal-update-clip-arrangement-splitting
 ```
 
 **Commands:**
 
-- `npm run e2e:mcp -- --testPathPattern <file>` - Run a single e2e test file
+- `npm run e2e:mcp -- <matcher>` - Run a single e2e test file
 - `npm run e2e:mcp` - Run all MCP e2e tests (avoid unless explicitly requested)
 
 **Adding tests:** See `e2e/mcp/README.md` for prerequisites and patterns.

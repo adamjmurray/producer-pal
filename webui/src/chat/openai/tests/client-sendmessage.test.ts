@@ -13,6 +13,7 @@ import {
   createToolCallChunk,
   createMockAiClient,
   createToolThenDoneGenerator,
+  createOllamaParallelToolCallChunks,
   DONE_CHUNK,
   type StreamChunk,
 } from "#webui/test-utils/openai-client-test-helpers";
@@ -233,6 +234,24 @@ describe("OpenAIClient.sendMessage", () => {
 
     expect(content.error).toBe("Tool failed");
     expect(content.isError).toBe(true);
+  });
+
+  it("sanitizes malformed tool call arguments and calls tool with empty args", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient({
+      tools: [{ name: "bad-tool", description: "Tool", inputSchema: {} }],
+    });
+    const toolChunk = createToolCallChunk("bad-tool", "not json", "call_bad");
+
+    setupMockClients(client, mcpClient, createToolThenDoneGenerator(toolChunk));
+
+    await collectHistoryUpdates(client.sendMessage("Run bad tool"));
+
+    // Sanitization replaces malformed args with "{}", so the tool is called with empty args
+    expect(mcpClient.callTool).toHaveBeenCalledWith({
+      name: "bad-tool",
+      arguments: {},
+    });
   });
 
   it("filters tools based on enabledTools config", async () => {
@@ -510,5 +529,54 @@ describe("OpenAIClient max iterations warning", () => {
     // Should stop after first tool call due to abort
     expect(callCount).toBe(1);
     expect(mcpClient.callTool).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("OpenAIClient Ollama parallel tool calls", () => {
+  it("handles parallel tool calls at same index with different IDs", async () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    const mcpClient = createMockMcpClient({
+      tools: [
+        { name: "create-track", description: "Create track", inputSchema: {} },
+      ],
+    });
+
+    const ollamaChunks = createOllamaParallelToolCallChunks([
+      { name: "create-track", args: '{"name":"Drums"}', id: "call_a" },
+      { name: "create-track", args: '{"name":"Bass"}', id: "call_b" },
+      { name: "create-track", args: '{"name":"Keys"}', id: "call_c" },
+    ]);
+
+    let callCount = 0;
+
+    client.mcpClient = mcpClient;
+    client.ai = createMockAiClient(async function* () {
+      callCount++;
+
+      if (callCount === 1) {
+        for (const chunk of ollamaChunks) {
+          yield { choices: [chunk] };
+        }
+      } else {
+        yield { choices: [DONE_CHUNK] };
+      }
+    }) as typeof client.ai;
+
+    await collectHistoryUpdates(client.sendMessage("Create tracks"));
+
+    // All 3 tool calls should be executed separately
+    expect(mcpClient.callTool).toHaveBeenCalledTimes(3);
+    expect(mcpClient.callTool).toHaveBeenCalledWith({
+      name: "create-track",
+      arguments: { name: "Drums" },
+    });
+    expect(mcpClient.callTool).toHaveBeenCalledWith({
+      name: "create-track",
+      arguments: { name: "Bass" },
+    });
+    expect(mcpClient.callTool).toHaveBeenCalledWith({
+      name: "create-track",
+      arguments: { name: "Keys" },
+    });
   });
 });

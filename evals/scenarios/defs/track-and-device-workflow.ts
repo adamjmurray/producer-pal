@@ -22,25 +22,25 @@ export const trackAndDeviceWorkflow: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
 
     // Turn 1: Track creation
-    { type: "tool_called", tool: "ppal-create-track", turn: 1 },
+    { type: "tool_called", tool: "ppal-create-track", turn: 1, score: 5 },
 
     // Turn 2: Device creation
-    { type: "tool_called", tool: "ppal-create-device", turn: 2 },
+    { type: "tool_called", tool: "ppal-create-device", turn: 2, score: 5 },
 
     // Turn 3: Track property updates
-    { type: "tool_called", tool: "ppal-update-track", turn: 3 },
+    { type: "tool_called", tool: "ppal-update-track", turn: 3, score: 5 },
 
     // Verify response mentions the track
-    { type: "response_contains", pattern: /synth lead/i, turn: 1 },
+    { type: "response_contains", pattern: /synth lead/i, turn: 1, score: 2 },
 
     // Verify response mentions Wavetable
-    { type: "response_contains", pattern: /wavetable/i, turn: 2 },
+    { type: "response_contains", pattern: /wavetable/i, turn: 2, score: 2 },
 
     // Verify response mentions mute or purple
-    { type: "response_contains", pattern: /mute|purple/i, turn: 3 },
+    { type: "response_contains", pattern: /mute|purple/i, turn: 3, score: 2 },
 
     // LLM quality check
     {
@@ -50,7 +50,7 @@ export const trackAndDeviceWorkflow: EvalScenario = {
 2. Added a Wavetable instrument
 3. Muted the track
 4. Changed the track color to purple`,
-      minScore: 4,
+      score: 10,
     },
   ],
 };

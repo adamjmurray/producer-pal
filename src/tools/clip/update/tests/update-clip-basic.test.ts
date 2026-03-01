@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
 import {
@@ -305,5 +306,33 @@ describe("updateClip - Basic operations", () => {
         timeSignature: "invalid",
       }),
     ).rejects.toThrow("Time signature must be in format");
+  });
+
+  it("should move session clip with toSlot", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    const { registerMockObject } =
+      await import("#src/test/mocks/mock-registry.ts");
+
+    registerMockObject("live_set/tracks/0/clip_slots/0", {
+      path: livePath.track(0).clipSlot(0),
+    });
+
+    registerMockObject("live_set/tracks/1/clip_slots/2", {
+      path: livePath.track(1).clipSlot(2),
+      properties: { has_clip: 0 },
+    });
+
+    registerMockObject("live_set/tracks/1/clip_slots/2/clip", {
+      path: livePath.track(1).clipSlot(2).clip(),
+    });
+
+    const result = await updateClip({ ids: "123", toSlot: "1/2" });
+
+    expect(result).toMatchObject({
+      id: "live_set/tracks/1/clip_slots/2/clip",
+      trackIndex: 1,
+      sceneIndex: 2,
+    });
   });
 });

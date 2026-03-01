@@ -13,6 +13,7 @@ import {
   parseModelArg,
   type ModelSpec,
 } from "#evals/shared/parse-model-arg.ts";
+import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { loadConfigProfiles, listConfigProfileIds } from "./config-profiles.ts";
 import { setQuietMode } from "./helpers/output-config.ts";
 import {
@@ -62,7 +63,7 @@ program
   )
   .option(
     "-m, --model <provider/model>",
-    "Model(s) to test (e.g., gemini-2.0-flash, anthropic/claude-sonnet-4-5)",
+    "Model(s) to test (e.g., gemini-3-flash-preview, local/qwen3-8b)",
     collectValues,
     [],
   )
@@ -74,7 +75,7 @@ program
   )
   .option(
     "-j, --judge <provider/model>",
-    "Override judge LLM (e.g., google/gemini-2.0-flash)",
+    `Override judge LLM (default: google/${GEMINI_CONFIG.defaultModel})`,
   )
   .option("-l, --list", "List available scenarios and config profiles")
   .option(
@@ -147,9 +148,9 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       process.exit(1);
     }
 
-    const judgeOverride = options.judge
-      ? parseModelArg(options.judge)
-      : undefined;
+    const judgeOverride = parseModelArg(
+      options.judge ?? GEMINI_CONFIG.defaultModel,
+    );
 
     const totalRuns =
       scenarios.length * modelSpecs.length * configProfiles.length;
@@ -191,15 +192,6 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     }
 
     printSummary(resultsByScenario, modelSpecs, configProfiles);
-
-    // Exit with error code if any scenario failed
-    const allPassed = [...resultsByScenario.values()].every((modelResults) =>
-      [...modelResults.values()].every((configResults) =>
-        [...configResults.values()].every((r) => r.passed),
-      ),
-    );
-
-    process.exit(allPassed ? 0 : 1);
   } catch (error) {
     console.error(
       "Error:",
@@ -232,25 +224,32 @@ function printSummary(
   const allResults = [...resultsByScenario.values()].flatMap((modelMap) =>
     [...modelMap.values()].flatMap((configMap) => [...configMap.values()]),
   );
-  const passed = allResults.filter((r) => r.passed).length;
-  const failed = allResults.length - passed;
 
   console.log("\n" + "=".repeat(50));
-  console.log(`Summary: ${passed}/${allResults.length} passed`);
+  console.log("Summary:");
 
-  if (failed > 0) {
-    console.log(`\nFailed scenarios:`);
+  for (const result of allResults) {
+    const pct =
+      result.maxScore > 0
+        ? ((result.earnedScore / result.maxScore) * 100).toFixed(0)
+        : "100";
 
-    for (const result of allResults.filter((r) => !r.passed)) {
-      console.log(`  - ${result.scenario.id}`);
+    console.log(
+      `  ${result.scenario.id}: ${formatScore(result.earnedScore)}/${result.maxScore} (${pct}%)`,
+    );
 
-      if (result.error) {
-        console.log(`    Error: ${result.error}`);
-      }
-
-      for (const assertion of result.assertions.filter((a) => !a.passed)) {
-        console.log(`    ✗ ${assertion.message}`);
-      }
+    if (result.error) {
+      console.log(`    Error: ${result.error}`);
     }
   }
+}
+
+/**
+ * Format a score for display (integer if whole, 1 decimal otherwise)
+ *
+ * @param score - The score to format
+ * @returns Formatted score string
+ */
+function formatScore(score: number): string {
+  return Number.isInteger(score) ? String(score) : score.toFixed(1);
 }

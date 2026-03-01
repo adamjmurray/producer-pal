@@ -86,16 +86,6 @@ describe("Transform Evaluator Error Handling", () => {
   });
 
   describe("function argument validation", () => {
-    it("handles ramp without speed gracefully when speed is zero", () => {
-      const result = evaluateTransform("velocity += ramp(0, 100, 0)", {
-        ...DEFAULT_CONTEXT,
-        clipTimeRange: { start: 0, end: 4 },
-      });
-
-      expect(outlet).toHaveBeenCalledWith(1, expect.anything());
-      expect(result).toStrictEqual({});
-    });
-
     it("handles rand with too many arguments", () => {
       expectTransformError("velocity = rand(0, 100, 50)");
     });
@@ -105,7 +95,7 @@ describe("Transform Evaluator Error Handling", () => {
     });
 
     it("handles ramp with too many arguments", () => {
-      expectTransformError("velocity = ramp(0, 100, 1, 2)");
+      expectTransformError("velocity = ramp(0, 100, 1)");
     });
 
     it("handles waveform with zero period gracefully", () => {

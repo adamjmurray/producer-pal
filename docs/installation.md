@@ -4,12 +4,15 @@ Choose your preferred AI platform to get started with Producer Pal™:
 
 ::: tip Prerequisites
 
-**Download:**&nbsp;
+**Download** v{{ $frontmatter.version }}**:**&nbsp;
 [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
 (the Producer Pal Max for Live device)
 
 **Requires:** [Ableton Live 12.3+](https://www.ableton.com/live/) with
 [Max for Live](https://www.ableton.com/live/max-for-live/)
+
+Upgrading from a previous version? See the
+[upgrading guide](./installation/upgrading).
 
 :::
 

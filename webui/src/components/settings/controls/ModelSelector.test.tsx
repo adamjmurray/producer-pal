@@ -47,13 +47,10 @@ describe("ModelSelector", () => {
   it("displays all model options", () => {
     renderModelSelector();
     expect(
-      screen.getByRole("option", { name: /^Gemini 2\.5 Pro$/ }),
+      screen.getByRole("option", { name: /^Gemini 3\.1 Pro$/ }),
     ).toBeDefined();
     expect(
-      screen.getByRole("option", { name: /^Gemini 2\.5 Flash$/ }),
-    ).toBeDefined();
-    expect(
-      screen.getByRole("option", { name: /^Gemini 2\.5 Flash-Lite$/ }),
+      screen.getByRole("option", { name: /^Gemini 3 Flash$/ }),
     ).toBeDefined();
   });
 
@@ -61,11 +58,10 @@ describe("ModelSelector", () => {
     renderModelSelector();
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
 
-    expect(options[0]!.value).toBe("gemini-2.5-flash");
-    expect(options[1]!.value).toBe("gemini-3-pro-preview");
-    expect(options[2]!.value).toBe("gemini-3-flash-preview");
+    expect(options[0]!.value).toBe("gemini-3-flash-preview");
+    expect(options[1]!.value).toBe("gemini-3.1-pro-preview");
+    expect(options[2]!.value).toBe("gemini-2.5-flash");
     expect(options[3]!.value).toBe("gemini-2.5-pro");
-    expect(options[4]!.value).toBe("gemini-2.5-flash-lite");
   });
 
   it("triggers setModel callback on change", () => {
@@ -75,10 +71,10 @@ describe("ModelSelector", () => {
     expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-2.5-pro");
   });
 
-  it("can select gemini-2.5-flash-lite", () => {
+  it("can select gemini-3-flash-preview", () => {
     const { setModel } = renderModelSelector();
 
-    expectModelSelected("gemini-2.5-flash-lite", setModel);
+    expectModelSelected("gemini-3-flash-preview", setModel);
   });
 
   describe("OpenAI provider", () => {
@@ -195,14 +191,15 @@ describe("ModelSelector", () => {
   describe("ollama provider", () => {
     it("renders Ollama models", () => {
       renderModelSelector({ provider: "ollama", model: "ministral-3" });
-      expect(screen.getByRole("option", { name: /Ministral 3/ })).toBeDefined();
-      expect(screen.getByRole("option", { name: /Qwen3 Coder/ })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Mistral" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Qwen 3" })).toBeDefined();
+      expect(screen.getByRole("option", { name: /GLM/ })).toBeDefined();
     });
 
     it("calls setModel when Ollama model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "ollama",
-        model: "ministral-3",
+        model: "mistral",
       });
 
       expectModelSelected("qwen3", setModel);

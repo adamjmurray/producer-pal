@@ -79,8 +79,8 @@ describe("createScene", () => {
     expect(liveSet.call).toHaveBeenNthCalledWith(3, "create_scene", 2);
 
     expect(scene0.set).toHaveBeenCalledWith("name", "Verse");
-    expect(scene1.set).toHaveBeenCalledWith("name", "Verse 2");
-    expect(scene2.set).toHaveBeenCalledWith("name", "Verse 3");
+    expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
+    expect(scene2.set).toHaveBeenCalledWith("name", "Verse");
 
     expect(result).toStrictEqual([
       { id: "live_set/scenes/0", sceneIndex: 0 },
@@ -225,6 +225,127 @@ describe("createScene", () => {
     });
 
     expect(result).toStrictEqual({ id: "live_set/scenes/0", sceneIndex: 0 });
+  });
+
+  describe("comma-separated names", () => {
+    it("should use comma-separated names for each scene when count matches", () => {
+      const result = createScene({
+        sceneIndex: 0,
+        count: 3,
+        name: "Intro,Verse,Chorus",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
+      expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
+      expect(scene2.set).toHaveBeenCalledWith("name", "Chorus");
+      expect(result).toHaveLength(3);
+    });
+
+    it("should not set name for extras when count exceeds names", () => {
+      const scene3 = registerMockObject("live_set/scenes/3", {
+        path: livePath.scene(3),
+      });
+
+      const result = createScene({
+        sceneIndex: 0,
+        count: 4,
+        name: "Intro,Verse,Chorus",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
+      expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
+      expect(scene2.set).toHaveBeenCalledWith("name", "Chorus");
+      expect(scene3.set).not.toHaveBeenCalledWith("name", expect.anything());
+      expect(result).toHaveLength(4);
+    });
+
+    it("should ignore extra names when count is less than names", () => {
+      const result = createScene({
+        sceneIndex: 0,
+        count: 2,
+        name: "Intro,Verse,Chorus",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
+      expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
+      expect(result).toHaveLength(2);
+    });
+
+    it("should preserve commas in name when count is 1", () => {
+      createScene({
+        sceneIndex: 0,
+        count: 1,
+        name: "Intro,Verse",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("name", "Intro,Verse");
+    });
+
+    it("should trim whitespace around comma-separated names", () => {
+      createScene({
+        sceneIndex: 0,
+        count: 3,
+        name: " Intro , Verse , Chorus ",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
+      expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
+      expect(scene2.set).toHaveBeenCalledWith("name", "Chorus");
+    });
+  });
+
+  describe("comma-separated colors", () => {
+    it("should cycle through colors with modular arithmetic", () => {
+      const scene3 = registerMockObject("live_set/scenes/3", {
+        path: livePath.scene(3),
+      });
+
+      const result = createScene({
+        sceneIndex: 0,
+        count: 4,
+        color: "#FF0000,#00FF00",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
+      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
+      expect(scene2.set).toHaveBeenCalledWith("color", 16711680);
+      expect(scene3.set).toHaveBeenCalledWith("color", 65280);
+      expect(result).toHaveLength(4);
+    });
+
+    it("should use colors in order when count matches", () => {
+      createScene({
+        sceneIndex: 0,
+        count: 3,
+        color: "#FF0000,#00FF00,#0000FF",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
+      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
+      expect(scene2.set).toHaveBeenCalledWith("color", 255);
+    });
+
+    it("should ignore extra colors when count is less than colors", () => {
+      createScene({
+        sceneIndex: 0,
+        count: 2,
+        color: "#FF0000,#00FF00,#0000FF",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
+      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
+    });
+
+    it("should trim whitespace around comma-separated colors", () => {
+      createScene({
+        sceneIndex: 0,
+        count: 2,
+        color: " #FF0000 , #00FF00 ",
+      });
+
+      expect(scene0.set).toHaveBeenCalledWith("color", 16711680);
+      expect(scene1.set).toHaveBeenCalledWith("color", 65280);
+    });
   });
 
   describe("capture mode", () => {

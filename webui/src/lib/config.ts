@@ -2,6 +2,16 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  GEMINI_MODELS,
+  MISTRAL_MODELS,
+  OLLAMA_MODELS,
+  OPENAI_MODELS,
+  OPENROUTER_MODELS,
+} from "#webui/lib/constants/models";
+
+export const CHAT_UI_DOCS_URL = "https://producer-pal.org/guide/chat-ui";
+
 export const SYSTEM_INSTRUCTION = `You are an AI music composition assistant for Ableton Live.
 Help users create, edit, and arrange music using the Producer Pal tools.
 You can read and modify tracks, clips, scenes, and MIDI notes.
@@ -9,18 +19,16 @@ If the user hasn't asked to connect to Ableton Live, ask if they want to. If so,
 If the user says "ableton", connect to Ableton Live.
 You are Producer Pal. You are creative and focus on the user's musical goals.`;
 
-export const getModelName = (modelId: string): string => {
-  switch (modelId) {
-    case "gemini-2.5-pro":
-      return "Gemini 2.5 Pro";
-    case "gemini-2.5-flash":
-      return "Gemini 2.5 Flash";
-    case "gemini-2.5-flash-lite":
-      return "Gemini 2.5 Flash-Lite";
-    default:
-      return modelId;
-  }
-};
+const ALL_MODELS = [
+  ...GEMINI_MODELS,
+  ...OPENAI_MODELS,
+  ...MISTRAL_MODELS,
+  ...OPENROUTER_MODELS,
+  ...OLLAMA_MODELS,
+];
+
+export const getModelName = (modelId: string): string =>
+  ALL_MODELS.find((m) => m.value === modelId)?.label ?? modelId;
 
 export const getThinkingBudget = (level: string): number => {
   switch (level) {
@@ -41,27 +49,4 @@ export const getThinkingBudget = (level: string): number => {
     default:
       return -1; // Default to Auto for unknown values
   }
-};
-
-export const toolNames: Record<string, string> = {
-  "ppal-connect": "Connect to Ableton",
-  "ppal-context": "Project Context",
-  "ppal-read-live-set": "Read Live Set",
-  "ppal-update-live-set": "Update Live Set",
-  "ppal-create-track": "Create Track",
-  "ppal-read-track": "Read Track",
-  "ppal-update-track": "Update Track",
-  "ppal-create-scene": "Create Scene",
-  "ppal-read-scene": "Read Scene",
-  "ppal-update-scene": "Update Scene",
-  "ppal-create-clip": "Create Clip",
-  "ppal-read-clip": "Read Clip",
-  "ppal-update-clip": "Update Clip",
-  "ppal-create-device": "Create Device",
-  "ppal-read-device": "Read Device",
-  "ppal-update-device": "Update Device",
-  "ppal-playback": "Playback Controls",
-  "ppal-select": "Select/View Control",
-  "ppal-delete": "Delete Track/Scene/Clip",
-  "ppal-duplicate": "Duplicate Track/Scene/Clip",
 };

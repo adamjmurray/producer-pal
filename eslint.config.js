@@ -577,6 +577,7 @@ export default [
       },
       globals: {
         ...globals.node,
+        ...globals.browser, // page.evaluate() runs in browser context
       },
     },
     settings: importResolverSettings,

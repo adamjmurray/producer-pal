@@ -3,7 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  applyTransformsToExistingNotes,
+  buildClipContext,
+} from "../helpers/update-clip-transform-helpers.ts";
 
 // Helper to create raw notes as returned by Live API (with extra properties)
 function rawNote(pitch: number, startTime: number, noteId: number) {
@@ -23,6 +27,68 @@ function rawNote(pitch: number, startTime: number, noteId: number) {
 describe("update-clip-transform-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe("buildClipContext", () => {
+    it("uses content length for session clips", () => {
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "length") return 8;
+          if (prop === "is_arrangement_clip") return 0;
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+
+      expect(ctx.clipDuration).toBe(8);
+      expect(ctx.arrangementStart).toBeUndefined();
+    });
+
+    it("includes scalePitchClassMask when scale is active", () => {
+      registerMockObject("live_set", {
+        path: "live_set",
+        type: "Song",
+        properties: {
+          scale_mode: 1,
+          root_note: 0,
+          scale_intervals: [0, 2, 4, 5, 7, 9, 11], // C major
+        },
+      });
+
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "length") return 8;
+          if (prop === "is_arrangement_clip") return 0;
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+
+      expect(ctx.scalePitchClassMask).toBe(2741);
+    });
+
+    it("uses arrangement length (end_time - start_time) for arrangement clips", () => {
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "is_arrangement_clip") return 1;
+          if (prop === "start_time") return 4; // starts at beat 4
+          if (prop === "end_time") return 20; // ends at beat 20
+          if (prop === "length") return 8; // content length (shorter)
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+
+      // Should use end_time - start_time = 16, NOT length = 8
+      expect(ctx.clipDuration).toBe(16);
+      expect(ctx.arrangementStart).toBe(4);
+    });
   });
 
   describe("applyTransformsToExistingNotes", () => {
@@ -62,7 +128,8 @@ describe("update-clip-transform-helpers", () => {
         4,
       );
 
-      expect(result).toBe(3);
+      expect(result.noteCount).toBe(3);
+      expect(result.transformed).toBe(3);
       expect(mockClip.call).toHaveBeenCalledWith(
         "remove_notes_extended",
         0,
@@ -110,7 +177,7 @@ describe("update-clip-transform-helpers", () => {
         4,
       );
 
-      expect(result).toBe(0);
+      expect(result.noteCount).toBe(0);
       expect(outlet).toHaveBeenCalledWith(
         1,
         expect.stringContaining("transforms ignored: clip has no notes"),

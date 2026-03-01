@@ -15,7 +15,8 @@ import {
   MAX_ERROR_DELIMITER,
 } from "#src/shared/mcp-response-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { VERSION } from "#src/shared/version.ts";
+import { isNewerVersion } from "#src/shared/version-check.ts";
+import { MIN_LIVE_VERSION, VERSION } from "#src/shared/version.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
@@ -148,35 +149,35 @@ export function smallModelMode(enabled: unknown): void {
 }
 
 /**
- * Enable or disable project notes feature
+ * Enable or disable memory feature
  *
- * @param enabled - Whether to enable project notes
+ * @param enabled - Whether to enable memory
  */
-export function projectNotesEnabled(enabled: unknown): void {
-  // console.log(`[v8] Setting projectNotesEnabled ${Boolean(enabled)}`);
+export function memoryEnabled(enabled: unknown): void {
+  // console.log(`[v8] Setting memoryEnabled ${Boolean(enabled)}`);
   context.memory.enabled = Boolean(enabled);
 }
 
 /**
- * Set whether project notes are writable
+ * Set whether memory is writable
  *
- * @param writable - Whether project notes should be writable
+ * @param writable - Whether memory should be writable
  */
-export function projectNotesWritable(writable: unknown): void {
-  // console.log(`[v8] Setting projectNotesWritable ${Boolean(writable)}`);
+export function memoryWritable(writable: unknown): void {
+  // console.log(`[v8] Setting memoryWritable ${Boolean(writable)}`);
   context.memory.writable = Boolean(writable);
 }
 
 /**
- * Set the project notes content
+ * Set the memory content
  *
- * @param content - Project notes content
+ * @param content - Memory content
  */
-export function projectNotes(content: unknown): void {
+export function memoryContent(content: unknown): void {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
-  // console.log(`[v8] Setting projectNotes "${value}"`);
+  // console.log(`[v8] Setting memoryContent "${value}"`);
   context.memory.content = value;
 }
 
@@ -315,3 +316,17 @@ console.log(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
 // send a "started" signal so UI controls can resync their values
 // while changing the code repeatedly during development:
 outlet(0, "started");
+
+/**
+ * Check the Live version meets the minimum requirement.
+ * Called by the Max patch after the device is fully loaded (LiveAPI is not available at top-level).
+ */
+export function checkLiveVersion(): void {
+  const liveVersion = LiveAPI.from("live_app").call(
+    "get_version_string",
+  ) as string;
+
+  if (isNewerVersion(liveVersion, MIN_LIVE_VERSION)) {
+    outlet(0, "min_live_version_not_met", liveVersion, MIN_LIVE_VERSION);
+  }
+}

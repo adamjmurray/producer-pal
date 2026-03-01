@@ -42,9 +42,12 @@ export async function assertState(
         ? assertion.expect(parsed)
         : partialMatch(parsed as Record<string, unknown>, assertion.expect);
 
+    const maxScore = assertion.score ?? 1;
+
     return {
       assertion,
-      passed,
+      earned: passed ? maxScore : 0,
+      maxScore,
       message: passed
         ? `State assertion passed for ${assertion.tool}`
         : `State assertion failed for ${assertion.tool}`,
@@ -57,9 +60,12 @@ export async function assertState(
       },
     };
   } catch (error) {
+    const maxScore = assertion.score ?? 1;
+
     return {
       assertion,
-      passed: false,
+      earned: 0,
+      maxScore,
       message: `State assertion error: ${error instanceof Error ? error.message : String(error)}`,
       details: { error: String(error) },
     };

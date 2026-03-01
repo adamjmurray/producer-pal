@@ -33,6 +33,8 @@ describe("ConnectionTab", () => {
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
     providerLabel: "Gemini",
+    smallModelMode: false,
+    setSmallModelMode: vi.fn(),
   };
 
   describe("cloud providers - API key input", () => {
@@ -528,6 +530,41 @@ describe("ConnectionTab", () => {
         />,
       );
       expect(screen.queryByText("Custom models")).toBeNull();
+    });
+  });
+
+  describe("small model mode toggle", () => {
+    it("renders checkbox", () => {
+      const { container } = render(<ConnectionTab {...defaultProps} />);
+
+      expect(container.querySelector("#smallModelMode")).toBeDefined();
+    });
+
+    it("reflects smallModelMode prop value", () => {
+      const { container } = render(
+        <ConnectionTab {...defaultProps} smallModelMode={true} />,
+      );
+      const checkbox = container.querySelector(
+        "#smallModelMode",
+      ) as HTMLInputElement;
+
+      expect(checkbox.checked).toBe(true);
+    });
+
+    it("calls setSmallModelMode when toggled", () => {
+      const setSmallModelMode = vi.fn();
+      const { container } = render(
+        <ConnectionTab
+          {...defaultProps}
+          setSmallModelMode={setSmallModelMode}
+        />,
+      );
+      const checkbox = container.querySelector(
+        "#smallModelMode",
+      ) as HTMLInputElement;
+
+      fireEvent.click(checkbox);
+      expect(setSmallModelMode).toHaveBeenCalled();
     });
   });
 

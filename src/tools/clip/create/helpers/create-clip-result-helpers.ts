@@ -90,6 +90,7 @@ export interface ClipResultObject {
   sceneIndex?: number;
   arrangementStart?: string | null;
   noteCount?: number;
+  transformed?: number;
   length?: string;
 }
 
@@ -106,6 +107,7 @@ export interface ClipResultObject {
  * @param timeSigNumerator - Clip time signature numerator
  * @param timeSigDenominator - Clip time signature denominator
  * @param sampleFile - Audio file path (for audio clips)
+ * @param transformedCount - Number of notes matched by transform selectors
  * @returns Clip result object
  */
 export function buildClipResult(
@@ -120,6 +122,7 @@ export function buildClipResult(
   timeSigNumerator: number,
   timeSigDenominator: number,
   sampleFile: string | null,
+  transformedCount?: number,
 ): ClipResultObject {
   const clipResult: ClipResultObject = {
     id: clip.id,
@@ -136,6 +139,10 @@ export function buildClipResult(
   // For MIDI clips: include noteCount if notes were provided
   if (notationString != null) {
     clipResult.noteCount = notes.length;
+
+    if (transformedCount != null) {
+      clipResult.transformed = transformedCount;
+    }
 
     // Include calculated length if it wasn't provided as input parameter
     if (length == null) {

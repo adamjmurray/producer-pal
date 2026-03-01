@@ -98,23 +98,43 @@ describe("clip-result-helpers", () => {
   });
 
   describe("buildClipResultObject", () => {
-    it("returns object with only id when noteCount is null", () => {
+    it("returns object with only id when noteResult is null", () => {
       const result = buildClipResultObject("clip123", null);
 
       expect(result).toStrictEqual({ id: "clip123" });
       expect(result.noteCount).toBeUndefined();
     });
 
-    it("returns object with id and noteCount when noteCount is provided", () => {
-      const result = buildClipResultObject("clip456", 42);
+    it("returns object with id and noteCount when noteResult is provided", () => {
+      const result = buildClipResultObject("clip456", { noteCount: 42 });
 
       expect(result).toStrictEqual({ id: "clip456", noteCount: 42 });
     });
 
     it("includes noteCount of 0 when explicitly provided", () => {
-      const result = buildClipResultObject("clip789", 0);
+      const result = buildClipResultObject("clip789", { noteCount: 0 });
 
       expect(result).toStrictEqual({ id: "clip789", noteCount: 0 });
+    });
+
+    it("includes transformed when provided in noteResult", () => {
+      const result = buildClipResultObject("clip100", {
+        noteCount: 10,
+        transformed: 5,
+      });
+
+      expect(result).toStrictEqual({
+        id: "clip100",
+        noteCount: 10,
+        transformed: 5,
+      });
+    });
+
+    it("omits transformed when undefined in noteResult", () => {
+      const result = buildClipResultObject("clip200", { noteCount: 8 });
+
+      expect(result).toStrictEqual({ id: "clip200", noteCount: 8 });
+      expect(result.transformed).toBeUndefined();
     });
   });
 

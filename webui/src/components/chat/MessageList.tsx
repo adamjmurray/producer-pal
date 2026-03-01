@@ -2,12 +2,14 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { formatTimestamp } from "#webui/lib/utils/format-timestamp";
 import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./assistant/AssistantMessage";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
 import { RetryButton } from "./controls/RetryButton";
+
+const STILL_THINKING_DELAY_MS = 4000;
 
 interface MessageListProps {
   messages: UIMessage[];
@@ -29,6 +31,26 @@ export function MessageList({
   handleRetry,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [showStillThinking, setShowStillThinking] = useState(false);
+
+  // Show "Still thinking..." after a delay of no streaming updates.
+  // Resets on every messages change, so it re-triggers between tool calls.
+  useEffect(() => {
+    if (!isAssistantResponding) {
+      setShowStillThinking(false);
+
+      return;
+    }
+
+    setShowStillThinking(false);
+
+    const timer = setTimeout(
+      () => setShowStillThinking(true),
+      STILL_THINKING_DELAY_MS,
+    );
+
+    return () => clearTimeout(timer);
+  }, [isAssistantResponding, messages]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -99,7 +121,16 @@ export function MessageList({
         );
       })}
 
-      {isAssistantResponding && <ActivityIndicator />}
+      {isAssistantResponding && (
+        <>
+          {showStillThinking && (
+            <div className="text-center text-sm text-gray-400 animate-pulse">
+              Still thinking...
+            </div>
+          )}
+          <ActivityIndicator />
+        </>
+      )}
 
       <div ref={messagesEndRef} />
     </div>
@@ -107,9 +138,11 @@ export function MessageList({
 }
 
 /**
- * Checks if message has content to display
+ * Checks if message has any parts to display. This checks for the presence of
+ * parts, not whether parts have non-empty content — messages with parts: []
+ * are system messages that shouldn't be rendered.
  * @param {UIMessage} message - Message to check
- * @returns {JSX.Element} - React component
+ * @returns {boolean} Whether the message has displayable parts
  */
 function hasContent(message: UIMessage): boolean {
   return message.parts.length > 0;

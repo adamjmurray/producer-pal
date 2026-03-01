@@ -21,42 +21,33 @@ reach out directly.
 
 ## In Progress
 
-### 1.4.x - More Transforms
+### 1.5 - Customization and Context Management
 
-- Apply curves
-- More flexible randomization: arbitrary min and max, randomly choose between a
-  set of choices (e.g. the notes of a chord)
-- More note properties available as variables (e.g. note.index within the MIDI
-  clip, clip.position)
-- Ability to apply LFOs relative to the arrangement start instead of clip start
-- Code execution feature for the AI to generate custom algorithms for transforms
-  and MIDI note generation
-
-Also planned: Optimizations for better (local) small language model support, and
-longer conversations in general.
+- Global context: add your own reference material and custom instructions across
+  all Live projects
+- Global memory: Producer Pal can adapt over time to your needs and interaction
+  style
+- Custom skills, system prompts, tool sets, and tool descriptions
+- Task-focused personas and better optimized "small model mode" via
+  customization presets
 
 ## Changelog
 
-### 1.4 - MIDI Transforms
+### 1.4 - MIDI Transforms (February 2026)
 
-Enhance the `ppal-create-clip` and `ppal-update-clip` tools with flexible MIDI
-transform features:
+Transform note and audio clip properties using math expressions:
 
-- Apply ramps and LFO shapes to velocity, start time, duration, pitch, audio
-  gain and other note and audio properties
-- Randomize velocity and timing (and any of the other properties)
-- Apply timing patterns like swing to MIDI
-- Combine multiple transforms with mathematical expressions
-- Changes are applied directly to MIDI clips (the notes are modified). The
-  results can be easily seen and edited by hand.
+- Ramps, curves, and LFO shapes (arrangement-relative or clip-relative)
+- Randomization with arbitrary ranges, or choose from a set of values
+- Swing and other timing patterns
+- Context variables like note index and clip position in the arrangement
 
-Also:
+Other improvements:
 
-- Split arrangement clips at the given position(s)
-- Support running Ollama on another computer (Ollama API URL is no longer
-  hard-coded to localhost)
+- Split arrangement clips at specified positions
+- Configurable Ollama API URL for remote hosting
 
-### 1.3 - Device Control (December 2025 - January 2026)
+### 1.3 - Device Control (January 2026)
 
 - Full device control: add/delete/move native devices on any track, read/write
   parameters, insert into rack chains
@@ -88,27 +79,11 @@ Expanded features and support for multiple AI platforms.
 Initial public release with Claude Desktop support and a focus on MIDI clip
 manipulation and basic Live Set management.
 
-## Planned Features
+## Future Features
 
-### 1.5 - Customization and Small Model Optimization
-
-- Custom skills, system prompts, tool descriptions, and task-focused personas
-  for experimentation and local model optimization
-- Make different personas to focus on different types of tasks, for better
-  results and less context window usage
-- Evaluation tools for comparing adjustments to customization settings
-
-### 1.6 - Harmony
-
-- Chord notation
-- Pitches as scale/chord degrees of the current chord (instead of absolute
-  pitches)
-- Microtonal support
-
-### 1.x - Miscellaneous Features
-
-- Take lane support
-- Groove support
 - Support new Live API features as they become available
-- Persist conversations from the built-in chat UI and continue them later
-- Voice interface: Speak to Producer Pal instead of typing
+- Take lane support
+- Persistent conversations in the built-in chat UI
+- Chord notation and pitches as scale/chord degrees
+- Voice interface
+- Custom algorithm execution for MIDI generation and transformation

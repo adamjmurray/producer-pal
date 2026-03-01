@@ -113,7 +113,7 @@ export class GeminiClient {
     };
 
     this.chat = this.ai.chats.create({
-      model: this.config.model ?? "gemini-2.5-flash-lite",
+      model: this.config.model ?? "gemini-3-flash-preview",
       config: this.chatConfig,
       history: this.chatHistory,
     });
@@ -296,7 +296,7 @@ export class GeminiClient {
   private recreateChatWithHistory(): void {
     if (this.chatConfig) {
       this.chat = this.ai.chats.create({
-        model: this.config.model ?? "gemini-2.5-flash-lite",
+        model: this.config.model ?? "gemini-3-flash-preview",
         config: this.chatConfig,
         history: this.chatHistory,
       });

@@ -63,13 +63,14 @@ describe("ppal-duplicate", () => {
     const liveSet = parseToolResult<ReadLiveSetResult>(readResult);
     const firstTrackId = liveSet.tracks[0]!.id;
 
-    // Test 1: Track duplication with count
+    // Test 1: Track duplication with count and name
     const dupMultipleResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "track",
         id: firstTrackId,
         count: 2,
+        name: "Batch Track",
       },
     });
     const dupMultiple =
@@ -78,6 +79,25 @@ describe("ppal-duplicate", () => {
     expect(dupMultiple).toHaveLength(2);
     expect(dupMultiple[0]!.trackIndex).toBe(1);
     expect(dupMultiple[1]!.trackIndex).toBe(2);
+
+    await sleep(100);
+
+    // Verify both tracks have the same name
+    const readTrack1 = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackId: dupMultiple[0]!.id },
+    });
+    const readTrack2 = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackId: dupMultiple[1]!.id },
+    });
+
+    expect(parseToolResult<{ name: string }>(readTrack1).name).toBe(
+      "Batch Track",
+    );
+    expect(parseToolResult<{ name: string }>(readTrack2).name).toBe(
+      "Batch Track",
+    );
 
     await sleep(100);
 
@@ -137,13 +157,14 @@ describe("ppal-duplicate", () => {
 
     expect(afterSceneDup.scenes!.length).toBe(initialSceneCount + 1);
 
-    // Test 2: Scene duplication with count
+    // Test 2: Scene duplication with count and name
     const dupMultipleScenesResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "scene",
         id: afterSceneDup.scenes![0]!.id,
         count: 2,
+        name: "Batch Scene",
       },
     });
     const dupMultipleScenes = parseToolResult<DuplicateSceneResult[]>(
@@ -151,6 +172,25 @@ describe("ppal-duplicate", () => {
     );
 
     expect(dupMultipleScenes).toHaveLength(2);
+
+    await sleep(100);
+
+    // Verify both scenes have the same name
+    const readScene1 = await ctx.client!.callTool({
+      name: "ppal-read-scene",
+      arguments: { sceneId: dupMultipleScenes[0]!.id },
+    });
+    const readScene2 = await ctx.client!.callTool({
+      name: "ppal-read-scene",
+      arguments: { sceneId: dupMultipleScenes[1]!.id },
+    });
+
+    expect(parseToolResult<{ name: string }>(readScene1).name).toBe(
+      "Batch Scene",
+    );
+    expect(parseToolResult<{ name: string }>(readScene2).name).toBe(
+      "Batch Scene",
+    );
   });
 
   it("duplicates clips", async () => {
@@ -180,8 +220,7 @@ describe("ppal-duplicate", () => {
         type: "clip",
         id: createdClip.id,
         destination: "session",
-        toTrackIndex: emptyMidiTrack2,
-        toSceneIndex: "0",
+        toSlot: `${emptyMidiTrack2}/0`,
       },
     });
     const dupClipSession =
@@ -193,15 +232,15 @@ describe("ppal-duplicate", () => {
 
     await sleep(100);
 
-    // Test 2: Session clip to multiple session slots (use empty track)
+    // Test 2: Session clip to multiple session slots with name
     const dupClipMultiSlotsResult = await ctx.client!.callTool({
       name: "ppal-duplicate",
       arguments: {
         type: "clip",
         id: createdClip.id,
         destination: "session",
-        toTrackIndex: 10, // t10 Child track has no clips
-        toSceneIndex: "0,1,2",
+        toSlot: "10/0, 10/1, 10/2",
+        name: "Batch Clip",
       },
     });
     const dupClipMultiSlots = parseToolResult<DuplicateClipResult[]>(
@@ -212,6 +251,20 @@ describe("ppal-duplicate", () => {
     expect(dupClipMultiSlots[0]!.sceneIndex).toBe(0);
     expect(dupClipMultiSlots[1]!.sceneIndex).toBe(1);
     expect(dupClipMultiSlots[2]!.sceneIndex).toBe(2);
+
+    await sleep(100);
+
+    // Verify all clips have the same name
+    for (const dupClip of dupClipMultiSlots) {
+      const readClip = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { clipId: dupClip.id },
+      });
+
+      expect(parseToolResult<{ name: string }>(readClip).name).toBe(
+        "Batch Clip",
+      );
+    }
 
     await sleep(100);
 

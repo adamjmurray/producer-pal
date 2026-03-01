@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { quantizePitchToScale } from "#src/shared/pitch.ts";
 import { type ExpressionNode } from "./parser/transform-parser.ts";
 import {
   type TimeRange,
@@ -114,6 +113,47 @@ export function evaluateChoose(
   );
 
   return waveforms.choose(values);
+}
+
+/**
+ * Evaluate seq function (cycle through values based on note/clip index)
+ * @param args - Function arguments (at least 1)
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access (index, clip:index)
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Value at current sequence position
+ */
+export function evaluateSeq(
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
+  if (args.length === 0) {
+    throw new Error("Function seq() requires at least 1 argument");
+  }
+
+  // MIDI transforms set noteProperties.index (per-note, resets per clip).
+  // Audio transforms set noteProperties["clip:index"] (per-clip, sequential).
+  // The ?? chain auto-selects the right one; 0 fallback for edge cases.
+  const index = noteProperties.index ?? noteProperties["clip:index"] ?? 0;
+  const selectedIndex = index % args.length;
+
+  // Only evaluate the selected argument (lazy evaluation)
+  return evaluateExpression(
+    args[selectedIndex] as ExpressionNode,
+    position,
+    timeSigNumerator,
+    timeSigDenominator,
+    timeRange,
+    noteProperties,
+  );
 }
 
 /**
@@ -352,46 +392,4 @@ export function evaluateMathFunction(
     default:
       throw new Error(`Unknown math function: ${name}()`);
   }
-}
-
-/**
- * Evaluate quant function (quantize pitch to nearest in-scale pitch)
- * @param args - Function arguments (exactly 1: pitch value)
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access (includes scale:mask)
- * @param evaluateExpression - Expression evaluator function
- * @returns Quantized pitch value, or input unchanged if no scale
- */
-export function evaluateQuant(
-  args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
-): number {
-  if (args.length !== 1) {
-    throw new Error(
-      `Function quant() requires exactly 1 argument: quant(pitch)`,
-    );
-  }
-
-  const pitch = evaluateExpression(
-    args[0] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-
-  const scaleMask = noteProperties["scale:mask"];
-
-  if (scaleMask == null) return pitch;
-
-  return quantizePitchToScale(pitch, scaleMask);
 }

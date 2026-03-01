@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { errorMessage } from "./error-utils.ts";
+import { errorMessage } from "../error-utils.ts";
 
 describe("errorMessage", () => {
   it("should extract message from Error instance", () => {

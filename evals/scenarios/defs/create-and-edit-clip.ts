@@ -22,25 +22,30 @@ export const createAndEditClip: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
 
     // Turn 1: Clip creation
-    { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
+    { type: "tool_called", tool: "ppal-create-clip", turn: 1, score: 5 },
 
     // Turn 2: Note addition (merge mode)
-    { type: "tool_called", tool: "ppal-update-clip", turn: 2 },
+    { type: "tool_called", tool: "ppal-update-clip", turn: 2, score: 5 },
 
     // Turn 3: Quantization
-    { type: "tool_called", tool: "ppal-update-clip", turn: 3 },
+    { type: "tool_called", tool: "ppal-update-clip", turn: 3, score: 5 },
 
     // Verify response mentions the drum creation
-    { type: "response_contains", pattern: /drum|kick|snare/i, turn: 1 },
+    {
+      type: "response_contains",
+      pattern: /drum|kick|snare/i,
+      turn: 1,
+      score: 2,
+    },
 
     // Verify response mentions hi-hats
-    { type: "response_contains", pattern: /hi-?hat/i, turn: 2 },
+    { type: "response_contains", pattern: /hi-?hat/i, turn: 2, score: 2 },
 
     // Verify response mentions quantization
-    { type: "response_contains", pattern: /quantiz/i, turn: 3 },
+    { type: "response_contains", pattern: /quantiz/i, turn: 3, score: 2 },
 
     // LLM quality check
     {
@@ -50,7 +55,7 @@ export const createAndEditClip: EvalScenario = {
 2. Added hi-hats as requested
 3. Applied quantization
 4. Confirmed each step was completed`,
-      minScore: 4,
+      score: 10,
     },
   ],
 };

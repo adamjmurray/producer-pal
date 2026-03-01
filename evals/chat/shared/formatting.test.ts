@@ -145,7 +145,7 @@ describe("thought formatting", () => {
       expect(result).toContain("analyzing the problem");
     });
 
-    it("uses box drawing characters", () => {
+    it("uses box drawing characters for header", () => {
       const result = startThought("test");
 
       expect(result).toContain("╔");
@@ -154,24 +154,21 @@ describe("thought formatting", () => {
   });
 
   describe("continueThought", () => {
-    it("prefixes each line with box character", () => {
+    it("returns raw text", () => {
       const result = continueThought("single line");
 
-      expect(result).toContain("║ single line");
+      expect(result).toBe("single line");
     });
 
-    it("handles multiline text", () => {
+    it("preserves multiline text", () => {
       const result = continueThought("line1\nline2\nline3");
 
-      expect(result).toContain("║ line1");
-      expect(result).toContain("║ line2");
-      expect(result).toContain("║ line3");
+      expect(result).toBe("line1\nline2\nline3");
     });
 
     it("handles object input by stringifying", () => {
       const result = continueThought({ key: "value" });
 
-      expect(result).toContain("║");
       expect(result).toContain("key");
       expect(result).toContain("value");
     });

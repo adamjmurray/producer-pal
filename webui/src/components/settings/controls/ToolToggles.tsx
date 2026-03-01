@@ -7,6 +7,7 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
+import { type GroupedTools, groupTools } from "./tool-toggles-helpers";
 
 interface ToolTogglesProps {
   tools: McpTool[] | null;
@@ -16,7 +17,7 @@ interface ToolTogglesProps {
 }
 
 /**
- * Checkboxes for enabling/disabling individual tools
+ * Checkboxes for enabling/disabling individual tools, organized by category
  * @param {ToolTogglesProps} props - Component props
  * @param {McpTool[] | null} props.tools - Available tools from MCP server
  * @param {McpStatus} props.mcpStatus - MCP connection status
@@ -75,6 +76,8 @@ export function ToolToggles({
     setEnabledTools(allDisabled);
   };
 
+  const groups = groupTools(tools);
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -97,9 +100,44 @@ export function ToolToggles({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        {tools.map((tool) => (
-          <div key={tool.id} className="flex items-center gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-6 my-6">
+        {groups.map((group) => (
+          <ToolGroupSection
+            key={group.label}
+            group={group}
+            enabledTools={enabledTools}
+            isAlwaysEnabled={isAlwaysEnabled}
+            onToggle={handleToggle}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- Helper components ---
+
+interface ToolGroupSectionProps {
+  group: GroupedTools;
+  enabledTools: Record<string, boolean>;
+  isAlwaysEnabled: (toolId: string) => boolean;
+  onToggle: (toolId: string) => void;
+}
+
+function ToolGroupSection({
+  group,
+  enabledTools,
+  isAlwaysEnabled,
+  onToggle,
+}: ToolGroupSectionProps) {
+  return (
+    <div>
+      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+        {group.label}
+      </h4>
+      <div className="space-y-1">
+        {group.tools.map((tool) => (
+          <div key={tool.id} className="flex items-center gap-1.5">
             <input
               type="checkbox"
               id={`tool-${tool.id}`}
@@ -107,7 +145,7 @@ export function ToolToggles({
                 isAlwaysEnabled(tool.id) || (enabledTools[tool.id] ?? true)
               }
               disabled={isAlwaysEnabled(tool.id)}
-              onChange={() => handleToggle(tool.id)}
+              onChange={() => onToggle(tool.id)}
             />
             <label htmlFor={`tool-${tool.id}`} className="text-sm">
               {tool.name}

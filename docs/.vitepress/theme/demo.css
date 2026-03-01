@@ -1,0 +1,31 @@
+.demo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5em;
+  margin: 2em 0;
+}
+
+@media (max-width: 768px) {
+  .demo-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.demo-video {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+}
+
+.demo-video iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.demo-video-label {
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}

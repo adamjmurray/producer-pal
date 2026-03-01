@@ -1,15 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi } from "vitest";
+import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
+import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";
 import { type GeminiMessage, type OpenAIMessage } from "#webui/types/messages";
 import { type ResponsesConversationItem } from "#webui/types/responses-api";
 import {
   handleMessageStream,
   createGeminiErrorMessage,
-  createOpenAIErrorMessage,
-  createResponsesErrorMessage,
+  createFormattedErrorMessage,
   validateMcpConnection,
 } from "./streaming-helpers";
 
@@ -100,20 +102,26 @@ describe("streaming-helpers", () => {
     });
   });
 
-  describe("createOpenAIErrorMessage", () => {
-    it("should create error message", () => {
+  describe("createFormattedErrorMessage", () => {
+    it("should create error message for OpenAI format", () => {
       const chatHistory: OpenAIMessage[] = [];
-      const result = createOpenAIErrorMessage(chatHistory, "Test error");
+      const result = createFormattedErrorMessage(
+        chatHistory,
+        formatOpenAIMessages,
+        "Test error",
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0]?.role).toBe("model");
     });
-  });
 
-  describe("createResponsesErrorMessage", () => {
-    it("should create error message", () => {
+    it("should create error message for Responses format", () => {
       const conversation: ResponsesConversationItem[] = [];
-      const result = createResponsesErrorMessage(conversation, "Test error");
+      const result = createFormattedErrorMessage(
+        conversation,
+        formatResponsesMessages,
+        "Test error",
+      );
 
       expect(result).toHaveLength(1);
       expect(result[0]?.role).toBe("model");
@@ -129,7 +137,11 @@ describe("streaming-helpers", () => {
       const conversation: ResponsesConversationItem[] = [
         { type: "message", role: "user", content: "Hello" },
       ];
-      const result = createResponsesErrorMessage(conversation, "Test error");
+      const result = createFormattedErrorMessage(
+        conversation,
+        formatResponsesMessages,
+        "Test error",
+      );
 
       expect(result).toHaveLength(2);
       expect(result[0]?.role).toBe("user");
@@ -138,8 +150,9 @@ describe("streaming-helpers", () => {
 
     it("should handle Error objects", () => {
       const conversation: ResponsesConversationItem[] = [];
-      const result = createResponsesErrorMessage(
+      const result = createFormattedErrorMessage(
         conversation,
+        formatResponsesMessages,
         new Error("Something failed"),
       );
 

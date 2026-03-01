@@ -28,7 +28,8 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(1);
+      expect(result.maxScore).toBe(1);
       expect(result.message).toContain("read-track called 1 time(s)");
     });
 
@@ -41,7 +42,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
       expect(result.message).toContain("Expected read-track");
       expect(result.message).toContain("got 0");
     });
@@ -56,7 +57,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
   });
 
@@ -73,7 +74,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("fails when actual has extra keys (exact match)", () => {
@@ -90,7 +91,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
     });
 
     it("passes with expect.objectContaining() for partial match", () => {
@@ -110,7 +111,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("fails when args do not match", () => {
@@ -125,7 +126,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
     });
   });
 
@@ -145,7 +146,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("fails when count is less than expected", () => {
@@ -158,7 +159,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
       expect(result.message).toContain("exactly 2 time(s)");
     });
 
@@ -178,7 +179,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("fails when count exceeds max", () => {
@@ -197,7 +198,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
     });
   });
 
@@ -215,7 +216,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("fails when tool not in specified turn", () => {
@@ -231,7 +232,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
     });
 
     it("checks all turns when turn is 'any'", () => {
@@ -247,7 +248,7 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(true);
+      expect(result.earned).toBe(result.maxScore);
     });
 
     it("handles out-of-range turn index gracefully", () => {
@@ -260,7 +261,37 @@ describe("assertToolCalled", () => {
 
       const result = assertToolCalled(assertion, turns);
 
-      expect(result.passed).toBe(false);
+      expect(result.earned).toBe(0);
+    });
+  });
+
+  describe("custom score", () => {
+    it("uses assertion score value", () => {
+      const turns = [createTurn([{ name: "read-track", args: {} }])];
+      const assertion: ToolCallAssertion = {
+        type: "tool_called",
+        tool: "read-track",
+        score: 5,
+      };
+
+      const result = assertToolCalled(assertion, turns);
+
+      expect(result.earned).toBe(5);
+      expect(result.maxScore).toBe(5);
+    });
+
+    it("returns 0 earned with custom score on failure", () => {
+      const turns = [createTurn([{ name: "other-tool", args: {} }])];
+      const assertion: ToolCallAssertion = {
+        type: "tool_called",
+        tool: "read-track",
+        score: 5,
+      };
+
+      const result = assertToolCalled(assertion, turns);
+
+      expect(result.earned).toBe(0);
+      expect(result.maxScore).toBe(5);
     });
   });
 

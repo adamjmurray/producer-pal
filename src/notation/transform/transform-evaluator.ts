@@ -5,14 +5,23 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteEvent } from "../types.ts";
-import * as parser from "./parser/transform-parser.ts";
 import {
+  type PitchRange,
+  type TransformAssignment,
+  parse as parseTransform,
+} from "./parser/transform-parser.ts";
+import {
+  calculateActiveTimeRange,
   type ClipContext,
+  evaluateExpression,
   evaluateTransformAST,
   type NoteContext,
   type NoteProperties,
+  resolveEffectivePitchRanges,
+  type TimeRange,
   type TransformResult,
 } from "./transform-evaluator-helpers.ts";
 
@@ -26,6 +35,7 @@ const AUDIO_PARAMETERS = new Set(["gain", "pitchShift"]);
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Optional clip-level context for clip/bar variables
+ * @returns Count of unique notes with at least one non-audio transform matched, or undefined if no transforms applied
  */
 export function applyTransforms(
   notes: NoteEvent[],
@@ -33,9 +43,9 @@ export function applyTransforms(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext?: ClipContext,
-): void {
+): number | undefined {
   if (!transformString || notes.length === 0) {
-    return;
+    return undefined;
   }
 
   const ast = tryParseTransform(transformString);
@@ -57,35 +67,36 @@ export function applyTransforms(
   const lastNote = notes.at(-1) as NoteEvent;
   const clipEndTime =
     (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
+  const clipTimeRange: TimeRange = { start: clipStartTime, end: clipEndTime };
 
-  for (let i = 0; i < notes.length; i++) {
-    const note = notes[i] as NoteEvent;
-    const noteContext = buildNoteContext(
-      note,
+  // Resolve effective pitch ranges for each assignment (handling inheritance)
+  const effectiveRanges = resolveEffectivePitchRanges(ast);
+
+  // Track which notes had at least one MIDI transform applied
+  const transformedIndices = new Set<number>();
+
+  // Process assignments sequentially (assignment-major order).
+  // Each assignment is fully applied before the next one runs.
+  // This enables stacked transforms and pitch-range-filtered note.index.
+  for (let j = 0; j < ast.length; j++) {
+    const assignment = ast[j] as TransformAssignment;
+    const pitchRange = effectiveRanges[j] ?? null;
+
+    // Skip audio parameters for MIDI clips
+    if (AUDIO_PARAMETERS.has(assignment.parameter)) {
+      continue;
+    }
+
+    applyAssignmentToNotes(
+      assignment,
+      pitchRange,
+      notes,
       timeSigNumerator,
       timeSigDenominator,
-      clipStartTime,
-      clipEndTime,
-    );
-
-    const noteProperties = buildNoteProperties(
-      note,
-      i,
-      notes.length,
-      timeSigDenominator,
+      clipTimeRange,
       clipContext,
+      transformedIndices,
     );
-
-    // Evaluate transforms for this note using the pre-parsed AST
-    const transforms = evaluateTransformAST(ast, noteContext, noteProperties);
-
-    // Apply transforms with operator semantics and range clamping
-    applyVelocityTransform(note, transforms);
-    applyTimingTransform(note, transforms, timeSigDenominator);
-    applyDurationTransform(note, transforms, timeSigDenominator);
-    applyProbabilityTransform(note, transforms);
-    applyDeviationTransform(note, transforms);
-    applyPitchTransform(note, transforms);
   }
 
   // Delete notes where transforms reduced velocity below 1 or duration to 0 or below
@@ -98,6 +109,117 @@ export function applyTransforms(
     notes.length = 0;
     notes.push(...surviving);
   }
+
+  return transformedIndices.size;
+}
+
+/**
+ * Apply a single transform assignment to all matching notes.
+ * When a pitch range is active, note.index and note.count reflect only the
+ * filtered subset of notes matching that pitch range.
+ * Transforms are applied immediately so subsequent assignments see mutations.
+ * @param assignment - Transform assignment to apply
+ * @param pitchRange - Effective pitch range filter (null for no filter)
+ * @param notes - Notes to transform
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param clipTimeRange - Clip time range for expression evaluation
+ * @param clipContext - Optional clip-level context for clip variables
+ * @param transformedIndices - Set to track which notes were transformed
+ */
+function applyAssignmentToNotes(
+  assignment: TransformAssignment,
+  pitchRange: PitchRange | null,
+  notes: NoteEvent[],
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  clipTimeRange: TimeRange,
+  clipContext: ClipContext | undefined,
+  transformedIndices: Set<number>,
+): void {
+  // Count matching notes for filtered index (uses current/mutated pitches)
+  const filteredCount =
+    pitchRange != null
+      ? notes.filter(
+          (n) =>
+            n.pitch >= pitchRange.startPitch && n.pitch <= pitchRange.endPitch,
+        ).length
+      : notes.length;
+
+  let filteredCounter = 0;
+
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i] as NoteEvent;
+
+    // Pitch range check against current (possibly mutated) pitch
+    if (
+      pitchRange != null &&
+      (note.pitch < pitchRange.startPitch || note.pitch > pitchRange.endPitch)
+    ) {
+      continue;
+    }
+
+    const noteContext = buildNoteContext(
+      note,
+      timeSigNumerator,
+      timeSigDenominator,
+      clipTimeRange,
+    );
+
+    // Time range check
+    const activeTimeRange = calculateActiveTimeRange(
+      assignment,
+      noteContext.bar,
+      noteContext.beat,
+      timeSigNumerator,
+      timeSigDenominator,
+      clipTimeRange,
+      noteContext.position,
+    );
+
+    // Note matches pitch range — count it regardless of time range
+    const noteIndex = pitchRange != null ? filteredCounter : i;
+
+    filteredCounter++;
+
+    if (activeTimeRange.skip) {
+      continue; // Pitch matched but time didn't — counted for index, not applied
+    }
+
+    const noteProperties = buildNoteProperties(
+      note,
+      noteIndex,
+      filteredCount,
+      timeSigDenominator,
+      clipContext,
+    );
+
+    try {
+      const value = evaluateExpression(
+        assignment.expression,
+        noteContext.position,
+        timeSigNumerator,
+        timeSigDenominator,
+        activeTimeRange.timeRange,
+        noteProperties,
+      );
+
+      // Apply transform immediately (enables stacked transforms)
+      applyTransformResult(
+        note,
+        assignment.parameter,
+        assignment.operator,
+        value,
+        timeSigDenominator,
+      );
+
+      transformedIndices.add(i);
+    } catch (error) {
+      console.warn(
+        `Failed to evaluate transform for parameter "${assignment.parameter}": ${errorMessage(error)}`,
+      );
+    }
+  }
 }
 
 /**
@@ -105,16 +227,14 @@ export function applyTransforms(
  * @param note - Note event
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @param clipStartTime - Clip start time
- * @param clipEndTime - Clip end time
+ * @param clipTimeRange - Clip time range
  * @returns Note context for transform evaluation
  */
 function buildNoteContext(
   note: NoteEvent,
   timeSigNumerator: number,
   timeSigDenominator: number,
-  clipStartTime: number,
-  clipEndTime: number,
+  clipTimeRange: TimeRange,
 ): NoteContext {
   // Convert note's Ableton beats start_time to musical beats position
   const musicalBeats = note.start_time * (timeSigDenominator / 4);
@@ -142,10 +262,7 @@ function buildNoteContext(
       numerator: timeSigNumerator,
       denominator: timeSigDenominator,
     },
-    clipTimeRange: {
-      start: clipStartTime,
-      end: clipEndTime,
-    },
+    clipTimeRange,
   };
 }
 
@@ -196,155 +313,70 @@ function buildNoteProperties(
 }
 
 /**
- * Apply velocity transform to a note
+ * Apply a single transform result to a note in-place.
+ * Handles clamping and conversion between musical and Ableton beats.
  * @param note - Note to modify
- * @param transforms - Transform results
- */
-function applyVelocityTransform(
-  note: NoteEvent,
-  transforms: Record<string, TransformResult>,
-): void {
-  if (transforms.velocity == null) {
-    return;
-  }
-
-  note.velocity =
-    transforms.velocity.operator === "set"
-      ? Math.min(127, transforms.velocity.value)
-      : Math.min(127, note.velocity + transforms.velocity.value);
-}
-
-/**
- * Apply timing transform to a note
- * Transform values are in musical beats; convert to Ableton beats for storage
- * @param note - Note to modify
- * @param transforms - Transform results
+ * @param parameter - Transform parameter name
+ * @param operator - Transform operator ("set" or "add")
+ * @param value - Evaluated expression value (in musical beats for timing/duration)
  * @param timeSigDenominator - Time signature denominator for beat conversion
  */
-function applyTimingTransform(
+function applyTransformResult(
   note: NoteEvent,
-  transforms: Record<string, TransformResult>,
+  parameter: string,
+  operator: "add" | "set",
+  value: number,
   timeSigDenominator: number,
 ): void {
-  if (transforms.timing == null) {
-    return;
+  switch (parameter) {
+    case "velocity":
+      note.velocity =
+        operator === "set"
+          ? Math.min(127, value)
+          : Math.min(127, note.velocity + value);
+      break;
+
+    case "timing": {
+      const tv = value * (4 / timeSigDenominator);
+
+      note.start_time = operator === "set" ? tv : note.start_time + tv;
+      break;
+    }
+
+    case "duration": {
+      const dv = value * (4 / timeSigDenominator);
+
+      note.duration = operator === "set" ? dv : note.duration + dv;
+      break;
+    }
+
+    case "probability":
+      note.probability = Math.max(
+        0,
+        Math.min(
+          1,
+          operator === "set" ? value : (note.probability ?? 1) + value,
+        ),
+      );
+      break;
+
+    case "deviation":
+      note.velocity_deviation = Math.max(
+        -127,
+        Math.min(
+          127,
+          operator === "set" ? value : (note.velocity_deviation ?? 0) + value,
+        ),
+      );
+      break;
+
+    case "pitch": {
+      const raw = operator === "set" ? value : note.pitch + value;
+
+      note.pitch = Math.max(0, Math.min(127, Math.round(raw)));
+      break;
+    }
   }
-
-  // Convert from musical beats (expression result) to Ableton beats (storage)
-  const musicalBeatsValue = transforms.timing.value;
-  const abletonBeatsValue = musicalBeatsValue * (4 / timeSigDenominator);
-
-  if (transforms.timing.operator === "set") {
-    note.start_time = abletonBeatsValue;
-  } else {
-    // operator === "add"
-    note.start_time += abletonBeatsValue;
-  }
-}
-
-/**
- * Apply duration transform to a note
- * Transform values are in musical beats; convert to Ableton beats for storage
- * @param note - Note to modify
- * @param transforms - Transform results
- * @param timeSigDenominator - Time signature denominator for beat conversion
- */
-function applyDurationTransform(
-  note: NoteEvent,
-  transforms: Record<string, TransformResult>,
-  timeSigDenominator: number,
-): void {
-  if (transforms.duration == null) {
-    return;
-  }
-
-  // Convert from musical beats (expression result) to Ableton beats (storage)
-  const musicalBeatsValue = transforms.duration.value;
-  const abletonBeatsValue = musicalBeatsValue * (4 / timeSigDenominator);
-
-  note.duration =
-    transforms.duration.operator === "set"
-      ? abletonBeatsValue
-      : note.duration + abletonBeatsValue;
-}
-
-/**
- * Apply probability transform to a note
- * @param note - Note to modify
- * @param transforms - Transform results
- */
-function applyProbabilityTransform(
-  note: NoteEvent,
-  transforms: Record<string, TransformResult>,
-): void {
-  if (transforms.probability == null) {
-    return;
-  }
-
-  if (transforms.probability.operator === "set") {
-    note.probability = Math.max(
-      0.0,
-      Math.min(1.0, transforms.probability.value),
-    );
-  } else {
-    // operator === "add"
-    note.probability = Math.max(
-      0.0,
-      Math.min(1.0, (note.probability ?? 1.0) + transforms.probability.value),
-    );
-  }
-}
-
-/**
- * Apply deviation transform to a note
- * @param note - Note to modify
- * @param transforms - Transform results
- */
-function applyDeviationTransform(
-  note: NoteEvent,
-  transforms: Record<string, TransformResult>,
-): void {
-  if (transforms.deviation == null) {
-    return;
-  }
-
-  if (transforms.deviation.operator === "set") {
-    note.velocity_deviation = Math.max(
-      -127,
-      Math.min(127, transforms.deviation.value),
-    );
-  } else {
-    // operator === "add"
-    note.velocity_deviation = Math.max(
-      -127,
-      Math.min(
-        127,
-        (note.velocity_deviation ?? 0) + transforms.deviation.value,
-      ),
-    );
-  }
-}
-
-/**
- * Apply pitch transform to a note
- * @param note - Note to modify
- * @param transforms - Transform results
- */
-function applyPitchTransform(
-  note: NoteEvent,
-  transforms: Record<string, TransformResult>,
-): void {
-  if (transforms.pitch == null) {
-    return;
-  }
-
-  const newPitch =
-    transforms.pitch.operator === "set"
-      ? transforms.pitch.value
-      : note.pitch + transforms.pitch.value;
-
-  // Round to integer (MIDI pitch must be integer) then clamp to 0-127
-  note.pitch = Math.max(0, Math.min(127, Math.round(newPitch)));
 }
 
 /**
@@ -376,9 +408,9 @@ export function evaluateTransform(
  */
 function tryParseTransform(
   transformString: string,
-): ReturnType<typeof parser.parse> {
+): ReturnType<typeof parseTransform> {
   try {
-    return parser.parse(transformString);
+    return parseTransform(transformString);
   } catch (error) {
     if (error instanceof Error && error.name === "SyntaxError") {
       throw new Error(

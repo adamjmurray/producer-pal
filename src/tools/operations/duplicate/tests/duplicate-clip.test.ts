@@ -57,8 +57,7 @@ describe("duplicate - clip duplication", () => {
         type: "clip",
         id: "clip1",
         destination: "session",
-        toTrackIndex: 0,
-        toSceneIndex: "1",
+        toSlot: "0/1",
       });
 
       expect(sourceClipSlot.call).toHaveBeenCalledWith(
@@ -115,8 +114,7 @@ describe("duplicate - clip duplication", () => {
         id: "clip1",
         destination: "session",
         name: "Custom Clip",
-        toTrackIndex: 0,
-        toSceneIndex: "1,2",
+        toSlot: "0/1, 0/2",
       });
 
       expect(result).toStrictEqual([
@@ -142,7 +140,7 @@ describe("duplicate - clip duplication", () => {
       );
 
       expect(destClip1.set).toHaveBeenCalledWith("name", "Custom Clip");
-      expect(destClip2.set).toHaveBeenCalledWith("name", "Custom Clip 2");
+      expect(destClip2.set).toHaveBeenCalledWith("name", "Custom Clip");
     });
 
     it("should throw an error when trying to duplicate an arrangement clip to session", () => {
@@ -155,8 +153,7 @@ describe("duplicate - clip duplication", () => {
           type: "clip",
           id: "arrangementClip1",
           destination: "session",
-          toTrackIndex: 1,
-          toSceneIndex: "2",
+          toSlot: "1/2",
         }),
       ).toThrow(
         'unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="arrangementClip1" path="live_set tracks 0 arrangement_clips 0") ',
@@ -173,7 +170,7 @@ describe("duplicate - clip duplication", () => {
       expect(() =>
         duplicate({ type: "clip", id: "clip1", destination: "arrangement" }),
       ).toThrow(
-        "duplicate failed: arrangementStart, arrangementLocatorId, or arrangementLocatorName is required when destination is 'arrangement'",
+        "duplicate failed: arrangementStart, locatorId, or locatorName is required when destination is 'arrangement'",
       );
     });
 

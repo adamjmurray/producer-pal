@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -90,26 +91,6 @@ export function parseCommaSeparatedFloats(values?: string | null): number[] {
     .split(",")
     .map((v) => Number.parseFloat(v.trim()))
     .filter((v) => !Number.isNaN(v));
-}
-
-/**
- * Builds an indexed name for batch-created items (clips, tracks, etc.)
- * First item keeps base name, subsequent items get numbered suffix.
- * @param baseName - Base name for the item
- * @param count - Total number of items being created
- * @param index - Current item index (0-based)
- * @returns Generated name or undefined if baseName is null
- */
-export function buildIndexedName(
-  baseName: string | null | undefined,
-  count: number,
-  index: number,
-): string | undefined {
-  if (baseName == null) return;
-  if (count === 1) return baseName;
-  if (index === 0) return baseName;
-
-  return `${baseName} ${index + 1}`;
 }
 
 /**
@@ -205,4 +186,23 @@ export function toLiveApiId(id: string | number): string {
   const s = String(id);
 
   return s.startsWith("id ") ? s : `id ${s}`;
+}
+
+/**
+ * Removes specified fields from each object in an array.
+ * Used to strip redundant fields from nested results (e.g., clips nested in tracks or scenes).
+ * @param items - Array of objects to strip fields from, or undefined
+ * @param fields - Field names to delete
+ */
+export function stripFields(
+  items: unknown[] | undefined,
+  ...fields: string[]
+): void {
+  if (!items) return;
+
+  for (const item of items) {
+    for (const field of fields) {
+      delete (item as Record<string, unknown>)[field];
+    }
+  }
 }

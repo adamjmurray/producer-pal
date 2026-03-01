@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -8,6 +9,7 @@ import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
+import { stripFields } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
 interface ReadSceneArgs {
@@ -80,12 +82,11 @@ export function readScene(
   const isTimeSignatureEnabled =
     (scene.getProperty("time_signature_enabled") as number) > 0;
 
-  const sceneName = scene.getProperty("name") as string | null;
-  // resolvedSceneIndex is guaranteed to be a number at this point (either from sceneIndex param or scene.sceneIndex)
-  const sceneNum = resolvedSceneIndex as number;
+  const rawName = scene.getProperty("name") as string | null;
+  const sceneName = rawName === "" ? null : rawName;
   const result: ReadSceneResult = {
     id: scene.id,
-    name: sceneName ? `${sceneName} (${sceneNum + 1})` : `${sceneNum + 1}`,
+    name: sceneName ?? `${(resolvedSceneIndex as number) + 1}`,
     sceneIndex: resolvedSceneIndex,
     ...(includeColor && { color: scene.getColor() }),
   };
@@ -120,15 +121,12 @@ export function readScene(
       .filter((clip: ClipResult) => clip.id != null);
 
     // Strip fields redundant with parent scene context
-    for (const clip of clips) {
-      delete (clip as unknown as Record<string, unknown>).sceneIndex;
-      delete (clip as unknown as Record<string, unknown>).view;
-    }
+    stripFields(clips, "sceneIndex", "view");
 
     result.clips = clips;
   } else {
     // Lightweight clip counting — only check existence instead of reading full clip properties
-    result.clipCount = countSceneClips(liveSet, sceneNum);
+    result.clipCount = countSceneClips(liveSet, resolvedSceneIndex as number);
   }
 
   return result;

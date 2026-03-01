@@ -70,7 +70,7 @@ interface ResolvedTarget {
  * @param args.path - Device/chain/drum-pad path
  * @param args.toPath - Move device to this path (devices only)
  * @param args.name - Display name (not drum pads)
- * @param args.params - JSON: {"paramId": value} (devices only)
+ * @param args.params - JSON: {"paramName": value} (devices only)
  * @param args.macroVariation - Rack variation action (racks only)
  * @param args.macroVariationIndex - Rack variation index (racks only)
  * @param args.macroCount - Rack visible macro count 0-16 (racks only)

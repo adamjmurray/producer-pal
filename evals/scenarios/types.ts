@@ -14,7 +14,12 @@ export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
 // Re-export ConfigOptions for convenience
 export type { ConfigOptions };
 
-export type EvalProvider = "anthropic" | "google" | "openai" | "openrouter";
+export type EvalProvider =
+  | "anthropic"
+  | "google"
+  | "local"
+  | "openai"
+  | "openrouter";
 
 /**
  * Config values that are orthogonal to scenarios and vary as a matrix dimension.
@@ -87,6 +92,8 @@ export interface ToolCallAssertion {
   turn?: number | "any";
   /** How many times tool should be called */
   count?: number | { min?: number; max?: number };
+  /** Max points this assertion is worth (default: 1) */
+  score?: number;
 }
 
 /**
@@ -100,22 +107,18 @@ export interface StateAssertion {
   args: Record<string, unknown>;
   /** Expected partial result or matcher function */
   expect: Record<string, unknown> | ((result: unknown) => boolean);
-}
-
-/** Per-dimension minimum score thresholds */
-export interface DimensionMinScores {
-  accuracy?: number;
-  reasoning?: number;
-  efficiency?: number;
-  naturalness?: number;
+  /** Max points this assertion is worth (default: 1) */
+  score?: number;
 }
 
 /**
- * Use LLM to judge response quality on 4 dimensions:
+ * Use LLM to judge response quality on 4 dimensions (0.0-1.0 each):
  * - Accuracy: Did it do exactly what was requested?
  * - Reasoning: Was its logic sound and did it pick the right tools?
  * - Efficiency: Did it use minimal steps?
  * - Naturalness: Did the interaction feel human-like?
+ *
+ * Earned points = average of 4 dimensions × score
  */
 export interface LlmJudgeAssertion {
   type: "llm_judge";
@@ -127,10 +130,8 @@ export interface LlmJudgeAssertion {
   judgeProvider?: EvalProvider;
   /** Model for judge */
   judgeModel?: string;
-  /** Minimum overall score (1-5) to pass (default: 3) */
-  minScore?: number;
-  /** Per-dimension minimum scores (optional, all must pass if specified) */
-  minScores?: DimensionMinScores;
+  /** Max points this assertion is worth (default: 1) */
+  score?: number;
 }
 
 /**
@@ -144,6 +145,8 @@ export interface ResponseContainsAssertion {
   turn?: number | "any";
   /** Should NOT contain (default: false) */
   negate?: boolean;
+  /** Max points this assertion is worth (default: 1) */
+  score?: number;
 }
 
 /**
@@ -166,7 +169,10 @@ export interface EvalTurnResult {
  */
 export interface EvalAssertionResult {
   assertion: EvalAssertion;
-  passed: boolean;
+  /** Points earned (0 for failed deterministic, overall × score for LLM judge) */
+  earned: number;
+  /** Max possible points for this assertion */
+  maxScore: number;
   message: string;
   details?: unknown;
 }
@@ -180,7 +186,10 @@ export interface EvalScenarioResult {
   configProfileId?: string;
   turns: EvalTurnResult[];
   assertions: EvalAssertionResult[];
-  passed: boolean;
+  /** Total points earned across all assertions */
+  earnedScore: number;
+  /** Total max possible points across all assertions */
+  maxScore: number;
   totalDurationMs: number;
   error?: string;
 }

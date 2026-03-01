@@ -77,7 +77,7 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene1",
-      name: "Test Scene (1)",
+      name: "Test Scene",
       sceneIndex: 0,
       clipCount: 0,
       tempo: 120,
@@ -118,7 +118,7 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene2",
-      name: "Scene with Disabled Properties (2)",
+      name: "Scene with Disabled Properties",
       sceneIndex: 1,
       clipCount: 0,
       triggered: true,
@@ -159,7 +159,7 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene_0",
-      name: "Scene with 2 Clips (1)",
+      name: "Scene with 2 Clips",
       sceneIndex: 0,
       clipCount: 2,
       tempo: 120,
@@ -180,7 +180,7 @@ describe("readScene", () => {
 
     expect(result).toStrictEqual({
       id: "scene_0",
-      name: "Scene with Clips (1)",
+      name: "Scene with Clips",
       sceneIndex: 0,
       tempo: 120,
       timeSignature: "4/4",
@@ -239,7 +239,7 @@ describe("readScene", () => {
     expect(resultWildcard).toStrictEqual(
       expect.objectContaining({
         id: "scene_0",
-        name: "Wildcard Test Scene (1)",
+        name: "Wildcard Test Scene",
         sceneIndex: 0,
         clips: expect.any(Array),
       }),
@@ -268,7 +268,7 @@ describe("readScene", () => {
 
       expect(result).toStrictEqual({
         id: "123",
-        name: "Scene by ID (6)",
+        name: "Scene by ID",
         sceneIndex: 5,
         clipCount: 0,
         triggered: true,
@@ -298,7 +298,7 @@ describe("readScene", () => {
 
       expect(result).toStrictEqual({
         id: "456",
-        name: "Scene with Clips by ID (3)",
+        name: "Scene with Clips by ID",
         sceneIndex: 2,
         tempo: 110,
         timeSignature: "4/4",
@@ -360,7 +360,7 @@ describe("readScene", () => {
 
       // Should use scene with ID "789" (index 7) not sceneIndex 3
       expect(result.sceneIndex).toBe(7);
-      expect(result.name).toBe("Priority Test Scene (8)");
+      expect(result.name).toBe("Priority Test Scene");
     });
   });
 });

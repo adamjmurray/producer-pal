@@ -151,12 +151,13 @@ describe("transform timing/duration in non-4/4 time signatures", () => {
           6,
           8,
         );
-        // note.start = 0.5 Ableton * 2 = 1 musical beat -> timing becomes 1.0 Ableton
-        // note.duration = 1.0 Ableton * 2 = 2 musical beats * 3 = 6 musical beats = 3.0 Ableton
-        // velocity = 2 musical beats * 5 = 10
+        // Assignments apply sequentially (each sees mutations from the previous):
+        // 1. timing += note.start: note.start = 0.5 Ableton * 2 = 1 musical beat -> 1.0 Ableton
+        // 2. duration = note.duration * 3: note.duration = 2 musical beats * 3 = 6 = 3.0 Ableton
+        // 3. velocity = note.duration * 5: note.duration is now 6 musical beats * 5 = 30
         expect(notes[0]!.start_time).toBeCloseTo(1.0, 10);
         expect(notes[0]!.duration).toBeCloseTo(3.0, 10);
-        expect(notes[0]!.velocity).toBeCloseTo(10, 5);
+        expect(notes[0]!.velocity).toBeCloseTo(30, 5);
       });
     });
 

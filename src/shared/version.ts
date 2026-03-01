@@ -4,4 +4,7 @@
 
 // Semantic versioning: major.minor.patch
 // Currently in pre-release, working towards 1.0.0
-export const VERSION = "1.4.1";
+export const VERSION = "1.4.2";
+
+// Minimum required Ableton Live version (no "v" prefix)
+export const MIN_LIVE_VERSION = "12.3.0";
