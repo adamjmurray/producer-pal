@@ -2,6 +2,14 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  GEMINI_MODELS,
+  MISTRAL_MODELS,
+  OLLAMA_MODELS,
+  OPENAI_MODELS,
+  OPENROUTER_MODELS,
+} from "#webui/lib/constants/models";
+
 export const CHAT_UI_DOCS_URL = "https://producer-pal.org/guide/chat-ui";
 
 export const SYSTEM_INSTRUCTION = `You are an AI music composition assistant for Ableton Live.
@@ -11,18 +19,16 @@ If the user hasn't asked to connect to Ableton Live, ask if they want to. If so,
 If the user says "ableton", connect to Ableton Live.
 You are Producer Pal. You are creative and focus on the user's musical goals.`;
 
-export const getModelName = (modelId: string): string => {
-  switch (modelId) {
-    case "gemini-2.5-pro":
-      return "Gemini 2.5 Pro";
-    case "gemini-2.5-flash":
-      return "Gemini 2.5 Flash";
-    case "gemini-3-flash-preview":
-      return "Gemini 2.5 Flash-Lite";
-    default:
-      return modelId;
-  }
-};
+const ALL_MODELS = [
+  ...GEMINI_MODELS,
+  ...OPENAI_MODELS,
+  ...MISTRAL_MODELS,
+  ...OPENROUTER_MODELS,
+  ...OLLAMA_MODELS,
+];
+
+export const getModelName = (modelId: string): string =>
+  ALL_MODELS.find((m) => m.value === modelId)?.label ?? modelId;
 
 export const getThinkingBudget = (level: string): number => {
   switch (level) {

@@ -102,7 +102,7 @@ describe("ChatHeader", () => {
       expect(screen.getByText("Gemini 2.5 Flash")).toBeDefined();
     });
 
-    it("shows Flash-Lite model with provider", () => {
+    it("shows Gemini 3 Flash model with provider", () => {
       render(
         <ChatHeader
           {...defaultProps}
@@ -111,7 +111,7 @@ describe("ChatHeader", () => {
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 2.5 Flash-Lite")).toBeDefined();
+      expect(screen.getByText("Gemini 3 Flash")).toBeDefined();
     });
 
     it("shows unknown model ID as-is with provider", () => {

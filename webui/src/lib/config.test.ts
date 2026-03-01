@@ -28,9 +28,7 @@ describe("config", () => {
     });
 
     it("returns display name for gemini-3-flash-preview", () => {
-      expect(getModelName("gemini-3-flash-preview")).toBe(
-        "Gemini 2.5 Flash-Lite",
-      );
+      expect(getModelName("gemini-3-flash-preview")).toBe("Gemini 3 Flash");
     });
 
     it("returns the modelId unchanged for unknown models", () => {
