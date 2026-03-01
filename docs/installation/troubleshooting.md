@@ -39,8 +39,6 @@ support tools.
 
 - If using npx: Ensure Node.js 20+ is installed and accessible from your
   terminal
-- If using downloaded portal script: Verify the full path to
-  `producer-pal-portal.js` is correct
 - Try running `npx -y producer-pal` manually to test if it works (it won't
   output anything, but it shouldn't error or exit until you ctrl+c)
 
@@ -56,8 +54,8 @@ If Producer Pal stops working after installing a new version:
 
 - **Claude Desktop users:** Make sure you uninstalled the old extension before
   installing the new one
-- **All users:** Verify you replaced both the `.amxd` device AND the portal/mcpb
-  files (if applicable for your installation)
+- **All users:** Verify you replaced the `.amxd` device (and the `.mcpb`
+  extension if applicable for your installation)
 - Try deleting and re-adding the Producer Pal device in Ableton Live
 - Restart your AI app completely
 - Start a fresh conversation
