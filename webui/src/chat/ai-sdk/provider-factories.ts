@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { type LanguageModel } from "ai";
 import { type Provider } from "#webui/types/settings";
@@ -58,9 +59,7 @@ export function createProviderModel(
       })(`${modelId}`);
 
     case "gemini":
-      // Gemini placeholder — will be implemented in Phase 2 with @ai-sdk/google
-      // For now, fall through to OpenAI-compatible (won't work, but won't crash)
-      return createOpenAI({ apiKey })(`${modelId}`);
+      return createGoogleGenerativeAI({ apiKey })(`${modelId}`);
 
     default: {
       // Exhaustive check — all providers should be handled

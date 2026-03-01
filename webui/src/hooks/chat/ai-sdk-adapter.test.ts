@@ -155,11 +155,51 @@ describe("aiSdkAdapter", () => {
       });
     });
 
-    it("returns undefined providerOptions for gemini", () => {
+    it("sets Gemini thinkingConfig for High thinking", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "gemini-2.5-flash",
+        1.0,
+        "High",
+        {},
+        undefined,
+        { ...extraParams, provider: "gemini" },
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        google: {
+          thinkingConfig: {
+            thinkingBudget: 8192,
+            includeThoughts: false,
+          },
+        },
+      });
+    });
+
+    it("sets Gemini thinkingConfig with includeThoughts when showThoughts is true", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "gemini-2.5-flash",
+        1.0,
+        "Medium",
+        {},
+        undefined,
+        { ...extraParams, provider: "gemini", showThoughts: true },
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        google: {
+          thinkingConfig: {
+            thinkingBudget: 4096,
+            includeThoughts: true,
+          },
+        },
+      });
+    });
+
+    it("returns undefined providerOptions for gemini with Off thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "gemini-2.0-flash",
         1.0,
-        "High",
+        "Off",
         {},
         undefined,
         { ...extraParams, provider: "gemini" },

@@ -16,7 +16,7 @@ import {
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
 } from "#webui/hooks/settings/config-builders";
-import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
+import { SYSTEM_INSTRUCTION, getThinkingBudget } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 import { createFormattedErrorMessage } from "./helpers/streaming-helpers";
 import { type ChatAdapter } from "./use-chat";
@@ -68,6 +68,23 @@ function buildProviderOptions(
 
     if (effort) {
       return { openai: { reasoningEffort: effort } };
+    }
+
+    return undefined;
+  }
+
+  if (provider === "gemini") {
+    const thinkingBudget = getThinkingBudget(thinking);
+
+    if (thinkingBudget !== 0) {
+      return {
+        google: {
+          thinkingConfig: {
+            thinkingBudget,
+            includeThoughts: showThoughts,
+          },
+        },
+      };
     }
 
     return undefined;

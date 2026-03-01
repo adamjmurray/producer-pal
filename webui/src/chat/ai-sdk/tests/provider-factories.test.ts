@@ -80,7 +80,7 @@ describe("createProviderModel", () => {
     expect(getModelId(model)).toBe("my-model");
   });
 
-  it("creates a model for gemini provider (placeholder)", () => {
+  it("creates a model for gemini provider", () => {
     const model = createProviderModel("gemini", "gemini-2.0-flash", "key");
 
     expect(model).toBeDefined();
