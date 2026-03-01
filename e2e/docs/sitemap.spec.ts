@@ -160,7 +160,10 @@ test.describe("Docs Site Sitemap Tests", () => {
           consoleErrors.push(text);
         }
       } else if (type === "warning") {
-        consoleWarnings.push(text);
+        // Filter out browser feature detection warnings (platform-dependent)
+        if (!text.includes("Unrecognized feature:")) {
+          consoleWarnings.push(text);
+        }
       }
     });
 
