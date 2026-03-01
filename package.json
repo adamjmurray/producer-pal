@@ -88,6 +88,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.34",
+    "@ai-sdk/mistral": "^3.0.21",
     "@ai-sdk/openai": "^3.0.37",
     "@anthropic-ai/sdk": "^0.78.0",
     "@google/genai": "^1.43.0",

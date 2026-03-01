@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { type LanguageModel } from "ai";
@@ -34,10 +35,7 @@ export function createProviderModel(
       return createOpenRouter({ apiKey }).chat(`${modelId}`);
 
     case "mistral":
-      return createOpenAI({
-        apiKey,
-        baseURL: "https://api.mistral.ai/v1",
-      }).chat(`${modelId}`);
+      return createMistral({ apiKey })(`${modelId}`);
 
     case "lmstudio":
       return createOpenAI({
