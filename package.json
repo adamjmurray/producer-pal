@@ -129,7 +129,7 @@
     "eslint-plugin-unicorn": "^63.0.0",
     "happy-dom": "^20.7.0",
     "jscpd": "^4.0.8",
-    "peggy": "^5.0.6",
+    "peggy": "^5.1.0",
     "prettier": "^3.8.1",
     "rollup": "^4.59.0",
     "rollup-plugin-copy": "^3.5.0",
