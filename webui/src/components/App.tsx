@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState, useEffect, useMemo, useRef } from "preact/hooks";
+import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
 import { geminiAdapter } from "#webui/hooks/chat/gemini-adapter";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
 import { openaiChatAdapter } from "#webui/hooks/chat/openai-chat-adapter";
@@ -16,6 +17,9 @@ import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
+
+// Placeholder API key for local providers that don't require authentication
+const LOCAL_PROVIDER_API_KEY = "not-needed";
 
 // Base URLs for each provider
 const PROVIDER_BASE_URLS = {
@@ -87,6 +91,19 @@ export function App() {
   const { smallModelMode, setSmallModelMode } = useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
+  // Check URL param for AI SDK toggle (?ai-sdk=true)
+  const useAiSdk = useMemo(() => {
+    const enabled =
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("ai-sdk") === "true";
+
+    console.log(
+      `[Producer Pal] AI SDK mode: ${enabled ? "enabled" : "disabled"}`,
+    );
+
+    return enabled;
+  }, []);
+
   // Use Gemini chat for Gemini provider
   const geminiChat = useChat({
     provider: settings.provider,
@@ -107,7 +124,7 @@ export function App() {
     provider: settings.provider,
     apiKey:
       settings.provider === "lmstudio" || settings.provider === "ollama"
-        ? settings.apiKey || "not-needed"
+        ? settings.apiKey || LOCAL_PROVIDER_API_KEY
         : settings.apiKey,
     model: settings.model,
     thinking: settings.thinking,
@@ -129,7 +146,7 @@ export function App() {
     provider: settings.provider,
     apiKey:
       settings.provider === "lmstudio"
-        ? settings.apiKey || "not-needed"
+        ? settings.apiKey || LOCAL_PROVIDER_API_KEY
         : settings.apiKey,
     model: settings.model,
     thinking: settings.thinking,
@@ -145,6 +162,32 @@ export function App() {
     },
   });
 
+  // Use AI SDK for all providers (experimental, enabled via ?ai-sdk=true)
+  const aiSdkChat = useChat({
+    provider: settings.provider,
+    apiKey:
+      settings.provider === "lmstudio" || settings.provider === "ollama"
+        ? settings.apiKey || LOCAL_PROVIDER_API_KEY
+        : settings.apiKey,
+    model: settings.model,
+    thinking: settings.thinking,
+    temperature: settings.temperature,
+    enabledTools: settings.enabledTools,
+    mcpStatus,
+    mcpError,
+    checkMcpConnection,
+    adapter: aiSdkAdapter,
+    extraParams: {
+      baseUrl,
+      showThoughts: settings.showThoughts,
+      provider: settings.provider,
+      apiKey:
+        settings.provider === "lmstudio" || settings.provider === "ollama"
+          ? settings.apiKey || LOCAL_PROVIDER_API_KEY
+          : settings.apiKey,
+    },
+  });
+
   // Lock conversation to the provider used when chat started
   const { chat, wrappedHandleSend, wrappedClearConversation } =
     useConversationLock({
@@ -152,6 +195,7 @@ export function App() {
       geminiChat,
       openaiChat,
       responsesChat,
+      aiSdkChat: useAiSdk ? aiSdkChat : undefined,
     });
 
   // Calculate tools counts for header display

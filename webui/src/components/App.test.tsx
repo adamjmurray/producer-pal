@@ -145,19 +145,20 @@ describe("App", () => {
   });
 
   describe("provider routing", () => {
-    it("calls useChat three times (for gemini, openai chat, and responses adapters)", () => {
+    it("calls useChat four times (for gemini, openai chat, responses, and ai-sdk adapters)", () => {
       render(<App />);
-      // useChat is called 3 times - gemini, openai chat completions, and responses API
-      expect(useChat).toHaveBeenCalledTimes(3);
+      // useChat is called 4 times - gemini, openai chat, responses API, and AI SDK
+      expect(useChat).toHaveBeenCalledTimes(4);
     });
 
-    it("passes adapters with createClient for all three calls", () => {
+    it("passes adapters with createClient for all four calls", () => {
       render(<App />);
       const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
 
       expect(calls[0]![0].adapter).toHaveProperty("createClient");
       expect(calls[1]![0].adapter).toHaveProperty("createClient");
       expect(calls[2]![0].adapter).toHaveProperty("createClient");
+      expect(calls[3]![0].adapter).toHaveProperty("createClient");
     });
   });
 

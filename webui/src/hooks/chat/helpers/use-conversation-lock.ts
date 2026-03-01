@@ -16,6 +16,8 @@ interface UseConversationLockProps<T extends ChatHookResult> {
   geminiChat: T;
   openaiChat: T;
   responsesChat: T;
+  /** When provided, overrides provider-specific routing (AI SDK handles all providers) */
+  aiSdkChat?: T;
 }
 
 interface UseConversationLockReturn<T extends ChatHookResult> {
@@ -59,6 +61,7 @@ function selectChat<T>(
  * @param props.geminiChat - Gemini chat hook result
  * @param props.openaiChat - OpenAI Chat Completions API hook result
  * @param props.responsesChat - OpenAI Responses API hook result
+ * @param props.aiSdkChat - Optional AI SDK chat hook (overrides provider-specific routing)
  * @returns Chat and wrapped handlers
  */
 export function useConversationLock<T extends ChatHookResult>({
@@ -66,17 +69,16 @@ export function useConversationLock<T extends ChatHookResult>({
   geminiChat,
   openaiChat,
   responsesChat,
+  aiSdkChat,
 }: UseConversationLockProps<T>): UseConversationLockReturn<T> {
   const [conversationProvider, setConversationProvider] =
     useState<Provider | null>(null);
 
   const effectiveProvider = conversationProvider ?? settingsProvider;
-  const chat = selectChat(
-    effectiveProvider,
-    geminiChat,
-    openaiChat,
-    responsesChat,
-  );
+  // When AI SDK chat is provided, it handles all providers
+  const chat =
+    aiSdkChat ??
+    selectChat(effectiveProvider, geminiChat, openaiChat, responsesChat);
 
   const wrappedHandleSend = useCallback(
     async (message: string, options?: MessageOverrides) => {
