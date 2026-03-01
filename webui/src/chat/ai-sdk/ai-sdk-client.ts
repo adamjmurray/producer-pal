@@ -136,10 +136,31 @@ function handleStreamPart(
 
   if (type === "tool-call") {
     msg.toolCalls ??= [];
+    // If tool-input-start already created an entry, update it with parsed args
+    const existing = msg.toolCalls.find(
+      (tc) => tc.id === (part.toolCallId as string),
+    );
+
+    if (existing) {
+      existing.args = part.input as Record<string, unknown>;
+    } else {
+      msg.toolCalls.push({
+        id: part.toolCallId as string,
+        name: part.toolName as string,
+        args: part.input as Record<string, unknown>,
+      });
+    }
+
+    return true;
+  }
+
+  // Chat Completions models stream tool calls as tool-input-start + tool-input-delta
+  if (type === "tool-input-start") {
+    msg.toolCalls ??= [];
     msg.toolCalls.push({
-      id: part.toolCallId as string,
+      id: part.id as string,
       name: part.toolName as string,
-      args: part.input as Record<string, unknown>,
+      args: {},
     });
 
     return true;

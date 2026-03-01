@@ -51,7 +51,7 @@ function buildProviderOptions(
 
     if (effort) {
       return {
-        openai: {
+        openrouter: {
           reasoning: {
             effort,
             ...(effort === "none" || !showThoughts ? { exclude: true } : {}),

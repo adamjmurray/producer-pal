@@ -5,12 +5,14 @@
 
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { type LanguageModel } from "ai";
 import { type Provider } from "#webui/types/settings";
 
 /**
  * Creates an AI SDK LanguageModel instance for the given provider.
- * All OpenAI-compatible providers use @ai-sdk/openai with different base URLs.
+ * OpenAI-compatible providers use @ai-sdk/openai, OpenRouter uses its own SDK,
+ * and Gemini uses @ai-sdk/google.
  *
  * @param provider - Producer Pal provider identifier
  * @param modelId - Model identifier string
@@ -29,16 +31,13 @@ export function createProviderModel(
       return createOpenAI({ apiKey })(`${modelId}`);
 
     case "openrouter":
-      return createOpenAI({
-        apiKey,
-        baseURL: "https://openrouter.ai/api/v1",
-      })(`${modelId}`);
+      return createOpenRouter({ apiKey }).chat(`${modelId}`);
 
     case "mistral":
       return createOpenAI({
         apiKey,
         baseURL: "https://api.mistral.ai/v1",
-      })(`${modelId}`);
+      }).chat(`${modelId}`);
 
     case "lmstudio":
       return createOpenAI({
@@ -50,13 +49,13 @@ export function createProviderModel(
       return createOpenAI({
         apiKey: apiKey || "not-needed",
         baseURL: baseUrl ?? "http://localhost:11434/v1",
-      })(`${modelId}`);
+      }).chat(`${modelId}`);
 
     case "custom":
       return createOpenAI({
         apiKey,
         baseURL: baseUrl,
-      })(`${modelId}`);
+      }).chat(`${modelId}`);
 
     case "gemini":
       return createGoogleGenerativeAI({ apiKey })(`${modelId}`);

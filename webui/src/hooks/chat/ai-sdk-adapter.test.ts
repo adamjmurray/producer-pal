@@ -127,7 +127,7 @@ describe("aiSdkAdapter", () => {
       );
 
       expect(config.providerOptions).toStrictEqual({
-        openai: {
+        openrouter: {
           reasoning: {
             effort: "high",
           },
@@ -146,7 +146,7 @@ describe("aiSdkAdapter", () => {
       );
 
       expect(config.providerOptions).toStrictEqual({
-        openai: {
+        openrouter: {
           reasoning: {
             effort: "high",
             exclude: true,
@@ -273,7 +273,7 @@ describe("aiSdkAdapter", () => {
       );
 
       expect(config.providerOptions).toStrictEqual({
-        openai: {
+        openrouter: {
           reasoning: {
             effort: "none",
             exclude: true,

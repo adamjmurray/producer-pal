@@ -239,6 +239,44 @@ describe("AiSdkClient", () => {
       expect(last[2]!.content).toBe("Second");
     });
 
+    it("processes tool-input-start for Chat Completions streaming", async () => {
+      const last = await sendWithParts([
+        {
+          type: "tool-input-start",
+          id: "tc1",
+          toolName: "ppal-connect",
+        },
+      ]);
+
+      expect(last[1]!.toolCalls).toStrictEqual([
+        { id: "tc1", name: "ppal-connect", args: {} },
+      ]);
+    });
+
+    it("deduplicates tool-call after tool-input-start with same ID", async () => {
+      const last = await sendWithParts([
+        {
+          type: "tool-input-start",
+          id: "tc1",
+          toolName: "ppal-connect",
+        },
+        {
+          type: "tool-call",
+          toolCallId: "tc1",
+          toolName: "ppal-connect",
+          input: { key: "value" },
+        },
+      ]);
+
+      // Should have exactly one tool call, updated with parsed args
+      expect(last[1]!.toolCalls).toHaveLength(1);
+      expect(last[1]!.toolCalls![0]).toStrictEqual({
+        id: "tc1",
+        name: "ppal-connect",
+        args: { key: "value" },
+      });
+    });
+
     it("ignores unrecognized stream part types", async () => {
       const last = await sendWithParts([
         { type: "text-delta", text: "Hi" },
