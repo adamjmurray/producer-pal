@@ -19,9 +19,10 @@ Official website: <a href="https://producer-pal.org">producer-pal.org</a>
 
 **→ [Full Documentation](https://producer-pal.org)**
 
-## Demo
+## Demos
 
-[Watch the walkthrough video](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s).
+- [Ableton Live Project Management with Producer Pal](https://www.youtube.com/watch?v=_pB3qESiIhw)
+- [Producer Pal Walk-through with Claude Desktop](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s)
 
 ## Resources
 
