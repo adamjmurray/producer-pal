@@ -99,7 +99,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^2.1.2",
-    "@eslint-community/eslint-plugin-eslint-comments": "^4.6.0",
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.7.0",
     "@playwright/test": "^1.58.2",
     "@preact/preset-vite": "^2.10.3",
     "@rollup/plugin-alias": "^6.0.0",
