@@ -60,10 +60,10 @@ describe("duplicate-misc-helpers", () => {
       expect(selectMock).toHaveBeenCalledWith({ view: "session" });
     });
 
-    it("calls select with session view when type is track", () => {
+    it("does nothing when type is track", () => {
       switchViewIfRequested(true, undefined, "track");
 
-      expect(selectMock).toHaveBeenCalledWith({ view: "session" });
+      expect(selectMock).not.toHaveBeenCalled();
     });
 
     it("calls select with session view when type is scene", () => {

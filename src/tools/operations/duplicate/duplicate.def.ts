@@ -34,7 +34,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "bar|beat position(s), comma-separated for multiple clips (e.g., '1|1' or '1|1,2|1,3|1')",
+        "bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1')",
       ),
     locatorId: z.coerce
       .string()
@@ -68,7 +68,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .default(false)
       .describe(
-        "switch to arrangement view when duplicating to arrangement, or session view for tracks/scenes/session clips",
+        "switch to arrangement view for arrangement duplications, or session view for scenes/session clips",
       ),
     toSlot: z
       .string()

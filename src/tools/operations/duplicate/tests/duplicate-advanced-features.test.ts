@@ -242,7 +242,7 @@ describe("duplicate - switchView functionality", () => {
     expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
   });
 
-  it("should switch to session view when duplicating tracks", () => {
+  it("should not switch view when duplicating tracks", () => {
     setupTrackForSwitchView();
 
     duplicate({
@@ -251,7 +251,10 @@ describe("duplicate - switchView functionality", () => {
       switchView: true,
     });
 
-    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+    expect(appView.call).not.toHaveBeenCalledWith(
+      "show_view",
+      expect.anything(),
+    );
   });
 
   it("should switch to session view when duplicating scenes", () => {
@@ -290,7 +293,7 @@ describe("duplicate - switchView functionality", () => {
     );
   });
 
-  it("should work with multiple duplicates when switchView=true", () => {
+  it("should not switch view for multiple track duplicates when switchView=true", () => {
     setupTrackForSwitchView();
     // Register second new track for count=2
     registerMockObject("live_set/tracks/2", {
@@ -305,7 +308,10 @@ describe("duplicate - switchView functionality", () => {
       switchView: true,
     });
 
-    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+    expect(appView.call).not.toHaveBeenCalledWith(
+      "show_view",
+      expect.anything(),
+    );
     expect(result).toHaveLength(2);
   });
 });

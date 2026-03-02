@@ -14,11 +14,15 @@ function determineTargetView(
   destination: string | undefined,
   type: string,
 ): "session" | "arrangement" | null {
+  if (type === "track" || type === "device") {
+    return null;
+  }
+
   if (destination === "arrangement") {
     return "arrangement";
   }
 
-  if (destination === "session" || type === "track" || type === "scene") {
+  if (destination === "session" || type === "scene") {
     return "session";
   }
 
