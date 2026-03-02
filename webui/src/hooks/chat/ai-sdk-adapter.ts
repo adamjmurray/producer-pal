@@ -12,6 +12,7 @@ import {
 import { formatAiSdkMessages } from "#webui/chat/ai-sdk/formatter";
 import { createProviderModel } from "#webui/chat/ai-sdk/provider-factories";
 import {
+  isOpenAIReasoningModel,
   mapThinkingToOllamaThink,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
@@ -127,9 +128,12 @@ export const aiSdkAdapter: ChatAdapter<
       showThoughts,
     );
 
+    const suppressTemperature =
+      provider === "openai" && isOpenAIReasoningModel(model);
+
     return {
       model: languageModel,
-      temperature,
+      temperature: suppressTemperature ? undefined : temperature,
       systemInstruction: SYSTEM_INSTRUCTION,
       enabledTools,
       showThoughts,

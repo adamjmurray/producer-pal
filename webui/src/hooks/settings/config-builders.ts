@@ -55,8 +55,18 @@ export function extractGptVersion(model: string): number | null {
  * @param {string} model - Model identifier
  * @returns {boolean} - True if o1 or o3 model
  */
-function isO1O3Model(model: string): boolean {
+export function isO1O3Model(model: string): boolean {
   return model.startsWith("o1") || model.startsWith("o3");
+}
+
+/**
+ * Checks if an OpenAI model is a reasoning model that doesn't support temperature.
+ * Covers GPT-5 family (gpt-5, gpt-5-mini, gpt-5.2, gpt-5.3-codex, etc.) and o-series.
+ * @param {string} model - Model identifier
+ * @returns {boolean} - True if reasoning model
+ */
+export function isOpenAIReasoningModel(model: string): boolean {
+  return model.startsWith("gpt-5") || isO1O3Model(model);
 }
 
 /**
