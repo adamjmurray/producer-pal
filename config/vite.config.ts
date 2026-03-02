@@ -63,7 +63,6 @@ This file includes bundled dependencies:
 - Marked (MIT License)
 - Tailwind CSS (MIT License)
 - @modelcontextprotocol/sdk (MIT License)
-- @google/genai (Apache License 2.0)
 
 See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-party licenses.
 -->
