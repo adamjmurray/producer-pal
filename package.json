@@ -131,7 +131,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-sonarjs": "^4.0.0",
     "eslint-plugin-unicorn": "^63.0.0",
-    "happy-dom": "^20.7.0",
+    "happy-dom": "^20.7.2",
     "jscpd": "^4.0.8",
     "peggy": "^5.1.0",
     "prettier": "^3.8.1",
