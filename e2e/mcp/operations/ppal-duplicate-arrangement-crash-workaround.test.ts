@@ -53,7 +53,6 @@ async function dupToArr(
     arguments: {
       type: "clip",
       id,
-      destination: "arrangement",
       arrangementStart,
     },
   });

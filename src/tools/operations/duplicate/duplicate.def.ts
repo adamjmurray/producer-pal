@@ -30,10 +30,6 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "number of copies (tracks/scenes only, ignored for clips/devices)",
       ),
 
-    destination: z
-      .enum(["session", "arrangement"])
-      .optional()
-      .describe("scenes and clips can be copied to the session or arrangement"),
     arrangementStart: z.coerce
       .string()
       .optional()
@@ -71,7 +67,9 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .boolean()
       .optional()
       .default(false)
-      .describe("auto-switch view?"),
+      .describe(
+        "switch to arrangement view when duplicating to arrangement, or session view for tracks/scenes/session clips",
+      ),
     toSlot: z
       .string()
       .optional()

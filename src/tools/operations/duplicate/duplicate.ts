@@ -16,6 +16,7 @@ import {
 } from "./helpers/duplicate-track-scene-helpers.ts";
 import {
   resolveArrangementPositions,
+  inferDestination,
   validateBasicInputs,
   validateAndConfigureRouteToSource,
   validateClipParameters,
@@ -27,7 +28,7 @@ interface DuplicateArgs {
   type: string;
   id: string;
   count?: number;
-  destination?: string;
+
   arrangementStart?: string;
   locatorId?: string;
   locatorName?: string;
@@ -57,7 +58,6 @@ interface DuplicateParams {
  * @param args.type - Object type to duplicate
  * @param args.id - Object ID
  * @param args.count - Number of duplicates
- * @param args.destination - Destination type
  * @param args.arrangementStart - Arrangement start position
  * @param args.locatorId - Arrangement locator ID(s)
  * @param args.locatorName - Arrangement locator name(s)
@@ -77,7 +77,6 @@ export function duplicate(
     type,
     id,
     count = 1,
-    destination,
     arrangementStart,
     locatorId,
     locatorName,
@@ -108,6 +107,15 @@ export function duplicate(
 
   // Validate the ID exists and matches the expected type
   const object = validateIdType(id, type, "duplicate");
+
+  // Infer destination from position parameters
+  const destination = inferDestination(
+    type,
+    arrangementStart,
+    locatorId,
+    locatorName,
+    toSlot,
+  );
 
   // Validate clip-specific parameters
   validateClipParameters(type, destination, toSlot);

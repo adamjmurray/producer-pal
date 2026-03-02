@@ -87,20 +87,6 @@ function setupClipWithLocators(
 
 describe("duplicate - locator-based arrangement positioning", () => {
   describe("parameter validation", () => {
-    it("should throw error when arrangementStart, locatorId, and locatorName are all missing", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-
-      expect(() =>
-        duplicate({
-          type: "scene",
-          id: "scene1",
-          destination: "arrangement",
-        }),
-      ).toThrow(
-        "duplicate failed: arrangementStart, locatorId, or locatorName is required when destination is 'arrangement'",
-      );
-    });
-
     it("should throw error when arrangementStart and locatorId are both provided", () => {
       registerMockObject("scene1", { path: livePath.scene(0) });
 
@@ -108,7 +94,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         duplicate({
           type: "scene",
           id: "scene1",
-          destination: "arrangement",
+
           arrangementStart: "5|1",
           locatorId: "locator-0",
         }),
@@ -124,7 +110,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         duplicate({
           type: "scene",
           id: "scene1",
-          destination: "arrangement",
+
           arrangementStart: "5|1",
           locatorName: "Verse",
         }),
@@ -140,7 +126,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         duplicate({
           type: "scene",
           id: "scene1",
-          destination: "arrangement",
+
           locatorId: "locator-0",
           locatorName: "Verse",
         }),
@@ -162,7 +148,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         locatorId: "locator-1",
       });
 
@@ -189,7 +175,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         locatorName: "Chorus",
       });
 
@@ -214,7 +200,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arrangement",
+
         locatorId: "locator-1",
       });
 
@@ -237,7 +223,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arrangement",
+
         locatorName: "Drop",
       });
 
@@ -265,7 +251,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arrangement",
+
         locatorId: "locator-1, locator-2",
       });
 
@@ -289,7 +275,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arrangement",
+
         locatorName: "Verse, Chorus",
       });
 
@@ -319,7 +305,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         locatorId: "locator-1, locator-2",
       });
 
@@ -364,7 +350,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         duplicate({
           type: "scene",
           id: "scene1",
-          destination: "arrangement",
+
           locatorId: "locator-5",
         }),
       ).toThrow("duplicate failed: locator not found: locator-5");
@@ -377,7 +363,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
         duplicate({
           type: "scene",
           id: "scene1",
-          destination: "arrangement",
+
           locatorName: "NonExistent",
         }),
       ).toThrow('duplicate failed: no locator found with name "NonExistent"');

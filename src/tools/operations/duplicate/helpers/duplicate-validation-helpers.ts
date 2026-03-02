@@ -115,9 +115,46 @@ export function validateAndConfigureRouteToSource(
 }
 
 /**
+ * Infers the duplication destination from the provided parameters
+ * @param type - Type of object being duplicated
+ * @param arrangementStart - Bar|beat position
+ * @param locatorId - Locator ID
+ * @param locatorName - Locator name
+ * @param toSlot - Session clip slot
+ * @returns Inferred destination
+ */
+export function inferDestination(
+  type: string,
+  arrangementStart: string | undefined,
+  locatorId: string | undefined,
+  locatorName: string | undefined,
+  toSlot: string | undefined,
+): "session" | "arrangement" | undefined {
+  const hasArrangementParams =
+    (arrangementStart != null && arrangementStart.trim() !== "") ||
+    locatorId != null ||
+    locatorName != null;
+
+  if (hasArrangementParams) {
+    return "arrangement";
+  }
+
+  if (type === "clip") {
+    return toSlot != null ? "session" : undefined;
+  }
+
+  if (type === "device") {
+    return undefined;
+  }
+
+  // Tracks and scenes default to session (in-place duplication)
+  return "session";
+}
+
+/**
  * Validates clip-specific parameters
  * @param type - Type of object being duplicated
- * @param destination - Destination for clip duplication
+ * @param destination - Inferred destination
  * @param toSlot - Destination clip slot(s) in trackIndex/sceneIndex format
  */
 export function validateClipParameters(
@@ -129,19 +166,12 @@ export function validateClipParameters(
     return;
   }
 
-  if (!destination) {
+  if (destination == null) {
     throw new Error(
-      "duplicate failed: destination is required for type 'clip'",
+      "duplicate failed: clip requires toSlot (for session) or arrangementStart/locatorId/locatorName (for arrangement)",
     );
   }
 
-  if (!["session", "arrangement"].includes(destination)) {
-    throw new Error(
-      "duplicate failed: destination must be 'session' or 'arrangement'",
-    );
-  }
-
-  // Validate session clip destination parameters
   if (destination === "session" && (toSlot == null || toSlot.trim() === "")) {
     throw new Error("duplicate failed: toSlot is required for session clips");
   }
@@ -150,26 +180,22 @@ export function validateClipParameters(
 /**
  * Validates destination parameter compatibility with object type
  * @param type - Type of object being duplicated
- * @param destination - Destination for duplication
+ * @param destination - Inferred destination
  */
 export function validateDestinationParameter(
   type: string,
   destination: string | undefined,
 ): void {
-  if (destination == null) {
-    return; // destination is optional for tracks and scenes
-  }
-
   if (type === "track" && destination === "arrangement") {
     throw new Error(
-      "duplicate failed: tracks cannot be duplicated to arrangement (use destination='session' or omit destination parameter)",
+      "duplicate failed: tracks cannot be duplicated to arrangement",
     );
   }
 }
 
 /**
- * Validates arrangement-specific parameters
- * @param destination - Destination for duplication
+ * Validates arrangement position params are mutually exclusive
+ * @param destination - Inferred destination
  * @param arrangementStart - Start time in bar|beat format
  * @param locatorId - Arrangement locator ID(s) for position
  * @param locatorName - Arrangement locator name(s) for position
@@ -190,12 +216,6 @@ export function validateArrangementParameters(
   const positionCount = [hasStart, hasLocatorId, hasLocatorName].filter(
     Boolean,
   ).length;
-
-  if (positionCount === 0) {
-    throw new Error(
-      "duplicate failed: arrangementStart, locatorId, or locatorName is required when destination is 'arrangement'",
-    );
-  }
 
   if (positionCount > 1) {
     throw new Error(

@@ -205,7 +205,6 @@ describe("duplicate - switchView functionality", () => {
     duplicate({
       type: "clip",
       id: "clip1",
-      destination: "arrangement",
       arrangementStart: "1|1",
       switchView: true,
     });
@@ -236,7 +235,6 @@ describe("duplicate - switchView functionality", () => {
     duplicate({
       type: "clip",
       id: "clip1",
-      destination: "session",
       switchView: true,
       toSlot: "0/1",
     });
