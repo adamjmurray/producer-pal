@@ -230,7 +230,7 @@ describe("AssistantToolCall", () => {
   });
 
   describe("error result styling", () => {
-    it("applies red text to error result summary", () => {
+    it("shows error text inline with red styling", () => {
       render(
         <AssistantToolCall
           {...defaultProps}
@@ -238,10 +238,23 @@ describe("AssistantToolCall", () => {
           isError={true}
         />,
       );
-      const resultSummary = document.querySelectorAll("summary")[1]!; // Second summary (inner details)
+      const errorDiv = screen.getByText(/Error message/).closest("div")!;
 
-      expect(resultSummary.className).toContain("text-red-700");
-      expect(resultSummary.className).toContain("dark:text-red-400");
+      expect(errorDiv.className).toContain("text-red-700");
+      expect(errorDiv.className).toContain("dark:text-red-400");
+    });
+
+    it("expands outer details by default for errors", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result="Error message"
+          isError={true}
+        />,
+      );
+      const details = document.querySelector("details")!;
+
+      expect(details.hasAttribute("open")).toBe(true);
     });
 
     it("applies gray text to success result summary", () => {

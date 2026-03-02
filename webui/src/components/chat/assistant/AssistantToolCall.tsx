@@ -31,6 +31,7 @@ export function AssistantToolCall({
 
   return (
     <details
+      open={isError}
       className={`text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded ${
         result ? "" : "animate-pulse"
       } ${isError ? "border-l-3 border-red-500" : ""}`}
@@ -43,11 +44,14 @@ export function AssistantToolCall({
       <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
         {name}({JSON.stringify(args, null, 0)})
       </div>
-      {result && (
+      {result && isError && (
+        <div className="px-2 my-1 text-red-700 dark:text-red-400 break-all">
+          ↳ {truncateString(result, 300)}
+        </div>
+      )}
+      {result && !isError && (
         <details>
-          <summary
-            className={`px-2 my-1 truncate ${isError ? "text-red-700 dark:text-red-400" : "text-gray-600 dark:text-gray-400"}`}
-          >
+          <summary className="px-2 my-1 truncate text-gray-600 dark:text-gray-400">
             &nbsp;↳ {truncateString(result, 300)}
           </summary>
           <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">

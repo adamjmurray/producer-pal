@@ -98,6 +98,27 @@ describe("createAiSdkMcpTools", () => {
     expect(result).toBe("result");
   });
 
+  it("throws on MCP error responses with extracted text", async () => {
+    mockCallTool.mockResolvedValueOnce({
+      content: [{ type: "text", text: "Invalid bar|beat format" }],
+      isError: true,
+    });
+
+    const { tools } = await createAiSdkMcpTools("http://localhost:3000/mcp");
+    const execute = tools["ppal-connect"]!.execute!;
+
+    await expect(
+      execute(
+        {},
+        {
+          toolCallId: "tc1",
+          messages: [],
+          abortSignal: new AbortController().signal,
+        },
+      ),
+    ).rejects.toThrow("Invalid bar|beat format");
+  });
+
   it("returns the MCP client", async () => {
     const { mcpClient } = await createAiSdkMcpTools(
       "http://localhost:3000/mcp",

@@ -226,6 +226,46 @@ describe("AiSdkClient", () => {
       expect(last[1]!.toolResults![0]!.result).toBe("Connection failed");
     });
 
+    it("extracts message from Error objects in tool-error parts", async () => {
+      const last = await sendWithParts([
+        {
+          type: "tool-call",
+          toolCallId: "tc1",
+          toolName: "ppal-connect",
+          input: {},
+        },
+        {
+          type: "tool-error",
+          toolCallId: "tc1",
+          toolName: "ppal-connect",
+          input: {},
+          error: new Error("bar|beat syntax error"),
+        },
+      ]);
+
+      expect(last[1]!.toolResults![0]!.result).toBe("bar|beat syntax error");
+    });
+
+    it("converts non-string non-Error tool errors to string", async () => {
+      const last = await sendWithParts([
+        {
+          type: "tool-call",
+          toolCallId: "tc1",
+          toolName: "ppal-connect",
+          input: {},
+        },
+        {
+          type: "tool-error",
+          toolCallId: "tc1",
+          toolName: "ppal-connect",
+          input: {},
+          error: 42,
+        },
+      ]);
+
+      expect(last[1]!.toolResults![0]!.result).toBe("42");
+    });
+
     it("creates new assistant message on start-step", async () => {
       const last = await sendWithParts([
         { type: "text-delta", text: "First" },

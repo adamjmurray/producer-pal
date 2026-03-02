@@ -45,10 +45,34 @@ export async function createAiSdkMcpTools(
           arguments: args,
         });
 
+        if (result.isError) {
+          // Content is always the array form for error responses
+          const content = result.content as Array<{
+            type: string;
+            text?: string;
+          }>;
+
+          throw new Error(extractMcpText(content));
+        }
+
         return result.content;
       },
     };
   }
 
   return { tools, mcpClient };
+}
+
+/**
+ * Extract text content from an MCP content array.
+ * @param content - MCP content items (text, image, etc.)
+ * @returns Concatenated text from all text content items
+ */
+function extractMcpText(
+  content: Array<{ type: string; text?: string }>,
+): string {
+  return content
+    .filter((c): c is { type: "text"; text: string } => c.type === "text")
+    .map((c) => c.text)
+    .join("\n");
 }
