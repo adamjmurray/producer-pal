@@ -7,7 +7,11 @@ import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
-import { switchViewIfRequested } from "./helpers/duplicate-misc-helpers.ts";
+import {
+  switchViewIfRequested,
+  parseCommaSeparatedNames,
+  getNameForIndex,
+} from "./helpers/duplicate-misc-helpers.ts";
 import {
   duplicateTrack,
   duplicateScene,
@@ -202,7 +206,11 @@ function duplicateDeviceWithPaths(
     return duplicateDevice(object, toPath, name, count);
   }
 
-  return paths.map((path) => duplicateDevice(object, path, name, 1));
+  const parsedNames = parseCommaSeparatedNames(name, paths.length);
+
+  return paths.map((path, i) =>
+    duplicateDevice(object, path, getNameForIndex(name, i, parsedNames), 1),
+  );
 }
 
 /**
@@ -242,6 +250,7 @@ function duplicateTrackOrSceneWithCount(
   // Count-based iteration for tracks and session scenes
   const createdObjects: object[] = [];
   const { withoutClips, withoutDevices, routeToSource } = params;
+  const parsedNames = parseCommaSeparatedNames(name, count);
 
   for (let i = 0; i < count; i++) {
     const result = duplicateTrackOrSceneToSession(
@@ -249,7 +258,7 @@ function duplicateTrackOrSceneWithCount(
       object,
       id,
       i,
-      name,
+      getNameForIndex(name, i, parsedNames),
       withoutClips,
       withoutDevices,
       routeToSource,
@@ -325,12 +334,13 @@ function duplicateSceneToArrangementAtPositions(
       : positions;
 
   const createdObjects: object[] = [];
+  const parsedNames = parseCommaSeparatedNames(name, allPositions.length);
 
   for (let i = 0; i < allPositions.length; i++) {
     const result = duplicateSceneToArrangement(
       id,
       allPositions[i] as number, // bounded by loop
-      name,
+      getNameForIndex(name, i, parsedNames),
       withoutClips,
       arrangementLength,
       songTimeSigNumerator,

@@ -316,6 +316,60 @@ describe("duplicate - switchView functionality", () => {
   });
 });
 
+describe("duplicate - comma-separated names", () => {
+  it("should assign different names to each track when comma-separated", () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("live_set", { path: livePath.liveSet });
+
+    const newTrack1 = registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    const newTrack2 = registerMockObject("live_set/tracks/2", {
+      path: livePath.track(2),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    const result = duplicate({
+      type: "track",
+      id: "track1",
+      count: 2,
+      name: "Lead,Pad",
+    });
+
+    expect(newTrack1.set).toHaveBeenCalledWith("name", "Lead");
+    expect(newTrack2.set).toHaveBeenCalledWith("name", "Pad");
+    expect(result).toHaveLength(2);
+  });
+
+  it("should not set name for extras beyond the comma-separated list", () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("live_set", { path: livePath.liveSet });
+
+    const newTrack1 = registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    const newTrack2 = registerMockObject("live_set/tracks/2", {
+      path: livePath.track(2),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    duplicate({
+      type: "track",
+      id: "track1",
+      count: 2,
+      name: "Lead",
+    });
+
+    // Single name (no comma) applies to all
+    expect(newTrack1.set).toHaveBeenCalledWith("name", "Lead");
+    expect(newTrack2.set).toHaveBeenCalledWith("name", "Lead");
+  });
+});
+
 /**
  * Helper to set up common mocks for track switchView tests
  * @returns The new track mock object handle
