@@ -87,6 +87,7 @@
     "e2e:webui": "npm run ui:test"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.50",
     "@ai-sdk/google": "^3.0.34",
     "@ai-sdk/mistral": "^3.0.21",
     "@ai-sdk/openai": "^3.0.37",
