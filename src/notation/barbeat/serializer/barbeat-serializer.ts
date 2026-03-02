@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
+import { formatDrumNotation } from "./helpers/barbeat-serializer-drum.ts";
 import { formatBeatPosition } from "./helpers/barbeat-serializer-fractions.ts";
 import {
   type FormatOptions,
@@ -37,6 +38,11 @@ export function formatNotation(
 
   const config = resolveFormatConfig(options);
   const sortedNotes = sortNotes(clipNotes);
+
+  if (options.drumMode) {
+    return formatDrumNotation(sortedNotes, config);
+  }
+
   const timeGroups = groupNotesByTime(sortedNotes, config);
   const batches = findMergeBatches(timeGroups);
   const state = createInitialState();

@@ -115,7 +115,7 @@ export function formatGroupNotes(
  * @param elements - Output elements array to append to
  * @param timeSigDenominator - Time signature denominator for duration conversion
  */
-function emitStateChanges(
+export function emitStateChanges(
   note: NoteEvent,
   state: SerializerState,
   elements: string[],
@@ -217,7 +217,7 @@ function emitProbabilityChange(
  * @param pitch - MIDI pitch (0-127)
  * @returns Note name string (e.g., "C3")
  */
-function pitchName(pitch: number): string {
+export function pitchName(pitch: number): string {
   const name = midiToNoteName(pitch);
 
   if (name == null) {

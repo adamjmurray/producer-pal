@@ -14,6 +14,7 @@ import {
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import {
+  isDrumRackTrack,
   processWarpMarkers,
   resolveClip,
   WARP_MODE_MAPPING,
@@ -263,9 +264,12 @@ function processMidiClip(
   ) as string;
   const notes = JSON.parse(notesDictionary).notes;
 
+  const drumMode = clip.trackIndex != null && isDrumRackTrack(clip.trackIndex);
+
   const formatted = formatNotation(notes, {
     timeSigNumerator,
     timeSigDenominator,
+    drumMode,
   });
 
   if (formatted) result.notes = formatted;
