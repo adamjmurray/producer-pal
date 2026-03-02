@@ -93,7 +93,7 @@ describe("readClip", () => {
       start: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
       end: "2|5", // end_marker (5 beats = 2|5 in 6/8)
       length: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
-      notes: "C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8
+      notes: "t2 C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8 (t2 = duration in 8th-note beats)
     });
   });
 
@@ -159,7 +159,8 @@ describe("readClip", () => {
     expectGetNotesExtendedCall(clip, 3);
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
-    expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
+    // t2 emitted because 1 Ableton beat = 2 eighth-note beats (notation default is 1)
+    expect(result.notes).toBe("t2 C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("6/8");
     expect(result).toHaveLength("1:0"); // 3 Ableton beats = 1 bar in 6/8
   });
