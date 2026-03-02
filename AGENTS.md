@@ -66,7 +66,7 @@ web UI architecture.
   list (e.g., `// AI assistance: Gemini (Google), Claude (Anthropic)`).
 
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
-  other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.ts`)
+  other files use kebab-case (e.g., `use-chat.ts`, `live-api-adapter.ts`)
 
 - **Function organization**: In files that export functions, the first exported
   function should be the main function named after the file (e.g.,

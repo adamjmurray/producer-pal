@@ -66,7 +66,7 @@ describe("duplicate - arrangementLength functionality", () => {
     const result = duplicate({
       type: "clip",
       id: "clip1",
-      destination: "arrangement",
+
       arrangementStart: "5|1",
       arrangementLength: "1:0", // 4 beats - shorter than original 8 beats
     });
@@ -102,7 +102,7 @@ describe("duplicate - arrangementLength functionality", () => {
     const result = duplicate({
       type: "clip",
       id: "clip1",
-      destination: "arrangement",
+
       arrangementStart: "5|1",
       arrangementLength: "1:2", // 6 beats - longer than original 4 beats
     });
@@ -139,7 +139,7 @@ describe("duplicate - arrangementLength functionality", () => {
     const result = duplicate({
       type: "clip",
       id: "clip1",
-      destination: "arrangement",
+
       arrangementStart: "5|1",
       arrangementLength: "2:0", // 8 beats - longer than original 4 beats
     });
@@ -196,7 +196,7 @@ describe("duplicate - arrangementLength functionality", () => {
     const result = duplicate({
       type: "clip",
       id: "clip1",
-      destination: "arrangement",
+
       arrangementStart: "1|1",
       arrangementLength: "1:0", // This should be 3 Ableton beats in 6/8 time
     });
@@ -246,7 +246,7 @@ describe("duplicate - arrangementLength functionality", () => {
     const result = duplicate({
       type: "clip",
       id: "clip1",
-      destination: "arrangement",
+
       arrangementStart: "1|1",
       arrangementLength: "1:0", // This should be 4 Ableton beats in 2/2 time
     });
@@ -271,7 +271,7 @@ describe("duplicate - arrangementLength functionality", () => {
       duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arrangement",
+
         arrangementStart: "5|1",
         arrangementLength: "0:0", // 0 bars + 0 beats = 0 total
       }),
@@ -306,7 +306,7 @@ describe("duplicate - arrangementLength functionality", () => {
     const result = duplicate({
       type: "clip",
       id: "clip1",
-      destination: "arrangement",
+
       arrangementStart: "5|1",
       // No arrangementLength specified
     });

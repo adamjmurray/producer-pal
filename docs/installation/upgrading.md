@@ -38,9 +38,6 @@ version.
 
 - **Using `npx producer-pal`:** Updates are fetched automatically (no action
   needed)
-- **Downloaded `producer-pal-portal.js`:** Replace it with the
-  [latest version](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-  at the same file path
 
 ## 4. Restart Your AI App
 
@@ -52,8 +49,8 @@ If Producer Pal stops working after upgrading:
 
 - **Claude Desktop users:** Make sure you uninstalled the old extension before
   installing the new one
-- **All users:** Verify you replaced both the `.amxd` device AND the portal/mcpb
-  files (if applicable)
+- **All users:** Verify you replaced the `.amxd` device (and the `.mcpb`
+  extension if applicable)
 - Try deleting and re-adding the Producer Pal device in Ableton Live
 - Restart your AI app completely
 - Start a fresh conversation

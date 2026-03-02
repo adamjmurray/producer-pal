@@ -58,7 +58,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length (default: 1.0). Beats: t2.5, t3/4, t/4. Bar:beat: t2:1.5, t1:/4
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
-- Notes: C0-G8 with # or b (C3 = middle C)
+- Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
 - Parameters (v/t/p) and pitch persist until changed
 - copying bars (**MERGES** - use v0 to clear unwanted notes):
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
@@ -73,7 +73,7 @@ Audio params ignored when updating MIDI clips.
 ## Examples
 
 \`\`\`
-C3 E3 G3 1|1 // chord at bar 1 beat 1
+C#3 F3 G#3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1,3 2|1,2,3 // same pitch across bars (NOT 1|1,3,2|1,2,3)
 t0.25 C3 1|1.75 // 16th note at beat 1.75

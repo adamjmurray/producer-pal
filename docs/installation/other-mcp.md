@@ -80,36 +80,6 @@ remote access:
 1. Set up a [web tunnel](./web-tunnels) (e.g. Cloudflare or Pinggy)
 2. Configure your LLM with the public URL + `/mcp`
 
-### Option D: Download portal script (standalone npm package)
-
-Same benefits as npx:
-
-Download
-[producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-and configure your LLM MCP to use:
-
-```bash
-node /path/to/producer-pal-portal.js
-```
-
-This option requires [Node.js 20+](https://nodejs.org/en/download).
-
-::: details Using a small/local model?
-
-Add the `-s` flag to enable
-[Small Model Mode](./lm-studio#_2-enable-small-model-mode-optional-but-recommended),
-which simplifies the tool interface for smaller LLMs and automatically enables
-it on the device when connected:
-
-```json
-{
-  "command": "node",
-  "args": ["/path/to/producer-pal-portal.js", "-s"]
-}
-```
-
-:::
-
 ## Example: Configuring Cline
 
 [Cline](https://cline.bot/) is an IDE plugin for AI that can be configured to
@@ -126,11 +96,6 @@ use Producer Pal in its `cline_mcp_settings.json` config file:
     "producer-pal-http": {
       "type": "streamableHttp",
       "url": "http://localhost:3350/mcp"
-    },
-    // OR download the portal script and use:
-    "producer-pal-download": {
-      "command": "node",
-      "args": ["/absolute/path/to/producer-pal-portal.js"]
     }
   }
 }

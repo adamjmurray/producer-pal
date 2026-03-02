@@ -147,7 +147,7 @@ describe("ppal-read-clip", () => {
     expect(arrClip.arrangementLength).toBeDefined();
   });
 
-  it("reads clips with offset loops and warp markers", async () => {
+  it("reads clips with offset loops", async () => {
     // Test offset loop: t3/s1 has start=2|1, loopStart=1|1
     const offsetResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
@@ -159,7 +159,7 @@ describe("ppal-read-clip", () => {
     expect(offsetClip.looping).toBe(true);
     expect(offsetClip.type).toBe("midi");
 
-    // Test warp markers: t4/s0 has custom warp markers
+    // Test firstStart: t4/s0 has firstStart≠start per spec
     const warpResult = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: {
@@ -170,16 +170,11 @@ describe("ppal-read-clip", () => {
     });
     const warpClip = parseToolResult<ReadClipResult>(warpResult);
 
-    expect(warpClip.warpMarkers).toBeDefined();
-    expect(Array.isArray(warpClip.warpMarkers)).toBe(true);
-    expect(warpClip.warpMarkers!.length).toBeGreaterThan(0);
-    // Warp markers have sampleTime and beatTime
-    expect(typeof warpClip.warpMarkers![0]!.sampleTime).toBe("number");
-    expect(typeof warpClip.warpMarkers![0]!.beatTime).toBe("number");
-
-    // Test firstStart: t4/s0 has firstStart≠start per spec
     // firstStart is only included when it differs from start
     expect(typeof warpClip.firstStart).toBe("string");
+
+    // warpMarkers feature is behind ENABLE_WARP_MARKERS flag (not set in e2e)
+    expect(warpClip.warpMarkers).toBeUndefined();
   });
 
   it("handles empty slots and errors correctly", async () => {
@@ -221,6 +216,39 @@ describe("ppal-read-clip", () => {
     expect(getToolErrorMessage(invalidTrackResult)).toContain(
       "trackIndex 999 does not exist",
     );
+  });
+});
+
+describe("ppal-read-clip compact notation", () => {
+  it("produces comma merging and fraction durations", async () => {
+    // t0/s0 "Beat" — drum pattern: C1 kick on 1,3; D1 snare on 2,4
+    const result = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { trackIndex: 0, sceneIndex: 0, include: ["notes"] },
+    });
+    const clip = parseToolResult<ReadClipResult>(result);
+    const notes = clip.notes!;
+
+    // Fraction duration for quarter-note hits
+    expect(notes).toMatch(/t\/4/);
+    // Comma-merged beats (e.g. 1|1,3 for kicks on beats 1 and 3)
+    expect(notes).toMatch(/\d\|[\d.]+,[\d.]+/);
+    expect(notes).toContain("C1");
+    expect(notes).toContain("D1");
+  });
+
+  it("formats probability as decimal", async () => {
+    // t2/s0 "Chords" — Am chord, one note has p=0.69
+    const result = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { trackIndex: 2, sceneIndex: 0, include: ["notes"] },
+    });
+    const clip = parseToolResult<ReadClipResult>(result);
+    const notes = clip.notes!;
+
+    // Probability uses decimal format, not fraction
+    expect(notes).toMatch(/p0\.69/);
+    expect(notes).not.toMatch(/p\d*\/\d+/);
   });
 });
 

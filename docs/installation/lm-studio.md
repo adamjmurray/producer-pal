@@ -36,8 +36,8 @@ _It should display "Producer Pal Running" or something isn't working._
 Small model mode provides a smaller, simpler interface optimized for small/local
 language models.
 
-If you're using Options A or C below, the `-s` flag in the configuration
-automatically enables small model mode on the device when connected.
+If you're using Option A below, the `-s` flag in the configuration automatically
+enables small model mode on the device when connected.
 
 Alternatively, you can enable it manually in Producer Pal's "Setup" tab:
 
@@ -85,26 +85,6 @@ Producer Pal device are not running, to let you know there's a problem.
   }
 }
 ```
-
-**Option C: Download portal script**:
-
-Download
-[producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-and configure:
-
-```json
-{
-  "mcpServers": {
-    "producer-pal": {
-      "command": "node",
-      "args": ["/absolute/path/to/producer-pal-portal.js", "-s"]
-    }
-  }
-}
-```
-
-This is a standalone version of `npx producer-pal` (Option A). The `-s` flag
-enables small model mode and automatically configures the device when connected.
 
 ### 5. Verify Tools
 

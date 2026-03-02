@@ -53,7 +53,9 @@ function parseSitemap(): string[] {
 
   // Extract all <loc> URLs from sitemap
   const urlMatches = sitemapContent.matchAll(/<loc>(.*?)<\/loc>/g);
-  const urls = Array.from(urlMatches, (match) => match[1]);
+  const urls = Array.from(urlMatches, (match) => match[1]).filter(
+    (url): url is string => url != null,
+  );
 
   if (urls.length === 0) {
     throw new Error(
@@ -160,7 +162,10 @@ test.describe("Docs Site Sitemap Tests", () => {
           consoleErrors.push(text);
         }
       } else if (type === "warning") {
-        consoleWarnings.push(text);
+        // Filter out browser feature detection warnings (platform-dependent)
+        if (!text.includes("Unrecognized feature:")) {
+          consoleWarnings.push(text);
+        }
       }
     });
 

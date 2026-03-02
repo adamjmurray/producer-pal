@@ -10,23 +10,12 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import { registerMockObject } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 describe("duplicate - clip duplication", () => {
-  it("should throw an error when destination is missing", () => {
+  it("should throw an error when clip has no position params", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
     expect(() => duplicate({ type: "clip", id: "clip1" })).toThrow(
-      "duplicate failed: destination is required for type 'clip'",
-    );
-  });
-
-  it("should throw an error when destination is invalid", () => {
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-    });
-    expect(() =>
-      duplicate({ type: "clip", id: "clip1", destination: "invalid" }),
-    ).toThrow(
-      "duplicate failed: destination must be 'session' or 'arrangement'",
+      "duplicate failed: clip requires toSlot (for session) or arrangementStart/locatorId/locatorName (for arrangement)",
     );
   });
 
@@ -56,7 +45,7 @@ describe("duplicate - clip duplication", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "session",
+
         toSlot: "0/1",
       });
 
@@ -112,7 +101,7 @@ describe("duplicate - clip duplication", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "session",
+
         name: "Custom Clip",
         toSlot: "0/1, 0/2",
       });
@@ -152,7 +141,7 @@ describe("duplicate - clip duplication", () => {
         duplicate({
           type: "clip",
           id: "arrangementClip1",
-          destination: "session",
+
           toSlot: "1/2",
         }),
       ).toThrow(
@@ -162,18 +151,6 @@ describe("duplicate - clip duplication", () => {
   });
 
   describe("arrangement destination", () => {
-    it("should throw an error when arrangementStartTime is missing", () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
-
-      expect(() =>
-        duplicate({ type: "clip", id: "clip1", destination: "arrangement" }),
-      ).toThrow(
-        "duplicate failed: arrangementStart, locatorId, or locatorName is required when destination is 'arrangement'",
-      );
-    });
-
     it("should duplicate a single clip to the arrangement view", () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
@@ -197,7 +174,7 @@ describe("duplicate - clip duplication", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arrangement",
+
         arrangementStart: "3|1",
       });
 
@@ -252,7 +229,7 @@ describe("duplicate - clip duplication", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arrangement",
+
         arrangementStart: "3|1,4|1,5|1",
         name: "Custom Clip",
       });

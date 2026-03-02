@@ -42,35 +42,25 @@ describe("duplicate - input validation", () => {
     );
   });
 
-  it("should throw an error when type is 'track' and destination is 'arrangement'", () => {
+  it("should throw an error when track has arrangement params", () => {
     registerMockObject("track1", { path: livePath.track(0) });
     expect(() =>
       duplicate({
         type: "track",
         id: "track1",
-        destination: "arrangement",
         arrangementStart: "1|1|1",
       }),
-    ).toThrow(
-      "duplicate failed: tracks cannot be duplicated to arrangement (use destination='session' or omit destination parameter)",
-    );
+    ).toThrow("duplicate failed: tracks cannot be duplicated to arrangement");
   });
 
-  it("should allow type 'track' with destination 'session'", () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    expect(() =>
-      duplicate({ type: "track", id: "track1", destination: "session" }),
-    ).not.toThrow();
-  });
-
-  it("should allow type 'track' without destination parameter", () => {
+  it("should allow type 'track' without arrangement params", () => {
     registerMockObject("track1", { path: livePath.track(0) });
     expect(() => duplicate({ type: "track", id: "track1" })).not.toThrow();
   });
 });
 
 describe("duplicate - clip session validation", () => {
-  it("should throw an error when toSlot is missing for session destination", () => {
+  it("should throw an error when toSlot is empty for session clip", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
@@ -79,21 +69,6 @@ describe("duplicate - clip session validation", () => {
       duplicate({
         type: "clip",
         id: "clip1",
-        destination: "session",
-      }),
-    ).toThrow("duplicate failed: toSlot is required for session clips");
-  });
-
-  it("should throw an error when toSlot is empty for session destination", () => {
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-    });
-
-    expect(() =>
-      duplicate({
-        type: "clip",
-        id: "clip1",
-        destination: "session",
         toSlot: "  ",
       }),
     ).toThrow("duplicate failed: toSlot is required for session clips");
@@ -156,7 +131,6 @@ describe("duplicate - track/scene index validation", () => {
         duplicate({
           type: "scene",
           id: "scene1",
-          destination: "arrangement",
           arrangementStart: "1|1",
         }),
       ).toThrow('duplicate failed: no scene index for id "scene1"');

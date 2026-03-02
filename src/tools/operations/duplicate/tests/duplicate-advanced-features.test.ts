@@ -205,7 +205,6 @@ describe("duplicate - switchView functionality", () => {
     duplicate({
       type: "clip",
       id: "clip1",
-      destination: "arrangement",
       arrangementStart: "1|1",
       switchView: true,
     });
@@ -236,7 +235,6 @@ describe("duplicate - switchView functionality", () => {
     duplicate({
       type: "clip",
       id: "clip1",
-      destination: "session",
       switchView: true,
       toSlot: "0/1",
     });
@@ -244,7 +242,7 @@ describe("duplicate - switchView functionality", () => {
     expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
   });
 
-  it("should switch to session view when duplicating tracks", () => {
+  it("should not switch view when duplicating tracks", () => {
     setupTrackForSwitchView();
 
     duplicate({
@@ -253,7 +251,10 @@ describe("duplicate - switchView functionality", () => {
       switchView: true,
     });
 
-    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+    expect(appView.call).not.toHaveBeenCalledWith(
+      "show_view",
+      expect.anything(),
+    );
   });
 
   it("should switch to session view when duplicating scenes", () => {
@@ -292,7 +293,7 @@ describe("duplicate - switchView functionality", () => {
     );
   });
 
-  it("should work with multiple duplicates when switchView=true", () => {
+  it("should not switch view for multiple track duplicates when switchView=true", () => {
     setupTrackForSwitchView();
     // Register second new track for count=2
     registerMockObject("live_set/tracks/2", {
@@ -307,8 +308,65 @@ describe("duplicate - switchView functionality", () => {
       switchView: true,
     });
 
-    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+    expect(appView.call).not.toHaveBeenCalledWith(
+      "show_view",
+      expect.anything(),
+    );
     expect(result).toHaveLength(2);
+  });
+});
+
+describe("duplicate - comma-separated names", () => {
+  it("should assign different names to each track when comma-separated", () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("live_set", { path: livePath.liveSet });
+
+    const newTrack1 = registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    const newTrack2 = registerMockObject("live_set/tracks/2", {
+      path: livePath.track(2),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    const result = duplicate({
+      type: "track",
+      id: "track1",
+      count: 2,
+      name: "Lead,Pad",
+    });
+
+    expect(newTrack1.set).toHaveBeenCalledWith("name", "Lead");
+    expect(newTrack2.set).toHaveBeenCalledWith("name", "Pad");
+    expect(result).toHaveLength(2);
+  });
+
+  it("should not set name for extras beyond the comma-separated list", () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("live_set", { path: livePath.liveSet });
+
+    const newTrack1 = registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    const newTrack2 = registerMockObject("live_set/tracks/2", {
+      path: livePath.track(2),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    duplicate({
+      type: "track",
+      id: "track1",
+      count: 2,
+      name: "Lead",
+    });
+
+    // Single name (no comma) applies to all
+    expect(newTrack1.set).toHaveBeenCalledWith("name", "Lead");
+    expect(newTrack2.set).toHaveBeenCalledWith("name", "Lead");
   });
 });
 

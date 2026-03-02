@@ -4,10 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState, useEffect, useMemo, useRef } from "preact/hooks";
-import { geminiAdapter } from "#webui/hooks/chat/gemini-adapter";
+import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
-import { openaiChatAdapter } from "#webui/hooks/chat/openai-chat-adapter";
-import { responsesAdapter } from "#webui/hooks/chat/responses-adapter";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
@@ -16,6 +14,9 @@ import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
+
+// Placeholder API key for local providers that don't require authentication
+const LOCAL_PROVIDER_API_KEY = "not-needed";
 
 // Base URLs for each provider
 const PROVIDER_BASE_URLS = {
@@ -87,27 +88,11 @@ export function App() {
   const { smallModelMode, setSmallModelMode } = useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
-  // Use Gemini chat for Gemini provider
-  const geminiChat = useChat({
-    provider: settings.provider,
-    apiKey: settings.apiKey,
-    model: settings.model,
-    thinking: settings.thinking,
-    temperature: settings.temperature,
-    enabledTools: settings.enabledTools,
-    mcpStatus,
-    mcpError,
-    checkMcpConnection,
-    adapter: geminiAdapter,
-    extraParams: { showThoughts: settings.showThoughts },
-  });
-
-  // Use OpenAI Chat Completions API for OpenAI-compatible providers (OpenRouter, Mistral, etc.)
-  const openaiChat = useChat({
+  const aiSdkChat = useChat({
     provider: settings.provider,
     apiKey:
       settings.provider === "lmstudio" || settings.provider === "ollama"
-        ? settings.apiKey || "not-needed"
+        ? settings.apiKey || LOCAL_PROVIDER_API_KEY
         : settings.apiKey,
     model: settings.model,
     thinking: settings.thinking,
@@ -116,32 +101,15 @@ export function App() {
     mcpStatus,
     mcpError,
     checkMcpConnection,
-    adapter: openaiChatAdapter,
+    adapter: aiSdkAdapter,
     extraParams: {
       baseUrl,
       showThoughts: settings.showThoughts,
       provider: settings.provider,
-    },
-  });
-
-  // Use OpenAI Responses API for OpenAI and LM Studio providers
-  const responsesChat = useChat({
-    provider: settings.provider,
-    apiKey:
-      settings.provider === "lmstudio"
-        ? settings.apiKey || "not-needed"
-        : settings.apiKey,
-    model: settings.model,
-    thinking: settings.thinking,
-    temperature: settings.temperature,
-    enabledTools: settings.enabledTools,
-    mcpStatus,
-    mcpError,
-    checkMcpConnection,
-    adapter: responsesAdapter,
-    extraParams: {
-      showThoughts: settings.showThoughts,
-      baseUrl: settings.provider === "lmstudio" ? baseUrl : undefined,
+      apiKey:
+        settings.provider === "lmstudio" || settings.provider === "ollama"
+          ? settings.apiKey || LOCAL_PROVIDER_API_KEY
+          : settings.apiKey,
     },
   });
 
@@ -149,9 +117,7 @@ export function App() {
   const { chat, wrappedHandleSend, wrappedClearConversation } =
     useConversationLock({
       settingsProvider: settings.provider,
-      geminiChat,
-      openaiChat,
-      responsesChat,
+      chat: aiSdkChat,
     });
 
   // Calculate tools counts for header display

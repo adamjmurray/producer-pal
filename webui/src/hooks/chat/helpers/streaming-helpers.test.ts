@@ -4,19 +4,20 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi } from "vitest";
-import { formatOpenAIMessages } from "#webui/chat/openai/formatter";
-import { formatResponsesMessages } from "#webui/chat/openai/responses-formatter";
-import { type GeminiMessage, type OpenAIMessage } from "#webui/types/messages";
-import { type ResponsesConversationItem } from "#webui/types/responses-api";
+import { type UIMessage } from "#webui/types/messages";
 import {
   handleMessageStream,
-  createGeminiErrorMessage,
   createFormattedErrorMessage,
   validateMcpConnection,
 } from "./streaming-helpers";
 
+interface MockMessage {
+  role: string;
+  content: string;
+}
+
 function createMockFormatter() {
-  return vi.fn(() => [
+  return vi.fn((): UIMessage[] => [
     {
       role: "user" as const,
       parts: [],
@@ -28,7 +29,7 @@ function createMockFormatter() {
 
 async function* createThrowingStream(
   error: Error,
-): AsyncGenerator<GeminiMessage[], void, unknown> {
+): AsyncGenerator<MockMessage[], void, unknown> {
   yield [];
   throw error;
 }
@@ -36,9 +37,7 @@ async function* createThrowingStream(
 describe("streaming-helpers", () => {
   describe("handleMessageStream", () => {
     it("should handle successful stream", async () => {
-      const mockHistory: GeminiMessage[][] = [
-        [{ role: "user" as const, parts: [{ text: "hi" }] }],
-      ];
+      const mockHistory: MockMessage[][] = [[{ role: "user", content: "hi" }]];
       const mockStream = (async function* () {
         for (const h of mockHistory) yield h;
       })();
@@ -75,51 +74,14 @@ describe("streaming-helpers", () => {
     });
   });
 
-  describe("createGeminiErrorMessage", () => {
-    it("should create error message with Error prefix", () => {
-      const chatHistory: GeminiMessage[] = [];
-      const result = createGeminiErrorMessage("Test error", chatHistory);
-
-      expect(result).toHaveLength(1);
-      expect(result[0]?.role).toBe("model");
-      const firstPart = result[0]?.parts[0];
-
-      expect(firstPart?.type).toBe("error");
-      expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
-        "Error: Test error",
-      );
-    });
-
-    it("should not duplicate Error prefix", () => {
-      const chatHistory: GeminiMessage[] = [];
-      const result = createGeminiErrorMessage("Error: Test", chatHistory);
-
-      const firstPart = result[0]?.parts[0];
-
-      expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
-        "Error: Test",
-      );
-    });
-  });
-
   describe("createFormattedErrorMessage", () => {
-    it("should create error message for OpenAI format", () => {
-      const chatHistory: OpenAIMessage[] = [];
-      const result = createFormattedErrorMessage(
-        chatHistory,
-        formatOpenAIMessages,
-        "Test error",
-      );
+    it("should create error message from history", () => {
+      const history: MockMessage[] = [];
+      const formatter = vi.fn((): UIMessage[] => []);
 
-      expect(result).toHaveLength(1);
-      expect(result[0]?.role).toBe("model");
-    });
-
-    it("should create error message for Responses format", () => {
-      const conversation: ResponsesConversationItem[] = [];
       const result = createFormattedErrorMessage(
-        conversation,
-        formatResponsesMessages,
+        history,
+        formatter,
         "Test error",
       );
 
@@ -133,13 +95,20 @@ describe("streaming-helpers", () => {
       );
     });
 
-    it("should preserve existing conversation in formatted output", () => {
-      const conversation: ResponsesConversationItem[] = [
-        { type: "message", role: "user", content: "Hello" },
-      ];
+    it("should preserve existing history in formatted output", () => {
+      const history: MockMessage[] = [{ role: "user", content: "Hello" }];
+      const formatter = vi.fn((): UIMessage[] => [
+        {
+          role: "user",
+          parts: [{ type: "text", content: "Hello" }],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
+      ]);
+
       const result = createFormattedErrorMessage(
-        conversation,
-        formatResponsesMessages,
+        history,
+        formatter,
         "Test error",
       );
 
@@ -149,10 +118,11 @@ describe("streaming-helpers", () => {
     });
 
     it("should handle Error objects", () => {
-      const conversation: ResponsesConversationItem[] = [];
+      const formatter = vi.fn((): UIMessage[] => []);
+
       const result = createFormattedErrorMessage(
-        conversation,
-        formatResponsesMessages,
+        [],
+        formatter,
         new Error("Something failed"),
       );
 

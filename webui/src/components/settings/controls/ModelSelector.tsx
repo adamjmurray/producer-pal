@@ -9,6 +9,7 @@ import {
   OLLAMA_MODELS,
   OPENAI_MODELS,
   OPENROUTER_MODELS,
+  OTHER_MODEL_OPTION,
 } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 
@@ -61,7 +62,9 @@ export function ModelSelector({
     if (provider === "custom" || presetModels.length === 0) return false;
 
     // Check if current model matches any preset (excluding "OTHER")
-    return !presetModels.some((m) => m.value === model && m.value !== "OTHER");
+    return !presetModels.some(
+      (m) => m.value === model && m.value !== OTHER_MODEL_OPTION.value,
+    );
   });
 
   // Ref for autofocusing the custom input when "Other..." is selected
@@ -77,7 +80,7 @@ export function ModelSelector({
     }
 
     const isCustom = !presetModels.some(
-      (m) => m.value === model && m.value !== "OTHER",
+      (m) => m.value === model && m.value !== OTHER_MODEL_OPTION.value,
     );
 
     setShowCustomInput(isCustom);
@@ -118,10 +121,10 @@ export function ModelSelector({
   }
 
   // Provider-specific dropdowns
-  const dropdownValue = showCustomInput ? "OTHER" : model;
+  const dropdownValue = showCustomInput ? OTHER_MODEL_OPTION.value : model;
 
   const handleDropdownChange = (value: string) => {
-    if (value === "OTHER") {
+    if (value === OTHER_MODEL_OPTION.value) {
       setShowCustomInput(true);
       // Keep current model value - user will edit in text input
     } else {

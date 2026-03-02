@@ -14,11 +14,15 @@ function determineTargetView(
   destination: string | undefined,
   type: string,
 ): "session" | "arrangement" | null {
+  if (type === "track" || type === "device") {
+    return null;
+  }
+
   if (destination === "arrangement") {
     return "arrangement";
   }
 
-  if (destination === "session" || type === "track" || type === "scene") {
+  if (destination === "session" || type === "scene") {
     return "session";
   }
 
@@ -45,4 +49,42 @@ export function switchViewIfRequested(
   if (targetView) {
     select({ view: targetView });
   }
+}
+
+/**
+ * Parse comma-separated string when creating multiple items
+ * @param value - Input string that may contain commas
+ * @param count - Number of items being created
+ * @returns Array of trimmed values, or null if not applicable
+ */
+export function parseCommaSeparatedNames(
+  value: string | undefined,
+  count: number,
+): string[] | null {
+  if (count <= 1 || !value?.includes(",")) {
+    return null;
+  }
+
+  return value.split(",").map((v) => v.trim());
+}
+
+/**
+ * Get name for a specific index, using parsed names if available
+ * @param baseName - Base name string
+ * @param index - Current item index
+ * @param parsedNames - Comma-separated names, or null
+ * @returns Name for this index, or undefined
+ */
+export function getNameForIndex(
+  baseName: string | undefined,
+  index: number,
+  parsedNames: string[] | null,
+): string | undefined {
+  if (baseName == null) return;
+
+  if (parsedNames != null) {
+    return index < parsedNames.length ? parsedNames[index] : undefined;
+  }
+
+  return baseName;
 }

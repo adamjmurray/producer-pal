@@ -7,12 +7,17 @@
  * Convention: First item in each list is the default model for that provider.
  */
 
+export const OTHER_MODEL_OPTION = {
+  value: "OTHER",
+  label: "Other...",
+} as const;
+
 export const GEMINI_MODELS = [
   { value: "gemini-3-flash-preview", label: "Gemini 3 Flash" },
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-  { value: "OTHER", label: "Other..." },
+  OTHER_MODEL_OPTION,
 ];
 
 export const OPENAI_MODELS = [
@@ -20,7 +25,7 @@ export const OPENAI_MODELS = [
   { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
   { value: "gpt-5", label: "GPT-5" },
   { value: "gpt-5-mini", label: "GPT-5 Mini" },
-  { value: "OTHER", label: "Other..." },
+  OTHER_MODEL_OPTION,
 ];
 
 export const MISTRAL_MODELS = [
@@ -28,7 +33,7 @@ export const MISTRAL_MODELS = [
   { value: "mistral-large-latest", label: "Mistral Large" },
   { value: "mistral-medium-latest", label: "Mistral Medium" },
   { value: "mistral-small-latest", label: "Mistral Small" },
-  { value: "OTHER", label: "Other..." },
+  OTHER_MODEL_OPTION,
 ];
 
 export const OPENROUTER_MODELS = [
@@ -67,7 +72,7 @@ export const OPENROUTER_MODELS = [
     value: "nvidia/nemotron-3-nano-30b-a3b:free",
     label: "[Free] Nvidia Nemotron 3 Nano",
   },
-  { value: "OTHER", label: "Other..." },
+  OTHER_MODEL_OPTION,
 ];
 
 export const OLLAMA_MODELS = [
@@ -78,7 +83,7 @@ export const OLLAMA_MODELS = [
   { value: "qwen3", label: "Qwen 3" },
   { value: "glm-4.7-flash", label: "GLM 4.7 Flash" },
   { value: "lfm2", label: "LFM2" },
-  { value: "OTHER", label: "Other..." },
+  OTHER_MODEL_OPTION,
 ];
 
 /**

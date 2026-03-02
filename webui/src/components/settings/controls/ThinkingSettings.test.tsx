@@ -96,11 +96,20 @@ describe("ThinkingSettings", () => {
       expectAllThinkingOptions();
     });
 
-    it("does not show checkbox for OpenAI provider", () => {
+    it("shows checkbox when thinking is not Off", () => {
       renderThinkingSettings({
         provider: "openai",
         model: "gpt-5-2025-08-07",
         thinking: "Low",
+      });
+      expectCheckboxVisible();
+    });
+
+    it("hides checkbox when thinking is Off", () => {
+      renderThinkingSettings({
+        provider: "openai",
+        model: "gpt-5-2025-08-07",
+        thinking: "Off",
       });
       expectCheckboxHidden();
     });

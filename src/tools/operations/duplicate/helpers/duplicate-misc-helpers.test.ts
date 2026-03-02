@@ -3,7 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { switchViewIfRequested } from "./duplicate-misc-helpers.ts";
+import {
+  switchViewIfRequested,
+  parseCommaSeparatedNames,
+  getNameForIndex,
+} from "./duplicate-misc-helpers.ts";
 
 // Mock the select module to avoid Live API dependencies
 vi.mock(import("#src/tools/control/select.ts"), () => ({
@@ -60,16 +64,70 @@ describe("duplicate-misc-helpers", () => {
       expect(selectMock).toHaveBeenCalledWith({ view: "session" });
     });
 
-    it("calls select with session view when type is track", () => {
+    it("does nothing when type is track", () => {
       switchViewIfRequested(true, undefined, "track");
 
-      expect(selectMock).toHaveBeenCalledWith({ view: "session" });
+      expect(selectMock).not.toHaveBeenCalled();
     });
 
     it("calls select with session view when type is scene", () => {
       switchViewIfRequested(true, undefined, "scene");
 
       expect(selectMock).toHaveBeenCalledWith({ view: "session" });
+    });
+  });
+
+  describe("parseCommaSeparatedNames", () => {
+    it("returns null when count is 1", () => {
+      expect(parseCommaSeparatedNames("Verse,Chorus", 1)).toBeNull();
+    });
+
+    it("returns null when name has no commas", () => {
+      expect(parseCommaSeparatedNames("Lead", 3)).toBeNull();
+    });
+
+    it("returns null when name is undefined", () => {
+      expect(parseCommaSeparatedNames(undefined, 3)).toBeNull();
+    });
+
+    it("splits comma-separated names when count > 1", () => {
+      expect(parseCommaSeparatedNames("Lead,Pad", 2)).toStrictEqual([
+        "Lead",
+        "Pad",
+      ]);
+    });
+
+    it("trims whitespace from names", () => {
+      expect(parseCommaSeparatedNames(" Lead , Pad , Bass ", 3)).toStrictEqual([
+        "Lead",
+        "Pad",
+        "Bass",
+      ]);
+    });
+  });
+
+  describe("getNameForIndex", () => {
+    it("returns undefined when baseName is undefined", () => {
+      expect(getNameForIndex(undefined, 0, null)).toBeUndefined();
+    });
+
+    it("returns baseName when parsedNames is null", () => {
+      expect(getNameForIndex("Lead", 0, null)).toBe("Lead");
+      expect(getNameForIndex("Lead", 2, null)).toBe("Lead");
+    });
+
+    it("returns parsed name at index", () => {
+      const parsed = ["Lead", "Pad", "Bass"];
+
+      expect(getNameForIndex("Lead,Pad,Bass", 0, parsed)).toBe("Lead");
+      expect(getNameForIndex("Lead,Pad,Bass", 1, parsed)).toBe("Pad");
+      expect(getNameForIndex("Lead,Pad,Bass", 2, parsed)).toBe("Bass");
+    });
+
+    it("returns undefined when index exceeds parsed names", () => {
+      const parsed = ["Lead", "Pad"];
+
+      expect(getNameForIndex("Lead,Pad", 2, parsed)).toBeUndefined();
     });
   });
 });

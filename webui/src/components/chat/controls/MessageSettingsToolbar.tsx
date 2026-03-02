@@ -174,7 +174,8 @@ export function MessageSettingsToolbar({
   const showSimplifiedOptions = isOpenAIReasoning;
   const isGemini = provider === "gemini";
   const showShowThoughtsCheckbox =
-    (isGemini || provider === "openrouter") && thinking !== "Off";
+    (isGemini || provider === "openrouter" || provider === "openai") &&
+    thinking !== "Off";
 
   const randomnessPercent = Math.round((temperature / 2) * 100);
   const isUsingDefaults =

@@ -7,9 +7,7 @@
  * LLM-as-judge assertion - use an LLM to evaluate response quality
  */
 
-import { callAnthropicJudge } from "../helpers/judge/anthropic-judge.ts";
-import { callGeminiJudge } from "../helpers/judge/gemini-judge.ts";
-import { callOpenAIJudge } from "../helpers/judge/openai-judge.ts";
+import { callAiSdkJudge } from "../helpers/judge/ai-sdk-judge.ts";
 import { type JudgeResult } from "../helpers/judge-response-parser.ts";
 import {
   type LlmJudgeAssertion,
@@ -184,41 +182,17 @@ async function callJudgeLlm(
   model: string | undefined,
   criteria: string,
 ): Promise<JudgeResult> {
-  switch (provider) {
-    case "anthropic":
-      return await callAnthropicJudge(
-        prompt,
-        JUDGE_SYSTEM_PROMPT,
-        model,
-        criteria,
-      );
-    case "google":
-      return await callGeminiJudge(
-        prompt,
-        JUDGE_SYSTEM_PROMPT,
-        model,
-        criteria,
-      );
-    case "openai":
-    case "openrouter":
-      return await callOpenAIJudge(
-        prompt,
-        JUDGE_SYSTEM_PROMPT,
-        provider,
-        model,
-        criteria,
-      );
-    case "local":
-      throw new Error(
-        "Local provider cannot be used as LLM judge. Set judgeProvider to a cloud provider.",
-      );
-
-    default: {
-      const _exhaustiveCheck: never = provider;
-
-      throw new Error(
-        `Unknown provider for LLM judge: ${String(_exhaustiveCheck)}`,
-      );
-    }
+  if (provider === "local") {
+    throw new Error(
+      "Local provider cannot be used as LLM judge. Set judgeProvider to a cloud provider.",
+    );
   }
+
+  return await callAiSdkJudge(
+    prompt,
+    JUDGE_SYSTEM_PROMPT,
+    provider,
+    model,
+    criteria,
+  );
 }

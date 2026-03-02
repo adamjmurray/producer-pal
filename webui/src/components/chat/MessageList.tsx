@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { marked } from "marked";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { formatTimestamp } from "#webui/lib/utils/format-timestamp";
 import { type UIMessage } from "#webui/types/messages";
@@ -107,9 +108,12 @@ export function MessageList({
                 />
               )}
               {message.role === "user" && (
-                <div className="prose dark:prose-invert prose-sm">
-                  {formatUserContent(message)}
-                </div>
+                <div
+                  className="prose dark:prose-invert prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{
+                    __html: marked(formatUserContent(message)) as string,
+                  }}
+                />
               )}
             </div>
             {canRetry && previousUserMessageIdx >= 0 && (

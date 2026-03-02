@@ -15,11 +15,15 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   },
 
   inputSchema: {
+    id: z.coerce.string().describe("object to duplicate"),
     type: z
       .enum(["track", "scene", "clip", "device"])
       .describe("type of object to duplicate"),
 
-    id: z.coerce.string().describe("object to duplicate"),
+    name: z
+      .string()
+      .optional()
+      .describe("name (comma-separated when duplicating multiple)"),
 
     count: z.coerce
       .number()
@@ -30,15 +34,14 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "number of copies (tracks/scenes only, ignored for clips/devices)",
       ),
 
-    destination: z
-      .enum(["session", "arrangement"])
-      .optional()
-      .describe("scenes and clips can be copied to the session or arrangement"),
+    withoutClips: z.boolean().default(false).describe("exclude clips?"),
+    withoutDevices: z.boolean().default(false).describe("exclude devices?"),
+
     arrangementStart: z.coerce
       .string()
       .optional()
       .describe(
-        "bar|beat position(s), comma-separated for multiple clips (e.g., '1|1' or '1|1,2|1,3|1')",
+        "bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1')",
       ),
     locatorId: z.coerce
       .string()
@@ -58,20 +61,6 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "duration (beats or bar:beat) in arrangement, auto-fills with loops",
       ),
-    name: z.string().optional().describe("name"),
-    withoutClips: z.boolean().default(false).describe("exclude clips?"),
-    withoutDevices: z.boolean().default(false).describe("exclude devices?"),
-    routeToSource: z
-      .boolean()
-      .optional()
-      .describe(
-        "route new track to source's instrument? (for MIDI layering/polyrhythms)",
-      ),
-    switchView: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe("auto-switch view?"),
     toSlot: z
       .string()
       .optional()
@@ -84,18 +73,34 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "device destination path(s), comma-separated for multiple (e.g., 't1/d0' or 't1/d0,t2/d0')",
       ),
+
+    routeToSource: z
+      .boolean()
+      .optional()
+      .describe(
+        "route new track to source's instrument? (for MIDI layering/polyrhythms)",
+      ),
+
+    switchView: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        "switch to arrangement view for arrangement duplications, or session view for scenes/session clips",
+      ),
   },
   smallModelModeConfig: {
     excludeParams: [
-      "locatorId",
-      "locatorName",
+      "count",
       "withoutClips",
       "withoutDevices",
+      "locatorId",
+      "locatorName",
       "routeToSource",
-      "count",
       "switchView",
     ],
     descriptionOverrides: {
+      name: "name",
       arrangementStart: "bar|beat position (e.g., '1|1')",
       toSlot: "destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
       toPath: "device destination path (e.g., 't1/d0')",

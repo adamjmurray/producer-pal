@@ -13,6 +13,10 @@ import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "./duplicate-helpers.ts";
+import {
+  parseCommaSeparatedNames,
+  getNameForIndex,
+} from "./duplicate-misc-helpers.ts";
 
 /**
  * Duplicates a clip to explicit positions
@@ -53,6 +57,8 @@ export function duplicateClipWithPositions(
       );
     }
 
+    const parsedNames = parseCommaSeparatedNames(name, slots.length);
+
     for (let i = 0; i < slots.length; i++) {
       // bounded by slots.length
       const slot = slots[i] as { trackIndex: number; sceneIndex: number };
@@ -61,7 +67,7 @@ export function duplicateClipWithPositions(
         sourceSceneIndex,
         slot.trackIndex,
         slot.sceneIndex,
-        name,
+        getNameForIndex(name, i, parsedNames),
       );
 
       createdObjects.push(result);
@@ -86,11 +92,13 @@ export function duplicateClipWithPositions(
       songTimeSigDenominator,
     );
 
+    const parsedNames = parseCommaSeparatedNames(name, positionsInBeats.length);
+
     for (let i = 0; i < positionsInBeats.length; i++) {
       const result = duplicateClipToArrangement(
         id,
         positionsInBeats[i] as number,
-        name,
+        getNameForIndex(name, i, parsedNames),
         arrangementLength,
         songTimeSigNumerator,
         songTimeSigDenominator,

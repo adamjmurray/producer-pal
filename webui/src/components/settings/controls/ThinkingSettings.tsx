@@ -63,22 +63,22 @@ export function ThinkingSettings({
           <option value="Ultra">Ultra</option>
         </select>
       </div>
-      {/* Show "Show thinking process" checkbox for Gemini and OpenRouter */}
-      {(isGemini || provider === "openrouter") && thinking !== "Off" && (
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="showThoughts"
-            checked={showThoughts}
-            onChange={(e) =>
-              setShowThoughts((e.target as HTMLInputElement).checked)
-            }
-          />
-          <label htmlFor="showThoughts" className="text-sm">
-            Show thinking process
-          </label>
-        </div>
-      )}
+      {(isGemini || provider === "openrouter" || provider === "openai") &&
+        thinking !== "Off" && (
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="showThoughts"
+              checked={showThoughts}
+              onChange={(e) =>
+                setShowThoughts((e.target as HTMLInputElement).checked)
+              }
+            />
+            <label htmlFor="showThoughts" className="text-sm">
+              Show thinking process
+            </label>
+          </div>
+        )}
     </>
   );
 }

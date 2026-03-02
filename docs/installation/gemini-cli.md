@@ -69,23 +69,6 @@ auto-reconnection:
 }
 ```
 
-**Option C: Download portal script** - Same benefits as npx:
-
-Download
-[producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-and configure:
-
-```json
-{
-  "mcpServers": {
-    "producer-pal": {
-      "command": "node",
-      "args": ["/absolute/path/to/producer-pal-portal.js"]
-    }
-  }
-}
-```
-
 ### 3. Start Gemini CLI
 
 Run `gemini` in an empty folder (so it can focus on Producer Pal instead of

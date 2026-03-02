@@ -100,7 +100,7 @@ The entire codebase uses TypeScript (`src/`, `scripts/`, and `webui/`).
 
 - Static typing catches errors at compile time
 - Complex React component state and props benefit from type safety
-- Integrates multiple AI SDKs (Google GenAI, OpenAI) with different APIs
+- Integrates the Vercel AI SDK with multiple provider packages
 - Complex response mapping to normalized UI format requires type safety
 - Streaming protocols and message parsing have many edge cases
 
@@ -193,12 +193,14 @@ Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
 - **Target:** Browser (served at `http://localhost:3350/chat`, opened via Max)
 - **Build Tool:** Vite with custom plugins
 - **Dependencies:** Bundled into single self-contained HTML file
-- **Purpose:** Preact-based chat interface for Gemini + MCP integration
+- **Purpose:** Preact-based chat interface with multi-provider AI + MCP
+  integration
 - **Features:**
   - Served from MCP server's Express app
   - Opened in system default browser (avoids Max jweb keyboard issues)
-  - Connects to Gemini API with automatic MCP tool calling
-  - Real-time streaming chat interface
+  - Uses Vercel AI SDK (`streamText()`) for all providers (Anthropic, Google,
+    OpenAI, Mistral, OpenRouter, Ollama)
+  - Real-time streaming chat interface with automatic MCP tool calling
   - Settings persistence via localStorage
 
 See `dev/Chat-UI.md` for detailed architecture and development workflow.

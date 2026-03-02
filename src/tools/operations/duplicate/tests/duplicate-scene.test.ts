@@ -200,20 +200,6 @@ describe("duplicate - scene duplication", () => {
   });
 
   describe("arrangement destination", () => {
-    it("should throw error when arrangementStartTime is missing for scene to arrangement", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-
-      expect(() =>
-        duplicate({
-          type: "scene",
-          id: "scene1",
-          destination: "arrangement",
-        }),
-      ).toThrow(
-        "duplicate failed: arrangementStart, locatorId, or locatorName is required when destination is 'arrangement'",
-      );
-    });
-
     it("should duplicate a scene to arrangement view", () => {
       registerMockObject("scene1", { path: livePath.scene(0) });
 
@@ -285,7 +271,7 @@ describe("duplicate - scene duplication", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         arrangementStart: "5|1",
       }) as DuplicateSceneResult;
 
@@ -357,7 +343,7 @@ describe("duplicate - scene duplication", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         arrangementStart: "5|1",
         count: 3,
         name: "Scene Copy",
@@ -429,7 +415,7 @@ describe("duplicate - scene duplication", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         arrangementStart: "5|1",
       }) as DuplicateSceneResult;
 
@@ -465,7 +451,7 @@ describe("duplicate - scene duplication", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         arrangementStart: "5|1",
         withoutClips: true,
       }) as DuplicateSceneResult;

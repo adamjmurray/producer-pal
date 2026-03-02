@@ -219,7 +219,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: createdClip.id,
-        destination: "session",
+
         toSlot: `${emptyMidiTrack2}/0`,
       },
     });
@@ -238,7 +238,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: createdClip.id,
-        destination: "session",
+
         toSlot: "10/0, 10/1, 10/2",
         name: "Batch Clip",
       },
@@ -290,7 +290,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: arrangementClip.id,
-        destination: "arrangement",
+
         arrangementStart: "5|1",
       },
     });
@@ -308,7 +308,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: arrangementClip.id,
-        destination: "arrangement",
+
         arrangementStart: "9|1,13|1,17|1",
       },
     });
@@ -329,7 +329,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: createdClip.id,
-        destination: "arrangement",
+
         arrangementStart: "21|1",
       },
     });
