@@ -21,7 +21,8 @@ experience.
 The UI connects to two external services:
 
 1. **MCP Server** (localhost:3350) - Provides Live API tools and serves the UI
-2. **Gemini API** (ai.google.dev) - Provides AI chat with automatic tool calling
+2. **AI Provider APIs** - Via the Vercel AI SDK (`ai` package + provider
+   packages)
 
 ## Technology Stack
 
@@ -32,7 +33,8 @@ The UI connects to two external services:
 - **State Management**: React hooks + localStorage
 - **Testing**: Vitest + @testing-library/preact
 - **API Integration**:
-  - `@google/genai` - Gemini API client
+  - `ai` + `@ai-sdk/*` - Vercel AI SDK for all providers (Anthropic, Google,
+    OpenAI, Mistral, OpenRouter, Ollama)
   - `@modelcontextprotocol/sdk` - MCP client for tool access
 - **Markdown Rendering**: marked library
 
@@ -52,12 +54,19 @@ webui/
     │   │   └── ...         # Message rendering components
     │   └── settings/       # Settings screen components
     ├── hooks/              # Custom React hooks (kebab-case)
-    │   ├── use-gemini-chat.ts    # Core chat logic and streaming
-    │   ├── use-settings.ts       # Settings + localStorage
+    │   ├── chat/
+    │   │   ├── use-chat.ts       # Core chat logic, streaming, retry
+    │   │   └── ai-sdk-adapter.ts # Provider config + error handling
+    │   ├── settings/
+    │   │   └── use-settings.ts   # Settings + localStorage
     │   └── ...
     ├── chat/               # Chat utilities (kebab-case)
-    │   ├── gemini-client.ts      # Gemini API + MCP tool integration
-    │   └── gemini-formatter.ts   # Formats raw API data for UI
+    │   ├── ai-sdk/
+    │   │   ├── ai-sdk-client.ts  # Wraps streamText(), processes events
+    │   │   ├── formatter.ts      # Formats stream data for UI
+    │   │   ├── mcp-tools.ts      # Converts MCP tools to AI SDK format
+    │   │   └── provider-factories.ts # Creates provider model instances
+    │   └── helpers/              # Shared chat utilities
     └── utils/              # General utilities
 ```
 
@@ -78,9 +87,9 @@ webui/
     ├─> useSettings()         → localStorage persistence
     ├─> useTheme()            → dark/light mode
     ├─> useMcpConnection()    → MCP health check
-    └─> useGeminiChat()       → chat state machine
-          ├─> GeminiClient    → Gemini API + MCP tools
-          └─> formatGeminiMessages() → UI-friendly format
+    └─> useChat(aiSdkAdapter) → chat state machine
+          ├─> AiSdkClient     → streamText() + stream processing
+          └─> formatAiSdkMessages() → UI-friendly format
   ```
 
 **ChatScreen.tsx** - Main chat interface:
@@ -112,11 +121,12 @@ The UI uses React hooks for all state management:
 1. **useSettings** - Settings persistence (localStorage)
 2. **useTheme** - Theme switching (localStorage + system preference)
 3. **useMcpConnection** - MCP server health monitoring
-4. **useGeminiChat** - Core chat logic and message streaming
+4. **useChat** - Core chat logic and message streaming (provider-agnostic)
 
-### useGeminiChat Hook
+### useChat Hook
 
-Central state machine for chat interactions:
+Central state machine for chat interactions (uses a `ChatAdapter` interface so
+the underlying provider implementation is swappable):
 
 **State:**
 
@@ -137,28 +147,31 @@ Central state machine for chat interactions:
 `useMcpConnection` hook checks server availability on mount and provides retry
 functionality. Auto-retries on first message if connection failed initially.
 
-### Gemini API Integration
+### AI SDK Integration
 
 **Streaming:**
 
-The UI uses Gemini's streaming API to show real-time responses:
+The UI uses the Vercel AI SDK's `streamText()` to stream responses from any
+supported provider:
 
-```javascript
-const stream = await chat.sendMessageStream({ message });
-for await (const chunk of stream) {
-  // Update UI with each chunk
-  const { role, parts } = chunk.candidates[0].content;
-  // Merge consecutive text, track tool calls, etc.
+```typescript
+const result = streamText({ model, messages, tools, ... });
+for await (const part of result.fullStream) {
+  // Handle: text-delta, reasoning-delta, tool-call, tool-result, start-step
 }
 ```
 
+All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Ollama) go
+through this single code path via provider-specific model factories in
+`provider-factories.ts`.
+
 **Formatting:**
 
-`gemini-formatter.js` transforms this into UI-friendly format:
+`formatter.ts` transforms the stream into UI-friendly format:
 
-- Merges consecutive model messages
-- Integrates functionResponse into corresponding functionCall
+- Merges consecutive assistant messages into single UI messages
 - Converts to typed parts: `text`, `thought`, `tool`, `error`
+- Matches tool results to tool calls by ID
 - Tracks original indices for retry functionality
 
 ## Build and Development
@@ -187,5 +200,5 @@ npm run build     # Includes UI build
 **File naming:**
 
 - React components: PascalCase (`ChatHeader.tsx`)
-- Everything else: kebab-case (`use-gemini-chat.ts`)
+- Everything else: kebab-case (`use-chat.ts`)
 - Never include file extensions in relative imports (bundled by Vite)
