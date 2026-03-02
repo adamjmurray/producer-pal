@@ -116,6 +116,36 @@ describe("aiSdkAdapter", () => {
       });
     });
 
+    it("includes reasoningSummary for openai reasoning model with showThoughts", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "gpt-5.2",
+        1.0,
+        "High",
+        {},
+        undefined,
+        { ...extraParams, provider: "openai", showThoughts: true },
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        openai: { reasoningEffort: "high", reasoningSummary: "auto" },
+      });
+    });
+
+    it("sets only reasoningSummary for openai reasoning model with Default thinking", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "gpt-5.2",
+        1.0,
+        "Default",
+        {},
+        undefined,
+        { ...extraParams, provider: "openai", showThoughts: true },
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        openai: { reasoningSummary: "auto" },
+      });
+    });
+
     it("sets reasoning for openrouter provider", () => {
       const config = aiSdkAdapter.buildConfig(
         "some-model",

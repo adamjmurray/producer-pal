@@ -65,13 +65,7 @@ function buildProviderOptions(
   }
 
   if (provider === "openai") {
-    const effort = mapThinkingToReasoningEffort(thinking, model);
-
-    if (effort) {
-      return { openai: { reasoningEffort: effort } };
-    }
-
-    return undefined;
+    return buildOpenAIOptions(thinking, model, showThoughts);
   }
 
   if (provider === "gemini") {
@@ -89,6 +83,34 @@ function buildProviderOptions(
     }
 
     return undefined;
+  }
+
+  return undefined;
+}
+
+/**
+ * Build OpenAI-specific provider options for reasoning.
+ * @param thinking - Thinking level from UI settings
+ * @param model - Model identifier
+ * @param showThoughts - Whether to include reasoning summaries
+ * @returns OpenAI provider options or undefined
+ */
+function buildOpenAIOptions(
+  thinking: string,
+  model: string,
+  showThoughts: boolean,
+): ProviderOptions | undefined {
+  const effort = mapThinkingToReasoningEffort(thinking, model);
+  const reasoningSummary =
+    showThoughts && isOpenAIReasoningModel(model) ? "auto" : undefined;
+
+  if (effort || reasoningSummary) {
+    return {
+      openai: {
+        ...(effort ? { reasoningEffort: effort } : {}),
+        ...(reasoningSummary ? { reasoningSummary } : {}),
+      },
+    };
   }
 
   return undefined;
