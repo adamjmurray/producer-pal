@@ -281,6 +281,19 @@ describe("aiSdkAdapter", () => {
         },
       });
     });
+
+    it("returns undefined provider options for anthropic provider", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "claude-sonnet-4-20250514",
+        1.0,
+        "High",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.providerOptions).toBeUndefined();
+    });
   });
 
   describe("createErrorMessage", () => {

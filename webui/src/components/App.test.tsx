@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -145,24 +146,32 @@ describe("App", () => {
   });
 
   describe("provider routing", () => {
-    it("calls useChat four times (for gemini, openai chat, responses, and ai-sdk adapters)", () => {
+    it("calls useChat once (AI SDK adapter handles all providers)", () => {
       render(<App />);
-      // useChat is called 4 times - gemini, openai chat, responses API, and AI SDK
-      expect(useChat).toHaveBeenCalledTimes(4);
+      expect(useChat).toHaveBeenCalledTimes(1);
     });
 
-    it("passes adapters with createClient for all four calls", () => {
+    it("passes AI SDK adapter with createClient", () => {
       render(<App />);
       const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
 
       expect(calls[0]![0].adapter).toHaveProperty("createClient");
-      expect(calls[1]![0].adapter).toHaveProperty("createClient");
-      expect(calls[2]![0].adapter).toHaveProperty("createClient");
-      expect(calls[3]![0].adapter).toHaveProperty("createClient");
     });
   });
 
   describe("hook integration", () => {
+    it("renders when mcpTools is null", () => {
+      (useMcpConnection as ReturnType<typeof vi.fn>).mockReturnValue({
+        mcpStatus: "disconnected",
+        mcpError: null,
+        mcpTools: null,
+        checkMcpConnection: vi.fn(),
+      });
+      const { container } = render(<App />);
+
+      expect(container.querySelector("header")).toBeDefined();
+    });
+
     it("calls useSettings hook", () => {
       render(<App />);
       expect(useSettings).toHaveBeenCalled();
@@ -178,9 +187,8 @@ describe("App", () => {
       expect(useMcpConnection).toHaveBeenCalled();
     });
 
-    it("passes settings to chat hooks", () => {
+    it("passes settings to chat hook", () => {
       render(<App />);
-      // useChat should receive settings
       const chatCalls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
 
       expect(chatCalls.length).toBeGreaterThan(0);
@@ -326,18 +334,18 @@ describe("App", () => {
     });
   });
 
-  // Helper to get the second useChat call (openai adapter) extraParams
-  const getOpenAIExtraParams = () => {
+  // Helper to get the AI SDK useChat call's extraParams
+  const getExtraParams = () => {
     const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
 
-    return calls[1]![0].extraParams;
+    return calls[0]![0].extraParams;
   };
 
-  // Helper to get the second useChat call (openai adapter) apiKey
-  const getOpenAIApiKey = () => {
+  // Helper to get the AI SDK useChat call's apiKey
+  const getApiKey = () => {
     const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
 
-    return calls[1]![0].apiKey;
+    return calls[0]![0].apiKey;
   };
 
   describe("baseUrl determination", () => {
@@ -348,7 +356,7 @@ describe("App", () => {
         baseUrl: "https://custom.api.com/v1",
       });
       render(<App />);
-      expect(getOpenAIExtraParams().baseUrl).toBe("https://custom.api.com/v1");
+      expect(getExtraParams().baseUrl).toBe("https://custom.api.com/v1");
     });
 
     it("uses baseUrl for lmstudio provider", () => {
@@ -358,7 +366,7 @@ describe("App", () => {
         baseUrl: "http://localhost:1234/v1",
       });
       render(<App />);
-      expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+      expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
     });
 
     it("uses baseUrl for ollama provider", () => {
@@ -368,7 +376,7 @@ describe("App", () => {
         baseUrl: "http://localhost:11434/v1",
       });
       render(<App />);
-      expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:11434/v1");
+      expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
     });
 
     it("uses custom baseUrl for lmstudio on remote host", () => {
@@ -378,9 +386,7 @@ describe("App", () => {
         baseUrl: "http://192.168.1.100:1234/v1",
       });
       render(<App />);
-      expect(getOpenAIExtraParams().baseUrl).toBe(
-        "http://192.168.1.100:1234/v1",
-      );
+      expect(getExtraParams().baseUrl).toBe("http://192.168.1.100:1234/v1");
     });
 
     it("falls back to default URL for lmstudio when baseUrl is undefined", () => {
@@ -390,7 +396,7 @@ describe("App", () => {
         baseUrl: undefined,
       });
       render(<App />);
-      expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+      expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
     });
 
     it("falls back to default URL for ollama when baseUrl is undefined", () => {
@@ -400,7 +406,7 @@ describe("App", () => {
         baseUrl: undefined,
       });
       render(<App />);
-      expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:11434/v1");
+      expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
     });
 
     it("uses 'not-needed' apiKey for lmstudio when apiKey is empty", () => {
@@ -410,7 +416,7 @@ describe("App", () => {
         apiKey: "",
       });
       render(<App />);
-      expect(getOpenAIApiKey()).toBe("not-needed");
+      expect(getApiKey()).toBe("not-needed");
     });
 
     it("uses provider-specific baseUrl for openai provider", () => {
@@ -419,7 +425,7 @@ describe("App", () => {
         provider: "openai",
       });
       render(<App />);
-      expect(getOpenAIExtraParams().baseUrl).toBe("https://api.openai.com/v1");
+      expect(getExtraParams().baseUrl).toBe("https://api.openai.com/v1");
     });
 
     it("uses provider-specific baseUrl for mistral provider", () => {
@@ -428,7 +434,7 @@ describe("App", () => {
         provider: "mistral",
       });
       render(<App />);
-      expect(getOpenAIExtraParams().baseUrl).toBe("https://api.mistral.ai/v1");
+      expect(getExtraParams().baseUrl).toBe("https://api.mistral.ai/v1");
     });
 
     it("uses provider-specific baseUrl for openrouter provider", () => {
@@ -437,9 +443,7 @@ describe("App", () => {
         provider: "openrouter",
       });
       render(<App />);
-      expect(getOpenAIExtraParams().baseUrl).toBe(
-        "https://openrouter.ai/api/v1",
-      );
+      expect(getExtraParams().baseUrl).toBe("https://openrouter.ai/api/v1");
     });
 
     it("uses undefined baseUrl for gemini provider", () => {
@@ -448,7 +452,7 @@ describe("App", () => {
         provider: "gemini",
       });
       render(<App />);
-      expect(getOpenAIExtraParams().baseUrl).toBeUndefined();
+      expect(getExtraParams().baseUrl).toBeUndefined();
     });
   });
 
@@ -461,7 +465,7 @@ describe("App", () => {
           baseUrl: "http://localhost:1234",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+        expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
       });
 
       it("removes trailing slash and appends /v1", () => {
@@ -471,7 +475,7 @@ describe("App", () => {
           baseUrl: "http://localhost:1234/",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+        expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
       });
 
       it("preserves URL already ending in /v1", () => {
@@ -481,7 +485,7 @@ describe("App", () => {
           baseUrl: "http://localhost:1234/v1",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+        expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
       });
 
       it("removes trailing slash from URL ending in /v1/", () => {
@@ -491,7 +495,7 @@ describe("App", () => {
           baseUrl: "http://localhost:1234/v1/",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+        expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
       });
 
       it("appends /v1 to remote host URL", () => {
@@ -501,9 +505,7 @@ describe("App", () => {
           baseUrl: "http://192.168.1.100:1234",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe(
-          "http://192.168.1.100:1234/v1",
-        );
+        expect(getExtraParams().baseUrl).toBe("http://192.168.1.100:1234/v1");
       });
 
       it("appends /v1 to custom path", () => {
@@ -513,9 +515,7 @@ describe("App", () => {
           baseUrl: "http://localhost:8080/api",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe(
-          "http://localhost:8080/api/v1",
-        );
+        expect(getExtraParams().baseUrl).toBe("http://localhost:8080/api/v1");
       });
     });
 
@@ -527,9 +527,7 @@ describe("App", () => {
           baseUrl: "http://localhost:11434",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe(
-          "http://localhost:11434/v1",
-        );
+        expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
       });
 
       it("removes trailing slash and appends /v1", () => {
@@ -539,9 +537,7 @@ describe("App", () => {
           baseUrl: "http://localhost:11434/",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe(
-          "http://localhost:11434/v1",
-        );
+        expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
       });
 
       it("preserves URL already ending in /v1", () => {
@@ -551,9 +547,7 @@ describe("App", () => {
           baseUrl: "http://localhost:11434/v1",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe(
-          "http://localhost:11434/v1",
-        );
+        expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
       });
 
       it("removes trailing slash from URL ending in /v1/", () => {
@@ -563,9 +557,7 @@ describe("App", () => {
           baseUrl: "http://localhost:11434/v1/",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe(
-          "http://localhost:11434/v1",
-        );
+        expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
       });
 
       it("appends /v1 to remote host URL", () => {
@@ -575,9 +567,7 @@ describe("App", () => {
           baseUrl: "http://192.168.1.100:11434",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe(
-          "http://192.168.1.100:11434/v1",
-        );
+        expect(getExtraParams().baseUrl).toBe("http://192.168.1.100:11434/v1");
       });
 
       it("appends /v1 to custom path", () => {
@@ -587,9 +577,7 @@ describe("App", () => {
           baseUrl: "http://localhost:8080/api",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe(
-          "http://localhost:8080/api/v1",
-        );
+        expect(getExtraParams().baseUrl).toBe("http://localhost:8080/api/v1");
       });
     });
 
@@ -601,9 +589,7 @@ describe("App", () => {
           baseUrl: "http://localhost:8080/api",
         });
         render(<App />);
-        expect(getOpenAIExtraParams().baseUrl).toBe(
-          "http://localhost:8080/api",
-        );
+        expect(getExtraParams().baseUrl).toBe("http://localhost:8080/api");
       });
     });
   });

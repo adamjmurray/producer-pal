@@ -159,7 +159,7 @@ export function useSettings(): UseSettingsReturn {
     return {
       setApiKey: createSetter("apiKey"),
       setModel: createSetter("model"),
-      setBaseUrl: hasBaseUrl ? createSetter("baseUrl") : (_url: string) => {},
+      setBaseUrl: hasBaseUrl ? createSetter("baseUrl") : undefined,
       setThinking: createSetter("thinking"),
       setTemperature: createSetter("temperature"),
       setShowThoughts: createSetter("showThoughts"),

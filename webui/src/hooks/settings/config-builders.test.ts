@@ -1,59 +1,17 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
 import {
-  buildGeminiConfig,
-  buildOpenAIConfig,
-  buildResponsesConfig,
   extractGptVersion,
+  mapThinkingToReasoningEffort,
+  mapThinkingToOpenRouterEffort,
+  mapThinkingToOllamaThink,
 } from "./config-builders";
 
 describe("config-builders", () => {
-  describe("buildGeminiConfig", () => {
-    it("should build basic config", () => {
-      const config = buildGeminiConfig(
-        "gemini-2.5-flash",
-        1.0,
-        "Off",
-        true,
-        {},
-      );
-
-      expect(config.model).toBe("gemini-2.5-flash");
-      expect(config.temperature).toBe(1.0);
-      expect(config.thinkingConfig).toBeUndefined();
-    });
-
-    it("should include thinking config when enabled", () => {
-      const config = buildGeminiConfig(
-        "gemini-2.5-flash",
-        1.0,
-        "Auto",
-        true,
-        {},
-      );
-
-      expect(config.thinkingConfig).toBeDefined();
-      expect(config.thinkingConfig?.includeThoughts).toBe(true);
-    });
-
-    it("should include chat history when provided", () => {
-      const history = [{ role: "user" as const, parts: [{ text: "hi" }] }];
-      const config = buildGeminiConfig(
-        "gemini-2.5-flash",
-        1.0,
-        "Off",
-        true,
-        {},
-        history,
-      );
-
-      expect(config.chatHistory).toStrictEqual(history);
-    });
-  });
-
   describe("extractGptVersion", () => {
     it("should extract version from gpt-5.2 models", () => {
       expect(extractGptVersion("gpt-5.2-2025-12-11")).toBe(5.2);
@@ -76,630 +34,167 @@ describe("config-builders", () => {
     });
   });
 
-  describe("buildOpenAIConfig", () => {
-    it("should build basic config", () => {
-      const config = buildOpenAIConfig(
-        "gpt-4",
-        1.0,
-        "Off",
-        undefined,
-        true,
-        {},
-      );
-
-      expect(config.model).toBe("gpt-4");
-      expect(config.temperature).toBe(1.0);
-      expect(config.reasoningEffort).toBeUndefined();
+  describe("mapThinkingToReasoningEffort", () => {
+    it("should return undefined for unsupported models", () => {
+      expect(mapThinkingToReasoningEffort("Medium", "gpt-4")).toBeUndefined();
     });
 
-    it("should not include reasoning effort for unsupported models", () => {
-      const config = buildOpenAIConfig(
-        "gpt-4",
-        1.0,
-        "Medium",
-        undefined,
-        true,
-        {},
-      );
-
-      expect(config.reasoningEffort).toBeUndefined();
-    });
-
-    it("should not include reasoning effort for gpt-5 without decimal", () => {
-      const config = buildOpenAIConfig(
-        "gpt-5-2025-08-07",
-        1.0,
-        "Medium",
-        undefined,
-        true,
-        {},
-      );
-
-      expect(config.reasoningEffort).toBeUndefined();
+    it("should return undefined for gpt-5 without decimal", () => {
+      expect(
+        mapThinkingToReasoningEffort("Medium", "gpt-5-2025-08-07"),
+      ).toBeUndefined();
     });
 
     describe("o1/o3 models", () => {
       it("should map Low to low", () => {
-        const config = buildOpenAIConfig(
-          "o1-preview",
-          1.0,
-          "Low",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("low");
+        expect(mapThinkingToReasoningEffort("Low", "o1-preview")).toBe("low");
       });
 
       it("should map Minimal to low", () => {
-        const config = buildOpenAIConfig(
-          "o3-mini",
-          1.0,
-          "Minimal",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("low");
+        expect(mapThinkingToReasoningEffort("Minimal", "o3-mini")).toBe("low");
       });
 
       it("should map Medium to medium", () => {
-        const config = buildOpenAIConfig(
-          "o1",
-          1.0,
-          "Medium",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("medium");
+        expect(mapThinkingToReasoningEffort("Medium", "o1")).toBe("medium");
       });
 
       it("should map High to high", () => {
-        const config = buildOpenAIConfig(
-          "o1",
-          1.0,
-          "High",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("high");
+        expect(mapThinkingToReasoningEffort("High", "o1")).toBe("high");
       });
 
-      it("should map XHigh to high (capped)", () => {
-        const config = buildOpenAIConfig(
-          "o3",
-          1.0,
-          "Ultra",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("high");
+      it("should map Ultra to high (capped)", () => {
+        expect(mapThinkingToReasoningEffort("Ultra", "o3")).toBe("high");
       });
 
       it("should map Off to low (minimum for o1/o3)", () => {
-        const config = buildOpenAIConfig("o1", 1.0, "Off", undefined, true, {});
-
-        expect(config.reasoningEffort).toBe("low");
+        expect(mapThinkingToReasoningEffort("Off", "o1")).toBe("low");
       });
 
       it("should return undefined for Default", () => {
-        const config = buildOpenAIConfig(
-          "o1",
-          1.0,
-          "Default",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBeUndefined();
+        expect(mapThinkingToReasoningEffort("Default", "o1")).toBeUndefined();
       });
     });
 
     describe("gpt-5.1 models", () => {
       it("should map Off to none", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.1-2025-01-01",
-          1.0,
-          "Off",
-          undefined,
-          true,
-          {},
+        expect(mapThinkingToReasoningEffort("Off", "gpt-5.1-2025-01-01")).toBe(
+          "none",
         );
-
-        expect(config.reasoningEffort).toBe("none");
       });
 
       it("should map Minimal to minimal", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.1-2025-01-01",
-          1.0,
-          "Minimal",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("minimal");
+        expect(
+          mapThinkingToReasoningEffort("Minimal", "gpt-5.1-2025-01-01"),
+        ).toBe("minimal");
       });
 
       it("should map Low to low", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.1-2025-01-01",
-          1.0,
-          "Low",
-          undefined,
-          true,
-          {},
+        expect(mapThinkingToReasoningEffort("Low", "gpt-5.1-2025-01-01")).toBe(
+          "low",
         );
-
-        expect(config.reasoningEffort).toBe("low");
       });
 
       it("should map Medium to medium", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.1-2025-01-01",
-          1.0,
-          "Medium",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("medium");
+        expect(
+          mapThinkingToReasoningEffort("Medium", "gpt-5.1-2025-01-01"),
+        ).toBe("medium");
       });
 
       it("should map High to high", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.1-2025-01-01",
-          1.0,
-          "High",
-          undefined,
-          true,
-          {},
+        expect(mapThinkingToReasoningEffort("High", "gpt-5.1-2025-01-01")).toBe(
+          "high",
         );
-
-        expect(config.reasoningEffort).toBe("high");
       });
 
-      it("should map XHigh to high (capped for 5.1)", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.1-2025-01-01",
-          1.0,
-          "Ultra",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("high");
+      it("should map Ultra to high (capped for 5.1)", () => {
+        expect(
+          mapThinkingToReasoningEffort("Ultra", "gpt-5.1-2025-01-01"),
+        ).toBe("high");
       });
 
       it("should allow xhigh for gpt-5.1-codex-max", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.1-codex-max",
-          1.0,
-          "Ultra",
-          undefined,
-          true,
-          {},
+        expect(mapThinkingToReasoningEffort("Ultra", "gpt-5.1-codex-max")).toBe(
+          "xhigh",
         );
-
-        expect(config.reasoningEffort).toBe("xhigh");
       });
 
       it("should return undefined for Default", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.1-2025-01-01",
-          1.0,
-          "Default",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBeUndefined();
+        expect(
+          mapThinkingToReasoningEffort("Default", "gpt-5.1-2025-01-01"),
+        ).toBeUndefined();
       });
     });
 
     describe("gpt-5.2+ models", () => {
       it("should map Off to none", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.2-2025-12-11",
-          1.0,
-          "Off",
-          undefined,
-          true,
-          {},
+        expect(mapThinkingToReasoningEffort("Off", "gpt-5.2-2025-12-11")).toBe(
+          "none",
         );
-
-        expect(config.reasoningEffort).toBe("none");
       });
 
-      it("should map Minimal to minimal", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.2-2025-12-11",
-          1.0,
-          "Minimal",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("minimal");
-      });
-
-      it("should map Low to low", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.2-2025-12-11",
-          1.0,
-          "Low",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("low");
-      });
-
-      it("should map Medium to medium", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.2-2025-12-11",
-          1.0,
-          "Medium",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("medium");
-      });
-
-      it("should map High to high", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.2-2025-12-11",
-          1.0,
-          "High",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("high");
-      });
-
-      it("should map XHigh to xhigh", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.2-2025-12-11",
-          1.0,
-          "Ultra",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("xhigh");
+      it("should map Ultra to xhigh", () => {
+        expect(
+          mapThinkingToReasoningEffort("Ultra", "gpt-5.2-2025-12-11"),
+        ).toBe("xhigh");
       });
 
       it("should return undefined for Default", () => {
-        const config = buildOpenAIConfig(
-          "gpt-5.2-2025-12-11",
-          1.0,
-          "Default",
-          undefined,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBeUndefined();
-      });
-    });
-
-    it("should not include reasoning effort for custom API", () => {
-      const config = buildOpenAIConfig(
-        "gpt-5.2-2025-12-11",
-        1.0,
-        "Medium",
-        "https://custom.api/v1",
-        true,
-        {},
-      );
-
-      expect(config.reasoningEffort).toBeUndefined();
-    });
-
-    describe("OpenRouter", () => {
-      const openRouterUrl = "https://openrouter.ai/api/v1";
-
-      it("should map High to high for OpenRouter", () => {
-        const config = buildOpenAIConfig(
-          "anthropic/claude-sonnet",
-          1.0,
-          "High",
-          openRouterUrl,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("high");
-      });
-
-      it("should map XHigh to xhigh for OpenRouter", () => {
-        const config = buildOpenAIConfig(
-          "anthropic/claude-sonnet",
-          1.0,
-          "Ultra",
-          openRouterUrl,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("xhigh");
-      });
-
-      it("should map Off to none for OpenRouter", () => {
-        const config = buildOpenAIConfig(
-          "anthropic/claude-sonnet",
-          1.0,
-          "Off",
-          openRouterUrl,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("none");
-      });
-
-      it("should map Minimal to minimal for OpenRouter", () => {
-        const config = buildOpenAIConfig(
-          "anthropic/claude-sonnet",
-          1.0,
-          "Minimal",
-          openRouterUrl,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("minimal");
-      });
-
-      it("should map Low to low for OpenRouter", () => {
-        const config = buildOpenAIConfig(
-          "anthropic/claude-sonnet",
-          1.0,
-          "Low",
-          openRouterUrl,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("low");
-      });
-
-      it("should map Medium to medium for OpenRouter", () => {
-        const config = buildOpenAIConfig(
-          "anthropic/claude-sonnet",
-          1.0,
-          "Medium",
-          openRouterUrl,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("medium");
-      });
-
-      it("should return undefined for Default", () => {
-        const config = buildOpenAIConfig(
-          "anthropic/claude-sonnet",
-          1.0,
-          "Default",
-          openRouterUrl,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBeUndefined();
-      });
-
-      it("should set excludeReasoning when showThoughts is false", () => {
-        const config = buildOpenAIConfig(
-          "anthropic/claude-sonnet",
-          1.0,
-          "High",
-          openRouterUrl,
-          false,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("high");
-        expect(config.excludeReasoning).toBe(true);
-      });
-
-      it("should not set excludeReasoning when showThoughts is true", () => {
-        const config = buildOpenAIConfig(
-          "anthropic/claude-sonnet",
-          1.0,
-          "High",
-          openRouterUrl,
-          true,
-          {},
-        );
-
-        expect(config.reasoningEffort).toBe("high");
-        expect(config.excludeReasoning).toBe(false);
-      });
-    });
-
-    it("should include chat history when provided", () => {
-      const history = [{ role: "user" as const, content: "hi" }];
-      const config = buildOpenAIConfig(
-        "gpt-4",
-        1.0,
-        "Off",
-        undefined,
-        true,
-        {},
-        history,
-      );
-
-      expect(config.chatHistory).toStrictEqual(history);
-    });
-
-    describe("Ollama", () => {
-      function buildOllamaConfig(
-        model: string,
-        thinking: string,
-      ): ReturnType<typeof buildOpenAIConfig> {
-        return buildOpenAIConfig(
-          model,
-          1.0,
-          thinking,
-          "http://localhost:11434/v1",
-          true,
-          {},
-          undefined,
-          "ollama",
-        );
-      }
-
-      it("should set ollamaThink to false for Off", () => {
-        const config = buildOllamaConfig("qwen3", "Off");
-
-        expect(config.ollamaThink).toBe(false);
-        expect(config.reasoningEffort).toBeUndefined();
-      });
-
-      it("should not set ollamaThink for Default", () => {
-        const config = buildOllamaConfig("qwen3", "Default");
-
-        expect(config.ollamaThink).toBeUndefined();
-      });
-
-      it("should set ollamaThink to true for non-GPT-OSS levels", () => {
-        expect(buildOllamaConfig("qwen3", "Low").ollamaThink).toBe(true);
-        expect(buildOllamaConfig("qwen3", "Medium").ollamaThink).toBe(true);
-        expect(buildOllamaConfig("qwen3", "High").ollamaThink).toBe(true);
-      });
-
-      it("should set ollamaThink to level strings for GPT-OSS", () => {
-        expect(buildOllamaConfig("gpt-oss", "Low").ollamaThink).toBe("low");
-        expect(buildOllamaConfig("gpt-oss", "Medium").ollamaThink).toBe(
-          "medium",
-        );
-        expect(buildOllamaConfig("gpt-oss", "High").ollamaThink).toBe("high");
-      });
-
-      it("should set provider on config", () => {
-        expect(buildOllamaConfig("qwen3", "Off").provider).toBe("ollama");
+        expect(
+          mapThinkingToReasoningEffort("Default", "gpt-5.2-2025-12-11"),
+        ).toBeUndefined();
       });
     });
   });
 
-  describe("buildResponsesConfig", () => {
-    it("should build basic config", () => {
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", {});
-
-      expect(config.model).toBe("gpt-5.2");
-      expect(config.temperature).toBe(1.0);
-      expect(config.reasoningEffort).toBeUndefined();
+  describe("mapThinkingToOpenRouterEffort", () => {
+    it("should map Off to none", () => {
+      expect(mapThinkingToOpenRouterEffort("Off")).toBe("none");
     });
 
-    it("should not set reasoningEffort for Off", () => {
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", {});
-
-      expect(config.reasoningEffort).toBeUndefined();
-    });
-
-    it("should map Minimal to low", () => {
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "Minimal", {});
-
-      expect(config.reasoningEffort).toBe("low");
+    it("should map Minimal to minimal", () => {
+      expect(mapThinkingToOpenRouterEffort("Minimal")).toBe("minimal");
     });
 
     it("should map Low to low", () => {
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "Low", {});
-
-      expect(config.reasoningEffort).toBe("low");
+      expect(mapThinkingToOpenRouterEffort("Low")).toBe("low");
     });
 
     it("should map Medium to medium", () => {
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "Medium", {});
-
-      expect(config.reasoningEffort).toBe("medium");
+      expect(mapThinkingToOpenRouterEffort("Medium")).toBe("medium");
     });
 
     it("should map High to high", () => {
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "High", {});
-
-      expect(config.reasoningEffort).toBe("high");
+      expect(mapThinkingToOpenRouterEffort("High")).toBe("high");
     });
 
-    it("should map Ultra to high", () => {
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "Ultra", {});
-
-      expect(config.reasoningEffort).toBe("high");
+    it("should map Ultra to xhigh", () => {
+      expect(mapThinkingToOpenRouterEffort("Ultra")).toBe("xhigh");
     });
 
     it("should return undefined for Default", () => {
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "Default", {});
+      expect(mapThinkingToOpenRouterEffort("Default")).toBeUndefined();
+    });
+  });
 
-      expect(config.reasoningEffort).toBeUndefined();
+  describe("mapThinkingToOllamaThink", () => {
+    it("should return false for Off", () => {
+      expect(mapThinkingToOllamaThink("Off", "qwen3")).toBe(false);
     });
 
-    it("should include conversation when provided", () => {
-      const conversation = [
-        { type: "message" as const, role: "user" as const, content: "hi" },
-      ];
-      const config = buildResponsesConfig(
-        "gpt-5.2",
-        1.0,
-        "Off",
-        {},
-        conversation,
-      );
-
-      expect(config.conversation).toStrictEqual(conversation);
+    it("should return undefined for Default", () => {
+      expect(mapThinkingToOllamaThink("Default", "qwen3")).toBeUndefined();
     });
 
-    it("should include enabledTools", () => {
-      const enabledTools = { tool1: true, tool2: false };
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", enabledTools);
-
-      expect(config.enabledTools).toStrictEqual(enabledTools);
+    it("should return true for non-GPT-OSS levels", () => {
+      expect(mapThinkingToOllamaThink("Low", "qwen3")).toBe(true);
+      expect(mapThinkingToOllamaThink("Medium", "qwen3")).toBe(true);
+      expect(mapThinkingToOllamaThink("High", "qwen3")).toBe(true);
     });
 
-    it("should include systemInstruction", () => {
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", {});
-
-      expect(config.systemInstruction).toBeDefined();
-    });
-
-    it("should include baseUrl when provided", () => {
-      const config = buildResponsesConfig(
-        "gpt-5.2",
-        1.0,
-        "Off",
-        {},
-        undefined,
-        "http://localhost:1234/v1",
-      );
-
-      expect(config.baseUrl).toBe("http://localhost:1234/v1");
-    });
-
-    it("should have undefined baseUrl when not provided", () => {
-      const config = buildResponsesConfig("gpt-5.2", 1.0, "Off", {});
-
-      expect(config.baseUrl).toBeUndefined();
+    it("should return level strings for GPT-OSS", () => {
+      expect(mapThinkingToOllamaThink("Low", "gpt-oss")).toBe("low");
+      expect(mapThinkingToOllamaThink("Medium", "gpt-oss")).toBe("medium");
+      expect(mapThinkingToOllamaThink("High", "gpt-oss")).toBe("high");
     });
   });
 });
