@@ -23,7 +23,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
       .string()
       .optional()
       .describe(
-        "comma-separated paths to delete - device: 't0/d1', 't1/d0/pC1/d0'; drum-pad: 't1/d0/pC1'",
+        "comma-separated device/drum-pad paths to delete (e.g., 't0/d1', 't1/d0/pC1/d0', 't1/d0/pC1')",
       ),
     type: z
       .enum(["track", "scene", "clip", "device", "drum-pad"])
@@ -33,7 +33,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
   smallModelModeConfig: {
     descriptionOverrides: {
       ids: "object ID to delete",
-      path: "path to delete (e.g., 't0/d1')",
+      path: "device/drum-pad path to delete (e.g., 't0/d1')",
     },
   },
 });
