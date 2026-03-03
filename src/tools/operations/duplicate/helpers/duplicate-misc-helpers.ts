@@ -1,8 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { select } from "#src/tools/control/select.ts";
+
+// Re-export shared name utilities for backward compatibility
+export {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 
 /**
  * Determines the target view based on destination and type
@@ -60,42 +67,4 @@ export function focusIfRequested(
       select({ view: targetView });
     }
   }
-}
-
-/**
- * Parse comma-separated string when creating multiple items
- * @param value - Input string that may contain commas
- * @param count - Number of items being created
- * @returns Array of trimmed values, or null if not applicable
- */
-export function parseCommaSeparatedNames(
-  value: string | undefined,
-  count: number,
-): string[] | null {
-  if (count <= 1 || !value?.includes(",")) {
-    return null;
-  }
-
-  return value.split(",").map((v) => v.trim());
-}
-
-/**
- * Get name for a specific index, using parsed names if available
- * @param baseName - Base name string
- * @param index - Current item index
- * @param parsedNames - Comma-separated names, or null
- * @returns Name for this index, or undefined
- */
-export function getNameForIndex(
-  baseName: string | undefined,
-  index: number,
-  parsedNames: string[] | null,
-): string | undefined {
-  if (baseName == null) return;
-
-  if (parsedNames != null) {
-    return index < parsedNames.length ? parsedNames[index] : undefined;
-  }
-
-  return baseName;
 }

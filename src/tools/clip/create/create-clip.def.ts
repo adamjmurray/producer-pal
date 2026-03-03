@@ -34,7 +34,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "arrangement clip bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')",
       ),
 
-    name: z.string().optional().describe("clip name"),
+    name: z
+      .string()
+      .optional()
+      .describe(
+        "clip name (comma-separated when creating multiple, indexed: session positions first, then arrangement)",
+      ),
 
     color: z.string().optional().describe("#RRGGBB"),
 
@@ -110,6 +115,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     descriptionOverrides: {
       sceneIndex: "session clip scene index",
       arrangementStart: "arrangement clip bar|beat position (e.g., '1|1')",
+      name: "clip name",
     },
   },
 });

@@ -17,6 +17,10 @@ import {
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  getNameForIndex,
+  parseNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 
 interface RoutingParams {
   inputRoutingTypeId?: string;
@@ -375,11 +379,15 @@ export function updateTrack(
     skipInvalid: true,
   });
 
+  const parsedNames = parseNames(name, tracks.length, "updateTrack");
+
   const updatedTracks: UpdateTrackResult[] = [];
 
-  for (const track of tracks) {
+  for (let i = 0; i < tracks.length; i++) {
+    const track = tracks[i] as LiveAPI;
+
     track.setAll({
-      name,
+      name: getNameForIndex(name, i, parsedNames),
       color,
       mute,
       solo,

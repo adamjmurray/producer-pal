@@ -24,6 +24,10 @@ import {
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  getNameForIndex,
+  parseNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { computeNonSurvivorClipIds } from "./helpers/update-clip-arrangement-optimizer.ts";
 import {
@@ -132,26 +136,13 @@ export async function updateClip(
     throw new Error("updateClip failed: ids is required");
   }
 
-  let mutableClips = validateIdTypes(
-    parseCommaSeparatedIds(ids),
-    "clip",
-    "updateClip",
-    { skipInvalid: true },
+  const mutableClips = applySplittingIfNeeded(
+    validateIdTypes(parseCommaSeparatedIds(ids), "clip", "updateClip", {
+      skipInvalid: true,
+    }),
+    split,
+    context,
   );
-  const arrangementClips = mutableClips.filter(
-    (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
-  );
-  const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
-
-  if (split != null && splitPoints != null && arrangementClips.length > 0) {
-    performSplitting(
-      arrangementClips,
-      splitPoints,
-      mutableClips,
-      context as SplittingContext,
-    );
-    mutableClips = mutableClips.filter((clip) => clip.exists());
-  }
 
   const { arrangementStartBeats, arrangementLengthBeats } =
     validateAndParseArrangementParams(arrangementStart, arrangementLength);
@@ -160,6 +151,7 @@ export async function updateClip(
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
+  const parsedNames = parseNames(name, mutableClips.length, "updateClip");
   const updatedClips: ClipResult[] = [];
   const tracksWithMovedClips = new Map<number, number>();
 
@@ -182,7 +174,7 @@ export async function updateClip(
       notationString,
       transformString,
       noteUpdateMode,
-      name,
+      name: getNameForIndex(name, i, parsedNames),
       color,
       timeSignature,
       start,
@@ -266,4 +258,35 @@ async function applyCodeExecToNewClips(
       clipResult.noteCount = noteCount;
     }
   }
+}
+
+/**
+ * Apply splitting to arrangement clips if split parameter is provided
+ * @param clips - Validated clip LiveAPI objects
+ * @param split - Comma-separated split positions
+ * @param context - Tool execution context
+ * @returns Filtered clips (non-existent removed after splitting)
+ */
+function applySplittingIfNeeded(
+  clips: LiveAPI[],
+  split: string | undefined,
+  context: Partial<ToolContext>,
+): LiveAPI[] {
+  const arrangementClips = clips.filter(
+    (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
+  );
+  const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
+
+  if (split != null && splitPoints != null && arrangementClips.length > 0) {
+    performSplitting(
+      arrangementClips,
+      splitPoints,
+      clips,
+      context as SplittingContext,
+    );
+
+    return clips.filter((clip) => clip.exists());
+  }
+
+  return clips;
 }

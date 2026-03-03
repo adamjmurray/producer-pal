@@ -16,6 +16,10 @@ import {
 } from "#src/tools/shared/utils.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import {
+  getNameForIndex,
+  parseNames,
+} from "#src/tools/shared/validation/name-utils.ts";
+import {
   moveDeviceToPath,
   moveDrumChainToPath,
   setParamValues,
@@ -118,6 +122,9 @@ export function updateDevice(
       unknown
     > | null;
   } else {
+    const items = parseCommaSeparatedIds(path ?? ids);
+    const parsedNames = parseNames(name, items.length, "updateDevice");
+
     const updateOptions: UpdateOptions = {
       toPath,
       name,
@@ -133,21 +140,13 @@ export function updateDevice(
       mappedPitch,
     };
 
-    if (path) {
-      result = updateMultipleTargets(
-        parseCommaSeparatedIds(path),
-        resolvePathToTargetSafe,
-        "path",
-        updateOptions,
-      );
-    } else {
-      result = updateMultipleTargets(
-        parseCommaSeparatedIds(ids),
-        resolveIdToTarget,
-        "id",
-        updateOptions,
-      );
-    }
+    result = updateMultipleTargets(
+      items,
+      path ? resolvePathToTargetSafe : resolveIdToTarget,
+      path ? "path" : "id",
+      updateOptions,
+      parsedNames,
+    );
   }
 
   if (focus && result != null) {
@@ -168,6 +167,7 @@ export function updateDevice(
  * @param resolveItem - Function to resolve item to ResolvedTarget
  * @param itemType - "path" or "id" for error messages
  * @param updateOptions - Options to pass to updateTarget
+ * @param parsedNames - Comma-separated names array, or null
  * @returns Single result or array of results
  */
 function updateMultipleTargets(
@@ -175,10 +175,12 @@ function updateMultipleTargets(
   resolveItem: (item: string) => ResolvedTarget | null,
   itemType: string,
   updateOptions: UpdateOptions,
+  parsedNames: string[] | null,
 ): Record<string, unknown> | Record<string, unknown>[] {
   const results: Record<string, unknown>[] = [];
 
-  for (const item of items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i] as string;
     const resolved = resolveItem(item);
 
     if (!resolved) {
@@ -189,6 +191,7 @@ function updateMultipleTargets(
     // Merge resolution metadata (like isDrumPadPath) into options
     const optionsWithMetadata: UpdateOptions = {
       ...updateOptions,
+      name: getNameForIndex(updateOptions.name, i, parsedNames),
       isDrumPadPath: resolved.isDrumPadPath,
     };
 

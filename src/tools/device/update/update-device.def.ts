@@ -30,7 +30,12 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe("move to path (e.g., 't2', 't0/d0/c1', 't0/d0/pD1')"),
-    name: z.string().optional().describe("display name (not drum pads)"),
+    name: z
+      .string()
+      .optional()
+      .describe(
+        "display name (comma-separated when updating multiple, not drum pads)",
+      ),
     // Kept for potential future use
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: z
@@ -106,6 +111,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     descriptionOverrides: {
       path: "device path like 't0/d0' (track 0, device 0)",
       toPath: "destination path to move device to",
+      name: "display name (not drum pads)",
     },
   },
 });

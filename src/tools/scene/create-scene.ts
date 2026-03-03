@@ -5,6 +5,11 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { select } from "#src/tools/control/select.ts";
+import {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 import { captureScene } from "./capture-scene.ts";
 import {
   applyTempoProperty,
@@ -90,8 +95,10 @@ export function createScene(
   const createdScenes: SceneResult[] = [];
   let currentIndex = validatedSceneIndex;
 
-  const parsedNames = parseCommaSeparated(name, count);
+  const parsedNames = parseCommaSeparatedNames(name, count);
   const parsedColors = parseCommaSeparated(color, count);
+
+  warnExtraNames(parsedNames, count, "createScene");
 
   for (let i = 0; i < count; i++) {
     const sceneName = getNameForIndex(name, i, parsedNames);
@@ -243,26 +250,6 @@ function parseCommaSeparated(
   }
 
   return value.split(",").map((v) => v.trim());
-}
-
-/**
- * Get name for a specific scene index in a batch
- * @param baseName - Base name string
- * @param index - Current scene index in the batch
- * @param parsedNames - Comma-separated names (when count > 1), or null
- * @returns Scene name, or undefined if no name should be set
- */
-function getNameForIndex(
-  baseName: string | undefined,
-  index: number,
-  parsedNames: string[] | null,
-): string | undefined {
-  if (baseName == null) return;
-  if (parsedNames == null) return baseName;
-
-  return index < parsedNames.length
-    ? (parsedNames[index] as string)
-    : undefined;
 }
 
 /**

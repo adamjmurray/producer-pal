@@ -5,6 +5,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { warnExtraNames } from "#src/tools/shared/validation/name-utils.ts";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
 import {
@@ -208,6 +209,8 @@ function duplicateDeviceWithPaths(
 
   const parsedNames = parseCommaSeparatedNames(name, paths.length);
 
+  warnExtraNames(parsedNames, paths.length, "duplicate");
+
   return paths.map((path, i) =>
     duplicateDevice(object, path, getNameForIndex(name, i, parsedNames), 1),
   );
@@ -251,6 +254,8 @@ function duplicateTrackOrSceneWithCount(
   const createdObjects: object[] = [];
   const { withoutClips, withoutDevices, routeToSource } = params;
   const parsedNames = parseCommaSeparatedNames(name, count);
+
+  warnExtraNames(parsedNames, count, "duplicate");
 
   for (let i = 0; i < count; i++) {
     const result = duplicateTrackOrSceneToSession(
@@ -335,6 +340,8 @@ function duplicateSceneToArrangementAtPositions(
 
   const createdObjects: object[] = [];
   const parsedNames = parseCommaSeparatedNames(name, allPositions.length);
+
+  warnExtraNames(parsedNames, allPositions.length, "duplicate");
 
   for (let i = 0; i < allPositions.length; i++) {
     const result = duplicateSceneToArrangement(

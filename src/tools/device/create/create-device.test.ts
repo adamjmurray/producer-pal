@@ -13,6 +13,10 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "./create-device.ts";
 
+vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+  warn: vi.fn(),
+}));
+
 function registerTrack1WithDevice456(): void {
   registerMockObject("track-1", {
     path: livePath.track(1),
@@ -515,11 +519,11 @@ describe("createDevice", () => {
       expect(result).toStrictEqual({ id: "device123", deviceIndex: 2 });
     });
 
-    it("should warn and continue when one path fails", () => {
+    it("should warn and continue when one path fails", async () => {
       mockNonExistentObjects();
       registerTrack0WithDevice123();
 
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const mockConsole = await import("#src/shared/v8-max-console.ts");
 
       const result = createDevice({
         path: "t0,t99",
@@ -527,10 +531,9 @@ describe("createDevice", () => {
       });
 
       expect(result).toStrictEqual({ id: "device123", deviceIndex: 2 });
-      expect(warnSpy).toHaveBeenCalledWith(
+      expect(mockConsole.warn).toHaveBeenCalledWith(
         expect.stringContaining("Failed to create"),
       );
-      warnSpy.mockRestore();
     });
 
     it("should throw when all paths fail", () => {

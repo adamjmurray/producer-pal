@@ -23,6 +23,10 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .describe(
         "insertion path(s), required with deviceName, comma-separated for multiple (e.g., 't0' or 't0,t1,t0/d0/c0')",
       ),
+    name: z
+      .string()
+      .optional()
+      .describe("display name (comma-separated when creating multiple)"),
     focus: z
       .boolean()
       .optional()
@@ -34,6 +38,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     excludeParams: ["focus"],
     descriptionOverrides: {
       path: "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0')",
+      name: "display name",
     },
   },
 });

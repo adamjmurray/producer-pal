@@ -6,6 +6,11 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
+import {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 
 interface CreateTrackArgs {
   trackIndex?: number;
@@ -51,34 +56,6 @@ function createSingleTrack(
 }
 
 /**
- * Build track name with optional numbering
- * @param baseName - Base name for the track
- * @param count - Total number of tracks being created
- * @param index - Current track index in the batch
- * @param parsedNames - Comma-separated names (when count > 1)
- * @returns Track name
- */
-function buildTrackName(
-  baseName: string | undefined,
-  index: number,
-  parsedNames: string[] | null = null,
-): string | undefined {
-  if (baseName == null) return;
-
-  // If we have parsed names from comma-separated input
-  if (parsedNames != null) {
-    if (index < parsedNames.length) {
-      return parsedNames[index];
-    }
-
-    // No name for tracks beyond the comma-separated list
-    return;
-  }
-
-  return baseName;
-}
-
-/**
  * Get color for a specific track index, cycling through parsed colors
  * @param color - Original color string
  * @param index - Current track index
@@ -99,7 +76,7 @@ function getColorForIndex(
 /**
  * Parse comma-separated string when count > 1
  * @param value - Input string that may contain commas
- * @param count - Number of tracks being created
+ * @param count - Number of items being created
  * @returns Array of trimmed values, or null if not applicable
  */
 function parseCommaSeparated(
@@ -227,15 +204,17 @@ export function createTrack(
   const createdTracks: CreatedTrackResult[] = [];
   let currentIndex = effectiveTrackIndex;
 
-  const parsedNames = parseCommaSeparated(name, count);
+  const parsedNames = parseCommaSeparatedNames(name, count);
   const parsedColors = parseCommaSeparated(color, count);
+
+  warnExtraNames(parsedNames, count, "createTrack");
 
   for (let i = 0; i < count; i++) {
     const trackId = createSingleTrack(liveSet, type, currentIndex);
     const track = LiveAPI.from(`id ${trackId}`);
 
     track.setAll({
-      name: buildTrackName(name, i, parsedNames),
+      name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
       mute,
       solo,

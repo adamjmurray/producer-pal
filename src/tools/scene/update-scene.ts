@@ -10,6 +10,10 @@ import {
 } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
+  getNameForIndex,
+  parseNames,
+} from "#src/tools/shared/validation/name-utils.ts";
+import {
   applyTempoProperty,
   applyTimeSignatureProperty,
 } from "./scene-helpers.ts";
@@ -55,12 +59,17 @@ export function updateScene(
     skipInvalid: true,
   });
 
+  const parsedNames = parseNames(name, scenes.length, "updateScene");
+
   const updatedScenes: UpdateSceneResult[] = [];
 
-  for (const scene of scenes) {
+  for (let i = 0; i < scenes.length; i++) {
+    const scene = scenes[i] as LiveAPI;
+    const sceneName = getNameForIndex(name, i, parsedNames);
+
     // Update properties if provided
-    if (name != null) {
-      scene.set("name", name);
+    if (sceneName != null) {
+      scene.set("name", sceneName);
     }
 
     if (color != null) {

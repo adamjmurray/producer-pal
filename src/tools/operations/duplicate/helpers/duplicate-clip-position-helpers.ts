@@ -6,6 +6,11 @@ import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.t
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { resolveLocatorListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
+import {
   parseArrangementStartList,
   parseSlotList,
 } from "#src/tools/shared/validation/position-parsing.ts";
@@ -13,10 +18,6 @@ import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "./duplicate-helpers.ts";
-import {
-  parseCommaSeparatedNames,
-  getNameForIndex,
-} from "./duplicate-misc-helpers.ts";
 
 /**
  * Duplicates a clip to explicit positions
@@ -59,6 +60,8 @@ export function duplicateClipWithPositions(
 
     const parsedNames = parseCommaSeparatedNames(name, slots.length);
 
+    warnExtraNames(parsedNames, slots.length, "duplicate");
+
     for (let i = 0; i < slots.length; i++) {
       // bounded by slots.length
       const slot = slots[i] as { trackIndex: number; sceneIndex: number };
@@ -93,6 +96,8 @@ export function duplicateClipWithPositions(
     );
 
     const parsedNames = parseCommaSeparatedNames(name, positionsInBeats.length);
+
+    warnExtraNames(parsedNames, positionsInBeats.length, "duplicate");
 
     for (let i = 0; i < positionsInBeats.length; i++) {
       const result = duplicateClipToArrangement(
