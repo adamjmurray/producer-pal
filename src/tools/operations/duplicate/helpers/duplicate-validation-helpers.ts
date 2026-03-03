@@ -4,15 +4,14 @@
 
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { resolveLocatorListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
+import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 
 /**
  * Resolves arrangement positions from bar|beat or locator(s).
  * Supports comma-separated locator IDs and names for multiple positions.
  * @param liveSet - The live_set LiveAPI object
  * @param arrangementStart - Bar|beat position
- * @param locatorId - Arrangement locator ID(s), comma-separated
- * @param locatorName - Arrangement locator name(s), comma-separated
+ * @param locator - Arrangement locator ID(s) or name(s), comma-separated
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @returns Array of positions in beats
@@ -20,17 +19,12 @@ import { resolveLocatorListToBeats } from "#src/tools/shared/locator/locator-hel
 export function resolveArrangementPositions(
   liveSet: LiveAPI,
   arrangementStart: string | undefined,
-  locatorId: string | undefined,
-  locatorName: string | undefined,
+  locator: string | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number[] {
-  if (locatorId != null || locatorName != null) {
-    return resolveLocatorListToBeats(
-      liveSet,
-      { locatorId, locatorName },
-      "duplicate",
-    );
+  if (locator != null) {
+    return resolveLocatorRefListToBeats(liveSet, locator, "duplicate");
   }
 
   return [
@@ -118,22 +112,19 @@ export function validateAndConfigureRouteToSource(
  * Infers the duplication destination from the provided parameters
  * @param type - Type of object being duplicated
  * @param arrangementStart - Bar|beat position
- * @param locatorId - Locator ID
- * @param locatorName - Locator name
+ * @param locator - Locator ID or name
  * @param toSlot - Session clip slot
  * @returns Inferred destination
  */
 export function inferDestination(
   type: string,
   arrangementStart: string | undefined,
-  locatorId: string | undefined,
-  locatorName: string | undefined,
+  locator: string | undefined,
   toSlot: string | undefined,
 ): "session" | "arrangement" | undefined {
   const hasArrangementParams =
     (arrangementStart != null && arrangementStart.trim() !== "") ||
-    locatorId != null ||
-    locatorName != null;
+    locator != null;
 
   if (hasArrangementParams) {
     return "arrangement";
@@ -168,7 +159,7 @@ export function validateClipParameters(
 
   if (destination == null) {
     throw new Error(
-      "duplicate failed: clip requires toSlot (for session) or arrangementStart/locatorId/locatorName (for arrangement)",
+      "duplicate failed: clip requires toSlot (for session) or arrangementStart/locator (for arrangement)",
     );
   }
 
@@ -197,29 +188,23 @@ export function validateDestinationParameter(
  * Validates arrangement position params are mutually exclusive
  * @param destination - Inferred destination
  * @param arrangementStart - Start time in bar|beat format
- * @param locatorId - Arrangement locator ID(s) for position
- * @param locatorName - Arrangement locator name(s) for position
+ * @param locator - Arrangement locator ID(s) or name(s) for position
  */
 export function validateArrangementParameters(
   destination: string | undefined,
   arrangementStart: string | undefined,
-  locatorId: string | undefined,
-  locatorName: string | undefined,
+  locator: string | undefined,
 ): void {
   if (destination !== "arrangement") {
     return;
   }
 
   const hasStart = arrangementStart != null && arrangementStart.trim() !== "";
-  const hasLocatorId = locatorId != null;
-  const hasLocatorName = locatorName != null;
-  const positionCount = [hasStart, hasLocatorId, hasLocatorName].filter(
-    Boolean,
-  ).length;
+  const hasLocator = locator != null;
 
-  if (positionCount > 1) {
+  if (hasStart && hasLocator) {
     throw new Error(
-      "duplicate failed: arrangementStart, locatorId, and locatorName are mutually exclusive",
+      "duplicate failed: arrangementStart and locator are mutually exclusive",
     );
   }
 }

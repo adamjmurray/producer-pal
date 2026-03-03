@@ -85,9 +85,29 @@ function setupClipWithLocators(
   return setupTrackWithLocators(cuePoints);
 }
 
+/**
+ * Assert that a clip was duplicated to the arrangement at the given beat positions
+ * @param track - Mock track object
+ * @param sourceId - Source clip ID string (e.g., "id clip1")
+ * @param beats - Expected beat positions
+ */
+function expectDuplicatedAt(
+  track: RegisteredMockObject,
+  sourceId: string,
+  ...beats: number[]
+): void {
+  for (const beat of beats) {
+    expect(track.call).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      sourceId,
+      beat,
+    );
+  }
+}
+
 describe("duplicate - locator-based arrangement positioning", () => {
   describe("parameter validation", () => {
-    it("should throw error when arrangementStart and locatorId are both provided", () => {
+    it("should throw error when arrangementStart and locator are both provided", () => {
       registerMockObject("scene1", { path: livePath.scene(0) });
 
       expect(() =>
@@ -96,14 +116,14 @@ describe("duplicate - locator-based arrangement positioning", () => {
           id: "scene1",
 
           arrangementStart: "5|1",
-          locatorId: "locator-0",
+          locator: "locator-0",
         }),
       ).toThrow(
-        "duplicate failed: arrangementStart, locatorId, and locatorName are mutually exclusive",
+        "duplicate failed: arrangementStart and locator are mutually exclusive",
       );
     });
 
-    it("should throw error when arrangementStart and locatorName are both provided", () => {
+    it("should throw error when arrangementStart and locator name are both provided", () => {
       registerMockObject("scene1", { path: livePath.scene(0) });
 
       expect(() =>
@@ -112,26 +132,10 @@ describe("duplicate - locator-based arrangement positioning", () => {
           id: "scene1",
 
           arrangementStart: "5|1",
-          locatorName: "Verse",
+          locator: "Verse",
         }),
       ).toThrow(
-        "duplicate failed: arrangementStart, locatorId, and locatorName are mutually exclusive",
-      );
-    });
-
-    it("should throw error when locatorId and locatorName are both provided", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-
-      expect(() =>
-        duplicate({
-          type: "scene",
-          id: "scene1",
-
-          locatorId: "locator-0",
-          locatorName: "Verse",
-        }),
-      ).toThrow(
-        "duplicate failed: arrangementStart, locatorId, and locatorName are mutually exclusive",
+        "duplicate failed: arrangementStart and locator are mutually exclusive",
       );
     });
   });
@@ -148,19 +152,11 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-
-        locatorId: "locator-1",
+        locator: "locator-1",
       });
 
-      // Should duplicate at locator-1's position (16 beats = 5|1)
-      expect(track0.call).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        "id live_set/tracks/0/clip_slots/0/clip",
-        16,
-      );
-
+      expectDuplicatedAt(track0, "id live_set/tracks/0/clip_slots/0/clip", 16);
       expect(result).toHaveProperty("arrangementStart", "5|1");
-      expect(result).toHaveProperty("clips");
     });
 
     it("should duplicate a scene to arrangement at locator name position", () => {
@@ -175,17 +171,10 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-
-        locatorName: "Chorus",
+        locator: "Chorus",
       });
 
-      // Should duplicate at Chorus position (32 beats = 9|1)
-      expect(track0.call).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        "id live_set/tracks/0/clip_slots/0/clip",
-        32,
-      );
-
+      expectDuplicatedAt(track0, "id live_set/tracks/0/clip_slots/0/clip", 32);
       expect(result).toHaveProperty("arrangementStart", "9|1");
     });
   });
@@ -200,17 +189,10 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-
-        locatorId: "locator-1",
+        locator: "locator-1",
       });
 
-      // Should duplicate at locator-1's position (8 beats = 3|1)
-      expect(track0.call).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        "id clip1",
-        8,
-      );
-
+      expectDuplicatedAt(track0, "id clip1", 8);
       expect(result).toHaveProperty("arrangementStart", "3|1");
     });
 
@@ -220,20 +202,9 @@ describe("duplicate - locator-based arrangement positioning", () => {
         { time: 8, name: "Drop" },
       ]);
 
-      const result = duplicate({
-        type: "clip",
-        id: "clip1",
+      const result = duplicate({ type: "clip", id: "clip1", locator: "Drop" });
 
-        locatorName: "Drop",
-      });
-
-      // Should duplicate at Drop position (8 beats = 3|1)
-      expect(track0.call).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        "id clip1",
-        8,
-      );
-
+      expectDuplicatedAt(track0, "id clip1", 8);
       expect(result).toHaveProperty("arrangementStart", "3|1");
     });
   });
@@ -247,49 +218,37 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
     it("should duplicate a clip to multiple locator ID positions", () => {
       const track0 = setupClipWithLocators(multiCuePoints);
-
       const result = duplicate({
         type: "clip",
         id: "clip1",
-
-        locatorId: "locator-1, locator-2",
+        locator: "locator-1, locator-2",
       });
 
-      expect(track0.call).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        "id clip1",
-        8,
-      );
-      expect(track0.call).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        "id clip1",
-        16,
-      );
-
+      expectDuplicatedAt(track0, "id clip1", 8, 16);
       expect(result).toHaveLength(2);
     });
 
     it("should duplicate a clip to multiple locator name positions", () => {
       const track0 = setupClipWithLocators(multiCuePoints);
-
       const result = duplicate({
         type: "clip",
         id: "clip1",
-
-        locatorName: "Verse, Chorus",
+        locator: "Verse, Chorus",
       });
 
-      expect(track0.call).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        "id clip1",
-        8,
-      );
-      expect(track0.call).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        "id clip1",
-        16,
-      );
+      expectDuplicatedAt(track0, "id clip1", 8, 16);
+      expect(result).toHaveLength(2);
+    });
 
+    it("should duplicate a clip to mixed locator ID and name positions", () => {
+      const track0 = setupClipWithLocators(multiCuePoints);
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
+        locator: "locator-1, Chorus",
+      });
+
+      expectDuplicatedAt(track0, "id clip1", 8, 16);
       expect(result).toHaveLength(2);
     });
 
@@ -305,21 +264,15 @@ describe("duplicate - locator-based arrangement positioning", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-
-        locatorId: "locator-1, locator-2",
+        locator: "locator-1, locator-2",
       });
 
-      expect(track0.call).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
+      expectDuplicatedAt(
+        track0,
         "id live_set/tracks/0/clip_slots/0/clip",
         16,
-      );
-      expect(track0.call).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        "id live_set/tracks/0/clip_slots/0/clip",
         32,
       );
-
       expect(result).toHaveLength(2);
     });
   });
@@ -351,7 +304,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
           type: "scene",
           id: "scene1",
 
-          locatorId: "locator-5",
+          locator: "locator-5",
         }),
       ).toThrow("duplicate failed: locator not found: locator-5");
     });
@@ -364,7 +317,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
           type: "scene",
           id: "scene1",
 
-          locatorName: "NonExistent",
+          locator: "NonExistent",
         }),
       ).toThrow('duplicate failed: no locator found with name "NonExistent"');
     });

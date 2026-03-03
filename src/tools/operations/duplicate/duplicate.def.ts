@@ -9,7 +9,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate",
   description:
     "Duplicate an object.\n" +
-    "Supports tracks, scenes, clips, and devices. Use count for multiple track/scene copies; arrangementStart, locatorId/locatorName, or toSlot for clip placement.",
+    "Supports tracks, scenes, clips, and devices. Use count for multiple track/scene copies; arrangementStart, locator, or toSlot for clip placement.",
 
   annotations: {
     readOnlyHint: false,
@@ -45,17 +45,11 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "arrangement bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1')",
       ),
-    locatorId: z.coerce
+    locator: z.coerce
       .string()
       .optional()
       .describe(
-        "arrangement locator ID(s), comma-separated for multiple (e.g., 'locator-0' or 'locator-0,locator-2')",
-      ),
-    locatorName: z
-      .string()
-      .optional()
-      .describe(
-        "arrangement locator name(s), comma-separated for multiple (e.g., 'Verse' or 'Verse,Chorus')",
+        "arrangement locator ID(s) or name(s), comma-separated for multiple (e.g., 'locator-0' or 'Verse' or 'locator-0,Chorus')",
       ),
     arrangementLength: z
       .string()
@@ -97,8 +91,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       "count",
       "withoutClips",
       "withoutDevices",
-      "locatorId",
-      "locatorName",
+      "locator",
       "routeToSource",
       "focus",
     ],

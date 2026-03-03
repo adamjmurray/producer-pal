@@ -29,15 +29,12 @@ interface PlaybackActionParams {
 interface PlaybackArgs {
   action?: string;
   startTime?: string;
-  startLocatorId?: string;
-  startLocatorName?: string;
+  startLocator?: string;
   loop?: boolean;
   loopStart?: string;
-  loopStartLocatorId?: string;
-  loopStartLocatorName?: string;
+  loopStartLocator?: string;
   loopEnd?: string;
-  loopEndLocatorId?: string;
-  loopEndLocatorName?: string;
+  loopEndLocator?: string;
   sceneIndex?: number;
   clipIds?: string;
   focus?: boolean;
@@ -65,15 +62,12 @@ interface BuildPlaybackResultParams {
  * @param args - The parameters
  * @param args.action - Action to perform
  * @param args.startTime - Position in bar|beat format
- * @param args.startLocatorId - Locator ID for start position
- * @param args.startLocatorName - Locator name for start position
+ * @param args.startLocator - Locator ID or name for start position
  * @param args.loop - Enable/disable arrangement loop
  * @param args.loopStart - Loop start position in bar|beat format
- * @param args.loopStartLocatorId - Locator ID for loop start
- * @param args.loopStartLocatorName - Locator name for loop start
+ * @param args.loopStartLocator - Locator ID or name for loop start
  * @param args.loopEnd - Loop end position in bar|beat format
- * @param args.loopEndLocatorId - Locator ID for loop end
- * @param args.loopEndLocatorName - Locator name for loop end
+ * @param args.loopEndLocator - Locator ID or name for loop end
  * @param args.sceneIndex - Scene index for Session view operations
  * @param args.clipIds - Comma-separated clip IDs for Session view operations
  * @param args.focus - Switch to arrangement or session view based on action
@@ -84,15 +78,12 @@ export function playback(
   {
     action,
     startTime,
-    startLocatorId,
-    startLocatorName,
+    startLocator,
     loop,
     loopStart,
-    loopStartLocatorId,
-    loopStartLocatorName,
+    loopStartLocator,
     loopEnd,
-    loopEndLocatorId,
-    loopEndLocatorName,
+    loopEndLocator,
     sceneIndex,
     clipIds,
     focus,
@@ -104,24 +95,9 @@ export function playback(
   }
 
   // Validate mutual exclusivity of time and locator parameters
-  validateLocatorOrTime(
-    startTime,
-    startLocatorId,
-    startLocatorName,
-    "startTime",
-  );
-  validateLocatorOrTime(
-    loopStart,
-    loopStartLocatorId,
-    loopStartLocatorName,
-    "loopStart",
-  );
-  validateLocatorOrTime(
-    loopEnd,
-    loopEndLocatorId,
-    loopEndLocatorName,
-    "loopEnd",
-  );
+  validateLocatorOrTime(startTime, startLocator, "startTime");
+  validateLocatorOrTime(loopStart, loopStartLocator, "loopStart");
+  validateLocatorOrTime(loopEnd, loopEndLocator, "loopEnd");
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -136,7 +112,7 @@ export function playback(
   // Resolve start time from bar|beat or locator
   const { startTimeBeats, useLocatorStart } = resolveStartTime(
     liveSet,
-    { startTime, startLocatorId, startLocatorName },
+    { startTime, startLocator },
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -148,7 +124,7 @@ export function playback(
   // Resolve loop start from bar|beat or locator
   const loopStartBeats = resolveLoopStart(
     liveSet,
-    { loopStart, loopStartLocatorId, loopStartLocatorName },
+    { loopStart, loopStartLocator },
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -156,7 +132,7 @@ export function playback(
   // Resolve loop end from bar|beat or locator
   resolveLoopEnd(
     liveSet,
-    { loopEnd, loopEndLocatorId, loopEndLocatorName },
+    { loopEnd, loopEndLocator },
     loopStartBeats,
     songTimeSigNumerator,
     songTimeSigDenominator,

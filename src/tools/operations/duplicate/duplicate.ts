@@ -35,8 +35,7 @@ interface DuplicateArgs {
   count?: number;
 
   arrangementStart?: string;
-  locatorId?: string;
-  locatorName?: string;
+  locator?: string;
   arrangementLength?: string;
   name?: string;
   withoutClips?: boolean;
@@ -49,8 +48,7 @@ interface DuplicateArgs {
 
 interface DuplicateParams {
   arrangementStart?: string;
-  locatorId?: string;
-  locatorName?: string;
+  locator?: string;
   arrangementLength?: string;
   withoutClips?: boolean;
   withoutDevices?: boolean;
@@ -64,8 +62,7 @@ interface DuplicateParams {
  * @param args.id - Object ID
  * @param args.count - Number of duplicates
  * @param args.arrangementStart - Arrangement start position
- * @param args.locatorId - Arrangement locator ID(s)
- * @param args.locatorName - Arrangement locator name(s)
+ * @param args.locator - Arrangement locator ID(s) or name(s)
  * @param args.arrangementLength - Arrangement length
  * @param args.name - Name for duplicates
  * @param args.withoutClips - Exclude clips
@@ -83,8 +80,7 @@ export function duplicate(
     id,
     count = 1,
     arrangementStart,
-    locatorId,
-    locatorName,
+    locator,
     arrangementLength,
     name,
     withoutClips,
@@ -114,13 +110,7 @@ export function duplicate(
   const object = validateIdType(id, type, "duplicate");
 
   // Infer destination from position parameters
-  const destination = inferDestination(
-    type,
-    arrangementStart,
-    locatorId,
-    locatorName,
-    toSlot,
-  );
+  const destination = inferDestination(type, arrangementStart, locator, toSlot);
 
   // Validate clip-specific parameters
   validateClipParameters(type, destination, toSlot);
@@ -129,12 +119,7 @@ export function duplicate(
   validateDestinationParameter(type, destination);
 
   // Validate arrangement parameters
-  validateArrangementParameters(
-    destination,
-    arrangementStart,
-    locatorId,
-    locatorName,
-  );
+  validateArrangementParameters(destination, arrangementStart, locator);
 
   // Handle device duplication (supports comma-separated toPath for multiple destinations)
   if (type === "device") {
@@ -151,8 +136,7 @@ export function duplicate(
           name,
           toSlot,
           arrangementStart,
-          locatorId,
-          locatorName,
+          locator,
           arrangementLength,
           context,
         )
@@ -165,8 +149,7 @@ export function duplicate(
           name,
           {
             arrangementStart,
-            locatorId,
-            locatorName,
+            locator,
             arrangementLength,
             withoutClips,
             withoutDevices,
@@ -285,7 +268,7 @@ function duplicateTrackOrSceneWithCount(
  * @param id - Scene ID
  * @param count - Number of copies (for sequential placement from a single position)
  * @param name - Base name for duplicated objects
- * @param params - Arrangement parameters (arrangementStart, locatorId, locatorName, etc.)
+ * @param params - Arrangement parameters (arrangementStart, locator, etc.)
  * @param context - Context object
  * @returns Array of result objects
  */
@@ -297,8 +280,7 @@ function duplicateSceneToArrangementAtPositions(
   params: DuplicateParams,
   context: Partial<ToolContext>,
 ): object[] {
-  const { arrangementStart, locatorId, locatorName, arrangementLength } =
-    params;
+  const { arrangementStart, locator, arrangementLength } = params;
   const withoutClips = params.withoutClips;
 
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -313,8 +295,7 @@ function duplicateSceneToArrangementAtPositions(
   const positions = resolveArrangementPositions(
     liveSet,
     arrangementStart,
-    locatorId,
-    locatorName,
+    locator,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );

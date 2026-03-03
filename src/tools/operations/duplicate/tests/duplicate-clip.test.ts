@@ -15,7 +15,7 @@ describe("duplicate - clip duplication", () => {
       path: livePath.track(0).clipSlot(0).clip(),
     });
     expect(() => duplicate({ type: "clip", id: "clip1" })).toThrow(
-      "duplicate failed: clip requires toSlot (for session) or arrangementStart/locatorId/locatorName (for arrangement)",
+      "duplicate failed: clip requires toSlot (for session) or arrangementStart/locator (for arrangement)",
     );
   });
 
