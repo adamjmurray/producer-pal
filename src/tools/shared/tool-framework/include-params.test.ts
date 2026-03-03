@@ -12,57 +12,39 @@ import {
   READ_CLIP_DEFAULTS,
 } from "./include-params.ts";
 
+const ALL_FLAGS_FALSE = {
+  includeDrumMap: false,
+  includeClipNotes: false,
+  includeScenes: false,
+  includeMidiEffects: false,
+  includeInstruments: false,
+  includeAudioEffects: false,
+  includeDevices: false,
+  includeRoutings: false,
+  includeAvailableRoutings: false,
+  includeSessionClips: false,
+  includeArrangementClips: false,
+  includeClips: false,
+  includeTracks: false,
+  includeSample: false,
+  includeColor: false,
+  includeTiming: false,
+  includeWarp: false,
+  includeMixer: false,
+  includeLocators: false,
+};
+
 describe("parseIncludeArray", () => {
   it("returns all defaults when include is undefined", () => {
     const result = parseIncludeArray(undefined, READ_SONG_DEFAULTS);
 
-    expect(result).toStrictEqual({
-      includeDrumMap: false,
-      includeClipNotes: false,
-      includeScenes: false,
-      includeMidiEffects: false,
-      includeInstruments: false,
-      includeAudioEffects: false,
-      includeDevices: false,
-      includeRoutings: false,
-      includeAvailableRoutings: false,
-      includeSessionClips: false,
-      includeArrangementClips: false,
-      includeClips: false,
-      includeTracks: false,
-      includeSample: false,
-      includeColor: false,
-      includeTiming: false,
-      includeWarp: false,
-      includeMixer: false,
-      includeLocators: false,
-    });
+    expect(result).toStrictEqual(ALL_FLAGS_FALSE);
   });
 
   it("returns all false when include is an empty array", () => {
     const result = parseIncludeArray([], READ_SONG_DEFAULTS);
 
-    expect(result).toStrictEqual({
-      includeDrumMap: false,
-      includeClipNotes: false,
-      includeScenes: false,
-      includeMidiEffects: false,
-      includeInstruments: false,
-      includeAudioEffects: false,
-      includeDevices: false,
-      includeRoutings: false,
-      includeAvailableRoutings: false,
-      includeSessionClips: false,
-      includeArrangementClips: false,
-      includeClips: false,
-      includeTracks: false,
-      includeSample: false,
-      includeColor: false,
-      includeTiming: false,
-      includeWarp: false,
-      includeMixer: false,
-      includeLocators: false,
-    });
+    expect(result).toStrictEqual(ALL_FLAGS_FALSE);
   });
 
   it("handles specific include options", () => {
