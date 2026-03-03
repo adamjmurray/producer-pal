@@ -4,6 +4,7 @@
 
 import { render } from "preact";
 import { App } from "#webui/components/App";
+import { DemoMode } from "#webui/demo/DemoMode";
 import "./main.css";
 
 const appElement = document.getElementById("app");
@@ -12,4 +13,6 @@ if (!appElement) {
   throw new Error("Could not find #app element");
 }
 
-render(<App />, appElement);
+const isDemo = new URLSearchParams(window.location.search).has("demo");
+
+render(isDemo ? <DemoMode /> : <App />, appElement);
