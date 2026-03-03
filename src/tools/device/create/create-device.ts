@@ -2,9 +2,14 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
 import { select } from "#src/tools/control/select.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
+import {
+  parseCommaSeparatedIds,
+  unwrapSingleResult,
+} from "#src/tools/shared/utils.ts";
 
 interface CreateDeviceArgs {
   deviceName?: string;
@@ -40,15 +45,15 @@ function validateDeviceName(deviceName: string): void {
  * Creates a native Live device on a track or chain, or lists available devices
  * @param args - The device parameters
  * @param args.deviceName - Device name, omit to list available devices
- * @param args.path - Device path (required when deviceName provided)
+ * @param args.path - Device path(s), comma-separated for multiple (required when deviceName provided)
  * @param args.focus - Select the device and show device detail view
  * @param _context - Internal context object (unused)
- * @returns Device list, or object with deviceId and deviceIndex
+ * @returns Device list, or object(s) with deviceId and deviceIndex
  */
 export function createDevice(
   { deviceName, path, focus }: CreateDeviceArgs = {},
   _context: Partial<ToolContext> = {},
-): typeof VALID_DEVICES | CreateDeviceResult {
+): typeof VALID_DEVICES | CreateDeviceResult | CreateDeviceResult[] {
   // List mode: return valid devices when deviceName is omitted
   if (deviceName == null) {
     return VALID_DEVICES;
@@ -56,19 +61,55 @@ export function createDevice(
 
   validateDeviceName(deviceName);
 
-  if (path == null) {
+  const paths = parseCommaSeparatedIds(path);
+
+  if (paths.length === 0) {
     throw new Error(
       "createDevice failed: path is required when creating a device",
     );
   }
 
-  const result = createDeviceAtPath(deviceName, path);
+  const results = createDevicesAtPaths(deviceName, paths);
 
-  if (focus) {
-    select({ deviceId: result.id, detailView: "device" });
+  if (focus && results.length > 0) {
+    const lastResult = results.at(-1) as CreateDeviceResult;
+
+    select({ deviceId: lastResult.id, detailView: "device" });
   }
 
-  return result;
+  return unwrapSingleResult(results);
+}
+
+/**
+ * Create device at multiple paths, collecting results
+ * @param deviceName - Device name
+ * @param paths - Array of device paths
+ * @returns Array of results for successfully created devices
+ */
+function createDevicesAtPaths(
+  deviceName: string,
+  paths: string[],
+): CreateDeviceResult[] {
+  const results: CreateDeviceResult[] = [];
+
+  for (const p of paths) {
+    try {
+      results.push(createDeviceAtPath(deviceName, p));
+    } catch (error) {
+      if (paths.length === 1) throw error;
+      console.warn(
+        `Failed to create "${deviceName}" at path "${p}": ${errorMessage(error)}`,
+      );
+    }
+  }
+
+  if (results.length === 0) {
+    throw new Error(
+      `createDevice failed: could not create "${deviceName}" at any of the specified paths`,
+    );
+  }
+
+  return results;
 }
 
 /**

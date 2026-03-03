@@ -13,6 +13,22 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { createDevice } from "./create-device.ts";
 
+function registerTrack1WithDevice456(): void {
+  registerMockObject("track-1", {
+    path: livePath.track(1),
+    methods: { insert_device: () => ["id", "device456"] },
+  });
+  registerMockObject("device456", { path: livePath.track(1).device(0) });
+}
+
+function registerTrack0WithDevice123(): void {
+  registerMockObject("track-0", {
+    path: livePath.track(0),
+    methods: { insert_device: () => ["id", "device123"] },
+  });
+  registerMockObject("device123", { path: livePath.track(0).device(2) });
+}
+
 describe("createDevice", () => {
   let track0: RegisteredMockObject;
   let chain0: RegisteredMockObject;
@@ -475,6 +491,65 @@ describe("createDevice", () => {
     });
   });
 
+  describe("multi-path creation", () => {
+    it("should create device at multiple paths", () => {
+      registerTrack1WithDevice456();
+
+      const result = createDevice({
+        path: "t0,t1",
+        deviceName: "Compressor",
+      });
+
+      expect(result).toStrictEqual([
+        { id: "device123", deviceIndex: 2 },
+        { id: "device456", deviceIndex: 0 },
+      ]);
+    });
+
+    it("should return single result for single path (backward compatible)", () => {
+      const result = createDevice({
+        path: "t0",
+        deviceName: "Compressor",
+      });
+
+      expect(result).toStrictEqual({ id: "device123", deviceIndex: 2 });
+    });
+
+    it("should warn and continue when one path fails", () => {
+      mockNonExistentObjects();
+      registerTrack0WithDevice123();
+
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      const result = createDevice({
+        path: "t0,t99",
+        deviceName: "Compressor",
+      });
+
+      expect(result).toStrictEqual({ id: "device123", deviceIndex: 2 });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Failed to create"),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it("should throw when all paths fail", () => {
+      mockNonExistentObjects();
+
+      expect(() =>
+        createDevice({ path: "t98,t99", deviceName: "Compressor" }),
+      ).toThrow("could not create");
+    });
+
+    it("should re-throw when single path fails", () => {
+      mockNonExistentObjects();
+
+      expect(() =>
+        createDevice({ path: "t99", deviceName: "Compressor" }),
+      ).toThrow("createDevice failed");
+    });
+  });
+
   describe("focus functionality", () => {
     let selectMock: ReturnType<typeof vi.fn>;
 
@@ -501,6 +576,22 @@ describe("createDevice", () => {
       createDevice({ deviceName: "EQ Eight", path: "t0", focus: false });
 
       expect(selectMock).not.toHaveBeenCalled();
+    });
+
+    it("should focus last device when multi-path with focus=true", () => {
+      registerTrack1WithDevice456();
+
+      createDevice({
+        deviceName: "Compressor",
+        path: "t0,t1",
+        focus: true,
+      });
+
+      expect(selectMock).toHaveBeenCalledTimes(1);
+      expect(selectMock).toHaveBeenCalledWith({
+        deviceId: "device456",
+        detailView: "device",
+      });
     });
 
     it("should not call select in list mode", () => {
