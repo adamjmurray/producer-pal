@@ -10,7 +10,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
   description:
     "Create MIDI or audio clip(s).\n" +
-    "Requires sceneIndex (session) or arrangementStart (arrangement).\n" +
+    "Requires sceneIndex (session) and/or arrangementStart (arrangement).\n" +
     "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. ",
   annotations: {
     readOnlyHint: false,

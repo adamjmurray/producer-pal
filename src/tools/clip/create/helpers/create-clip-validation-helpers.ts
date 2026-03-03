@@ -7,31 +7,19 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 
 /**
- * Infers the view from position parameters
+ * Validates that at least one position parameter is provided
  * @param sceneIndices - Parsed scene indices
  * @param arrangementStarts - Parsed arrangement start positions
- * @returns Inferred view: "session" or "arrangement"
  */
-export function inferView(
+export function validatePositions(
   sceneIndices: number[],
   arrangementStarts: string[],
-): "session" | "arrangement" {
-  const hasScene = sceneIndices.length > 0;
-  const hasArrangement = arrangementStarts.length > 0;
-
-  if (hasScene && hasArrangement) {
-    throw new Error(
-      "createClip failed: cannot specify both sceneIndex and arrangementStart",
-    );
-  }
-
-  if (!hasScene && !hasArrangement) {
+): void {
+  if (sceneIndices.length === 0 && arrangementStarts.length === 0) {
     throw new Error(
       "createClip failed: sceneIndex or arrangementStart is required",
     );
   }
-
-  return hasScene ? "session" : "arrangement";
 }
 
 /**

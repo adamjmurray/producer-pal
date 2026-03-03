@@ -19,14 +19,6 @@ describe("createClip - basic validation and time signatures", () => {
     );
   });
 
-  it("should throw error when both sceneIndex and arrangementStart are provided", async () => {
-    await expect(
-      createClip({ trackIndex: 0, sceneIndex: "0", arrangementStart: "1|1" }),
-    ).rejects.toThrow(
-      "createClip failed: cannot specify both sceneIndex and arrangementStart",
-    );
-  });
-
   it("should throw error for invalid sceneIndex format", async () => {
     await expect(
       createClip({

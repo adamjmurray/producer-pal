@@ -28,8 +28,8 @@ import {
 import {
   calculateClipLength,
   handleAutoPlayback,
-  inferView,
   validateCreateClipParams,
+  validatePositions,
 } from "./helpers/create-clip-validation-helpers.ts";
 
 export interface CreateClipArgs {
@@ -122,8 +122,8 @@ export async function createClip(
   const sceneIndices = parseSceneIndexList(sceneIndex);
   const arrangementStarts = parseArrangementStartList(arrangementStart);
 
-  // Infer view from position parameters
-  const view = inferView(sceneIndices, arrangementStarts);
+  // Validate at least one position type is provided
+  validatePositions(sceneIndices, arrangementStarts);
 
   // Validate parameters
   validateCreateClipParams(notationString, sampleFile);
@@ -185,36 +185,43 @@ export async function createClip(
     timeSigDenominator,
   );
 
-  // Create clips (and apply code to each clip inline)
-  const createdClips = await createClips(
-    view,
-    trackIndex,
-    sceneIndices,
-    arrangementStarts,
-    name,
-    initialClipLength,
-    liveSet,
-    startBeats,
-    endBeats,
-    firstStartBeats,
-    looping,
-    color,
-    timeSigNumerator,
-    timeSigDenominator,
-    notationString,
-    notes,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-    length,
-    sampleFile,
-    deadline,
-    code,
-    transformedCount,
-  );
+  // Create session clips first, then arrangement (order gives arrangement focus priority)
+  const clipsForView = (view: "session" | "arrangement") =>
+    createClips(
+      view,
+      trackIndex,
+      sceneIndices,
+      arrangementStarts,
+      name,
+      initialClipLength,
+      liveSet,
+      startBeats,
+      endBeats,
+      firstStartBeats,
+      looping,
+      color,
+      timeSigNumerator,
+      timeSigDenominator,
+      notationString,
+      notes,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      length,
+      sampleFile,
+      deadline,
+      code,
+      transformedCount,
+    );
 
-  // Handle automatic playback and view switching
-  handleAutoPlayback(auto, view, sceneIndices, trackIndex);
+  const sessionClips = await clipsForView("session");
+  const arrangementClips = await clipsForView("arrangement");
+  const createdClips = [...sessionClips, ...arrangementClips];
 
+  // Handle automatic playback (session clips only, guard inside handles no-op)
+  handleAutoPlayback(auto, "session", sceneIndices, trackIndex);
+
+  // Focus last created clip: arrangement clips are after session clips,
+  // so arrangement gets priority (the arrangement is where the final song lives)
   if (focus && createdClips.length > 0) {
     const lastClip = createdClips.at(-1) as { id: string };
 
@@ -225,8 +232,8 @@ export async function createClip(
 }
 
 /**
- * Creates clips by iterating over positions
- * @param view - View type
+ * Creates clips by iterating over positions for a single view
+ * @param view - View type ("session" or "arrangement")
  * @param trackIndex - Track index
  * @param sceneIndices - Array of scene indices (session view)
  * @param arrangementStarts - Array of bar|beat positions (arrangement view)

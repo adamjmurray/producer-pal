@@ -12,6 +12,7 @@ import {
   expectNotesAdded,
   note,
   setupArrangementClipMocks,
+  setupDualMocks,
   setupSessionMocks,
 } from "./create-clip-test-helpers.ts";
 
@@ -248,6 +249,51 @@ describe("createClip - advanced features", () => {
       expect(selectMock).toHaveBeenCalledTimes(1);
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(2);
+    });
+
+    it("should focus arrangement clip when both session and arrangement are specified", async () => {
+      setupDualMocks();
+
+      await createClip({
+        trackIndex: 0,
+        sceneIndex: "0",
+        arrangementStart: "1|1",
+        focus: true,
+      });
+
+      // Arrangement clip gets focus priority over session clip
+      expect(selectMock).toHaveBeenCalledWith({
+        clipId: "arrangement_clip",
+        detailView: "clip",
+      });
+      expect(selectMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("dual session and arrangement creation", () => {
+    it("should create clips in both session and arrangement", async () => {
+      setupDualMocks();
+
+      const result = await createClip({
+        trackIndex: 0,
+        sceneIndex: "0",
+        arrangementStart: "1|1",
+      });
+
+      expect(Array.isArray(result)).toBe(true);
+      const clips = result as object[];
+
+      expect(clips).toHaveLength(2);
+      expect(clips[0]).toStrictEqual({
+        id: "live_set/tracks/0/clip_slots/0/clip",
+        trackIndex: 0,
+        sceneIndex: 0,
+      });
+      expect(clips[1]).toStrictEqual({
+        id: "arrangement_clip",
+        trackIndex: 0,
+        arrangementStart: "1|1",
+      });
     });
   });
 });
