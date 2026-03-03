@@ -7,7 +7,9 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefDelete = defineTool("ppal-delete", {
   title: "Delete",
-  description: "Deletes objects",
+  description:
+    "Deletes objects.\n" +
+    "Supports tracks, scenes, clips, devices, and drum pads. Use ids for most types; path for devices/drum pads.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

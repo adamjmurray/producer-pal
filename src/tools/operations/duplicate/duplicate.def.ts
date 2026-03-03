@@ -7,7 +7,9 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate",
-  description: "Duplicate an object",
+  description:
+    "Duplicate an object.\n" +
+    "Supports tracks, scenes, clips, and devices. Use count for multiple track/scene copies; arrangementStart, locatorId/locatorName, or toSlot for clip placement.",
 
   annotations: {
     readOnlyHint: false,
@@ -58,9 +60,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     arrangementLength: z
       .string()
       .optional()
-      .describe(
-        "duration (beats or bar:beat) in arrangement, auto-fills with loops",
-      ),
+      .describe("duration in bar:beat (e.g., '4:0'), auto-fills with loops"),
     toSlot: z
       .string()
       .optional()
@@ -90,6 +90,9 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       ),
   },
   smallModelModeConfig: {
+    toolDescription:
+      "Duplicate an object.\n" +
+      "Supports tracks, scenes, clips, and devices. Use arrangementStart or toSlot for clip placement; toPath for devices.",
     excludeParams: [
       "count",
       "withoutClips",

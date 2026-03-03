@@ -46,7 +46,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     timeSignature: z
       .string()
       .optional()
-      .describe(`N/D (4/4), default: global time signature)`),
+      .describe(`N/D (4/4), default: global time signature`),
 
     start: z
       .string()
@@ -57,7 +57,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "duration in bar:beat format (default: next full bar after latest note)",
+        "duration in bar:beat (e.g., '4:0'), default: next full bar after latest note",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),

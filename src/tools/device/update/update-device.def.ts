@@ -74,7 +74,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
 
     mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
-    color: z.string().optional().describe("color #RRGGBB (chains only)"),
+    color: z.string().optional().describe("#RRGGBB (chains only)"),
     chokeGroup: z.coerce
       .number()
       .int()

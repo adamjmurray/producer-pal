@@ -29,7 +29,7 @@ Returns overview by default. Use include to add detail.`,
       )
       .default([])
       .describe(
-        'tracks, scenes = lists. routings, mixer, color = track detail (use with tracks). locators = arrangement markers. "*" = all',
+        'tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes). locators = arrangement markers. "*" = all',
       ),
   },
 });
