@@ -18,7 +18,10 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
       .string()
       .optional()
       .describe("name (comma-separated when updating multiple)"),
-    color: z.string().optional().describe("#RRGGBB"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when updating multiple, cycles)"),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
     timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
     focus: z
@@ -32,6 +35,7 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     excludeParams: ["focus"],
     descriptionOverrides: {
       name: "scene name",
+      color: "#RRGGBB",
     },
   },
 });

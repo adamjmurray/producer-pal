@@ -22,7 +22,10 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe("clip name (comma-separated when updating multiple)"),
-    color: z.string().optional().describe("#RRGGBB"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when updating multiple, cycles)"),
     timeSignature: z.string().optional().describe("N/D (4/4)"),
 
     // Clip region and loop settings
@@ -201,6 +204,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     ],
     descriptionOverrides: {
       name: "clip name",
+      color: "#RRGGBB",
     },
   },
 });

@@ -150,6 +150,7 @@ export function getMinimalClipInfo(
  * @param name - Optional name for the clips
  * @param omitFields - Optional fields to omit from clip info
  * @param context - Context object with holdingAreaStartBeats and silenceWavPath
+ * @param color - Optional color for the clips
  * @returns Array of minimal clip info objects
  */
 export function createClipsForLength(
@@ -160,6 +161,7 @@ export function createClipsForLength(
   name?: string,
   omitFields: string[] = [],
   context: Partial<ToolContext & TilingContext> = {},
+  color?: string,
 ): MinimalClipInfo[] {
   const sourceClipLength = sourceClip.getProperty("length") as number;
   const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;
@@ -189,7 +191,7 @@ export function createClipsForLength(
       context as TilingContext,
     );
 
-    if (name != null) newClip.set("name", name);
+    newClip.setAll({ name, color });
     duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
   } else {
     // Case 2: Lengthening or exact length - delegate to update-clip (handles looped/unlooped, MIDI/audio, etc.)
@@ -220,7 +222,7 @@ export function createClipsForLength(
         duplicatedClips,
       );
     } else {
-      if (name != null) newClip.set("name", name);
+      newClip.setAll({ name, color });
       duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
     }
   }
@@ -288,6 +290,7 @@ function lengthenClipAndCollectInfo(
  * @param toTrackIndex - Destination track index
  * @param toSceneIndex - Destination scene index
  * @param name - Optional name for the duplicated clip
+ * @param color - Optional color for the duplicated clip
  * @returns Minimal clip info object
  */
 export function duplicateClipSlot(
@@ -296,6 +299,7 @@ export function duplicateClipSlot(
   toTrackIndex: number,
   toSceneIndex: number,
   name?: string,
+  color?: string,
 ): MinimalClipInfo {
   // Get source clip slot
   const sourceClipSlot = LiveAPI.from(
@@ -333,9 +337,7 @@ export function duplicateClipSlot(
     livePath.track(toTrackIndex).clipSlot(toSceneIndex).clip(),
   );
 
-  if (name != null) {
-    newClip.set("name", name);
-  }
+  newClip.setAll({ name, color });
 
   // Return the new clip info directly
   return getMinimalClipInfo(newClip);
@@ -346,6 +348,7 @@ export function duplicateClipSlot(
  * @param clipId - Clip ID to duplicate
  * @param arrangementStartBeats - Start position in beats
  * @param name - Optional name for the duplicated clip(s)
+ * @param color - Optional color for the duplicated clip(s)
  * @param arrangementLength - Optional length in bar:beat format
  * @param _songTimeSigNumerator - Song time signature numerator (unused but kept for API compat)
  * @param _songTimeSigDenominator - Song time signature denominator (unused but kept for API compat)
@@ -356,6 +359,7 @@ export function duplicateClipToArrangement(
   clipId: string,
   arrangementStartBeats: number,
   name?: string,
+  color?: string,
   arrangementLength?: string,
   _songTimeSigNumerator = 4,
   _songTimeSigDenominator = 4,
@@ -401,6 +405,7 @@ export function duplicateClipToArrangement(
       name,
       ["trackIndex"],
       context,
+      color,
     );
 
     duplicatedClips.push(...clipsCreated);
@@ -422,9 +427,7 @@ export function duplicateClipToArrangement(
     ) as string;
     const newClip = LiveAPI.from(newClipResult);
 
-    newClip.setAll({
-      name: name,
-    });
+    newClip.setAll({ name, color });
 
     duplicatedClips.push(getMinimalClipInfo(newClip));
   }

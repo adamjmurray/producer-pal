@@ -7,6 +7,10 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
 import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
+import {
   getNameForIndex,
   parseCommaSeparatedNames,
   warnExtraNames,
@@ -53,41 +57,6 @@ function createSingleTrack(
 
   // Live API returns ["id", "123"]
   return assertDefined((result as string[])[1], "track id from result");
-}
-
-/**
- * Get color for a specific track index, cycling through parsed colors
- * @param color - Original color string
- * @param index - Current track index
- * @param parsedColors - Comma-separated colors (when count > 1)
- * @returns Color for this track
- */
-function getColorForIndex(
-  color: string | undefined,
-  index: number,
-  parsedColors: string[] | null,
-): string | undefined {
-  if (color == null) return;
-  if (parsedColors == null) return color;
-
-  return parsedColors[index % parsedColors.length];
-}
-
-/**
- * Parse comma-separated string when count > 1
- * @param value - Input string that may contain commas
- * @param count - Number of items being created
- * @returns Array of trimmed values, or null if not applicable
- */
-function parseCommaSeparated(
-  value: string | undefined,
-  count: number,
-): string[] | null {
-  if (count <= 1 || !value?.includes(",")) {
-    return null;
-  }
-
-  return value.split(",").map((v) => v.trim());
 }
 
 /**
@@ -205,7 +174,7 @@ export function createTrack(
   let currentIndex = effectiveTrackIndex;
 
   const parsedNames = parseCommaSeparatedNames(name, count);
-  const parsedColors = parseCommaSeparated(color, count);
+  const parsedColors = parseCommaSeparatedColors(color, count);
 
   warnExtraNames(parsedNames, count, "createTrack");
 

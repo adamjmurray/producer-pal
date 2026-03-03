@@ -8,6 +8,10 @@ import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
@@ -60,21 +64,23 @@ export function updateScene(
   });
 
   const parsedNames = parseNames(name, scenes.length, "updateScene");
+  const parsedColors = parseCommaSeparatedColors(color, scenes.length);
 
   const updatedScenes: UpdateSceneResult[] = [];
 
   for (let i = 0; i < scenes.length; i++) {
     const scene = scenes[i] as LiveAPI;
     const sceneName = getNameForIndex(name, i, parsedNames);
+    const sceneColor = getColorForIndex(color, i, parsedColors);
 
     // Update properties if provided
     if (sceneName != null) {
       scene.set("name", sceneName);
     }
 
-    if (color != null) {
-      scene.setColor(color);
-      verifyColorQuantization(scene, color);
+    if (sceneColor != null) {
+      scene.setColor(sceneColor);
+      verifyColorQuantization(scene, sceneColor);
     }
 
     applyTempoProperty(scene, tempo);

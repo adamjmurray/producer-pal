@@ -44,6 +44,7 @@ vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.ts"), () => ({
         id: clipId,
         path: clipId,
         set: vi.fn(),
+        setAll: vi.fn(),
         getProperty: vi.fn((prop: string) => {
           if (prop === "is_arrangement_clip") {
             return 1;
@@ -153,7 +154,7 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
 
-      duplicateTrack(0, undefined, false, true);
+      duplicateTrack(0, undefined, undefined, false, true);
 
       expectDeleteDeviceCalls(newTrack, 3);
     });
@@ -177,7 +178,7 @@ describe("duplicate-track-scene-helpers", () => {
         properties: { has_clip: 0 },
       });
 
-      duplicateTrack(0, undefined, true);
+      duplicateTrack(0, undefined, undefined, true);
 
       // Should delete arrangement clips on the track
       expect(newTrack.call).toHaveBeenCalledWith("delete_clip", "id arrClip0");
@@ -219,7 +220,7 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
 
-      duplicateTrack(0, undefined, false, false, true, 0);
+      duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
       // Should arm source track
       expect(sourceTrack.set).toHaveBeenCalledWith("arm", 1);
@@ -279,7 +280,7 @@ describe("duplicate-track-scene-helpers", () => {
         [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
-      duplicateTrack(0, undefined, false, false, true, 0);
+      duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
       expect(outlet).not.toHaveBeenCalledWith(
         1,
@@ -293,7 +294,7 @@ describe("duplicate-track-scene-helpers", () => {
         [{ display_name: "Other Track", identifier: "other_track_id" }],
       );
 
-      duplicateTrack(0, undefined, false, false, true, 0);
+      duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -312,7 +313,7 @@ describe("duplicate-track-scene-helpers", () => {
         ],
       );
 
-      duplicateTrack(0, undefined, false, false, true, 0);
+      duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -335,7 +336,7 @@ describe("duplicate-track-scene-helpers", () => {
         [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
-      duplicateTrack(0, undefined, false, false, true, 0);
+      duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -357,7 +358,7 @@ describe("duplicate-track-scene-helpers", () => {
         [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
 
-      duplicateTrack(0, undefined, false, false, true, 0);
+      duplicateTrack(0, undefined, undefined, false, false, true, 0);
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -381,7 +382,7 @@ describe("duplicate-track-scene-helpers", () => {
         properties: { has_clip: 1 },
       });
 
-      duplicateTrack(0, undefined, true);
+      duplicateTrack(0, undefined, undefined, true);
 
       expect(slot0.call).toHaveBeenCalledWith("delete_clip");
     });
@@ -413,7 +414,7 @@ describe("duplicate-track-scene-helpers", () => {
         },
       });
 
-      const result = duplicateTrack(0, undefined, false); // withoutClips=false (default)
+      const result = duplicateTrack(0, undefined, undefined, false); // withoutClips=false (default)
 
       // Should collect arrangement clips
       expect(result.clips.length).toBeGreaterThan(0);
@@ -473,7 +474,7 @@ describe("duplicate-track-scene-helpers", () => {
       });
       registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
-      const result = duplicateScene(0, undefined, true);
+      const result = duplicateScene(0, undefined, undefined, true);
 
       expect(result.clips).toHaveLength(0);
 

@@ -6,6 +6,10 @@ import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.t
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
+import {
   getNameForIndex,
   parseCommaSeparatedNames,
   warnExtraNames,
@@ -25,6 +29,7 @@ import {
  * @param object - Live API object to duplicate
  * @param id - ID of the object
  * @param name - Base name for duplicated clips
+ * @param color - Color for duplicated clips (cycles if comma-separated)
  * @param toSlot - Destination clip slot(s) in trackIndex/sceneIndex format
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
  * @param locator - Arrangement locator ID(s) or name(s) for position
@@ -37,6 +42,7 @@ export function duplicateClipWithPositions(
   object: LiveAPI,
   id: string,
   name: string | undefined,
+  color: string | undefined,
   toSlot: string | undefined,
   arrangementStart: string | undefined,
   locator: string | undefined,
@@ -57,6 +63,7 @@ export function duplicateClipWithPositions(
     }
 
     const parsedNames = parseCommaSeparatedNames(name, slots.length);
+    const parsedColors = parseCommaSeparatedColors(color, slots.length);
 
     warnExtraNames(parsedNames, slots.length, "duplicate");
 
@@ -69,6 +76,7 @@ export function duplicateClipWithPositions(
         slot.trackIndex,
         slot.sceneIndex,
         getNameForIndex(name, i, parsedNames),
+        getColorForIndex(color, i, parsedColors),
       );
 
       createdObjects.push(result);
@@ -93,6 +101,10 @@ export function duplicateClipWithPositions(
     );
 
     const parsedNames = parseCommaSeparatedNames(name, positionsInBeats.length);
+    const parsedColors = parseCommaSeparatedColors(
+      color,
+      positionsInBeats.length,
+    );
 
     warnExtraNames(parsedNames, positionsInBeats.length, "duplicate");
 
@@ -101,6 +113,7 @@ export function duplicateClipWithPositions(
         id,
         positionsInBeats[i] as number,
         getNameForIndex(name, i, parsedNames),
+        getColorForIndex(color, i, parsedColors),
         arrangementLength,
         songTimeSigNumerator,
         songTimeSigDenominator,

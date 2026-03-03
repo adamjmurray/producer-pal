@@ -6,6 +6,10 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { select } from "#src/tools/control/select.ts";
 import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
+import {
   getNameForIndex,
   parseCommaSeparatedNames,
   warnExtraNames,
@@ -96,7 +100,7 @@ export function createScene(
   let currentIndex = validatedSceneIndex;
 
   const parsedNames = parseCommaSeparatedNames(name, count);
-  const parsedColors = parseCommaSeparated(color, count);
+  const parsedColors = parseCommaSeparatedColors(color, count);
 
   warnExtraNames(parsedNames, count, "createScene");
 
@@ -233,39 +237,4 @@ function createSingleScene(
     id: scene.id,
     sceneIndex,
   };
-}
-
-/**
- * Parse comma-separated string when count > 1
- * @param value - Input string that may contain commas
- * @param count - Number of scenes being created
- * @returns Array of trimmed values, or null if not applicable
- */
-function parseCommaSeparated(
-  value: string | undefined,
-  count: number,
-): string[] | null {
-  if (count <= 1 || !value?.includes(",")) {
-    return null;
-  }
-
-  return value.split(",").map((v) => v.trim());
-}
-
-/**
- * Get color for a specific scene index, cycling through parsed colors
- * @param color - Original color string
- * @param index - Current scene index in the batch
- * @param parsedColors - Comma-separated colors (when count > 1), or null
- * @returns Color for this scene, or undefined
- */
-function getColorForIndex(
-  color: string | undefined,
-  index: number,
-  parsedColors: string[] | null,
-): string | undefined {
-  if (color == null) return;
-  if (parsedColors == null) return color;
-
-  return parsedColors[index % parsedColors.length] as string;
 }

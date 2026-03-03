@@ -26,6 +26,10 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe("name (comma-separated when duplicating multiple)"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when duplicating multiple, cycles)"),
 
     count: z.coerce
       .number()
@@ -97,6 +101,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     ],
     descriptionOverrides: {
       name: "name",
+      color: "#RRGGBB",
       arrangementStart: "arrangement bar|beat position (e.g., '1|1')",
       toSlot:
         "session destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",

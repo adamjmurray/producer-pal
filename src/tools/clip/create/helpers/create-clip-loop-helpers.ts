@@ -11,6 +11,7 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { getColorForIndex } from "#src/tools/shared/validation/color-utils.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-utils.ts";
 import { processClipIteration } from "./create-clip-helpers.ts";
 import { calculateClipLength } from "./create-clip-validation-helpers.ts";
@@ -22,6 +23,7 @@ export interface CreateClipsParams {
   arrangementStarts: string[];
   baseName: string | null;
   parsedNames: string[] | null;
+  parsedColors: string[] | null;
   nameStartIndex: number;
   initialClipLength: number;
   liveSet: LiveAPI;
@@ -58,6 +60,7 @@ export async function createClips(
     arrangementStarts,
     baseName,
     parsedNames,
+    parsedColors,
     nameStartIndex,
     liveSet,
     startBeats,
@@ -96,6 +99,11 @@ export async function createClips(
       nameStartIndex + i,
       parsedNames,
     );
+    const clipColor = getColorForIndex(
+      color ?? undefined,
+      nameStartIndex + i,
+      parsedColors,
+    );
 
     // Get position for this iteration
     let currentSceneIndex: number | null = null;
@@ -127,7 +135,7 @@ export async function createClips(
         firstStartBeats,
         looping,
         clipName,
-        color,
+        clipColor ?? null,
         timeSigNumerator,
         timeSigDenominator,
         notationString,

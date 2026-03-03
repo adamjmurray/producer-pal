@@ -23,7 +23,10 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       .describe(
         "name (comma-separated when updating multiple), ideally unique",
       ),
-    color: z.string().optional().describe("#RRGGBB"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when updating multiple, cycles)"),
     gainDb: z.coerce
       .number()
       .min(-70)
@@ -109,6 +112,7 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     ],
     descriptionOverrides: {
       name: "name, ideally unique",
+      color: "#RRGGBB",
     },
   },
 });

@@ -14,6 +14,10 @@ import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
@@ -124,6 +128,7 @@ export function updateDevice(
   } else {
     const items = parseCommaSeparatedIds(path ?? ids);
     const parsedNames = parseNames(name, items.length, "updateDevice");
+    const parsedColors = parseCommaSeparatedColors(color, items.length);
 
     const updateOptions: UpdateOptions = {
       toPath,
@@ -146,6 +151,7 @@ export function updateDevice(
       path ? "path" : "id",
       updateOptions,
       parsedNames,
+      parsedColors,
     );
   }
 
@@ -168,6 +174,7 @@ export function updateDevice(
  * @param itemType - "path" or "id" for error messages
  * @param updateOptions - Options to pass to updateTarget
  * @param parsedNames - Comma-separated names array, or null
+ * @param parsedColors - Comma-separated colors array, or null
  * @returns Single result or array of results
  */
 function updateMultipleTargets(
@@ -176,6 +183,7 @@ function updateMultipleTargets(
   itemType: string,
   updateOptions: UpdateOptions,
   parsedNames: string[] | null,
+  parsedColors: string[] | null,
 ): Record<string, unknown> | Record<string, unknown>[] {
   const results: Record<string, unknown>[] = [];
 
@@ -192,6 +200,7 @@ function updateMultipleTargets(
     const optionsWithMetadata: UpdateOptions = {
       ...updateOptions,
       name: getNameForIndex(updateOptions.name, i, parsedNames),
+      color: getColorForIndex(updateOptions.color, i, parsedColors),
       isDrumPadPath: resolved.isDrumPadPath,
     };
 
@@ -411,61 +420,50 @@ function updateNonDeviceProperties(
   type: string,
   options: UpdateOptions,
 ): void {
-  const {
-    params,
-    macroVariation,
-    macroVariationIndex,
-    macroCount,
-    abCompare,
-    mute,
-    solo,
-    color,
-    chokeGroup,
-    mappedPitch,
-  } = options;
-
   // Warn for device-only properties
-  warnIfSet("params", params, type);
-  warnIfSet("macroVariation", macroVariation, type);
-  warnIfSet("macroVariationIndex", macroVariationIndex, type);
-  warnIfSet("macroCount", macroCount, type);
-  warnIfSet("abCompare", abCompare, type);
+  warnIfSet("params", options.params, type);
+  warnIfSet("macroVariation", options.macroVariation, type);
+  warnIfSet("macroVariationIndex", options.macroVariationIndex, type);
+  warnIfSet("macroCount", options.macroCount, type);
+  warnIfSet("abCompare", options.abCompare, type);
 
   // Mute/solo work on Chain, DrumChain, DrumPad
-  if (mute != null) {
-    target.set("mute", mute ? 1 : 0);
+  if (options.mute != null) {
+    target.set("mute", options.mute ? 1 : 0);
   }
 
-  if (solo != null) {
-    target.set("solo", solo ? 1 : 0);
+  if (options.solo != null) {
+    target.set("solo", options.solo ? 1 : 0);
   }
 
   // Color works on Chain and DrumChain (not DrumPad)
   if (isChainType(type)) {
-    if (color != null) {
-      target.setColor(color);
+    if (options.color != null) {
+      target.setColor(options.color);
     }
   } else {
-    warnIfSet("color", color, type);
+    warnIfSet("color", options.color, type);
   }
 
   // DrumChain only: chokeGroup, mappedPitch
   if (type === "DrumChain") {
-    if (chokeGroup != null) {
-      target.set("choke_group", chokeGroup);
+    if (options.chokeGroup != null) {
+      target.set("choke_group", options.chokeGroup);
     }
 
-    if (mappedPitch != null) {
-      const midiNote = noteNameToMidi(mappedPitch);
+    if (options.mappedPitch != null) {
+      const midiNote = noteNameToMidi(options.mappedPitch);
 
       if (midiNote != null) {
         target.set("out_note", midiNote);
       } else {
-        console.warn(`updateDevice: invalid note name "${mappedPitch}"`);
+        console.warn(
+          `updateDevice: invalid note name "${options.mappedPitch}"`,
+        );
       }
     }
   } else {
-    warnIfSet("chokeGroup", chokeGroup, type);
-    warnIfSet("mappedPitch", mappedPitch, type);
+    warnIfSet("chokeGroup", options.chokeGroup, type);
+    warnIfSet("mappedPitch", options.mappedPitch, type);
   }
 }

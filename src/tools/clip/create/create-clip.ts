@@ -10,6 +10,7 @@ import {
   parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
+import { parseCommaSeparatedColors } from "#src/tools/shared/validation/color-utils.ts";
 import {
   parseCommaSeparatedNames,
   warnExtraNames,
@@ -170,14 +171,12 @@ export async function createClip(
     timeSigDenominator,
   );
 
-  // Parse comma-separated names for multi-clip creation
-  const totalPositionCount = sceneIndices.length + arrangementStarts.length;
-  const parsedNames = parseCommaSeparatedNames(
-    name ?? undefined,
-    totalPositionCount,
+  // Parse comma-separated names/colors for multi-clip creation
+  const { parsedNames, parsedColors } = parseMultiClipParams(
+    name,
+    color,
+    sceneIndices.length + arrangementStarts.length,
   );
-
-  warnExtraNames(parsedNames, totalPositionCount, "createClip");
 
   // Create session clips first, then arrangement (order gives arrangement focus priority)
   const clipsForView = (
@@ -191,6 +190,7 @@ export async function createClip(
       arrangementStarts,
       baseName: name,
       parsedNames,
+      parsedColors,
       nameStartIndex,
       initialClipLength,
       liveSet,
@@ -231,6 +231,32 @@ export async function createClip(
   }
 
   return unwrapSingleResult(createdClips);
+}
+
+/**
+ * Parse comma-separated names and colors for multi-clip creation
+ * @param name - Name parameter (may contain commas)
+ * @param color - Color parameter (may contain commas)
+ * @param totalPositionCount - Total number of clip positions
+ * @returns Parsed names and colors arrays
+ */
+function parseMultiClipParams(
+  name: string | null,
+  color: string | null,
+  totalPositionCount: number,
+): { parsedNames: string[] | null; parsedColors: string[] | null } {
+  const parsedNames = parseCommaSeparatedNames(
+    name ?? undefined,
+    totalPositionCount,
+  );
+  const parsedColors = parseCommaSeparatedColors(
+    color ?? undefined,
+    totalPositionCount,
+  );
+
+  warnExtraNames(parsedNames, totalPositionCount, "createClip");
+
+  return { parsedNames, parsedColors };
 }
 
 /**

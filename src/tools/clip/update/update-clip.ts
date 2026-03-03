@@ -23,6 +23,10 @@ import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
@@ -152,6 +156,7 @@ export async function updateClip(
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
   const parsedNames = parseNames(name, mutableClips.length, "updateClip");
+  const parsedColors = parseCommaSeparatedColors(color, mutableClips.length);
   const updatedClips: ClipResult[] = [];
   const tracksWithMovedClips = new Map<number, number>();
 
@@ -175,7 +180,7 @@ export async function updateClip(
       transformString,
       noteUpdateMode,
       name: getNameForIndex(name, i, parsedNames),
-      color,
+      color: getColorForIndex(color, i, parsedColors),
       timeSignature,
       start,
       length,

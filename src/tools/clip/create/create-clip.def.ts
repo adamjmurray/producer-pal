@@ -41,7 +41,10 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "clip name (comma-separated when creating multiple, indexed: session positions first, then arrangement)",
       ),
 
-    color: z.string().optional().describe("#RRGGBB"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when creating multiple, cycles)"),
 
     timeSignature: z
       .string()
@@ -116,6 +119,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       sceneIndex: "session clip scene index",
       arrangementStart: "arrangement clip bar|beat position (e.g., '1|1')",
       name: "clip name",
+      color: "#RRGGBB",
     },
   },
 });

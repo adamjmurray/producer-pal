@@ -4,6 +4,10 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { warnExtraNames } from "#src/tools/shared/validation/name-utils.ts";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
@@ -38,6 +42,7 @@ interface DuplicateArgs {
   locator?: string;
   arrangementLength?: string;
   name?: string;
+  color?: string;
   withoutClips?: boolean;
   withoutDevices?: boolean;
   routeToSource?: boolean;
@@ -65,6 +70,7 @@ interface DuplicateParams {
  * @param args.locator - Arrangement locator ID(s) or name(s)
  * @param args.arrangementLength - Arrangement length
  * @param args.name - Name for duplicates
+ * @param args.color - Color for duplicates (cycles if comma-separated)
  * @param args.withoutClips - Exclude clips
  * @param args.withoutDevices - Exclude devices
  * @param args.routeToSource - Route to source
@@ -83,6 +89,7 @@ export function duplicate(
     locator,
     arrangementLength,
     name,
+    color,
     withoutClips,
     withoutDevices,
     routeToSource,
@@ -134,6 +141,7 @@ export function duplicate(
           object,
           id,
           name,
+          color,
           toSlot,
           arrangementStart,
           locator,
@@ -147,6 +155,7 @@ export function duplicate(
           id,
           count,
           name,
+          color,
           {
             arrangementStart,
             locator,
@@ -207,6 +216,7 @@ function duplicateDeviceWithPaths(
  * @param id - ID of the object
  * @param count - Number of duplicates to create
  * @param name - Base name for duplicated objects
+ * @param color - Color for duplicated objects (cycles if comma-separated)
  * @param params - Additional parameters
  * @param context - Context object with holdingAreaStartBeats
  * @returns Array of result objects
@@ -218,6 +228,7 @@ function duplicateTrackOrSceneWithCount(
   id: string,
   count: number,
   name: string | undefined,
+  color: string | undefined,
   params: DuplicateParams,
   context: Partial<ToolContext>,
 ): object[] {
@@ -237,6 +248,7 @@ function duplicateTrackOrSceneWithCount(
   const createdObjects: object[] = [];
   const { withoutClips, withoutDevices, routeToSource } = params;
   const parsedNames = parseCommaSeparatedNames(name, count);
+  const parsedColors = parseCommaSeparatedColors(color, count);
 
   warnExtraNames(parsedNames, count, "duplicate");
 
@@ -247,6 +259,7 @@ function duplicateTrackOrSceneWithCount(
       id,
       i,
       getNameForIndex(name, i, parsedNames),
+      getColorForIndex(color, i, parsedColors),
       withoutClips,
       withoutDevices,
       routeToSource,
@@ -349,6 +362,7 @@ function duplicateSceneToArrangementAtPositions(
  * @param id - ID of the object
  * @param i - Current duplicate index
  * @param objectName - Name for the duplicated object
+ * @param objectColor - Color for the duplicated object
  * @param withoutClips - Whether to exclude clips
  * @param withoutDevices - Whether to exclude devices
  * @param routeToSource - Whether to route to source track
@@ -360,6 +374,7 @@ function duplicateTrackOrSceneToSession(
   id: string,
   i: number,
   objectName: string | undefined,
+  objectColor: string | undefined,
   withoutClips: boolean | undefined,
   withoutDevices: boolean | undefined,
   routeToSource: boolean | undefined,
@@ -378,6 +393,7 @@ function duplicateTrackOrSceneToSession(
     return duplicateTrack(
       actualTrackIndex,
       objectName,
+      objectColor,
       withoutClips,
       withoutDevices,
       routeToSource,
@@ -394,6 +410,11 @@ function duplicateTrackOrSceneToSession(
 
     const actualSceneIndex = sceneIndex + i;
 
-    return duplicateScene(actualSceneIndex, objectName, withoutClips);
+    return duplicateScene(
+      actualSceneIndex,
+      objectName,
+      objectColor,
+      withoutClips,
+    );
   }
 }

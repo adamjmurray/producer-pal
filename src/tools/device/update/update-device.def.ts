@@ -74,7 +74,12 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
 
     mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
     solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
-    color: z.string().optional().describe("#RRGGBB (chains only)"),
+    color: z
+      .string()
+      .optional()
+      .describe(
+        "#RRGGBB (comma-separated when updating multiple, cycles; chains only)",
+      ),
     chokeGroup: z.coerce
       .number()
       .int()
@@ -112,6 +117,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       path: "device path like 't0/d0' (track 0, device 0)",
       toPath: "destination path to move device to",
       name: "display name (not drum pads)",
+      color: "#RRGGBB (chains only)",
     },
   },
 });
