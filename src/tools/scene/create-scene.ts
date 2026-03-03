@@ -34,7 +34,7 @@ interface CreateSceneArgs {
   color?: string;
   tempo?: number | null;
   timeSignature?: string | null;
-  switchView?: boolean;
+  focus?: boolean;
 }
 
 /**
@@ -47,7 +47,7 @@ interface CreateSceneArgs {
  * @param args.color - Color for the scenes (CSS format: hex)
  * @param args.tempo - Tempo in BPM for the scenes. Pass -1 to disable.
  * @param args.timeSignature - Time signature in format "4/4". Pass "disabled" to disable.
- * @param args.switchView - Automatically switch to session view
+ * @param args.focus - Switch to session view and select the scene
  * @param _context - Internal context object (unused)
  * @returns Single scene object when count=1, array when count>1
  */
@@ -60,7 +60,7 @@ export function createScene(
     color,
     tempo,
     timeSignature,
-    switchView,
+    focus,
   }: CreateSceneArgs = {},
   _context: Partial<ToolContext> = {},
 ): SceneResult | SceneResult[] | CaptureSceneResult {
@@ -70,8 +70,8 @@ export function createScene(
 
     applyCaptureProperties(result, { color, tempo, timeSignature });
 
-    if (switchView) {
-      select({ view: "session" });
+    if (focus) {
+      select({ view: "session", sceneId: result.id });
     }
 
     return result;
@@ -110,8 +110,10 @@ export function createScene(
     currentIndex++;
   }
 
-  if (switchView) {
-    select({ view: "session" });
+  if (focus && createdScenes.length > 0) {
+    const lastScene = createdScenes.at(-1) as SceneResult;
+
+    select({ view: "session", sceneId: lastScene.id });
   }
 
   return count === 1 ? (createdScenes[0] as SceneResult) : createdScenes;

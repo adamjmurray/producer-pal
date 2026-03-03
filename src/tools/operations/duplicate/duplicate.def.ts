@@ -81,12 +81,12 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "route new track to source's instrument? (for MIDI layering/polyrhythms)",
       ),
 
-    switchView: z
+    focus: z
       .boolean()
       .optional()
       .default(false)
       .describe(
-        "switch to arrangement view for arrangement duplications, or session view for scenes/session clips",
+        "focus duplicated clip/scene (select + detail view for clips, session view for scenes)",
       ),
   },
   smallModelModeConfig: {
@@ -97,7 +97,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       "locatorId",
       "locatorName",
       "routeToSource",
-      "switchView",
+      "focus",
     ],
     descriptionOverrides: {
       name: "name",

@@ -474,4 +474,39 @@ describe("createDevice", () => {
       });
     });
   });
+
+  describe("focus functionality", () => {
+    let selectMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(async () => {
+      vi.mock(import("#src/tools/control/select.ts"), () => ({
+        select: vi.fn(),
+      }));
+      const selectModule = await import("#src/tools/control/select.ts");
+
+      selectMock = selectModule.select as ReturnType<typeof vi.fn>;
+      selectMock.mockClear();
+    });
+
+    it("should select device and show device detail when focus=true", () => {
+      createDevice({ deviceName: "EQ Eight", path: "t0", focus: true });
+
+      expect(selectMock).toHaveBeenCalledWith({
+        deviceId: "device123",
+        detailView: "device",
+      });
+    });
+
+    it("should not call select when focus=false", () => {
+      createDevice({ deviceName: "EQ Eight", path: "t0", focus: false });
+
+      expect(selectMock).not.toHaveBeenCalled();
+    });
+
+    it("should not call select in list mode", () => {
+      createDevice({});
+
+      expect(selectMock).not.toHaveBeenCalled();
+    });
+  });
 });

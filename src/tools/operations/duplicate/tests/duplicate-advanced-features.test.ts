@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
@@ -13,7 +13,9 @@ import {
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 
-let appView: RegisteredMockObject;
+vi.mock(import("#src/tools/control/select.ts"), () => ({
+  select: vi.fn(),
+}));
 
 describe("duplicate - routeToSource with duplicate track names", () => {
   it("should handle duplicate track names without crashing", () => {
@@ -174,14 +176,17 @@ describe("duplicate - routeToSource with duplicate track names", () => {
   });
 });
 
-describe("duplicate - switchView functionality", () => {
-  beforeEach(() => {
-    appView = registerMockObject("app-view", {
-      path: livePath.view.app,
-    });
+describe("duplicate - focus functionality", () => {
+  let selectMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(async () => {
+    const selectModule = await import("#src/tools/control/select.ts");
+
+    selectMock = selectModule.select as ReturnType<typeof vi.fn>;
+    selectMock.mockClear();
   });
 
-  it("should switch to arrangement view when duplicating to arrangement destination", () => {
+  it("should select clip and show clip detail when duplicating to arrangement", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
       properties: { length: 4 },
@@ -206,13 +211,16 @@ describe("duplicate - switchView functionality", () => {
       type: "clip",
       id: "clip1",
       arrangementStart: "1|1",
-      switchView: true,
+      focus: true,
     });
 
-    expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
+    expect(selectMock).toHaveBeenCalledWith({
+      clipId: livePath.track(0).arrangementClip(0),
+      detailView: "clip",
+    });
   });
 
-  it("should switch to session view when duplicating to session destination", () => {
+  it("should select clip and show clip detail when duplicating to session", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
@@ -235,29 +243,29 @@ describe("duplicate - switchView functionality", () => {
     duplicate({
       type: "clip",
       id: "clip1",
-      switchView: true,
+      focus: true,
       toSlot: "0/1",
     });
 
-    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+    expect(selectMock).toHaveBeenCalledWith({
+      clipId: expect.any(String),
+      detailView: "clip",
+    });
   });
 
-  it("should not switch view when duplicating tracks", () => {
-    setupTrackForSwitchView();
+  it("should not call select when duplicating tracks", () => {
+    setupTrackForFocus();
 
     duplicate({
       type: "track",
       id: "track1",
-      switchView: true,
+      focus: true,
     });
 
-    expect(appView.call).not.toHaveBeenCalledWith(
-      "show_view",
-      expect.anything(),
-    );
+    expect(selectMock).not.toHaveBeenCalled();
   });
 
-  it("should switch to session view when duplicating scenes", () => {
+  it("should select scene in session view when duplicating scenes", () => {
     registerMockObject("scene1", { path: livePath.scene(0) });
     registerMockObject("live_set", {
       path: livePath.liveSet,
@@ -272,29 +280,29 @@ describe("duplicate - switchView functionality", () => {
     duplicate({
       type: "scene",
       id: "scene1",
-      switchView: true,
+      focus: true,
     });
 
-    expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+    expect(selectMock).toHaveBeenCalledWith({
+      view: "session",
+      sceneId: expect.any(String),
+    });
   });
 
-  it("should not switch views when switchView=false", () => {
-    setupTrackForSwitchView();
+  it("should not call select when focus=false", () => {
+    setupTrackForFocus();
 
     duplicate({
       type: "track",
       id: "track1",
-      switchView: false,
+      focus: false,
     });
 
-    expect(appView.call).not.toHaveBeenCalledWith(
-      "show_view",
-      expect.anything(),
-    );
+    expect(selectMock).not.toHaveBeenCalled();
   });
 
-  it("should not switch view for multiple track duplicates when switchView=true", () => {
-    setupTrackForSwitchView();
+  it("should not call select for multiple track duplicates when focus=true", () => {
+    setupTrackForFocus();
     // Register second new track for count=2
     registerMockObject("live_set/tracks/2", {
       path: livePath.track(2),
@@ -305,13 +313,10 @@ describe("duplicate - switchView functionality", () => {
       type: "track",
       id: "track1",
       count: 2,
-      switchView: true,
+      focus: true,
     });
 
-    expect(appView.call).not.toHaveBeenCalledWith(
-      "show_view",
-      expect.anything(),
-    );
+    expect(selectMock).not.toHaveBeenCalled();
     expect(result).toHaveLength(2);
   });
 });
@@ -371,10 +376,10 @@ describe("duplicate - comma-separated names", () => {
 });
 
 /**
- * Helper to set up common mocks for track switchView tests
+ * Helper to set up common mocks for track focus tests
  * @returns The new track mock object handle
  */
-function setupTrackForSwitchView(): RegisteredMockObject {
+function setupTrackForFocus(): RegisteredMockObject {
   registerMockObject("track1", { path: livePath.track(0) });
   registerMockObject("live_set", { path: livePath.liveSet });
 

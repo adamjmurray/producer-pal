@@ -23,5 +23,14 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .describe(
         "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0')",
       ),
+    focus: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("select the device and show device detail view"),
+  },
+
+  smallModelModeConfig: {
+    excludeParams: ["focus"],
   },
 });

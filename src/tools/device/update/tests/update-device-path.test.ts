@@ -13,7 +13,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
-import { updateDevice } from "./update-device.ts";
+import { updateDevice } from "../update-device.ts";
 
 describe("updateDevice with path parameter", () => {
   it("should throw error when neither ids nor path is provided", () => {

@@ -8,7 +8,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { updateDevice } from "./update-device.ts";
+import { updateDevice } from "../update-device.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("updateDevice - Chain and DrumPad support", () => {

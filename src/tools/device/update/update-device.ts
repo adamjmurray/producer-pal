@@ -5,6 +5,7 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { select } from "#src/tools/control/select.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
@@ -52,6 +53,7 @@ interface UpdateDeviceArgs extends UpdateProperties {
   ids?: string;
   path?: string;
   wrapInRack?: boolean;
+  focus?: boolean;
 }
 
 interface UpdateOptions extends UpdateProperties {
@@ -81,6 +83,7 @@ interface ResolvedTarget {
  * @param args.chokeGroup - Choke group 0-16 (drum chains only)
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
+ * @param args.focus - Select the device and show device detail view
  * @param _context - Internal context object (unused)
  * @returns Updated object info(s)
  */
@@ -101,48 +104,62 @@ export function updateDevice(
     chokeGroup,
     mappedPitch,
     wrapInRack,
+    focus,
   }: UpdateDeviceArgs,
   _context: Partial<ToolContext> = {},
 ): Record<string, unknown> | Record<string, unknown>[] | null {
   validateExclusiveParams(ids, path, "ids", "path");
 
+  let result: Record<string, unknown> | Record<string, unknown>[] | null;
+
   if (wrapInRack) {
-    return wrapDevicesInRack({ ids, path, toPath, name }) as Record<
+    result = wrapDevicesInRack({ ids, path, toPath, name }) as Record<
       string,
       unknown
     > | null;
+  } else {
+    const updateOptions: UpdateOptions = {
+      toPath,
+      name,
+      params,
+      macroVariation,
+      macroVariationIndex,
+      macroCount,
+      abCompare,
+      mute,
+      solo,
+      color,
+      chokeGroup,
+      mappedPitch,
+    };
+
+    if (path) {
+      result = updateMultipleTargets(
+        parseCommaSeparatedIds(path),
+        resolvePathToTargetSafe,
+        "path",
+        updateOptions,
+      );
+    } else {
+      result = updateMultipleTargets(
+        parseCommaSeparatedIds(ids),
+        resolveIdToTarget,
+        "id",
+        updateOptions,
+      );
+    }
   }
 
-  const updateOptions: UpdateOptions = {
-    toPath,
-    name,
-    params,
-    macroVariation,
-    macroVariationIndex,
-    macroCount,
-    abCompare,
-    mute,
-    solo,
-    color,
-    chokeGroup,
-    mappedPitch,
-  };
+  if (focus && result != null) {
+    const lastResult = Array.isArray(result) ? result.at(-1) : result;
+    const lastId = lastResult?.id as string | undefined;
 
-  if (path) {
-    return updateMultipleTargets(
-      parseCommaSeparatedIds(path),
-      resolvePathToTargetSafe,
-      "path",
-      updateOptions,
-    );
+    if (lastId) {
+      select({ deviceId: lastId, detailView: "device" });
+    }
   }
 
-  return updateMultipleTargets(
-    parseCommaSeparatedIds(ids),
-    resolveIdToTarget,
-    "id",
-    updateOptions,
-  );
+  return result;
 }
 
 /**

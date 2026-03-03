@@ -3,11 +3,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
+import { select } from "#src/tools/control/select.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 
 interface CreateDeviceArgs {
   deviceName?: string;
   path?: string;
+  focus?: boolean;
 }
 
 interface CreateDeviceResult {
@@ -39,11 +41,12 @@ function validateDeviceName(deviceName: string): void {
  * @param args - The device parameters
  * @param args.deviceName - Device name, omit to list available devices
  * @param args.path - Device path (required when deviceName provided)
+ * @param args.focus - Select the device and show device detail view
  * @param _context - Internal context object (unused)
  * @returns Device list, or object with deviceId and deviceIndex
  */
 export function createDevice(
-  { deviceName, path }: CreateDeviceArgs = {},
+  { deviceName, path, focus }: CreateDeviceArgs = {},
   _context: Partial<ToolContext> = {},
 ): typeof VALID_DEVICES | CreateDeviceResult {
   // List mode: return valid devices when deviceName is omitted
@@ -59,7 +62,13 @@ export function createDevice(
     );
   }
 
-  return createDeviceAtPath(deviceName, path);
+  const result = createDeviceAtPath(deviceName, path);
+
+  if (focus) {
+    select({ deviceId: result.id, detailView: "device" });
+  }
+
+  return result;
 }
 
 /**

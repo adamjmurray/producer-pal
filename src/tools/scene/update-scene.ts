@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { select } from "#src/tools/control/select.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   parseCommaSeparatedIds,
@@ -23,6 +24,7 @@ interface UpdateSceneArgs {
   color?: string;
   tempo?: number | null;
   timeSignature?: string | null;
+  focus?: boolean;
 }
 
 /**
@@ -33,11 +35,12 @@ interface UpdateSceneArgs {
  * @param args.color - Color for the scenes (CSS format: hex)
  * @param args.tempo - Tempo in BPM. Pass -1 to disable.
  * @param args.timeSignature - Time signature in format "4/4". Pass "disabled" to disable.
+ * @param args.focus - Switch to session view and select the scene
  * @param _context - Internal context object (unused)
  * @returns Single scene object or array of scene objects
  */
 export function updateScene(
-  { ids, name, color, tempo, timeSignature }: UpdateSceneArgs = {},
+  { ids, name, color, tempo, timeSignature, focus }: UpdateSceneArgs = {},
   _context: Partial<ToolContext> = {},
 ): UpdateSceneResult | UpdateSceneResult[] {
   if (!ids) {
@@ -72,6 +75,12 @@ export function updateScene(
     updatedScenes.push({
       id: scene.id,
     });
+  }
+
+  if (focus && updatedScenes.length > 0) {
+    const lastScene = updatedScenes.at(-1) as UpdateSceneResult;
+
+    select({ view: "session", sceneId: lastScene.id });
   }
 
   return unwrapSingleResult(updatedScenes);

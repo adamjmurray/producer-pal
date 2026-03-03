@@ -40,7 +40,7 @@ interface PlaybackArgs {
   loopEndLocatorName?: string;
   sceneIndex?: number;
   clipIds?: string;
-  switchView?: boolean;
+  focus?: boolean;
 }
 
 interface PlaybackResult {
@@ -76,7 +76,7 @@ interface BuildPlaybackResultParams {
  * @param args.loopEndLocatorName - Locator name for loop end
  * @param args.sceneIndex - Scene index for Session view operations
  * @param args.clipIds - Comma-separated clip IDs for Session view operations
- * @param args.switchView - Automatically switch to the appropriate view
+ * @param args.focus - Switch to arrangement or session view based on action
  * @param _context - Internal context object (unused, for consistent tool interface)
  * @returns Result with transport state
  */
@@ -95,7 +95,7 @@ export function playback(
     loopEndLocatorName,
     sceneIndex,
     clipIds,
-    switchView,
+    focus,
   }: PlaybackArgs = {},
   _context: Partial<ToolContext> = {},
 ): PlaybackResult {
@@ -197,7 +197,7 @@ export function playback(
     songTimeSigDenominator,
   );
 
-  handleViewSwitch(action, switchView);
+  handleFocus(action, focus);
 
   return buildPlaybackResult({
     isPlaying,
@@ -212,12 +212,12 @@ export function playback(
 }
 
 /**
- * Handle view switching if requested
+ * Handle focus (view switching) if requested
  * @param action - The playback action
- * @param switchView - Whether to switch view
+ * @param focus - Whether to focus
  */
-function handleViewSwitch(action: string, switchView?: boolean): void {
-  if (!switchView) return;
+function handleFocus(action: string, focus?: boolean): void {
+  if (!focus) return;
 
   if (action === "play-arrangement") {
     select({ view: "arrangement" });

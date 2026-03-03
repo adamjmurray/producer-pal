@@ -61,8 +61,8 @@ export interface CreateClipArgs {
   looping?: boolean | null;
   /** Automatic playback action */
   auto?: string | null;
-  /** Automatically switch to the appropriate view */
-  switchView?: boolean;
+  /** Select the created clip and show clip detail view */
+  focus?: boolean;
   /** JavaScript code to generate notes (MIDI clips only) */
   code?: string | null;
 }
@@ -90,7 +90,7 @@ interface PreparedClipData {
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
  * @param args.auto - Automatic playback action
- * @param args.switchView - Automatically switch to the appropriate view
+ * @param args.focus - Select the created clip and show clip detail view
  * @param args.code - JavaScript code to generate notes (MIDI clips only)
  * @param _context - Internal context object (unused)
  * @returns Single clip object when one position, array when multiple positions
@@ -111,7 +111,7 @@ export async function createClip(
     firstStart = null,
     looping = null,
     auto = null,
-    switchView,
+    focus,
     code = null,
   }: CreateClipArgs,
   _context: Partial<ToolContext> = {},
@@ -215,8 +215,10 @@ export async function createClip(
   // Handle automatic playback and view switching
   handleAutoPlayback(auto, view, sceneIndices, trackIndex);
 
-  if (switchView) {
-    select({ view });
+  if (focus && createdClips.length > 0) {
+    const lastClip = createdClips.at(-1) as { id: string };
+
+    select({ clipId: lastClip.id, detailView: "clip" });
   }
 
   return unwrapSingleResult(createdClips);

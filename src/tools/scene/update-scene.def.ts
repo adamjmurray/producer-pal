@@ -18,5 +18,14 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     color: z.string().optional().describe("#RRGGBB"),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
     timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
+    focus: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe("switch to session view and select the scene"),
+  },
+
+  smallModelModeConfig: {
+    excludeParams: ["focus"],
   },
 });

@@ -98,17 +98,15 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .optional()
       .describe("auto-play session clips (play-scene keeps scene in sync)"),
 
-    switchView: z
+    focus: z
       .boolean()
       .optional()
       .default(false)
-      .describe(
-        "switch to arrangement view for arrangement clips, or session view for session clips",
-      ),
+      .describe("select the created clip and show clip detail view"),
   },
 
   smallModelModeConfig: {
-    excludeParams: ["transforms", "code", "firstStart", "auto", "switchView"],
+    excludeParams: ["transforms", "code", "firstStart", "auto", "focus"],
     descriptionOverrides: {
       sceneIndex: "session clip scene index",
       arrangementStart: "arrangement clip bar|beat position (e.g., '1|1')",

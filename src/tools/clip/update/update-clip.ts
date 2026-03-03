@@ -13,6 +13,7 @@ import {
   computeLoopDeadline,
   isDeadlineExceeded,
 } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { select } from "#src/tools/control/select.ts";
 import {
   prepareSplitParams,
   performSplitting,
@@ -47,6 +48,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   toSlot?: string;
   split?: string;
   code?: string;
+  focus?: boolean;
 }
 
 interface ClipResult {
@@ -86,6 +88,7 @@ interface ClipResult {
  * @param args.quantizeSwing - Swing amount 0-1 (default: 0)
  * @param args.quantizePitch - Limit quantization to specific pitch
  * @param args.code - JavaScript code to transform notes
+ * @param args.focus - Select the clip and show clip detail view
  * @param context - Tool execution context with holding area settings
  * @returns Single clip object or array of clip objects
  */
@@ -119,6 +122,7 @@ export async function updateClip(
     quantizeSwing,
     quantizePitch,
     code,
+    focus,
   }: UpdateClipArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ClipResult | ClipResult[]> {
@@ -210,6 +214,12 @@ export async function updateClip(
   }
 
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
+
+  if (focus && updatedClips.length > 0) {
+    const lastClip = updatedClips.at(-1) as ClipResult;
+
+    select({ clipId: lastClip.id, detailView: "clip" });
+  }
 
   return unwrapSingleResult(updatedClips);
 }

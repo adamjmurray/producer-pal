@@ -47,15 +47,15 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       .string()
       .optional()
       .describe('N/D (4/4) or "disabled" when capturing'),
-    switchView: z
+    focus: z
       .boolean()
       .optional()
       .default(false)
-      .describe("show session view?"),
+      .describe("switch to session view and select the scene"),
   },
 
   smallModelModeConfig: {
-    excludeParams: ["count", "capture", "tempo", "timeSignature", "switchView"],
+    excludeParams: ["count", "capture", "tempo", "timeSignature", "focus"],
     descriptionOverrides: {
       name: "scene name",
       color: "#RRGGBB",

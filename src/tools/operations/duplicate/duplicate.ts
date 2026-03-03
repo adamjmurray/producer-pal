@@ -8,7 +8,7 @@ import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
 import {
-  switchViewIfRequested,
+  focusIfRequested,
   parseCommaSeparatedNames,
   getNameForIndex,
 } from "./helpers/duplicate-misc-helpers.ts";
@@ -41,7 +41,7 @@ interface DuplicateArgs {
   withoutClips?: boolean;
   withoutDevices?: boolean;
   routeToSource?: boolean;
-  switchView?: boolean;
+  focus?: boolean;
   toSlot?: string;
   toPath?: string;
 }
@@ -70,7 +70,7 @@ interface DuplicateParams {
  * @param args.withoutClips - Exclude clips
  * @param args.withoutDevices - Exclude devices
  * @param args.routeToSource - Route to source
- * @param args.switchView - Switch view
+ * @param args.focus - Focus duplicated clip/scene
  * @param args.toSlot - Destination clip slot(s)
  * @param args.toPath - Destination path
  * @param context - Context object
@@ -89,7 +89,7 @@ export function duplicate(
     withoutClips,
     withoutDevices,
     routeToSource,
-    switchView,
+    focus,
     toSlot,
     toPath,
   }: DuplicateArgs,
@@ -175,7 +175,7 @@ export function duplicate(
         );
 
   // Handle view switching if requested
-  switchViewIfRequested(switchView, destination, type);
+  focusIfRequested(focus, destination, type, createdObjects);
 
   // Return single object or array based on results
   if (createdObjects.length === 1) {

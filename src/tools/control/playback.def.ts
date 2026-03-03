@@ -75,13 +75,11 @@ stop: session and arrangement`,
       .min(0)
       .optional()
       .describe("0-based scene index for play-scene"),
-    switchView: z
+    focus: z
       .boolean()
       .optional()
       .default(false)
-      .describe(
-        "switch to arrangement view for arrangement playback, or session view for scene/clip playback",
-      ),
+      .describe("switch to arrangement or session view based on action"),
   },
 
   smallModelModeConfig: {
@@ -92,7 +90,7 @@ stop: session and arrangement`,
       "loopStartLocatorName",
       "loopEndLocatorId",
       "loopEndLocatorName",
-      "switchView",
+      "focus",
     ],
   },
 });
