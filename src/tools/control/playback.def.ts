@@ -29,8 +29,8 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         `play-arrangement: from startTime
 update-arrangement: modify loop
 play-scene: all clips in scene
-play-session-clips: by id(s)
-stop-session-clips: by id(s)
+play-session-clips: by id(s) or slot(s)
+stop-session-clips: by id(s) or slot(s)
 stop-all-session-clips: all
 stop: session and arrangement`,
       ),
@@ -59,6 +59,12 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("comma-separated ID(s) for clip operations"),
+    clipSlots: z
+      .string()
+      .optional()
+      .describe(
+        "session clip slot(s), trackIndex/sceneIndex format, comma-separated (e.g., '0/1' or '0/1,2/3')",
+      ),
     sceneIndex: z.coerce
       .number()
       .int()

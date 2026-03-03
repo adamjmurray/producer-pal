@@ -168,7 +168,7 @@ describe("transport", () => {
 
   it("should throw error when required parameters are missing for play-session-clips", () => {
     expect(() => playback({ action: "play-session-clips" })).toThrow(
-      'playback failed: clipIds is required for action "play-session-clips"',
+      'playback failed: clipIds or clipSlots is required for action "play-session-clips"',
     );
   });
 
@@ -200,7 +200,7 @@ describe("transport", () => {
         clipIds: "clip1",
       }),
     ).toThrow(
-      "playback play-session-clips action failed: clip slot for clipId=clip1 does not exist",
+      "playback play-session-clips action failed: clip slot at 99/0 does not exist",
     );
   });
 
@@ -296,7 +296,7 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for stop-session-clips", () => {
     expect(() => playback({ action: "stop-session-clips" })).toThrow(
-      'playback failed: clipIds is required for action "stop-session-clips"',
+      'playback failed: clipIds or clipSlots is required for action "stop-session-clips"',
     );
   });
 
@@ -337,7 +337,7 @@ describe("transport", () => {
         clipIds: "clip1",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: could not determine track for clipId=clip1",
+      "playback stop-session-clips action failed: could not determine track/scene for clipId=clip1",
     );
   });
 
@@ -354,7 +354,7 @@ describe("transport", () => {
         clipIds: "clip1",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: track for clip path does not exist",
+      "playback stop-session-clips action failed: track at index 99 does not exist",
     );
   });
 
@@ -432,5 +432,118 @@ describe("transport", () => {
     expect(liveSet.call).toHaveBeenCalledWith("start_playing");
     expectLiveSetProperty(liveSet, "start_time", 0);
     expect(result.currentTime).toBe("1|1");
+  });
+
+  it("should throw error when both clipIds and clipSlots are provided", () => {
+    expect(() =>
+      playback({
+        action: "play-session-clips",
+        clipIds: "clip1",
+        clipSlots: "0/0",
+      }),
+    ).toThrow("playback failed: clipIds and clipSlots are mutually exclusive");
+  });
+
+  it("should handle play-session-clips via clipSlots with single slot", () => {
+    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
+    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+
+    const result = playback({
+      action: "play-session-clips",
+      clipSlots: "0/1",
+    });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(clipSlot.call).toHaveBeenCalledTimes(1);
+    // No quantization fix for single clip
+    expect(liveSet.call).not.toHaveBeenCalledWith("stop_playing");
+    expect(result).toStrictEqual({
+      playing: true,
+      currentTime: "2|2",
+    });
+  });
+
+  it("should handle play-session-clips via clipSlots with multiple slots", () => {
+    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
+    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
+      path: livePath.track(0).clipSlot(0),
+    });
+    const clipSlot1 = registerMockObject(livePath.track(1).clipSlot(1), {
+      path: livePath.track(1).clipSlot(1),
+    });
+
+    playback({
+      action: "play-session-clips",
+      clipSlots: "0/0,1/1",
+    });
+
+    expect(clipSlot0.call).toHaveBeenCalledWith("fire");
+    expect(clipSlot1.call).toHaveBeenCalledWith("fire");
+    // Quantization fix applied for multiple clips
+    expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
+    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+  });
+
+  it("should handle stop-session-clips via clipSlots", () => {
+    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    const track0 = registerMockObject(livePath.track(0), {
+      path: livePath.track(0),
+    });
+
+    const result = playback({
+      action: "stop-session-clips",
+      clipSlots: "0/0",
+    });
+
+    expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
+    expect(result).toStrictEqual({
+      playing: true,
+      currentTime: "2|2",
+    });
+  });
+
+  it("should deduplicate tracks when stopping via clipSlots on same track", () => {
+    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    const track0 = registerMockObject(livePath.track(0), {
+      path: livePath.track(0),
+    });
+
+    playback({
+      action: "stop-session-clips",
+      clipSlots: "0/0,0/1",
+    });
+
+    expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
+    expect(track0.call).toHaveBeenCalledTimes(1);
+  });
+
+  it("should throw error when clip slot does not exist for play-session-clips via clipSlots", () => {
+    liveSet = setupPlaybackLiveSet();
+    mockNonExistentObjects();
+
+    expect(() =>
+      playback({
+        action: "play-session-clips",
+        clipSlots: "99/0",
+      }),
+    ).toThrow(
+      "playback play-session-clips action failed: clip slot at 99/0 does not exist",
+    );
+  });
+
+  it("should throw error when track does not exist for stop-session-clips via clipSlots", () => {
+    liveSet = setupPlaybackLiveSet();
+    mockNonExistentObjects();
+
+    expect(() =>
+      playback({
+        action: "stop-session-clips",
+        clipSlots: "99/0",
+      }),
+    ).toThrow(
+      "playback stop-session-clips action failed: track at index 99 does not exist",
+    );
   });
 });
