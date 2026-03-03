@@ -13,27 +13,23 @@ import {
 } from "./create-clip-test-helpers.ts";
 
 describe("createClip - basic validation and time signatures", () => {
-  it("should throw error when required parameters are missing", async () => {
-    await expect(
-      createClip({} as Parameters<typeof createClip>[0]),
-    ).rejects.toThrow("createClip failed: view parameter is required");
-    // Note: trackIndex validation is handled by TypeScript at compile time
-    await expect(
-      createClip({ view: "session", trackIndex: 0 }),
-    ).rejects.toThrow(
-      "createClip failed: sceneIndex is required when view is 'session'",
+  it("should throw error when neither sceneIndex nor arrangementStart is provided", async () => {
+    await expect(createClip({ trackIndex: 0 })).rejects.toThrow(
+      "createClip failed: sceneIndex or arrangementStart is required",
     );
+  });
+
+  it("should throw error when both sceneIndex and arrangementStart are provided", async () => {
     await expect(
-      createClip({ view: "arrangement", trackIndex: 0 }),
+      createClip({ trackIndex: 0, sceneIndex: "0", arrangementStart: "1|1" }),
     ).rejects.toThrow(
-      "createClip failed: arrangementStart is required when view is 'arrangement'",
+      "createClip failed: cannot specify both sceneIndex and arrangementStart",
     );
   });
 
   it("should throw error for invalid sceneIndex format", async () => {
     await expect(
       createClip({
-        view: "session",
         trackIndex: 0,
         sceneIndex: "invalid",
       }),
@@ -45,7 +41,6 @@ describe("createClip - basic validation and time signatures", () => {
   it("should validate time signature early when provided", async () => {
     await expect(
       createClip({
-        view: "session",
         trackIndex: 0,
         sceneIndex: "0",
         timeSignature: "invalid",
@@ -60,7 +55,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar from song
@@ -85,7 +79,6 @@ describe("createClip - basic validation and time signatures", () => {
     const { clip } = setupSessionMocks();
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       timeSignature: "3/4",
@@ -99,7 +92,6 @@ describe("createClip - basic validation and time signatures", () => {
     const { clip } = setupSessionMocks();
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       timeSignature: "6/8",
@@ -116,7 +108,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       length: "1:3",
@@ -132,7 +123,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       length: "2:0",
@@ -148,7 +138,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "t2 C3 1|1 t1.5 D3 1|4", // Last note starts at beat 3 (0-based), rounds up to 1 bar = 4 beats
@@ -163,7 +152,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "t2 C3 1|1 t1.5 D3 1|2", // Last note starts at beat 1 (0.5 Ableton beats), rounds up to 1 bar
@@ -180,7 +168,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
     });
@@ -194,7 +181,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
     });
@@ -208,7 +194,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "",
@@ -223,7 +208,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
     });
@@ -240,7 +224,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C4 1|4.5", // Note starts at beat 3.5 (0-based), which is in bar 1, rounds up to 1 bar
@@ -255,7 +238,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C4 1|5.5", // Note starts at beat 4.5 in musical beats (2.25 Ableton beats), rounds up to 1 bar
@@ -270,7 +252,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C4 2|1", // Note starts at bar 2, beat 1 (beat 4 in 0-based), rounds up to 2 bars
@@ -286,7 +267,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C4 1|1",
@@ -309,7 +289,6 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C4 1|1",

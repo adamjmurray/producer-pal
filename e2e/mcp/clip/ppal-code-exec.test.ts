@@ -36,7 +36,6 @@ describe("ppal-code-exec", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "0",
         code: "return [{pitch: 60, start: 0, duration: 0.5, velocity: 110}, {pitch: 64, start: 1}, {pitch: 67, start: 2}]",
@@ -66,7 +65,6 @@ describe("ppal-code-exec", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "1",
         notes: "C3 D3 E3 1|1",
@@ -175,7 +173,6 @@ describe("ppal-code-exec", () => {
       const createResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          view: "session",
           trackIndex: emptyMidiTrack,
           sceneIndex,
           code,
@@ -211,7 +208,6 @@ describe("ppal-code-exec", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "10",
         code: tooLongCode,
@@ -242,7 +238,6 @@ describe("ppal-code-exec", () => {
     const mixedResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "8",
         code: [
@@ -279,7 +274,6 @@ describe("ppal-code-exec", () => {
     const clampResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "9",
         code: [

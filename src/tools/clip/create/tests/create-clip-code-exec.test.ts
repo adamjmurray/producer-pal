@@ -142,7 +142,6 @@ describe("createClip - code execution", () => {
     });
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       code: "return [{ pitch: 60, start: 0, duration: 1, velocity: 100 }]",
@@ -202,7 +201,6 @@ describe("createClip - code execution", () => {
     });
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       code: "return notes.map(invalid)",
@@ -249,7 +247,6 @@ describe("createClip - code execution", () => {
     });
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0, 1",
       code: "return [{ pitch: 48, start: 0, duration: 2, velocity: 110 }]",
@@ -268,7 +265,6 @@ describe("createClip - code execution", () => {
     setupSessionCodeExecMocks([0]);
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C4 1|1",

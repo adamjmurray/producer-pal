@@ -25,7 +25,6 @@ describe("createClip - advanced features", () => {
     });
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       timeSignature: "6/8",
@@ -46,7 +45,6 @@ describe("createClip - advanced features", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "t2 C3 1|1 t3 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
@@ -75,14 +73,12 @@ describe("createClip - advanced features", () => {
     });
 
     const singleResult = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       name: "Single",
     });
 
     const arrayResult = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "1,2",
       name: "Multiple",
@@ -115,7 +111,6 @@ describe("createClip - advanced features", () => {
     });
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "v100 C3 v0 D3 v80 E3 1|1", // D3 should be filtered out
@@ -138,7 +133,6 @@ describe("createClip - advanced features", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "v0 C3 D3 E3 1|1", // All notes should be filtered out
@@ -156,7 +150,6 @@ describe("createClip - advanced features", () => {
     });
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       name: "Test Clip",
@@ -180,7 +173,6 @@ describe("createClip - advanced features", () => {
       });
 
       const result = await createClip({
-        view: "session",
         trackIndex: 0,
         sceneIndex: "0",
         switchView: true,
@@ -201,7 +193,6 @@ describe("createClip - advanced features", () => {
       });
 
       const result = await createClip({
-        view: "arrangement",
         trackIndex: 0,
         arrangementStart: "1|1",
         switchView: true,
@@ -224,7 +215,6 @@ describe("createClip - advanced features", () => {
       });
 
       await createClip({
-        view: "session",
         trackIndex: 0,
         sceneIndex: "0",
         switchView: false,
@@ -252,7 +242,6 @@ describe("createClip - advanced features", () => {
       });
 
       const result = await createClip({
-        view: "session",
         trackIndex: 0,
         sceneIndex: "0,1",
         switchView: true,

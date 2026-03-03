@@ -47,7 +47,6 @@ async function createAudioTrackWithClip(trackName: string): Promise<{
   const clipResult = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      view: "session",
       trackIndex: track.trackIndex,
       sceneIndex: "0",
       sampleFile: SAMPLE_FILE,
@@ -181,7 +180,6 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: track.trackIndex,
         sceneIndex: "0",
         sampleFile: SAMPLE_FILE,
@@ -192,7 +190,6 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     const clip2Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: track.trackIndex,
         sceneIndex: "1",
         sampleFile: SAMPLE_FILE,
@@ -617,7 +614,6 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "15",
         notes: "v100 C3 1|1",
@@ -637,7 +633,6 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "16",
         notes: "C3 E3 G3 1|1", // C major triad
@@ -660,7 +655,6 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result3 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "17",
         notes: "v100 C3 1|1",
@@ -682,7 +676,6 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "18",
         notes: "C3 1|1\nE3 1|2",
@@ -703,7 +696,6 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "19",
         notes: "C3 1|1\nC3 1|3",
@@ -921,7 +913,6 @@ describe("ppal-clip-transforms (seq)", () => {
     const clip0Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: track.trackIndex,
         sceneIndex: "0",
         sampleFile: SAMPLE_FILE,
@@ -934,7 +925,6 @@ describe("ppal-clip-transforms (seq)", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: track.trackIndex,
         sceneIndex: "1",
         sampleFile: SAMPLE_FILE,

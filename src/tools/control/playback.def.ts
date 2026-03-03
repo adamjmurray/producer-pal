@@ -79,7 +79,9 @@ stop: session and arrangement`,
       .boolean()
       .optional()
       .default(false)
-      .describe("auto-switch view?"),
+      .describe(
+        "switch to arrangement view for arrangement playback, or session view for scene/clip playback",
+      ),
   },
 
   smallModelModeConfig: {

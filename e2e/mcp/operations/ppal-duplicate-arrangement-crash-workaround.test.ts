@@ -172,7 +172,6 @@ describe("arrangement clip duplication crash workaround", () => {
     const midiLong = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: MIDI_TRACK,
         sceneIndex: "0",
         notes: "C3 1|1",
@@ -186,7 +185,6 @@ describe("arrangement clip duplication crash workaround", () => {
     const midiShort = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: MIDI_TRACK,
         sceneIndex: "1",
         notes: "C3 1|1",
@@ -208,7 +206,6 @@ describe("arrangement clip duplication crash workaround", () => {
     const kick = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: AUDIO_TRACK,
         sceneIndex: "1",
         sampleFile: KICK_FILE,

@@ -128,7 +128,6 @@ describe("createClip - session view", () => {
     });
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C3 D3 E3 1|1",
@@ -171,7 +170,6 @@ describe("createClip - session view", () => {
     });
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       notes: "C3 1|1",
@@ -198,7 +196,6 @@ describe("createClip - session view", () => {
 
     await expect(
       createClip({
-        view: "session",
         trackIndex: 0,
         sceneIndex: "0",
         notes: "C3 1|1",
@@ -218,7 +215,6 @@ describe("createClip - session view", () => {
 
     await expect(
       createClip({
-        view: "session",
         trackIndex: 0,
         sceneIndex: "0",
         auto: "invalid-value",
@@ -243,7 +239,6 @@ describe("createClip - session view", () => {
     });
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "1,2,3", // Create clips at scenes 1, 2, and 3
       name: "Loop",
@@ -278,7 +273,6 @@ describe("createClip - session view", () => {
     const { clipSlot } = setupSessionClip(0, 4);
 
     await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "4", // Needs scenes at indices 2, 3, 4
       name: "Future Clip",
@@ -298,7 +292,6 @@ describe("createClip - session view", () => {
     const { clipSlot } = setupSessionClip(0, 0, { hasClip: 1 });
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: "0",
       name: "This Should Fail",
@@ -316,7 +309,6 @@ describe("createClip - session view", () => {
     setupTrack(0);
 
     const result = await createClip({
-      view: "session",
       trackIndex: 0,
       sceneIndex: String(MAX_AUTO_CREATED_SCENES),
       name: "This Should Fail",

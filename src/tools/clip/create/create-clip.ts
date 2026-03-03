@@ -28,12 +28,11 @@ import {
 import {
   calculateClipLength,
   handleAutoPlayback,
+  inferView,
   validateCreateClipParams,
 } from "./helpers/create-clip-validation-helpers.ts";
 
 export interface CreateClipArgs {
-  /** View for the clip */
-  view: "session" | "arrangement";
   /** Track index (0-based) */
   trackIndex: number;
   /** Scene index(es), comma-separated for multiple */
@@ -77,7 +76,6 @@ interface PreparedClipData {
 /**
  * Creates MIDI or audio clips in Session or Arrangement view
  * @param args - The clip parameters
- * @param args.view - View for the clip (session or arrangement)
  * @param args.trackIndex - Track index (0-based)
  * @param args.sceneIndex - Scene index(es), comma-separated for multiple
  * @param args.arrangementStart - Bar|beat position(s), comma-separated
@@ -99,7 +97,6 @@ interface PreparedClipData {
  */
 export async function createClip(
   {
-    view,
     trackIndex,
     sceneIndex = null,
     arrangementStart = null,
@@ -125,14 +122,11 @@ export async function createClip(
   const sceneIndices = parseSceneIndexList(sceneIndex);
   const arrangementStarts = parseArrangementStartList(arrangementStart);
 
+  // Infer view from position parameters
+  const view = inferView(sceneIndices, arrangementStarts);
+
   // Validate parameters
-  validateCreateClipParams(
-    view,
-    sceneIndices,
-    arrangementStarts,
-    notationString,
-    sampleFile,
-  );
+  validateCreateClipParams(notationString, sampleFile);
 
   // Validate track exists (fatal - affects all clips)
   const track = LiveAPI.from(livePath.track(trackIndex));

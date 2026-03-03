@@ -10,34 +10,28 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
   description:
     "Create MIDI or audio clip(s).\n" +
-    "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
-    "Cannot use both notes and sampleFile.",
+    "Requires sceneIndex (session) or arrangementStart (arrangement).\n" +
+    "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. ",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
 
   inputSchema: {
-    view: z.enum(["session", "arrangement"]).describe("location of the clip"),
-
-    trackIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .describe("0-based track index for session clips"),
+    trackIndex: z.coerce.number().int().min(0).describe("0-based track index"),
 
     sceneIndex: z.coerce
       .string()
       .optional()
       .describe(
-        "scene index(es), comma-separated for multiple (e.g., '0' or '0,2,5')",
+        "session clip scene index(es), comma-separated for multiple (e.g., '0' or '0,2,5')",
       ),
 
     arrangementStart: z.coerce
       .string()
       .optional()
       .describe(
-        "bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')",
+        "arrangement clip bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')",
       ),
 
     name: z.string().optional().describe("clip name"),
@@ -108,14 +102,16 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .boolean()
       .optional()
       .default(false)
-      .describe("auto-switch view?"),
+      .describe(
+        "switch to arrangement view for arrangement clips, or session view for session clips",
+      ),
   },
 
   smallModelModeConfig: {
     excludeParams: ["transforms", "code", "firstStart", "auto", "switchView"],
     descriptionOverrides: {
-      sceneIndex: "0-based scene index",
-      arrangementStart: "bar|beat position (e.g., '1|1')",
+      sceneIndex: "session clip scene index",
+      arrangementStart: "arrangement clip bar|beat position (e.g., '1|1')",
     },
   },
 });

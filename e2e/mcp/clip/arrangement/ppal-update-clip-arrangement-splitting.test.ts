@@ -168,7 +168,6 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "arrangement",
         trackIndex: dynamicTrackIndex,
         arrangementStart: "200|1",
         notes: "C3 1|1\nD3 2|1\nE3 3|1\nF3 4|1",
@@ -201,7 +200,6 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "arrangement",
         trackIndex: dynamicTrackIndex,
         arrangementStart: "210|1",
         notes: "C3 1|1",
@@ -230,7 +228,6 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: dynamicTrackIndex,
         sceneIndex: "0",
         notes: "C3 1|1",
@@ -250,7 +247,6 @@ describe("Behavioral splitting tests", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "arrangement",
         trackIndex: dynamicTrackIndex,
         arrangementStart: "220|1",
         notes: "C3 1|1",
@@ -263,7 +259,6 @@ describe("Behavioral splitting tests", () => {
     const clip2Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "arrangement",
         trackIndex: dynamicTrackIndex,
         arrangementStart: "230|1",
         notes: "E3 1|1",

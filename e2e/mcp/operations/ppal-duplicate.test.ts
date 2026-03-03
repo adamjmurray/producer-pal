@@ -203,7 +203,6 @@ describe("ppal-duplicate", () => {
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: "0",
         notes: "C3 D3 E3 F3 1|1",
@@ -272,7 +271,6 @@ describe("ppal-duplicate", () => {
     const createArrangementClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "arrangement",
         trackIndex: emptyMidiTrack,
         arrangementStart: "41|1",
         notes: "C3 D3 E3 1|1",

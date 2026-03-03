@@ -31,7 +31,6 @@ describe("ppal-update-clip velocity merge", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: 0,
         notes: "v80-100 Gb1 8|1.25,1.75,2.25,2.75,3.25,3.75,4.25,4.75",
@@ -92,7 +91,6 @@ describe("ppal-update-clip velocity merge", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: 1,
         notes: "v127 C3 D3 E3 1|1",
@@ -137,7 +135,6 @@ describe("ppal-update-clip velocity merge", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
         trackIndex: emptyMidiTrack,
         sceneIndex: 2,
         notes: "v100-120 C3 1|1,2,3,4",

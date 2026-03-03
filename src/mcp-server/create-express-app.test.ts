@@ -223,7 +223,6 @@ describe("MCP Express App", () => {
 
       expect(createClipTool).toBeDefined();
       expect(createClipTool!.description).toContain("Create MIDI or audio");
-      expect(createClipTool!.inputSchema.properties!.view).toBeDefined();
       expect(createClipTool!.inputSchema.properties!.trackIndex).toBeDefined();
     });
   });

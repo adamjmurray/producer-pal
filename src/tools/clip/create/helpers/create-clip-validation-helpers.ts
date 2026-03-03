@@ -7,36 +7,42 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 
 /**
+ * Infers the view from position parameters
+ * @param sceneIndices - Parsed scene indices
+ * @param arrangementStarts - Parsed arrangement start positions
+ * @returns Inferred view: "session" or "arrangement"
+ */
+export function inferView(
+  sceneIndices: number[],
+  arrangementStarts: string[],
+): "session" | "arrangement" {
+  const hasScene = sceneIndices.length > 0;
+  const hasArrangement = arrangementStarts.length > 0;
+
+  if (hasScene && hasArrangement) {
+    throw new Error(
+      "createClip failed: cannot specify both sceneIndex and arrangementStart",
+    );
+  }
+
+  if (!hasScene && !hasArrangement) {
+    throw new Error(
+      "createClip failed: sceneIndex or arrangementStart is required",
+    );
+  }
+
+  return hasScene ? "session" : "arrangement";
+}
+
+/**
  * Validates createClip parameters
- * @param view - View type (session or arrangement)
- * @param sceneIndices - Parsed scene indices for session view
- * @param arrangementStarts - Parsed arrangement starts for arrangement view
  * @param notes - MIDI notes notation string
  * @param sampleFile - Audio file path
  */
 export function validateCreateClipParams(
-  view: string,
-  sceneIndices: number[],
-  arrangementStarts: string[],
   notes: string | null,
   sampleFile: string | null,
 ): void {
-  if (!view) {
-    throw new Error("createClip failed: view parameter is required");
-  }
-
-  if (view === "session" && sceneIndices.length === 0) {
-    throw new Error(
-      "createClip failed: sceneIndex is required when view is 'session'",
-    );
-  }
-
-  if (view === "arrangement" && arrangementStarts.length === 0) {
-    throw new Error(
-      "createClip failed: arrangementStart is required when view is 'arrangement'",
-    );
-  }
-
   // Cannot specify both sampleFile and notes
   if (sampleFile && notes) {
     throw new Error(
