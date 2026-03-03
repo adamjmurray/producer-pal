@@ -99,7 +99,7 @@ describe("useSettings", () => {
       "producer_pal_provider_ollama",
       JSON.stringify({
         apiKey: "",
-        model: "qwen3",
+        model: "qwen3.5",
         baseUrl: "http://localhost:11434",
         thinking: "High",
         temperature: 1.0,

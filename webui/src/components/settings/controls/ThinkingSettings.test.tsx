@@ -119,7 +119,7 @@ describe("ThinkingSettings", () => {
     it("renders all thinking options", () => {
       renderThinkingSettings({
         provider: "ollama",
-        model: "qwen3",
+        model: "qwen3.5",
         thinking: "Off",
       });
       expectAllThinkingOptions();
@@ -128,7 +128,7 @@ describe("ThinkingSettings", () => {
     it("does not show checkbox for Ollama provider", () => {
       renderThinkingSettings({
         provider: "ollama",
-        model: "qwen3",
+        model: "qwen3.5",
         thinking: "Low",
       });
       expectCheckboxHidden();

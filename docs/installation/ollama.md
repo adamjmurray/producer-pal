@@ -16,7 +16,7 @@ Download and install [Ollama](https://ollama.com/) for your operating system.
 
 Download a model that supports tools. Some good options include:
 
-- `qwen3`
+- `qwen3.5`
 - `devstral-small-2`
 - `glm-4.7-flash`
 
@@ -60,7 +60,7 @@ In the chat UI settings:
     `localhost` to run Ollama on a different computer. Consult
     [the user guide](/guide/chat-ui#local-ai-settings-ollama-lm-studio) for more
     info.
-- Model: Your model name (e.g., `qwen3` or `qwen3:8b`)
+- Model: Your model name (e.g., `qwen3.5` or `qwen3.5:9b`)
 
 Click "Save".
 
@@ -68,10 +68,10 @@ Click "Save".
 
 ::: tip Ollama Model Aliases
 
-If Producer Pal says a model like `qwen3` is not installed but you downloaded
-`qwen3:8b`, that's because Ollama aliases work one way: `qwen3` points to
-`qwen3:8b`, but not vice versa. Install `qwen3` in Ollama to create the alias.
-It won't re-download the model.
+If Producer Pal says a model like `qwen3.5` is not installed but you downloaded
+`qwen3.5:9b`, that's because Ollama aliases work one way: `qwen3.5` resolves to
+`qwen3.5:9b`, but not vice versa. Install `qwen3.5` in Ollama to create the
+alias. It won't re-download the model.
 
 :::
 

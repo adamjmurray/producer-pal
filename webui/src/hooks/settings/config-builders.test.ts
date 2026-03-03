@@ -178,17 +178,17 @@ describe("config-builders", () => {
 
   describe("mapThinkingToOllamaThink", () => {
     it("should return false for Off", () => {
-      expect(mapThinkingToOllamaThink("Off", "qwen3")).toBe(false);
+      expect(mapThinkingToOllamaThink("Off", "qwen3.5")).toBe(false);
     });
 
     it("should return undefined for Default", () => {
-      expect(mapThinkingToOllamaThink("Default", "qwen3")).toBeUndefined();
+      expect(mapThinkingToOllamaThink("Default", "qwen3.5")).toBeUndefined();
     });
 
     it("should return true for non-GPT-OSS levels", () => {
-      expect(mapThinkingToOllamaThink("Low", "qwen3")).toBe(true);
-      expect(mapThinkingToOllamaThink("Medium", "qwen3")).toBe(true);
-      expect(mapThinkingToOllamaThink("High", "qwen3")).toBe(true);
+      expect(mapThinkingToOllamaThink("Low", "qwen3.5")).toBe(true);
+      expect(mapThinkingToOllamaThink("Medium", "qwen3.5")).toBe(true);
+      expect(mapThinkingToOllamaThink("High", "qwen3.5")).toBe(true);
     });
 
     it("should return level strings for GPT-OSS", () => {
