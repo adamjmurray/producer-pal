@@ -41,7 +41,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1')",
+        "arrangement bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1')",
       ),
     locatorId: z.coerce
       .string()
@@ -65,7 +65,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "destination clip slot(s), trackIndex/sceneIndex format, comma-separated for multiple (e.g., '0/1' or '0/1,2/3')",
+        "session destination clip slot(s), trackIndex/sceneIndex format, comma-separated for multiple (e.g., '0/1' or '0/1,2/3')",
       ),
     toPath: z
       .string()
@@ -101,8 +101,9 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     ],
     descriptionOverrides: {
       name: "name",
-      arrangementStart: "bar|beat position (e.g., '1|1')",
-      toSlot: "destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
+      arrangementStart: "arrangement bar|beat position (e.g., '1|1')",
+      toSlot:
+        "session destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
       toPath: "device destination path (e.g., 't1/d0')",
     },
   },
