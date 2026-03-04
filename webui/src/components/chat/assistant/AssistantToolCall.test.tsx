@@ -229,6 +229,46 @@ describe("AssistantToolCall", () => {
     });
   });
 
+  describe("heuristic error detection", () => {
+    it("detects soft error via 'error' key in result JSON when isError unset", () => {
+      const softErrorResult = JSON.stringify({
+        error: "No clip in this slot",
+        id: null,
+        type: null,
+        trackIndex: 0,
+        sceneIndex: 5,
+      });
+
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={softErrorResult}
+          isError={undefined}
+        />,
+      );
+      const details = document.querySelector("details");
+
+      expect(details!.className).toContain("border-red-500");
+      expect(screen.getByText(/tool failed:/)).toBeDefined();
+    });
+
+    it("does not false-positive on normal results without error key", () => {
+      const normalResult = JSON.stringify({ id: "1", name: "Track" });
+
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={normalResult}
+          isError={undefined}
+        />,
+      );
+      const details = document.querySelector("details");
+
+      expect(details!.className).not.toContain("border-red-500");
+      expect(screen.getByText(/used tool:/)).toBeDefined();
+    });
+  });
+
   describe("error result styling", () => {
     it("shows error text inline with red styling", () => {
       render(

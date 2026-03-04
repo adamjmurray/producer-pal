@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isErrorResult } from "#webui/chat/helpers/formatter-helpers";
 import { useToolNames } from "#webui/hooks/connection/tool-names-context";
 import { truncateString } from "#webui/lib/utils/truncate-string";
 
@@ -28,28 +29,33 @@ export function AssistantToolCall({
   isError,
 }: AssistantToolCallProps) {
   const toolNames = useToolNames();
+  const effectiveIsError = isError ?? (result != null && isErrorResult(result));
 
   return (
     <details
-      open={isError}
+      open={effectiveIsError}
       className={`text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded ${
         result ? "" : "animate-pulse"
-      } ${isError ? "border-l-3 border-red-500" : ""}`}
+      } ${effectiveIsError ? "border-l-3 border-red-500" : ""}`}
     >
       <summary>
         &nbsp;🔧{" "}
-        {!result ? "using tool: " : isError ? "tool failed: " : "used tool: "}
+        {!result
+          ? "using tool: "
+          : effectiveIsError
+            ? "tool failed: "
+            : "used tool: "}
         {toolNames[name] ?? name}
       </summary>
       <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
         {name}({JSON.stringify(args, null, 0)})
       </div>
-      {result && isError && (
+      {result && effectiveIsError && (
         <div className="px-2 my-1 text-red-700 dark:text-red-400 break-all">
           ↳ {truncateString(result, 300)}
         </div>
       )}
-      {result && !isError && (
+      {result && !effectiveIsError && (
         <details>
           <summary className="px-2 my-1 truncate text-gray-600 dark:text-gray-400">
             &nbsp;↳ {truncateString(result, 300)}

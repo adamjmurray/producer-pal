@@ -22,6 +22,7 @@ export const DEMO_TOOL_NAMES: Record<string, string> = {
   "ppal-update-live-set": "Update Live Set",
   "ppal-select": "Select",
   "ppal-create-clip": "Create Clip",
+  "nonexistent-tool": "nonexistent-tool",
 };
 
 /**
@@ -310,7 +311,39 @@ export const demoMessages: UIMessage[] = [
     ],
   }),
 
-  // --- Scenario 9: Multi-part message (thought + text + tools + text) ---
+  // --- Scenario 9: Input validation failure ---
+  userMsg("Read track abc"),
+  modelMsg({
+    text: "That's not a valid track index — it needs to be a number.",
+    tools: [
+      {
+        name: TOOL_READ_TRACK,
+        args: { trackIndex: "abc" },
+        result: JSON.stringify(
+          'MCP error -32602: Input validation error: Invalid arguments for tool ppal-read-track: [\n  {\n    "expected": "number",\n    "code": "invalid_type",\n    "received": "NaN",\n    "path": [\n      "trackIndex"\n    ],\n    "message": "Invalid input"\n  }\n]',
+        ),
+        isError: true,
+      },
+    ],
+  }),
+
+  // --- Scenario 10: Invalid tool name ---
+  userMsg("Use the nonexistent tool"),
+  modelMsg({
+    text: "That tool doesn't exist. Let me use the correct one.",
+    tools: [
+      {
+        name: "nonexistent-tool",
+        args: {},
+        result: JSON.stringify(
+          "MCP error -32602: Tool nonexistent-tool not found",
+        ),
+        isError: true,
+      },
+    ],
+  }),
+
+  // --- Scenario 11: Multi-part message (thought + text + tools + text) ---
   userMsg("Read the Beat clip with notes and show me what's on track 1"),
   modelMsg({
     thought:
@@ -342,14 +375,14 @@ export const demoMessages: UIMessage[] = [
       "The **Beat** clip is a 1-bar looping MIDI pattern with kick on beats 1 and 3, and snare on beats 2 and 4. The **Bass** track has an Instrument Rack with 1 session clip.",
   }),
 
-  // --- Scenario 10: Connection-level error (UIErrorPart) ---
+  // --- Scenario 12: Connection-level error (UIErrorPart) ---
   userMsg("What tracks are available?"),
   modelMsg({
     error:
       "Connection to AI provider failed: 429 Too Many Requests. Rate limit exceeded. Please wait a moment and try again.",
   }),
 
-  // --- Scenario 11: Pending tool call (still loading) ---
+  // --- Scenario 13: Pending tool call (still loading) ---
   userMsg("Read the Live Set overview"),
   modelMsg({
     tools: [

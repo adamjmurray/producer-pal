@@ -5,7 +5,6 @@
 
 import {
   addTextContent,
-  isErrorResult,
   markLastThoughtAsOpen,
 } from "#webui/chat/helpers/formatter-helpers";
 import { type UIMessage, type UIPart } from "#webui/types/messages";
@@ -46,9 +45,7 @@ function addToolParts(msg: AiSdkMessage, parts: UIPart[]): void {
       name: tc.name,
       args: tc.args,
       result: resultStr,
-      isError: resultStr
-        ? isErrorResult(resultStr) || result?.isError
-        : undefined,
+      isError: result?.isError ?? undefined,
     });
   }
 }
