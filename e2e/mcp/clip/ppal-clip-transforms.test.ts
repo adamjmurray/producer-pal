@@ -290,7 +290,7 @@ describe("ppal-clip-transforms (midi timing and duration)", () => {
     // Duration: multiply (set to 0.5)
     await applyTransform(clipId, "duration = 0.5");
     notes = await readClipNotes(clipId);
-    expect(notes).toContain("t0.5");
+    expect(notes).toContain("t/2");
 
     // Duration below 0 deletes the note
     await applyTransform(clipId, "duration = -1");
@@ -884,9 +884,11 @@ describe("ppal-clip-transforms (seq)", () => {
 
     await applyTransform(clipId, "velocity = seq(60, 80, 100)");
     const notes = await readClipNotes(clipId);
-    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
 
-    expect(velocities).toStrictEqual([60, 80, 100, 60, 80, 100]);
+    // Repeated velocity groups are comma-merged; last note keeps full duration
+    expect(notes).toBe(
+      "v60 t/2 C3 1|1,2.5 v80 C3 1|1.5,3 v100 C3 1|2 t1 C3 1|3.5",
+    );
   });
 
   it("seq() works with nested expressions", async () => {
@@ -895,9 +897,10 @@ describe("ppal-clip-transforms (seq)", () => {
 
     await applyTransform(clipId, "velocity = seq(20 + 20, 60 * 2)");
     const notes = await readClipNotes(clipId);
-    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
 
-    expect(velocities).toStrictEqual([40, 120, 40, 120]);
+    // Repeated velocity groups are comma-merged with their positions
+    expect(notes).toContain("v40 C3 1|1,3");
+    expect(notes).toContain("v120 C3 1|2,4");
   });
 
   it("seq() selects gain based on clip.index in multi-clip audio update", async () => {

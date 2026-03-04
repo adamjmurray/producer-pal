@@ -76,15 +76,15 @@ describe("ppal-clip-transforms-waveforms", () => {
 
     // cos: phase 0→1, 0.25→0, 0.5→-1, 0.75→0
     // velocity: 114, 64, 14, 64
-    const velocities = extractVelocities(
-      await applyAndReadNotes(clipId, "velocity = 64 + 50 * cos(4t)"),
+    const notes = await applyAndReadNotes(
+      clipId,
+      "velocity = 64 + 50 * cos(4t)",
     );
 
-    expect(velocities).toHaveLength(4);
-    expect(velocities[0]).toBe(114);
-    expect(velocities[1]).toBe(64);
-    expect(velocities[2]).toBe(14);
-    expect(velocities[3]).toBe(64);
+    // Beats 2 and 4 share v64, comma-merged
+    expect(notes).toContain("v114 C3 1|1");
+    expect(notes).toContain("v64 C3 1|2,4");
+    expect(notes).toContain("v14 C3 1|3");
   });
 
   // sin and tri have identical phase behavior: 0→0, 0.25→1, 0.5→0, 0.75→-1
@@ -97,15 +97,15 @@ describe("ppal-clip-transforms-waveforms", () => {
     async ({ waveform, scene }) => {
       const clipId = await createWaveformClip(scene);
 
-      const velocities = extractVelocities(
-        await applyAndReadNotes(clipId, `velocity = 64 + 50 * ${waveform}(4t)`),
+      const notes = await applyAndReadNotes(
+        clipId,
+        `velocity = 64 + 50 * ${waveform}(4t)`,
       );
 
-      expect(velocities).toHaveLength(4);
-      expect(velocities[0]).toBe(64);
-      expect(velocities[1]).toBe(114);
-      expect(velocities[2]).toBe(64);
-      expect(velocities[3]).toBe(14);
+      // Beats 1 and 3 share v64, comma-merged
+      expect(notes).toContain("v64 C3 1|1,3");
+      expect(notes).toContain("v114 C3 1|2");
+      expect(notes).toContain("v14 C3 1|4");
     },
   );
 

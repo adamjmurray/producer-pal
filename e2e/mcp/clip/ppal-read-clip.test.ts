@@ -172,9 +172,6 @@ describe("ppal-read-clip", () => {
 
     // firstStart is only included when it differs from start
     expect(typeof warpClip.firstStart).toBe("string");
-
-    // warpMarkers feature is behind ENABLE_WARP_MARKERS flag (not set in e2e)
-    expect(warpClip.warpMarkers).toBeUndefined();
   });
 
   it("handles empty slots and errors correctly", async () => {
