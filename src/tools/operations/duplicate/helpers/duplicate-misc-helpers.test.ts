@@ -80,6 +80,18 @@ describe("duplicate-misc-helpers", () => {
 
       expect(selectMock).toHaveBeenCalledWith({ view: "session" });
     });
+
+    it("falls back to arrangement view for clips without id when destination is arrangement", () => {
+      focusIfRequested(true, "arrangement", "clip", [{}]);
+
+      expect(selectMock).toHaveBeenCalledWith({ view: "arrangement" });
+    });
+
+    it("does nothing for clips without id and no destination", () => {
+      focusIfRequested(true, undefined, "clip", [{}]);
+
+      expect(selectMock).not.toHaveBeenCalled();
+    });
   });
 
   // parseCommaSeparatedNames and getNameForIndex are re-exported from

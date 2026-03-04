@@ -12,6 +12,7 @@ import { SettingsScreen } from "./SettingsScreen";
 // Mock child components
 vi.mock(import("./ConnectionTab"), () => {
   const API_KEY_URLS: Record<string, string | undefined> = {
+    anthropic: "https://console.anthropic.com/settings/keys",
     gemini: "https://aistudio.google.com/apikey",
     openai: "https://platform.openai.com/api-keys",
     mistral: "https://console.mistral.ai/home?workspace_dialog=apiKeys",
@@ -19,6 +20,7 @@ vi.mock(import("./ConnectionTab"), () => {
   };
 
   const MODEL_DOCS_URLS: Record<string, string | undefined> = {
+    anthropic: "https://docs.anthropic.com/en/docs/about-claude/models",
     gemini: "https://ai.google.dev/gemini-api/docs/models",
     openai: "https://platform.openai.com/docs/models",
     mistral: "https://docs.mistral.ai/getting-started/models",
@@ -296,6 +298,13 @@ describe("SettingsScreen", () => {
       fireEvent.change(select, { target: { value: "light" } });
 
       expect(setTheme).toHaveBeenCalledExactlyOnceWith("light");
+    });
+  });
+
+  describe("provider labels", () => {
+    it("passes correct label for Anthropic provider", () => {
+      render(<SettingsScreen {...defaultProps} provider="anthropic" />);
+      expect(screen.getByText("Anthropic")).toBeDefined();
     });
   });
 
