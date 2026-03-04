@@ -5,40 +5,43 @@ hero:
   name: Producer Pal™
   text: Control Ableton Live with words
   tagline:
-    AI-powered assistant for music production. Works with Claude, Gemini,
+    Free, AI-powered assistant for music production. Works with Claude, Gemini,
     ChatGPT, Ollama, and more.
   image:
     src: /producer-pal-logo.svg
     alt: Producer Pal
   actions:
     - theme: brand
-      text: Installation
+      text: Install Now
       link: /installation
     - theme: alt
       text: User Guide
       link: /guide
 
 features:
-  - title: Describe, Don't Click
+  - title: Just Say What You Want
     details: >
-      Manage tracks and scenes, edit MIDI and audio clips, add and tweak
-      instruments and effects, and build arrangements through conversation.
+      Manage tracks, edit MIDI and audio clips, tweak instruments and effects,
+      and build arrangements. Do tedious edits in seconds and explore ideas
+      quickly.
+    link: /features
+    linkText: See all features
 
-  - title: Complex Edits Made Simple
+  - title: Bring Your Own AI
     details: >
-      Do tedious edits in seconds: transpose patterns, fade velocities, shift
-      notes, randomize timing. Explore your ideas quickly.
-
-  - title: Works Online or Offline
-    details:
-      Use cloud AI services (Claude, Gemini, GPT) or run completely offline with
-      local models (Ollama, LM Studio). Includes a built-in chat UI to get
-      started quickly.
+      Use cloud AI services (Claude, Gemini, ChatGPT) for the best experience,
+      or run completely free and private with local models (Ollama, LM Studio).
+      No lock-in.
+    link: /installation
+    linkText: Setup guide
 
   - title: Open Source & Free Forever
-    details:
-      GPL-3.0 licensed and developed completely in the open. No subscriptions,
-      no paywalls, no premium features.
+    details: >
+      Built on shared knowledge, shared back to all of us. No subscriptions, no
+      paywalls, no premium tiers. GPL-3.0 licensed and developed completely in
+      the open.
+    link: https://github.com/adamjmurray/producer-pal
+    linkText: View on GitHub
 ---
 
 <div class="get-started-wrapper">
