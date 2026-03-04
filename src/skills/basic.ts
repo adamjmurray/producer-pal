@@ -7,7 +7,9 @@ export const skills = `# Producer Pal Skills
 ## MIDI Notation
 
 Pitches: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
-Format: pitch(es) bar|beat
+Format: [v<vel>] [t<dur>] [p<prob>] pitch(es) bar|beat
+- v: velocity 0-127 (default 100). t: duration in beats (default 1). p: probability 0-1 (default 1). Persist until changed
+- Fraction beats: t/4 = quarter beat, t3/4, 1|2+1/3 for triplets
 
 ### Melody (one note per beat across 2 bars)
 \`\`\`
@@ -24,11 +26,11 @@ E3 G3 B3 3|1
 F3 A3 C4 4|1
 \`\`\`
 
-### Drums (use commas for multiple beats, repeat bar|beats for each bar)
+### Drums (commas for multiple beats, {beat}x{count}[@{step}] for repeats)
 \`\`\`
 C1 1|1,3 2|1,3 3|1,3 4|1,3  # kick
 D1 1|2,4 2|2,4 3|2,4 4|2,4  # snare
-Gb1 1|1.5,2.5,3.5,4.5 2|1.5,2.5,3.5,4.5 3|1.5,2.5,3.5,4.5 4|1.5,2.5,3.5,4.5  # hats on off-beats
+t/4 Gb1 1|1.5x4@1 2|1.5x4@1 3|1.5x4@1 4|1.5x4@1  # hats (4 per bar, step 1 beat)
 \`\`\`
 
 ## Rules
