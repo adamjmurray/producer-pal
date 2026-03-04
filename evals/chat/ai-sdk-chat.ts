@@ -66,13 +66,18 @@ export async function runAiSdkChat(
           sess.messages.push({ role: "user", content: input });
           console.log("\n[Assistant]");
 
+          const suppressTemperature =
+            providerOptions?.anthropic?.thinking != null;
+
           const result = streamText({
             model,
             messages: sess.messages,
             tools: hasTools ? tools : undefined,
             stopWhen: stepCountIs(MAX_TOOL_STEPS),
             providerOptions,
-            temperature: sess.options.randomness,
+            temperature: suppressTemperature
+              ? undefined
+              : sess.options.randomness,
             maxOutputTokens: sess.options.outputTokens ?? DEFAULT_MAX_TOKENS,
             system: sess.options.instructions,
           });

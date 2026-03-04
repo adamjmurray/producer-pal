@@ -175,7 +175,8 @@ export const aiSdkAdapter: ChatAdapter<
     );
 
     const suppressTemperature =
-      provider === "openai" && isOpenAIReasoningModel(model);
+      (provider === "openai" && isOpenAIReasoningModel(model)) ||
+      (provider === "anthropic" && getThinkingBudget(thinking) !== 0);
 
     return {
       model: languageModel,

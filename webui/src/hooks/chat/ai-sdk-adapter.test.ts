@@ -329,6 +329,32 @@ describe("aiSdkAdapter", () => {
       });
     });
 
+    it("suppresses temperature for anthropic when thinking is enabled", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "claude-sonnet-4-6-20250514",
+        0.7,
+        "High",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.temperature).toBeUndefined();
+    });
+
+    it("preserves temperature for anthropic when thinking is off", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "claude-sonnet-4-6-20250514",
+        0.7,
+        "Off",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.temperature).toBe(0.7);
+    });
+
     it("sets anthropic default thinking budget for Default thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
