@@ -60,10 +60,10 @@ If Producer Pal stops working after installing a new version:
 - Restart your AI app completely
 - Start a fresh conversation
 
-## Getting Support
+## Still Need Help?
 
-- Ask in
-  [the discussion forum](https://github.com/adamjmurray/producer-pal/discussions/categories/questions)
-- Report bugs in
-  [the bug reports forum](https://github.com/adamjmurray/producer-pal/discussions/categories/bug-reports)
-  or [issues list](https://github.com/adamjmurray/producer-pal/issues)
+If these steps didn't resolve your issue, check the
+[list of open issues](https://github.com/adamjmurray/producer-pal/issues) or
+[file a new issue](https://github.com/adamjmurray/producer-pal/issues/new/choose).
+You can also ask in
+[GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions).

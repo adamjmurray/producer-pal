@@ -35,5 +35,7 @@ toggle the "Enabled" switch off and on.
 
 ---
 
-If you encounter additional issues, please report them on the
-[GitHub Issues page](https://github.com/adamjmurray/producer-pal/issues).
+If you encounter additional issues, check the
+[list of open issues](https://github.com/adamjmurray/producer-pal/issues) to
+see if it's already been reported. If not,
+[file a new issue](https://github.com/adamjmurray/producer-pal/issues/new/choose).

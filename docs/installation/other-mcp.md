@@ -109,4 +109,4 @@ tools", and allow the tools to be used:
 
 ## Troubleshooting
 
-If it doesn't work, see the [Troubleshooting Guide](./troubleshooting).
+If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

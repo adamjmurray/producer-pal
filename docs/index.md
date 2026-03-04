@@ -149,27 +149,5 @@ features:
 
 ## Support
 
-- **Feedback, Feature Ideas, General Discussion**:
-  [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
-- **Bugs & Problems**: Report in
-  [the bug reports forum](https://github.com/adamjmurray/producer-pal/discussions/categories/bug-reports)
-  or [issues list](https://github.com/adamjmurray/producer-pal/issues)
-
-## Data Privacy
-
-When using online AI services, your musical data (MIDI notes, track names,
-tempo, etc.) is sent to that service for processing. Most services offer options
-to opt out of training on your data. Check your AI provider's privacy policy and
-account settings. Avoid online services for highly confidential or commercially
-sensitive work.
-
-## Get Involved
-
-To support Producer Pal development, ⭐️ star
-[the GitHub repository](https://github.com/adamjmurray/producer-pal) to help
-others discover the project.
-
-Want to help? Join the
-[discussion on GitHub](https://github.com/adamjmurray/producer-pal/discussions)
-or
-[contribute directly](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md).
+Need help, want to report a bug, or interested in contributing? Visit the
+[Support page](/support).

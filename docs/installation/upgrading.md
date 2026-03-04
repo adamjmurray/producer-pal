@@ -55,7 +55,7 @@ If Producer Pal stops working after upgrading:
 - Restart your AI app completely
 - Start a fresh conversation
 
-See the [Troubleshooting Guide](./troubleshooting) for more help.
+See the [Troubleshooting Guide](/support/troubleshooting) for more help.
 
 ## Version History
 

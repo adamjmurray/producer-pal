@@ -39,7 +39,7 @@ export default defineConfig({
       { text: "Installation", link: "/installation" },
       { text: "Guide", link: "/guide" },
       { text: "Features", link: "/features" },
-      { text: "Roadmap", link: "/roadmap" },
+      { text: "Support", link: "/support" },
       {
         text: "GitHub",
         link: "https://github.com/adamjmurray/producer-pal",
@@ -61,8 +61,14 @@ export default defineConfig({
         items: [
           { text: "Features", link: "/features" },
           { text: "Roadmap", link: "/roadmap" },
-          { text: "Known Issues", link: "/known-issues" },
-          { text: "Troubleshooting", link: "/installation/troubleshooting" },
+        ],
+      },
+      {
+        text: "Support",
+        items: [
+          { text: "Overview", link: "/support" },
+          { text: "Troubleshooting", link: "/support/troubleshooting" },
+          { text: "Known Issues", link: "/support/known-issues" },
         ],
       },
       {

@@ -63,4 +63,4 @@ Run `/mcp` in Claude Code to confirm the Producer Pal tools are available:
 
 ## Troubleshooting
 
-If it doesn't work, see the [Troubleshooting Guide](./troubleshooting).
+If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

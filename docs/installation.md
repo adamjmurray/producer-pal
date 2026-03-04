@@ -82,5 +82,4 @@ Run models completely offline:
 - **[Upgrading](./installation/upgrading)** - How to update to a new version
 - **[Web Tunnels](./installation/web-tunnels)** - Setup remote access (for web
   apps)
-- **[Troubleshooting](./installation/troubleshooting)** - Common issues and
-  solutions
+- **[Troubleshooting](/support/troubleshooting)** - Common issues and solutions

@@ -98,4 +98,4 @@ from the [tools category](https://ollama.com/search?c=tools).
 
 ## Troubleshooting
 
-If it doesn't work, see the [Troubleshooting Guide](./troubleshooting).
+If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

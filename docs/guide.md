@@ -66,8 +66,7 @@ After installation:
 
 ## Need Help?
 
-- [Report issues on GitHub](https://github.com/adamjmurray/producer-pal/issues)
-- [Ask questions in GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
+- Visit the [Support page](/support) for help, bug reports, and more
 
 ## Why Producer Pal?
 

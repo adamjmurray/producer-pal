@@ -77,4 +77,4 @@ Desktop app for running local models with a visual interface.
 ## Troubleshooting
 
 If you have issues with the chat UI, see the
-[Troubleshooting Guide](./troubleshooting).
+[Troubleshooting Guide](/support/troubleshooting).

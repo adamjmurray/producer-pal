@@ -131,4 +131,4 @@ optimization advice.
 ## Troubleshooting
 
 If the built-in chat doesn't work, see the
-[Troubleshooting Guide](./troubleshooting).
+[Troubleshooting Guide](/support/troubleshooting).
