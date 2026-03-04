@@ -145,7 +145,21 @@ describe("AssistantToolCall", () => {
       expect(details.hasAttribute("open")).toBe(false);
     });
 
-    it("applies red text to error summary line", () => {
+    it("applies red text to error spans inside summary", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result="Error message"
+          isError={true}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+      const redSpans = summary.querySelectorAll(".text-red-700");
+
+      expect(redSpans.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("does not apply red text to summary element itself", () => {
       render(
         <AssistantToolCall
           {...defaultProps}
@@ -155,7 +169,22 @@ describe("AssistantToolCall", () => {
       );
       const summary = document.querySelector("summary")!;
 
-      expect(summary.className).toContain("text-red-700");
+      expect(summary.className).not.toContain("text-red-700");
+    });
+  });
+
+  describe("error summary fallback", () => {
+    it("shows fallback 'error' text when extractErrorSummary returns null", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result="some unknown error format"
+          isError={true}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("— error");
     });
   });
 

@@ -41,22 +41,20 @@ export function AssistantToolCall({
         result ? "" : "animate-pulse"
       } ${effectiveIsError ? "border-l-3 border-red-500" : ""}`}
     >
-      <summary
-        className={
-          effectiveIsError ? "text-red-700 dark:text-red-400" : undefined
-        }
-      >
+      <summary>
         &nbsp;🔧{" "}
-        {!result
-          ? "using tool: "
-          : effectiveIsError
-            ? "tool failed: "
-            : "used tool: "}
+        {!result ? (
+          "using tool: "
+        ) : effectiveIsError ? (
+          <span className="text-red-700 dark:text-red-400">tool failed: </span>
+        ) : (
+          "used tool: "
+        )}
         {toolNames[name] ?? name}
-        {errorSummary && (
-          <span className="font-normal">
+        {effectiveIsError && (
+          <span className="text-red-700 dark:text-red-400 font-normal">
             {" "}
-            — {truncateString(errorSummary, 80)}
+            — {truncateString(errorSummary ?? "error", 80)}
           </span>
         )}
       </summary>
