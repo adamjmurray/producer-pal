@@ -9,7 +9,9 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
   children,
+  registerArrangementClip,
   registerMockObject,
+  registerTrackWithArrangementDup,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 interface LengthMocks {
@@ -17,24 +19,11 @@ interface LengthMocks {
 }
 
 function setupLengthMocks(): LengthMocks {
-  const track0 = registerMockObject("live_set/tracks/0", {
-    path: livePath.track(0),
-    properties: {
-      arrangement_clips: children(livePath.track(0).arrangementClip(0)),
-    },
-    methods: {
-      duplicate_clip_to_arrangement: () => [
-        "id",
-        livePath.track(0).arrangementClip(0),
-      ],
-    },
+  const track0 = registerTrackWithArrangementDup(0, {
+    arrangement_clips: children(livePath.track(0).arrangementClip(0)),
   });
 
-  registerMockObject(livePath.track(0).arrangementClip(0), {
-    path: livePath.track(0).arrangementClip(0),
-    properties: { is_arrangement_clip: 1, start_time: 16 },
-  });
-
+  registerArrangementClip(0, 0, 16);
   registerMockObject("live_set", { path: livePath.liveSet });
 
   return { track0 };
@@ -186,10 +175,7 @@ describe("duplicate - arrangementLength functionality", () => {
       },
     });
 
-    registerMockObject(livePath.track(0).arrangementClip(0), {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { is_arrangement_clip: 1, start_time: 0 },
-    });
+    registerArrangementClip(0, 0, 0);
 
     // This test verifies correct duration conversion: "1|0" duration should be 3 Ableton beats in 6/8 time
     // The implementation now correctly uses the CLIP time signature (6/8) for parsing
@@ -237,10 +223,7 @@ describe("duplicate - arrangementLength functionality", () => {
       },
     });
 
-    registerMockObject(livePath.track(0).arrangementClip(0), {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { is_arrangement_clip: 1, start_time: 0 },
-    });
+    registerArrangementClip(0, 0, 0);
 
     // In 2/2 time, "1|0" duration should be 4 Ableton beats (1 bar = 2 half notes = 4 quarter notes)
     const result = duplicate({
@@ -286,20 +269,8 @@ describe("duplicate - arrangementLength functionality", () => {
       properties: { length: 8, looping: 0 },
     });
 
-    const track0 = registerMockObject("live_set/tracks/0", {
-      path: livePath.track(0),
-      methods: {
-        duplicate_clip_to_arrangement: () => [
-          "id",
-          livePath.track(0).arrangementClip(0),
-        ],
-      },
-    });
-
-    const arrClip = registerMockObject(livePath.track(0).arrangementClip(0), {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { is_arrangement_clip: 1, start_time: 16 },
-    });
+    const track0 = registerTrackWithArrangementDup(0);
+    const arrClip = registerArrangementClip(0, 0, 16);
 
     registerMockObject("live_set", { path: livePath.liveSet });
 

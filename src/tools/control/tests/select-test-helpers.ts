@@ -6,8 +6,23 @@
 import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
+  clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+
+/**
+ * Reset all mocks and set up default "nothing selected" state for select() tests.
+ * Call this from beforeEach in select test files.
+ */
+export function resetSelectTestState(): void {
+  clearMockRegistry();
+  setupViewStateMock({
+    selectedTrack: { exists: false },
+    selectedScene: { exists: false },
+    selectedClip: { exists: false },
+    highlightedClipSlot: { exists: false },
+  });
+}
 
 interface ViewState {
   view: string;

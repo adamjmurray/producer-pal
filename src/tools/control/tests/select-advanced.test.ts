@@ -13,6 +13,7 @@ import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { select } from "#src/tools/control/select.ts";
 import {
   expectViewState,
+  resetSelectTestState,
   setupAppViewMock,
   setupSelectedTrackMock,
   setupSongViewMock,
@@ -20,39 +21,23 @@ import {
   setupViewStateMock,
 } from "./select-test-helpers.ts";
 
-// Mock utility functions
+const { viewMockToLive, viewMockFromLive } = vi.hoisted(() => ({
+  viewMockToLive: (view: string) =>
+    ({ session: "Session", arrangement: "Arranger" })[view] ?? "Session",
+  viewMockFromLive: (liveApiView: string) =>
+    ({ Session: "session", Arranger: "arrangement" })[liveApiView] ?? "session",
+}));
+
 vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => ({
   ...(await importOriginal()),
-  toLiveApiView: vi.fn((view: string) => {
-    const viewMap: Record<string, string> = {
-      session: "Session",
-      arrangement: "Arranger",
-    };
-
-    return viewMap[view] ?? "Session";
-  }),
-  fromLiveApiView: vi.fn((liveApiView: string) => {
-    const viewMap: Record<string, string> = {
-      Session: "session",
-      Arranger: "arrangement",
-    };
-
-    return viewMap[liveApiView] ?? "session";
-  }),
+  toLiveApiView: vi.fn(viewMockToLive),
+  fromLiveApiView: vi.fn(viewMockFromLive),
 }));
 
 describe("view", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    clearMockRegistry();
-
-    // Setup default "nothing selected" state for select() reads
-    setupViewStateMock({
-      selectedTrack: { exists: false },
-      selectedScene: { exists: false },
-      selectedClip: { exists: false },
-      highlightedClipSlot: { exists: false },
-    });
+    resetSelectTestState();
   });
 
   describe("detail view", () => {
@@ -345,16 +330,7 @@ describe("view", () => {
   describe("read functionality (no arguments)", () => {
     beforeEach(() => {
       vi.clearAllMocks();
-      clearMockRegistry();
-
-      // Default: nothing selected
-      setupViewStateMock({
-        view: "session",
-        selectedTrack: { exists: false },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      resetSelectTestState();
     });
 
     it("reads basic view state with session view when no arguments", () => {

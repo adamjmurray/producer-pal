@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
+  assertBoundaryDetection,
   assertSourceClipEndMarker,
   mockContext,
   setupArrangementAudioClipMock,
@@ -59,15 +60,7 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
         mockContext,
       );
 
-      // Session clip created for boundary detection (loop_end=1)
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.anything(),
-        1,
-        "/audio/test.wav",
-      );
-
-      // Session clip cleaned up after detecting insufficient content
-      expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
+      assertBoundaryDetection(mockCreate, sessionSlot);
 
       // Source clip NOT modified (no end_marker extension)
       expect(clip!.set).not.toHaveBeenCalledWith(
@@ -123,15 +116,7 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
         mockContext,
       );
 
-      // Session clip created for boundary detection (loop_end=1)
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.anything(),
-        1,
-        "/audio/test.wav",
-      );
-
-      // Session clip cleaned up immediately after boundary detection
-      expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
+      assertBoundaryDetection(mockCreate, sessionSlot);
 
       // Source clip loop_end set: loopStart(0) + effectiveTarget(8) = 8.0
       expect(clip!.set).toHaveBeenCalledWith("loop_end", 8.0);
@@ -178,15 +163,7 @@ describe("Unlooped warped audio clips - extend when file has sufficient content"
       mockContext,
     );
 
-    // Session clip created for boundary detection (loop_end=1)
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.anything(),
-      1,
-      "/audio/test.wav",
-    );
-
-    // Session clip cleaned up immediately after boundary detection
-    expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
+    assertBoundaryDetection(mockCreate, sessionSlot);
 
     // Source clip loop_end set: loopStart(0) + target(14) = 14.0
     expect(clip!.set).toHaveBeenCalledWith("loop_end", 14.0);

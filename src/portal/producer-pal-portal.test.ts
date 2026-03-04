@@ -48,56 +48,43 @@ describe("producer-pal-portal", () => {
     }
   });
 
-  it("creates StdioHttpBridge instance and calls start", async () => {
+  async function importPortalAndGetCalls(): Promise<unknown[][]> {
     vi.resetModules();
 
     const { StdioHttpBridge } = await import("./stdio-http-bridge.ts");
 
     await import("./producer-pal-portal.ts");
 
-    expect(StdioHttpBridge).toHaveBeenCalled();
+    return (StdioHttpBridge as unknown as Mock).mock.calls;
+  }
+
+  it("creates StdioHttpBridge instance and calls start", async () => {
+    const calls = await importPortalAndGetCalls();
+
     expect(mockBridge.start).toHaveBeenCalled();
-
-    const calls = (StdioHttpBridge as unknown as Mock).mock.calls;
-
     expect(calls[0]?.[0]).toMatch(/^http:\/\/localhost:\d+\/mcp$/);
   });
 
   it("passes smallModelMode: false when no flag or env var", async () => {
     process.argv = ["node", "producer-pal-portal.js"];
-    vi.resetModules();
 
-    const { StdioHttpBridge } = await import("./stdio-http-bridge.ts");
-
-    await import("./producer-pal-portal.ts");
-
-    const calls = (StdioHttpBridge as unknown as Mock).mock.calls;
+    const calls = await importPortalAndGetCalls();
 
     expect(calls[0]?.[1]).toStrictEqual({ smallModelMode: false });
   });
 
   it("enables small model mode with -s flag", async () => {
     process.argv = ["node", "producer-pal-portal.js", "-s"];
-    vi.resetModules();
 
-    const { StdioHttpBridge } = await import("./stdio-http-bridge.ts");
-
-    await import("./producer-pal-portal.ts");
-
-    const calls = (StdioHttpBridge as unknown as Mock).mock.calls;
+    const calls = await importPortalAndGetCalls();
 
     expect(calls[0]?.[1]).toStrictEqual({ smallModelMode: true });
   });
 
   it("enables small model mode with --small-model-mode flag", async () => {
     process.argv = ["node", "producer-pal-portal.js", "--small-model-mode"];
-    vi.resetModules();
 
-    const { StdioHttpBridge } = await import("./stdio-http-bridge.ts");
-
-    await import("./producer-pal-portal.ts");
-
-    const calls = (StdioHttpBridge as unknown as Mock).mock.calls;
+    const calls = await importPortalAndGetCalls();
 
     expect(calls[0]?.[1]).toStrictEqual({ smallModelMode: true });
   });
@@ -105,13 +92,8 @@ describe("producer-pal-portal", () => {
   it("enables small model mode with SMALL_MODEL_MODE env var", async () => {
     process.argv = ["node", "producer-pal-portal.js"];
     process.env.SMALL_MODEL_MODE = "true";
-    vi.resetModules();
 
-    const { StdioHttpBridge } = await import("./stdio-http-bridge.ts");
-
-    await import("./producer-pal-portal.ts");
-
-    const calls = (StdioHttpBridge as unknown as Mock).mock.calls;
+    const calls = await importPortalAndGetCalls();
 
     expect(calls[0]?.[1]).toStrictEqual({ smallModelMode: true });
   });

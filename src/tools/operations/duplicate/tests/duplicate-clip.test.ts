@@ -7,7 +7,11 @@ import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
-import { registerMockObject } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerArrangementClip,
+  registerMockObject,
+  registerTrackWithArrangementDup,
+} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 describe("duplicate - clip duplication", () => {
   it("should throw an error when clip has no position params", () => {
@@ -156,20 +160,9 @@ describe("duplicate - clip duplication", () => {
         path: livePath.track(0).clipSlot(0).clip(),
       });
 
-      const track0 = registerMockObject("live_set/tracks/0", {
-        path: livePath.track(0),
-        methods: {
-          duplicate_clip_to_arrangement: () => [
-            "id",
-            livePath.track(0).arrangementClip(0),
-          ],
-        },
-      });
+      const track0 = registerTrackWithArrangementDup(0);
 
-      registerMockObject(livePath.track(0).arrangementClip(0), {
-        path: livePath.track(0).arrangementClip(0),
-        properties: { is_arrangement_clip: 1, start_time: 8 },
-      });
+      registerArrangementClip(0, 0, 8);
 
       const result = duplicate({
         type: "clip",
@@ -196,35 +189,11 @@ describe("duplicate - clip duplication", () => {
         path: livePath.track(0).clipSlot(0).clip(),
       });
 
-      let clipCounter = 0;
+      const track0 = registerTrackWithArrangementDup(0);
 
-      const track0 = registerMockObject("live_set/tracks/0", {
-        path: livePath.track(0),
-        methods: {
-          duplicate_clip_to_arrangement: () => {
-            const clipId = livePath.track(0).arrangementClip(clipCounter);
-
-            clipCounter++;
-
-            return ["id", clipId];
-          },
-        },
-      });
-
-      registerMockObject(livePath.track(0).arrangementClip(0), {
-        path: livePath.track(0).arrangementClip(0),
-        properties: { is_arrangement_clip: 1, start_time: 8 },
-      });
-
-      registerMockObject(livePath.track(0).arrangementClip(1), {
-        path: livePath.track(0).arrangementClip(1),
-        properties: { is_arrangement_clip: 1, start_time: 12 },
-      });
-
-      registerMockObject(livePath.track(0).arrangementClip(2), {
-        path: livePath.track(0).arrangementClip(2),
-        properties: { is_arrangement_clip: 1, start_time: 16 },
-      });
+      registerArrangementClip(0, 0, 8);
+      registerArrangementClip(0, 1, 12);
+      registerArrangementClip(0, 2, 16);
 
       const result = duplicate({
         type: "clip",

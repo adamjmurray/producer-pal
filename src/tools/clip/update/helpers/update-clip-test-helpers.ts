@@ -363,3 +363,20 @@ export function setupSessionTilingMock(fileContentBoundary = 8.0) {
 
   return { mockCreate, sessionClip, sessionSlot };
 }
+
+/**
+ * Assert that session-based file boundary detection ran correctly.
+ * Verifies the session clip was created for boundary detection and cleaned up.
+ * @param mockCreate - Spy on createAudioClipInSession
+ * @param sessionSlot - Mock session slot with a call method
+ * @param sessionSlot.call - Mock function for session slot calls
+ * @param filePath - Expected audio file path
+ */
+export function assertBoundaryDetection(
+  mockCreate: ReturnType<typeof vi.spyOn>,
+  sessionSlot: { call: ReturnType<typeof vi.fn> },
+  filePath = "/audio/test.wav",
+): void {
+  expect(mockCreate).toHaveBeenCalledWith(expect.anything(), 1, filePath);
+  expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
+}

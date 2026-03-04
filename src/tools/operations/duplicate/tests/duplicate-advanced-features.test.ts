@@ -8,8 +8,10 @@ import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
   children,
+  registerArrangementClip,
   type RegisteredMockObject,
   registerMockObject,
+  registerTrackWithArrangementDup,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 
@@ -192,20 +194,8 @@ describe("duplicate - focus functionality", () => {
       properties: { length: 4 },
     });
 
-    registerMockObject("live_set/tracks/0", {
-      path: livePath.track(0),
-      methods: {
-        duplicate_clip_to_arrangement: () => [
-          "id",
-          livePath.track(0).arrangementClip(0),
-        ],
-      },
-    });
-
-    registerMockObject("live_set tracks 0 arrangement_clips 0", {
-      path: livePath.track(0).arrangementClip(0),
-      properties: { is_arrangement_clip: 1, start_time: 0 },
-    });
+    registerTrackWithArrangementDup(0);
+    registerArrangementClip(0, 0, 0);
 
     duplicate({
       type: "clip",
