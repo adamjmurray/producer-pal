@@ -56,6 +56,8 @@ interface SettingsScreenProps {
  */
 function getProviderLabel(provider: string): string {
   switch (provider) {
+    case "anthropic":
+      return "Anthropic";
     case "gemini":
       return "Gemini";
     case "openai":

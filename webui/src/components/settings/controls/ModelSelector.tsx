@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import {
+  ANTHROPIC_MODELS,
   GEMINI_MODELS,
   MISTRAL_MODELS,
   OLLAMA_MODELS,
@@ -13,7 +14,19 @@ import {
 } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 
+type ModelPreset = readonly { value: string; label: string }[];
+
+const PROVIDER_MODELS: Partial<Record<Provider, ModelPreset>> = {
+  anthropic: ANTHROPIC_MODELS,
+  gemini: GEMINI_MODELS,
+  openai: OPENAI_MODELS,
+  mistral: MISTRAL_MODELS,
+  openrouter: OPENROUTER_MODELS,
+  ollama: OLLAMA_MODELS,
+};
+
 const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
+  anthropic: "e.g., claude-sonnet-4-6-20250514",
   gemini: "e.g., gemini-2.0-flash",
   openai: "e.g., gpt-5-nano",
   mistral: "e.g., ministral-14b-latest",
@@ -43,19 +56,10 @@ export function ModelSelector({
   setModel,
 }: ModelSelectorProps) {
   // Determine preset models for this provider
-  const presetModels = useMemo(() => {
-    return provider === "gemini"
-      ? GEMINI_MODELS
-      : provider === "openai"
-        ? OPENAI_MODELS
-        : provider === "mistral"
-          ? MISTRAL_MODELS
-          : provider === "openrouter"
-            ? OPENROUTER_MODELS
-            : provider === "ollama"
-              ? OLLAMA_MODELS
-              : [];
-  }, [provider]);
+  const presetModels = useMemo(
+    () => PROVIDER_MODELS[provider] ?? [],
+    [provider],
+  );
 
   // Track whether custom input is shown (for non-custom providers)
   const [showCustomInput, setShowCustomInput] = useState(() => {

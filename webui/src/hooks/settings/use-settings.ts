@@ -39,7 +39,7 @@ function createProviderSetter<K extends keyof ProviderSettings>(
   };
 }
 
-// Hook manages state for 7 providers with individual setters and orchestration logic
+// Hook manages state for 8 providers with individual setters and orchestration logic
 
 /**
  * Hook for managing chat provider settings and tool enablement
@@ -53,6 +53,9 @@ export function useSettings(): UseSettingsReturn {
   );
   const [enabledTools, setEnabledToolsState] =
     useState<Record<string, boolean>>(loadEnabledTools);
+  const [anthropicSettings, setAnthropicSettings] = useState<ProviderSettings>(
+    () => loadProviderSettings("anthropic"),
+  );
   const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(() =>
     loadProviderSettings("gemini"),
   );
@@ -77,6 +80,7 @@ export function useSettings(): UseSettingsReturn {
   // Mapping of providers to their state setters
   const providerStateSetters: ProviderStateSetters = useMemo(
     () => ({
+      anthropic: setAnthropicSettings,
       gemini: setGeminiSettings,
       openai: setOpenaiSettings,
       mistral: setMistralSettings,
@@ -89,6 +93,7 @@ export function useSettings(): UseSettingsReturn {
   );
 
   const currentSettings = {
+    anthropic: anthropicSettings,
     gemini: geminiSettings,
     openai: openaiSettings,
     mistral: mistralSettings,
@@ -100,6 +105,7 @@ export function useSettings(): UseSettingsReturn {
 
   const applyLoadedSettings = useCallback(
     (allSettings: typeof DEFAULT_SETTINGS) => {
+      setAnthropicSettings(allSettings.anthropic);
       setGeminiSettings(allSettings.gemini);
       setOpenaiSettings(allSettings.openai);
       setMistralSettings(allSettings.mistral);
@@ -117,6 +123,7 @@ export function useSettings(): UseSettingsReturn {
 
   const saveSettings = useCallback(() => {
     const allSettings = buildAllProviderSettings(
+      anthropicSettings,
       geminiSettings,
       openaiSettings,
       mistralSettings,
@@ -131,6 +138,7 @@ export function useSettings(): UseSettingsReturn {
   }, [
     provider,
     enabledTools,
+    anthropicSettings,
     geminiSettings,
     openaiSettings,
     mistralSettings,

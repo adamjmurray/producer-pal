@@ -56,7 +56,7 @@ describe("ProviderSelector", () => {
 
       const options = document.querySelectorAll("option");
 
-      expect(options).toHaveLength(7);
+      expect(options).toHaveLength(8);
 
       const optionData = Array.from(options).map((opt) => ({
         value: opt.value,
@@ -64,6 +64,7 @@ describe("ProviderSelector", () => {
       }));
 
       expect(optionData).toStrictEqual([
+        { value: "anthropic", text: "Anthropic" },
         { value: "gemini", text: "Google" },
         { value: "openai", text: "OpenAI" },
         { value: "mistral", text: "Mistral" },
@@ -117,6 +118,7 @@ describe("ProviderSelector", () => {
 
     it("calls setProvider with correct value for each option", () => {
       const providers: Provider[] = [
+        "anthropic",
         "gemini",
         "openai",
         "mistral",

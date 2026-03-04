@@ -222,6 +222,17 @@ describe("ChatHeader", () => {
   });
 
   describe("provider display format", () => {
+    it("shows Anthropic for anthropic provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="claude-sonnet-4-6-20250514"
+          activeProvider="anthropic"
+        />,
+      );
+      expect(screen.getByText(/Anthropic \|/)).toBeDefined();
+    });
+
     it("shows Google for gemini provider", () => {
       render(
         <ChatHeader

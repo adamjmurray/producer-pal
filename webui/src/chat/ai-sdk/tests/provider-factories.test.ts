@@ -11,6 +11,17 @@ const getModelId = (model: unknown): string =>
   (model as Record<string, unknown>).modelId as string;
 
 describe("createProviderModel", () => {
+  it("creates a model for anthropic provider", () => {
+    const model = createProviderModel(
+      "anthropic",
+      "claude-sonnet-4-6-20250514",
+      "test-key",
+    );
+
+    expect(model).toBeDefined();
+    expect(getModelId(model)).toBe("claude-sonnet-4-6-20250514");
+  });
+
   it("creates a model for openai provider", () => {
     const model = createProviderModel("openai", "gpt-4o", "test-key");
 

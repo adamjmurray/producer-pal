@@ -312,14 +312,61 @@ describe("aiSdkAdapter", () => {
       });
     });
 
-    it("returns undefined provider options for anthropic provider", () => {
+    it("sets anthropic thinking options for High thinking", () => {
       const config = aiSdkAdapter.buildConfig(
-        "claude-sonnet-4-20250514",
+        "claude-sonnet-4-6-20250514",
         1.0,
         "High",
         {},
         undefined,
         { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        anthropic: {
+          thinking: { type: "enabled", budgetTokens: 8192 },
+        },
+      });
+    });
+
+    it("sets anthropic default thinking budget for Default thinking", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "claude-sonnet-4-6-20250514",
+        1.0,
+        "Default",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        anthropic: {
+          thinking: { type: "enabled", budgetTokens: 10240 },
+        },
+      });
+    });
+
+    it("returns undefined provider options for anthropic with Off thinking", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "claude-sonnet-4-6-20250514",
+        1.0,
+        "Off",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.providerOptions).toBeUndefined();
+    });
+
+    it("returns undefined provider options for mistral provider", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "mistral-large",
+        1.0,
+        "High",
+        {},
+        undefined,
+        { ...extraParams, provider: "mistral" },
       );
 
       expect(config.providerOptions).toBeUndefined();

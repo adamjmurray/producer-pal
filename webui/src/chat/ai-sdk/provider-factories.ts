@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
@@ -28,6 +29,12 @@ export function createProviderModel(
   baseUrl?: string,
 ): LanguageModel {
   switch (provider) {
+    case "anthropic":
+      return createAnthropic({
+        apiKey,
+        headers: { "anthropic-dangerous-direct-browser-access": "true" },
+      })(modelId);
+
     case "openai":
       return createOpenAI({ apiKey })(`${modelId}`);
 

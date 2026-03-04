@@ -37,6 +37,10 @@ function buildProviderOptions(
   model: string,
   showThoughts: boolean,
 ): ProviderOptions | undefined {
+  if (provider === "anthropic") {
+    return buildAnthropicOptions(thinking);
+  }
+
   if (provider === "ollama") {
     const ollamaThink = mapThinkingToOllamaThink(thinking, model);
 
@@ -86,6 +90,26 @@ function buildProviderOptions(
   }
 
   return undefined;
+}
+
+/**
+ * Build Anthropic-specific provider options for extended thinking.
+ * @param thinking - Thinking level from UI settings
+ * @returns Anthropic provider options or undefined
+ */
+function buildAnthropicOptions(thinking: string): ProviderOptions | undefined {
+  const thinkingBudget = getThinkingBudget(thinking);
+
+  if (thinkingBudget === 0) return undefined;
+
+  return {
+    anthropic: {
+      thinking: {
+        type: "enabled",
+        budgetTokens: thinkingBudget === -1 ? 10240 : thinkingBudget,
+      },
+    },
+  };
 }
 
 /**

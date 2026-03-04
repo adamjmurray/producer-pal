@@ -12,6 +12,13 @@ export const OTHER_MODEL_OPTION = {
   label: "Other...",
 } as const;
 
+export const ANTHROPIC_MODELS = [
+  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
+  { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+  OTHER_MODEL_OPTION,
+];
+
 export const GEMINI_MODELS = [
   { value: "gemini-3-flash-preview", label: "Gemini 3 Flash" },
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
@@ -90,6 +97,7 @@ export const OLLAMA_MODELS = [
  * Used by settings initialization and E2E tests.
  */
 export const DEFAULT_MODELS = {
+  anthropic: ANTHROPIC_MODELS[0]?.value ?? "",
   gemini: GEMINI_MODELS[0]?.value ?? "",
   openai: OPENAI_MODELS[0]?.value ?? "",
   mistral: MISTRAL_MODELS[0]?.value ?? "",

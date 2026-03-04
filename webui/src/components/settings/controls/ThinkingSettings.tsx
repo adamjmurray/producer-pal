@@ -34,6 +34,7 @@ export function ThinkingSettings({
 }: ThinkingSettingsProps) {
   // Only show thinking settings for providers that support it
   if (
+    provider !== "anthropic" &&
     provider !== "gemini" &&
     provider !== "openai" &&
     provider !== "openrouter" &&
@@ -63,7 +64,10 @@ export function ThinkingSettings({
           <option value="Ultra">Ultra</option>
         </select>
       </div>
-      {(isGemini || provider === "openrouter" || provider === "openai") &&
+      {(isGemini ||
+        provider === "anthropic" ||
+        provider === "openrouter" ||
+        provider === "openai") &&
         thinking !== "Off" && (
           <div className="flex items-center gap-2">
             <input

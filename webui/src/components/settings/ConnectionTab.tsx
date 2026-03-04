@@ -7,6 +7,7 @@ import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
 
 const API_KEY_URLS: Record<string, string | undefined> = {
+  anthropic: "https://console.anthropic.com/settings/keys",
   gemini: "https://aistudio.google.com/apikey",
   openai: "https://platform.openai.com/api-keys",
   mistral: "https://console.mistral.ai/home?workspace_dialog=apiKeys",
@@ -14,6 +15,7 @@ const API_KEY_URLS: Record<string, string | undefined> = {
 };
 
 const MODEL_DOCS_URLS: Record<string, string | undefined> = {
+  anthropic: "https://docs.anthropic.com/en/docs/about-claude/models",
   gemini: "https://ai.google.dev/gemini-api/docs/models",
   openai: "https://platform.openai.com/docs/models",
   mistral: "https://docs.mistral.ai/getting-started/models",

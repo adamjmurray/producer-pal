@@ -155,6 +155,35 @@ describe("ThinkingSettings", () => {
     });
   });
 
+  describe("Anthropic provider", () => {
+    it("renders all thinking options", () => {
+      renderThinkingSettings({
+        provider: "anthropic",
+        model: "claude-sonnet-4-6-20250514",
+        thinking: "High",
+      });
+      expectAllThinkingOptions();
+    });
+
+    it("shows checkbox when thinking is not Off", () => {
+      renderThinkingSettings({
+        provider: "anthropic",
+        model: "claude-sonnet-4-6-20250514",
+        thinking: "High",
+      });
+      expectCheckboxVisible();
+    });
+
+    it("hides checkbox when thinking is Off", () => {
+      renderThinkingSettings({
+        provider: "anthropic",
+        model: "claude-sonnet-4-6-20250514",
+        thinking: "Off",
+      });
+      expectCheckboxHidden();
+    });
+  });
+
   describe("non-supported providers", () => {
     it("renders nothing for mistral provider", () => {
       const { container } = renderThinkingSettings({
