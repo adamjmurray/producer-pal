@@ -87,14 +87,14 @@
     "e2e:webui": "npm run ui:test"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.53",
+    "@ai-sdk/anthropic": "^3.0.54",
     "@ai-sdk/google": "^3.0.37",
     "@ai-sdk/mistral": "^3.0.22",
     "@ai-sdk/openai": "^3.0.39",
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@openrouter/ai-sdk-provider": "^2.2.3",
     "@tailwindcss/typography": "^0.5.19",
-    "ai": "^6.0.109",
+    "ai": "^6.0.111",
     "express": "^5.2.1",
     "marked": "^17.0.3",
     "preact": "^10.28.4",
