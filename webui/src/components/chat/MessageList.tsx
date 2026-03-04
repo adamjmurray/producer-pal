@@ -87,9 +87,10 @@ export function MessageList({
           : -1;
 
         const isUser = message.role === "user";
+        const showRetry = canRetry && previousUserMessageIdx >= 0;
         const timestamp = (
           <div
-            className={`text-[9px] leading-tight text-gray-300 dark:text-gray-600 whitespace-nowrap ${isUser ? "" : "order-last ml-auto"}`}
+            className="text-[9px] leading-tight text-gray-300 dark:text-gray-600 whitespace-nowrap"
             data-testid="message-timestamp"
           >
             <div>{formatTimestampDate(message.timestamp)}</div>
@@ -102,7 +103,20 @@ export function MessageList({
             key={originalIdx}
             className={`flex items-start gap-2 ${isUser ? "justify-end" : ""}`}
           >
-            {timestamp}
+            {isUser ? (
+              timestamp
+            ) : (
+              <div className="order-last ml-auto flex flex-col items-start self-stretch">
+                {timestamp}
+                {showRetry && (
+                  <div className="mt-auto">
+                    <RetryButton
+                      onClick={() => void handleRetry(previousUserMessageIdx)}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
             <div
               className={`${
                 isUser
@@ -126,11 +140,6 @@ export function MessageList({
                 />
               )}
             </div>
-            {canRetry && previousUserMessageIdx >= 0 && (
-              <RetryButton
-                onClick={() => void handleRetry(previousUserMessageIdx)}
-              />
-            )}
           </div>
         );
       })}
