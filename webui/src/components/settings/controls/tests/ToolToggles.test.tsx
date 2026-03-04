@@ -9,11 +9,19 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
-import { ToolToggles } from "./ToolToggles";
+import { ToolToggles } from "#webui/components/settings/controls/ToolToggles";
 
 const TEST_TOOLS: McpTool[] = [
-  { id: "ppal-connect", name: "Connect to Ableton" },
-  { id: "ppal-read-live-set", name: "Read Live Set" },
+  {
+    id: "ppal-connect",
+    name: "Connect to Ableton",
+    description: "Connect and initialize",
+  },
+  {
+    id: "ppal-read-live-set",
+    name: "Read Live Set",
+    description: "Read live set overview",
+  },
   { id: "ppal-create-track", name: "Create Track" },
 ];
 
@@ -115,6 +123,28 @@ describe("ToolToggles", () => {
         "ppal-read-live-set": false,
         "ppal-create-track": false,
       });
+    });
+  });
+
+  describe("tool descriptions", () => {
+    it("renders info icons for tools with descriptions", () => {
+      render(<ToolToggles {...defaultProps} />);
+      const infoButtons = screen.getAllByRole("button", {
+        name: "Tool description",
+      });
+
+      expect(infoButtons).toHaveLength(2); // connect and read-live-set have descriptions
+    });
+
+    it("does not render info icon for tools without descriptions", () => {
+      const tools: McpTool[] = [
+        { id: "ppal-create-track", name: "Create Track" },
+      ];
+
+      render(<ToolToggles {...defaultProps} tools={tools} />);
+      expect(
+        screen.queryByRole("button", { name: "Tool description" }),
+      ).toBeNull();
     });
   });
 

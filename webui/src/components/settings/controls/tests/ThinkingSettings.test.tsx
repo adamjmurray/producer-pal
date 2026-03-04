@@ -15,7 +15,7 @@ import { type Mock, describe, expect, it, vi } from "vitest";
 import {
   type ThinkingSettingsProps,
   ThinkingSettings,
-} from "./ThinkingSettings";
+} from "#webui/components/settings/controls/ThinkingSettings";
 
 type RenderProps = Partial<ThinkingSettingsProps> & {
   setThinking?: Mock;

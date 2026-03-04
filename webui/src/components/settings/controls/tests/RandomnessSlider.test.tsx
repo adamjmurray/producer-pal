@@ -7,7 +7,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { RandomnessSlider } from "./RandomnessSlider";
+import { RandomnessSlider } from "#webui/components/settings/controls/RandomnessSlider";
 
 describe("RandomnessSlider", () => {
   it("renders with correct temperature value", () => {

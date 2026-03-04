@@ -12,7 +12,10 @@ import {
   fireEvent,
 } from "@testing-library/preact";
 import { type Mock, describe, expect, it, vi } from "vitest";
-import { type ModelSelectorProps, ModelSelector } from "./ModelSelector";
+import {
+  type ModelSelectorProps,
+  ModelSelector,
+} from "#webui/components/settings/controls/ModelSelector";
 
 type RenderProps = Partial<ModelSelectorProps> & { setModel?: Mock };
 

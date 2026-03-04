@@ -141,7 +141,7 @@ export function SettingsScreen({
 
   return (
     <div className="flex justify-center min-h-screen p-4 pt-20">
-      <div className="max-w-lg w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 self-start">
+      <div className="max-w-xl w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 self-start">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
           <a

@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { type McpTool } from "#webui/hooks/connection/use-mcp-connection";
-import { groupTools } from "./tool-toggles-helpers";
+import { groupTools } from "#webui/components/settings/controls/tool-toggles-helpers";
 
 const tool = (id: string, name: string): McpTool => ({ id, name });
 
