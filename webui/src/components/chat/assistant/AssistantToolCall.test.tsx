@@ -403,6 +403,110 @@ describe("AssistantToolCall", () => {
     });
   });
 
+  describe("warning styling", () => {
+    /**
+     * Build MCP content array result with warnings
+     * @param data - Tool result object
+     * @param warnings - Warning strings
+     * @returns Serialized result
+     */
+    function warningResult(data: object, ...warnings: string[]): string {
+      return JSON.stringify([
+        { type: "text", text: JSON.stringify(data) },
+        ...warnings.map((w) => ({ type: "text", text: w })),
+      ]);
+    }
+
+    it("has yellow border when result contains warnings", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult({ id: "44" }, "WARNING: something skipped")}
+          isError={false}
+        />,
+      );
+      const details = document.querySelector("details");
+
+      expect(details!.className).toContain("border-yellow-500");
+    });
+
+    it("does not have yellow border for normal success", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult({ id: "44" })}
+          isError={false}
+        />,
+      );
+      const details = document.querySelector("details");
+
+      expect(details!.className).not.toContain("border-yellow-500");
+    });
+
+    it("shows warning prefix and first warning text in summary", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult({ id: "44" }, "WARNING: quantize skipped")}
+          isError={false}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("warning: quantize skipped");
+    });
+
+    it("shows other warning count for multiple warnings", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult(
+            { id: "44" },
+            "WARNING: first warning",
+            "WARNING: second warning",
+          )}
+          isError={false}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("first warning");
+      expect(summary.textContent).toContain("+ 1 other warning");
+    });
+
+    it("pluralizes other warnings count", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult(
+            { id: "44" },
+            "WARNING: first",
+            "WARNING: second",
+            "WARNING: third",
+          )}
+          isError={false}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("+ 2 other warnings");
+    });
+
+    it("does not show warning styling when isError is true", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult({ id: "44" }, "WARNING: something skipped")}
+          isError={true}
+        />,
+      );
+      const details = document.querySelector("details");
+
+      expect(details!.className).not.toContain("border-yellow-500");
+      expect(details!.className).toContain("border-red-500");
+    });
+  });
+
   describe("success result styling", () => {
     it("applies gray text to success result summary", () => {
       render(

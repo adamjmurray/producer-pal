@@ -6,7 +6,8 @@
 import { isErrorResult } from "#webui/chat/helpers/formatter-helpers";
 import { useToolNames } from "#webui/hooks/connection/tool-names-context";
 import { truncateString } from "#webui/lib/utils/truncate-string";
-import { extractErrorSummary } from "./tool-call-error-helpers";
+import { extractErrorSummary } from "./helpers/tool-call-error-helpers";
+import { extractWarnings } from "./helpers/tool-call-warning-helpers";
 
 interface AssistantToolCallProps {
   name: string;
@@ -34,12 +35,14 @@ export function AssistantToolCall({
   const effectiveIsError = isError ?? (result != null && isErrorResult(result));
   const errorSummary =
     effectiveIsError && result ? extractErrorSummary(result) : null;
+  const warnings = !effectiveIsError && result ? extractWarnings(result) : [];
+  const hasWarnings = warnings.length > 0;
 
   return (
     <details
       className={`text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded ${
         result ? "" : "animate-pulse"
-      } ${effectiveIsError ? "border-l-3 border-red-500" : ""}`}
+      } ${effectiveIsError ? "border-l-3 border-red-500" : hasWarnings ? "border-l-3 border-yellow-500" : ""}`}
     >
       <summary>
         &nbsp;🔧{" "}
@@ -55,6 +58,14 @@ export function AssistantToolCall({
           <span className="text-red-700 dark:text-red-400 font-normal">
             {" "}
             — {truncateString(errorSummary ?? "error", 80)}
+          </span>
+        )}
+        {hasWarnings && (
+          <span className="text-yellow-700 dark:text-yellow-400 font-normal">
+            {" — warning: "}
+            {truncateString(warnings[0], 80)}
+            {warnings.length > 1 &&
+              ` + ${warnings.length - 1} other warning${warnings.length > 2 ? "s" : ""}`}
           </span>
         )}
       </summary>
