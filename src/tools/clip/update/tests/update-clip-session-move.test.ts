@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -94,7 +95,11 @@ function runSessionMove(opts: {
     noteResult,
   });
 
-  return { mockClip, updatedClips, sourceSlot };
+  return {
+    mockClip,
+    updatedClips,
+    sourceSlot: sourceSlot as RegisteredMockObject,
+  };
 }
 
 describe("handleSessionSlotMove", () => {
@@ -109,11 +114,11 @@ describe("handleSessionSlotMove", () => {
       noteResult: { noteCount: 5 },
     });
 
-    expect(sourceSlot!.call).toHaveBeenCalledWith(
+    expect(sourceSlot.call).toHaveBeenCalledWith(
       "duplicate_clip_to",
       "id live_set/tracks/1/clip_slots/2",
     );
-    expect(sourceSlot!.call).toHaveBeenCalledWith("delete_clip");
+    expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
