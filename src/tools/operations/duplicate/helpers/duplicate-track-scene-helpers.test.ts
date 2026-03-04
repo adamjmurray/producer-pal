@@ -387,6 +387,43 @@ describe("duplicate-track-scene-helpers", () => {
       expect(slot0.call).toHaveBeenCalledWith("delete_clip");
     });
 
+    it("should not set color when color is not provided", () => {
+      const newTrack = registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+      });
+
+      duplicateTrack(0, "Named Track");
+
+      expect(newTrack.set).toHaveBeenCalledWith("name", "Named Track");
+      // color should not be set (setColor is not called)
+      expect(newTrack.set).not.toHaveBeenCalledWith("color", expect.anything());
+    });
+
+    it("should skip clip slots without clips when collecting session clips", () => {
+      registerMockObject("live_set/tracks/1", {
+        path: livePath.track(1),
+        properties: {
+          devices: [],
+          clip_slots: children("slot0", "slot1"),
+          arrangement_clips: [],
+        },
+      });
+
+      registerMockObject("slot0", {
+        path: livePath.track(1).clipSlot(0),
+        properties: { has_clip: 0 },
+      });
+      registerMockObject("slot1", {
+        path: livePath.track(1).clipSlot(1),
+        properties: { has_clip: 0 },
+      });
+
+      const result = duplicateTrack(0);
+
+      expect(result.clips).toHaveLength(0);
+    });
+
     it("should collect arrangement clips when withoutClips is false", () => {
       const arrClipId = "arr_clip_456";
 
@@ -455,6 +492,22 @@ describe("duplicate-track-scene-helpers", () => {
       duplicateScene(0, "New Scene");
 
       expect(scene.set).toHaveBeenCalledWith("name", "New Scene");
+    });
+
+    it("should not set color when color is not provided", () => {
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: { tracks: children("track0") },
+      });
+      registerClipSlot(0, 1, false);
+      const scene = registerMockObject("live_set/scenes/1", {
+        path: livePath.scene(1),
+      });
+
+      duplicateScene(0, "Named Scene");
+
+      expect(scene.set).toHaveBeenCalledWith("name", "Named Scene");
+      expect(scene.set).not.toHaveBeenCalledWith("color", expect.anything());
     });
 
     it("should delete clips when withoutClips is true", () => {

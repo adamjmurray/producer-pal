@@ -229,6 +229,34 @@ describe("Transform Evaluator Error Handling", () => {
     });
   });
 
+  describe("audio parameters in MIDI context", () => {
+    it("warns and skips audio parameters when applied to MIDI notes", () => {
+      const notes = createTestNote();
+
+      applyTransforms(notes, "gain = 0.5", 4, 4);
+
+      expect(notes[0]!.velocity).toBe(100); // unchanged
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("Audio parameters"),
+      );
+    });
+  });
+
+  describe("function argument validation - empty args and invalid params", () => {
+    it("handles choose with no arguments", () => {
+      expectTransformError("velocity = choose()");
+    });
+
+    it("handles seq with no arguments", () => {
+      expectTransformError("velocity = seq()");
+    });
+
+    it("handles curve with non-positive exponent", () => {
+      expectTransformError("velocity = curve(0, 100, 0)");
+    });
+  });
+
   describe("math function error handling", () => {
     it.each([
       ["round()", "round with no arguments"],

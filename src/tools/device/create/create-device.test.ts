@@ -519,6 +519,21 @@ describe("createDevice", () => {
       expect(result).toStrictEqual({ id: "device123", deviceIndex: 2 });
     });
 
+    it("should set display name on created device", () => {
+      const device = registerMockObject("device123", {
+        path: livePath.track(0).device(2),
+      });
+
+      const result = createDevice({
+        path: "t0",
+        deviceName: "Compressor",
+        name: "My Compressor",
+      });
+
+      expect(result).toStrictEqual({ id: "device123", deviceIndex: 2 });
+      expect(device.set).toHaveBeenCalledWith("name", "My Compressor");
+    });
+
     it("should warn and continue when one path fails", async () => {
       mockNonExistentObjects();
       registerTrack0WithDevice123();
