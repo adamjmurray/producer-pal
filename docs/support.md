@@ -3,16 +3,15 @@
 ## Getting Help
 
 - **Troubleshooting**: [Common issues and solutions](/support/troubleshooting)
-- **Known Issues**:
-  [Current bugs and limitations](/support/known-issues)
+- **Known Issues**: [Current bugs and limitations](/support/known-issues)
 - **Questions & Discussion**:
   [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
 
 ## Reporting Bugs
 
 Before filing a new issue, check the
-[list of open issues](https://github.com/adamjmurray/producer-pal/issues) to
-see if it's already been reported. If not,
+[list of open issues](https://github.com/adamjmurray/producer-pal/issues) to see
+if it's already been reported. If not,
 [file a new issue](https://github.com/adamjmurray/producer-pal/issues/new/choose).
 
 ## Contributing

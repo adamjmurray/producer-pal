@@ -3,21 +3,6 @@
 Welcome to Producer Pal™! This guide will help you get started with using AI for
 music production in Ableton Live.
 
-## What is Producer Pal?
-
-Producer Pal is a **natural language interface** for Ableton Live. It translates
-your ideas into actions, letting you work at the speed of thought instead of
-clicking through the UI.
-
-Instead of:
-
-- Manually placing 64 kick drum notes
-- Mousing through menus to duplicate and route tracks
-- Copying and pasting patterns bar by bar
-
-You describe what you want, and Producer Pal handles the tedious execution. You
-stay in the creative flow.
-
 ## Installation
 
 For detailed installation instructions for your preferred AI platform, see the
@@ -60,22 +45,10 @@ After installation:
 
 - Check out the [usage examples](/guide/examples) for detailed examples and tips
 - Explore the [feature list](/features) to see everything Producer Pal can do
-- Watch the [demo video](/#demo) and
+- Watch the [demo videos](/#demos) and
   [video tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
 - See what's coming in the [roadmap](/roadmap)
 
 ## Need Help?
 
 - Visit the [Support page](/support) for help, bug reports, and more
-
-## Why Producer Pal?
-
-Producer Pal is **completely open source** (GPL-3.0 license) and will remain
-**free forever**.
-
-- No subscriptions or paywalls
-- All development happens publicly on GitHub
-- You can review the entire codebase before installing
-- Fork it, modify it, and share your changes with the community
-
-You own your tools. Producer Pal will never lock features behind a paywall.
