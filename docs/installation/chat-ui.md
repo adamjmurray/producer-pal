@@ -41,7 +41,7 @@ GPT models with pay-as-you-go pricing.
 
 - **Cost:** Pay-as-you-go only
 - **Setup:** Create account and add credits
-- **[Setup instructions →](./chat-ui-other-providers#openai-api)**
+- **[Get started with OpenAI →](./openai)**
 
 ## Local / Offline
 

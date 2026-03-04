@@ -104,6 +104,7 @@ export default defineConfig({
             items: [
               { text: "Overview", link: "/installation/chat-ui" },
               { text: "Gemini", link: "/installation/gemini" },
+              { text: "OpenAI", link: "/installation/openai" },
               { text: "Ollama", link: "/installation/ollama" },
               {
                 text: "Other Providers",
@@ -120,6 +121,7 @@ export default defineConfig({
                 text: "Claude Desktop",
                 link: "/installation/claude-desktop",
               },
+              { text: "Codex App", link: "/installation/codex-app" },
               { text: "LM Studio", link: "/installation/lm-studio" },
             ],
           },

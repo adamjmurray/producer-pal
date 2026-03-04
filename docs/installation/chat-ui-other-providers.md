@@ -47,17 +47,18 @@ available with fairly aggressive quotas.
 ### OpenAI API
 
 [OpenAI](https://openai.com/api/) offers GPT models with pay-as-you-go pricing.
+For detailed setup, see the [dedicated OpenAI guide](./openai).
 
 1. [Get an OpenAI API key](https://platform.openai.com/api-keys)
 2. In the chat UI settings:
    - Provider: **OpenAI**
    - API Key: Your key
-   - Model: e.g., `gpt-4o`, `gpt-4.1`
+   - Model: e.g., `gpt-5.2`
 
 ::: tip Subscription Alternative
 
-Prefer flat-rate pricing? [Codex CLI](./codex-cli) works with OpenAI's
-subscription plans.
+Prefer flat-rate pricing? The [Codex App](./codex-app) or
+[Codex CLI](./codex-cli) work with OpenAI's subscription plans.
 
 :::
 

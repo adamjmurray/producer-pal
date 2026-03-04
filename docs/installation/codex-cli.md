@@ -2,11 +2,15 @@
 
 Use Producer Pal with OpenAI's command line coding assistant.
 
+::: tip Prefer a Desktop App?
+
+The [Codex App](./codex-app) offers an easier setup with a graphical interface.
+The CLI is best for developers who prefer the terminal.
+
+:::
+
 If you feel comfortable with the command line and have an OpenAI subscription,
-this is a good option. It's the recommended way to use OpenAI models with
-Producer Pal because using an OpenAI key with the
-[built-in chat UI](./chat-ui-other-providers) requires pay-as-you-go pricing for
-OpenAI's API.
+this is a good option.
 
 ## Requirements
 

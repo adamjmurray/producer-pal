@@ -22,8 +22,8 @@ Pick your preferred AI provider:
 
 - **[Anthropic / Claude](./installation/choose-claude)** — Claude Desktop,
   claude.ai, or Claude Code
-- **[OpenAI / ChatGPT](./installation/choose-openai)** — ChatGPT web app or
-  Codex CLI
+- **[OpenAI / ChatGPT](./installation/choose-openai)** — Codex app, ChatGPT web
+  app, or Codex CLI
 - **[Google / Gemini](./installation/choose-gemini)** — Built-in Chat UI or
   Gemini CLI
 - **[Local / Offline](./installation/choose-local)** — Ollama or LM Studio
@@ -36,6 +36,8 @@ These are the easiest and most reliable ways to use Producer Pal:
 
 - **[Claude Desktop](./installation/claude-desktop)** — Anthropic's desktop app
   (easiest setup, subscription required)
+- **[Codex App](./installation/codex-app)** — OpenAI's desktop app (easy setup,
+  macOS only, subscription required)
 - **[Built-in Chat UI](./installation/chat-ui)** — Integrated chat interface
   supporting cloud providers and local models
 
