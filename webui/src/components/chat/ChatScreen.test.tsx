@@ -127,7 +127,7 @@ describe("ChatScreen", () => {
       // Expand the message settings panel
       const settingsButton = Array.from(
         document.querySelectorAll("button"),
-      ).find((btn) => btn.textContent.includes("Message settings"));
+      ).find((btn) => btn.textContent.includes("Behavior settings"));
 
       expect(settingsButton).toBeDefined();
       fireEvent.click(settingsButton!);
@@ -148,7 +148,7 @@ describe("ChatScreen", () => {
       // Expand the message settings panel
       const settingsButton = Array.from(
         document.querySelectorAll("button"),
-      ).find((btn) => btn.textContent.includes("Message settings"));
+      ).find((btn) => btn.textContent.includes("Behavior settings"));
 
       fireEvent.click(settingsButton!);
 
@@ -298,7 +298,7 @@ describe("ChatScreen", () => {
       // First, expand the message settings panel
       const settingsButton = Array.from(
         document.querySelectorAll("button"),
-      ).find((btn) => btn.textContent!.includes("Message settings"));
+      ).find((btn) => btn.textContent!.includes("Behavior settings"));
 
       expect(settingsButton).toBeDefined();
       fireEvent.click(settingsButton!);

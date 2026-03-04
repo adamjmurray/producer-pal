@@ -191,7 +191,7 @@ export function MessageSettingsToolbar({
         type="button"
       >
         <span className="text-sm text-gray-600 dark:text-gray-400">
-          {isExpanded ? "▼" : "▶"} Message settings
+          {isExpanded ? "▼" : "▶"} Behavior settings
           {!isUsingDefaults && " (customized)"}
         </span>
         <span className="text-xs text-gray-500 dark:text-gray-500">
