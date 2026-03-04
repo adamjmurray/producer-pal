@@ -4,56 +4,37 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import {
-  clearMockRegistry,
-  registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { select } from "#src/tools/control/select.ts";
 import {
   expectViewState,
   getDefaultViewState,
+  resetSelectTestState,
   setupAppViewMock,
   setupDeviceMock,
   setupSelectedTrackMock,
   setupSessionClipMock,
   setupSongViewMock,
   setupTrackViewMock,
-  setupViewStateMock,
 } from "./select-test-helpers.ts";
 
-// Mock utility functions
+const { viewMockToLive, viewMockFromLive } = vi.hoisted(() => ({
+  viewMockToLive: (view: string) =>
+    ({ session: "Session", arrangement: "Arranger" })[view] ?? "Session",
+  viewMockFromLive: (liveApiView: string) =>
+    ({ Session: "session", Arranger: "arrangement" })[liveApiView] ?? "session",
+}));
+
 vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => ({
   ...(await importOriginal()),
-  toLiveApiView: vi.fn((view: string) => {
-    const viewMap: Record<string, string> = {
-      session: "Session",
-      arrangement: "Arranger",
-    };
-
-    return viewMap[view] ?? "Session";
-  }),
-  fromLiveApiView: vi.fn((liveApiView: string) => {
-    const viewMap: Record<string, string> = {
-      Session: "session",
-      Arranger: "arrangement",
-    };
-
-    return viewMap[liveApiView] ?? "session";
-  }),
+  toLiveApiView: vi.fn(viewMockToLive),
+  fromLiveApiView: vi.fn(viewMockFromLive),
 }));
 
 describe("view", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    clearMockRegistry();
-
-    // Register default "nothing selected" view state for select() reads
-    setupViewStateMock({
-      selectedTrack: { exists: false },
-      selectedScene: { exists: false },
-      selectedClip: { exists: false },
-      highlightedClipSlot: { exists: false },
-    });
+    resetSelectTestState();
   });
 
   describe("basic functionality", () => {

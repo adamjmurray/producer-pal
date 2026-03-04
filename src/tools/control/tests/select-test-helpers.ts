@@ -6,8 +6,51 @@
 import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
+  clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+
+const VIEW_MAP_TO_LIVE: Record<string, string> = {
+  session: "Session",
+  arrangement: "Arranger",
+};
+
+const VIEW_MAP_FROM_LIVE: Record<string, string> = {
+  Session: "session",
+  Arranger: "arrangement",
+};
+
+/**
+ * Mock implementation for toLiveApiView.
+ * @param view - View name
+ * @returns Live API view name
+ */
+export function mockToLiveApiView(view: string): string {
+  return VIEW_MAP_TO_LIVE[view] ?? "Session";
+}
+
+/**
+ * Mock implementation for fromLiveApiView.
+ * @param liveApiView - Live API view name
+ * @returns View name
+ */
+export function mockFromLiveApiView(liveApiView: string): string {
+  return VIEW_MAP_FROM_LIVE[liveApiView] ?? "session";
+}
+
+/**
+ * Reset all mocks and set up default "nothing selected" state for select() tests.
+ * Call this from beforeEach in select test files.
+ */
+export function resetSelectTestState(): void {
+  clearMockRegistry();
+  setupViewStateMock({
+    selectedTrack: { exists: false },
+    selectedScene: { exists: false },
+    selectedClip: { exists: false },
+    highlightedClipSlot: { exists: false },
+  });
+}
 
 interface ViewState {
   view: string;

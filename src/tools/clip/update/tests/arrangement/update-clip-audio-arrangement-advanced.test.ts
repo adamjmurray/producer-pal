@@ -8,6 +8,7 @@ import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
 import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
+  assertBoundaryDetection,
   assertSourceClipEndMarker,
   mockContext,
   setupArrangementAudioClipMock,
@@ -49,15 +50,7 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
       mockContext,
     );
 
-    // Session clip created for boundary detection (loop_end=1)
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.anything(),
-      1,
-      "/audio/test.wav",
-    );
-
-    // Session clip cleaned up immediately after boundary detection
-    expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
+    assertBoundaryDetection(mockCreate, sessionSlot);
 
     // Source clip loop_end set: loopStart(1) + target(14) = 15.0
     expect(clip!.set).toHaveBeenCalledWith("loop_end", 15.0);
@@ -101,15 +94,7 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
       mockContext,
     );
 
-    // Session clip created for boundary detection (loop_end=1)
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.anything(),
-      1,
-      "/audio/test.wav",
-    );
-
-    // Session clip cleaned up immediately after boundary detection
-    expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
+    assertBoundaryDetection(mockCreate, sessionSlot);
 
     // Source clip loop_end set: loopStart(1) + target(14) = 15.0
     expect(clip!.set).toHaveBeenCalledWith("loop_end", 15.0);
@@ -295,15 +280,7 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
 
     expect(track!.call).toHaveBeenCalledWith("delete_clip", `id ${clipId}`);
 
-    // Session clip created for boundary detection (loop_end=1)
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.anything(),
-      1,
-      "/audio/test.wav",
-    );
-
-    // Session clip cleaned up immediately after boundary detection
-    expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
+    assertBoundaryDetection(mockCreate, sessionSlot);
 
     // Moved clip loop_end set: loopStart(0) + target(8) = 8.0
     expect(movedClip!.set).toHaveBeenCalledWith("loop_end", 8.0);
