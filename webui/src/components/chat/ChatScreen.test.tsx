@@ -40,6 +40,7 @@ describe("ChatScreen", () => {
     onOpenSettings: mockOnOpenSettings,
     onClearConversation: mockOnClearConversation,
     onStop: mockOnStop,
+    showTimestamps: true,
   };
 
   describe("basic rendering", () => {

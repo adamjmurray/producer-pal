@@ -73,6 +73,9 @@ function getBaseUrl(
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
+  const [showTimestamps, setShowTimestamps] = useState(
+    () => localStorage.getItem("producer_pal_show_timestamps") === "true",
+  );
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
   const toolNamesMap = useMemo(() => {
@@ -130,28 +133,34 @@ export function App() {
     !settings.settingsConfigured,
   );
 
-  // Track original theme when settings opened (for cancel)
+  // Track original appearance settings when settings opened (for cancel)
   const originalThemeRef = useRef(theme);
+  const originalShowTimestampsRef = useRef(showTimestamps);
   const prevShowSettingsRef = useRef(showSettings);
 
-  // Save original theme only when settings transitions from closed to open
+  // Save originals only when settings transitions from closed to open
   useEffect(() => {
     if (showSettings && !prevShowSettingsRef.current) {
       originalThemeRef.current = theme;
+      originalShowTimestampsRef.current = showTimestamps;
     }
 
     prevShowSettingsRef.current = showSettings;
-  }, [showSettings, theme]);
+  }, [showSettings, theme, showTimestamps]);
 
   const handleSaveSettings = () => {
     settings.saveSettings();
-    // Theme already applied via setTheme, no action needed
+    localStorage.setItem(
+      "producer_pal_show_timestamps",
+      String(showTimestamps),
+    );
     setShowSettings(false);
   };
 
   const handleCancelSettings = () => {
     settings.cancelSettings();
-    setTheme(originalThemeRef.current); // Revert theme to original
+    setTheme(originalThemeRef.current);
+    setShowTimestamps(originalShowTimestampsRef.current);
     setShowSettings(false);
   };
 
@@ -175,6 +184,8 @@ export function App() {
           setShowThoughts={settings.setShowThoughts}
           theme={theme}
           setTheme={setTheme}
+          showTimestamps={showTimestamps}
+          setShowTimestamps={setShowTimestamps}
           enabledTools={settings.enabledTools}
           setEnabledTools={settings.setEnabledTools}
           mcpTools={mcpTools}
@@ -214,6 +225,7 @@ export function App() {
         onOpenSettings={() => setShowSettings(true)}
         onClearConversation={wrappedClearConversation}
         onStop={chat.stopResponse}
+        showTimestamps={showTimestamps}
       />
     </ToolNamesContext.Provider>
   );

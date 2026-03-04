@@ -164,6 +164,8 @@ describe("SettingsScreen", () => {
     setShowThoughts: vi.fn(),
     theme: "system",
     setTheme: vi.fn(),
+    showTimestamps: false,
+    setShowTimestamps: vi.fn(),
     enabledTools: {},
     setEnabledTools: vi.fn(),
     mcpTools: [

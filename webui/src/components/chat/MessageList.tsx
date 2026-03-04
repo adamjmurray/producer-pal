@@ -19,6 +19,7 @@ interface MessageListProps {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   handleRetry: (messageIndex: number) => Promise<void>;
+  showTimestamps: boolean;
 }
 
 /**
@@ -33,6 +34,7 @@ export function MessageList({
   messages,
   isAssistantResponding,
   handleRetry,
+  showTimestamps,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [showStillThinking, setShowStillThinking] = useState(false);
@@ -90,7 +92,7 @@ export function MessageList({
         const showRetry = canRetry && previousUserMessageIdx >= 0;
         const timestamp = (
           <div
-            className="text-[9px] leading-tight text-gray-300 dark:text-gray-600 whitespace-nowrap"
+            className={`text-[9px] leading-tight text-gray-300 dark:text-gray-600 whitespace-nowrap ${showTimestamps ? "" : "invisible"}`}
             data-testid="message-timestamp"
           >
             <div>{formatTimestampDate(message.timestamp)}</div>

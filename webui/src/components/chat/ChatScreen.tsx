@@ -40,6 +40,7 @@ interface ChatScreenProps {
   onOpenSettings: () => void;
   onClearConversation: () => void;
   onStop: () => void;
+  showTimestamps: boolean;
 }
 
 /**
@@ -92,6 +93,7 @@ export function ChatScreen({
   onOpenSettings,
   onClearConversation,
   onStop,
+  showTimestamps,
 }: ChatScreenProps) {
   // Per-message override state (lifted from ChatInput so ChatStart can also use it)
   const [thinking, setThinking] = useState(defaultThinking);
@@ -140,6 +142,7 @@ export function ChatScreen({
             messages={messages}
             isAssistantResponding={isAssistantResponding}
             handleRetry={handleRetry}
+            showTimestamps={showTimestamps}
           />
         )}
       </div>

@@ -66,12 +66,14 @@ function renderMessageList(
   messages: UIMessage[] = [],
   isAssistantResponding = false,
   handleRetry = vi.fn(),
+  showTimestamps = true,
 ): RenderResult & { handleRetry: typeof handleRetry } {
   const result = render(
     <MessageList
       messages={messages}
       isAssistantResponding={isAssistantResponding}
       handleRetry={handleRetry}
+      showTimestamps={showTimestamps}
     />,
   );
 
@@ -326,6 +328,7 @@ describe("MessageList", () => {
           messages={[createModelMessage("Hello")]}
           isAssistantResponding={true}
           handleRetry={vi.fn()}
+          showTimestamps={true}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -344,6 +347,7 @@ describe("MessageList", () => {
           messages={[]}
           isAssistantResponding={false}
           handleRetry={vi.fn()}
+          showTimestamps={true}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -361,6 +365,7 @@ describe("MessageList", () => {
           messages={[createModelMessage("Fast response")]}
           isAssistantResponding={true}
           handleRetry={vi.fn()}
+          showTimestamps={true}
         />,
       );
 
@@ -387,6 +392,7 @@ describe("MessageList", () => {
           messages={messagesWithContent}
           isAssistantResponding={true}
           handleRetry={vi.fn()}
+          showTimestamps={true}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();

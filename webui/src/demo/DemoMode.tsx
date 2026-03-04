@@ -46,6 +46,7 @@ export function DemoMode() {
             messages={demoMessages}
             isAssistantResponding={hasPendingTool}
             handleRetry={NO_OP_RETRY}
+            showTimestamps={true}
           />
         </div>
       </div>

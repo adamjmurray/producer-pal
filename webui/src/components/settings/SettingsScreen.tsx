@@ -34,6 +34,9 @@ interface SettingsScreenProps {
   setShowThoughts: (show: boolean) => void;
   theme: string;
   setTheme: (theme: string) => void;
+  showTimestamps: boolean;
+  setShowTimestamps: (show: boolean) => void;
+
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
   mcpTools: McpTool[] | null;
@@ -89,6 +92,8 @@ function getProviderLabel(provider: string): string {
  * @param {Function} props.setShowThoughts - Function to toggle thought display
  * @param {string} props.theme - UI theme setting
  * @param {Function} props.setTheme - Function to update theme
+ * @param {boolean} props.showTimestamps - Whether to show message timestamps
+ * @param {Function} props.setShowTimestamps - Function to toggle timestamps
  * @param {object} props.enabledTools - Map of enabled/disabled tools
  * @param {Function} props.setEnabledTools - Function to update enabled tools
  * @param {McpTool[] | null} props.mcpTools - Available tools from MCP server
@@ -118,6 +123,8 @@ export function SettingsScreen({
   setShowThoughts,
   theme,
   setTheme,
+  showTimestamps,
+  setShowTimestamps,
   enabledTools,
   setEnabledTools,
   mcpTools,
@@ -195,7 +202,12 @@ export function SettingsScreen({
 
               {/* Appearance Tab */}
               {activeTab === "appearance" && (
-                <AppearanceTab theme={theme} setTheme={setTheme} />
+                <AppearanceTab
+                  theme={theme}
+                  setTheme={setTheme}
+                  showTimestamps={showTimestamps}
+                  setShowTimestamps={setShowTimestamps}
+                />
               )}
             </div>
           )}
