@@ -199,7 +199,6 @@ describe("MessageList", () => {
       const messageDiv = container.querySelector(".bg-blue-100");
 
       expect(messageDiv).toBeDefined();
-      expect(messageDiv?.className).toContain("ml-auto");
     });
 
     it("applies correct classes to error messages", () => {
@@ -217,6 +216,18 @@ describe("MessageList", () => {
       ]);
 
       expect(container.querySelector(".bg-gray-100")).toBeDefined();
+    });
+  });
+
+  describe("timestamps", () => {
+    it("renders visible timestamps for messages", () => {
+      renderMessageList([
+        createUserMessage("Hello", 0),
+        createModelMessage("Hi", 1),
+      ]);
+      const timestamps = screen.getAllByTestId("message-timestamp");
+
+      expect(timestamps).toHaveLength(2);
     });
   });
 

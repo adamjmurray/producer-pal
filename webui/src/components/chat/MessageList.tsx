@@ -4,7 +4,10 @@
 
 import { marked } from "marked";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { formatTimestamp } from "#webui/lib/utils/format-timestamp";
+import {
+  formatTimestampDate,
+  formatTimestampTime,
+} from "#webui/lib/utils/format-timestamp";
 import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./assistant/AssistantMessage";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
@@ -83,31 +86,38 @@ export function MessageList({
           ? findPreviousUserMessageIndex(originalIdx)
           : -1;
 
+        const isUser = message.role === "user";
+        const timestamp = (
+          <div
+            className={`text-[9px] leading-tight text-gray-300 dark:text-gray-600 whitespace-nowrap ${isUser ? "" : "order-last ml-auto"}`}
+            data-testid="message-timestamp"
+          >
+            <div>{formatTimestampDate(message.timestamp)}</div>
+            <div>{formatTimestampTime(message.timestamp)}</div>
+          </div>
+        );
+
         return (
           <div
             key={originalIdx}
-            className={message.role === "model" ? "flex items-end gap-2" : ""}
+            className={`flex items-start gap-2 ${isUser ? "justify-end" : ""}`}
           >
+            {timestamp}
             <div
               className={`${
-                message.role === "user"
-                  ? "ml-auto text-black bg-blue-100 dark:text-white dark:bg-blue-900"
+                isUser
+                  ? "text-black bg-blue-100 dark:text-white dark:bg-blue-900"
                   : "bg-gray-100 dark:bg-gray-800"
-              } ${message.role === "model" ? "flex-1" : ""} rounded-lg py-0.5 px-3 max-w-[90%]`}
-              title={formatTimestamp(message.timestamp)}
-              data-testid={
-                message.role === "model"
-                  ? "assistant-message-bubble"
-                  : undefined
-              }
+              } flex-1 min-w-0 rounded-lg py-0.5 px-3`}
+              data-testid={isUser ? undefined : "assistant-message-bubble"}
             >
-              {message.role === "model" && (
+              {!isUser && (
                 <AssistantMessage
                   parts={message.parts}
                   isResponding={isAssistantResponding}
                 />
               )}
-              {message.role === "user" && (
+              {isUser && (
                 <div
                   className="prose dark:prose-invert prose-sm max-w-none"
                   dangerouslySetInnerHTML={{
