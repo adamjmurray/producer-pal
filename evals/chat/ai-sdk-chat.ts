@@ -67,7 +67,8 @@ export async function runAiSdkChat(
           console.log("\n[Assistant]");
 
           const suppressTemperature =
-            providerOptions?.anthropic?.thinking != null;
+            providerOptions?.anthropic?.thinking != null ||
+            providerOptions?.openai?.reasoningEffort != null;
 
           const result = streamText({
             model,
