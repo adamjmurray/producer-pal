@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -130,6 +131,85 @@ describe("AssistantToolCall", () => {
 
       expect(details!.className).not.toContain("border-red-500");
     });
+
+    it("does not auto-expand errors", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result="Error message"
+          isError={true}
+        />,
+      );
+      const details = document.querySelector("details")!;
+
+      expect(details.hasAttribute("open")).toBe(false);
+    });
+
+    it("applies red text to error summary line", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result="Error message"
+          isError={true}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.className).toContain("text-red-700");
+    });
+  });
+
+  describe("error summary in summary line", () => {
+    it("shows clean error in summary for tool error prefix", () => {
+      const result = JSON.stringify(
+        "Error executing tool 'test-tool': something broke",
+      );
+
+      render(
+        <AssistantToolCall {...defaultProps} result={result} isError={true} />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("something broke");
+    });
+
+    it("shows clean error in summary for MCP content array with error", () => {
+      const result = JSON.stringify([
+        {
+          type: "text",
+          text: JSON.stringify({ error: "No clip in this slot" }),
+        },
+      ]);
+
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={result}
+          isError={undefined}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("No clip in this slot");
+    });
+  });
+
+  describe("error expanded view", () => {
+    it("shows raw result in disclosure like success results", () => {
+      const result = JSON.stringify(
+        "Error executing tool 'test-tool': something broke",
+      );
+
+      render(
+        <AssistantToolCall {...defaultProps} result={result} isError={true} />,
+      );
+      const allDetails = document.querySelectorAll("details");
+
+      expect(allDetails).toHaveLength(2); // Outer + result disclosure
+      const resultSummary = document.querySelectorAll("summary")[1]!;
+
+      expect(resultSummary.className).toContain("text-gray-600");
+    });
   });
 
   describe("function call display", () => {
@@ -227,6 +307,31 @@ describe("AssistantToolCall", () => {
 
       expect(allText).toContain("{invalid json");
     });
+
+    it("formats JSON array results", () => {
+      const arrayResult = '[{"type":"text","text":"hello"}]';
+
+      render(<AssistantToolCall {...defaultProps} result={arrayResult} />);
+      const pre = document.querySelector("pre");
+
+      expect(pre).toBeDefined();
+      expect(pre!.innerHTML).toContain('"type"');
+    });
+
+    it("unwraps JSON-stringified string results", () => {
+      const stringResult = JSON.stringify("inner string content");
+
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={stringResult}
+          isError={true}
+        />,
+      );
+      const allText = document.body.textContent;
+
+      expect(allText).toContain("inner string content");
+    });
   });
 
   describe("heuristic error detection", () => {
@@ -269,34 +374,7 @@ describe("AssistantToolCall", () => {
     });
   });
 
-  describe("error result styling", () => {
-    it("shows error text inline with red styling", () => {
-      render(
-        <AssistantToolCall
-          {...defaultProps}
-          result="Error message"
-          isError={true}
-        />,
-      );
-      const errorDiv = screen.getByText(/Error message/).closest("div")!;
-
-      expect(errorDiv.className).toContain("text-red-700");
-      expect(errorDiv.className).toContain("dark:text-red-400");
-    });
-
-    it("expands outer details by default for errors", () => {
-      render(
-        <AssistantToolCall
-          {...defaultProps}
-          result="Error message"
-          isError={true}
-        />,
-      );
-      const details = document.querySelector("details")!;
-
-      expect(details.hasAttribute("open")).toBe(true);
-    });
-
+  describe("success result styling", () => {
     it("applies gray text to success result summary", () => {
       render(
         <AssistantToolCall

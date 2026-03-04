@@ -1,10 +1,12 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { isErrorResult } from "#webui/chat/helpers/formatter-helpers";
 import { useToolNames } from "#webui/hooks/connection/tool-names-context";
 import { truncateString } from "#webui/lib/utils/truncate-string";
+import { extractErrorSummary } from "./tool-call-error-helpers";
 
 interface AssistantToolCallProps {
   name: string;
@@ -30,15 +32,20 @@ export function AssistantToolCall({
 }: AssistantToolCallProps) {
   const toolNames = useToolNames();
   const effectiveIsError = isError ?? (result != null && isErrorResult(result));
+  const errorSummary =
+    effectiveIsError && result ? extractErrorSummary(result) : null;
 
   return (
     <details
-      open={effectiveIsError}
       className={`text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded ${
         result ? "" : "animate-pulse"
       } ${effectiveIsError ? "border-l-3 border-red-500" : ""}`}
     >
-      <summary>
+      <summary
+        className={
+          effectiveIsError ? "text-red-700 dark:text-red-400" : undefined
+        }
+      >
         &nbsp;🔧{" "}
         {!result
           ? "using tool: "
@@ -46,16 +53,17 @@ export function AssistantToolCall({
             ? "tool failed: "
             : "used tool: "}
         {toolNames[name] ?? name}
+        {errorSummary && (
+          <span className="font-normal">
+            {" "}
+            — {truncateString(errorSummary, 80)}
+          </span>
+        )}
       </summary>
       <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
         {name}({JSON.stringify(args, null, 0)})
       </div>
-      {result && effectiveIsError && (
-        <div className="px-2 my-1 text-red-700 dark:text-red-400 break-all">
-          ↳ {truncateString(result, 300)}
-        </div>
-      )}
-      {result && !effectiveIsError && (
+      {result && (
         <details>
           <summary className="px-2 my-1 truncate text-gray-600 dark:text-gray-400">
             &nbsp;↳ {truncateString(result, 300)}
@@ -79,11 +87,13 @@ function FullResultDetails({ result }: { result: string }) {
   const s = `${result}`;
   let formatted: string | null = null;
 
-  if (s.startsWith("{")) {
+  if (s.startsWith("{") || s.startsWith("[") || s.startsWith('"')) {
     try {
-      const obj = JSON.parse(s);
+      const parsed: unknown = JSON.parse(s);
+      const display =
+        typeof parsed === "string" ? parsed : JSON.stringify(parsed, null, 2);
 
-      formatted = JSON.stringify(obj, null, 2).replaceAll("\\n", "\n");
+      formatted = display.replaceAll("\\n", "\n");
     } catch {
       // JSON parsing failed, will render as plain text
     }
