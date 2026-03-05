@@ -27,15 +27,10 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .string()
       .optional()
       .describe("display name (comma-separated when creating multiple)"),
-    focus: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe("select the device and show device detail view"),
   },
 
   smallModelModeConfig: {
-    excludeParams: ["focus"],
+    excludeParams: [],
     descriptionOverrides: {
       path: "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0')",
       name: "display name",

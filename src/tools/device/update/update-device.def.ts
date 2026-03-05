@@ -95,11 +95,6 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .boolean()
       .optional()
       .describe("Wrap device(s) in a new rack (auto-detects type from device)"),
-    focus: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe("select the device and show device detail view"),
   },
 
   smallModelModeConfig: {
@@ -111,7 +106,6 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       "chokeGroup",
       "mappedPitch",
       "wrapInRack",
-      "focus",
     ],
     descriptionOverrides: {
       path: "device path like 't0/d0' (track 0, device 0)",

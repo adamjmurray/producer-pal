@@ -150,12 +150,6 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .optional()
       .describe("limit quantization to specific pitch (e.g., C3, D#4)"),
 
-    focus: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe("select the clip and show clip detail view"),
-
     // Warp marker parameters
     ...(process.env.ENABLE_WARP_MARKERS === "true"
       ? {
@@ -200,7 +194,6 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "transforms",
       "split",
       "code",
-      "focus",
     ],
     descriptionOverrides: {
       name: "clip name",

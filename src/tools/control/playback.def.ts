@@ -71,19 +71,9 @@ stop: session and arrangement`,
       .min(0)
       .optional()
       .describe("0-based scene index for play-scene"),
-    focus: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe("switch to arrangement or session view based on action"),
   },
 
   smallModelModeConfig: {
-    excludeParams: [
-      "startLocator",
-      "loopStartLocator",
-      "loopEndLocator",
-      "focus",
-    ],
+    excludeParams: ["startLocator", "loopStartLocator", "loopEndLocator"],
   },
 });
