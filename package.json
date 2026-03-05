@@ -45,7 +45,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "echo 'Linting...' && eslint --concurrency=auto . && echo 'No lint violations.\n'",
-    "lint:fix": "npm run lint -- --fix",
+    "lint:fix": "eslint --concurrency=auto --fix .",
     "duplication": "npm run duplication:src --silent && npm run duplication:tests --silent && npm run duplication:scripts --silent && npm run duplication:evals --silent && npm run duplication:e2e --silent",
     "duplication:src": "printf 'Source ' && jscpd -s -c config/.jscpd.json",
     "duplication:tests": "printf 'Tests ' && jscpd -s -c config/.jscpd-tests.json",
