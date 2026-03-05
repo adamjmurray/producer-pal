@@ -51,9 +51,10 @@ Create MIDI clips using the bar|beat notation syntax:
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start
   - beat can be a comma-separated (no whitespace) list or repeat pattern
-  - **Repeat patterns**: \`{beat}x{times}[@{step}]\` generates sequences (step optional, defaults to duration)
-    - \`1|1x4@1\` → beats 1,2,3,4; \`t0.5 1|1x4\` → 1, 1.5, 2, 2.5 (step = duration)
-    - \`1|1x3@/3\` → triplets; \`t/4 1|1x16\` → full bar of 16ths
+  - **Repeat patterns**: \`{bar|beat}x{count}[@{step}]\` generates sequences. count = how many notes
+    - step (in beats) defaults to duration (legato). step > duration = gaps; step < duration = overlap
+    - \`1|1x4@1\` → beats 1,2,3,4; \`t0.5 1|1x4\` → 1, 1.5, 2, 2.5 (step defaults to t value)
+    - \`1|1x3@/3\` → triplets; \`t/4 1|1x16\` → 16 notes at 16th-note spacing (x16 = count, t/4 = spacing)
 - v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length (default: 1.0). Beats: t2.5, t3/4, t/4. Bar:beat: t2:1.5, t1:/4
