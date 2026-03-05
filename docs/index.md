@@ -70,6 +70,7 @@ features:
         <p class="card-description">Dedicated AI apps</p>
         <ul class="card-links">
           <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">easiest</span></li>
+          <li><a href="/installation/codex-app">Codex App (OpenAI)</a></li>
           <li><a href="/installation/lm-studio">LM Studio</a> <span class="tag">offline</span></li>
         </ul>
       </div>
