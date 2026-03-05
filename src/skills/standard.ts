@@ -32,7 +32,8 @@ return notes.filter(n => n.pitch >= 60).map(n => ({
 - \`liveSet\`: { tempo, scale?, timeSignature }
 - \`beatsPerBar\`: number
 
-**Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.`;
+**Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.
+`;
 
 export const skills = `# Producer Pal Skills
 
@@ -127,14 +128,15 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), min(a,b,...), max(a,b,...), pow(base,exp), quant(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms)
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
-- \`cos(freq)\`, \`square(freq)\` - start at peak (1.0); \`sin(freq)\`, \`tri(freq)\`, \`saw(freq)\` - start at zero, rise to peak
+- \`cos(period)\`, \`square(period)\` - start at peak (1.0); \`sin(period)\`, \`tri(period)\`, \`saw(period)\` - start at zero, rise to peak
+  - All accept optional phase offset: \`cos(1t, 0.25)\`. square adds pulse width: \`square(1t, 0, 0.75)\`
 - \`rand([min], [max])\` - random value (no args: -1 to 1, one arg: 0 to max, two: min to max)
 - \`seq(a, b, ...)\` - cycle through values by note.index (MIDI) or clip.index (audio)
 - \`choose(a, b, ...)\` - random selection from arguments
 - \`ramp(start, end)\` - linear interpolation; reaches end value at time range end (or clip end)
 - \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
-- For ramp/curve, end the time filter on the last note's beat position. In 4/4: last 8th=N|4.5, last 16th=N|4.75
-- Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
+- For ramp/curve, end the time filter on the last note's beat position so it reaches its end value. In 4/4: last 8th=N|4.5, last 16th=N|4.75
+- Waveform period: \`1t\` = 1 beat cycle, \`1:0t\` = 1 bar cycle, \`0:2t\` = 2 beat cycle
 - \`sync\` keyword (last arg on periodic waves) syncs phase to arrangement timeline instead of clip start
 
 **Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only), \`clip.barDuration\` (all clips)
@@ -159,7 +161,7 @@ C1-C2: duration /= 2           // halve duration of bass notes
 \`\`\`
 
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
-Cross-type params ignored.
+MIDI params ignored for audio clips, vice versa.
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Working with Ableton Live
 
