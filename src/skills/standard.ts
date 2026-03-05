@@ -48,9 +48,10 @@ Create MIDI clips using the bar|beat notation syntax:
 
 \`[v0-127] [t<duration>] [p0-1] note(s) bar|beat\`
 
+- Parameters (v/t/p), pitches, and positions can appear in any order and be interspersed
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start
-  - beat can be a comma-separated (no whitespace) list or repeat pattern
+  - the beat in bar|beat can be a comma-separated (no whitespace) list or repeat pattern
   - **Repeat patterns**: \`{bar|beat}x{count}[@{step}]\` generates sequences. count = how many notes
     - step (in beats) defaults to duration (legato). step > duration = gaps; step < duration = overlap
     - \`1|1x4@1\` → beats 1,2,3,4; \`t0.5 1|1x4\` → 1, 1.5, 2, 2.5 (step defaults to t value)
@@ -60,11 +61,11 @@ Create MIDI clips using the bar|beat notation syntax:
 - t<duration>: Note length (default: 1.0). Beats: t2.5, t3/4, t/4. Bar:beat: t2:1.5, t1:/4
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
-- Parameters (v/t/p) and pitch persist until changed
+- **Stateful**: v/t/p and pitch persist until changed — set once, applies to all following notes
 - copying bars (**MERGES** - use v0 to clear unwanted notes):
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
-  - Copies frozen note parameters, not current v/t/p state
+  - Copies capture each note's v/t/p at the time it was written, not the current state
 - **update-clip** \`noteUpdateMode\`: "merge" (default, overlay + v0 deletes) or "replace" (clear all existing notes first)
 
 ## Audio Clips
@@ -78,7 +79,7 @@ C#3 F3 G#3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1,3 2|1,2,3 // same pitch across bars (NOT 1|1,3,2|1,2,3)
 t0.25 C3 1|1.75 // 16th note at beat 1.75
-t1/3 C3 1|1x3 // triplet eighth notes (step = duration)
+t1/3 C3 1|1x3 // triplets: 3 notes across 1 beat (step = duration)
 t/4 Gb1 1|1x16 // full bar of 16th note hi-hats
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
