@@ -8,8 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { select } from "#src/tools/control/select.ts";
 import {
-  expectViewState,
-  getDefaultViewState,
+  getDefaultReadState,
   resetSelectTestState,
   setupAppViewMock,
   setupDeviceMock,
@@ -44,7 +43,7 @@ describe("view", () => {
       const result = select({ view: "session" });
 
       expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
-      expect(result).toStrictEqual(expectViewState({ view: "session" }));
+      expect(result).toStrictEqual({ view: "session" });
     });
 
     it("updates view to arrangement", () => {
@@ -53,8 +52,7 @@ describe("view", () => {
       const result = select({ view: "arrangement" });
 
       expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
-      // Result reflects actual readViewState(), which returns default (session)
-      expect(result).toStrictEqual(expectViewState());
+      expect(result).toStrictEqual({ view: "arrangement" });
     });
 
     it("returns full view state when no parameters provided", () => {
@@ -62,8 +60,7 @@ describe("view", () => {
 
       const result = select();
 
-      expect(result).toStrictEqual(getDefaultViewState());
-      // Read API calls are expected for reading current view state
+      expect(result).toStrictEqual(getDefaultReadState());
       expect(songView.set).not.toHaveBeenCalled();
     });
   });
@@ -82,11 +79,12 @@ describe("view", () => {
         "selected_track",
         "id track_123",
       );
-      expect(result).toStrictEqual(expectViewState({ detectedType: "track" }));
+      // Response includes track info read from the selected track view
+      expect(result.selectedTrack).toBeDefined();
     });
 
     it("selects regular track by index", () => {
-      const track = registerMockObject("track_id_123", {
+      registerMockObject("track_id_123", {
         path: livePath.track(2),
         type: "Track",
       });
@@ -99,9 +97,9 @@ describe("view", () => {
 
       expect(songView.set).toHaveBeenCalledWith(
         "selected_track",
-        `id ${track.id}`,
+        "id track_id_123",
       );
-      expect(result).toStrictEqual(expectViewState());
+      expect(result.selectedTrack).toBeDefined();
     });
 
     it("selects return track by index", () => {
@@ -120,7 +118,7 @@ describe("view", () => {
         "selected_track",
         `id ${track.id}`,
       );
-      expect(result).toStrictEqual(expectViewState());
+      expect(result.selectedTrack).toBeDefined();
     });
 
     it("selects master track", () => {
@@ -136,7 +134,7 @@ describe("view", () => {
         "selected_track",
         `id ${track.id}`,
       );
-      expect(result).toStrictEqual(expectViewState());
+      expect(result.selectedTrack).toBeDefined();
     });
 
     it("defaults to regular track type when only index provided", () => {
@@ -147,7 +145,7 @@ describe("view", () => {
 
       const result = select({ trackIndex: 2 });
 
-      expect(result).toStrictEqual(expectViewState());
+      expect(result.selectedTrack).toBeDefined();
     });
 
     it("selects track by ID with trackIndex hint", () => {
@@ -163,7 +161,7 @@ describe("view", () => {
         "selected_track",
         "id track_123",
       );
-      expect(result).toStrictEqual(expectViewState({ detectedType: "track" }));
+      expect(result.selectedTrack).toBeDefined();
     });
 
     it("skips track selection when track does not exist", () => {
@@ -180,7 +178,7 @@ describe("view", () => {
         "selected_track",
         expect.anything(),
       );
-      expect(result).toStrictEqual(expectViewState());
+      expect(result.selectedTrack).toBeUndefined();
     });
   });
 
@@ -198,7 +196,9 @@ describe("view", () => {
         "selected_scene",
         "id scene_123",
       );
-      expect(result).toStrictEqual(expectViewState({ detectedType: "scene" }));
+      expect(result.selectedScene).toBeDefined();
+      // Auto-switches to session view for scene
+      expect(result.view).toBe("session");
     });
 
     it("selects scene by index", () => {
@@ -214,7 +214,8 @@ describe("view", () => {
         "selected_scene",
         `id ${scene.id}`,
       );
-      expect(result).toStrictEqual(expectViewState());
+      expect(result.selectedScene).toBeDefined();
+      expect(result.view).toBe("session");
     });
 
     it("selects scene by ID with sceneIndex hint", () => {
@@ -230,7 +231,8 @@ describe("view", () => {
         "selected_scene",
         "id scene_123",
       );
-      expect(result).toStrictEqual(expectViewState({ detectedType: "scene" }));
+      expect(result.selectedScene).toBeDefined();
+      expect(result.view).toBe("session");
     });
 
     it("skips scene selection when scene does not exist", () => {
@@ -246,7 +248,7 @@ describe("view", () => {
         "selected_scene",
         expect.anything(),
       );
-      expect(result).toStrictEqual(expectViewState());
+      expect(result.selectedScene).toBeUndefined();
     });
   });
 
@@ -263,7 +265,8 @@ describe("view", () => {
 
       expect(songView.set).toHaveBeenCalledWith("detail_clip", "id clip_123");
       expect(appView.call).toHaveBeenCalledWith("focus_view", "Detail/Clip");
-      expect(result).toStrictEqual(expectViewState({ detectedType: "clip" }));
+      expect(result.selectedClip).toBeDefined();
+      expect(result.selectedClip?.id).toBe("clip_123");
     });
 
     it("highlights clip slot when selecting a session clip", () => {
@@ -319,7 +322,8 @@ describe("view", () => {
         "focus_view",
         "Detail/DeviceChain",
       );
-      expect(result).toStrictEqual(expectViewState({ detectedType: "device" }));
+      expect(result.selectedDevice).toBeDefined();
+      expect(result.selectedDevice?.id).toBe("device_123");
     });
   });
 
@@ -340,7 +344,10 @@ describe("view", () => {
         "highlighted_clip_slot",
         `id ${clipSlot.id}`,
       );
-      expect(result).toStrictEqual(expectViewState());
+      // Empty slot: no selectedClip in response
+      expect(result.selectedClip).toBeUndefined();
+      // Auto-switches to session view
+      expect(result.view).toBe("session");
     });
   });
 });

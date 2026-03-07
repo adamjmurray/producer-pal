@@ -209,13 +209,14 @@ limitation).
 ### Select (`ppal-select`)
 
 - Read current selection and view state (when no arguments)
-  - See selected track, scene, clip, and device
-  - Check what's currently visible in Live
-- Update selection and view state (when arguments provided)
+  - Returns only non-null fields: selected track, scene, clip, device
+  - Rich object shapes with IDs, types, and context (slot, path, etc.)
+- Update selection and returns only relevant fields
   - Select any object by ID (auto-detects track/scene/clip/device)
   - Select tracks by index/category, scenes by index
   - Select clips by slot position (e.g., `0/3`)
   - Select devices by path (e.g., `t0/d1`)
   - Switch between Session and Arrangement views
+  - Auto-switches to session view for scene/clipSlot selection
   - Detail views auto-managed: clip detail opens on clip selection, device
     detail on device selection

@@ -1,10 +1,11 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
-import { fromLiveApiView, toLiveApiView } from "#src/tools/shared/utils.ts";
+import { toLiveApiView } from "#src/tools/shared/utils.ts";
 import {
   applyDetailView,
   updateClipSelection,
@@ -13,7 +14,6 @@ import {
   updateSceneSelection,
   updateTrackSelection,
   validateParameters,
-  type DetectedType,
   type TrackCategory,
 } from "./select-helpers.ts";
 import {
@@ -21,58 +21,15 @@ import {
   parseClipSlot,
   resolveIdParam,
 } from "./select-id-helpers.ts";
-
-interface ApplyViewChangesOptions {
-  appView: LiveAPI;
-  detailView?: "clip" | "device" | "none";
-  clipId?: string;
-  deviceId?: string;
-  devicePath?: string;
-  clipSlotHasClip: boolean;
-  viewOnly: boolean;
-  isReadOnly: boolean;
-}
-
-/**
- * Apply detail view changes and auto-close browser on any selection
- * @param options - View change parameters
- * @param options.appView - LiveAPI instance for live_app view
- * @param options.detailView - Explicit detail view override (from internal callers)
- * @param options.clipId - Selected clip ID
- * @param options.deviceId - Selected device ID
- * @param options.devicePath - Selected device path
- * @param options.clipSlotHasClip - Whether the selected clip slot contains a clip
- * @param options.viewOnly - Whether only the view param was provided
- * @param options.isReadOnly - Whether this is a read-only call (no args)
- */
-function applyViewChanges({
-  appView,
-  detailView,
-  clipId,
-  deviceId,
-  devicePath,
-  clipSlotHasClip,
-  viewOnly,
-  isReadOnly,
-}: ApplyViewChangesOptions): void {
-  const effectiveDetailView =
-    detailView ??
-    determineAutoDetailView({
-      clipId,
-      deviceId,
-      devicePath,
-      clipSlotHasClip,
-      viewOnly,
-    });
-
-  if (effectiveDetailView != null) {
-    applyDetailView({ appView, detailView: effectiveDetailView });
-  }
-
-  if (!isReadOnly) {
-    appView.call("hide_view", LIVE_API_VIEW_NAMES.BROWSER);
-  }
-}
+import {
+  buildClipResponseFromId,
+  buildClipResponseFromSlot,
+  buildDeviceResponseFromId,
+  buildDeviceResponseFromPath,
+  buildSceneResponseFromId,
+  buildTrackResponseFromId,
+  readFullState,
+} from "./select-response-helpers.ts";
 
 interface SelectArgs {
   // External params (from schema)
@@ -92,46 +49,38 @@ interface SelectArgs {
   detailView?: "clip" | "device" | "none";
 }
 
-interface SelectedTrackObject {
-  trackId: string | null;
-  type: string | null;
-  trackIndex?: number | null;
-  returnTrackIndex?: number | null;
-}
-
-interface ViewState {
-  view: string;
-  detailView: "clip" | "device" | null;
-  selectedTrack: SelectedTrackObject;
-  selectedClipId: string | null;
-  selectedDeviceId: string | null;
-  selectedScene: {
-    sceneId: string | null;
-    sceneIndex: number | null;
+export interface SelectResult {
+  view?: string;
+  selectedTrack?: { id: string; type: string; trackIndex?: number };
+  selectedScene?: { id: string; sceneIndex: number };
+  selectedClip?: {
+    id: string;
+    slot?: string;
+    trackIndex?: number;
+    arrangementStart?: string;
   };
-  selectedClipSlot: { trackIndex: number; sceneIndex: number } | null;
-  detectedType?: DetectedType;
+  selectedDevice?: { id: string; path: string };
 }
 
 /**
  * Reads or updates the view state and selection in Ableton Live.
  *
  * When called with no arguments, returns the current view state.
- * When called with arguments, updates the view/selection and returns the state.
+ * When called with arguments, updates the view/selection and returns
+ * only the fields relevant to what was changed.
  *
  * @param args - The parameters
  * @param _context - Context from main (unused)
- * @returns Current view state with selection information
+ * @returns Selection result with relevant fields only
  */
 export function select(
   args: SelectArgs = {},
   _context: Partial<ToolContext> = {},
-): ViewState {
+): SelectResult {
   const resolved = resolveArgs(args);
   const { view, category, trackIndex, devicePath, detailView } = args;
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
 
-  // Validation
   validateParameters({
     trackId,
     category,
@@ -143,25 +92,42 @@ export function select(
     clipSlot: parsedClipSlot,
   });
 
+  if (!resolved.hasArgs) {
+    return readFullState();
+  }
+
   const appView = LiveAPI.from(livePath.view.app);
   const songView = LiveAPI.from(livePath.view.song);
 
+  // View switching
+  let effectiveView: string | undefined;
+
   if (view != null) {
     appView.call("show_view", toLiveApiView(view));
+    effectiveView = view;
   }
 
   // Auto-switch to session view for scene/clipSlot (session-only concepts)
-  // unless the user explicitly provided a view param
-  if (
-    view == null &&
-    (sceneId != null || args.sceneIndex != null || parsedClipSlot != null)
-  ) {
+  const needsSessionView =
+    sceneId != null || args.sceneIndex != null || parsedClipSlot != null;
+
+  if (view == null && needsSessionView) {
     appView.call("show_view", toLiveApiView("session"));
+    effectiveView = "session";
   }
 
-  // Update selections
-  updateTrackSelection({ songView, trackId, category, trackIndex });
-  updateSceneSelection({ songView, sceneId, sceneIndex: args.sceneIndex });
+  // Perform selections
+  const trackResult = updateTrackSelection({
+    songView,
+    trackId,
+    category,
+    trackIndex,
+  });
+  const sceneResult = updateSceneSelection({
+    songView,
+    sceneId,
+    sceneIndex: args.sceneIndex,
+  });
 
   if (clipId !== undefined) {
     updateClipSelection({ appView, songView, clipId, requestedView: view });
@@ -182,16 +148,66 @@ export function select(
     devicePath,
     clipSlotHasClip,
     viewOnly: resolved.viewOnly,
-    isReadOnly: !resolved.hasArgs,
   });
 
-  const result = readViewState();
+  // Build response with only relevant fields
+  const result: SelectResult = {};
 
-  if (resolved.detectedType != null) {
-    result.detectedType = resolved.detectedType;
-  }
+  if (effectiveView != null) result.view = effectiveView;
+
+  addTrackToResponse(result, trackResult.selectedTrackId);
+  addSceneToResponse(result, sceneResult.selectedSceneId);
+  addClipToResponse(result, resolved, clipSlotHasClip, effectiveView);
+  addDeviceToResponse(result, resolved, args);
 
   return result;
+}
+
+interface ApplyViewChangesOptions {
+  appView: LiveAPI;
+  detailView?: "clip" | "device" | "none";
+  clipId?: string;
+  deviceId?: string;
+  devicePath?: string;
+  clipSlotHasClip: boolean;
+  viewOnly: boolean;
+}
+
+/**
+ * Apply detail view changes and auto-close browser on any selection
+ * @param options - View change parameters
+ * @param options.appView - LiveAPI instance for live_app view
+ * @param options.detailView - Explicit detail view override (from internal callers)
+ * @param options.clipId - Selected clip ID
+ * @param options.deviceId - Selected device ID
+ * @param options.devicePath - Selected device path
+ * @param options.clipSlotHasClip - Whether the selected clip slot contains a clip
+ * @param options.viewOnly - Whether only the view param was provided
+ */
+function applyViewChanges({
+  appView,
+  detailView,
+  clipId,
+  deviceId,
+  devicePath,
+  clipSlotHasClip,
+  viewOnly,
+}: ApplyViewChangesOptions): void {
+  const effectiveDetailView =
+    detailView ??
+    determineAutoDetailView({
+      clipId,
+      deviceId,
+      devicePath,
+      clipSlotHasClip,
+      viewOnly,
+    });
+
+  if (effectiveDetailView != null) {
+    applyDetailView({ appView, detailView: effectiveDetailView });
+  }
+
+  appView.call("hide_view", LIVE_API_VIEW_NAMES.BROWSER);
 }
 
 interface ResolvedArgs {
@@ -200,7 +216,6 @@ interface ResolvedArgs {
   clipId?: string;
   deviceId?: string;
   parsedClipSlot?: { trackIndex: number; sceneIndex: number };
-  detectedType?: DetectedType;
   hasArgs: boolean;
   viewOnly: boolean;
 }
@@ -208,16 +223,14 @@ interface ResolvedArgs {
 /**
  * Resolve external params (id, clipSlot string) to internal representations
  * @param args - Raw select arguments
- * @returns Resolved arguments with ID type detection and parsed clipSlot
+ * @returns Resolved arguments with parsed clipSlot
  */
 function resolveArgs(args: SelectArgs): ResolvedArgs {
   let { trackId, sceneId, clipId, deviceId } = args;
-  let detectedType: DetectedType | undefined;
 
   if (args.id != null) {
     const resolved = resolveIdParam(args.id);
 
-    detectedType = resolved.detectedType;
     trackId = resolved.trackId ?? trackId;
     sceneId = resolved.sceneId ?? sceneId;
     clipId = resolved.clipId ?? clipId;
@@ -231,7 +244,10 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
 
   const hasSelectionArgs =
     trackId != null ||
+    args.trackIndex != null ||
+    (args.category != null && args.category !== "regular") ||
     sceneId != null ||
+    args.sceneIndex != null ||
     clipId != null ||
     deviceId != null ||
     args.devicePath != null ||
@@ -246,122 +262,91 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
     clipId,
     deviceId,
     parsedClipSlot,
-    detectedType,
     hasArgs,
     viewOnly,
   };
 }
 
 /**
- * Reads the current view state from Ableton Live.
- * @returns Current view state with all selection information
+ * Add track info to action response if a track was selected
+ * @param result - Response being built
+ * @param selectedTrackId - Live API ID of selected track, if any
  */
-function readViewState(): ViewState {
-  const appView = LiveAPI.from(livePath.view.app);
-  const selectedTrack = LiveAPI.from(livePath.view.selectedTrack);
-  const selectedScene = LiveAPI.from(livePath.view.selectedScene);
-  const detailClip = LiveAPI.from(livePath.view.detailClip);
-  const highlightedClipSlotAPI = LiveAPI.from(
-    livePath.view.highlightedClipSlot,
-  );
+function addTrackToResponse(
+  result: SelectResult,
+  selectedTrackId: string | undefined,
+): void {
+  if (selectedTrackId != null) {
+    const info = buildTrackResponseFromId(selectedTrackId);
 
-  // Extract track info using Live API extensions
-  const selectedTrackId = selectedTrack.exists()
-    ? String(selectedTrack.id)
-    : null;
-  const category = selectedTrack.exists()
-    ? (selectedTrack.category as TrackCategory | null)
-    : null;
-  const selectedSceneIndex = selectedScene.exists()
-    ? selectedScene.sceneIndex
-    : null;
-  const selectedSceneId = selectedScene.exists()
-    ? String(selectedScene.id)
-    : null;
-  const selectedClipId = detailClip.exists() ? String(detailClip.id) : null;
-
-  // Get selected device from the selected track's view
-  let selectedDeviceId: string | null = null;
-
-  if (selectedTrack.exists()) {
-    const trackView = LiveAPI.from(`${selectedTrack.path} view`);
-
-    if (trackView.exists()) {
-      const deviceResult = trackView.get("selected_device") as unknown[] | null;
-
-      if (deviceResult?.[1]) {
-        selectedDeviceId = String(deviceResult[1]);
-      }
-    }
+    if (info) result.selectedTrack = info;
   }
-
-  const highlightedSlot =
-    highlightedClipSlotAPI.exists() &&
-    highlightedClipSlotAPI.trackIndex != null &&
-    highlightedClipSlotAPI.sceneIndex != null
-      ? {
-          trackIndex: highlightedClipSlotAPI.trackIndex,
-          sceneIndex: highlightedClipSlotAPI.sceneIndex,
-        }
-      : null;
-
-  let detailView: "clip" | "device" | null = null;
-
-  if (appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_CLIP)) {
-    detailView = "clip";
-  } else if (
-    appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN)
-  ) {
-    detailView = "device";
-  }
-
-  const trackType = computeSelectedTrackType(selectedTrack, category);
-
-  const selectedTrackObject: SelectedTrackObject = {
-    trackId: selectedTrackId,
-    type: trackType,
-  };
-
-  if (category === "regular" && selectedTrack.exists()) {
-    selectedTrackObject.trackIndex = selectedTrack.trackIndex;
-  } else if (category === "return" && selectedTrack.exists()) {
-    selectedTrackObject.returnTrackIndex = selectedTrack.returnTrackIndex;
-  }
-  // master track gets no index property
-
-  return {
-    view: fromLiveApiView(
-      appView.getProperty("focused_document_view") as string,
-    ),
-    detailView,
-    selectedTrack: selectedTrackObject,
-    selectedClipId,
-    selectedDeviceId,
-    selectedScene: {
-      sceneId: selectedSceneId,
-      sceneIndex: selectedSceneIndex,
-    },
-    selectedClipSlot: highlightedSlot,
-  };
 }
 
 /**
- * Compute merged track type from category and has_midi_input
- * @param track - Selected track LiveAPI object
- * @param category - Internal category: "regular", "return", or "master"
- * @returns Merged type: "midi", "audio", "return", "master", or null
+ * Add scene info to action response if a scene was selected
+ * @param result - Response being built
+ * @param selectedSceneId - Live API ID of selected scene, if any
  */
-function computeSelectedTrackType(
-  track: LiveAPI,
-  category: TrackCategory | null,
-): string | null {
-  if (category == null) return null;
-  if (category === "return") return "return";
-  if (category === "master") return "master";
+function addSceneToResponse(
+  result: SelectResult,
+  selectedSceneId: string | undefined,
+): void {
+  if (selectedSceneId != null) {
+    const info = buildSceneResponseFromId(selectedSceneId);
 
-  const isMidi = track.exists()
-    ? (track.getProperty("has_midi_input") as number) > 0
-    : false;
+    if (info) result.selectedScene = info;
+  }
+}
 
-  return isMidi ? "midi" : "audio";
+/**
+ * Add clip info to action response if a clip was selected
+ * @param result - Response being built
+ * @param resolved - Resolved args
+ * @param clipSlotHasClip - Whether clipSlot had a clip
+ * @param effectiveView - View that was set (explicit or auto-switched)
+ */
+function addClipToResponse(
+  result: SelectResult,
+  resolved: ResolvedArgs,
+  clipSlotHasClip: boolean,
+  effectiveView: string | undefined,
+): void {
+  if (resolved.clipId != null) {
+    const info = buildClipResponseFromId(resolved.clipId);
+
+    if (info) {
+      result.selectedClip = info;
+
+      if (effectiveView == null) {
+        result.view = info.slot != null ? "session" : "arrangement";
+      }
+    }
+  } else if (clipSlotHasClip && resolved.parsedClipSlot != null) {
+    const info = buildClipResponseFromSlot(resolved.parsedClipSlot);
+
+    if (info) result.selectedClip = info;
+  }
+}
+
+/**
+ * Add device info to action response if a device was selected
+ * @param result - Response being built
+ * @param resolved - Resolved args
+ * @param args - Original args
+ */
+function addDeviceToResponse(
+  result: SelectResult,
+  resolved: ResolvedArgs,
+  args: SelectArgs,
+): void {
+  if (resolved.deviceId != null) {
+    const info = buildDeviceResponseFromId(resolved.deviceId);
+
+    if (info) result.selectedDevice = info;
+  } else if (args.devicePath != null) {
+    const info = buildDeviceResponseFromPath(args.devicePath);
+
+    if (info) result.selectedDevice = info;
+  }
 }

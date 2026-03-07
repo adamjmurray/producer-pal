@@ -29,19 +29,16 @@ describe("ppal-select", () => {
       name: "ppal-select",
       arguments: {},
     });
-    const initial = parseToolResult<ViewState>(initialResult);
+    const initial = parseToolResult<SelectResult>(initialResult);
 
     expect(initial.view).toBeDefined();
-    expect(initial.selectedTrack).toBeDefined();
-    expect(initial.selectedScene).toBeDefined();
-    expect(initial.detectedType).toBeUndefined();
 
     // Test 2: Switch to session view
     const sessionResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { view: "session" },
     });
-    const session = parseToolResult<ViewState>(sessionResult);
+    const session = parseToolResult<SelectResult>(sessionResult);
 
     expect(session.view).toBe("session");
 
@@ -50,7 +47,7 @@ describe("ppal-select", () => {
       name: "ppal-select",
       arguments: { view: "arrangement" },
     });
-    const arrangement = parseToolResult<ViewState>(arrangementResult);
+    const arrangement = parseToolResult<SelectResult>(arrangementResult);
 
     expect(arrangement.view).toBe("arrangement");
 
@@ -59,53 +56,55 @@ describe("ppal-select", () => {
       name: "ppal-select",
       arguments: { trackIndex: 0, category: "regular" },
     });
-    const regularTrack = parseToolResult<ViewState>(regularTrackResult);
+    const regularTrack = parseToolResult<SelectResult>(regularTrackResult);
 
-    expect(regularTrack.selectedTrack.type).toBe("midi");
-    expect(regularTrack.selectedTrack.trackIndex).toBe(0);
-    expect(regularTrack.selectedTrack.trackId).toBeDefined();
+    expect(regularTrack.selectedTrack).toBeDefined();
+    expect(regularTrack.selectedTrack!.type).toBe("midi");
+    expect(regularTrack.selectedTrack!.trackIndex).toBe(0);
+    expect(regularTrack.selectedTrack!.id).toBeDefined();
 
     // Test 5: Select return track by index
     const returnTrackResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { trackIndex: 0, category: "return" },
     });
-    const returnTrack = parseToolResult<ViewState>(returnTrackResult);
+    const returnTrack = parseToolResult<SelectResult>(returnTrackResult);
 
-    expect(returnTrack.selectedTrack.type).toBe("return");
-    expect(returnTrack.selectedTrack.returnTrackIndex).toBe(0);
+    expect(returnTrack.selectedTrack!.type).toBe("return");
+    expect(returnTrack.selectedTrack!.trackIndex).toBe(0);
 
     // Test 6: Select master track
     const masterResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { category: "master" },
     });
-    const master = parseToolResult<ViewState>(masterResult);
+    const master = parseToolResult<SelectResult>(masterResult);
 
-    expect(master.selectedTrack.type).toBe("master");
+    expect(master.selectedTrack!.type).toBe("master");
+    expect(master.selectedTrack!.trackIndex).toBeUndefined();
 
     // Test 7: Select scene by index
     const sceneResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { sceneIndex: 0 },
     });
-    const scene = parseToolResult<ViewState>(sceneResult);
+    const scene = parseToolResult<SelectResult>(sceneResult);
 
-    expect(scene.selectedScene.sceneIndex).toBe(0);
-    expect(scene.selectedScene.sceneId).toBeDefined();
+    expect(scene.selectedScene!.sceneIndex).toBe(0);
+    expect(scene.selectedScene!.id).toBeDefined();
     // Scene selection auto-switches to session view
     expect(scene.view).toBe("session");
 
     // Test 8: Select track by ID (auto-detection)
-    const trackId = regularTrack.selectedTrack.trackId!;
+    const trackId = regularTrack.selectedTrack!.id;
     const selectByIdResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { id: trackId },
+      arguments: { id: `id ${trackId}` },
     });
-    const byId = parseToolResult<ViewState>(selectByIdResult);
+    const byId = parseToolResult<SelectResult>(selectByIdResult);
 
-    expect(byId.selectedTrack.trackId).toBe(trackId);
-    expect(byId.detectedType).toBe("track");
+    expect(byId.selectedTrack).toBeDefined();
+    expect(byId.selectedTrack!.id).toBe(trackId);
 
     // Test 9: Create a clip and select it by ID
     // Use empty track t8 (9-MIDI) to avoid conflicts with pre-populated clips
@@ -124,19 +123,18 @@ describe("ppal-select", () => {
 
     const selectClipResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { id: createdClip.id },
+      arguments: { id: `id ${createdClip.id}` },
     });
-    const withClip = parseToolResult<ViewState>(selectClipResult);
+    const withClip = parseToolResult<SelectResult>(selectClipResult);
 
-    expect(withClip.selectedClipId).toBe(createdClip.id);
-    expect(withClip.detectedType).toBe("clip");
-    // Auto detail view should show clip
-    expect(withClip.detailView).toBe("clip");
+    expect(withClip.selectedClip).toBeDefined();
+    expect(withClip.selectedClip!.id).toBe(createdClip.id);
+    expect(withClip.selectedClip!.slot).toBeDefined();
 
     // Test 9b: Select session clip with conflicting view arg - should warn
     const conflictingViewResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { id: createdClip.id, view: "arrangement" },
+      arguments: { id: `id ${createdClip.id}`, view: "arrangement" },
     });
     const conflictWarnings = getToolWarnings(conflictingViewResult);
 
@@ -149,49 +147,46 @@ describe("ppal-select", () => {
 
     const selectDeviceResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { id: deviceId },
+      arguments: { id: `id ${deviceId}` },
     });
-    const withDevice = parseToolResult<ViewState>(selectDeviceResult);
+    const withDevice = parseToolResult<SelectResult>(selectDeviceResult);
 
-    expect(withDevice.selectedDeviceId).toBe(deviceId);
-    expect(withDevice.detectedType).toBe("device");
-    // Auto detail view should show device chain
-    expect(withDevice.detailView).toBe("device");
+    expect(withDevice.selectedDevice).toBeDefined();
+    expect(withDevice.selectedDevice!.id).toBe(deviceId);
+    expect(withDevice.selectedDevice!.path).toBeDefined();
 
     // Test 11: Select device by path
     const selectDevicePathResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { devicePath: "t0/d0" },
     });
-    const withDevicePath = parseToolResult<ViewState>(selectDevicePathResult);
+    const withDevicePath = parseToolResult<SelectResult>(
+      selectDevicePathResult,
+    );
 
-    expect(withDevicePath.selectedDeviceId).toBeDefined();
-    expect(withDevicePath.detailView).toBe("device");
+    expect(withDevicePath.selectedDevice).toBeDefined();
+    expect(withDevicePath.selectedDevice!.path).toBe("t0/d0");
 
     // Test 12: Select clip slot (occupied)
     const clipSlotResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { clipSlot: `${emptyMidiTrack}/0` },
     });
-    const clipSlot = parseToolResult<ViewState>(clipSlotResult);
+    const clipSlot = parseToolResult<SelectResult>(clipSlotResult);
 
-    expect(clipSlot.selectedClipSlot).toStrictEqual({
-      trackIndex: emptyMidiTrack,
-      sceneIndex: 0,
-    });
-    // Slot has a clip (created above), so detail should show clip
-    expect(clipSlot.detailView).toBe("clip");
+    expect(clipSlot.selectedClip).toBeDefined();
+    expect(clipSlot.selectedClip!.slot).toBe(`${emptyMidiTrack}/0`);
 
     // Test 13: Select scene by ID (auto-detection)
-    const sceneId = scene.selectedScene.sceneId!;
+    const sceneId = scene.selectedScene!.id;
     const selectSceneByIdResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { id: sceneId },
+      arguments: { id: `id ${sceneId}` },
     });
-    const sceneById = parseToolResult<ViewState>(selectSceneByIdResult);
+    const sceneById = parseToolResult<SelectResult>(selectSceneByIdResult);
 
-    expect(sceneById.selectedScene.sceneId).toBe(sceneId);
-    expect(sceneById.detectedType).toBe("scene");
+    expect(sceneById.selectedScene).toBeDefined();
+    expect(sceneById.selectedScene!.id).toBe(sceneId);
 
     // Test 14: Error for nonexistent ID
     const badIdResult = await ctx.client!.callTool({
@@ -202,38 +197,38 @@ describe("ppal-select", () => {
     expect(isToolError(badIdResult)).toBe(true);
     expect(getToolErrorMessage(badIdResult)).toContain("does not exist");
 
-    // Test 15: View-only change hides detail
-    // First ensure detail is showing
-    await ctx.client!.callTool({
-      name: "ppal-select",
-      arguments: { id: createdClip.id },
-    });
-
+    // Test 15: View-only change returns only view
     const viewOnlyResult = await ctx.client!.callTool({
       name: "ppal-select",
       arguments: { view: "session" },
     });
-    const viewOnly = parseToolResult<ViewState>(viewOnlyResult);
+    const viewOnly = parseToolResult<SelectResult>(viewOnlyResult);
 
-    expect(viewOnly.detailView).toBeNull();
+    expect(viewOnly.view).toBe("session");
+    expect(viewOnly.selectedTrack).toBeUndefined();
+    expect(viewOnly.selectedScene).toBeUndefined();
   });
 });
 
-interface ViewState {
-  view: string;
-  detailView: "clip" | "device" | null;
-  detectedType?: "track" | "scene" | "clip" | "device";
-  selectedTrack: {
-    trackId: string | null;
-    type: "midi" | "audio" | "return" | "master" | null;
-    trackIndex?: number | null;
-    returnTrackIndex?: number | null;
+interface SelectResult {
+  view?: string;
+  selectedTrack?: {
+    id: string;
+    type: string;
+    trackIndex?: number;
   };
-  selectedClipId: string | null;
-  selectedDeviceId: string | null;
-  selectedScene: {
-    sceneId: string | null;
-    sceneIndex: number | null;
+  selectedScene?: {
+    id: string;
+    sceneIndex: number;
   };
-  selectedClipSlot: { trackIndex: number; sceneIndex: number } | null;
+  selectedClip?: {
+    id: string;
+    slot?: string;
+    trackIndex?: number;
+    arrangementStart?: string;
+  };
+  selectedDevice?: {
+    id: string;
+    path: string;
+  };
 }

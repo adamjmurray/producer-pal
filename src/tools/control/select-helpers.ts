@@ -13,8 +13,6 @@ import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/devi
 import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
-export type { DetectedType } from "./select-id-helpers.ts";
-
 export type TrackCategory = "regular" | "return" | "master";
 
 export interface TrackSelectionResult {
