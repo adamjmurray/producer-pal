@@ -150,6 +150,15 @@ export function select(
     appView.call("show_view", toLiveApiView(view));
   }
 
+  // Auto-switch to session view for scene/clipSlot (session-only concepts)
+  // unless the user explicitly provided a view param
+  if (
+    view == null &&
+    (sceneId != null || args.sceneIndex != null || parsedClipSlot != null)
+  ) {
+    appView.call("show_view", toLiveApiView("session"));
+  }
+
   // Update selections
   updateTrackSelection({ songView, trackId, category, trackIndex });
   updateSceneSelection({ songView, sceneId, sceneIndex: args.sceneIndex });

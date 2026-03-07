@@ -174,6 +174,52 @@ describe("view", () => {
     });
   });
 
+  describe("auto session view", () => {
+    it("auto-switches to session view when selecting scene by index", () => {
+      const appView = setupAppViewMock();
+
+      registerMockObject("scene_123", {
+        path: livePath.scene(0),
+        type: "Scene",
+      });
+      setupSongViewMock();
+
+      select({ sceneIndex: 0 });
+
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+    });
+
+    it("auto-switches to session view when selecting clipSlot", () => {
+      const appView = setupAppViewMock();
+
+      registerMockObject("clipslot_1_2", {
+        path: livePath.track(1).clipSlot(2),
+        type: "ClipSlot",
+        properties: { has_clip: 0 },
+      });
+      setupSongViewMock();
+
+      select({ clipSlot: "1/2" });
+
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+    });
+
+    it("does not auto-switch when view is explicitly provided", () => {
+      const appView = setupAppViewMock();
+
+      registerMockObject("scene_456", {
+        path: livePath.scene(1),
+        type: "Scene",
+      });
+      setupSongViewMock();
+
+      select({ sceneIndex: 1, view: "arrangement" });
+
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(appView.call).not.toHaveBeenCalledWith("show_view", "Session");
+    });
+  });
+
   describe("id auto-detection", () => {
     it("detects track type from id", () => {
       registerMockObject("track_abc", {

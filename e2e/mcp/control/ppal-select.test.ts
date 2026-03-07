@@ -93,6 +93,8 @@ describe("ppal-select", () => {
 
     expect(scene.selectedScene.sceneIndex).toBe(0);
     expect(scene.selectedScene.sceneId).toBeDefined();
+    // Scene selection auto-switches to session view
+    expect(scene.view).toBe("session");
 
     // Test 8: Select track by ID (auto-detection)
     const trackId = regularTrack.selectedTrack.trackId!;

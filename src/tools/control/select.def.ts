@@ -26,7 +26,6 @@ export const toolDefSelect = defineTool("ppal-select", {
       .min(0)
       .optional()
       .describe("0-based track index"),
-
     category: z
       .enum(["regular", "return", "master"])
       .optional()
