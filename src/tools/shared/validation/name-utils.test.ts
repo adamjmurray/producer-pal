@@ -72,11 +72,11 @@ describe("name-utils", () => {
       expect(getNameForIndex("A,B,C", 2, parsed)).toBe("C");
     });
 
-    it("returns empty string when index exceeds parsed names", () => {
+    it("returns undefined when index exceeds parsed names", () => {
       const parsed = ["A", "B"];
 
-      expect(getNameForIndex("A,B", 2, parsed)).toBe("");
-      expect(getNameForIndex("A,B", 10, parsed)).toBe("");
+      expect(getNameForIndex("A,B", 2, parsed)).toBeUndefined();
+      expect(getNameForIndex("A,B", 10, parsed)).toBeUndefined();
     });
   });
 
@@ -135,6 +135,16 @@ describe("name-utils", () => {
 
       expect(result).toBeNull();
       expect(console.warn).not.toHaveBeenCalled();
+    });
+
+    it("warns when fewer names than items", async () => {
+      vi.clearAllMocks();
+      parseNames("A,B", 5, "myTool");
+      const console = await import("#src/shared/v8-max-console.ts");
+
+      expect(console.warn).toHaveBeenCalledWith(
+        "myTool: 2 names provided for 5 items — extras will keep default names",
+      );
     });
 
     it("returns parsed names without warning when count matches", async () => {

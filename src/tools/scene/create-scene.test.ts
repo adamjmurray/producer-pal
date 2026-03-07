@@ -244,7 +244,7 @@ describe("createScene", () => {
       expect(result).toHaveLength(3);
     });
 
-    it("should set empty name for extras when count exceeds names", () => {
+    it("should skip name for extras when count exceeds names", () => {
       const scene3 = registerMockObject("live_set/scenes/3", {
         path: livePath.scene(3),
       });
@@ -258,7 +258,7 @@ describe("createScene", () => {
       expect(scene0.set).toHaveBeenCalledWith("name", "Intro");
       expect(scene1.set).toHaveBeenCalledWith("name", "Verse");
       expect(scene2.set).toHaveBeenCalledWith("name", "Chorus");
-      expect(scene3.set).toHaveBeenCalledWith("name", "");
+      expect(scene3.set).not.toHaveBeenCalledWith("name", expect.anything());
       expect(result).toHaveLength(4);
     });
 

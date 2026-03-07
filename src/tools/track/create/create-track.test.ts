@@ -347,7 +347,7 @@ describe("createTrack", () => {
       expect(result).toHaveLength(3);
     });
 
-    it("should set empty name for extras when count exceeds names", () => {
+    it("should skip name for extras when count exceeds names", () => {
       const track0 = registerMockObject("midi_track_0", {});
       const track1 = registerMockObject("midi_track_1", {});
       const track2 = registerMockObject("midi_track_2", {});
@@ -362,7 +362,7 @@ describe("createTrack", () => {
       expect(track0.set).toHaveBeenCalledWith("name", "kick");
       expect(track1.set).toHaveBeenCalledWith("name", "snare");
       expect(track2.set).toHaveBeenCalledWith("name", "hat");
-      expect(track3.set).toHaveBeenCalledWith("name", "");
+      expect(track3.set).not.toHaveBeenCalledWith("name", expect.anything());
       expect(result).toHaveLength(4);
     });
 
@@ -413,7 +413,7 @@ describe("createTrack", () => {
       expect(track2.set).toHaveBeenCalledWith("name", "hat");
     });
 
-    it("should set empty name for extras beyond comma-separated list", () => {
+    it("should skip name for extras beyond comma-separated list", () => {
       const track0 = registerMockObject("midi_track_0", {});
       const track1 = registerMockObject("midi_track_1", {});
       const track2 = registerMockObject("midi_track_2", {});
@@ -430,9 +430,9 @@ describe("createTrack", () => {
       expect(track0.set).toHaveBeenCalledWith("name", "kick");
       expect(track1.set).toHaveBeenCalledWith("name", "snare");
       expect(track2.set).toHaveBeenCalledWith("name", "hat");
-      // Subsequent tracks get empty name
-      expect(track3.set).toHaveBeenCalledWith("name", "");
-      expect(track4.set).toHaveBeenCalledWith("name", "");
+      // Subsequent tracks keep default name
+      expect(track3.set).not.toHaveBeenCalledWith("name", expect.anything());
+      expect(track4.set).not.toHaveBeenCalledWith("name", expect.anything());
     });
   });
 

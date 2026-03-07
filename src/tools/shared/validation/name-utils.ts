@@ -26,11 +26,11 @@ export function parseCommaSeparatedNames(
 /**
  * Get name for a specific index when creating/updating multiple items.
  * When parsedNames is provided and the index is beyond the array,
- * returns "" (empty string) so the item gets an empty name.
+ * returns undefined so excess items keep their default/existing name.
  * @param baseName - Base name string (the raw parameter value)
  * @param index - Current item index
  * @param parsedNames - Comma-separated names array, or null
- * @returns Name for this index, or undefined if baseName was not provided
+ * @returns Name for this index, or undefined if not applicable
  */
 export function getNameForIndex(
   baseName: string | undefined,
@@ -40,7 +40,7 @@ export function getNameForIndex(
   if (baseName == null) return;
 
   if (parsedNames != null) {
-    return index < parsedNames.length ? parsedNames[index] : "";
+    return index < parsedNames.length ? parsedNames[index] : undefined;
   }
 
   return baseName;
@@ -62,6 +62,7 @@ export function parseNames(
   const parsed = parseCommaSeparatedNames(value, count);
 
   warnExtraNames(parsed, count, toolName);
+  warnFewerNames(parsed, count, toolName);
 
   return parsed;
 }
@@ -80,6 +81,24 @@ export function warnExtraNames(
   if (parsedNames != null && parsedNames.length > count) {
     console.warn(
       `${toolName}: ${parsedNames.length} names provided but only ${count} items — ignoring extra`,
+    );
+  }
+}
+
+/**
+ * Emit a warning when fewer names were provided than items to name.
+ * @param parsedNames - Parsed name array, or null
+ * @param count - Number of items being named
+ * @param toolName - Tool name for the warning message
+ */
+export function warnFewerNames(
+  parsedNames: string[] | null,
+  count: number,
+  toolName: string,
+): void {
+  if (parsedNames != null && parsedNames.length < count) {
+    console.warn(
+      `${toolName}: ${parsedNames.length} names provided for ${count} items — extras will keep default names`,
     );
   }
 }

@@ -187,7 +187,38 @@ describe("ppal-create-track", () => {
     expect(kickTrack.name).toBe("Kick");
     expect(snareTrack.name).toBe("Snare");
 
-    // Test 3: Create multiple tracks with comma-separated colors
+    // Test 3: Create 3 tracks with only 2 names — third keeps default
+    const fewerNamesResult = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { count: 3, name: "Bass,Lead" },
+    });
+    const fewerNames = parseToolResult<CreateTrackResult[]>(fewerNamesResult);
+
+    expect(fewerNames).toHaveLength(3);
+
+    await sleep(100);
+    const verifyBass = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackId: fewerNames[0]!.id },
+    });
+    const verifyLead = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackId: fewerNames[1]!.id },
+    });
+    const verifyDefault = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackId: fewerNames[2]!.id },
+    });
+    const bassTrack = parseToolResult<ReadTrackResult>(verifyBass);
+    const leadTrack = parseToolResult<ReadTrackResult>(verifyLead);
+    const defaultTrack = parseToolResult<ReadTrackResult>(verifyDefault);
+
+    expect(bassTrack.name).toBe("Bass");
+    expect(leadTrack.name).toBe("Lead");
+    // Third track should keep Ableton's default name, not be empty
+    expect(defaultTrack.name).not.toBe("");
+
+    // Test 4: Create multiple tracks with comma-separated colors
     const multiColorResult = await ctx.client!.callTool({
       name: "ppal-create-track",
       arguments: { count: 2, name: "Red,Green", color: "#FF0000,#00FF00" },
@@ -221,7 +252,7 @@ describe("ppal-create-track", () => {
     const final = parseToolResult<LiveSetResult>(finalResult);
     const finalTrackCount = final.tracks?.length ?? 0;
 
-    // Created: 2 batch + 2 multi-name + 2 multi-color = 6
+    // Created: 2 batch + 2 multi-name + 3 fewer-names + 2 multi-color = 9
     expect(finalTrackCount).toBeGreaterThan(initialTrackCount);
   });
 });
