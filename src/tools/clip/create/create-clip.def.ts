@@ -11,7 +11,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   description:
     "Create MIDI or audio clip(s).\n" +
     "Requires slot (session) and/or trackIndex + arrangementStart (arrangement).\n" +
-    "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. ",
+    "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -65,7 +65,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "duration in bar:beat (e.g., '4:0'), default: next full bar after latest note",
+        "duration in bar:beat (e.g., '4:0' = 4 bars), default: next full bar after latest note",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),

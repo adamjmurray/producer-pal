@@ -51,5 +51,7 @@ export const toolDefSelect = defineTool("ppal-select", {
     view: z.enum(["session", "arrangement"]).optional().describe("main view"),
   },
 
-  smallModelModeConfig: {},
+  smallModelModeConfig: {
+    // Intentionally empty — simple tool with few params, all useful for SLMs
+  },
 });

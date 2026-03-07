@@ -25,6 +25,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
       .describe(
         "comma-separated device/drum-pad paths to delete (e.g., 't0/d1', 't1/d0/pC1/d0', 't1/d0/pC1')",
       ),
+    // Required even though IDs encode type — intentional safety net for destructive operation
     type: z
       .enum(["track", "scene", "clip", "device", "drum-pad"])
       .describe("type of objects to delete"),

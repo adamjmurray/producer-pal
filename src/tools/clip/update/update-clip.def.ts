@@ -36,7 +36,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     length: z
       .string()
       .optional()
-      .describe("duration in bar:beat (e.g., '4:0')"),
+      .describe("duration in bar:beat (e.g., '4:0' = 4 bars)"),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     firstStart: z
       .string()
@@ -53,7 +53,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     arrangementLength: z
       .string()
       .optional()
-      .describe("duration in bar:beat (e.g., '4:0'), arrangement clips only"),
+      .describe(
+        "duration in bar:beat (e.g., '4:0' = 4 bars), arrangement clips only",
+      ),
     toSlot: z.coerce
       .string()
       .optional()
