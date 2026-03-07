@@ -212,7 +212,10 @@ limitation).
   - See selected track, scene, clip, and device
   - Check what's currently visible in Live
 - Update selection and view state (when arguments provided)
-  - Select specific tracks, scenes, or clips
+  - Select any object by ID (auto-detects track/scene/clip/device)
+  - Select tracks by index/category, scenes by index
+  - Select clips by slot position (e.g., `0/3`)
+  - Select devices by path (e.g., `t0/d1`)
   - Switch between Session and Arrangement views
-  - Show/hide browser and detail views
-  - Focus on devices or clip details
+  - Detail views auto-managed: clip detail opens on clip selection, device
+    detail on device selection

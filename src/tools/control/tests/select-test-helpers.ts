@@ -27,7 +27,6 @@ export function resetSelectTestState(): void {
 interface ViewState {
   view: string;
   detailView: string | null;
-  showBrowser: boolean;
   selectedTrack: {
     trackId: string | null;
     type: string | null;
@@ -41,6 +40,7 @@ interface ViewState {
     sceneIndex: number | null;
   };
   selectedClipSlot: { trackIndex: number; sceneIndex: number } | null;
+  detectedType?: string;
 }
 
 // Constants for Live API paths
@@ -335,7 +335,6 @@ export function getDefaultViewState(): ViewState {
   return {
     view: "session",
     detailView: null,
-    showBrowser: false,
     selectedTrack: {
       trackId: null,
       type: null,
