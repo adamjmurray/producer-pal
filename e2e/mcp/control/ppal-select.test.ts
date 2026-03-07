@@ -54,7 +54,7 @@ describe("ppal-select", () => {
     // Test 4: Select regular track by index
     const regularTrackResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { trackIndex: 0, category: "regular" },
+      arguments: { trackIndex: 0 },
     });
     const regularTrack = parseToolResult<SelectResult>(regularTrackResult);
 
@@ -66,7 +66,7 @@ describe("ppal-select", () => {
     // Test 5: Select return track by index
     const returnTrackResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { trackIndex: 0, category: "return" },
+      arguments: { trackIndex: 0, trackType: "return" },
     });
     const returnTrack = parseToolResult<SelectResult>(returnTrackResult);
 
@@ -76,7 +76,7 @@ describe("ppal-select", () => {
     // Test 6: Select master track
     const masterResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { category: "master" },
+      arguments: { trackType: "master" },
     });
     const master = parseToolResult<SelectResult>(masterResult);
 

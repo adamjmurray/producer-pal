@@ -397,10 +397,12 @@ describe("view", () => {
     it("throws error when master track type with index", () => {
       expect(() => {
         select({
-          category: "master",
+          trackType: "master",
           trackIndex: 0,
         });
-      }).toThrow("trackIndex should not be provided when category is 'master'");
+      }).toThrow(
+        "trackIndex should not be provided when trackType is 'master'",
+      );
     });
 
     it("throws error when both id (device) and devicePath provided", () => {
@@ -506,7 +508,6 @@ describe("view", () => {
 
       const result = select({
         view: "arrangement",
-        category: "regular",
         trackIndex: 1,
         sceneIndex: 3,
         clipId: "id clip_456",
@@ -538,12 +539,12 @@ describe("view", () => {
       expect(result.selectedTrack).toBeDefined();
     });
 
-    it("skips track selection when category is invalid", () => {
+    it("skips track selection when trackType is invalid", () => {
       const songView = setupSongViewMock();
 
       const result = select({
-        // @ts-expect-error Testing invalid category
-        category: "invalid_category",
+        // @ts-expect-error Testing invalid trackType
+        trackType: "invalid_trackType",
         trackIndex: 2,
       });
 

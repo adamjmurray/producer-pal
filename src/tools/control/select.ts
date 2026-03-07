@@ -7,6 +7,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { toLiveApiView } from "#src/tools/shared/utils.ts";
 import {
+  type TrackCategory,
   applyDetailView,
   updateClipSelection,
   updateClipSlotSelection,
@@ -14,7 +15,6 @@ import {
   updateSceneSelection,
   updateTrackSelection,
   validateParameters,
-  type TrackCategory,
 } from "./select-helpers.ts";
 import {
   determineAutoDetailView,
@@ -35,7 +35,7 @@ interface SelectArgs {
   // External params (from schema)
   id?: string;
   view?: "session" | "arrangement";
-  category?: TrackCategory;
+  trackType?: "return" | "master";
   trackIndex?: number;
   sceneIndex?: number;
   clipSlot?: string;
@@ -78,7 +78,8 @@ export function select(
   _context: Partial<ToolContext> = {},
 ): SelectResult {
   const resolved = resolveArgs(args);
-  const { view, category, trackIndex, devicePath, detailView } = args;
+  const { view, trackType, trackIndex, devicePath, detailView } = args;
+  const category = (trackType ?? "regular") as TrackCategory;
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
 
   validateParameters({
@@ -245,7 +246,7 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
   const hasSelectionArgs =
     trackId != null ||
     args.trackIndex != null ||
-    (args.category != null && args.category !== "regular") ||
+    args.trackType != null ||
     sceneId != null ||
     args.sceneIndex != null ||
     clipId != null ||

@@ -72,7 +72,7 @@ describe("ppal-create-track", () => {
       name: "ppal-read-track",
       arguments: {
         trackIndex: returnTrack.returnTrackIndex,
-        category: "return",
+        trackType: "return",
       },
     });
     const returnRead = parseToolResult<ReadTrackResult>(verifyReturn);

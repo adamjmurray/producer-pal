@@ -121,7 +121,7 @@ export function validateParameters({
   // Track selection validation
   if (category === "master" && trackIndex != null) {
     throw new Error(
-      "trackIndex should not be provided when category is 'master'",
+      "trackIndex should not be provided when trackType is 'master'",
     );
   }
 

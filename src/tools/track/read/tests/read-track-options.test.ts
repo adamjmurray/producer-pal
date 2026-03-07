@@ -172,9 +172,9 @@ describe("readTrack", () => {
     });
   });
 
-  describe("category parameter", () => {
+  describe("trackType parameter", () => {
     describe("return tracks", () => {
-      it("reads return track when category is 'return'", () => {
+      it("reads return track when trackType is 'return'", () => {
         setupTrackPathMappedMocks({
           trackPath: String(livePath.returnTrack(1)),
           trackId: "return_track_1",
@@ -201,7 +201,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({ trackIndex: 1, category: "return" });
+        const result = readTrack({ trackIndex: 1, trackType: "return" });
 
         expect(result).toStrictEqual({
           id: "return_track_1",
@@ -220,9 +220,9 @@ describe("readTrack", () => {
           type: "Track",
         });
 
-        expect(() => readTrack({ trackIndex: 99, category: "return" })).toThrow(
-          "readTrack: returnTrackIndex 99 does not exist",
-        );
+        expect(() =>
+          readTrack({ trackIndex: 99, trackType: "return" }),
+        ).toThrow("readTrack: returnTrackIndex 99 does not exist");
       });
 
       it("includes routing properties for return tracks when requested", () => {
@@ -243,7 +243,7 @@ describe("readTrack", () => {
 
         const result = readTrack({
           trackIndex: 0,
-          category: "return",
+          trackType: "return",
           include: ["routings", "available-routings"],
         });
 
@@ -266,7 +266,7 @@ describe("readTrack", () => {
     });
 
     describe("master track", () => {
-      it("reads master track when category is 'master'", () => {
+      it("reads master track when trackType is 'master'", () => {
         setupTrackPathMappedMocks({
           trackPath: String(livePath.masterTrack()),
           trackId: "master_track",
@@ -290,7 +290,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({ trackIndex: 999, category: "master" }); // trackIndex should be ignored
+        const result = readTrack({ trackIndex: 999, trackType: "master" }); // trackIndex should be ignored
 
         expect(result).toStrictEqual({
           id: "master_track",
@@ -312,7 +312,7 @@ describe("readTrack", () => {
           type: "Track",
         });
 
-        expect(() => readTrack({ trackIndex: 0, category: "master" })).toThrow(
+        expect(() => readTrack({ trackIndex: 0, trackType: "master" })).toThrow(
           "readTrack: trackIndex null does not exist",
         );
       });
@@ -352,7 +352,7 @@ describe("readTrack", () => {
 
         const result = readTrack({
           trackIndex: 0,
-          category: "master",
+          trackType: "master",
           include: ["devices"],
         });
 
@@ -381,7 +381,7 @@ describe("readTrack", () => {
 
         const result = readTrack({
           trackIndex: 0,
-          category: "master",
+          trackType: "master",
           include: ["routings", "available-routings"],
         });
 
@@ -407,7 +407,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({ category: "master" });
+        const result = readTrack({ trackType: "master" });
 
         expect(result).toStrictEqual({
           id: "master_track",
@@ -421,7 +421,7 @@ describe("readTrack", () => {
     });
 
     describe("regular tracks (default behavior)", () => {
-      it("defaults to regular track when category is not specified", () => {
+      it("defaults to regular track when trackType is not specified", () => {
         setupTrackPathMappedMocks({
           trackId: "track1",
           objects: {
@@ -438,7 +438,7 @@ describe("readTrack", () => {
         expect(result.id).toBe("track1");
       });
 
-      it("reads regular track when category is explicitly 'regular'", () => {
+      it("reads regular track when trackType is omitted", () => {
         setupTrackPathMappedMocks({
           trackId: "track1",
           objects: {
@@ -448,7 +448,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({ trackIndex: 0, category: "regular" });
+        const result = readTrack({ trackIndex: 0 });
 
         expect(result.trackIndex).toBe(0);
         expect(result.returnTrackIndex).toBeUndefined();
@@ -456,12 +456,12 @@ describe("readTrack", () => {
       });
     });
 
-    describe("invalid category", () => {
-      it("throws error for invalid category", () => {
+    describe("invalid trackType", () => {
+      it("throws error for invalid trackType", () => {
         expect(() => {
-          readTrack({ trackIndex: 0, category: "invalid" });
+          readTrack({ trackIndex: 0, trackType: "invalid" });
         }).toThrow(
-          'Invalid category: invalid. Must be "regular", "return", or "master".',
+          'Invalid trackType: invalid. Must be "return" or "master", or omit for regular tracks.',
         );
       });
     });

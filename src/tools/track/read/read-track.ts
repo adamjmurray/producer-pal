@@ -37,7 +37,7 @@ import {
 interface ReadTrackArgs {
   trackIndex?: number;
   trackId?: string;
-  category?: string;
+  trackType?: string;
   returnTrackNames?: string[];
   include?: string[];
 }
@@ -70,7 +70,8 @@ export function readTrack(
   args: ReadTrackArgs = {},
   _context: Partial<ToolContext> = {},
 ): Record<string, unknown> {
-  const { trackIndex, trackId, category = "regular", returnTrackNames } = args;
+  const { trackIndex, trackId, trackType, returnTrackNames } = args;
+  const category = trackType ?? "regular";
 
   // Validate parameters
   if (trackId == null && trackIndex == null && category !== "master") {
@@ -95,7 +96,7 @@ export function readTrack(
     track = LiveAPI.from(livePath.masterTrack());
   } else {
     throw new Error(
-      `Invalid category: ${category}. Must be "regular", "return", or "master".`,
+      `Invalid trackType: ${trackType}. Must be "return" or "master", or omit for regular tracks.`,
     );
   }
 

@@ -91,7 +91,6 @@ describe("view", () => {
       const songView = setupSongViewMock();
 
       const result = select({
-        category: "regular",
         trackIndex: 2,
       });
 
@@ -110,7 +109,7 @@ describe("view", () => {
       const songView = setupSongViewMock();
 
       const result = select({
-        category: "return",
+        trackType: "return",
         trackIndex: 1,
       });
 
@@ -128,7 +127,7 @@ describe("view", () => {
       });
       const songView = setupSongViewMock();
 
-      const result = select({ category: "master" });
+      const result = select({ trackType: "master" });
 
       expect(songView.set).toHaveBeenCalledWith(
         "selected_track",
