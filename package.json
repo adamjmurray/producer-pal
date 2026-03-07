@@ -92,7 +92,7 @@
     "@ai-sdk/mistral": "^3.0.24",
     "@ai-sdk/openai": "^3.0.41",
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "@openrouter/ai-sdk-provider": "^2.2.3",
+    "@openrouter/ai-sdk-provider": "^2.2.5",
     "@tailwindcss/typography": "^0.5.19",
     "ai": "^6.0.116",
     "express": "^5.2.1",
