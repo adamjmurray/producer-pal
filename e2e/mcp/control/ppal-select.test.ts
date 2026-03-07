@@ -113,8 +113,7 @@ describe("ppal-select", () => {
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "0",
+        slot: `${emptyMidiTrack}/0`,
         notes: "C3 1|1",
         length: "1:0.0",
       },

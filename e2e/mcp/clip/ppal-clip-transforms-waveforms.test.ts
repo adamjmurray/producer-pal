@@ -29,8 +29,7 @@ async function createWaveformClip(sceneIndex: number): Promise<string> {
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      trackIndex: emptyMidiTrack,
-      sceneIndex: String(sceneIndex),
+      slot: `${emptyMidiTrack}/${sceneIndex}`,
       notes: "v64 C3 1|1\nv64 C3 1|2\nv64 C3 1|3\nv64 C3 1|4",
       length: "1:0.0",
     },

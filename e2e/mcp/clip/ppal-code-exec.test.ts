@@ -36,8 +36,7 @@ describe("ppal-code-exec", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "0",
+        slot: `${emptyMidiTrack}/0`,
         code: "return [{pitch: 60, start: 0, duration: 0.5, velocity: 110}, {pitch: 64, start: 1}, {pitch: 67, start: 2}]",
       },
     });
@@ -65,8 +64,7 @@ describe("ppal-code-exec", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "1",
+        slot: `${emptyMidiTrack}/1`,
         notes: "C3 D3 E3 1|1",
         length: "2:0.0",
       },
@@ -152,29 +150,40 @@ describe("ppal-code-exec", () => {
       {
         label: "syntax error",
         code: "return [{pitch: 60, start: 0}",
-        sceneIndex: "2",
+        slot: `${emptyMidiTrack}/2`,
       },
       {
         label: "thrown exception",
         code: 'throw new Error("test error")',
-        sceneIndex: "3",
+        slot: `${emptyMidiTrack}/3`,
       },
-      { label: "no return (undefined)", code: "const x = 1;", sceneIndex: "4" },
-      { label: "return null", code: "return null", sceneIndex: "5" },
-      { label: "return primitive", code: "return 42", sceneIndex: "6" },
+      {
+        label: "no return (undefined)",
+        code: "const x = 1;",
+        slot: `${emptyMidiTrack}/4`,
+      },
+      {
+        label: "return null",
+        code: "return null",
+        slot: `${emptyMidiTrack}/5`,
+      },
+      {
+        label: "return primitive",
+        code: "return 42",
+        slot: `${emptyMidiTrack}/6`,
+      },
       {
         label: "return object (not array)",
         code: "return {pitch: 60, start: 0}",
-        sceneIndex: "7",
+        slot: `${emptyMidiTrack}/7`,
       },
     ];
 
-    for (const { label, code, sceneIndex } of codeErrorCases) {
+    for (const { label, code, slot } of codeErrorCases) {
       const createResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          trackIndex: emptyMidiTrack,
-          sceneIndex,
+          slot,
           code,
         },
       });
@@ -208,8 +217,7 @@ describe("ppal-code-exec", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "10",
+        slot: `${emptyMidiTrack}/10`,
         code: tooLongCode,
       },
     });
@@ -238,8 +246,7 @@ describe("ppal-code-exec", () => {
     const mixedResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "8",
+        slot: `${emptyMidiTrack}/8`,
         code: [
           "return [",
           "  {pitch: 60, start: 0, duration: 1, velocity: 100},",
@@ -274,8 +281,7 @@ describe("ppal-code-exec", () => {
     const clampResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "9",
+        slot: `${emptyMidiTrack}/9`,
         code: [
           "return [",
           "  {pitch: -10, start: 0, duration: 1, velocity: 100},",

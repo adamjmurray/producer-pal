@@ -203,8 +203,7 @@ describe("ppal-duplicate", () => {
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "0",
+        slot: `${emptyMidiTrack}/0`,
         notes: "C3 D3 E3 F3 1|1",
         length: "1:0.0",
       },
@@ -226,8 +225,7 @@ describe("ppal-duplicate", () => {
       parseToolResult<DuplicateClipResult>(dupClipSessionResult);
 
     expect(dupClipSession.id).toBeDefined();
-    expect(dupClipSession.trackIndex).toBe(emptyMidiTrack2);
-    expect(dupClipSession.sceneIndex).toBe(0);
+    expect(dupClipSession.slot).toBe(`${emptyMidiTrack2}/0`);
 
     await sleep(100);
 
@@ -247,9 +245,9 @@ describe("ppal-duplicate", () => {
     );
 
     expect(dupClipMultiSlots).toHaveLength(3);
-    expect(dupClipMultiSlots[0]!.sceneIndex).toBe(0);
-    expect(dupClipMultiSlots[1]!.sceneIndex).toBe(1);
-    expect(dupClipMultiSlots[2]!.sceneIndex).toBe(2);
+    expect(dupClipMultiSlots[0]!.slot).toBe("10/0");
+    expect(dupClipMultiSlots[1]!.slot).toBe("10/1");
+    expect(dupClipMultiSlots[2]!.slot).toBe("10/2");
 
     await sleep(100);
 
@@ -432,8 +430,8 @@ interface DuplicateSceneResult {
 
 interface DuplicateClipResult {
   id: string;
+  slot?: string;
   trackIndex?: number;
-  sceneIndex?: number;
   arrangementStart?: string;
   name?: string;
 }

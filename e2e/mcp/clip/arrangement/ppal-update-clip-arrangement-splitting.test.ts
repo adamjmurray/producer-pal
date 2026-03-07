@@ -228,8 +228,7 @@ describe("Behavioral splitting tests", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: dynamicTrackIndex,
-        sceneIndex: "0",
+        slot: `${dynamicTrackIndex}/0`,
         notes: "C3 1|1",
         length: "2:0.0",
       },

@@ -32,8 +32,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "0",
+        slot: `${emptyMidiTrack}/0`,
         notes: "C3 D3 1|1",
         looping: true,
         length: "2:0.0",
@@ -110,8 +109,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "1",
+        slot: `${emptyMidiTrack}/1`,
         notes: "C3 D3 1|1",
         length: "2:0.0",
       },
@@ -252,8 +250,7 @@ describe("ppal-update-clip", () => {
     const createResult1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "2",
+        slot: `${emptyMidiTrack}/2`,
         notes: "C3 1|1",
       },
     });
@@ -262,8 +259,7 @@ describe("ppal-update-clip", () => {
     const createResult2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "3",
+        slot: `${emptyMidiTrack}/3`,
         notes: "E3 1|1",
       },
     });
@@ -298,8 +294,7 @@ describe("ppal-update-clip", () => {
     const createResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "4",
+        slot: `${emptyMidiTrack}/4`,
         notes: "C3 D3 1|1",
         name: "Move Me",
       },
@@ -315,13 +310,11 @@ describe("ppal-update-clip", () => {
     });
     const movedClip = parseToolResult<{
       id: string;
-      trackIndex: number;
-      sceneIndex: number;
+      slot: string;
     }>(moveResult);
 
     // Update result should include destination slot info
-    expect(movedClip.trackIndex).toBe(emptyMidiTrack);
-    expect(movedClip.sceneIndex).toBe(5);
+    expect(movedClip.slot).toBe(`${emptyMidiTrack}/5`);
     expect(movedClip.id).not.toBe(clip.id); // new clip ID after move
 
     await sleep(100);
@@ -334,13 +327,12 @@ describe("ppal-update-clip", () => {
     const newClip = parseToolResult<ReadClipResult>(verifyNew);
 
     expect(newClip.name).toBe("Move Me");
-    expect(newClip.trackIndex).toBe(emptyMidiTrack);
-    expect(newClip.sceneIndex).toBe(5);
+    expect(newClip.slot).toBe(`${emptyMidiTrack}/5`);
 
     // Verify the original slot is now empty
     const verifyOld = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: emptyMidiTrack, sceneIndex: 4 },
+      arguments: { slot: `${emptyMidiTrack}/4` },
     });
     const { data: oldSlot } =
       parseToolResultWithWarnings<ReadClipResult>(verifyOld);
@@ -361,8 +353,7 @@ describe("ppal-update-clip", () => {
     const audioClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: audioTrack.trackIndex,
-        sceneIndex: "0",
+        slot: `${audioTrack.trackIndex}/0`,
         sampleFile: SAMPLE_FILE,
       },
     });

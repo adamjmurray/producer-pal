@@ -84,8 +84,7 @@ describe("ppal-playback", () => {
     const createClip1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "0",
+        slot: `${emptyMidiTrack}/0`,
         notes: "C3 1|1",
         length: "1:0.0",
       },
@@ -95,8 +94,7 @@ describe("ppal-playback", () => {
     const createClip2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "1",
+        slot: `${emptyMidiTrack}/1`,
         notes: "D3 1|1",
         length: "1:0.0",
       },

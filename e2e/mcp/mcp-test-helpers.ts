@@ -254,6 +254,7 @@ export interface ReadClipResult {
   start?: string;
   end?: string;
   length?: string;
+  slot?: string;
   trackIndex?: number | null;
   sceneIndex?: number | null;
   arrangementStart?: string;
