@@ -128,8 +128,7 @@ describe("createClip - session view", () => {
     });
 
     const result = await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "C3 D3 E3 1|1",
       name: "New Clip",
       color: "#FF0000",
@@ -152,8 +151,7 @@ describe("createClip - session view", () => {
 
     expect(result).toStrictEqual({
       id: "clip_0_0",
-      trackIndex: 0,
-      sceneIndex: 0,
+      slot: "0/0",
       noteCount: 3,
       length: "1:0",
     });
@@ -170,8 +168,7 @@ describe("createClip - session view", () => {
     });
 
     const result = await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "C3 1|1",
       auto: "play-scene",
     });
@@ -179,8 +176,7 @@ describe("createClip - session view", () => {
     expect(scene0.call).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      trackIndex: 0,
-      sceneIndex: 0,
+      slot: "0/0",
       noteCount: 1,
       length: "1:0",
     });
@@ -196,8 +192,7 @@ describe("createClip - session view", () => {
 
     await expect(
       createClip({
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         notes: "C3 1|1",
         auto: "play-scene",
       }),
@@ -215,8 +210,7 @@ describe("createClip - session view", () => {
 
     await expect(
       createClip({
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         auto: "invalid-value",
       }),
     ).rejects.toThrow('createClip failed: unknown auto value "invalid-value"');
@@ -239,8 +233,7 @@ describe("createClip - session view", () => {
     });
 
     const result = await createClip({
-      trackIndex: 0,
-      sceneIndex: "1,2,3", // Create clips at scenes 1, 2, and 3
+      slot: "0/1,0/2,0/3", // Create clips at scenes 1, 2, and 3
       name: "Loop",
       color: "#00FF00",
     });
@@ -258,9 +251,9 @@ describe("createClip - session view", () => {
     expect(clip3.set).toHaveBeenCalledWith("name", "Loop");
 
     expect(result).toStrictEqual([
-      { id: "clip_0_1", trackIndex: 0, sceneIndex: 1 },
-      { id: "clip_0_2", trackIndex: 0, sceneIndex: 2 },
-      { id: "clip_0_3", trackIndex: 0, sceneIndex: 3 },
+      { id: "clip_0_1", slot: "0/1" },
+      { id: "clip_0_2", slot: "0/2" },
+      { id: "clip_0_3", slot: "0/3" },
     ]);
   });
 
@@ -273,8 +266,7 @@ describe("createClip - session view", () => {
     const { clipSlot } = setupSessionClip(0, 4);
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "4", // Needs scenes at indices 2, 3, 4
+      slot: "0/4", // Needs scenes at indices 2, 3, 4
       name: "Future Clip",
     });
 
@@ -292,8 +284,7 @@ describe("createClip - session view", () => {
     const { clipSlot } = setupSessionClip(0, 0, { hasClip: 1 });
 
     const result = await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       name: "This Should Fail",
     });
 
@@ -309,8 +300,7 @@ describe("createClip - session view", () => {
     setupTrack(0);
 
     const result = await createClip({
-      trackIndex: 0,
-      sceneIndex: String(MAX_AUTO_CREATED_SCENES),
+      slot: `0/${MAX_AUTO_CREATED_SCENES}`,
       name: "This Should Fail",
     });
 

@@ -246,16 +246,14 @@ describe("readTrack", () => {
 
       sessionClips: [
         {
-          ...expectedClip({ id: "clip1", trackIndex: 2, sceneIndex: 0 }),
+          ...expectedClip({ id: "clip1", slot: "2/0" }),
           color: undefined,
         },
         {
-          ...expectedClip({ id: "clip2", trackIndex: 2, sceneIndex: 2 }),
+          ...expectedClip({ id: "clip2", slot: "2/2" }),
           color: undefined,
         },
-      ].map(
-        ({ color: _c, trackIndex: _ti, view: _v, type: _t, ...clip }) => clip,
-      ),
+      ].map(({ color: _c, view: _v, type: _t, ...clip }) => clip),
       arrangementClipCount: 0,
       deviceCount: 0,
       playingSlotIndex: 0,

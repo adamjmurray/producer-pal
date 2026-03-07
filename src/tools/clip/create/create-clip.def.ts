@@ -10,7 +10,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
   description:
     "Create MIDI or audio clip(s).\n" +
-    "Requires sceneIndex (session) and/or arrangementStart (arrangement).\n" +
+    "Requires slot (session) and/or trackIndex + arrangementStart (arrangement).\n" +
     "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. ",
   annotations: {
     readOnlyHint: false,
@@ -18,14 +18,19 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   },
 
   inputSchema: {
-    trackIndex: z.coerce.number().int().min(0).describe("0-based track index"),
-
-    sceneIndex: z.coerce
+    slot: z.coerce
       .string()
       .optional()
       .describe(
-        "session clip scene index(es), comma-separated for multiple (e.g., '0' or '0,2,5')",
+        "session clip slot(s): trackIndex/sceneIndex, comma-separated (e.g., '0/0' or '0/0,0/2,0/5')",
       ),
+
+    trackIndex: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("0-based track index (arrangement clips)"),
 
     arrangementStart: z.coerce
       .string()
@@ -110,7 +115,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   smallModelModeConfig: {
     excludeParams: ["transforms", "code", "firstStart", "auto"],
     descriptionOverrides: {
-      sceneIndex: "session clip scene index",
+      slot: "session clip slot(s): trackIndex/sceneIndex (e.g., '0/0')",
       arrangementStart: "arrangement clip bar|beat position (e.g., '1|1')",
       name: "clip name",
       color: "#RRGGBB",

@@ -324,7 +324,7 @@ export function readTrackGeneric({
   addProducerPalHostInfo(result, isProducerPalHost);
 
   // Strip fields from nested clips that are redundant with parent track context
-  stripFields(result.sessionClips as unknown[], "trackIndex", "view", "type");
+  stripFields(result.sessionClips as unknown[], "view", "type");
   stripFields(
     result.arrangementClips as unknown[],
     "trackIndex",

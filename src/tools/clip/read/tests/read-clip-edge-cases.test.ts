@@ -90,8 +90,7 @@ describe("readClip", () => {
       type: "midi",
       view: "session",
       name: "Test Clip",
-      trackIndex: 0,
-      sceneIndex: 0,
+      slot: "0/0",
       timeSignature: "4/4",
       looping: false,
       start: "1|2",
@@ -127,8 +126,7 @@ describe("readClip", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       type: "midi",
       // name omitted when empty
-      sceneIndex: 0,
-      trackIndex: 0,
+      slot: "0/0",
       view: "session",
     });
   });
@@ -342,8 +340,7 @@ describe("readClip", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       name: "Test Clip",
       type: "midi",
-      sceneIndex: 0,
-      trackIndex: 0,
+      slot: "0/0",
       view: "session",
       timeSignature: "4/4",
       looping: false,

@@ -4,6 +4,7 @@
 
 import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 export interface ClipPropertiesToSet {
   [key: string]: unknown; // Required for setAll() compatibility with Record<string, unknown>
@@ -86,8 +87,8 @@ export function buildClipProperties(
 
 export interface ClipResultObject {
   id: string;
-  trackIndex: number;
-  sceneIndex?: number;
+  slot?: string;
+  trackIndex?: number;
   arrangementStart?: string | null;
   noteCount?: number;
   transformed?: number;
@@ -126,13 +127,13 @@ export function buildClipResult(
 ): ClipResultObject {
   const clipResult: ClipResultObject = {
     id: clip.id,
-    trackIndex,
   };
 
   // Add view-specific properties
   if (view === "session") {
-    clipResult.sceneIndex = sceneIndex;
+    clipResult.slot = formatSlot(trackIndex, sceneIndex as number);
   } else {
+    clipResult.trackIndex = trackIndex;
     clipResult.arrangementStart = arrangementStart;
   }
 

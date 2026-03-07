@@ -17,6 +17,7 @@ import {
   type TilingContext,
 } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats
@@ -63,8 +64,8 @@ export function parseArrangementLength(
 
 export interface MinimalClipInfo {
   id: string;
+  slot?: string;
   trackIndex?: number;
-  sceneIndex?: number;
   arrangementStart?: string;
   name?: string;
 }
@@ -130,12 +131,8 @@ export function getMinimalClipInfo(
     id: clip.id,
   };
 
-  if (!omitFields.includes("trackIndex")) {
-    result.trackIndex = trackIndex;
-  }
-
-  if (!omitFields.includes("sceneIndex")) {
-    result.sceneIndex = sceneIndex;
+  if (!omitFields.includes("slot")) {
+    result.slot = formatSlot(trackIndex, sceneIndex);
   }
 
   return result;

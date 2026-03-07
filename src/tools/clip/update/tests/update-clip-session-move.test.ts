@@ -123,8 +123,7 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips[0]).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
       noteCount: 5,
-      trackIndex: 1,
-      sceneIndex: 2,
+      slot: "1/2",
     });
   });
 
@@ -164,8 +163,7 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({
       id: "123",
-      trackIndex: 2,
-      sceneIndex: 3,
+      slot: "2/3",
     });
     // No duplicate_clip_to should have been called
     expect(outlet).not.toHaveBeenCalledWith(
@@ -212,8 +210,7 @@ describe("handleSessionSlotMove", () => {
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({
       id: "live_set/tracks/0/clip_slots/1/clip",
-      trackIndex: 0,
-      sceneIndex: 1,
+      slot: "0/1",
     });
   });
 
@@ -226,8 +223,7 @@ describe("handleSessionSlotMove", () => {
 
     expect(updatedClips[0]).toMatchObject({
       noteCount: 12,
-      trackIndex: 0,
-      sceneIndex: 1,
+      slot: "0/1",
     });
   });
 

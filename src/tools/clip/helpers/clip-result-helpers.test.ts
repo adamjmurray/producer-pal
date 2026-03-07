@@ -136,6 +136,15 @@ describe("clip-result-helpers", () => {
       expect(result).toStrictEqual({ id: "clip200", noteCount: 8 });
       expect(result.transformed).toBeUndefined();
     });
+
+    it("includes slot when slot param is provided", () => {
+      const result = buildClipResultObject("clip300", null, {
+        trackIndex: 0,
+        sceneIndex: 3,
+      });
+
+      expect(result).toStrictEqual({ id: "clip300", slot: "0/3" });
+    });
   });
 
   describe("emitArrangementWarnings", () => {

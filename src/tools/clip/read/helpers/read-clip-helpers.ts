@@ -17,6 +17,7 @@ import {
   WARP_MODE,
 } from "#src/tools/constants.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 /** Result type for resolveClip - either found clip or null response for empty slot */
 export type ResolveClipResult =
@@ -27,8 +28,7 @@ interface EmptySlotResponse {
   id: null;
   type: null;
   name: null;
-  trackIndex: number;
-  sceneIndex: number;
+  slot: string;
 }
 
 /**
@@ -76,8 +76,7 @@ export function resolveClip(
         id: null,
         type: null,
         name: null,
-        trackIndex: trackIndex as number,
-        sceneIndex: sceneIndex as number,
+        slot: formatSlot(trackIndex as number, sceneIndex as number),
       },
     };
   }

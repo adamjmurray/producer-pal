@@ -18,7 +18,8 @@ import {
 
 interface DuplicateClipResult {
   id: string;
-  trackIndex: number;
+  slot?: string;
+  trackIndex?: number;
   name?: string;
 }
 
@@ -61,11 +62,11 @@ describe("duplicate - scene duplication", () => {
       clips: [
         {
           id: "live_set/tracks/0/clip_slots/1/clip",
-          trackIndex: 0,
+          slot: "0/1",
         },
         {
           id: "live_set/tracks/1/clip_slots/1/clip",
-          trackIndex: 1,
+          slot: "1/1",
         },
       ],
     });
@@ -120,11 +121,11 @@ describe("duplicate - scene duplication", () => {
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/1/clip",
-            trackIndex: 0,
+            slot: "0/1",
           },
           {
             id: "live_set/tracks/1/clip_slots/1/clip",
-            trackIndex: 1,
+            slot: "1/1",
           },
         ],
       },
@@ -134,11 +135,11 @@ describe("duplicate - scene duplication", () => {
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/2/clip",
-            trackIndex: 0,
+            slot: "0/2",
           },
           {
             id: "live_set/tracks/1/clip_slots/2/clip",
-            trackIndex: 1,
+            slot: "1/2",
           },
         ],
       },

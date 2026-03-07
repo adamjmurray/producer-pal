@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { parseSlot } from "#src/tools/shared/validation/position-parsing.ts";
+
 export type DetectedType = "track" | "scene" | "clip" | "device";
 
 interface ResolveIdResult {
@@ -47,28 +49,7 @@ export function parseClipSlot(input: string): {
   trackIndex: number;
   sceneIndex: number;
 } {
-  const parts = input.split("/");
-
-  if (parts.length !== 2) {
-    throw new Error(
-      `invalid clipSlot "${input}" - expected trackIndex/sceneIndex (e.g. "0/3")`,
-    );
-  }
-
-  const trackIndex = Number.parseInt(parts[0] as string);
-  const sceneIndex = Number.parseInt(parts[1] as string);
-
-  if (Number.isNaN(trackIndex) || Number.isNaN(sceneIndex)) {
-    throw new Error(`invalid clipSlot "${input}" - values must be integers`);
-  }
-
-  if (trackIndex < 0 || sceneIndex < 0) {
-    throw new Error(
-      `invalid clipSlot "${input}" - values must be non-negative`,
-    );
-  }
-
-  return { trackIndex, sceneIndex };
+  return parseSlot(input);
 }
 
 interface AutoDetailViewOptions {

@@ -357,13 +357,13 @@ describe("view", () => {
 
     it("throws on invalid clipSlot format", () => {
       expect(() => select({ clipSlot: "invalid" })).toThrow(
-        'invalid clipSlot "invalid"',
+        'invalid slot "invalid"',
       );
     });
 
     it("throws on negative clipSlot values", () => {
       expect(() => select({ clipSlot: "-1/0" })).toThrow(
-        "values must be non-negative",
+        "must be non-negative",
       );
     });
   });

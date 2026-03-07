@@ -28,7 +28,7 @@ return notes.filter(n => n.pitch >= 60).map(n => ({
 **Context properties:**
 - \`track\`: { index, name, type, color }
 - \`clip\`: { id, name, length, timeSignature, looping }
-- \`location\`: { view, sceneIndex?, arrangementStart? }
+- \`location\`: { view, slot?, arrangementStart? }
 - \`liveSet\`: { tempo, scale?, timeSignature }
 - \`beatsPerBar\`: number
 

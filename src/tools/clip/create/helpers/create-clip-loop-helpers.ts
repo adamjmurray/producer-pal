@@ -13,13 +13,14 @@ import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { isDeadlineExceeded } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { getColorForIndex } from "#src/tools/shared/validation/color-utils.ts";
 import { getNameForIndex } from "#src/tools/shared/validation/name-utils.ts";
+import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 import { processClipIteration } from "./create-clip-helpers.ts";
 import { calculateClipLength } from "./create-clip-validation-helpers.ts";
 
 export interface CreateClipsParams {
   view: string;
   trackIndex: number;
-  sceneIndices: number[];
+  sessionSlots: SlotPosition[];
   arrangementStarts: string[];
   baseName: string | null;
   parsedNames: string[] | null;
@@ -56,7 +57,7 @@ export async function createClips(
   const {
     view,
     trackIndex,
-    sceneIndices,
+    sessionSlots,
     arrangementStarts,
     baseName,
     parsedNames,
@@ -82,8 +83,8 @@ export async function createClips(
   } = params;
 
   const createdClips: object[] = [];
-  const positions = view === "session" ? sceneIndices : arrangementStarts;
-  const count = positions.length;
+  const count =
+    view === "session" ? sessionSlots.length : arrangementStarts.length;
   const clipLength = params.initialClipLength;
 
   for (let i = 0; i < count; i++) {
@@ -106,12 +107,16 @@ export async function createClips(
     );
 
     // Get position for this iteration
+    let currentTrackIndex = trackIndex;
     let currentSceneIndex: number | null = null;
     let currentArrangementStartBeats: number | null = null;
     let currentArrangementStart: string | null = null;
 
     if (view === "session") {
-      currentSceneIndex = sceneIndices[i] as number;
+      const slot = sessionSlots[i] as SlotPosition;
+
+      currentTrackIndex = slot.trackIndex;
+      currentSceneIndex = slot.sceneIndex;
     } else {
       currentArrangementStart = arrangementStarts[i] as string;
       currentArrangementStartBeats = barBeatToAbletonBeats(
@@ -124,7 +129,7 @@ export async function createClips(
     try {
       const clipResult = processClipIteration(
         view,
-        trackIndex,
+        currentTrackIndex,
         currentSceneIndex,
         currentArrangementStartBeats,
         currentArrangementStart,
@@ -161,8 +166,8 @@ export async function createClips(
       // Emit warning with position info
       const position =
         view === "session"
-          ? `trackIndex=${trackIndex}, sceneIndex=${currentSceneIndex}`
-          : `trackIndex=${trackIndex}, arrangementStart=${currentArrangementStart}`;
+          ? `slot=${currentTrackIndex}/${currentSceneIndex}`
+          : `trackIndex=${currentTrackIndex}, arrangementStart=${currentArrangementStart}`;
 
       console.warn(
         `Failed to create clip at ${position}: ${errorMessage(error)}`,

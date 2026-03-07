@@ -10,6 +10,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.ts";
+import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 export interface MidiNote {
   pitch: number;
@@ -34,8 +35,8 @@ export interface ClipResult {
   id: string;
   noteCount?: number;
   transformed?: number;
+  slot?: string;
   trackIndex?: number;
-  sceneIndex?: number;
 }
 
 /**
@@ -115,8 +116,7 @@ export function buildClipResultObject(
   }
 
   if (slot != null) {
-    result.trackIndex = slot.trackIndex;
-    result.sceneIndex = slot.sceneIndex;
+    result.slot = formatSlot(slot.trackIndex, slot.sceneIndex);
   }
 
   return result;

@@ -30,8 +30,7 @@ describe("createClip - advanced features", () => {
     });
 
     const result = await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       timeSignature: "6/8",
     });
 
@@ -39,8 +38,7 @@ describe("createClip - advanced features", () => {
     expect(clip.set).toHaveBeenCalledWith("signature_denominator", 8);
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      trackIndex: 0,
-      sceneIndex: 0,
+      slot: "0/0",
     });
   });
 
@@ -50,8 +48,7 @@ describe("createClip - advanced features", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "t2 C3 1|1 t3 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
     });
 
@@ -78,21 +75,18 @@ describe("createClip - advanced features", () => {
     });
 
     const singleResult = await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       name: "Single",
     });
 
     const arrayResult = await createClip({
-      trackIndex: 0,
-      sceneIndex: "1,2",
+      slot: "0/1,0/2",
       name: "Multiple",
     });
 
     expect(singleResult).toMatchObject({
       id: expect.any(String),
-      trackIndex: 0,
-      sceneIndex: 0,
+      slot: "0/0",
     });
     expect((singleResult as { length?: unknown }).length).toBeUndefined();
 
@@ -100,13 +94,11 @@ describe("createClip - advanced features", () => {
     expect(arrayResult).toHaveLength(2);
     expect((arrayResult as object[])[0]).toStrictEqual({
       id: expect.any(String),
-      trackIndex: 0,
-      sceneIndex: 1,
+      slot: "0/1",
     });
     expect((arrayResult as object[])[1]).toStrictEqual({
       id: expect.any(String),
-      trackIndex: 0,
-      sceneIndex: 2,
+      slot: "0/2",
     });
   });
 
@@ -116,8 +108,7 @@ describe("createClip - advanced features", () => {
     });
 
     const result = await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "v100 C3 v0 D3 v80 E3 1|1", // D3 should be filtered out
     });
 
@@ -125,8 +116,7 @@ describe("createClip - advanced features", () => {
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      trackIndex: 0,
-      sceneIndex: 0,
+      slot: "0/0",
       noteCount: 2,
       length: "1:0",
     }); // C3 and E3, D3 filtered out
@@ -138,8 +128,7 @@ describe("createClip - advanced features", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "v0 C3 D3 E3 1|1", // All notes should be filtered out
     });
 
@@ -155,8 +144,7 @@ describe("createClip - advanced features", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       name: "Test Clip",
       notes: "C3 D3",
       start: "1|3",
@@ -184,8 +172,7 @@ describe("createClip - advanced features", () => {
       });
 
       await createClip({
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         focus: true,
       });
 
@@ -216,8 +203,7 @@ describe("createClip - advanced features", () => {
       });
 
       await createClip({
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         focus: false,
       });
 
@@ -237,8 +223,7 @@ describe("createClip - advanced features", () => {
       });
 
       const result = await createClip({
-        trackIndex: 0,
-        sceneIndex: "0,1",
+        slot: "0/0,0/1",
         focus: true,
       });
 
@@ -255,8 +240,8 @@ describe("createClip - advanced features", () => {
       setupDualMocks();
 
       await createClip({
+        slot: "0/0",
         trackIndex: 0,
-        sceneIndex: "0",
         arrangementStart: "1|1",
         focus: true,
       });
@@ -275,8 +260,8 @@ describe("createClip - advanced features", () => {
       setupDualMocks();
 
       const result = await createClip({
+        slot: "0/0",
         trackIndex: 0,
-        sceneIndex: "0",
         arrangementStart: "1|1",
       });
 
@@ -286,8 +271,7 @@ describe("createClip - advanced features", () => {
       expect(clips).toHaveLength(2);
       expect(clips[0]).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/0/clip",
-        trackIndex: 0,
-        sceneIndex: 0,
+        slot: "0/0",
       });
       expect(clips[1]).toStrictEqual({
         id: "arrangement_clip",

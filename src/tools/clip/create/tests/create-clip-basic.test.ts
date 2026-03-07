@@ -13,28 +13,24 @@ import {
 } from "./create-clip-test-helpers.ts";
 
 describe("createClip - basic validation and time signatures", () => {
-  it("should throw error when neither sceneIndex nor arrangementStart is provided", async () => {
+  it("should throw error when neither slot nor arrangementStart is provided", async () => {
     await expect(createClip({ trackIndex: 0 })).rejects.toThrow(
-      "createClip failed: sceneIndex or arrangementStart is required",
+      "createClip failed: slot or arrangementStart is required",
     );
   });
 
-  it("should throw error for invalid sceneIndex format", async () => {
+  it("should throw error for invalid slot format", async () => {
     await expect(
       createClip({
-        trackIndex: 0,
-        sceneIndex: "invalid",
+        slot: "invalid",
       }),
-    ).rejects.toThrow(
-      'createClip failed: Invalid index "invalid" - must be a valid integer',
-    );
+    ).rejects.toThrow("invalid toSlot");
   });
 
   it("should validate time signature early when provided", async () => {
     await expect(
       createClip({
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         timeSignature: "invalid",
       }),
     ).rejects.toThrow("Time signature must be in format");
@@ -47,15 +43,13 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     const result = await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar from song
     });
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
-      trackIndex: 0,
-      sceneIndex: 0,
+      slot: "0/0",
       noteCount: 2,
       length: "2:0",
     });
@@ -71,8 +65,7 @@ describe("createClip - basic validation and time signatures", () => {
     const { clip } = setupSessionMocks();
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       timeSignature: "3/4",
       notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar
     });
@@ -84,8 +77,7 @@ describe("createClip - basic validation and time signatures", () => {
     const { clip } = setupSessionMocks();
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       timeSignature: "6/8",
       notes: "C3 1|1 D3 2|1",
     });
@@ -100,8 +92,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       length: "1:3",
       looping: false,
     });
@@ -115,8 +106,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       length: "2:0",
       looping: true,
     });
@@ -130,8 +120,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "t2 C3 1|1 t1.5 D3 1|4", // Last note starts at beat 3 (0-based), rounds up to 1 bar = 4 beats
     });
 
@@ -144,8 +133,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "t2 C3 1|1 t1.5 D3 1|2", // Last note starts at beat 1 (0.5 Ableton beats), rounds up to 1 bar
     });
 
@@ -160,8 +148,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
     });
 
     expectClipCreated(clipSlot, 4); // 1 bar in 4/4 = 4 Ableton beats
@@ -173,8 +160,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
     });
 
     expectClipCreated(clipSlot, 3); // 1 bar in 6/8 = 3 Ableton beats
@@ -186,8 +172,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "",
     });
 
@@ -200,8 +185,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
     });
 
     // loop_end must be > loop_start (Live API constraint)
@@ -216,8 +200,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "C4 1|4.5", // Note starts at beat 3.5 (0-based), which is in bar 1, rounds up to 1 bar
     });
 
@@ -230,8 +213,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "C4 1|5.5", // Note starts at beat 4.5 in musical beats (2.25 Ableton beats), rounds up to 1 bar
     });
 
@@ -244,8 +226,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "C4 2|1", // Note starts at bar 2, beat 1 (beat 4 in 0-based), rounds up to 2 bars
     });
 
@@ -259,8 +240,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "C4 1|1",
       firstStart: "1|2",
       looping: false,
@@ -281,8 +261,7 @@ describe("createClip - basic validation and time signatures", () => {
     });
 
     await createClip({
-      trackIndex: 0,
-      sceneIndex: "0",
+      slot: "0/0",
       notes: "C4 1|1",
       firstStart: "1|2",
       looping: true,

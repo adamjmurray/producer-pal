@@ -15,10 +15,10 @@ import {
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
+import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   convertTimingParameters,
   parseArrangementStartList,
-  parseSceneIndexList,
 } from "./helpers/create-clip-helpers.ts";
 import {
   createClips,
@@ -31,10 +31,10 @@ import {
 } from "./helpers/create-clip-validation-helpers.ts";
 
 export interface CreateClipArgs {
-  /** Track index (0-based) */
-  trackIndex: number;
-  /** Scene index(es), comma-separated for multiple */
-  sceneIndex?: string | null;
+  /** Session clip slot(s), trackIndex/sceneIndex comma-separated */
+  slot?: string | null;
+  /** Track index (0-based, arrangement clips) */
+  trackIndex?: number | null;
   /** Bar|beat position(s), comma-separated */
   arrangementStart?: string | null;
   /** Musical notation string (MIDI clips only) */
@@ -68,8 +68,8 @@ export interface CreateClipArgs {
 /**
  * Creates MIDI or audio clips in Session or Arrangement view
  * @param args - The clip parameters
- * @param args.trackIndex - Track index (0-based)
- * @param args.sceneIndex - Scene index(es), comma-separated for multiple
+ * @param args.slot - Session clip slot(s), trackIndex/sceneIndex comma-separated
+ * @param args.trackIndex - Track index (arrangement clips)
  * @param args.arrangementStart - Bar|beat position(s), comma-separated
  * @param args.notes - Musical notation string (MIDI clips only)
  * @param args.transforms - Transform expressions
@@ -89,8 +89,8 @@ export interface CreateClipArgs {
  */
 export async function createClip(
   {
-    trackIndex,
-    sceneIndex = null,
+    slot = null,
+    trackIndex = null,
     arrangementStart = null,
     notes: notationString = null,
     transforms: transformString = null,
@@ -111,21 +111,15 @@ export async function createClip(
   const deadline = computeLoopDeadline(_context.timeoutMs);
 
   // Parse position lists
-  const sceneIndices = parseSceneIndexList(sceneIndex);
+  const sessionSlots = parseSlotList(slot);
   const arrangementStarts = parseArrangementStartList(arrangementStart);
 
   // Validate at least one position type is provided
-  validatePositions(sceneIndices, arrangementStarts);
+  validatePositions(sessionSlots, arrangementStarts);
 
   // Validate parameters
   validateCreateClipParams(notationString, sampleFile);
-
-  // Validate track exists (fatal - affects all clips)
-  const track = LiveAPI.from(livePath.track(trackIndex));
-
-  if (!track.exists()) {
-    throw new Error(`createClip failed: track ${trackIndex} does not exist`);
-  }
+  validateArrangementTrack(arrangementStarts, trackIndex);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -175,7 +169,7 @@ export async function createClip(
   const { parsedNames, parsedColors } = parseMultiClipParams(
     name,
     color,
-    sceneIndices.length + arrangementStarts.length,
+    sessionSlots.length + arrangementStarts.length,
   );
 
   // Create session clips first, then arrangement (order gives arrangement focus priority)
@@ -185,8 +179,8 @@ export async function createClip(
   ) =>
     createClips({
       view,
-      trackIndex,
-      sceneIndices,
+      trackIndex: trackIndex ?? 0,
+      sessionSlots,
       arrangementStarts,
       baseName: name,
       parsedNames,
@@ -215,12 +209,12 @@ export async function createClip(
   const sessionClips = await clipsForView("session", 0);
   const arrangementClips = await clipsForView(
     "arrangement",
-    sceneIndices.length,
+    sessionSlots.length,
   );
   const createdClips = [...sessionClips, ...arrangementClips];
 
   // Handle automatic playback (session clips only, guard inside handles no-op)
-  handleAutoPlayback(auto, "session", sceneIndices, trackIndex);
+  handleAutoPlayback(auto, "session", sessionSlots);
 
   // Focus last created clip: arrangement clips are after session clips,
   // so arrangement gets priority (the arrangement is where the final song lives)
@@ -284,4 +278,28 @@ function resolveTimeSignature(
     timeSigNumerator: songTimeSigNumerator,
     timeSigDenominator: songTimeSigDenominator,
   };
+}
+
+/**
+ * Validate track exists when arrangement clips are requested
+ * @param arrangementStarts - Parsed arrangement positions
+ * @param trackIndex - Track index for arrangement clips
+ */
+function validateArrangementTrack(
+  arrangementStarts: string[],
+  trackIndex: number | null,
+): void {
+  if (arrangementStarts.length === 0) return;
+
+  if (trackIndex == null) {
+    throw new Error(
+      "createClip failed: trackIndex is required for arrangement clips",
+    );
+  }
+
+  const track = LiveAPI.from(livePath.track(trackIndex));
+
+  if (!track.exists()) {
+    throw new Error(`createClip failed: track ${trackIndex} does not exist`);
+  }
 }

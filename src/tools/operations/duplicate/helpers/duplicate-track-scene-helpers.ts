@@ -170,7 +170,7 @@ function collectSessionClips(
     if (clipSlot.getProperty("has_clip")) {
       const clip = LiveAPI.from(`${clipSlot.path} clip`);
 
-      duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
+      duplicatedClips.push(getMinimalClipInfo(clip));
     }
   }
 }
@@ -288,7 +288,7 @@ export function duplicateScene(
   } else {
     // Default behavior: collect info about duplicated clips
     forEachClipInScene(newSceneIndex, trackIds, (clip) => {
-      duplicatedClips.push(getMinimalClipInfo(clip, ["sceneIndex"]));
+      duplicatedClips.push(getMinimalClipInfo(clip));
     });
   }
 

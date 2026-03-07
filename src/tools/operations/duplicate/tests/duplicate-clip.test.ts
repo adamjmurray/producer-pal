@@ -60,8 +60,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/1/clip",
-        trackIndex: 0,
-        sceneIndex: 1,
+        slot: "0/1",
       });
     });
 
@@ -113,13 +112,11 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: "live_set/tracks/0/clip_slots/1/clip",
-          trackIndex: 0,
-          sceneIndex: 1,
+          slot: "0/1",
         },
         {
           id: "live_set/tracks/0/clip_slots/2/clip",
-          trackIndex: 0,
-          sceneIndex: 2,
+          slot: "0/2",
         },
       ]);
 
