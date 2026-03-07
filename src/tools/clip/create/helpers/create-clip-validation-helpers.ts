@@ -8,6 +8,26 @@ import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
 
 /**
+ * Validates that all tracks referenced in session slots exist
+ * @param sessionSlots - Parsed session slot positions
+ */
+export function validateSessionTracks(sessionSlots: SlotPosition[]): void {
+  if (sessionSlots.length === 0) return;
+
+  const uniqueTrackIndices = [
+    ...new Set(sessionSlots.map((s) => s.trackIndex)),
+  ];
+
+  for (const trackIndex of uniqueTrackIndices) {
+    const track = LiveAPI.from(livePath.track(trackIndex));
+
+    if (!track.exists()) {
+      throw new Error(`createClip failed: track ${trackIndex} does not exist`);
+    }
+  }
+}
+
+/**
  * Validates that at least one position parameter is provided
  * @param sessionSlots - Parsed session slot positions
  * @param arrangementStarts - Parsed arrangement start positions

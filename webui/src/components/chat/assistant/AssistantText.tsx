@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { marked } from "marked";
+import { sanitizeMarkdown } from "#webui/lib/utils/sanitize-markdown";
 
 interface AssistantTextProps {
   content: string;
@@ -19,7 +19,7 @@ export function AssistantText({ content }: AssistantTextProps) {
     <div
       className="prose dark:prose-invert prose-sm max-w-none"
       dangerouslySetInnerHTML={{
-        __html: marked(content) as string,
+        __html: sanitizeMarkdown(content),
       }}
     />
   );

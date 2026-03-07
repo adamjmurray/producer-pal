@@ -28,6 +28,7 @@ import {
   handleAutoPlayback,
   validateCreateClipParams,
   validatePositions,
+  validateSessionTracks,
 } from "./helpers/create-clip-validation-helpers.ts";
 
 export interface CreateClipArgs {
@@ -119,6 +120,7 @@ export async function createClip(
 
   // Validate parameters
   validateCreateClipParams(notationString, sampleFile);
+  validateSessionTracks(sessionSlots);
   validateArrangementTrack(arrangementStarts, trackIndex);
 
   const liveSet = LiveAPI.from(livePath.liveSet);

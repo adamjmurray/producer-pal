@@ -2,12 +2,12 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { marked } from "marked";
 import { useEffect, useRef, useState } from "preact/hooks";
 import {
   formatTimestampDate,
   formatTimestampTime,
 } from "#webui/lib/utils/format-timestamp";
+import { sanitizeMarkdown } from "#webui/lib/utils/sanitize-markdown";
 import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./assistant/AssistantMessage";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
@@ -137,7 +137,7 @@ export function MessageList({
                 <div
                   className="prose dark:prose-invert prose-sm max-w-none"
                   dangerouslySetInnerHTML={{
-                    __html: marked(formatUserContent(message)) as string,
+                    __html: sanitizeMarkdown(formatUserContent(message)),
                   }}
                 />
               )}

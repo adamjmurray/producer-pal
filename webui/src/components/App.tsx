@@ -116,12 +116,8 @@ export function App() {
     },
   });
 
-  // Lock conversation to the provider used when chat started
   const { chat, wrappedHandleSend, wrappedClearConversation } =
-    useConversationLock({
-      settingsProvider: settings.provider,
-      chat: aiSdkChat,
-    });
+    useConversationLock({ chat: aiSdkChat });
 
   // Calculate tools counts for header display
   const totalToolsCount = mcpTools?.length ?? 0;

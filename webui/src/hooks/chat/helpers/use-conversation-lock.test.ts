@@ -9,7 +9,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/preact";
 import { useConversationLock } from "./use-conversation-lock";
-import { type Provider } from "#webui/types/settings";
 
 function createMockChat() {
   return {
@@ -21,20 +20,14 @@ function createMockChat() {
 describe("useConversationLock", () => {
   it("returns the provided chat", () => {
     const chat = createMockChat();
-    const { result } = renderHook(() =>
-      useConversationLock({ settingsProvider: "gemini", chat }),
-    );
+    const { result } = renderHook(() => useConversationLock({ chat }));
 
     expect(result.current.chat).toBe(chat);
   });
 
-  it("locks to provider on first message", async () => {
+  it("delegates handleSend to chat", async () => {
     const chat = createMockChat();
-    const { result } = renderHook(
-      ({ provider }: { provider: Provider }) =>
-        useConversationLock({ settingsProvider: provider, chat }),
-      { initialProps: { provider: "gemini" as Provider } },
-    );
+    const { result } = renderHook(() => useConversationLock({ chat }));
 
     await act(async () => {
       await result.current.wrappedHandleSend("Hello");
@@ -42,11 +35,9 @@ describe("useConversationLock", () => {
     expect(chat.handleSend).toHaveBeenCalledWith("Hello", undefined);
   });
 
-  it("clears lock on clearConversation", async () => {
+  it("delegates clearConversation to chat", async () => {
     const chat = createMockChat();
-    const { result } = renderHook(() =>
-      useConversationLock({ settingsProvider: "gemini", chat }),
-    );
+    const { result } = renderHook(() => useConversationLock({ chat }));
 
     await act(async () => {
       await result.current.wrappedHandleSend("Hello");
@@ -60,9 +51,7 @@ describe("useConversationLock", () => {
 
   it("passes message options to handleSend", async () => {
     const chat = createMockChat();
-    const { result } = renderHook(() =>
-      useConversationLock({ settingsProvider: "gemini", chat }),
-    );
+    const { result } = renderHook(() => useConversationLock({ chat }));
     const options = { thinking: "High", temperature: 0.5 };
 
     await act(async () => {

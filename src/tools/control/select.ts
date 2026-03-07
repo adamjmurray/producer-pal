@@ -208,6 +208,8 @@ function applyViewChanges({
     applyDetailView({ appView, detailView: effectiveDetailView });
   }
 
+  // Auto-hide browser when AI selects something — the browser panel overlaps
+  // content the AI is trying to show. Users can reopen it manually.
   appView.call("hide_view", LIVE_API_VIEW_NAMES.BROWSER);
 }
 

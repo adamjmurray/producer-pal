@@ -182,6 +182,15 @@ describe("createClip - session view", () => {
     });
   });
 
+  it("should throw error when session slot track does not exist", async () => {
+    mockNonExistentObjects();
+    setupLiveSet();
+
+    await expect(createClip({ slot: "99/0", notes: "C3 1|1" })).rejects.toThrow(
+      "createClip failed: track 99 does not exist",
+    );
+  });
+
   it("should throw error when scene does not exist for auto=play-scene", async () => {
     mockNonExistentObjects();
     setupLiveSet();

@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { marked } from "marked";
+import {
+  sanitizeMarkdown,
+  sanitizeMarkdownInline,
+} from "#webui/lib/utils/sanitize-markdown";
 
 interface AssistantThoughtProps {
   content: string;
@@ -41,7 +44,7 @@ export function AssistantThought({
         <summary className="font-semibold truncate">💭 Thinking...</summary>
         <div
           className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"
-          dangerouslySetInnerHTML={{ __html: marked(trimmed) as string }}
+          dangerouslySetInnerHTML={{ __html: sanitizeMarkdown(trimmed) }}
         />
       </details>
     );
@@ -54,16 +57,14 @@ export function AssistantThought({
         <span
           className="group-open:hidden"
           dangerouslySetInnerHTML={{
-            __html: marked.parseInline(
-              `💭 Thought about: ${firstLine}`,
-            ) as string,
+            __html: sanitizeMarkdownInline(`💭 Thought about: ${firstLine}`),
           }}
         />
         <span className="hidden group-open:inline">💭 Thought about:</span>
       </summary>
       <div
         className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"
-        dangerouslySetInnerHTML={{ __html: marked(trimmed) as string }}
+        dangerouslySetInnerHTML={{ __html: sanitizeMarkdown(trimmed) }}
       />
     </details>
   );
