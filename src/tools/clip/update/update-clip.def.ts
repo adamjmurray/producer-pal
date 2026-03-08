@@ -141,12 +141,6 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ])
       .optional()
       .describe("note grid (required with quantize)"),
-    quantizeSwing: z.coerce
-      .number()
-      .min(0)
-      .max(1)
-      .optional()
-      .describe("swing amount (shifts off-beats toward next grid line)"),
     quantizePitch: z
       .string()
       .optional()
@@ -190,7 +184,6 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "warpBeatTime",
       "warpSampleTime",
       "warpDistance",
-      "quantizeSwing",
       "quantizePitch",
       "firstStart",
       "transforms",

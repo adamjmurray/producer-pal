@@ -93,7 +93,6 @@ interface ClipResult {
  * @param args.warpDistance - Distance parameter for move operations
  * @param args.quantize - Quantization strength 0-1 (MIDI clips only)
  * @param args.quantizeGrid - Note grid for quantization
- * @param args.quantizeSwing - Swing amount 0-1 (default: 0)
  * @param args.quantizePitch - Limit quantization to specific pitch
  * @param args.code - JavaScript code to transform notes
  * @param args.focus - Select the clip and show clip detail view
@@ -127,7 +126,6 @@ export async function updateClip(
     warpDistance,
     quantize,
     quantizeGrid,
-    quantizeSwing,
     quantizePitch,
     code,
     focus,
@@ -196,7 +194,6 @@ export async function updateClip(
       warpDistance,
       quantize,
       quantizeGrid,
-      quantizeSwing,
       quantizePitch,
       arrangementLengthBeats,
       arrangementStartBeats,
