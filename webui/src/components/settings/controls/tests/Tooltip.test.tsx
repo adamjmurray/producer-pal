@@ -93,8 +93,11 @@ describe("Tooltip", () => {
     fireEvent.click(infoButton());
     expect(screen.getByText("Some description")).toBeDefined();
 
-    // Mouse enter while pinned should not toggle anything
+    // Mouse enter while pinned should be a no-op — verify by checking
+    // that a subsequent mouse leave doesn't dismiss (proves hover state
+    // wasn't set, so pinned state is still solely responsible for visibility)
     fireEvent.mouseEnter(infoButton());
+    fireEvent.mouseLeave(infoButton());
     expect(screen.getByText("Some description")).toBeDefined();
   });
 

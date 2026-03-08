@@ -113,10 +113,7 @@ describe("drum mode serializer", () => {
   });
 
   it("prefers listing when repeat format is not shorter", () => {
-    // 3 notes with large step where "1|1x3@4" is not shorter than "1|1 2|1 3|1"
-    // "1|1x3@4" = 8 chars, "1|1 2|1 3|1" = 11 chars, repeat is shorter
-    // But for 3 notes in same bar: "1|1,2,3" = 7 chars vs "1|1x3" = 5 chars
-    // So use comma-merge scenario: beats 1, 2.5, 4 (non-uniform in-bar)
+    // Non-uniform in-bar spacing: beats 1, 2.5, 4
     const notes: NoteEvent[] = [
       createNote({ pitch: 36, start_time: 0, duration: 1 }),
       createNote({ pitch: 36, start_time: 1.5, duration: 1 }),
@@ -138,7 +135,9 @@ describe("drum mode serializer", () => {
 
     const result = formatNotation(notes, { drumMode: true });
 
-    expect(result).toContain("C1");
+    // Both notes have same state (undefined probability defaults equal),
+    // so they should merge into comma format with no probability prefix
+    expect(result).toBe("v80 t/4 C1 1|1,2");
   });
 
   it("includes @step when step differs from duration", () => {
