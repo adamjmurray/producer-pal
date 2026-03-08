@@ -19,9 +19,7 @@ describe("ChatHeader", () => {
     enabledToolsCount: 20,
     totalToolsCount: 20,
     smallModelMode: false,
-    hasMessages: false,
     onOpenSettings: vi.fn(),
-    onClearConversation: vi.fn(),
     onToggleHistory: vi.fn(),
   };
 
@@ -179,7 +177,6 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          hasMessages={false}
           enabledToolsCount={18}
           totalToolsCount={20}
         />,
@@ -341,73 +338,6 @@ describe("ChatHeader", () => {
       const mobileEl = elements.find((el) => el.textContent.trim() === "🐢");
 
       expect(mobileEl).toBeDefined();
-    });
-  });
-
-  describe("Restart button", () => {
-    it("does not show Restart button when hasMessages is false", () => {
-      render(<ChatHeader {...defaultProps} hasMessages={false} />);
-      expect(screen.queryByRole("button", { name: "Restart" })).toBeNull();
-    });
-
-    it("shows Restart button when hasMessages is true", () => {
-      render(<ChatHeader {...defaultProps} hasMessages={true} />);
-      expect(screen.getByRole("button", { name: "Restart" })).toBeDefined();
-    });
-
-    it("calls window.confirm when Restart clicked", () => {
-      const originalConfirm = window.confirm;
-
-      window.confirm = vi.fn().mockReturnValue(false);
-
-      render(<ChatHeader {...defaultProps} hasMessages={true} />);
-
-      const button = screen.getByRole("button", { name: "Restart" });
-
-      fireEvent.click(button);
-
-      expect(window.confirm).toHaveBeenCalledWith(
-        "Clear all messages and restart conversation?",
-      );
-      window.confirm = originalConfirm;
-    });
-
-    /**
-     * Test confirm behavior with given confirm result
-     * @param confirmResult - Whether user confirms or cancels
-     * @returns onClearConversation mock
-     */
-    function testConfirmBehavior(confirmResult: boolean) {
-      window.confirm = vi.fn().mockReturnValue(confirmResult);
-      const onClearConversation = vi.fn();
-
-      render(
-        <ChatHeader
-          {...defaultProps}
-          hasMessages={true}
-          onClearConversation={onClearConversation}
-        />,
-      );
-      fireEvent.click(screen.getByRole("button", { name: "Restart" }));
-
-      return onClearConversation;
-    }
-
-    it("does not call onClearConversation when user cancels", () => {
-      const originalConfirm = window.confirm;
-      const onClearConversation = testConfirmBehavior(false);
-
-      expect(onClearConversation).not.toHaveBeenCalled();
-      window.confirm = originalConfirm;
-    });
-
-    it("calls onClearConversation when user confirms", () => {
-      const originalConfirm = window.confirm;
-      const onClearConversation = testConfirmBehavior(true);
-
-      expect(onClearConversation).toHaveBeenCalledOnce();
-
-      window.confirm = originalConfirm;
     });
   });
 });

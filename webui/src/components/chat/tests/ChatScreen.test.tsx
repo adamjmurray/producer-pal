@@ -15,7 +15,6 @@ describe("ChatScreen", () => {
   const mockHandleRetry = vi.fn();
   const mockCheckMcpConnection = vi.fn();
   const mockOnOpenSettings = vi.fn();
-  const mockOnClearConversation = vi.fn();
   const mockOnStop = vi.fn();
 
   const defaultProps = {
@@ -39,7 +38,6 @@ describe("ChatScreen", () => {
     mcpError: null,
     checkMcpConnection: mockCheckMcpConnection,
     onOpenSettings: mockOnOpenSettings,
-    onClearConversation: mockOnClearConversation,
     onStop: mockOnStop,
     showTimestamps: true,
     conversationPanel: {

@@ -41,7 +41,6 @@ interface ChatScreenProps {
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
   onOpenSettings: () => void;
-  onClearConversation: () => void;
   onStop: () => void;
   showTimestamps: boolean;
   conversationPanel: ConversationPanelState;
@@ -80,7 +79,6 @@ export interface ConversationPanelState {
  * @param {string | null} props.mcpError - MCP error message
  * @param {() => Promise<void>} props.checkMcpConnection - Check MCP connection callback
  * @param {() => void} props.onOpenSettings - Open settings callback
- * @param {() => void} props.onClearConversation - Clear conversation callback
  * @param {() => void} props.onStop - Stop response callback
  * @returns {JSX.Element} - React component
  */
@@ -107,7 +105,6 @@ export function ChatScreen({
   checkMcpConnection,
 
   onOpenSettings,
-  onClearConversation,
   onStop,
   showTimestamps,
   conversationPanel,
@@ -140,9 +137,7 @@ export function ChatScreen({
         enabledToolsCount={enabledToolsCount}
         totalToolsCount={totalToolsCount}
         smallModelMode={smallModelMode}
-        hasMessages={messages.length > 0}
         onOpenSettings={onOpenSettings}
-        onClearConversation={onClearConversation}
         onToggleHistory={conversationPanel.onToggle}
       />
 

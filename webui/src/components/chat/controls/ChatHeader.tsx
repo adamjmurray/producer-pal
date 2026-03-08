@@ -15,9 +15,7 @@ interface ChatHeaderProps {
   enabledToolsCount: number;
   totalToolsCount: number;
   smallModelMode: boolean;
-  hasMessages: boolean;
   onOpenSettings: () => void;
-  onClearConversation: () => void;
   onToggleHistory: () => void;
 }
 
@@ -56,9 +54,7 @@ function getProviderName(provider: Provider): string {
  * @param {number} props.enabledToolsCount - Number of enabled tools
  * @param {number} props.totalToolsCount - Total number of available tools
  * @param {boolean} props.smallModelMode - Whether small model mode is active
- * @param {boolean} props.hasMessages - Whether conversation has messages
  * @param {() => void} props.onOpenSettings - Callback to open settings
- * @param {() => void} props.onClearConversation - Callback to clear conversation
  * @returns {JSX.Element} - React component
  */
 export function ChatHeader({
@@ -70,17 +66,9 @@ export function ChatHeader({
   enabledToolsCount,
   totalToolsCount,
   smallModelMode,
-  hasMessages,
   onOpenSettings,
-  onClearConversation,
   onToggleHistory,
 }: ChatHeaderProps) {
-  const handleRestart = () => {
-    if (window.confirm("Clear all messages and restart conversation?")) {
-      onClearConversation();
-    }
-  };
-
   return (
     <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center">
       <button
@@ -134,24 +122,7 @@ export function ChatHeader({
         )}
       </div>
 
-      {hasMessages && <div className="flex-1" />}
-      {hasMessages && (
-        <button
-          onClick={handleRestart}
-          className="hidden sm:inline-block text-xs px-2 py-1 border border-red-500 text-red-500 bg-transparent hover:bg-red-500 hover:text-white rounded transition-colors"
-        >
-          Restart
-        </button>
-      )}
-      {hasMessages && <div className="flex-1" />}
-
-      <div
-        className={
-          hasMessages
-            ? "flex gap-3 items-baseline"
-            : "ml-auto flex gap-3 items-baseline"
-        }
-      >
+      <div className="ml-auto flex gap-3 items-baseline">
         <span className="text-xs text-gray-500 dark:text-gray-400">
           <span className="hidden lg:inline">
             {getProviderName(activeProvider ?? provider)} |{" "}

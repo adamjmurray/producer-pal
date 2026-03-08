@@ -257,7 +257,6 @@ export function App() {
         mcpError={mcpError}
         checkMcpConnection={checkMcpConnection}
         onOpenSettings={() => setShowSettings(true)}
-        onClearConversation={wrappedClearConversation}
         onStop={chat.stopResponse}
         showTimestamps={showTimestamps}
         conversationPanel={{
