@@ -32,4 +32,12 @@ Returns overview by default. Use include to add detail.`,
         'tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes). locators = arrangement markers. "*" = all',
       ),
   },
+
+  smallModelModeConfig: {
+    excludeEnumValues: { include: ["locators"] },
+    descriptionOverrides: {
+      include:
+        'tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes). "*" = all',
+    },
+  },
 });

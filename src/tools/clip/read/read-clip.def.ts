@@ -28,4 +28,12 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
         'notes = MIDI data. timing = loop/start/end markers. sample = audio file info. warp = warp settings. color. "*" = all',
       ),
   },
+
+  smallModelModeConfig: {
+    excludeEnumValues: { include: ["warp"] },
+    descriptionOverrides: {
+      include:
+        'notes = MIDI data. timing = loop/start/end markers. sample = audio file info. color. "*" = all',
+    },
+  },
 });

@@ -53,4 +53,14 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
         "Filter parameters by case-insensitive substring match on name",
       ),
   },
+
+  smallModelModeConfig: {
+    excludeEnumValues: { include: ["drum-pads", "return-chains"] },
+    descriptionOverrides: {
+      include:
+        'chains = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file. "*" = all',
+      maxDepth:
+        "Device tree depth for chains. 0=chains only with deviceCount, 1=direct devices, 2+=deeper",
+    },
+  },
 });

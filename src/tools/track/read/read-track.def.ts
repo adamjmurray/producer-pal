@@ -54,4 +54,12 @@ Returns overview by default. Use include to add detail.`,
         'session-clips, arrangement-clips = clip lists. notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, available-routings, mixer = track data. color = track + clip color. "*" = all',
       ),
   },
+
+  smallModelModeConfig: {
+    excludeEnumValues: { include: ["available-routings"] },
+    descriptionOverrides: {
+      include:
+        'session-clips, arrangement-clips = clip lists. notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, mixer = track data. color = track + clip color. "*" = all',
+    },
+  },
 });
