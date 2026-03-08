@@ -1,43 +1,41 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
-import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import * as console from "#src/shared/v8-max-console.ts";
-import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
-import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import {
-  computeLoopDeadline,
-  isDeadlineExceeded,
-} from "#src/tools/clip/helpers/loop-deadline.ts";
+import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { select } from "#src/tools/control/select.ts";
 import {
   parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
+import { parseCommaSeparatedColors } from "#src/tools/shared/validation/color-utils.ts";
+import {
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
+import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   convertTimingParameters,
   parseArrangementStartList,
-  parseSceneIndexList,
-  processClipIteration,
 } from "./helpers/create-clip-helpers.ts";
 import {
-  calculateClipLength,
+  createClips,
+  prepareClipData,
+} from "./helpers/create-clip-loop-helpers.ts";
+import {
   handleAutoPlayback,
   validateCreateClipParams,
+  validatePositions,
+  validateSessionTracks,
 } from "./helpers/create-clip-validation-helpers.ts";
 
 export interface CreateClipArgs {
-  /** View for the clip */
-  view: "session" | "arrangement";
-  /** Track index (0-based) */
-  trackIndex: number;
-  /** Scene index(es), comma-separated for multiple */
-  sceneIndex?: string | null;
+  /** Session clip slot(s), trackIndex/sceneIndex comma-separated */
+  slot?: string | null;
+  /** Track index (0-based, arrangement clips) */
+  trackIndex?: number | null;
   /** Bar|beat position(s), comma-separated */
   arrangementStart?: string | null;
   /** Musical notation string (MIDI clips only) */
@@ -62,24 +60,17 @@ export interface CreateClipArgs {
   looping?: boolean | null;
   /** Automatic playback action */
   auto?: string | null;
-  /** Automatically switch to the appropriate view */
-  switchView?: boolean;
+  /** Select the created clip and show clip detail view */
+  focus?: boolean;
   /** JavaScript code to generate notes (MIDI clips only) */
   code?: string | null;
-}
-
-interface PreparedClipData {
-  notes: MidiNote[];
-  clipLength: number;
-  transformedCount: number | undefined;
 }
 
 /**
  * Creates MIDI or audio clips in Session or Arrangement view
  * @param args - The clip parameters
- * @param args.view - View for the clip (session or arrangement)
- * @param args.trackIndex - Track index (0-based)
- * @param args.sceneIndex - Scene index(es), comma-separated for multiple
+ * @param args.slot - Session clip slot(s), trackIndex/sceneIndex comma-separated
+ * @param args.trackIndex - Track index (arrangement clips)
  * @param args.arrangementStart - Bar|beat position(s), comma-separated
  * @param args.notes - Musical notation string (MIDI clips only)
  * @param args.transforms - Transform expressions
@@ -92,16 +83,15 @@ interface PreparedClipData {
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
  * @param args.auto - Automatic playback action
- * @param args.switchView - Automatically switch to the appropriate view
+ * @param args.focus - Select the created clip and show clip detail view
  * @param args.code - JavaScript code to generate notes (MIDI clips only)
  * @param _context - Internal context object (unused)
  * @returns Single clip object when one position, array when multiple positions
  */
 export async function createClip(
   {
-    view,
-    trackIndex,
-    sceneIndex = null,
+    slot = null,
+    trackIndex = null,
     arrangementStart = null,
     notes: notationString = null,
     transforms: transformString = null,
@@ -114,7 +104,7 @@ export async function createClip(
     firstStart = null,
     looping = null,
     auto = null,
-    switchView,
+    focus,
     code = null,
   }: CreateClipArgs,
   _context: Partial<ToolContext> = {},
@@ -122,24 +112,16 @@ export async function createClip(
   const deadline = computeLoopDeadline(_context.timeoutMs);
 
   // Parse position lists
-  const sceneIndices = parseSceneIndexList(sceneIndex);
+  const sessionSlots = parseSlotList(slot);
   const arrangementStarts = parseArrangementStartList(arrangementStart);
 
+  // Validate at least one position type is provided
+  validatePositions(sessionSlots, arrangementStarts);
+
   // Validate parameters
-  validateCreateClipParams(
-    view,
-    sceneIndices,
-    arrangementStarts,
-    notationString,
-    sampleFile,
-  );
-
-  // Validate track exists (fatal - affects all clips)
-  const track = LiveAPI.from(livePath.track(trackIndex));
-
-  if (!track.exists()) {
-    throw new Error(`createClip failed: track ${trackIndex} does not exist`);
-  }
+  validateCreateClipParams(notationString, sampleFile);
+  validateSessionTracks(sessionSlots);
+  validateArrangementTrack(arrangementStarts, trackIndex);
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -152,17 +134,11 @@ export async function createClip(
   ) as number;
 
   // Determine clip time signature (custom or from song)
-  let timeSigNumerator: number, timeSigDenominator: number;
-
-  if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
-
-    timeSigNumerator = parsed.numerator;
-    timeSigDenominator = parsed.denominator;
-  } else {
-    timeSigNumerator = songTimeSigNumerator;
-    timeSigDenominator = songTimeSigDenominator;
-  }
+  const { timeSigNumerator, timeSigDenominator } = resolveTimeSignature(
+    timeSignature,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
 
   // Convert timing parameters to Ableton beats (excluding arrangementStart, done per-position)
   const { startBeats, firstStartBeats, endBeats } = convertTimingParameters(
@@ -191,228 +167,141 @@ export async function createClip(
     timeSigDenominator,
   );
 
-  // Create clips (and apply code to each clip inline)
-  const createdClips = await createClips(
-    view,
-    trackIndex,
-    sceneIndices,
-    arrangementStarts,
+  // Parse comma-separated names/colors for multi-clip creation
+  const { parsedNames, parsedColors } = parseMultiClipParams(
     name,
-    initialClipLength,
-    liveSet,
-    startBeats,
-    endBeats,
-    firstStartBeats,
-    looping,
     color,
-    timeSigNumerator,
-    timeSigDenominator,
-    notationString,
-    notes,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-    length,
-    sampleFile,
-    deadline,
-    code,
-    transformedCount,
+    sessionSlots.length + arrangementStarts.length,
   );
 
-  // Handle automatic playback and view switching
-  handleAutoPlayback(auto, view, sceneIndices, trackIndex);
+  // Create session clips first, then arrangement (order gives arrangement focus priority)
+  const clipsForView = (
+    view: "session" | "arrangement",
+    nameStartIndex: number,
+  ) =>
+    createClips({
+      view,
+      trackIndex: trackIndex ?? 0,
+      sessionSlots,
+      arrangementStarts,
+      baseName: name,
+      parsedNames,
+      parsedColors,
+      nameStartIndex,
+      initialClipLength,
+      liveSet,
+      startBeats,
+      endBeats,
+      firstStartBeats,
+      looping,
+      color,
+      timeSigNumerator,
+      timeSigDenominator,
+      notationString,
+      notes,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      length,
+      sampleFile,
+      deadline,
+      code,
+      transformedCount,
+    });
 
-  if (switchView) {
-    select({ view });
+  const sessionClips = await clipsForView("session", 0);
+  const arrangementClips = await clipsForView(
+    "arrangement",
+    sessionSlots.length,
+  );
+  const createdClips = [...sessionClips, ...arrangementClips];
+
+  // Handle automatic playback (session clips only, guard inside handles no-op)
+  handleAutoPlayback(auto, "session", sessionSlots);
+
+  // Focus last created clip: arrangement clips are after session clips,
+  // so arrangement gets priority (the arrangement is where the final song lives)
+  if (focus && createdClips.length > 0) {
+    const lastClip = createdClips.at(-1) as { id: string };
+
+    select({ clipId: lastClip.id, detailView: "clip" });
   }
 
   return unwrapSingleResult(createdClips);
 }
 
 /**
- * Creates clips by iterating over positions
- * @param view - View type
- * @param trackIndex - Track index
- * @param sceneIndices - Array of scene indices (session view)
- * @param arrangementStarts - Array of bar|beat positions (arrangement view)
- * @param name - Base clip name
- * @param initialClipLength - Initial clip length
- * @param liveSet - LiveAPI liveSet object
- * @param startBeats - Loop start in beats
- * @param endBeats - Loop end in beats
- * @param firstStartBeats - First playback start in beats
- * @param looping - Whether the clip is looping
- * @param color - Clip color
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param notationString - Original notation string
- * @param notes - Array of MIDI notes
- * @param songTimeSigNumerator - Song time signature numerator
- * @param songTimeSigDenominator - Song time signature denominator
- * @param length - Original length parameter
- * @param sampleFile - Audio file path
- * @param deadline - Absolute deadline timestamp, or null if no deadline
- * @param code - JavaScript code to generate notes, or null
- * @param transformedCount - Number of notes matched by transform selectors
- * @returns Array of created clips
+ * Parse comma-separated names and colors for multi-clip creation
+ * @param name - Name parameter (may contain commas)
+ * @param color - Color parameter (may contain commas)
+ * @param totalPositionCount - Total number of clip positions
+ * @returns Parsed names and colors arrays
  */
-async function createClips(
-  view: string,
-  trackIndex: number,
-  sceneIndices: number[],
-  arrangementStarts: string[],
+function parseMultiClipParams(
   name: string | null,
-  initialClipLength: number,
-  liveSet: LiveAPI,
-  startBeats: number | null,
-  endBeats: number | null,
-  firstStartBeats: number | null,
-  looping: boolean | null,
   color: string | null,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  notationString: string | null,
-  notes: MidiNote[],
-  songTimeSigNumerator: number,
-  songTimeSigDenominator: number,
-  length: string | null,
-  sampleFile: string | null,
-  deadline: number | null,
-  code: string | null,
-  transformedCount: number | undefined,
-): Promise<object[]> {
-  const createdClips: object[] = [];
-  const positions = view === "session" ? sceneIndices : arrangementStarts;
-  const count = positions.length;
-  const clipLength = initialClipLength;
+  totalPositionCount: number,
+): { parsedNames: string[] | null; parsedColors: string[] | null } {
+  const parsedNames = parseCommaSeparatedNames(
+    name ?? undefined,
+    totalPositionCount,
+  );
+  const parsedColors = parseCommaSeparatedColors(
+    color ?? undefined,
+    totalPositionCount,
+  );
 
-  for (let i = 0; i < count; i++) {
-    if (isDeadlineExceeded(deadline)) {
-      console.warn(
-        `Deadline exceeded after creating ${createdClips.length} of ${count} clips`,
-      );
-      break;
-    }
+  warnExtraNames(parsedNames, totalPositionCount, "createClip");
 
-    const clipName = name ?? undefined;
-
-    // Get position for this iteration
-    let currentSceneIndex: number | null = null;
-    let currentArrangementStartBeats: number | null = null;
-    let currentArrangementStart: string | null = null;
-
-    if (view === "session") {
-      currentSceneIndex = sceneIndices[i] as number;
-    } else {
-      currentArrangementStart = arrangementStarts[i] as string;
-      currentArrangementStartBeats = barBeatToAbletonBeats(
-        currentArrangementStart,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-      );
-    }
-
-    try {
-      const clipResult = processClipIteration(
-        view,
-        trackIndex,
-        currentSceneIndex,
-        currentArrangementStartBeats,
-        currentArrangementStart,
-        clipLength,
-        liveSet,
-        startBeats,
-        endBeats,
-        firstStartBeats,
-        looping,
-        clipName,
-        color,
-        timeSigNumerator,
-        timeSigDenominator,
-        notationString,
-        notes,
-        length,
-        sampleFile,
-        transformedCount,
-      );
-
-      createdClips.push(clipResult);
-
-      // Apply code execution to the newly created clip
-      const clipId = code != null ? (clipResult as { id?: string }).id : null;
-
-      if (clipId != null && code != null) {
-        const noteCount = await applyCodeToSingleClip(clipId, code);
-
-        if (noteCount != null) {
-          (clipResult as { noteCount?: number }).noteCount = noteCount;
-        }
-      }
-    } catch (error) {
-      // Emit warning with position info
-      const position =
-        view === "session"
-          ? `trackIndex=${trackIndex}, sceneIndex=${currentSceneIndex}`
-          : `trackIndex=${trackIndex}, arrangementStart=${currentArrangementStart}`;
-
-      console.warn(
-        `Failed to create clip at ${position}: ${errorMessage(error)}`,
-      );
-    }
-  }
-
-  return createdClips;
+  return { parsedNames, parsedColors };
 }
 
 /**
- * Prepares clip data (notes and initial length) based on clip type
- * @param sampleFile - Audio file path (if audio clip)
- * @param notationString - MIDI notation string (if MIDI clip)
- * @param transformString - Transform expressions to apply to notes
- * @param endBeats - End position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @returns Object with notes array and clipLength
+ * Resolve clip time signature from parameter or song defaults
+ * @param timeSignature - Custom time signature string (e.g. "4/4"), or null
+ * @param songTimeSigNumerator - Song time signature numerator
+ * @param songTimeSigDenominator - Song time signature denominator
+ * @returns Resolved numerator and denominator
  */
-function prepareClipData(
-  sampleFile: string | null,
-  notationString: string | null,
-  transformString: string | null,
-  endBeats: number | null,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-): PreparedClipData {
-  // Parse notation into notes (MIDI clips only)
-  const notes: MidiNote[] =
-    notationString != null
-      ? interpretNotation(notationString, {
-          timeSigNumerator,
-          timeSigDenominator,
-        })
-      : [];
+function resolveTimeSignature(
+  timeSignature: string | null,
+  songTimeSigNumerator: number,
+  songTimeSigDenominator: number,
+): { timeSigNumerator: number; timeSigDenominator: number } {
+  if (timeSignature != null) {
+    const parsed = parseTimeSignature(timeSignature);
 
-  // Apply transforms to notes if provided
-  const transformedCount = applyTransforms(
-    notes,
-    transformString ?? undefined,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+    return {
+      timeSigNumerator: parsed.numerator,
+      timeSigDenominator: parsed.denominator,
+    };
+  }
 
-  // Determine clip length
-  let clipLength: number;
+  return {
+    timeSigNumerator: songTimeSigNumerator,
+    timeSigDenominator: songTimeSigDenominator,
+  };
+}
 
-  if (sampleFile) {
-    // Audio clips get length from the sample file, not this value
-    clipLength = 1;
-  } else {
-    // MIDI clips: calculate based on notes and parameters
-    clipLength = calculateClipLength(
-      endBeats,
-      notes,
-      timeSigNumerator,
-      timeSigDenominator,
+/**
+ * Validate track exists when arrangement clips are requested
+ * @param arrangementStarts - Parsed arrangement positions
+ * @param trackIndex - Track index for arrangement clips
+ */
+function validateArrangementTrack(
+  arrangementStarts: string[],
+  trackIndex: number | null,
+): void {
+  if (arrangementStarts.length === 0) return;
+
+  if (trackIndex == null) {
+    throw new Error(
+      "createClip failed: trackIndex is required for arrangement clips",
     );
   }
 
-  return { notes, clipLength, transformedCount };
+  const track = LiveAPI.from(livePath.track(trackIndex));
+
+  if (!track.exists()) {
+    throw new Error(`createClip failed: track ${trackIndex} does not exist`);
+  }
 }

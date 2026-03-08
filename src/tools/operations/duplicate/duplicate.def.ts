@@ -7,7 +7,9 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate",
-  description: "Duplicate an object",
+  description:
+    "Duplicate an object.\n" +
+    "Supports tracks, scenes, clips, and devices. Use count for multiple track/scene copies; arrangementStart, locator, or toSlot for clip placement.",
 
   annotations: {
     readOnlyHint: false,
@@ -15,11 +17,19 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
   },
 
   inputSchema: {
+    id: z.coerce.string().describe("object to duplicate"),
     type: z
       .enum(["track", "scene", "clip", "device"])
       .describe("type of object to duplicate"),
 
-    id: z.coerce.string().describe("object to duplicate"),
+    name: z
+      .string()
+      .optional()
+      .describe("name (comma-separated when duplicating multiple)"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when duplicating multiple, cycles)"),
 
     count: z.coerce
       .number()
@@ -30,53 +40,32 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
         "number of copies (tracks/scenes only, ignored for clips/devices)",
       ),
 
-    destination: z
-      .enum(["session", "arrangement"])
-      .optional()
-      .describe("scenes and clips can be copied to the session or arrangement"),
+    withoutClips: z.boolean().default(false).describe("exclude clips?"),
+    withoutDevices: z.boolean().default(false).describe("exclude devices?"),
+
     arrangementStart: z.coerce
       .string()
       .optional()
       .describe(
-        "bar|beat position(s), comma-separated for multiple clips (e.g., '1|1' or '1|1,2|1,3|1')",
+        "arrangement bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1')",
       ),
-    locatorId: z.coerce
+    locator: z.coerce
       .string()
       .optional()
       .describe(
-        "arrangement locator ID(s), comma-separated for multiple (e.g., 'locator-0' or 'locator-0,locator-2')",
-      ),
-    locatorName: z
-      .string()
-      .optional()
-      .describe(
-        "arrangement locator name(s), comma-separated for multiple (e.g., 'Verse' or 'Verse,Chorus')",
+        "arrangement locator ID(s) or name(s), comma-separated for multiple (e.g., 'locator-0' or 'Verse' or 'locator-0,Chorus')",
       ),
     arrangementLength: z
       .string()
       .optional()
       .describe(
-        "duration (beats or bar:beat) in arrangement, auto-fills with loops",
+        "duration in bar:beat (e.g., '4:0' = 4 bars), auto-fills with loops",
       ),
-    name: z.string().optional().describe("name"),
-    withoutClips: z.boolean().default(false).describe("exclude clips?"),
-    withoutDevices: z.boolean().default(false).describe("exclude devices?"),
-    routeToSource: z
-      .boolean()
-      .optional()
-      .describe(
-        "route new track to source's instrument? (for MIDI layering/polyrhythms)",
-      ),
-    switchView: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe("auto-switch view?"),
     toSlot: z
       .string()
       .optional()
       .describe(
-        "destination clip slot(s), trackIndex/sceneIndex format, comma-separated for multiple (e.g., '0/1' or '0/1,2/3')",
+        "session destination clip slot(s), trackIndex/sceneIndex format, comma-separated for multiple (e.g., '0/1' or '0/1,2/3')",
       ),
     toPath: z
       .string()
@@ -84,20 +73,31 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "device destination path(s), comma-separated for multiple (e.g., 't1/d0' or 't1/d0,t2/d0')",
       ),
+
+    routeToSource: z
+      .boolean()
+      .optional()
+      .describe(
+        "route new track to source's instrument? (for MIDI layering/polyrhythms)",
+      ),
   },
   smallModelModeConfig: {
+    toolDescription:
+      "Duplicate an object.\n" +
+      "Supports tracks, scenes, clips, and devices. Use arrangementStart or toSlot for clip placement; toPath for devices.",
     excludeParams: [
-      "locatorId",
-      "locatorName",
+      "count",
       "withoutClips",
       "withoutDevices",
+      "locator",
       "routeToSource",
-      "count",
-      "switchView",
     ],
     descriptionOverrides: {
-      arrangementStart: "bar|beat position (e.g., '1|1')",
-      toSlot: "destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
+      name: "name",
+      color: "#RRGGBB",
+      arrangementStart: "arrangement bar|beat position (e.g., '1|1')",
+      toSlot:
+        "session destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
       toPath: "device destination path (e.g., 't1/d0')",
     },
   },

@@ -155,6 +155,33 @@ interface BridgeInternals {
 // Cast to BridgeInternals to access private properties in tests
 type TestBridge = BridgeInternals;
 
+/**
+ * Create a tool call request object for handler tests.
+ * @param name - Tool name
+ * @param args - Tool arguments
+ * @returns Request object
+ */
+function callToolRequest(
+  name = "test-tool",
+  args: Record<string, unknown> = {},
+): { params: { name: string; arguments: Record<string, unknown> } } {
+  return { params: { name, arguments: args } };
+}
+
+/**
+ * Start the bridge and return the call tool handler.
+ * @param b - Bridge instance
+ * @returns The CallToolRequestSchema handler
+ */
+async function startAndGetCallHandler(
+  b: TestBridge,
+): Promise<(request: unknown) => Promise<unknown>> {
+  mockServer.connect.mockResolvedValue(undefined);
+  await b.start();
+
+  return getHandler("CallToolRequestSchema");
+}
+
 describe("StdioHttpBridge", () => {
   let bridge: TestBridge;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
@@ -444,23 +471,15 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up call tool handler that calls HTTP tool when connected", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
-      await bridge.start();
-
-      const callToolHandler = getHandler("CallToolRequestSchema");
+      const callToolHandler = await startAndGetCallHandler(bridge);
       const toolResult = { content: [{ type: "text", text: "Success" }] };
 
       mockClient.connect.mockResolvedValue(undefined);
       mockClient.callTool.mockResolvedValue(toolResult);
 
-      const request = {
-        params: {
-          name: "test-tool",
-          arguments: { arg1: "value1" },
-        },
-      };
-
-      const result = await callToolHandler(request);
+      const result = await callToolHandler(
+        callToolRequest("test-tool", { arg1: "value1" }),
+      );
 
       expect(mockClient.callTool).toHaveBeenCalledWith({
         name: "test-tool",
@@ -473,21 +492,11 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up call tool handler that returns setup error when HTTP fails", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
-      await bridge.start();
-
-      const callToolHandler = getHandler("CallToolRequestSchema");
+      const callToolHandler = await startAndGetCallHandler(bridge);
 
       mockClient.connect.mockRejectedValue(new Error("Connection failed"));
 
-      const request = {
-        params: {
-          name: "test-tool",
-          arguments: {},
-        },
-      };
-
-      const result = await callToolHandler(request);
+      const result = await callToolHandler(callToolRequest());
 
       expect(result).toStrictEqual(bridge._createSetupErrorResponse());
       // Verify that error response behavior was triggered
@@ -497,10 +506,7 @@ describe("StdioHttpBridge", () => {
     });
 
     it("sets up call tool handler that handles missing arguments", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
-      await bridge.start();
-
-      const callToolHandler = getHandler("CallToolRequestSchema");
+      const callToolHandler = await startAndGetCallHandler(bridge);
       const toolResult = { content: [{ type: "text", text: "Success" }] };
 
       mockClient.connect.mockResolvedValue(undefined);
@@ -523,21 +529,13 @@ describe("StdioHttpBridge", () => {
     });
 
     it("logs tool call details", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
-      await bridge.start();
-
-      const callToolHandler = getHandler("CallToolRequestSchema");
+      const callToolHandler = await startAndGetCallHandler(bridge);
 
       mockClient.connect.mockRejectedValue(new Error("Connection failed"));
 
-      const request = {
-        params: {
-          name: "ppal-read-live-set",
-          arguments: { trackIndex: 0 },
-        },
-      };
-
-      await callToolHandler(request);
+      await callToolHandler(
+        callToolRequest("ppal-read-live-set", { trackIndex: 0 }),
+      );
 
       expect(logger.debug).toHaveBeenCalledWith(
         '[Bridge] Tool call: ppal-read-live-set {"trackIndex":0}',
@@ -545,10 +543,7 @@ describe("StdioHttpBridge", () => {
     });
 
     it("returns formatted error response for MCP protocol errors", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
-      await bridge.start();
-
-      const callToolHandler = getHandler("CallToolRequestSchema");
+      const callToolHandler = await startAndGetCallHandler(bridge);
 
       // Simulate MCP protocol error (has numeric code)
       const mcpError = new Error("Invalid tool parameters") as Error & {
@@ -560,14 +555,7 @@ describe("StdioHttpBridge", () => {
       mockClient.connect.mockResolvedValue(undefined);
       mockClient.callTool.mockRejectedValue(mcpError);
 
-      const request = {
-        params: {
-          name: "test-tool",
-          arguments: {},
-        },
-      };
-
-      const result = (await callToolHandler(request)) as {
+      const result = (await callToolHandler(callToolRequest())) as {
         content: Array<{ type: string; text: string }>;
         isError: boolean;
       };
@@ -582,10 +570,7 @@ describe("StdioHttpBridge", () => {
     });
 
     it("strips redundant MCP error prefix from error message", async () => {
-      mockServer.connect.mockResolvedValue(undefined);
-      await bridge.start();
-
-      const callToolHandler = getHandler("CallToolRequestSchema");
+      const callToolHandler = await startAndGetCallHandler(bridge);
 
       // Error with redundant prefix
       const mcpError = new Error(
@@ -597,14 +582,7 @@ describe("StdioHttpBridge", () => {
       mockClient.connect.mockResolvedValue(undefined);
       mockClient.callTool.mockRejectedValue(mcpError);
 
-      const request = {
-        params: {
-          name: "test-tool",
-          arguments: {},
-        },
-      };
-
-      const result = (await callToolHandler(request)) as {
+      const result = (await callToolHandler(callToolRequest())) as {
         content: Array<{ type: string; text: string }>;
       };
 
@@ -617,20 +595,9 @@ describe("StdioHttpBridge", () => {
         "not-a-valid-url",
       ) as unknown as TestBridge;
 
-      mockServer.connect.mockResolvedValue(undefined);
-      await invalidBridge.start();
+      const callToolHandler = await startAndGetCallHandler(invalidBridge);
 
-      // Get the most recent handler (from invalidBridge, not the beforeEach bridge)
-      const callToolHandler = getHandler("CallToolRequestSchema", "last");
-
-      const request = {
-        params: {
-          name: "test-tool",
-          arguments: {},
-        },
-      };
-
-      const result = await callToolHandler(request);
+      const result = await callToolHandler(callToolRequest());
 
       expect(result).toStrictEqual(
         invalidBridge._createMisconfiguredUrlResponse(),

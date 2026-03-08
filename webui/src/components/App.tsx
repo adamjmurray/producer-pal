@@ -4,10 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState, useEffect, useMemo, useRef } from "preact/hooks";
-import { geminiAdapter } from "#webui/hooks/chat/gemini-adapter";
+import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
-import { openaiChatAdapter } from "#webui/hooks/chat/openai-chat-adapter";
-import { responsesAdapter } from "#webui/hooks/chat/responses-adapter";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
@@ -16,6 +14,9 @@ import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
+
+// Placeholder API key for local providers that don't require authentication
+const LOCAL_PROVIDER_API_KEY = "not-needed";
 
 // Base URLs for each provider
 const PROVIDER_BASE_URLS = {
@@ -72,6 +73,9 @@ function getBaseUrl(
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
+  const [showTimestamps, setShowTimestamps] = useState(
+    () => localStorage.getItem("producer_pal_show_timestamps") === "true",
+  );
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
   const toolNamesMap = useMemo(() => {
@@ -87,27 +91,11 @@ export function App() {
   const { smallModelMode, setSmallModelMode } = useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
-  // Use Gemini chat for Gemini provider
-  const geminiChat = useChat({
-    provider: settings.provider,
-    apiKey: settings.apiKey,
-    model: settings.model,
-    thinking: settings.thinking,
-    temperature: settings.temperature,
-    enabledTools: settings.enabledTools,
-    mcpStatus,
-    mcpError,
-    checkMcpConnection,
-    adapter: geminiAdapter,
-    extraParams: { showThoughts: settings.showThoughts },
-  });
-
-  // Use OpenAI Chat Completions API for OpenAI-compatible providers (OpenRouter, Mistral, etc.)
-  const openaiChat = useChat({
+  const aiSdkChat = useChat({
     provider: settings.provider,
     apiKey:
       settings.provider === "lmstudio" || settings.provider === "ollama"
-        ? settings.apiKey || "not-needed"
+        ? settings.apiKey || LOCAL_PROVIDER_API_KEY
         : settings.apiKey,
     model: settings.model,
     thinking: settings.thinking,
@@ -116,43 +104,20 @@ export function App() {
     mcpStatus,
     mcpError,
     checkMcpConnection,
-    adapter: openaiChatAdapter,
+    adapter: aiSdkAdapter,
     extraParams: {
       baseUrl,
       showThoughts: settings.showThoughts,
       provider: settings.provider,
+      apiKey:
+        settings.provider === "lmstudio" || settings.provider === "ollama"
+          ? settings.apiKey || LOCAL_PROVIDER_API_KEY
+          : settings.apiKey,
     },
   });
 
-  // Use OpenAI Responses API for OpenAI and LM Studio providers
-  const responsesChat = useChat({
-    provider: settings.provider,
-    apiKey:
-      settings.provider === "lmstudio"
-        ? settings.apiKey || "not-needed"
-        : settings.apiKey,
-    model: settings.model,
-    thinking: settings.thinking,
-    temperature: settings.temperature,
-    enabledTools: settings.enabledTools,
-    mcpStatus,
-    mcpError,
-    checkMcpConnection,
-    adapter: responsesAdapter,
-    extraParams: {
-      showThoughts: settings.showThoughts,
-      baseUrl: settings.provider === "lmstudio" ? baseUrl : undefined,
-    },
-  });
-
-  // Lock conversation to the provider used when chat started
   const { chat, wrappedHandleSend, wrappedClearConversation } =
-    useConversationLock({
-      settingsProvider: settings.provider,
-      geminiChat,
-      openaiChat,
-      responsesChat,
-    });
+    useConversationLock({ chat: aiSdkChat });
 
   // Calculate tools counts for header display
   const totalToolsCount = mcpTools?.length ?? 0;
@@ -164,28 +129,34 @@ export function App() {
     !settings.settingsConfigured,
   );
 
-  // Track original theme when settings opened (for cancel)
+  // Track original appearance settings when settings opened (for cancel)
   const originalThemeRef = useRef(theme);
+  const originalShowTimestampsRef = useRef(showTimestamps);
   const prevShowSettingsRef = useRef(showSettings);
 
-  // Save original theme only when settings transitions from closed to open
+  // Save originals only when settings transitions from closed to open
   useEffect(() => {
     if (showSettings && !prevShowSettingsRef.current) {
       originalThemeRef.current = theme;
+      originalShowTimestampsRef.current = showTimestamps;
     }
 
     prevShowSettingsRef.current = showSettings;
-  }, [showSettings, theme]);
+  }, [showSettings, theme, showTimestamps]);
 
   const handleSaveSettings = () => {
     settings.saveSettings();
-    // Theme already applied via setTheme, no action needed
+    localStorage.setItem(
+      "producer_pal_show_timestamps",
+      String(showTimestamps),
+    );
     setShowSettings(false);
   };
 
   const handleCancelSettings = () => {
     settings.cancelSettings();
-    setTheme(originalThemeRef.current); // Revert theme to original
+    setTheme(originalThemeRef.current);
+    setShowTimestamps(originalShowTimestampsRef.current);
     setShowSettings(false);
   };
 
@@ -209,6 +180,8 @@ export function App() {
           setShowThoughts={settings.setShowThoughts}
           theme={theme}
           setTheme={setTheme}
+          showTimestamps={showTimestamps}
+          setShowTimestamps={setShowTimestamps}
           enabledTools={settings.enabledTools}
           setEnabledTools={settings.setEnabledTools}
           mcpTools={mcpTools}
@@ -232,6 +205,7 @@ export function App() {
         rateLimitState={chat.rateLimitState}
         handleSend={wrappedHandleSend}
         handleRetry={chat.handleRetry}
+        handleEdit={chat.handleEdit}
         activeModel={chat.activeModel}
         activeProvider={chat.activeProvider}
         provider={settings.provider}
@@ -248,6 +222,7 @@ export function App() {
         onOpenSettings={() => setShowSettings(true)}
         onClearConversation={wrappedClearConversation}
         onStop={chat.stopResponse}
+        showTimestamps={showTimestamps}
       />
     </ToolNamesContext.Provider>
   );

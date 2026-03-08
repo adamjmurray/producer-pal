@@ -14,22 +14,13 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
     destructiveHint: false,
   },
   inputSchema: {
-    clipId: z.coerce
+    clipId: z.coerce.string().optional().describe("provide this or slot"),
+    slot: z.coerce
       .string()
       .optional()
-      .describe("provide this or trackIndex + sceneIndex"),
-    trackIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based index for session clips"),
-    sceneIndex: z.coerce
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("0-based index for session clips"),
+      .describe(
+        "session clip slot: trackIndex/sceneIndex (e.g., '0/3'). provide this or clipId",
+      ),
     include: z
       .array(z.enum(["sample", "notes", "color", "timing", "warp", "*"]))
       .default([])

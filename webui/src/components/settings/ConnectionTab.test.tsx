@@ -45,6 +45,19 @@ describe("ConnectionTab", () => {
       ).toBeDefined();
     });
 
+    it("renders API key input for Anthropic", () => {
+      render(
+        <ConnectionTab
+          {...defaultProps}
+          provider="anthropic"
+          providerLabel="Anthropic"
+        />,
+      );
+      expect(
+        screen.getByPlaceholderText("Enter your Anthropic API key"),
+      ).toBeDefined();
+    });
+
     it("renders API key input for OpenAI", () => {
       render(
         <ConnectionTab
@@ -136,6 +149,20 @@ describe("ConnectionTab", () => {
       const link = screen.getByText("Gemini API keys") as HTMLAnchorElement;
 
       expect(link.href).toBe("https://aistudio.google.com/apikey");
+      expect(link.target).toBe("_blank");
+    });
+
+    it("shows Anthropic API key link", () => {
+      render(
+        <ConnectionTab
+          {...defaultProps}
+          provider="anthropic"
+          providerLabel="Anthropic"
+        />,
+      );
+      const link = screen.getByText("Anthropic API keys") as HTMLAnchorElement;
+
+      expect(link.href).toBe("https://console.anthropic.com/settings/keys");
       expect(link.target).toBe("_blank");
     });
 
@@ -452,6 +479,21 @@ describe("ConnectionTab", () => {
 
       expect(link.href).toBe("https://ai.google.dev/gemini-api/docs/models");
       expect(link.target).toBe("_blank");
+    });
+
+    it("shows Anthropic models link", () => {
+      render(
+        <ConnectionTab
+          {...defaultProps}
+          provider="anthropic"
+          providerLabel="Anthropic"
+        />,
+      );
+      const link = screen.getByText("Anthropic models") as HTMLAnchorElement;
+
+      expect(link.href).toBe(
+        "https://docs.anthropic.com/en/docs/about-claude/models",
+      );
     });
 
     it("shows OpenAI models link", () => {

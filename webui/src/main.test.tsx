@@ -19,6 +19,11 @@ vi.mock(import("./components/App"), () => ({
   App: () => <div>App</div>,
 }));
 
+// Mock DemoMode component
+vi.mock(import("./demo/DemoMode"), () => ({
+  DemoMode: () => <div>DemoMode</div>,
+}));
+
 // Mock CSS import
 vi.mock(import("./main.css"), () => ({}));
 
@@ -51,6 +56,25 @@ describe("main", () => {
       expect.anything(),
       expect.any(HTMLElement),
     );
+  });
+
+  it("renders DemoMode when ?demo query param is present", async () => {
+    const appElement = document.createElement("div");
+
+    appElement.id = "app";
+    document.body.appendChild(appElement);
+
+    // Set demo query param before importing
+    window.location.search = "?demo";
+
+    try {
+      await import("./main.js");
+
+      expect(mockRender).toHaveBeenCalled();
+    } finally {
+      // Restore search params for subsequent tests
+      window.location.search = "";
+    }
   });
 
   it("throws error when #app element does not exist", async () => {

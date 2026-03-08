@@ -6,6 +6,15 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_AUTO_CREATED_TRACKS } from "#src/tools/constants.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
+import {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 
 interface CreateTrackArgs {
   trackIndex?: number;
@@ -48,69 +57,6 @@ function createSingleTrack(
 
   // Live API returns ["id", "123"]
   return assertDefined((result as string[])[1], "track id from result");
-}
-
-/**
- * Build track name with optional numbering
- * @param baseName - Base name for the track
- * @param count - Total number of tracks being created
- * @param index - Current track index in the batch
- * @param parsedNames - Comma-separated names (when count > 1)
- * @returns Track name
- */
-function buildTrackName(
-  baseName: string | undefined,
-  index: number,
-  parsedNames: string[] | null = null,
-): string | undefined {
-  if (baseName == null) return;
-
-  // If we have parsed names from comma-separated input
-  if (parsedNames != null) {
-    if (index < parsedNames.length) {
-      return parsedNames[index];
-    }
-
-    // No name for tracks beyond the comma-separated list
-    return;
-  }
-
-  return baseName;
-}
-
-/**
- * Get color for a specific track index, cycling through parsed colors
- * @param color - Original color string
- * @param index - Current track index
- * @param parsedColors - Comma-separated colors (when count > 1)
- * @returns Color for this track
- */
-function getColorForIndex(
-  color: string | undefined,
-  index: number,
-  parsedColors: string[] | null,
-): string | undefined {
-  if (color == null) return;
-  if (parsedColors == null) return color;
-
-  return parsedColors[index % parsedColors.length];
-}
-
-/**
- * Parse comma-separated string when count > 1
- * @param value - Input string that may contain commas
- * @param count - Number of tracks being created
- * @returns Array of trimmed values, or null if not applicable
- */
-function parseCommaSeparated(
-  value: string | undefined,
-  count: number,
-): string[] | null {
-  if (count <= 1 || !value?.includes(",")) {
-    return null;
-  }
-
-  return value.split(",").map((v) => v.trim());
 }
 
 /**
@@ -227,15 +173,17 @@ export function createTrack(
   const createdTracks: CreatedTrackResult[] = [];
   let currentIndex = effectiveTrackIndex;
 
-  const parsedNames = parseCommaSeparated(name, count);
-  const parsedColors = parseCommaSeparated(color, count);
+  const parsedNames = parseCommaSeparatedNames(name, count);
+  const parsedColors = parseCommaSeparatedColors(color, count);
+
+  warnExtraNames(parsedNames, count, "createTrack");
 
   for (let i = 0; i < count; i++) {
     const trackId = createSingleTrack(liveSet, type, currentIndex);
     const track = LiveAPI.from(`id ${trackId}`);
 
     track.setAll({
-      name: buildTrackName(name, i, parsedNames),
+      name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
       mute,
       solo,

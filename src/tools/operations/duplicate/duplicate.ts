@@ -4,10 +4,19 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { warnExtraNames } from "#src/tools/shared/validation/name-utils.ts";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
-import { switchViewIfRequested } from "./helpers/duplicate-misc-helpers.ts";
+import {
+  focusIfRequested,
+  parseCommaSeparatedNames,
+  getNameForIndex,
+} from "./helpers/duplicate-misc-helpers.ts";
 import {
   duplicateTrack,
   duplicateScene,
@@ -16,6 +25,7 @@ import {
 } from "./helpers/duplicate-track-scene-helpers.ts";
 import {
   resolveArrangementPositions,
+  inferDestination,
   validateBasicInputs,
   validateAndConfigureRouteToSource,
   validateClipParameters,
@@ -27,24 +37,23 @@ interface DuplicateArgs {
   type: string;
   id: string;
   count?: number;
-  destination?: string;
+
   arrangementStart?: string;
-  locatorId?: string;
-  locatorName?: string;
+  locator?: string;
   arrangementLength?: string;
   name?: string;
+  color?: string;
   withoutClips?: boolean;
   withoutDevices?: boolean;
   routeToSource?: boolean;
-  switchView?: boolean;
+  focus?: boolean;
   toSlot?: string;
   toPath?: string;
 }
 
 interface DuplicateParams {
   arrangementStart?: string;
-  locatorId?: string;
-  locatorName?: string;
+  locator?: string;
   arrangementLength?: string;
   withoutClips?: boolean;
   withoutDevices?: boolean;
@@ -57,16 +66,15 @@ interface DuplicateParams {
  * @param args.type - Object type to duplicate
  * @param args.id - Object ID
  * @param args.count - Number of duplicates
- * @param args.destination - Destination type
  * @param args.arrangementStart - Arrangement start position
- * @param args.locatorId - Arrangement locator ID(s)
- * @param args.locatorName - Arrangement locator name(s)
+ * @param args.locator - Arrangement locator ID(s) or name(s)
  * @param args.arrangementLength - Arrangement length
  * @param args.name - Name for duplicates
+ * @param args.color - Color for duplicates (cycles if comma-separated)
  * @param args.withoutClips - Exclude clips
  * @param args.withoutDevices - Exclude devices
  * @param args.routeToSource - Route to source
- * @param args.switchView - Switch view
+ * @param args.focus - Focus duplicated clip/scene
  * @param args.toSlot - Destination clip slot(s)
  * @param args.toPath - Destination path
  * @param context - Context object
@@ -77,16 +85,15 @@ export function duplicate(
     type,
     id,
     count = 1,
-    destination,
     arrangementStart,
-    locatorId,
-    locatorName,
+    locator,
     arrangementLength,
     name,
+    color,
     withoutClips,
     withoutDevices,
     routeToSource,
-    switchView,
+    focus,
     toSlot,
     toPath,
   }: DuplicateArgs,
@@ -109,6 +116,9 @@ export function duplicate(
   // Validate the ID exists and matches the expected type
   const object = validateIdType(id, type, "duplicate");
 
+  // Infer destination from position parameters
+  const destination = inferDestination(type, arrangementStart, locator, toSlot);
+
   // Validate clip-specific parameters
   validateClipParameters(type, destination, toSlot);
 
@@ -116,12 +126,7 @@ export function duplicate(
   validateDestinationParameter(type, destination);
 
   // Validate arrangement parameters
-  validateArrangementParameters(
-    destination,
-    arrangementStart,
-    locatorId,
-    locatorName,
-  );
+  validateArrangementParameters(destination, arrangementStart, locator);
 
   // Handle device duplication (supports comma-separated toPath for multiple destinations)
   if (type === "device") {
@@ -136,10 +141,10 @@ export function duplicate(
           object,
           id,
           name,
+          color,
           toSlot,
           arrangementStart,
-          locatorId,
-          locatorName,
+          locator,
           arrangementLength,
           context,
         )
@@ -150,10 +155,10 @@ export function duplicate(
           id,
           count,
           name,
+          color,
           {
             arrangementStart,
-            locatorId,
-            locatorName,
+            locator,
             arrangementLength,
             withoutClips,
             withoutDevices,
@@ -163,7 +168,7 @@ export function duplicate(
         );
 
   // Handle view switching if requested
-  switchViewIfRequested(switchView, destination, type);
+  focusIfRequested(focus, destination, type, createdObjects);
 
   // Return single object or array based on results
   if (createdObjects.length === 1) {
@@ -194,7 +199,13 @@ function duplicateDeviceWithPaths(
     return duplicateDevice(object, toPath, name, count);
   }
 
-  return paths.map((path) => duplicateDevice(object, path, name, 1));
+  const parsedNames = parseCommaSeparatedNames(name, paths.length);
+
+  warnExtraNames(parsedNames, paths.length, "duplicate");
+
+  return paths.map((path, i) =>
+    duplicateDevice(object, path, getNameForIndex(name, i, parsedNames), 1),
+  );
 }
 
 /**
@@ -205,6 +216,7 @@ function duplicateDeviceWithPaths(
  * @param id - ID of the object
  * @param count - Number of duplicates to create
  * @param name - Base name for duplicated objects
+ * @param color - Color for duplicated objects (cycles if comma-separated)
  * @param params - Additional parameters
  * @param context - Context object with holdingAreaStartBeats
  * @returns Array of result objects
@@ -216,6 +228,7 @@ function duplicateTrackOrSceneWithCount(
   id: string,
   count: number,
   name: string | undefined,
+  color: string | undefined,
   params: DuplicateParams,
   context: Partial<ToolContext>,
 ): object[] {
@@ -234,6 +247,10 @@ function duplicateTrackOrSceneWithCount(
   // Count-based iteration for tracks and session scenes
   const createdObjects: object[] = [];
   const { withoutClips, withoutDevices, routeToSource } = params;
+  const parsedNames = parseCommaSeparatedNames(name, count);
+  const parsedColors = parseCommaSeparatedColors(color, count);
+
+  warnExtraNames(parsedNames, count, "duplicate");
 
   for (let i = 0; i < count; i++) {
     const result = duplicateTrackOrSceneToSession(
@@ -241,7 +258,8 @@ function duplicateTrackOrSceneWithCount(
       object,
       id,
       i,
-      name,
+      getNameForIndex(name, i, parsedNames),
+      getColorForIndex(color, i, parsedColors),
       withoutClips,
       withoutDevices,
       routeToSource,
@@ -263,7 +281,7 @@ function duplicateTrackOrSceneWithCount(
  * @param id - Scene ID
  * @param count - Number of copies (for sequential placement from a single position)
  * @param name - Base name for duplicated objects
- * @param params - Arrangement parameters (arrangementStart, locatorId, locatorName, etc.)
+ * @param params - Arrangement parameters (arrangementStart, locator, etc.)
  * @param context - Context object
  * @returns Array of result objects
  */
@@ -275,8 +293,7 @@ function duplicateSceneToArrangementAtPositions(
   params: DuplicateParams,
   context: Partial<ToolContext>,
 ): object[] {
-  const { arrangementStart, locatorId, locatorName, arrangementLength } =
-    params;
+  const { arrangementStart, locator, arrangementLength } = params;
   const withoutClips = params.withoutClips;
 
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -291,8 +308,7 @@ function duplicateSceneToArrangementAtPositions(
   const positions = resolveArrangementPositions(
     liveSet,
     arrangementStart,
-    locatorId,
-    locatorName,
+    locator,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -317,12 +333,15 @@ function duplicateSceneToArrangementAtPositions(
       : positions;
 
   const createdObjects: object[] = [];
+  const parsedNames = parseCommaSeparatedNames(name, allPositions.length);
+
+  warnExtraNames(parsedNames, allPositions.length, "duplicate");
 
   for (let i = 0; i < allPositions.length; i++) {
     const result = duplicateSceneToArrangement(
       id,
       allPositions[i] as number, // bounded by loop
-      name,
+      getNameForIndex(name, i, parsedNames),
       withoutClips,
       arrangementLength,
       songTimeSigNumerator,
@@ -343,6 +362,7 @@ function duplicateSceneToArrangementAtPositions(
  * @param id - ID of the object
  * @param i - Current duplicate index
  * @param objectName - Name for the duplicated object
+ * @param objectColor - Color for the duplicated object
  * @param withoutClips - Whether to exclude clips
  * @param withoutDevices - Whether to exclude devices
  * @param routeToSource - Whether to route to source track
@@ -354,6 +374,7 @@ function duplicateTrackOrSceneToSession(
   id: string,
   i: number,
   objectName: string | undefined,
+  objectColor: string | undefined,
   withoutClips: boolean | undefined,
   withoutDevices: boolean | undefined,
   routeToSource: boolean | undefined,
@@ -372,6 +393,7 @@ function duplicateTrackOrSceneToSession(
     return duplicateTrack(
       actualTrackIndex,
       objectName,
+      objectColor,
       withoutClips,
       withoutDevices,
       routeToSource,
@@ -388,6 +410,11 @@ function duplicateTrackOrSceneToSession(
 
     const actualSceneIndex = sceneIndex + i;
 
-    return duplicateScene(actualSceneIndex, objectName, withoutClips);
+    return duplicateScene(
+      actualSceneIndex,
+      objectName,
+      objectColor,
+      withoutClips,
+    );
   }
 }

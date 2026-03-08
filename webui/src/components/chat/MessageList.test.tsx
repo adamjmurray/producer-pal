@@ -66,16 +66,23 @@ function renderMessageList(
   messages: UIMessage[] = [],
   isAssistantResponding = false,
   handleRetry = vi.fn(),
-): RenderResult & { handleRetry: typeof handleRetry } {
+  showTimestamps = true,
+  handleEdit = vi.fn(),
+): RenderResult & {
+  handleRetry: typeof handleRetry;
+  handleEdit: typeof handleEdit;
+} {
   const result = render(
     <MessageList
       messages={messages}
       isAssistantResponding={isAssistantResponding}
       handleRetry={handleRetry}
+      handleEdit={handleEdit}
+      showTimestamps={showTimestamps}
     />,
   );
 
-  return { ...result, handleRetry };
+  return { ...result, handleRetry, handleEdit };
 }
 
 describe("MessageList", () => {
@@ -199,7 +206,6 @@ describe("MessageList", () => {
       const messageDiv = container.querySelector(".bg-blue-100");
 
       expect(messageDiv).toBeDefined();
-      expect(messageDiv?.className).toContain("ml-auto");
     });
 
     it("applies correct classes to error messages", () => {
@@ -217,6 +223,18 @@ describe("MessageList", () => {
       ]);
 
       expect(container.querySelector(".bg-gray-100")).toBeDefined();
+    });
+  });
+
+  describe("timestamps", () => {
+    it("renders visible timestamps for messages", () => {
+      renderMessageList([
+        createUserMessage("Hello", 0),
+        createModelMessage("Hi", 1),
+      ]);
+      const timestamps = screen.getAllByTestId("message-timestamp");
+
+      expect(timestamps).toHaveLength(2);
     });
   });
 
@@ -279,6 +297,100 @@ describe("MessageList", () => {
     });
   });
 
+  describe("edit functionality", () => {
+    it("shows edit button for user messages when not responding", () => {
+      renderMessageList([createUserMessage("Hello", 0)]);
+      expect(screen.getByTitle("Edit message")).toBeDefined();
+    });
+
+    it("hides edit button when assistant is responding", () => {
+      renderMessageList([createUserMessage("Hello", 0)], true);
+      expect(screen.queryByTitle("Edit message")).toBeNull();
+    });
+
+    it("clicking edit button shows textarea with message content", () => {
+      renderMessageList([createUserMessage("Hello world", 0)]);
+      fireEvent.click(screen.getByTitle("Edit message"));
+
+      const textarea = screen.getByTestId("edit-message-textarea");
+
+      expect(textarea).toBeDefined();
+      expect((textarea as HTMLTextAreaElement).value).toBe("Hello world");
+    });
+
+    it("cancel button reverts to display mode", () => {
+      renderMessageList([createUserMessage("Hello", 0)]);
+      fireEvent.click(screen.getByTitle("Edit message"));
+
+      expect(screen.getByTestId("edit-message-textarea")).toBeDefined();
+
+      fireEvent.click(screen.getByText("Cancel"));
+
+      expect(screen.queryByTestId("edit-message-textarea")).toBeNull();
+      expect(screen.getByText("Hello")).toBeDefined();
+    });
+
+    it("Save & Send calls handleEdit with correct index and text", () => {
+      const handleEditMock = vi.fn();
+
+      renderMessageList(
+        [createUserMessage("Original", 0)],
+        false,
+        vi.fn(),
+        true,
+        handleEditMock,
+      );
+      fireEvent.click(screen.getByTitle("Edit message"));
+
+      const textarea = screen.getByTestId("edit-message-textarea");
+
+      fireEvent.input(textarea, { target: { value: "Edited message" } });
+      fireEvent.click(screen.getByTestId("edit-message-save"));
+
+      expect(handleEditMock).toHaveBeenCalledExactlyOnceWith(
+        0,
+        "Edited message",
+      );
+    });
+
+    it("Save & Send button is disabled when textarea is empty", () => {
+      renderMessageList([createUserMessage("Hello", 0)]);
+      fireEvent.click(screen.getByTitle("Edit message"));
+
+      const textarea = screen.getByTestId("edit-message-textarea");
+
+      fireEvent.input(textarea, { target: { value: "" } });
+
+      const saveButton = screen.getByTestId("edit-message-save");
+
+      expect((saveButton as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it("does not show edit button for model messages", () => {
+      renderMessageList([createModelMessage("Response", 0)]);
+      expect(screen.queryByTitle("Edit message")).toBeNull();
+    });
+
+    it("clears editing state when assistant starts responding", () => {
+      const { rerender } = renderMessageList([createUserMessage("Hello", 0)]);
+
+      fireEvent.click(screen.getByTitle("Edit message"));
+      expect(screen.getByTestId("edit-message-textarea")).toBeDefined();
+
+      rerender(
+        <MessageList
+          messages={[createUserMessage("Hello", 0)]}
+          isAssistantResponding={true}
+          handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          showTimestamps={true}
+        />,
+      );
+
+      expect(screen.queryByTestId("edit-message-textarea")).toBeNull();
+    });
+  });
+
   describe("still thinking indicator", () => {
     beforeEach(() => vi.useFakeTimers());
     afterEach(() => vi.useRealTimers());
@@ -315,6 +427,8 @@ describe("MessageList", () => {
           messages={[createModelMessage("Hello")]}
           isAssistantResponding={true}
           handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          showTimestamps={true}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -333,6 +447,8 @@ describe("MessageList", () => {
           messages={[]}
           isAssistantResponding={false}
           handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          showTimestamps={true}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -350,6 +466,8 @@ describe("MessageList", () => {
           messages={[createModelMessage("Fast response")]}
           isAssistantResponding={true}
           handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          showTimestamps={true}
         />,
       );
 
@@ -376,6 +494,8 @@ describe("MessageList", () => {
           messages={messagesWithContent}
           isAssistantResponding={true}
           handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          showTimestamps={true}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();

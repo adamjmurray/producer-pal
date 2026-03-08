@@ -32,9 +32,7 @@ describe("ppal-create-clip", () => {
     const minimalResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "0",
+        slot: `${emptyMidiTrack}/0`,
       },
     });
     const minimal = parseToolResult<CreateClipResult>(minimalResult);
@@ -52,16 +50,13 @@ describe("ppal-create-clip", () => {
 
     expect(minimalClip.type).toBe("midi");
     expect(minimalClip.view).toBe("session");
-    expect(minimalClip.trackIndex).toBe(emptyMidiTrack);
-    expect(minimalClip.sceneIndex).toBe(0);
+    expect(minimalClip.slot).toBe(`${emptyMidiTrack}/0`);
 
     // Test 2: Create session clip with notes
     const notesResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "1",
+        slot: `${emptyMidiTrack}/1`,
         notes: "C3 D3 E3 1|1",
       },
     });
@@ -82,9 +77,7 @@ describe("ppal-create-clip", () => {
     const namedResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "2",
+        slot: `${emptyMidiTrack}/2`,
         name: "Test Clip",
       },
     });
@@ -103,9 +96,7 @@ describe("ppal-create-clip", () => {
     const colorResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "3",
+        slot: `${emptyMidiTrack}/3`,
         color: "#FF0000",
       },
     });
@@ -125,9 +116,7 @@ describe("ppal-create-clip", () => {
     const lengthResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "4",
+        slot: `${emptyMidiTrack}/4`,
         length: "2:0.0",
       },
     });
@@ -146,9 +135,7 @@ describe("ppal-create-clip", () => {
     const loopingResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "5",
+        slot: `${emptyMidiTrack}/5`,
         looping: true,
       },
     });
@@ -167,9 +154,7 @@ describe("ppal-create-clip", () => {
     const timeSigResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: 7,
-        sceneIndex: "0",
+        slot: "7/0",
         timeSignature: "3/4",
       },
     });
@@ -190,7 +175,6 @@ describe("ppal-create-clip", () => {
     const arrangementResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "arrangement",
         trackIndex: emptyMidiTrack,
         arrangementStart: "41|1",
       },
@@ -215,9 +199,7 @@ describe("ppal-create-clip", () => {
     const multiSessionResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: 10,
-        sceneIndex: "2,3,4",
+        slot: "10/2,10/3,10/4",
         name: "Batch Clip",
       },
     });
@@ -247,7 +229,6 @@ describe("ppal-create-clip", () => {
     const multiArrangementResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "arrangement",
         trackIndex: emptyMidiTrack,
         arrangementStart: "45|1,49|1,53|1",
       },
@@ -285,9 +266,7 @@ describe("ppal-create-clip", () => {
     const audioSessionResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: audioTrack.trackIndex,
-        sceneIndex: "0",
+        slot: `${audioTrack.trackIndex}/0`,
         sampleFile: SAMPLE_FILE,
       },
     });
@@ -310,7 +289,6 @@ describe("ppal-create-clip", () => {
     const audioArrangementResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "arrangement",
         trackIndex: audioTrack.trackIndex,
         arrangementStart: "17|1",
         sampleFile: SAMPLE_FILE,
@@ -339,9 +317,7 @@ describe("ppal-create-clip", () => {
     const audioNamedResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: audioTrack.trackIndex,
-        sceneIndex: "1",
+        slot: `${audioTrack.trackIndex}/1`,
         sampleFile: SAMPLE_FILE,
         name: "Named Audio Clip",
         color: "#00FF00",

@@ -47,17 +47,18 @@ available with fairly aggressive quotas.
 ### OpenAI API
 
 [OpenAI](https://openai.com/api/) offers GPT models with pay-as-you-go pricing.
+For detailed setup, see the [dedicated OpenAI guide](./openai).
 
 1. [Get an OpenAI API key](https://platform.openai.com/api-keys)
 2. In the chat UI settings:
    - Provider: **OpenAI**
    - API Key: Your key
-   - Model: e.g., `gpt-4o`, `gpt-4.1`
+   - Model: e.g., `gpt-5.2`
 
 ::: tip Subscription Alternative
 
-Prefer flat-rate pricing? [Codex CLI](./codex-cli) works with OpenAI's
-subscription plans.
+Prefer flat-rate pricing? The [Codex App](./codex-app) or
+[Codex CLI](./codex-cli) work with OpenAI's subscription plans.
 
 :::
 
@@ -106,7 +107,7 @@ with the built-in chat UI instead of [LM Studio's native UI](./lm-studio).
        `http://localhost:1234`
      - When "Serve on Local Network" is enabled, use the network address shown
        (e.g., `http://192.168.7.172:1234`)
-   - Model: A model that supports tools, such as `qwen/qwen3-14b`,
+   - Model: A model that supports tools, such as `qwen/qwen3.5-9b`,
      `mistralai/devstral-small-2-2512`, or `zai-org/glm-4.7-flash`
 6. Save and click "Quick Connect"
 
@@ -131,4 +132,4 @@ optimization advice.
 ## Troubleshooting
 
 If the built-in chat doesn't work, see the
-[Troubleshooting Guide](./troubleshooting).
+[Troubleshooting Guide](/support/troubleshooting).

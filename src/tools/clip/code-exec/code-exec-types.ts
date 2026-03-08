@@ -47,7 +47,7 @@ export interface CodeClipContext {
  */
 export interface CodeLocationContext {
   view: "session" | "arrangement";
-  sceneIndex?: number; // session only
+  slot?: string; // session only, "trackIndex/sceneIndex"
   arrangementStart?: number; // arrangement only, in beats
 }
 

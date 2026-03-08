@@ -10,27 +10,9 @@ import { describe, expect, it, vi } from "vitest";
 import { SettingsScreen } from "./SettingsScreen";
 
 // Mock child components
-vi.mock(import("./ConnectionTab"), () => {
-  const API_KEY_URLS: Record<string, string | undefined> = {
-    gemini: "https://aistudio.google.com/apikey",
-    openai: "https://platform.openai.com/api-keys",
-    mistral: "https://console.mistral.ai/home?workspace_dialog=apiKeys",
-    openrouter: "https://openrouter.ai/settings/keys",
-  };
-
-  const MODEL_DOCS_URLS: Record<string, string | undefined> = {
-    gemini: "https://ai.google.dev/gemini-api/docs/models",
-    openai: "https://platform.openai.com/docs/models",
-    mistral: "https://docs.mistral.ai/getting-started/models",
-    openrouter: "https://openrouter.ai/models",
-    lmstudio: "https://lmstudio.ai/models",
-    ollama: "https://ollama.com/search",
-  };
-
-  const DEFAULT_LOCAL_URLS: Record<string, string> = {
-    lmstudio: "http://localhost:1234/v1",
-    ollama: "http://localhost:11434/v1",
-  };
+vi.mock(import("./ConnectionTab"), async (importOriginal) => {
+  const { API_KEY_URLS, MODEL_DOCS_URLS, DEFAULT_LOCAL_URLS } =
+    await importOriginal();
 
   return {
     ConnectionTab: ({
@@ -164,6 +146,8 @@ describe("SettingsScreen", () => {
     setShowThoughts: vi.fn(),
     theme: "system",
     setTheme: vi.fn(),
+    showTimestamps: false,
+    setShowTimestamps: vi.fn(),
     enabledTools: {},
     setEnabledTools: vi.fn(),
     mcpTools: [
@@ -294,6 +278,13 @@ describe("SettingsScreen", () => {
       fireEvent.change(select, { target: { value: "light" } });
 
       expect(setTheme).toHaveBeenCalledExactlyOnceWith("light");
+    });
+  });
+
+  describe("provider labels", () => {
+    it("passes correct label for Anthropic provider", () => {
+      render(<SettingsScreen {...defaultProps} provider="anthropic" />);
+      expect(screen.getByText("Anthropic")).toBeDefined();
     });
   });
 
@@ -483,6 +474,17 @@ describe("SettingsScreen", () => {
   });
 
   describe("API key links", () => {
+    it("shows Anthropic API key link with correct URL", () => {
+      render(<SettingsScreen {...defaultProps} provider="anthropic" />);
+      const link = screen.getByText("Anthropic API keys");
+
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://console.anthropic.com/settings/keys",
+      );
+      expect((link as HTMLAnchorElement).target).toBe("_blank");
+    });
+
     it("shows Gemini API key link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="gemini" />);
       const link = screen.getByText("Gemini API keys");
@@ -583,7 +585,7 @@ describe("SettingsScreen", () => {
           setBaseUrl={setBaseUrl}
         />,
       );
-      const input = screen.getByPlaceholderText("http://localhost:1234/v1");
+      const input = screen.getByPlaceholderText("http://localhost:1234");
 
       fireEvent.change(input, {
         target: { value: "http://192.168.1.100:1234/v1" },
@@ -602,7 +604,7 @@ describe("SettingsScreen", () => {
           setBaseUrl={setBaseUrl}
         />,
       );
-      const input = screen.getByPlaceholderText("http://localhost:11434/v1");
+      const input = screen.getByPlaceholderText("http://localhost:11434");
 
       fireEvent.change(input, {
         target: { value: "http://192.168.1.100:11434/v1" },
@@ -652,6 +654,17 @@ describe("SettingsScreen", () => {
   });
 
   describe("Model documentation links", () => {
+    it("shows Anthropic models link with correct URL", () => {
+      render(<SettingsScreen {...defaultProps} provider="anthropic" />);
+      const link = screen.getByText("Anthropic models");
+
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://docs.anthropic.com/en/docs/about-claude/models",
+      );
+      expect((link as HTMLAnchorElement).target).toBe("_blank");
+    });
+
     it("shows Gemini models link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="gemini" />);
       const link = screen.getByText("Gemini models");

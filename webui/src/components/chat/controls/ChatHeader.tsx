@@ -27,6 +27,8 @@ interface ChatHeaderProps {
  */
 function getProviderName(provider: Provider): string {
   switch (provider) {
+    case "anthropic":
+      return "Anthropic";
     case "gemini":
       return "Google";
     case "openai":

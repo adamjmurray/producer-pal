@@ -45,16 +45,12 @@ execSync("npm install", {
 });
 console.log("✓ Updated claude-desktop-extension/package-lock.json");
 
-// Update version.ts
+// Update version.ts (replace VERSION value, preserve all other content)
 const versionPath = join(rootDir, "src/shared/version.ts");
-const versionContent = `// Producer Pal
-// Copyright (C) 2026 Adam Murray
-// SPDX-License-Identifier: GPL-3.0-or-later
-
-// Semantic versioning: major.minor.patch
-// Currently in pre-release, working towards 1.0.0
-export const VERSION = "${newVersion}";
-`;
+const versionContent = readFileSync(versionPath, "utf8").replace(
+  /export const VERSION = ".*"/,
+  `export const VERSION = "${newVersion}"`,
+);
 
 writeFileSync(versionPath, versionContent);
 console.log("✓ Updated src/shared/version.ts");

@@ -174,7 +174,8 @@ export function MessageSettingsToolbar({
   const showSimplifiedOptions = isOpenAIReasoning;
   const isGemini = provider === "gemini";
   const showShowThoughtsCheckbox =
-    (isGemini || provider === "openrouter") && thinking !== "Off";
+    (isGemini || provider === "openrouter" || provider === "openai") &&
+    thinking !== "Off";
 
   const randomnessPercent = Math.round((temperature / 2) * 100);
   const isUsingDefaults =
@@ -190,7 +191,7 @@ export function MessageSettingsToolbar({
         type="button"
       >
         <span className="text-sm text-gray-600 dark:text-gray-400">
-          {isExpanded ? "▼" : "▶"} Message settings
+          {isExpanded ? "▼" : "▶"} Behavior settings
           {!isUsingDefaults && " (customized)"}
         </span>
         <span className="text-xs text-gray-500 dark:text-gray-500">

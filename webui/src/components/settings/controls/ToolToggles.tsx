@@ -8,6 +8,7 @@ import {
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type GroupedTools, groupTools } from "./tool-toggles-helpers";
+import { Tooltip } from "./Tooltip";
 
 interface ToolTogglesProps {
   tools: McpTool[] | null;
@@ -137,7 +138,10 @@ function ToolGroupSection({
       </h4>
       <div className="space-y-1">
         {group.tools.map((tool) => (
-          <div key={tool.id} className="flex items-center gap-1.5">
+          <div
+            key={tool.id}
+            className="flex items-center gap-1.5 whitespace-nowrap"
+          >
             <input
               type="checkbox"
               id={`tool-${tool.id}`}
@@ -150,6 +154,7 @@ function ToolGroupSection({
             <label htmlFor={`tool-${tool.id}`} className="text-sm">
               {tool.name}
             </label>
+            {tool.description && <Tooltip text={tool.description} />}
           </div>
         ))}
       </div>

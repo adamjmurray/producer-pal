@@ -47,9 +47,7 @@ async function createAudioTrackWithClip(trackName: string): Promise<{
   const clipResult = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      view: "session",
-      trackIndex: track.trackIndex,
-      sceneIndex: "0",
+      slot: `${track.trackIndex}/0`,
       sampleFile: SAMPLE_FILE,
     },
   });
@@ -181,9 +179,7 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: track.trackIndex,
-        sceneIndex: "0",
+        slot: `${track.trackIndex}/0`,
         sampleFile: SAMPLE_FILE,
       },
     });
@@ -192,9 +188,7 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     const clip2Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: track.trackIndex,
-        sceneIndex: "1",
+        slot: `${track.trackIndex}/1`,
         sampleFile: SAMPLE_FILE,
       },
     });
@@ -293,7 +287,7 @@ describe("ppal-clip-transforms (midi timing and duration)", () => {
     // Duration: multiply (set to 0.5)
     await applyTransform(clipId, "duration = 0.5");
     notes = await readClipNotes(clipId);
-    expect(notes).toContain("t0.5");
+    expect(notes).toContain("t/2");
 
     // Duration below 0 deletes the note
     await applyTransform(clipId, "duration = -1");
@@ -617,9 +611,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "15",
+        slot: `${emptyMidiTrack}/15`,
         notes: "v100 C3 1|1",
         length: "2:0.0",
         transforms: "velocity = 64",
@@ -637,9 +629,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "16",
+        slot: `${emptyMidiTrack}/16`,
         notes: "C3 E3 G3 1|1", // C major triad
         length: "2:0.0",
         transforms: "pitch += 2", // Transpose to D major
@@ -660,9 +650,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result3 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "17",
+        slot: `${emptyMidiTrack}/17`,
         notes: "v100 C3 1|1",
         length: "2:0.0",
         transforms: "velocity = 80\npitch += 12",
@@ -682,9 +670,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "18",
+        slot: `${emptyMidiTrack}/18`,
         notes: "C3 1|1\nE3 1|2",
         length: "2:0.0",
         transforms: "C3: pitch += 12",
@@ -703,9 +689,7 @@ describe("ppal-clip-transforms (create-clip)", () => {
     const result2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "19",
+        slot: `${emptyMidiTrack}/19`,
         notes: "C3 1|1\nC3 1|3",
         length: "2:0.0",
         transforms: "1|1-1|2: velocity = 64",
@@ -892,9 +876,11 @@ describe("ppal-clip-transforms (seq)", () => {
 
     await applyTransform(clipId, "velocity = seq(60, 80, 100)");
     const notes = await readClipNotes(clipId);
-    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
 
-    expect(velocities).toStrictEqual([60, 80, 100, 60, 80, 100]);
+    // Repeated velocity groups are comma-merged; last note keeps full duration
+    expect(notes).toBe(
+      "v60 t/2 C3 1|1,2.5 v80 C3 1|1.5,3 v100 C3 1|2 t1 C3 1|3.5",
+    );
   });
 
   it("seq() works with nested expressions", async () => {
@@ -903,9 +889,10 @@ describe("ppal-clip-transforms (seq)", () => {
 
     await applyTransform(clipId, "velocity = seq(20 + 20, 60 * 2)");
     const notes = await readClipNotes(clipId);
-    const velocities = [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
 
-    expect(velocities).toStrictEqual([40, 120, 40, 120]);
+    // Repeated velocity groups are comma-merged with their positions
+    expect(notes).toContain("v40 C3 1|1,3");
+    expect(notes).toContain("v120 C3 1|2,4");
   });
 
   it("seq() selects gain based on clip.index in multi-clip audio update", async () => {
@@ -921,9 +908,7 @@ describe("ppal-clip-transforms (seq)", () => {
     const clip0Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: track.trackIndex,
-        sceneIndex: "0",
+        slot: `${track.trackIndex}/0`,
         sampleFile: SAMPLE_FILE,
       },
     });
@@ -934,9 +919,7 @@ describe("ppal-clip-transforms (seq)", () => {
     const clip1Result = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: track.trackIndex,
-        sceneIndex: "1",
+        slot: `${track.trackIndex}/1`,
         sampleFile: SAMPLE_FILE,
       },
     });

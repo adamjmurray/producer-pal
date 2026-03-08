@@ -9,11 +9,6 @@
  * used across chat and eval code.
  */
 
-import OpenAI from "openai";
-
-const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
-const LOCAL_DEFAULT_BASE_URL = "http://localhost:11434/v1";
-
 /** Provider configuration interface */
 export interface ProviderConfig {
   apiKeyEnvVar: string;
@@ -21,11 +16,6 @@ export interface ProviderConfig {
   defaultModel: string;
   /** If true, missing API key returns a fallback instead of throwing */
   apiKeyOptional?: boolean;
-}
-
-/** Extended config for OpenAI-compatible providers */
-export interface OpenAIProviderConfig extends ProviderConfig {
-  createClient: (apiKey: string) => OpenAI;
 }
 
 /** Anthropic provider configuration */
@@ -43,33 +33,25 @@ export const GEMINI_CONFIG: ProviderConfig = {
 };
 
 /** OpenAI provider configuration */
-export const OPENAI_CONFIG: OpenAIProviderConfig = {
+export const OPENAI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "OPENAI_KEY",
   providerName: "OpenAI",
   defaultModel: "gpt-5-nano",
-  createClient: (apiKey: string) => new OpenAI({ apiKey }),
 };
 
 /** OpenRouter provider configuration */
-export const OPENROUTER_CONFIG: OpenAIProviderConfig = {
+export const OPENROUTER_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "OPENROUTER_KEY",
   providerName: "OpenRouter",
   defaultModel: "anthropic/claude-haiku-4.5",
-  createClient: (apiKey: string) =>
-    new OpenAI({ apiKey, baseURL: OPENROUTER_BASE_URL }),
 };
 
 /** Local OpenAI-compatible server configuration (Ollama, LM Studio, etc.) */
-export const LOCAL_CONFIG: OpenAIProviderConfig = {
+export const LOCAL_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "LOCAL_API_KEY",
   providerName: "Local",
   defaultModel: "",
   apiKeyOptional: true,
-  createClient: (apiKey: string) =>
-    new OpenAI({
-      apiKey,
-      baseURL: process.env.LOCAL_BASE_URL ?? LOCAL_DEFAULT_BASE_URL,
-    }),
 };
 
 /**

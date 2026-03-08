@@ -14,18 +14,26 @@ import {
   READ_CLIP_DEFAULTS,
 } from "#src/tools/shared/tool-framework/include-params.ts";
 import {
+  formatSlot,
+  parseSlot,
+} from "#src/tools/shared/validation/position-parsing.ts";
+import {
+  isDrumRackTrack,
   processWarpMarkers,
   resolveClip,
   WARP_MODE_MAPPING,
 } from "./helpers/read-clip-helpers.ts";
 
 interface ReadClipArgs {
-  trackIndex?: number | null;
-  sceneIndex?: number | null;
+  slot?: string | null;
   clipId?: string | null;
   include?: string[];
   /** @internal Suppress warning for empty clip slots (used by batch readers) */
   suppressEmptyWarning?: boolean;
+  /** @internal Used by batch readers that already have parsed indices */
+  trackIndex?: number | null;
+  /** @internal Used by batch readers that already have parsed indices */
+  sceneIndex?: number | null;
 }
 
 interface WarpMarker {
@@ -56,8 +64,8 @@ export interface ReadClipResult {
   muted?: boolean;
 
   // Location properties
+  slot?: string;
   trackIndex?: number | null;
-  sceneIndex?: number | null;
   arrangementStart?: string;
   arrangementLength?: string;
 
@@ -78,8 +86,7 @@ export interface ReadClipResult {
 /**
  * Read a MIDI or audio clip from Ableton Live
  * @param args - Arguments for the function
- * @param args.trackIndex - Track index (0-based)
- * @param args.sceneIndex - Clip slot index (0-based)
+ * @param args.slot - Session clip slot (e.g., "0/3")
  * @param args.clipId - Clip ID to directly access any clip
  * @param args.include - Array of data to include in response
  * @param _context - Context object (unused)
@@ -89,7 +96,7 @@ export function readClip(
   args: ReadClipArgs = {},
   _context: Partial<ToolContext> = {},
 ): ReadClipResult {
-  const { trackIndex = null, sceneIndex = null, clipId = null } = args;
+  const { clipId, trackIndex, sceneIndex } = resolveClipLocation(args);
 
   const {
     includeSample,
@@ -100,9 +107,7 @@ export function readClip(
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
   if (clipId === null && (trackIndex === null || sceneIndex === null)) {
-    throw new Error(
-      "Either clipId or both trackIndex and sceneIndex must be provided",
-    );
+    throw new Error("Either clipId or slot must be provided");
   }
 
   // Resolve clip from ID or location
@@ -263,9 +268,12 @@ function processMidiClip(
   ) as string;
   const notes = JSON.parse(notesDictionary).notes;
 
+  const drumMode = clip.trackIndex != null && isDrumRackTrack(clip.trackIndex);
+
   const formatted = formatNotation(notes, {
     timeSigNumerator,
     timeSigDenominator,
+    drumMode,
   });
 
   if (formatted) result.notes = formatted;
@@ -368,7 +376,33 @@ function addClipLocationProperties(
       );
     }
   } else {
-    result.trackIndex = clip.trackIndex;
-    result.sceneIndex = clip.sceneIndex;
+    result.slot = formatSlot(
+      clip.trackIndex as number,
+      clip.sceneIndex as number,
+    );
   }
+}
+
+/**
+ * Resolve clip location from args, parsing slot if provided
+ * @param args - ReadClipArgs
+ * @returns Resolved clipId, trackIndex, and sceneIndex
+ */
+function resolveClipLocation(args: ReadClipArgs): {
+  clipId: string | null;
+  trackIndex: number | null;
+  sceneIndex: number | null;
+} {
+  const clipId = args.clipId ?? null;
+  let trackIndex: number | null = args.trackIndex ?? null;
+  let sceneIndex: number | null = args.sceneIndex ?? null;
+
+  if (args.slot != null) {
+    const parsed = parseSlot(args.slot);
+
+    trackIndex = parsed.trackIndex;
+    sceneIndex = parsed.sceneIndex;
+  }
+
+  return { clipId, trackIndex, sceneIndex };
 }

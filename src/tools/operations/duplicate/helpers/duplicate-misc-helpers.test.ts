@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { switchViewIfRequested } from "./duplicate-misc-helpers.ts";
+import { focusIfRequested } from "./duplicate-misc-helpers.ts";
 
 // Mock the select module to avoid Live API dependencies
 vi.mock(import("#src/tools/control/select.ts"), () => ({
@@ -11,7 +11,7 @@ vi.mock(import("#src/tools/control/select.ts"), () => ({
 }));
 
 describe("duplicate-misc-helpers", () => {
-  describe("switchViewIfRequested", () => {
+  describe("focusIfRequested", () => {
     let selectMock: ReturnType<typeof vi.fn>;
 
     beforeEach(async () => {
@@ -21,55 +21,79 @@ describe("duplicate-misc-helpers", () => {
       selectMock = selectModule.select as ReturnType<typeof vi.fn>;
     });
 
-    it("does nothing when switchView is false", () => {
-      switchViewIfRequested(false, "arrangement", "clip");
+    it("does nothing when focus is false", () => {
+      focusIfRequested(false, "arrangement", "clip", [{ id: "clip1" }]);
 
       expect(selectMock).not.toHaveBeenCalled();
     });
 
-    it("does nothing when switchView is undefined", () => {
-      switchViewIfRequested(undefined, "arrangement", "clip");
+    it("does nothing when focus is undefined", () => {
+      focusIfRequested(undefined, "arrangement", "clip", [{ id: "clip1" }]);
 
       expect(selectMock).not.toHaveBeenCalled();
     });
 
-    it("does nothing when destination does not match a view and type is clip", () => {
-      // Tests the code path where determineTargetView returns null
-      // destination is not "arrangement" or "session", and type is not "track" or "scene"
-      switchViewIfRequested(true, "some-other-destination", "clip");
+    it("selects clip with detail view when type is clip", () => {
+      focusIfRequested(true, "arrangement", "clip", [{ id: "clip1" }]);
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMock).toHaveBeenCalledWith({
+        clipId: "clip1",
+        detailView: "clip",
+      });
+    });
+
+    it("selects last clip when multiple clips are duplicated", () => {
+      focusIfRequested(true, "arrangement", "clip", [
+        { id: "clip1" },
+        { id: "clip2" },
+      ]);
+
+      expect(selectMock).toHaveBeenCalledWith({
+        clipId: "clip2",
+        detailView: "clip",
+      });
+    });
+
+    it("selects scene in session view when type is scene", () => {
+      focusIfRequested(true, undefined, "scene", [{ id: "scene1" }]);
+
+      expect(selectMock).toHaveBeenCalledWith({
+        view: "session",
+        sceneId: "scene1",
+      });
     });
 
     it("does nothing when destination is undefined and type is device", () => {
-      // Another path where determineTargetView returns null
-      switchViewIfRequested(true, undefined, "device");
+      focusIfRequested(true, undefined, "device", [{ id: "device1" }]);
 
       expect(selectMock).not.toHaveBeenCalled();
     });
 
-    it("calls select with arrangement view when destination is arrangement", () => {
-      switchViewIfRequested(true, "arrangement", "clip");
+    it("does nothing when type is track", () => {
+      focusIfRequested(true, undefined, "track", [{ id: "track1" }]);
+
+      expect(selectMock).not.toHaveBeenCalled();
+    });
+
+    it("falls back to view switch for clips without id", () => {
+      focusIfRequested(true, "session", "clip", [{}]);
+
+      expect(selectMock).toHaveBeenCalledWith({ view: "session" });
+    });
+
+    it("falls back to arrangement view for clips without id when destination is arrangement", () => {
+      focusIfRequested(true, "arrangement", "clip", [{}]);
 
       expect(selectMock).toHaveBeenCalledWith({ view: "arrangement" });
     });
 
-    it("calls select with session view when destination is session", () => {
-      switchViewIfRequested(true, "session", "clip");
+    it("does nothing for clips without id and no destination", () => {
+      focusIfRequested(true, undefined, "clip", [{}]);
 
-      expect(selectMock).toHaveBeenCalledWith({ view: "session" });
-    });
-
-    it("calls select with session view when type is track", () => {
-      switchViewIfRequested(true, undefined, "track");
-
-      expect(selectMock).toHaveBeenCalledWith({ view: "session" });
-    });
-
-    it("calls select with session view when type is scene", () => {
-      switchViewIfRequested(true, undefined, "scene");
-
-      expect(selectMock).toHaveBeenCalledWith({ view: "session" });
+      expect(selectMock).not.toHaveBeenCalled();
     });
   });
+
+  // parseCommaSeparatedNames and getNameForIndex are re-exported from
+  // name-utils.ts and tested in name-utils.test.ts
 });

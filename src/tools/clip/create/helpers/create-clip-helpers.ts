@@ -13,10 +13,7 @@ import {
   type MidiNote,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import {
-  parseSceneIndexList as parseSceneIndexListBase,
-  parseArrangementStartList,
-} from "#src/tools/shared/validation/position-parsing.ts";
+import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   createAudioArrangementClip,
   createAudioSessionClip,
@@ -28,21 +25,6 @@ import {
 
 // Re-export for use by create-clip.js
 export { parseArrangementStartList };
-
-/**
- * Parses scene indices with createClip-specific error message
- * @param input - Comma-separated scene indices
- * @returns Array of scene indices
- */
-export function parseSceneIndexList(input: string | null): number[] {
-  try {
-    return parseSceneIndexListBase(input);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-
-    throw new Error(`createClip failed: ${message}`);
-  }
-}
 
 export interface TimingParameters {
   arrangementStartBeats: number | null;

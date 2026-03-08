@@ -38,6 +38,7 @@ export const moveClipFromHoldingMock = vi.fn(
       id: clipId,
       path: clipId,
       set: vi.fn(),
+      setAll: vi.fn(),
       getProperty: vi.fn((prop: string) => {
         if (prop === "is_arrangement_clip") return 1;
         if (prop === "start_time") return _startBeats;

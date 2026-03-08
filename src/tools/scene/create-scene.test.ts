@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -13,9 +13,12 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createScene } from "./create-scene.ts";
 
+vi.mock(import("#src/tools/control/select.ts"), () => ({
+  select: vi.fn(),
+}));
+
 describe("createScene", () => {
   let liveSet: RegisteredMockObject;
-  let appView: RegisteredMockObject;
   let scene0: RegisteredMockObject;
   let scene1: RegisteredMockObject;
   let scene2: RegisteredMockObject;
@@ -25,7 +28,7 @@ describe("createScene", () => {
       path: livePath.liveSet,
       properties: { scenes: children("existing1", "existing2") },
     });
-    appView = registerMockObject("app-view", {
+    registerMockObject("app-view", {
       path: livePath.view.app,
     });
     scene0 = registerMockObject("live_set/scenes/0", {
@@ -241,7 +244,7 @@ describe("createScene", () => {
       expect(result).toHaveLength(3);
     });
 
-    it("should not set name for extras when count exceeds names", () => {
+    it("should skip name for extras when count exceeds names", () => {
       const scene3 = registerMockObject("live_set/scenes/3", {
         path: livePath.scene(3),
       });
@@ -473,21 +476,33 @@ describe("createScene", () => {
     });
   });
 
-  describe("switchView functionality", () => {
-    it("should switch to session view when creating scenes with switchView=true", () => {
+  describe("focus functionality", () => {
+    let selectMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(async () => {
+      const selectModule = await import("#src/tools/control/select.ts");
+
+      selectMock = selectModule.select as ReturnType<typeof vi.fn>;
+      selectMock.mockClear();
+    });
+
+    it("should select scene in session view when focus=true", () => {
       const result = createScene({
         sceneIndex: 0,
-        switchView: true,
+        focus: true,
       });
 
-      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+      expect(selectMock).toHaveBeenCalledWith({
+        view: "session",
+        sceneId: "live_set/scenes/0",
+      });
       expect(result).toStrictEqual({
         id: "live_set/scenes/0",
         sceneIndex: 0,
       });
     });
 
-    it("should switch to session view when capturing scenes with switchView=true", () => {
+    it("should select scene in session view when capturing with focus=true", () => {
       registerMockObject("live_set", {
         path: livePath.liveSet,
         properties: { tracks: [] },
@@ -498,10 +513,13 @@ describe("createScene", () => {
 
       const result = createScene({
         capture: true,
-        switchView: true,
+        focus: true,
       });
 
-      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+      expect(selectMock).toHaveBeenCalledWith({
+        view: "session",
+        sceneId: "live_set/scenes/2",
+      });
       expect(result).toStrictEqual({
         id: "live_set/scenes/2",
         sceneIndex: 2,
@@ -509,26 +527,27 @@ describe("createScene", () => {
       });
     });
 
-    it("should not switch views when switchView=false", () => {
+    it("should not call select when focus=false", () => {
       createScene({
         sceneIndex: 0,
-        switchView: false,
+        focus: false,
       });
 
-      expect(appView.call).not.toHaveBeenCalledWith(
-        "show_view",
-        expect.anything(),
-      );
+      expect(selectMock).not.toHaveBeenCalled();
     });
 
-    it("should work with multiple scenes when switchView=true", () => {
+    it("should focus last scene when creating multiple with focus=true", () => {
       const result = createScene({
         sceneIndex: 0,
         count: 3,
-        switchView: true,
+        focus: true,
       });
 
-      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+      expect(selectMock).toHaveBeenCalledWith({
+        view: "session",
+        sceneId: "live_set/scenes/2",
+      });
+      expect(selectMock).toHaveBeenCalledTimes(1);
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(3);
     });

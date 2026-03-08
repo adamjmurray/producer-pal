@@ -163,9 +163,7 @@ describe("ppal-delete", () => {
     const createClip = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "0",
+        slot: `${emptyMidiTrack}/0`,
       },
     });
     const clip = parseToolResult<CreateClipResult>(createClip);
@@ -195,9 +193,7 @@ describe("ppal-delete", () => {
     const createClip1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "1",
+        slot: `${emptyMidiTrack}/1`,
       },
     });
     const clip1 = parseToolResult<CreateClipResult>(createClip1);
@@ -205,9 +201,7 @@ describe("ppal-delete", () => {
     const createClip2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "2",
+        slot: `${emptyMidiTrack}/2`,
       },
     });
     const clip2 = parseToolResult<CreateClipResult>(createClip2);

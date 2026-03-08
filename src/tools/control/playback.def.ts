@@ -29,8 +29,8 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         `play-arrangement: from startTime
 update-arrangement: modify loop
 play-scene: all clips in scene
-play-session-clips: by id(s)
-stop-session-clips: by id(s)
+play-session-clips: by id(s) or slot(s)
+stop-session-clips: by id(s) or slot(s)
 stop-all-session-clips: all
 stop: session and arrangement`,
       ),
@@ -38,59 +38,42 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("bar|beat position in arrangement"),
-    startLocatorId: z
+    startLocator: z
       .string()
       .optional()
-      .describe("locator ID for start position (e.g., locator-0)"),
-    startLocatorName: z
-      .string()
-      .optional()
-      .describe("locator name for start position"),
+      .describe(
+        "locator ID or name for start position (e.g., locator-0 or Verse)",
+      ),
     loop: z.boolean().optional().describe("arrangement loop?"),
     loopStart: z.string().optional().describe("bar|beat position"),
-    loopStartLocatorId: z
+    loopStartLocator: z
       .string()
       .optional()
-      .describe("locator ID for loop start (e.g., locator-0)"),
-    loopStartLocatorName: z
-      .string()
-      .optional()
-      .describe("locator name for loop start"),
+      .describe("locator ID or name for loop start"),
     loopEnd: z.string().optional().describe("bar|beat position"),
-    loopEndLocatorId: z
+    loopEndLocator: z
       .string()
       .optional()
-      .describe("locator ID for loop end (e.g., locator-1)"),
-    loopEndLocatorName: z
-      .string()
-      .optional()
-      .describe("locator name for loop end"),
+      .describe("locator ID or name for loop end"),
     clipIds: z.coerce
       .string()
       .optional()
       .describe("comma-separated ID(s) for clip operations"),
+    clipSlots: z
+      .string()
+      .optional()
+      .describe(
+        "session clip slot(s), trackIndex/sceneIndex format, comma-separated (e.g., '0/1' or '0/1,2/3')",
+      ),
     sceneIndex: z.coerce
       .number()
       .int()
       .min(0)
       .optional()
       .describe("0-based scene index for play-scene"),
-    switchView: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe("auto-switch view?"),
   },
 
   smallModelModeConfig: {
-    excludeParams: [
-      "startLocatorId",
-      "startLocatorName",
-      "loopStartLocatorId",
-      "loopStartLocatorName",
-      "loopEndLocatorId",
-      "loopEndLocatorName",
-      "switchView",
-    ],
+    excludeParams: ["startLocator", "loopStartLocator", "loopEndLocator"],
   },
 });

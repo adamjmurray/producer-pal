@@ -68,8 +68,16 @@ describe("useMcpConnection", () => {
 
     await waitFor(() => {
       expect(result.current.mcpTools).toStrictEqual([
-        { id: "ppal-connect", name: "Connect to Ableton" },
-        { id: "ppal-read-live-set", name: "Read Live Set" },
+        {
+          id: "ppal-connect",
+          name: "Connect to Ableton",
+          description: undefined,
+        },
+        {
+          id: "ppal-read-live-set",
+          name: "Read Live Set",
+          description: undefined,
+        },
       ]);
     });
   });
@@ -82,7 +90,7 @@ describe("useMcpConnection", () => {
 
     await waitFor(() => {
       expect(result.current.mcpTools).toStrictEqual([
-        { id: "ppal-create-clip", name: "Create Clip" },
+        { id: "ppal-create-clip", name: "Create Clip", description: undefined },
       ]);
     });
   });
@@ -95,7 +103,11 @@ describe("useMcpConnection", () => {
 
     await waitFor(() => {
       expect(result.current.mcpTools).toStrictEqual([
-        { id: "ppal-unknown-tool", name: "ppal-unknown-tool" },
+        {
+          id: "ppal-unknown-tool",
+          name: "ppal-unknown-tool",
+          description: undefined,
+        },
       ]);
     });
   });

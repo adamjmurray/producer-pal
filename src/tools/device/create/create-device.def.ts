@@ -21,7 +21,19 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .string()
       .optional()
       .describe(
-        "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0')",
+        "insertion path(s), required with deviceName, comma-separated for multiple (e.g., 't0' or 't0,t1,t0/d0/c0')",
       ),
+    name: z
+      .string()
+      .optional()
+      .describe("display name (comma-separated when creating multiple)"),
+  },
+
+  smallModelModeConfig: {
+    excludeParams: [],
+    descriptionOverrides: {
+      path: "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0')",
+      name: "display name",
+    },
   },
 });

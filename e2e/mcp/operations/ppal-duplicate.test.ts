@@ -203,9 +203,7 @@ describe("ppal-duplicate", () => {
     const createClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "0",
+        slot: `${emptyMidiTrack}/0`,
         notes: "C3 D3 E3 F3 1|1",
         length: "1:0.0",
       },
@@ -219,7 +217,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: createdClip.id,
-        destination: "session",
+
         toSlot: `${emptyMidiTrack2}/0`,
       },
     });
@@ -227,8 +225,7 @@ describe("ppal-duplicate", () => {
       parseToolResult<DuplicateClipResult>(dupClipSessionResult);
 
     expect(dupClipSession.id).toBeDefined();
-    expect(dupClipSession.trackIndex).toBe(emptyMidiTrack2);
-    expect(dupClipSession.sceneIndex).toBe(0);
+    expect(dupClipSession.slot).toBe(`${emptyMidiTrack2}/0`);
 
     await sleep(100);
 
@@ -238,7 +235,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: createdClip.id,
-        destination: "session",
+
         toSlot: "10/0, 10/1, 10/2",
         name: "Batch Clip",
       },
@@ -248,9 +245,9 @@ describe("ppal-duplicate", () => {
     );
 
     expect(dupClipMultiSlots).toHaveLength(3);
-    expect(dupClipMultiSlots[0]!.sceneIndex).toBe(0);
-    expect(dupClipMultiSlots[1]!.sceneIndex).toBe(1);
-    expect(dupClipMultiSlots[2]!.sceneIndex).toBe(2);
+    expect(dupClipMultiSlots[0]!.slot).toBe("10/0");
+    expect(dupClipMultiSlots[1]!.slot).toBe("10/1");
+    expect(dupClipMultiSlots[2]!.slot).toBe("10/2");
 
     await sleep(100);
 
@@ -272,7 +269,6 @@ describe("ppal-duplicate", () => {
     const createArrangementClipResult = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "arrangement",
         trackIndex: emptyMidiTrack,
         arrangementStart: "41|1",
         notes: "C3 D3 E3 1|1",
@@ -290,7 +286,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: arrangementClip.id,
-        destination: "arrangement",
+
         arrangementStart: "5|1",
       },
     });
@@ -308,7 +304,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: arrangementClip.id,
-        destination: "arrangement",
+
         arrangementStart: "9|1,13|1,17|1",
       },
     });
@@ -329,7 +325,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         type: "clip",
         id: createdClip.id,
-        destination: "arrangement",
+
         arrangementStart: "21|1",
       },
     });
@@ -434,8 +430,8 @@ interface DuplicateSceneResult {
 
 interface DuplicateClipResult {
   id: string;
+  slot?: string;
   trackIndex?: number;
-  sceneIndex?: number;
   arrangementStart?: string;
   name?: string;
 }

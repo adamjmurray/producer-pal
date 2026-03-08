@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -130,6 +131,114 @@ describe("AssistantToolCall", () => {
 
       expect(details!.className).not.toContain("border-red-500");
     });
+
+    it("does not auto-expand errors", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result="Error message"
+          isError={true}
+        />,
+      );
+      const details = document.querySelector("details")!;
+
+      expect(details.hasAttribute("open")).toBe(false);
+    });
+
+    it("applies red text to error spans inside summary", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result="Error message"
+          isError={true}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+      const redSpans = summary.querySelectorAll(".text-red-700");
+
+      expect(redSpans.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("does not apply red text to summary element itself", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result="Error message"
+          isError={true}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.className).not.toContain("text-red-700");
+    });
+  });
+
+  describe("error summary fallback", () => {
+    it("shows fallback 'error' text when extractErrorSummary returns null", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result="some unknown error format"
+          isError={true}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("— error");
+    });
+  });
+
+  describe("error summary in summary line", () => {
+    it("shows clean error in summary for tool error prefix", () => {
+      const result = JSON.stringify(
+        "Error executing tool 'test-tool': something broke",
+      );
+
+      render(
+        <AssistantToolCall {...defaultProps} result={result} isError={true} />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("something broke");
+    });
+
+    it("shows clean error in summary for MCP content array with error", () => {
+      const result = JSON.stringify([
+        {
+          type: "text",
+          text: JSON.stringify({ error: "No clip in this slot" }),
+        },
+      ]);
+
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={result}
+          isError={undefined}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("No clip in this slot");
+    });
+  });
+
+  describe("error expanded view", () => {
+    it("shows raw result in disclosure like success results", () => {
+      const result = JSON.stringify(
+        "Error executing tool 'test-tool': something broke",
+      );
+
+      render(
+        <AssistantToolCall {...defaultProps} result={result} isError={true} />,
+      );
+      const allDetails = document.querySelectorAll("details");
+
+      expect(allDetails).toHaveLength(2); // Outer + result disclosure
+      const resultSummary = document.querySelectorAll("summary")[1]!;
+
+      expect(resultSummary.className).toContain("text-gray-600");
+    });
   });
 
   describe("function call display", () => {
@@ -227,23 +336,178 @@ describe("AssistantToolCall", () => {
 
       expect(allText).toContain("{invalid json");
     });
-  });
 
-  describe("error result styling", () => {
-    it("applies red text to error result summary", () => {
+    it("formats JSON array results", () => {
+      const arrayResult = '[{"type":"text","text":"hello"}]';
+
+      render(<AssistantToolCall {...defaultProps} result={arrayResult} />);
+      const pre = document.querySelector("pre");
+
+      expect(pre).toBeDefined();
+      expect(pre!.innerHTML).toContain('"type"');
+    });
+
+    it("unwraps JSON-stringified string results", () => {
+      const stringResult = JSON.stringify("inner string content");
+
       render(
         <AssistantToolCall
           {...defaultProps}
-          result="Error message"
+          result={stringResult}
           isError={true}
         />,
       );
-      const resultSummary = document.querySelectorAll("summary")[1]!; // Second summary (inner details)
+      const allText = document.body.textContent;
 
-      expect(resultSummary.className).toContain("text-red-700");
-      expect(resultSummary.className).toContain("dark:text-red-400");
+      expect(allText).toContain("inner string content");
+    });
+  });
+
+  describe("heuristic error detection", () => {
+    it("detects soft error via 'error' key in result JSON when isError unset", () => {
+      const softErrorResult = JSON.stringify({
+        error: "No clip in this slot",
+        id: null,
+        type: null,
+        trackIndex: 0,
+        sceneIndex: 5,
+      });
+
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={softErrorResult}
+          isError={undefined}
+        />,
+      );
+      const details = document.querySelector("details");
+
+      expect(details!.className).toContain("border-red-500");
+      expect(screen.getByText(/tool failed:/)).toBeDefined();
     });
 
+    it("does not false-positive on normal results without error key", () => {
+      const normalResult = JSON.stringify({ id: "1", name: "Track" });
+
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={normalResult}
+          isError={undefined}
+        />,
+      );
+      const details = document.querySelector("details");
+
+      expect(details!.className).not.toContain("border-red-500");
+      expect(screen.getByText(/used tool:/)).toBeDefined();
+    });
+  });
+
+  describe("warning styling", () => {
+    /**
+     * Build MCP content array result with warnings
+     * @param data - Tool result object
+     * @param warnings - Warning strings
+     * @returns Serialized result
+     */
+    function warningResult(data: object, ...warnings: string[]): string {
+      return JSON.stringify([
+        { type: "text", text: JSON.stringify(data) },
+        ...warnings.map((w) => ({ type: "text", text: w })),
+      ]);
+    }
+
+    it("has yellow border when result contains warnings", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult({ id: "44" }, "WARNING: something skipped")}
+          isError={false}
+        />,
+      );
+      const details = document.querySelector("details");
+
+      expect(details!.className).toContain("border-yellow-500");
+    });
+
+    it("does not have yellow border for normal success", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult({ id: "44" })}
+          isError={false}
+        />,
+      );
+      const details = document.querySelector("details");
+
+      expect(details!.className).not.toContain("border-yellow-500");
+    });
+
+    it("shows warning prefix and first warning text in summary", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult({ id: "44" }, "WARNING: quantize skipped")}
+          isError={false}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("warning: quantize skipped");
+    });
+
+    it("shows other warning count for multiple warnings", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult(
+            { id: "44" },
+            "WARNING: first warning",
+            "WARNING: second warning",
+          )}
+          isError={false}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("first warning");
+      expect(summary.textContent).toContain("+ 1 other warning");
+    });
+
+    it("pluralizes other warnings count", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult(
+            { id: "44" },
+            "WARNING: first",
+            "WARNING: second",
+            "WARNING: third",
+          )}
+          isError={false}
+        />,
+      );
+      const summary = document.querySelector("summary")!;
+
+      expect(summary.textContent).toContain("+ 2 other warnings");
+    });
+
+    it("does not show warning styling when isError is true", () => {
+      render(
+        <AssistantToolCall
+          {...defaultProps}
+          result={warningResult({ id: "44" }, "WARNING: something skipped")}
+          isError={true}
+        />,
+      );
+      const details = document.querySelector("details");
+
+      expect(details!.className).not.toContain("border-yellow-500");
+      expect(details!.className).toContain("border-red-500");
+    });
+  });
+
+  describe("success result styling", () => {
     it("applies gray text to success result summary", () => {
       render(
         <AssistantToolCall

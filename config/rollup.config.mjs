@@ -176,10 +176,6 @@ export default [
         format: "es",
       },
       {
-        file: join(rootDir, "release/producer-pal-portal.js"),
-        format: "es",
-      },
-      {
         file: join(rootDir, "npm/producer-pal-portal.js"),
         format: "es",
       },

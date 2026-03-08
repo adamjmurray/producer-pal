@@ -10,44 +10,51 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
   description:
     "Create MIDI or audio clip(s).\n" +
-    "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
-    "Cannot use both notes and sampleFile.",
+    "Requires slot (session) and/or trackIndex + arrangementStart (arrangement).\n" +
+    "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
 
   inputSchema: {
-    view: z.enum(["session", "arrangement"]).describe("location of the clip"),
+    slot: z.coerce
+      .string()
+      .optional()
+      .describe(
+        "session clip slot(s): trackIndex/sceneIndex, comma-separated (e.g., '0/0' or '0/0,0/2,0/5')",
+      ),
 
     trackIndex: z.coerce
       .number()
       .int()
       .min(0)
-      .describe("0-based track index for session clips"),
-
-    sceneIndex: z.coerce
-      .string()
       .optional()
-      .describe(
-        "scene index(es), comma-separated for multiple (e.g., '0' or '0,2,5')",
-      ),
+      .describe("0-based track index (arrangement clips)"),
 
     arrangementStart: z.coerce
       .string()
       .optional()
       .describe(
-        "bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')",
+        "arrangement clip bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')",
       ),
 
-    name: z.string().optional().describe("clip name"),
+    name: z
+      .string()
+      .optional()
+      .describe(
+        "clip name (comma-separated when creating multiple, indexed: session positions first, then arrangement)",
+      ),
 
-    color: z.string().optional().describe("#RRGGBB"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when creating multiple, cycles)"),
 
     timeSignature: z
       .string()
       .optional()
-      .describe(`N/D (4/4), default: global time signature)`),
+      .describe(`N/D (4/4), default: global time signature`),
 
     start: z
       .string()
@@ -58,7 +65,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "duration in bar:beat format (default: next full bar after latest note)",
+        "duration in bar:beat (e.g., '4:0' = 4 bars), default: next full bar after latest note",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
@@ -103,19 +110,15 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .enum(["play-scene", "play-clip"])
       .optional()
       .describe("auto-play session clips (play-scene keeps scene in sync)"),
-
-    switchView: z
-      .boolean()
-      .optional()
-      .default(false)
-      .describe("auto-switch view?"),
   },
 
   smallModelModeConfig: {
-    excludeParams: ["transforms", "code", "firstStart", "auto", "switchView"],
+    excludeParams: ["transforms", "code", "firstStart", "auto"],
     descriptionOverrides: {
-      sceneIndex: "0-based scene index",
-      arrangementStart: "bar|beat position (e.g., '1|1')",
+      slot: "session clip slot(s): trackIndex/sceneIndex (e.g., '0/0')",
+      arrangementStart: "arrangement clip bar|beat position (e.g., '1|1')",
+      name: "clip name",
+      color: "#RRGGBB",
     },
   },
 });

@@ -17,7 +17,6 @@ describe("createClip - arrangement view", () => {
     const { track, clip } = setupArrangementClipMocks();
 
     const result = await createClip({
-      view: "arrangement",
       trackIndex: 0,
       arrangementStart: "3|1",
       notes: "C3 D3 E3 1|1",
@@ -40,7 +39,6 @@ describe("createClip - arrangement view", () => {
     const { track } = setupArrangementClipMocks();
 
     const result = await createClip({
-      view: "arrangement",
       trackIndex: 0,
       arrangementStart: "3|1,4|1,5|1", // Three explicit positions
       name: "Sequence",
@@ -82,7 +80,6 @@ describe("createClip - arrangement view", () => {
 
     await expect(
       createClip({
-        view: "arrangement",
         trackIndex: 99,
         arrangementStart: "3|1",
       }),
@@ -101,7 +98,6 @@ describe("createClip - arrangement view", () => {
 
     // Runtime errors during clip creation are now warnings, not fatal errors
     const result = await createClip({
-      view: "arrangement",
       trackIndex: 0,
       arrangementStart: "1|1",
       notes: "C4 1|1",

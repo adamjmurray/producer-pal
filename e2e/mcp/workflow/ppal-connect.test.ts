@@ -56,10 +56,9 @@ describe("ppal-connect", () => {
     expect(parsed.skills!.length).toBeGreaterThan(5000);
 
     // Standard mode includes advanced features
-    expect(parsed.skills).toContain("x{times}"); // Repeat patterns
-    expect(parsed.skills).toMatch(/v0[^-]/); // v0 deletion (not v0-127 range)
-    expect(parsed.skills).toMatch(/p0\./); // Probability with decimal
-    expect(parsed.skills).toContain("/d0"); // Device paths
+    expect(parsed.skills).toContain("@N="); // bar copying
+    expect(parsed.skills).toContain("v0 C3 1|1"); // v0 deletion
+    expect(parsed.skills).toContain("## Techniques"); // advanced section
   });
 
   it("returns simplified skills (smallModelMode=true)", async () => {

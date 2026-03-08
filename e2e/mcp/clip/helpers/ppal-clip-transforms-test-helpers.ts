@@ -31,9 +31,7 @@ export async function createMidiClip(
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      view: "session",
-      trackIndex: emptyMidiTrack,
-      sceneIndex: String(sceneIndex),
+      slot: `${emptyMidiTrack}/${sceneIndex}`,
       notes,
       length: "2:0.0",
     },
@@ -62,7 +60,6 @@ export async function createArrangementClip(
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      view: "arrangement",
       trackIndex: emptyMidiTrack,
       arrangementStart,
       notes,

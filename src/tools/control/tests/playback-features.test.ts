@@ -33,7 +33,7 @@ describe("transport", () => {
     expect(liveSet.set).toHaveBeenCalledWith("back_to_arranger", 0);
   });
 
-  describe("switchView functionality", () => {
+  describe("focus functionality", () => {
     let appView: RegisteredMockObject;
 
     beforeEach(() => {
@@ -44,19 +44,19 @@ describe("transport", () => {
       registerMockObject(livePath.view.song, { path: livePath.view.song });
     });
 
-    it("should switch to arrangement view for play-arrangement action when switchView is true", () => {
+    it("should switch to arrangement view for play-arrangement action when focus is true", () => {
       liveSet = setupPlaybackLiveSet();
 
       playback({
         action: "play-arrangement",
-        switchView: true,
+        focus: true,
       });
 
       // Check that select was called with arrangement view
       expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
     });
 
-    it("should switch to session view for play-scene action when switchView is true", () => {
+    it("should switch to session view for play-scene action when focus is true", () => {
       liveSet = setupPlaybackLiveSet();
       registerMockObject(livePath.scene(0), {
         path: livePath.scene(0),
@@ -65,13 +65,13 @@ describe("transport", () => {
       playback({
         action: "play-scene",
         sceneIndex: 0,
-        switchView: true,
+        focus: true,
       });
 
       expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
     });
 
-    it("should switch to session view for play-session-clips action when switchView is true", () => {
+    it("should switch to session view for play-session-clips action when focus is true", () => {
       liveSet = setupPlaybackLiveSet();
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
@@ -83,18 +83,18 @@ describe("transport", () => {
       playback({
         action: "play-session-clips",
         clipIds: "clip1",
-        switchView: true,
+        focus: true,
       });
 
       expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
     });
 
-    it("should not switch views when switchView is false", () => {
+    it("should not switch views when focus is false", () => {
       liveSet = setupPlaybackLiveSet();
 
       playback({
         action: "play-arrangement",
-        switchView: false,
+        focus: false,
       });
 
       // Check that show_view was NOT called for view switching
@@ -109,7 +109,7 @@ describe("transport", () => {
 
       playback({
         action: "stop",
-        switchView: true,
+        focus: true,
       });
 
       expect(appView.call).not.toHaveBeenCalledWith(

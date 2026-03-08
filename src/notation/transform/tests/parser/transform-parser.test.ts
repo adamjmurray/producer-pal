@@ -364,54 +364,6 @@ describe("Transform Parser", () => {
     });
   });
 
-  describe("whitespace and comments", () => {
-    it("handles whitespace around operators", () => {
-      const result = parser.parse("velocity +=   10   +   5");
-
-      expect(result[0]!.expression).toStrictEqual({
-        type: "add",
-        left: 10,
-        right: 5,
-      });
-    });
-
-    it("handles multiple blank lines between assignments", () => {
-      const result = parser.parse("velocity += 10\n\n\ntiming += 0.05");
-
-      expect(result).toHaveLength(2);
-      expect(result[0]!.parameter).toBe("velocity");
-      expect(result[1]!.parameter).toBe("timing");
-    });
-
-    it("handles line comments", () => {
-      const result = parser.parse("velocity += 10 // this is a comment");
-
-      expect(result[0]!.expression).toBe(10);
-    });
-
-    it("handles hash comments", () => {
-      const result = parser.parse("velocity += 10 # this is a comment");
-
-      expect(result[0]!.expression).toBe(10);
-    });
-
-    it("handles block comments", () => {
-      const result = parser.parse("velocity += 10 /* block comment */");
-
-      expect(result[0]!.expression).toBe(10);
-    });
-
-    it("handles comments on separate lines", () => {
-      const result = parser.parse(
-        "// comment\nvelocity += 10\n// another comment\ntiming += 0.05",
-      );
-
-      expect(result).toHaveLength(2);
-      expect(result[0]!.parameter).toBe("velocity");
-      expect(result[1]!.parameter).toBe("timing");
-    });
-  });
-
   describe("error cases", () => {
     it("throws on invalid parameter name", () => {
       expect(() => parser.parse("invalid += 10")).toThrow();

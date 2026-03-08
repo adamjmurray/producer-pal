@@ -10,13 +10,16 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   children,
   createStandardMidiClipMock,
+  registerArrangementClip,
   registerClipSlot,
   registerMockObject,
+  registerTrackWithArrangementDup,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 interface DuplicateClipResult {
   id: string;
-  trackIndex: number;
+  slot?: string;
+  trackIndex?: number;
   name?: string;
 }
 
@@ -59,11 +62,11 @@ describe("duplicate - scene duplication", () => {
       clips: [
         {
           id: "live_set/tracks/0/clip_slots/1/clip",
-          trackIndex: 0,
+          slot: "0/1",
         },
         {
           id: "live_set/tracks/1/clip_slots/1/clip",
-          trackIndex: 1,
+          slot: "1/1",
         },
       ],
     });
@@ -118,11 +121,11 @@ describe("duplicate - scene duplication", () => {
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/1/clip",
-            trackIndex: 0,
+            slot: "0/1",
           },
           {
             id: "live_set/tracks/1/clip_slots/1/clip",
-            trackIndex: 1,
+            slot: "1/1",
           },
         ],
       },
@@ -132,11 +135,11 @@ describe("duplicate - scene duplication", () => {
         clips: [
           {
             id: "live_set/tracks/0/clip_slots/2/clip",
-            trackIndex: 0,
+            slot: "0/2",
           },
           {
             id: "live_set/tracks/1/clip_slots/2/clip",
-            trackIndex: 1,
+            slot: "1/2",
           },
         ],
       },
@@ -200,20 +203,6 @@ describe("duplicate - scene duplication", () => {
   });
 
   describe("arrangement destination", () => {
-    it("should throw error when arrangementStartTime is missing for scene to arrangement", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-
-      expect(() =>
-        duplicate({
-          type: "scene",
-          id: "scene1",
-          destination: "arrangement",
-        }),
-      ).toThrow(
-        "duplicate failed: arrangementStart, locatorId, or locatorName is required when destination is 'arrangement'",
-      );
-    });
-
     it("should duplicate a scene to arrangement view", () => {
       registerMockObject("scene1", { path: livePath.scene(0) });
 
@@ -273,19 +262,13 @@ describe("duplicate - scene duplication", () => {
       });
 
       // Register arrangement clips
-      registerMockObject(livePath.track(0).arrangementClip(0), {
-        path: livePath.track(0).arrangementClip(0),
-        properties: { is_arrangement_clip: 1, start_time: 16 },
-      });
-      registerMockObject(livePath.track(2).arrangementClip(0), {
-        path: livePath.track(2).arrangementClip(0),
-        properties: { is_arrangement_clip: 1, start_time: 16 },
-      });
+      registerArrangementClip(0, 0, 16);
+      registerArrangementClip(2, 0, 16);
 
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         arrangementStart: "5|1",
       }) as DuplicateSceneResult;
 
@@ -325,39 +308,17 @@ describe("duplicate - scene duplication", () => {
       // Mock scene with one clip of length 8 beats
       registerClipSlot(0, 0, true, createStandardMidiClipMock());
 
-      let clipCounter = 0;
-
-      const track0 = registerMockObject("live_set/tracks/0", {
-        path: livePath.track(0),
-        methods: {
-          duplicate_clip_to_arrangement: () => {
-            const clipId = livePath.track(0).arrangementClip(clipCounter);
-
-            clipCounter++;
-
-            return ["id", clipId];
-          },
-        },
-      });
+      const track0 = registerTrackWithArrangementDup(0);
 
       // Register arrangement clips with sequential start times
-      registerMockObject(livePath.track(0).arrangementClip(0), {
-        path: livePath.track(0).arrangementClip(0),
-        properties: { is_arrangement_clip: 1, start_time: 16 },
-      });
-      registerMockObject(livePath.track(0).arrangementClip(1), {
-        path: livePath.track(0).arrangementClip(1),
-        properties: { is_arrangement_clip: 1, start_time: 24 },
-      });
-      registerMockObject(livePath.track(0).arrangementClip(2), {
-        path: livePath.track(0).arrangementClip(2),
-        properties: { is_arrangement_clip: 1, start_time: 32 },
-      });
+      registerArrangementClip(0, 0, 16);
+      registerArrangementClip(0, 1, 24);
+      registerArrangementClip(0, 2, 32);
 
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         arrangementStart: "5|1",
         count: 3,
         name: "Scene Copy",
@@ -429,7 +390,7 @@ describe("duplicate - scene duplication", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         arrangementStart: "5|1",
       }) as DuplicateSceneResult;
 
@@ -465,7 +426,7 @@ describe("duplicate - scene duplication", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        destination: "arrangement",
+
         arrangementStart: "5|1",
         withoutClips: true,
       }) as DuplicateSceneResult;

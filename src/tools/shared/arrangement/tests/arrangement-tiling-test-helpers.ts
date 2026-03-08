@@ -178,6 +178,44 @@ export function setupTrackWithQueuedMethods(
 }
 
 /**
+ * Set up a tile destination clip with default marker properties (start_marker=0, loop_start=0).
+ * Used in tiling tests where duplicated clips need basic marker setup.
+ * @param clipId - Clip ID
+ * @param extraProps - Additional properties to merge
+ * @returns Registered clip mock
+ */
+export function setupTileClip(
+  clipId: string,
+  extraProps: Record<string, unknown> = {},
+): RegisteredMockObject {
+  return setupClip(clipId, {
+    properties: { start_marker: 0, loop_start: 0, ...extraProps },
+  });
+}
+
+/**
+ * Set up a standard MIDI source clip for tiling tests with common defaults.
+ * @param clipId - Clip ID
+ * @param trackIndex - Track index
+ * @param overrides - Property overrides (merged with defaults)
+ * @returns Clip LiveAPI object
+ */
+export function setupMidiSourceClip(
+  clipId: string,
+  trackIndex: number,
+  overrides: Record<string, unknown> = {},
+): LiveAPI {
+  return setupArrangementClip(clipId, trackIndex, {
+    is_midi_clip: 1,
+    loop_start: 0,
+    loop_end: 4,
+    start_marker: 0,
+    end_marker: 4,
+    ...overrides,
+  });
+}
+
+/**
  * Register an arrangement clip.
  * @param clipId - Clip ID
  * @param trackIndex - Track index

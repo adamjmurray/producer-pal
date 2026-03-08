@@ -13,6 +13,7 @@ export type McpStatus = "connected" | "connecting" | "error";
 export interface McpTool {
   id: string;
   name: string;
+  description?: string;
 }
 
 interface UseMcpConnectionReturn {
@@ -49,6 +50,7 @@ export function useMcpConnection(): UseMcpConnectionReturn {
         tools.map((tool) => ({
           id: tool.name,
           name: (tool as { title?: string }).title ?? tool.name,
+          description: tool.description,
         })),
       );
       await client.close();

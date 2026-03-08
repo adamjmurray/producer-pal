@@ -2,11 +2,15 @@
 
 Use Producer Pal with OpenAI's command line coding assistant.
 
+::: tip Prefer a Desktop App?
+
+The [Codex App](./codex-app) offers an easier setup with a graphical interface.
+The CLI is best for developers who prefer the terminal.
+
+:::
+
 If you feel comfortable with the command line and have an OpenAI subscription,
-this is a good option. It's the recommended way to use OpenAI models with
-Producer Pal because using an OpenAI key with the
-[built-in chat UI](./chat-ui-other-providers) requires pay-as-you-go pricing for
-OpenAI's API.
+this is a good option.
 
 ## Requirements
 
@@ -50,18 +54,6 @@ auto-reconnection:
 url = "http://localhost:3350/mcp"
 ```
 
-**Option C: Download portal script** - Same benefits as npx:
-
-Download
-[producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-and configure:
-
-```toml
-[mcp_servers.producer-pal]
-command = "node"
-args = ["/absolute/path/to/producer-pal-portal.js"]
-```
-
 ### 3. Start Codex
 
 Run `codex` in an empty folder (so it can focus on Producer Pal instead of
@@ -81,4 +73,4 @@ Start a conversation with "connect to ableton"
 
 ## Troubleshooting
 
-If it doesn't work, see the [Troubleshooting Guide](./troubleshooting).
+If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

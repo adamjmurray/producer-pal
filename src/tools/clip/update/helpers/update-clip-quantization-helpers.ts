@@ -2,7 +2,6 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
@@ -25,8 +24,6 @@ interface QuantizationOptions {
   quantize?: number;
   /** Note grid value */
   quantizeGrid?: string;
-  /** Swing amount 0-1 (default: 0) */
-  quantizeSwing?: number;
   /** Limit to specific pitch as note name, e.g., C3, D#4 (optional) */
   quantizePitch?: string;
 }
@@ -37,12 +34,11 @@ interface QuantizationOptions {
  * @param options - Quantization options
  * @param options.quantize - Quantization strength 0-1
  * @param options.quantizeGrid - Note grid value
- * @param options.quantizeSwing - Swing amount 0-1 (default: 0)
  * @param options.quantizePitch - Limit to specific pitch (optional)
  */
 export function handleQuantization(
   clip: LiveAPI,
-  { quantize, quantizeGrid, quantizeSwing, quantizePitch }: QuantizationOptions,
+  { quantize, quantizeGrid, quantizePitch }: QuantizationOptions,
 ): void {
   if (quantize == null) {
     return;
@@ -63,31 +59,20 @@ export function handleQuantization(
   }
 
   const gridValue = QUANTIZE_GRID[quantizeGrid];
-  const swingToUse = quantizeSwing ?? 0;
 
-  // Set swing, quantize, restore swing
-  const liveSet = LiveAPI.from(livePath.liveSet);
-  const originalSwing = liveSet.getProperty("swing_amount");
+  if (quantizePitch != null) {
+    const midiPitch = noteNameToMidi(quantizePitch);
 
-  liveSet.set("swing_amount", swingToUse);
+    if (midiPitch == null) {
+      console.warn(
+        `invalid note name "${quantizePitch}" for quantizePitch, ignoring`,
+      );
 
-  try {
-    if (quantizePitch != null) {
-      const midiPitch = noteNameToMidi(quantizePitch);
-
-      if (midiPitch == null) {
-        console.warn(
-          `invalid note name "${quantizePitch}" for quantizePitch, ignoring`,
-        );
-
-        return;
-      }
-
-      clip.call("quantize_pitch", midiPitch, gridValue, quantize);
-    } else {
-      clip.call("quantize", gridValue, quantize);
+      return;
     }
-  } finally {
-    liveSet.set("swing_amount", originalSwing);
+
+    clip.call("quantize_pitch", midiPitch, gridValue, quantize);
+  } else {
+    clip.call("quantize", gridValue, quantize);
   }
 }

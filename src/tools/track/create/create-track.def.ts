@@ -34,7 +34,7 @@ export const toolDefCreateTrack = defineTool("ppal-create-track", {
       .optional()
       .describe("#RRGGBB (comma-separated when creating multiple, cycles)"),
     type: z.enum(["midi", "audio", "return"]).default("midi").describe("type"),
-    mute: z.boolean().optional().describe("mutes?"),
+    mute: z.boolean().optional().describe("muted?"),
     solo: z.boolean().optional().describe("soloed?"),
     arm: z.boolean().optional().describe("record armed?"),
   },

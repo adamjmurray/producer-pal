@@ -19,12 +19,12 @@ Returns overview by default. Use include to add detail.`,
     trackId: z.coerce
       .string()
       .optional()
-      .describe("provide this or category/trackIndex"),
-    category: z
-      .enum(["regular", "return", "master"])
-      .default("regular")
+      .describe("provide this or trackType/trackIndex"),
+    trackType: z
+      .enum(["return", "master"])
+      .optional()
       .describe(
-        "regular and return tracks have independent trackIndexes, master has no index",
+        "return or master (omit for audio/midi tracks, which have independent trackIndexes)",
       ),
     trackIndex: z.coerce
       .number()

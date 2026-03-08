@@ -152,12 +152,8 @@ describe("ppal-clip-transforms (context variables)", () => {
     await applyTransform(clipId, "velocity = note.count * 20");
     const notes = await readClipNotes(clipId);
 
-    // 4 notes * 20 = 80 (sticky velocity: v80 shown once, applied to all)
-    expect(notes).toContain("v80");
-    // Verify all 4 notes still present
-    const pitches = [...notes.matchAll(/C3/g)];
-
-    expect(pitches).toHaveLength(4);
+    // 4 notes * 20 = 80 (sticky velocity, all same → comma-merged)
+    expect(notes).toBe("v80 C3 1|1,2,3,4");
   });
 
   it("clip.count reflects number of clips in multi-clip operation", async () => {

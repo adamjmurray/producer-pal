@@ -7,7 +7,9 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefDelete = defineTool("ppal-delete", {
   title: "Delete",
-  description: "Deletes objects",
+  description:
+    "Deletes objects.\n" +
+    "Supports tracks, scenes, clips, devices, and drum pads. Use ids for most types; path for devices/drum pads.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -21,8 +23,9 @@ export const toolDefDelete = defineTool("ppal-delete", {
       .string()
       .optional()
       .describe(
-        "comma-separated paths to delete - device: 't0/d1', 't1/d0/pC1/d0'; drum-pad: 't1/d0/pC1'",
+        "comma-separated device/drum-pad paths to delete (e.g., 't0/d1', 't1/d0/pC1/d0', 't1/d0/pC1')",
       ),
+    // Required even though IDs encode type — intentional safety net for destructive operation
     type: z
       .enum(["track", "scene", "clip", "device", "drum-pad"])
       .describe("type of objects to delete"),
@@ -31,7 +34,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
   smallModelModeConfig: {
     descriptionOverrides: {
       ids: "object ID to delete",
-      path: "path to delete (e.g., 't0/d1')",
+      path: "device/drum-pad path to delete (e.g., 't0/d1')",
     },
   },
 });

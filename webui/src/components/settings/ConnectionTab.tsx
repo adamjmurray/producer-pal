@@ -6,14 +6,16 @@ import { type Provider } from "#webui/types/settings";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
 
-const API_KEY_URLS: Record<string, string | undefined> = {
+export const API_KEY_URLS: Record<string, string | undefined> = {
+  anthropic: "https://console.anthropic.com/settings/keys",
   gemini: "https://aistudio.google.com/apikey",
   openai: "https://platform.openai.com/api-keys",
   mistral: "https://console.mistral.ai/home?workspace_dialog=apiKeys",
   openrouter: "https://openrouter.ai/settings/keys",
 };
 
-const MODEL_DOCS_URLS: Record<string, string | undefined> = {
+export const MODEL_DOCS_URLS: Record<string, string | undefined> = {
+  anthropic: "https://docs.anthropic.com/en/docs/about-claude/models",
   gemini: "https://ai.google.dev/gemini-api/docs/models",
   openai: "https://platform.openai.com/docs/models",
   mistral: "https://docs.mistral.ai/getting-started/models",
@@ -22,7 +24,7 @@ const MODEL_DOCS_URLS: Record<string, string | undefined> = {
   ollama: "https://ollama.com/search",
 };
 
-const DEFAULT_LOCAL_URLS: Record<string, string> = {
+export const DEFAULT_LOCAL_URLS: Record<string, string> = {
   lmstudio: "http://localhost:1234",
   ollama: "http://localhost:11434",
 };

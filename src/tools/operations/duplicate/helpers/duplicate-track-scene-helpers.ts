@@ -170,7 +170,7 @@ function collectSessionClips(
     if (clipSlot.getProperty("has_clip")) {
       const clip = LiveAPI.from(`${clipSlot.path} clip`);
 
-      duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
+      duplicatedClips.push(getMinimalClipInfo(clip));
     }
   }
 }
@@ -199,6 +199,7 @@ function collectArrangementClips(
  * Duplicate a track
  * @param trackIndex - Track index to duplicate
  * @param name - Optional name for the duplicated track
+ * @param color - Optional color for the duplicated track
  * @param withoutClips - Whether to exclude clips when duplicating
  * @param withoutDevices - Whether to exclude devices when duplicating
  * @param routeToSource - Whether to route the new track to the source track
@@ -208,6 +209,7 @@ function collectArrangementClips(
 export function duplicateTrack(
   trackIndex: number,
   name?: string,
+  color?: string,
   withoutClips?: boolean,
   withoutDevices?: boolean,
   routeToSource?: boolean,
@@ -222,6 +224,10 @@ export function duplicateTrack(
 
   if (name != null) {
     newTrack.set("name", name);
+  }
+
+  if (color != null) {
+    newTrack.setColor(color);
   }
 
   removeHostTrackDevice(trackIndex, withoutDevices, newTrack);
@@ -245,12 +251,14 @@ export function duplicateTrack(
  * Duplicate a scene
  * @param sceneIndex - Scene index to duplicate
  * @param name - Optional name for the duplicated scene
+ * @param color - Optional color for the duplicated scene
  * @param withoutClips - Whether to exclude clips when duplicating
  * @returns Scene info object with id, sceneIndex, and clips array
  */
 export function duplicateScene(
   sceneIndex: number,
   name?: string,
+  color?: string,
   withoutClips?: boolean,
 ): { id: string; sceneIndex: number; clips: MinimalClipInfo[] } {
   const liveSet = LiveAPI.from(livePath.liveSet);
@@ -262,6 +270,10 @@ export function duplicateScene(
 
   if (name != null) {
     newScene.set("name", name);
+  }
+
+  if (color != null) {
+    newScene.setColor(color);
   }
 
   // Get all duplicated clips in this scene
@@ -276,7 +288,7 @@ export function duplicateScene(
   } else {
     // Default behavior: collect info about duplicated clips
     forEachClipInScene(newSceneIndex, trackIds, (clip) => {
-      duplicatedClips.push(getMinimalClipInfo(clip, ["sceneIndex"]));
+      duplicatedClips.push(getMinimalClipInfo(clip));
     });
   }
 

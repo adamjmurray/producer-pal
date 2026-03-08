@@ -8,6 +8,8 @@ import {
   mockContext,
   setupArrangementClip,
   setupClip,
+  setupMidiSourceClip,
+  setupTileClip,
   setupTrackWithQueuedMethods,
 } from "./arrangement-tiling-test-helpers.ts";
 import { createPartialTile, tileClipToRange } from "../arrangement-tiling.ts";
@@ -95,13 +97,7 @@ describe("createPartialTile", () => {
 
 describe("tileClipToRange", () => {
   it("creates correct number of full tiles without remainder", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      is_midi_clip: 1,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
-      end_marker: 4,
-    });
+    const sourceClip = setupMidiSourceClip("100", 0);
     const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
@@ -110,24 +106,9 @@ describe("tileClipToRange", () => {
       ],
     });
 
-    setupClip("200", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
-    setupClip("201", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
-    setupClip("202", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
+    setupTileClip("200");
+    setupTileClip("201");
+    setupTileClip("202");
 
     const result = tileClipToRange(
       sourceClip,
@@ -162,13 +143,7 @@ describe("tileClipToRange", () => {
   });
 
   it("creates appropriate combination of full and partial tiles", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      is_midi_clip: 1,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
-      end_marker: 4,
-    });
+    const sourceClip = setupMidiSourceClip("100", 0);
     const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
@@ -180,29 +155,10 @@ describe("tileClipToRange", () => {
       delete_clip: [null, null],
     });
 
-    setupClip("200", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
-    setupClip("201", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
-    setupClip("300", {
-      properties: {
-        end_time: 1004,
-      },
-    });
-    setupClip("302", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
+    setupTileClip("200");
+    setupTileClip("201");
+    setupClip("300", { properties: { end_time: 1004 } });
+    setupTileClip("302");
 
     const result = tileClipToRange(
       sourceClip,
@@ -217,23 +173,12 @@ describe("tileClipToRange", () => {
   });
 
   it("does not create partial tile when remainder is negligible", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      is_midi_clip: 1,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
-      end_marker: 4,
-    });
+    const sourceClip = setupMidiSourceClip("100", 0);
     const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [["id", "200"]],
     });
 
-    setupClip("200", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
+    setupTileClip("200");
 
     const result = tileClipToRange(
       sourceClip,
@@ -249,8 +194,7 @@ describe("tileClipToRange", () => {
   });
 
   it("skips pre-roll adjustment when adjustPreRoll is false", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      is_midi_clip: 1,
+    const sourceClip = setupMidiSourceClip("100", 0, {
       loop_start: 4,
       loop_end: 8,
       start_marker: 2,
@@ -260,12 +204,7 @@ describe("tileClipToRange", () => {
       duplicate_clip_to_arrangement: [["id", "200"]],
     });
 
-    setupClip("200", {
-      properties: {
-        start_marker: 2,
-        loop_start: 4,
-      },
-    });
+    setupTileClip("200", { start_marker: 2, loop_start: 4 });
 
     tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext, {
       adjustPreRoll: false,
@@ -275,13 +214,7 @@ describe("tileClipToRange", () => {
   });
 
   it("handles zero-length range gracefully", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      is_midi_clip: 1,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
-      end_marker: 4,
-    });
+    const sourceClip = setupMidiSourceClip("100", 0);
     const track = setupTrackWithQueuedMethods(0, {});
 
     const result = tileClipToRange(
@@ -298,11 +231,8 @@ describe("tileClipToRange", () => {
   });
 
   it("handles only partial tile when total length less than clip length", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      is_midi_clip: 1,
-      loop_start: 0,
+    const sourceClip = setupMidiSourceClip("100", 0, {
       loop_end: 8,
-      start_marker: 0,
       end_marker: 8,
     });
     const track = setupTrackWithQueuedMethods(0, {
@@ -314,17 +244,8 @@ describe("tileClipToRange", () => {
       delete_clip: [null, null],
     });
 
-    setupClip("300", {
-      properties: {
-        end_time: 1008,
-      },
-    });
-    setupClip("301", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
+    setupClip("300", { properties: { end_time: 1008 } });
+    setupTileClip("301");
 
     const result = tileClipToRange(
       sourceClip,
@@ -339,8 +260,7 @@ describe("tileClipToRange", () => {
   });
 
   it("sets start_marker correctly when using startOffset parameter", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      is_midi_clip: 1,
+    const sourceClip = setupMidiSourceClip("100", 0, {
       loop_start: 2,
       loop_end: 10,
       start_marker: 2,
@@ -354,24 +274,9 @@ describe("tileClipToRange", () => {
       ],
     });
 
-    const tile1 = setupClip("200", {
-      properties: {
-        start_marker: 2,
-        loop_start: 2,
-      },
-    });
-    const tile2 = setupClip("201", {
-      properties: {
-        start_marker: 2,
-        loop_start: 2,
-      },
-    });
-    const tile3 = setupClip("202", {
-      properties: {
-        start_marker: 2,
-        loop_start: 2,
-      },
-    });
+    const tile1 = setupTileClip("200", { start_marker: 2, loop_start: 2 });
+    const tile2 = setupTileClip("201", { start_marker: 2, loop_start: 2 });
+    const tile3 = setupTileClip("202", { start_marker: 2, loop_start: 2 });
 
     const result = tileClipToRange(
       sourceClip,
@@ -392,23 +297,14 @@ describe("tileClipToRange", () => {
   });
 
   it("sets end_marker to match loop_end when they differ", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      is_midi_clip: 1,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
+    const sourceClip = setupMidiSourceClip("100", 0, {
       end_marker: 8, // end_marker differs from loop_end
     });
     const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [["id", "200"]],
     });
 
-    setupClip("200", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
+    setupTileClip("200");
 
     tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext);
 
@@ -417,13 +313,7 @@ describe("tileClipToRange", () => {
   });
 
   it("advances content offset correctly with custom tileLength", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      is_midi_clip: 1,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
-      end_marker: 4,
-    });
+    const sourceClip = setupMidiSourceClip("100", 0);
     const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
@@ -432,24 +322,9 @@ describe("tileClipToRange", () => {
       ],
     });
 
-    const tile1 = setupClip("200", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
-    const tile2 = setupClip("201", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
-    const tile3 = setupClip("202", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
+    const tile1 = setupTileClip("200");
+    const tile2 = setupTileClip("201");
+    const tile3 = setupTileClip("202");
 
     // Use tileLength larger than clip to shift offset through content
     const result = tileClipToRange(
@@ -472,13 +347,7 @@ describe("tileClipToRange", () => {
   });
 
   it("wraps start_marker correctly when offsetting through multiple loops", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      is_midi_clip: 1,
-      loop_start: 0,
-      loop_end: 4,
-      start_marker: 0,
-      end_marker: 4,
-    });
+    const sourceClip = setupMidiSourceClip("100", 0);
     const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
         ["id", "200"],
@@ -487,24 +356,9 @@ describe("tileClipToRange", () => {
       ],
     });
 
-    const tile1 = setupClip("200", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
-    const tile2 = setupClip("201", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
-    const tile3 = setupClip("202", {
-      properties: {
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
+    const tile1 = setupTileClip("200");
+    const tile2 = setupTileClip("201");
+    const tile3 = setupTileClip("202");
 
     const result = tileClipToRange(
       sourceClip,

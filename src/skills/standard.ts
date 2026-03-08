@@ -28,11 +28,12 @@ return notes.filter(n => n.pitch >= 60).map(n => ({
 **Context properties:**
 - \`track\`: { index, name, type, color }
 - \`clip\`: { id, name, length, timeSignature, looping }
-- \`location\`: { view, sceneIndex?, arrangementStart? }
+- \`location\`: { view, slot?, arrangementStart? }
 - \`liveSet\`: { tempo, scale?, timeSignature }
 - \`beatsPerBar\`: number
 
-**Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.`;
+**Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.
+`;
 
 export const skills = `# Producer Pal Skills
 
@@ -48,22 +49,24 @@ Create MIDI clips using the bar|beat notation syntax:
 
 \`[v0-127] [t<duration>] [p0-1] note(s) bar|beat\`
 
+- Parameters (v/t/p), pitches, and positions can appear in any order and be interspersed
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start
-  - beat can be a comma-separated (no whitespace) list or repeat pattern
-  - **Repeat patterns**: \`{beat}x{times}[@{step}]\` generates sequences (step optional, defaults to duration)
-    - \`1|1x4@1\` → beats 1,2,3,4; \`t0.5 1|1x4\` → 1, 1.5, 2, 2.5 (step = duration)
-    - \`1|1x3@/3\` → triplets; \`t/4 1|1x16\` → full bar of 16ths
+  - the beat in bar|beat can be a comma-separated (no whitespace) list or repeat pattern
+  - **Repeat patterns**: \`{bar|beat}x{count}[@{step}]\` generates sequences. count = how many notes
+    - step (in beats) defaults to duration (legato). step > duration = gaps; step < duration = overlap
+    - \`1|1x4@1\` → beats 1,2,3,4; \`t0.5 1|1x4\` → 1, 1.5, 2, 2.5 (step defaults to t value)
+    - \`1|1x3@/3\` → triplets; \`t/4 1|1x16\` → 16 notes at 16th-note spacing (x16 = count, t/4 = spacing)
 - v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length (default: 1.0). Beats: t2.5, t3/4, t/4. Bar:beat: t2:1.5, t1:/4
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
-- Notes: C0-G8 with # or b (C3 = middle C)
-- Parameters (v/t/p) and pitch persist until changed
+- Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
+- **Stateful**: v/t/p and pitch persist until changed — set once, applies to all following notes
 - copying bars (**MERGES** - use v0 to clear unwanted notes):
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
-  - Copies frozen note parameters, not current v/t/p state
+  - Copies capture each note's v/t/p at the time it was written, not the current state
 - **update-clip** \`noteUpdateMode\`: "merge" (default, overlay + v0 deletes) or "replace" (clear all existing notes first)
 
 ## Audio Clips
@@ -73,11 +76,11 @@ Audio params ignored when updating MIDI clips.
 ## Examples
 
 \`\`\`
-C3 E3 G3 1|1 // chord at bar 1 beat 1
+C#3 F3 G#3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1,3 2|1,2,3 // same pitch across bars (NOT 1|1,3,2|1,2,3)
 t0.25 C3 1|1.75 // 16th note at beat 1.75
-t1/3 C3 1|1x3 // triplet eighth notes (step = duration)
+t1/3 C3 1|1x3 // triplets: 3 notes across 1 beat (step = duration)
 t/4 Gb1 1|1x16 // full bar of 16th note hi-hats
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
@@ -125,14 +128,15 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), min(a,b,...), max(a,b,...), pow(base,exp), quant(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms)
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
-- \`cos(freq)\`, \`square(freq)\` - start at peak (1.0); \`sin(freq)\`, \`tri(freq)\`, \`saw(freq)\` - start at zero, rise to peak
+- \`cos(period)\`, \`square(period)\` - start at peak (1.0); \`sin(period)\`, \`tri(period)\`, \`saw(period)\` - start at zero, rise to peak
+  - All accept optional phase offset: \`cos(1t, 0.25)\`. square adds pulse width: \`square(1t, 0, 0.75)\`
 - \`rand([min], [max])\` - random value (no args: -1 to 1, one arg: 0 to max, two: min to max)
 - \`seq(a, b, ...)\` - cycle through values by note.index (MIDI) or clip.index (audio)
 - \`choose(a, b, ...)\` - random selection from arguments
 - \`ramp(start, end)\` - linear interpolation; reaches end value at time range end (or clip end)
 - \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
-- For ramp/curve, end the time filter on the last note's beat position. In 4/4: last 8th=N|4.5, last 16th=N|4.75
-- Frequency uses period notation: \`1t\` = 1 beat, \`1:0t\` = 1 bar, \`0:2t\` = 2 beats
+- For ramp/curve, end the time filter on the last note's beat position so it reaches its end value. In 4/4: last 8th=N|4.5, last 16th=N|4.75
+- Waveform period: \`1t\` = 1 beat cycle, \`1:0t\` = 1 bar cycle, \`0:2t\` = 2 beat cycle
 - \`sync\` keyword (last arg on periodic waves) syncs phase to arrangement timeline instead of clip start
 
 **Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only), \`clip.barDuration\` (all clips)
@@ -157,7 +161,7 @@ C1-C2: duration /= 2           // halve duration of bass notes
 \`\`\`
 
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
-Cross-type params ignored.
+MIDI params ignored for audio clips, vice versa.
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Working with Ableton Live
 

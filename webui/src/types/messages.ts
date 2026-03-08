@@ -1,24 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Type definitions for chat messages and formatting.
  *
  * Defines interfaces for:
- * - Raw provider message formats (Gemini, future: OpenAI)
  * - UI-friendly message structures for rendering
  * - Message formatter and chat client interfaces
  */
-
-// Import authoritative types from SDKs
-import { type Content as GeminiContent } from "@google/genai";
-import type OpenAI from "openai";
-
-// Re-export provider types for use throughout the application
-export type GeminiMessage = GeminiContent;
-export type OpenAIMessage = OpenAI.Chat.ChatCompletionMessageParam;
-export type OpenAIToolCall = OpenAI.Chat.ChatCompletionMessageToolCall;
 
 // UI Part Types
 // These represent the different types of content that can appear in a message
@@ -77,11 +68,3 @@ export interface ChatClient<TRawMessage> {
     message: string,
   ) => AsyncGenerator<TRawMessage[], void, unknown>;
 }
-
-// Concrete Types for Provider Implementations
-
-export type GeminiFormatter = MessageFormatter<GeminiMessage>;
-export type GeminiChatClient = ChatClient<GeminiMessage>;
-
-export type OpenAIFormatter = MessageFormatter<OpenAIMessage>;
-export type OpenAIChatClient = ChatClient<OpenAIMessage>;

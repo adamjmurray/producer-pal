@@ -69,8 +69,6 @@ Requires macOS.
 
    This creates:
    - `release/Producer_Pal.mcpb` (Claude Desktop extension)
-   - `release/producer-pal-portal.js` (MCP proxy, an alternative to
-     `npx producer-pal`)
 
 2. Freeze a fresh Max device:
    - Add the freshly built `max-for-live-device/Producer_Pal.amxd` to Ableton
@@ -95,7 +93,6 @@ Requires macOS.
 6. Upload files from `release/`:
    - `Producer_Pal.amxd`
    - `Producer_Pal.mcpb`
-   - `producer-pal-portal.js`
 7. Check "Set as a pre-release"
 8. Write release notes
 9. Publish pre-release
@@ -110,7 +107,6 @@ from the GitHub pre-release page to ensure the files work correctly.
 - Uninstall the previous Claude Desktop extension and reinstall the downloaded
   `Producer_Pal.mcpb`
 - Fresh Live Set with downloaded `Producer_Pal.amxd`
-- Leave `producer-pal-portal.js` in Downloads folder
 
 ### 3A. Claude Desktop Testing
 
@@ -146,12 +142,12 @@ manually check on anything that fails. Note: Requires `.env` file with API keys.
 
 ### 3C. Portal Script Testing
 
-Test the downloaded portal script with LM Studio or another MCP client:
+Test the built portal script with LM Studio or another MCP client:
 
 ```json
 "producer-pal": {
   "command": "node",
-  "args": ["/Users/{username}/Downloads/producer-pal-portal.js"]
+  "args": ["/absolute/path/to/npm/producer-pal-portal.js"]
 }
 ```
 
@@ -254,10 +250,8 @@ republished (TODO: document the process if this ever happens)
 
 ## Publishing to npm
 
-The npm package provides the portal script (`producer-pal-portal.js`) for users
-who want to run `npx producer-pal` instead of downloading the portal script and
-configuring the path to that file. This is an alternative distribution channel
-alongside GitHub releases.
+The npm package provides the portal script (`producer-pal-portal.js`) so users
+can run `npx producer-pal` to connect any MCP client to Producer Pal.
 
 **Prerequisites:**
 

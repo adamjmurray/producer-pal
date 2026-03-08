@@ -90,15 +90,14 @@ describe("readClip", () => {
       type: "midi",
       view: "session",
       name: "Test Clip",
-      trackIndex: 0,
-      sceneIndex: 0,
+      slot: "0/0",
       timeSignature: "4/4",
       looping: false,
       start: "1|2",
       end: "2|2", // end_marker (5 beats = 2|2)
       length: "1:0",
       triggered: true,
-      notes: "t0.25 C1 1|1 v90 D1 1|2 v100 C1 1|3 v90 D1 1|4",
+      notes: "t/4 C1 1|1,3 v90 D1 1|2,4",
     });
   });
 
@@ -127,8 +126,7 @@ describe("readClip", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       type: "midi",
       // name omitted when empty
-      sceneIndex: 0,
-      trackIndex: 0,
+      slot: "0/0",
       view: "session",
     });
   });
@@ -342,8 +340,7 @@ describe("readClip", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       name: "Test Clip",
       type: "midi",
-      sceneIndex: 0,
-      trackIndex: 0,
+      slot: "0/0",
       view: "session",
       timeSignature: "4/4",
       looping: false,

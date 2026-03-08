@@ -179,6 +179,34 @@ export function setupAudioArrangementClipMocks(
   return { liveSet, track, clip };
 }
 
+export interface DualMockHandles {
+  clipSlot: RegisteredMockObject;
+  sessionClip: RegisteredMockObject;
+  track: RegisteredMockObject;
+  arrangementClip: RegisteredMockObject;
+}
+
+/**
+ * Setup mocks for dual session + arrangement clip creation tests.
+ * Reuses arrangement mocks and adds session-specific ClipSlot and clip.
+ * @returns Handles for all registered mock objects
+ */
+export function setupDualMocks(): DualMockHandles {
+  const { track, clip: arrangementClip } = setupArrangementClipMocks();
+
+  const clipSlot = registerMockObject("live_set/tracks/0/clip_slots/0", {
+    path: livePath.track(0).clipSlot(0),
+    properties: { has_clip: 0 },
+  });
+
+  const sessionClip = registerMockObject(
+    "live_set/tracks/0/clip_slots/0/clip",
+    { path: livePath.track(0).clipSlot(0).clip() },
+  );
+
+  return { clipSlot, sessionClip, track, arrangementClip };
+}
+
 /**
  * Setup mocks for session clip tests.
  * @param opts - Options for mock properties
