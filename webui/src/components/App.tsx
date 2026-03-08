@@ -27,6 +27,14 @@ import { type TabId } from "./settings/SettingsTabs";
 // Placeholder API key for local providers that don't require authentication
 const LOCAL_PROVIDER_API_KEY = "not-needed";
 
+/**
+ * Check if viewport is below Tailwind's md breakpoint (768px)
+ * @returns true on mobile-width screens
+ */
+function isMobile(): boolean {
+  return window.matchMedia("(max-width: 767px)").matches;
+}
+
 // Base URLs for each provider
 const PROVIDER_BASE_URLS = {
   openai: "https://api.openai.com/v1",
@@ -282,8 +290,14 @@ export function App() {
             setViewState({
               historyPanelOpen: !viewState.historyPanelOpen,
             }),
-          onSelect: handleSelectConversation,
-          onNew: handleNewConversation,
+          onSelect: (id: string) => {
+            handleSelectConversation(id);
+            if (isMobile()) setViewState({ historyPanelOpen: false });
+          },
+          onNew: () => {
+            handleNewConversation();
+            if (isMobile()) setViewState({ historyPanelOpen: false });
+          },
           onDelete: handleDeleteConversation,
           onRename: handleRenameConversation,
         }}

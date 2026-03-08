@@ -38,92 +38,18 @@ vi.mock(import("#webui/hooks/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));
 
-// Import mocked modules to access them in tests
 import { useChat } from "#webui/hooks/chat/use-chat";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
-import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { useViewState } from "#webui/hooks/use-view-state";
-import { App } from "./App";
+import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
+import { App } from "#webui/components/App";
 
 describe("App", () => {
-  const mockChatHook = {
-    messages: [],
-    isAssistantResponding: false,
-    handleSend: vi.fn(),
-    handleRetry: vi.fn(),
-    clearConversation: vi.fn(),
-    stopResponse: vi.fn(),
-    activeModel: "test-model",
-    activeThinking: null,
-    activeTemperature: 1.0,
-  };
-
-  const mockSettingsHook = {
-    provider: "gemini" as const,
-    setProvider: vi.fn(),
-    apiKey: "test-key",
-    setApiKey: vi.fn(),
-    baseUrl: "",
-    setBaseUrl: vi.fn(),
-    model: "gemini-1.5-flash",
-    setModel: vi.fn(),
-    thinking: "default" as const,
-    setThinking: vi.fn(),
-    temperature: 1.0,
-    setTemperature: vi.fn(),
-    showThoughts: false,
-    setShowThoughts: vi.fn(),
-    enabledTools: {},
-    setEnabledTools: vi.fn(),
-    resetBehaviorToDefaults: vi.fn(),
-    saveSettings: vi.fn(),
-    cancelSettings: vi.fn(),
-    settingsConfigured: true,
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Setup default mock implementations
-    (useSettings as ReturnType<typeof vi.fn>).mockReturnValue(mockSettingsHook);
-    (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
-      theme: "light",
-      setTheme: vi.fn(),
-    });
-    (useMcpConnection as ReturnType<typeof vi.fn>).mockReturnValue({
-      mcpStatus: "connected",
-      mcpError: null,
-      mcpTools: [
-        { id: "ppal-connect", name: "Connect to Ableton" },
-        { id: "ppal-read-live-set", name: "Read Live Set" },
-      ],
-      checkMcpConnection: vi.fn(),
-    });
-    (useChat as ReturnType<typeof vi.fn>).mockReturnValue(mockChatHook);
-    (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
-      conversations: [],
-      activeConversationId: null,
-      saveCurrentConversation: vi.fn(),
-      switchConversation: vi.fn(),
-      startNewConversation: vi.fn(),
-      deleteConversation: vi.fn(),
-      renameConversation: vi.fn(),
-    });
-    (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
-      viewState: {
-        historyPanelOpen: false,
-        settingsOpen: false,
-        settingsTab: "connection",
-      },
-      setViewState: vi.fn(),
-    });
-    (useRemoteConfig as ReturnType<typeof vi.fn>).mockReturnValue({
-      smallModelMode: false,
-      setSmallModelMode: vi.fn(),
-    });
+    setupDefaultMocks();
   });
 
   describe("screen routing", () => {
@@ -674,102 +600,6 @@ describe("App", () => {
         render(<App />);
         expect(getExtraParams().baseUrl).toBe("http://localhost:8080/api");
       });
-    });
-  });
-
-  describe("conversation management", () => {
-    const panelOpenViewState = {
-      viewState: {
-        historyPanelOpen: true,
-        settingsOpen: false,
-        settingsTab: "connection" as const,
-      },
-      setViewState: vi.fn(),
-    };
-
-    const mockConversations = (overrides: Record<string, unknown>) => {
-      (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
-        conversations: [],
-        activeConversationId: null,
-        saveCurrentConversation: vi.fn(),
-        switchConversation: vi.fn(),
-        startNewConversation: vi.fn(),
-        deleteConversation: vi.fn(),
-        renameConversation: vi.fn(),
-        ...overrides,
-      });
-      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue(
-        panelOpenViewState,
-      );
-    };
-
-    it("calls startNewConversation on new conversation without closing panel", () => {
-      const mockStartNew = vi.fn();
-
-      mockConversations({ startNewConversation: mockStartNew });
-      const { container } = render(<App />);
-      const newButton = Array.from(container.querySelectorAll("button")).find(
-        (btn) => btn.textContent.includes("New Conversation"),
-      );
-
-      expect(newButton).toBeDefined();
-      if (newButton) fireEvent.click(newButton);
-      expect(mockStartNew).toHaveBeenCalledOnce();
-    });
-
-    it("calls switchConversation on select without closing panel", () => {
-      const mockSwitch = vi.fn();
-
-      mockConversations({
-        conversations: [
-          { id: "conv-1", title: null, createdAt: 1000, updatedAt: 2000 },
-        ],
-        switchConversation: mockSwitch,
-      });
-      const { container } = render(<App />);
-      const convItem = container.querySelector(
-        "div[class*='border-l-transparent']",
-      );
-
-      expect(convItem).toBeDefined();
-      const selectButton = convItem?.querySelector("button");
-
-      if (selectButton) fireEvent.click(selectButton);
-      expect(mockSwitch).toHaveBeenCalledWith("conv-1");
-    });
-
-    it("calls deleteConversation on delete button click", () => {
-      const mockDelete = vi.fn();
-
-      mockConversations({
-        conversations: [
-          { id: "conv-1", title: null, createdAt: 1000, updatedAt: 2000 },
-        ],
-        deleteConversation: mockDelete,
-      });
-      const { getByLabelText } = render(<App />);
-
-      fireEvent.click(getByLabelText("Delete conversation"));
-      expect(mockDelete).toHaveBeenCalledWith("conv-1");
-    });
-
-    it("calls renameConversation on rename", () => {
-      const mockRename = vi.fn();
-
-      mockConversations({
-        conversations: [
-          { id: "conv-1", title: "Old", createdAt: 1000, updatedAt: 2000 },
-        ],
-        renameConversation: mockRename,
-      });
-      const { getByLabelText, container } = render(<App />);
-
-      fireEvent.click(getByLabelText("Rename conversation"));
-      const input = container.querySelector("input") as HTMLInputElement;
-
-      fireEvent.input(input, { target: { value: "New Title" } });
-      fireEvent.keyDown(input, { key: "Enter" });
-      expect(mockRename).toHaveBeenCalledWith("conv-1", "New Title");
     });
   });
 });

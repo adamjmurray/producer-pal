@@ -48,9 +48,9 @@ export function ConversationPanel({
 
   return (
     <div
-      className={`shrink-0 h-full overflow-hidden transition-[width] duration-200 ${isOpen ? "w-72" : "w-0"}`}
+      className={`shrink-0 h-full overflow-hidden transition-[width] duration-200 ${isOpen ? "w-full md:w-72" : "w-0"}`}
     >
-      <div className="w-72 h-full bg-white dark:bg-gray-900 border-r border-gray-300 dark:border-gray-700 flex flex-col">
+      <div className="w-full md:w-72 h-full bg-white dark:bg-gray-900 border-r border-gray-300 dark:border-gray-700 flex flex-col">
         {/* New conversation + info */}
         <div className="px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center gap-2">
           <button
