@@ -132,16 +132,16 @@ export function App() {
     clearConversation: wrappedClearConversation,
   });
 
-  // Auto-save after each completed assistant turn
-  const wasRespondingRef = useRef(false);
+  // Auto-save when messages change (new user message or completed response)
+  const prevMessageCountRef = useRef(0);
 
   useEffect(() => {
-    if (wasRespondingRef.current && !chat.isAssistantResponding) {
+    if (chat.messages.length > prevMessageCountRef.current) {
       void conversationManager.saveCurrentConversation();
     }
 
-    wasRespondingRef.current = chat.isAssistantResponding;
-  }, [chat.isAssistantResponding, conversationManager]);
+    prevMessageCountRef.current = chat.messages.length;
+  }, [chat.messages.length, conversationManager]);
 
   const handleNewConversation = useCallback(() => {
     void conversationManager.startNewConversation();
