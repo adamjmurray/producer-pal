@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import {
   type ConversationSummary,
+  deleteConversation as dbDeleteConversation,
   listConversations,
   loadConversation as dbLoadConversation,
   saveConversation,
@@ -27,6 +28,7 @@ export interface UseConversationsReturn {
   saveCurrentConversation: () => Promise<void>;
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => Promise<void>;
+  deleteConversation: (id: string) => Promise<void>;
 }
 
 /**
@@ -152,6 +154,22 @@ export function useConversations({
     localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
   }, [getChatHistory, saveCurrentConversation, clearConversation]);
 
+  const deleteConversation = useCallback(
+    async (id: string) => {
+      await dbDeleteConversation(id);
+
+      if (activeIdRef.current === id) {
+        clearConversation();
+        setActiveConversationId(null);
+        activeIdRef.current = null;
+        localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
+      }
+
+      await refreshList();
+    },
+    [clearConversation, refreshList],
+  );
+
   const togglePanel = useCallback(() => {
     setIsPanelOpen((prev) => !prev);
   }, []);
@@ -191,5 +209,6 @@ export function useConversations({
     saveCurrentConversation,
     switchConversation,
     startNewConversation,
+    deleteConversation,
   };
 }

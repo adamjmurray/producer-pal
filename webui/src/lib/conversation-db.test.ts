@@ -9,6 +9,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   type ConversationRecord,
+  deleteConversation,
   getConversationDb,
   listConversations,
   loadConversation,
@@ -104,6 +105,16 @@ describe("conversation-db", () => {
     expect(
       (list[0] as unknown as Record<string, unknown>).messages,
     ).toBeUndefined();
+  });
+
+  it("deletes a conversation by ID", async () => {
+    const record = createRecord();
+
+    await saveConversation(record);
+    await deleteConversation(record.id);
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded).toBeUndefined();
   });
 
   it("returns empty list when no conversations exist", async () => {

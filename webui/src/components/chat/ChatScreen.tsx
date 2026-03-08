@@ -54,6 +54,7 @@ export interface ConversationPanelState {
   onToggle: () => void;
   onSelect: (id: string) => void;
   onNew: () => void;
+  onDelete: (id: string) => void;
 }
 
 /**
@@ -149,6 +150,7 @@ export function ChatScreen({
           activeConversationId={conversationPanel.activeConversationId}
           onSelect={conversationPanel.onSelect}
           onNewConversation={conversationPanel.onNew}
+          onDelete={conversationPanel.onDelete}
         />
 
         <div className="flex flex-col flex-1 min-w-0">

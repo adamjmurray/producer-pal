@@ -71,6 +71,16 @@ export async function loadConversation(
 }
 
 /**
+ * Delete a conversation by ID.
+ * @param id - Conversation ID to delete
+ */
+export async function deleteConversation(id: string): Promise<void> {
+  const db = await getConversationDb();
+
+  await db.delete(STORE_NAME, id);
+}
+
+/**
  * List all conversations sorted by createdAt descending (newest first).
  * @returns Array of conversation summaries
  */

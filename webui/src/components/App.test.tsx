@@ -106,6 +106,7 @@ describe("App", () => {
       saveCurrentConversation: vi.fn(),
       switchConversation: vi.fn(),
       startNewConversation: vi.fn(),
+      deleteConversation: vi.fn(),
     });
     (useRemoteConfig as ReturnType<typeof vi.fn>).mockReturnValue({
       smallModelMode: false,
@@ -621,6 +622,7 @@ describe("App", () => {
         saveCurrentConversation: vi.fn(),
         switchConversation: vi.fn(),
         startNewConversation: mockStartNew,
+        deleteConversation: vi.fn(),
       });
       const { container } = render(<App />);
       const newButton = Array.from(container.querySelectorAll("button")).find(
@@ -647,20 +649,42 @@ describe("App", () => {
         saveCurrentConversation: vi.fn(),
         switchConversation: mockSwitch,
         startNewConversation: vi.fn(),
+        deleteConversation: vi.fn(),
       });
       const { container } = render(<App />);
 
-      // Find conversation item button (has border-l-transparent class)
+      // Find conversation item and click its select button
       const convItem = container.querySelector(
-        "button[class*='border-l-transparent']",
+        "div[class*='border-l-transparent']",
       );
 
       expect(convItem).toBeDefined();
+      const selectButton = convItem?.querySelector("button");
 
-      if (convItem) fireEvent.click(convItem);
+      if (selectButton) fireEvent.click(selectButton);
 
       expect(mockSwitch).toHaveBeenCalledWith("conv-1");
       expect(mockToggle).not.toHaveBeenCalled();
+    });
+
+    it("calls deleteConversation on delete button click", () => {
+      const mockDelete = vi.fn();
+
+      (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
+        conversations: [{ id: "conv-1", createdAt: 1000, updatedAt: 2000 }],
+        activeConversationId: null,
+        isPanelOpen: true,
+        togglePanel: vi.fn(),
+        saveCurrentConversation: vi.fn(),
+        switchConversation: vi.fn(),
+        startNewConversation: vi.fn(),
+        deleteConversation: mockDelete,
+      });
+      const { getByLabelText } = render(<App />);
+
+      fireEvent.click(getByLabelText("Delete conversation"));
+
+      expect(mockDelete).toHaveBeenCalledWith("conv-1");
     });
   });
 });

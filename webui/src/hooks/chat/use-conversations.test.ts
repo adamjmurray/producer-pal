@@ -292,6 +292,69 @@ describe("useConversations", () => {
     expect(result.current.conversations).toHaveLength(1);
   });
 
+  it("deletes a conversation and removes it from list", async () => {
+    const { props, state } = createProps();
+    const { result } = renderHook(() => useConversations(props));
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    state.chatHistory = [{ role: "user", content: "hello" }];
+
+    await act(async () => {
+      await result.current.saveCurrentConversation();
+    });
+
+    const savedId = result.current.activeConversationId!;
+
+    expect(result.current.conversations).toHaveLength(1);
+
+    await act(async () => {
+      await result.current.deleteConversation(savedId);
+    });
+
+    expect(result.current.conversations).toHaveLength(0);
+    expect(result.current.activeConversationId).toBeNull();
+    expect(props.clearConversation).toHaveBeenCalled();
+  });
+
+  it("deletes a non-active conversation without clearing chat", async () => {
+    const otherId = crypto.randomUUID();
+
+    await saveConversation({
+      id: otherId,
+      createdAt: 1000,
+      updatedAt: 1000,
+      messages: [{ role: "user", content: "other" }],
+    });
+
+    const { props, state } = createProps();
+    const { result } = renderHook(() => useConversations(props));
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+
+    // Save a current conversation
+    state.chatHistory = [{ role: "user", content: "current" }];
+
+    await act(async () => {
+      await result.current.saveCurrentConversation();
+    });
+
+    expect(result.current.conversations).toHaveLength(2);
+
+    // Delete the other one — should not affect active
+    await act(async () => {
+      await result.current.deleteConversation(otherId);
+    });
+
+    expect(result.current.conversations).toHaveLength(1);
+    expect(result.current.activeConversationId).not.toBeNull();
+    expect(props.clearConversation).not.toHaveBeenCalled();
+  });
+
   it("fires beforeunload handler to save conversation", async () => {
     const { props, state } = createProps();
 

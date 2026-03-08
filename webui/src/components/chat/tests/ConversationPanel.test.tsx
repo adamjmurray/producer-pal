@@ -25,13 +25,14 @@ describe("ConversationPanel", () => {
         activeConversationId={null}
         onSelect={vi.fn()}
         onNewConversation={vi.fn()}
+        onDelete={vi.fn()}
       />,
     );
 
     const buttons = container.querySelectorAll("button");
 
-    // New Conversation + 2 conversation items
-    expect(buttons).toHaveLength(3);
+    // New Conversation + 2 × (select + delete)
+    expect(buttons).toHaveLength(5);
   });
 
   it("highlights active conversation", () => {
@@ -42,14 +43,15 @@ describe("ConversationPanel", () => {
         activeConversationId="conv-1"
         onSelect={vi.fn()}
         onNewConversation={vi.fn()}
+        onDelete={vi.fn()}
       />,
     );
 
-    // Find the button containing the active conversation
-    const buttons = container.querySelectorAll(".overflow-y-auto button");
-    const activeButton = buttons[0] as HTMLElement;
+    // Find the div containing the active conversation
+    const items = container.querySelectorAll(".overflow-y-auto > div");
+    const activeItem = items[0] as HTMLElement;
 
-    expect(activeButton.className).toContain("bg-blue-50");
+    expect(activeItem.className).toContain("bg-blue-50");
   });
 
   it("calls onSelect when clicking a conversation", () => {
@@ -62,6 +64,7 @@ describe("ConversationPanel", () => {
         activeConversationId={null}
         onSelect={onSelect}
         onNewConversation={vi.fn()}
+        onDelete={vi.fn()}
       />,
     );
 
@@ -81,12 +84,32 @@ describe("ConversationPanel", () => {
         activeConversationId={null}
         onSelect={vi.fn()}
         onNewConversation={onNew}
+        onDelete={vi.fn()}
       />,
     );
 
     fireEvent.click(getByText("+ New Conversation"));
 
     expect(onNew).toHaveBeenCalledOnce();
+  });
+
+  it("calls onDelete when clicking trash icon", () => {
+    const onDelete = vi.fn();
+
+    const { getAllByLabelText } = render(
+      <ConversationPanel
+        isOpen={true}
+        conversations={conversations}
+        activeConversationId={null}
+        onSelect={vi.fn()}
+        onNewConversation={vi.fn()}
+        onDelete={onDelete}
+      />,
+    );
+
+    fireEvent.click(getAllByLabelText("Delete conversation")[0] as HTMLElement);
+
+    expect(onDelete).toHaveBeenCalledWith("conv-1");
   });
 
   it("shows empty message when no conversations", () => {
@@ -97,6 +120,7 @@ describe("ConversationPanel", () => {
         activeConversationId={null}
         onSelect={vi.fn()}
         onNewConversation={vi.fn()}
+        onDelete={vi.fn()}
       />,
     );
 

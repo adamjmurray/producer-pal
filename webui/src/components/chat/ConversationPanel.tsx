@@ -16,6 +16,7 @@ interface ConversationPanelProps {
   activeConversationId: string | null;
   onSelect: (id: string) => void;
   onNewConversation: () => void;
+  onDelete: (id: string) => void;
 }
 
 /**
@@ -27,6 +28,7 @@ interface ConversationPanelProps {
  * @param props.activeConversationId - Currently active conversation ID
  * @param props.onSelect - Callback when a conversation is selected
  * @param props.onNewConversation - Callback to start a new conversation
+ * @param props.onDelete - Callback to delete a conversation
  * @returns Panel component
  */
 export function ConversationPanel({
@@ -35,6 +37,7 @@ export function ConversationPanel({
   activeConversationId,
   onSelect,
   onNewConversation,
+  onDelete,
 }: ConversationPanelProps) {
   return (
     <div
@@ -71,22 +74,46 @@ export function ConversationPanel({
               const isActive = conv.id === activeConversationId;
 
               return (
-                <button
+                <div
                   key={conv.id}
-                  onClick={() => onSelect(conv.id)}
-                  className={`w-full text-left px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 transition-colors ${
+                  className={`flex items-center border-b border-gray-100 dark:border-gray-800 transition-colors ${
                     isActive
                       ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-l-blue-500"
                       : "hover:bg-gray-50 dark:hover:bg-gray-800 border-l-2 border-l-transparent"
                   }`}
                 >
-                  <div
-                    className={`text-xs ${isActive ? "font-medium text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}
+                  <button
+                    onClick={() => onSelect(conv.id)}
+                    className="flex-1 text-left px-4 py-2.5"
                   >
-                    {formatTimestampDate(conv.createdAt)},{" "}
-                    {formatTimestampTime(conv.createdAt)}
-                  </div>
-                </button>
+                    <div
+                      className={`text-xs ${isActive ? "font-medium text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}
+                    >
+                      {formatTimestampDate(conv.createdAt)},{" "}
+                      {formatTimestampTime(conv.createdAt)}
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => onDelete(conv.id)}
+                    className="pr-3 pl-1 py-2.5 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                    aria-label="Delete conversation"
+                    title="Delete conversation"
+                  >
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 14 14"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M2 3.5h10M5 3.5V2.5a1 1 0 011-1h2a1 1 0 011 1v1M11 3.5l-.5 8a1 1 0 01-1 1h-5a1 1 0 01-1-1L3 3.5" />
+                    </svg>
+                  </button>
+                </div>
               );
             })
           )}

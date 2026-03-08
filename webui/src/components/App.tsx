@@ -154,6 +154,13 @@ export function App() {
     [conversationManager],
   );
 
+  const handleDeleteConversation = useCallback(
+    (id: string) => {
+      void conversationManager.deleteConversation(id);
+    },
+    [conversationManager],
+  );
+
   // Calculate tools counts for header display
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
@@ -264,6 +271,7 @@ export function App() {
           onToggle: conversationManager.togglePanel,
           onSelect: handleSelectConversation,
           onNew: handleNewConversation,
+          onDelete: handleDeleteConversation,
         }}
       />
     </ToolNamesContext.Provider>
