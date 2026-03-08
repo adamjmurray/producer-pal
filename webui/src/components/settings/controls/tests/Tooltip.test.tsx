@@ -78,6 +78,26 @@ describe("Tooltip", () => {
     expect(screen.getByText("Line two")).toBeDefined();
   });
 
+  it("does not dismiss when clicking inside while pinned", () => {
+    render(<Tooltip text={"Line one\nLine two"} />);
+    fireEvent.click(infoButton());
+    expect(screen.getByText("Line one")).toBeDefined();
+
+    // Click inside the tooltip content (not outside)
+    fireEvent.mouseDown(screen.getByText("Line one"));
+    expect(screen.getByText("Line one")).toBeDefined();
+  });
+
+  it("does not re-show tooltip on mouse enter when already pinned", () => {
+    render(<Tooltip text="Some description" />);
+    fireEvent.click(infoButton());
+    expect(screen.getByText("Some description")).toBeDefined();
+
+    // Mouse enter while pinned should not toggle anything
+    fireEvent.mouseEnter(infoButton());
+    expect(screen.getByText("Some description")).toBeDefined();
+  });
+
   it("does not propagate click event", () => {
     let parentClicked = false;
     const handleParentClick = () => (parentClicked = true);

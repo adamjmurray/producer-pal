@@ -119,6 +119,13 @@ describe("code-executor", () => {
       expect(result.error).toContain("test error");
     });
 
+    it("should handle non-Error thrown values", () => {
+      const result = executeSandboxedCode('throw "string error"');
+
+      expectFailure(result);
+      expect(result.error).toContain("string error");
+    });
+
     it("should return undefined result for no return value", () => {
       const result = executeSandboxedCode("const x = 1;");
 

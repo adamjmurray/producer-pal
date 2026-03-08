@@ -442,6 +442,27 @@ describe("Context Variables", () => {
     });
   });
 
+  describe("scale context via clipContext", () => {
+    it("passes scalePitchClassMask through clipContext to applyTransforms", () => {
+      const notes = createTestNotes([
+        { start_time: 0, velocity: 100, pitch: 61 },
+      ]);
+      // C Major mask: C D E F G A B → pitch classes 0,2,4,5,7,9,11
+      const clipContext: ClipContext = {
+        clipDuration: 4,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 4,
+        scalePitchClassMask: 2741, // C Major
+      };
+
+      applyTransforms(notes, "pitch = quant(61)", 4, 4, clipContext);
+
+      // C# (61) quantized to D (62) in C Major
+      expect(notes[0]!.pitch).toBe(62);
+    });
+  });
+
   describe("context variable errors", () => {
     it("errors when clip variable is not available", () => {
       const result = evaluateTransform(

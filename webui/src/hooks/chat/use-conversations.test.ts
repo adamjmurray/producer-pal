@@ -468,6 +468,35 @@ describe("useConversations", () => {
       expect(result.current.conversations[0]?.title).toBe("Add a bass track");
     });
 
+    it("falls back to connect title when second user message is empty", async () => {
+      const { state, result } = await setupHook();
+
+      state.chatHistory = [
+        { role: "user", content: "connect" },
+        { role: "assistant", content: "Connected!" },
+        { role: "user", content: "" },
+      ];
+
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      expect(result.current.conversations[0]?.title).toBe("connect");
+    });
+
+    it("returns null title when only user message has empty content", async () => {
+      const { state, result } = await setupHook();
+
+      state.chatHistory = [{ role: "user", content: "" }];
+
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      // Empty content means no title can be derived
+      expect(result.current.conversations[0]?.title).toBeNull();
+    });
+
     it("preserves manually renamed title", async () => {
       const { state, result } = await setupHook();
 

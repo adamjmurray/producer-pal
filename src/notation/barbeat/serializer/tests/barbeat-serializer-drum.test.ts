@@ -97,6 +97,50 @@ describe("drum mode serializer", () => {
     expect(result).toBe("v80 t/4 Gb1 1|1x16");
   });
 
+  it("does not use repeat pattern for non-uniform spacing", () => {
+    // 3 notes with non-uniform spacing: 0, 1, 3 (steps 1, 2 - irregular)
+    const notes: NoteEvent[] = [
+      createNote({ pitch: 36, start_time: 0, duration: 0.25 }),
+      createNote({ pitch: 36, start_time: 1, duration: 0.25 }),
+      createNote({ pitch: 36, start_time: 3, duration: 0.25 }),
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes, { drumMode: true });
+
+    // Should list positions individually, not use repeat pattern
+    expect(result).not.toContain("x3");
+    expect(result).toContain("1|1");
+  });
+
+  it("prefers listing when repeat format is not shorter", () => {
+    // 3 notes with large step where "1|1x3@4" is not shorter than "1|1 2|1 3|1"
+    // "1|1x3@4" = 8 chars, "1|1 2|1 3|1" = 11 chars, repeat is shorter
+    // But for 3 notes in same bar: "1|1,2,3" = 7 chars vs "1|1x3" = 5 chars
+    // So use comma-merge scenario: beats 1, 2.5, 4 (non-uniform in-bar)
+    const notes: NoteEvent[] = [
+      createNote({ pitch: 36, start_time: 0, duration: 1 }),
+      createNote({ pitch: 36, start_time: 1.5, duration: 1 }),
+      createNote({ pitch: 36, start_time: 3, duration: 1 }),
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes, { drumMode: true });
+
+    // Non-uniform spacing, should use comma merge
+    expect(result).not.toContain("x3");
+  });
+
+  it("handles drum notes with undefined probability", () => {
+    // Tests ?? fallback in sameState for probability
+    const notes = [
+      { pitch: 36, start_time: 0, duration: 0.25, velocity: 80 },
+      { pitch: 36, start_time: 1, duration: 0.25, velocity: 80 },
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes, { drumMode: true });
+
+    expect(result).toContain("C1");
+  });
+
   it("includes @step when step differs from duration", () => {
     // Kick on beats 1 and 3 of each of 4 bars (8 hits, step=2)
     const notes: NoteEvent[] = Array.from({ length: 8 }, (_, i) =>
