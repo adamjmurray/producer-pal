@@ -24,6 +24,7 @@ interface ChatScreenProps {
   rateLimitState: RateLimitState | null;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (messageIndex: number) => Promise<void>;
+  handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
   activeModel: string | null;
   activeProvider: Provider | null;
   provider: Provider;
@@ -51,6 +52,7 @@ interface ChatScreenProps {
  * @param {RateLimitState | null} props.rateLimitState - Rate limit retry state
  * @param {(message: string) => Promise<void>} props.handleSend - Send message callback
  * @param {(messageIndex: number) => Promise<void>} props.handleRetry - Retry message callback
+ * @param {(messageIndex: number, newMessage: string) => Promise<void>} props.handleEdit - Edit and fork message callback
  * @param {string | null} props.activeModel - Active model identifier
  * @param {Provider | null} props.activeProvider - Active provider
  * @param {Provider} props.provider - Provider from settings
@@ -75,6 +77,7 @@ export function ChatScreen({
   rateLimitState,
   handleSend,
   handleRetry,
+  handleEdit,
 
   activeModel,
   activeProvider,
@@ -142,6 +145,7 @@ export function ChatScreen({
             messages={messages}
             isAssistantResponding={isAssistantResponding}
             handleRetry={handleRetry}
+            handleEdit={handleEdit}
             showTimestamps={showTimestamps}
           />
         )}

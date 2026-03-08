@@ -15,7 +15,7 @@ import { MessageList } from "#webui/components/chat/MessageList";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { DEMO_TOOL_NAMES, demoMessages } from "./demo-fixtures";
 
-const NO_OP_RETRY = async () => {};
+const NO_OP = async () => {};
 
 // The last fixture message has a pending tool call (result: null)
 const lastMsg = demoMessages.at(-1);
@@ -45,7 +45,8 @@ export function DemoMode() {
           <MessageList
             messages={demoMessages}
             isAssistantResponding={hasPendingTool}
-            handleRetry={NO_OP_RETRY}
+            handleRetry={NO_OP}
+            handleEdit={NO_OP}
             showTimestamps={true}
           />
         </div>

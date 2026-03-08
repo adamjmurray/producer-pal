@@ -24,6 +24,7 @@ describe("ChatScreen", () => {
     rateLimitState: null,
     handleSend: mockHandleSend,
     handleRetry: mockHandleRetry,
+    handleEdit: vi.fn(),
     activeModel: "gemini-1.5-flash",
     activeProvider: "gemini" as const,
     provider: "gemini" as const,

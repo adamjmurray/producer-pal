@@ -205,6 +205,7 @@ export function App() {
         rateLimitState={chat.rateLimitState}
         handleSend={wrappedHandleSend}
         handleRetry={chat.handleRetry}
+        handleEdit={chat.handleEdit}
         activeModel={chat.activeModel}
         activeProvider={chat.activeProvider}
         provider={settings.provider}
