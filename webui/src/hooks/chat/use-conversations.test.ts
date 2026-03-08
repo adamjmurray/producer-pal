@@ -40,6 +40,19 @@ async function waitForEffects(): Promise<void> {
   });
 }
 
+/**
+ * Create props, render hook, and wait for init.
+ * @returns Props, state, and hook result
+ */
+async function setupHook() {
+  const { props, state } = createProps();
+  const { result } = renderHook(() => useConversations(props));
+
+  await waitForEffects();
+
+  return { props, state, result };
+}
+
 describe("useConversations", () => {
   beforeEach(async () => {
     resetDbCache();
@@ -51,11 +64,7 @@ describe("useConversations", () => {
   });
 
   it("initializes with empty conversations list", async () => {
-    const { props } = createProps();
-    const { result } = renderHook(() => useConversations(props));
-
-    // Wait for async init
-    await waitForEffects();
+    const { result } = await setupHook();
 
     expect(result.current.conversations).toStrictEqual([]);
     expect(result.current.activeConversationId).toBeNull();
@@ -82,10 +91,7 @@ describe("useConversations", () => {
   });
 
   it("saves current conversation and assigns an ID", async () => {
-    const { props, state } = createProps();
-    const { result } = renderHook(() => useConversations(props));
-
-    await waitForEffects();
+    const { state, result } = await setupHook();
 
     state.chatHistory = [{ role: "user", content: "hello" }];
 
@@ -101,10 +107,7 @@ describe("useConversations", () => {
   });
 
   it("does not save when chat history is empty", async () => {
-    const { props } = createProps();
-    const { result } = renderHook(() => useConversations(props));
-
-    await waitForEffects();
+    const { result } = await setupHook();
 
     await act(async () => {
       await result.current.saveCurrentConversation();
@@ -152,10 +155,7 @@ describe("useConversations", () => {
   });
 
   it("starts a new conversation", async () => {
-    const { props, state } = createProps();
-    const { result } = renderHook(() => useConversations(props));
-
-    await waitForEffects();
+    const { props, state, result } = await setupHook();
 
     // Save a conversation first
     state.chatHistory = [{ role: "user", content: "hello" }];
@@ -222,10 +222,7 @@ describe("useConversations", () => {
   });
 
   it("preserves createdAt on subsequent saves", async () => {
-    const { props, state } = createProps();
-    const { result } = renderHook(() => useConversations(props));
-
-    await waitForEffects();
+    const { state, result } = await setupHook();
 
     state.chatHistory = [{ role: "user", content: "hello" }];
 
@@ -254,10 +251,7 @@ describe("useConversations", () => {
   });
 
   it("auto-saves current conversation when starting new with existing history", async () => {
-    const { props, state } = createProps();
-    const { result } = renderHook(() => useConversations(props));
-
-    await waitForEffects();
+    const { state, result } = await setupHook();
 
     // Create a conversation with history
     state.chatHistory = [{ role: "user", content: "hello" }];
@@ -284,10 +278,7 @@ describe("useConversations", () => {
   });
 
   it("deletes a conversation and removes it from list", async () => {
-    const { props, state } = createProps();
-    const { result } = renderHook(() => useConversations(props));
-
-    await waitForEffects();
+    const { props, state, result } = await setupHook();
 
     state.chatHistory = [{ role: "user", content: "hello" }];
 
@@ -344,10 +335,7 @@ describe("useConversations", () => {
   });
 
   it("renames a conversation and refreshes list", async () => {
-    const { props, state } = createProps();
-    const { result } = renderHook(() => useConversations(props));
-
-    await waitForEffects();
+    const { state, result } = await setupHook();
 
     state.chatHistory = [{ role: "user", content: "hello" }];
 
@@ -389,5 +377,92 @@ describe("useConversations", () => {
     expect(all[0]?.messages).toStrictEqual([
       { role: "user", content: "save on unload" },
     ]);
+  });
+
+  describe("auto-title derivation", () => {
+    it("sets title from first user message", async () => {
+      const { state, result } = await setupHook();
+
+      state.chatHistory = [{ role: "user", content: "How do I add drums?" }];
+
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      expect(result.current.conversations[0]?.title).toBe(
+        "How do I add drums?",
+      );
+    });
+
+    it("uses only first line of multiline message", async () => {
+      const { state, result } = await setupHook();
+
+      state.chatHistory = [
+        { role: "user", content: "First line\nSecond line\nThird" },
+      ];
+
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      expect(result.current.conversations[0]?.title).toBe("First line");
+    });
+
+    it("replaces connect-variant title with second user message", async () => {
+      const { state, result } = await setupHook();
+
+      state.chatHistory = [
+        { role: "user", content: "Connect to Ableton" },
+        { role: "assistant", content: "Connected!" },
+      ];
+
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      // Only one user message so far — keeps connect title
+      expect(result.current.conversations[0]?.title).toBe("Connect to Ableton");
+
+      // Second user message arrives
+      state.chatHistory = [
+        { role: "user", content: "Connect to Ableton" },
+        { role: "assistant", content: "Connected!" },
+        { role: "user", content: "Add a bass track" },
+      ];
+
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      expect(result.current.conversations[0]?.title).toBe("Add a bass track");
+    });
+
+    it("preserves manually renamed title", async () => {
+      const { state, result } = await setupHook();
+
+      state.chatHistory = [{ role: "user", content: "hello" }];
+
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      const id = result.current.activeConversationId!;
+
+      await act(async () => {
+        await result.current.renameConversation(id, "My Custom Name");
+      });
+
+      // Save again — should keep the manual name
+      state.chatHistory = [
+        { role: "user", content: "hello" },
+        { role: "assistant", content: "hi" },
+      ];
+
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      expect(result.current.conversations[0]?.title).toBe("My Custom Name");
+    });
   });
 });

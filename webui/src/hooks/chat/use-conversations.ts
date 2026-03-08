@@ -104,7 +104,8 @@ export function useConversations({
     localStorage.setItem(ACTIVE_CONVERSATION_KEY, id);
 
     const existing = isNew ? undefined : await dbLoadConversation(id);
-    const title = existing?.title ?? activeTitleRef.current ?? null;
+    const existingTitle = existing?.title ?? activeTitleRef.current ?? null;
+    const title = deriveTitle(existingTitle, chatHistory);
     const createdAt = existing?.createdAt ?? activeCreatedAtRef.current ?? now;
 
     activeTitleRef.current = title;
@@ -212,7 +213,7 @@ export function useConversations({
       // Best-effort save — IndexedDB writes are async but usually complete
       void saveConversation({
         id,
-        title: activeTitleRef.current,
+        title: deriveTitle(activeTitleRef.current, chatHistory),
         createdAt: activeCreatedAtRef.current ?? now,
         updatedAt: now,
         messages: chatHistory as Array<{
@@ -238,4 +239,52 @@ export function useConversations({
     deleteConversation,
     renameConversation,
   };
+}
+
+// --- Helpers below main export ---
+
+const CONNECT_PATTERN =
+  /^\s*(connect(\s+to\s+ableton)?|ableton)\s*[!,.:;?]*\s*$/i;
+
+/**
+ * Extracts the first line of a message content string.
+ * @param content - Raw message content
+ * @returns First non-empty line, or the whole string if single-line
+ */
+function firstLine(content: string): string {
+  return content.split("\n")[0]?.trim() ?? "";
+}
+
+/**
+ * Derives an automatic title from chat history when no manual title exists.
+ *
+ * Uses the first user message's first line as the title. If that looks like
+ * a "connect to Ableton" command, upgrades to the second user message's
+ * first line when available.
+ * @param currentTitle - Existing title (null if none)
+ * @param chatHistory - Current chat messages
+ * @returns Derived title, or currentTitle if already set manually
+ */
+function deriveTitle(
+  currentTitle: string | null,
+  chatHistory: unknown[],
+): string | null {
+  const messages = chatHistory as Array<{ role: string; content: string }>;
+  const userMessages = messages.filter((m) => m.role === "user");
+
+  if (userMessages.length === 0) return currentTitle;
+
+  const firstUserLine = firstLine(userMessages[0]?.content ?? "");
+
+  // Keep manually-set titles that don't match auto-derived ones
+  if (currentTitle != null && !CONNECT_PATTERN.test(currentTitle)) {
+    return currentTitle;
+  }
+
+  // If first message is a connect command, try second user message
+  if (CONNECT_PATTERN.test(firstUserLine) && userMessages.length > 1) {
+    return firstLine(userMessages[1]?.content ?? "") || firstUserLine;
+  }
+
+  return firstUserLine || null;
 }
