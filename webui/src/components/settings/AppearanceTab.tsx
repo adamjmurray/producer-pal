@@ -5,6 +5,8 @@
 interface AppearanceTabProps {
   theme: string;
   setTheme: (theme: string) => void;
+  showTimestamps: boolean;
+  setShowTimestamps: (show: boolean) => void;
 }
 
 /**
@@ -12,9 +14,16 @@ interface AppearanceTabProps {
  * @param {object} props - Component props
  * @param {string} props.theme - UI theme setting
  * @param {Function} props.setTheme - Function to update theme
+ * @param {boolean} props.showTimestamps - Whether to show message timestamps
+ * @param {Function} props.setShowTimestamps - Function to toggle timestamps
  * @returns {JSX.Element} Appearance tab component
  */
-export function AppearanceTab({ theme, setTheme }: AppearanceTabProps) {
+export function AppearanceTab({
+  theme,
+  setTheme,
+  showTimestamps,
+  setShowTimestamps,
+}: AppearanceTabProps) {
   return (
     <div>
       <label htmlFor="theme-select" className="block text-sm mb-2">
@@ -30,6 +39,17 @@ export function AppearanceTab({ theme, setTheme }: AppearanceTabProps) {
         <option value="light">Light</option>
         <option value="dark">Dark</option>
       </select>
+
+      <label className="flex items-center gap-2 text-sm mt-4 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={showTimestamps}
+          onChange={(e) =>
+            setShowTimestamps((e.target as HTMLInputElement).checked)
+          }
+        />
+        Show message timestamps
+      </label>
     </div>
   );
 }

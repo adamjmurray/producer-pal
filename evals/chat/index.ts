@@ -1,15 +1,12 @@
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Command } from "commander";
 import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
-import { runAnthropic } from "./anthropic.ts";
-import { runGemini } from "./gemini.ts";
-import { runLocal } from "./local/index.ts";
-import { runOpenAI } from "./openai/index.ts";
-import { runOpenRouter } from "./openrouter/index.ts";
+import { runAiSdkChat } from "./ai-sdk-chat.ts";
 import { type ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
@@ -27,10 +24,7 @@ program
     "-m, --model <model>",
     "Model (e.g., claude-sonnet-4-5, google/gemini-2.0-flash)",
   )
-  .option(
-    "-a, --api <api>",
-    "API style (chat, responses) - defaults: openai=responses, openrouter=chat",
-  )
+  .option("-a, --api <api>", "(deprecated, ignored) API style")
   .option("-n, --no-stream", "Disable streaming mode")
   .option("-d, --debug", "Debug mode (log all API responses)")
   .option(
@@ -67,45 +61,18 @@ program
     const { provider, model } = parseModelArg(rawOptions.model);
     const options: ChatOptions = { ...rawOptions, provider, model };
 
-    // Apply --base-url to env so LOCAL_CONFIG.createClient picks it up
+    // Apply --base-url to env so local provider picks it up
     if (rawOptions.baseUrl) {
       process.env.LOCAL_BASE_URL = rawOptions.baseUrl;
     }
 
-    // Warn if --api is used with Anthropic/Google (only applies to openai/openrouter)
-    if (
-      options.api &&
-      (options.provider === "anthropic" || options.provider === "google")
-    ) {
+    if (options.api) {
       console.warn(
-        `Warning: --api flag does not apply to ${options.provider} provider (ignored)`,
+        "Warning: --api flag is deprecated (AI SDK handles API selection internally)",
       );
     }
 
-    switch (options.provider) {
-      case "anthropic":
-        await runAnthropic(initialText, options);
-        break;
-      case "google":
-        await runGemini(initialText, options);
-        break;
-      case "local":
-        await runLocal(initialText, options);
-        break;
-      case "openai":
-        await runOpenAI(initialText, options);
-        break;
-      case "openrouter":
-        await runOpenRouter(initialText, options);
-        break;
-
-      default: {
-        const _exhaustiveCheck: never = options.provider;
-
-        console.error(`Unknown provider: ${String(_exhaustiveCheck)}`);
-        process.exit(1);
-      }
-    }
+    await runAiSdkChat(initialText, options);
   });
 
 program.parse();

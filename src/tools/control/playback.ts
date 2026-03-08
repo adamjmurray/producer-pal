@@ -6,6 +6,7 @@ import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.t
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   getCurrentLoopState,
   handlePlayArrangement,
@@ -23,24 +24,23 @@ interface PlaybackActionParams {
   startTimeBeats?: number;
   useLocatorStart: boolean;
   sceneIndex?: number;
-  clipIds?: string;
+  ids?: string;
+  slots?: string;
 }
 
 interface PlaybackArgs {
   action?: string;
   startTime?: string;
-  startLocatorId?: string;
-  startLocatorName?: string;
+  startLocator?: string;
   loop?: boolean;
   loopStart?: string;
-  loopStartLocatorId?: string;
-  loopStartLocatorName?: string;
+  loopStartLocator?: string;
   loopEnd?: string;
-  loopEndLocatorId?: string;
-  loopEndLocatorName?: string;
+  loopEndLocator?: string;
   sceneIndex?: number;
-  clipIds?: string;
-  switchView?: boolean;
+  ids?: string;
+  slots?: string;
+  focus?: boolean;
 }
 
 interface PlaybackResult {
@@ -65,18 +65,16 @@ interface BuildPlaybackResultParams {
  * @param args - The parameters
  * @param args.action - Action to perform
  * @param args.startTime - Position in bar|beat format
- * @param args.startLocatorId - Locator ID for start position
- * @param args.startLocatorName - Locator name for start position
+ * @param args.startLocator - Locator ID or name for start position
  * @param args.loop - Enable/disable arrangement loop
  * @param args.loopStart - Loop start position in bar|beat format
- * @param args.loopStartLocatorId - Locator ID for loop start
- * @param args.loopStartLocatorName - Locator name for loop start
+ * @param args.loopStartLocator - Locator ID or name for loop start
  * @param args.loopEnd - Loop end position in bar|beat format
- * @param args.loopEndLocatorId - Locator ID for loop end
- * @param args.loopEndLocatorName - Locator name for loop end
+ * @param args.loopEndLocator - Locator ID or name for loop end
  * @param args.sceneIndex - Scene index for Session view operations
- * @param args.clipIds - Comma-separated clip IDs for Session view operations
- * @param args.switchView - Automatically switch to the appropriate view
+ * @param args.ids - Comma-separated clip IDs for Session view operations
+ * @param args.slots - Comma-separated trackIndex/sceneIndex slot positions
+ * @param args.focus - Switch to arrangement or session view based on action
  * @param _context - Internal context object (unused, for consistent tool interface)
  * @returns Result with transport state
  */
@@ -84,18 +82,16 @@ export function playback(
   {
     action,
     startTime,
-    startLocatorId,
-    startLocatorName,
+    startLocator,
     loop,
     loopStart,
-    loopStartLocatorId,
-    loopStartLocatorName,
+    loopStartLocator,
     loopEnd,
-    loopEndLocatorId,
-    loopEndLocatorName,
+    loopEndLocator,
     sceneIndex,
-    clipIds,
-    switchView,
+    ids,
+    slots,
+    focus,
   }: PlaybackArgs = {},
   _context: Partial<ToolContext> = {},
 ): PlaybackResult {
@@ -103,25 +99,14 @@ export function playback(
     throw new Error("playback failed: action is required");
   }
 
+  if (ids != null && slots != null) {
+    throw new Error("playback failed: ids and slots are mutually exclusive");
+  }
+
   // Validate mutual exclusivity of time and locator parameters
-  validateLocatorOrTime(
-    startTime,
-    startLocatorId,
-    startLocatorName,
-    "startTime",
-  );
-  validateLocatorOrTime(
-    loopStart,
-    loopStartLocatorId,
-    loopStartLocatorName,
-    "loopStart",
-  );
-  validateLocatorOrTime(
-    loopEnd,
-    loopEndLocatorId,
-    loopEndLocatorName,
-    "loopEnd",
-  );
+  validateLocatorOrTime(startTime, startLocator, "startTime");
+  validateLocatorOrTime(loopStart, loopStartLocator, "loopStart");
+  validateLocatorOrTime(loopEnd, loopEndLocator, "loopEnd");
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
@@ -136,7 +121,7 @@ export function playback(
   // Resolve start time from bar|beat or locator
   const { startTimeBeats, useLocatorStart } = resolveStartTime(
     liveSet,
-    { startTime, startLocatorId, startLocatorName },
+    { startTime, startLocator },
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -148,7 +133,7 @@ export function playback(
   // Resolve loop start from bar|beat or locator
   const loopStartBeats = resolveLoopStart(
     liveSet,
-    { loopStart, loopStartLocatorId, loopStartLocatorName },
+    { loopStart, loopStartLocator },
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -156,7 +141,7 @@ export function playback(
   // Resolve loop end from bar|beat or locator
   resolveLoopEnd(
     liveSet,
-    { loopEnd, loopEndLocatorId, loopEndLocatorName },
+    { loopEnd, loopEndLocator },
     loopStartBeats,
     songTimeSigNumerator,
     songTimeSigDenominator,
@@ -175,7 +160,8 @@ export function playback(
       startTimeBeats,
       useLocatorStart,
       sceneIndex,
-      clipIds,
+      ids,
+      slots,
     },
     { isPlaying, currentTimeBeats },
   );
@@ -197,7 +183,7 @@ export function playback(
     songTimeSigDenominator,
   );
 
-  handleViewSwitch(action, switchView);
+  handleFocus(action, focus);
 
   return buildPlaybackResult({
     isPlaying,
@@ -212,12 +198,12 @@ export function playback(
 }
 
 /**
- * Handle view switching if requested
+ * Handle focus (view switching) if requested
  * @param action - The playback action
- * @param switchView - Whether to switch view
+ * @param focus - Whether to focus
  */
-function handleViewSwitch(action: string, switchView?: boolean): void {
-  if (!switchView) return;
+function handleFocus(action: string, focus?: boolean): void {
+  if (!focus) return;
 
   if (action === "play-arrangement") {
     select({ view: "arrangement" });
@@ -269,46 +255,30 @@ function buildPlaybackResult({
 /**
  * Handle playing specific session clips
  *
+ * @param action - Action name for error messages
  * @param liveSet - LiveAPI instance for live_set
- * @param clipIds - Comma-separated clip IDs
+ * @param ids - Comma-separated clip IDs
+ * @param slots - Comma-separated trackIndex/sceneIndex positions
  * @param state - Current playback state
  * @returns Updated playback state
  */
 function handlePlaySessionClips(
+  action: string,
   liveSet: LiveAPI,
-  clipIds: string | undefined,
+  ids: string | undefined,
+  slots: string | undefined,
   state: PlaybackState,
 ): PlaybackState {
-  if (!clipIds) {
-    throw new Error(
-      `playback failed: clipIds is required for action "play-session-clips"`,
-    );
-  }
+  const resolvedSlots = resolveClipSlotPositions(ids, slots, action);
 
-  const clipIdList = parseCommaSeparatedIds(clipIds);
-  const clips = validateIdTypes(clipIdList, "clip", "playback", {
-    skipInvalid: true,
-  });
-
-  for (const clip of clips) {
-    // For clips, we need to fire the clip slot, not the clip itself
-    // Extract track index and scene index from clip path or properties
-    const trackIndex = clip.trackIndex;
-    const sceneIndex = clip.sceneIndex;
-
-    if (trackIndex == null || sceneIndex == null) {
-      throw new Error(
-        `playback play-session-clips action failed: could not determine track/scene for clipId=${clip.id}`,
-      );
-    }
-
+  for (const { trackIndex, sceneIndex } of resolvedSlots) {
     const clipSlot = LiveAPI.from(
       livePath.track(trackIndex).clipSlot(sceneIndex),
     );
 
     if (!clipSlot.exists()) {
       throw new Error(
-        `playback play-session-clips action failed: clip slot for clipId=${clip.id} does not exist`,
+        `playback ${action} action failed: clip slot at ${trackIndex}/${sceneIndex} does not exist`,
       );
     }
 
@@ -317,7 +287,7 @@ function handlePlaySessionClips(
 
   // Fix launch quantization: when playing multiple clips, stop and restart transport
   // to ensure in-sync playback (clips fired after the first are subject to quantization)
-  if (clips.length > 1) {
+  if (resolvedSlots.length > 1) {
     liveSet.call("stop_playing");
     liveSet.call("start_playing");
   }
@@ -331,47 +301,31 @@ function handlePlaySessionClips(
 /**
  * Handle stopping specific session clips
  *
- * @param clipIds - Comma-separated clip IDs
+ * @param action - Action name for error messages
+ * @param ids - Comma-separated clip IDs
+ * @param slots - Comma-separated trackIndex/sceneIndex positions
  * @param state - Current playback state
  * @returns Updated playback state
  */
 function handleStopSessionClips(
-  clipIds: string | undefined,
+  action: string,
+  ids: string | undefined,
+  slots: string | undefined,
   state: PlaybackState,
 ): PlaybackState {
-  if (!clipIds) {
-    throw new Error(
-      `playback failed: clipIds is required for action "stop-session-clips"`,
-    );
+  const resolvedSlots = resolveClipSlotPositions(ids, slots, action);
+  const tracksToStop = new Set<number>();
+
+  for (const { trackIndex } of resolvedSlots) {
+    tracksToStop.add(trackIndex);
   }
 
-  const stopClipIdList = parseCommaSeparatedIds(clipIds);
-  const stopClips = validateIdTypes(stopClipIdList, "clip", "playback", {
-    skipInvalid: true,
-  });
-  const tracksToStop = new Set<string>();
-
-  for (const clip of stopClips) {
-    // Extract track index from clip and add to set to avoid duplicate calls
-    const trackIndex = clip.trackIndex;
-
-    if (trackIndex == null) {
-      throw new Error(
-        `playback stop-session-clips action failed: could not determine track for clipId=${clip.id}`,
-      );
-    }
-
-    const trackPath = livePath.track(trackIndex).toString();
-
-    tracksToStop.add(trackPath);
-  }
-
-  for (const trackPath of tracksToStop) {
-    const track = LiveAPI.from(trackPath);
+  for (const trackIndex of tracksToStop) {
+    const track = LiveAPI.from(livePath.track(trackIndex));
 
     if (!track.exists()) {
       throw new Error(
-        `playback stop-session-clips action failed: track for clip path does not exist`,
+        `playback ${action} action failed: track at index ${trackIndex} does not exist`,
       );
     }
 
@@ -380,6 +334,51 @@ function handleStopSessionClips(
 
   // this doesn't affect the isPlaying state
   return state;
+}
+
+interface SlotPosition {
+  trackIndex: number;
+  sceneIndex: number;
+}
+
+/**
+ * Resolve clip slot positions from either ids or slots parameter
+ * @param ids - Comma-separated clip IDs
+ * @param slots - Comma-separated trackIndex/sceneIndex positions
+ * @param action - Action name for error messages
+ * @returns Array of slot positions
+ */
+function resolveClipSlotPositions(
+  ids: string | undefined,
+  slots: string | undefined,
+  action: string,
+): SlotPosition[] {
+  if (slots != null) {
+    return parseSlotList(slots);
+  }
+
+  if (ids == null) {
+    throw new Error(
+      `playback failed: ids or slots is required for action "${action}"`,
+    );
+  }
+
+  const clipIdList = parseCommaSeparatedIds(ids);
+  const clips = validateIdTypes(clipIdList, "clip", "playback", {
+    skipInvalid: true,
+  });
+
+  return clips.map((clip) => {
+    const { trackIndex, sceneIndex } = clip;
+
+    if (trackIndex == null || sceneIndex == null) {
+      throw new Error(
+        `playback ${action} action failed: could not determine track/scene for clipId=${clip.id}`,
+      );
+    }
+
+    return { trackIndex, sceneIndex };
+  });
 }
 
 /**
@@ -397,7 +396,7 @@ function handlePlaybackAction(
   params: PlaybackActionParams,
   state: PlaybackState,
 ): PlaybackState {
-  const { startTime, startTimeBeats, useLocatorStart, sceneIndex, clipIds } =
+  const { startTime, startTimeBeats, useLocatorStart, sceneIndex, ids, slots } =
     params;
 
   switch (action) {
@@ -418,10 +417,10 @@ function handlePlaybackAction(
       return handlePlayScene(sceneIndex, state);
 
     case "play-session-clips":
-      return handlePlaySessionClips(liveSet, clipIds, state);
+      return handlePlaySessionClips(action, liveSet, ids, slots, state);
 
     case "stop-session-clips":
-      return handleStopSessionClips(clipIds, state);
+      return handleStopSessionClips(action, ids, slots, state);
 
     case "stop-all-session-clips":
       liveSet.call("stop_all_clips");

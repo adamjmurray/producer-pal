@@ -7,13 +7,16 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { useChat, type ChatClient, type ChatAdapter } from "./use-chat";
-import { type UIMessage } from "#webui/types/messages";
+import { useChat } from "./use-chat";
+import {
+  MockChatClient,
+  createDefaultProps,
+  createMockAdapter,
+} from "./use-chat-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("./helpers/streaming-helpers"), () => ({
   handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
-    // Simulate processing the stream
     for await (const chatHistory of stream) {
       onUpdate(formatter(chatHistory));
     }
@@ -23,114 +26,7 @@ vi.mock(import("./helpers/streaming-helpers"), () => ({
   validateMcpConnection: vi.fn(),
 }));
 
-// Type for our test messages
-interface TestMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface TestConfig {
-  model: string;
-  temperature: number;
-  thinking: string;
-}
-
-// Mock chat client
-class MockChatClient implements ChatClient<TestMessage> {
-  chatHistory: TestMessage[] = [];
-
-  initialize = vi.fn(async () => {
-    // Initialization logic
-  });
-
-  async *sendMessage(
-    message: string,
-    signal: AbortSignal,
-  ): AsyncIterable<TestMessage[]> {
-    if (signal.aborted) {
-      throw new Error("AbortError");
-    }
-
-    // Add user message
-    this.chatHistory.push({ role: "user", content: message });
-
-    // Yield after user message
-    yield [...this.chatHistory];
-
-    // Simulate assistant response
-    this.chatHistory.push({
-      role: "assistant",
-      content: `Response to: ${message}`,
-    });
-
-    // Yield final state
-    yield [...this.chatHistory];
-  }
-}
-
-// Mock adapter
-const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
-  createClient: vi.fn((_apiKey: string, _config: TestConfig) => {
-    return new MockChatClient();
-  }),
-
-  buildConfig: vi.fn(
-    (
-      model: string,
-      temperature: number,
-      thinking: string,
-      _enabledTools: Record<string, boolean>,
-      _chatHistory: TestMessage[] | undefined,
-      _extraParams?: Record<string, unknown>,
-    ): TestConfig => ({
-      model,
-      temperature,
-      thinking,
-    }),
-  ),
-
-  formatMessages: vi.fn((messages: TestMessage[]): UIMessage[] => {
-    return messages.map((msg, idx) => ({
-      role: msg.role === "user" ? ("user" as const) : ("model" as const),
-      parts: [{ type: "text" as const, content: msg.content }],
-      rawHistoryIndex: idx,
-      timestamp: Date.now(),
-    }));
-  }),
-
-  createErrorMessage: vi.fn(
-    (error: unknown, chatHistory: TestMessage[]): UIMessage[] => {
-      const formatted = mockAdapter.formatMessages(chatHistory);
-
-      return [
-        ...formatted,
-        {
-          role: "model" as const,
-          parts: [
-            {
-              type: "error" as const,
-              content: String(error),
-              isError: true,
-            },
-          ],
-          rawHistoryIndex: chatHistory.length,
-          timestamp: Date.now(),
-        },
-      ];
-    },
-  ),
-
-  extractUserMessage: vi.fn((message: TestMessage): string | undefined => {
-    return message.role === "user" ? message.content : undefined;
-  }),
-
-  createUserMessage: vi.fn(
-    (text: string): TestMessage => ({
-      role: "user",
-      content: text,
-    }),
-  ),
-};
+const mockAdapter = createMockAdapter();
 
 /**
  * Creates an adapter that throws rate limit error on first call then succeeds.
@@ -197,18 +93,7 @@ function createSendMessageFailingAdapter(
 }
 
 describe("useChat", () => {
-  const defaultProps = {
-    provider: "gemini" as const,
-    apiKey: "test-key",
-    model: "test-model",
-    thinking: "Default",
-    temperature: 1.0,
-    enabledTools: {},
-    mcpStatus: "connected" as const,
-    mcpError: null,
-    checkMcpConnection: vi.fn(),
-    adapter: mockAdapter,
-  };
+  const defaultProps = createDefaultProps(mockAdapter);
 
   beforeEach(() => {
     vi.clearAllMocks();

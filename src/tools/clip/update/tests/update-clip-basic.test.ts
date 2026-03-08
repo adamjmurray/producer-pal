@@ -331,8 +331,7 @@ describe("updateClip - Basic operations", () => {
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
-      trackIndex: 1,
-      sceneIndex: 2,
+      slot: "1/2",
     });
   });
 });

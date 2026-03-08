@@ -16,7 +16,15 @@ import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  getNameForIndex,
+  parseNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 
 interface RoutingParams {
   inputRoutingTypeId?: string;
@@ -375,20 +383,26 @@ export function updateTrack(
     skipInvalid: true,
   });
 
+  const parsedNames = parseNames(name, tracks.length, "updateTrack");
+  const parsedColors = parseCommaSeparatedColors(color, tracks.length);
+
   const updatedTracks: UpdateTrackResult[] = [];
 
-  for (const track of tracks) {
+  for (let i = 0; i < tracks.length; i++) {
+    const track = tracks[i] as LiveAPI;
+    const trackColor = getColorForIndex(color, i, parsedColors);
+
     track.setAll({
-      name,
-      color,
+      name: getNameForIndex(name, i, parsedNames),
+      color: trackColor,
       mute,
       solo,
       arm,
     });
 
     // Verify color quantization if color was set
-    if (color != null) {
-      verifyColorQuantization(track, color);
+    if (trackColor != null) {
+      verifyColorQuantization(track, trackColor);
     }
 
     // Handle mixer properties

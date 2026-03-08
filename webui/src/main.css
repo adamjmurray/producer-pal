@@ -1,3 +1,13 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Prose overrides for chat message bubbles */
+.prose :where(ul, ol) > li::marker {
+  color: currentColor;
+}
+
+.prose :where(h1, h2, h3, h4, h5, h6, pre) {
+  margin-top: 0;
+  margin-bottom: 0.6em;
+}

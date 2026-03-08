@@ -7,26 +7,19 @@ import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
-import { registerMockObject } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerArrangementClip,
+  registerMockObject,
+  registerTrackWithArrangementDup,
+} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 describe("duplicate - clip duplication", () => {
-  it("should throw an error when destination is missing", () => {
+  it("should throw an error when clip has no position params", () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
     expect(() => duplicate({ type: "clip", id: "clip1" })).toThrow(
-      "duplicate failed: destination is required for type 'clip'",
-    );
-  });
-
-  it("should throw an error when destination is invalid", () => {
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-    });
-    expect(() =>
-      duplicate({ type: "clip", id: "clip1", destination: "invalid" }),
-    ).toThrow(
-      "duplicate failed: destination must be 'session' or 'arrangement'",
+      "duplicate failed: clip requires toSlot (for session) or arrangementStart/locator (for arrangement)",
     );
   });
 
@@ -56,7 +49,7 @@ describe("duplicate - clip duplication", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "session",
+
         toSlot: "0/1",
       });
 
@@ -67,8 +60,7 @@ describe("duplicate - clip duplication", () => {
 
       expect(result).toStrictEqual({
         id: "live_set/tracks/0/clip_slots/1/clip",
-        trackIndex: 0,
-        sceneIndex: 1,
+        slot: "0/1",
       });
     });
 
@@ -112,7 +104,7 @@ describe("duplicate - clip duplication", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "session",
+
         name: "Custom Clip",
         toSlot: "0/1, 0/2",
       });
@@ -120,13 +112,11 @@ describe("duplicate - clip duplication", () => {
       expect(result).toStrictEqual([
         {
           id: "live_set/tracks/0/clip_slots/1/clip",
-          trackIndex: 0,
-          sceneIndex: 1,
+          slot: "0/1",
         },
         {
           id: "live_set/tracks/0/clip_slots/2/clip",
-          trackIndex: 0,
-          sceneIndex: 2,
+          slot: "0/2",
         },
       ]);
 
@@ -152,7 +142,7 @@ describe("duplicate - clip duplication", () => {
         duplicate({
           type: "clip",
           id: "arrangementClip1",
-          destination: "session",
+
           toSlot: "1/2",
         }),
       ).toThrow(
@@ -162,42 +152,19 @@ describe("duplicate - clip duplication", () => {
   });
 
   describe("arrangement destination", () => {
-    it("should throw an error when arrangementStartTime is missing", () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
-
-      expect(() =>
-        duplicate({ type: "clip", id: "clip1", destination: "arrangement" }),
-      ).toThrow(
-        "duplicate failed: arrangementStart, locatorId, or locatorName is required when destination is 'arrangement'",
-      );
-    });
-
     it("should duplicate a single clip to the arrangement view", () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
       });
 
-      const track0 = registerMockObject("live_set/tracks/0", {
-        path: livePath.track(0),
-        methods: {
-          duplicate_clip_to_arrangement: () => [
-            "id",
-            livePath.track(0).arrangementClip(0),
-          ],
-        },
-      });
+      const track0 = registerTrackWithArrangementDup(0);
 
-      registerMockObject(livePath.track(0).arrangementClip(0), {
-        path: livePath.track(0).arrangementClip(0),
-        properties: { is_arrangement_clip: 1, start_time: 8 },
-      });
+      registerArrangementClip(0, 0, 8);
 
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arrangement",
+
         arrangementStart: "3|1",
       });
 
@@ -219,40 +186,16 @@ describe("duplicate - clip duplication", () => {
         path: livePath.track(0).clipSlot(0).clip(),
       });
 
-      let clipCounter = 0;
+      const track0 = registerTrackWithArrangementDup(0);
 
-      const track0 = registerMockObject("live_set/tracks/0", {
-        path: livePath.track(0),
-        methods: {
-          duplicate_clip_to_arrangement: () => {
-            const clipId = livePath.track(0).arrangementClip(clipCounter);
-
-            clipCounter++;
-
-            return ["id", clipId];
-          },
-        },
-      });
-
-      registerMockObject(livePath.track(0).arrangementClip(0), {
-        path: livePath.track(0).arrangementClip(0),
-        properties: { is_arrangement_clip: 1, start_time: 8 },
-      });
-
-      registerMockObject(livePath.track(0).arrangementClip(1), {
-        path: livePath.track(0).arrangementClip(1),
-        properties: { is_arrangement_clip: 1, start_time: 12 },
-      });
-
-      registerMockObject(livePath.track(0).arrangementClip(2), {
-        path: livePath.track(0).arrangementClip(2),
-        properties: { is_arrangement_clip: 1, start_time: 16 },
-      });
+      registerArrangementClip(0, 0, 8);
+      registerArrangementClip(0, 1, 12);
+      registerArrangementClip(0, 2, 16);
 
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arrangement",
+
         arrangementStart: "3|1,4|1,5|1",
         name: "Custom Clip",
       });

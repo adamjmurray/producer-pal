@@ -6,6 +6,7 @@
  * Type definitions for provider settings and configuration.
  *
  * Supports multiple LLM providers:
+ * - Anthropic (Claude)
  * - Gemini (Google)
  * - OpenAI
  * - Mistral (OpenAI-compatible)
@@ -17,6 +18,7 @@
 
 // Provider types
 export type Provider =
+  | "anthropic"
   | "gemini"
   | "openai"
   | "mistral"

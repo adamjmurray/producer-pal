@@ -13,6 +13,10 @@ import {
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
+vi.mock(import("#src/tools/control/select.ts"), () => ({
+  select: vi.fn(),
+}));
+
 describe("updateClip - Properties and ID handling", () => {
   let mocks: UpdateClipMocks;
 
@@ -207,5 +211,58 @@ describe("updateClip - Properties and ID handling", () => {
 
       consoleSpy.mockRestore();
     });
+  });
+});
+
+describe("updateClip - focus functionality", () => {
+  let selectMock: ReturnType<typeof vi.fn>;
+  let mocks: UpdateClipMocks;
+
+  beforeEach(async () => {
+    mocks = setupUpdateClipMocks();
+    const selectModule = await import("#src/tools/control/select.ts");
+
+    selectMock = selectModule.select as ReturnType<typeof vi.fn>;
+    selectMock.mockClear();
+  });
+
+  it("should select clip and show clip detail when focus=true", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ ids: "123", name: "Test", focus: true });
+
+    expect(selectMock).toHaveBeenCalledWith({
+      clipId: "123",
+      detailView: "clip",
+    });
+  });
+
+  it("should select last clip when focus=true with multiple clips", async () => {
+    setupMidiClipMock(mocks.clip123);
+    setupMidiClipMock(mocks.clip456);
+
+    await updateClip({ ids: "123,456", name: "Test", focus: true });
+
+    expect(selectMock).toHaveBeenCalledWith({
+      clipId: "456",
+      detailView: "clip",
+    });
+    expect(selectMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("should not call select when focus=false", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ ids: "123", name: "Test", focus: false });
+
+    expect(selectMock).not.toHaveBeenCalled();
+  });
+
+  it("should not call select when focus is omitted", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    await updateClip({ ids: "123", name: "Test" });
+
+    expect(selectMock).not.toHaveBeenCalled();
   });
 });

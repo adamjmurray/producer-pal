@@ -13,6 +13,7 @@ import { type NoteEvent } from "#src/notation/types.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { PITCH_CLASS_NAMES } from "#src/shared/pitch.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
+import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   type CodeClipContext,
   type CodeExecutionContext,
@@ -78,6 +79,7 @@ export function buildCodeExecutionContext(
   const clipContext = buildClipContext(clip);
   const location = buildLocationContext(
     view,
+    clip.trackIndex as number,
     sceneIndex,
     arrangementStartBeats,
   );
@@ -275,13 +277,14 @@ function buildClipContext(clip: LiveAPI): CodeClipContext {
 
 function buildLocationContext(
   view: "session" | "arrangement",
+  trackIndex: number,
   sceneIndex?: number,
   arrangementStartBeats?: number,
 ): CodeLocationContext {
   const location: CodeLocationContext = { view };
 
   if (view === "session" && sceneIndex != null) {
-    location.sceneIndex = sceneIndex;
+    location.slot = formatSlot(trackIndex, sceneIndex);
   }
 
   if (view === "arrangement" && arrangementStartBeats != null) {

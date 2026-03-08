@@ -215,6 +215,7 @@ describe("code-exec-helpers", () => {
       const mockClip = {
         id: "clip-123",
         path: livePath.track(1).clipSlot(2).clip(),
+        trackIndex: 1,
         getProperty: vi.fn((prop: string) => {
           const props: Record<string, unknown> = {
             name: "Test Clip",
@@ -288,7 +289,7 @@ describe("code-exec-helpers", () => {
         });
         expect(result.location).toStrictEqual({
           view: "session",
-          sceneIndex: 2,
+          slot: "1/2",
         });
         expect(result.liveSet).toStrictEqual({
           tempo: 120,

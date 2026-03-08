@@ -326,6 +326,7 @@ export default [
   {
     // Global ignores for generated/build files
     ignores: [
+      ".claude/**",
       "claude-desktop-extension/**",
       "config/**",
       "coverage/**",

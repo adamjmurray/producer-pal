@@ -41,7 +41,6 @@ async function createArrangementClip(
   const result = await ctx.client!.callTool({
     name: "ppal-create-clip",
     arguments: {
-      view: "arrangement",
       trackIndex,
       arrangementStart,
       notes: "C3 1|1",

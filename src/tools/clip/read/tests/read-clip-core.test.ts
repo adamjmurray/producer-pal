@@ -48,8 +48,7 @@ describe("readClip", () => {
       id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
       type: "midi",
-      sceneIndex: 1,
-      trackIndex: 1,
+      slot: "1/1",
       view: "session",
       timeSignature: "4/4",
       looping: false,
@@ -85,15 +84,14 @@ describe("readClip", () => {
       id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
       type: "midi",
-      sceneIndex: 1,
-      trackIndex: 1,
+      slot: "1/1",
       view: "session",
       timeSignature: "6/8",
       looping: false,
       start: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
       end: "2|5", // end_marker (5 beats = 2|5 in 6/8)
       length: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
-      notes: "C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8
+      notes: "t2 C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8 (t2 = duration in 8th-note beats)
     });
   });
 
@@ -159,7 +157,8 @@ describe("readClip", () => {
     expectGetNotesExtendedCall(clip, 3);
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
-    expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
+    // t2 emitted because 1 Ableton beat = 2 eighth-note beats (notation default is 1)
+    expect(result.notes).toBe("t2 C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("6/8");
     expect(result).toHaveLength("1:0"); // 3 Ableton beats = 1 bar in 6/8
   });
@@ -187,8 +186,7 @@ describe("readClip", () => {
       id: null,
       type: null,
       name: null,
-      trackIndex: 2,
-      sceneIndex: 3,
+      slot: "2/3",
     });
 
     // Verify warning is emitted
@@ -252,8 +250,7 @@ describe("readClip", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       name: "Audio Sample",
       type: "audio",
-      sceneIndex: 0,
-      trackIndex: 0,
+      slot: "0/0",
       view: "session",
       timeSignature: "4/4",
       looping: true,
@@ -384,8 +381,7 @@ describe("readClip", () => {
     });
 
     expect(result.id).toBe("session_clip_id");
-    expect(result.trackIndex).toBe(2);
-    expect(result.sceneIndex).toBe(4);
+    expect(result.slot).toBe("2/4");
     expect(result.view).toBe("session");
     expect(result).toHaveLength("1:0");
     expect(result.start).toBe("1|2");
@@ -424,7 +420,7 @@ describe("readClip", () => {
     expect(result.id).toBe("arrangement_clip_id");
     expect(result.view).toBe("arrangement");
     expect(result.trackIndex).toBe(3);
-    expect(result.sceneIndex).toBeUndefined();
+    expect(result.slot).toBeUndefined();
     // arrangementStart uses song time signature (4/4), so 16 Ableton beats = bar 5 beat 1
     expect(result.arrangementStart).toBe("5|1");
     // arrangementLength also uses song time signature (4/4), so 4 Ableton beats = 1:0
@@ -435,15 +431,15 @@ describe("readClip", () => {
     expect(result.start).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 
-  it("throws an error when neither clipId nor trackIndex+sceneIndex are provided", () => {
+  it("throws an error when neither clipId nor slot are provided", () => {
     expect(() => readClip({})).toThrow(
-      "Either clipId or both trackIndex and sceneIndex must be provided",
+      "Either clipId or slot must be provided",
     );
     expect(() => readClip({ trackIndex: 1 })).toThrow(
-      "Either clipId or both trackIndex and sceneIndex must be provided",
+      "Either clipId or slot must be provided",
     );
     expect(() => readClip({ sceneIndex: 1 })).toThrow(
-      "Either clipId or both trackIndex and sceneIndex must be provided",
+      "Either clipId or slot must be provided",
     );
   });
 });

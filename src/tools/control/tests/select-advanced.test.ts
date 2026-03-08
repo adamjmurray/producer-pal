@@ -7,144 +7,387 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   clearMockRegistry,
+  mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { select } from "#src/tools/control/select.ts";
 import {
-  expectViewState,
+  expectReadState,
+  resetSelectTestState,
   setupAppViewMock,
-  setupSelectedTrackMock,
   setupSongViewMock,
   setupTrackViewMock,
   setupViewStateMock,
 } from "./select-test-helpers.ts";
 
-// Mock utility functions
+const { viewMockToLive, viewMockFromLive } = vi.hoisted(() => ({
+  viewMockToLive: (view: string) =>
+    ({ session: "Session", arrangement: "Arranger" })[view] ?? "Session",
+  viewMockFromLive: (liveApiView: string) =>
+    ({ Session: "session", Arranger: "arrangement" })[liveApiView] ?? "session",
+}));
+
 vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => ({
   ...(await importOriginal()),
-  toLiveApiView: vi.fn((view: string) => {
-    const viewMap: Record<string, string> = {
-      session: "Session",
-      arrangement: "Arranger",
-    };
-
-    return viewMap[view] ?? "Session";
-  }),
-  fromLiveApiView: vi.fn((liveApiView: string) => {
-    const viewMap: Record<string, string> = {
-      Session: "session",
-      Arranger: "arrangement",
-    };
-
-    return viewMap[liveApiView] ?? "session";
-  }),
+  toLiveApiView: vi.fn(viewMockToLive),
+  fromLiveApiView: vi.fn(viewMockFromLive),
 }));
 
 describe("view", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    clearMockRegistry();
-
-    // Setup default "nothing selected" state for select() reads
-    setupViewStateMock({
-      selectedTrack: { exists: false },
-      selectedScene: { exists: false },
-      selectedClip: { exists: false },
-      highlightedClipSlot: { exists: false },
-    });
+    resetSelectTestState();
   });
 
-  describe("detail view", () => {
-    it("shows clip detail view", () => {
+  describe("auto detail view", () => {
+    it("auto-opens clip detail when selecting clip by id", () => {
       const appView = setupAppViewMock();
 
-      const result = select({ detailView: "clip" });
-
-      expect(appView.call).toHaveBeenCalledWith(
-        "focus_view",
-        LIVE_API_VIEW_NAMES.DETAIL_CLIP,
-      );
-      // Result reflects actual readViewState(), which returns default (no detail view)
-      expect(result).toStrictEqual(expectViewState());
-    });
-
-    it("shows device detail view", () => {
-      const appView = setupAppViewMock();
-
-      const result = select({ detailView: "device" });
-
-      expect(appView.call).toHaveBeenCalledWith(
-        "focus_view",
-        LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN,
-      );
-      // Result reflects actual readViewState(), which returns default (no detail view)
-      expect(result).toStrictEqual(expectViewState());
-    });
-
-    it("hides detail view using hide_view API", () => {
-      const appView = setupAppViewMock();
-
-      const result = select({ detailView: "none" });
-
-      expect(appView.call).toHaveBeenCalledWith(
-        "hide_view",
-        LIVE_API_VIEW_NAMES.DETAIL,
-      );
-      // Result reflects actual readViewState(), which returns default (no detail view)
-      expect(result).toStrictEqual(expectViewState());
-    });
-
-    it("shows loop view by focusing on clip detail", () => {
-      const appView = setupAppViewMock();
-      const songView = setupSongViewMock();
+      setupSongViewMock();
 
       registerMockObject("clip_123", {
         path: livePath.track(0).clipSlot(0).clip(),
         type: "Clip",
       });
 
-      const result = select({
-        clipId: "id clip_123",
-        showLoop: true,
-      });
+      select({ id: "id clip_123" });
 
       expect(appView.call).toHaveBeenCalledWith(
         "focus_view",
         LIVE_API_VIEW_NAMES.DETAIL_CLIP,
       );
-      expect(songView.set).toHaveBeenCalledWith("detail_clip", "id clip_123");
-      // showLoop is not returned - only the action (focus_view) happens
-      // Result reflects actual readViewState()
-      expect(result).toStrictEqual(expectViewState());
     });
-  });
 
-  describe("browser visibility", () => {
-    it("shows browser", () => {
+    it("auto-opens device detail when selecting device by id", () => {
       const appView = setupAppViewMock();
 
-      const result = select({ showBrowser: true });
+      setupSongViewMock();
+
+      registerMockObject("device_123", {
+        path: String(livePath.track(0).device(0)),
+        type: "Eq8Device",
+      });
+
+      select({ id: "id device_123" });
 
       expect(appView.call).toHaveBeenCalledWith(
         "focus_view",
-        LIVE_API_VIEW_NAMES.BROWSER,
+        LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN,
       );
-      // Result reflects actual readViewState(), which returns default (browser not shown)
-      expect(result).toStrictEqual(expectViewState());
     });
 
-    it("hides browser using hide_view API", () => {
+    it("auto-opens device detail when selecting by devicePath", () => {
       const appView = setupAppViewMock();
 
-      const result = select({ showBrowser: false });
+      setupSongViewMock();
+
+      registerMockObject("device_at_path", {
+        path: String(livePath.track(0)) + " devices 1",
+        type: "Device",
+      });
+
+      select({ devicePath: "t0/d1" });
+
+      expect(appView.call).toHaveBeenCalledWith(
+        "focus_view",
+        LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN,
+      );
+    });
+
+    it("hides detail view on view-only change", () => {
+      const appView = setupAppViewMock();
+
+      select({ view: "arrangement" });
 
       expect(appView.call).toHaveBeenCalledWith(
         "hide_view",
-        LIVE_API_VIEW_NAMES.BROWSER,
+        LIVE_API_VIEW_NAMES.DETAIL,
       );
-      // Result reflects actual readViewState(), which returns default (browser not shown)
-      expect(result).toStrictEqual(expectViewState());
+    });
+
+    it("does not change detail view when selecting track only", () => {
+      const appView = setupAppViewMock();
+
+      registerMockObject("track_123", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+
+      select({ id: "id track_123" });
+
+      expect(appView.call).not.toHaveBeenCalledWith(
+        "focus_view",
+        LIVE_API_VIEW_NAMES.DETAIL_CLIP,
+      );
+      expect(appView.call).not.toHaveBeenCalledWith(
+        "focus_view",
+        LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN,
+      );
+      expect(appView.call).not.toHaveBeenCalledWith(
+        "hide_view",
+        LIVE_API_VIEW_NAMES.DETAIL,
+      );
+    });
+
+    it("does not change detail view when selecting scene only", () => {
+      const appView = setupAppViewMock();
+
+      registerMockObject("scene_123", {
+        path: livePath.scene(0),
+        type: "Scene",
+      });
+
+      select({ id: "id scene_123" });
+
+      expect(appView.call).not.toHaveBeenCalledWith(
+        "focus_view",
+        LIVE_API_VIEW_NAMES.DETAIL_CLIP,
+      );
+      expect(appView.call).not.toHaveBeenCalledWith(
+        "hide_view",
+        LIVE_API_VIEW_NAMES.DETAIL,
+      );
+    });
+
+    it("internal detailView overrides auto behavior", () => {
+      const appView = setupAppViewMock();
+
+      setupSongViewMock();
+
+      registerMockObject("clip_123", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        type: "Clip",
+      });
+
+      select({ clipId: "id clip_123", detailView: "none" });
+
+      expect(appView.call).toHaveBeenCalledWith(
+        "hide_view",
+        LIVE_API_VIEW_NAMES.DETAIL,
+      );
+    });
+  });
+
+  describe("auto session view", () => {
+    it("auto-switches to session view when selecting scene by index", () => {
+      const appView = setupAppViewMock();
+
+      registerMockObject("scene_123", {
+        path: livePath.scene(0),
+        type: "Scene",
+      });
+      setupSongViewMock();
+
+      const result = select({ sceneIndex: 0 });
+
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+      expect(result.view).toBe("session");
+    });
+
+    it("auto-switches to session view when selecting slot", () => {
+      const appView = setupAppViewMock();
+
+      registerMockObject("clipslot_1_2", {
+        path: livePath.track(1).clipSlot(2),
+        type: "ClipSlot",
+        properties: { has_clip: 0 },
+      });
+      setupSongViewMock();
+
+      const result = select({ slot: "1/2" });
+
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
+      expect(result.view).toBe("session");
+    });
+
+    it("does not auto-switch when view is explicitly provided", () => {
+      const appView = setupAppViewMock();
+
+      registerMockObject("scene_456", {
+        path: livePath.scene(1),
+        type: "Scene",
+      });
+      setupSongViewMock();
+
+      select({ sceneIndex: 1, view: "arrangement" });
+
+      expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(appView.call).not.toHaveBeenCalledWith("show_view", "Session");
+    });
+  });
+
+  describe("id auto-detection", () => {
+    it("resolves track from id and returns selectedTrack", () => {
+      registerMockObject("track_abc", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+      const songView = setupSongViewMock();
+
+      const result = select({ id: "id track_abc" });
+
+      expect(songView.set).toHaveBeenCalledWith(
+        "selected_track",
+        "id track_abc",
+      );
+      expect(result.selectedTrack).toBeDefined();
+    });
+
+    it("resolves scene from id and returns selectedScene", () => {
+      registerMockObject("scene_abc", {
+        path: livePath.scene(0),
+        type: "Scene",
+      });
+      const songView = setupSongViewMock();
+
+      const result = select({ id: "id scene_abc" });
+
+      expect(songView.set).toHaveBeenCalledWith(
+        "selected_scene",
+        "id scene_abc",
+      );
+      expect(result.selectedScene).toBeDefined();
+    });
+
+    it("resolves clip from id and returns selectedClip", () => {
+      registerMockObject("clip_abc", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        type: "Clip",
+      });
+      setupSongViewMock();
+
+      const result = select({ id: "id clip_abc" });
+
+      expect(result.selectedClip).toBeDefined();
+      expect(result.selectedClip?.id).toBe("clip_abc");
+    });
+
+    it("resolves device from id with subclass type", () => {
+      registerMockObject("device_abc", {
+        path: String(livePath.track(0).device(0)),
+        type: "Eq8Device",
+      });
+      setupSongViewMock();
+
+      const result = select({ id: "id device_abc" });
+
+      expect(result.selectedDevice).toBeDefined();
+      expect(result.selectedDevice?.id).toBe("device_abc");
+    });
+
+    it("throws error for nonexistent id", () => {
+      mockNonExistentObjects();
+
+      expect(() => select({ id: "id nonexistent" })).toThrow(
+        'select failed: id "id nonexistent" does not exist',
+      );
+    });
+
+    it("throws error for unsupported type", () => {
+      registerMockObject("app_thing", {
+        path: "live_app",
+        type: "Application",
+      });
+
+      expect(() => select({ id: "id app_thing" })).toThrow(
+        'unsupported type "Application"',
+      );
+    });
+  });
+
+  describe("slot selection", () => {
+    it("selects clip in occupied slot", () => {
+      const clipSlotMock = registerMockObject("clipslot_0_1", {
+        path: livePath.track(0).clipSlot(1),
+        type: "ClipSlot",
+        properties: { has_clip: 1 },
+      });
+
+      registerMockObject("clip_in_slot", {
+        path: livePath.track(0).clipSlot(1).clip(),
+        type: "Clip",
+      });
+      const songView = setupSongViewMock();
+      const appView = setupAppViewMock();
+
+      const result = select({ slot: "0/1" });
+
+      expect(songView.set).toHaveBeenCalledWith(
+        "highlighted_clip_slot",
+        `id ${clipSlotMock.id}`,
+      );
+      expect(songView.set).toHaveBeenCalledWith(
+        "detail_clip",
+        "id clip_in_slot",
+      );
+      expect(appView.call).toHaveBeenCalledWith(
+        "focus_view",
+        LIVE_API_VIEW_NAMES.DETAIL_CLIP,
+      );
+      expect(result.selectedClip).toBeDefined();
+      expect(result.selectedClip?.slot).toBe("0/1");
+    });
+
+    it("only highlights empty slot without opening detail", () => {
+      const clipSlotMock = registerMockObject("clipslot_0_2", {
+        path: livePath.track(0).clipSlot(2),
+        type: "ClipSlot",
+        properties: { has_clip: 0 },
+      });
+      const songView = setupSongViewMock();
+      const appView = setupAppViewMock();
+
+      const result = select({ slot: "0/2" });
+
+      expect(songView.set).toHaveBeenCalledWith(
+        "highlighted_clip_slot",
+        `id ${clipSlotMock.id}`,
+      );
+      expect(songView.set).not.toHaveBeenCalledWith(
+        "detail_clip",
+        expect.anything(),
+      );
+      expect(appView.call).not.toHaveBeenCalledWith(
+        "focus_view",
+        LIVE_API_VIEW_NAMES.DETAIL_CLIP,
+      );
+      expect(result.selectedClip).toBeUndefined();
+    });
+
+    it("throws on invalid slot format", () => {
+      expect(() => select({ slot: "invalid" })).toThrow(
+        'invalid slot "invalid"',
+      );
+    });
+
+    it("throws on negative slot values", () => {
+      expect(() => select({ slot: "-1/0" })).toThrow("must be non-negative");
+    });
+  });
+
+  describe("devicePath selection", () => {
+    it("selects device by path and returns device info", () => {
+      registerMockObject("device_at_path", {
+        path: String(livePath.track(1)) + " devices 0",
+        type: "Device",
+      });
+      const songView = setupSongViewMock();
+
+      const result = select({ devicePath: "t1/d0" });
+
+      expect(songView.call).toHaveBeenCalledWith(
+        "select_device",
+        "id device_at_path",
+      );
+      expect(result.selectedDevice).toBeDefined();
+      expect(result.selectedDevice?.path).toBe("t1/d0");
+    });
+
+    it("throws when devicePath resolves to non-device", () => {
+      expect(() => select({ devicePath: "t0/d0/c0" })).toThrow(
+        "does not resolve to a device",
+      );
     });
   });
 
@@ -152,53 +395,94 @@ describe("view", () => {
     it("throws error when master track type with index", () => {
       expect(() => {
         select({
-          category: "master",
+          trackType: "master",
           trackIndex: 0,
         });
-      }).toThrow("trackIndex should not be provided when category is 'master'");
+      }).toThrow(
+        "trackIndex should not be provided when trackType is 'master'",
+      );
     });
 
-    it("throws error when both device ID and instrument", () => {
+    it("throws error when both id (device) and devicePath provided", () => {
+      registerMockObject("device_123", {
+        path: String(livePath.track(0).device(0)),
+        type: "Device",
+      });
+
       expect(() => {
-        select({
-          deviceId: "id device_123",
-          instrument: true,
-        });
-      }).toThrow("cannot specify both deviceId and instrument");
+        select({ id: "id device_123", devicePath: "t0/d1" });
+      }).toThrow("cannot specify both id (device) and devicePath");
     });
 
-    it("throws error when track ID and index refer to different tracks", () => {
-      // Track at index 2 has ID "track_at_index_2"
+    it("throws error when id (track) and trackIndex refer to different tracks", () => {
       registerMockObject("track_at_index_2", {
         path: livePath.track(2),
         type: "Track",
       });
-      // The trackId "id track_123" refers to a different track
       registerMockObject("track_123", {
         path: livePath.track(3),
         type: "Track",
       });
 
       expect(() => {
-        select({ trackId: "id track_123", trackIndex: 2 });
-      }).toThrow("trackId and trackIndex refer to different tracks");
+        select({ id: "id track_123", trackIndex: 2 });
+      }).toThrow("id and trackIndex refer to different tracks");
     });
 
-    it("throws error when scene ID and index refer to different scenes", () => {
-      // Scene at index 5 has ID "scene_at_index_5"
+    it("throws error when id (scene) and sceneIndex refer to different scenes", () => {
       registerMockObject("scene_at_index_5", {
         path: livePath.scene(5),
         type: "Scene",
       });
-      // The sceneId "id scene_123" refers to a different scene
       registerMockObject("scene_123", {
         path: livePath.scene(3),
         type: "Scene",
       });
 
       expect(() => {
-        select({ sceneId: "id scene_123", sceneIndex: 5 });
-      }).toThrow("sceneId and sceneIndex refer to different scenes");
+        select({ id: "id scene_123", sceneIndex: 5 });
+      }).toThrow("id and sceneIndex refer to different scenes");
+    });
+  });
+
+  describe("browser auto-close", () => {
+    it("closes browser when selecting a track", () => {
+      const appView = setupAppViewMock();
+
+      registerMockObject("track_123", {
+        path: livePath.track(0),
+        type: "Track",
+      });
+      setupSongViewMock();
+
+      select({ id: "id track_123" });
+
+      expect(appView.call).toHaveBeenCalledWith(
+        "hide_view",
+        LIVE_API_VIEW_NAMES.BROWSER,
+      );
+    });
+
+    it("closes browser on view-only change", () => {
+      const appView = setupAppViewMock();
+
+      select({ view: "session" });
+
+      expect(appView.call).toHaveBeenCalledWith(
+        "hide_view",
+        LIVE_API_VIEW_NAMES.BROWSER,
+      );
+    });
+
+    it("does not close browser on read-only call", () => {
+      const appView = setupAppViewMock();
+
+      select();
+
+      expect(appView.call).not.toHaveBeenCalledWith(
+        "hide_view",
+        LIVE_API_VIEW_NAMES.BROWSER,
+      );
     });
   });
 
@@ -218,15 +502,13 @@ describe("view", () => {
         path: livePath.scene(3),
         type: "Scene",
       });
+      setupSongViewMock();
 
       const result = select({
         view: "arrangement",
-        category: "regular",
         trackIndex: 1,
         sceneIndex: 3,
         clipId: "id clip_456",
-        detailView: "clip",
-        showBrowser: false,
       });
 
       expect(appView.call).toHaveBeenCalledWith("show_view", "Arranger");
@@ -234,78 +516,11 @@ describe("view", () => {
         "focus_view",
         LIVE_API_VIEW_NAMES.DETAIL_CLIP,
       );
-      expect(appView.call).toHaveBeenCalledWith(
-        "hide_view",
-        LIVE_API_VIEW_NAMES.BROWSER,
-      );
-      expect(result).toStrictEqual(expectViewState());
-    });
-
-    it("handles return track with device selection", () => {
-      registerMockObject("return_track_2", {
-        path: livePath.returnTrack(2),
-        type: "Track",
-      });
-      const trackView = setupTrackViewMock(livePath.returnTrack(2));
-
-      const result = select({
-        category: "return",
-        trackIndex: 2,
-        instrument: true,
-      });
-
-      expect(trackView.call).toHaveBeenCalledWith("select_instrument");
-      expect(result).toStrictEqual(expectViewState());
-    });
-
-    it("handles instrument selection using currently selected track when no category/index provided", () => {
-      setupSelectedTrackMock({
-        exists: true,
-        category: "regular",
-        trackIndex: 3,
-        id: "selected_track_123",
-        path: String(livePath.track(3)),
-      });
-      const trackView = setupTrackViewMock(livePath.track(3));
-
-      const result = select({ instrument: true });
-
-      expect(trackView.call).toHaveBeenCalledWith("select_instrument");
-      expect(result).toBeDefined();
-    });
-
-    it("handles instrument selection on return track using currently selected track", () => {
-      setupSelectedTrackMock({
-        exists: true,
-        category: "return",
-        trackIndex: null,
-        returnTrackIndex: 1,
-        id: "return_track_123",
-        path: String(livePath.returnTrack(1)),
-      });
-      const trackView = setupTrackViewMock(livePath.returnTrack(1));
-
-      const result = select({ instrument: true });
-
-      expect(trackView.call).toHaveBeenCalledWith("select_instrument");
-      expect(result).toBeDefined();
-    });
-
-    it("handles instrument selection on master track using currently selected track", () => {
-      setupSelectedTrackMock({
-        exists: true,
-        category: "master",
-        trackIndex: null,
-        returnTrackIndex: null,
-        id: "master_track_123",
-        path: String(livePath.masterTrack()),
-      });
-      const trackView = setupTrackViewMock(livePath.masterTrack());
-
-      const result = select({ instrument: true });
-
-      expect(trackView.call).toHaveBeenCalledWith("select_instrument");
-      expect(result).toBeDefined();
+      // Response includes all selected items
+      expect(result.view).toBe("arrangement");
+      expect(result.selectedTrack).toBeDefined();
+      expect(result.selectedScene).toBeDefined();
+      expect(result.selectedClip).toBeDefined();
     });
 
     it("validates matching track ID and index are accepted", () => {
@@ -315,49 +530,37 @@ describe("view", () => {
       });
 
       const result = select({
-        trackId: "id track_id_123",
+        id: "id track_id_123",
         trackIndex: 2,
       });
 
-      expect(result).toStrictEqual(expectViewState());
+      expect(result.selectedTrack).toBeDefined();
     });
 
-    it("skips track selection when category is invalid", () => {
+    it("skips track selection when trackType is invalid", () => {
       const songView = setupSongViewMock();
 
-      // Using an invalid category should cause buildTrackPath to return null
-      // and skip the track selection
       const result = select({
-        // @ts-expect-error Testing invalid category
-        category: "invalid_category",
+        // @ts-expect-error Testing invalid trackType
+        trackType: "invalid_trackType",
         trackIndex: 2,
       });
 
-      // Should not set selected_track since buildTrackPath returns null
       expect(songView.set).not.toHaveBeenCalledWith(
         "selected_track",
         expect.anything(),
       );
-      expect(result).toStrictEqual(expectViewState());
+      expect(result.selectedTrack).toBeUndefined();
     });
   });
 
   describe("read functionality (no arguments)", () => {
     beforeEach(() => {
       vi.clearAllMocks();
-      clearMockRegistry();
-
-      // Default: nothing selected
-      setupViewStateMock({
-        view: "session",
-        selectedTrack: { exists: false },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      resetSelectTestState();
     });
 
-    it("reads basic view state with session view when no arguments", () => {
+    it("reads full state with track, scene, clip, and device", () => {
       clearMockRegistry();
 
       setupViewStateMock({
@@ -385,38 +588,29 @@ describe("view", () => {
         },
       });
 
-      setupTrackViewMock(livePath.track(0), "456"); // with selected device
+      setupTrackViewMock(livePath.track(0), "456");
 
       const result = select();
 
-      expect(result).toStrictEqual({
-        view: "session",
-        detailView: null,
-        showBrowser: false,
-        selectedTrack: {
-          trackId: "789",
-          type: "midi",
-          trackIndex: 0,
-        },
-        selectedClipId: "123",
-        selectedDeviceId: "456",
-        selectedScene: {
-          sceneId: "012",
-          sceneIndex: 2,
-        },
-        selectedClipSlot: {
-          trackIndex: 1,
-          sceneIndex: 3,
-        },
+      expect(result.view).toBe("session");
+      expect(result.selectedTrack).toStrictEqual({
+        id: "789",
+        type: "midi",
+        trackIndex: 0,
       });
+      expect(result.selectedScene).toStrictEqual({
+        id: "012",
+        sceneIndex: 2,
+      });
+      // Clip and device are read from detail_clip and track view
+      expect(result.selectedClip).toBeDefined();
     });
 
-    it("reads view state with arrangement view and detail clip view", () => {
+    it("reads arrangement view with nothing selected", () => {
       clearMockRegistry();
 
       setupViewStateMock({
         view: "arrangement",
-        detailView: "clip",
         selectedTrack: { exists: false },
         selectedScene: { exists: false },
         selectedClip: { exists: false },
@@ -425,29 +619,10 @@ describe("view", () => {
 
       const result = select({});
 
-      expect(result).toStrictEqual(
-        expectViewState({ view: "arrangement", detailView: "clip" }),
-      );
+      expect(result).toStrictEqual(expectReadState({ view: "arrangement" }));
     });
 
-    it("reads view state with device detail view visible", () => {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "session",
-        detailView: "device",
-        selectedTrack: { exists: false },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
-
-      const result = select({});
-
-      expect(result).toStrictEqual(expectViewState({ detailView: "device" }));
-    });
-
-    it("reads view state with return track selected showing returnTrackIndex", () => {
+    it("reads return track with trackIndex", () => {
       clearMockRegistry();
 
       setupViewStateMock({
@@ -464,18 +639,73 @@ describe("view", () => {
         highlightedClipSlot: { exists: false },
       });
 
-      setupTrackViewMock(livePath.returnTrack(2), "789"); // with selected device
+      setupTrackViewMock(livePath.returnTrack(2));
 
       const result = select({});
 
       expect(result.selectedTrack).toStrictEqual({
-        trackId: "return_456",
+        id: "return_456",
         type: "return",
-        returnTrackIndex: 2,
+        trackIndex: 2,
       });
     });
 
-    it("handles null values when nothing is selected", () => {
+    it("reads master track without trackIndex", () => {
+      clearMockRegistry();
+
+      setupViewStateMock({
+        view: "session",
+        selectedTrack: {
+          exists: true,
+          category: "master",
+          id: "master_789",
+          path: String(livePath.masterTrack()),
+        },
+        selectedScene: { exists: false },
+        selectedClip: { exists: false },
+        highlightedClipSlot: { exists: false },
+      });
+
+      setupTrackViewMock(livePath.masterTrack());
+
+      const result = select({});
+
+      expect(result.selectedTrack).toStrictEqual({
+        id: "master_789",
+        type: "master",
+      });
+    });
+
+    it("reads audio track", () => {
+      clearMockRegistry();
+
+      setupViewStateMock({
+        view: "session",
+        selectedTrack: {
+          exists: true,
+          category: "regular",
+          trackIndex: 1,
+          id: "audio_track_456",
+          path: String(livePath.track(1)),
+          hasMidiInput: false,
+        },
+        selectedScene: { exists: false },
+        selectedClip: { exists: false },
+        highlightedClipSlot: { exists: false },
+      });
+
+      setupTrackViewMock(livePath.track(1));
+
+      const result = select({});
+
+      expect(result.selectedTrack).toStrictEqual({
+        id: "audio_track_456",
+        type: "audio",
+        trackIndex: 1,
+      });
+    });
+
+    it("omits null fields when nothing is selected", () => {
       clearMockRegistry();
 
       setupViewStateMock({
@@ -488,7 +718,11 @@ describe("view", () => {
 
       const result = select();
 
-      expect(result).toStrictEqual(expectViewState({ view: "arrangement" }));
+      expect(result).toStrictEqual({ view: "arrangement" });
+      expect(result.selectedTrack).toBeUndefined();
+      expect(result.selectedScene).toBeUndefined();
+      expect(result.selectedClip).toBeUndefined();
+      expect(result.selectedDevice).toBeUndefined();
     });
   });
 });

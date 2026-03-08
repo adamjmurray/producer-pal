@@ -1,7 +1,5 @@
 # Desktop Apps
 
-Two desktop app options with very different profiles.
-
 ## Claude Desktop (Recommended)
 
 Anthropic's desktop app. The easiest way to use Producer Pal.
@@ -11,6 +9,16 @@ Anthropic's desktop app. The easiest way to use Producer Pal.
 - **Best for:** Most users wanting the simplest setup
 
 [Get started with Claude Desktop →](./claude-desktop)
+
+## Codex App
+
+OpenAI's desktop app. Easy setup with an OpenAI subscription.
+
+- **Difficulty:** Easy
+- **Cost:** Subscription required (ChatGPT Plus, Pro, Business, or Enterprise)
+- **Best for:** OpenAI users on macOS
+
+[Get started with Codex App →](./codex-app)
 
 ## LM Studio (Advanced)
 

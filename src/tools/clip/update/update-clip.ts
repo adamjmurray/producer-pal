@@ -13,6 +13,7 @@ import {
   computeLoopDeadline,
   isDeadlineExceeded,
 } from "#src/tools/clip/helpers/loop-deadline.ts";
+import { select } from "#src/tools/control/select.ts";
 import {
   prepareSplitParams,
   performSplitting,
@@ -22,7 +23,15 @@ import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  getNameForIndex,
+  parseNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import { computeNonSurvivorClipIds } from "./helpers/update-clip-arrangement-optimizer.ts";
 import {
@@ -47,6 +56,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   toSlot?: string;
   split?: string;
   code?: string;
+  focus?: boolean;
 }
 
 interface ClipResult {
@@ -83,9 +93,9 @@ interface ClipResult {
  * @param args.warpDistance - Distance parameter for move operations
  * @param args.quantize - Quantization strength 0-1 (MIDI clips only)
  * @param args.quantizeGrid - Note grid for quantization
- * @param args.quantizeSwing - Swing amount 0-1 (default: 0)
  * @param args.quantizePitch - Limit quantization to specific pitch
  * @param args.code - JavaScript code to transform notes
+ * @param args.focus - Select the clip and show clip detail view
  * @param context - Tool execution context with holding area settings
  * @returns Single clip object or array of clip objects
  */
@@ -116,9 +126,9 @@ export async function updateClip(
     warpDistance,
     quantize,
     quantizeGrid,
-    quantizeSwing,
     quantizePitch,
     code,
+    focus,
   }: UpdateClipArgs = {},
   context: Partial<ToolContext> = {},
 ): Promise<ClipResult | ClipResult[]> {
@@ -128,26 +138,13 @@ export async function updateClip(
     throw new Error("updateClip failed: ids is required");
   }
 
-  let mutableClips = validateIdTypes(
-    parseCommaSeparatedIds(ids),
-    "clip",
-    "updateClip",
-    { skipInvalid: true },
+  const mutableClips = applySplittingIfNeeded(
+    validateIdTypes(parseCommaSeparatedIds(ids), "clip", "updateClip", {
+      skipInvalid: true,
+    }),
+    split,
+    context,
   );
-  const arrangementClips = mutableClips.filter(
-    (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
-  );
-  const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
-
-  if (split != null && splitPoints != null && arrangementClips.length > 0) {
-    performSplitting(
-      arrangementClips,
-      splitPoints,
-      mutableClips,
-      context as SplittingContext,
-    );
-    mutableClips = mutableClips.filter((clip) => clip.exists());
-  }
 
   const { arrangementStartBeats, arrangementLengthBeats } =
     validateAndParseArrangementParams(arrangementStart, arrangementLength);
@@ -156,6 +153,8 @@ export async function updateClip(
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
+  const parsedNames = parseNames(name, mutableClips.length, "updateClip");
+  const parsedColors = parseCommaSeparatedColors(color, mutableClips.length);
   const updatedClips: ClipResult[] = [];
   const tracksWithMovedClips = new Map<number, number>();
 
@@ -178,8 +177,8 @@ export async function updateClip(
       notationString,
       transformString,
       noteUpdateMode,
-      name,
-      color,
+      name: getNameForIndex(name, i, parsedNames),
+      color: getColorForIndex(color, i, parsedColors),
       timeSignature,
       start,
       length,
@@ -195,7 +194,6 @@ export async function updateClip(
       warpDistance,
       quantize,
       quantizeGrid,
-      quantizeSwing,
       quantizePitch,
       arrangementLengthBeats,
       arrangementStartBeats,
@@ -210,6 +208,12 @@ export async function updateClip(
   }
 
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
+
+  if (focus && updatedClips.length > 0) {
+    const lastClip = updatedClips.at(-1) as ClipResult;
+
+    select({ clipId: lastClip.id, detailView: "clip" });
+  }
 
   return unwrapSingleResult(updatedClips);
 }
@@ -256,4 +260,35 @@ async function applyCodeExecToNewClips(
       clipResult.noteCount = noteCount;
     }
   }
+}
+
+/**
+ * Apply splitting to arrangement clips if split parameter is provided
+ * @param clips - Validated clip LiveAPI objects
+ * @param split - Comma-separated split positions
+ * @param context - Tool execution context
+ * @returns Filtered clips (non-existent removed after splitting)
+ */
+function applySplittingIfNeeded(
+  clips: LiveAPI[],
+  split: string | undefined,
+  context: Partial<ToolContext>,
+): LiveAPI[] {
+  const arrangementClips = clips.filter(
+    (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
+  );
+  const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
+
+  if (split != null && splitPoints != null && arrangementClips.length > 0) {
+    performSplitting(
+      arrangementClips,
+      splitPoints,
+      clips,
+      context as SplittingContext,
+    );
+
+    return clips.filter((clip) => clip.exists());
+  }
+
+  return clips;
 }

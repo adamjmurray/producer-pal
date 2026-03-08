@@ -1,25 +1,6 @@
 # Roadmap
 
-[Get Involved](#get-involved) · [In Progress](#in-progress) ·
-[Planned Features](#planned-features) · [Changelog](#changelog)
-
-## Get Involved
-
-I maintain the core tools and roadmap, but there's room to collaborate:
-
-- **Bug reports** — especially reproducible LLM tool misuse
-- **Small model optimization** — help make Ollama/LM Studio work better
-- **Documentation** — improvements and tutorials
-- **Evaluations** — automated end-to-end behavior comparisons of different LLMs
-  and small model mode vs normal mode (basic framework is in place, needs a lot
-  more evals, and manual verification of eval effectiveness and eval results)
-- **Voice interaction** — experimental bidirectional voice chat
-
-Open a
-[GitHub Discussion](https://github.com/adamjmurray/producer-pal/discussions) or
-reach out directly.
-
-## In Progress
+## Upcoming
 
 ### 1.5 - Customization and Context Management
 
@@ -32,6 +13,9 @@ reach out directly.
   customization presets
 
 ## Changelog
+
+See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
+for more detailed information.
 
 ### 1.4 - MIDI Transforms (February 2026)
 
@@ -46,6 +30,9 @@ Other improvements:
 
 - Split arrangement clips at specified positions
 - Configurable Ollama API URL for remote hosting
+- Improved support for creating, updating, and duplicating multiple objects
+  (tracks, clips, scenes, devices) in one operation for efficiency
+- Many improvements to the built-in chat UI
 
 ### 1.3 - Device Control (January 2026)
 

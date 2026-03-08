@@ -4,8 +4,10 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  formatSlot,
   parseArrangementStartList,
   parseSceneIndexList,
+  parseSlot,
   parseSlotList,
 } from "./position-parsing.ts";
 
@@ -97,6 +99,46 @@ describe("parseSlotList", () => {
   it("should throw for negative sceneIndex", () => {
     expect(() => parseSlotList("0/-1")).toThrow(
       'invalid toSlot "0/-1" - trackIndex and sceneIndex must be non-negative',
+    );
+  });
+});
+
+describe("formatSlot", () => {
+  it("should format track and scene indices into a slot string", () => {
+    expect(formatSlot(0, 3)).toBe("0/3");
+  });
+
+  it("should handle larger indices", () => {
+    expect(formatSlot(12, 45)).toBe("12/45");
+  });
+});
+
+describe("parseSlot", () => {
+  it("should parse a valid slot string", () => {
+    expect(parseSlot("0/3")).toStrictEqual({ trackIndex: 0, sceneIndex: 3 });
+  });
+
+  it("should throw for missing separator", () => {
+    expect(() => parseSlot("03")).toThrow(
+      'invalid slot "03" - expected trackIndex/sceneIndex',
+    );
+  });
+
+  it("should throw for extra separators", () => {
+    expect(() => parseSlot("0/1/2")).toThrow(
+      'invalid slot "0/1/2" - expected trackIndex/sceneIndex',
+    );
+  });
+
+  it("should throw for non-integer values", () => {
+    expect(() => parseSlot("a/b")).toThrow(
+      'invalid slot "a/b" - trackIndex and sceneIndex must be integers',
+    );
+  });
+
+  it("should throw for negative values", () => {
+    expect(() => parseSlot("-1/0")).toThrow(
+      'invalid slot "-1/0" - trackIndex and sceneIndex must be non-negative',
     );
   });
 });

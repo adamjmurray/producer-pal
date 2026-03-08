@@ -6,6 +6,7 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_WARP_MODE_BEATS,
   LIVE_API_WARP_MODE_COMPLEX,
   LIVE_API_WARP_MODE_PRO,
@@ -16,6 +17,7 @@ import {
   WARP_MODE,
 } from "#src/tools/constants.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
+import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 /** Result type for resolveClip - either found clip or null response for empty slot */
 export type ResolveClipResult =
@@ -26,8 +28,7 @@ interface EmptySlotResponse {
   id: null;
   type: null;
   name: null;
-  trackIndex: number;
-  sceneIndex: number;
+  slot: string;
 }
 
 /**
@@ -75,8 +76,7 @@ export function resolveClip(
         id: null,
         type: null,
         name: null,
-        trackIndex: trackIndex as number,
-        sceneIndex: sceneIndex as number,
+        slot: formatSlot(trackIndex as number, sceneIndex as number),
       },
     };
   }
@@ -142,4 +142,23 @@ export function processWarpMarkers(clip: LiveAPI): WarpMarker[] | undefined {
       `Failed to read warp markers for clip ${clip.id}: ${errorMessage(error)}`,
     );
   }
+}
+
+/**
+ * Check if a track's instrument is a Drum Rack.
+ * Iterates devices to skip MIDI effects that may precede the instrument.
+ * @param trackIndex - Track index (0-based)
+ * @returns True if the first instrument device is a Drum Rack
+ */
+export function isDrumRackTrack(trackIndex: number): boolean {
+  const track = LiveAPI.from(livePath.track(trackIndex));
+  const devices = track.getChildren("devices");
+
+  for (const device of devices) {
+    if (device.getProperty("type") === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
+      return (device.getProperty("can_have_drum_pads") as number) > 0;
+    }
+  }
+
+  return false;
 }

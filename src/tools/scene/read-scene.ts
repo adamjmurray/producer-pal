@@ -121,7 +121,7 @@ export function readScene(
       .filter((clip: ClipResult) => clip.id != null);
 
     // Strip fields redundant with parent scene context
-    stripFields(clips, "sceneIndex", "view");
+    stripFields(clips, "view");
 
     result.clips = clips;
   } else {

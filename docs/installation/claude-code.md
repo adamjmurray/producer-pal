@@ -39,16 +39,6 @@ auto-reconnection:
 claude mcp add --transport http producer-pal http://localhost:3350/mcp
 ```
 
-**Option C: Download portal script** - Same benefits as npx:
-
-Download
-[producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-and run:
-
-```bash
-claude mcp add producer-pal -- node /absolute/path/to/producer-pal-portal.js
-```
-
 ### 3. Start Claude Code
 
 Run `claude` in an empty folder (so it can focus on Producer Pal instead of
@@ -73,4 +63,4 @@ Run `/mcp` in Claude Code to confirm the Producer Pal tools are available:
 
 ## Troubleshooting
 
-If it doesn't work, see the [Troubleshooting Guide](./troubleshooting).
+If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

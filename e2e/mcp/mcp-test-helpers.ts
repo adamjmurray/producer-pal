@@ -13,7 +13,7 @@ import {
   connectMcp,
   extractToolResultText,
   type McpConnection,
-} from "#evals/chat/shared/mcp.ts";
+} from "#evals/chat/ai-sdk-mcp.ts";
 import { openLiveSet } from "#evals/scenarios/open-live-set.ts";
 import {
   CONFIG_URL,
@@ -254,6 +254,7 @@ export interface ReadClipResult {
   start?: string;
   end?: string;
   length?: string;
+  slot?: string;
   trackIndex?: number | null;
   sceneIndex?: number | null;
   arrangementStart?: string;

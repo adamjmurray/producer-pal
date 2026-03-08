@@ -41,10 +41,10 @@ describe("ppal-read-track", () => {
     expect(byId.name).toBe(firstTrack.name);
     expect(byId.type).toBe("midi");
 
-    // Test 2: Read track by trackIndex + category (regular)
+    // Test 2: Read track by trackIndex (regular, omit trackType)
     const byIndexResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 0, category: "regular" },
+      arguments: { trackIndex: 0 },
     });
     const byIndex = parseToolResult<ReadTrackResult>(byIndexResult);
 
@@ -55,7 +55,7 @@ describe("ppal-read-track", () => {
     // Test 3: Read return track
     const returnResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 0, category: "return" },
+      arguments: { trackIndex: 0, trackType: "return" },
     });
     const returnTrack = parseToolResult<ReadTrackResult>(returnResult);
 
@@ -65,7 +65,7 @@ describe("ppal-read-track", () => {
     // Test 4: Read master track
     const masterResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { category: "master" },
+      arguments: { trackType: "master" },
     });
     const master = parseToolResult<ReadTrackResult>(masterResult);
 
@@ -115,7 +115,7 @@ describe("ppal-read-track", () => {
     // Test 9: Non-existent track throws error
     const nonExistentResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 999, category: "regular" },
+      arguments: { trackIndex: 999 },
     });
 
     expect(isToolError(nonExistentResult)).toBe(true);
@@ -127,7 +127,7 @@ describe("ppal-read-track", () => {
     for (let i = 0; i < 4; i++) {
       const trackResult = await ctx.client!.callTool({
         name: "ppal-read-track",
-        arguments: { trackIndex: i, category: "regular" },
+        arguments: { trackIndex: i },
       });
       const track = parseToolResult<ReadTrackResult>(trackResult);
 
@@ -138,7 +138,7 @@ describe("ppal-read-track", () => {
     // Test 11: Verify audio tracks exist (t4, t5, t6 are Audio 1, Audio 2, FX Bus)
     const audioTrackResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 4, category: "regular" },
+      arguments: { trackIndex: 4 },
     });
     const audioTrack = parseToolResult<ReadTrackResult>(audioTrackResult);
 
@@ -148,7 +148,7 @@ describe("ppal-read-track", () => {
     // Test 12: Find Producer Pal host track (t11 "PPAL" in e2e-test-set)
     const ppalTrackResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 11, category: "regular" },
+      arguments: { trackIndex: 11 },
     });
     const ppalTrack = parseToolResult<ReadTrackResult>(ppalTrackResult);
 
@@ -159,7 +159,7 @@ describe("ppal-read-track", () => {
     // Test group: t9 is parent of t10
     const parentResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 9, category: "regular" },
+      arguments: { trackIndex: 9 },
     });
     const parentTrack = parseToolResult<ReadTrackResult>(parentResult);
 
@@ -167,7 +167,7 @@ describe("ppal-read-track", () => {
 
     const childResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 10, category: "regular" },
+      arguments: { trackIndex: 10 },
     });
     const childTrack = parseToolResult<ReadTrackResult>(childResult);
 
@@ -176,7 +176,7 @@ describe("ppal-read-track", () => {
     // Test routing: t4 outputs to t6 "FX Bus"
     const routingResult = await ctx.client!.callTool({
       name: "ppal-read-track",
-      arguments: { trackIndex: 4, category: "regular", include: ["routings"] },
+      arguments: { trackIndex: 4, include: ["routings"] },
     });
     const routedTrack = parseToolResult<ReadTrackResult>(routingResult);
 

@@ -1,31 +1,28 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Codex (OpenAI)
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
+  clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { type SelectResult } from "#src/tools/control/select.ts";
 
-interface ViewState {
-  view: string;
-  detailView: string | null;
-  showBrowser: boolean;
-  selectedTrack: {
-    trackId: string | null;
-    type: string | null;
-    trackIndex?: number | null;
-    returnTrackIndex?: number | null;
-  };
-  selectedClipId: string | null;
-  selectedDeviceId: string | null;
-  selectedScene: {
-    sceneId: string | null;
-    sceneIndex: number | null;
-  };
-  selectedClipSlot: { trackIndex: number; sceneIndex: number } | null;
+/**
+ * Reset all mocks and set up default "nothing selected" state for select() tests.
+ * Call this from beforeEach in select test files.
+ */
+export function resetSelectTestState(): void {
+  clearMockRegistry();
+  setupViewStateMock({
+    selectedTrack: { exists: false },
+    selectedScene: { exists: false },
+    selectedClip: { exists: false },
+    highlightedClipSlot: { exists: false },
+  });
 }
 
 // Constants for Live API paths
@@ -313,36 +310,25 @@ export function setupViewStateMock(state: ViewStateMockOptions): {
 }
 
 /**
- * Returns the expected default view state for select() results.
- * @returns Default view state object
+ * Returns the expected default read state for select() with no args.
+ * Default mocks have nothing selected, so only view is present.
+ * @returns Default read state (view only)
  */
-export function getDefaultViewState(): ViewState {
-  return {
-    view: "session",
-    detailView: null,
-    showBrowser: false,
-    selectedTrack: {
-      trackId: null,
-      type: null,
-    },
-    selectedClipId: null,
-    selectedDeviceId: null,
-    selectedScene: {
-      sceneId: null,
-      sceneIndex: null,
-    },
-    selectedClipSlot: null,
-  };
+export function getDefaultReadState(): SelectResult {
+  return { view: "session" };
 }
 
 /**
- * Helper function to merge expected changes with default view state.
+ * Helper function to merge expected changes with default read state.
+ * For read-only tests (no args).
  * @param changes - Properties to override in the default state
- * @returns Merged view state object
+ * @returns Merged result
  */
-export function expectViewState(changes: Partial<ViewState> = {}): ViewState {
+export function expectReadState(
+  changes: Partial<SelectResult> = {},
+): SelectResult {
   return {
-    ...getDefaultViewState(),
+    ...getDefaultReadState(),
     ...changes,
   };
 }

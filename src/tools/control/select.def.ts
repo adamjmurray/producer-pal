@@ -7,7 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefSelect = defineTool("ppal-select", {
   title: "Select",
-  description: "Read selection/view state (no args), or update it",
+  description:
+    'Navigate to and select items in Live. Use for "show me", "go to", "open" requests. No args: read current state',
 
   annotations: {
     readOnlyHint: false,
@@ -15,57 +16,43 @@ export const toolDefSelect = defineTool("ppal-select", {
   },
 
   inputSchema: {
-    view: z.enum(["session", "arrangement"]).optional().describe("main view"),
-    trackId: z.coerce
+    id: z.coerce
       .string()
       .optional()
-      .describe("select a track with this or category/trackIndex"),
-    category: z
-      .enum(["regular", "return", "master"])
-      .optional()
-      .default("regular")
-      .describe(
-        "track category: regular and return tracks have independent trackIndexes, master has no index",
-      ),
+      .describe("select by ID (auto-detects track/scene/clip/device)"),
+
     trackIndex: z.coerce
       .number()
       .int()
       .min(0)
       .optional()
-      .describe("0-based index"),
-    sceneId: z.coerce
-      .string()
+      .describe("0-based track index"),
+    trackType: z
+      .enum(["return", "master"])
       .optional()
-      .describe("select a scene with this or sceneIndex"),
+      .describe("omit for audio/midi tracks, or: return, master"),
+
     sceneIndex: z.coerce
       .number()
       .int()
       .min(0)
       .optional()
-      .describe("0-based index"),
-    clipId: z.coerce
+      .describe("0-based scene index"),
+
+    slot: z
       .string()
       .optional()
-      .describe("select a clip with this or trackIndex + sceneIndex"),
-    deviceId: z.coerce.string().optional().describe("select a device"),
-    instrument: z
-      .boolean()
+      .describe("session clip slot: trackIndex/sceneIndex (e.g., '0/3')"),
+
+    devicePath: z
+      .string()
       .optional()
-      .describe("select the track's instrument?"),
-    detailView: z
-      .enum(["clip", "device", "none"])
-      .optional()
-      .describe(
-        `show the selected clip or device detail view, or "none" to hide`,
-      ),
-    showLoop: z
-      .boolean()
-      .optional()
-      .describe("show selected clip's loop view?"),
-    showBrowser: z.boolean().optional().describe("show browser view?"),
+      .describe("select device by path (e.g. t0/d1)"),
+
+    view: z.enum(["session", "arrangement"]).optional().describe("main view"),
   },
 
   smallModelModeConfig: {
-    excludeParams: ["instrument", "showLoop", "showBrowser"],
+    // Intentionally empty — simple tool with few params, all useful for SLMs
   },
 });

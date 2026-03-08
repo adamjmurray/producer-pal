@@ -31,9 +31,7 @@ describe("createClip - audio clips", () => {
 
       await expect(
         createClip({
-          view: "session",
-          trackIndex: 0,
-          sceneIndex: "0",
+          slot: "0/0",
           sampleFile: "/path/to/audio.wav",
           notes: "C3 1|1",
         }),
@@ -50,9 +48,7 @@ describe("createClip - audio clips", () => {
       });
 
       const result = await createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         sampleFile: "/path/to/audio.wav",
       });
 
@@ -74,8 +70,7 @@ describe("createClip - audio clips", () => {
 
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
-        trackIndex: 0,
-        sceneIndex: 0,
+        slot: "0/0",
         length: "4:0", // 16 beats = 4 bars in 4/4
       });
     });
@@ -84,9 +79,7 @@ describe("createClip - audio clips", () => {
       const { clip } = setupSessionAudioClipMocks();
 
       const result = await createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         sampleFile: "/path/to/kick.wav",
         name: "Kick Sample",
         color: "#FF0000",
@@ -109,8 +102,7 @@ describe("createClip - audio clips", () => {
 
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
-        trackIndex: 0,
-        sceneIndex: 0,
+        slot: "0/0",
         length: "2:0",
       });
     });
@@ -148,9 +140,7 @@ describe("createClip - audio clips", () => {
       });
 
       const result = await createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "0,1",
+        slot: "0/0,0/1",
         sampleFile: "/path/to/loop.wav",
         name: "Loop",
       });
@@ -168,14 +158,12 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual([
         {
           id: "audio_clip_0_0",
-          trackIndex: 0,
-          sceneIndex: 0,
+          slot: "0/0",
           length: "1:0",
         },
         {
           id: "audio_clip_0_1",
-          trackIndex: 0,
-          sceneIndex: 1,
+          slot: "0/1",
           length: "1:0",
         },
       ]);
@@ -204,9 +192,7 @@ describe("createClip - audio clips", () => {
       });
 
       await createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "1", // Scene doesn't exist yet
+        slot: "0/1", // Scene doesn't exist yet
         sampleFile: "/path/to/audio.wav",
       });
 
@@ -232,9 +218,7 @@ describe("createClip - audio clips", () => {
 
       // Runtime errors during clip creation are now warnings, not fatal errors
       const result = await createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: String(MAX_AUTO_CREATED_SCENES),
+        slot: `0/${MAX_AUTO_CREATED_SCENES}`,
         sampleFile: "/path/to/audio.wav",
       });
 
@@ -247,9 +231,7 @@ describe("createClip - audio clips", () => {
 
       // Runtime errors during clip creation are now warnings, not fatal errors
       const result = await createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         sampleFile: "/path/to/audio.wav",
       });
 
@@ -263,7 +245,6 @@ describe("createClip - audio clips", () => {
       const { track } = setupAudioArrangementClipMocks();
 
       const result = await createClip({
-        view: "arrangement",
         trackIndex: 0,
         arrangementStart: "1|1",
         sampleFile: "/path/to/audio.wav",
@@ -288,7 +269,6 @@ describe("createClip - audio clips", () => {
       const { clip } = setupAudioArrangementClipMocks({ clipLength: 16 });
 
       const result = await createClip({
-        view: "arrangement",
         trackIndex: 0,
         arrangementStart: "5|1",
         sampleFile: "/path/to/vocals.wav",
@@ -337,7 +317,6 @@ describe("createClip - audio clips", () => {
       });
 
       const result = await createClip({
-        view: "arrangement",
         trackIndex: 0,
         arrangementStart: "1|1,2|1,3|1",
         sampleFile: "/path/to/loop.wav",
@@ -393,7 +372,6 @@ describe("createClip - audio clips", () => {
       // Position 394202|1 = 1,576,804 beats which exceeds the limit of 1,576,800
       // Runtime errors during clip creation are now warnings, not fatal errors
       const result = await createClip({
-        view: "arrangement",
         trackIndex: 0,
         arrangementStart: "394202|1",
         sampleFile: "/path/to/audio.wav",
@@ -413,7 +391,6 @@ describe("createClip - audio clips", () => {
 
       await expect(
         createClip({
-          view: "arrangement",
           trackIndex: 99,
           arrangementStart: "1|1",
           sampleFile: "/path/to/audio.wav",
@@ -434,7 +411,6 @@ describe("createClip - audio clips", () => {
       });
 
       const result = await createClip({
-        view: "arrangement",
         trackIndex: 0,
         arrangementStart: "1|1",
         sampleFile: "/path/to/invalid.wav",
@@ -450,17 +426,14 @@ describe("createClip - audio clips", () => {
       setupSessionAudioClipMocks({ clipLength: 12.5 });
 
       const result = await createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         sampleFile: "/path/to/audio.wav",
       });
 
       // Length should come from Live API, not calculated
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
-        trackIndex: 0,
-        sceneIndex: 0,
+        slot: "0/0",
         length: "3:0.5", // 12.5 beats in 4/4 = 3 bars + 0.5 beats
       });
     });
@@ -493,9 +466,7 @@ describe("createClip - audio clips", () => {
       });
 
       const result = await createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "0,1",
+        slot: "0/0,0/1",
         sampleFile: "/path/to/loop.wav",
       });
 
@@ -503,14 +474,12 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual([
         {
           id: "audio_clip_0_0",
-          trackIndex: 0,
-          sceneIndex: 0,
+          slot: "0/0",
           length: "2:0",
         },
         {
           id: "audio_clip_0_1",
-          trackIndex: 0,
-          sceneIndex: 1,
+          slot: "0/1",
           length: "2:0",
         },
       ]);
@@ -522,9 +491,7 @@ describe("createClip - audio clips", () => {
       const { clip } = setupSessionAudioClipMocks();
 
       await createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         sampleFile: "/path/to/audio.wav",
         start: "1|1",
         length: "2:0",
@@ -557,9 +524,7 @@ describe("createClip - audio clips", () => {
       const { clip } = setupSessionAudioClipMocks();
 
       await createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "0",
+        slot: "0/0",
         sampleFile: "/path/to/audio.wav",
         timeSignature: "3/4",
       });

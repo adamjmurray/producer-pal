@@ -80,13 +80,11 @@ describe("ppal-clip-transforms-sync", () => {
 
     await applyTransform(clipId, "velocity += 50 * cos(4t, sync)");
     const notes = await readClipNotes(clipId);
-    const velocities = extractVelocities(notes);
 
-    expect(velocities).toHaveLength(4);
-    expect(velocities[0]).toBe(14);
-    expect(velocities[1]).toBe(64);
-    expect(velocities[2]).toBe(114);
-    expect(velocities[3]).toBe(64);
+    // Beats 2 and 4 share v64, comma-merged
+    expect(notes).toContain("v14 C3 1|1");
+    expect(notes).toContain("v64 C3 1|2,4");
+    expect(notes).toContain("v114 C3 1|3");
   });
 
   it("without sync, phase is clip-relative regardless of arrangement position", async () => {
@@ -104,13 +102,11 @@ describe("ppal-clip-transforms-sync", () => {
 
     await applyTransform(clipId, "velocity += 50 * cos(4t)");
     const notes = await readClipNotes(clipId);
-    const velocities = extractVelocities(notes);
 
-    expect(velocities).toHaveLength(4);
-    expect(velocities[0]).toBe(114);
-    expect(velocities[1]).toBe(64);
-    expect(velocities[2]).toBe(14);
-    expect(velocities[3]).toBe(64);
+    // Beats 2 and 4 share v64, comma-merged
+    expect(notes).toContain("v114 C3 1|1");
+    expect(notes).toContain("v64 C3 1|2,4");
+    expect(notes).toContain("v14 C3 1|3");
   });
 
   it("session clip with sync skips the assignment with a warning", async () => {
@@ -150,12 +146,10 @@ describe("ppal-clip-transforms-sync", () => {
 
     await applyTransform(clipId, "velocity += 50 * cos(4t, 0.25, sync)");
     const notes = await readClipNotes(clipId);
-    const velocities = extractVelocities(notes);
 
-    expect(velocities).toHaveLength(4);
-    expect(velocities[0]).toBe(64);
-    expect(velocities[1]).toBe(14);
-    expect(velocities[2]).toBe(64);
-    expect(velocities[3]).toBe(114);
+    // Beats 1 and 3 share v64, comma-merged
+    expect(notes).toContain("v64 C3 1|1,3");
+    expect(notes).toContain("v14 C3 1|2");
+    expect(notes).toContain("v114 C3 1|4");
   });
 });

@@ -16,6 +16,7 @@ describe("useSettings - provider-specific settings", () => {
   });
   describe("setThinking for all providers", () => {
     it.each([
+      ["anthropic", "High"],
       ["mistral", "High"],
       ["openrouter", "Medium"],
       ["lmstudio", "Low"],
@@ -35,6 +36,7 @@ describe("useSettings - provider-specific settings", () => {
   });
   describe("setTemperature for all providers", () => {
     it.each([
+      ["anthropic", 0.8],
       ["mistral", 0.8],
       ["openrouter", 0.5],
       ["lmstudio", 0.9],
@@ -80,6 +82,7 @@ describe("useSettings - provider-specific settings", () => {
   });
   describe("setApiKey and setModel for additional providers", () => {
     it.each([
+      ["anthropic", "anthropic-key", "claude-sonnet-4-6"],
       ["ollama", "ollama-key", "llama2"],
       ["mistral", "mistral-key", "mistral-large"],
       ["openrouter", "openrouter-key", "anthropic/claude-3"],

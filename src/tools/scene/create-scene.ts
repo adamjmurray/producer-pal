@@ -5,6 +5,15 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { select } from "#src/tools/control/select.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
+import {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 import { captureScene } from "./capture-scene.ts";
 import {
   applyTempoProperty,
@@ -34,7 +43,7 @@ interface CreateSceneArgs {
   color?: string;
   tempo?: number | null;
   timeSignature?: string | null;
-  switchView?: boolean;
+  focus?: boolean;
 }
 
 /**
@@ -47,7 +56,7 @@ interface CreateSceneArgs {
  * @param args.color - Color for the scenes (CSS format: hex)
  * @param args.tempo - Tempo in BPM for the scenes. Pass -1 to disable.
  * @param args.timeSignature - Time signature in format "4/4". Pass "disabled" to disable.
- * @param args.switchView - Automatically switch to session view
+ * @param args.focus - Switch to session view and select the scene
  * @param _context - Internal context object (unused)
  * @returns Single scene object when count=1, array when count>1
  */
@@ -60,7 +69,7 @@ export function createScene(
     color,
     tempo,
     timeSignature,
-    switchView,
+    focus,
   }: CreateSceneArgs = {},
   _context: Partial<ToolContext> = {},
 ): SceneResult | SceneResult[] | CaptureSceneResult {
@@ -70,8 +79,8 @@ export function createScene(
 
     applyCaptureProperties(result, { color, tempo, timeSignature });
 
-    if (switchView) {
-      select({ view: "session" });
+    if (focus) {
+      select({ view: "session", sceneId: result.id });
     }
 
     return result;
@@ -90,8 +99,10 @@ export function createScene(
   const createdScenes: SceneResult[] = [];
   let currentIndex = validatedSceneIndex;
 
-  const parsedNames = parseCommaSeparated(name, count);
-  const parsedColors = parseCommaSeparated(color, count);
+  const parsedNames = parseCommaSeparatedNames(name, count);
+  const parsedColors = parseCommaSeparatedColors(color, count);
+
+  warnExtraNames(parsedNames, count, "createScene");
 
   for (let i = 0; i < count; i++) {
     const sceneName = getNameForIndex(name, i, parsedNames);
@@ -110,8 +121,10 @@ export function createScene(
     currentIndex++;
   }
 
-  if (switchView) {
-    select({ view: "session" });
+  if (focus && createdScenes.length > 0) {
+    const lastScene = createdScenes.at(-1) as SceneResult;
+
+    select({ view: "session", sceneId: lastScene.id });
   }
 
   return count === 1 ? (createdScenes[0] as SceneResult) : createdScenes;
@@ -224,59 +237,4 @@ function createSingleScene(
     id: scene.id,
     sceneIndex,
   };
-}
-
-/**
- * Parse comma-separated string when count > 1
- * @param value - Input string that may contain commas
- * @param count - Number of scenes being created
- * @returns Array of trimmed values, or null if not applicable
- */
-function parseCommaSeparated(
-  value: string | undefined,
-  count: number,
-): string[] | null {
-  if (count <= 1 || !value?.includes(",")) {
-    return null;
-  }
-
-  return value.split(",").map((v) => v.trim());
-}
-
-/**
- * Get name for a specific scene index in a batch
- * @param baseName - Base name string
- * @param index - Current scene index in the batch
- * @param parsedNames - Comma-separated names (when count > 1), or null
- * @returns Scene name, or undefined if no name should be set
- */
-function getNameForIndex(
-  baseName: string | undefined,
-  index: number,
-  parsedNames: string[] | null,
-): string | undefined {
-  if (baseName == null) return;
-  if (parsedNames == null) return baseName;
-
-  return index < parsedNames.length
-    ? (parsedNames[index] as string)
-    : undefined;
-}
-
-/**
- * Get color for a specific scene index, cycling through parsed colors
- * @param color - Original color string
- * @param index - Current scene index in the batch
- * @param parsedColors - Comma-separated colors (when count > 1), or null
- * @returns Color for this scene, or undefined
- */
-function getColorForIndex(
-  color: string | undefined,
-  index: number,
-  parsedColors: string[] | null,
-): string | undefined {
-  if (color == null) return;
-  if (parsedColors == null) return color;
-
-  return parsedColors[index % parsedColors.length] as string;
 }

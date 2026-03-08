@@ -191,5 +191,55 @@ describe("update-clip-transform-helpers", () => {
         expect.anything(),
       );
     });
+
+    it("should handle missing notes property from get_notes_extended", () => {
+      const mockClip = {
+        getProperty: vi.fn(() => 4),
+        call: vi.fn((method: string) => {
+          if (method === "get_notes_extended") {
+            return JSON.stringify({}); // no "notes" key
+          }
+
+          return "[]";
+        }),
+      };
+
+      const result = applyTransformsToExistingNotes(
+        mockClip as unknown as LiveAPI,
+        "velocity = 50",
+        4,
+        4,
+      );
+
+      expect(result.noteCount).toBe(0);
+    });
+  });
+
+  describe("buildClipContext - chromatic scale", () => {
+    it("returns undefined scalePitchClassMask for chromatic scale", () => {
+      registerMockObject("live_set", {
+        path: "live_set",
+        type: "Song",
+        properties: {
+          scale_mode: 1,
+          root_note: 0,
+          // All 12 intervals = chromatic
+          scale_intervals: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+        },
+      });
+
+      const mockClip = {
+        getProperty: vi.fn((prop: string) => {
+          if (prop === "length") return 4;
+          if (prop === "is_arrangement_clip") return 0;
+
+          return 0;
+        }),
+      };
+
+      const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
+
+      expect(ctx.scalePitchClassMask).toBeUndefined();
+    });
   });
 });

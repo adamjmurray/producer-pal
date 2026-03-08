@@ -31,7 +31,7 @@
 }}
 
 start
-  = _ head:assignment? tail:((_ nl _)+ assignment)* _ {
+  = __ head:assignment? tail:((_ nl _)+ assignment)* __ {
     const assignments = [head, ...tail.map(t => t[1])].filter(Boolean);
     return assignments;
   }
@@ -321,3 +321,4 @@ comment
 // Whitespace
 nl = [\r\n]  // newline
 _ = ([ \t] / comment)*  // optional whitespace (no newlines)
+__ = ([ \t\r\n] / comment)*  // optional whitespace including newlines

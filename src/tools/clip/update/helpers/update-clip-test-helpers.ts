@@ -221,32 +221,15 @@ export function setupMidiClipMock(
   clip: RegisteredMockObject,
   opts: MidiClipMockOptions = {},
 ): void {
-  const properties: Record<string, unknown> = {
-    is_arrangement_clip: 0,
-    is_midi_clip: 1,
-    signature_numerator: 4,
-    signature_denominator: 4,
-    ...opts,
-  };
-  const callCounts: Record<string, number> = {};
-
-  clip.get.mockImplementation((prop: string) => {
-    const value = properties[prop];
-
-    if (value !== undefined) {
-      if (value instanceof MockSequence) {
-        const index = callCounts[prop] ?? 0;
-
-        callCounts[prop] = index + 1;
-
-        return [value[index]];
-      }
-
-      return [value];
-    }
-
-    return [0];
-  });
+  clip.get.mockImplementation(
+    createPropertyGetImpl({
+      is_arrangement_clip: 0,
+      is_midi_clip: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      ...opts,
+    }),
+  );
 }
 
 /**
@@ -259,33 +242,16 @@ export function setupAudioClipMock(
   clip: RegisteredMockObject,
   opts: Record<string, unknown> = {},
 ): void {
-  const properties: Record<string, unknown> = {
-    is_arrangement_clip: 0,
-    is_midi_clip: 0,
-    is_audio_clip: 1,
-    signature_numerator: 4,
-    signature_denominator: 4,
-    ...opts,
-  };
-  const callCounts: Record<string, number> = {};
-
-  clip.get.mockImplementation((prop: string) => {
-    const value = properties[prop];
-
-    if (value !== undefined) {
-      if (value instanceof MockSequence) {
-        const index = callCounts[prop] ?? 0;
-
-        callCounts[prop] = index + 1;
-
-        return [value[index]];
-      }
-
-      return [value];
-    }
-
-    return [0];
-  });
+  clip.get.mockImplementation(
+    createPropertyGetImpl({
+      is_arrangement_clip: 0,
+      is_midi_clip: 0,
+      is_audio_clip: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      ...opts,
+    }),
+  );
 }
 
 /**
@@ -329,10 +295,26 @@ export function setupMockProperties(
   props: Record<string, unknown>,
 ): void {
   const fallbackGet = mock.get.getMockImplementation();
+
+  mock.get.mockImplementation(
+    createPropertyGetImpl(props, fallbackGet ?? undefined),
+  );
+}
+
+/**
+ * Create a mock get implementation that returns property values with MockSequence support.
+ * @param properties - Property name to value map
+ * @param fallback - Optional fallback for unrecognized properties
+ * @returns Mock implementation function for clip.get
+ */
+function createPropertyGetImpl(
+  properties: Record<string, unknown>,
+  fallback?: (prop: string) => unknown[],
+): (prop: string) => unknown[] {
   const callCounts: Record<string, number> = {};
 
-  mock.get.mockImplementation((prop: string) => {
-    const value = props[prop];
+  return (prop: string) => {
+    const value = properties[prop];
 
     if (value !== undefined) {
       if (value instanceof MockSequence) {
@@ -346,12 +328,12 @@ export function setupMockProperties(
       return [value];
     }
 
-    if (fallbackGet) {
-      return fallbackGet(prop);
+    if (fallback) {
+      return fallback(prop);
     }
 
     return [0];
-  });
+  };
 }
 
 /**
@@ -380,4 +362,21 @@ export function setupSessionTilingMock(fileContentBoundary = 8.0) {
     });
 
   return { mockCreate, sessionClip, sessionSlot };
+}
+
+/**
+ * Assert that session-based file boundary detection ran correctly.
+ * Verifies the session clip was created for boundary detection and cleaned up.
+ * @param mockCreate - Spy on createAudioClipInSession
+ * @param sessionSlot - Mock session slot with a call method
+ * @param sessionSlot.call - Mock function for session slot calls
+ * @param filePath - Expected audio file path
+ */
+export function assertBoundaryDetection(
+  mockCreate: ReturnType<typeof vi.spyOn>,
+  sessionSlot: { call: ReturnType<typeof vi.fn> },
+  filePath = "/audio/test.wav",
+): void {
+  expect(mockCreate).toHaveBeenCalledWith(expect.anything(), 1, filePath);
+  expect(sessionSlot.call).toHaveBeenCalledWith("delete_clip");
 }

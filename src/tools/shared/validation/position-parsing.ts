@@ -8,9 +8,51 @@ import {
   parseCommaSeparatedIndices,
 } from "#src/tools/shared/utils.ts";
 
-interface SlotPosition {
+export interface SlotPosition {
   trackIndex: number;
   sceneIndex: number;
+}
+
+/**
+ * Formats a track index and scene index into a slot string
+ * @param trackIndex - 0-based track index
+ * @param sceneIndex - 0-based scene index
+ * @returns Slot string (e.g., "0/3")
+ */
+export function formatSlot(trackIndex: number, sceneIndex: number): string {
+  return `${trackIndex}/${sceneIndex}`;
+}
+
+/**
+ * Parses a single slot string into track and scene indices
+ * @param input - Slot string (e.g., "0/3")
+ * @returns Parsed slot position
+ */
+export function parseSlot(input: string): SlotPosition {
+  const parts = input.split("/");
+
+  if (parts.length !== 2) {
+    throw new Error(
+      `invalid slot "${input}" - expected trackIndex/sceneIndex (e.g., "0/3")`,
+    );
+  }
+
+  const trackIndex = Number.parseInt(parts[0] as string);
+  const sceneIndex = Number.parseInt(parts[1] as string);
+
+  if (Number.isNaN(trackIndex) || Number.isNaN(sceneIndex)) {
+    throw new Error(
+      `invalid slot "${input}" - trackIndex and sceneIndex must be integers`,
+    );
+  }
+
+  if (trackIndex < 0 || sceneIndex < 0) {
+    throw new Error(
+      `invalid slot "${input}" - trackIndex and sceneIndex must be non-negative`,
+    );
+  }
+
+  return { trackIndex, sceneIndex };
 }
 
 /**

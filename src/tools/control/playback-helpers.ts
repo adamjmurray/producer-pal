@@ -7,7 +7,7 @@ import {
   barBeatToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { resolveLocatorToBeats as resolveLocatorToBeatsRequired } from "#src/tools/shared/locator/locator-helpers.ts";
+import { resolveLocatorRefToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 
 interface LoopState {
   startBeats: number;
@@ -15,27 +15,19 @@ interface LoopState {
   end: string;
 }
 
-interface LocatorOptions {
-  locatorId?: string;
-  locatorName?: string;
-}
-
 interface StartTimeParams {
   startTime?: string;
-  startLocatorId?: string;
-  startLocatorName?: string;
+  startLocator?: string;
 }
 
 interface LoopStartParams {
   loopStart?: string;
-  loopStartLocatorId?: string;
-  loopStartLocatorName?: string;
+  loopStartLocator?: string;
 }
 
 interface LoopEndParams {
   loopEnd?: string;
-  loopEndLocatorId?: string;
-  loopEndLocatorName?: string;
+  loopEndLocator?: string;
 }
 
 interface ResolvedStartTime {
@@ -72,26 +64,24 @@ export function getCurrentLoopState(
 }
 
 /**
- * Resolve a locator by ID or name to its time in beats
+ * Resolve a locator reference to its time in beats
  * @param liveSet - The live_set LiveAPI object
- * @param options - Locator identifier options
- * @param options.locatorId - Locator ID to find
- * @param options.locatorName - Locator name to find
+ * @param locator - Locator ID or name
  * @param paramName - Name of the parameter for error messages
  * @returns Time in beats or undefined if no locator specified
  */
 export function resolveLocatorToBeats(
   liveSet: LiveAPI,
-  { locatorId, locatorName }: LocatorOptions,
+  locator: string | undefined,
   paramName: string,
 ): number | undefined {
-  if (locatorId == null && locatorName == null) {
+  if (locator == null) {
     return;
   }
 
-  return resolveLocatorToBeatsRequired(
+  return resolveLocatorRefToBeats(
     liveSet,
-    { locatorId, locatorName },
+    locator,
     "playback",
     `for ${paramName}`,
   );
@@ -100,55 +90,40 @@ export function resolveLocatorToBeats(
 /**
  * Validate mutual exclusivity of time and locator parameters
  * @param timeParam - Time parameter value
- * @param locatorIdParam - Locator ID parameter value
- * @param locatorNameParam - Locator name parameter value
+ * @param locatorParam - Locator parameter value
  * @param paramName - Name of the parameter for error messages
  */
 export function validateLocatorOrTime(
   timeParam: string | undefined,
-  locatorIdParam: string | undefined,
-  locatorNameParam: string | undefined,
+  locatorParam: string | undefined,
   paramName: string,
 ): void {
-  const hasTime = timeParam != null;
-  const hasLocatorId = locatorIdParam != null;
-  const hasLocatorName = locatorNameParam != null;
+  if (timeParam != null && locatorParam != null) {
+    const locatorParamBase = paramName.replace(/Time$/, "");
 
-  // Compute base name for locator parameters (strip "Time" suffix if present)
-  // e.g., "startTime" → "start", "loopStart" → "loopStart"
-  const locatorParamBase = paramName.replace(/Time$/, "");
-
-  if (hasTime && (hasLocatorId || hasLocatorName)) {
     throw new Error(
-      `playback failed: ${paramName} cannot be used with ${locatorParamBase}LocatorId or ${locatorParamBase}LocatorName`,
-    );
-  }
-
-  if (hasLocatorId && hasLocatorName) {
-    throw new Error(
-      `playback failed: ${locatorParamBase}LocatorId and ${locatorParamBase}LocatorName are mutually exclusive`,
+      `playback failed: ${paramName} cannot be used with ${locatorParamBase}Locator`,
     );
   }
 }
 
 /**
- * Resolve start time from either bar|beat string, locator ID, or locator name
+ * Resolve start time from either bar|beat string or locator reference
  * @param liveSet - The live_set LiveAPI object
  * @param params - Start time parameters
  * @param params.startTime - Bar|beat position
- * @param params.startLocatorId - Locator ID for start
- * @param params.startLocatorName - Locator name for start
+ * @param params.startLocator - Locator ID or name for start
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @returns Resolved start time
  */
 export function resolveStartTime(
   liveSet: LiveAPI,
-  { startTime, startLocatorId, startLocatorName }: StartTimeParams,
+  { startTime, startLocator }: StartTimeParams,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): ResolvedStartTime {
-  const useLocatorStart = startLocatorId != null || startLocatorName != null;
+  const useLocatorStart = startLocator != null;
   let startTimeBeats: number | undefined;
 
   if (startTime != null) {
@@ -159,11 +134,7 @@ export function resolveStartTime(
     );
     liveSet.set("start_time", startTimeBeats);
   } else if (useLocatorStart) {
-    startTimeBeats = resolveLocatorToBeats(
-      liveSet,
-      { locatorId: startLocatorId, locatorName: startLocatorName },
-      "start",
-    );
+    startTimeBeats = resolveLocatorToBeats(liveSet, startLocator, "start");
     liveSet.set("start_time", startTimeBeats);
   }
 
@@ -171,19 +142,18 @@ export function resolveStartTime(
 }
 
 /**
- * Resolve loop start time from either bar|beat string, locator ID, or locator name
+ * Resolve loop start time from either bar|beat string or locator reference
  * @param liveSet - The live_set LiveAPI object
  * @param params - Loop start parameters
  * @param params.loopStart - Bar|beat position
- * @param params.loopStartLocatorId - Locator ID for loop start
- * @param params.loopStartLocatorName - Locator name for loop start
+ * @param params.loopStartLocator - Locator ID or name for loop start
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @returns Resolved loop start in beats
  */
 export function resolveLoopStart(
   liveSet: LiveAPI,
-  { loopStart, loopStartLocatorId, loopStartLocatorName }: LoopStartParams,
+  { loopStart, loopStartLocator }: LoopStartParams,
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number | undefined {
@@ -196,10 +166,10 @@ export function resolveLoopStart(
       timeSigDenominator,
     );
     liveSet.set("loop_start", loopStartBeats);
-  } else if (loopStartLocatorId != null || loopStartLocatorName != null) {
+  } else if (loopStartLocator != null) {
     loopStartBeats = resolveLocatorToBeats(
       liveSet,
-      { locatorId: loopStartLocatorId, locatorName: loopStartLocatorName },
+      loopStartLocator,
       "loopStart",
     );
     liveSet.set("loop_start", loopStartBeats);
@@ -213,15 +183,14 @@ export function resolveLoopStart(
  * @param liveSet - The live_set LiveAPI object
  * @param params - Loop end parameters
  * @param params.loopEnd - Bar|beat position
- * @param params.loopEndLocatorId - Locator ID for loop end
- * @param params.loopEndLocatorName - Locator name for loop end
+ * @param params.loopEndLocator - Locator ID or name for loop end
  * @param loopStartBeats - Resolved loop start in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  */
 export function resolveLoopEnd(
   liveSet: LiveAPI,
-  { loopEnd, loopEndLocatorId, loopEndLocatorName }: LoopEndParams,
+  { loopEnd, loopEndLocator }: LoopEndParams,
   loopStartBeats: number | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -234,12 +203,8 @@ export function resolveLoopEnd(
       timeSigNumerator,
       timeSigDenominator,
     );
-  } else if (loopEndLocatorId != null || loopEndLocatorName != null) {
-    loopEndBeats = resolveLocatorToBeats(
-      liveSet,
-      { locatorId: loopEndLocatorId, locatorName: loopEndLocatorName },
-      "loopEnd",
-    );
+  } else if (loopEndLocator != null) {
+    loopEndBeats = resolveLocatorToBeats(liveSet, loopEndLocator, "loopEnd");
   }
 
   if (loopEndBeats != null) {

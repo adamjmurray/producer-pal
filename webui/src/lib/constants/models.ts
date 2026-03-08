@@ -7,20 +7,32 @@
  * Convention: First item in each list is the default model for that provider.
  */
 
+export const OTHER_MODEL_OPTION = {
+  value: "OTHER",
+  label: "Other...",
+} as const;
+
+export const ANTHROPIC_MODELS = [
+  { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+  { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
+  { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+  OTHER_MODEL_OPTION,
+];
+
 export const GEMINI_MODELS = [
   { value: "gemini-3-flash-preview", label: "Gemini 3 Flash" },
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-  { value: "OTHER", label: "Other..." },
+  OTHER_MODEL_OPTION,
 ];
 
 export const OPENAI_MODELS = [
-  { value: "gpt-5.2", label: "GPT-5.2" },
+  { value: "gpt-5.4", label: "GPT-5.4" },
   { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
-  { value: "gpt-5", label: "GPT-5" },
+  { value: "gpt-5.2", label: "GPT-5.2" },
   { value: "gpt-5-mini", label: "GPT-5 Mini" },
-  { value: "OTHER", label: "Other..." },
+  OTHER_MODEL_OPTION,
 ];
 
 export const MISTRAL_MODELS = [
@@ -28,7 +40,7 @@ export const MISTRAL_MODELS = [
   { value: "mistral-large-latest", label: "Mistral Large" },
   { value: "mistral-medium-latest", label: "Mistral Medium" },
   { value: "mistral-small-latest", label: "Mistral Small" },
-  { value: "OTHER", label: "Other..." },
+  OTHER_MODEL_OPTION,
 ];
 
 export const OPENROUTER_MODELS = [
@@ -67,18 +79,17 @@ export const OPENROUTER_MODELS = [
     value: "nvidia/nemotron-3-nano-30b-a3b:free",
     label: "[Free] Nvidia Nemotron 3 Nano",
   },
-  { value: "OTHER", label: "Other..." },
+  OTHER_MODEL_OPTION,
 ];
 
 export const OLLAMA_MODELS = [
-  { value: "devstral-small-2", label: "Devstral Small 2" },
-  { value: "mistral", label: "Mistral" },
-  { value: "qwen3.5:27b", label: "Qwen 3.5 (qwen3.5:27b)" },
+  { value: "qwen3.5", label: "Qwen 3.5" },
   { value: "qwen3-coder", label: "Qwen 3 Coder" },
-  { value: "qwen3", label: "Qwen 3" },
+  { value: "mistral", label: "Mistral" },
+  { value: "devstral-small-2", label: "Devstral Small 2" },
   { value: "glm-4.7-flash", label: "GLM 4.7 Flash" },
   { value: "lfm2", label: "LFM2" },
-  { value: "OTHER", label: "Other..." },
+  OTHER_MODEL_OPTION,
 ];
 
 /**
@@ -86,6 +97,7 @@ export const OLLAMA_MODELS = [
  * Used by settings initialization and E2E tests.
  */
 export const DEFAULT_MODELS = {
+  anthropic: ANTHROPIC_MODELS[0]?.value ?? "",
   gemini: GEMINI_MODELS[0]?.value ?? "",
   openai: OPENAI_MODELS[0]?.value ?? "",
   mistral: MISTRAL_MODELS[0]?.value ?? "",

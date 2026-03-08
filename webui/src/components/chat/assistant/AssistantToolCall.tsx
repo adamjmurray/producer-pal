@@ -1,9 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isErrorResult } from "#webui/chat/helpers/formatter-helpers";
 import { useToolNames } from "#webui/hooks/connection/tool-names-context";
 import { truncateString } from "#webui/lib/utils/truncate-string";
+import { extractErrorSummary } from "./helpers/tool-call-error-helpers";
+import { extractWarnings } from "./helpers/tool-call-warning-helpers";
 
 interface AssistantToolCallProps {
   name: string;
@@ -28,26 +32,49 @@ export function AssistantToolCall({
   isError,
 }: AssistantToolCallProps) {
   const toolNames = useToolNames();
+  const effectiveIsError = isError ?? (result != null && isErrorResult(result));
+  const errorSummary =
+    effectiveIsError && result ? extractErrorSummary(result) : null;
+  const warnings = !effectiveIsError && result ? extractWarnings(result) : [];
+  const hasWarnings = warnings.length > 0;
 
   return (
     <details
       className={`text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded ${
         result ? "" : "animate-pulse"
-      } ${isError ? "border-l-3 border-red-500" : ""}`}
+      } ${effectiveIsError ? "border-l-3 border-red-500" : hasWarnings ? "border-l-3 border-yellow-500" : ""}`}
     >
       <summary>
         &nbsp;🔧{" "}
-        {!result ? "using tool: " : isError ? "tool failed: " : "used tool: "}
+        {!result ? (
+          "using tool: "
+        ) : effectiveIsError ? (
+          <span className="text-red-700 dark:text-red-400">tool failed: </span>
+        ) : (
+          "used tool: "
+        )}
         {toolNames[name] ?? name}
+        {effectiveIsError && (
+          <span className="text-red-700 dark:text-red-400 font-normal">
+            {" "}
+            — {truncateString(errorSummary ?? "error", 80)}
+          </span>
+        )}
+        {hasWarnings && (
+          <span className="text-yellow-700 dark:text-yellow-400 font-normal">
+            {" — warning: "}
+            {truncateString(warnings[0], 80)}
+            {warnings.length > 1 &&
+              ` + ${warnings.length - 1} other warning${warnings.length > 2 ? "s" : ""}`}
+          </span>
+        )}
       </summary>
       <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
         {name}({JSON.stringify(args, null, 0)})
       </div>
       {result && (
         <details>
-          <summary
-            className={`px-2 my-1 truncate ${isError ? "text-red-700 dark:text-red-400" : "text-gray-600 dark:text-gray-400"}`}
-          >
+          <summary className="px-2 my-1 truncate text-gray-600 dark:text-gray-400">
             &nbsp;↳ {truncateString(result, 300)}
           </summary>
           <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
@@ -69,11 +96,13 @@ function FullResultDetails({ result }: { result: string }) {
   const s = `${result}`;
   let formatted: string | null = null;
 
-  if (s.startsWith("{")) {
+  if (s.startsWith("{") || s.startsWith("[") || s.startsWith('"')) {
     try {
-      const obj = JSON.parse(s);
+      const parsed: unknown = JSON.parse(s);
+      const display =
+        typeof parsed === "string" ? parsed : JSON.stringify(parsed, null, 2);
 
-      formatted = JSON.stringify(obj, null, 2).replaceAll("\\n", "\n");
+      formatted = display.replaceAll("\\n", "\n");
     } catch {
       // JSON parsing failed, will render as plain text
     }

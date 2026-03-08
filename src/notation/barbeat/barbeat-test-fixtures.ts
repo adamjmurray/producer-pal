@@ -37,4 +37,4 @@ export const drumPatternNotes: NoteEvent[] = [
 ] as NoteEvent[];
 
 export const drumPatternNotation =
-  "t0.25 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1 D1 v100 p0.9 Gb1 1|2";
+  "t/4 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1 D1 v100 p0.9 Gb1 1|2";

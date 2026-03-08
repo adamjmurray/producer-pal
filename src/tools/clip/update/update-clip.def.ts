@@ -18,8 +18,14 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   inputSchema: {
     // Basic clip properties
     ids: z.coerce.string().describe("comma-separated clip ID(s) to update"),
-    name: z.string().optional().describe("clip name"),
-    color: z.string().optional().describe("#RRGGBB"),
+    name: z
+      .string()
+      .optional()
+      .describe("clip name (comma-separated when updating multiple)"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when updating multiple, cycles)"),
     timeSignature: z.string().optional().describe("N/D (4/4)"),
 
     // Clip region and loop settings
@@ -27,7 +33,10 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe("bar|beat position where loop/clip region begins"),
-    length: z.string().optional().describe("duration in bar:beat format"),
+    length: z
+      .string()
+      .optional()
+      .describe("duration in bar:beat (e.g., '4:0' = 4 bars)"),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     firstStart: z
       .string()
@@ -44,7 +53,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     arrangementLength: z
       .string()
       .optional()
-      .describe("bar:beat duration in timeline (arrangement clips only)"),
+      .describe(
+        "duration in bar:beat (e.g., '4:0' = 4 bars), arrangement clips only",
+      ),
     toSlot: z.coerce
       .string()
       .optional()
@@ -85,7 +96,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s)",
+        "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s) - MIDI clips only",
       ),
     transforms: z
       .string()
@@ -130,12 +141,6 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ])
       .optional()
       .describe("note grid (required with quantize)"),
-    quantizeSwing: z.coerce
-      .number()
-      .min(0)
-      .max(1)
-      .optional()
-      .describe("swing amount (shifts off-beats toward next grid line)"),
     quantizePitch: z
       .string()
       .optional()
@@ -179,12 +184,15 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "warpBeatTime",
       "warpSampleTime",
       "warpDistance",
-      "quantizeSwing",
       "quantizePitch",
       "firstStart",
       "transforms",
       "split",
       "code",
     ],
+    descriptionOverrides: {
+      name: "clip name",
+      color: "#RRGGBB",
+    },
   },
 });

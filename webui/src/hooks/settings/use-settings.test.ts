@@ -99,7 +99,7 @@ describe("useSettings", () => {
       "producer_pal_provider_ollama",
       JSON.stringify({
         apiKey: "",
-        model: "qwen3",
+        model: "qwen3.5",
         baseUrl: "http://localhost:11434",
         thinking: "High",
         temperature: 1.0,
@@ -265,7 +265,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gpt-5.2",
+      model: "gpt-5.4",
       thinking: "Default",
       temperature: 1.0,
       showThoughts: true,

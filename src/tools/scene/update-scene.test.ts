@@ -242,4 +242,43 @@ describe("updateScene", () => {
       });
     });
   });
+
+  describe("focus functionality", () => {
+    let selectMock: ReturnType<typeof vi.fn>;
+
+    beforeEach(async () => {
+      vi.mock(import("#src/tools/control/select.ts"), () => ({
+        select: vi.fn(),
+      }));
+      const selectModule = await import("#src/tools/control/select.ts");
+
+      selectMock = selectModule.select as ReturnType<typeof vi.fn>;
+      selectMock.mockClear();
+    });
+
+    it("should select scene in session view when focus=true", () => {
+      updateScene({ ids: "123", name: "Test", focus: true });
+
+      expect(selectMock).toHaveBeenCalledWith({
+        view: "session",
+        sceneId: "123",
+      });
+    });
+
+    it("should select last scene when focus=true with multiple scenes", () => {
+      updateScene({ ids: "123,456", name: "Test", focus: true });
+
+      expect(selectMock).toHaveBeenCalledWith({
+        view: "session",
+        sceneId: "456",
+      });
+      expect(selectMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("should not call select when focus=false", () => {
+      updateScene({ ids: "123", name: "Test", focus: false });
+
+      expect(selectMock).not.toHaveBeenCalled();
+    });
+  });
 });

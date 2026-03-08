@@ -58,9 +58,6 @@ jobs:
           test -f claude-desktop-extension/Producer_Pal.mcpb || { echo "Missing: Producer_Pal.mcpb"; exit 1; }
           test -f claude-desktop-extension/producer-pal-portal.js || { echo "Missing: claude-desktop-extension/producer-pal-portal.js"; exit 1; }
 
-          # Verify release artifacts
-          test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
-
           # Verify documentation site
           test -f docs/.vitepress/dist/index.html || { echo "Missing: docs/.vitepress/dist/index.html"; exit 1; }
 
@@ -72,7 +69,6 @@ jobs:
           - ✅ Built-in chat UI
           - ✅ npm package
           - ✅ Claude Desktop extension
-          - ✅ Release artifacts
           - ✅ Documentation site
           EOF
 

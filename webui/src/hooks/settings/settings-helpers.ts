@@ -16,6 +16,13 @@ export interface ProviderSettings {
 }
 
 export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
+  anthropic: {
+    apiKey: "",
+    model: DEFAULT_MODELS.anthropic,
+    thinking: "Default",
+    temperature: 1.0,
+    showThoughts: true,
+  },
   gemini: {
     apiKey: "",
     model: DEFAULT_MODELS.gemini,
@@ -183,6 +190,7 @@ export function checkHasApiKey(provider: Provider): boolean {
 }
 
 export interface AllProviderSettings {
+  anthropic: ProviderSettings;
   gemini: ProviderSettings;
   openai: ProviderSettings;
   mistral: ProviderSettings;
@@ -198,6 +206,7 @@ export interface AllProviderSettings {
  */
 export function loadAllProviderSettings(): AllProviderSettings {
   return {
+    anthropic: loadProviderSettings("anthropic"),
     gemini: loadProviderSettings("gemini"),
     openai: loadProviderSettings("openai"),
     mistral: loadProviderSettings("mistral"),
@@ -214,6 +223,7 @@ export function loadAllProviderSettings(): AllProviderSettings {
  * @returns {any} - Hook return value
  */
 export function saveAllProviderSettings(settings: AllProviderSettings) {
+  saveProviderSettings("anthropic", settings.anthropic);
   saveProviderSettings("gemini", settings.gemini);
   saveProviderSettings("openai", settings.openai);
   saveProviderSettings("mistral", settings.mistral);
@@ -278,6 +288,7 @@ export function saveCurrentSettings(
 
 /**
  * Gets the current settings for all providers from state
+ * @param {ProviderSettings} anthropic - Anthropic settings
  * @param {ProviderSettings} gemini - Gemini settings
  * @param {ProviderSettings} openai - OpenAI settings
  * @param {ProviderSettings} mistral - Mistral settings
@@ -288,6 +299,7 @@ export function saveCurrentSettings(
  * @returns {any} - Hook return value
  */
 export function buildAllProviderSettings(
+  anthropic: ProviderSettings,
   gemini: ProviderSettings,
   openai: ProviderSettings,
   mistral: ProviderSettings,
@@ -297,6 +309,7 @@ export function buildAllProviderSettings(
   custom: ProviderSettings,
 ): AllProviderSettings {
   return {
+    anthropic,
     gemini,
     openai,
     mistral,

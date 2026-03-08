@@ -65,4 +65,4 @@ if that concerns you, or delete the key from settings after use.
 
 ## Troubleshooting
 
-If it doesn't work, see the [Troubleshooting Guide](./troubleshooting).
+If it doesn't work, see the [Troubleshooting Guide](/support/troubleshooting).

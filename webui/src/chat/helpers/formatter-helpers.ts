@@ -30,7 +30,11 @@ export function markLastThoughtAsOpen(messages: UIMessage[]): void {
  * @returns True if result contains error indicators
  */
 export function isErrorResult(result: string): boolean {
-  return result.includes('"error"') || result.includes('"isError":true');
+  return (
+    result.includes('"error"') ||
+    result.includes('\\"error\\"') ||
+    result.includes('"isError":true')
+  );
 }
 
 /**

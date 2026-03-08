@@ -223,7 +223,6 @@ describe("MCP Express App", () => {
 
       expect(createClipTool).toBeDefined();
       expect(createClipTool!.description).toContain("Create MIDI or audio");
-      expect(createClipTool!.inputSchema.properties!.view).toBeDefined();
       expect(createClipTool!.inputSchema.properties!.trackIndex).toBeDefined();
     });
   });
@@ -284,7 +283,7 @@ describe("MCP Express App", () => {
         "mcp_request",
         expect.stringMatching(/^[\da-f-]{36}$/), // requestId (UUID format)
         "ppal-read-track", // tool name
-        '{"category":"regular","trackIndex":1,"include":[]}', // argsJSON
+        '{"trackIndex":1,"include":[]}', // argsJSON
         expect.stringContaining("silenceWavPath"), // contextJSON
       );
     });

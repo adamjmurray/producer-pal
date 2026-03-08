@@ -1,10 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState, useCallback } from "preact/hooks";
+import { useCallback } from "preact/hooks";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat";
-import { type Provider } from "#webui/types/settings";
 
 interface ChatHookResult {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
@@ -12,10 +12,7 @@ interface ChatHookResult {
 }
 
 interface UseConversationLockProps<T extends ChatHookResult> {
-  settingsProvider: Provider;
-  geminiChat: T;
-  openaiChat: T;
-  responsesChat: T;
+  chat: T;
 }
 
 interface UseConversationLockReturn<T extends ChatHookResult> {
@@ -28,70 +25,27 @@ interface UseConversationLockReturn<T extends ChatHookResult> {
 }
 
 /**
- * Select the appropriate chat hook based on provider.
- * - gemini: Uses Gemini API
- * - openai, lmstudio: Uses OpenAI Responses API
- * - others: Uses OpenAI Chat Completions API (OpenRouter, Mistral, etc.)
- * @param provider - Current provider
- * @param geminiChat - Gemini chat hook
- * @param openaiChat - OpenAI Chat Completions hook
- * @param responsesChat - OpenAI Responses API hook
- * @returns Selected chat hook
- */
-function selectChat<T>(
-  provider: Provider,
-  geminiChat: T,
-  openaiChat: T,
-  responsesChat: T,
-): T {
-  if (provider === "gemini") return geminiChat;
-  if (provider === "openai" || provider === "lmstudio") return responsesChat;
-
-  return openaiChat;
-}
-
-/**
- * Hook to lock conversation to original provider until explicit reset.
- * Prevents chat reset when changing provider in settings mid-conversation.
+ * Hook to wrap send and clear handlers with stable callback references.
+ * Conversation safety (preserving the client across settings changes) is
+ * handled by useChat's clientRef pattern — the client is created on first
+ * send and reused until clearConversation resets it.
  *
  * @param props - Hook configuration
- * @param props.settingsProvider - Current provider from settings
- * @param props.geminiChat - Gemini chat hook result
- * @param props.openaiChat - OpenAI Chat Completions API hook result
- * @param props.responsesChat - OpenAI Responses API hook result
+ * @param props.chat - Chat hook result
  * @returns Chat and wrapped handlers
  */
 export function useConversationLock<T extends ChatHookResult>({
-  settingsProvider,
-  geminiChat,
-  openaiChat,
-  responsesChat,
+  chat,
 }: UseConversationLockProps<T>): UseConversationLockReturn<T> {
-  const [conversationProvider, setConversationProvider] =
-    useState<Provider | null>(null);
-
-  const effectiveProvider = conversationProvider ?? settingsProvider;
-  const chat = selectChat(
-    effectiveProvider,
-    geminiChat,
-    openaiChat,
-    responsesChat,
-  );
-
   const wrappedHandleSend = useCallback(
     async (message: string, options?: MessageOverrides) => {
-      if (!conversationProvider) {
-        setConversationProvider(settingsProvider);
-      }
-
       await chat.handleSend(message, options);
     },
-    [conversationProvider, settingsProvider, chat],
+    [chat],
   );
 
   const wrappedClearConversation = useCallback(() => {
     chat.clearConversation();
-    setConversationProvider(null);
   }, [chat]);
 
   return { chat, wrappedHandleSend, wrappedClearConversation };

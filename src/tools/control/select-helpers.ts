@@ -8,6 +8,8 @@ import {
   livePath,
 } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
+import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { toLiveApiId, toLiveApiView } from "#src/tools/shared/utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
 
@@ -31,8 +33,8 @@ interface ValidateParametersOptions {
   sceneId?: string;
   sceneIndex?: number;
   deviceId?: string;
-  instrument?: boolean;
-  clipSlot?: { trackIndex: number; sceneIndex: number };
+  devicePath?: string;
+  slot?: { trackIndex: number; sceneIndex: number };
 }
 
 interface UpdateTrackSelectionOptions {
@@ -49,9 +51,9 @@ interface UpdateSceneSelectionOptions {
 }
 
 interface UpdateDeviceSelectionOptions {
+  songView: LiveAPI;
   deviceId?: string;
-  instrument?: boolean;
-  trackSelectionResult: TrackSelectionResult;
+  devicePath?: string;
 }
 
 interface UpdateHighlightedClipSlotOptions {
@@ -103,8 +105,8 @@ export function buildTrackPath(
  * @param options.sceneId - Scene ID
  * @param options.sceneIndex - Scene index
  * @param options.deviceId - Device ID
- * @param options.instrument - Instrument flag
- * @param options.clipSlot - Clip slot coordinates
+ * @param options.devicePath - Device path
+ * @param options.slot - Clip slot coordinates
  */
 export function validateParameters({
   trackId,
@@ -113,19 +115,19 @@ export function validateParameters({
   sceneId,
   sceneIndex,
   deviceId,
-  instrument,
-  clipSlot: _clipSlot,
+  devicePath,
+  slot: _slot,
 }: ValidateParametersOptions): void {
   // Track selection validation
   if (category === "master" && trackIndex != null) {
     throw new Error(
-      "trackIndex should not be provided when category is 'master'",
+      "trackIndex should not be provided when trackType is 'master'",
     );
   }
 
   // Device selection validation
-  if (deviceId != null && instrument != null) {
-    throw new Error("cannot specify both deviceId and instrument");
+  if (deviceId != null && devicePath != null) {
+    throw new Error("cannot specify both id (device) and devicePath");
   }
 
   // Cross-validation for track ID vs index (requires Live API calls)
@@ -136,7 +138,7 @@ export function validateParameters({
       const trackAPI = LiveAPI.from(trackPath);
 
       if (trackAPI.exists() && !isSameLiveApiId(trackAPI.id, trackId)) {
-        throw new Error("trackId and trackIndex refer to different tracks");
+        throw new Error("id and trackIndex refer to different tracks");
       }
     }
   }
@@ -146,7 +148,7 @@ export function validateParameters({
     const sceneAPI = LiveAPI.from(livePath.scene(sceneIndex));
 
     if (sceneAPI.exists() && !isSameLiveApiId(sceneAPI.id, sceneId)) {
-      throw new Error("sceneId and sceneIndex refer to different scenes");
+      throw new Error("id and sceneIndex refer to different scenes");
     }
   }
 }
@@ -250,46 +252,31 @@ export function updateSceneSelection({
 /**
  * Update device selection in Live
  * @param options - Selection parameters
+ * @param options.songView - LiveAPI instance for live_set view
  * @param options.deviceId - Device ID to select
- * @param options.instrument - Whether to select instrument
- * @param options.trackSelectionResult - Previous track selection result
+ * @param options.devicePath - Device path (e.g. "t0/d1")
  */
 export function updateDeviceSelection({
+  songView,
   deviceId,
-  instrument,
-  trackSelectionResult,
+  devicePath,
 }: UpdateDeviceSelectionOptions): void {
   if (deviceId != null) {
     validateIdType(deviceId, "device", "select");
-    const songView = LiveAPI.from(livePath.view.song);
-
     songView.call("select_device", toLiveApiId(deviceId));
-  } else if (instrument === true) {
-    let trackPath = buildTrackPath(
-      trackSelectionResult.selectedCategory,
-      trackSelectionResult.selectedTrackIndex,
-    );
+  } else if (devicePath != null) {
+    const resolved = resolvePathToLiveApi(devicePath);
 
-    if (!trackPath) {
-      const selectedTrackAPI = LiveAPI.from(livePath.view.selectedTrack);
-
-      if (selectedTrackAPI.exists()) {
-        const category = selectedTrackAPI.category;
-        const trackIndex =
-          category === "return"
-            ? selectedTrackAPI.returnTrackIndex
-            : selectedTrackAPI.trackIndex;
-
-        trackPath = buildTrackPath(category, trackIndex);
-      }
+    if (resolved.targetType !== "device") {
+      throw new Error(
+        `devicePath "${devicePath}" does not resolve to a device`,
+      );
     }
 
-    if (trackPath) {
-      const trackView = LiveAPI.from(`${trackPath} view`);
+    const deviceAPI = LiveAPI.from(resolved.liveApiPath);
 
-      if (trackView.exists()) {
-        trackView.call("select_instrument");
-      }
+    if (deviceAPI.exists()) {
+      songView.call("select_device", toLiveApiId(deviceAPI.id));
     }
   }
 }
@@ -316,6 +303,67 @@ export function updateHighlightedClipSlot({
         toLiveApiId(clipSlotAPI.id),
       );
     }
+  }
+}
+
+interface UpdateClipSlotSelectionOptions {
+  songView: LiveAPI;
+  clipSlot: { trackIndex: number; sceneIndex: number };
+}
+
+/**
+ * Highlight a clip slot and select its clip if present
+ * @param options - Selection parameters
+ * @param options.songView - LiveAPI instance for live_set view
+ * @param options.clipSlot - Parsed clip slot coordinates
+ * @returns Whether the slot contained a clip
+ */
+export function updateClipSlotSelection({
+  songView,
+  clipSlot,
+}: UpdateClipSlotSelectionOptions): boolean {
+  updateHighlightedClipSlot({ songView, clipSlot });
+
+  const clipSlotAPI = LiveAPI.from(
+    livePath.track(clipSlot.trackIndex).clipSlot(clipSlot.sceneIndex),
+  );
+
+  if (!clipSlotAPI.exists()) return false;
+
+  const hasClip = clipSlotAPI.getProperty("has_clip") as number;
+
+  if (!hasClip) return false;
+
+  const clipInSlot = LiveAPI.from(`${clipSlotAPI.path} clip`);
+
+  if (clipInSlot.exists()) {
+    songView.setProperty("detail_clip", toLiveApiId(clipInSlot.id));
+  }
+
+  return true;
+}
+
+interface ApplyDetailViewOptions {
+  appView: LiveAPI;
+  detailView: "clip" | "device" | "none";
+}
+
+/**
+ * Apply a detail view change
+ * @param options - View parameters
+ * @param options.appView - LiveAPI instance for live_app view
+ * @param options.detailView - Detail view to show or hide
+ */
+export function applyDetailView({
+  appView,
+  detailView,
+}: ApplyDetailViewOptions): void {
+  if (detailView === "clip") {
+    appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_CLIP);
+  } else if (detailView === "device") {
+    appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN);
+  } else {
+    appView.call("hide_view", LIVE_API_VIEW_NAMES.DETAIL);
   }
 }
 

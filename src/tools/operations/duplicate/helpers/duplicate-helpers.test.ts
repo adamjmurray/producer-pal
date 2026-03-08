@@ -164,7 +164,7 @@ describe("duplicate-helpers", () => {
       expect(result.arrangementStart).toBeUndefined();
     });
 
-    it("returns id, trackIndex, and sceneIndex for session clip", () => {
+    it("returns id and slot for session clip", () => {
       registerMockObject("789", {
         path: livePath.track(1).clipSlot(3).clip(),
         type: "Clip",
@@ -176,39 +176,21 @@ describe("duplicate-helpers", () => {
       const result = getMinimalClipInfo(LiveAPI.from("789"));
 
       expect(result.id).toBe("789");
-      expect(result.trackIndex).toBe(1);
-      expect(result.sceneIndex).toBe(3);
+      expect(result.slot).toBe("1/3");
     });
 
-    it.each([
-      {
-        omitField: "trackIndex",
-        clipId: "790",
-        expectedTrackIndex: undefined,
-        expectedSceneIndex: 3,
-      },
-      {
-        omitField: "sceneIndex",
-        clipId: "791",
-        expectedTrackIndex: 1,
-        expectedSceneIndex: undefined,
-      },
-    ])(
-      "omits $omitField when specified in omitFields for session clip",
-      ({ omitField, clipId, expectedTrackIndex, expectedSceneIndex }) => {
-        registerMockObject(clipId, {
-          path: livePath.track(1).clipSlot(3).clip(),
-          type: "Clip",
-          properties: { is_arrangement_clip: 0 },
-        });
+    it("omits slot when specified in omitFields for session clip", () => {
+      registerMockObject("790", {
+        path: livePath.track(1).clipSlot(3).clip(),
+        type: "Clip",
+        properties: { is_arrangement_clip: 0 },
+      });
 
-        const result = getMinimalClipInfo(LiveAPI.from(clipId), [omitField]);
+      const result = getMinimalClipInfo(LiveAPI.from("790"), ["slot"]);
 
-        expect(result.id).toBe(clipId);
-        expect(result.trackIndex).toBe(expectedTrackIndex);
-        expect(result.sceneIndex).toBe(expectedSceneIndex);
-      },
-    );
+      expect(result.id).toBe("790");
+      expect(result.slot).toBeUndefined();
+    });
 
     it("throws error when trackIndex is null for arrangement clip", () => {
       const mockClip = {

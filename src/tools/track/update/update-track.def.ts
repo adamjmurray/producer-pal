@@ -17,8 +17,16 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
 
   inputSchema: {
     ids: z.coerce.string().describe("comma-separated track ID(s) to update"),
-    name: z.string().optional().describe("name, ideally unique"),
-    color: z.string().optional().describe("#RRGGBB"),
+    name: z
+      .string()
+      .optional()
+      .describe(
+        "name (comma-separated when updating multiple), ideally unique",
+      ),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when updating multiple, cycles)"),
     gainDb: z.coerce
       .number()
       .min(-70)
@@ -102,5 +110,9 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       "sendGainDb",
       "sendReturn",
     ],
+    descriptionOverrides: {
+      name: "name, ideally unique",
+      color: "#RRGGBB",
+    },
   },
 });

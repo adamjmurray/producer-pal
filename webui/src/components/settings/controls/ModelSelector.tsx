@@ -4,15 +4,29 @@
 
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import {
+  ANTHROPIC_MODELS,
   GEMINI_MODELS,
   MISTRAL_MODELS,
   OLLAMA_MODELS,
   OPENAI_MODELS,
   OPENROUTER_MODELS,
+  OTHER_MODEL_OPTION,
 } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 
+type ModelPreset = readonly { value: string; label: string }[];
+
+const PROVIDER_MODELS: Partial<Record<Provider, ModelPreset>> = {
+  anthropic: ANTHROPIC_MODELS,
+  gemini: GEMINI_MODELS,
+  openai: OPENAI_MODELS,
+  mistral: MISTRAL_MODELS,
+  openrouter: OPENROUTER_MODELS,
+  ollama: OLLAMA_MODELS,
+};
+
 const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
+  anthropic: "e.g., claude-sonnet-4-6-20250514",
   gemini: "e.g., gemini-2.0-flash",
   openai: "e.g., gpt-5-nano",
   mistral: "e.g., ministral-14b-latest",
@@ -42,26 +56,19 @@ export function ModelSelector({
   setModel,
 }: ModelSelectorProps) {
   // Determine preset models for this provider
-  const presetModels = useMemo(() => {
-    return provider === "gemini"
-      ? GEMINI_MODELS
-      : provider === "openai"
-        ? OPENAI_MODELS
-        : provider === "mistral"
-          ? MISTRAL_MODELS
-          : provider === "openrouter"
-            ? OPENROUTER_MODELS
-            : provider === "ollama"
-              ? OLLAMA_MODELS
-              : [];
-  }, [provider]);
+  const presetModels = useMemo(
+    () => PROVIDER_MODELS[provider] ?? [],
+    [provider],
+  );
 
   // Track whether custom input is shown (for non-custom providers)
   const [showCustomInput, setShowCustomInput] = useState(() => {
     if (provider === "custom" || presetModels.length === 0) return false;
 
     // Check if current model matches any preset (excluding "OTHER")
-    return !presetModels.some((m) => m.value === model && m.value !== "OTHER");
+    return !presetModels.some(
+      (m) => m.value === model && m.value !== OTHER_MODEL_OPTION.value,
+    );
   });
 
   // Ref for autofocusing the custom input when "Other..." is selected
@@ -77,7 +84,7 @@ export function ModelSelector({
     }
 
     const isCustom = !presetModels.some(
-      (m) => m.value === model && m.value !== "OTHER",
+      (m) => m.value === model && m.value !== OTHER_MODEL_OPTION.value,
     );
 
     setShowCustomInput(isCustom);
@@ -118,10 +125,10 @@ export function ModelSelector({
   }
 
   // Provider-specific dropdowns
-  const dropdownValue = showCustomInput ? "OTHER" : model;
+  const dropdownValue = showCustomInput ? OTHER_MODEL_OPTION.value : model;
 
   const handleDropdownChange = (value: string) => {
-    if (value === "OTHER") {
+    if (value === OTHER_MODEL_OPTION.value) {
       setShowCustomInput(true);
       // Keep current model value - user will edit in text input
     } else {

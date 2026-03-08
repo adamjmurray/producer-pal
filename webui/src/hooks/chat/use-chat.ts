@@ -15,112 +15,22 @@ import {
   handleMessageStream,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
+import {
+  type ChatAdapter,
+  type ChatClient,
+  type MessageOverrides,
+  type RateLimitState,
+  type UseChatProps,
+  type UseChatReturn,
+} from "./use-chat-types";
 
-/** Per-message overrides for thinking, temperature, and showThoughts */
-export interface MessageOverrides {
-  thinking?: string;
-  temperature?: number;
-  showThoughts?: boolean;
-}
-
-/** Chat client interface that all providers must implement */
-export interface ChatClient<TMessage> {
-  chatHistory: TMessage[];
-  initialize: () => Promise<void>;
-  sendMessage: (
-    message: string,
-    signal: AbortSignal,
-    overrides?: MessageOverrides,
-  ) => AsyncIterable<TMessage[]>;
-}
-
-/**
- * Provider-specific adapter interface
- */
-export interface ChatAdapter<
-  TClient extends ChatClient<TMessage>,
-  TMessage,
-  TConfig,
-> {
-  /**
-   * Create a new client instance
-   */
-  createClient: (apiKey: string, config: TConfig) => TClient;
-
-  /**
-   * Build provider-specific configuration
-   */
-  buildConfig: (
-    model: string,
-    temperature: number,
-    thinking: string,
-    enabledTools: Record<string, boolean>,
-    chatHistory: TMessage[] | undefined,
-    extraParams?: Record<string, unknown>,
-  ) => TConfig;
-
-  /**
-   * Format messages for UI display
-   */
-  formatMessages: (messages: TMessage[]) => UIMessage[];
-
-  /**
-   * Create error message in provider's format
-   */
-  createErrorMessage: (error: unknown, chatHistory: TMessage[]) => UIMessage[];
-
-  /**
-   * Extract user message text from a message for retry
-   */
-  extractUserMessage: (message: TMessage) => string | undefined;
-
-  /**
-   * Create initial user message for error display
-   */
-  createUserMessage: (text: string) => TMessage;
-}
-
-interface UseChatProps<
-  TClient extends ChatClient<TMessage>,
-  TMessage,
-  TConfig,
-> {
-  provider: Provider;
-  apiKey: string;
-  model: string;
-  thinking: string;
-  temperature: number;
-  enabledTools: Record<string, boolean>;
-  mcpStatus: "connected" | "connecting" | "error";
-  mcpError: string | null;
-  checkMcpConnection: () => Promise<void>;
-  adapter: ChatAdapter<TClient, TMessage, TConfig>;
-  extraParams?: Record<string, unknown>;
-}
-
-/**
- * Rate limit retry state for UI display
- */
-export interface RateLimitState {
-  isRetrying: boolean;
-  attempt: number;
-  maxAttempts: number;
-  delayMs: number;
-}
-
-export interface UseChatReturn {
-  messages: UIMessage[];
-  isAssistantResponding: boolean;
-  activeModel: string | null;
-  activeProvider: Provider | null;
-  activeThinking: string | null;
-  activeTemperature: number | null;
-  rateLimitState: RateLimitState | null;
-  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
-  handleRetry: (mergedMessageIndex: number) => Promise<void>;
-  clearConversation: () => void;
-  stopResponse: () => void;
-}
+export type {
+  ChatAdapter,
+  ChatClient,
+  MessageOverrides,
+  RateLimitState,
+  UseChatReturn,
+};
 
 /**
  * Generic chat hook that works with any provider via an adapter
@@ -128,6 +38,7 @@ export interface UseChatReturn {
  * @param {UseChatProps} props - Chat configuration and adapter
  * @returns {UseChatReturn} Chat state and handlers
  */
+// eslint-disable-next-line max-lines-per-function -- main hook function with multiple handlers
 export function useChat<
   TClient extends ChatClient<TMessage>,
   TMessage,
@@ -358,35 +269,23 @@ export function useChat<
     [apiKey, initializeChat, adapter, executeWithRetry],
   );
 
-  const handleRetry = useCallback(
-    async (mergedMessageIndex: number) => {
-      if (!apiKey) return;
+  const forkConversation = useCallback(
+    async (mergedMessageIndex: number, newMessage: string) => {
+      if (!apiKey || !clientRef.current) return;
 
       const message = messages[mergedMessageIndex];
 
       if (message?.role !== "user") return;
 
-      if (!clientRef.current) return;
-
       const rawIndex = message.rawHistoryIndex;
-      const rawMessage = clientRef.current.chatHistory[rawIndex];
-
-      if (!rawMessage) return;
-
-      // Extract the user message text using adapter
-      const userMessage = adapter.extractUserMessage(rawMessage);
-
-      if (!userMessage) return;
 
       setIsAssistantResponding(true);
 
       try {
-        // Slice history to exclude this message and everything after
         const slicedHistory = clientRef.current.chatHistory.slice(0, rawIndex);
 
         await initializeChat(slicedHistory);
 
-        // Client is guaranteed to be set after successful initialization
         const client = clientRef.current as NonNullable<
           typeof clientRef.current
         >;
@@ -398,10 +297,9 @@ export function useChat<
         await executeWithRetry(
           (msg) => client.sendMessage(msg, controller.signal),
           () => client.chatHistory,
-          userMessage,
+          newMessage,
         );
       } catch (error) {
-        // Client was checked before try block, so it's always defined here
         setMessages(
           adapter.createErrorMessage(error, clientRef.current.chatHistory),
         );
@@ -414,6 +312,38 @@ export function useChat<
     [apiKey, messages, initializeChat, adapter, executeWithRetry],
   );
 
+  const handleRetry = useCallback(
+    async (mergedMessageIndex: number) => {
+      if (!clientRef.current) return;
+
+      const message = messages[mergedMessageIndex];
+
+      if (message?.role !== "user") return;
+
+      const rawMessage = clientRef.current.chatHistory[message.rawHistoryIndex];
+
+      if (!rawMessage) return;
+
+      const userMessage = adapter.extractUserMessage(rawMessage);
+
+      if (!userMessage) return;
+
+      await forkConversation(mergedMessageIndex, userMessage);
+    },
+    [messages, adapter, forkConversation],
+  );
+
+  const handleEdit = useCallback(
+    async (mergedMessageIndex: number, newMessage: string) => {
+      const trimmed = newMessage.trim();
+
+      if (!trimmed) return;
+
+      await forkConversation(mergedMessageIndex, trimmed);
+    },
+    [forkConversation],
+  );
+
   return {
     messages,
     isAssistantResponding,
@@ -424,6 +354,7 @@ export function useChat<
     rateLimitState,
     handleSend,
     handleRetry,
+    handleEdit,
     clearConversation,
     stopResponse,
   };

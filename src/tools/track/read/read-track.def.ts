@@ -19,12 +19,12 @@ Returns overview by default. Use include to add detail.`,
     trackId: z.coerce
       .string()
       .optional()
-      .describe("provide this or category/trackIndex"),
-    category: z
-      .enum(["regular", "return", "master"])
-      .default("regular")
+      .describe("provide this or trackType/trackIndex"),
+    trackType: z
+      .enum(["return", "master"])
+      .optional()
       .describe(
-        "regular and return tracks have independent trackIndexes, master has no index",
+        "return or master (omit for audio/midi tracks, which have independent trackIndexes)",
       ),
     trackIndex: z.coerce
       .number()
@@ -53,5 +53,13 @@ Returns overview by default. Use include to add detail.`,
       .describe(
         'session-clips, arrangement-clips = clip lists. notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, available-routings, mixer = track data. color = track + clip color. "*" = all',
       ),
+  },
+
+  smallModelModeConfig: {
+    excludeEnumValues: { include: ["available-routings"] },
+    descriptionOverrides: {
+      include:
+        'session-clips, arrangement-clips = clip lists. notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, mixer = track data. color = track + clip color. "*" = all',
+    },
   },
 });

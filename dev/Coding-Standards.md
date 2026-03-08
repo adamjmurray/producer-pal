@@ -6,7 +6,7 @@ The codebase is written entirely in TypeScript (`.ts`/`.tsx` files).
 
 - **React Components**: PascalCase matching the component name (e.g.,
   `ChatHeader.tsx`, `ModelSelector.tsx`)
-- **All other files**: kebab-case (e.g., `use-gemini-chat.ts` in webui,
+- **All other files**: kebab-case (e.g., `use-chat.ts` in webui,
   `merge-messages.ts`, `live-api-adapter.ts` in core)
 
 This applies throughout the codebase including hooks, utilities, configuration,

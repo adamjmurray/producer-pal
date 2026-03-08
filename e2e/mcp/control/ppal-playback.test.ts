@@ -84,9 +84,7 @@ describe("ppal-playback", () => {
     const createClip1 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "0",
+        slot: `${emptyMidiTrack}/0`,
         notes: "C3 1|1",
         length: "1:0.0",
       },
@@ -96,9 +94,7 @@ describe("ppal-playback", () => {
     const createClip2 = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: emptyMidiTrack,
-        sceneIndex: "1",
+        slot: `${emptyMidiTrack}/1`,
         notes: "D3 1|1",
         length: "1:0.0",
       },
@@ -112,7 +108,7 @@ describe("ppal-playback", () => {
       name: "ppal-playback",
       arguments: {
         action: "play-session-clips",
-        clipIds: `${clip1.id},${clip2.id}`,
+        ids: `${clip1.id},${clip2.id}`,
       },
     });
     const playingClips = parseToolResult<PlaybackResult>(playClipsResult);
@@ -126,7 +122,7 @@ describe("ppal-playback", () => {
       name: "ppal-playback",
       arguments: {
         action: "stop-session-clips",
-        clipIds: clip1.id,
+        ids: clip1.id,
       },
     });
     const stoppedClips = parseToolResult<PlaybackResult>(stopClipsResult);

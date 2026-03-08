@@ -111,7 +111,7 @@ describe("transport", () => {
 
     const result = playback({
       action: "play-session-clips",
-      clipIds: "clip1",
+      ids: "clip1",
     });
 
     expect(clipSlot0.call).toHaveBeenCalledWith("fire");
@@ -134,7 +134,7 @@ describe("transport", () => {
 
     playback({
       action: "play-session-clips",
-      clipIds: "clip1,clip2,clip3",
+      ids: "clip1,clip2,clip3",
     });
 
     for (const clipSlot of clipSlots) {
@@ -146,14 +146,14 @@ describe("transport", () => {
     expect(liveSet.call).toHaveBeenCalledWith("start_playing");
   });
 
-  it("should handle whitespace in clipIds", () => {
+  it("should handle whitespace in ids", () => {
     const { liveSet: ls, clipSlots } = setupMultiClipMocks();
 
     liveSet = ls;
 
     playback({
       action: "play-session-clips",
-      clipIds: "clip1, clip2 , clip3",
+      ids: "clip1, clip2 , clip3",
     });
 
     // Should fire all 3 clips despite whitespace
@@ -168,7 +168,7 @@ describe("transport", () => {
 
   it("should throw error when required parameters are missing for play-session-clips", () => {
     expect(() => playback({ action: "play-session-clips" })).toThrow(
-      'playback failed: clipIds is required for action "play-session-clips"',
+      'playback failed: ids or slots is required for action "play-session-clips"',
     );
   });
 
@@ -177,7 +177,7 @@ describe("transport", () => {
 
     const result = playback({
       action: "play-session-clips",
-      clipIds: "nonexistent_clip",
+      ids: "nonexistent_clip",
     });
 
     expect(outlet).toHaveBeenCalledWith(
@@ -197,10 +197,10 @@ describe("transport", () => {
     expect(() =>
       playback({
         action: "play-session-clips",
-        clipIds: "clip1",
+        ids: "clip1",
       }),
     ).toThrow(
-      "playback play-session-clips action failed: clip slot for clipId=clip1 does not exist",
+      "playback play-session-clips action failed: clip slot at 99/0 does not exist",
     );
   });
 
@@ -253,7 +253,7 @@ describe("transport", () => {
 
     const result = playback({
       action: "stop-session-clips",
-      clipIds: "clip1",
+      ids: "clip1",
     });
 
     expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
@@ -286,7 +286,7 @@ describe("transport", () => {
 
     playback({
       action: "stop-session-clips",
-      clipIds: "clip1,clip2,clip3",
+      ids: "clip1,clip2,clip3",
     });
 
     expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
@@ -296,7 +296,7 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for stop-session-clips", () => {
     expect(() => playback({ action: "stop-session-clips" })).toThrow(
-      'playback failed: clipIds is required for action "stop-session-clips"',
+      'playback failed: ids or slots is required for action "stop-session-clips"',
     );
   });
 
@@ -305,7 +305,7 @@ describe("transport", () => {
 
     const result = playback({
       action: "stop-session-clips",
-      clipIds: "nonexistent_clip",
+      ids: "nonexistent_clip",
     });
 
     expect(outlet).toHaveBeenCalledWith(
@@ -321,7 +321,7 @@ describe("transport", () => {
     expect(() =>
       playback({
         action: "play-session-clips",
-        clipIds: "clip1",
+        ids: "clip1",
       }),
     ).toThrow(
       "playback play-session-clips action failed: could not determine track/scene for clipId=clip1",
@@ -334,10 +334,10 @@ describe("transport", () => {
     expect(() =>
       playback({
         action: "stop-session-clips",
-        clipIds: "clip1",
+        ids: "clip1",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: could not determine track for clipId=clip1",
+      "playback stop-session-clips action failed: could not determine track/scene for clipId=clip1",
     );
   });
 
@@ -351,10 +351,10 @@ describe("transport", () => {
     expect(() =>
       playback({
         action: "stop-session-clips",
-        clipIds: "clip1",
+        ids: "clip1",
       }),
     ).toThrow(
-      "playback stop-session-clips action failed: track for clip path does not exist",
+      "playback stop-session-clips action failed: track at index 99 does not exist",
     );
   });
 
@@ -432,5 +432,118 @@ describe("transport", () => {
     expect(liveSet.call).toHaveBeenCalledWith("start_playing");
     expectLiveSetProperty(liveSet, "start_time", 0);
     expect(result.currentTime).toBe("1|1");
+  });
+
+  it("should throw error when both ids and slots are provided", () => {
+    expect(() =>
+      playback({
+        action: "play-session-clips",
+        ids: "clip1",
+        slots: "0/0",
+      }),
+    ).toThrow("playback failed: ids and slots are mutually exclusive");
+  });
+
+  it("should handle play-session-clips via slots with single slot", () => {
+    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
+    const clipSlot = registerMockObject(livePath.track(0).clipSlot(1), {
+      path: livePath.track(0).clipSlot(1),
+    });
+
+    const result = playback({
+      action: "play-session-clips",
+      slots: "0/1",
+    });
+
+    expect(clipSlot.call).toHaveBeenCalledWith("fire");
+    expect(clipSlot.call).toHaveBeenCalledTimes(1);
+    // No quantization fix for single clip
+    expect(liveSet.call).not.toHaveBeenCalledWith("stop_playing");
+    expect(result).toStrictEqual({
+      playing: true,
+      currentTime: "2|2",
+    });
+  });
+
+  it("should handle play-session-clips via slots with multiple slots", () => {
+    liveSet = setupPlaybackLiveSet({ current_song_time: 5 });
+    const clipSlot0 = registerMockObject(livePath.track(0).clipSlot(0), {
+      path: livePath.track(0).clipSlot(0),
+    });
+    const clipSlot1 = registerMockObject(livePath.track(1).clipSlot(1), {
+      path: livePath.track(1).clipSlot(1),
+    });
+
+    playback({
+      action: "play-session-clips",
+      slots: "0/0,1/1",
+    });
+
+    expect(clipSlot0.call).toHaveBeenCalledWith("fire");
+    expect(clipSlot1.call).toHaveBeenCalledWith("fire");
+    // Quantization fix applied for multiple clips
+    expect(liveSet.call).toHaveBeenCalledWith("stop_playing");
+    expect(liveSet.call).toHaveBeenCalledWith("start_playing");
+  });
+
+  it("should handle stop-session-clips via slots", () => {
+    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    const track0 = registerMockObject(livePath.track(0), {
+      path: livePath.track(0),
+    });
+
+    const result = playback({
+      action: "stop-session-clips",
+      slots: "0/0",
+    });
+
+    expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
+    expect(result).toStrictEqual({
+      playing: true,
+      currentTime: "2|2",
+    });
+  });
+
+  it("should deduplicate tracks when stopping via slots on same track", () => {
+    liveSet = setupPlaybackLiveSet({ is_playing: 1, current_song_time: 5 });
+    const track0 = registerMockObject(livePath.track(0), {
+      path: livePath.track(0),
+    });
+
+    playback({
+      action: "stop-session-clips",
+      slots: "0/0,0/1",
+    });
+
+    expect(track0.call).toHaveBeenCalledWith("stop_all_clips");
+    expect(track0.call).toHaveBeenCalledTimes(1);
+  });
+
+  it("should throw error when clip slot does not exist for play-session-clips via slots", () => {
+    liveSet = setupPlaybackLiveSet();
+    mockNonExistentObjects();
+
+    expect(() =>
+      playback({
+        action: "play-session-clips",
+        slots: "99/0",
+      }),
+    ).toThrow(
+      "playback play-session-clips action failed: clip slot at 99/0 does not exist",
+    );
+  });
+
+  it("should throw error when track does not exist for stop-session-clips via slots", () => {
+    liveSet = setupPlaybackLiveSet();
+    mockNonExistentObjects();
+
+    expect(() =>
+      playback({
+        action: "stop-session-clips",
+        slots: "99/0",
+      }),
+    ).toThrow(
+      "playback stop-session-clips action failed: track at index 99 does not exist",
+    );
   });
 });

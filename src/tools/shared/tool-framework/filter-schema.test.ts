@@ -162,4 +162,132 @@ describe("filterSchemaForSmallModel", () => {
 
     expect(filtered).toBe(schema);
   });
+
+  it("should remove enum values from array enum param", () => {
+    const schema = {
+      include: z
+        .array(z.enum(["notes", "timing", "warp", "sample", "*"]))
+        .default([])
+        .describe("all options"),
+    };
+
+    const filtered = filterSchemaForSmallModel(
+      schema,
+      [],
+      {},
+      {
+        include: ["warp"],
+      },
+    );
+
+    expect(getEnumOptions(filtered.include)).toStrictEqual([
+      "notes",
+      "timing",
+      "sample",
+      "*",
+    ]);
+    expect(getDefault(filtered.include)).toStrictEqual([]);
+    expect(filtered.include!.description).toBe("all options");
+  });
+
+  it("should remove multiple enum values from array enum param", () => {
+    const schema = {
+      include: z
+        .array(z.enum(["chains", "drum-pads", "params", "return-chains", "*"]))
+        .default([]),
+    };
+
+    const filtered = filterSchemaForSmallModel(
+      schema,
+      [],
+      {},
+      {
+        include: ["drum-pads", "return-chains"],
+      },
+    );
+
+    expect(getEnumOptions(filtered.include)).toStrictEqual([
+      "chains",
+      "params",
+      "*",
+    ]);
+  });
+
+  it("should apply description override alongside enum value exclusion", () => {
+    const schema = {
+      include: z
+        .array(z.enum(["notes", "warp", "*"]))
+        .default([])
+        .describe("original"),
+    };
+
+    const filtered = filterSchemaForSmallModel(
+      schema,
+      [],
+      { include: "simplified" },
+      { include: ["warp"] },
+    );
+
+    expect(getEnumOptions(filtered.include)).toStrictEqual(["notes", "*"]);
+    // descriptionOverrides is applied first, then excludeEnumValues preserves it
+    expect(filtered.include!.description).toBe("simplified");
+  });
+
+  it("should combine excludeParams with excludeEnumValues", () => {
+    const schema = {
+      name: z.string(),
+      include: z.array(z.enum(["a", "b", "c"])).default([]),
+      advanced: z.boolean(),
+    };
+
+    const filtered = filterSchemaForSmallModel(
+      schema,
+      ["advanced"],
+      {},
+      { include: ["b"] },
+    );
+
+    expect(Object.keys(filtered)).toStrictEqual(["name", "include"]);
+    expect(getEnumOptions(filtered.include)).toStrictEqual(["a", "c"]);
+  });
+
+  it("should return original schema when all filter options are empty", () => {
+    const schema = {
+      param1: z.string(),
+    };
+
+    const filtered = filterSchemaForSmallModel(schema, [], {}, {});
+
+    expect(filtered).toBe(schema);
+  });
+
+  it("should throw when excludeEnumValues targets a non-default schema", () => {
+    const schema = {
+      include: z.array(z.enum(["a", "b"])),
+    };
+
+    expect(() =>
+      filterSchemaForSmallModel(schema, [], {}, { include: ["a"] }),
+    ).toThrow("excludeEnumValues requires z.array(z.enum([...])).default([])");
+  });
+
+  it("should throw when all enum values would be excluded", () => {
+    const schema = {
+      include: z.array(z.enum(["a", "b"])).default([]),
+    };
+
+    expect(() =>
+      filterSchemaForSmallModel(schema, [], {}, { include: ["a", "b"] }),
+    ).toThrow("at least one must remain");
+  });
 });
+
+function getEnumOptions(schema: z.ZodType | undefined): string[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Zod v4 internal type access
+  return (schema as any).def.innerType.def.element.options;
+}
+
+function getDefault(schema: z.ZodType | undefined): string[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Zod v4 internal type access
+  return (schema as any).def.defaultValue;
+}

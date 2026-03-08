@@ -5,38 +5,51 @@
 import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
+import { type SlotPosition } from "#src/tools/shared/validation/position-parsing.ts";
+
+/**
+ * Validates that all tracks referenced in session slots exist
+ * @param sessionSlots - Parsed session slot positions
+ */
+export function validateSessionTracks(sessionSlots: SlotPosition[]): void {
+  if (sessionSlots.length === 0) return;
+
+  const uniqueTrackIndices = [
+    ...new Set(sessionSlots.map((s) => s.trackIndex)),
+  ];
+
+  for (const trackIndex of uniqueTrackIndices) {
+    const track = LiveAPI.from(livePath.track(trackIndex));
+
+    if (!track.exists()) {
+      throw new Error(`createClip failed: track ${trackIndex} does not exist`);
+    }
+  }
+}
+
+/**
+ * Validates that at least one position parameter is provided
+ * @param sessionSlots - Parsed session slot positions
+ * @param arrangementStarts - Parsed arrangement start positions
+ */
+export function validatePositions(
+  sessionSlots: SlotPosition[],
+  arrangementStarts: string[],
+): void {
+  if (sessionSlots.length === 0 && arrangementStarts.length === 0) {
+    throw new Error("createClip failed: slot or arrangementStart is required");
+  }
+}
 
 /**
  * Validates createClip parameters
- * @param view - View type (session or arrangement)
- * @param sceneIndices - Parsed scene indices for session view
- * @param arrangementStarts - Parsed arrangement starts for arrangement view
  * @param notes - MIDI notes notation string
  * @param sampleFile - Audio file path
  */
 export function validateCreateClipParams(
-  view: string,
-  sceneIndices: number[],
-  arrangementStarts: string[],
   notes: string | null,
   sampleFile: string | null,
 ): void {
-  if (!view) {
-    throw new Error("createClip failed: view parameter is required");
-  }
-
-  if (view === "session" && sceneIndices.length === 0) {
-    throw new Error(
-      "createClip failed: sceneIndex is required when view is 'session'",
-    );
-  }
-
-  if (view === "arrangement" && arrangementStarts.length === 0) {
-    throw new Error(
-      "createClip failed: arrangementStart is required when view is 'arrangement'",
-    );
-  }
-
   // Cannot specify both sampleFile and notes
   if (sampleFile && notes) {
     throw new Error(
@@ -90,29 +103,27 @@ export function calculateClipLength(
  * Handles automatic playback for session clips
  * @param auto - Auto playback mode (play-scene or play-clip)
  * @param view - View type
- * @param sceneIndices - Array of scene indices
- * @param trackIndex - Track index
+ * @param sessionSlots - Array of session slot positions
  */
 export function handleAutoPlayback(
   auto: string | null,
   view: string,
-  sceneIndices: number[],
-  trackIndex: number,
+  sessionSlots: SlotPosition[],
 ): void {
-  if (!auto || view !== "session" || sceneIndices.length === 0) {
+  if (!auto || view !== "session" || sessionSlots.length === 0) {
     return;
   }
 
   switch (auto) {
     case "play-scene": {
       // Launch the first scene for synchronization
-      // Length checked above: sceneIndices.length > 0
-      const firstSceneIndex = sceneIndices[0] as number;
-      const scene = LiveAPI.from(livePath.scene(firstSceneIndex));
+      // Length checked above: sessionSlots.length > 0
+      const firstSlot = sessionSlots[0] as SlotPosition;
+      const scene = LiveAPI.from(livePath.scene(firstSlot.sceneIndex));
 
       if (!scene.exists()) {
         throw new Error(
-          `createClip auto="play-scene" failed: scene at sceneIndex=${firstSceneIndex} does not exist`,
+          `createClip auto="play-scene" failed: scene at sceneIndex=${firstSlot.sceneIndex} does not exist`,
         );
       }
 
@@ -121,10 +132,10 @@ export function handleAutoPlayback(
     }
 
     case "play-clip":
-      // Fire individual clips at each scene index
-      for (const sceneIndex of sceneIndices) {
+      // Fire individual clips at each slot position
+      for (const slot of sessionSlots) {
         const clipSlot = LiveAPI.from(
-          livePath.track(trackIndex).clipSlot(sceneIndex),
+          livePath.track(slot.trackIndex).clipSlot(slot.sceneIndex),
         );
 
         clipSlot.call("fire");

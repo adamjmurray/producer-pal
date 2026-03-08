@@ -116,7 +116,7 @@ describe("readTrack", () => {
       }).toThrow("Either trackId or trackIndex must be provided");
     });
 
-    it("ignores category when trackId is provided", () => {
+    it("ignores trackType when trackId is provided", () => {
       registerMockObject("999", {
         path: livePath.track(0),
         type: "Track",
@@ -125,8 +125,8 @@ describe("readTrack", () => {
         }),
       });
 
-      // category should be ignored when trackId is provided
-      const result = readTrack({ trackId: "999", category: "return" });
+      // trackType should be ignored when trackId is provided
+      const result = readTrack({ trackId: "999", trackType: "return" });
 
       // Should read as regular track (from path) not return track
       expect(result.trackIndex).toBe(0);

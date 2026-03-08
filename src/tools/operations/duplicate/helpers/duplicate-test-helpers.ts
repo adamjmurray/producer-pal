@@ -170,6 +170,55 @@ export function createTrackResultArray(
 }
 
 /**
+ * Register an arrangement clip mock with standard properties.
+ * @param trackIndex - Track index
+ * @param clipIndex - Arrangement clip index
+ * @param startTime - Clip start time in beats
+ * @returns Registered mock object
+ */
+export function registerArrangementClip(
+  trackIndex: number,
+  clipIndex: number,
+  startTime: number,
+): RegisteredMockObject {
+  return registerMockObject(
+    livePath.track(trackIndex).arrangementClip(clipIndex),
+    {
+      path: livePath.track(trackIndex).arrangementClip(clipIndex),
+      properties: { is_arrangement_clip: 1, start_time: startTime },
+    },
+  );
+}
+
+/**
+ * Register a track mock with a `duplicate_clip_to_arrangement` method that
+ * returns arrangement clip IDs from a counter.
+ * @param trackIndex - Track index
+ * @param properties - Optional additional track properties
+ * @returns Object with the registered track mock and a counter reset function
+ */
+export function registerTrackWithArrangementDup(
+  trackIndex: number,
+  properties?: Record<string, unknown>,
+): RegisteredMockObject {
+  let clipCounter = 0;
+
+  return registerMockObject(`live_set/tracks/${trackIndex}`, {
+    path: livePath.track(trackIndex),
+    properties,
+    methods: {
+      duplicate_clip_to_arrangement: () => {
+        const clipId = livePath.track(trackIndex).arrangementClip(clipCounter);
+
+        clipCounter++;
+
+        return ["id", clipId];
+      },
+    },
+  });
+}
+
+/**
  * Verify that delete_device was called for each device in reverse order.
  * @param track - Mock object handle for the track
  * @param deviceCount - Number of devices that should have been deleted

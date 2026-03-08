@@ -125,6 +125,18 @@ cached tool definitions.
 See [Development-Tools](dev/Development-Tools.md) for the CLI tool, Raw Live API
 tool, MCP Inspector setup, debugging tips, and testing workflows.
 
+### Portal Script (Internal Testing)
+
+The portal script (`npm/producer-pal-portal.js`) is the same script published as
+the `producer-pal` npm package. For local testing before publishing to npm:
+
+```json
+"producer-pal": {
+  "command": "node",
+  "args": ["/absolute/path/to/npm/producer-pal-portal.js"]
+}
+```
+
 ## Releasing
 
 See [Releasing](dev/Releasing.md) for the complete release process, including

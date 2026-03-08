@@ -30,7 +30,6 @@ describe("createClip - deadline exceeded", () => {
 
     const result = await createClip(
       {
-        view: "arrangement",
         trackIndex: 0,
         arrangementStart: "1|1, 3|1",
         notes: "C3 1|1",
@@ -69,7 +68,6 @@ describe("createClip - deadline exceeded", () => {
 
     const result = await createClip(
       {
-        view: "arrangement",
         trackIndex: 0,
         arrangementStart: "1|1, 3|1",
         notes: "C3 1|1",

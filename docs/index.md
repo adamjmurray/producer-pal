@@ -5,40 +5,43 @@ hero:
   name: Producer Pal™
   text: Control Ableton Live with words
   tagline:
-    AI-powered assistant for music production. Works with Claude, Gemini,
+    Free, AI-powered assistant for music production. Works with Claude, Gemini,
     ChatGPT, Ollama, and more.
   image:
     src: /producer-pal-logo.svg
     alt: Producer Pal
   actions:
     - theme: brand
-      text: Installation
+      text: Install Now
       link: /installation
     - theme: alt
       text: User Guide
       link: /guide
 
 features:
-  - title: Describe, Don't Click
+  - title: Just Say What You Want
     details: >
-      Manage tracks and scenes, edit MIDI and audio clips, add and tweak
-      instruments and effects, and build arrangements through conversation.
+      Manage tracks, edit MIDI and audio clips, tweak instruments and effects,
+      and build arrangements. Do tedious edits in seconds and explore ideas
+      quickly.
+    link: /features
+    linkText: See all features
 
-  - title: Complex Edits Made Simple
+  - title: Bring Your Own AI
     details: >
-      Do tedious edits in seconds: transpose patterns, fade velocities, shift
-      notes, randomize timing. Explore your ideas quickly.
-
-  - title: Works Online or Offline
-    details:
-      Use cloud AI services (Claude, Gemini, GPT) or run completely offline with
-      local models (Ollama, LM Studio). Includes a built-in chat UI to get
-      started quickly.
+      Use cloud AI services (Claude, Gemini, ChatGPT) for the best experience,
+      or run completely free and private with local models (Ollama, LM Studio).
+      No lock-in.
+    link: /installation
+    linkText: Setup guide
 
   - title: Open Source & Free Forever
-    details:
-      GPL-3.0 licensed and developed completely in the open. No subscriptions,
-      no paywalls, no premium features.
+    details: >
+      Built on shared knowledge, shared back to all of us. No subscriptions, no
+      paywalls, no premium tiers. GPL-3.0 licensed and developed completely in
+      the open.
+    link: https://github.com/adamjmurray/producer-pal
+    linkText: View on GitHub
 ---
 
 <div class="get-started-wrapper">
@@ -67,6 +70,7 @@ features:
         <p class="card-description">Dedicated AI apps</p>
         <ul class="card-links">
           <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">easiest</span></li>
+          <li><a href="/installation/codex-app">Codex App (OpenAI)</a></li>
           <li><a href="/installation/lm-studio">LM Studio</a> <span class="tag">offline</span></li>
         </ul>
       </div>
@@ -149,27 +153,5 @@ features:
 
 ## Support
 
-- **Feedback, Feature Ideas, General Discussion**:
-  [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
-- **Bugs & Problems**: Report in
-  [the bug reports forum](https://github.com/adamjmurray/producer-pal/discussions/categories/bug-reports)
-  or [issues list](https://github.com/adamjmurray/producer-pal/issues)
-
-## Data Privacy
-
-When using online AI services, your musical data (MIDI notes, track names,
-tempo, etc.) is sent to that service for processing. Most services offer options
-to opt out of training on your data. Check your AI provider's privacy policy and
-account settings. Avoid online services for highly confidential or commercially
-sensitive work.
-
-## Get Involved
-
-To support Producer Pal development, ⭐️ star
-[the GitHub repository](https://github.com/adamjmurray/producer-pal) to help
-others discover the project.
-
-Want to help? Join the
-[discussion on GitHub](https://github.com/adamjmurray/producer-pal/discussions)
-or
-[contribute directly](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md).
+Need help, want to report a bug, or interested in contributing? Visit the
+[Support page](/support).

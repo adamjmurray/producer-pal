@@ -3,9 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { formatGeminiMessages } from "#webui/chat/gemini/formatter";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
-import { type GeminiMessage, type UIMessage } from "#webui/types/messages";
+import { type UIMessage } from "#webui/types/messages";
 
 /**
  * Generic streaming handler for chat messages.
@@ -34,26 +33,6 @@ export async function handleMessageStream<TMessage>(
 
     throw error;
   }
-}
-
-/**
- * Creates a Gemini error message from an exception and chat history
- * @param {unknown} error - Error object or message
- * @param {GeminiMessage[]} chatHistory - Current chat history
- * @returns {any} - Hook return value
- */
-export function createGeminiErrorMessage(
-  error: unknown,
-  chatHistory: GeminiMessage[],
-): UIMessage[] {
-  const errorMessage = normalizeErrorMessage(error);
-
-  const errorEntry: GeminiMessage = {
-    role: "error",
-    parts: [{ text: errorMessage }],
-  };
-
-  return formatGeminiMessages([...chatHistory, errorEntry]);
 }
 
 /**

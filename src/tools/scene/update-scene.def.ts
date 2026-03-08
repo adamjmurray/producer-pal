@@ -14,9 +14,23 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
   },
   inputSchema: {
     ids: z.coerce.string().describe("comma-separated scene ID(s) to update"),
-    name: z.string().optional().describe("name"),
-    color: z.string().optional().describe("#RRGGBB"),
+    name: z
+      .string()
+      .optional()
+      .describe("name (comma-separated when updating multiple)"),
+    color: z
+      .string()
+      .optional()
+      .describe("#RRGGBB (comma-separated when updating multiple, cycles)"),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
     timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
+  },
+
+  smallModelModeConfig: {
+    excludeParams: [],
+    descriptionOverrides: {
+      name: "scene name",
+      color: "#RRGGBB",
+    },
   },
 });

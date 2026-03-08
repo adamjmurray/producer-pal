@@ -15,6 +15,8 @@ describe("AppearanceTab", () => {
   const defaultProps = {
     theme: "system",
     setTheme: mockSetTheme,
+    showTimestamps: false,
+    setShowTimestamps: vi.fn(),
   };
 
   it("renders theme label", () => {
@@ -64,5 +66,18 @@ describe("AppearanceTab", () => {
     const select = container.querySelector("select") as HTMLSelectElement;
 
     expect(select.value).toBe("dark");
+  });
+
+  it("calls setShowTimestamps when checkbox toggled", () => {
+    const setShowTimestamps = vi.fn();
+    const { container } = render(
+      <AppearanceTab {...defaultProps} setShowTimestamps={setShowTimestamps} />,
+    );
+    const checkbox = container.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement;
+
+    fireEvent.click(checkbox);
+    expect(setShowTimestamps).toHaveBeenCalled();
   });
 });

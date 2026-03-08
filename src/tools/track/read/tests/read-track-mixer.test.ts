@@ -89,7 +89,7 @@ describe("readTrack - mixer properties", () => {
 
     const result = readTrack({
       trackIndex: 0,
-      category: "return",
+      trackType: "return",
       include: ["mixer"],
     });
 
@@ -113,7 +113,7 @@ describe("readTrack - mixer properties", () => {
       },
     });
 
-    const result = readTrack({ category: "master", include: ["mixer"] });
+    const result = readTrack({ trackType: "master", include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", 0);
     expect(result).toHaveProperty("pan", 0);

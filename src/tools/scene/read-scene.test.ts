@@ -188,20 +188,18 @@ describe("readScene", () => {
         {
           ...expectedClip({
             id: "clip_0_0",
-            sceneIndex: 0,
-            trackIndex: 0,
+            slot: "0/0",
           }),
           color: undefined,
         },
         {
           ...expectedClip({
             id: "clip_1_0",
-            sceneIndex: 0,
-            trackIndex: 1,
+            slot: "1/0",
           }),
           color: undefined,
         },
-      ].map(({ color: _color, sceneIndex: _si, view: _v, ...clip }) => clip),
+      ].map(({ color: _color, view: _v, ...clip }) => clip),
     });
   });
 
@@ -306,20 +304,18 @@ describe("readScene", () => {
           {
             ...expectedClip({
               id: "clip_0_2",
-              sceneIndex: 2,
-              trackIndex: 0,
+              slot: "0/2",
             }),
             color: undefined,
           },
           {
             ...expectedClip({
               id: "clip_1_2",
-              sceneIndex: 2,
-              trackIndex: 1,
+              slot: "1/2",
             }),
             color: undefined,
           },
-        ].map(({ color: _color, sceneIndex: _si, view: _v, ...clip }) => clip),
+        ].map(({ color: _color, view: _v, ...clip }) => clip),
       });
     });
 

@@ -53,7 +53,6 @@ async function dupToArr(
     arguments: {
       type: "clip",
       id,
-      destination: "arrangement",
       arrangementStart,
     },
   });
@@ -173,9 +172,7 @@ describe("arrangement clip duplication crash workaround", () => {
     const midiLong = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: MIDI_TRACK,
-        sceneIndex: "0",
+        slot: `${MIDI_TRACK}/0`,
         notes: "C3 1|1",
         length: "4:0",
       },
@@ -187,9 +184,7 @@ describe("arrangement clip duplication crash workaround", () => {
     const midiShort = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: MIDI_TRACK,
-        sceneIndex: "1",
+        slot: `${MIDI_TRACK}/1`,
         notes: "C3 1|1",
         length: "1:0",
       },
@@ -200,7 +195,7 @@ describe("arrangement clip duplication crash workaround", () => {
     // Read existing session sample clip on t5/s0 (sample.aiff — the longer one)
     const sample = await ctx.client!.callTool({
       name: "ppal-read-clip",
-      arguments: { trackIndex: AUDIO_TRACK, sceneIndex: 0 },
+      arguments: { slot: `${AUDIO_TRACK}/0` },
     });
 
     audioLongId = parseToolResult<{ id: string }>(sample).id;
@@ -209,9 +204,7 @@ describe("arrangement clip duplication crash workaround", () => {
     const kick = await ctx.client!.callTool({
       name: "ppal-create-clip",
       arguments: {
-        view: "session",
-        trackIndex: AUDIO_TRACK,
-        sceneIndex: "1",
+        slot: `${AUDIO_TRACK}/1`,
         sampleFile: KICK_FILE,
       },
     });

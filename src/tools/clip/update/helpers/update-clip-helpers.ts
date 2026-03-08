@@ -260,7 +260,6 @@ export interface ClipAudioWarpQuantizeParams {
   warpDistance?: number;
   quantize?: number;
   quantizeGrid?: string;
-  quantizeSwing?: number;
   quantizePitch?: string;
 }
 
@@ -311,7 +310,6 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
  * @param params.warpDistance - Warp distance
  * @param params.quantize - Quantization strength 0-1
  * @param params.quantizeGrid - Note grid for quantization
- * @param params.quantizeSwing - Swing amount 0-1
  * @param params.quantizePitch - Limit quantization to specific pitch
  * @param params.arrangementLengthBeats - Arrangement length in beats
  * @param params.arrangementStartBeats - Arrangement start in beats
@@ -346,7 +344,6 @@ export function processSingleClipUpdate(
     warpDistance,
     quantize,
     quantizeGrid,
-    quantizeSwing,
     quantizePitch,
     context,
     updatedClips,
@@ -429,7 +426,6 @@ export function processSingleClipUpdate(
   handleQuantization(clip, {
     quantize,
     quantizeGrid,
-    quantizeSwing,
     quantizePitch,
   });
 

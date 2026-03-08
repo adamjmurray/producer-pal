@@ -5,6 +5,7 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { select } from "#src/tools/control/select.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
@@ -13,7 +14,15 @@ import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
+import {
+  getColorForIndex,
+  parseCommaSeparatedColors,
+} from "#src/tools/shared/validation/color-utils.ts";
 import { validateExclusiveParams } from "#src/tools/shared/validation/id-validation.ts";
+import {
+  getNameForIndex,
+  parseNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 import {
   moveDeviceToPath,
   moveDrumChainToPath,
@@ -52,6 +61,7 @@ interface UpdateDeviceArgs extends UpdateProperties {
   ids?: string;
   path?: string;
   wrapInRack?: boolean;
+  focus?: boolean;
 }
 
 interface UpdateOptions extends UpdateProperties {
@@ -81,6 +91,7 @@ interface ResolvedTarget {
  * @param args.chokeGroup - Choke group 0-16 (drum chains only)
  * @param args.mappedPitch - Output MIDI note (drum chains only)
  * @param args.wrapInRack - Wrap device(s) in a new rack
+ * @param args.focus - Select the device and show device detail view
  * @param _context - Internal context object (unused)
  * @returns Updated object info(s)
  */
@@ -101,48 +112,59 @@ export function updateDevice(
     chokeGroup,
     mappedPitch,
     wrapInRack,
+    focus,
   }: UpdateDeviceArgs,
   _context: Partial<ToolContext> = {},
 ): Record<string, unknown> | Record<string, unknown>[] | null {
   validateExclusiveParams(ids, path, "ids", "path");
 
+  let result: Record<string, unknown> | Record<string, unknown>[] | null;
+
   if (wrapInRack) {
-    return wrapDevicesInRack({ ids, path, toPath, name }) as Record<
+    result = wrapDevicesInRack({ ids, path, toPath, name }) as Record<
       string,
       unknown
     > | null;
-  }
+  } else {
+    const items = parseCommaSeparatedIds(path ?? ids);
+    const parsedNames = parseNames(name, items.length, "updateDevice");
+    const parsedColors = parseCommaSeparatedColors(color, items.length);
 
-  const updateOptions: UpdateOptions = {
-    toPath,
-    name,
-    params,
-    macroVariation,
-    macroVariationIndex,
-    macroCount,
-    abCompare,
-    mute,
-    solo,
-    color,
-    chokeGroup,
-    mappedPitch,
-  };
+    const updateOptions: UpdateOptions = {
+      toPath,
+      name,
+      params,
+      macroVariation,
+      macroVariationIndex,
+      macroCount,
+      abCompare,
+      mute,
+      solo,
+      color,
+      chokeGroup,
+      mappedPitch,
+    };
 
-  if (path) {
-    return updateMultipleTargets(
-      parseCommaSeparatedIds(path),
-      resolvePathToTargetSafe,
-      "path",
+    result = updateMultipleTargets(
+      items,
+      path ? resolvePathToTargetSafe : resolveIdToTarget,
+      path ? "path" : "id",
       updateOptions,
+      parsedNames,
+      parsedColors,
     );
   }
 
-  return updateMultipleTargets(
-    parseCommaSeparatedIds(ids),
-    resolveIdToTarget,
-    "id",
-    updateOptions,
-  );
+  if (focus && result != null) {
+    const lastResult = Array.isArray(result) ? result.at(-1) : result;
+    const lastId = lastResult?.id as string | undefined;
+
+    if (lastId) {
+      select({ deviceId: lastId, detailView: "device" });
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -151,6 +173,8 @@ export function updateDevice(
  * @param resolveItem - Function to resolve item to ResolvedTarget
  * @param itemType - "path" or "id" for error messages
  * @param updateOptions - Options to pass to updateTarget
+ * @param parsedNames - Comma-separated names array, or null
+ * @param parsedColors - Comma-separated colors array, or null
  * @returns Single result or array of results
  */
 function updateMultipleTargets(
@@ -158,10 +182,13 @@ function updateMultipleTargets(
   resolveItem: (item: string) => ResolvedTarget | null,
   itemType: string,
   updateOptions: UpdateOptions,
+  parsedNames: string[] | null,
+  parsedColors: string[] | null,
 ): Record<string, unknown> | Record<string, unknown>[] {
   const results: Record<string, unknown>[] = [];
 
-  for (const item of items) {
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i] as string;
     const resolved = resolveItem(item);
 
     if (!resolved) {
@@ -172,6 +199,8 @@ function updateMultipleTargets(
     // Merge resolution metadata (like isDrumPadPath) into options
     const optionsWithMetadata: UpdateOptions = {
       ...updateOptions,
+      name: getNameForIndex(updateOptions.name, i, parsedNames),
+      color: getColorForIndex(updateOptions.color, i, parsedColors),
       isDrumPadPath: resolved.isDrumPadPath,
     };
 
@@ -391,61 +420,50 @@ function updateNonDeviceProperties(
   type: string,
   options: UpdateOptions,
 ): void {
-  const {
-    params,
-    macroVariation,
-    macroVariationIndex,
-    macroCount,
-    abCompare,
-    mute,
-    solo,
-    color,
-    chokeGroup,
-    mappedPitch,
-  } = options;
-
   // Warn for device-only properties
-  warnIfSet("params", params, type);
-  warnIfSet("macroVariation", macroVariation, type);
-  warnIfSet("macroVariationIndex", macroVariationIndex, type);
-  warnIfSet("macroCount", macroCount, type);
-  warnIfSet("abCompare", abCompare, type);
+  warnIfSet("params", options.params, type);
+  warnIfSet("macroVariation", options.macroVariation, type);
+  warnIfSet("macroVariationIndex", options.macroVariationIndex, type);
+  warnIfSet("macroCount", options.macroCount, type);
+  warnIfSet("abCompare", options.abCompare, type);
 
   // Mute/solo work on Chain, DrumChain, DrumPad
-  if (mute != null) {
-    target.set("mute", mute ? 1 : 0);
+  if (options.mute != null) {
+    target.set("mute", options.mute ? 1 : 0);
   }
 
-  if (solo != null) {
-    target.set("solo", solo ? 1 : 0);
+  if (options.solo != null) {
+    target.set("solo", options.solo ? 1 : 0);
   }
 
   // Color works on Chain and DrumChain (not DrumPad)
   if (isChainType(type)) {
-    if (color != null) {
-      target.setColor(color);
+    if (options.color != null) {
+      target.setColor(options.color);
     }
   } else {
-    warnIfSet("color", color, type);
+    warnIfSet("color", options.color, type);
   }
 
   // DrumChain only: chokeGroup, mappedPitch
   if (type === "DrumChain") {
-    if (chokeGroup != null) {
-      target.set("choke_group", chokeGroup);
+    if (options.chokeGroup != null) {
+      target.set("choke_group", options.chokeGroup);
     }
 
-    if (mappedPitch != null) {
-      const midiNote = noteNameToMidi(mappedPitch);
+    if (options.mappedPitch != null) {
+      const midiNote = noteNameToMidi(options.mappedPitch);
 
       if (midiNote != null) {
         target.set("out_note", midiNote);
       } else {
-        console.warn(`updateDevice: invalid note name "${mappedPitch}"`);
+        console.warn(
+          `updateDevice: invalid note name "${options.mappedPitch}"`,
+        );
       }
     }
   } else {
-    warnIfSet("chokeGroup", chokeGroup, type);
-    warnIfSet("mappedPitch", mappedPitch, type);
+    warnIfSet("chokeGroup", options.chokeGroup, type);
+    warnIfSet("mappedPitch", options.mappedPitch, type);
   }
 }

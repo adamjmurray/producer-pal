@@ -12,6 +12,7 @@ export type { CallToolResult };
 
 export interface SmallModelModeConfig {
   excludeParams?: string[];
+  excludeEnumValues?: Record<string, string[]>;
   descriptionOverrides?: Record<string, string>;
   toolDescription?: string;
 }
@@ -72,6 +73,7 @@ export function defineTool(
             inputSchema,
             smallModelModeConfig.excludeParams ?? [],
             smallModelModeConfig.descriptionOverrides,
+            smallModelModeConfig.excludeEnumValues,
           )
         : inputSchema;
 

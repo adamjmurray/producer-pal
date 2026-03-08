@@ -3,8 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
 import {
   handleQuantization,
   QUANTIZE_GRID,
@@ -12,8 +10,6 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
 type MockClip = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
-type MockLiveSet = any;
 
 describe("QUANTIZE_GRID", () => {
   it("should map 1/4 to grid value 1", () => {
@@ -51,25 +47,9 @@ describe("QUANTIZE_GRID", () => {
 
 describe("handleQuantization", () => {
   let mockClip: MockClip;
-  let mockLiveSet: MockLiveSet;
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    mockLiveSet = {
-      getProperty: vi.fn(() => 0.25), // Original swing_amount
-      set: vi.fn(),
-    };
-
-    // Override LiveAPI.from to return our mock for live_set
-    vi.spyOn(LiveAPI, "from").mockImplementation((path) => {
-      if (path === livePath.liveSet) {
-        return mockLiveSet;
-      }
-
-      // For other paths, return a minimal mock
-      return { path } as unknown as LiveAPI;
-    });
 
     mockClip = {
       id: "321",
@@ -149,47 +129,6 @@ describe("handleQuantization", () => {
       expect.stringContaining('invalid note name "invalid"'),
     );
     expect(mockClip.call).not.toHaveBeenCalled();
-  });
-
-  it("should set swing_amount before quantizing and restore after", () => {
-    mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
-
-    handleQuantization(mockClip, {
-      quantize: 1,
-      quantizeGrid: "1/16",
-      quantizeSwing: 0.5,
-    });
-
-    // First call sets the new swing
-    expect(mockLiveSet.set).toHaveBeenNthCalledWith(1, "swing_amount", 0.5);
-    // Second call restores the original swing
-    expect(mockLiveSet.set).toHaveBeenNthCalledWith(2, "swing_amount", 0.25);
-  });
-
-  it("should use 0 for swing when quantizeSwing is not provided", () => {
-    mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
-
-    handleQuantization(mockClip, { quantize: 1, quantizeGrid: "1/16" });
-
-    expect(mockLiveSet.set).toHaveBeenNthCalledWith(1, "swing_amount", 0);
-  });
-
-  it("should restore swing_amount even if quantize throws", () => {
-    mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
-    mockClip.call.mockImplementation(() => {
-      throw new Error("Quantize failed");
-    });
-
-    expect(() =>
-      handleQuantization(mockClip, {
-        quantize: 1,
-        quantizeGrid: "1/16",
-        quantizeSwing: 0.3,
-      }),
-    ).toThrow("Quantize failed");
-
-    // Verify swing was restored despite the error
-    expect(mockLiveSet.set).toHaveBeenNthCalledWith(2, "swing_amount", 0.25);
   });
 
   it.each([

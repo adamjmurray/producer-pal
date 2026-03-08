@@ -6,6 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
+  type RegisteredMockObject,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -19,53 +20,110 @@ vi.mock(import("../helpers/update-clip-arrangement-helpers.ts"), () => ({
   handleArrangementOperations: vi.fn(),
 }));
 
+/**
+ * Create a mock clip and register destination slot mocks, then call handleSessionSlotMove.
+ * @param opts - Test options
+ * @param opts.trackIndex - Source clip track index
+ * @param opts.sceneIndex - Source clip scene index
+ * @param opts.toTrackIndex - Destination track index
+ * @param opts.toSceneIndex - Destination scene index
+ * @param opts.destHasClip - Whether destination slot has an existing clip
+ * @param opts.noteResult - Note result to pass
+ * @param opts.registerSource - Whether to register the source clip slot
+ * @param opts.registerDest - Whether to register destination mocks
+ * @returns Object with mockClip, updatedClips, and source clip slot mock
+ */
+function runSessionMove(opts: {
+  trackIndex?: number;
+  sceneIndex?: number;
+  toTrackIndex: number;
+  toSceneIndex: number;
+  destHasClip?: number;
+  noteResult?: { noteCount: number } | null;
+  registerSource?: boolean;
+  registerDest?: boolean;
+}) {
+  const {
+    trackIndex = 0,
+    sceneIndex = 0,
+    toTrackIndex,
+    toSceneIndex,
+    destHasClip = 0,
+    noteResult = null,
+    registerSource = true,
+    registerDest = true,
+  } = opts;
+
+  const mockClip = {
+    id: "123",
+    trackIndex,
+    sceneIndex,
+    getProperty: vi.fn(),
+  };
+
+  const sourceSlot = registerSource
+    ? registerMockObject(
+        `live_set/tracks/${trackIndex}/clip_slots/${sceneIndex}`,
+        {
+          path: livePath.track(trackIndex).clipSlot(sceneIndex),
+        },
+      )
+    : undefined;
+
+  if (registerDest) {
+    registerMockObject(
+      `live_set/tracks/${toTrackIndex}/clip_slots/${toSceneIndex}`,
+      {
+        path: livePath.track(toTrackIndex).clipSlot(toSceneIndex),
+        properties: { has_clip: destHasClip },
+      },
+    );
+    registerMockObject(
+      `live_set/tracks/${toTrackIndex}/clip_slots/${toSceneIndex}/clip`,
+      {
+        path: livePath.track(toTrackIndex).clipSlot(toSceneIndex).clip(),
+      },
+    );
+  }
+
+  const updatedClips: ClipResult[] = [];
+
+  handleSessionSlotMove({
+    clip: mockClip as unknown as LiveAPI,
+    toSlot: { trackIndex: toTrackIndex, sceneIndex: toSceneIndex },
+    updatedClips,
+    noteResult,
+  });
+
+  return {
+    mockClip,
+    updatedClips,
+    sourceSlot: sourceSlot as RegisteredMockObject,
+  };
+}
+
 describe("handleSessionSlotMove", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("should move session clip to new slot", () => {
-    const mockClip = {
-      id: "123",
-      trackIndex: 0,
-      sceneIndex: 0,
-      getProperty: vi.fn(),
-    };
-
-    const sourceClipSlot = registerMockObject(
-      "live_set/tracks/0/clip_slots/0",
-      { path: livePath.track(0).clipSlot(0) },
-    );
-
-    registerMockObject("live_set/tracks/1/clip_slots/2", {
-      path: livePath.track(1).clipSlot(2),
-      properties: { has_clip: 0 },
-    });
-
-    registerMockObject("live_set/tracks/1/clip_slots/2/clip", {
-      path: livePath.track(1).clipSlot(2).clip(),
-    });
-
-    const updatedClips: ClipResult[] = [];
-
-    handleSessionSlotMove({
-      clip: mockClip as unknown as LiveAPI,
-      toSlot: { trackIndex: 1, sceneIndex: 2 },
-      updatedClips,
+    const { updatedClips, sourceSlot } = runSessionMove({
+      toTrackIndex: 1,
+      toSceneIndex: 2,
       noteResult: { noteCount: 5 },
     });
 
-    expect(sourceClipSlot.call).toHaveBeenCalledWith(
+    expect(sourceSlot.call).toHaveBeenCalledWith(
       "duplicate_clip_to",
       "id live_set/tracks/1/clip_slots/2",
     );
-    expect(sourceClipSlot.call).toHaveBeenCalledWith("delete_clip");
+    expect(sourceSlot.call).toHaveBeenCalledWith("delete_clip");
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",
       noteCount: 5,
-      trackIndex: 1,
-      sceneIndex: 2,
+      slot: "1/2",
     });
   });
 
@@ -95,27 +153,17 @@ describe("handleSessionSlotMove", () => {
   });
 
   it("should no-op when moving to same slot", () => {
-    const mockClip = {
-      id: "123",
+    const { updatedClips } = runSessionMove({
       trackIndex: 2,
       sceneIndex: 3,
-      getProperty: vi.fn(),
-    };
-
-    const updatedClips: ClipResult[] = [];
-
-    handleSessionSlotMove({
-      clip: mockClip as unknown as LiveAPI,
-      toSlot: { trackIndex: 2, sceneIndex: 3 },
-      updatedClips,
-      noteResult: null,
+      toTrackIndex: 2,
+      toSceneIndex: 3,
     });
 
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({
       id: "123",
-      trackIndex: 2,
-      sceneIndex: 3,
+      slot: "2/3",
     });
     // No duplicate_clip_to should have been called
     expect(outlet).not.toHaveBeenCalledWith(
@@ -152,109 +200,37 @@ describe("handleSessionSlotMove", () => {
   });
 
   it("should warn when overwriting existing clip at destination", () => {
-    const mockClip = {
-      id: "123",
-      trackIndex: 0,
-      sceneIndex: 0,
-      getProperty: vi.fn(),
-    };
-
-    registerMockObject("live_set/tracks/0/clip_slots/0", {
-      path: livePath.track(0).clipSlot(0),
-    });
-
-    registerMockObject("live_set/tracks/0/clip_slots/1", {
-      path: livePath.track(0).clipSlot(1),
-      properties: { has_clip: 1 },
-    });
-
-    registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-      path: livePath.track(0).clipSlot(1).clip(),
-    });
-
-    const updatedClips: ClipResult[] = [];
-
-    handleSessionSlotMove({
-      clip: mockClip as unknown as LiveAPI,
-      toSlot: { trackIndex: 0, sceneIndex: 1 },
-      updatedClips,
-      noteResult: null,
+    const { updatedClips } = runSessionMove({
+      toTrackIndex: 0,
+      toSceneIndex: 1,
+      destHasClip: 1,
     });
 
     expect(outlet).toHaveBeenCalledWith(1, "overwriting existing clip at 0/1");
     expect(updatedClips).toHaveLength(1);
     expect(updatedClips[0]).toMatchObject({
       id: "live_set/tracks/0/clip_slots/1/clip",
-      trackIndex: 0,
-      sceneIndex: 1,
+      slot: "0/1",
     });
   });
 
   it("should include noteCount in result when provided", () => {
-    const mockClip = {
-      id: "123",
-      trackIndex: 0,
-      sceneIndex: 0,
-      getProperty: vi.fn(),
-    };
-
-    registerMockObject("live_set/tracks/0/clip_slots/0", {
-      path: livePath.track(0).clipSlot(0),
-    });
-
-    registerMockObject("live_set/tracks/0/clip_slots/1", {
-      path: livePath.track(0).clipSlot(1),
-      properties: { has_clip: 0 },
-    });
-
-    registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-      path: livePath.track(0).clipSlot(1).clip(),
-    });
-
-    const updatedClips: ClipResult[] = [];
-
-    handleSessionSlotMove({
-      clip: mockClip as unknown as LiveAPI,
-      toSlot: { trackIndex: 0, sceneIndex: 1 },
-      updatedClips,
+    const { updatedClips } = runSessionMove({
+      toTrackIndex: 0,
+      toSceneIndex: 1,
       noteResult: { noteCount: 12 },
     });
 
     expect(updatedClips[0]).toMatchObject({
       noteCount: 12,
-      trackIndex: 0,
-      sceneIndex: 1,
+      slot: "0/1",
     });
   });
 
   it("should omit noteCount from result when null", () => {
-    const mockClip = {
-      id: "123",
-      trackIndex: 0,
-      sceneIndex: 0,
-      getProperty: vi.fn(),
-    };
-
-    registerMockObject("live_set/tracks/0/clip_slots/0", {
-      path: livePath.track(0).clipSlot(0),
-    });
-
-    registerMockObject("live_set/tracks/0/clip_slots/1", {
-      path: livePath.track(0).clipSlot(1),
-      properties: { has_clip: 0 },
-    });
-
-    registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-      path: livePath.track(0).clipSlot(1).clip(),
-    });
-
-    const updatedClips: ClipResult[] = [];
-
-    handleSessionSlotMove({
-      clip: mockClip as unknown as LiveAPI,
-      toSlot: { trackIndex: 0, sceneIndex: 1 },
-      updatedClips,
-      noteResult: null,
+    const { updatedClips } = runSessionMove({
+      toTrackIndex: 0,
+      toSceneIndex: 1,
     });
 
     expect(updatedClips[0]).not.toHaveProperty("noteCount");
