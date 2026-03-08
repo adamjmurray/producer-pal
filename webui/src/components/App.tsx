@@ -161,6 +161,13 @@ export function App() {
     [conversationManager],
   );
 
+  const handleRenameConversation = useCallback(
+    (id: string, title: string | null) => {
+      void conversationManager.renameConversation(id, title);
+    },
+    [conversationManager],
+  );
+
   // Calculate tools counts for header display
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
@@ -272,6 +279,7 @@ export function App() {
           onSelect: handleSelectConversation,
           onNew: handleNewConversation,
           onDelete: handleDeleteConversation,
+          onRename: handleRenameConversation,
         }}
       />
     </ToolNamesContext.Provider>

@@ -48,6 +48,7 @@ describe("ChatScreen", () => {
       onSelect: vi.fn(),
       onNew: vi.fn(),
       onDelete: vi.fn(),
+      onRename: vi.fn(),
     },
   };
 

@@ -13,6 +13,7 @@ const STORE_NAME = "conversations";
 /** Full conversation record stored in IndexedDB */
 export interface ConversationRecord {
   id: string;
+  title: string | null;
   createdAt: number;
   updatedAt: number;
   messages: AiSdkMessage[];
@@ -21,6 +22,7 @@ export interface ConversationRecord {
 /** Lightweight summary for list display (no messages) */
 export interface ConversationSummary {
   id: string;
+  title: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -81,6 +83,26 @@ export async function deleteConversation(id: string): Promise<void> {
 }
 
 /**
+ * Rename a conversation.
+ * @param id - Conversation ID
+ * @param title - New title (null to clear)
+ */
+export async function renameConversation(
+  id: string,
+  title: string | null,
+): Promise<void> {
+  const db = await getConversationDb();
+  const record = (await db.get(STORE_NAME, id)) as
+    | ConversationRecord
+    | undefined;
+
+  if (!record) return;
+
+  record.title = title;
+  await db.put(STORE_NAME, record);
+}
+
+/**
  * List all conversations sorted by createdAt descending (newest first).
  * @returns Array of conversation summaries
  */
@@ -89,7 +111,12 @@ export async function listConversations(): Promise<ConversationSummary[]> {
   const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
 
   return all
-    .map(({ id, createdAt, updatedAt }) => ({ id, createdAt, updatedAt }))
+    .map(({ id, title, createdAt, updatedAt }) => ({
+      id,
+      title: title ?? null,
+      createdAt,
+      updatedAt,
+    }))
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 

@@ -13,6 +13,7 @@ import {
   getConversationDb,
   listConversations,
   loadConversation,
+  renameConversation,
   resetDbCache,
   saveConversation,
 } from "./conversation-db";
@@ -22,6 +23,7 @@ function createRecord(
 ): ConversationRecord {
   return {
     id: crypto.randomUUID(),
+    title: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     messages: [{ role: "user", content: "hello" }],
@@ -99,6 +101,7 @@ describe("conversation-db", () => {
 
     expect(list[0]).toStrictEqual({
       id: record.id,
+      title: null,
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });
@@ -113,6 +116,23 @@ describe("conversation-db", () => {
     await saveConversation(record);
     await deleteConversation(record.id);
     const loaded = await loadConversation(record.id);
+
+    expect(loaded).toBeUndefined();
+  });
+
+  it("renames a conversation", async () => {
+    const record = createRecord();
+
+    await saveConversation(record);
+    await renameConversation(record.id, "New title");
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.title).toBe("New title");
+  });
+
+  it("rename is a no-op for nonexistent conversation", async () => {
+    await renameConversation("nonexistent", "Title");
+    const loaded = await loadConversation("nonexistent");
 
     expect(loaded).toBeUndefined();
   });

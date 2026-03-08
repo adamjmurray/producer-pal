@@ -107,6 +107,7 @@ describe("App", () => {
       switchConversation: vi.fn(),
       startNewConversation: vi.fn(),
       deleteConversation: vi.fn(),
+      renameConversation: vi.fn(),
     });
     (useRemoteConfig as ReturnType<typeof vi.fn>).mockReturnValue({
       smallModelMode: false,
@@ -623,6 +624,7 @@ describe("App", () => {
         switchConversation: vi.fn(),
         startNewConversation: mockStartNew,
         deleteConversation: vi.fn(),
+        renameConversation: vi.fn(),
       });
       const { container } = render(<App />);
       const newButton = Array.from(container.querySelectorAll("button")).find(
@@ -642,7 +644,9 @@ describe("App", () => {
       const mockToggle = vi.fn();
 
       (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
-        conversations: [{ id: "conv-1", createdAt: 1000, updatedAt: 2000 }],
+        conversations: [
+          { id: "conv-1", title: null, createdAt: 1000, updatedAt: 2000 },
+        ],
         activeConversationId: null,
         isPanelOpen: true,
         togglePanel: mockToggle,
@@ -650,6 +654,7 @@ describe("App", () => {
         switchConversation: mockSwitch,
         startNewConversation: vi.fn(),
         deleteConversation: vi.fn(),
+        renameConversation: vi.fn(),
       });
       const { container } = render(<App />);
 
@@ -671,7 +676,9 @@ describe("App", () => {
       const mockDelete = vi.fn();
 
       (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
-        conversations: [{ id: "conv-1", createdAt: 1000, updatedAt: 2000 }],
+        conversations: [
+          { id: "conv-1", title: null, createdAt: 1000, updatedAt: 2000 },
+        ],
         activeConversationId: null,
         isPanelOpen: true,
         togglePanel: vi.fn(),
@@ -679,12 +686,40 @@ describe("App", () => {
         switchConversation: vi.fn(),
         startNewConversation: vi.fn(),
         deleteConversation: mockDelete,
+        renameConversation: vi.fn(),
       });
       const { getByLabelText } = render(<App />);
 
       fireEvent.click(getByLabelText("Delete conversation"));
 
       expect(mockDelete).toHaveBeenCalledWith("conv-1");
+    });
+
+    it("calls renameConversation on rename", () => {
+      const mockRename = vi.fn();
+
+      (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
+        conversations: [
+          { id: "conv-1", title: "Old", createdAt: 1000, updatedAt: 2000 },
+        ],
+        activeConversationId: null,
+        isPanelOpen: true,
+        togglePanel: vi.fn(),
+        saveCurrentConversation: vi.fn(),
+        switchConversation: vi.fn(),
+        startNewConversation: vi.fn(),
+        deleteConversation: vi.fn(),
+        renameConversation: mockRename,
+      });
+      const { getByLabelText, container } = render(<App />);
+
+      fireEvent.click(getByLabelText("Rename conversation"));
+      const input = container.querySelector("input") as HTMLInputElement;
+
+      fireEvent.input(input, { target: { value: "New Title" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      expect(mockRename).toHaveBeenCalledWith("conv-1", "New Title");
     });
   });
 });

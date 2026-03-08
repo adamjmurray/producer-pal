@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { useState } from "preact/hooks";
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import {
@@ -17,6 +18,7 @@ interface ConversationPanelProps {
   onSelect: (id: string) => void;
   onNewConversation: () => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, title: string | null) => void;
 }
 
 /**
@@ -29,6 +31,7 @@ interface ConversationPanelProps {
  * @param props.onSelect - Callback when a conversation is selected
  * @param props.onNewConversation - Callback to start a new conversation
  * @param props.onDelete - Callback to delete a conversation
+ * @param props.onRename - Callback to rename a conversation
  * @returns Panel component
  */
 export function ConversationPanel({
@@ -38,7 +41,11 @@ export function ConversationPanel({
   onSelect,
   onNewConversation,
   onDelete,
+  onRename,
 }: ConversationPanelProps) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+
   return (
     <div
       className={`shrink-0 h-full overflow-hidden transition-[width] duration-200 ${isOpen ? "w-72" : "w-0"}`}
@@ -70,55 +77,170 @@ export function ConversationPanel({
               No conversations yet
             </p>
           ) : (
-            conversations.map((conv) => {
-              const isActive = conv.id === activeConversationId;
+            conversations.map((conv) => (
+              <ConversationItem
+                key={conv.id}
+                conv={conv}
+                isActive={conv.id === activeConversationId}
+                isEditing={conv.id === editingId}
+                editValue={editValue}
+                onSelect={onSelect}
+                onDelete={onDelete}
+                onEditStart={() => {
+                  setEditingId(conv.id);
+                  setEditValue(conv.title ?? "");
+                }}
+                onEditChange={setEditValue}
+                onEditCommit={() => {
+                  const trimmed = editValue.trim();
 
-              return (
-                <div
-                  key={conv.id}
-                  className={`flex items-center border-b border-gray-100 dark:border-gray-800 transition-colors ${
-                    isActive
-                      ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-l-blue-500"
-                      : "hover:bg-gray-50 dark:hover:bg-gray-800 border-l-2 border-l-transparent"
-                  }`}
-                >
-                  <button
-                    onClick={() => onSelect(conv.id)}
-                    className="flex-1 text-left px-4 py-2.5"
-                  >
-                    <div
-                      className={`text-xs ${isActive ? "font-medium text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}
-                    >
-                      {formatTimestampDate(conv.createdAt)},{" "}
-                      {formatTimestampTime(conv.createdAt)}
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => onDelete(conv.id)}
-                    className="pr-3 pl-1 py-2.5 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-                    aria-label="Delete conversation"
-                    title="Delete conversation"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 14 14"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M2 3.5h10M5 3.5V2.5a1 1 0 011-1h2a1 1 0 011 1v1M11 3.5l-.5 8a1 1 0 01-1 1h-5a1 1 0 01-1-1L3 3.5" />
-                    </svg>
-                  </button>
-                </div>
-              );
-            })
+                  onRename(conv.id, trimmed || null);
+                  setEditingId(null);
+                }}
+                onEditCancel={() => setEditingId(null)}
+              />
+            ))
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// --- Helpers below main export ---
+
+interface ConversationItemProps {
+  conv: ConversationSummary;
+  isActive: boolean;
+  isEditing: boolean;
+  editValue: string;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEditStart: () => void;
+  onEditChange: (value: string) => void;
+  onEditCommit: () => void;
+  onEditCancel: () => void;
+}
+
+/**
+ * Single conversation row in the sidebar panel.
+ * @param props - Item props
+ * @param props.conv - Conversation summary data
+ * @param props.isActive - Whether this is the active conversation
+ * @param props.isEditing - Whether the title is being edited
+ * @param props.editValue - Current edit input value
+ * @param props.onSelect - Select callback
+ * @param props.onDelete - Delete callback
+ * @param props.onEditStart - Start editing callback
+ * @param props.onEditChange - Edit value change callback
+ * @param props.onEditCommit - Commit edit callback
+ * @param props.onEditCancel - Cancel edit callback
+ * @returns Conversation item element
+ */
+function ConversationItem({
+  conv,
+  isActive,
+  isEditing,
+  editValue,
+  onSelect,
+  onDelete,
+  onEditStart,
+  onEditChange,
+  onEditCommit,
+  onEditCancel,
+}: ConversationItemProps) {
+  const displayTitle =
+    conv.title ??
+    `${formatTimestampDate(conv.createdAt)}, ${formatTimestampTime(conv.createdAt)}`;
+
+  return (
+    <div
+      className={`border-b border-gray-100 dark:border-gray-800 transition-colors ${
+        isActive
+          ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-l-blue-500"
+          : "hover:bg-gray-50 dark:hover:bg-gray-800 border-l-2 border-l-transparent"
+      }`}
+    >
+      <div className="flex items-center">
+        <button
+          onClick={() => onSelect(conv.id)}
+          className="flex-1 text-left px-4 pt-2 pb-0.5 min-w-0"
+        >
+          {isEditing ? (
+            <input
+              type="text"
+              value={editValue}
+              onInput={(e) =>
+                onEditChange((e.target as HTMLInputElement).value)
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onEditCommit();
+                if (e.key === "Escape") onEditCancel();
+              }}
+              onBlur={onEditCommit}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full text-xs px-1 py-0.5 border border-blue-400 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 outline-none"
+              autoFocus
+            />
+          ) : (
+            <div
+              className={`text-xs truncate ${isActive ? "font-medium text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}
+            >
+              {displayTitle}
+            </div>
+          )}
+        </button>
+
+        <button
+          onClick={onEditStart}
+          className="px-1 py-1 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
+          aria-label="Rename conversation"
+          title="Rename conversation"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M8.5 1.5l2 2M1 11l.5-2L8.5 2l2 2-7 7-2 .5z" />
+          </svg>
+        </button>
+
+        <button
+          onClick={() => onDelete(conv.id)}
+          className="pr-3 pl-1 py-1 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+          aria-label="Delete conversation"
+          title="Delete conversation"
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 14 14"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2 3.5h10M5 3.5V2.5a1 1 0 011-1h2a1 1 0 011 1v1M11 3.5l-.5 8a1 1 0 01-1 1h-5a1 1 0 01-1-1L3 3.5" />
+          </svg>
+        </button>
+      </div>
+
+      <button
+        onClick={() => onSelect(conv.id)}
+        className="w-full text-left px-4 pt-0.5 pb-2"
+      >
+        <div className="text-[10px] text-gray-400 dark:text-gray-500">
+          {formatTimestampDate(conv.createdAt)},{" "}
+          {formatTimestampTime(conv.createdAt)}
+        </div>
+      </button>
     </div>
   );
 }

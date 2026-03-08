@@ -55,6 +55,7 @@ export interface ConversationPanelState {
   onSelect: (id: string) => void;
   onNew: () => void;
   onDelete: (id: string) => void;
+  onRename: (id: string, title: string | null) => void;
 }
 
 /**
@@ -151,6 +152,7 @@ export function ChatScreen({
           onSelect={conversationPanel.onSelect}
           onNewConversation={conversationPanel.onNew}
           onDelete={conversationPanel.onDelete}
+          onRename={conversationPanel.onRename}
         />
 
         <div className="flex flex-col flex-1 min-w-0">

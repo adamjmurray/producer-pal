@@ -33,6 +33,13 @@ function createProps() {
   };
 }
 
+/** Wait for async effects to settle. */
+async function waitForEffects(): Promise<void> {
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 10));
+  });
+}
+
 describe("useConversations", () => {
   beforeEach(async () => {
     resetDbCache();
@@ -48,9 +55,7 @@ describe("useConversations", () => {
     const { result } = renderHook(() => useConversations(props));
 
     // Wait for async init
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     expect(result.current.conversations).toStrictEqual([]);
     expect(result.current.activeConversationId).toBeNull();
@@ -80,9 +85,7 @@ describe("useConversations", () => {
     const { props, state } = createProps();
     const { result } = renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     state.chatHistory = [{ role: "user", content: "hello" }];
 
@@ -101,9 +104,7 @@ describe("useConversations", () => {
     const { props } = createProps();
     const { result } = renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     await act(async () => {
       await result.current.saveCurrentConversation();
@@ -121,6 +122,7 @@ describe("useConversations", () => {
 
     await saveConversation({
       id: existingId,
+      title: null,
       createdAt: 1000,
       updatedAt: 1000,
       messages: [{ role: "user", content: "existing conversation" }],
@@ -128,9 +130,7 @@ describe("useConversations", () => {
 
     const { result } = renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     // Create a current conversation first
     state.chatHistory = [{ role: "user", content: "current" }];
@@ -155,9 +155,7 @@ describe("useConversations", () => {
     const { props, state } = createProps();
     const { result } = renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     // Save a conversation first
     state.chatHistory = [{ role: "user", content: "hello" }];
@@ -187,6 +185,7 @@ describe("useConversations", () => {
 
     await saveConversation({
       id: existingId,
+      title: null,
       createdAt: 1000,
       updatedAt: 1000,
       messages: [{ role: "user", content: "restored" }],
@@ -196,9 +195,7 @@ describe("useConversations", () => {
     const { props } = createProps();
     const { result } = renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     expect(result.current.activeConversationId).toBe(existingId);
     expect(props.loadConversation).toHaveBeenCalledWith([
@@ -215,9 +212,7 @@ describe("useConversations", () => {
     const { props } = createProps();
     const { result } = renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     expect(result.current.activeConversationId).toBeNull();
     expect(
@@ -230,9 +225,7 @@ describe("useConversations", () => {
     const { props, state } = createProps();
     const { result } = renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     state.chatHistory = [{ role: "user", content: "hello" }];
 
@@ -264,9 +257,7 @@ describe("useConversations", () => {
     const { props, state } = createProps();
     const { result } = renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     // Create a conversation with history
     state.chatHistory = [{ role: "user", content: "hello" }];
@@ -296,9 +287,7 @@ describe("useConversations", () => {
     const { props, state } = createProps();
     const { result } = renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     state.chatHistory = [{ role: "user", content: "hello" }];
 
@@ -324,6 +313,7 @@ describe("useConversations", () => {
 
     await saveConversation({
       id: otherId,
+      title: null,
       createdAt: 1000,
       updatedAt: 1000,
       messages: [{ role: "user", content: "other" }],
@@ -332,9 +322,7 @@ describe("useConversations", () => {
     const { props, state } = createProps();
     const { result } = renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     // Save a current conversation
     state.chatHistory = [{ role: "user", content: "current" }];
@@ -355,14 +343,35 @@ describe("useConversations", () => {
     expect(props.clearConversation).not.toHaveBeenCalled();
   });
 
+  it("renames a conversation and refreshes list", async () => {
+    const { props, state } = createProps();
+    const { result } = renderHook(() => useConversations(props));
+
+    await waitForEffects();
+
+    state.chatHistory = [{ role: "user", content: "hello" }];
+
+    await act(async () => {
+      await result.current.saveCurrentConversation();
+    });
+
+    const id = result.current.activeConversationId!;
+
+    await act(async () => {
+      await result.current.renameConversation(id, "My Title");
+    });
+
+    const conv = result.current.conversations.find((c) => c.id === id);
+
+    expect(conv?.title).toBe("My Title");
+  });
+
   it("fires beforeunload handler to save conversation", async () => {
     const { props, state } = createProps();
 
     renderHook(() => useConversations(props));
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     state.chatHistory = [{ role: "user", content: "save on unload" }];
 
@@ -370,9 +379,7 @@ describe("useConversations", () => {
     window.dispatchEvent(new Event("beforeunload"));
 
     // Give the async save a tick to complete
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 10));
-    });
+    await waitForEffects();
 
     // Verify a conversation was saved
     const db = await getConversationDb();

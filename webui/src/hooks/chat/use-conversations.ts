@@ -9,6 +9,7 @@ import {
   deleteConversation as dbDeleteConversation,
   listConversations,
   loadConversation as dbLoadConversation,
+  renameConversation as dbRenameConversation,
   saveConversation,
 } from "#webui/lib/conversation-db";
 
@@ -29,6 +30,7 @@ export interface UseConversationsReturn {
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
+  renameConversation: (id: string, title: string | null) => Promise<void>;
 }
 
 /**
@@ -50,6 +52,8 @@ export function useConversations({
   >(() => localStorage.getItem(ACTIVE_CONVERSATION_KEY));
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   const activeIdRef = useRef(activeConversationId);
+  const activeTitleRef = useRef<string | null>(null);
+  const activeCreatedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     activeIdRef.current = activeConversationId;
@@ -72,6 +76,8 @@ export function useConversations({
 
         if (record && record.messages.length > 0) {
           loadConversation(record.messages);
+          activeTitleRef.current = record.title;
+          activeCreatedAtRef.current = record.createdAt;
         } else {
           // Stored ID no longer exists in DB
           localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
@@ -97,16 +103,16 @@ export function useConversations({
     setActiveConversationId(id);
     localStorage.setItem(ACTIVE_CONVERSATION_KEY, id);
 
-    let createdAt = now;
+    const existing = isNew ? undefined : await dbLoadConversation(id);
+    const title = existing?.title ?? activeTitleRef.current ?? null;
+    const createdAt = existing?.createdAt ?? activeCreatedAtRef.current ?? now;
 
-    if (!isNew) {
-      const existing = await dbLoadConversation(id);
-
-      createdAt = existing?.createdAt ?? now;
-    }
+    activeTitleRef.current = title;
+    activeCreatedAtRef.current = createdAt;
 
     await saveConversation({
       id,
+      title,
       createdAt,
       updatedAt: now,
       messages: chatHistory as Array<{
@@ -133,6 +139,8 @@ export function useConversations({
       loadConversation(record.messages);
       setActiveConversationId(id);
       activeIdRef.current = id;
+      activeTitleRef.current = record.title;
+      activeCreatedAtRef.current = record.createdAt;
       localStorage.setItem(ACTIVE_CONVERSATION_KEY, id);
     },
     [
@@ -151,6 +159,8 @@ export function useConversations({
     clearConversation();
     setActiveConversationId(null);
     activeIdRef.current = null;
+    activeTitleRef.current = null;
+    activeCreatedAtRef.current = null;
     localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
   }, [getChatHistory, saveCurrentConversation, clearConversation]);
 
@@ -162,12 +172,27 @@ export function useConversations({
         clearConversation();
         setActiveConversationId(null);
         activeIdRef.current = null;
+        activeTitleRef.current = null;
+        activeCreatedAtRef.current = null;
         localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
       }
 
       await refreshList();
     },
     [clearConversation, refreshList],
+  );
+
+  const renameConversation = useCallback(
+    async (id: string, title: string | null) => {
+      await dbRenameConversation(id, title);
+
+      if (id === activeIdRef.current) {
+        activeTitleRef.current = title;
+      }
+
+      await refreshList();
+    },
+    [refreshList],
   );
 
   const togglePanel = useCallback(() => {
@@ -187,7 +212,8 @@ export function useConversations({
       // Best-effort save — IndexedDB writes are async but usually complete
       void saveConversation({
         id,
-        createdAt: now,
+        title: activeTitleRef.current,
+        createdAt: activeCreatedAtRef.current ?? now,
         updatedAt: now,
         messages: chatHistory as Array<{
           role: "user" | "assistant";
@@ -210,5 +236,6 @@ export function useConversations({
     switchConversation,
     startNewConversation,
     deleteConversation,
+    renameConversation,
   };
 }
