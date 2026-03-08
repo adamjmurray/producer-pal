@@ -338,4 +338,14 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       expect.stringContaining("Time position 1|1 has no pitches"),
     );
   });
+
+  it("warns when repeat time position has no pitches", () => {
+    // Repeat pattern with no pitches (multiple positions)
+    interpretNotation("1|1x3@1");
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Time position has no pitches"),
+    );
+  });
 });

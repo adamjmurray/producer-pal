@@ -690,21 +690,28 @@ describe("MCP Express App", () => {
       });
     });
 
-    it("should return 400 for invalid tool names", async () => {
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tools: ["ppal-connect", "ppal-nonexistent"],
-        }),
-      });
+    it.each([
+      {
+        tools: ["ppal-connect", "ppal-nonexistent"],
+        error: "ppal-nonexistent",
+      },
+      { tools: "not-an-array", error: "tools must be an array" },
+    ])(
+      "should return 400 for invalid tools: $error",
+      async ({ tools, error }) => {
+        const response = await fetch(configUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tools }),
+        });
 
-      expect(response.status).toBe(400);
-      const body = await response.json();
+        expect(response.status).toBe(400);
+        const body = await response.json();
 
-      expect(body.error).toContain("ppal-nonexistent");
-      expect(body.validToolNames).toStrictEqual([...TOOL_NAMES]);
-    });
+        expect(body.error).toContain(error);
+        expect(body.validToolNames).toStrictEqual([...TOOL_NAMES]);
+      },
+    );
 
     it("should return 400 when ppal-connect is omitted", async () => {
       const response = await fetch(configUrl, {
@@ -775,35 +782,16 @@ describe("MCP Express App", () => {
   });
 
   describe("Handler Registration", () => {
-    it("should set chatUIEnabled to true with 1", () => {
+    it("should set chatUIEnabled with various inputs", () => {
       const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
         input: unknown,
       ) => void;
 
       expect(chatUIHandler).toBeDefined();
-      // Input 1 should enable
       chatUIHandler(1);
-      // No direct way to verify but coverage should improve
-    });
-
-    it("should set chatUIEnabled to true with 'true'", () => {
-      const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
-        input: unknown,
-      ) => void;
-
-      expect(chatUIHandler).toBeDefined();
       chatUIHandler("true");
-    });
-
-    it("should set chatUIEnabled to false with 0", () => {
-      const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
-        input: unknown,
-      ) => void;
-
-      expect(chatUIHandler).toBeDefined();
       chatUIHandler(0);
-      // Re-enable
-      chatUIHandler(1);
+      chatUIHandler(1); // Re-enable
     });
 
     it("should set smallModelMode with various inputs", () => {

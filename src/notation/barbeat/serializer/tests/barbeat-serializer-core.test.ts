@@ -191,6 +191,23 @@ describe("formatNotation() core", () => {
     );
   });
 
+  it("handles chord where second note has undefined probability", () => {
+    // First note has explicit probability, second has undefined (defaults to 1.0)
+    // Tests the ?? DEFAULT_PROBABILITY fallback in allNotesShareState loop body
+    const notes = [
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 0.8,
+      },
+      { pitch: 64, start_time: 0, duration: 1, velocity: 100 },
+    ] as NoteEvent[];
+
+    expect(formatNotation(notes)).toBe("p0.8 C3 p1 E3 1|1");
+  });
+
   it("throws error for invalid MIDI pitch", () => {
     expect(() =>
       formatNotation([createNote({ pitch: -1 })] as NoteEvent[]),
