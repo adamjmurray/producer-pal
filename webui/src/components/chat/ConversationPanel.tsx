@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
+import { NewConversationIcon } from "#webui/components/chat/controls/ChatHeader";
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import {
@@ -55,9 +56,9 @@ export function ConversationPanel({
         <div className="px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center gap-2">
           <button
             onClick={onNewConversation}
-            className="flex-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           >
-            + New Conversation
+            <NewConversationIcon /> New Conversation
           </button>
           <a
             href={CHAT_UI_DOCS_URL}

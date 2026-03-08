@@ -22,6 +22,7 @@ describe("ChatHeader", () => {
     isHistoryOpen: false,
     onOpenSettings: vi.fn(),
     onToggleHistory: vi.fn(),
+    onNewConversation: vi.fn(),
   };
 
   describe("basic rendering", () => {

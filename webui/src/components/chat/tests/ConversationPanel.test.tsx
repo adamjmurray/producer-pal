@@ -112,7 +112,7 @@ describe("ConversationPanel", () => {
       />,
     );
 
-    fireEvent.click(getByText("+ New Conversation"));
+    fireEvent.click(getByText("New Conversation"));
 
     expect(onNew).toHaveBeenCalledOnce();
   });

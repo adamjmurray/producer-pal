@@ -84,6 +84,7 @@ export interface ConversationPanelState {
  * @param {() => void} props.onStop - Stop response callback
  * @returns {JSX.Element} - React component
  */
+// eslint-disable-next-line max-lines-per-function -- layout component with many props
 export function ChatScreen({
   messages,
   isAssistantResponding,
@@ -91,7 +92,6 @@ export function ChatScreen({
   handleSend,
   handleRetry,
   handleEdit,
-
   activeModel,
   activeProvider,
   provider,
@@ -105,7 +105,6 @@ export function ChatScreen({
   mcpStatus,
   mcpError,
   checkMcpConnection,
-
   onOpenSettings,
   onStop,
   showTimestamps,
@@ -142,6 +141,7 @@ export function ChatScreen({
         isHistoryOpen={conversationPanel.isOpen}
         onOpenSettings={onOpenSettings}
         onToggleHistory={conversationPanel.onToggle}
+        onNewConversation={conversationPanel.onNew}
       />
 
       <div className="flex flex-1 min-h-0">
