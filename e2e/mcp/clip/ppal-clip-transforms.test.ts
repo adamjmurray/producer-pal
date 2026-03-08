@@ -26,6 +26,7 @@ import {
   applyTransform as applyTransformHelper,
   createMidiClip as createMidiClipHelper,
   emptyMidiTrack,
+  parseNotationDuration,
   readClipNotes as readClipNotesHelper,
 } from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
@@ -752,8 +753,8 @@ describe("ppal-clip-transforms (rand, choose, curve)", () => {
     // Duration with rand and multiply operator
     await applyTransform(clipId, "duration = rand(0.5, 1.5)");
     const durNotes = await readClipNotes(clipId);
-    const durations = [...durNotes.matchAll(/t([\d.]+)/g)].map((m) =>
-      Number(m[1]),
+    const durations = [...durNotes.matchAll(/t(\S+)/g)].map((m) =>
+      parseNotationDuration(m[1] as string),
     );
 
     for (const d of durations) {

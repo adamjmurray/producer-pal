@@ -120,6 +120,35 @@ export async function applyTransform(
   return result;
 }
 
+/**
+ * Parse a notation duration value that may be decimal, fraction, or mixed number.
+ * Examples: "0.75", "11/16", "1+1/2", "/4"
+ * @param value - Duration string from notation output
+ * @returns Numeric duration value
+ */
+export function parseNotationDuration(value: string): number {
+  // Mixed number: "1+1/2"
+  const mixedMatch = value.match(/^(\d+)\+(\d+)\/(\d+)$/);
+
+  if (mixedMatch) {
+    return (
+      Number(mixedMatch[1]) + Number(mixedMatch[2]) / Number(mixedMatch[3])
+    );
+  }
+
+  // Fraction: "11/16" or "/4"
+  const fracMatch = value.match(/^(\d*)\/(\d+)$/);
+
+  if (fracMatch) {
+    const num = fracMatch[1] === "" ? 1 : Number(fracMatch[1]);
+
+    return num / Number(fracMatch[2]);
+  }
+
+  // Decimal or integer
+  return Number(value);
+}
+
 type CallToolFn = (args: {
   name: string;
   arguments: Record<string, unknown>;
