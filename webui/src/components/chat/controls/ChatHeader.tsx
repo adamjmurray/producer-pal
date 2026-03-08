@@ -83,6 +83,27 @@ export function ChatHeader({
 
   return (
     <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center">
+      <button
+        onClick={onToggleHistory}
+        className="-ml-2 mr-4 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+        aria-label="Toggle conversation history"
+        title="Conversation history"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 18 18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="2" y="2" width="14" height="14" rx="2" />
+          <line x1="7" y1="2" x2="7" y2="16" />
+        </svg>
+      </button>
+
       <a
         href={CHAT_UI_DOCS_URL}
         target="_blank"
@@ -150,13 +171,6 @@ export function ChatHeader({
             </span>
           </span>
         )}
-        <button
-          onClick={onToggleHistory}
-          className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-          aria-label="History"
-        >
-          ☰<span className="hidden sm:inline"> History</span>
-        </button>
         <button
           onClick={onOpenSettings}
           className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
