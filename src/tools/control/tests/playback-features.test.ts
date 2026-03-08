@@ -82,7 +82,7 @@ describe("transport", () => {
 
       playback({
         action: "play-session-clips",
-        clipIds: "clip1",
+        ids: "clip1",
         focus: true,
       });
 

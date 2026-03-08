@@ -38,7 +38,7 @@ interface SelectArgs {
   trackType?: "return" | "master";
   trackIndex?: number;
   sceneIndex?: number;
-  clipSlot?: string;
+  slot?: string;
   devicePath?: string;
 
   // Internal-only params (used by other tools calling select() directly)
@@ -90,7 +90,7 @@ export function select(
     sceneIndex: args.sceneIndex,
     deviceId,
     devicePath,
-    clipSlot: parsedClipSlot,
+    slot: parsedClipSlot,
   });
 
   if (!resolved.hasArgs) {
@@ -108,7 +108,7 @@ export function select(
     effectiveView = view;
   }
 
-  // Auto-switch to session view for scene/clipSlot (session-only concepts)
+  // Auto-switch to session view for scene/slot (session-only concepts)
   const needsSessionView =
     sceneId != null || args.sceneIndex != null || parsedClipSlot != null;
 
@@ -241,9 +241,7 @@ function resolveArgs(args: SelectArgs): ResolvedArgs {
   }
 
   const parsedClipSlot =
-    typeof args.clipSlot === "string"
-      ? parseClipSlot(args.clipSlot)
-      : undefined;
+    typeof args.slot === "string" ? parseClipSlot(args.slot) : undefined;
 
   const hasSelectionArgs =
     trackId != null ||

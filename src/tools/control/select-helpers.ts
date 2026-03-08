@@ -34,7 +34,7 @@ interface ValidateParametersOptions {
   sceneIndex?: number;
   deviceId?: string;
   devicePath?: string;
-  clipSlot?: { trackIndex: number; sceneIndex: number };
+  slot?: { trackIndex: number; sceneIndex: number };
 }
 
 interface UpdateTrackSelectionOptions {
@@ -106,7 +106,7 @@ export function buildTrackPath(
  * @param options.sceneIndex - Scene index
  * @param options.deviceId - Device ID
  * @param options.devicePath - Device path
- * @param options.clipSlot - Clip slot coordinates
+ * @param options.slot - Clip slot coordinates
  */
 export function validateParameters({
   trackId,
@@ -116,7 +116,7 @@ export function validateParameters({
   sceneIndex,
   deviceId,
   devicePath,
-  clipSlot: _clipSlot,
+  slot: _slot,
 }: ValidateParametersOptions): void {
   // Track selection validation
   if (category === "master" && trackIndex != null) {

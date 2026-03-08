@@ -6,7 +6,7 @@
 /**
  * E2E tests for ppal-select tool
  * Tests view state reading, view switching, selection controls,
- * ID auto-detection, clipSlot, and devicePath.
+ * ID auto-detection, slot, and devicePath.
  *
  * Run with: npm run e2e:mcp -- ppal-select
  */
@@ -169,7 +169,7 @@ describe("ppal-select", () => {
     // Test 12: Select clip slot (occupied)
     const clipSlotResult = await ctx.client!.callTool({
       name: "ppal-select",
-      arguments: { clipSlot: `${emptyMidiTrack}/0` },
+      arguments: { slot: `${emptyMidiTrack}/0` },
     });
     const clipSlot = parseToolResult<SelectResult>(clipSlotResult);
 

@@ -337,7 +337,7 @@ describe("view", () => {
       });
       const songView = setupSongViewMock();
 
-      const result = select({ clipSlot: "1/3" });
+      const result = select({ slot: "1/3" });
 
       expect(songView.set).toHaveBeenCalledWith(
         "highlighted_clip_slot",

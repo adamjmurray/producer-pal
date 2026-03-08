@@ -185,7 +185,7 @@ describe("view", () => {
       expect(result.view).toBe("session");
     });
 
-    it("auto-switches to session view when selecting clipSlot", () => {
+    it("auto-switches to session view when selecting slot", () => {
       const appView = setupAppViewMock();
 
       registerMockObject("clipslot_1_2", {
@@ -195,7 +195,7 @@ describe("view", () => {
       });
       setupSongViewMock();
 
-      const result = select({ clipSlot: "1/2" });
+      const result = select({ slot: "1/2" });
 
       expect(appView.call).toHaveBeenCalledWith("show_view", "Session");
       expect(result.view).toBe("session");
@@ -296,7 +296,7 @@ describe("view", () => {
     });
   });
 
-  describe("clipSlot selection", () => {
+  describe("slot selection", () => {
     it("selects clip in occupied slot", () => {
       const clipSlotMock = registerMockObject("clipslot_0_1", {
         path: livePath.track(0).clipSlot(1),
@@ -311,7 +311,7 @@ describe("view", () => {
       const songView = setupSongViewMock();
       const appView = setupAppViewMock();
 
-      const result = select({ clipSlot: "0/1" });
+      const result = select({ slot: "0/1" });
 
       expect(songView.set).toHaveBeenCalledWith(
         "highlighted_clip_slot",
@@ -338,7 +338,7 @@ describe("view", () => {
       const songView = setupSongViewMock();
       const appView = setupAppViewMock();
 
-      const result = select({ clipSlot: "0/2" });
+      const result = select({ slot: "0/2" });
 
       expect(songView.set).toHaveBeenCalledWith(
         "highlighted_clip_slot",
@@ -355,16 +355,14 @@ describe("view", () => {
       expect(result.selectedClip).toBeUndefined();
     });
 
-    it("throws on invalid clipSlot format", () => {
-      expect(() => select({ clipSlot: "invalid" })).toThrow(
+    it("throws on invalid slot format", () => {
+      expect(() => select({ slot: "invalid" })).toThrow(
         'invalid slot "invalid"',
       );
     });
 
-    it("throws on negative clipSlot values", () => {
-      expect(() => select({ clipSlot: "-1/0" })).toThrow(
-        "must be non-negative",
-      );
+    it("throws on negative slot values", () => {
+      expect(() => select({ slot: "-1/0" })).toThrow("must be non-negative");
     });
   });
 

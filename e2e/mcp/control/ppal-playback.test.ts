@@ -108,7 +108,7 @@ describe("ppal-playback", () => {
       name: "ppal-playback",
       arguments: {
         action: "play-session-clips",
-        clipIds: `${clip1.id},${clip2.id}`,
+        ids: `${clip1.id},${clip2.id}`,
       },
     });
     const playingClips = parseToolResult<PlaybackResult>(playClipsResult);
@@ -122,7 +122,7 @@ describe("ppal-playback", () => {
       name: "ppal-playback",
       arguments: {
         action: "stop-session-clips",
-        clipIds: clip1.id,
+        ids: clip1.id,
       },
     });
     const stoppedClips = parseToolResult<PlaybackResult>(stopClipsResult);

@@ -24,8 +24,8 @@ interface PlaybackActionParams {
   startTimeBeats?: number;
   useLocatorStart: boolean;
   sceneIndex?: number;
-  clipIds?: string;
-  clipSlots?: string;
+  ids?: string;
+  slots?: string;
 }
 
 interface PlaybackArgs {
@@ -38,8 +38,8 @@ interface PlaybackArgs {
   loopEnd?: string;
   loopEndLocator?: string;
   sceneIndex?: number;
-  clipIds?: string;
-  clipSlots?: string;
+  ids?: string;
+  slots?: string;
   focus?: boolean;
 }
 
@@ -72,8 +72,8 @@ interface BuildPlaybackResultParams {
  * @param args.loopEnd - Loop end position in bar|beat format
  * @param args.loopEndLocator - Locator ID or name for loop end
  * @param args.sceneIndex - Scene index for Session view operations
- * @param args.clipIds - Comma-separated clip IDs for Session view operations
- * @param args.clipSlots - Comma-separated trackIndex/sceneIndex slot positions
+ * @param args.ids - Comma-separated clip IDs for Session view operations
+ * @param args.slots - Comma-separated trackIndex/sceneIndex slot positions
  * @param args.focus - Switch to arrangement or session view based on action
  * @param _context - Internal context object (unused, for consistent tool interface)
  * @returns Result with transport state
@@ -89,8 +89,8 @@ export function playback(
     loopEnd,
     loopEndLocator,
     sceneIndex,
-    clipIds,
-    clipSlots,
+    ids,
+    slots,
     focus,
   }: PlaybackArgs = {},
   _context: Partial<ToolContext> = {},
@@ -99,10 +99,8 @@ export function playback(
     throw new Error("playback failed: action is required");
   }
 
-  if (clipIds != null && clipSlots != null) {
-    throw new Error(
-      "playback failed: clipIds and clipSlots are mutually exclusive",
-    );
+  if (ids != null && slots != null) {
+    throw new Error("playback failed: ids and slots are mutually exclusive");
   }
 
   // Validate mutual exclusivity of time and locator parameters
@@ -162,8 +160,8 @@ export function playback(
       startTimeBeats,
       useLocatorStart,
       sceneIndex,
-      clipIds,
-      clipSlots,
+      ids,
+      slots,
     },
     { isPlaying, currentTimeBeats },
   );
@@ -259,21 +257,21 @@ function buildPlaybackResult({
  *
  * @param action - Action name for error messages
  * @param liveSet - LiveAPI instance for live_set
- * @param clipIds - Comma-separated clip IDs
- * @param clipSlots - Comma-separated trackIndex/sceneIndex positions
+ * @param ids - Comma-separated clip IDs
+ * @param slots - Comma-separated trackIndex/sceneIndex positions
  * @param state - Current playback state
  * @returns Updated playback state
  */
 function handlePlaySessionClips(
   action: string,
   liveSet: LiveAPI,
-  clipIds: string | undefined,
-  clipSlots: string | undefined,
+  ids: string | undefined,
+  slots: string | undefined,
   state: PlaybackState,
 ): PlaybackState {
-  const slots = resolveClipSlotPositions(clipIds, clipSlots, action);
+  const resolvedSlots = resolveClipSlotPositions(ids, slots, action);
 
-  for (const { trackIndex, sceneIndex } of slots) {
+  for (const { trackIndex, sceneIndex } of resolvedSlots) {
     const clipSlot = LiveAPI.from(
       livePath.track(trackIndex).clipSlot(sceneIndex),
     );
@@ -289,7 +287,7 @@ function handlePlaySessionClips(
 
   // Fix launch quantization: when playing multiple clips, stop and restart transport
   // to ensure in-sync playback (clips fired after the first are subject to quantization)
-  if (slots.length > 1) {
+  if (resolvedSlots.length > 1) {
     liveSet.call("stop_playing");
     liveSet.call("start_playing");
   }
@@ -304,21 +302,21 @@ function handlePlaySessionClips(
  * Handle stopping specific session clips
  *
  * @param action - Action name for error messages
- * @param clipIds - Comma-separated clip IDs
- * @param clipSlots - Comma-separated trackIndex/sceneIndex positions
+ * @param ids - Comma-separated clip IDs
+ * @param slots - Comma-separated trackIndex/sceneIndex positions
  * @param state - Current playback state
  * @returns Updated playback state
  */
 function handleStopSessionClips(
   action: string,
-  clipIds: string | undefined,
-  clipSlots: string | undefined,
+  ids: string | undefined,
+  slots: string | undefined,
   state: PlaybackState,
 ): PlaybackState {
-  const slots = resolveClipSlotPositions(clipIds, clipSlots, action);
+  const resolvedSlots = resolveClipSlotPositions(ids, slots, action);
   const tracksToStop = new Set<number>();
 
-  for (const { trackIndex } of slots) {
+  for (const { trackIndex } of resolvedSlots) {
     tracksToStop.add(trackIndex);
   }
 
@@ -344,28 +342,28 @@ interface SlotPosition {
 }
 
 /**
- * Resolve clip slot positions from either clipIds or clipSlots parameter
- * @param clipIds - Comma-separated clip IDs
- * @param clipSlots - Comma-separated trackIndex/sceneIndex positions
+ * Resolve clip slot positions from either ids or slots parameter
+ * @param ids - Comma-separated clip IDs
+ * @param slots - Comma-separated trackIndex/sceneIndex positions
  * @param action - Action name for error messages
  * @returns Array of slot positions
  */
 function resolveClipSlotPositions(
-  clipIds: string | undefined,
-  clipSlots: string | undefined,
+  ids: string | undefined,
+  slots: string | undefined,
   action: string,
 ): SlotPosition[] {
-  if (clipSlots != null) {
-    return parseSlotList(clipSlots);
+  if (slots != null) {
+    return parseSlotList(slots);
   }
 
-  if (clipIds == null) {
+  if (ids == null) {
     throw new Error(
-      `playback failed: clipIds or clipSlots is required for action "${action}"`,
+      `playback failed: ids or slots is required for action "${action}"`,
     );
   }
 
-  const clipIdList = parseCommaSeparatedIds(clipIds);
+  const clipIdList = parseCommaSeparatedIds(ids);
   const clips = validateIdTypes(clipIdList, "clip", "playback", {
     skipInvalid: true,
   });
@@ -398,14 +396,8 @@ function handlePlaybackAction(
   params: PlaybackActionParams,
   state: PlaybackState,
 ): PlaybackState {
-  const {
-    startTime,
-    startTimeBeats,
-    useLocatorStart,
-    sceneIndex,
-    clipIds,
-    clipSlots,
-  } = params;
+  const { startTime, startTimeBeats, useLocatorStart, sceneIndex, ids, slots } =
+    params;
 
   switch (action) {
     case "play-arrangement":
@@ -425,10 +417,10 @@ function handlePlaybackAction(
       return handlePlayScene(sceneIndex, state);
 
     case "play-session-clips":
-      return handlePlaySessionClips(action, liveSet, clipIds, clipSlots, state);
+      return handlePlaySessionClips(action, liveSet, ids, slots, state);
 
     case "stop-session-clips":
-      return handleStopSessionClips(action, clipIds, clipSlots, state);
+      return handleStopSessionClips(action, ids, slots, state);
 
     case "stop-all-session-clips":
       liveSet.call("stop_all_clips");

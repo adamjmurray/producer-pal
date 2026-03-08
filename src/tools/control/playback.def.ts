@@ -55,11 +55,11 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("locator ID or name for loop end"),
-    clipIds: z.coerce
+    ids: z.coerce
       .string()
       .optional()
       .describe("comma-separated ID(s) for clip operations"),
-    clipSlots: z
+    slots: z
       .string()
       .optional()
       .describe(
