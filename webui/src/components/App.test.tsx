@@ -26,12 +26,17 @@ vi.mock(import("#webui/hooks/chat/use-chat"), () => ({
   useChat: vi.fn(),
 }));
 
+vi.mock(import("#webui/hooks/chat/use-conversations"), () => ({
+  useConversations: vi.fn(),
+}));
+
 vi.mock(import("#webui/hooks/connection/use-remote-config"), () => ({
   useRemoteConfig: vi.fn(),
 }));
 
 // Import mocked modules to access them in tests
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { useSettings } from "#webui/hooks/settings/use-settings";
@@ -93,6 +98,17 @@ describe("App", () => {
       checkMcpConnection: vi.fn(),
     });
     (useChat as ReturnType<typeof vi.fn>).mockReturnValue(mockChatHook);
+    (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
+      conversations: [],
+      activeConversationId: null,
+      isPanelOpen: false,
+      togglePanel: vi.fn(),
+      saveCurrentConversation: vi.fn(),
+      switchConversation: vi.fn(),
+      startNewConversation: vi.fn(),
+      deleteConversation: vi.fn(),
+      renameConversation: vi.fn(),
+    });
     (useRemoteConfig as ReturnType<typeof vi.fn>).mockReturnValue({
       smallModelMode: false,
       setSmallModelMode: vi.fn(),
@@ -591,6 +607,119 @@ describe("App", () => {
         render(<App />);
         expect(getExtraParams().baseUrl).toBe("http://localhost:8080/api");
       });
+    });
+  });
+
+  describe("conversation management", () => {
+    it("calls startNewConversation on new conversation without closing panel", () => {
+      const mockStartNew = vi.fn();
+      const mockToggle = vi.fn();
+
+      (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
+        conversations: [],
+        activeConversationId: null,
+        isPanelOpen: true,
+        togglePanel: mockToggle,
+        saveCurrentConversation: vi.fn(),
+        switchConversation: vi.fn(),
+        startNewConversation: mockStartNew,
+        deleteConversation: vi.fn(),
+        renameConversation: vi.fn(),
+      });
+      const { container } = render(<App />);
+      const newButton = Array.from(container.querySelectorAll("button")).find(
+        (btn) => btn.textContent.includes("New Conversation"),
+      );
+
+      expect(newButton).toBeDefined();
+
+      if (newButton) fireEvent.click(newButton);
+
+      expect(mockStartNew).toHaveBeenCalledOnce();
+      expect(mockToggle).not.toHaveBeenCalled();
+    });
+
+    it("calls switchConversation on select without closing panel", () => {
+      const mockSwitch = vi.fn();
+      const mockToggle = vi.fn();
+
+      (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
+        conversations: [
+          { id: "conv-1", title: null, createdAt: 1000, updatedAt: 2000 },
+        ],
+        activeConversationId: null,
+        isPanelOpen: true,
+        togglePanel: mockToggle,
+        saveCurrentConversation: vi.fn(),
+        switchConversation: mockSwitch,
+        startNewConversation: vi.fn(),
+        deleteConversation: vi.fn(),
+        renameConversation: vi.fn(),
+      });
+      const { container } = render(<App />);
+
+      // Find conversation item and click its select button
+      const convItem = container.querySelector(
+        "div[class*='border-l-transparent']",
+      );
+
+      expect(convItem).toBeDefined();
+      const selectButton = convItem?.querySelector("button");
+
+      if (selectButton) fireEvent.click(selectButton);
+
+      expect(mockSwitch).toHaveBeenCalledWith("conv-1");
+      expect(mockToggle).not.toHaveBeenCalled();
+    });
+
+    it("calls deleteConversation on delete button click", () => {
+      const mockDelete = vi.fn();
+
+      (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
+        conversations: [
+          { id: "conv-1", title: null, createdAt: 1000, updatedAt: 2000 },
+        ],
+        activeConversationId: null,
+        isPanelOpen: true,
+        togglePanel: vi.fn(),
+        saveCurrentConversation: vi.fn(),
+        switchConversation: vi.fn(),
+        startNewConversation: vi.fn(),
+        deleteConversation: mockDelete,
+        renameConversation: vi.fn(),
+      });
+      const { getByLabelText } = render(<App />);
+
+      fireEvent.click(getByLabelText("Delete conversation"));
+
+      expect(mockDelete).toHaveBeenCalledWith("conv-1");
+    });
+
+    it("calls renameConversation on rename", () => {
+      const mockRename = vi.fn();
+
+      (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
+        conversations: [
+          { id: "conv-1", title: "Old", createdAt: 1000, updatedAt: 2000 },
+        ],
+        activeConversationId: null,
+        isPanelOpen: true,
+        togglePanel: vi.fn(),
+        saveCurrentConversation: vi.fn(),
+        switchConversation: vi.fn(),
+        startNewConversation: vi.fn(),
+        deleteConversation: vi.fn(),
+        renameConversation: mockRename,
+      });
+      const { getByLabelText, container } = render(<App />);
+
+      fireEvent.click(getByLabelText("Rename conversation"));
+      const input = container.querySelector("input") as HTMLInputElement;
+
+      fireEvent.input(input, { target: { value: "New Title" } });
+      fireEvent.keyDown(input, { key: "Enter" });
+
+      expect(mockRename).toHaveBeenCalledWith("conv-1", "New Title");
     });
   });
 });

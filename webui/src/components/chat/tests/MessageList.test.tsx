@@ -14,16 +14,16 @@ import {
 } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
-import { MessageList } from "./MessageList";
+import { MessageList } from "#webui/components/chat/MessageList";
 
 // Mock child components
-vi.mock(import("./controls/ActivityIndicator"), () => ({
+vi.mock(import("#webui/components/chat/controls/ActivityIndicator"), () => ({
   ActivityIndicator: () => (
     <div data-testid="activity-indicator">Loading...</div>
   ),
 }));
 
-vi.mock(import("./assistant/AssistantMessage"), () => ({
+vi.mock(import("#webui/components/chat/assistant/AssistantMessage"), () => ({
   AssistantMessage: ({ parts }: { parts: unknown[] }) => (
     <div data-testid="assistant-message">
       {parts.map((p, i: number) => {

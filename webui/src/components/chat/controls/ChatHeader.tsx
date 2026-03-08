@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
-import { CHAT_UI_DOCS_URL, getModelName } from "#webui/lib/config";
+import { getModelName } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 
 interface ChatHeaderProps {
@@ -15,9 +15,9 @@ interface ChatHeaderProps {
   enabledToolsCount: number;
   totalToolsCount: number;
   smallModelMode: boolean;
-  hasMessages: boolean;
+  isHistoryOpen: boolean;
   onOpenSettings: () => void;
-  onClearConversation: () => void;
+  onToggleHistory: () => void;
 }
 
 /**
@@ -55,9 +55,7 @@ function getProviderName(provider: Provider): string {
  * @param {number} props.enabledToolsCount - Number of enabled tools
  * @param {number} props.totalToolsCount - Total number of available tools
  * @param {boolean} props.smallModelMode - Whether small model mode is active
- * @param {boolean} props.hasMessages - Whether conversation has messages
  * @param {() => void} props.onOpenSettings - Callback to open settings
- * @param {() => void} props.onClearConversation - Callback to clear conversation
  * @returns {JSX.Element} - React component
  */
 export function ChatHeader({
@@ -69,23 +67,48 @@ export function ChatHeader({
   enabledToolsCount,
   totalToolsCount,
   smallModelMode,
-  hasMessages,
-  onOpenSettings,
-  onClearConversation,
-}: ChatHeaderProps) {
-  const handleRestart = () => {
-    if (window.confirm("Clear all messages and restart conversation?")) {
-      onClearConversation();
-    }
-  };
 
+  isHistoryOpen,
+  onOpenSettings,
+  onToggleHistory,
+}: ChatHeaderProps) {
   return (
     <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center">
-      <a
-        href={CHAT_UI_DOCS_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="relative flex items-center pl-9 hover:opacity-80 transition-opacity"
+      <button
+        onClick={onToggleHistory}
+        className="-ml-2 mr-4 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+        aria-label="Toggle conversation history"
+        title="Conversation history"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 18 18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="2" y="2" width="14" height="14" rx="2" />
+          <line x1="7" y1="2" x2="7" y2="16" />
+          {isHistoryOpen && (
+            <rect
+              x="2.75"
+              y="2.75"
+              width="4.25"
+              height="12.5"
+              rx="1.25"
+              fill="currentColor"
+              stroke="none"
+            />
+          )}
+        </svg>
+      </button>
+
+      <button
+        onClick={onToggleHistory}
+        className="relative flex items-center pl-9 hover:opacity-80 transition-opacity bg-transparent border-none cursor-pointer"
       >
         <img
           src={logoSvg}
@@ -95,7 +118,8 @@ export function ChatHeader({
         <h1 className="hidden md:inline text-lg font-semibold">
           Producer Pal Chat
         </h1>
-      </a>
+      </button>
+
       <div className="ml-2 flex gap-1 text-xs">
         {mcpStatus === "connected" && (
           <span className="text-green-600 dark:text-green-400">✓ Ready</span>
@@ -110,24 +134,7 @@ export function ChatHeader({
         )}
       </div>
 
-      {hasMessages && <div className="flex-1" />}
-      {hasMessages && (
-        <button
-          onClick={handleRestart}
-          className="hidden sm:inline-block text-xs px-2 py-1 border border-red-500 text-red-500 bg-transparent hover:bg-red-500 hover:text-white rounded transition-colors"
-        >
-          Restart
-        </button>
-      )}
-      {hasMessages && <div className="flex-1" />}
-
-      <div
-        className={
-          hasMessages
-            ? "flex gap-3 items-baseline"
-            : "ml-auto flex gap-3 items-baseline"
-        }
-      >
+      <div className="ml-auto flex gap-3 items-baseline">
         <span className="text-xs text-gray-500 dark:text-gray-400">
           <span className="hidden lg:inline">
             {getProviderName(activeProvider ?? provider)} |{" "}

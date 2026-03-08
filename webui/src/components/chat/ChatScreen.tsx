@@ -7,12 +7,14 @@ import {
   type MessageOverrides,
   type RateLimitState,
 } from "#webui/hooks/chat/use-chat";
+import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 import { ChatStart } from "./ChatStart";
 import { ChatHeader } from "./controls/ChatHeader";
 import { ChatInput } from "./controls/ChatInput";
 import { RateLimitIndicator } from "./controls/RateLimitIndicator";
+import { ConversationPanel } from "./ConversationPanel";
 import { MessageList } from "./MessageList";
 
 /**
@@ -39,9 +41,21 @@ interface ChatScreenProps {
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
   onOpenSettings: () => void;
-  onClearConversation: () => void;
   onStop: () => void;
   showTimestamps: boolean;
+  conversationPanel: ConversationPanelState;
+}
+
+/** State and handlers for the conversation history panel */
+export interface ConversationPanelState {
+  conversations: ConversationSummary[];
+  activeConversationId: string | null;
+  isOpen: boolean;
+  onToggle: () => void;
+  onSelect: (id: string) => void;
+  onNew: () => void;
+  onDelete: (id: string) => void;
+  onRename: (id: string, title: string | null) => void;
 }
 
 /**
@@ -67,7 +81,6 @@ interface ChatScreenProps {
  * @param {string | null} props.mcpError - MCP error message
  * @param {() => Promise<void>} props.checkMcpConnection - Check MCP connection callback
  * @param {() => void} props.onOpenSettings - Open settings callback
- * @param {() => void} props.onClearConversation - Clear conversation callback
  * @param {() => void} props.onStop - Stop response callback
  * @returns {JSX.Element} - React component
  */
@@ -94,9 +107,9 @@ export function ChatScreen({
   checkMcpConnection,
 
   onOpenSettings,
-  onClearConversation,
   onStop,
   showTimestamps,
+  conversationPanel,
 }: ChatScreenProps) {
   // Per-message override state (lifted from ChatInput so ChatStart can also use it)
   const [thinking, setThinking] = useState(defaultThinking);
@@ -126,57 +139,71 @@ export function ChatScreen({
         enabledToolsCount={enabledToolsCount}
         totalToolsCount={totalToolsCount}
         smallModelMode={smallModelMode}
-        hasMessages={messages.length > 0}
+        isHistoryOpen={conversationPanel.isOpen}
         onOpenSettings={onOpenSettings}
-        onClearConversation={onClearConversation}
+        onToggleHistory={conversationPanel.onToggle}
       />
 
-      <div class="flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
-          <ChatStart
-            mcpStatus={mcpStatus}
-            mcpError={mcpError}
-            checkMcpConnection={checkMcpConnection}
-            handleSend={handleSend}
-            overrides={currentOverrides}
-          />
-        ) : (
-          <MessageList
-            messages={messages}
-            isAssistantResponding={isAssistantResponding}
-            handleRetry={handleRetry}
-            handleEdit={handleEdit}
-            showTimestamps={showTimestamps}
-          />
-        )}
-      </div>
-
-      {rateLimitState?.isRetrying && (
-        <RateLimitIndicator
-          retryAttempt={rateLimitState.attempt}
-          maxAttempts={rateLimitState.maxAttempts}
-          retryDelayMs={rateLimitState.delayMs}
-          onCancel={onStop}
+      <div className="flex flex-1 min-h-0">
+        <ConversationPanel
+          isOpen={conversationPanel.isOpen}
+          conversations={conversationPanel.conversations}
+          activeConversationId={conversationPanel.activeConversationId}
+          onSelect={conversationPanel.onSelect}
+          onNewConversation={conversationPanel.onNew}
+          onDelete={conversationPanel.onDelete}
+          onRename={conversationPanel.onRename}
         />
-      )}
 
-      <ChatInput
-        handleSend={handleSend}
-        isAssistantResponding={isAssistantResponding}
-        onStop={onStop}
-        provider={provider}
-        model={model}
-        defaultThinking={defaultThinking}
-        defaultTemperature={defaultTemperature}
-        defaultShowThoughts={defaultShowThoughts}
-        thinking={thinking}
-        temperature={temperature}
-        showThoughts={showThoughts}
-        onThinkingChange={setThinking}
-        onTemperatureChange={setTemperature}
-        onShowThoughtsChange={setShowThoughts}
-        onResetToDefaults={handleResetToDefaults}
-      />
+        <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex-1 overflow-y-auto">
+            {messages.length === 0 ? (
+              <ChatStart
+                mcpStatus={mcpStatus}
+                mcpError={mcpError}
+                checkMcpConnection={checkMcpConnection}
+                handleSend={handleSend}
+                overrides={currentOverrides}
+              />
+            ) : (
+              <MessageList
+                messages={messages}
+                isAssistantResponding={isAssistantResponding}
+                handleRetry={handleRetry}
+                handleEdit={handleEdit}
+                showTimestamps={showTimestamps}
+              />
+            )}
+          </div>
+
+          {rateLimitState?.isRetrying && (
+            <RateLimitIndicator
+              retryAttempt={rateLimitState.attempt}
+              maxAttempts={rateLimitState.maxAttempts}
+              retryDelayMs={rateLimitState.delayMs}
+              onCancel={onStop}
+            />
+          )}
+
+          <ChatInput
+            handleSend={handleSend}
+            isAssistantResponding={isAssistantResponding}
+            onStop={onStop}
+            provider={provider}
+            model={model}
+            defaultThinking={defaultThinking}
+            defaultTemperature={defaultTemperature}
+            defaultShowThoughts={defaultShowThoughts}
+            thinking={thinking}
+            temperature={temperature}
+            showThoughts={showThoughts}
+            onThinkingChange={setThinking}
+            onTemperatureChange={setTemperature}
+            onShowThoughtsChange={setShowThoughts}
+            onResetToDefaults={handleResetToDefaults}
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -540,6 +540,117 @@ describe("useChat", () => {
     });
   });
 
+  describe("getChatHistory", () => {
+    it("returns empty array when no client and no pending history", () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      expect(result.current.getChatHistory()).toStrictEqual([]);
+    });
+
+    it("returns client chatHistory when client exists", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      const history = result.current.getChatHistory();
+
+      expect(history.length).toBeGreaterThan(0);
+    });
+
+    it("returns pending history after loadConversation", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+      const history = [
+        { role: "user" as const, content: "saved message" },
+        { role: "assistant" as const, content: "saved response" },
+      ];
+
+      await act(async () => {
+        result.current.loadConversation(history);
+      });
+
+      expect(result.current.getChatHistory()).toStrictEqual(history);
+    });
+  });
+
+  describe("loadConversation", () => {
+    it("sets messages from loaded history", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+      const history = [
+        { role: "user" as const, content: "hello" },
+        { role: "assistant" as const, content: "hi" },
+      ];
+
+      await act(async () => {
+        result.current.loadConversation(history);
+      });
+
+      expect(result.current.messages).toHaveLength(2);
+      expect(mockAdapter.formatMessages).toHaveBeenCalledWith(history);
+    });
+
+    it("resets active state", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      expect(result.current.activeModel).toBe("test-model");
+
+      await act(async () => {
+        result.current.loadConversation([]);
+      });
+
+      expect(result.current.activeModel).toBeNull();
+      expect(result.current.activeProvider).toBeNull();
+    });
+
+    it("uses pending history on next handleSend", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+      const history = [
+        { role: "user" as const, content: "prior msg" },
+        { role: "assistant" as const, content: "prior response" },
+      ];
+
+      await act(async () => {
+        result.current.loadConversation(history);
+      });
+
+      await act(async () => {
+        await result.current.handleSend("New message");
+      });
+
+      // buildConfig should have been called with the pending history
+      expect(mockAdapter.buildConfig).toHaveBeenCalledWith(
+        "test-model",
+        1.0,
+        "Default",
+        {},
+        history,
+        undefined,
+      );
+    });
+
+    it("clears pending history after clearConversation", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        result.current.loadConversation([
+          { role: "user" as const, content: "test" },
+        ]);
+      });
+
+      await act(async () => {
+        result.current.clearConversation();
+      });
+
+      expect(result.current.getChatHistory()).toStrictEqual([]);
+      expect(result.current.messages).toStrictEqual([]);
+    });
+  });
+
   describe("rate limit handling", () => {
     it("sets rateLimitState when rate limit error occurs", async () => {
       const { adapter } = createRateLimitAdapter();

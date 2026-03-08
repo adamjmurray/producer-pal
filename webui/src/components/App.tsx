@@ -3,10 +3,17 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState, useEffect, useMemo, useRef } from "preact/hooks";
+import {
+  useCallback,
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+} from "preact/hooks";
 import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
@@ -119,6 +126,48 @@ export function App() {
   const { chat, wrappedHandleSend, wrappedClearConversation } =
     useConversationLock({ chat: aiSdkChat });
 
+  const conversationManager = useConversations({
+    getChatHistory: chat.getChatHistory,
+    loadConversation: chat.loadConversation,
+    clearConversation: wrappedClearConversation,
+  });
+
+  // Auto-save after each completed assistant turn
+  const wasRespondingRef = useRef(false);
+
+  useEffect(() => {
+    if (wasRespondingRef.current && !chat.isAssistantResponding) {
+      void conversationManager.saveCurrentConversation();
+    }
+
+    wasRespondingRef.current = chat.isAssistantResponding;
+  }, [chat.isAssistantResponding, conversationManager]);
+
+  const handleNewConversation = useCallback(() => {
+    void conversationManager.startNewConversation();
+  }, [conversationManager]);
+
+  const handleSelectConversation = useCallback(
+    (id: string) => {
+      void conversationManager.switchConversation(id);
+    },
+    [conversationManager],
+  );
+
+  const handleDeleteConversation = useCallback(
+    (id: string) => {
+      void conversationManager.deleteConversation(id);
+    },
+    [conversationManager],
+  );
+
+  const handleRenameConversation = useCallback(
+    (id: string, title: string | null) => {
+      void conversationManager.renameConversation(id, title);
+    },
+    [conversationManager],
+  );
+
   // Calculate tools counts for header display
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
@@ -220,9 +269,18 @@ export function App() {
         mcpError={mcpError}
         checkMcpConnection={checkMcpConnection}
         onOpenSettings={() => setShowSettings(true)}
-        onClearConversation={wrappedClearConversation}
         onStop={chat.stopResponse}
         showTimestamps={showTimestamps}
+        conversationPanel={{
+          conversations: conversationManager.conversations,
+          activeConversationId: conversationManager.activeConversationId,
+          isOpen: conversationManager.isPanelOpen,
+          onToggle: conversationManager.togglePanel,
+          onSelect: handleSelectConversation,
+          onNew: handleNewConversation,
+          onDelete: handleDeleteConversation,
+          onRename: handleRenameConversation,
+        }}
       />
     </ToolNamesContext.Provider>
   );

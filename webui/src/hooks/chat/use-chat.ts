@@ -68,12 +68,14 @@ export function useChat<
     null,
   );
   const clientRef = useRef<TClient | null>(null);
+  const pendingHistoryRef = useRef<TMessage[] | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const retryAbortRef = useRef<AbortController | null>(null);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
     clientRef.current = null;
+    pendingHistoryRef.current = null;
     setActiveModel(null);
     setActiveProvider(null);
     setActiveThinking(null);
@@ -81,6 +83,26 @@ export function useChat<
     setRateLimitState(null);
     retryAbortRef.current?.abort();
   }, []);
+
+  const getChatHistory = useCallback(
+    (): unknown[] =>
+      clientRef.current?.chatHistory ?? pendingHistoryRef.current ?? [],
+    [],
+  );
+
+  const loadConversation = useCallback(
+    (chatHistory: unknown[]) => {
+      clientRef.current = null;
+      pendingHistoryRef.current = chatHistory as TMessage[];
+      setMessages(adapter.formatMessages(chatHistory as TMessage[]));
+      setActiveModel(null);
+      setActiveProvider(null);
+      setActiveThinking(null);
+      setActiveTemperature(null);
+      setRateLimitState(null);
+    },
+    [adapter],
+  );
 
   const stopResponse = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -135,7 +157,7 @@ export function useChat<
   const executeWithRetry = useCallback(
     async (
       executeStream: (message: string) => AsyncIterable<TMessage[]>,
-      getChatHistory: () => TMessage[],
+      getHistory: () => TMessage[],
       originalMessage: string,
     ): Promise<void> => {
       let attempt = 0;
@@ -174,7 +196,7 @@ export function useChat<
 
           if (!rateLimitInfo.isRateLimited || !shouldRetry(attempt + 1)) {
             // Not a rate limit error or no more retries - show error
-            setMessages(adapter.createErrorMessage(error, getChatHistory()));
+            setMessages(adapter.createErrorMessage(error, getHistory()));
             setRateLimitState(null);
 
             return;
@@ -235,7 +257,10 @@ export function useChat<
 
       try {
         if (!clientRef.current) {
-          await initializeChat(undefined, options);
+          const pendingHistory = pendingHistoryRef.current ?? undefined;
+
+          pendingHistoryRef.current = null;
+          await initializeChat(pendingHistory, options);
         }
 
         const client = clientRef.current;
@@ -357,5 +382,7 @@ export function useChat<
     handleEdit,
     clearConversation,
     stopResponse,
+    getChatHistory,
+    loadConversation,
   };
 }

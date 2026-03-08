@@ -8,14 +8,13 @@
 import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
-import { ChatScreen } from "./ChatScreen";
+import { ChatScreen } from "#webui/components/chat/ChatScreen";
 
 describe("ChatScreen", () => {
   const mockHandleSend = vi.fn();
   const mockHandleRetry = vi.fn();
   const mockCheckMcpConnection = vi.fn();
   const mockOnOpenSettings = vi.fn();
-  const mockOnClearConversation = vi.fn();
   const mockOnStop = vi.fn();
 
   const defaultProps = {
@@ -39,9 +38,18 @@ describe("ChatScreen", () => {
     mcpError: null,
     checkMcpConnection: mockCheckMcpConnection,
     onOpenSettings: mockOnOpenSettings,
-    onClearConversation: mockOnClearConversation,
     onStop: mockOnStop,
     showTimestamps: true,
+    conversationPanel: {
+      conversations: [],
+      activeConversationId: null,
+      isOpen: false,
+      onToggle: vi.fn(),
+      onSelect: vi.fn(),
+      onNew: vi.fn(),
+      onDelete: vi.fn(),
+      onRename: vi.fn(),
+    },
   };
 
   describe("basic rendering", () => {
