@@ -53,12 +53,21 @@ async function setupHook() {
   return { props, state, result };
 }
 
+/**
+ * Read the conversation ID from the current URL hash.
+ * @returns The hash value without the leading #, or empty string
+ */
+function getHash(): string {
+  return window.location.hash.slice(1);
+}
+
 describe("useConversations", () => {
   beforeEach(async () => {
     resetDbCache();
     const db = await getConversationDb();
 
     await db.clear("conversations");
+    window.location.hash = "";
     localStorage.clear();
     vi.clearAllMocks();
   });
@@ -68,29 +77,9 @@ describe("useConversations", () => {
 
     expect(result.current.conversations).toStrictEqual([]);
     expect(result.current.activeConversationId).toBeNull();
-    expect(result.current.isPanelOpen).toBe(false);
   });
 
-  it("toggles panel open and closed", async () => {
-    const { props } = createProps();
-    const { result } = renderHook(() => useConversations(props));
-
-    expect(result.current.isPanelOpen).toBe(false);
-
-    await act(async () => {
-      result.current.togglePanel();
-    });
-
-    expect(result.current.isPanelOpen).toBe(true);
-
-    await act(async () => {
-      result.current.togglePanel();
-    });
-
-    expect(result.current.isPanelOpen).toBe(false);
-  });
-
-  it("saves current conversation and assigns an ID", async () => {
+  it("saves current conversation and updates URL hash", async () => {
     const { state, result } = await setupHook();
 
     state.chatHistory = [{ role: "user", content: "hello" }];
@@ -101,9 +90,7 @@ describe("useConversations", () => {
 
     expect(result.current.activeConversationId).not.toBeNull();
     expect(result.current.conversations).toHaveLength(1);
-    expect(localStorage.getItem("producer_pal_active_conversation_id")).toBe(
-      result.current.activeConversationId,
-    );
+    expect(getHash()).toBe(result.current.activeConversationId);
   });
 
   it("does not save when chat history is empty", async () => {
@@ -154,7 +141,7 @@ describe("useConversations", () => {
     ]);
   });
 
-  it("starts a new conversation", async () => {
+  it("starts a new conversation and clears hash", async () => {
     const { props, state, result } = await setupHook();
 
     // Save a conversation first
@@ -175,12 +162,10 @@ describe("useConversations", () => {
 
     expect(result.current.activeConversationId).toBeNull();
     expect(props.clearConversation).toHaveBeenCalled();
-    expect(
-      localStorage.getItem("producer_pal_active_conversation_id"),
-    ).toBeNull();
+    expect(getHash()).toBe("");
   });
 
-  it("restores last active conversation on mount", async () => {
+  it("restores conversation from URL hash on mount", async () => {
     const existingId = crypto.randomUUID();
 
     await saveConversation({
@@ -190,7 +175,7 @@ describe("useConversations", () => {
       updatedAt: 1000,
       messages: [{ role: "user", content: "restored" }],
     });
-    localStorage.setItem("producer_pal_active_conversation_id", existingId);
+    window.location.hash = existingId;
 
     const { props } = createProps();
     const { result } = renderHook(() => useConversations(props));
@@ -203,11 +188,8 @@ describe("useConversations", () => {
     ]);
   });
 
-  it("clears stored ID when referenced conversation no longer exists", async () => {
-    localStorage.setItem(
-      "producer_pal_active_conversation_id",
-      "nonexistent-id",
-    );
+  it("clears hash when referenced conversation no longer exists", async () => {
+    window.location.hash = "nonexistent-id";
 
     const { props } = createProps();
     const { result } = renderHook(() => useConversations(props));
@@ -215,9 +197,7 @@ describe("useConversations", () => {
     await waitForEffects();
 
     expect(result.current.activeConversationId).toBeNull();
-    expect(
-      localStorage.getItem("producer_pal_active_conversation_id"),
-    ).toBeNull();
+    expect(getHash()).toBe("");
     expect(props.restoreChatHistory).not.toHaveBeenCalled();
   });
 
@@ -262,7 +242,7 @@ describe("useConversations", () => {
 
     expect(result.current.conversations).toHaveLength(1);
 
-    // Start new — should auto-save (line 146 coverage)
+    // Start new — should auto-save
     state.chatHistory = [
       { role: "user", content: "hello" },
       { role: "assistant", content: "hi" },
@@ -377,6 +357,57 @@ describe("useConversations", () => {
     expect(all[0]?.messages).toStrictEqual([
       { role: "user", content: "save on unload" },
     ]);
+  });
+
+  describe("hashchange navigation", () => {
+    it("switches conversation on browser back/forward to a valid hash", async () => {
+      const existingId = crypto.randomUUID();
+
+      await saveConversation({
+        id: existingId,
+        title: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+        messages: [{ role: "user", content: "from hash" }],
+      });
+
+      const { props, result } = await setupHook();
+
+      // Simulate browser back/forward by setting hash and dispatching event
+      window.location.hash = existingId;
+      await act(async () => {
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(result.current.activeConversationId).toBe(existingId);
+      expect(props.restoreChatHistory).toHaveBeenCalledWith([
+        { role: "user", content: "from hash" },
+      ]);
+    });
+
+    it("starts new conversation on browser back to empty hash", async () => {
+      const { props, state, result } = await setupHook();
+
+      // First create an active conversation
+      state.chatHistory = [{ role: "user", content: "hello" }];
+
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      expect(result.current.activeConversationId).not.toBeNull();
+
+      // Simulate browser back to empty hash
+      history.replaceState(null, "", window.location.pathname);
+      await act(async () => {
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(result.current.activeConversationId).toBeNull();
+      expect(props.clearConversation).toHaveBeenCalled();
+    });
   });
 
   describe("auto-title derivation", () => {

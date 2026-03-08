@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState } from "preact/hooks";
 import {
   type McpStatus,
   type McpTool,
@@ -18,6 +17,8 @@ import { SettingsFooter } from "./SettingsFooter";
 import { type TabId, SettingsTabs } from "./SettingsTabs";
 
 interface SettingsScreenProps {
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
   provider: Provider;
   setProvider: (provider: Provider) => void;
   apiKey: string;
@@ -78,6 +79,8 @@ function getProviderLabel(provider: string): string {
 /**
  * Settings screen component
  * @param {object} props - Component props
+ * @param {TabId} props.activeTab - Currently active settings tab
+ * @param {Function} props.onTabChange - Callback when settings tab changes
  * @param {Provider} props.provider - Selected provider
  * @param {Function} props.setProvider - Function to update provider
  * @param {string} props.apiKey - API key for the provider
@@ -109,6 +112,8 @@ function getProviderLabel(provider: string): string {
  * @returns {JSX.Element} Settings screen component
  */
 export function SettingsScreen({
+  activeTab,
+  onTabChange,
   provider,
   setProvider,
   apiKey,
@@ -139,7 +144,6 @@ export function SettingsScreen({
   settingsConfigured,
 }: SettingsScreenProps) {
   const providerLabel = getProviderLabel(provider);
-  const [activeTab, setActiveTab] = useState<TabId>("connection");
 
   return (
     <div className="flex justify-center min-h-screen p-4 pt-20">
@@ -157,7 +161,7 @@ export function SettingsScreen({
           </a>
         </div>
 
-        <SettingsTabs activeTab={activeTab} onTabChange={setActiveTab}>
+        <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>
           {() => (
             <div className="space-y-4">
               {/* Connection Tab */}

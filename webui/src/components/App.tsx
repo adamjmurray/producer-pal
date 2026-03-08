@@ -19,8 +19,10 @@ import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
+import { useViewState } from "#webui/hooks/use-view-state";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
+import { type TabId } from "./settings/SettingsTabs";
 
 // Placeholder API key for local providers that don't require authentication
 const LOCAL_PROVIDER_API_KEY = "not-needed";
@@ -80,6 +82,7 @@ function getBaseUrl(
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
+  const { viewState, setViewState } = useViewState();
   const [showTimestamps, setShowTimestamps] = useState(
     () => localStorage.getItem("producer_pal_show_timestamps") === "true",
   );
@@ -174,9 +177,7 @@ export function App() {
     ? mcpTools.filter((t) => settings.enabledTools[t.id] !== false).length
     : 0;
 
-  const [showSettings, setShowSettings] = useState(
-    !settings.settingsConfigured,
-  );
+  const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
 
   // Track original appearance settings when settings opened (for cancel)
   const originalThemeRef = useRef(theme);
@@ -199,20 +200,22 @@ export function App() {
       "producer_pal_show_timestamps",
       String(showTimestamps),
     );
-    setShowSettings(false);
+    setViewState({ settingsOpen: false });
   };
 
   const handleCancelSettings = () => {
     settings.cancelSettings();
     setTheme(originalThemeRef.current);
     setShowTimestamps(originalShowTimestampsRef.current);
-    setShowSettings(false);
+    setViewState({ settingsOpen: false });
   };
 
   if (showSettings) {
     return (
       <ToolNamesContext.Provider value={toolNamesMap}>
         <SettingsScreen
+          activeTab={viewState.settingsTab}
+          onTabChange={(tab: TabId) => setViewState({ settingsTab: tab })}
           provider={settings.provider}
           setProvider={settings.setProvider}
           apiKey={settings.apiKey}
@@ -268,14 +271,17 @@ export function App() {
         mcpStatus={mcpStatus}
         mcpError={mcpError}
         checkMcpConnection={checkMcpConnection}
-        onOpenSettings={() => setShowSettings(true)}
+        onOpenSettings={() => setViewState({ settingsOpen: true })}
         onStop={chat.stopResponse}
         showTimestamps={showTimestamps}
         conversationPanel={{
           conversations: conversationManager.conversations,
           activeConversationId: conversationManager.activeConversationId,
-          isOpen: conversationManager.isPanelOpen,
-          onToggle: conversationManager.togglePanel,
+          isOpen: viewState.historyPanelOpen,
+          onToggle: () =>
+            setViewState({
+              historyPanelOpen: !viewState.historyPanelOpen,
+            }),
           onSelect: handleSelectConversation,
           onNew: handleNewConversation,
           onDelete: handleDeleteConversation,

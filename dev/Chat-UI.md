@@ -200,10 +200,13 @@ renames are preserved.
 **Lazy record creation**: `activeConversationId` is null until first save, which
 creates the record with a new UUID.
 
-**localStorage keys**:
+**Active conversation routing**: The active conversation ID is stored in the URL
+hash (`#<conversation-id>`), enabling browser back/forward navigation between
+conversations. On page load, the hash is read to restore the last conversation.
 
-- `producer_pal_active_conversation_id` — restored on reload to reopen last
-  conversation
+**View state persistence**: UI view state (history panel open/close, settings
+open/close, active settings tab) is persisted to localStorage under a single
+`producer_pal_view_state` key via the `useViewState` hook.
 
 ## Integration Details
 

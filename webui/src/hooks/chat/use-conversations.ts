@@ -13,8 +13,6 @@ import {
   saveConversation,
 } from "#webui/lib/conversation-db";
 
-const ACTIVE_CONVERSATION_KEY = "producer_pal_active_conversation_id";
-
 interface UseConversationsProps {
   getChatHistory: () => unknown[];
   restoreChatHistory: (chatHistory: unknown[]) => void;
@@ -24,8 +22,6 @@ interface UseConversationsProps {
 export interface UseConversationsReturn {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
-  isPanelOpen: boolean;
-  togglePanel: () => void;
   saveCurrentConversation: () => Promise<void>;
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => Promise<void>;
@@ -35,6 +31,7 @@ export interface UseConversationsReturn {
 
 /**
  * Manages conversation persistence: save, load, switch, and list.
+ * Active conversation ID is stored in the URL hash for browser back/forward support.
  * @param props - Chat hook methods for reading/writing conversation state
  * @param props.getChatHistory - Returns current chat history for saving
  * @param props.restoreChatHistory - Loads a saved chat history into the chat hook
@@ -49,11 +46,11 @@ export function useConversations({
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
-  >(() => localStorage.getItem(ACTIVE_CONVERSATION_KEY));
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  >(() => getHashConversationId());
   const activeIdRef = useRef(activeConversationId);
   const activeTitleRef = useRef<string | null>(null);
   const activeCreatedAtRef = useRef<number | null>(null);
+  const programmaticHashRef = useRef(false);
 
   useEffect(() => {
     activeIdRef.current = activeConversationId;
@@ -65,29 +62,44 @@ export function useConversations({
     setConversations(list);
   }, []);
 
-  // Load last active conversation and conversation list on mount
+  const setActiveId = useCallback((id: string | null) => {
+    setActiveConversationId(id);
+    activeIdRef.current = id;
+    programmaticHashRef.current = true;
+    setLocationHash(id);
+  }, []);
+
+  const clearActiveId = useCallback(() => {
+    setActiveConversationId(null);
+    activeIdRef.current = null;
+    activeTitleRef.current = null;
+    activeCreatedAtRef.current = null;
+    programmaticHashRef.current = true;
+    setLocationHash(null);
+  }, []);
+
+  // Load conversation from URL hash and conversation list on mount
   useEffect(() => {
     const init = async () => {
       await refreshList();
-      const storedId = localStorage.getItem(ACTIVE_CONVERSATION_KEY);
+      const hashId = getHashConversationId();
 
-      if (storedId) {
-        const record = await loadConversation(storedId);
+      if (hashId) {
+        const record = await loadConversation(hashId);
 
         if (record && record.messages.length > 0) {
           restoreChatHistory(record.messages);
           activeTitleRef.current = record.title;
           activeCreatedAtRef.current = record.createdAt;
         } else {
-          // Stored ID no longer exists in DB
-          localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
-          setActiveConversationId(null);
+          // Hash ID no longer exists in DB
+          clearActiveId();
         }
       }
     };
 
     void init();
-  }, [refreshList, restoreChatHistory]);
+  }, [refreshList, restoreChatHistory, clearActiveId]);
 
   const saveCurrentConversation = useCallback(async () => {
     const chatHistory = getChatHistory();
@@ -99,9 +111,7 @@ export function useConversations({
     const id = activeIdRef.current ?? crypto.randomUUID();
 
     // Set active ID synchronously before any async operations
-    activeIdRef.current = id;
-    setActiveConversationId(id);
-    localStorage.setItem(ACTIVE_CONVERSATION_KEY, id);
+    setActiveId(id);
 
     const existing = isNew ? undefined : await loadConversation(id);
     const existingTitle = existing?.title ?? activeTitleRef.current ?? null;
@@ -123,7 +133,7 @@ export function useConversations({
     });
 
     await refreshList();
-  }, [getChatHistory, refreshList]);
+  }, [getChatHistory, refreshList, setActiveId]);
 
   const switchConversation = useCallback(
     async (id: string) => {
@@ -138,17 +148,16 @@ export function useConversations({
 
       clearConversation();
       restoreChatHistory(record.messages);
-      setActiveConversationId(id);
-      activeIdRef.current = id;
+      setActiveId(id);
       activeTitleRef.current = record.title;
       activeCreatedAtRef.current = record.createdAt;
-      localStorage.setItem(ACTIVE_CONVERSATION_KEY, id);
     },
     [
       getChatHistory,
       saveCurrentConversation,
       clearConversation,
       restoreChatHistory,
+      setActiveId,
     ],
   );
 
@@ -158,12 +167,13 @@ export function useConversations({
     }
 
     clearConversation();
-    setActiveConversationId(null);
-    activeIdRef.current = null;
-    activeTitleRef.current = null;
-    activeCreatedAtRef.current = null;
-    localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
-  }, [getChatHistory, saveCurrentConversation, clearConversation]);
+    clearActiveId();
+  }, [
+    getChatHistory,
+    saveCurrentConversation,
+    clearConversation,
+    clearActiveId,
+  ]);
 
   const deleteConversation = useCallback(
     async (id: string) => {
@@ -171,16 +181,12 @@ export function useConversations({
 
       if (activeIdRef.current === id) {
         clearConversation();
-        setActiveConversationId(null);
-        activeIdRef.current = null;
-        activeTitleRef.current = null;
-        activeCreatedAtRef.current = null;
-        localStorage.removeItem(ACTIVE_CONVERSATION_KEY);
+        clearActiveId();
       }
 
       await refreshList();
     },
-    [clearConversation, refreshList],
+    [clearConversation, clearActiveId, refreshList],
   );
 
   const renameConversation = useCallback(
@@ -196,9 +202,30 @@ export function useConversations({
     [refreshList],
   );
 
-  const togglePanel = useCallback(() => {
-    setIsPanelOpen((prev) => !prev);
-  }, []);
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handler = () => {
+      if (programmaticHashRef.current) {
+        programmaticHashRef.current = false;
+
+        return;
+      }
+
+      const hashId = getHashConversationId();
+
+      if (hashId === activeIdRef.current) return;
+
+      if (hashId) {
+        void switchConversation(hashId);
+      } else {
+        void startNewConversation();
+      }
+    };
+
+    window.addEventListener("hashchange", handler);
+
+    return () => window.removeEventListener("hashchange", handler);
+  }, [switchConversation, startNewConversation]);
 
   // Save on beforeunload (best-effort)
   useEffect(() => {
@@ -231,8 +258,6 @@ export function useConversations({
   return {
     conversations,
     activeConversationId,
-    isPanelOpen,
-    togglePanel,
     saveCurrentConversation,
     switchConversation,
     startNewConversation,
@@ -242,6 +267,33 @@ export function useConversations({
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Read the conversation ID from the URL hash.
+ * @returns The conversation ID, or null if no hash is set
+ */
+function getHashConversationId(): string | null {
+  const hash = window.location.hash.slice(1);
+
+  return hash || null;
+}
+
+/**
+ * Set the URL hash to the given conversation ID (or clear it).
+ * @param id - Conversation ID, or null to clear the hash
+ */
+function setLocationHash(id: string | null): void {
+  if (id) {
+    window.location.hash = id;
+  } else {
+    // Remove hash without scrolling — pushState avoids hashchange event issues
+    history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search,
+    );
+  }
+}
 
 const CONNECT_PATTERN =
   /^\s*(connect(\s+to\s+ableton)?|ableton)\s*[!,.:;?]*\s*$/i;

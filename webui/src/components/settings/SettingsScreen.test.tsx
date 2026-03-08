@@ -132,6 +132,8 @@ vi.mock(import("./controls/ToolToggles"), () => ({
 
 describe("SettingsScreen", () => {
   const defaultProps = {
+    activeTab: "connection" as const,
+    onTabChange: vi.fn(),
     provider: "gemini" as const,
     setProvider: vi.fn(),
     apiKey: "",
@@ -175,24 +177,21 @@ describe("SettingsScreen", () => {
     });
 
     it("updates help link when switching to behavior tab", () => {
-      render(<SettingsScreen {...defaultProps} />);
-      fireEvent.click(screen.getByRole("button", { name: "Behavior" }));
+      render(<SettingsScreen {...defaultProps} activeTab="behavior" />);
       const link = screen.getByTitle("Help") as HTMLAnchorElement;
 
       expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#behavior");
     });
 
     it("updates help link when switching to tools tab", () => {
-      render(<SettingsScreen {...defaultProps} />);
-      fireEvent.click(screen.getByRole("button", { name: "Tools" }));
+      render(<SettingsScreen {...defaultProps} activeTab="tools" />);
       const link = screen.getByTitle("Help") as HTMLAnchorElement;
 
       expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#tools");
     });
 
     it("updates help link when switching to appearance tab", () => {
-      render(<SettingsScreen {...defaultProps} />);
-      fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+      render(<SettingsScreen {...defaultProps} activeTab="appearance" />);
       const link = screen.getByTitle("Help") as HTMLAnchorElement;
 
       expect(link.href).toBe(
@@ -208,25 +207,26 @@ describe("SettingsScreen", () => {
     });
 
     it("renders all child components for Gemini", () => {
-      render(<SettingsScreen {...defaultProps} />);
+      // Connection tab
+      const { unmount } = render(<SettingsScreen {...defaultProps} />);
 
-      // Connection tab is active by default
       expect(
         screen.getByPlaceholderText(/enter your gemini api key/i),
       ).toBeDefined();
       expect(screen.getByTestId("model-selector")).toBeDefined();
+      unmount();
 
-      // Switch to Behavior tab to check thinking and randomness
-      const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+      // Behavior tab
+      const { unmount: unmount2 } = render(
+        <SettingsScreen {...defaultProps} activeTab="behavior" />,
+      );
 
-      fireEvent.click(behaviorTab);
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
       expect(screen.getByTestId("randomness-slider")).toBeDefined();
+      unmount2();
 
-      // Switch to Tools tab to check tool toggles
-      const toolsTab = screen.getByRole("button", { name: "Tools" });
-
-      fireEvent.click(toolsTab);
+      // Tools tab
+      render(<SettingsScreen {...defaultProps} activeTab="tools" />);
       expect(screen.getByTestId("tool-toggles")).toBeDefined();
     });
 
@@ -243,22 +243,20 @@ describe("SettingsScreen", () => {
     });
 
     it("renders theme selector with options", () => {
-      render(<SettingsScreen {...defaultProps} />);
-      // Click on Appearance tab
-      const appearanceTab = screen.getByRole("button", { name: "Appearance" });
-
-      fireEvent.click(appearanceTab);
+      render(<SettingsScreen {...defaultProps} activeTab="appearance" />);
       expect(screen.getByRole("option", { name: "System" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Light" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Dark" })).toBeDefined();
     });
 
     it("has correct initial value", () => {
-      render(<SettingsScreen {...defaultProps} theme="dark" />);
-      // Click on Appearance tab
-      const appearanceTab = screen.getByRole("button", { name: "Appearance" });
-
-      fireEvent.click(appearanceTab);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          activeTab="appearance"
+          theme="dark"
+        />,
+      );
       const select = screen.getByLabelText("Theme") as HTMLSelectElement;
 
       expect(select.value).toBe("dark");
@@ -267,12 +265,13 @@ describe("SettingsScreen", () => {
     it("calls setTheme when changed", () => {
       const setTheme = vi.fn();
 
-      render(<SettingsScreen {...defaultProps} setTheme={setTheme} />);
-
-      // Click on Appearance tab
-      const appearanceTab = screen.getByRole("button", { name: "Appearance" });
-
-      fireEvent.click(appearanceTab);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          activeTab="appearance"
+          setTheme={setTheme}
+        />,
+      );
       const select = screen.getByLabelText("Theme");
 
       fireEvent.change(select, { target: { value: "light" } });
@@ -290,11 +289,13 @@ describe("SettingsScreen", () => {
 
   describe("thinking settings visibility", () => {
     it("shows thinking settings for Gemini", () => {
-      render(<SettingsScreen {...defaultProps} provider="gemini" />);
-      // Click on Behavior tab
-      const behaviorTab = screen.getByRole("button", { name: "Behavior" });
-
-      fireEvent.click(behaviorTab);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          activeTab="behavior"
+          provider="gemini"
+        />,
+      );
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
 
@@ -302,32 +303,33 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
+          activeTab="behavior"
           provider="openai"
           model="gpt-5-2025-08-07"
         />,
       );
-      // Click on Behavior tab
-      const behaviorTab = screen.getByRole("button", { name: "Behavior" });
-
-      fireEvent.click(behaviorTab);
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
 
     it("shows thinking settings for Mistral", () => {
-      render(<SettingsScreen {...defaultProps} provider="mistral" />);
-      // Click on Behavior tab
-      const behaviorTab = screen.getByRole("button", { name: "Behavior" });
-
-      fireEvent.click(behaviorTab);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          activeTab="behavior"
+          provider="mistral"
+        />,
+      );
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
 
     it("shows thinking settings for Custom provider", () => {
-      render(<SettingsScreen {...defaultProps} provider="custom" />);
-      // Click on Behavior tab
-      const behaviorTab = screen.getByRole("button", { name: "Behavior" });
-
-      fireEvent.click(behaviorTab);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          activeTab="behavior"
+          provider="custom"
+        />,
+      );
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
   });
@@ -437,19 +439,15 @@ describe("SettingsScreen", () => {
   });
 
   describe("props passing to child components", () => {
-    it("passes correct props to child components", () => {
+    it("passes correct props to connection tab", () => {
       render(
         <SettingsScreen
           {...defaultProps}
           apiKey="my-key"
           model="gemini-2.5-flash"
-          thinking="High"
-          temperature={1.5}
         />,
       );
 
-      // Connection tab is active by default
-      // API key input now uses password input (no longer GeminiApiKeyInput component)
       const apiKeyInput = screen.getByPlaceholderText(
         /enter your gemini api key/i,
       ) as HTMLInputElement;
@@ -460,12 +458,19 @@ describe("SettingsScreen", () => {
       expect(screen.getByTestId("model-selector").textContent).toBe(
         "gemini-2.5-flash",
       );
+    });
 
-      // Click on Behavior tab to check thinking and randomness
-      const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+    it("passes correct props to behavior tab", () => {
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          activeTab="behavior"
+          model="gemini-2.5-flash"
+          thinking="High"
+          temperature={1.5}
+        />,
+      );
 
-      fireEvent.click(behaviorTab);
-      // ThinkingSettings now receives provider-model-thinking
       expect(screen.getByTestId("thinking-settings").textContent).toBe(
         "gemini-gemini-2.5-flash-High",
       );
@@ -637,13 +642,10 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
+          activeTab="behavior"
           resetBehaviorToDefaults={resetBehaviorToDefaults}
         />,
       );
-      // Click on Behavior tab
-      const behaviorTab = screen.getByRole("button", { name: "Behavior" });
-
-      fireEvent.click(behaviorTab);
       const resetButton = screen.getByRole("button", {
         name: "Reset to defaults",
       });
