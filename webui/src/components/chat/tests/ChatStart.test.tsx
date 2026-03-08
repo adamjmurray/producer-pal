@@ -12,7 +12,10 @@ import {
   fireEvent,
 } from "@testing-library/preact";
 import { type Mock, describe, expect, it, vi } from "vitest";
-import { type ChatStartProps, ChatStart } from "./ChatStart";
+import {
+  type ChatStartProps,
+  ChatStart,
+} from "#webui/components/chat/ChatStart";
 
 const defaultOverrides = {
   thinking: "Default",

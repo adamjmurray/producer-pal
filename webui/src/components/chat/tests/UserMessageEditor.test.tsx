@@ -8,7 +8,7 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { UserMessageEditor } from "./UserMessageEditor";
+import { UserMessageEditor } from "#webui/components/chat/UserMessageEditor";
 
 describe("UserMessageEditor", () => {
   const defaultProps = {

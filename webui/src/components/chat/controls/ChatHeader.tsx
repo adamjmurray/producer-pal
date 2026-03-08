@@ -18,6 +18,7 @@ interface ChatHeaderProps {
   hasMessages: boolean;
   onOpenSettings: () => void;
   onClearConversation: () => void;
+  onToggleHistory: () => void;
 }
 
 /**
@@ -72,6 +73,7 @@ export function ChatHeader({
   hasMessages,
   onOpenSettings,
   onClearConversation,
+  onToggleHistory,
 }: ChatHeaderProps) {
   const handleRestart = () => {
     if (window.confirm("Clear all messages and restart conversation?")) {
@@ -96,6 +98,7 @@ export function ChatHeader({
           Producer Pal Chat
         </h1>
       </a>
+
       <div className="ml-2 flex gap-1 text-xs">
         {mcpStatus === "connected" && (
           <span className="text-green-600 dark:text-green-400">✓ Ready</span>
@@ -147,6 +150,13 @@ export function ChatHeader({
             </span>
           </span>
         )}
+        <button
+          onClick={onToggleHistory}
+          className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+          aria-label="History"
+        >
+          ☰<span className="hidden sm:inline"> History</span>
+        </button>
         <button
           onClick={onOpenSettings}
           className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"

@@ -8,7 +8,7 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { EditButton } from "./EditButton";
+import { EditButton } from "#webui/components/chat/EditButton";
 
 describe("EditButton", () => {
   it("renders the edit button", () => {

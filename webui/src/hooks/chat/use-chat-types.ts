@@ -79,6 +79,8 @@ export interface UseChatReturn {
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
   clearConversation: () => void;
   stopResponse: () => void;
+  getChatHistory: () => unknown[];
+  loadConversation: (chatHistory: unknown[]) => void;
 }
 
 export interface UseChatProps<

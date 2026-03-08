@@ -7,12 +7,14 @@ import {
   type MessageOverrides,
   type RateLimitState,
 } from "#webui/hooks/chat/use-chat";
+import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 import { ChatStart } from "./ChatStart";
 import { ChatHeader } from "./controls/ChatHeader";
 import { ChatInput } from "./controls/ChatInput";
 import { RateLimitIndicator } from "./controls/RateLimitIndicator";
+import { ConversationPanel } from "./ConversationPanel";
 import { MessageList } from "./MessageList";
 
 /**
@@ -42,6 +44,17 @@ interface ChatScreenProps {
   onClearConversation: () => void;
   onStop: () => void;
   showTimestamps: boolean;
+  conversationPanel: ConversationPanelState;
+}
+
+/** State and handlers for the conversation history panel */
+export interface ConversationPanelState {
+  conversations: ConversationSummary[];
+  activeConversationId: string | null;
+  isOpen: boolean;
+  onToggle: () => void;
+  onSelect: (id: string) => void;
+  onNew: () => void;
 }
 
 /**
@@ -97,6 +110,7 @@ export function ChatScreen({
   onClearConversation,
   onStop,
   showTimestamps,
+  conversationPanel,
 }: ChatScreenProps) {
   // Per-message override state (lifted from ChatInput so ChatStart can also use it)
   const [thinking, setThinking] = useState(defaultThinking);
@@ -129,7 +143,18 @@ export function ChatScreen({
         hasMessages={messages.length > 0}
         onOpenSettings={onOpenSettings}
         onClearConversation={onClearConversation}
+        onToggleHistory={conversationPanel.onToggle}
       />
+
+      {conversationPanel.isOpen && (
+        <ConversationPanel
+          conversations={conversationPanel.conversations}
+          activeConversationId={conversationPanel.activeConversationId}
+          onSelect={conversationPanel.onSelect}
+          onNewConversation={conversationPanel.onNew}
+          onClose={conversationPanel.onToggle}
+        />
+      )}
 
       <div class="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
