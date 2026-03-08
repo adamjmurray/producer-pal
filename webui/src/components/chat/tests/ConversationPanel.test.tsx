@@ -79,7 +79,7 @@ describe("ConversationPanel", () => {
       />,
     );
 
-    const items = container.querySelectorAll(".overflow-y-auto > div");
+    const items = container.querySelectorAll(".overflow-y-auto > button");
     const activeItem = items[0] as HTMLElement;
 
     expect(activeItem.className).toContain("bg-blue-50");

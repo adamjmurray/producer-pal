@@ -81,9 +81,9 @@ describe("App conversation management", () => {
       ],
     });
     const { container } = render(<App />);
-    const btn = container
-      .querySelector("div[class*='border-l-transparent']")
-      ?.querySelector("button");
+    const btn = container.querySelector(
+      "button[class*='border-l-transparent']",
+    );
 
     if (btn) fireEvent.click(btn);
   };

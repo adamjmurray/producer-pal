@@ -154,18 +154,16 @@ function ConversationItem({
     `${formatTimestampDate(conv.createdAt)}, ${formatTimestampTime(conv.createdAt)}`;
 
   return (
-    <div
-      className={`border-b border-gray-100 dark:border-gray-800 transition-colors ${
+    <button
+      onClick={() => onSelect(conv.id)}
+      className={`w-full text-left border-b border-gray-100 dark:border-gray-800 transition-colors ${
         isActive
           ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-l-blue-500"
           : "hover:bg-gray-50 dark:hover:bg-gray-800 border-l-2 border-l-transparent"
       }`}
     >
       <div className="flex items-center">
-        <button
-          onClick={() => onSelect(conv.id)}
-          className="flex-1 text-left px-4 pt-2 pb-0.5 min-w-0"
-        >
+        <div className="flex-1 text-left px-4 pt-2 pb-0.5 min-w-0">
           {isEditing ? (
             <input
               type="text"
@@ -189,10 +187,13 @@ function ConversationItem({
               {displayTitle}
             </div>
           )}
-        </button>
+        </div>
 
         <button
-          onClick={onEditStart}
+          onClick={(e) => {
+            e.stopPropagation();
+            onEditStart();
+          }}
           className="px-1 py-1 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
           aria-label="Rename conversation"
           title="Rename conversation"
@@ -212,7 +213,10 @@ function ConversationItem({
         </button>
 
         <button
-          onClick={() => onDelete(conv.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(conv.id);
+          }}
           className="pr-3 pl-1 py-1 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
           aria-label="Delete conversation"
           title="Delete conversation"
@@ -232,15 +236,12 @@ function ConversationItem({
         </button>
       </div>
 
-      <button
-        onClick={() => onSelect(conv.id)}
-        className="w-full text-left px-4 pt-0.5 pb-2"
-      >
+      <div className="w-full text-left px-4 pt-0.5 pb-2">
         <div className="text-[10px] text-gray-400 dark:text-gray-500">
           {formatTimestampDate(conv.createdAt)},{" "}
           {formatTimestampTime(conv.createdAt)}
         </div>
-      </button>
-    </div>
+      </div>
+    </button>
   );
 }
