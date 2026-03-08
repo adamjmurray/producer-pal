@@ -143,14 +143,13 @@ export function ChatScreen({
       />
 
       <div className="flex flex-1 min-h-0">
-        {conversationPanel.isOpen && (
-          <ConversationPanel
-            conversations={conversationPanel.conversations}
-            activeConversationId={conversationPanel.activeConversationId}
-            onSelect={conversationPanel.onSelect}
-            onNewConversation={conversationPanel.onNew}
-          />
-        )}
+        <ConversationPanel
+          isOpen={conversationPanel.isOpen}
+          conversations={conversationPanel.conversations}
+          activeConversationId={conversationPanel.activeConversationId}
+          onSelect={conversationPanel.onSelect}
+          onNewConversation={conversationPanel.onNew}
+        />
 
         <div className="flex flex-col flex-1 min-w-0">
           <div className="flex-1 overflow-y-auto">

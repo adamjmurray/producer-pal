@@ -20,6 +20,7 @@ describe("ConversationPanel", () => {
   it("renders conversation list", () => {
     const { container } = render(
       <ConversationPanel
+        isOpen={true}
         conversations={conversations}
         activeConversationId={null}
         onSelect={vi.fn()}
@@ -36,6 +37,7 @@ describe("ConversationPanel", () => {
   it("highlights active conversation", () => {
     const { container } = render(
       <ConversationPanel
+        isOpen={true}
         conversations={conversations}
         activeConversationId="conv-1"
         onSelect={vi.fn()}
@@ -55,6 +57,7 @@ describe("ConversationPanel", () => {
 
     const { container } = render(
       <ConversationPanel
+        isOpen={true}
         conversations={conversations}
         activeConversationId={null}
         onSelect={onSelect}
@@ -73,6 +76,7 @@ describe("ConversationPanel", () => {
     const onNew = vi.fn();
     const { getByText } = render(
       <ConversationPanel
+        isOpen={true}
         conversations={conversations}
         activeConversationId={null}
         onSelect={vi.fn()}
@@ -88,6 +92,7 @@ describe("ConversationPanel", () => {
   it("shows empty message when no conversations", () => {
     const { getByText } = render(
       <ConversationPanel
+        isOpen={true}
         conversations={[]}
         activeConversationId={null}
         onSelect={vi.fn()}
