@@ -34,10 +34,10 @@ Returns overview by default. Use include to add detail.`,
   },
 
   smallModelModeConfig: {
-    excludeEnumValues: { include: ["locators"] },
+    excludeEnumValues: { include: ["locators", "*"] },
     descriptionOverrides: {
       include:
-        'tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes). "*" = all',
+        "tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes)",
     },
   },
 });

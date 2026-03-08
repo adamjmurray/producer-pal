@@ -30,10 +30,10 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
   },
 
   smallModelModeConfig: {
-    excludeEnumValues: { include: ["warp"] },
+    excludeEnumValues: { include: ["warp", "*"] },
     descriptionOverrides: {
       include:
-        'notes = MIDI data. timing = loop/start/end markers. sample = audio file info. color. "*" = all',
+        "notes = MIDI data. timing = loop/start/end markers. sample = audio file info. color",
     },
   },
 });
