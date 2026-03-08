@@ -559,7 +559,7 @@ describe("useChat", () => {
       expect(history.length).toBeGreaterThan(0);
     });
 
-    it("returns pending history after loadConversation", async () => {
+    it("returns pending history after restoreChatHistory", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
       const history = [
         { role: "user" as const, content: "saved message" },
@@ -567,14 +567,14 @@ describe("useChat", () => {
       ];
 
       await act(async () => {
-        result.current.loadConversation(history);
+        result.current.restoreChatHistory(history);
       });
 
       expect(result.current.getChatHistory()).toStrictEqual(history);
     });
   });
 
-  describe("loadConversation", () => {
+  describe("restoreChatHistory", () => {
     it("sets messages from loaded history", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
       const history = [
@@ -583,7 +583,7 @@ describe("useChat", () => {
       ];
 
       await act(async () => {
-        result.current.loadConversation(history);
+        result.current.restoreChatHistory(history);
       });
 
       expect(result.current.messages).toHaveLength(2);
@@ -600,7 +600,7 @@ describe("useChat", () => {
       expect(result.current.activeModel).toBe("test-model");
 
       await act(async () => {
-        result.current.loadConversation([]);
+        result.current.restoreChatHistory([]);
       });
 
       expect(result.current.activeModel).toBeNull();
@@ -615,7 +615,7 @@ describe("useChat", () => {
       ];
 
       await act(async () => {
-        result.current.loadConversation(history);
+        result.current.restoreChatHistory(history);
       });
 
       await act(async () => {
@@ -637,7 +637,7 @@ describe("useChat", () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
       await act(async () => {
-        result.current.loadConversation([
+        result.current.restoreChatHistory([
           { role: "user" as const, content: "test" },
         ]);
       });

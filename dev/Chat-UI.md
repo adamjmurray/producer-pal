@@ -30,7 +30,7 @@ The UI connects to two external services:
 - **Language**: TypeScript (.ts/.tsx source files)
 - **Build Tool**: Vite with plugins
 - **Styling**: Tailwind CSS
-- **State Management**: React hooks + localStorage
+- **State Management**: React hooks + localStorage + IndexedDB
 - **Testing**: Vitest + @testing-library/preact
 - **API Integration**:
   - `ai` + `@ai-sdk/*` - Vercel AI SDK for all providers (Anthropic, Google,
@@ -84,13 +84,25 @@ webui/
 - Data Flow
   ```
   App.tsx
-    ├─> useSettings()         → localStorage persistence
-    ├─> useTheme()            → dark/light mode
-    ├─> useMcpConnection()    → MCP health check
-    └─> useChat(aiSdkAdapter) → chat state machine
-          ├─> AiSdkClient     → streamText() + stream processing
-          └─> formatAiSdkMessages() → UI-friendly format
+    ├─> useSettings()              → localStorage persistence
+    ├─> useTheme()                 → dark/light mode
+    ├─> useMcpConnection()         → MCP health check
+    ├─> useChat(aiSdkAdapter)      → chat state machine
+    │     ├─> AiSdkClient          → streamText() + stream processing
+    │     └─> formatAiSdkMessages()→ UI-friendly format
+    ├─> useConversationLock()      → provider lock during chat
+    └─> useConversations()         → IndexedDB persistence + panel state
   ```
+
+**ConversationPanel.tsx** - Slide-out sidebar:
+
+- Toggled via history button in ChatHeader
+- Lists saved conversations sorted by newest first
+- Inline rename (click pencil → input field, Enter to save, Escape to cancel)
+- Delete with confirmation
+- Shows title (or formatted date/time when untitled)
+- Highlights active conversation
+- "New Conversation" button
 
 **ChatScreen.tsx** - Main chat interface:
 
@@ -122,6 +134,8 @@ The UI uses React hooks for all state management:
 2. **useTheme** - Theme switching (localStorage + system preference)
 3. **useMcpConnection** - MCP server health monitoring
 4. **useChat** - Core chat logic and message streaming (provider-agnostic)
+5. **useConversationLock** - Locks provider during active chat
+6. **useConversations** - Conversation persistence (IndexedDB)
 
 ### useChat Hook
 
@@ -130,7 +144,7 @@ the underlying provider implementation is swappable):
 
 **State:**
 
-- `messages` - UI-formatted message history
+- `messages` - UI-formatted message history (`UIMessage[]`)
 - `isAssistantResponding` - Loading state
 - `activeModel/Thinking/Temperature` - Locked settings during chat
 
@@ -139,6 +153,57 @@ the underlying provider implementation is swappable):
 - `handleSend(message)` - Send user message, stream response
 - `handleRetry(index)` - Retry from a specific message
 - `clearConversation()` - Reset chat history
+- `getChatHistory()` - Returns raw `AiSdkMessage[]` for persistence
+- `restoreChatHistory(chatHistory)` - Loads saved history into state without
+  creating an AI client (lazy — avoids MCP connection until next send)
+
+### Conversation Persistence
+
+Conversations are persisted to IndexedDB so they survive page reloads. Covers
+save, load, switch, rename, delete, and auto-titling.
+
+**Storage**: IndexedDB via `idb` library. Database:
+`producer-pal-conversations`, single `conversations` object store with
+`updatedAt` index.
+
+**Schema** (`lib/conversation-db.ts`):
+
+```typescript
+interface ConversationRecord {
+  id: string; // crypto.randomUUID()
+  title: string | null; // null = auto-derived from first user message
+  createdAt: number; // Date.now()
+  updatedAt: number; // Date.now() at last save
+  messages: AiSdkMessage[]; // full history including toolCalls, toolResults, reasoning
+}
+```
+
+**Files**:
+
+| File                                    | Purpose                                                                       |
+| --------------------------------------- | ----------------------------------------------------------------------------- |
+| `lib/conversation-db.ts`                | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
+| `hooks/chat/use-conversations.ts`       | Orchestration hook (save/load/switch/new/delete/rename)                       |
+| `components/chat/ConversationPanel.tsx` | Slide-out sidebar panel with inline rename                                    |
+
+**Auto-save triggers** (wired in `App.tsx`):
+
+- After each new message (watches `messages.length` increase)
+- Before switching conversations
+- On page unload (best-effort via `beforeunload`)
+- NOT during streaming
+
+**Auto-title**: Derived from first user message's first line. If that matches a
+"connect to Ableton" pattern, uses the second user message instead. Manual
+renames are preserved.
+
+**Lazy record creation**: `activeConversationId` is null until first save, which
+creates the record with a new UUID.
+
+**localStorage keys**:
+
+- `producer_pal_active_conversation_id` — restored on reload to reopen last
+  conversation
 
 ## Integration Details
 

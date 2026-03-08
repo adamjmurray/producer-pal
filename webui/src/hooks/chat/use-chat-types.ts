@@ -80,7 +80,7 @@ export interface UseChatReturn {
   clearConversation: () => void;
   stopResponse: () => void;
   getChatHistory: () => unknown[];
-  loadConversation: (chatHistory: unknown[]) => void;
+  restoreChatHistory: (chatHistory: unknown[]) => void;
 }
 
 export interface UseChatProps<

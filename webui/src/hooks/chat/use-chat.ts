@@ -90,7 +90,7 @@ export function useChat<
     [],
   );
 
-  const loadConversation = useCallback(
+  const restoreChatHistory = useCallback(
     (chatHistory: unknown[]) => {
       clientRef.current = null;
       pendingHistoryRef.current = chatHistory as TMessage[];
@@ -383,6 +383,6 @@ export function useChat<
     clearConversation,
     stopResponse,
     getChatHistory,
-    loadConversation,
+    restoreChatHistory,
   };
 }

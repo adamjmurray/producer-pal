@@ -128,7 +128,7 @@ export function App() {
 
   const conversationManager = useConversations({
     getChatHistory: chat.getChatHistory,
-    loadConversation: chat.loadConversation,
+    restoreChatHistory: chat.restoreChatHistory,
     clearConversation: wrappedClearConversation,
   });
 

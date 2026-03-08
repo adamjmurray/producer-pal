@@ -27,7 +27,7 @@ function createProps() {
     state,
     props: {
       getChatHistory: vi.fn(() => state.chatHistory),
-      loadConversation: vi.fn(),
+      restoreChatHistory: vi.fn(),
       clearConversation: vi.fn(),
     },
   };
@@ -149,7 +149,7 @@ describe("useConversations", () => {
 
     expect(result.current.activeConversationId).toBe(existingId);
     expect(props.clearConversation).toHaveBeenCalled();
-    expect(props.loadConversation).toHaveBeenCalledWith([
+    expect(props.restoreChatHistory).toHaveBeenCalledWith([
       { role: "user", content: "existing conversation" },
     ]);
   });
@@ -198,7 +198,7 @@ describe("useConversations", () => {
     await waitForEffects();
 
     expect(result.current.activeConversationId).toBe(existingId);
-    expect(props.loadConversation).toHaveBeenCalledWith([
+    expect(props.restoreChatHistory).toHaveBeenCalledWith([
       { role: "user", content: "restored" },
     ]);
   });
@@ -218,7 +218,7 @@ describe("useConversations", () => {
     expect(
       localStorage.getItem("producer_pal_active_conversation_id"),
     ).toBeNull();
-    expect(props.loadConversation).not.toHaveBeenCalled();
+    expect(props.restoreChatHistory).not.toHaveBeenCalled();
   });
 
   it("preserves createdAt on subsequent saves", async () => {

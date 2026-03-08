@@ -8,7 +8,7 @@ import {
   type ConversationSummary,
   deleteConversation as dbDeleteConversation,
   listConversations,
-  loadConversation as dbLoadConversation,
+  loadConversation,
   renameConversation as dbRenameConversation,
   saveConversation,
 } from "#webui/lib/conversation-db";
@@ -17,7 +17,7 @@ const ACTIVE_CONVERSATION_KEY = "producer_pal_active_conversation_id";
 
 interface UseConversationsProps {
   getChatHistory: () => unknown[];
-  loadConversation: (chatHistory: unknown[]) => void;
+  restoreChatHistory: (chatHistory: unknown[]) => void;
   clearConversation: () => void;
 }
 
@@ -37,13 +37,13 @@ export interface UseConversationsReturn {
  * Manages conversation persistence: save, load, switch, and list.
  * @param props - Chat hook methods for reading/writing conversation state
  * @param props.getChatHistory - Returns current chat history for saving
- * @param props.loadConversation - Loads a saved chat history into the chat hook
+ * @param props.restoreChatHistory - Loads a saved chat history into the chat hook
  * @param props.clearConversation - Clears the current conversation
  * @returns Conversation management state and handlers
  */
 export function useConversations({
   getChatHistory,
-  loadConversation,
+  restoreChatHistory,
   clearConversation,
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -72,10 +72,10 @@ export function useConversations({
       const storedId = localStorage.getItem(ACTIVE_CONVERSATION_KEY);
 
       if (storedId) {
-        const record = await dbLoadConversation(storedId);
+        const record = await loadConversation(storedId);
 
         if (record && record.messages.length > 0) {
-          loadConversation(record.messages);
+          restoreChatHistory(record.messages);
           activeTitleRef.current = record.title;
           activeCreatedAtRef.current = record.createdAt;
         } else {
@@ -87,7 +87,7 @@ export function useConversations({
     };
 
     void init();
-  }, [refreshList, loadConversation]);
+  }, [refreshList, restoreChatHistory]);
 
   const saveCurrentConversation = useCallback(async () => {
     const chatHistory = getChatHistory();
@@ -103,7 +103,7 @@ export function useConversations({
     setActiveConversationId(id);
     localStorage.setItem(ACTIVE_CONVERSATION_KEY, id);
 
-    const existing = isNew ? undefined : await dbLoadConversation(id);
+    const existing = isNew ? undefined : await loadConversation(id);
     const existingTitle = existing?.title ?? activeTitleRef.current ?? null;
     const title = deriveTitle(existingTitle, chatHistory);
     const createdAt = existing?.createdAt ?? activeCreatedAtRef.current ?? now;
@@ -132,12 +132,12 @@ export function useConversations({
         await saveCurrentConversation();
       }
 
-      const record = await dbLoadConversation(id);
+      const record = await loadConversation(id);
 
       if (!record) return;
 
       clearConversation();
-      loadConversation(record.messages);
+      restoreChatHistory(record.messages);
       setActiveConversationId(id);
       activeIdRef.current = id;
       activeTitleRef.current = record.title;
@@ -148,7 +148,7 @@ export function useConversations({
       getChatHistory,
       saveCurrentConversation,
       clearConversation,
-      loadConversation,
+      restoreChatHistory,
     ],
   );
 
