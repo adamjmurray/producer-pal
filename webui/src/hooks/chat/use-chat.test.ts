@@ -389,7 +389,7 @@ describe("useChat", () => {
       expect(mockAdapter.createClient).not.toHaveBeenCalled();
     });
 
-    it("does nothing if no client initialized", async () => {
+    it("does nothing if no client and no pending history", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
       await act(async () => {
@@ -397,6 +397,30 @@ describe("useChat", () => {
       });
 
       expect(mockAdapter.extractUserMessage).not.toHaveBeenCalled();
+    });
+
+    it("retries from restored conversation using pending history", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        result.current.restoreChatHistory([
+          { role: "user", content: "restored msg" },
+          { role: "assistant", content: "restored reply" },
+        ]);
+      });
+
+      vi.clearAllMocks();
+
+      await act(async () => {
+        await result.current.handleRetry(0);
+      });
+
+      // Should initialize a client and extract the user message for retry
+      expect(mockAdapter.extractUserMessage).toHaveBeenCalled();
+      expect(mockAdapter.createClient).toHaveBeenCalled();
+      expect(result.current.messages.some((m) => m.role === "model")).toBe(
+        true,
+      );
     });
 
     it("successfully retries from a user message", async () => {

@@ -101,7 +101,7 @@ describe("useChat handleEdit", () => {
     expect(mockAdapter.createClient).not.toHaveBeenCalled();
   });
 
-  it("does nothing if no client initialized", async () => {
+  it("does nothing if no client and no pending history", async () => {
     const { result } = renderHook(() => useChat(defaultProps));
 
     await act(async () => {
@@ -109,5 +109,29 @@ describe("useChat handleEdit", () => {
     });
 
     expect(mockAdapter.createClient).not.toHaveBeenCalled();
+  });
+
+  it("edits from restored conversation using pending history", async () => {
+    const { result } = renderHook(() => useChat(defaultProps));
+
+    await act(async () => {
+      result.current.restoreChatHistory([
+        { role: "user", content: "restored msg" },
+        { role: "assistant", content: "restored reply" },
+      ]);
+    });
+
+    vi.clearAllMocks();
+
+    await act(async () => {
+      await result.current.handleEdit(0, "Edited text");
+    });
+
+    // Should create a new client and produce a response with the edited message
+    expect(mockAdapter.createClient).toHaveBeenCalled();
+    const editedPart = result.current.messages.find((m) => m.role === "user")!
+      .parts[0] as { content: string };
+
+    expect(editedPart.content).toBe("Edited text");
   });
 });

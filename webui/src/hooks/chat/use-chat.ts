@@ -296,18 +296,24 @@ export function useChat<
 
   const forkConversation = useCallback(
     async (mergedMessageIndex: number, newMessage: string) => {
-      if (!apiKey || !clientRef.current) return;
+      if (!apiKey) return;
 
       const message = messages[mergedMessageIndex];
 
       if (message?.role !== "user") return;
 
       const rawIndex = message.rawHistoryIndex;
+      const history =
+        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
+
+      if (!history) return;
 
       setIsAssistantResponding(true);
 
       try {
-        const slicedHistory = clientRef.current.chatHistory.slice(0, rawIndex);
+        const slicedHistory = history.slice(0, rawIndex);
+
+        pendingHistoryRef.current = null;
 
         await initializeChat(slicedHistory);
 
@@ -326,7 +332,10 @@ export function useChat<
         );
       } catch (error) {
         setMessages(
-          adapter.createErrorMessage(error, clientRef.current.chatHistory),
+          adapter.createErrorMessage(
+            error,
+            clientRef.current?.chatHistory ?? [],
+          ),
         );
       } finally {
         abortControllerRef.current = null;
@@ -339,13 +348,16 @@ export function useChat<
 
   const handleRetry = useCallback(
     async (mergedMessageIndex: number) => {
-      if (!clientRef.current) return;
-
       const message = messages[mergedMessageIndex];
 
       if (message?.role !== "user") return;
 
-      const rawMessage = clientRef.current.chatHistory[message.rawHistoryIndex];
+      const history =
+        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
+
+      if (!history) return;
+
+      const rawMessage = history[message.rawHistoryIndex];
 
       if (!rawMessage) return;
 
