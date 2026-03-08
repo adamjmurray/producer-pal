@@ -19,6 +19,7 @@ describe("ChatHeader", () => {
     enabledToolsCount: 20,
     totalToolsCount: 20,
     smallModelMode: false,
+    isHistoryOpen: false,
     onOpenSettings: vi.fn(),
     onToggleHistory: vi.fn(),
   };
@@ -41,14 +42,14 @@ describe("ChatHeader", () => {
       expect(screen.getByRole("button", { name: /Settings/ })).toBeDefined();
     });
 
-    it("title links to docs site", () => {
-      render(<ChatHeader {...defaultProps} />);
-      const link = screen.getByText("Producer Pal Chat").closest("a");
+    it("title toggles conversation history when clicked", () => {
+      const onToggleHistory = vi.fn();
 
-      expect(link).toBeDefined();
-      expect(link?.href).toBe("https://producer-pal.org/guide/chat-ui");
-      expect(link?.target).toBe("_blank");
-      expect(link?.rel).toBe("noopener noreferrer");
+      render(
+        <ChatHeader {...defaultProps} onToggleHistory={onToggleHistory} />,
+      );
+      fireEvent.click(screen.getByText("Producer Pal Chat"));
+      expect(onToggleHistory).toHaveBeenCalledOnce();
     });
   });
 

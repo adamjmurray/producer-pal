@@ -137,66 +137,70 @@ export function ChatScreen({
         enabledToolsCount={enabledToolsCount}
         totalToolsCount={totalToolsCount}
         smallModelMode={smallModelMode}
+        isHistoryOpen={conversationPanel.isOpen}
         onOpenSettings={onOpenSettings}
         onToggleHistory={conversationPanel.onToggle}
       />
 
-      {conversationPanel.isOpen && (
-        <ConversationPanel
-          conversations={conversationPanel.conversations}
-          activeConversationId={conversationPanel.activeConversationId}
-          onSelect={conversationPanel.onSelect}
-          onNewConversation={conversationPanel.onNew}
-          onClose={conversationPanel.onToggle}
-        />
-      )}
-
-      <div class="flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
-          <ChatStart
-            mcpStatus={mcpStatus}
-            mcpError={mcpError}
-            checkMcpConnection={checkMcpConnection}
-            handleSend={handleSend}
-            overrides={currentOverrides}
-          />
-        ) : (
-          <MessageList
-            messages={messages}
-            isAssistantResponding={isAssistantResponding}
-            handleRetry={handleRetry}
-            handleEdit={handleEdit}
-            showTimestamps={showTimestamps}
+      <div className="flex flex-1 min-h-0">
+        {conversationPanel.isOpen && (
+          <ConversationPanel
+            conversations={conversationPanel.conversations}
+            activeConversationId={conversationPanel.activeConversationId}
+            onSelect={conversationPanel.onSelect}
+            onNewConversation={conversationPanel.onNew}
           />
         )}
+
+        <div className="flex flex-col flex-1 min-w-0">
+          <div className="flex-1 overflow-y-auto">
+            {messages.length === 0 ? (
+              <ChatStart
+                mcpStatus={mcpStatus}
+                mcpError={mcpError}
+                checkMcpConnection={checkMcpConnection}
+                handleSend={handleSend}
+                overrides={currentOverrides}
+              />
+            ) : (
+              <MessageList
+                messages={messages}
+                isAssistantResponding={isAssistantResponding}
+                handleRetry={handleRetry}
+                handleEdit={handleEdit}
+                showTimestamps={showTimestamps}
+              />
+            )}
+          </div>
+
+          {rateLimitState?.isRetrying && (
+            <RateLimitIndicator
+              retryAttempt={rateLimitState.attempt}
+              maxAttempts={rateLimitState.maxAttempts}
+              retryDelayMs={rateLimitState.delayMs}
+              onCancel={onStop}
+            />
+          )}
+
+          <ChatInput
+            handleSend={handleSend}
+            isAssistantResponding={isAssistantResponding}
+            onStop={onStop}
+            provider={provider}
+            model={model}
+            defaultThinking={defaultThinking}
+            defaultTemperature={defaultTemperature}
+            defaultShowThoughts={defaultShowThoughts}
+            thinking={thinking}
+            temperature={temperature}
+            showThoughts={showThoughts}
+            onThinkingChange={setThinking}
+            onTemperatureChange={setTemperature}
+            onShowThoughtsChange={setShowThoughts}
+            onResetToDefaults={handleResetToDefaults}
+          />
+        </div>
       </div>
-
-      {rateLimitState?.isRetrying && (
-        <RateLimitIndicator
-          retryAttempt={rateLimitState.attempt}
-          maxAttempts={rateLimitState.maxAttempts}
-          retryDelayMs={rateLimitState.delayMs}
-          onCancel={onStop}
-        />
-      )}
-
-      <ChatInput
-        handleSend={handleSend}
-        isAssistantResponding={isAssistantResponding}
-        onStop={onStop}
-        provider={provider}
-        model={model}
-        defaultThinking={defaultThinking}
-        defaultTemperature={defaultTemperature}
-        defaultShowThoughts={defaultShowThoughts}
-        thinking={thinking}
-        temperature={temperature}
-        showThoughts={showThoughts}
-        onThinkingChange={setThinking}
-        onTemperatureChange={setTemperature}
-        onShowThoughtsChange={setShowThoughts}
-        onResetToDefaults={handleResetToDefaults}
-      />
     </div>
   );
 }

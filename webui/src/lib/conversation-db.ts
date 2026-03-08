@@ -71,24 +71,16 @@ export async function loadConversation(
 }
 
 /**
- * List all conversations sorted by updatedAt descending, without messages.
+ * List all conversations sorted by createdAt descending (newest first).
  * @returns Array of conversation summaries
  */
 export async function listConversations(): Promise<ConversationSummary[]> {
   const db = await getConversationDb();
-  const summaries: ConversationSummary[] = [];
-  const tx = db.transaction(STORE_NAME, "readonly");
-  const index = tx.store.index("updatedAt");
-  let cursor = await index.openCursor(null, "prev");
+  const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
 
-  while (cursor) {
-    const { id, createdAt, updatedAt } = cursor.value as ConversationRecord;
-
-    summaries.push({ id, createdAt, updatedAt });
-    cursor = await cursor.continue();
-  }
-
-  return summaries;
+  return all
+    .map(({ id, createdAt, updatedAt }) => ({ id, createdAt, updatedAt }))
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /**

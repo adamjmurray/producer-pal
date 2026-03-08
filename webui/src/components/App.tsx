@@ -145,13 +145,11 @@ export function App() {
 
   const handleNewConversation = useCallback(() => {
     void conversationManager.startNewConversation();
-    conversationManager.togglePanel();
   }, [conversationManager]);
 
   const handleSelectConversation = useCallback(
     (id: string) => {
       void conversationManager.switchConversation(id);
-      conversationManager.togglePanel();
     },
     [conversationManager],
   );

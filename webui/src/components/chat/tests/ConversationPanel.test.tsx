@@ -24,14 +24,13 @@ describe("ConversationPanel", () => {
         activeConversationId={null}
         onSelect={vi.fn()}
         onNewConversation={vi.fn()}
-        onClose={vi.fn()}
       />,
     );
 
     const buttons = container.querySelectorAll("button");
 
-    // Close button + New Conversation + 2 conversation items
-    expect(buttons).toHaveLength(4);
+    // New Conversation + 2 conversation items
+    expect(buttons).toHaveLength(3);
   });
 
   it("highlights active conversation", () => {
@@ -41,7 +40,6 @@ describe("ConversationPanel", () => {
         activeConversationId="conv-1"
         onSelect={vi.fn()}
         onNewConversation={vi.fn()}
-        onClose={vi.fn()}
       />,
     );
 
@@ -61,7 +59,6 @@ describe("ConversationPanel", () => {
         activeConversationId={null}
         onSelect={onSelect}
         onNewConversation={vi.fn()}
-        onClose={vi.fn()}
       />,
     );
 
@@ -80,49 +77,12 @@ describe("ConversationPanel", () => {
         activeConversationId={null}
         onSelect={vi.fn()}
         onNewConversation={onNew}
-        onClose={vi.fn()}
       />,
     );
 
     fireEvent.click(getByText("+ New Conversation"));
 
     expect(onNew).toHaveBeenCalledOnce();
-  });
-
-  it("calls onClose when clicking close button", () => {
-    const onClose = vi.fn();
-    const { getByLabelText } = render(
-      <ConversationPanel
-        conversations={conversations}
-        activeConversationId={null}
-        onSelect={vi.fn()}
-        onNewConversation={vi.fn()}
-        onClose={onClose}
-      />,
-    );
-
-    fireEvent.click(getByLabelText("Close panel"));
-
-    expect(onClose).toHaveBeenCalledOnce();
-  });
-
-  it("calls onClose when clicking backdrop", () => {
-    const onClose = vi.fn();
-    const { container } = render(
-      <ConversationPanel
-        conversations={conversations}
-        activeConversationId={null}
-        onSelect={vi.fn()}
-        onNewConversation={vi.fn()}
-        onClose={onClose}
-      />,
-    );
-
-    const backdrop = container.querySelector('[role="presentation"]');
-
-    fireEvent.click(backdrop as HTMLElement);
-
-    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it("shows empty message when no conversations", () => {
@@ -132,7 +92,6 @@ describe("ConversationPanel", () => {
         activeConversationId={null}
         onSelect={vi.fn()}
         onNewConversation={vi.fn()}
-        onClose={vi.fn()}
       />,
     );
 

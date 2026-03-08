@@ -609,7 +609,7 @@ describe("App", () => {
   });
 
   describe("conversation management", () => {
-    it("calls startNewConversation and togglePanel on new conversation", () => {
+    it("calls startNewConversation on new conversation without closing panel", () => {
       const mockStartNew = vi.fn();
       const mockToggle = vi.fn();
 
@@ -632,10 +632,10 @@ describe("App", () => {
       if (newButton) fireEvent.click(newButton);
 
       expect(mockStartNew).toHaveBeenCalledOnce();
-      expect(mockToggle).toHaveBeenCalledOnce();
+      expect(mockToggle).not.toHaveBeenCalled();
     });
 
-    it("calls switchConversation and togglePanel on select", () => {
+    it("calls switchConversation on select without closing panel", () => {
       const mockSwitch = vi.fn();
       const mockToggle = vi.fn();
 
@@ -660,7 +660,7 @@ describe("App", () => {
       if (convItem) fireEvent.click(convItem);
 
       expect(mockSwitch).toHaveBeenCalledWith("conv-1");
-      expect(mockToggle).toHaveBeenCalledOnce();
+      expect(mockToggle).not.toHaveBeenCalled();
     });
   });
 });

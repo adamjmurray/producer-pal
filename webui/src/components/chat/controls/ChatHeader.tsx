@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
-import { CHAT_UI_DOCS_URL, getModelName } from "#webui/lib/config";
+import { getModelName } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 
 interface ChatHeaderProps {
@@ -15,6 +15,7 @@ interface ChatHeaderProps {
   enabledToolsCount: number;
   totalToolsCount: number;
   smallModelMode: boolean;
+  isHistoryOpen: boolean;
   onOpenSettings: () => void;
   onToggleHistory: () => void;
 }
@@ -66,6 +67,8 @@ export function ChatHeader({
   enabledToolsCount,
   totalToolsCount,
   smallModelMode,
+
+  isHistoryOpen,
   onOpenSettings,
   onToggleHistory,
 }: ChatHeaderProps) {
@@ -89,14 +92,23 @@ export function ChatHeader({
         >
           <rect x="2" y="2" width="14" height="14" rx="2" />
           <line x1="7" y1="2" x2="7" y2="16" />
+          {isHistoryOpen && (
+            <rect
+              x="2.75"
+              y="2.75"
+              width="4.25"
+              height="12.5"
+              rx="1.25"
+              fill="currentColor"
+              stroke="none"
+            />
+          )}
         </svg>
       </button>
 
-      <a
-        href={CHAT_UI_DOCS_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="relative flex items-center pl-9 hover:opacity-80 transition-opacity"
+      <button
+        onClick={onToggleHistory}
+        className="relative flex items-center pl-9 hover:opacity-80 transition-opacity bg-transparent border-none cursor-pointer"
       >
         <img
           src={logoSvg}
@@ -106,7 +118,7 @@ export function ChatHeader({
         <h1 className="hidden md:inline text-lg font-semibold">
           Producer Pal Chat
         </h1>
-      </a>
+      </button>
 
       <div className="ml-2 flex gap-1 text-xs">
         {mcpStatus === "connected" && (
