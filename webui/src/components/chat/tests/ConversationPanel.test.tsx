@@ -278,6 +278,29 @@ describe("ConversationPanel", () => {
     expect(modelEl?.textContent).toContain("Gemini 1.5 Pro");
   });
 
+  it("shows model ID when no stored label and model not in presets", () => {
+    const unknownModelConv: ConversationSummary[] = [
+      {
+        id: "conv-unknown",
+        title: "Unknown model session",
+        createdAt: 1709900000000,
+        updatedAt: 1709900000000,
+        bookmarked: false,
+        provider: null,
+        model: "custom-model-xyz",
+        modelLabel: null,
+      },
+    ];
+
+    const { container } = render(
+      <ConversationPanel {...defaultProps} conversations={unknownModelConv} />,
+    );
+
+    const modelEl = container.querySelector(".text-right");
+
+    expect(modelEl?.textContent).toContain("custom-model-xyz");
+  });
+
   it("does not show model when model is null", () => {
     const { container } = render(
       <ConversationPanel

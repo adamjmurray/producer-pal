@@ -11,10 +11,12 @@ import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import {
+  getConversationDb,
   saveConversation,
   resetDbCache,
   type ConversationRecord,
 } from "#webui/lib/conversation-db";
+import * as transferModule from "#webui/lib/conversation-transfer";
 
 const refreshList = vi.fn().mockResolvedValue(undefined);
 
@@ -118,8 +120,11 @@ function mockFileInput(file: File): { settled: Promise<void> } {
 }
 
 describe("useConversationTransfer", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     resetDbCache();
+    const db = await getConversationDb();
+
+    await db.clear("conversations");
   });
 
   it("starts with null notification", () => {
@@ -211,5 +216,110 @@ describe("useConversationTransfer", () => {
 
     expect(result.current.notification?.type).toBe("error");
     expect(result.current.notification?.message).toContain("Import failed");
+  });
+
+  it("exports plural message for multiple conversations", async () => {
+    await saveConversation(makeRecord("test-1"));
+    await saveConversation(makeRecord("test-2"));
+    mockDownloadApis();
+
+    const { result } = renderHook(() => useConversationTransfer(refreshList));
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    expect(result.current.notification?.message).toBe(
+      "Exported 2 conversations",
+    );
+  });
+
+  it("clears previous timer when showing a new notification", async () => {
+    await saveConversation(makeRecord("test-1"));
+    mockDownloadApis();
+
+    const { result } = renderHook(() => useConversationTransfer(refreshList));
+
+    // First export sets a timer
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    expect(result.current.notification).not.toBeNull();
+
+    // Second export should clear the previous timer and set a new one
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    expect(result.current.notification?.type).toBe("success");
+  });
+
+  it("import shows updated and skipped counts in detail", async () => {
+    // Pre-save a record so it counts as "updated" on import
+    const existing = makeRecord("existing-1");
+
+    await saveConversation(existing);
+
+    const data = {
+      version: 1,
+      conversations: [
+        existing, // will be updated
+        makeRecord("new-1"), // will be new
+        { id: 123, messages: "invalid" }, // will be skipped (invalid)
+      ],
+    };
+    const file = new File([JSON.stringify(data)], "test.json");
+    const { settled } = mockFileInput(file);
+
+    const { result } = renderHook(() => useConversationTransfer(refreshList));
+
+    await act(async () => {
+      await result.current.handleImport();
+      await settled;
+    });
+
+    expect(result.current.notification?.type).toBe("success");
+    expect(result.current.notification?.message).toContain("new");
+    expect(result.current.notification?.message).toContain("updated");
+    expect(result.current.notification?.message).toContain("skipped");
+  });
+
+  it("export shows unknown error for non-Error throws", async () => {
+    vi.spyOn(URL, "createObjectURL").mockImplementation(() => {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- testing non-Error throw handling
+      throw "string error";
+    });
+
+    const { result } = renderHook(() => useConversationTransfer(refreshList));
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    expect(result.current.notification?.message).toBe(
+      "Export failed: unknown error",
+    );
+  });
+
+  it("import shows unknown error for non-Error throws", async () => {
+    vi.spyOn(transferModule, "importConversations").mockImplementation(() => {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- testing non-Error throw handling
+      throw "string error";
+    });
+
+    const file = new File(["{}"], "test.json");
+    const { settled } = mockFileInput(file);
+
+    const { result } = renderHook(() => useConversationTransfer(refreshList));
+
+    await act(async () => {
+      await result.current.handleImport();
+      await settled;
+    });
+
+    expect(result.current.notification?.message).toBe(
+      "Import failed: unknown error",
+    );
   });
 });
