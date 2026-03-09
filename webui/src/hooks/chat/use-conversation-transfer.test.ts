@@ -16,6 +16,7 @@ import {
   resetDbCache,
   type ConversationRecord,
 } from "#webui/lib/conversation-db";
+import * as transferModule from "#webui/lib/conversation-transfer";
 
 const refreshList = vi.fn().mockResolvedValue(undefined);
 
@@ -302,9 +303,12 @@ describe("useConversationTransfer", () => {
   });
 
   it("import shows unknown error for non-Error throws", async () => {
-    // Create a file that will trigger a non-Error throw via invalid JSON structure
-    const data = { conversations: "not-an-array" };
-    const file = new File([JSON.stringify(data)], "test.json");
+    vi.spyOn(transferModule, "importConversations").mockImplementation(() => {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- testing non-Error throw handling
+      throw "string error";
+    });
+
+    const file = new File(["{}"], "test.json");
     const { settled } = mockFileInput(file);
 
     const { result } = renderHook(() => useConversationTransfer(refreshList));
@@ -314,7 +318,8 @@ describe("useConversationTransfer", () => {
       await settled;
     });
 
-    expect(result.current.notification?.type).toBe("error");
-    expect(result.current.notification?.message).toContain("Import failed");
+    expect(result.current.notification?.message).toBe(
+      "Import failed: unknown error",
+    );
   });
 });
