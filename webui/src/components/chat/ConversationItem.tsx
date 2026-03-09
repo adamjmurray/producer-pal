@@ -173,10 +173,10 @@ function BookmarkStar({
         e.stopPropagation();
         onClick();
       }}
-      className={`pl-3 pr-0.5 py-1 transition-colors ${
+      className={`pl-3 pr-1 py-1 self-start mt-1.5 transition-colors ${
         bookmarked
           ? "text-amber-400 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
-          : "text-gray-300 hover:text-amber-400 dark:text-gray-600 dark:hover:text-amber-400"
+          : "text-gray-300 hover:text-gray-400 dark:text-gray-600 dark:hover:text-gray-400"
       }`}
       aria-label={bookmarked ? "Remove bookmark" : "Bookmark conversation"}
       title={bookmarked ? "Remove bookmark" : "Bookmark conversation"}

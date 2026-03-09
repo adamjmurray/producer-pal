@@ -194,9 +194,19 @@ function SectionHeader({
       onClick={onToggle}
       className="w-full px-4 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center gap-1.5 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
     >
-      <span className="text-[10px] text-gray-500 dark:text-gray-400">
-        {collapsed ? "▸" : "▾"}
-      </span>
+      <svg
+        width="10"
+        height="10"
+        viewBox="0 0 10 10"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={`text-gray-500 dark:text-gray-400 transition-transform ${collapsed ? "" : "rotate-90"}`}
+      >
+        <path d="M3.5 2L7 5L3.5 8" />
+      </svg>
       <span className="text-[10px] text-gray-600 dark:text-gray-300 uppercase tracking-wide">
         {label} ({count})
       </span>

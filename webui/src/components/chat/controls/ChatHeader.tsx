@@ -99,7 +99,7 @@ export function ChatHeader({
         </button>
         <button
           onClick={onToggleBookmark}
-          className={`${iconBtn}${onToggleBookmark ? "" : " opacity-30 cursor-default!"}`}
+          className={`${iconBtn}${isActiveBookmarked ? " text-amber-400! dark:text-amber-400!" : ""}${onToggleBookmark ? "" : " opacity-30 cursor-default!"}`}
           disabled={!onToggleBookmark}
           aria-label={
             isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
