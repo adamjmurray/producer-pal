@@ -174,8 +174,10 @@ describe("App conversation management", () => {
 
     mockConversations({ saveCurrentConversation: mockSave });
 
-    // Initial render with no messages
+    // Initial render with no messages — save should not be called yet
     const { rerender } = render(<App />);
+
+    expect(mockSave).not.toHaveBeenCalled();
 
     // Simulate a new message arriving by updating the chat hook
     (useChat as ReturnType<typeof vi.fn>).mockReturnValue({

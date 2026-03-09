@@ -48,6 +48,7 @@ describe("MCP Express App error handling", () => {
     const errorResponse = await response.json();
 
     expect(errorResponse.jsonrpc).toBe("2.0");
+    expect(errorResponse.id).toBeNull();
     expect(errorResponse.error.message).toContain(
       "Simulated server creation failure",
     );
