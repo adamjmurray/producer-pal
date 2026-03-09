@@ -5,6 +5,7 @@
 
 import { expect, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { requireMockTrack } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
   type RegisteredMockObject,
@@ -187,6 +188,29 @@ function setupArrangementClip(
     type: "Clip",
     methods: createNoteTrackingMethods(),
   });
+}
+
+/**
+ * Setup a single arrangement clip "789" with track mock and assertions.
+ * Combines setupArrangementClipPath, requireMockTrack, and null guard.
+ * @param trackIndex - Track index (default 0)
+ * @returns sourceClip and track mocks
+ */
+export function setupSingleArrangementClip(trackIndex = 0): {
+  sourceClip: RegisteredMockObject;
+  track: RegisteredMockObject;
+} {
+  const clips = setupArrangementClipPath(trackIndex, ["789"]);
+  const sourceClip = clips.get("789");
+  const track = requireMockTrack(trackIndex);
+
+  expect(sourceClip).toBeDefined();
+
+  if (sourceClip == null) {
+    throw new Error("Expected source clip mock for 789");
+  }
+
+  return { sourceClip, track };
 }
 
 /**

@@ -14,6 +14,7 @@ import {
   mockContext,
   setupArrangementClipPath,
   setupMockProperties,
+  setupSingleArrangementClip,
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
@@ -173,15 +174,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should work with no remainder (single tile)", async () => {
     const trackIndex = 0;
-    const clips = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clips.get("789");
-    const track = requireMockTrack(trackIndex);
-
-    expect(sourceClip).toBeDefined();
-
-    if (sourceClip == null) {
-      throw new Error("Expected arrangement clip mock for 789");
-    }
+    const { sourceClip, track } = setupSingleArrangementClip(trackIndex);
 
     setupMockProperties(sourceClip, {
       is_arrangement_clip: 1,

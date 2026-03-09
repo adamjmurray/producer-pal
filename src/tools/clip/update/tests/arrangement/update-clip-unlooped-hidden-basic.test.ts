@@ -16,16 +16,21 @@ import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 // directly. end_marker is extended so notes are visible in the extended region.
 // No tiling, no holding area — returns a single clip.
 
+function setupClipMock(clipId: string) {
+  const clips = setupArrangementClipPath(0, [clipId]);
+  const clip = clips.get(clipId);
+
+  expect(clip).toBeDefined();
+
+  return clip!;
+}
+
 describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () => {
   it("should extend via loop_end and end_marker", async () => {
     const clipId = "800";
+    const clip = setupClipMock(clipId);
 
-    const clips = setupArrangementClipPath(0, [clipId]);
-    const clip = clips.get(clipId);
-
-    expect(clip).toBeDefined();
-
-    setupArrangementMidiClipMock(clip!, {
+    setupArrangementMidiClipMock(clip, {
       looping: 0,
       start_time: 0.0,
       end_time: 3.0,
@@ -43,10 +48,10 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     );
 
     // end_marker extended: startMarker(0) + target(14) = 14.0
-    assertSourceClipEndMarker(clip!, 14.0);
+    assertSourceClipEndMarker(clip, 14.0);
 
     // loop_end set: loopStart(0) + target(14) = 14.0
-    expect(clip!.set).toHaveBeenCalledWith("loop_end", 14.0);
+    expect(clip.set).toHaveBeenCalledWith("loop_end", 14.0);
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
@@ -55,13 +60,9 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
 
   it("should handle start_marker offset correctly", async () => {
     const clipId = "820";
+    const clip = setupClipMock(clipId);
 
-    const clips = setupArrangementClipPath(0, [clipId]);
-    const clip = clips.get(clipId);
-
-    expect(clip).toBeDefined();
-
-    setupArrangementMidiClipMock(clip!, {
+    setupArrangementMidiClipMock(clip, {
       looping: 0,
       start_time: 0.0,
       end_time: 3.0,
@@ -79,10 +80,10 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     );
 
     // end_marker extended: startMarker(1) + target(14) = 15.0
-    assertSourceClipEndMarker(clip!, 15.0);
+    assertSourceClipEndMarker(clip, 15.0);
 
     // loop_end set: loopStart(1) + target(14) = 15.0
-    expect(clip!.set).toHaveBeenCalledWith("loop_end", 15.0);
+    expect(clip.set).toHaveBeenCalledWith("loop_end", 15.0);
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays
@@ -91,13 +92,9 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
 
   it("should not shrink end_marker when clip has more content than target", async () => {
     const clipId = "830";
+    const clip = setupClipMock(clipId);
 
-    const clips = setupArrangementClipPath(0, [clipId]);
-    const clip = clips.get(clipId);
-
-    expect(clip).toBeDefined();
-
-    setupArrangementMidiClipMock(clip!, {
+    setupArrangementMidiClipMock(clip, {
       looping: 0,
       start_time: 0.0,
       end_time: 3.0,
@@ -115,10 +112,10 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     );
 
     // end_marker should NOT be shrunk from 20 to 14
-    expect(clip!.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
+    expect(clip.set).not.toHaveBeenCalledWith("end_marker", expect.anything());
 
     // loop_end set: loopStart(0) + target(14) = 14.0
-    expect(clip!.set).toHaveBeenCalledWith("loop_end", 14.0);
+    expect(clip.set).toHaveBeenCalledWith("loop_end", 14.0);
 
     // Single clip returned (extended in place, no tiles)
     // unwrapSingleResult returns single object for single-element arrays

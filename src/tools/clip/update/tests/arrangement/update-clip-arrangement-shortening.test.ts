@@ -16,6 +16,7 @@ import {
   type UpdateClipMocks,
   setupArrangementClipPath,
   setupMockProperties,
+  setupSingleArrangementClip,
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
@@ -29,16 +30,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
   it("should shorten arrangement clip to 50% of original length", async () => {
     const trackIndex = 0;
-
-    const clips = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clips.get("789");
-    const track = requireMockTrack(trackIndex);
-
-    expect(sourceClip).toBeDefined();
-
-    if (sourceClip == null) {
-      throw new Error("Expected source clip mock for 789");
-    }
+    const { sourceClip, track } = setupSingleArrangementClip(trackIndex);
 
     setupMockProperties(sourceClip, {
       is_arrangement_clip: 1,
@@ -70,16 +62,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
   it("should shorten arrangement clip to single beat", async () => {
     const trackIndex = 0;
-
-    const clips = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clips.get("789");
-    const track = requireMockTrack(trackIndex);
-
-    expect(sourceClip).toBeDefined();
-
-    if (sourceClip == null) {
-      throw new Error("Expected source clip mock for 789");
-    }
+    const { sourceClip, track } = setupSingleArrangementClip(trackIndex);
 
     setupMockProperties(sourceClip, {
       is_arrangement_clip: 1,
@@ -154,15 +137,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
   it("should handle same length as no-op", async () => {
     const trackIndex = 0;
-    const clips = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clips.get("789");
-    const track = requireMockTrack(trackIndex);
-
-    expect(sourceClip).toBeDefined();
-
-    if (sourceClip == null) {
-      throw new Error("Expected source clip mock for 789");
-    }
+    const { sourceClip, track } = setupSingleArrangementClip(trackIndex);
 
     setupMockProperties(sourceClip, {
       is_arrangement_clip: 1,
