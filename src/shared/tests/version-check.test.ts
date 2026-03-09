@@ -57,6 +57,8 @@ describe("isNewerVersion", () => {
     // current is pre-release, latest is stable → latest is newer
     expect(isNewerVersion("1.2.3-beta", "1.2.3")).toBe(true);
     expect(isNewerVersion("1.2.3-rc1", "1.2.3")).toBe(true);
+    // v-prefixed pre-release
+    expect(isNewerVersion("v1.2.3-beta", "v1.2.3")).toBe(true);
   });
 
   it("does not treat pre-release latest as newer than same stable", () => {

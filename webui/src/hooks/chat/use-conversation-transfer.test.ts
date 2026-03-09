@@ -322,4 +322,52 @@ describe("useConversationTransfer", () => {
       "Import failed: unknown error",
     );
   });
+
+  it("clears pending timer on unmount", async () => {
+    await saveConversation(makeRecord("test-1"));
+    mockDownloadApis();
+
+    const { result, unmount } = renderHook(() =>
+      useConversationTransfer(refreshList),
+    );
+
+    // Trigger export to start the auto-dismiss timer
+    await act(async () => {
+      await result.current.handleExport();
+    });
+
+    expect(result.current.notification).not.toBeNull();
+
+    // Unmount should trigger the useEffect cleanup without errors
+    unmount();
+  });
+
+  it("auto-dismisses notification after timeout", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    try {
+      vi.spyOn(transferModule, "exportConversations").mockResolvedValue({
+        json: "[]",
+        count: 1,
+      });
+      mockDownloadApis();
+
+      const { result } = renderHook(() => useConversationTransfer(refreshList));
+
+      await act(async () => {
+        await result.current.handleExport();
+      });
+
+      expect(result.current.notification).not.toBeNull();
+
+      // Advance past the 4-second auto-dismiss timeout
+      void act(() => {
+        vi.advanceTimersByTime(4000);
+      });
+
+      expect(result.current.notification).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
