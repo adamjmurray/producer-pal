@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
@@ -328,6 +328,40 @@ describe("updateClip - Basic operations", () => {
     });
 
     const result = await updateClip({ ids: "123", toSlot: "1/2" });
+
+    expect(result).toMatchObject({
+      id: "live_set/tracks/1/clip_slots/2/clip",
+      slot: "1/2",
+    });
+  });
+
+  it("should warn and use first slot when toSlot has multiple values", async () => {
+    setupMidiClipMock(mocks.clip123);
+
+    const { registerMockObject } =
+      await import("#src/test/mocks/mock-registry.ts");
+
+    registerMockObject("live_set/tracks/0/clip_slots/0", {
+      path: livePath.track(0).clipSlot(0),
+    });
+
+    registerMockObject("live_set/tracks/1/clip_slots/2", {
+      path: livePath.track(1).clipSlot(2),
+      properties: { has_clip: 0 },
+    });
+
+    registerMockObject("live_set/tracks/1/clip_slots/2/clip", {
+      path: livePath.track(1).clipSlot(2).clip(),
+    });
+
+    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const warnSpy = vi.spyOn(consoleModule, "warn");
+
+    const result = await updateClip({ ids: "123", toSlot: "1/2, 3/4" });
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      "toSlot only supports a single destination - using first",
+    );
 
     expect(result).toMatchObject({
       id: "live_set/tracks/1/clip_slots/2/clip",

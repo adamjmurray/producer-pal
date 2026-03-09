@@ -5,12 +5,12 @@
 
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { handleCodeExecRequest } from "./code-exec-protocol.ts";
+import { handleCodeExecRequest } from "../code-exec-protocol.ts";
 
 // max-api is already mocked globally in test-setup.ts
 
 // Mock the logger to avoid console output
-vi.mock(import("./node-for-max-logger.ts"), () => ({
+vi.mock(import("../node-for-max-logger.ts"), () => ({
   info: vi.fn(),
   warn: vi.fn(),
   error: vi.fn(),
@@ -114,7 +114,7 @@ describe("code-exec-protocol", () => {
   });
 
   it("should log error when Max.outlet fails in sendCodeExecResult", async () => {
-    const consoleMock = await import("./node-for-max-logger.ts");
+    const consoleMock = await import("../node-for-max-logger.ts");
 
     // Make Max.outlet reject to trigger the catch branch in sendCodeExecResult
     vi.mocked(Max.outlet).mockRejectedValueOnce(new Error("outlet failed"));
