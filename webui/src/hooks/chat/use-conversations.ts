@@ -92,6 +92,7 @@ export function useConversations({
         const record = await loadConversation(hashId);
 
         if (record && record.messages.length > 0) {
+          setActiveId(hashId);
           restoreChatHistory(record.messages);
           activeTitleRef.current = record.title;
           activeCreatedAtRef.current = record.createdAt;
@@ -104,7 +105,7 @@ export function useConversations({
     };
 
     void init();
-  }, [refreshList, restoreChatHistory, clearActiveId]);
+  }, [refreshList, restoreChatHistory, setActiveId, clearActiveId]);
 
   const saveCurrentConversation = useCallback(async () => {
     const chatHistory = getChatHistory();

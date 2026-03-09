@@ -334,10 +334,12 @@ describe("ChatHeader", () => {
   });
 
   describe("bookmark button", () => {
-    it("does not render when onToggleBookmark is undefined", () => {
+    it("renders disabled when onToggleBookmark is undefined", () => {
       render(<ChatHeader {...defaultProps} />);
-      expect(screen.queryByLabelText("Bookmark conversation")).toBeNull();
-      expect(screen.queryByLabelText("Remove bookmark")).toBeNull();
+      const button = screen.getByLabelText("Bookmark conversation");
+
+      expect(button).toBeDefined();
+      expect(button.getAttribute("disabled")).toBe("");
     });
 
     it("renders outline star when not bookmarked", () => {

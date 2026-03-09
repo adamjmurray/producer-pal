@@ -97,20 +97,19 @@ export function ChatHeader({
         >
           <NewConversationIcon />
         </button>
-        {onToggleBookmark && (
-          <button
-            onClick={onToggleBookmark}
-            className={iconBtn}
-            aria-label={
-              isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
-            }
-            title={
-              isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
-            }
-          >
-            <BookmarkIcon bookmarked={isActiveBookmarked ?? false} />
-          </button>
-        )}
+        <button
+          onClick={onToggleBookmark}
+          className={`${iconBtn}${onToggleBookmark ? "" : " opacity-30 cursor-default!"}`}
+          disabled={!onToggleBookmark}
+          aria-label={
+            isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
+          }
+          title={
+            isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
+          }
+        >
+          <BookmarkIcon bookmarked={isActiveBookmarked ?? false} />
+        </button>
       </div>
 
       <a
