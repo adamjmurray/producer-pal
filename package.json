@@ -121,7 +121,7 @@
     "@testing-library/preact": "^3.2.4",
     "@types/dompurify": "^3.2.0",
     "@types/express": "^5.0.6",
-    "@types/node": "^25.3.5",
+    "@types/node": "^25.4.0",
     "@typescript-eslint/eslint-plugin": "^8.56.1",
     "@typescript-eslint/parser": "^8.55.0",
     "@vitest/coverage-v8": "^4.0.18",
