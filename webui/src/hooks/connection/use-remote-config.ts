@@ -22,9 +22,9 @@ interface UseRemoteConfigReturn {
 export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const [smallModelMode, setSmallModelModeState] = useState(false);
 
-  const fetchConfig = useCallback(async () => {
+  const fetchConfig = useCallback(async (signal?: AbortSignal) => {
     try {
-      const response = await fetch(getConfigUrl());
+      const response = await fetch(getConfigUrl(), { signal });
 
       if (response.ok) {
         const config = (await response.json()) as { smallModelMode?: boolean };
@@ -32,31 +32,44 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
         setSmallModelModeState(Boolean(config.smallModelMode));
       }
     } catch {
-      // Server not available, keep current state
+      // Server not available or request aborted, keep current state
     }
   }, []);
 
   // Fetch on mount
   useEffect(() => {
-    void fetchConfig();
+    const controller = new AbortController();
+
+    void fetchConfig(controller.signal);
+
+    return () => controller.abort();
   }, [fetchConfig]);
 
   // Re-fetch when MCP connection succeeds (handles server restart)
   useEffect(() => {
+    const controller = new AbortController();
+
     if (mcpStatus === "connected") {
-      void fetchConfig();
+      void fetchConfig(controller.signal);
     }
+
+    return () => controller.abort();
   }, [mcpStatus, fetchConfig]);
 
   // Re-fetch when window gains focus (syncs with Max device changes)
   useEffect(() => {
+    const controller = new AbortController();
+
     const handleFocus = () => {
-      void fetchConfig();
+      void fetchConfig(controller.signal);
     };
 
     window.addEventListener("focus", handleFocus);
 
-    return () => window.removeEventListener("focus", handleFocus);
+    return () => {
+      controller.abort();
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [fetchConfig]);
 
   const setSmallModelMode = useCallback((enabled: boolean) => {

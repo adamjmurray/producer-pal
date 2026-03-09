@@ -24,6 +24,9 @@ vi.mock(import("#webui/hooks/settings/use-settings"), () => ({
   useSettings: vi.fn(),
 }));
 vi.mock(import("#webui/hooks/theme/use-theme"), () => ({ useTheme: vi.fn() }));
+vi.mock(import("#webui/hooks/use-update-check"), () => ({
+  useUpdateCheck: () => null,
+}));
 vi.mock(import("#webui/hooks/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));

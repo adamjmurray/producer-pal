@@ -30,7 +30,9 @@ describe("useRemoteConfig", () => {
   });
 
   it("defaults smallModelMode to false", () => {
-    vi.spyOn(globalThis, "fetch").mockReturnValue(new Promise(() => {}));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false }),
+    );
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
     expect(result.current.smallModelMode).toBe(false);
@@ -46,7 +48,10 @@ describe("useRemoteConfig", () => {
     await waitFor(() => {
       expect(result.current.smallModelMode).toBe(true);
     });
-    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/config"));
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/config"),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it("re-fetches when mcpStatus changes to connected", async () => {
@@ -175,7 +180,9 @@ describe("useRemoteConfig", () => {
   });
 
   it("cleans up focus listener on unmount", () => {
-    vi.spyOn(globalThis, "fetch").mockReturnValue(new Promise(() => {}));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false }),
+    );
     const removeSpy = vi.spyOn(window, "removeEventListener");
 
     const { unmount } = renderHook(() => useRemoteConfig("connecting"));
