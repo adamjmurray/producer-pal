@@ -96,9 +96,12 @@ describe("conversation-transfer", () => {
       ],
     };
 
-    const { newCount } = await importConversations(JSON.stringify(data));
+    const { newCount, skippedCount } = await importConversations(
+      JSON.stringify(data),
+    );
 
     expect(newCount).toBe(1);
+    expect(skippedCount).toBe(2);
   });
 
   it("normalizes missing optional fields", async () => {

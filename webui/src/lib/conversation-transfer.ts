@@ -39,11 +39,11 @@ export async function exportConversations(): Promise<{
  * Import conversations from a JSON string, merging into the existing database.
  * Matching IDs overwrite existing records; new IDs are inserted.
  * @param json - JSON string in the export format
- * @returns Counts of new and updated conversations
+ * @returns Counts of new, updated, and skipped conversations
  */
 export async function importConversations(
   json: string,
-): Promise<{ newCount: number; updatedCount: number }> {
+): Promise<{ newCount: number; updatedCount: number; skippedCount: number }> {
   const data = JSON.parse(json) as Record<string, unknown>;
 
   if (!Array.isArray(data.conversations)) {
@@ -52,25 +52,32 @@ export async function importConversations(
 
   let newCount = 0;
   let updatedCount = 0;
+  let skippedCount = 0;
 
   for (const raw of data.conversations as unknown[]) {
     const record = raw as Record<string, unknown>;
 
-    if (!validateRecord(record)) continue;
+    if (!validateRecord(record)) {
+      skippedCount++;
+      continue;
+    }
 
-    const existing = await loadConversation(record.id as string);
-    const normalized = normalizeRecord(record);
+    try {
+      const existing = await loadConversation(record.id as string);
 
-    await saveConversation(normalized);
+      await saveConversation(normalizeRecord(record));
 
-    if (existing) {
-      updatedCount++;
-    } else {
-      newCount++;
+      if (existing) {
+        updatedCount++;
+      } else {
+        newCount++;
+      }
+    } catch {
+      skippedCount++;
     }
   }
 
-  return { newCount, updatedCount };
+  return { newCount, updatedCount, skippedCount };
 }
 
 // --- Helpers below main exports ---
