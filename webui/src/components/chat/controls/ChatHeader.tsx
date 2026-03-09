@@ -16,9 +16,11 @@ interface ChatHeaderProps {
   totalToolsCount: number;
   smallModelMode: boolean;
   isHistoryOpen: boolean;
+  isActiveBookmarked?: boolean;
   onOpenSettings: () => void;
   onToggleHistory: () => void;
   onNewConversation: () => void;
+  onToggleBookmark?: () => void;
 }
 
 /**
@@ -39,6 +41,29 @@ export function NewConversationIcon() {
     >
       <path d="M15 2.5l2.5 2.5-8.75 8.75H6.25v-2.5L15 2.5z" />
       <path d="M3.75 17.5h12.5" />
+    </svg>
+  );
+}
+
+/**
+ * Star icon for bookmarking conversations
+ * @param props - Component props
+ * @param props.bookmarked - Whether the conversation is bookmarked
+ * @returns SVG element
+ */
+function BookmarkIcon({ bookmarked }: { bookmarked: boolean }) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill={bookmarked ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M10 2.5l2.35 4.75 5.25.75-3.8 3.7.9 5.25L10 14.5l-4.7 2.45.9-5.25-3.8-3.7 5.25-.75z" />
     </svg>
   );
 }
@@ -159,9 +184,11 @@ export function ChatHeader({
   smallModelMode,
 
   isHistoryOpen,
+  isActiveBookmarked,
   onOpenSettings,
   onToggleHistory,
   onNewConversation,
+  onToggleBookmark,
 }: ChatHeaderProps) {
   return (
     <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center gap-3">
@@ -183,6 +210,21 @@ export function ChatHeader({
         >
           <NewConversationIcon />
         </button>
+
+        {onToggleBookmark && (
+          <button
+            onClick={onToggleBookmark}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+            aria-label={
+              isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
+            }
+            title={
+              isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
+            }
+          >
+            <BookmarkIcon bookmarked={isActiveBookmarked ?? false} />
+          </button>
+        )}
       </div>
 
       <button

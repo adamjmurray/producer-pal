@@ -56,6 +56,7 @@ export interface ConversationPanelState {
   onNew: () => void;
   onDelete: (id: string) => void;
   onRename: (id: string, title: string | null) => void;
+  onToggleBookmark: (id: string) => void;
 }
 
 /**
@@ -127,6 +128,12 @@ export function ChatScreen({
     showThoughts,
   };
 
+  const activeConv = conversationPanel.activeConversationId
+    ? conversationPanel.conversations.find(
+        (c) => c.id === conversationPanel.activeConversationId,
+      )
+    : undefined;
+
   return (
     <div className="flex flex-col h-screen">
       <ChatHeader
@@ -139,9 +146,18 @@ export function ChatScreen({
         totalToolsCount={totalToolsCount}
         smallModelMode={smallModelMode}
         isHistoryOpen={conversationPanel.isOpen}
+        isActiveBookmarked={activeConv?.bookmarked}
         onOpenSettings={onOpenSettings}
         onToggleHistory={conversationPanel.onToggle}
         onNewConversation={conversationPanel.onNew}
+        onToggleBookmark={
+          conversationPanel.activeConversationId
+            ? () =>
+                conversationPanel.onToggleBookmark(
+                  conversationPanel.activeConversationId as string,
+                )
+            : undefined
+        }
       />
 
       <div className="flex flex-1 min-h-0">
@@ -153,6 +169,7 @@ export function ChatScreen({
           onNewConversation={conversationPanel.onNew}
           onDelete={conversationPanel.onDelete}
           onRename={conversationPanel.onRename}
+          onToggleBookmark={conversationPanel.onToggleBookmark}
         />
 
         <div

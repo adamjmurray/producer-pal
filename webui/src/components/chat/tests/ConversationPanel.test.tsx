@@ -17,12 +17,14 @@ const conversations: ConversationSummary[] = [
     title: "My session",
     createdAt: 1709900000000,
     updatedAt: 1709900000000,
+    bookmarked: false,
   },
   {
     id: "conv-2",
     title: null,
     createdAt: 1709800000000,
     updatedAt: 1709850000000,
+    bookmarked: false,
   },
 ];
 
@@ -33,6 +35,7 @@ const defaultProps = {
   onNewConversation: vi.fn(),
   onDelete: vi.fn(),
   onRename: vi.fn(),
+  onToggleBookmark: vi.fn(),
 };
 
 describe("ConversationPanel", () => {
@@ -233,5 +236,79 @@ describe("ConversationPanel", () => {
     );
 
     expect(getByText("No conversations yet")).toBeTruthy();
+  });
+
+  it("renders star button for each conversation", () => {
+    const { getAllByLabelText } = render(
+      <ConversationPanel {...defaultProps} conversations={conversations} />,
+    );
+
+    expect(getAllByLabelText("Bookmark conversation")).toHaveLength(2);
+  });
+
+  it("calls onToggleBookmark when clicking star", () => {
+    const onToggleBookmark = vi.fn();
+
+    const { getAllByLabelText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        onToggleBookmark={onToggleBookmark}
+      />,
+    );
+
+    fireEvent.click(
+      getAllByLabelText("Bookmark conversation")[0] as HTMLElement,
+    );
+
+    expect(onToggleBookmark).toHaveBeenCalledWith("conv-1");
+  });
+
+  it("shows divider when both bookmarked and unbookmarked exist", () => {
+    const mixed: ConversationSummary[] = [
+      { ...conversations[0]!, bookmarked: true },
+      { ...conversations[1]!, bookmarked: false },
+    ];
+
+    const { getByText } = render(
+      <ConversationPanel {...defaultProps} conversations={mixed} />,
+    );
+
+    expect(getByText("Other conversations")).toBeTruthy();
+  });
+
+  it("does not show divider when no conversations are bookmarked", () => {
+    const { queryByText } = render(
+      <ConversationPanel {...defaultProps} conversations={conversations} />,
+    );
+
+    expect(queryByText("Other conversations")).toBeNull();
+  });
+
+  it("does not show divider when all conversations are bookmarked", () => {
+    const allBookmarked = conversations.map((c) => ({
+      ...c,
+      bookmarked: true,
+    }));
+
+    const { queryByText } = render(
+      <ConversationPanel {...defaultProps} conversations={allBookmarked} />,
+    );
+
+    expect(queryByText("Other conversations")).toBeNull();
+  });
+
+  it("shows filled star for bookmarked conversations", () => {
+    const mixed: ConversationSummary[] = [
+      { ...conversations[0]!, bookmarked: true },
+      { ...conversations[1]!, bookmarked: false },
+    ];
+
+    const { getAllByLabelText } = render(
+      <ConversationPanel {...defaultProps} conversations={mixed} />,
+    );
+
+    expect(getAllByLabelText("Remove bookmark")).toHaveLength(1);
+    expect(getAllByLabelText("Bookmark conversation")).toHaveLength(1);
   });
 });

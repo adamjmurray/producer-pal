@@ -311,6 +311,55 @@ describe("ChatHeader", () => {
     });
   });
 
+  describe("bookmark button", () => {
+    it("does not render when onToggleBookmark is undefined", () => {
+      render(<ChatHeader {...defaultProps} />);
+      expect(screen.queryByLabelText("Bookmark conversation")).toBeNull();
+      expect(screen.queryByLabelText("Remove bookmark")).toBeNull();
+    });
+
+    it("renders outline star when not bookmarked", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          isActiveBookmarked={false}
+          onToggleBookmark={vi.fn()}
+        />,
+      );
+      const button = screen.getByLabelText("Bookmark conversation");
+
+      expect(button).toBeDefined();
+    });
+
+    it("renders filled star when bookmarked", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          isActiveBookmarked={true}
+          onToggleBookmark={vi.fn()}
+        />,
+      );
+      const button = screen.getByLabelText("Remove bookmark");
+
+      expect(button).toBeDefined();
+    });
+
+    it("calls onToggleBookmark when clicked", () => {
+      const onToggleBookmark = vi.fn();
+
+      render(
+        <ChatHeader
+          {...defaultProps}
+          isActiveBookmarked={false}
+          onToggleBookmark={onToggleBookmark}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText("Bookmark conversation"));
+
+      expect(onToggleBookmark).toHaveBeenCalledOnce();
+    });
+  });
+
   describe("small model mode indicator", () => {
     it("does not show indicator when smallModelMode is false", () => {
       render(<ChatHeader {...defaultProps} smallModelMode={false} />);

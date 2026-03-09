@@ -3,11 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { openDB, type IDBPDatabase } from "idb";
+import { openDB, type IDBPDatabase, type IDBPTransaction } from "idb";
 import { type AiSdkMessage } from "#webui/chat/ai-sdk/ai-sdk-types";
 
 const DB_NAME = "producer-pal-conversations";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "conversations";
 
 /** Full conversation record stored in IndexedDB */
@@ -16,6 +16,7 @@ export interface ConversationRecord {
   title: string | null;
   createdAt: number;
   updatedAt: number;
+  bookmarked: boolean;
   messages: AiSdkMessage[];
 }
 
@@ -25,6 +26,7 @@ export interface ConversationSummary {
   title: string | null;
   createdAt: number;
   updatedAt: number;
+  bookmarked: boolean;
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
@@ -35,10 +37,16 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
  */
 export function getConversationDb(): Promise<IDBPDatabase> {
   dbPromise ??= openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
+    upgrade(db, oldVersion, _newVersion, transaction) {
+      if (oldVersion < 1) {
+        const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
 
-      store.createIndex("updatedAt", "updatedAt");
+        store.createIndex("updatedAt", "updatedAt");
+      }
+
+      if (oldVersion < 2) {
+        void migrateToV2(transaction);
+      }
     },
   });
 
@@ -103,7 +111,27 @@ export async function renameConversation(
 }
 
 /**
- * List all conversations sorted by createdAt descending (newest first).
+ * Set the bookmarked state of a conversation.
+ * @param id - Conversation ID
+ * @param bookmarked - Whether to bookmark
+ */
+export async function setBookmark(
+  id: string,
+  bookmarked: boolean,
+): Promise<void> {
+  const db = await getConversationDb();
+  const record = (await db.get(STORE_NAME, id)) as
+    | ConversationRecord
+    | undefined;
+
+  if (!record) return;
+
+  record.bookmarked = bookmarked;
+  await db.put(STORE_NAME, record);
+}
+
+/**
+ * List all conversations. Bookmarked first, then by createdAt descending.
  * @returns Array of conversation summaries
  */
 export async function listConversations(): Promise<ConversationSummary[]> {
@@ -111,13 +139,19 @@ export async function listConversations(): Promise<ConversationSummary[]> {
   const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
 
   return all
-    .map(({ id, title, createdAt, updatedAt }) => ({
+    .map(({ id, title, createdAt, updatedAt, bookmarked }) => ({
       id,
       title: title ?? null,
       createdAt,
       updatedAt,
+      // Pre-v2 records may lack bookmarked field
+      bookmarked: (bookmarked as boolean | undefined) ?? false,
     }))
-    .sort((a, b) => b.createdAt - a.createdAt);
+    .sort((a, b) => {
+      if (a.bookmarked !== b.bookmarked) return a.bookmarked ? -1 : 1;
+
+      return b.createdAt - a.createdAt;
+    });
 }
 
 /**
@@ -125,4 +159,28 @@ export async function listConversations(): Promise<ConversationSummary[]> {
  */
 export function resetDbCache(): void {
   dbPromise = null;
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Migrate existing records to v2 by adding bookmarked field.
+ * @param transaction - The upgrade transaction
+ */
+async function migrateToV2(
+  transaction: IDBPTransaction<unknown, string[], "versionchange">,
+): Promise<void> {
+  const store = transaction.objectStore(STORE_NAME);
+  let cursor = await store.openCursor();
+
+  while (cursor) {
+    const record = cursor.value as Record<string, unknown>;
+
+    if (record.bookmarked == null) {
+      record.bookmarked = false;
+      await cursor.update(record);
+    }
+
+    cursor = await cursor.continue();
+  }
 }

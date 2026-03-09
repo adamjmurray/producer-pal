@@ -49,6 +49,7 @@ describe("ChatScreen", () => {
       onNew: vi.fn(),
       onDelete: vi.fn(),
       onRename: vi.fn(),
+      onToggleBookmark: vi.fn(),
     },
   };
 
@@ -330,6 +331,41 @@ describe("ChatScreen", () => {
 
       // The function was called - state was reset to defaults
       // (Internal state is not directly observable, but function coverage is achieved)
+    });
+  });
+
+  describe("bookmark button in header", () => {
+    it("passes onToggleBookmark to header when active conversation exists", () => {
+      const onToggleBookmark = vi.fn();
+
+      render(
+        <ChatScreen
+          {...defaultProps}
+          conversationPanel={{
+            ...defaultProps.conversationPanel,
+            conversations: [
+              {
+                id: "conv-1",
+                title: "Test",
+                createdAt: 1000,
+                updatedAt: 1000,
+                bookmarked: false,
+              },
+            ],
+            activeConversationId: "conv-1",
+            onToggleBookmark,
+          }}
+        />,
+      );
+
+      const bookmarkBtn = document.querySelector(
+        "[aria-label='Bookmark conversation']",
+      ) as HTMLElement;
+
+      expect(bookmarkBtn).toBeDefined();
+      fireEvent.click(bookmarkBtn);
+
+      expect(onToggleBookmark).toHaveBeenCalledWith("conv-1");
     });
   });
 });
