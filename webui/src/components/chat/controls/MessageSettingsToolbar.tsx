@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
+import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { type Provider } from "#webui/types/settings";
 
 export interface MessageSettingsToolbarProps {
@@ -190,8 +191,13 @@ export function MessageSettingsToolbar({
         className="w-full px-4 py-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         type="button"
       >
-        <span className="text-sm text-gray-600 dark:text-gray-400">
-          {isExpanded ? "▼" : "▶"} Behavior settings
+        <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+          <span
+            className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
+          >
+            <DisclosureChevron />
+          </span>
+          Behavior settings
           {!isUsingDefaults && " (customized)"}
         </span>
         <span className="text-xs text-gray-500 dark:text-gray-500">

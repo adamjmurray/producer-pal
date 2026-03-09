@@ -250,7 +250,7 @@ describe("AssistantToolCall", () => {
           args={{ foo: "bar", num: 42 }}
         />,
       );
-      const funcDiv = document.querySelector(".text-gray-500");
+      const funcDiv = document.querySelector("details > div.text-gray-500");
 
       expect(funcDiv!.textContent).toContain("test-tool");
       expect(funcDiv!.textContent).toContain("foo");
@@ -265,7 +265,7 @@ describe("AssistantToolCall", () => {
           args={{ key: "value" }}
         />,
       );
-      const funcDiv = document.querySelector(".text-gray-500");
+      const funcDiv = document.querySelector("details > div.text-gray-500");
 
       expect(funcDiv!.textContent).toContain('"key":"value"');
     });

@@ -48,17 +48,21 @@ describe("MessageSettingsToolbar", () => {
     const toolbar = container.querySelector(".w-full.px-4.py-2");
 
     expect(toolbar).toBeDefined();
-    expect(toolbar?.textContent).toContain("▶");
+    const chevronWrap = toolbar?.querySelector("svg")?.parentElement;
+
+    expect(chevronWrap).toBeDefined();
+    expect(chevronWrap?.className).not.toContain("rotate-90");
   });
 
   it("expands and collapses when clicked", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const button = container.querySelector("button");
+    const chevronWrap = container.querySelector("svg")?.parentElement;
 
     fireEvent.click(button!);
-    expect(container.textContent).toContain("▼");
+    expect(chevronWrap?.className).toContain("rotate-90");
     fireEvent.click(button!);
-    expect(container.textContent).toContain("▶");
+    expect(chevronWrap?.className).not.toContain("rotate-90");
   });
 
   it.each([{ thinking: "High" }, { temperature: 1.5 }])(

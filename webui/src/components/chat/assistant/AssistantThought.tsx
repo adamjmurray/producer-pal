@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import {
   sanitizeMarkdown,
   sanitizeMarkdownInline,
@@ -38,10 +39,13 @@ export function AssistantThought({
   if (isOpen) {
     return (
       <details
-        className={`${baseClasses}${isResponding ? " animate-pulse" : ""}`}
+        className={`disclosure ${baseClasses}${isResponding ? " animate-pulse" : ""}`}
         open
       >
-        <summary className="font-semibold truncate">💭 Thinking...</summary>
+        <summary className="font-semibold truncate flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+          <DisclosureChevron />
+          💭 Thinking...
+        </summary>
         <div
           className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"
           dangerouslySetInnerHTML={{ __html: sanitizeMarkdown(trimmed) }}
@@ -52,8 +56,9 @@ export function AssistantThought({
 
   // Completed thought — summary swaps content via group-open
   return (
-    <details className={`group ${baseClasses}`}>
-      <summary className="font-semibold truncate">
+    <details className={`disclosure group ${baseClasses}`}>
+      <summary className="font-semibold truncate flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+        <DisclosureChevron />
         <span
           className="group-open:hidden"
           dangerouslySetInnerHTML={{

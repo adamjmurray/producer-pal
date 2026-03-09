@@ -12,6 +12,11 @@
   margin-bottom: 0.6em;
 }
 
+/* Rotate chevron when details element is open */
+.disclosure[open] > summary .chevron {
+  transform: rotate(90deg);
+}
+
 /* Animated blur on chat content when settings open */
 .settings-blur {
   animation: chat-blur-in 150ms ease-out forwards;

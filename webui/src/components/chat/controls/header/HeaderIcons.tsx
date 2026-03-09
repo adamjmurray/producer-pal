@@ -156,6 +156,30 @@ export function SettingsIcon() {
   );
 }
 
+/**
+ * Small SVG chevron for disclosure/collapsible toggles.
+ * For `<details>` elements, pair with `.disclosure` CSS class for open rotation.
+ * For button-driven toggles, apply `rotate-90` conditionally.
+ * @returns SVG chevron element
+ */
+export function DisclosureChevron() {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="chevron shrink-0 transition-transform text-gray-500 dark:text-gray-400"
+    >
+      <path d="M3.5 2L7 5L3.5 8" />
+    </svg>
+  );
+}
+
 // --- Helpers below main exports ---
 
 /**
