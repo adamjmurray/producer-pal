@@ -97,4 +97,18 @@ describe("createProviderModel", () => {
     expect(model).toBeDefined();
     expect(getModelId(model)).toBe("gemini-2.0-flash");
   });
+
+  it("uses fallback apiKey for lmstudio with empty key", () => {
+    const model = createProviderModel("lmstudio", "local-model", "");
+
+    expect(model).toBeDefined();
+    expect(getModelId(model)).toBe("local-model");
+  });
+
+  it("uses fallback apiKey for ollama with empty key", () => {
+    const model = createProviderModel("ollama", "llama3", "");
+
+    expect(model).toBeDefined();
+    expect(getModelId(model)).toBe("llama3");
+  });
 });

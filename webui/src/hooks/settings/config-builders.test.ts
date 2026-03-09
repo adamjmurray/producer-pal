@@ -196,5 +196,18 @@ describe("config-builders", () => {
       expect(mapThinkingToOllamaThink("Medium", "gpt-oss")).toBe("medium");
       expect(mapThinkingToOllamaThink("High", "gpt-oss")).toBe("high");
     });
+
+    it("should handle Minimal and Ultra levels", () => {
+      expect(mapThinkingToOllamaThink("Minimal", "qwen3.5")).toBe(true);
+      expect(mapThinkingToOllamaThink("Ultra", "qwen3.5")).toBe(true);
+      expect(mapThinkingToOllamaThink("Minimal", "gpt-oss")).toBe("low");
+      expect(mapThinkingToOllamaThink("Ultra", "gpt-oss")).toBe("high");
+    });
+
+    it("should return undefined for unknown thinking level", () => {
+      expect(
+        mapThinkingToOllamaThink("UnknownLevel", "qwen3.5"),
+      ).toBeUndefined();
+    });
   });
 });
