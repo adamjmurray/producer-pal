@@ -66,11 +66,13 @@ describe("ConversationPanel", () => {
       <ConversationPanel {...defaultProps} conversations={conversations} />,
     );
 
-    // Each conversation has a timestamp row with text-[10px] inside the list
+    // Each conversation has a timestamp row below its title
     const listArea = container.querySelector(".overflow-y-auto")!;
-    const timestamps = listArea.querySelectorAll(".text-\\[10px\\]");
+    const timestampRows = listArea.querySelectorAll(
+      "button.w-full > .text-left .text-\\[10px\\]",
+    );
 
-    expect(timestamps).toHaveLength(2);
+    expect(timestampRows).toHaveLength(2);
   });
 
   it("highlights active conversation", () => {
@@ -82,7 +84,9 @@ describe("ConversationPanel", () => {
       />,
     );
 
-    const items = container.querySelectorAll(".overflow-y-auto > button");
+    const items = container.querySelectorAll(
+      ".overflow-y-auto button.text-left",
+    );
     const activeItem = items[0] as HTMLElement;
 
     expect(activeItem.className).toContain("bg-blue-50");
@@ -220,12 +224,11 @@ describe("ConversationPanel", () => {
       />,
     );
 
-    // The timestamp row is a full-width button below the title row
+    // Conversation items are w-full text-left buttons
     const listArea = container.querySelector(".overflow-y-auto")!;
-    const fullWidthButtons = listArea.querySelectorAll("button.w-full");
+    const convButtons = listArea.querySelectorAll("button.text-left");
 
-    // Each conversation has a w-full timestamp button
-    fireEvent.click(fullWidthButtons[0] as HTMLElement);
+    fireEvent.click(convButtons[0] as HTMLElement);
 
     expect(onSelect).toHaveBeenCalledWith("conv-1");
   });
@@ -264,7 +267,7 @@ describe("ConversationPanel", () => {
     expect(onToggleBookmark).toHaveBeenCalledWith("conv-1");
   });
 
-  it("shows divider when both bookmarked and unbookmarked exist", () => {
+  it("shows Bookmarks section when bookmarked conversations exist", () => {
     const mixed: ConversationSummary[] = [
       { ...conversations[0]!, bookmarked: true },
       { ...conversations[1]!, bookmarked: false },
@@ -274,28 +277,59 @@ describe("ConversationPanel", () => {
       <ConversationPanel {...defaultProps} conversations={mixed} />,
     );
 
-    expect(getByText("Other conversations")).toBeTruthy();
+    expect(getByText(/Bookmarks \(1\)/)).toBeTruthy();
+    expect(getByText(/All Conversations \(2\)/)).toBeTruthy();
   });
 
-  it("does not show divider when no conversations are bookmarked", () => {
+  it("does not show Bookmarks section when none are bookmarked", () => {
     const { queryByText } = render(
       <ConversationPanel {...defaultProps} conversations={conversations} />,
     );
 
-    expect(queryByText("Other conversations")).toBeNull();
+    expect(queryByText(/Bookmarks/)).toBeNull();
   });
 
-  it("does not show divider when all conversations are bookmarked", () => {
+  it("shows only Bookmarks section when all are bookmarked", () => {
     const allBookmarked = conversations.map((c) => ({
       ...c,
       bookmarked: true,
     }));
 
-    const { queryByText } = render(
+    const { getByText, queryByText } = render(
       <ConversationPanel {...defaultProps} conversations={allBookmarked} />,
     );
 
-    expect(queryByText("Other conversations")).toBeNull();
+    expect(getByText(/Bookmarks \(2\)/)).toBeTruthy();
+    // All Conversations section still shows (contains all items)
+    expect(queryByText(/All Conversations \(2\)/)).toBeTruthy();
+  });
+
+  it("collapses and expands sections when clicking headers", () => {
+    const mixed: ConversationSummary[] = [
+      { ...conversations[0]!, bookmarked: true },
+      { ...conversations[1]!, bookmarked: false },
+    ];
+
+    const { getAllByText, getByText, container } = render(
+      <ConversationPanel {...defaultProps} conversations={mixed} />,
+    );
+
+    // Bookmarked item appears in both sections initially
+    expect(getAllByText("My session")).toHaveLength(2);
+
+    // Collapse Bookmarks — one copy removed
+    fireEvent.click(getByText(/Bookmarks \(1\)/));
+    expect(getAllByText("My session")).toHaveLength(1);
+
+    // Collapse All Conversations
+    fireEvent.click(getByText(/All Conversations \(2\)/));
+    const convItems = container.querySelectorAll("button.text-left");
+
+    expect(convItems).toHaveLength(0);
+
+    // Expand All Conversations
+    fireEvent.click(getByText(/All Conversations \(2\)/));
+    expect(getAllByText("My session")).toHaveLength(1);
   });
 
   it("shows filled star for bookmarked conversations", () => {
@@ -308,7 +342,8 @@ describe("ConversationPanel", () => {
       <ConversationPanel {...defaultProps} conversations={mixed} />,
     );
 
-    expect(getAllByLabelText("Remove bookmark")).toHaveLength(1);
+    // Bookmarked item appears in both Bookmarks and All Conversations sections
+    expect(getAllByLabelText("Remove bookmark")).toHaveLength(2);
     expect(getAllByLabelText("Bookmark conversation")).toHaveLength(1);
   });
 });

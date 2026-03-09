@@ -48,8 +48,9 @@ export function ConversationPanel({
 }: ConversationPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [bookmarksCollapsed, setBookmarksCollapsed] = useState(false);
+  const [allCollapsed, setAllCollapsed] = useState(false);
   const bookmarked = conversations.filter((c) => c.bookmarked);
-  const unbookmarked = conversations.filter((c) => !c.bookmarked);
 
   const renderItems = (items: ConversationSummary[]) =>
     items.map((conv) => (
@@ -100,17 +101,25 @@ export function ConversationPanel({
             </p>
           ) : (
             <>
-              {renderItems(bookmarked)}
-
-              {bookmarked.length > 0 && unbookmarked.length > 0 && (
-                <div className="px-4 py-1.5 border-b border-gray-200 dark:border-gray-700">
-                  <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">
-                    Other conversations
-                  </span>
-                </div>
+              {bookmarked.length > 0 && (
+                <>
+                  <SectionHeader
+                    label="Bookmarks"
+                    count={bookmarked.length}
+                    collapsed={bookmarksCollapsed}
+                    onToggle={() => setBookmarksCollapsed(!bookmarksCollapsed)}
+                  />
+                  {!bookmarksCollapsed && renderItems(bookmarked)}
+                </>
               )}
 
-              {renderItems(unbookmarked)}
+              <SectionHeader
+                label="All Conversations"
+                count={conversations.length}
+                collapsed={allCollapsed}
+                onToggle={() => setAllCollapsed(!allCollapsed)}
+              />
+              {!allCollapsed && renderItems(conversations)}
             </>
           )}
         </div>
@@ -120,6 +129,41 @@ export function ConversationPanel({
 }
 
 // --- Helpers below main export ---
+
+/**
+ * Collapsible section header for conversation sublists.
+ * @param props - Component props
+ * @param props.label - Section label text
+ * @param props.count - Number of conversations in this section
+ * @param props.collapsed - Whether the section is collapsed
+ * @param props.onToggle - Toggle collapse callback
+ * @returns Section header button element
+ */
+function SectionHeader({
+  label,
+  count,
+  collapsed,
+  onToggle,
+}: {
+  label: string;
+  count: number;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="w-full px-4 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center gap-1.5 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+    >
+      <span className="text-[10px] text-gray-500 dark:text-gray-400">
+        {collapsed ? "▸" : "▾"}
+      </span>
+      <span className="text-[10px] text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+        {label} ({count})
+      </span>
+    </button>
+  );
+}
 
 /**
  * Small star icon button for toggling bookmark state.

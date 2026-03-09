@@ -147,11 +147,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
       // Pre-v2 records may lack bookmarked field
       bookmarked: (bookmarked as boolean | undefined) ?? false,
     }))
-    .sort((a, b) => {
-      if (a.bookmarked !== b.bookmarked) return a.bookmarked ? -1 : 1;
-
-      return b.createdAt - a.createdAt;
-    });
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /**

@@ -168,7 +168,7 @@ describe("conversation-db", () => {
     expect(loaded).toBeUndefined();
   });
 
-  it("lists bookmarked conversations before unbookmarked", async () => {
+  it("sorts all conversations by createdAt desc regardless of bookmark", async () => {
     const oldest = createRecord({ createdAt: 1000 });
     const middle = createRecord({ createdAt: 2000 });
     const newest = createRecord({ createdAt: 3000 });
@@ -180,27 +180,9 @@ describe("conversation-db", () => {
 
     const list = await listConversations();
 
-    expect(list[0]?.id).toBe(oldest.id);
-    expect(list[0]?.bookmarked).toBe(true);
-    expect(list[1]?.id).toBe(newest.id);
-    expect(list[2]?.id).toBe(middle.id);
-  });
-
-  it("sorts multiple bookmarked conversations by createdAt desc", async () => {
-    const a = createRecord({ createdAt: 1000 });
-    const b = createRecord({ createdAt: 2000 });
-    const c = createRecord({ createdAt: 3000 });
-
-    await saveConversation(a);
-    await saveConversation(b);
-    await saveConversation(c);
-    await setBookmark(a.id, true);
-    await setBookmark(b.id, true);
-
-    const list = await listConversations();
-
-    expect(list[0]?.id).toBe(b.id);
-    expect(list[1]?.id).toBe(a.id);
-    expect(list[2]?.id).toBe(c.id);
+    expect(list[0]?.id).toBe(newest.id);
+    expect(list[1]?.id).toBe(middle.id);
+    expect(list[2]?.id).toBe(oldest.id);
+    expect(list[2]?.bookmarked).toBe(true);
   });
 });
