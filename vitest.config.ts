@@ -109,7 +109,7 @@ export default defineConfig({
       thresholds: {
         statements: 98.4, // TODO: get above 99
         branches: 94, // TODO: get above 95
-        functions: 99.4, // Keep above 99.5
+        functions: 99.5, // Keep above 99.6
         lines: 98.7, // TODO: get above 99
       },
     },
