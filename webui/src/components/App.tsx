@@ -31,7 +31,7 @@ const LOCAL_PROVIDER_API_KEY = "not-needed";
  * Check if viewport is below Tailwind's md breakpoint (768px)
  * @returns true on mobile-width screens
  */
-function isMobile(): boolean {
+export function isMobile(): boolean {
   return window.matchMedia("(max-width: 767px)").matches;
 }
 
@@ -47,7 +47,7 @@ const PROVIDER_BASE_URLS = {
  * @param {string} url - URL to normalize
  * @returns {string} - Normalized URL with /v1 suffix
  */
-function normalizeLocalProviderUrl(url: string): string {
+export function normalizeLocalProviderUrl(url: string): string {
   // Remove trailing slashes
   const trimmed = url.replace(/\/+$/, "");
 
@@ -65,7 +65,7 @@ function normalizeLocalProviderUrl(url: string): string {
  * @param {string | undefined} baseUrl - Base URL for custom/local providers
  * @returns {string | undefined} - Base URL or undefined for Gemini
  */
-function getBaseUrl(
+export function getBaseUrl(
   provider: string,
   baseUrl: string | undefined,
 ): string | undefined {
