@@ -7,7 +7,7 @@ import { openDB, type IDBPDatabase, type IDBPTransaction } from "idb";
 import { type AiSdkMessage } from "#webui/chat/ai-sdk/ai-sdk-types";
 
 const DB_NAME = "producer-pal-conversations";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = "conversations";
 
 /** Full conversation record stored in IndexedDB */
@@ -17,6 +17,8 @@ export interface ConversationRecord {
   createdAt: number;
   updatedAt: number;
   bookmarked: boolean;
+  provider: string | null;
+  model: string | null;
   messages: AiSdkMessage[];
 }
 
@@ -27,6 +29,8 @@ export interface ConversationSummary {
   createdAt: number;
   updatedAt: number;
   bookmarked: boolean;
+  provider: string | null;
+  model: string | null;
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
@@ -46,6 +50,10 @@ export function getConversationDb(): Promise<IDBPDatabase> {
 
       if (oldVersion < 2) {
         void migrateToV2(transaction);
+      }
+
+      if (oldVersion < 3) {
+        void migrateToV3(transaction);
       }
     },
   });
@@ -139,14 +147,19 @@ export async function listConversations(): Promise<ConversationSummary[]> {
   const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
 
   return all
-    .map(({ id, title, createdAt, updatedAt, bookmarked }) => ({
-      id,
-      title: title ?? null,
-      createdAt,
-      updatedAt,
-      // Pre-v2 records may lack bookmarked field
-      bookmarked: (bookmarked as boolean | undefined) ?? false,
-    }))
+    .map(
+      ({ id, title, createdAt, updatedAt, bookmarked, provider, model }) => ({
+        id,
+        title: title ?? null,
+        createdAt,
+        updatedAt,
+        // Pre-v2 records may lack bookmarked field
+        bookmarked: (bookmarked as boolean | undefined) ?? false,
+        // Pre-v3 records may lack provider/model fields
+        provider: (provider as string | null | undefined) ?? null,
+        model: (model as string | null | undefined) ?? null,
+      }),
+    )
     .sort((a, b) => b.createdAt - a.createdAt);
 }
 
@@ -158,6 +171,33 @@ export function resetDbCache(): void {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Migrate existing records to v2 by adding bookmarked field.
+ * @param transaction - The upgrade transaction
+ */
+/**
+ * Migrate existing records to v3 by adding provider and model fields.
+ * @param transaction - The upgrade transaction
+ */
+async function migrateToV3(
+  transaction: IDBPTransaction<unknown, string[], "versionchange">,
+): Promise<void> {
+  const store = transaction.objectStore(STORE_NAME);
+  let cursor = await store.openCursor();
+
+  while (cursor) {
+    const record = cursor.value as Record<string, unknown>;
+
+    if (record.provider == null) {
+      record.provider = null;
+      record.model = null;
+      await cursor.update(record);
+    }
+
+    cursor = await cursor.continue();
+  }
+}
 
 /**
  * Migrate existing records to v2 by adding bookmarked field.

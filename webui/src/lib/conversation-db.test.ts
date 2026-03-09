@@ -28,6 +28,8 @@ function createRecord(
     createdAt: Date.now(),
     updatedAt: Date.now(),
     bookmarked: false,
+    provider: null,
+    model: null,
     messages: [{ role: "user", content: "hello" }],
     ...overrides,
   };
@@ -107,6 +109,8 @@ describe("conversation-db", () => {
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       bookmarked: false,
+      provider: null,
+      model: null,
     });
     expect(
       (list[0] as unknown as Record<string, unknown>).messages,

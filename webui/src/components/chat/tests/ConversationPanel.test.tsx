@@ -18,6 +18,8 @@ const conversations: ConversationSummary[] = [
     createdAt: 1709900000000,
     updatedAt: 1709900000000,
     bookmarked: false,
+    provider: "gemini",
+    model: "gemini-2.5-pro",
   },
   {
     id: "conv-2",
@@ -25,6 +27,8 @@ const conversations: ConversationSummary[] = [
     createdAt: 1709800000000,
     updatedAt: 1709850000000,
     bookmarked: false,
+    provider: null,
+    model: null,
   },
 ];
 
@@ -69,10 +73,11 @@ describe("ConversationPanel", () => {
     // Each conversation has a timestamp row below its title
     const listArea = container.querySelector(".overflow-y-auto")!;
     const timestampRows = listArea.querySelectorAll(
-      "button.w-full > .text-left .text-\\[10px\\]",
+      "button.w-full > .flex .text-\\[10px\\]",
     );
 
-    expect(timestampRows).toHaveLength(2);
+    // conv-1 has model (2 divs: timestamp + model), conv-2 has no model (1 div: timestamp)
+    expect(timestampRows).toHaveLength(3);
   });
 
   it("highlights active conversation", () => {
@@ -231,6 +236,30 @@ describe("ConversationPanel", () => {
     fireEvent.click(convButtons[0] as HTMLElement);
 
     expect(onSelect).toHaveBeenCalledWith("conv-1");
+  });
+
+  it("shows provider and model right-aligned when model is set", () => {
+    const { container } = render(
+      <ConversationPanel {...defaultProps} conversations={conversations} />,
+    );
+
+    const modelEl = container.querySelector(".text-right");
+
+    expect(modelEl?.textContent).toContain("Google");
+    expect(modelEl?.textContent).toContain("Gemini 2.5 Pro");
+  });
+
+  it("does not show model when model is null", () => {
+    const { container } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={[conversations[1]!]}
+      />,
+    );
+
+    const modelEl = container.querySelector(".text-right");
+
+    expect(modelEl).toBeNull();
   });
 
   it("shows empty message when no conversations", () => {

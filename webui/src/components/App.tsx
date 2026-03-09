@@ -141,6 +141,8 @@ export function App() {
     getChatHistory: chat.getChatHistory,
     restoreChatHistory: chat.restoreChatHistory,
     clearConversation: wrappedClearConversation,
+    activeModel: chat.activeModel,
+    activeProvider: chat.activeProvider,
   });
 
   // Auto-save when messages change (new user message or completed response)

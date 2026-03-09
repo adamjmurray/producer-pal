@@ -11,9 +11,11 @@ import { renderHook, act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getConversationDb,
+  loadConversation,
   resetDbCache,
   saveConversation,
 } from "#webui/lib/conversation-db";
+import { type Provider } from "#webui/types/settings";
 import { useConversations } from "./use-conversations";
 
 /**
@@ -29,6 +31,8 @@ function createProps() {
       getChatHistory: vi.fn(() => state.chatHistory),
       restoreChatHistory: vi.fn(),
       clearConversation: vi.fn(),
+      activeModel: null as string | null,
+      activeProvider: null as Provider | null,
     },
   };
 }
@@ -93,6 +97,29 @@ describe("useConversations", () => {
     expect(getHash()).toBe(result.current.activeConversationId);
   });
 
+  it("persists active model and provider in saved conversation", async () => {
+    const { props, state } = createProps();
+
+    props.activeModel = "gemini-2.5-pro";
+    props.activeProvider = "gemini";
+
+    const { result } = renderHook(() => useConversations(props));
+
+    await waitForEffects();
+
+    state.chatHistory = [{ role: "user", content: "hello" }];
+
+    await act(async () => {
+      await result.current.saveCurrentConversation();
+    });
+
+    const id = result.current.activeConversationId!;
+    const loaded = await loadConversation(id);
+
+    expect(loaded?.model).toBe("gemini-2.5-pro");
+    expect(loaded?.provider).toBe("gemini");
+  });
+
   it("does not save when chat history is empty", async () => {
     const { result } = await setupHook();
 
@@ -116,6 +143,8 @@ describe("useConversations", () => {
       createdAt: 1000,
       updatedAt: 1000,
       bookmarked: false,
+      provider: "gemini",
+      model: "gemini-2.5-pro",
       messages: [{ role: "user", content: "existing conversation" }],
     });
 
@@ -137,9 +166,10 @@ describe("useConversations", () => {
 
     expect(result.current.activeConversationId).toBe(existingId);
     expect(props.clearConversation).toHaveBeenCalled();
-    expect(props.restoreChatHistory).toHaveBeenCalledWith([
-      { role: "user", content: "existing conversation" },
-    ]);
+    expect(props.restoreChatHistory).toHaveBeenCalledWith(
+      [{ role: "user", content: "existing conversation" }],
+      { model: "gemini-2.5-pro", provider: "gemini" },
+    );
   });
 
   it("starts a new conversation and clears hash", async () => {
@@ -175,6 +205,8 @@ describe("useConversations", () => {
       createdAt: 1000,
       updatedAt: 1000,
       bookmarked: false,
+      provider: "anthropic",
+      model: "claude-sonnet-4-6-20250514",
       messages: [{ role: "user", content: "restored" }],
     });
     window.location.hash = existingId;
@@ -185,9 +217,10 @@ describe("useConversations", () => {
     await waitForEffects();
 
     expect(result.current.activeConversationId).toBe(existingId);
-    expect(props.restoreChatHistory).toHaveBeenCalledWith([
-      { role: "user", content: "restored" },
-    ]);
+    expect(props.restoreChatHistory).toHaveBeenCalledWith(
+      [{ role: "user", content: "restored" }],
+      { model: "claude-sonnet-4-6-20250514", provider: "anthropic" },
+    );
   });
 
   it("clears hash when referenced conversation no longer exists", async () => {
@@ -290,6 +323,8 @@ describe("useConversations", () => {
       createdAt: 1000,
       updatedAt: 1000,
       bookmarked: false,
+      provider: null,
+      model: null,
       messages: [{ role: "user", content: "other" }],
     });
 
@@ -372,6 +407,8 @@ describe("useConversations", () => {
         createdAt: 1000,
         updatedAt: 1000,
         bookmarked: false,
+        provider: null,
+        model: null,
         messages: [{ role: "user", content: "from hash" }],
       });
 
@@ -385,9 +422,10 @@ describe("useConversations", () => {
       });
 
       expect(result.current.activeConversationId).toBe(existingId);
-      expect(props.restoreChatHistory).toHaveBeenCalledWith([
-        { role: "user", content: "from hash" },
-      ]);
+      expect(props.restoreChatHistory).toHaveBeenCalledWith(
+        [{ role: "user", content: "from hash" }],
+        { model: null, provider: null },
+      );
     });
 
     it("starts new conversation on browser back to empty hash", async () => {

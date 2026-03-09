@@ -4,12 +4,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
+import { getProviderName } from "#webui/components/chat/controls/header/header-helpers";
 import { NewConversationIcon } from "#webui/components/chat/controls/header/HeaderIcons";
+import { getModelName } from "#webui/lib/config";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import {
   formatTimestampDate,
   formatTimestampTime,
 } from "#webui/lib/utils/format-timestamp";
+import { type Provider } from "#webui/types/settings";
 
 interface ConversationPanelProps {
   isOpen: boolean;
@@ -343,12 +346,32 @@ function ConversationItem({
         </button>
       </div>
 
-      <div className="w-full text-left px-4 pt-0.5 pb-2">
-        <div className="text-[10px] text-gray-400 dark:text-gray-500">
-          {formatTimestampDate(conv.createdAt)},{" "}
-          {formatTimestampTime(conv.createdAt)}
-        </div>
-      </div>
+      <ConversationMeta conv={conv} />
     </button>
+  );
+}
+
+/**
+ * Timestamp and model metadata row for a conversation item.
+ * @param props - Component props
+ * @param props.conv - Conversation summary
+ * @returns Metadata row element
+ */
+function ConversationMeta({ conv }: { conv: ConversationSummary }) {
+  return (
+    <div className="w-full text-left px-4 pt-0.5 pb-2 flex justify-between gap-2">
+      <div className="text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
+        {formatTimestampDate(conv.createdAt)},{" "}
+        {formatTimestampTime(conv.createdAt)}
+      </div>
+      {conv.model && (
+        <div className="text-[10px] text-gray-400 dark:text-gray-500 truncate text-right">
+          {conv.provider
+            ? `${getProviderName(conv.provider as Provider)} | `
+            : ""}
+          {getModelName(conv.model)}
+        </div>
+      )}
+    </div>
   );
 }

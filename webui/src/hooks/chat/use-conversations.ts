@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat";
 import {
   type ConversationSummary,
   deleteConversation as dbDeleteConversation,
@@ -13,11 +14,17 @@ import {
   saveConversation,
   setBookmark,
 } from "#webui/lib/conversation-db";
+import { type Provider } from "#webui/types/settings";
 
 interface UseConversationsProps {
   getChatHistory: () => unknown[];
-  restoreChatHistory: (chatHistory: unknown[]) => void;
+  restoreChatHistory: (
+    chatHistory: unknown[],
+    lockedSettings?: ConversationLockedSettings,
+  ) => void;
   clearConversation: () => void;
+  activeModel: string | null;
+  activeProvider: Provider | null;
 }
 
 export interface UseConversationsReturn {
@@ -38,12 +45,16 @@ export interface UseConversationsReturn {
  * @param props.getChatHistory - Returns current chat history for saving
  * @param props.restoreChatHistory - Loads a saved chat history into the chat hook
  * @param props.clearConversation - Clears the current conversation
+ * @param props.activeModel - Active model for the current conversation
+ * @param props.activeProvider - Active provider for the current conversation
  * @returns Conversation management state and handlers
  */
 export function useConversations({
   getChatHistory,
   restoreChatHistory,
   clearConversation,
+  activeModel: activeModelProp,
+  activeProvider: activeProviderProp,
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
@@ -53,11 +64,23 @@ export function useConversations({
   const activeTitleRef = useRef<string | null>(null);
   const activeCreatedAtRef = useRef<number | null>(null);
   const activeBookmarkedRef = useRef(false);
+  const activeModelRef = useRef<string | null>(null);
+  const activeProviderRef = useRef<Provider | null>(null);
   const programmaticHashRef = useRef(false);
 
   useEffect(() => {
     activeIdRef.current = activeConversationId;
   }, [activeConversationId]);
+
+  // Keep model/provider refs in sync with props from useChat
+  useEffect(() => {
+    if (activeModelProp != null) activeModelRef.current = activeModelProp;
+  }, [activeModelProp]);
+
+  useEffect(() => {
+    if (activeProviderProp != null)
+      activeProviderRef.current = activeProviderProp;
+  }, [activeProviderProp]);
 
   const refreshList = useCallback(async () => {
     const list = await listConversations();
@@ -78,6 +101,8 @@ export function useConversations({
     activeTitleRef.current = null;
     activeCreatedAtRef.current = null;
     activeBookmarkedRef.current = false;
+    activeModelRef.current = null;
+    activeProviderRef.current = null;
     programmaticHashRef.current = true;
     setLocationHash(null);
   }, []);
@@ -93,10 +118,15 @@ export function useConversations({
 
         if (record && record.messages.length > 0) {
           setActiveId(hashId);
-          restoreChatHistory(record.messages);
+          restoreChatHistory(record.messages, {
+            model: record.model,
+            provider: record.provider as Provider | null,
+          });
           activeTitleRef.current = record.title;
           activeCreatedAtRef.current = record.createdAt;
           activeBookmarkedRef.current = record.bookmarked;
+          activeModelRef.current = record.model;
+          activeProviderRef.current = record.provider as Provider | null;
         } else {
           // Hash ID no longer exists in DB
           clearActiveId();
@@ -124,10 +154,14 @@ export function useConversations({
     const title = deriveTitle(existingTitle, chatHistory);
     const createdAt = existing?.createdAt ?? activeCreatedAtRef.current ?? now;
     const bookmarked = existing?.bookmarked ?? activeBookmarkedRef.current;
+    const model = activeModelRef.current;
+    const provider = activeProviderRef.current;
 
     activeTitleRef.current = title;
     activeCreatedAtRef.current = createdAt;
     activeBookmarkedRef.current = bookmarked;
+    activeModelRef.current = model;
+    activeProviderRef.current = provider;
 
     await saveConversation({
       id,
@@ -135,6 +169,8 @@ export function useConversations({
       createdAt,
       updatedAt: now,
       bookmarked,
+      provider,
+      model,
       messages: chatHistory as Array<{
         role: "user" | "assistant";
         content: string;
@@ -156,11 +192,16 @@ export function useConversations({
       if (!record) return;
 
       clearConversation();
-      restoreChatHistory(record.messages);
+      restoreChatHistory(record.messages, {
+        model: record.model,
+        provider: record.provider as Provider | null,
+      });
       setActiveId(id);
       activeTitleRef.current = record.title;
       activeCreatedAtRef.current = record.createdAt;
       activeBookmarkedRef.current = record.bookmarked;
+      activeModelRef.current = record.model;
+      activeProviderRef.current = record.provider as Provider | null;
     },
     [
       getChatHistory,
@@ -273,6 +314,8 @@ export function useConversations({
         createdAt: activeCreatedAtRef.current ?? now,
         updatedAt: now,
         bookmarked: activeBookmarkedRef.current,
+        provider: activeProviderRef.current,
+        model: activeModelRef.current,
         messages: chatHistory as Array<{
           role: "user" | "assistant";
           content: string;

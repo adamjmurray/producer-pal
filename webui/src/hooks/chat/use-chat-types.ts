@@ -58,6 +58,12 @@ export interface ChatAdapter<
   createUserMessage: (text: string) => TMessage;
 }
 
+/** Model/provider settings persisted with a conversation */
+export interface ConversationLockedSettings {
+  model: string | null;
+  provider: Provider | null;
+}
+
 /** Rate limit retry state for UI display */
 export interface RateLimitState {
   isRetrying: boolean;
@@ -80,7 +86,10 @@ export interface UseChatReturn {
   clearConversation: () => void;
   stopResponse: () => void;
   getChatHistory: () => unknown[];
-  restoreChatHistory: (chatHistory: unknown[]) => void;
+  restoreChatHistory: (
+    chatHistory: unknown[],
+    lockedSettings?: ConversationLockedSettings,
+  ) => void;
 }
 
 export interface UseChatProps<

@@ -614,6 +614,23 @@ describe("useChat", () => {
       expect(mockAdapter.formatMessages).toHaveBeenCalledWith(history);
     });
 
+    it("restores active model and provider from lockedSettings", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        result.current.restoreChatHistory(
+          [
+            { role: "user", content: "hello" },
+            { role: "assistant", content: "hi" },
+          ],
+          { model: "gemini-2.5-pro", provider: "gemini" },
+        );
+      });
+
+      expect(result.current.activeModel).toBe("gemini-2.5-pro");
+      expect(result.current.activeProvider).toBe("gemini");
+    });
+
     it("resets active state", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 

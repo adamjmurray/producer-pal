@@ -18,6 +18,7 @@ import {
 import {
   type ChatAdapter,
   type ChatClient,
+  type ConversationLockedSettings,
   type MessageOverrides,
   type RateLimitState,
   type UseChatProps,
@@ -27,6 +28,7 @@ import {
 export type {
   ChatAdapter,
   ChatClient,
+  ConversationLockedSettings,
   MessageOverrides,
   RateLimitState,
   UseChatReturn,
@@ -91,12 +93,12 @@ export function useChat<
   );
 
   const restoreChatHistory = useCallback(
-    (chatHistory: unknown[]) => {
+    (chatHistory: unknown[], lockedSettings?: ConversationLockedSettings) => {
       clientRef.current = null;
       pendingHistoryRef.current = chatHistory as TMessage[];
       setMessages(adapter.formatMessages(chatHistory as TMessage[]));
-      setActiveModel(null);
-      setActiveProvider(null);
+      setActiveModel(lockedSettings?.model ?? null);
+      setActiveProvider(lockedSettings?.provider ?? null);
       setActiveThinking(null);
       setActiveTemperature(null);
       setRateLimitState(null);
