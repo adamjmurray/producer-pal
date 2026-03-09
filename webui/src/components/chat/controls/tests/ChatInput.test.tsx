@@ -7,7 +7,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { ChatInput } from "./ChatInput";
+import { ChatInput } from "#webui/components/chat/controls/ChatInput";
 import { type Provider } from "#webui/types/settings";
 
 const defaultProps = {

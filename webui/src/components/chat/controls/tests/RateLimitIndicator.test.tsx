@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, act } from "@testing-library/preact";
-import { RateLimitIndicator } from "./RateLimitIndicator";
+import { RateLimitIndicator } from "#webui/components/chat/controls/RateLimitIndicator";
 
 describe("RateLimitIndicator", () => {
   beforeEach(() => {

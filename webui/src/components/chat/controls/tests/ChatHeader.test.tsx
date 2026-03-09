@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -7,7 +8,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { ChatHeader } from "./ChatHeader";
+import { ChatHeader } from "#webui/components/chat/controls/ChatHeader";
 
 describe("ChatHeader", () => {
   const defaultProps = {
@@ -43,31 +44,38 @@ describe("ChatHeader", () => {
       expect(screen.getByRole("button", { name: /Settings/ })).toBeDefined();
     });
 
-    it("title toggles conversation history when clicked", () => {
-      const onToggleHistory = vi.fn();
+    it("logo links to producer-pal.org", () => {
+      render(<ChatHeader {...defaultProps} />);
+      const link = screen.getByTitle("Producer Pal website");
 
-      render(
-        <ChatHeader {...defaultProps} onToggleHistory={onToggleHistory} />,
-      );
-      fireEvent.click(screen.getByText("Producer Pal Chat"));
-      expect(onToggleHistory).toHaveBeenCalledOnce();
+      expect(link.tagName).toBe("A");
+      expect(link.getAttribute("href")).toBe("https://producer-pal.org");
+      expect(link.getAttribute("target")).toBe("_blank");
+    });
+
+    it("renders help icon linking to docs", () => {
+      render(<ChatHeader {...defaultProps} />);
+      const helpLink = screen.getByTitle("Chat UI documentation");
+
+      expect(helpLink.tagName).toBe("A");
+      expect(helpLink.getAttribute("target")).toBe("_blank");
     });
   });
 
   describe("mcpStatus display", () => {
     it("shows Ready when status is connected", () => {
       render(<ChatHeader {...defaultProps} mcpStatus="connected" />);
-      expect(screen.getByText("✓ Ready")).toBeDefined();
+      expect(screen.getByText(/Ready/)).toBeDefined();
     });
 
     it("shows Looking for Producer Pal when status is connecting", () => {
       render(<ChatHeader {...defaultProps} mcpStatus="connecting" />);
-      expect(screen.getByText("👀 Looking for Producer Pal...")).toBeDefined();
+      expect(screen.getByText(/Looking for Producer Pal/)).toBeDefined();
     });
 
     it("shows Error when status is error", () => {
       render(<ChatHeader {...defaultProps} mcpStatus="error" />);
-      expect(screen.getByText("✗ Error")).toBeDefined();
+      expect(screen.getByText(/Error/)).toBeDefined();
     });
   });
 
@@ -175,15 +183,29 @@ describe("ChatHeader", () => {
       expect(screen.getByText("0/20 tools")).toBeDefined();
     });
 
-    it("shows tools count even when no messages", () => {
+    it("shows wrench emoji for compact display when all tools enabled", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          enabledToolsCount={18}
+          enabledToolsCount={20}
           totalToolsCount={20}
         />,
       );
-      expect(screen.getByText("18/20 tools")).toBeDefined();
+      expect(screen.getByTitle("20/20 tools enabled")).toBeDefined();
+    });
+
+    it("shows wrench with count for compact display when subset enabled", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          enabledToolsCount={15}
+          totalToolsCount={20}
+        />,
+      );
+      const indicator = screen.getByTitle("15/20 tools enabled");
+
+      expect(indicator.textContent).toContain("🔧");
+      expect(indicator.textContent).toContain("15");
     });
   });
 
@@ -214,7 +236,7 @@ describe("ChatHeader", () => {
         />,
       );
 
-      expect(screen.getByText("✓ Ready")).toBeDefined();
+      expect(screen.getByText(/Ready/)).toBeDefined();
       expect(screen.getByText(/Google \|/)).toBeDefined();
       expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
       expect(screen.getByText("18/20 tools")).toBeDefined();

@@ -4,8 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import { NewConversationIcon } from "#webui/components/chat/controls/ChatHeader";
-import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
+import { NewConversationIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import {
   formatTimestampDate,
@@ -91,15 +90,6 @@ export function ConversationPanel({
           >
             <NewConversationIcon /> New Conversation
           </button>
-          <a
-            href={CHAT_UI_DOCS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center w-4 h-4 text-[10px] leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 dark:hover:border-blue-400 dark:hover:text-blue-400 cursor-help no-underline shrink-0"
-            title="Chat UI documentation"
-          >
-            i
-          </a>
         </div>
 
         {/* Conversation list */}

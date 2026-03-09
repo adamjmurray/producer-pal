@@ -14,12 +14,16 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
+const packageJson = JSON.parse(
+  readFileSync(join(rootDir, "package.json"), "utf-8"),
+) as { version: string };
 
 export default defineConfig({
   define: {
     "import.meta.env.ENABLE_RAW_LIVE_API": JSON.stringify(
       process.env.ENABLE_RAW_LIVE_API === "true",
     ),
+    "import.meta.env.PPAL_VERSION": JSON.stringify(packageJson.version),
   },
   resolve: {
     alias: {

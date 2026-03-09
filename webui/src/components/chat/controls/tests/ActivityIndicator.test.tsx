@@ -7,7 +7,7 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import { ActivityIndicator } from "./ActivityIndicator";
+import { ActivityIndicator } from "#webui/components/chat/controls/ActivityIndicator";
 
 describe("ActivityIndicator", () => {
   it("renders without errors", () => {

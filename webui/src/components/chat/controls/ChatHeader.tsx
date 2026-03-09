@@ -1,13 +1,25 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
-import { getModelName } from "#webui/lib/config";
+import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
+import { CHAT_UI_DOCS_URL, getModelName } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
+import { getProviderName } from "./header/header-helpers";
+import {
+  BookmarkIcon,
+  NewConversationIcon,
+  PanelToggleIcon,
+} from "./header/HeaderIcons";
+import { HeaderStatus } from "./header/HeaderStatus";
+import { ToolsIndicator } from "./header/ToolsIndicator";
+
+const PPAL_VERSION = import.meta.env.PPAL_VERSION ?? "";
 
 interface ChatHeaderProps {
-  mcpStatus: "connected" | "connecting" | "error";
+  mcpStatus: McpStatus;
   activeModel: string | null;
   activeProvider: Provider | null;
   model: string;
@@ -24,154 +36,23 @@ interface ChatHeaderProps {
 }
 
 /**
- * Pen-on-paper icon for new conversation
- * @returns SVG element
- */
-export function NewConversationIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M15 2.5l2.5 2.5-8.75 8.75H6.25v-2.5L15 2.5z" />
-      <path d="M3.75 17.5h12.5" />
-    </svg>
-  );
-}
-
-/**
- * Star icon for bookmarking conversations
- * @param props - Component props
- * @param props.bookmarked - Whether the conversation is bookmarked
- * @returns SVG element
- */
-function BookmarkIcon({ bookmarked }: { bookmarked: boolean }) {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill={bookmarked ? "currentColor" : "none"}
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M10 2.5l2.35 4.75 5.25.75-3.8 3.7.9 5.25L10 14.5l-4.7 2.45.9-5.25-3.8-3.7 5.25-.75z" />
-    </svg>
-  );
-}
-
-/**
- * Panel toggle icon showing sidebar with list lines
- * @param props - Component props
- * @param props.isOpen - Whether the panel is open
- * @returns SVG element
- */
-function PanelToggleIcon({ isOpen }: { isOpen: boolean }) {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="2" y="2" width="16" height="16" rx="2.5" />
-      <line x1="8" y1="2" x2="8" y2="18" />
-      {isOpen ? (
-        <>
-          <rect
-            x="2.75"
-            y="2.75"
-            width="5.25"
-            height="14.5"
-            rx="1.5"
-            fill="currentColor"
-            stroke="none"
-          />
-          <line
-            x1="4"
-            y1="7"
-            x2="7"
-            y2="7"
-            stroke="currentColor"
-            strokeWidth="1"
-          />
-          <line
-            x1="4"
-            y1="10"
-            x2="7"
-            y2="10"
-            stroke="currentColor"
-            strokeWidth="1"
-          />
-          <line
-            x1="4"
-            y1="13"
-            x2="7"
-            y2="13"
-            stroke="currentColor"
-            strokeWidth="1"
-          />
-        </>
-      ) : (
-        <>
-          <line x1="4.5" y1="7" x2="6.5" y2="7" strokeWidth="1" />
-          <line x1="4.5" y1="10" x2="6.5" y2="10" strokeWidth="1" />
-          <line x1="4.5" y1="13" x2="6.5" y2="13" strokeWidth="1" />
-        </>
-      )}
-    </svg>
-  );
-}
-
-/**
- * Gets display name for provider
- * @param {Provider} provider - Provider identifier
- * @returns {JSX.Element} - React component
- */
-function getProviderName(provider: Provider): string {
-  switch (provider) {
-    case "anthropic":
-      return "Anthropic";
-    case "gemini":
-      return "Google";
-    case "openai":
-      return "OpenAI";
-    case "mistral":
-      return "Mistral";
-    case "openrouter":
-      return "OpenRouter";
-    case "lmstudio":
-      return "LM Studio";
-    case "ollama":
-      return "Ollama";
-    case "custom":
-      return "Custom";
-  }
-}
-
-/**
  * Header component for chat UI
- * @param {ChatHeaderProps} props - Component props
- * @param {"connected" | "connecting" | "error"} props.mcpStatus - MCP connection status
- * @param {string | null} props.activeModel - Active model identifier
- * @param {Provider | null} props.activeProvider - Active provider
- * @param {number} props.enabledToolsCount - Number of enabled tools
- * @param {number} props.totalToolsCount - Total number of available tools
- * @param {boolean} props.smallModelMode - Whether small model mode is active
- * @param {() => void} props.onOpenSettings - Callback to open settings
- * @returns {JSX.Element} - React component
+ * @param props - Component props
+ * @param props.mcpStatus - MCP connection status
+ * @param props.activeModel - Active model identifier
+ * @param props.activeProvider - Active provider
+ * @param props.model - Configured model
+ * @param props.provider - Configured provider
+ * @param props.enabledToolsCount - Number of enabled tools
+ * @param props.totalToolsCount - Total number of available tools
+ * @param props.smallModelMode - Whether small model mode is active
+ * @param props.isHistoryOpen - Whether conversation history panel is open
+ * @param props.isActiveBookmarked - Whether the active conversation is bookmarked
+ * @param props.onOpenSettings - Callback to open settings
+ * @param props.onToggleHistory - Callback to toggle history panel
+ * @param props.onNewConversation - Callback to start new conversation
+ * @param props.onToggleBookmark - Callback to toggle bookmark
+ * @returns Header element
  */
 export function ChatHeader({
   mcpStatus,
@@ -182,7 +63,6 @@ export function ChatHeader({
   enabledToolsCount,
   totalToolsCount,
   smallModelMode,
-
   isHistoryOpen,
   isActiveBookmarked,
   onOpenSettings,
@@ -191,7 +71,7 @@ export function ChatHeader({
   onToggleBookmark,
 }: ChatHeaderProps) {
   return (
-    <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center gap-3">
+    <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center gap-2">
       <div className="flex items-center gap-0.75 -ml-2">
         <button
           onClick={onToggleHistory}
@@ -227,44 +107,44 @@ export function ChatHeader({
         )}
       </div>
 
-      <button
-        onClick={onToggleHistory}
-        className="relative flex items-center pl-9 ml-1.5 hover:opacity-80 transition-opacity bg-transparent border-none cursor-pointer"
+      <a
+        href="https://producer-pal.org"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="relative flex items-center pl-7 lg:pl-9 ml-1.5 hover:opacity-80 transition-opacity no-underline shrink-0"
+        title="Producer Pal website"
       >
         <img
           src={logoSvg}
           alt="Producer Pal"
           className="absolute left-0 h-5 scale-200"
         />
-        <h1 className="hidden md:inline text-lg font-semibold">
+        <h1 className="hidden lg:inline text-lg font-semibold">
           Producer Pal Chat
         </h1>
-      </button>
-
-      <div className="flex gap-1 text-xs">
-        {mcpStatus === "connected" && (
-          <span className="text-green-600 dark:text-green-400">✓ Ready</span>
-        )}
-        {mcpStatus === "connecting" && (
-          <span className="text-gray-500 dark:text-gray-400">
-            👀 Looking for Producer Pal...
+        {PPAL_VERSION && (
+          <span className="hidden lg:inline text-xs text-gray-500 dark:text-gray-400 ml-1.5 font-normal">
+            v{PPAL_VERSION}
           </span>
         )}
-        {mcpStatus === "error" && (
-          <span className="text-red-600 dark:text-red-400">✗ Error</span>
-        )}
+      </a>
+
+      <div className="flex gap-1 text-xs">
+        <HeaderStatus mcpStatus={mcpStatus} />
       </div>
 
       <div className="ml-auto flex gap-3 items-baseline">
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          <span className="hidden lg:inline">
+        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap truncate min-w-0">
+          <span className="hidden sm:inline">
             {getProviderName(activeProvider ?? provider)} |{" "}
           </span>
           {getModelName(activeModel ?? model)}
         </span>
-        <span className="hidden lg:inline text-xs text-gray-500 dark:text-gray-400">
-          {enabledToolsCount}/{totalToolsCount} tools
-        </span>
+
+        <ToolsIndicator
+          enabledToolsCount={enabledToolsCount}
+          totalToolsCount={totalToolsCount}
+        />
 
         {smallModelMode && (
           <span className="text-xs text-amber-600 dark:text-amber-400">
@@ -283,6 +163,16 @@ export function ChatHeader({
         >
           ⚙<span className="hidden sm:inline"> Settings</span>
         </button>
+
+        <a
+          href={CHAT_UI_DOCS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center w-5 h-5 text-[11px] leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 dark:hover:border-blue-400 dark:hover:text-blue-400 cursor-help no-underline shrink-0"
+          title="Chat UI documentation"
+        >
+          i
+        </a>
       </div>
     </header>
   );

@@ -72,7 +72,7 @@ export function Tooltip({ text }: TooltipProps) {
         i
       </button>
       {isVisible && (
-        <div className="absolute bottom-full left-0 mb-1 px-2.5 py-1.5 text-xs bg-gray-800 dark:bg-gray-700 text-white rounded shadow-lg z-10 w-48">
+        <div className="absolute bottom-full left-0 mb-1 px-2.5 py-1.5 text-xs bg-gray-800 dark:bg-gray-700 text-white rounded shadow-lg z-10 w-max max-w-48">
           {paragraphs.map((line, idx) => (
             <p key={idx} className={idx > 0 ? "mt-1" : undefined}>
               {line}

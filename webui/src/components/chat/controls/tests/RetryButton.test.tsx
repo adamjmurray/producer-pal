@@ -7,7 +7,7 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { RetryButton } from "./RetryButton";
+import { RetryButton } from "#webui/components/chat/controls/RetryButton";
 
 describe("RetryButton", () => {
   it("renders the retry button", () => {

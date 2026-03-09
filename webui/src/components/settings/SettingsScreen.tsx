@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { getProviderName } from "#webui/components/chat/controls/header/header-helpers";
 import {
   type McpStatus,
   type McpTool,
@@ -48,32 +49,6 @@ interface SettingsScreenProps {
   saveSettings: () => void;
   cancelSettings: () => void;
   settingsConfigured: boolean;
-}
-
-/**
- * Gets a display label for the provider
- * @param {string} provider - The provider identifier
- * @returns {string} Display label for the provider
- */
-function getProviderLabel(provider: string): string {
-  switch (provider) {
-    case "anthropic":
-      return "Anthropic";
-    case "gemini":
-      return "Gemini";
-    case "openai":
-      return "OpenAI";
-    case "mistral":
-      return "Mistral";
-    case "openrouter":
-      return "OpenRouter";
-    case "lmstudio":
-      return "LM Studio";
-    case "ollama":
-      return "Ollama";
-    default:
-      return "Custom";
-  }
 }
 
 /**
@@ -143,7 +118,7 @@ export function SettingsScreen({
   cancelSettings,
   settingsConfigured,
 }: SettingsScreenProps) {
-  const providerLabel = getProviderLabel(provider);
+  const providerLabel = getProviderName(provider, "product");
 
   return (
     <div className="flex justify-center min-h-screen p-4 pt-20">

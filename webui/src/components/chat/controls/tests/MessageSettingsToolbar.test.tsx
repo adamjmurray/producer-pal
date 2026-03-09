@@ -7,7 +7,7 @@
  */
 import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { MessageSettingsToolbar } from "./MessageSettingsToolbar";
+import { MessageSettingsToolbar } from "#webui/components/chat/controls/MessageSettingsToolbar";
 
 describe("MessageSettingsToolbar", () => {
   const mockOnThinkingChange = vi.fn();
