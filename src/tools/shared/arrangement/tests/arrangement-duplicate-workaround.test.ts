@@ -24,6 +24,66 @@ afterEach(() => {
   setArrangementDuplicateCrashWorkaround(true);
 });
 
+/**
+ * Sets up a source clip, existing arrangement clip, and holding clip with
+ * a track mock that supports duplicate/create/delete operations.
+ * Used by tests that exercise the holding-clip workaround (after-only and
+ * mid-clip overlap scenarios).
+ * @param source - start/end times for the source clip
+ * @param source.start - source clip start time
+ * @param source.end - source clip end time
+ * @param existing - start/end times for the existing arrangement clip
+ * @param existing.start - existing clip start time
+ * @param existing.end - existing clip end time
+ * @param holding - start/end times for the holding clip created by duplication
+ * @param holding.start - holding clip start time
+ * @param holding.end - holding clip end time
+ * @returns Object containing the track mock
+ */
+function setupHoldingClipScenario(
+  source: { start: number; end: number },
+  existing: { start: number; end: number },
+  holding: { start: number; end: number },
+) {
+  setupClip("100", {
+    properties: {
+      is_arrangement_clip: 1,
+      start_time: source.start,
+      end_time: source.end,
+    },
+  });
+
+  const existingClip = setupArrangementClip("200", 0, {
+    start_time: existing.start,
+    end_time: existing.end,
+  });
+
+  setupClip("400", {
+    properties: {
+      is_arrangement_clip: 1,
+      start_time: holding.start,
+      end_time: holding.end,
+    },
+  });
+
+  let dupCount = 0;
+
+  return setupTrack(0, {
+    properties: {
+      arrangement_clips: ["id", existingClip.id],
+    },
+    methods: {
+      duplicate_clip_to_arrangement: () => {
+        dupCount++;
+
+        return dupCount === 1 ? ["id", "400"] : ["id", "500"];
+      },
+      create_midi_clip: () => ["id", "300"],
+      delete_clip: () => null,
+    },
+  });
+}
+
 describe("clearClipAtDuplicateTarget", () => {
   it("does nothing when source is a session clip", () => {
     setupClip("100", {
@@ -117,44 +177,11 @@ describe("clearClipAtDuplicateTarget", () => {
     // Source: 4 beats long (start_time=20, end_time=24), target position=8
     // Target range: 8 to 12. Existing clip at 10-14 starts within target,
     // extends past — preserves the [12,14] after portion via holding.
-    setupClip("100", {
-      properties: {
-        is_arrangement_clip: 1,
-        start_time: 20,
-        end_time: 24,
-      },
-    });
-
-    const existingClip = setupArrangementClip("200", 0, {
-      start_time: 10,
-      end_time: 14,
-    });
-
-    // Holding clip (created by dup to holding at maxEnd+100=114)
-    setupClip("400", {
-      properties: {
-        is_arrangement_clip: 1,
-        start_time: 114,
-        end_time: 118,
-      },
-    });
-
-    let dupCount = 0;
-
-    const trackMock = setupTrack(0, {
-      properties: {
-        arrangement_clips: ["id", existingClip.id],
-      },
-      methods: {
-        duplicate_clip_to_arrangement: () => {
-          dupCount++;
-
-          return dupCount === 1 ? ["id", "400"] : ["id", "500"];
-        },
-        create_midi_clip: () => ["id", "300"],
-        delete_clip: () => null,
-      },
-    });
+    const trackMock = setupHoldingClipScenario(
+      { start: 20, end: 24 },
+      { start: 10, end: 14 },
+      { start: 114, end: 118 },
+    );
 
     clearClipAtDuplicateTarget(
       LiveAPI.from(trackMock.path),
@@ -189,44 +216,11 @@ describe("clearClipAtDuplicateTarget", () => {
     // Source: 2 beats long (start_time=40, end_time=42), target position=12
     // Target range: 12 to 14. Existing clip at 8-20 starts before target
     // and extends past it — triggers split to preserve before+after portions.
-    setupClip("100", {
-      properties: {
-        is_arrangement_clip: 1,
-        start_time: 40,
-        end_time: 42,
-      },
-    });
-
-    const existingClip = setupArrangementClip("200", 0, {
-      start_time: 8,
-      end_time: 20,
-    });
-
-    // Holding clip (created by dup to holding at maxEnd+100=120)
-    setupClip("400", {
-      properties: {
-        is_arrangement_clip: 1,
-        start_time: 120,
-        end_time: 132,
-      },
-    });
-
-    let dupCount = 0;
-
-    const trackMock = setupTrack(0, {
-      properties: {
-        arrangement_clips: ["id", existingClip.id],
-      },
-      methods: {
-        duplicate_clip_to_arrangement: () => {
-          dupCount++;
-
-          return dupCount === 1 ? ["id", "400"] : ["id", "500"];
-        },
-        create_midi_clip: () => ["id", "300"],
-        delete_clip: () => null,
-      },
-    });
+    const trackMock = setupHoldingClipScenario(
+      { start: 40, end: 42 },
+      { start: 8, end: 20 },
+      { start: 120, end: 132 },
+    );
 
     clearClipAtDuplicateTarget(
       LiveAPI.from(trackMock.path),

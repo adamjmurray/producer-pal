@@ -23,77 +23,73 @@ describe("readClip", () => {
     vi.clearAllMocks();
     clearMockRegistry();
   });
-  it("returns clip information when a valid MIDI clip exists (4/4 time)", () => {
-    const clip = setupMidiClipMock({
-      clipProps: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4, // Ableton beats
-        start_marker: 1,
-        end_marker: 5,
-        loop_start: 1,
-        loop_end: 5,
-      },
-    });
+  it.each([
+    {
+      timeSig: "4/4",
+      numerator: 4,
+      denominator: 4,
+      expectedTimeSignature: "4/4",
+      expectedStart: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
+      expectedEnd: "2|2", // end_marker (5 beats = 2|2)
+      expectedLength: "1:0", // 1 bar duration
+      expectedNotes: "C3 1|1 D3 1|2 E3 1|3", // Real bar|beat output
+    },
+    {
+      timeSig: "6/8",
+      numerator: 6,
+      denominator: 8,
+      expectedTimeSignature: "6/8",
+      expectedStart: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
+      expectedEnd: "2|5", // end_marker (5 beats = 2|5 in 6/8)
+      expectedLength: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
+      expectedNotes: "t2 C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8 (t2 = duration in 8th-note beats)
+    },
+  ])(
+    "returns clip information when a valid MIDI clip exists ($timeSig time)",
+    ({
+      numerator,
+      denominator,
+      expectedTimeSignature,
+      expectedStart,
+      expectedEnd,
+      expectedLength,
+      expectedNotes,
+    }) => {
+      const clip = setupMidiClipMock({
+        clipProps: {
+          signature_numerator: numerator,
+          signature_denominator: denominator,
+          length: 4, // Ableton beats
+          start_marker: 1,
+          end_marker: 5,
+          loop_start: 1,
+          loop_end: 5,
+        },
+      });
 
-    const result = readClip({
-      trackIndex: 1,
-      sceneIndex: 1,
-      include: ["timing", "notes"],
-    });
+      const result = readClip({
+        trackIndex: 1,
+        sceneIndex: 1,
+        include: ["timing", "notes"],
+      });
 
-    expectGetNotesExtendedCall(clip);
+      expectGetNotesExtendedCall(clip);
 
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/1/clip_slots/1/clip",
-      name: "Test Clip",
-      type: "midi",
-      slot: "1/1",
-      view: "session",
-      timeSignature: "4/4",
-      looping: false,
-      start: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
-      end: "2|2", // end_marker (5 beats = 2|2)
-      length: "1:0", // 1 bar duration
-      notes: "C3 1|1 D3 1|2 E3 1|3", // Real bar|beat output
-    });
-  });
-
-  it("returns clip information when a valid MIDI clip exists (6/8 time)", () => {
-    const clip = setupMidiClipMock({
-      clipProps: {
-        signature_numerator: 6,
-        signature_denominator: 8,
-        length: 4, // Ableton beats
-        start_marker: 1,
-        end_marker: 5,
-        loop_start: 1,
-        loop_end: 5,
-      },
-    });
-
-    const result = readClip({
-      trackIndex: 1,
-      sceneIndex: 1,
-      include: ["timing", "notes"],
-    });
-
-    expectGetNotesExtendedCall(clip);
-
-    expect(result).toStrictEqual({
-      id: "live_set/tracks/1/clip_slots/1/clip",
-      name: "Test Clip",
-      type: "midi",
-      slot: "1/1",
-      view: "session",
-      timeSignature: "6/8",
-      looping: false,
-      start: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
-      end: "2|5", // end_marker (5 beats = 2|5 in 6/8)
-      length: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
-      notes: "t2 C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8 (t2 = duration in 8th-note beats)
-    });
-  });
+      expect(result).toStrictEqual({
+        id: "live_set/tracks/1/clip_slots/1/clip",
+        name: "Test Clip",
+        type: "midi",
+        slot: "1/1",
+        view: "session",
+        timeSignature: expectedTimeSignature,
+        looping: false,
+        start: expectedStart,
+        end: expectedEnd,
+        length: expectedLength,
+        notes: expectedNotes,
+      });
+    },
+  );
 
   it("should format notes using clip's time signature", () => {
     const clip = setupMidiClipMock({
