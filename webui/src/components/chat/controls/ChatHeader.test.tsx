@@ -22,6 +22,7 @@ describe("ChatHeader", () => {
     isHistoryOpen: false,
     onOpenSettings: vi.fn(),
     onToggleHistory: vi.fn(),
+    onNewConversation: vi.fn(),
   };
 
   describe("basic rendering", () => {
@@ -307,6 +308,55 @@ describe("ChatHeader", () => {
         />,
       );
       expect(screen.getByText(/Custom \|/)).toBeDefined();
+    });
+  });
+
+  describe("bookmark button", () => {
+    it("does not render when onToggleBookmark is undefined", () => {
+      render(<ChatHeader {...defaultProps} />);
+      expect(screen.queryByLabelText("Bookmark conversation")).toBeNull();
+      expect(screen.queryByLabelText("Remove bookmark")).toBeNull();
+    });
+
+    it("renders outline star when not bookmarked", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          isActiveBookmarked={false}
+          onToggleBookmark={vi.fn()}
+        />,
+      );
+      const button = screen.getByLabelText("Bookmark conversation");
+
+      expect(button).toBeDefined();
+    });
+
+    it("renders filled star when bookmarked", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          isActiveBookmarked={true}
+          onToggleBookmark={vi.fn()}
+        />,
+      );
+      const button = screen.getByLabelText("Remove bookmark");
+
+      expect(button).toBeDefined();
+    });
+
+    it("calls onToggleBookmark when clicked", () => {
+      const onToggleBookmark = vi.fn();
+
+      render(
+        <ChatHeader
+          {...defaultProps}
+          isActiveBookmarked={false}
+          onToggleBookmark={onToggleBookmark}
+        />,
+      );
+      fireEvent.click(screen.getByLabelText("Bookmark conversation"));
+
+      expect(onToggleBookmark).toHaveBeenCalledOnce();
     });
   });
 

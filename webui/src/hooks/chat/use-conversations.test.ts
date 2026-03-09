@@ -115,6 +115,7 @@ describe("useConversations", () => {
       title: null,
       createdAt: 1000,
       updatedAt: 1000,
+      bookmarked: false,
       messages: [{ role: "user", content: "existing conversation" }],
     });
 
@@ -173,6 +174,7 @@ describe("useConversations", () => {
       title: null,
       createdAt: 1000,
       updatedAt: 1000,
+      bookmarked: false,
       messages: [{ role: "user", content: "restored" }],
     });
     window.location.hash = existingId;
@@ -287,6 +289,7 @@ describe("useConversations", () => {
       title: null,
       createdAt: 1000,
       updatedAt: 1000,
+      bookmarked: false,
       messages: [{ role: "user", content: "other" }],
     });
 
@@ -368,6 +371,7 @@ describe("useConversations", () => {
         title: null,
         createdAt: 1000,
         updatedAt: 1000,
+        bookmarked: false,
         messages: [{ role: "user", content: "from hash" }],
       });
 
@@ -523,6 +527,44 @@ describe("useConversations", () => {
       });
 
       expect(result.current.conversations[0]?.title).toBe("My Custom Name");
+    });
+  });
+
+  describe("bookmark toggling", () => {
+    it("toggles bookmark on a conversation", async () => {
+      const { state, result } = await setupHook();
+
+      state.chatHistory = [{ role: "user", content: "hello" }];
+
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      const id = result.current.activeConversationId!;
+
+      expect(result.current.conversations[0]?.bookmarked).toBe(false);
+
+      await act(async () => {
+        await result.current.toggleBookmark(id);
+      });
+
+      expect(result.current.conversations[0]?.bookmarked).toBe(true);
+
+      await act(async () => {
+        await result.current.toggleBookmark(id);
+      });
+
+      expect(result.current.conversations[0]?.bookmarked).toBe(false);
+    });
+
+    it("is a no-op for nonexistent conversation", async () => {
+      const { result } = await setupHook();
+
+      await act(async () => {
+        await result.current.toggleBookmark("nonexistent");
+      });
+
+      expect(result.current.conversations).toHaveLength(0);
     });
   });
 });

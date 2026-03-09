@@ -179,6 +179,13 @@ export function App() {
     [conversationManager],
   );
 
+  const handleToggleBookmark = useCallback(
+    (id: string) => {
+      void conversationManager.toggleBookmark(id);
+    },
+    [conversationManager],
+  );
+
   // Calculate tools counts for header display
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
@@ -300,6 +307,7 @@ export function App() {
           },
           onDelete: handleDeleteConversation,
           onRename: handleRenameConversation,
+          onToggleBookmark: handleToggleBookmark,
         }}
       />
     </ToolNamesContext.Provider>

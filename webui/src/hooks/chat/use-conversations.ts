@@ -11,6 +11,7 @@ import {
   loadConversation,
   renameConversation as dbRenameConversation,
   saveConversation,
+  setBookmark,
 } from "#webui/lib/conversation-db";
 
 interface UseConversationsProps {
@@ -27,6 +28,7 @@ export interface UseConversationsReturn {
   startNewConversation: () => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, title: string | null) => Promise<void>;
+  toggleBookmark: (id: string) => Promise<void>;
 }
 
 /**
@@ -50,6 +52,7 @@ export function useConversations({
   const activeIdRef = useRef(activeConversationId);
   const activeTitleRef = useRef<string | null>(null);
   const activeCreatedAtRef = useRef<number | null>(null);
+  const activeBookmarkedRef = useRef(false);
   const programmaticHashRef = useRef(false);
 
   useEffect(() => {
@@ -74,6 +77,7 @@ export function useConversations({
     activeIdRef.current = null;
     activeTitleRef.current = null;
     activeCreatedAtRef.current = null;
+    activeBookmarkedRef.current = false;
     programmaticHashRef.current = true;
     setLocationHash(null);
   }, []);
@@ -91,6 +95,7 @@ export function useConversations({
           restoreChatHistory(record.messages);
           activeTitleRef.current = record.title;
           activeCreatedAtRef.current = record.createdAt;
+          activeBookmarkedRef.current = record.bookmarked;
         } else {
           // Hash ID no longer exists in DB
           clearActiveId();
@@ -117,15 +122,18 @@ export function useConversations({
     const existingTitle = existing?.title ?? activeTitleRef.current ?? null;
     const title = deriveTitle(existingTitle, chatHistory);
     const createdAt = existing?.createdAt ?? activeCreatedAtRef.current ?? now;
+    const bookmarked = existing?.bookmarked ?? activeBookmarkedRef.current;
 
     activeTitleRef.current = title;
     activeCreatedAtRef.current = createdAt;
+    activeBookmarkedRef.current = bookmarked;
 
     await saveConversation({
       id,
       title,
       createdAt,
       updatedAt: now,
+      bookmarked,
       messages: chatHistory as Array<{
         role: "user" | "assistant";
         content: string;
@@ -151,6 +159,7 @@ export function useConversations({
       setActiveId(id);
       activeTitleRef.current = record.title;
       activeCreatedAtRef.current = record.createdAt;
+      activeBookmarkedRef.current = record.bookmarked;
     },
     [
       getChatHistory,
@@ -202,6 +211,25 @@ export function useConversations({
     [refreshList],
   );
 
+  const toggleBookmark = useCallback(
+    async (id: string) => {
+      const conv = conversations.find((c) => c.id === id);
+
+      if (!conv) return;
+
+      const newValue = !conv.bookmarked;
+
+      await setBookmark(id, newValue);
+
+      if (id === activeIdRef.current) {
+        activeBookmarkedRef.current = newValue;
+      }
+
+      await refreshList();
+    },
+    [conversations, refreshList],
+  );
+
   // Handle browser back/forward navigation
   useEffect(() => {
     const handler = () => {
@@ -243,6 +271,7 @@ export function useConversations({
         title: deriveTitle(activeTitleRef.current, chatHistory),
         createdAt: activeCreatedAtRef.current ?? now,
         updatedAt: now,
+        bookmarked: activeBookmarkedRef.current,
         messages: chatHistory as Array<{
           role: "user" | "assistant";
           content: string;
@@ -263,6 +292,7 @@ export function useConversations({
     startNewConversation,
     deleteConversation,
     renameConversation,
+    toggleBookmark,
   };
 }
 

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
+import { NewConversationIcon } from "#webui/components/chat/controls/ChatHeader";
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import {
@@ -19,6 +20,7 @@ interface ConversationPanelProps {
   onNewConversation: () => void;
   onDelete: (id: string) => void;
   onRename: (id: string, title: string | null) => void;
+  onToggleBookmark: (id: string) => void;
 }
 
 /**
@@ -32,6 +34,7 @@ interface ConversationPanelProps {
  * @param props.onNewConversation - Callback to start a new conversation
  * @param props.onDelete - Callback to delete a conversation
  * @param props.onRename - Callback to rename a conversation
+ * @param props.onToggleBookmark - Callback to toggle bookmark on a conversation
  * @returns Panel component
  */
 export function ConversationPanel({
@@ -42,9 +45,38 @@ export function ConversationPanel({
   onNewConversation,
   onDelete,
   onRename,
+  onToggleBookmark,
 }: ConversationPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const bookmarked = conversations.filter((c) => c.bookmarked);
+  const unbookmarked = conversations.filter((c) => !c.bookmarked);
+
+  const renderItems = (items: ConversationSummary[]) =>
+    items.map((conv) => (
+      <ConversationItem
+        key={conv.id}
+        conv={conv}
+        isActive={conv.id === activeConversationId}
+        isEditing={conv.id === editingId}
+        editValue={editValue}
+        onSelect={onSelect}
+        onDelete={onDelete}
+        onToggleBookmark={onToggleBookmark}
+        onEditStart={() => {
+          setEditingId(conv.id);
+          setEditValue(conv.title ?? "");
+        }}
+        onEditChange={setEditValue}
+        onEditCommit={() => {
+          const trimmed = editValue.trim();
+
+          onRename(conv.id, trimmed || null);
+          setEditingId(null);
+        }}
+        onEditCancel={() => setEditingId(null)}
+      />
+    ));
 
   return (
     <div
@@ -55,9 +87,9 @@ export function ConversationPanel({
         <div className="px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center gap-2">
           <button
             onClick={onNewConversation}
-            className="flex-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           >
-            + New Conversation
+            <NewConversationIcon /> New Conversation
           </button>
           <a
             href={CHAT_UI_DOCS_URL}
@@ -77,29 +109,19 @@ export function ConversationPanel({
               No conversations yet
             </p>
           ) : (
-            conversations.map((conv) => (
-              <ConversationItem
-                key={conv.id}
-                conv={conv}
-                isActive={conv.id === activeConversationId}
-                isEditing={conv.id === editingId}
-                editValue={editValue}
-                onSelect={onSelect}
-                onDelete={onDelete}
-                onEditStart={() => {
-                  setEditingId(conv.id);
-                  setEditValue(conv.title ?? "");
-                }}
-                onEditChange={setEditValue}
-                onEditCommit={() => {
-                  const trimmed = editValue.trim();
+            <>
+              {renderItems(bookmarked)}
 
-                  onRename(conv.id, trimmed || null);
-                  setEditingId(null);
-                }}
-                onEditCancel={() => setEditingId(null)}
-              />
-            ))
+              {bookmarked.length > 0 && unbookmarked.length > 0 && (
+                <div className="px-4 py-1.5 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+                    Other conversations
+                  </span>
+                </div>
+              )}
+
+              {renderItems(unbookmarked)}
+            </>
           )}
         </div>
       </div>
@@ -109,6 +131,50 @@ export function ConversationPanel({
 
 // --- Helpers below main export ---
 
+/**
+ * Small star icon button for toggling bookmark state.
+ * @param props - Component props
+ * @param props.bookmarked - Whether the conversation is bookmarked
+ * @param props.onClick - Click handler
+ * @returns Star button element
+ */
+function BookmarkStar({
+  bookmarked,
+  onClick,
+}: {
+  bookmarked: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className={`pl-3 pr-0.5 py-1 transition-colors ${
+        bookmarked
+          ? "text-amber-400 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
+          : "text-gray-300 hover:text-amber-400 dark:text-gray-600 dark:hover:text-amber-400"
+      }`}
+      aria-label={bookmarked ? "Remove bookmark" : "Bookmark conversation"}
+      title={bookmarked ? "Remove bookmark" : "Bookmark conversation"}
+    >
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 12 12"
+        fill={bookmarked ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M6 1.5l1.4 2.8 3.1.5-2.25 2.2.5 3.1L6 8.7 3.25 10.1l.5-3.1L1.5 4.8l3.1-.5z" />
+      </svg>
+    </button>
+  );
+}
+
 interface ConversationItemProps {
   conv: ConversationSummary;
   isActive: boolean;
@@ -116,6 +182,7 @@ interface ConversationItemProps {
   editValue: string;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onToggleBookmark: (id: string) => void;
   onEditStart: () => void;
   onEditChange: (value: string) => void;
   onEditCommit: () => void;
@@ -131,6 +198,7 @@ interface ConversationItemProps {
  * @param props.editValue - Current edit input value
  * @param props.onSelect - Select callback
  * @param props.onDelete - Delete callback
+ * @param props.onToggleBookmark - Toggle bookmark callback
  * @param props.onEditStart - Start editing callback
  * @param props.onEditChange - Edit value change callback
  * @param props.onEditCommit - Commit edit callback
@@ -144,6 +212,7 @@ function ConversationItem({
   editValue,
   onSelect,
   onDelete,
+  onToggleBookmark,
   onEditStart,
   onEditChange,
   onEditCommit,
@@ -163,7 +232,11 @@ function ConversationItem({
       }`}
     >
       <div className="flex items-center">
-        <div className="flex-1 text-left px-4 pt-2 pb-0.5 min-w-0">
+        <BookmarkStar
+          bookmarked={conv.bookmarked}
+          onClick={() => onToggleBookmark(conv.id)}
+        />
+        <div className="flex-1 text-left pr-4 pt-2 pb-0.5 min-w-0">
           {isEditing ? (
             <input
               type="text"
