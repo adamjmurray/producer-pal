@@ -356,6 +356,7 @@ describe("ChatScreen", () => {
                 bookmarked: false,
                 provider: null,
                 model: null,
+                modelLabel: null,
               },
             ],
             activeConversationId: "conv-1",

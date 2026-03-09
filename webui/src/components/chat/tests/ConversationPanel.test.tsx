@@ -20,6 +20,7 @@ const conversations: ConversationSummary[] = [
     bookmarked: false,
     provider: "gemini",
     model: "gemini-2.5-pro",
+    modelLabel: "Gemini 2.5 Pro",
   },
   {
     id: "conv-2",
@@ -29,6 +30,7 @@ const conversations: ConversationSummary[] = [
     bookmarked: false,
     provider: null,
     model: null,
+    modelLabel: null,
   },
 ];
 
@@ -251,6 +253,29 @@ describe("ConversationPanel", () => {
 
     expect(modelEl?.textContent).toContain("Google");
     expect(modelEl?.textContent).toContain("Gemini 2.5 Pro");
+  });
+
+  it("shows stored model label when model ID is not in presets", () => {
+    const oldConv: ConversationSummary[] = [
+      {
+        id: "conv-old",
+        title: "Old session",
+        createdAt: 1709900000000,
+        updatedAt: 1709900000000,
+        bookmarked: false,
+        provider: "gemini",
+        model: "gemini-1.5-pro-removed",
+        modelLabel: "Gemini 1.5 Pro",
+      },
+    ];
+
+    const { container } = render(
+      <ConversationPanel {...defaultProps} conversations={oldConv} />,
+    );
+
+    const modelEl = container.querySelector(".text-right");
+
+    expect(modelEl?.textContent).toContain("Gemini 1.5 Pro");
   });
 
   it("does not show model when model is null", () => {

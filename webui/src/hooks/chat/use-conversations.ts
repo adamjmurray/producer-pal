@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat";
+import { getModelName } from "#webui/lib/config";
 import {
   type ConversationSummary,
   deleteConversation as dbDeleteConversation,
@@ -157,6 +158,7 @@ export function useConversations({
     const bookmarked = existing?.bookmarked ?? activeBookmarkedRef.current;
     const model = activeModelRef.current;
     const provider = activeProviderRef.current;
+    const modelLabel = model ? getModelName(model) : null;
 
     activeTitleRef.current = title;
     activeCreatedAtRef.current = createdAt;
@@ -172,6 +174,7 @@ export function useConversations({
       bookmarked,
       provider,
       model,
+      modelLabel,
       messages: chatHistory as Array<{
         role: "user" | "assistant";
         content: string;
@@ -308,6 +311,8 @@ export function useConversations({
       const now = Date.now();
       const id = activeIdRef.current ?? crypto.randomUUID();
 
+      const model = activeModelRef.current;
+
       // Best-effort save — IndexedDB writes are async but usually complete
       void saveConversation({
         id,
@@ -316,7 +321,8 @@ export function useConversations({
         updatedAt: now,
         bookmarked: activeBookmarkedRef.current,
         provider: activeProviderRef.current,
-        model: activeModelRef.current,
+        model,
+        modelLabel: model ? getModelName(model) : null,
         messages: chatHistory as Array<{
           role: "user" | "assistant";
           content: string;

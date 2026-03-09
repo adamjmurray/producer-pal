@@ -7,7 +7,7 @@ import { openDB, type IDBPDatabase, type IDBPTransaction } from "idb";
 import { type AiSdkMessage } from "#webui/chat/ai-sdk/ai-sdk-types";
 
 const DB_NAME = "producer-pal-conversations";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE_NAME = "conversations";
 
 /** Full conversation record stored in IndexedDB */
@@ -19,6 +19,7 @@ export interface ConversationRecord {
   bookmarked: boolean;
   provider: string | null;
   model: string | null;
+  modelLabel: string | null;
   messages: AiSdkMessage[];
 }
 
@@ -31,6 +32,7 @@ export interface ConversationSummary {
   bookmarked: boolean;
   provider: string | null;
   model: string | null;
+  modelLabel: string | null;
 }
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
@@ -148,7 +150,16 @@ export async function listConversations(): Promise<ConversationSummary[]> {
 
   return all
     .map(
-      ({ id, title, createdAt, updatedAt, bookmarked, provider, model }) => ({
+      ({
+        id,
+        title,
+        createdAt,
+        updatedAt,
+        bookmarked,
+        provider,
+        model,
+        modelLabel,
+      }) => ({
         id,
         title: title ?? null,
         createdAt,
@@ -158,6 +169,8 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         // Pre-v3 records may lack provider/model fields
         provider: (provider as string | null | undefined) ?? null,
         model: (model as string | null | undefined) ?? null,
+        // Pre-v4 records may lack modelLabel field
+        modelLabel: (modelLabel as string | null | undefined) ?? null,
       }),
     )
     .sort((a, b) => b.createdAt - a.createdAt);
@@ -172,10 +185,6 @@ export function resetDbCache(): void {
 
 // --- Helpers below main exports ---
 
-/**
- * Migrate existing records to v2 by adding bookmarked field.
- * @param transaction - The upgrade transaction
- */
 /**
  * Migrate existing records to v3 by adding provider and model fields.
  * @param transaction - The upgrade transaction

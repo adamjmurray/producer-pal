@@ -145,6 +145,7 @@ describe("useConversations", () => {
       bookmarked: false,
       provider: "gemini",
       model: "gemini-2.5-pro",
+      modelLabel: "Gemini 2.5 Pro",
       messages: [{ role: "user", content: "existing conversation" }],
     });
 
@@ -207,6 +208,7 @@ describe("useConversations", () => {
       bookmarked: false,
       provider: "anthropic",
       model: "claude-sonnet-4-6-20250514",
+      modelLabel: "Claude Sonnet 4.6",
       messages: [{ role: "user", content: "restored" }],
     });
     window.location.hash = existingId;
@@ -325,6 +327,7 @@ describe("useConversations", () => {
       bookmarked: false,
       provider: null,
       model: null,
+      modelLabel: null,
       messages: [{ role: "user", content: "other" }],
     });
 
@@ -409,6 +412,7 @@ describe("useConversations", () => {
         bookmarked: false,
         provider: null,
         model: null,
+        modelLabel: null,
         messages: [{ role: "user", content: "from hash" }],
       });
 

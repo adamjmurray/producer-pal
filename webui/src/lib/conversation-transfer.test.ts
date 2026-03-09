@@ -26,6 +26,7 @@ const makeRecord = (
   bookmarked: false,
   provider: null,
   model: null,
+  modelLabel: null,
   messages: [{ role: "user", content: `hello from ${id}` }],
 });
 
@@ -121,6 +122,7 @@ describe("conversation-transfer", () => {
     expect(imported.bookmarked).toBe(false);
     expect(imported.provider).toBeNull();
     expect(imported.model).toBeNull();
+    expect(imported.modelLabel).toBeNull();
     expect(imported.title).toBeNull();
     expect(imported.updatedAt).toBe(100);
   });

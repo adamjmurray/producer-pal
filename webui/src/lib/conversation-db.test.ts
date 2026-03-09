@@ -30,6 +30,7 @@ function createRecord(
     bookmarked: false,
     provider: null,
     model: null,
+    modelLabel: null,
     messages: [{ role: "user", content: "hello" }],
     ...overrides,
   };
@@ -111,6 +112,7 @@ describe("conversation-db", () => {
       bookmarked: false,
       provider: null,
       model: null,
+      modelLabel: null,
     });
     expect(
       (list[0] as unknown as Record<string, unknown>).messages,
@@ -170,6 +172,43 @@ describe("conversation-db", () => {
     const loaded = await loadConversation("nonexistent");
 
     expect(loaded).toBeUndefined();
+  });
+
+  it("includes modelLabel in saved and listed conversations", async () => {
+    const record = createRecord({
+      model: "test-model",
+      modelLabel: "Test Model Label",
+    });
+
+    await saveConversation(record);
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.modelLabel).toBe("Test Model Label");
+
+    const list = await listConversations();
+
+    expect(list[0]?.modelLabel).toBe("Test Model Label");
+  });
+
+  it("defaults modelLabel to null for records without it", async () => {
+    const db = await getConversationDb();
+
+    // Simulate a pre-v4 record missing modelLabel
+    await db.put("conversations", {
+      id: "legacy-record",
+      title: null,
+      createdAt: 1000,
+      updatedAt: 1000,
+      bookmarked: false,
+      provider: null,
+      model: "old-model",
+      messages: [],
+    });
+
+    const list = await listConversations();
+    const legacy = list.find((c) => c.id === "legacy-record");
+
+    expect(legacy?.modelLabel).toBeNull();
   });
 
   it("sorts all conversations by createdAt desc regardless of bookmark", async () => {

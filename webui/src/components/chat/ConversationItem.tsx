@@ -198,6 +198,24 @@ function BookmarkStar({
 }
 
 /**
+ * Resolve the display label for a model using fallback order:
+ * current label (from presets) → stored label → raw model ID.
+ * @param modelId - Raw model identifier
+ * @param storedLabel - Label persisted at conversation save time
+ * @returns Human-readable model name
+ */
+function resolveModelLabel(
+  modelId: string,
+  storedLabel: string | null,
+): string {
+  const currentLabel = getModelName(modelId);
+
+  if (currentLabel !== modelId) return currentLabel;
+
+  return storedLabel ?? modelId;
+}
+
+/**
  * Timestamp and model metadata row for a conversation item.
  * @param props - Component props
  * @param props.conv - Conversation summary
@@ -215,7 +233,7 @@ function ConversationMeta({ conv }: { conv: ConversationSummary }) {
           {conv.provider
             ? `${getProviderName(conv.provider as Provider)} | `
             : ""}
-          {getModelName(conv.model)}
+          {resolveModelLabel(conv.model, conv.modelLabel)}
         </div>
       )}
     </div>

@@ -110,6 +110,7 @@ function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
     bookmarked: (record.bookmarked as boolean | undefined) ?? false,
     provider: (record.provider as string | null | undefined) ?? null,
     model: (record.model as string | null | undefined) ?? null,
+    modelLabel: (record.modelLabel as string | null | undefined) ?? null,
     messages: record.messages as ConversationRecord["messages"],
   };
 }
