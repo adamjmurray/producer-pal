@@ -40,6 +40,10 @@ const defaultProps = {
   onDelete: vi.fn(),
   onRename: vi.fn(),
   onToggleBookmark: vi.fn(),
+  onExport: vi.fn(),
+  onImport: vi.fn(),
+  notification: null as { message: string; type: "success" | "error" } | null,
+  onDismissNotification: vi.fn(),
 };
 
 describe("ConversationPanel", () => {
@@ -374,5 +378,87 @@ describe("ConversationPanel", () => {
     // Bookmarked item appears in both Bookmarks and All Conversations sections
     expect(getAllByLabelText("Remove bookmark")).toHaveLength(2);
     expect(getAllByLabelText("Bookmark conversation")).toHaveLength(1);
+  });
+
+  it("renders export and import buttons", () => {
+    const { getByLabelText } = render(
+      <ConversationPanel {...defaultProps} conversations={conversations} />,
+    );
+
+    expect(getByLabelText("Export conversations")).toBeTruthy();
+    expect(getByLabelText("Import conversations")).toBeTruthy();
+  });
+
+  it("calls onExport when clicking export button", () => {
+    const onExport = vi.fn();
+
+    const { getByLabelText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        onExport={onExport}
+      />,
+    );
+
+    fireEvent.click(getByLabelText("Export conversations"));
+
+    expect(onExport).toHaveBeenCalledOnce();
+  });
+
+  it("calls onImport when clicking import button", () => {
+    const onImport = vi.fn();
+
+    const { getByLabelText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        onImport={onImport}
+      />,
+    );
+
+    fireEvent.click(getByLabelText("Import conversations"));
+
+    expect(onImport).toHaveBeenCalledOnce();
+  });
+
+  it("shows notification when set", () => {
+    const { getByText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        notification={{ message: "Exported 5 conversations", type: "success" }}
+      />,
+    );
+
+    expect(getByText("Exported 5 conversations")).toBeTruthy();
+  });
+
+  it("calls onDismissNotification when dismissing", () => {
+    const onDismiss = vi.fn();
+
+    const { getByLabelText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        notification={{ message: "Done", type: "success" }}
+        onDismissNotification={onDismiss}
+      />,
+    );
+
+    fireEvent.click(getByLabelText("Dismiss notification"));
+
+    expect(onDismiss).toHaveBeenCalledOnce();
+  });
+
+  it("does not show notification when null", () => {
+    const { queryByRole } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        notification={null}
+      />,
+    );
+
+    expect(queryByRole("status")).toBeNull();
   });
 });

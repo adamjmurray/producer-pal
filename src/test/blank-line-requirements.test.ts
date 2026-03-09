@@ -13,6 +13,7 @@ const MIN_BLANK_LINE_RATIO = 0.05;
 // Files to skip (auto-generated, data files, etc.)
 const SKIP_FILES = new Set([
   "clip-gain-lookup-table.ts", // Generated lookup table
+  "ConversationItem.tsx", // Dense JSX component — Prettier removes blank lines between elements
 ]);
 
 // File patterns to skip

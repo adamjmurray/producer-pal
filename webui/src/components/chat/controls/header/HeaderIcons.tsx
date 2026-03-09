@@ -118,6 +118,22 @@ export function PanelToggleIcon({ isOpen }: { isOpen: boolean }) {
 }
 
 /**
+ * Down-arrow-into-tray icon for exporting conversations
+ * @returns SVG element
+ */
+export function ExportIcon() {
+  return <TransferIcon arrowPath="M8 2v8M5 7l3 3 3-3" />;
+}
+
+/**
+ * Up-arrow-from-tray icon for importing conversations
+ * @returns SVG element
+ */
+export function ImportIcon() {
+  return <TransferIcon arrowPath="M8 10V2M5 5l3-3 3 3" />;
+}
+
+/**
  * Gear/cog icon for settings
  * @returns SVG element
  */
@@ -136,6 +152,32 @@ export function SettingsIcon() {
       <path d="M19.14 12.94a7.9 7.9 0 0 0 .05-.94 7.9 7.9 0 0 0-.05-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.28 7.28 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54a7.28 7.28 0 0 0-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.9 7.9 0 0 0-.05.94 7.9 7.9 0 0 0 .05.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32a.5.5 0 0 0 .6.22l2.39-.96c.5.38 1.05.7 1.63.94l.36 2.54a.5.5 0 0 0 .5.42h3.84a.5.5 0 0 0 .5-.42l.36-2.54c.58-.24 1.13-.56 1.63-.94l2.39.96a.5.5 0 0 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64z" />
 
       <circle cx="12" cy="12" r="3.25" />
+    </svg>
+  );
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Shared 16x16 SVG wrapper for import/export transfer icons.
+ * @param props - Component props
+ * @param props.arrowPath - SVG path data for the arrow direction
+ * @returns SVG element with arrow and tray
+ */
+function TransferIcon({ arrowPath }: { arrowPath: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={arrowPath} />
+      <path d="M3 11v2a1 1 0 001 1h8a1 1 0 001-1v-2" />
     </svg>
   );
 }

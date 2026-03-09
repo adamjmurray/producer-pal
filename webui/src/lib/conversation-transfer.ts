@@ -1,0 +1,108 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import {
+  type ConversationRecord,
+  loadConversation,
+  saveConversation,
+  getConversationDb,
+} from "#webui/lib/conversation-db";
+
+interface ExportData {
+  version: 1;
+  exportedAt: string;
+  conversations: ConversationRecord[];
+}
+
+/**
+ * Export all conversations from IndexedDB as a JSON string.
+ * @returns JSON string and conversation count
+ */
+export async function exportConversations(): Promise<{
+  json: string;
+  count: number;
+}> {
+  const db = await getConversationDb();
+  const all = (await db.getAll("conversations")) as ConversationRecord[];
+  const data: ExportData = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    conversations: all,
+  };
+
+  return { json: JSON.stringify(data, null, 2), count: all.length };
+}
+
+/**
+ * Import conversations from a JSON string, merging into the existing database.
+ * Matching IDs overwrite existing records; new IDs are inserted.
+ * @param json - JSON string in the export format
+ * @returns Counts of new and updated conversations
+ */
+export async function importConversations(
+  json: string,
+): Promise<{ newCount: number; updatedCount: number }> {
+  const data = JSON.parse(json) as Record<string, unknown>;
+
+  if (!Array.isArray(data.conversations)) {
+    throw new Error("Invalid format: missing conversations array");
+  }
+
+  let newCount = 0;
+  let updatedCount = 0;
+
+  for (const raw of data.conversations as unknown[]) {
+    const record = raw as Record<string, unknown>;
+
+    if (!validateRecord(record)) continue;
+
+    const existing = await loadConversation(record.id as string);
+    const normalized = normalizeRecord(record);
+
+    await saveConversation(normalized);
+
+    if (existing) {
+      updatedCount++;
+    } else {
+      newCount++;
+    }
+  }
+
+  return { newCount, updatedCount };
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Validate that a raw record has the minimum required fields.
+ * @param record - Raw parsed object
+ * @returns Whether the record is valid for import
+ */
+function validateRecord(record: Record<string, unknown>): boolean {
+  return (
+    typeof record.id === "string" &&
+    typeof record.createdAt === "number" &&
+    Array.isArray(record.messages)
+  );
+}
+
+/**
+ * Normalize a raw record into a full ConversationRecord with defaults.
+ * @param record - Raw parsed object with validated required fields
+ * @returns Normalized conversation record
+ */
+function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
+  return {
+    id: record.id as string,
+    title: (record.title as string | null | undefined) ?? null,
+    createdAt: record.createdAt as number,
+    updatedAt:
+      (record.updatedAt as number | undefined) ?? (record.createdAt as number),
+    bookmarked: (record.bookmarked as boolean | undefined) ?? false,
+    provider: (record.provider as string | null | undefined) ?? null,
+    model: (record.model as string | null | undefined) ?? null,
+    messages: record.messages as ConversationRecord["messages"],
+  };
+}

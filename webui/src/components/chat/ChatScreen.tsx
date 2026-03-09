@@ -7,14 +7,16 @@ import {
   type MessageOverrides,
   type RateLimitState,
 } from "#webui/hooks/chat/use-chat";
-import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 import { ChatStart } from "./ChatStart";
 import { ChatHeader } from "./controls/ChatHeader";
 import { ChatInput } from "./controls/ChatInput";
 import { RateLimitIndicator } from "./controls/RateLimitIndicator";
-import { ConversationPanel } from "./ConversationPanel";
+import {
+  ConversationPanel,
+  type ConversationPanelProps,
+} from "./ConversationPanel";
 import { MessageList } from "./MessageList";
 
 /**
@@ -46,17 +48,14 @@ interface ChatScreenProps {
   conversationPanel: ConversationPanelState;
 }
 
-/** State and handlers for the conversation history panel */
-export interface ConversationPanelState {
-  conversations: ConversationSummary[];
-  activeConversationId: string | null;
-  isOpen: boolean;
+/** State and handlers for the conversation history panel.
+ * Extends ConversationPanelProps with renamed callbacks and panel toggle state. */
+export interface ConversationPanelState extends Omit<
+  ConversationPanelProps,
+  "onNewConversation"
+> {
   onToggle: () => void;
-  onSelect: (id: string) => void;
   onNew: () => void;
-  onDelete: (id: string) => void;
-  onRename: (id: string, title: string | null) => void;
-  onToggleBookmark: (id: string) => void;
 }
 
 /**
@@ -170,6 +169,10 @@ export function ChatScreen({
           onDelete={conversationPanel.onDelete}
           onRename={conversationPanel.onRename}
           onToggleBookmark={conversationPanel.onToggleBookmark}
+          onExport={conversationPanel.onExport}
+          onImport={conversationPanel.onImport}
+          notification={conversationPanel.notification}
+          onDismissNotification={conversationPanel.onDismissNotification}
         />
 
         <div

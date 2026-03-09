@@ -50,6 +50,10 @@ describe("ChatScreen", () => {
       onDelete: vi.fn(),
       onRename: vi.fn(),
       onToggleBookmark: vi.fn(),
+      onExport: vi.fn(),
+      onImport: vi.fn(),
+      notification: null,
+      onDismissNotification: vi.fn(),
     },
   };
 

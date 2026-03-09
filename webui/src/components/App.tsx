@@ -13,6 +13,7 @@ import {
 import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
@@ -144,6 +145,8 @@ export function App() {
     activeModel: chat.activeModel,
     activeProvider: chat.activeProvider,
   });
+
+  const transfer = useConversationTransfer(conversationManager.refreshList);
 
   // Auto-save when messages change (new user message or completed response)
   const prevMessageCountRef = useRef(0);
@@ -310,6 +313,10 @@ export function App() {
           onDelete: handleDeleteConversation,
           onRename: handleRenameConversation,
           onToggleBookmark: handleToggleBookmark,
+          onExport: () => void transfer.handleExport(),
+          onImport: () => void transfer.handleImport(),
+          notification: transfer.notification,
+          onDismissNotification: transfer.dismissNotification,
         }}
       />
     </ToolNamesContext.Provider>

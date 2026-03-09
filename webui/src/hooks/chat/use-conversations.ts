@@ -36,6 +36,7 @@ export interface UseConversationsReturn {
   deleteConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, title: string | null) => Promise<void>;
   toggleBookmark: (id: string) => Promise<void>;
+  refreshList: () => Promise<void>;
 }
 
 /**
@@ -337,6 +338,7 @@ export function useConversations({
     deleteConversation,
     renameConversation,
     toggleBookmark,
+    refreshList,
   };
 }
 

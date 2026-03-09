@@ -4,17 +4,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import { getProviderName } from "#webui/components/chat/controls/header/header-helpers";
-import { NewConversationIcon } from "#webui/components/chat/controls/header/HeaderIcons";
-import { getModelName } from "#webui/lib/config";
-import { type ConversationSummary } from "#webui/lib/conversation-db";
 import {
-  formatTimestampDate,
-  formatTimestampTime,
-} from "#webui/lib/utils/format-timestamp";
-import { type Provider } from "#webui/types/settings";
+  ExportIcon,
+  ImportIcon,
+  NewConversationIcon,
+} from "#webui/components/chat/controls/header/HeaderIcons";
+import { ConversationItem } from "#webui/components/chat/ConversationItem";
+import {
+  TransferNotification,
+  type TransferNotificationData,
+} from "#webui/components/chat/TransferNotification";
+import { type ConversationSummary } from "#webui/lib/conversation-db";
 
-interface ConversationPanelProps {
+export interface ConversationPanelProps {
   isOpen: boolean;
   conversations: ConversationSummary[];
   activeConversationId: string | null;
@@ -23,11 +25,14 @@ interface ConversationPanelProps {
   onDelete: (id: string) => void;
   onRename: (id: string, title: string | null) => void;
   onToggleBookmark: (id: string) => void;
+  onExport: () => void;
+  onImport: () => void;
+  notification: TransferNotificationData | null;
+  onDismissNotification: () => void;
 }
 
 /**
  * Slide-out panel showing conversation history list.
- * Overlays on top of chat content.
  * @param props - Panel configuration and callbacks
  * @param props.isOpen - Whether the panel is expanded
  * @param props.conversations - List of conversation summaries
@@ -37,6 +42,10 @@ interface ConversationPanelProps {
  * @param props.onDelete - Callback to delete a conversation
  * @param props.onRename - Callback to rename a conversation
  * @param props.onToggleBookmark - Callback to toggle bookmark on a conversation
+ * @param props.onExport - Callback to export all conversations
+ * @param props.onImport - Callback to import conversations from file
+ * @param props.notification - Transfer notification to display
+ * @param props.onDismissNotification - Callback to dismiss the notification
  * @returns Panel component
  */
 export function ConversationPanel({
@@ -48,6 +57,10 @@ export function ConversationPanel({
   onDelete,
   onRename,
   onToggleBookmark,
+  onExport,
+  onImport,
+  notification,
+  onDismissNotification,
 }: ConversationPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -86,15 +99,38 @@ export function ConversationPanel({
       className={`shrink-0 h-full overflow-hidden transition-[width] duration-200 ${isOpen ? "w-full md:w-72" : "w-0"}`}
     >
       <div className="w-full md:w-72 h-full bg-white dark:bg-gray-900 border-r border-gray-300 dark:border-gray-700 flex flex-col">
-        {/* New conversation + info */}
-        <div className="px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center gap-2">
+        {/* New conversation + export/import */}
+        <div className="px-2 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center gap-1.5">
           <button
             onClick={onNewConversation}
             className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
           >
             <NewConversationIcon /> New Conversation
           </button>
+          <button
+            onClick={onExport}
+            className="p-1.5 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="Export conversations"
+            title="Export conversations"
+          >
+            <ExportIcon />
+          </button>
+          <button
+            onClick={onImport}
+            className="p-1.5 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+            aria-label="Import conversations"
+            title="Import conversations"
+          >
+            <ImportIcon />
+          </button>
         </div>
+
+        {notification && (
+          <TransferNotification
+            notification={notification}
+            onDismiss={onDismissNotification}
+          />
+        )}
 
         {/* Conversation list */}
         <div className="flex-1 overflow-y-auto">
@@ -165,213 +201,5 @@ function SectionHeader({
         {label} ({count})
       </span>
     </button>
-  );
-}
-
-/**
- * Small star icon button for toggling bookmark state.
- * @param props - Component props
- * @param props.bookmarked - Whether the conversation is bookmarked
- * @param props.onClick - Click handler
- * @returns Star button element
- */
-function BookmarkStar({
-  bookmarked,
-  onClick,
-}: {
-  bookmarked: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick();
-      }}
-      className={`pl-3 pr-0.5 py-1 transition-colors ${
-        bookmarked
-          ? "text-amber-400 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
-          : "text-gray-300 hover:text-amber-400 dark:text-gray-600 dark:hover:text-amber-400"
-      }`}
-      aria-label={bookmarked ? "Remove bookmark" : "Bookmark conversation"}
-      title={bookmarked ? "Remove bookmark" : "Bookmark conversation"}
-    >
-      <svg
-        width="12"
-        height="12"
-        viewBox="0 0 12 12"
-        fill={bookmarked ? "currentColor" : "none"}
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M6 1.5l1.4 2.8 3.1.5-2.25 2.2.5 3.1L6 8.7 3.25 10.1l.5-3.1L1.5 4.8l3.1-.5z" />
-      </svg>
-    </button>
-  );
-}
-
-interface ConversationItemProps {
-  conv: ConversationSummary;
-  isActive: boolean;
-  isEditing: boolean;
-  editValue: string;
-  onSelect: (id: string) => void;
-  onDelete: (id: string) => void;
-  onToggleBookmark: (id: string) => void;
-  onEditStart: () => void;
-  onEditChange: (value: string) => void;
-  onEditCommit: () => void;
-  onEditCancel: () => void;
-}
-
-/**
- * Single conversation row in the sidebar panel.
- * @param props - Item props
- * @param props.conv - Conversation summary data
- * @param props.isActive - Whether this is the active conversation
- * @param props.isEditing - Whether the title is being edited
- * @param props.editValue - Current edit input value
- * @param props.onSelect - Select callback
- * @param props.onDelete - Delete callback
- * @param props.onToggleBookmark - Toggle bookmark callback
- * @param props.onEditStart - Start editing callback
- * @param props.onEditChange - Edit value change callback
- * @param props.onEditCommit - Commit edit callback
- * @param props.onEditCancel - Cancel edit callback
- * @returns Conversation item element
- */
-function ConversationItem({
-  conv,
-  isActive,
-  isEditing,
-  editValue,
-  onSelect,
-  onDelete,
-  onToggleBookmark,
-  onEditStart,
-  onEditChange,
-  onEditCommit,
-  onEditCancel,
-}: ConversationItemProps) {
-  const displayTitle =
-    conv.title ??
-    `${formatTimestampDate(conv.createdAt)}, ${formatTimestampTime(conv.createdAt)}`;
-
-  return (
-    <button
-      onClick={() => onSelect(conv.id)}
-      className={`w-full text-left border-b border-gray-100 dark:border-gray-800 transition-colors ${
-        isActive
-          ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-l-blue-500"
-          : "hover:bg-gray-50 dark:hover:bg-gray-800 border-l-2 border-l-transparent"
-      }`}
-    >
-      <div className="flex items-center">
-        <BookmarkStar
-          bookmarked={conv.bookmarked}
-          onClick={() => onToggleBookmark(conv.id)}
-        />
-        <div className="flex-1 text-left pr-4 pt-2 pb-0.5 min-w-0">
-          {isEditing ? (
-            <input
-              type="text"
-              value={editValue}
-              onInput={(e) =>
-                onEditChange((e.target as HTMLInputElement).value)
-              }
-              onKeyDown={(e) => {
-                if (e.key === "Enter") onEditCommit();
-                if (e.key === "Escape") onEditCancel();
-              }}
-              onBlur={onEditCommit}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full text-xs px-1 py-0.5 border border-blue-400 rounded bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 outline-none"
-              autoFocus
-            />
-          ) : (
-            <div
-              className={`text-xs truncate ${isActive ? "font-medium text-blue-700 dark:text-blue-300" : "text-gray-700 dark:text-gray-300"}`}
-            >
-              {displayTitle}
-            </div>
-          )}
-        </div>
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onEditStart();
-          }}
-          className="px-1 py-1 text-gray-400 hover:text-blue-500 dark:text-gray-500 dark:hover:text-blue-400 transition-colors"
-          aria-label="Rename conversation"
-          title="Rename conversation"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M8.5 1.5l2 2M1 11l.5-2L8.5 2l2 2-7 7-2 .5z" />
-          </svg>
-        </button>
-
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(conv.id);
-          }}
-          className="pr-3 pl-1 py-1 text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
-          aria-label="Delete conversation"
-          title="Delete conversation"
-        >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 14 14"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2 3.5h10M5 3.5V2.5a1 1 0 011-1h2a1 1 0 011 1v1M11 3.5l-.5 8a1 1 0 01-1 1h-5a1 1 0 01-1-1L3 3.5" />
-          </svg>
-        </button>
-      </div>
-
-      <ConversationMeta conv={conv} />
-    </button>
-  );
-}
-
-/**
- * Timestamp and model metadata row for a conversation item.
- * @param props - Component props
- * @param props.conv - Conversation summary
- * @returns Metadata row element
- */
-function ConversationMeta({ conv }: { conv: ConversationSummary }) {
-  return (
-    <div className="w-full text-left px-4 pt-0.5 pb-2 flex justify-between gap-2">
-      <div className="text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
-        {formatTimestampDate(conv.createdAt)},{" "}
-        {formatTimestampTime(conv.createdAt)}
-      </div>
-      {conv.model && (
-        <div className="text-[10px] text-gray-400 dark:text-gray-500 truncate text-right">
-          {conv.provider
-            ? `${getProviderName(conv.provider as Provider)} | `
-            : ""}
-          {getModelName(conv.model)}
-        </div>
-      )}
-    </div>
   );
 }
