@@ -168,7 +168,7 @@ describe("SettingsScreen", () => {
   describe("help link", () => {
     it("renders help link with connection tab anchor by default", () => {
       render(<SettingsScreen {...defaultProps} />);
-      const link = screen.getByTitle("Help") as HTMLAnchorElement;
+      const link = screen.getByTitle("Documentation") as HTMLAnchorElement;
 
       expect(link.href).toBe(
         "https://producer-pal.org/guide/chat-ui#connection",
@@ -178,21 +178,21 @@ describe("SettingsScreen", () => {
 
     it("updates help link when switching to behavior tab", () => {
       render(<SettingsScreen {...defaultProps} activeTab="behavior" />);
-      const link = screen.getByTitle("Help") as HTMLAnchorElement;
+      const link = screen.getByTitle("Documentation") as HTMLAnchorElement;
 
       expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#behavior");
     });
 
     it("updates help link when switching to tools tab", () => {
       render(<SettingsScreen {...defaultProps} activeTab="tools" />);
-      const link = screen.getByTitle("Help") as HTMLAnchorElement;
+      const link = screen.getByTitle("Documentation") as HTMLAnchorElement;
 
       expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#tools");
     });
 
     it("updates help link when switching to appearance tab", () => {
       render(<SettingsScreen {...defaultProps} activeTab="appearance" />);
-      const link = screen.getByTitle("Help") as HTMLAnchorElement;
+      const link = screen.getByTitle("Documentation") as HTMLAnchorElement;
 
       expect(link.href).toBe(
         "https://producer-pal.org/guide/chat-ui#appearance",

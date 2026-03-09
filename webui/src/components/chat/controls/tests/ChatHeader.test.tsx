@@ -55,7 +55,7 @@ describe("ChatHeader", () => {
 
     it("renders help icon linking to docs", () => {
       render(<ChatHeader {...defaultProps} />);
-      const helpLink = screen.getByTitle("Chat UI documentation");
+      const helpLink = screen.getByTitle("Documentation");
 
       expect(helpLink.tagName).toBe("A");
       expect(helpLink.getAttribute("target")).toBe("_blank");

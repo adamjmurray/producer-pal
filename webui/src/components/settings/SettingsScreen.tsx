@@ -129,8 +129,8 @@ export function SettingsScreen({
             href={`${CHAT_UI_DOCS_URL}#${activeTab}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-6 h-6 rounded-full border border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 flex items-center justify-center text-sm font-semibold"
-            title="Help"
+            className="w-6 h-6 rounded-full border border-gray-400 dark:border-gray-500 text-gray-500! dark:text-gray-400! hover:border-gray-200 hover:text-white! dark:hover:border-gray-300 dark:hover:text-white! flex items-center justify-center text-sm font-semibold cursor-pointer no-underline"
+            title="Documentation"
           >
             ?
           </a>

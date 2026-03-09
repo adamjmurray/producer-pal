@@ -24,7 +24,7 @@ const iconBtn =
   "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors cursor-pointer";
 
 const helpBtn =
-  "inline-flex items-center justify-center w-5 h-5 text-[11px] leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 dark:hover:border-blue-400 dark:hover:text-blue-400 cursor-help no-underline shrink-0";
+  "inline-flex items-center justify-center w-5 h-5 text-xs font-semibold leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-gray-200 hover:text-white dark:hover:border-gray-300 dark:hover:text-white cursor-pointer no-underline shrink-0";
 
 interface ChatHeaderProps {
   mcpStatus: McpStatus;
@@ -166,9 +166,9 @@ export function ChatHeader({
           target="_blank"
           rel="noopener noreferrer"
           className={helpBtn}
-          title="Chat UI documentation"
+          title="Documentation"
         >
-          i
+          ?
         </a>
       </div>
     </header>
