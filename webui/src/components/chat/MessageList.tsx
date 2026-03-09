@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { Fragment, type VNode } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import {
   formatTimestampDate,
@@ -66,7 +67,10 @@ export function MessageList({
   }, [messages]);
 
   return (
-    <div className="p-4 space-y-4" data-testid="message-list">
+    <div
+      className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-4 items-start p-4"
+      data-testid="message-list"
+    >
       {messages.map((message, originalIdx) => {
         if (!hasContent(message)) return null;
 
@@ -81,30 +85,14 @@ export function MessageList({
         const timestamp = renderTimestamp(message.timestamp, showTimestamps);
 
         return (
-          <div
-            key={originalIdx}
-            className={`flex items-start gap-2 ${isUser ? "justify-end" : ""}`}
-          >
-            {isUser ? (
-              timestamp
-            ) : (
-              <div className="order-last ml-auto flex flex-col items-start self-stretch">
-                {timestamp}
-                {showRetry && (
-                  <div className="mt-auto">
-                    <RetryButton
-                      onClick={() => void handleRetry(previousUserMessageIdx)}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+          <Fragment key={originalIdx}>
+            {isUser && timestamp}
             <div
               className={`${
                 isUser
                   ? "text-black bg-blue-100 dark:text-white dark:bg-blue-900"
-                  : "bg-gray-100 dark:bg-gray-800"
-              } flex-1 min-w-0 rounded-lg py-0.5 px-3`}
+                  : "col-span-2 bg-gray-100 dark:bg-gray-800"
+              } min-w-0 rounded-lg py-0.5 px-3`}
               data-testid={isUser ? undefined : "assistant-message-bubble"}
             >
               {!isUser && (
@@ -133,30 +121,42 @@ export function MessageList({
                 />
               )}
             </div>
-            {canEdit && !isEditing && (
-              <EditButton
-                onClick={() => {
-                  setEditingIndex(originalIdx);
-                  setEditText(formatUserContent(message));
-                }}
+            {isUser ? (
+              canEdit && !isEditing ? (
+                <EditButton
+                  onClick={() => {
+                    setEditingIndex(originalIdx);
+                    setEditText(formatUserContent(message));
+                  }}
+                />
+              ) : (
+                <div />
+              )
+            ) : (
+              <RightGutter
+                timestamp={timestamp}
+                showRetry={showRetry}
+                onRetry={() => void handleRetry(previousUserMessageIdx)}
               />
             )}
-          </div>
+          </Fragment>
         );
       })}
 
       {isAssistantResponding && (
         <>
           {showStillThinking && (
-            <div className="text-center text-sm text-gray-400 animate-pulse">
+            <div className="col-span-3 text-center text-sm text-gray-400 animate-pulse">
               Still thinking...
             </div>
           )}
-          <ActivityIndicator />
+          <div className="col-span-3">
+            <ActivityIndicator />
+          </div>
         </>
       )}
 
-      <div ref={messagesEndRef} />
+      <div ref={messagesEndRef} className="col-span-3" />
     </div>
   );
 }
@@ -170,6 +170,35 @@ export function MessageList({
  */
 function hasContent(message: UIMessage): boolean {
   return message.parts.length > 0;
+}
+
+/**
+ * Right gutter for AI messages: timestamp at top, retry button at bottom.
+ * @param props - Component props
+ * @param props.timestamp - Timestamp element
+ * @param props.showRetry - Whether to show retry button
+ * @param props.onRetry - Retry callback
+ * @returns Gutter element
+ */
+function RightGutter({
+  timestamp,
+  showRetry,
+  onRetry,
+}: {
+  timestamp: VNode;
+  showRetry: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-start self-stretch">
+      {timestamp}
+      {showRetry && (
+        <div className="mt-auto">
+          <RetryButton onClick={onRetry} />
+        </div>
+      )}
+    </div>
+  );
 }
 
 /**

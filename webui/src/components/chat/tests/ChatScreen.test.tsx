@@ -244,11 +244,13 @@ describe("ChatScreen", () => {
       ];
 
       render(<ChatScreen {...defaultProps} messages={messages} />);
-      const messageList = document.querySelector(".space-y-4");
+      const messageList = document.querySelector(
+        '[data-testid="message-list"]',
+      );
 
       expect(messageList).toBeDefined();
-      // Messages are rendered (plus scroll anchor div at the end)
-      expect(messageList!.children.length).toBeGreaterThanOrEqual(2);
+      // Grid children: 3 per user msg + 2 per AI msg + scroll anchor
+      expect(messageList!.children.length).toBeGreaterThanOrEqual(5);
     });
 
     it("passes isAssistantResponding to MessageList", () => {
