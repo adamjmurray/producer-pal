@@ -9,6 +9,7 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ChatHeader } from "#webui/components/chat/controls/ChatHeader";
+import { VersionDisplay } from "#webui/components/chat/controls/header/VersionDisplay";
 
 describe("ChatHeader", () => {
   const defaultProps = {
@@ -22,6 +23,7 @@ describe("ChatHeader", () => {
     smallModelMode: false,
     isHistoryOpen: false,
     showHelpLinks: true,
+    latestVersion: null,
     onOpenSettings: vi.fn(),
     onToggleHistory: vi.fn(),
     onNewConversation: vi.fn(),
@@ -414,6 +416,36 @@ describe("ChatHeader", () => {
       const mobileEl = elements.find((el) => el.textContent.trim() === "🐢");
 
       expect(mobileEl).toBeDefined();
+    });
+  });
+
+  describe("VersionDisplay", () => {
+    it("does not show update link when latestVersion is null", () => {
+      render(<VersionDisplay version="1.4.4" latestVersion={null} />);
+
+      expect(screen.getByText(/v1\.4\.4/)).toBeDefined();
+      expect(screen.queryByText("(update)")).toBeNull();
+    });
+
+    it("shows update link when latestVersion is set", () => {
+      render(<VersionDisplay version="1.4.4" latestVersion="1.5.0" />);
+      const link = screen.getByText("(update)");
+
+      expect(link).toBeDefined();
+      expect(link.tagName).toBe("A");
+      expect(link.getAttribute("href")).toBe(
+        "https://producer-pal.org/installation/upgrading",
+      );
+      expect(link.getAttribute("target")).toBe("_blank");
+    });
+
+    it("shows latest version in tooltip", () => {
+      render(<VersionDisplay version="1.4.4" latestVersion="2.0.0" />);
+      const link = screen.getByText("(update)");
+
+      expect(link.getAttribute("title")).toBe(
+        "v2.0.0 available — click for upgrade instructions",
+      );
     });
   });
 });

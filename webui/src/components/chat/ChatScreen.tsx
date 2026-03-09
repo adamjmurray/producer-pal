@@ -7,6 +7,7 @@ import {
   type MessageOverrides,
   type RateLimitState,
 } from "#webui/hooks/chat/use-chat";
+import { useUpdateCheck } from "#webui/hooks/use-update-check";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 import { ChatStart } from "./ChatStart";
@@ -114,6 +115,8 @@ export function ChatScreen({
   showMessageSettings,
   conversationPanel,
 }: ChatScreenProps) {
+  const latestVersion = useUpdateCheck();
+
   // Per-message override state (lifted from ChatInput so ChatStart can also use it)
   const [thinking, setThinking] = useState(defaultThinking);
   const [temperature, setTemperature] = useState(defaultTemperature);
@@ -151,6 +154,7 @@ export function ChatScreen({
         isHistoryOpen={conversationPanel.isOpen}
         isActiveBookmarked={activeConv?.bookmarked}
         showHelpLinks={showHelpLinks}
+        latestVersion={latestVersion}
         onOpenSettings={onOpenSettings}
         onToggleHistory={conversationPanel.onToggle}
         onNewConversation={conversationPanel.onNew}

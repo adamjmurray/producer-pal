@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { VERSION } from "#src/shared/version";
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { CHAT_UI_DOCS_URL, getModelName } from "#webui/lib/config";
@@ -17,8 +18,7 @@ import {
 import { HeaderStatus } from "./header/HeaderStatus";
 import { SmallModelIndicator } from "./header/SmallModelIndicator";
 import { ToolsIndicator } from "./header/ToolsIndicator";
-
-const PPAL_VERSION = import.meta.env.PPAL_VERSION ?? "";
+import { VersionDisplay } from "./header/VersionDisplay";
 
 const iconBtn =
   "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors cursor-pointer";
@@ -38,6 +38,7 @@ interface ChatHeaderProps {
   isHistoryOpen: boolean;
   isActiveBookmarked?: boolean;
   showHelpLinks: boolean;
+  latestVersion: string | null;
   onOpenSettings: () => void;
   onToggleHistory: () => void;
   onNewConversation: () => void;
@@ -58,6 +59,7 @@ interface ChatHeaderProps {
  * @param props.isHistoryOpen - Whether conversation history panel is open
  * @param props.isActiveBookmarked - Whether the active conversation is bookmarked
  * @param props.showHelpLinks - Whether to show help link buttons
+ * @param props.latestVersion - Latest available version, or null if up to date
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onToggleHistory - Callback to toggle history panel
  * @param props.onNewConversation - Callback to start new conversation
@@ -76,6 +78,7 @@ export function ChatHeader({
   isHistoryOpen,
   isActiveBookmarked,
   showHelpLinks,
+  latestVersion,
   onOpenSettings,
   onToggleHistory,
   onNewConversation,
@@ -130,12 +133,8 @@ export function ChatHeader({
         <h1 className="hidden lg:inline text-lg font-semibold">
           Producer Pal Chat
         </h1>
-        {PPAL_VERSION && (
-          <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 ml-1.5 font-normal">
-            v{PPAL_VERSION}
-          </span>
-        )}
       </a>
+      <VersionDisplay version={VERSION} latestVersion={latestVersion} />
 
       <div className="flex gap-1 text-xs">
         <HeaderStatus mcpStatus={mcpStatus} />

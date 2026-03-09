@@ -10,6 +10,10 @@ import { describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatScreen } from "#webui/components/chat/ChatScreen";
 
+vi.mock(import("#webui/hooks/use-update-check"), () => ({
+  useUpdateCheck: () => null,
+}));
+
 describe("ChatScreen", () => {
   const mockHandleSend = vi.fn();
   const mockHandleRetry = vi.fn();

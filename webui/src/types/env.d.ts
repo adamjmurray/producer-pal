@@ -6,7 +6,6 @@
 
 interface ImportMetaEnv {
   readonly ENABLE_RAW_LIVE_API?: boolean;
-  readonly PPAL_VERSION?: string;
 }
 
 interface ImportMeta {

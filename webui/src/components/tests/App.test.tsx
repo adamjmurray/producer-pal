@@ -35,6 +35,10 @@ vi.mock(import("#webui/hooks/connection/use-remote-config"), () => ({
   useRemoteConfig: vi.fn(),
 }));
 
+vi.mock(import("#webui/hooks/use-update-check"), () => ({
+  useUpdateCheck: () => null,
+}));
+
 vi.mock(import("#webui/hooks/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));
