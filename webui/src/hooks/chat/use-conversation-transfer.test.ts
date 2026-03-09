@@ -361,7 +361,7 @@ describe("useConversationTransfer", () => {
       expect(result.current.notification).not.toBeNull();
 
       // Advance past the 4-second auto-dismiss timeout
-      void act(() => {
+      await act(() => {
         vi.advanceTimersByTime(4000);
       });
 
