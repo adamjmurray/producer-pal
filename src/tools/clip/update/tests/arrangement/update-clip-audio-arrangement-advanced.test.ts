@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { lookupMockObject } from "#src/test/mocks/mock-registry.ts";
+import {
+  type RegisteredMockObject,
+  lookupMockObject,
+} from "#src/test/mocks/mock-registry.ts";
 import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
 import {
@@ -20,14 +23,24 @@ import {
 // File content boundary is detected via a session clip (read end_marker).
 
 describe("Unlooped warped audio clips - arrangementLength extension via loop_end", () => {
-  const warpedExtensionCases = [
-    ["705", 7.0, 8.0, "Audio No Hidden start>firstStart"],
-    ["716", 4.0, 5.0, "Audio Hidden start>firstStart"],
-  ] as const;
-
-  it.each(warpedExtensionCases)(
-    "should extend warped clip via loop_end (clip %s)",
-    async (clipId, endTime, endMarker, name) => {
+  it.each([
+    {
+      desc: "start_marker > 0",
+      clipId: "705",
+      endTime: 7.0,
+      endMarker: 8.0,
+      name: "Audio No Hidden start>firstStart",
+    },
+    {
+      desc: "hidden content",
+      clipId: "716",
+      endTime: 4.0,
+      endMarker: 5.0,
+      name: "Audio Hidden start>firstStart",
+    },
+  ])(
+    "should extend warped clip via loop_end ($desc)",
+    async ({ clipId, endTime, endMarker, name }) => {
       const clips = setupArrangementClipPath(0, [clipId]);
       const clip = clips.get(clipId);
 
@@ -80,9 +93,7 @@ describe("Unlooped unwarped audio clips - arrangementLength extension via loop_e
     clipId: string,
     name: string,
     endTimeSequence: number | MockSequence,
-  ): ReturnType<typeof setupArrangementClipPath> extends Map<string, infer V>
-    ? V
-    : never {
+  ): RegisteredMockObject {
     const clips = setupArrangementClipPath(0, [clipId]);
     const clip = clips.get(clipId);
 

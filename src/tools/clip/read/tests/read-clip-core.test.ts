@@ -28,7 +28,6 @@ describe("readClip", () => {
       timeSig: "4/4",
       numerator: 4,
       denominator: 4,
-      expectedTimeSignature: "4/4",
       expectedStart: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
       expectedEnd: "2|2", // end_marker (5 beats = 2|2)
       expectedLength: "1:0", // 1 bar duration
@@ -38,7 +37,6 @@ describe("readClip", () => {
       timeSig: "6/8",
       numerator: 6,
       denominator: 8,
-      expectedTimeSignature: "6/8",
       expectedStart: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
       expectedEnd: "2|5", // end_marker (5 beats = 2|5 in 6/8)
       expectedLength: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
@@ -47,9 +45,9 @@ describe("readClip", () => {
   ])(
     "returns clip information when a valid MIDI clip exists ($timeSig time)",
     ({
+      timeSig,
       numerator,
       denominator,
-      expectedTimeSignature,
       expectedStart,
       expectedEnd,
       expectedLength,
@@ -81,7 +79,7 @@ describe("readClip", () => {
         type: "midi",
         slot: "1/1",
         view: "session",
-        timeSignature: expectedTimeSignature,
+        timeSignature: timeSig,
         looping: false,
         start: expectedStart,
         end: expectedEnd,

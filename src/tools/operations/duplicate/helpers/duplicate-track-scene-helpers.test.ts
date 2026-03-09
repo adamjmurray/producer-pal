@@ -622,7 +622,7 @@ describe("duplicate-track-scene-helpers", () => {
         liveSetExtra: {},
         sceneName: undefined as string | undefined,
         arrangementLength: "2:0" as string | undefined,
-        expectedStart: undefined as string | undefined,
+        expectedStart: expect.any(String) as string,
       },
       {
         desc: "should use calculateSceneLength when arrangementLength is not provided",
@@ -672,13 +672,8 @@ describe("duplicate-track-scene-helpers", () => {
           4,
         );
 
-        expect(result).toHaveProperty("arrangementStart");
         expect(result).toHaveProperty("clips");
-
-        // When expectedStart is provided, verify the exact value
-        expect(result.arrangementStart).toBe(
-          expectedStart ?? result.arrangementStart,
-        );
+        expect(result).toHaveProperty("arrangementStart", expectedStart);
       },
     );
   });
