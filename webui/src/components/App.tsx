@@ -5,10 +5,10 @@
 
 import {
   useCallback,
-  useState,
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "preact/hooks";
 import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
@@ -19,6 +19,7 @@ import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { useSettings } from "#webui/hooks/settings/use-settings";
+import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { useViewState } from "#webui/hooks/use-view-state";
 import { ChatScreen } from "./chat/ChatScreen";
@@ -198,6 +199,7 @@ export function App() {
     : 0;
 
   const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
+  const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
 
   // Track original appearance settings when settings opened (for cancel)
   const originalThemeRef = useRef(theme);
@@ -215,110 +217,119 @@ export function App() {
   }, [showSettings, theme, showTimestamps]);
 
   const handleSaveSettings = () => {
-    settings.saveSettings();
-    localStorage.setItem(
-      "producer_pal_show_timestamps",
-      String(showTimestamps),
-    );
-    setViewState({ settingsOpen: false });
+    closeSettings(() => {
+      settings.saveSettings();
+      localStorage.setItem(
+        "producer_pal_show_timestamps",
+        String(showTimestamps),
+      );
+    });
   };
 
   const handleCancelSettings = () => {
-    settings.cancelSettings();
-    setTheme(originalThemeRef.current);
-    setShowTimestamps(originalShowTimestampsRef.current);
-    setViewState({ settingsOpen: false });
+    closeSettings(() => {
+      settings.cancelSettings();
+      setTheme(originalThemeRef.current);
+      setShowTimestamps(originalShowTimestampsRef.current);
+    });
   };
-
-  if (showSettings) {
-    return (
-      <ToolNamesContext.Provider value={toolNamesMap}>
-        <SettingsScreen
-          activeTab={viewState.settingsTab}
-          onTabChange={(tab: TabId) => setViewState({ settingsTab: tab })}
-          provider={settings.provider}
-          setProvider={settings.setProvider}
-          apiKey={settings.apiKey}
-          setApiKey={settings.setApiKey}
-          baseUrl={settings.baseUrl}
-          setBaseUrl={settings.setBaseUrl}
-          model={settings.model}
-          setModel={settings.setModel}
-          thinking={settings.thinking}
-          setThinking={settings.setThinking}
-          temperature={settings.temperature}
-          setTemperature={settings.setTemperature}
-          showThoughts={settings.showThoughts}
-          setShowThoughts={settings.setShowThoughts}
-          theme={theme}
-          setTheme={setTheme}
-          showTimestamps={showTimestamps}
-          setShowTimestamps={setShowTimestamps}
-          enabledTools={settings.enabledTools}
-          setEnabledTools={settings.setEnabledTools}
-          mcpTools={mcpTools}
-          mcpStatus={mcpStatus}
-          smallModelMode={smallModelMode}
-          setSmallModelMode={setSmallModelMode}
-          resetBehaviorToDefaults={settings.resetBehaviorToDefaults}
-          saveSettings={handleSaveSettings}
-          cancelSettings={handleCancelSettings}
-          settingsConfigured={settings.settingsConfigured}
-        />
-      </ToolNamesContext.Provider>
-    );
-  }
 
   return (
     <ToolNamesContext.Provider value={toolNamesMap}>
-      <ChatScreen
-        messages={chat.messages}
-        isAssistantResponding={chat.isAssistantResponding}
-        rateLimitState={chat.rateLimitState}
-        handleSend={wrappedHandleSend}
-        handleRetry={chat.handleRetry}
-        handleEdit={chat.handleEdit}
-        activeModel={chat.activeModel}
-        activeProvider={chat.activeProvider}
-        provider={settings.provider}
-        model={settings.model}
-        defaultThinking={settings.thinking}
-        defaultTemperature={settings.temperature}
-        defaultShowThoughts={settings.showThoughts}
-        enabledToolsCount={enabledToolsCount}
-        totalToolsCount={totalToolsCount}
-        smallModelMode={smallModelMode}
-        mcpStatus={mcpStatus}
-        mcpError={mcpError}
-        checkMcpConnection={checkMcpConnection}
-        onOpenSettings={() => setViewState({ settingsOpen: true })}
-        onStop={chat.stopResponse}
-        showTimestamps={showTimestamps}
-        conversationPanel={{
-          conversations: conversationManager.conversations,
-          activeConversationId: conversationManager.activeConversationId,
-          isOpen: viewState.historyPanelOpen,
-          onToggle: () =>
-            setViewState({
-              historyPanelOpen: !viewState.historyPanelOpen,
-            }),
-          onSelect: (id: string) => {
-            handleSelectConversation(id);
-            if (isMobile()) setViewState({ historyPanelOpen: false });
-          },
-          onNew: () => {
-            handleNewConversation();
-            if (isMobile()) setViewState({ historyPanelOpen: false });
-          },
-          onDelete: handleDeleteConversation,
-          onRename: handleRenameConversation,
-          onToggleBookmark: handleToggleBookmark,
-          onExport: () => void transfer.handleExport(),
-          onImport: () => void transfer.handleImport(),
-          notification: transfer.notification,
-          onDismissNotification: transfer.dismissNotification,
-        }}
-      />
+      <div
+        className={
+          showSettings
+            ? `pointer-events-none ${settingsClosing ? "settings-blur-out" : "settings-blur"}`
+            : ""
+        }
+      >
+        <ChatScreen
+          messages={chat.messages}
+          isAssistantResponding={chat.isAssistantResponding}
+          rateLimitState={chat.rateLimitState}
+          handleSend={wrappedHandleSend}
+          handleRetry={chat.handleRetry}
+          handleEdit={chat.handleEdit}
+          activeModel={chat.activeModel}
+          activeProvider={chat.activeProvider}
+          provider={settings.provider}
+          model={settings.model}
+          defaultThinking={settings.thinking}
+          defaultTemperature={settings.temperature}
+          defaultShowThoughts={settings.showThoughts}
+          enabledToolsCount={enabledToolsCount}
+          totalToolsCount={totalToolsCount}
+          smallModelMode={smallModelMode}
+          mcpStatus={mcpStatus}
+          mcpError={mcpError}
+          checkMcpConnection={checkMcpConnection}
+          onOpenSettings={() => setViewState({ settingsOpen: true })}
+          onStop={chat.stopResponse}
+          showTimestamps={showTimestamps}
+          conversationPanel={{
+            conversations: conversationManager.conversations,
+            activeConversationId: conversationManager.activeConversationId,
+            isOpen: viewState.historyPanelOpen,
+            onToggle: () =>
+              setViewState({
+                historyPanelOpen: !viewState.historyPanelOpen,
+              }),
+            onSelect: (id: string) => {
+              handleSelectConversation(id);
+              if (isMobile()) setViewState({ historyPanelOpen: false });
+            },
+            onNew: () => {
+              handleNewConversation();
+              if (isMobile()) setViewState({ historyPanelOpen: false });
+            },
+            onDelete: handleDeleteConversation,
+            onRename: handleRenameConversation,
+            onToggleBookmark: handleToggleBookmark,
+            onExport: () => void transfer.handleExport(),
+            onImport: () => void transfer.handleImport(),
+            notification: transfer.notification,
+            onDismissNotification: transfer.dismissNotification,
+          }}
+        />
+      </div>
+      {showSettings && (
+        <div
+          className={`settings-overlay ${settingsClosing ? "settings-closing" : ""}`}
+        >
+          <SettingsScreen
+            activeTab={viewState.settingsTab}
+            onTabChange={(tab: TabId) => setViewState({ settingsTab: tab })}
+            provider={settings.provider}
+            setProvider={settings.setProvider}
+            apiKey={settings.apiKey}
+            setApiKey={settings.setApiKey}
+            baseUrl={settings.baseUrl}
+            setBaseUrl={settings.setBaseUrl}
+            model={settings.model}
+            setModel={settings.setModel}
+            thinking={settings.thinking}
+            setThinking={settings.setThinking}
+            temperature={settings.temperature}
+            setTemperature={settings.setTemperature}
+            showThoughts={settings.showThoughts}
+            setShowThoughts={settings.setShowThoughts}
+            theme={theme}
+            setTheme={setTheme}
+            showTimestamps={showTimestamps}
+            setShowTimestamps={setShowTimestamps}
+            enabledTools={settings.enabledTools}
+            setEnabledTools={settings.setEnabledTools}
+            mcpTools={mcpTools}
+            mcpStatus={mcpStatus}
+            smallModelMode={smallModelMode}
+            setSmallModelMode={setSmallModelMode}
+            resetBehaviorToDefaults={settings.resetBehaviorToDefaults}
+            saveSettings={handleSaveSettings}
+            cancelSettings={handleCancelSettings}
+            settingsConfigured={settings.settingsConfigured}
+          />
+        </div>
+      )}
     </ToolNamesContext.Provider>
   );
 }

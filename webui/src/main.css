@@ -11,3 +11,106 @@
   margin-top: 0;
   margin-bottom: 0.6em;
 }
+
+/* Animated blur on chat content when settings open */
+.settings-blur {
+  animation: chat-blur-in 150ms ease-out forwards;
+}
+
+@keyframes chat-blur-in {
+  from {
+    filter: blur(0);
+  }
+  to {
+    filter: blur(3px);
+  }
+}
+
+/* Settings overlay backdrop */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0);
+  animation: settings-backdrop-in 150ms ease-out forwards;
+}
+
+/* Settings panel fade-in with shadow */
+.settings-overlay > * {
+  opacity: 0;
+  animation: settings-panel-in 150ms ease-out 0.05s forwards;
+}
+
+@keyframes settings-backdrop-in {
+  to {
+    background: rgba(0, 0, 0, 0.5);
+  }
+}
+
+:is(.dark) .settings-overlay {
+  animation-name: settings-backdrop-in-dark;
+}
+
+@keyframes settings-backdrop-in-dark {
+  to {
+    background: rgba(0, 0, 0, 0.6);
+  }
+}
+
+@keyframes settings-panel-in {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Settings close animations */
+.settings-blur-out {
+  animation: chat-blur-out 150ms ease-in forwards;
+  filter: blur(3px);
+}
+
+@keyframes chat-blur-out {
+  to {
+    filter: blur(0);
+  }
+}
+
+.settings-overlay.settings-closing {
+  animation: settings-backdrop-out 150ms ease-in forwards;
+}
+
+.settings-overlay.settings-closing > * {
+  animation: settings-panel-out 150ms ease-in forwards;
+}
+
+@keyframes settings-backdrop-out {
+  from {
+    background: rgba(0, 0, 0, 0.5);
+  }
+  to {
+    background: rgba(0, 0, 0, 0);
+  }
+}
+
+:is(.dark) .settings-overlay.settings-closing {
+  animation-name: settings-backdrop-out-dark;
+}
+
+@keyframes settings-backdrop-out-dark {
+  from {
+    background: rgba(0, 0, 0, 0.6);
+  }
+  to {
+    background: rgba(0, 0, 0, 0);
+  }
+}
+
+@keyframes settings-panel-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}

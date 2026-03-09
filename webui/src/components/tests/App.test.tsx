@@ -6,7 +6,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render } from "@testing-library/preact";
+import { act, fireEvent, render } from "@testing-library/preact";
+import { SETTINGS_ANIMATION_MS } from "#webui/hooks/settings/use-settings-close";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 
 // Mock all the custom hooks
@@ -151,7 +152,8 @@ describe("App", () => {
   });
 
   describe("settings interactions", () => {
-    it("calls saveSettings when save button is clicked in settings screen", () => {
+    it("calls saveSettings when save button is clicked in settings screen", async () => {
+      vi.useFakeTimers();
       const mockSaveSettings = vi.fn();
 
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -170,10 +172,16 @@ describe("App", () => {
         fireEvent.click(saveButton);
       }
 
+      await act(() => {
+        vi.advanceTimersByTime(SETTINGS_ANIMATION_MS);
+      });
+
       expect(mockSaveSettings).toHaveBeenCalledOnce();
+      vi.useRealTimers();
     });
 
-    it("calls cancelSettings and reverts theme when cancel button is clicked", () => {
+    it("calls cancelSettings and reverts theme when cancel button is clicked", async () => {
+      vi.useFakeTimers();
       const mockCancelSettings = vi.fn();
       const mockSetTheme = vi.fn();
       const initialTheme = "light";
@@ -228,8 +236,13 @@ describe("App", () => {
         fireEvent.click(cancelButton);
       }
 
+      await act(() => {
+        vi.advanceTimersByTime(SETTINGS_ANIMATION_MS);
+      });
+
       expect(mockCancelSettings).toHaveBeenCalledOnce();
       expect(mockSetTheme).toHaveBeenCalledWith(initialTheme);
+      vi.useRealTimers();
     });
 
     it("saves theme reference when transitioning to settings screen", () => {
