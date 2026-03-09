@@ -13,6 +13,7 @@ interface ChatInputProps extends MessageSettingsToolbarProps {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   isAssistantResponding: boolean;
   onStop: () => void;
+  showMessageSettings: boolean;
 }
 
 /**
@@ -51,6 +52,7 @@ export function ChatInput({
   onTemperatureChange,
   onShowThoughtsChange,
   onResetToDefaults,
+  showMessageSettings,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
 
@@ -72,20 +74,22 @@ export function ChatInput({
 
   return (
     <div className="border-t border-gray-300 dark:border-gray-700">
-      <MessageSettingsToolbar
-        provider={provider}
-        model={model}
-        defaultThinking={defaultThinking}
-        defaultTemperature={defaultTemperature}
-        defaultShowThoughts={defaultShowThoughts}
-        thinking={thinking}
-        temperature={temperature}
-        showThoughts={showThoughts}
-        onThinkingChange={onThinkingChange}
-        onTemperatureChange={onTemperatureChange}
-        onShowThoughtsChange={onShowThoughtsChange}
-        onResetToDefaults={onResetToDefaults}
-      />
+      {showMessageSettings && (
+        <MessageSettingsToolbar
+          provider={provider}
+          model={model}
+          defaultThinking={defaultThinking}
+          defaultTemperature={defaultTemperature}
+          defaultShowThoughts={defaultShowThoughts}
+          thinking={thinking}
+          temperature={temperature}
+          showThoughts={showThoughts}
+          onThinkingChange={onThinkingChange}
+          onTemperatureChange={onTemperatureChange}
+          onShowThoughtsChange={onShowThoughtsChange}
+          onResetToDefaults={onResetToDefaults}
+        />
+      )}
       <div className="p-4">
         <div className="flex gap-3">
           <textarea

@@ -45,6 +45,8 @@ interface ChatScreenProps {
   onOpenSettings: () => void;
   onStop: () => void;
   showTimestamps: boolean;
+  showHelpLinks: boolean;
+  showMessageSettings: boolean;
   conversationPanel: ConversationPanelState;
 }
 
@@ -108,6 +110,8 @@ export function ChatScreen({
   onOpenSettings,
   onStop,
   showTimestamps,
+  showHelpLinks,
+  showMessageSettings,
   conversationPanel,
 }: ChatScreenProps) {
   // Per-message override state (lifted from ChatInput so ChatStart can also use it)
@@ -146,6 +150,7 @@ export function ChatScreen({
         smallModelMode={smallModelMode}
         isHistoryOpen={conversationPanel.isOpen}
         isActiveBookmarked={activeConv?.bookmarked}
+        showHelpLinks={showHelpLinks}
         onOpenSettings={onOpenSettings}
         onToggleHistory={conversationPanel.onToggle}
         onNewConversation={conversationPanel.onNew}
@@ -223,6 +228,7 @@ export function ChatScreen({
             onTemperatureChange={setTemperature}
             onShowThoughtsChange={setShowThoughts}
             onResetToDefaults={handleResetToDefaults}
+            showMessageSettings={showMessageSettings}
           />
         </div>
       </div>

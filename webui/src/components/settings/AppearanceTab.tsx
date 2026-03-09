@@ -7,6 +7,10 @@ interface AppearanceTabProps {
   setTheme: (theme: string) => void;
   showTimestamps: boolean;
   setShowTimestamps: (show: boolean) => void;
+  showHelpLinks: boolean;
+  setShowHelpLinks: (show: boolean) => void;
+  showMessageSettings: boolean;
+  setShowMessageSettings: (show: boolean) => void;
 }
 
 /**
@@ -16,6 +20,10 @@ interface AppearanceTabProps {
  * @param {Function} props.setTheme - Function to update theme
  * @param {boolean} props.showTimestamps - Whether to show message timestamps
  * @param {Function} props.setShowTimestamps - Function to toggle timestamps
+ * @param {boolean} props.showHelpLinks - Whether to show help link buttons
+ * @param {Function} props.setShowHelpLinks - Function to toggle help links
+ * @param {boolean} props.showMessageSettings - Whether to show per-message behavior settings
+ * @param {Function} props.setShowMessageSettings - Function to toggle message settings
  * @returns {JSX.Element} Appearance tab component
  */
 export function AppearanceTab({
@@ -23,6 +31,10 @@ export function AppearanceTab({
   setTheme,
   showTimestamps,
   setShowTimestamps,
+  showHelpLinks,
+  setShowHelpLinks,
+  showMessageSettings,
+  setShowMessageSettings,
 }: AppearanceTabProps) {
   return (
     <div>
@@ -49,6 +61,28 @@ export function AppearanceTab({
           }
         />
         Show message timestamps
+      </label>
+
+      <label className="flex items-center gap-2 text-sm mt-4 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={showHelpLinks}
+          onChange={(e) =>
+            setShowHelpLinks((e.target as HTMLInputElement).checked)
+          }
+        />
+        Show help links
+      </label>
+
+      <label className="flex items-center gap-2 text-sm mt-4 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={showMessageSettings}
+          onChange={(e) =>
+            setShowMessageSettings((e.target as HTMLInputElement).checked)
+          }
+        />
+        Show per-message behavior settings
       </label>
     </div>
   );

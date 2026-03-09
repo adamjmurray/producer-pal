@@ -40,6 +40,8 @@ describe("ChatScreen", () => {
     onOpenSettings: mockOnOpenSettings,
     onStop: mockOnStop,
     showTimestamps: true,
+    showHelpLinks: true,
+    showMessageSettings: false,
     conversationPanel: {
       conversations: [],
       activeConversationId: null,
@@ -132,6 +134,7 @@ describe("ChatScreen", () => {
       // Use custom defaults different from the settings
       const customProps = {
         ...defaultProps,
+        showMessageSettings: true,
         defaultThinking: "High",
         defaultTemperature: 0.8,
         defaultShowThoughts: false,
@@ -158,7 +161,7 @@ describe("ChatScreen", () => {
     });
 
     it("enables reset button when settings differ from defaults", () => {
-      render(<ChatScreen {...defaultProps} />);
+      render(<ChatScreen {...defaultProps} showMessageSettings={true} />);
 
       // Expand the message settings panel
       const settingsButton = Array.from(
@@ -310,7 +313,7 @@ describe("ChatScreen", () => {
 
   describe("handleResetToDefaults", () => {
     it("resets thinking, temperature, and showThoughts to defaults when reset button is clicked", () => {
-      render(<ChatScreen {...defaultProps} />);
+      render(<ChatScreen {...defaultProps} showMessageSettings={true} />);
 
       // First, expand the message settings panel
       const settingsButton = Array.from(

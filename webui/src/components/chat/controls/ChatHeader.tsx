@@ -37,6 +37,7 @@ interface ChatHeaderProps {
   smallModelMode: boolean;
   isHistoryOpen: boolean;
   isActiveBookmarked?: boolean;
+  showHelpLinks: boolean;
   onOpenSettings: () => void;
   onToggleHistory: () => void;
   onNewConversation: () => void;
@@ -56,6 +57,7 @@ interface ChatHeaderProps {
  * @param props.smallModelMode - Whether small model mode is active
  * @param props.isHistoryOpen - Whether conversation history panel is open
  * @param props.isActiveBookmarked - Whether the active conversation is bookmarked
+ * @param props.showHelpLinks - Whether to show help link buttons
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onToggleHistory - Callback to toggle history panel
  * @param props.onNewConversation - Callback to start new conversation
@@ -73,6 +75,7 @@ export function ChatHeader({
   smallModelMode,
   isHistoryOpen,
   isActiveBookmarked,
+  showHelpLinks,
   onOpenSettings,
   onToggleHistory,
   onNewConversation,
@@ -161,15 +164,17 @@ export function ChatHeader({
         >
           <SettingsIcon />
         </button>
-        <a
-          href={CHAT_UI_DOCS_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={helpBtn}
-          title="Documentation"
-        >
-          ?
-        </a>
+        {showHelpLinks && (
+          <a
+            href={CHAT_UI_DOCS_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={helpBtn}
+            title="Documentation"
+          >
+            ?
+          </a>
+        )}
       </div>
     </header>
   );

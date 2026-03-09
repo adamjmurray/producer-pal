@@ -17,6 +17,10 @@ describe("AppearanceTab", () => {
     setTheme: mockSetTheme,
     showTimestamps: false,
     setShowTimestamps: vi.fn(),
+    showHelpLinks: true,
+    setShowHelpLinks: vi.fn(),
+    showMessageSettings: false,
+    setShowMessageSettings: vi.fn(),
   };
 
   it("renders theme label", () => {
@@ -79,5 +83,30 @@ describe("AppearanceTab", () => {
 
     fireEvent.click(checkbox);
     expect(setShowTimestamps).toHaveBeenCalled();
+  });
+
+  it("calls setShowHelpLinks when checkbox toggled", () => {
+    const setShowHelpLinks = vi.fn();
+    const { container } = render(
+      <AppearanceTab {...defaultProps} setShowHelpLinks={setShowHelpLinks} />,
+    );
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+
+    fireEvent.click(checkboxes[1]!);
+    expect(setShowHelpLinks).toHaveBeenCalled();
+  });
+
+  it("calls setShowMessageSettings when checkbox toggled", () => {
+    const setShowMessageSettings = vi.fn();
+    const { container } = render(
+      <AppearanceTab
+        {...defaultProps}
+        setShowMessageSettings={setShowMessageSettings}
+      />,
+    );
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+
+    fireEvent.click(checkboxes[2]!);
+    expect(setShowMessageSettings).toHaveBeenCalled();
   });
 });

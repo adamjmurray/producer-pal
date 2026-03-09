@@ -21,6 +21,7 @@ describe("ChatHeader", () => {
     totalToolsCount: 20,
     smallModelMode: false,
     isHistoryOpen: false,
+    showHelpLinks: true,
     onOpenSettings: vi.fn(),
     onToggleHistory: vi.fn(),
     onNewConversation: vi.fn(),

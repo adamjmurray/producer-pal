@@ -34,10 +34,15 @@ interface SettingsScreenProps {
   setTemperature: (temp: number) => void;
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
+
   theme: string;
   setTheme: (theme: string) => void;
   showTimestamps: boolean;
   setShowTimestamps: (show: boolean) => void;
+  showHelpLinks: boolean;
+  setShowHelpLinks: (show: boolean) => void;
+  showMessageSettings: boolean;
+  setShowMessageSettings: (show: boolean) => void;
 
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
@@ -51,147 +56,78 @@ interface SettingsScreenProps {
   settingsConfigured: boolean;
 }
 
+const helpLinkClass =
+  "w-6 h-6 rounded-full border border-gray-400 dark:border-gray-500 text-gray-500! dark:text-gray-400! hover:border-gray-200 hover:text-white! dark:hover:border-gray-300 dark:hover:text-white! flex items-center justify-center text-sm font-semibold cursor-pointer no-underline";
+
 /**
- * Settings screen component
- * @param {object} props - Component props
- * @param {TabId} props.activeTab - Currently active settings tab
- * @param {Function} props.onTabChange - Callback when settings tab changes
- * @param {Provider} props.provider - Selected provider
- * @param {Function} props.setProvider - Function to update provider
- * @param {string} props.apiKey - API key for the provider
- * @param {Function} props.setApiKey - Function to update API key
- * @param {string} props.baseUrl - Base URL for custom and local providers
- * @param {Function} props.setBaseUrl - Function to update base URL
- * @param {string} props.model - Selected model
- * @param {Function} props.setModel - Function to update model
- * @param {string} props.thinking - Thinking mode setting
- * @param {Function} props.setThinking - Function to update thinking mode
- * @param {number} props.temperature - Temperature/randomness setting
- * @param {Function} props.setTemperature - Function to update temperature
- * @param {boolean} props.showThoughts - Whether to show thought blocks
- * @param {Function} props.setShowThoughts - Function to toggle thought display
- * @param {string} props.theme - UI theme setting
- * @param {Function} props.setTheme - Function to update theme
- * @param {boolean} props.showTimestamps - Whether to show message timestamps
- * @param {Function} props.setShowTimestamps - Function to toggle timestamps
- * @param {object} props.enabledTools - Map of enabled/disabled tools
- * @param {Function} props.setEnabledTools - Function to update enabled tools
- * @param {McpTool[] | null} props.mcpTools - Available tools from MCP server
- * @param {McpStatus} props.mcpStatus - MCP connection status
- * @param {boolean} props.smallModelMode - Whether small model mode is enabled
- * @param {Function} props.setSmallModelMode - Function to toggle small model mode
- * @param {Function} props.resetBehaviorToDefaults - Function to reset behavior settings
- * @param {Function} props.saveSettings - Function to save settings
- * @param {Function} props.cancelSettings - Function to cancel settings changes
- * @param {boolean} props.settingsConfigured - Whether settings have been configured
- * @returns {JSX.Element} Settings screen component
+ * Settings screen component with tabs for connection, behavior, tools, and appearance
+ * @param props - Component props
+ * @param props.activeTab - Currently active settings tab
+ * @param props.onTabChange - Callback when settings tab changes
+ * @param props.provider - Selected provider
+ * @param props.setProvider - Function to update provider
+ * @param props.apiKey - API key for the provider
+ * @param props.setApiKey - Function to update API key
+ * @param props.baseUrl - Base URL for custom and local providers
+ * @param props.setBaseUrl - Function to update base URL
+ * @param props.model - Selected model
+ * @param props.setModel - Function to update model
+ * @param props.thinking - Thinking mode setting
+ * @param props.setThinking - Function to update thinking mode
+ * @param props.temperature - Temperature/randomness setting
+ * @param props.setTemperature - Function to update temperature
+ * @param props.showThoughts - Whether to show thought blocks
+ * @param props.setShowThoughts - Function to toggle thought display
+ * @param props.theme - UI theme setting
+ * @param props.setTheme - Function to update theme
+ * @param props.showTimestamps - Whether to show message timestamps
+ * @param props.setShowTimestamps - Function to toggle timestamps
+ * @param props.showHelpLinks - Whether to show help link buttons
+ * @param props.setShowHelpLinks - Function to toggle help links
+ * @param props.showMessageSettings - Whether to show per-message behavior settings
+ * @param props.setShowMessageSettings - Function to toggle message settings
+ * @param props.enabledTools - Map of enabled/disabled tools
+ * @param props.setEnabledTools - Function to update enabled tools
+ * @param props.mcpTools - Available tools from MCP server
+ * @param props.mcpStatus - MCP connection status
+ * @param props.smallModelMode - Whether small model mode is enabled
+ * @param props.setSmallModelMode - Function to toggle small model mode
+ * @param props.resetBehaviorToDefaults - Function to reset behavior settings
+ * @param props.saveSettings - Function to save settings
+ * @param props.cancelSettings - Function to cancel settings changes
+ * @param props.settingsConfigured - Whether settings have been configured
+ * @returns Settings screen element
  */
-export function SettingsScreen({
-  activeTab,
-  onTabChange,
-  provider,
-  setProvider,
-  apiKey,
-  setApiKey,
-  baseUrl,
-  setBaseUrl,
-  model,
-  setModel,
-  thinking,
-  setThinking,
-  temperature,
-  setTemperature,
-  showThoughts,
-  setShowThoughts,
-  theme,
-  setTheme,
-  showTimestamps,
-  setShowTimestamps,
-  enabledTools,
-  setEnabledTools,
-  mcpTools,
-  mcpStatus,
-  smallModelMode,
-  setSmallModelMode,
-  resetBehaviorToDefaults,
-  saveSettings,
-  cancelSettings,
-  settingsConfigured,
-}: SettingsScreenProps) {
-  const providerLabel = getProviderName(provider, "product");
+export function SettingsScreen(props: SettingsScreenProps) {
+  const {
+    activeTab,
+    onTabChange,
+    showHelpLinks,
+    saveSettings,
+    cancelSettings,
+    settingsConfigured,
+  } = props;
 
   return (
     <div className="flex justify-center min-h-screen p-4 pt-20">
       <div className="max-w-xl w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 self-start shadow-[8px_20px_60px_rgba(0,0,0,0.15)] dark:shadow-[6px_16px_45px_rgba(255,255,255,0.04)] border border-gray-400 dark:border-gray-600">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
-          <a
-            href={`${CHAT_UI_DOCS_URL}#${activeTab}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-6 h-6 rounded-full border border-gray-400 dark:border-gray-500 text-gray-500! dark:text-gray-400! hover:border-gray-200 hover:text-white! dark:hover:border-gray-300 dark:hover:text-white! flex items-center justify-center text-sm font-semibold cursor-pointer no-underline"
-            title="Documentation"
-          >
-            ?
-          </a>
+          {showHelpLinks && (
+            <a
+              href={`${CHAT_UI_DOCS_URL}#${activeTab}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={helpLinkClass}
+              title="Documentation"
+            >
+              ?
+            </a>
+          )}
         </div>
 
         <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>
-          {() => (
-            <div className="space-y-4">
-              {/* Connection Tab */}
-              {activeTab === "connection" && (
-                <ConnectionTab
-                  provider={provider}
-                  setProvider={setProvider}
-                  apiKey={apiKey}
-                  setApiKey={setApiKey}
-                  baseUrl={baseUrl}
-                  setBaseUrl={setBaseUrl}
-                  model={model}
-                  setModel={setModel}
-                  providerLabel={providerLabel}
-                  smallModelMode={smallModelMode}
-                  setSmallModelMode={setSmallModelMode}
-                />
-              )}
-
-              {/* Behavior Tab */}
-              {activeTab === "behavior" && (
-                <BehaviorTab
-                  provider={provider}
-                  model={model}
-                  thinking={thinking}
-                  setThinking={setThinking}
-                  temperature={temperature}
-                  setTemperature={setTemperature}
-                  showThoughts={showThoughts}
-                  setShowThoughts={setShowThoughts}
-                  resetBehaviorToDefaults={resetBehaviorToDefaults}
-                />
-              )}
-
-              {/* Tools Tab */}
-              {activeTab === "tools" && (
-                <ToolToggles
-                  tools={mcpTools}
-                  mcpStatus={mcpStatus}
-                  enabledTools={enabledTools}
-                  setEnabledTools={setEnabledTools}
-                />
-              )}
-
-              {/* Appearance Tab */}
-              {activeTab === "appearance" && (
-                <AppearanceTab
-                  theme={theme}
-                  setTheme={setTheme}
-                  showTimestamps={showTimestamps}
-                  setShowTimestamps={setShowTimestamps}
-                />
-              )}
-            </div>
-          )}
+          {() => <SettingsTabContent {...props} />}
         </SettingsTabs>
 
         <SettingsFooter
@@ -200,6 +136,72 @@ export function SettingsScreen({
           cancelSettings={cancelSettings}
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Renders the content for the active settings tab
+ * @param props - Settings screen props (uses activeTab to determine which tab to render)
+ * @returns Tab content element
+ */
+function SettingsTabContent(props: SettingsScreenProps) {
+  const { activeTab, provider } = props;
+  const providerLabel = getProviderName(provider, "product");
+
+  return (
+    <div className="space-y-4">
+      {activeTab === "connection" && (
+        <ConnectionTab
+          provider={props.provider}
+          setProvider={props.setProvider}
+          apiKey={props.apiKey}
+          setApiKey={props.setApiKey}
+          baseUrl={props.baseUrl}
+          setBaseUrl={props.setBaseUrl}
+          model={props.model}
+          setModel={props.setModel}
+          providerLabel={providerLabel}
+          smallModelMode={props.smallModelMode}
+          setSmallModelMode={props.setSmallModelMode}
+        />
+      )}
+
+      {activeTab === "behavior" && (
+        <BehaviorTab
+          provider={props.provider}
+          model={props.model}
+          thinking={props.thinking}
+          setThinking={props.setThinking}
+          temperature={props.temperature}
+          setTemperature={props.setTemperature}
+          showThoughts={props.showThoughts}
+          setShowThoughts={props.setShowThoughts}
+          resetBehaviorToDefaults={props.resetBehaviorToDefaults}
+        />
+      )}
+
+      {activeTab === "tools" && (
+        <ToolToggles
+          tools={props.mcpTools}
+          mcpStatus={props.mcpStatus}
+          enabledTools={props.enabledTools}
+          setEnabledTools={props.setEnabledTools}
+        />
+      )}
+
+      {activeTab === "appearance" && (
+        <AppearanceTab
+          theme={props.theme}
+          setTheme={props.setTheme}
+          showTimestamps={props.showTimestamps}
+          setShowTimestamps={props.setShowTimestamps}
+          showHelpLinks={props.showHelpLinks}
+          setShowHelpLinks={props.setShowHelpLinks}
+          showMessageSettings={props.showMessageSettings}
+          setShowMessageSettings={props.setShowMessageSettings}
+        />
+      )}
     </div>
   );
 }

@@ -26,6 +26,7 @@ const defaultProps = {
   onTemperatureChange: vi.fn(),
   onShowThoughtsChange: vi.fn(),
   onResetToDefaults: vi.fn(),
+  showMessageSettings: true,
 };
 
 describe("ChatInput", () => {

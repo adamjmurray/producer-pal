@@ -96,6 +96,12 @@ export function App() {
   const [showTimestamps, setShowTimestamps] = useState(
     () => localStorage.getItem("producer_pal_show_timestamps") === "true",
   );
+  const [showHelpLinks, setShowHelpLinks] = useState(
+    () => localStorage.getItem("producer_pal_show_help_links") !== "false",
+  );
+  const [showMessageSettings, setShowMessageSettings] = useState(
+    () => localStorage.getItem("producer_pal_show_message_settings") === "true",
+  );
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
   const toolNamesMap = useMemo(() => {
@@ -204,6 +210,8 @@ export function App() {
   // Track original appearance settings when settings opened (for cancel)
   const originalThemeRef = useRef(theme);
   const originalShowTimestampsRef = useRef(showTimestamps);
+  const originalShowHelpLinksRef = useRef(showHelpLinks);
+  const originalShowMessageSettingsRef = useRef(showMessageSettings);
   const prevShowSettingsRef = useRef(showSettings);
 
   // Save originals only when settings transitions from closed to open
@@ -211,18 +219,23 @@ export function App() {
     if (showSettings && !prevShowSettingsRef.current) {
       originalThemeRef.current = theme;
       originalShowTimestampsRef.current = showTimestamps;
+      originalShowHelpLinksRef.current = showHelpLinks;
+      originalShowMessageSettingsRef.current = showMessageSettings;
     }
 
     prevShowSettingsRef.current = showSettings;
-  }, [showSettings, theme, showTimestamps]);
+  }, [showSettings, theme, showTimestamps, showHelpLinks, showMessageSettings]);
 
   const handleSaveSettings = () => {
     closeSettings(() => {
       settings.saveSettings();
-      localStorage.setItem(
-        "producer_pal_show_timestamps",
-        String(showTimestamps),
-      );
+
+      const set = (k: string, v: boolean) =>
+        localStorage.setItem(`producer_pal_${k}`, String(v));
+
+      set("show_timestamps", showTimestamps);
+      set("show_help_links", showHelpLinks);
+      set("show_message_settings", showMessageSettings);
     });
   };
 
@@ -231,6 +244,8 @@ export function App() {
       settings.cancelSettings();
       setTheme(originalThemeRef.current);
       setShowTimestamps(originalShowTimestampsRef.current);
+      setShowHelpLinks(originalShowHelpLinksRef.current);
+      setShowMessageSettings(originalShowMessageSettingsRef.current);
     });
   };
 
@@ -266,6 +281,8 @@ export function App() {
           onOpenSettings={() => setViewState({ settingsOpen: true })}
           onStop={chat.stopResponse}
           showTimestamps={showTimestamps}
+          showHelpLinks={showHelpLinks}
+          showMessageSettings={showMessageSettings}
           conversationPanel={{
             conversations: conversationManager.conversations,
             activeConversationId: conversationManager.activeConversationId,
@@ -317,6 +334,10 @@ export function App() {
             setTheme={setTheme}
             showTimestamps={showTimestamps}
             setShowTimestamps={setShowTimestamps}
+            showHelpLinks={showHelpLinks}
+            setShowHelpLinks={setShowHelpLinks}
+            showMessageSettings={showMessageSettings}
+            setShowMessageSettings={setShowMessageSettings}
             enabledTools={settings.enabledTools}
             setEnabledTools={settings.setEnabledTools}
             mcpTools={mcpTools}

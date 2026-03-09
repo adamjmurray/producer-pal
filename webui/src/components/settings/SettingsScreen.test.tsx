@@ -150,6 +150,10 @@ describe("SettingsScreen", () => {
     setTheme: vi.fn(),
     showTimestamps: false,
     setShowTimestamps: vi.fn(),
+    showHelpLinks: true,
+    setShowHelpLinks: vi.fn(),
+    showMessageSettings: false,
+    setShowMessageSettings: vi.fn(),
     enabledTools: {},
     setEnabledTools: vi.fn(),
     mcpTools: [
