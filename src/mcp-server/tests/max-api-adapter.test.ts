@@ -9,18 +9,18 @@ import {
   callLiveApi,
   handleLiveApiResult,
   setTimeoutForTesting,
-} from "./max-api-adapter.ts"; // eslint-disable-line import/no-duplicates -- separate side-effect import below registers handler
+} from "../max-api-adapter.ts"; // eslint-disable-line import/no-duplicates -- separate side-effect import below registers handler
 
 // Make sure the module's handler is registered
 // eslint-disable-next-line import/no-duplicates -- intentional side-effect import
-import "./max-api-adapter.ts";
+import "../max-api-adapter.ts";
 
 // Mock the code-exec-protocol module so we can verify the handler delegates correctly
-vi.mock(import("./code-exec-protocol.ts"), () => ({
+vi.mock(import("../code-exec-protocol.ts"), () => ({
   handleCodeExecRequest: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { handleCodeExecRequest } from "./code-exec-protocol.ts";
+import { handleCodeExecRequest } from "../code-exec-protocol.ts";
 
 // Capture the timeoutMs handler before mocks are cleared
 let timeoutMsHandler: ((input: unknown) => void) | undefined;

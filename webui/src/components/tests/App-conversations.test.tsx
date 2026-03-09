@@ -28,9 +28,10 @@ vi.mock(import("#webui/hooks/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));
 
+import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useViewState } from "#webui/hooks/use-view-state";
-import { setupDefaultMocks } from "./App-test-helpers";
+import { mockChatHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
 describe("App conversation management", () => {
@@ -52,6 +53,7 @@ describe("App conversation management", () => {
       startNewConversation: vi.fn(),
       deleteConversation: vi.fn(),
       renameConversation: vi.fn(),
+      toggleBookmark: vi.fn(),
       ...overrides,
     });
     (useViewState as ReturnType<typeof vi.fn>).mockReturnValue(
@@ -148,5 +150,49 @@ describe("App conversation management", () => {
     fireEvent.input(input, { target: { value: "New Title" } });
     fireEvent.keyDown(input, { key: "Enter" });
     expect(mockRename).toHaveBeenCalledWith("conv-1", "New Title");
+  });
+
+  it("calls toggleBookmark on bookmark button click", () => {
+    const mockToggleBookmark = vi.fn();
+
+    mockConversations({
+      conversations: [
+        { id: "conv-1", title: null, createdAt: 1000, updatedAt: 2000 },
+      ],
+      toggleBookmark: mockToggleBookmark,
+    });
+    const { getAllByLabelText } = render(<App />);
+    const bookmarkButtons = getAllByLabelText("Bookmark conversation");
+
+    // Click the panel bookmark button (last one; header button is first but disabled)
+    fireEvent.click(bookmarkButtons.at(-1)!);
+    expect(mockToggleBookmark).toHaveBeenCalledWith("conv-1");
+  });
+
+  it("auto-saves conversation when messages are added", () => {
+    const mockSave = vi.fn();
+
+    mockConversations({ saveCurrentConversation: mockSave });
+
+    // Initial render with no messages — save should not be called yet
+    const { rerender } = render(<App />);
+
+    expect(mockSave).not.toHaveBeenCalled();
+
+    // Simulate a new message arriving by updating the chat hook
+    (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
+      ...mockChatHook,
+      messages: [
+        {
+          id: "1",
+          role: "user",
+          content: "hello",
+          parts: [{ type: "text", content: "hello" }],
+        },
+      ],
+    });
+    rerender(<App />);
+
+    expect(mockSave).toHaveBeenCalled();
   });
 });

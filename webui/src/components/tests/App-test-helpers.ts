@@ -75,6 +75,7 @@ export function setupDefaultMocks(): void {
     startNewConversation: vi.fn(),
     deleteConversation: vi.fn(),
     renameConversation: vi.fn(),
+    toggleBookmark: vi.fn(),
   });
   (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
     viewState: {
