@@ -190,10 +190,10 @@ describe("App", () => {
 
       const { container, rerender } = render(<App />);
 
-      // Open settings by finding the settings button in chat header (by text)
-      const settingsButton = Array.from(
-        container.querySelectorAll("button"),
-      ).find((btn) => btn.textContent.includes("Settings"));
+      // Open settings by finding the settings button in chat header (by aria-label)
+      const settingsButton = container.querySelector(
+        'button[aria-label="Settings"]',
+      );
 
       expect(settingsButton).toBeDefined();
 
@@ -280,10 +280,10 @@ describe("App", () => {
 
       const { container } = render(<App />);
 
-      // Click settings button to open settings (by text)
-      const settingsButton = Array.from(
-        container.querySelectorAll("button"),
-      ).find((btn) => btn.textContent.includes("Settings"));
+      // Click settings button to open settings (by aria-label)
+      const settingsButton = container.querySelector(
+        'button[aria-label="Settings"]',
+      );
 
       if (settingsButton) {
         fireEvent.click(settingsButton);

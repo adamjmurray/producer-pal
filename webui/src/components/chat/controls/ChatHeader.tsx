@@ -12,11 +12,19 @@ import {
   BookmarkIcon,
   NewConversationIcon,
   PanelToggleIcon,
+  SettingsIcon,
 } from "./header/HeaderIcons";
 import { HeaderStatus } from "./header/HeaderStatus";
+import { SmallModelIndicator } from "./header/SmallModelIndicator";
 import { ToolsIndicator } from "./header/ToolsIndicator";
 
 const PPAL_VERSION = import.meta.env.PPAL_VERSION ?? "";
+
+const iconBtn =
+  "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors cursor-pointer";
+
+const helpBtn =
+  "inline-flex items-center justify-center w-5 h-5 text-[11px] leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 dark:hover:border-blue-400 dark:hover:text-blue-400 cursor-help no-underline shrink-0";
 
 interface ChatHeaderProps {
   mcpStatus: McpStatus;
@@ -36,7 +44,7 @@ interface ChatHeaderProps {
 }
 
 /**
- * Header component for chat UI
+ * Header component for chat UI with responsive layout
  * @param props - Component props
  * @param props.mcpStatus - MCP connection status
  * @param props.activeModel - Active model identifier
@@ -75,26 +83,24 @@ export function ChatHeader({
       <div className="flex items-center gap-0.75 -ml-2">
         <button
           onClick={onToggleHistory}
-          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+          className={iconBtn}
           aria-label="Toggle conversation history"
           title="Conversation history"
         >
           <PanelToggleIcon isOpen={isHistoryOpen} />
         </button>
-
         <button
           onClick={onNewConversation}
-          className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+          className={iconBtn}
           aria-label="New conversation"
           title="New conversation"
         >
           <NewConversationIcon />
         </button>
-
         {onToggleBookmark && (
           <button
             onClick={onToggleBookmark}
-            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors"
+            className={iconBtn}
             aria-label={
               isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
             }
@@ -133,7 +139,7 @@ export function ChatHeader({
         <HeaderStatus mcpStatus={mcpStatus} />
       </div>
 
-      <div className="ml-auto flex gap-3 items-baseline">
+      <div className="ml-auto flex gap-3 items-center">
         <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap truncate min-w-0">
           <span className="hidden sm:inline">
             {getProviderName(activeProvider ?? provider)} |{" "}
@@ -146,29 +152,21 @@ export function ChatHeader({
           totalToolsCount={totalToolsCount}
         />
 
-        {smallModelMode && (
-          <span className="text-xs text-amber-600 dark:text-amber-400">
-            <span className="hidden sm:inline" aria-label="Small model mode">
-              🐢 small model
-            </span>
-            <span className="sm:hidden" aria-label="Small model mode">
-              🐢
-            </span>
-          </span>
-        )}
+        <SmallModelIndicator active={smallModelMode} />
 
         <button
           onClick={onOpenSettings}
-          className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+          className={iconBtn}
+          aria-label="Settings"
+          title="Settings"
         >
-          ⚙<span className="hidden sm:inline"> Settings</span>
+          <SettingsIcon />
         </button>
-
         <a
           href={CHAT_UI_DOCS_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center w-5 h-5 text-[11px] leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 dark:hover:border-blue-400 dark:hover:text-blue-400 cursor-help no-underline shrink-0"
+          className={helpBtn}
           title="Chat UI documentation"
         >
           i
