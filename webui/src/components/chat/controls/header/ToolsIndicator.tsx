@@ -34,8 +34,12 @@ export function ToolsIndicator({
     ? "text-gray-500 dark:text-gray-400"
     : "text-amber-600 dark:text-amber-400";
 
+  // When all enabled, hide below lg (no need for icon-only wrench).
+  // When subset, always show wrench with amber filter.
+  const visibility = allEnabled ? "hidden lg:inline" : "";
+
   return (
-    <span className={`text-xs ${textColor}`} title={titleText}>
+    <span className={`text-xs ${textColor} ${visibility}`} title={titleText}>
       <span style={allEnabled ? undefined : { filter: amberFilter }}>🔧</span>
 
       {/* Full text at lg+ */}

@@ -23,7 +23,7 @@ export function HeaderStatus({ mcpStatus }: HeaderStatusProps) {
         className="text-green-600 dark:text-green-400"
         title="Connected to Producer Pal"
       >
-        ✓<span className="hidden sm:inline"> Ready</span>
+        ✓<span className="hidden md:inline"> Ready</span>
       </span>
     );
   }
@@ -34,14 +34,14 @@ export function HeaderStatus({ mcpStatus }: HeaderStatusProps) {
         className="text-gray-500 dark:text-gray-400"
         title="Looking for Producer Pal..."
       >
-        👀<span className="hidden sm:inline"> Looking for Producer Pal...</span>
+        👀<span className="hidden md:inline"> Looking for Producer Pal...</span>
       </span>
     );
   }
 
   return (
     <span className="text-red-600 dark:text-red-400" title="Connection error">
-      ✗<span className="hidden sm:inline"> Error</span>
+      ✗<span className="hidden md:inline"> Error</span>
     </span>
   );
 }

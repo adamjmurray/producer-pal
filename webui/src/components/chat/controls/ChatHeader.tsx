@@ -117,7 +117,7 @@ export function ChatHeader({
         href="https://producer-pal.org"
         target="_blank"
         rel="noopener noreferrer"
-        className="relative flex items-center pl-7 lg:pl-9 ml-1.5 hover:opacity-80 transition-opacity no-underline shrink-0"
+        className="relative flex items-center pl-7 lg:pl-9 ml-2.5 hover:opacity-80 transition-opacity no-underline shrink-0"
         title="Producer Pal website"
       >
         <img
@@ -129,7 +129,7 @@ export function ChatHeader({
           Producer Pal Chat
         </h1>
         {PPAL_VERSION && (
-          <span className="hidden lg:inline text-xs text-gray-500 dark:text-gray-400 ml-1.5 font-normal">
+          <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 ml-1.5 font-normal">
             v{PPAL_VERSION}
           </span>
         )}
@@ -139,8 +139,8 @@ export function ChatHeader({
         <HeaderStatus mcpStatus={mcpStatus} />
       </div>
 
-      <div className="ml-auto flex gap-3 items-center">
-        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap truncate min-w-0">
+      <div className="ml-auto flex gap-2 sm:gap-3 items-center">
+        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap truncate min-w-0 max-w-28 sm:max-w-48 md:max-w-none">
           <span className="hidden sm:inline">
             {getProviderName(activeProvider ?? provider)} |{" "}
           </span>
