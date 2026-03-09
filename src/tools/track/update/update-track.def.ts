@@ -8,7 +8,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   title: "Update Track",
-  description: "Update track(s)",
+  description: "Update track(s).",
 
   annotations: {
     readOnlyHint: false,

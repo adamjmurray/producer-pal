@@ -7,7 +7,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
-  description: "Update device(s), chain(s), or drum pad(s)",
+  description: "Update device(s), chain(s), or drum pad(s).",
 
   annotations: {
     readOnlyHint: false,

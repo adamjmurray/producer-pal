@@ -7,7 +7,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefPlayback = defineTool("ppal-playback", {
   title: "Playback",
-  description: "Control playback of the arrangement and session scenes/clips",
+  description: "Control playback of the arrangement and session scenes/clips.",
 
   annotations: {
     readOnlyHint: false,

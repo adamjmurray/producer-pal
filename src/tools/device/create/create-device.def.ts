@@ -7,7 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefCreateDevice = defineTool("ppal-create-device", {
   title: "Create Device",
-  description: `Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain`,
+  description:
+    "Create a native Live device (instrument, MIDI effect, or audio effect) on a track or inside a chain.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

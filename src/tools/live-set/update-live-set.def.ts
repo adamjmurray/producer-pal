@@ -7,7 +7,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
   title: "Update Live Set",
-  description: "Update Live Set global settings or manage locators",
+  description: "Update Live Set global settings or manage locators.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

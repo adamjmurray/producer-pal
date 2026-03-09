@@ -7,8 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
-  description: `Read track settings, clips, devices.
-Returns overview by default. Use include to add detail.`,
+  description:
+    "Read track settings, clips, and devices. Returns overview by default. Use include to add detail.",
 
   annotations: {
     readOnlyHint: true,

@@ -8,7 +8,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefSelect = defineTool("ppal-select", {
   title: "Select",
   description:
-    'Navigate to and select items in Live. Use for "show me", "go to", "open" requests. No args: read current state',
+    'Navigate to and select items in Live. Use for "show me", "go to", "open" requests. No args: read current state.',
 
   annotations: {
     readOnlyHint: false,

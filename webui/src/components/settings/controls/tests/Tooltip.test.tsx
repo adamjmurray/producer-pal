@@ -71,21 +71,22 @@ describe("Tooltip", () => {
     expect(screen.queryByText("Some description")).toBeNull();
   });
 
-  it("renders multi-line text as separate paragraphs", () => {
+  it("collapses newlines into spaces", () => {
     render(<Tooltip text={"Line one\nLine two"} />);
     fireEvent.click(infoButton());
-    expect(screen.getByText("Line one")).toBeDefined();
-    expect(screen.getByText("Line two")).toBeDefined();
+    expect(screen.getByText("Line one Line two")).toBeDefined();
   });
 
   it("does not dismiss when clicking inside while pinned", () => {
     render(<Tooltip text={"Line one\nLine two"} />);
     fireEvent.click(infoButton());
-    expect(screen.getByText("Line one")).toBeDefined();
+    const tooltip = screen.getByRole("tooltip");
+
+    expect(tooltip).toBeDefined();
 
     // Click inside the tooltip content (not outside)
-    fireEvent.mouseDown(screen.getByText("Line one"));
-    expect(screen.getByText("Line one")).toBeDefined();
+    fireEvent.mouseDown(tooltip);
+    expect(screen.getByRole("tooltip")).toBeDefined();
   });
 
   it("does not re-show tooltip on mouse enter when already pinned", () => {

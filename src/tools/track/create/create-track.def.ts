@@ -7,7 +7,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
-  description: `Create track(s)`,
+  description: "Create track(s).",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

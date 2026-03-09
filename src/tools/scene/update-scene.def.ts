@@ -7,7 +7,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateScene = defineTool("ppal-update-scene", {
   title: "Update Scene",
-  description: "Updates scene(s)",
+  description: "Update scene(s).",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

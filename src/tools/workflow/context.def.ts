@@ -9,7 +9,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefContext = defineTool("ppal-context", {
   title: "Context",
   description:
-    "Read/write project memory or search configured sample folder for audio files",
+    "Read/write project memory or search configured sample folder for audio files.",
 
   annotations: {
     readOnlyHint: false,

@@ -7,7 +7,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefCreateScene = defineTool("ppal-create-scene", {
   title: "Create Scene",
-  description: "Create empty scene(s) or capture playing session clips",
+  description: "Create empty scene(s) or capture playing session clips.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

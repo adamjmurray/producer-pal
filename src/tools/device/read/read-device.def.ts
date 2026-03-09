@@ -8,7 +8,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefReadDevice = defineTool("ppal-read-device", {
   title: "Read Device",
   description:
-    "Read information about a device, chain, or drum pad by ID or path.\nReturns overview by default. Use include to add detail.",
+    "Read information about a device, chain, or drum pad by ID or path. Returns overview by default. Use include to add detail.",
 
   annotations: {
     readOnlyHint: true,

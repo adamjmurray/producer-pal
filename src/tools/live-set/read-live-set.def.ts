@@ -7,8 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
   title: "Read Live Set",
-  description: `Read Live Set global settings, track/scene overview.
-Returns overview by default. Use include to add detail.`,
+  description:
+    "Read Live Set global settings, track/scene overview. Returns overview by default. Use include to add detail.",
 
   annotations: {
     readOnlyHint: true,

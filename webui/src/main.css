@@ -119,3 +119,17 @@
     opacity: 0;
   }
 }
+
+/* Tooltip fade-in animation */
+.tooltip-fade-in {
+  animation: tooltip-in 150ms ease-out forwards;
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
