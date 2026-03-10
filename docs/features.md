@@ -1,12 +1,19 @@
 # Features
 
-Producer Pal provides AI-powered tools for music production in Ableton Live.
-Simply ask the AI what you want to do, and it will use these tools to help you
-create.
+Producer Pal is an AI-powered music production assistant for Ableton Live. Tell
+the AI what you want and it uses 20 specialized tools to read, create, and
+modify tracks, clips, devices, and more in your Live Set.
 
-## Connection & Setup
+It works with virtually any AI, including its
+[built-in Chat UI](/guide/chat-ui), desktop apps like
+[Claude Desktop](/installation/claude-desktop) and
+[Codex](/installation/codex-app), CLI tools, and web apps.
 
-### Connect to Ableton (`ppal-connect`)
+[Get started →](/installation)
+
+## Core Tools
+
+### 🔧 Connect (`ppal-connect`) {#ppal-connect}
 
 - Establish the connection with Ableton Live (required before using other tools)
 - Summarizes the state of the current Live Set
@@ -15,7 +22,7 @@ create.
 
 <!--@include: ./_generated/ppal-connect-schema.md-->
 
-### Project Context (`ppal-context`)
+### 🔧 Context (`ppal-context`) {#ppal-context}
 
 - Read and write project memory — persistent notes that help the AI understand
   your goals across conversations
@@ -23,21 +30,9 @@ create.
 
 <!--@include: ./_generated/ppal-context-schema.md-->
 
-### Built-in Chat UI
+## Transport Tools
 
-- Control Producer Pal with its built-in text-based interface
-- Compatible with Google Gemini, OpenAI, and OpenAI-compatible online services
-  (Mistral, OpenRouter, etc)
-- Compatible with local SLMs (Ollama, LM Studio)
-
-### Network Control
-
-- Control Ableton Live with another computer on your network for collaborative
-  production and remote control workflows
-
-## Transport & Playback
-
-### Transport Control (`ppal-playback`)
+### 🔧 Playback (`ppal-playback`) {#ppal-playback}
 
 - Start/stop playback in Session or Arrangement view
 - Play specific scenes or clips
@@ -49,9 +44,9 @@ create.
 
 <!--@include: ./_generated/ppal-playback-schema.md-->
 
-## Live Set Management
+## Live Set Tools
 
-### Read Live Set (`ppal-read-live-set`)
+### 🔧 Read Live Set (`ppal-read-live-set`) {#ppal-read-live-set}
 
 - Get complete Live project overview
 - View all tracks, scenes, and clips at once
@@ -61,42 +56,16 @@ create.
 
 <!--@include: ./_generated/ppal-read-live-set-schema.md-->
 
-### Update Live Set (`ppal-update-live-set`)
+### 🔧 Update Live Set (`ppal-update-live-set`) {#ppal-update-live-set}
 
 - Change tempo, time signature, scale
 - Create, rename, or delete arrangement locators
 
 <!--@include: ./_generated/ppal-update-live-set-schema.md-->
 
-## Scene Operations
+## Track Tools
 
-### Create Scene (`ppal-create-scene`)
-
-- Add new scenes at any position
-- Set scene name, color, tempo, and time signature
-- Scenes can follow song tempo or have their own
-- Ability to capture currently playing clips into a new scene
-
-<!--@include: ./_generated/ppal-create-scene-schema.md-->
-
-### Read Scene (`ppal-read-scene`)
-
-- View scene details and all its clips
-- Check which clips are playing/triggered
-- See scene tempo and time signature
-
-<!--@include: ./_generated/ppal-read-scene-schema.md-->
-
-### Update Scene (`ppal-update-scene`)
-
-- Change scene name, color, tempo, and time signature
-- Update multiple scenes at once
-
-<!--@include: ./_generated/ppal-update-scene-schema.md-->
-
-## Track Management
-
-### Create Track (`ppal-create-track`)
+### 🔧 Create Track (`ppal-create-track`) {#ppal-create-track}
 
 - Add MIDI, audio, or return tracks
 - Position tracks exactly where you want
@@ -104,7 +73,7 @@ create.
 
 <!--@include: ./_generated/ppal-create-track-schema.md-->
 
-### Read Track (`ppal-read-track`)
+### 🔧 Read Track (`ppal-read-track`) {#ppal-read-track}
 
 - Get detailed track information
 - View all clips in Session and Arrangement
@@ -114,7 +83,7 @@ create.
 
 <!--@include: ./_generated/ppal-read-track-schema.md-->
 
-### Update Track (`ppal-update-track`)
+### 🔧 Update Track (`ppal-update-track`) {#ppal-update-track}
 
 - Change track gain (volume), panning, and send levels
 - Change mute, solo, arm, I/O routings, and monitoring state
@@ -123,9 +92,35 @@ create.
 
 <!--@include: ./_generated/ppal-update-track-schema.md-->
 
-## Device Management
+## Scene Tools
 
-### Create Device (`ppal-create-device`)
+### 🔧 Create Scene (`ppal-create-scene`) {#ppal-create-scene}
+
+- Add new scenes at any position
+- Set scene name, color, tempo, and time signature
+- Scenes can follow song tempo or have their own
+- Ability to capture currently playing clips into a new scene
+
+<!--@include: ./_generated/ppal-create-scene-schema.md-->
+
+### 🔧 Read Scene (`ppal-read-scene`) {#ppal-read-scene}
+
+- View scene details and all its clips
+- Check which clips are playing/triggered
+- See scene tempo and time signature
+
+<!--@include: ./_generated/ppal-read-scene-schema.md-->
+
+### 🔧 Update Scene (`ppal-update-scene`) {#ppal-update-scene}
+
+- Change scene name, color, tempo, and time signature
+- Update multiple scenes at once
+
+<!--@include: ./_generated/ppal-update-scene-schema.md-->
+
+## Device Tools
+
+### 🔧 Create Device (`ppal-create-device`) {#ppal-create-device}
 
 - Add native Live devices (instruments, MIDI effects, audio effects)
 - Place devices on any track type: MIDI, audio, return, or master
@@ -135,7 +130,7 @@ create.
 
 <!--@include: ./_generated/ppal-create-device-schema.md-->
 
-### Read Device (`ppal-read-device`)
+### 🔧 Read Device (`ppal-read-device`) {#ppal-read-device}
 
 - Get detailed info about any device, including inside rack chains and drum pad
   chains
@@ -143,7 +138,7 @@ create.
 
 <!--@include: ./_generated/ppal-read-device-schema.md-->
 
-### Update Device (`ppal-update-device`)
+### 🔧 Update Device (`ppal-update-device`) {#ppal-update-device}
 
 - Change device name
 - Change device parameter values (control knobs, dials, etc)
@@ -157,9 +152,9 @@ create.
 
 <!--@include: ./_generated/ppal-update-device-schema.md-->
 
-## Clip Creation & Editing
+## Clip Tools
 
-### Create Clip (`ppal-create-clip`)
+### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
 
 - Generate MIDI clips with notes, velocities, and timing
 - Place clips in Session slots or Arrangement timeline
@@ -168,7 +163,7 @@ create.
 
 <!--@include: ./_generated/ppal-create-clip-schema.md-->
 
-### Read Clip (`ppal-read-clip`)
+### 🔧 Read Clip (`ppal-read-clip`) {#ppal-read-clip}
 
 - Get detailed info about any clip in Session or Arrangement
 - Read MIDI notes in musical notation (C3, D#4, etc.)
@@ -176,7 +171,7 @@ create.
 
 <!--@include: ./_generated/ppal-read-clip-schema.md-->
 
-### Update Clip (`ppal-update-clip`)
+### 🔧 Update Clip (`ppal-update-clip`) {#ppal-update-clip}
 
 - Change clip name, color, and loop settings
 - Add/remove MIDI notes and change note pitch, timing, velocity, and probability
@@ -186,6 +181,50 @@ create.
 - Update multiple clips at once
 
 <!--@include: ./_generated/ppal-update-clip-schema.md-->
+
+## Action Tools
+
+### 🔧 Delete (`ppal-delete`) {#ppal-delete}
+
+- Remove tracks, return tracks, scenes, clips, or devices
+- Bulk delete multiple objects
+
+<!--@include: ./_generated/ppal-delete-schema.md-->
+
+### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
+
+- Copy tracks, scenes, clips, or devices
+- Create multiple copies at once
+- Copy clips anywhere in the Session, Arrangement, or from Session to
+  Arrangement
+  - Position in the Arrangement by bar|beat or locator
+  - Auto-tile clips to fill longer arrangement durations
+- Copy devices to any track, return track, or rack chain
+- Route duplicated tracks to source instrument for MIDI layering
+
+Note: Return tracks and devices on return tracks cannot be duplicated (Live API
+limitation).
+
+<!--@include: ./_generated/ppal-duplicate-schema.md-->
+
+### 🔧 Select (`ppal-select`) {#ppal-select}
+
+- Read current selection and view state (when no arguments)
+  - Returns only non-null fields: selected track, scene, clip, device
+  - Rich object shapes with IDs, types, and context (slot, path, etc.)
+- Update selection and returns only relevant fields
+  - Select any object by ID (auto-detects track/scene/clip/device)
+  - Select tracks by index/category, scenes by index
+  - Select clips by slot position (e.g., `0/3`)
+  - Select devices by path (e.g., `t0/d1`)
+  - Switch between Session and Arrangement views
+  - Auto-switches to session view for scene/clipSlot selection
+  - Detail views auto-managed: clip detail opens on clip selection, device
+    detail on device selection
+
+<!--@include: ./_generated/ppal-select-schema.md-->
+
+## More Features
 
 ### Custom Music Notation
 
@@ -217,46 +256,7 @@ Apply complex changes to clips using math expressions:
   ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
   `1|1-2|4 C3:`)
 
-## Object Management
+### Network Control
 
-### Duplicate (`ppal-duplicate`)
-
-- Copy tracks, scenes, clips, or devices
-- Create multiple copies at once
-- Copy clips anywhere in the Session, Arrangement, or from Session to
-  Arrangement
-  - Position in the Arrangement by bar|beat or locator
-  - Auto-tile clips to fill longer arrangement durations
-- Copy devices to any track, return track, or rack chain
-- Route duplicated tracks to source instrument for MIDI layering
-
-Note: Return tracks and devices on return tracks cannot be duplicated (Live API
-limitation).
-
-<!--@include: ./_generated/ppal-duplicate-schema.md-->
-
-### Delete (`ppal-delete`)
-
-- Remove tracks, return tracks, scenes, clips, or devices
-- Bulk delete multiple objects
-
-<!--@include: ./_generated/ppal-delete-schema.md-->
-
-## Selection State and View Control
-
-### Select (`ppal-select`)
-
-- Read current selection and view state (when no arguments)
-  - Returns only non-null fields: selected track, scene, clip, device
-  - Rich object shapes with IDs, types, and context (slot, path, etc.)
-- Update selection and returns only relevant fields
-  - Select any object by ID (auto-detects track/scene/clip/device)
-  - Select tracks by index/category, scenes by index
-  - Select clips by slot position (e.g., `0/3`)
-  - Select devices by path (e.g., `t0/d1`)
-  - Switch between Session and Arrangement views
-  - Auto-switches to session view for scene/clipSlot selection
-  - Detail views auto-managed: clip detail opens on clip selection, device
-    detail on device selection
-
-<!--@include: ./_generated/ppal-select-schema.md-->
+Control Ableton Live from another computer on your network for collaborative
+production and remote control workflows.

@@ -105,36 +105,35 @@ function generateToolPartial(toolDef: ToolDefFunction): string {
   const { inputSchema } = toolOptions;
   const schemaKeys = Object.keys(inputSchema);
 
-  const lines: string[] = ["<details>", "<summary>Parameters</summary>", ""];
-
   if (schemaKeys.length === 0) {
-    lines.push("*No parameters.*", "");
-  } else {
-    const objectSchema = z.object(inputSchema);
-    const jsonSchema = toJSONSchema(objectSchema) as JsonSchema;
-    const properties = jsonSchema.properties ?? {};
-    const required = new Set(jsonSchema.required ?? []);
-
-    lines.push(
-      "| Parameter | Type | Description |",
-      "|-----------|------|-------------|",
-    );
-
-    for (const key of schemaKeys) {
-      const prop = properties[key];
-
-      if (!prop) continue;
-      const isRequired = required.has(key) && prop.default == null;
-      const type = formatType(prop, isRequired);
-      const desc = escapeTableCell(prop.description ?? "");
-
-      lines.push(`| \`${key}\` | ${type} | ${desc} |`);
-    }
-
-    lines.push("");
+    return `<p class="vp-doc-muted">(no parameters)</p>\n`;
   }
 
-  lines.push("</details>", "");
+  const objectSchema = z.object(inputSchema);
+  const jsonSchema = toJSONSchema(objectSchema) as JsonSchema;
+  const properties = jsonSchema.properties ?? {};
+  const required = new Set(jsonSchema.required ?? []);
+
+  const lines: string[] = [
+    "<details>",
+    "<summary>Parameters</summary>",
+    "",
+    "| Parameter | Type | Description |",
+    "|-----------|------|-------------|",
+  ];
+
+  for (const key of schemaKeys) {
+    const prop = properties[key];
+
+    if (!prop) continue;
+    const isRequired = required.has(key) && prop.default == null;
+    const type = formatType(prop, isRequired);
+    const desc = escapeTableCell(prop.description ?? "");
+
+    lines.push(`| \`${key}\` | ${type} | ${desc} |`);
+  }
+
+  lines.push("", "</details>", "");
 
   return lines.join("\n");
 }

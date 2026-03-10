@@ -2,6 +2,21 @@
   color: var(--vp-c-text-3);
 }
 
+details > summary {
+  color: var(--vp-c-brand-1);
+  cursor: pointer;
+}
+
+details > summary::after {
+  content: " (click for details)";
+  color: var(--vp-c-text-3);
+  font-size: 0.85em;
+}
+
+details[open] > summary::after {
+  content: "";
+}
+
 details > table th:nth-child(2),
 details > table td:nth-child(2) {
   min-width: 15em;
