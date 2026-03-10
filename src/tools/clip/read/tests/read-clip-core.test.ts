@@ -425,6 +425,56 @@ describe("readClip", () => {
     expect(result.start).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 
+  it("includes pitchShift for audio clips with non-zero pitch", () => {
+    setupAudioClipMock({
+      trackIndex: 0,
+      sceneIndex: 0,
+      clipProps: {
+        is_midi_clip: 0,
+        name: "Pitched Audio",
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        pitch_coarse: 3,
+        pitch_fine: 50,
+      },
+    });
+
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["sample"],
+    });
+
+    expect(result.pitchShift).toBe(3.5);
+    expect(result.type).toBe("audio");
+  });
+
+  it("reads a clip using the slot parameter", () => {
+    setupMidiClipMock({
+      trackIndex: 2,
+      sceneIndex: 3,
+      clipProps: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        end_marker: 4,
+        loop_start: 0,
+        loop_end: 4,
+      },
+    });
+
+    const result = readClip({
+      slot: "2/3",
+      include: ["timing"],
+    });
+
+    expect(result.id).toBe("live_set/tracks/2/clip_slots/3/clip");
+    expect(result.slot).toBe("2/3");
+    expect(result.type).toBe("midi");
+  });
+
   it("throws an error when neither clipId nor slot are provided", () => {
     expect(() => readClip({})).toThrow(
       "Either clipId or slot must be provided",
