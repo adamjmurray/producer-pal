@@ -10,6 +10,7 @@ import {
 } from "../../webui/src/lib/constants/models";
 import {
   expectNoConsoleOutput,
+  navigateToChat,
   setupConsoleCapture,
 } from "./webui-test-helpers";
 
@@ -68,18 +69,7 @@ for (const config of TEST_CONFIGS) {
       }
 
       // Navigate to the chat UI (served by the Producer Pal device)
-      try {
-        await page.goto("/chat");
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-
-        throw new Error(
-          "Could not connect to Producer Pal. Make sure:\n" +
-            "1. Ableton Live is running with the Producer Pal device active\n" +
-            "2. The device is built with `npm run build:all`\n\n" +
-            `Original error: ${message}`,
-        );
-      }
+      await navigateToChat(page);
 
       // Configure settings via localStorage to avoid race conditions between
       // Playwright's fill() and Preact's deferred state batching. Preact

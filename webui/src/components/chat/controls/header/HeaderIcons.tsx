@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import type * as preact from "preact";
+
 /**
  * Pencil icon for editing (messages, conversation titles)
  * @returns SVG element
@@ -30,19 +32,10 @@ export function EditIcon() {
  */
 export function NewConversationIcon() {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <Icon20 strokeWidth="1.5">
       <path d="M15 2.5l2.5 2.5-8.75 8.75H6.25v-2.5L15 2.5z" />
       <path d="M3.75 17.5h12.5" />
-    </svg>
+    </Icon20>
   );
 }
 
@@ -77,16 +70,7 @@ export function BookmarkIcon({ bookmarked }: { bookmarked: boolean }) {
  */
 export function PanelToggleIcon({ isOpen }: { isOpen: boolean }) {
   return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <Icon20 strokeWidth="1.5">
       <rect x="2" y="2" width="16" height="16" rx="2.5" />
       <line x1="8" y1="2" x2="8" y2="18" />
 
@@ -134,7 +118,7 @@ export function PanelToggleIcon({ isOpen }: { isOpen: boolean }) {
           <line x1="4.5" y1="13" x2="6.5" y2="13" strokeWidth="1" />
         </>
       )}
-    </svg>
+    </Icon20>
   );
 }
 
@@ -202,6 +186,36 @@ export function DisclosureChevron() {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Shared 20x20 SVG wrapper with standard stroke attributes.
+ * @param props - Component props
+ * @param props.strokeWidth - SVG stroke width
+ * @param props.children - SVG child elements
+ * @returns SVG element
+ */
+function Icon20({
+  strokeWidth,
+  children,
+}: {
+  strokeWidth: string;
+  children: preact.ComponentChildren;
+}) {
+  return (
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {children}
+    </svg>
+  );
+}
 
 /**
  * Shared 16x16 SVG wrapper for import/export transfer icons.

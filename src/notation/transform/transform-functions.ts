@@ -10,6 +10,8 @@ import {
 } from "./transform-evaluator-helpers.ts";
 import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
 import {
+  computePhase,
+  evaluateArgs,
   evaluateChoose,
   evaluateCurve,
   evaluateMathFunction,
@@ -158,30 +160,17 @@ function evaluateRamp(
     );
   }
 
-  const start = evaluateExpression(
-    args[0] as ExpressionNode,
+  const [start, end] = evaluateArgs(
+    args,
+    [0, 1],
     position,
     timeSigNumerator,
     timeSigDenominator,
     timeRange,
     noteProperties,
+    evaluateExpression,
   );
-
-  const end = evaluateExpression(
-    args[1] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-
-  // Calculate phase based on position within timeRange
-  const timeRangeDuration = timeRange.end - timeRange.start;
-  const phase =
-    timeRangeDuration > 0
-      ? (position - timeRange.start) / timeRangeDuration
-      : 0;
+  const phase = computePhase(position, timeRange);
 
   return waveforms.ramp(phase, start, end);
 }

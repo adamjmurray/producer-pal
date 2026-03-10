@@ -225,6 +225,28 @@ export function useChat<
     [adapter],
   );
 
+  const runWithChat = useCallback(
+    async (fn: () => Promise<void>) => {
+      setIsAssistantResponding(true);
+
+      try {
+        await fn();
+      } catch (error) {
+        setMessages(
+          adapter.createErrorMessage(
+            error,
+            clientRef.current?.chatHistory ?? [],
+          ),
+        );
+      } finally {
+        abortControllerRef.current = null;
+        setIsAssistantResponding(false);
+        setRateLimitState(null);
+      }
+    },
+    [adapter],
+  );
+
   const handleSend = useCallback(
     async (message: string, options?: MessageOverrides) => {
       const userMessage = message.trim();
@@ -246,9 +268,7 @@ export function useChat<
         return;
       }
 
-      setIsAssistantResponding(true);
-
-      try {
+      await runWithChat(async () => {
         if (!clientRef.current) {
           const pendingHistory = pendingHistoryRef.current ?? undefined;
 
@@ -277,20 +297,9 @@ export function useChat<
           () => client.chatHistory,
           userMessage,
         );
-      } catch (error) {
-        setMessages(
-          adapter.createErrorMessage(
-            error,
-            clientRef.current?.chatHistory ?? [],
-          ),
-        );
-      } finally {
-        abortControllerRef.current = null;
-        setIsAssistantResponding(false);
-        setRateLimitState(null);
-      }
+      });
     },
-    [apiKey, initializeChat, adapter, executeWithRetry],
+    [apiKey, adapter, initializeChat, runWithChat, executeWithRetry],
   );
 
   const forkConversation = useCallback(
@@ -307,9 +316,7 @@ export function useChat<
 
       if (!history) return;
 
-      setIsAssistantResponding(true);
-
-      try {
+      await runWithChat(async () => {
         const slicedHistory = history.slice(0, rawIndex);
 
         pendingHistoryRef.current = null;
@@ -329,20 +336,9 @@ export function useChat<
           () => client.chatHistory,
           newMessage,
         );
-      } catch (error) {
-        setMessages(
-          adapter.createErrorMessage(
-            error,
-            clientRef.current?.chatHistory ?? [],
-          ),
-        );
-      } finally {
-        abortControllerRef.current = null;
-        setIsAssistantResponding(false);
-        setRateLimitState(null);
-      }
+      });
     },
-    [apiKey, messages, initializeChat, adapter, executeWithRetry],
+    [apiKey, messages, initializeChat, runWithChat, executeWithRetry],
   );
 
   const handleRetry = useCallback(
