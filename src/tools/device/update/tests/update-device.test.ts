@@ -123,24 +123,24 @@ describe("updateDevice", () => {
       });
     });
 
-    it("should set display_value for numeric params", () => {
+    it("should set value for numeric params", () => {
       const result = updateDevice({
         ids: "123",
-        params: "789 = 1000",
+        params: "789 = 0.8",
       });
 
-      expect(param789.set).toHaveBeenCalledWith("display_value", 1000);
+      expect(param789.set).toHaveBeenCalledWith("value", 0.8);
       expect(result).toStrictEqual({ id: "123" });
     });
 
     it("should set multiple param values", () => {
       const result = updateDevice({
         ids: "123",
-        params: "789 = 500\n790 = 1000",
+        params: "789 = 0.3\n790 = 0.7",
       });
 
-      expect(param789.set).toHaveBeenCalledWith("display_value", 500);
-      expect(param790.set).toHaveBeenCalledWith("display_value", 1000);
+      expect(param789.set).toHaveBeenCalledWith("value", 0.3);
+      expect(param790.set).toHaveBeenCalledWith("value", 0.7);
       expect(result).toStrictEqual({ id: "123" });
     });
 
@@ -323,25 +323,25 @@ describe("updateDevice", () => {
     it("should resolve param by exact name", () => {
       updateDevice({ ids: "123", params: "Filter Freq = 1000" });
 
-      expect(paramFreq.set).toHaveBeenCalledWith("display_value", 1000);
+      expect(paramFreq.set).toHaveBeenCalledWith("value", 1000);
     });
 
     it("should resolve param by name case-insensitively", () => {
       updateDevice({ ids: "123", params: "filter freq = 1000" });
 
-      expect(paramFreq.set).toHaveBeenCalledWith("display_value", 1000);
+      expect(paramFreq.set).toHaveBeenCalledWith("value", 1000);
     });
 
     it("should resolve rack macro by raw name", () => {
       updateDevice({ ids: "123", params: "Reverb = 0.8" });
 
-      expect(paramMacro.set).toHaveBeenCalledWith("display_value", 0.8);
+      expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
     });
 
     it("should resolve rack macro by formatted name", () => {
       updateDevice({ ids: "123", params: "Reverb (Macro 1) = 0.8" });
 
-      expect(paramMacro.set).toHaveBeenCalledWith("display_value", 0.8);
+      expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
     });
 
     it("should resolve multiple params by name", () => {
@@ -350,8 +350,8 @@ describe("updateDevice", () => {
         params: "Filter Freq = 1000\nReverb = 0.8",
       });
 
-      expect(paramFreq.set).toHaveBeenCalledWith("display_value", 1000);
-      expect(paramMacro.set).toHaveBeenCalledWith("display_value", 0.8);
+      expect(paramFreq.set).toHaveBeenCalledWith("value", 1000);
+      expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
     });
 
     it("should warn for unresolvable non-integer key", () => {
