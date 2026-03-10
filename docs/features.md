@@ -17,8 +17,10 @@ It works with virtually any AI, including its
 
 - Establish the connection with Ableton Live (required before using other tools)
 - Summarizes the state of the current Live Set
-- Provides the AI with a Producer Pal skill set that adapts to different AI
-  model capabilities
+- Returns a [skill set](#skills) that teaches the AI how to use Producer Pal
+  effectively. Standard skills cover the full feature set.
+  [Small model mode](#small-model-mode) provides simplified skills and schemas
+  for less capable models.
 
 <!--@include: ./_generated/ppal-connect-schema.md-->
 
@@ -156,9 +158,11 @@ It works with virtually any AI, including its
 
 ### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
 
-- Generate MIDI clips with notes, velocities, and timing
+- Generate MIDI clips with notes, velocities, and timing using
+  [custom notation](#custom-music-notation)
 - Place clips in Session slots or Arrangement timeline
 - Support for probability, velocity ranges, and complex rhythms
+- Apply [transforms](#transforms) to shape notes with math expressions
 - Auto-create scenes as needed
 
 <!--@include: ./_generated/ppal-create-clip-schema.md-->
@@ -166,7 +170,7 @@ It works with virtually any AI, including its
 ### 🔧 Read Clip (`ppal-read-clip`) {#ppal-read-clip}
 
 - Get detailed info about any clip in Session or Arrangement
-- Read MIDI notes in musical notation (C3, D#4, etc.)
+- Read MIDI notes in [custom notation](#custom-music-notation) (C3, D#4, etc.)
 - Get audio clip gain, pitch, warp settings, and sample info
 
 <!--@include: ./_generated/ppal-read-clip-schema.md-->
@@ -174,7 +178,8 @@ It works with virtually any AI, including its
 ### 🔧 Update Clip (`ppal-update-clip`) {#ppal-update-clip}
 
 - Change clip name, color, and loop settings
-- Add/remove MIDI notes and change note pitch, timing, velocity, and probability
+- Add/remove MIDI notes using [custom notation](#custom-music-notation)
+- Apply [transforms](#transforms) to modify existing notes and audio properties
 - Change audio clip gain, pitch shift, and warp settings
 - Move clips and change their length in the Arrangement
 - Split arrangement clips at specified positions
@@ -224,13 +229,13 @@ limitation).
 
 <!--@include: ./_generated/ppal-select-schema.md-->
 
-## More Features
-
-### Custom Music Notation
+## Custom Music Notation {#custom-music-notation}
 
 Producer Pal uses a text-based music notation syntax called `bar|beat` to work
-with MIDI clips. It helps LLMs translate natural language expressions of time to
-the correct time positions in Ableton Live clips and the arrangement timeline.
+with MIDI clips. Used by [Create Clip](#ppal-create-clip),
+[Update Clip](#ppal-update-clip), and [Read Clip](#ppal-read-clip). It helps
+LLMs translate natural language expressions of time to the correct time
+positions in Ableton Live clips and the arrangement timeline.
 
 - **Pitches**: Standard notation (C3 = middle C, F#4, Bb2, etc.)
 - **Time positions**: bar|beat format (1|1 = first beat, 2|3 = bar 2, beat 3)
@@ -241,9 +246,10 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
   1→bars 2-8), or tile patterns with `@3-10=1-2` (repeat 2-bar pattern across
   bars 3-10)
 
-### Transforms
+## Transforms {#transforms}
 
-Apply complex changes to clips using math expressions:
+Apply complex changes to clips using math expressions via
+[Create Clip](#ppal-create-clip) and [Update Clip](#ppal-update-clip):
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
@@ -256,7 +262,28 @@ Apply complex changes to clips using math expressions:
   ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
   `1|1-2|4 C3:`)
 
-### Network Control
+## Network Control
 
-Control Ableton Live from another computer on your network for collaborative
-production and remote control workflows.
+Control Ableton Live from another computer on your local network, no extra setup
+required. For fully remote control, use
+[web tunnels](/installation/web-tunnels).
+
+## Small Model Mode {#small-model-mode}
+
+Adapts Producer Pal for less capable AI models by returning simplified
+[skills](#skills) and removing advanced parameters from tool schemas. This is an
+ongoing R&D effort aimed at making [local models](/installation/choose-local)
+viable for completely offline, free, and private usage. Enable it in the
+[Chat UI](/guide/chat-ui) settings or with `--small-model-mode` on the command
+line.
+
+## Skills {#skills}
+
+The [Connect tool](#ppal-connect) returns a skill set that teaches the AI how to
+use Producer Pal's [custom notation](#custom-music-notation),
+[transforms](#transforms), device paths, and other conventions. Two variants are
+available depending on [small model mode](#small-model-mode):
+
+<!--@include: ./_generated/skills-standard.md-->
+
+<!--@include: ./_generated/skills-basic.md-->
