@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -19,19 +20,18 @@ import {
 
 const ctx = setupMcpTestContext();
 
-async function getTrackIds(): Promise<LiveSetResult> {
-  const liveSetResult = await ctx.client!.callTool({
+async function readTracks(): Promise<LiveSetResult> {
+  const result = await ctx.client!.callTool({
     name: "ppal-read-live-set",
     arguments: { include: ["tracks"] },
   });
 
-  return parseToolResult<LiveSetResult>(liveSetResult);
+  return parseToolResult<LiveSetResult>(result);
 }
 
 describe("ppal-update-track", () => {
   it("updates track name, color, and gain", async () => {
-    // Setup: Get track IDs
-    const liveSet = await getTrackIds();
+    const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;
 
     // Test 1: Update track name
@@ -82,8 +82,7 @@ describe("ppal-update-track", () => {
   });
 
   it("updates track mute, solo, and arm states", async () => {
-    // Setup: Get track IDs and unsolo t5
-    const liveSet = await getTrackIds();
+    const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;
 
     // Unsolo t5 which is soloed by default in e2e-test-set
@@ -159,8 +158,7 @@ describe("ppal-update-track", () => {
   });
 
   it("updates track pan and panning mode", async () => {
-    // Setup: Get track ID
-    const liveSet = await getTrackIds();
+    const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;
 
     // Test 1: Update pan (stereo mode)
@@ -208,8 +206,7 @@ describe("ppal-update-track", () => {
   });
 
   it("updates multiple tracks in batch", async () => {
-    // Setup: Get track IDs and unsolo t5
-    const liveSet = await getTrackIds();
+    const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;
     const secondTrackId = liveSet.tracks![1]!.id;
 
@@ -254,8 +251,7 @@ describe("ppal-update-track", () => {
   });
 
   it("updates send levels and monitoring", async () => {
-    // Setup: Get track ID
-    const liveSet = await getTrackIds();
+    const liveSet = await readTracks();
     const trackId = liveSet.tracks![0]!.id;
 
     // Test 1: Update monitoring state

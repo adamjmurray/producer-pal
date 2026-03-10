@@ -14,7 +14,7 @@ import {
   setupConsoleCapture,
 } from "./webui-test-helpers";
 
-const consoleCapture = setupConsoleCapture();
+const captured = setupConsoleCapture();
 
 // Generate OpenRouter configs from the shared models list (paid models only)
 // Free models are excluded due to rate limits - test those manually
@@ -155,7 +155,7 @@ for (const config of TEST_CONFIGS) {
       ).toBeGreaterThanOrEqual(1);
 
       // Verify no unexpected console output
-      expectNoConsoleOutput(consoleCapture);
+      expectNoConsoleOutput(captured);
 
       console.log(
         `Test passed: ${config.providerLabel} ${config.modelLabel} Quick Connect successful`,

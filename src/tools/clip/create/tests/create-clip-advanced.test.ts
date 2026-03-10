@@ -3,7 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { createClip } from "../create-clip.ts";
@@ -157,14 +158,7 @@ describe("createClip - advanced features", () => {
   });
 
   describe("focus functionality", () => {
-    let selectMock: ReturnType<typeof vi.fn>;
-
-    beforeEach(async () => {
-      const selectModule = await import("#src/tools/control/select.ts");
-
-      selectMock = selectModule.select as ReturnType<typeof vi.fn>;
-      selectMock.mockClear();
-    });
+    const selectMockRef = setupSelectMock();
 
     it("should select session clip and show clip detail when focus=true", async () => {
       setupSessionMocks({
@@ -176,7 +170,7 @@ describe("createClip - advanced features", () => {
         focus: true,
       });
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         clipId: "live_set/tracks/0/clip_slots/0/clip",
         detailView: "clip",
       });
@@ -191,7 +185,7 @@ describe("createClip - advanced features", () => {
         focus: true,
       });
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         clipId: "arrangement_clip",
         detailView: "clip",
       });
@@ -207,7 +201,7 @@ describe("createClip - advanced features", () => {
         focus: false,
       });
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
 
     it("should focus last clip when creating multiple clips with focus=true", async () => {
@@ -227,11 +221,11 @@ describe("createClip - advanced features", () => {
         focus: true,
       });
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         clipId: "live_set/tracks/0/clip_slots/1/clip",
         detailView: "clip",
       });
-      expect(selectMock).toHaveBeenCalledTimes(1);
+      expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(2);
     });
@@ -247,11 +241,11 @@ describe("createClip - advanced features", () => {
       });
 
       // Arrangement clip gets focus priority over session clip
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         clipId: "arrangement_clip",
         detailView: "clip",
       });
-      expect(selectMock).toHaveBeenCalledTimes(1);
+      expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
     });
   });
 

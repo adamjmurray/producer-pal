@@ -33,6 +33,14 @@ const REVERB_DEVICE = {
   can_have_drum_pads: 0,
 };
 
+const MASTER_TRACK_MOCK = {
+  has_midi_input: 0,
+  name: "Master",
+  clip_slots: children(),
+  arrangement_clips: children(),
+  devices: [],
+};
+
 describe("readLiveSet - basic reading", () => {
   it("returns live set information with tracks and scenes", () => {
     setupLiveSetPathMappedMocks({
@@ -124,13 +132,7 @@ describe("readLiveSet - basic reading", () => {
           time_signature_denominator: 4,
           time_signature_enabled: 1,
         },
-        [String(livePath.masterTrack())]: {
-          has_midi_input: 0,
-          name: "Master",
-          clip_slots: children(),
-          arrangement_clips: children(),
-          devices: [],
-        },
+        [String(livePath.masterTrack())]: MASTER_TRACK_MOCK,
       },
     });
 
@@ -239,13 +241,7 @@ describe("readLiveSet - basic reading", () => {
           return_tracks: children(),
           scenes: [],
         },
-        [String(livePath.masterTrack())]: {
-          has_midi_input: 0,
-          name: "Master",
-          clip_slots: children(),
-          arrangement_clips: children(),
-          devices: [],
-        },
+        [String(livePath.masterTrack())]: MASTER_TRACK_MOCK,
       },
     });
 

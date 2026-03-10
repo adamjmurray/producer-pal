@@ -5,24 +5,24 @@
 
 import { type Page, expect, test } from "@playwright/test";
 
-export interface ConsoleCapture {
+interface ConsoleLogs {
   errors: string[];
   warnings: string[];
   logs: string[];
 }
 
 /**
- * Set up console capture in a beforeEach hook.
- * Captures console errors/warnings/logs and filters expected 405 errors.
- * @returns Mutable console capture object (reset each test)
+ * Set up console capture for Playwright tests.
+ * Registers a beforeEach hook that captures console output and page errors.
+ * @returns Object with captured console arrays (reset before each test)
  */
-export function setupConsoleCapture(): ConsoleCapture {
-  const capture: ConsoleCapture = { errors: [], warnings: [], logs: [] };
+export function setupConsoleCapture(): ConsoleLogs {
+  const captured: ConsoleLogs = { errors: [], warnings: [], logs: [] };
 
   test.beforeEach(({ page }) => {
-    capture.errors = [];
-    capture.warnings = [];
-    capture.logs = [];
+    captured.errors = [];
+    captured.warnings = [];
+    captured.logs = [];
 
     page.on("console", (msg) => {
       const type = msg.type();
@@ -31,31 +31,31 @@ export function setupConsoleCapture(): ConsoleCapture {
       if (type === "error") {
         // Filter expected 405 on /mcp (stateless endpoint)
         if (!text.includes("405")) {
-          capture.errors.push(text);
+          captured.errors.push(text);
         }
       } else if (type === "warning") {
-        capture.warnings.push(text);
+        captured.warnings.push(text);
       } else if (type === "log") {
-        capture.logs.push(text);
+        captured.logs.push(text);
       }
     });
 
     page.on("pageerror", (error) => {
-      capture.errors.push(error.message);
+      captured.errors.push(error.message);
     });
   });
 
-  return capture;
+  return captured;
 }
 
 /**
- * Assert no unexpected console output was captured.
- * @param capture - Console capture from setupConsoleCapture
+ * Assert that no unexpected console output was captured.
+ * @param captured - Console logs from setupConsoleCapture
  */
-export function expectNoConsoleOutput(capture: ConsoleCapture): void {
-  expect(capture.errors, "Unexpected console errors").toEqual([]);
-  expect(capture.warnings, "Unexpected console warnings").toEqual([]);
-  expect(capture.logs, "Unexpected console logs").toEqual([]);
+export function expectNoConsoleOutput(captured: ConsoleLogs): void {
+  expect(captured.errors, "Unexpected console errors").toEqual([]);
+  expect(captured.warnings, "Unexpected console warnings").toEqual([]);
+  expect(captured.logs, "Unexpected console logs").toEqual([]);
 }
 
 /**

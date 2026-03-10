@@ -9,7 +9,7 @@ import {
   setupConsoleCapture,
 } from "./webui-test-helpers";
 
-const consoleCapture = setupConsoleCapture();
+const captured = setupConsoleCapture();
 
 test.describe("Settings", () => {
   test("saves and restores settings across tabs", async ({ page }) => {
@@ -122,6 +122,6 @@ test.describe("Settings", () => {
 
     // --- Verify no unexpected console output ---
 
-    expectNoConsoleOutput(consoleCapture);
+    expectNoConsoleOutput(captured);
   });
 });

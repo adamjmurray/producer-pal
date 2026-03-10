@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -11,6 +12,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import { TOOL_NAMES } from "../create-mcp-server.ts";
 import { setTimeoutForTesting } from "../max-api-adapter.ts";
+import { setupExpressAppServer } from "./express-app-test-helpers.ts";
 
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {
@@ -52,31 +54,12 @@ function setupTestClient(getServerUrl: () => string): TestState {
 }
 
 describe("MCP Express App", () => {
-  let server: Server | undefined;
-  let serverUrl: string;
-
-  beforeAll(async () => {
-    // Enable feature-gated tools/params for testing
-    process.env.ENABLE_RAW_LIVE_API = "true";
-    process.env.ENABLE_CODE_EXEC = "true";
-
-    // Import and start the server first
-    const { createExpressApp } = await import("../create-express-app.ts");
-
-    const app = createExpressApp();
-    const port = await new Promise<number>((resolve) => {
-      server = app.listen(0, () => {
-        resolve((server!.address() as AddressInfo).port);
-      });
-    });
-
-    serverUrl = `http://localhost:${port}/mcp`;
-  });
-
-  afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server!.close(() => resolve()));
-    }
+  const appState = setupExpressAppServer({
+    beforeStart: () => {
+      // Enable feature-gated tools/params for testing
+      process.env.ENABLE_RAW_LIVE_API = "true";
+      process.env.ENABLE_CODE_EXEC = "true";
+    },
   });
 
   describe("Server Setup", () => {
@@ -102,7 +85,9 @@ describe("MCP Express App", () => {
         version: "1.0.0",
       });
 
-      const transport = new StreamableHTTPClientTransport(new URL(serverUrl));
+      const transport = new StreamableHTTPClientTransport(
+        new URL(appState.serverUrl),
+      );
 
       await client.connect(transport);
 
@@ -114,7 +99,7 @@ describe("MCP Express App", () => {
   });
 
   describe("List Tools", () => {
-    const testState = setupTestClient(() => serverUrl);
+    const testState = setupTestClient(() => appState.serverUrl);
 
     it("should list all available tools", async () => {
       const { client } = testState;
@@ -228,7 +213,7 @@ describe("MCP Express App", () => {
   });
 
   describe("Call Tool", () => {
-    const testState = setupTestClient(() => serverUrl);
+    const testState = setupTestClient(() => appState.serverUrl);
 
     it("should call ppal-read-track tool", async () => {
       const { client } = testState;
@@ -388,7 +373,7 @@ describe("MCP Express App", () => {
           });
 
           const transport = new StreamableHTTPClientTransport(
-            new URL(serverUrl),
+            new URL(appState.serverUrl),
           );
 
           await client.connect(transport);
@@ -417,7 +402,7 @@ describe("MCP Express App", () => {
     it.each(["GET", "DELETE"])(
       "should return method not allowed for %s /mcp",
       async (method) => {
-        const response = await fetch(serverUrl, { method });
+        const response = await fetch(appState.serverUrl, { method });
 
         expect(response.status).toBe(405);
         const errorResponse = await response.json();
@@ -430,7 +415,7 @@ describe("MCP Express App", () => {
     );
 
     it("should return parse error for invalid JSON", async () => {
-      const response = await fetch(serverUrl, {
+      const response = await fetch(appState.serverUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: "not valid json",
@@ -453,7 +438,7 @@ describe("MCP Express App", () => {
 
   describe("CORS", () => {
     it("should handle OPTIONS preflight requests", async () => {
-      const response = await fetch(serverUrl, {
+      const response = await fetch(appState.serverUrl, {
         method: "OPTIONS",
         headers: {
           "Access-Control-Request-Method": "POST",
@@ -474,7 +459,7 @@ describe("MCP Express App", () => {
     let chatUrl: string;
 
     beforeAll(() => {
-      chatUrl = serverUrl.replace("/mcp", "/chat");
+      chatUrl = appState.serverUrl.replace("/mcp", "/chat");
     });
 
     it("should serve chat UI when enabled", async () => {
@@ -524,7 +509,7 @@ describe("MCP Express App", () => {
     let configUrl: string;
 
     beforeAll(() => {
-      configUrl = serverUrl.replace("/mcp", "/config");
+      configUrl = appState.serverUrl.replace("/mcp", "/config");
     });
 
     it("should return current config on GET /config", async () => {
@@ -734,7 +719,7 @@ describe("MCP Express App", () => {
     let configUrl: string;
 
     beforeAll(() => {
-      configUrl = serverUrl.replace("/mcp", "/config");
+      configUrl = appState.serverUrl.replace("/mcp", "/config");
     });
 
     it("should only include specified tools in listTools", async () => {
@@ -754,7 +739,9 @@ describe("MCP Express App", () => {
       await postConfig({ tools: subset });
 
       const client1 = new Client({ name: "test-client", version: "1.0.0" });
-      const transport1 = new StreamableHTTPClientTransport(new URL(serverUrl));
+      const transport1 = new StreamableHTTPClientTransport(
+        new URL(appState.serverUrl),
+      );
 
       await client1.connect(transport1);
       const filtered = await client1.listTools();
@@ -769,7 +756,9 @@ describe("MCP Express App", () => {
       await postConfig({ tools: [...TOOL_NAMES] });
 
       const client2 = new Client({ name: "test-client", version: "1.0.0" });
-      const transport2 = new StreamableHTTPClientTransport(new URL(serverUrl));
+      const transport2 = new StreamableHTTPClientTransport(
+        new URL(appState.serverUrl),
+      );
 
       await client2.connect(transport2);
       const restored = await client2.listTools();

@@ -17,18 +17,16 @@ import {
   setupTrackViewMock,
 } from "./select-test-helpers.ts";
 
-const { viewMockToLive, viewMockFromLive } = vi.hoisted(() => ({
-  viewMockToLive: (view: string) =>
-    ({ session: "Session", arrangement: "Arranger" })[view] ?? "Session",
-  viewMockFromLive: (liveApiView: string) =>
-    ({ Session: "session", Arranger: "arrangement" })[liveApiView] ?? "session",
-}));
+vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
+  const { viewMockToLive, viewMockFromLive } =
+    await import("./select-test-helpers.ts");
 
-vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => ({
-  ...(await importOriginal()),
-  toLiveApiView: vi.fn(viewMockToLive),
-  fromLiveApiView: vi.fn(viewMockFromLive),
-}));
+  return {
+    ...(await importOriginal()),
+    toLiveApiView: vi.fn(viewMockToLive),
+    fromLiveApiView: vi.fn(viewMockFromLive),
+  };
+});
 
 describe("view", () => {
   beforeEach(() => {
