@@ -128,6 +128,53 @@
   }
 }
 
+/* Settings dialog shake animation for unsaved changes attention */
+.settings-dialog-shake {
+  animation: settings-dialog-shake 400ms ease-out;
+}
+
+@keyframes settings-dialog-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-8px);
+  }
+  30% {
+    transform: translateX(8px);
+  }
+  45% {
+    transform: translateX(-6px);
+  }
+  60% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+  90% {
+    transform: translateX(3px);
+  }
+}
+
+/* Settings button pulse animation for unsaved changes attention */
+.settings-button-pulse {
+  animation: settings-button-pulse 500ms ease-out;
+}
+
+@keyframes settings-button-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
 /* Tooltip fade-in animation */
 .tooltip-fade-in {
   animation: tooltip-in 150ms ease-out forwards;

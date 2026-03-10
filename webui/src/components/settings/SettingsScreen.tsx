@@ -54,6 +54,8 @@ interface SettingsScreenProps {
   saveSettings: () => void;
   cancelSettings: () => void;
   settingsConfigured: boolean;
+  shake: boolean;
+  onShakeEnd: () => void;
 }
 
 const helpLinkClass =
@@ -96,6 +98,8 @@ const helpLinkClass =
  * @param props.saveSettings - Function to save settings
  * @param props.cancelSettings - Function to cancel settings changes
  * @param props.settingsConfigured - Whether settings have been configured
+ * @param props.shake - Whether to shake the dialog to indicate unsaved changes
+ * @param props.onShakeEnd - Callback when shake animation ends
  * @returns Settings screen element
  */
 export function SettingsScreen(props: SettingsScreenProps) {
@@ -106,11 +110,19 @@ export function SettingsScreen(props: SettingsScreenProps) {
     saveSettings,
     cancelSettings,
     settingsConfigured,
+    shake,
+    onShakeEnd,
   } = props;
+
+  const shakeClass = shake ? " settings-dialog-shake" : "";
 
   return (
     <div className="flex justify-center min-h-screen p-4 pt-20">
-      <div className="max-w-xl w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-6 self-start shadow-[8px_20px_60px_rgba(0,0,0,0.15)] dark:shadow-[6px_16px_45px_rgba(255,255,255,0.04)] border border-zinc-300 dark:border-zinc-600">
+      <div
+        className={`max-w-xl w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-6 self-start shadow-[8px_20px_60px_rgba(0,0,0,0.15)] dark:shadow-[6px_16px_45px_rgba(255,255,255,0.04)] border border-zinc-300 dark:border-zinc-600${shakeClass}`}
+        onClick={(e) => e.stopPropagation()}
+        onAnimationEnd={onShakeEnd}
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
           {showHelpLinks && (
@@ -134,6 +146,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           settingsConfigured={settingsConfigured}
           saveSettings={saveSettings}
           cancelSettings={cancelSettings}
+          pulse={shake}
         />
       </div>
     </div>

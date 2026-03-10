@@ -18,8 +18,10 @@ import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
+import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
+import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { useViewState } from "#webui/hooks/use-view-state";
 import { ChatScreen } from "./chat/ChatScreen";
@@ -111,16 +113,10 @@ export function App() {
   );
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
-  const toolNamesMap = useMemo(() => {
-    if (!mcpTools) return {};
-    const map: Record<string, string> = {};
-
-    for (const tool of mcpTools) {
-      map[tool.id] = tool.name;
-    }
-
-    return map;
-  }, [mcpTools]);
+  const toolNamesMap = useMemo(
+    () => Object.fromEntries(mcpTools?.map((t) => [t.id, t.name]) ?? []),
+    [mcpTools],
+  );
   const { smallModelMode, setSmallModelMode } = useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
@@ -162,8 +158,7 @@ export function App() {
 
   const transfer = useConversationTransfer(conversationManager.refreshList);
 
-  // Auto-save when messages change (new user message or completed response)
-  const prevMessageCountRef = useRef(0);
+  const prevMessageCountRef = useRef(0); // Auto-save on message change
 
   useEffect(() => {
     if (chat.messages.length > prevMessageCountRef.current) {
@@ -205,7 +200,6 @@ export function App() {
     [conversationManager],
   );
 
-  // Calculate tools counts for header display
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
     ? mcpTools.filter((t) => settings.enabledTools[t.id] !== false).length
@@ -233,20 +227,25 @@ export function App() {
     prevShowSettingsRef.current = showSettings;
   }, [showSettings, theme, showTimestamps, showHelpLinks, showMessageSettings]);
 
+  const hasUnsavedChanges = useHasUnsavedChanges(
+    settings,
+    { theme, showTimestamps, showHelpLinks, showMessageSettings },
+    showSettings,
+  );
+
   const handleSaveSettings = () => {
     closeSettings(() => {
       settings.saveSettings();
-
-      const set = (k: string, v: boolean) =>
+      const s = (k: string, v: boolean) =>
         localStorage.setItem(`producer_pal_${k}`, String(v));
 
-      set("show_timestamps", showTimestamps);
-      set("show_help_links", showHelpLinks);
-      set("show_message_settings", showMessageSettings);
+      s("show_timestamps", showTimestamps);
+      s("show_help_links", showHelpLinks);
+      s("show_message_settings", showMessageSettings);
     });
   };
 
-  const handleCancelSettings = () => {
+  const handleCancelSettings = useCallback(() => {
     closeSettings(() => {
       settings.cancelSettings();
       setTheme(originalThemeRef.current);
@@ -254,7 +253,15 @@ export function App() {
       setShowHelpLinks(originalShowHelpLinksRef.current);
       setShowMessageSettings(originalShowMessageSettingsRef.current);
     });
-  };
+  }, [closeSettings, settings, setTheme]);
+
+  const { shake, clearShake, handleSettingsDismiss } = useSettingsDismiss({
+    showSettings,
+    settingsConfigured: settings.settingsConfigured,
+    settingsClosing,
+    hasUnsavedChanges,
+    handleCancelSettings,
+  });
 
   return (
     <ToolNamesContext.Provider value={toolNamesMap}>
@@ -325,6 +332,7 @@ export function App() {
       {showSettings && (
         <div
           className={`settings-overlay ${settingsClosing ? "settings-closing" : ""}`}
+          onClick={handleSettingsDismiss}
         >
           <SettingsScreen
             activeTab={viewState.settingsTab}
@@ -361,6 +369,8 @@ export function App() {
             saveSettings={handleSaveSettings}
             cancelSettings={handleCancelSettings}
             settingsConfigured={settings.settingsConfigured}
+            shake={shake}
+            onShakeEnd={clearShake}
           />
         </div>
       )}

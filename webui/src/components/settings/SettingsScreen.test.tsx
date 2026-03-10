@@ -167,6 +167,8 @@ describe("SettingsScreen", () => {
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     settingsConfigured: false,
+    shake: false,
+    onShakeEnd: vi.fn(),
   };
 
   describe("help link", () => {
