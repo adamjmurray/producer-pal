@@ -32,9 +32,8 @@ export function setupExpressAppServer(
     const app = createExpressApp();
     const port = await new Promise<number>((resolve) => {
       state.server = app.listen(0, () => {
-        const addr = state.server?.address() as AddressInfo | undefined;
-
-        resolve(addr?.port ?? 0);
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- server is assigned on the line above
+        resolve((state.server!.address() as AddressInfo).port);
       });
     });
 

@@ -18,6 +18,10 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
+vi.mock(import("#src/tools/control/select.ts"), () => ({
+  select: vi.fn(),
+}));
+
 function registerTrack1WithDevice456(): void {
   registerMockObject("track-1", {
     path: livePath.track(1),
@@ -570,7 +574,7 @@ describe("createDevice", () => {
   });
 
   describe("focus functionality", () => {
-    const selectMockRef = setupSelectMock({ mock: true });
+    const selectMockRef = setupSelectMock();
 
     it("should select device and show device detail when focus=true", () => {
       createDevice({ deviceName: "EQ Eight", path: "t0", focus: true });

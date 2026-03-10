@@ -12,6 +12,10 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { updateScene } from "./update-scene.ts";
+
+vi.mock(import("#src/tools/control/select.ts"), () => ({
+  select: vi.fn(),
+}));
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 async function withConsoleSpy(
@@ -245,7 +249,7 @@ describe("updateScene", () => {
   });
 
   describe("focus functionality", () => {
-    const selectMockRef = setupSelectMock({ mock: true });
+    const selectMockRef = setupSelectMock();
 
     it("should select scene in session view when focus=true", () => {
       updateScene({ ids: "123", name: "Test", focus: true });
