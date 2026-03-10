@@ -118,7 +118,7 @@ export function ModelSelector({
           value={model}
           onChange={(e) => setModel((e.target as HTMLInputElement).value)}
           placeholder={placeholder}
-          className="w-full px-3 py-2 bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-600 rounded"
+          className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
         />
       </div>
     );
@@ -145,7 +145,7 @@ export function ModelSelector({
         onChange={(e) =>
           handleDropdownChange((e.target as HTMLSelectElement).value)
         }
-        className="w-full px-3 py-2 bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-600 rounded"
+        className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
         data-testid="model-select"
       >
         {presetModels.map(({ value, label }) => (
@@ -162,7 +162,7 @@ export function ModelSelector({
           value={model}
           onChange={(e) => setModel((e.target as HTMLInputElement).value)}
           placeholder={OTHER_MODEL_PLACEHOLDERS[provider]}
-          className="w-full px-3 py-2 mt-2 bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-600 rounded"
+          className="w-full px-3 py-2 mt-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
         />
       )}
     </div>

@@ -62,10 +62,10 @@ export function ConversationItem({
   return (
     <button
       onClick={() => onSelect(conv.id)}
-      className={`w-full text-left border-b border-stone-100 dark:border-stone-800 transition-colors ${
+      className={`w-full text-left border-b border-zinc-100 dark:border-zinc-800 transition-colors ${
         isActive
           ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-l-blue-500"
-          : "hover:bg-stone-50 dark:hover:bg-stone-800 border-l-2 border-l-transparent"
+          : "hover:bg-zinc-50 dark:hover:bg-zinc-800 border-l-2 border-l-transparent"
       }`}
     >
       <div className="flex items-center">
@@ -87,12 +87,12 @@ export function ConversationItem({
               }}
               onBlur={onEditCommit}
               onClick={(e) => e.stopPropagation()}
-              className="w-full text-xs px-1 py-0.5 border border-blue-400 rounded bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200 outline-none"
+              className="w-full text-xs px-1 py-0.5 border border-blue-400 rounded bg-white dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 outline-none"
               autoFocus
             />
           ) : (
             <div
-              className={`text-xs truncate ${isActive ? "font-medium text-blue-700 dark:text-blue-300" : "text-stone-700 dark:text-stone-300"}`}
+              className={`text-xs truncate ${isActive ? "font-medium text-blue-700 dark:text-blue-300" : "text-zinc-700 dark:text-zinc-300"}`}
             >
               {displayTitle}
             </div>
@@ -104,7 +104,7 @@ export function ConversationItem({
             e.stopPropagation();
             onEditStart();
           }}
-          className="px-1 py-1 text-stone-400 hover:text-blue-500 dark:text-stone-500 dark:hover:text-blue-400 transition-colors"
+          className="px-1 py-1 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors"
           aria-label="Rename conversation"
           title="Rename conversation"
         >
@@ -127,7 +127,7 @@ export function ConversationItem({
             e.stopPropagation();
             onDelete(conv.id);
           }}
-          className="pr-3 pl-1 py-1 text-stone-400 hover:text-red-500 dark:text-stone-500 dark:hover:text-red-400 transition-colors"
+          className="pr-3 pl-1 py-1 text-zinc-400 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 transition-colors"
           aria-label="Delete conversation"
           title="Delete conversation"
         >
@@ -176,7 +176,7 @@ function BookmarkStar({
       className={`pl-3 pr-1 py-1 self-start mt-1.5 transition-colors ${
         bookmarked
           ? "text-amber-400 hover:text-amber-500 dark:text-amber-400 dark:hover:text-amber-300"
-          : "text-stone-300 hover:text-stone-400 dark:text-stone-600 dark:hover:text-stone-400"
+          : "text-zinc-300 hover:text-zinc-400 dark:text-zinc-600 dark:hover:text-zinc-400"
       }`}
       aria-label={bookmarked ? "Remove bookmark" : "Bookmark conversation"}
       title={bookmarked ? "Remove bookmark" : "Bookmark conversation"}
@@ -224,12 +224,12 @@ function resolveModelLabel(
 function ConversationMeta({ conv }: { conv: ConversationSummary }) {
   return (
     <div className="w-full text-left px-4 pt-0.5 pb-2 flex justify-between gap-2">
-      <div className="text-[10px] text-stone-400 dark:text-stone-500 whitespace-nowrap">
+      <div className="text-[10px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
         {formatTimestampDate(conv.createdAt)},{" "}
         {formatTimestampTime(conv.createdAt)}
       </div>
       {conv.model && (
-        <div className="text-[10px] text-stone-400 dark:text-stone-500 truncate text-right">
+        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate text-right">
           {conv.provider
             ? `${getProviderName(conv.provider as Provider)} | `
             : ""}

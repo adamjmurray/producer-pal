@@ -31,7 +31,7 @@ export function ToolsIndicator({
   const titleText = `${enabledToolsCount}/${totalToolsCount} tools enabled`;
 
   const textColor = allEnabled
-    ? "text-stone-500 dark:text-stone-400"
+    ? "text-zinc-500 dark:text-zinc-400"
     : "text-amber-600 dark:text-amber-400";
 
   // When all enabled, hide below lg (no need for icon-only wrench).

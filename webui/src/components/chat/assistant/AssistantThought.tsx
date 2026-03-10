@@ -16,7 +16,7 @@ interface AssistantThoughtProps {
 }
 
 const baseClasses =
-  "p-2 text-xs bg-stone-200/70 dark:bg-stone-700 rounded-lg border-l-3 border-emerald-500";
+  "p-2 text-xs bg-zinc-200/70 dark:bg-zinc-700 rounded-lg border-l-3 border-emerald-500";
 
 /**
  * Collapsible thought/reasoning display

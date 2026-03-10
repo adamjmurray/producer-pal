@@ -45,7 +45,7 @@ export function AppearanceTab({
         id="theme-select"
         value={theme}
         onChange={(e) => setTheme((e.target as HTMLSelectElement).value)}
-        className="w-full px-3 py-2 bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-600 rounded"
+        className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
       >
         <option value="system">System</option>
         <option value="light">Light</option>

@@ -99,9 +99,9 @@ export function ConversationPanel({
     <div
       className={`shrink-0 h-full overflow-hidden transition-[width] duration-200 ${isOpen ? "w-full md:w-72" : "w-0"}`}
     >
-      <div className="w-full md:w-72 h-full bg-stone-200 dark:bg-stone-900 border-r border-stone-400 dark:border-stone-700 shadow-[3px_0_10px_-2px_rgba(0,0,0,0.12)] dark:shadow-[3px_0_10px_-2px_rgba(0,0,0,0.4)] flex flex-col relative z-10">
+      <div className="w-full md:w-72 h-full bg-zinc-200 dark:bg-zinc-900 border-r border-zinc-400 dark:border-zinc-700 shadow-[3px_0_10px_-2px_rgba(0,0,0,0.12)] dark:shadow-[3px_0_10px_-2px_rgba(0,0,0,0.4)] flex flex-col relative z-10">
         {/* New conversation + export/import */}
-        <div className="px-2 py-2 border-b border-stone-300 dark:border-stone-700 flex items-center gap-1.5">
+        <div className="px-2 py-2 border-b border-zinc-300 dark:border-zinc-700 flex items-center gap-1.5">
           <button
             onClick={onNewConversation}
             className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
@@ -110,7 +110,7 @@ export function ConversationPanel({
           </button>
           <button
             onClick={onExport}
-            className="p-1.5 text-stone-400 hover:text-blue-500 dark:text-stone-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-stone-200 dark:hover:bg-stone-800"
+            className="p-1.5 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
             aria-label="Export conversations"
             title="Export conversations"
           >
@@ -118,7 +118,7 @@ export function ConversationPanel({
           </button>
           <button
             onClick={onImport}
-            className="p-1.5 text-stone-400 hover:text-blue-500 dark:text-stone-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-stone-200 dark:hover:bg-stone-800"
+            className="p-1.5 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
             aria-label="Import conversations"
             title="Import conversations"
           >
@@ -136,7 +136,7 @@ export function ConversationPanel({
         {/* Conversation list */}
         <div className="flex-1 overflow-y-auto">
           {conversations.length === 0 ? (
-            <p className="px-4 py-3 text-xs text-stone-500 dark:text-stone-400">
+            <p className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400">
               No conversations yet
             </p>
           ) : (
@@ -193,12 +193,12 @@ function SectionHeader({
   return (
     <button
       onClick={onToggle}
-      className="w-full px-4 py-1.5 border-b border-stone-200 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 flex items-center gap-1.5 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+      className="w-full px-4 py-1.5 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center gap-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
     >
       <span className={`transition-transform ${collapsed ? "" : "rotate-90"}`}>
         <DisclosureChevron />
       </span>
-      <span className="text-[10px] text-stone-600 dark:text-stone-300 uppercase tracking-wide">
+      <span className="text-[10px] text-zinc-600 dark:text-zinc-300 uppercase tracking-wide">
         {label} ({count})
       </span>
     </button>

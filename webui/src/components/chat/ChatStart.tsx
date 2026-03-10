@@ -33,7 +33,7 @@ export function ChatStart({
     <div className="h-full items-center justify-center flex flex-col gap-8">
       {mcpStatus === "connected" && (
         <>
-          <p className="text-stone-500 dark:text-stone-400">
+          <p className="text-zinc-500 dark:text-zinc-400">
             Start a conversation with Producer Pal
           </p>
           <button
@@ -53,7 +53,7 @@ export function ChatStart({
           <p className="text-sm text-red-600 dark:text-red-400">{mcpError}</p>
           <button
             onClick={() => void checkMcpConnection()}
-            className="mt-2 px-2 py-0.5 bg-stone-200 dark:bg-stone-700 rounded hover:bg-stone-300 dark:hover:bg-stone-800"
+            className="mt-2 px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded hover:bg-zinc-300 dark:hover:bg-zinc-800"
           >
             Retry
           </button>

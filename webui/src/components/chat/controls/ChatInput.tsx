@@ -73,7 +73,7 @@ export function ChatInput({
   };
 
   return (
-    <div className="border-t border-stone-300 dark:border-stone-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+    <div className="border-t border-zinc-300 dark:border-zinc-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
       {showMessageSettings && (
         <MessageSettingsToolbar
           provider={provider}
@@ -97,7 +97,7 @@ export function ChatInput({
             onInput={(e) => setInput((e.target as HTMLTextAreaElement).value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message... (Shift+Enter for new line)"
-            className="flex-1 px-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-600 rounded-lg shadow-inner resize-none placeholder:dark:text-stone-400 placeholder:text-stone-500"
+            className="flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg shadow-inner resize-none placeholder:dark:text-zinc-400 placeholder:text-zinc-500"
             rows={2}
           />
           <div className="flex flex-col gap-2">

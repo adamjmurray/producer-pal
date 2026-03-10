@@ -26,8 +26,8 @@ describe("AssistantThought", () => {
       render(<AssistantThought content="Test thought" isOpen={false} />);
       const details = document.querySelector("details");
 
-      expect(details!.className).toContain("bg-stone-200");
-      expect(details!.className).toContain("dark:bg-stone-700");
+      expect(details!.className).toContain("bg-zinc-200");
+      expect(details!.className).toContain("dark:bg-zinc-700");
       expect(details!.className).toContain("border-emerald-500");
     });
   });

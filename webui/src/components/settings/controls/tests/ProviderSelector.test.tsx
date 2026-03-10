@@ -42,7 +42,7 @@ describe("ProviderSelector", () => {
       expect(select!.className).toContain("px-3");
       expect(select!.className).toContain("py-2");
       expect(select!.className).toContain("bg-white");
-      expect(select!.className).toContain("dark:bg-stone-700");
+      expect(select!.className).toContain("dark:bg-zinc-700");
     });
   });
 

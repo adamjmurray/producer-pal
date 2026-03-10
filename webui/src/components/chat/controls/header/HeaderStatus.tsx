@@ -31,7 +31,7 @@ export function HeaderStatus({ mcpStatus }: HeaderStatusProps) {
   if (mcpStatus === "connecting") {
     return (
       <span
-        className="text-stone-500 dark:text-stone-400"
+        className="text-zinc-500 dark:text-zinc-400"
         title="Looking for Producer Pal..."
       >
         👀<span className="hidden md:inline"> Looking for Producer Pal...</span>

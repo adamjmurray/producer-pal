@@ -49,8 +49,8 @@ describe("AssistantToolCall", () => {
       render(<AssistantToolCall {...defaultProps} />);
       const details = document.querySelector("details");
 
-      expect(details!.className).toContain("bg-stone-200");
-      expect(details!.className).toContain("dark:bg-stone-900");
+      expect(details!.className).toContain("bg-zinc-200");
+      expect(details!.className).toContain("dark:bg-zinc-900");
       expect(details!.className).toContain("font-mono");
     });
   });
@@ -237,7 +237,7 @@ describe("AssistantToolCall", () => {
       expect(allDetails).toHaveLength(2); // Outer + result disclosure
       const resultSummary = document.querySelectorAll("summary")[1]!;
 
-      expect(resultSummary.className).toContain("text-stone-600");
+      expect(resultSummary.className).toContain("text-zinc-600");
     });
   });
 
@@ -250,7 +250,7 @@ describe("AssistantToolCall", () => {
           args={{ foo: "bar", num: 42 }}
         />,
       );
-      const funcDiv = document.querySelector("details > div.text-stone-500");
+      const funcDiv = document.querySelector("details > div.text-zinc-500");
 
       expect(funcDiv!.textContent).toContain("test-tool");
       expect(funcDiv!.textContent).toContain("foo");
@@ -265,7 +265,7 @@ describe("AssistantToolCall", () => {
           args={{ key: "value" }}
         />,
       );
-      const funcDiv = document.querySelector("details > div.text-stone-500");
+      const funcDiv = document.querySelector("details > div.text-zinc-500");
 
       expect(funcDiv!.textContent).toContain('"key":"value"');
     });
@@ -518,8 +518,8 @@ describe("AssistantToolCall", () => {
       );
       const resultSummary = document.querySelectorAll("summary")[1]!; // Second summary (inner details)
 
-      expect(resultSummary.className).toContain("text-stone-600");
-      expect(resultSummary.className).toContain("dark:text-stone-400");
+      expect(resultSummary.className).toContain("text-zinc-600");
+      expect(resultSummary.className).toContain("dark:text-zinc-400");
     });
   });
 });

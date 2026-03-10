@@ -173,7 +173,7 @@ export function DisclosureChevron() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="chevron shrink-0 transition-transform text-stone-500 dark:text-stone-400"
+      className="chevron shrink-0 transition-transform text-zinc-500 dark:text-zinc-400"
     >
       <path d="M3.5 2L7 5L3.5 8" />
     </svg>

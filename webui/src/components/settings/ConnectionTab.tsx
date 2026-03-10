@@ -85,11 +85,11 @@ export function ConnectionTab({
             value={apiKey}
             onChange={(e) => setApiKey((e.target as HTMLInputElement).value)}
             placeholder={`Enter your ${providerLabel} API key`}
-            className="w-full px-3 py-2 bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-600 rounded"
+            className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
             data-testid="api-key-input"
           />
           {API_KEY_URLS[provider] && (
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               <a
                 href={API_KEY_URLS[provider]}
                 target="_blank"
@@ -117,9 +117,9 @@ export function ConnectionTab({
               placeholder={
                 DEFAULT_LOCAL_URLS[provider] ?? "https://api.example.com/v1"
               }
-              className="w-full px-3 py-2 bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-600 rounded"
+              className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
             />
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               {DEFAULT_LOCAL_URLS[provider]
                 ? `Default: ${DEFAULT_LOCAL_URLS[provider]}`
                 : "OpenAI-compatible API endpoint"}
@@ -129,7 +129,7 @@ export function ConnectionTab({
 
       <ModelSelector provider={provider} model={model} setModel={setModel} />
       {MODEL_DOCS_URLS[provider] && (
-        <p className="text-xs text-stone-500 dark:text-stone-400 -mt-2">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 -mt-2">
           <a
             href={MODEL_DOCS_URLS[provider]}
             target="_blank"
@@ -155,7 +155,7 @@ export function ConnectionTab({
             Small model mode
           </label>
         </div>
-        <p className="text-xs text-stone-500 dark:text-stone-400 mt-1 ml-5">
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 ml-5">
           Fewer features, better compatibility with smaller models.
         </p>
       </div>
