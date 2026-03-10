@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -613,6 +614,32 @@ describe("device-reader-helpers", () => {
       },
     });
 
+    // Helper to call processDeviceChains with return chain options
+    const callWithReturnChains = (
+      mockDevice: unknown,
+      deviceInfo: DeviceInfoResult,
+      readDeviceFn: (
+        d: { id: string },
+        opts: Record<string, unknown>,
+      ) => Record<string, unknown> = () => ({}),
+      devicePath?: string,
+    ) => {
+      processDeviceChains(
+        mockDevice as unknown as LiveAPI,
+        deviceInfo,
+        DEVICE_TYPE.AUDIO_EFFECT_RACK,
+        {
+          includeChains: false,
+          includeReturnChains: true,
+          includeDrumPads: false,
+          depth: 0,
+          maxDepth: 2,
+          readDeviceFn,
+          devicePath,
+        },
+      );
+    };
+
     it("processes return chains when includeReturnChains is true", () => {
       const mockDevice = {
         getChildren: (child: string) => {
@@ -632,20 +659,7 @@ describe("device-reader-helpers", () => {
         type: "effect",
       });
 
-      processDeviceChains(
-        mockDevice as unknown as LiveAPI,
-        deviceInfo,
-        DEVICE_TYPE.AUDIO_EFFECT_RACK,
-        {
-          includeChains: false,
-          includeReturnChains: true,
-          includeDrumPads: false,
-          depth: 0,
-          maxDepth: 2,
-          readDeviceFn: mockReadDevice,
-          devicePath: "t0/d0",
-        },
-      );
+      callWithReturnChains(mockDevice, deviceInfo, mockReadDevice, "t0/d0");
 
       expect(deviceInfo.returnChains).toHaveLength(2);
       expect(deviceInfo.returnChains![0]).toMatchObject({
@@ -670,20 +684,7 @@ describe("device-reader-helpers", () => {
 
       const deviceInfo: DeviceInfoResult = {};
 
-      processDeviceChains(
-        mockDevice as unknown as LiveAPI,
-        deviceInfo,
-        DEVICE_TYPE.AUDIO_EFFECT_RACK,
-        {
-          includeChains: false,
-          includeReturnChains: true,
-          includeDrumPads: false,
-          depth: 0,
-          maxDepth: 2,
-          readDeviceFn: () => ({}),
-          devicePath: undefined,
-        },
-      );
+      callWithReturnChains(mockDevice, deviceInfo);
 
       expect(deviceInfo.returnChains).toBeUndefined();
     });
@@ -731,20 +732,7 @@ describe("device-reader-helpers", () => {
         return { id: device.id, type: "effect" };
       };
 
-      processDeviceChains(
-        mockDevice as unknown as LiveAPI,
-        deviceInfo,
-        DEVICE_TYPE.AUDIO_EFFECT_RACK,
-        {
-          includeChains: false,
-          includeReturnChains: true,
-          includeDrumPads: false,
-          depth: 0,
-          maxDepth: 2,
-          readDeviceFn: mockReadDevice,
-          devicePath: "t0/d0",
-        },
-      );
+      callWithReturnChains(mockDevice, deviceInfo, mockReadDevice, "t0/d0");
 
       expect(deviceInfo.returnChains).toHaveLength(1);
       expect(deviceInfo.returnChains![0]!.devices).toHaveLength(1);

@@ -234,6 +234,31 @@ interface MidiClipMockOptions {
 }
 
 /**
+ * Set up arrangement clip path and audio clip mock in one call.
+ * Combines setupArrangementClipPath, clip lookup, assertion, and setupArrangementAudioClipMock.
+ * @param trackIndex - Track index
+ * @param clipId - Clip ID
+ * @param audioOpts - Audio clip mock options
+ * @returns The configured clip mock
+ */
+export function setupArrangementAudioClip(
+  trackIndex: number,
+  clipId: string,
+  audioOpts: Record<string, unknown>,
+): RegisteredMockObject {
+  const clips = setupArrangementClipPath(trackIndex, [clipId]);
+  const clip = clips.get(clipId);
+
+  if (clip == null) {
+    throw new Error(`Clip ${clipId} not found in arrangement clip path setup`);
+  }
+
+  setupArrangementAudioClipMock(clip, audioOpts);
+
+  return clip;
+}
+
+/**
  * Override a clip's get mock for a standard session MIDI clip.
  * Preserves the clip's call mock (e.g., note tracking from setupUpdateClipMocks).
  * @param clip - Registered mock clip

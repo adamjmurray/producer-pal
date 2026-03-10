@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -16,6 +17,7 @@ import {
   createChainMockProperties,
   createDeviceMockProperties,
   createRackDeviceMockProperties,
+  setupDrumRackWithReverbMocks,
   setupInstrumentRackOnTrack0,
 } from "../helpers/read-track-device-test-helpers.ts";
 import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
@@ -141,33 +143,7 @@ describe("readTrack", () => {
     });
 
     it("includes all device categories when explicitly requested", () => {
-      setupTrackMock({
-        trackId: "track1",
-        properties: {
-          devices: children("device1", "device2"),
-        },
-      });
-      registerMockObject("device1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: createRackDeviceMockProperties({
-          name: "My Drums",
-          className: "DrumGroupDevice",
-          classDisplayName: "Drum Rack",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          canHaveDrumPads: 1,
-        }),
-      });
-      registerMockObject("device2", {
-        path: livePath.track(0).device(1),
-        type: "Device",
-        properties: createDeviceMockProperties({
-          name: "Reverb",
-          className: "Reverb",
-          classDisplayName: "Reverb",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-        }),
-      });
+      setupDrumRackWithReverbMocks();
 
       const result = readTrack({
         trackIndex: 0,

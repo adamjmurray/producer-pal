@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -323,6 +324,19 @@ describe("device-display-helpers", () => {
       valueItems?: string[];
     }
 
+    // Helper to setup mockCall with a division value map
+    const setupDivisionMockCall = (
+      divisionMap: Record<string, string | number>,
+    ) => {
+      mockCall.mockImplementation((method: string, value: number) => {
+        if (method === "str_for_value") {
+          return divisionMap[String(value)] ?? "";
+        }
+
+        return "";
+      });
+    };
+
     const setupParamMock = (props: ParamMockProps) => {
       const {
         name = "Param",
@@ -379,19 +393,7 @@ describe("device-display-helpers", () => {
     });
 
     it("reads continuous parameter with dB unit", () => {
-      mockGet.mockImplementation((prop) => {
-        if (prop === "name") return ["Volume"];
-        if (prop === "original_name") return ["Volume"];
-        if (prop === "state") return [0]; // active
-        if (prop === "automation_state") return [0]; // none
-        if (prop === "is_quantized") return [0];
-        if (prop === "value") return [0.85];
-        if (prop === "min") return [0];
-        if (prop === "max") return [1];
-        if (prop === "is_enabled") return [1];
-
-        return [0];
-      });
+      setupParamMock({ name: "Volume", value: 0.85 });
 
       mockCall.mockImplementation((method, value) => {
         if (method === "str_for_value") {
@@ -416,19 +418,7 @@ describe("device-display-helpers", () => {
     });
 
     it("reads pan parameter and normalizes to -1 to 1", () => {
-      mockGet.mockImplementation((prop) => {
-        if (prop === "name") return ["Pan"];
-        if (prop === "original_name") return ["Pan"];
-        if (prop === "state") return [0];
-        if (prop === "automation_state") return [0];
-        if (prop === "is_quantized") return [0];
-        if (prop === "value") return [0.25];
-        if (prop === "min") return [0];
-        if (prop === "max") return [1];
-        if (prop === "is_enabled") return [1];
-
-        return [0];
-      });
+      setupParamMock({ name: "Pan", value: 0.25 });
 
       mockCall.mockImplementation((method, value) => {
         if (method === "str_for_value") {
@@ -482,22 +472,15 @@ describe("device-display-helpers", () => {
     it("reads division parameter with enum-like value and options", () => {
       // Division params like Echo's L Division have raw values -6 to 0
       // that map to "1/64" through "1"
-      mockGet.mockImplementation((prop: string) => {
-        if (prop === "name") return ["L Division"];
-        if (prop === "original_name") return ["L Division"];
-        if (prop === "state") return [0];
-        if (prop === "automation_state") return [0];
-        if (prop === "is_quantized") return [0];
-        if (prop === "value") return [-3]; // corresponds to "1/8"
-        if (prop === "min") return [-6];
-        if (prop === "max") return [0];
-        if (prop === "is_enabled") return [1];
-
-        return [0];
+      setupParamMock({
+        name: "L Division",
+        value: -3, // corresponds to "1/8"
+        min: -6,
+        max: 0,
       });
 
       // Map raw values to division strings
-      const divisionMap: Record<string, string | number> = {
+      setupDivisionMockCall({
         "-6": "1/64",
         "-5": "1/32",
         "-4": "1/16",
@@ -505,14 +488,6 @@ describe("device-display-helpers", () => {
         "-2": "1/4",
         "-1": "1/2",
         "0": 1, // Note: returns number, not string
-      };
-
-      mockCall.mockImplementation((method: string, value: number) => {
-        if (method === "str_for_value") {
-          return divisionMap[String(value)] ?? "";
-        }
-
-        return "";
       });
 
       const result = readParameter(createMockParamApi("param_9"));
@@ -527,32 +502,12 @@ describe("device-display-helpers", () => {
 
     it("handles division param detected via minLabel", () => {
       // Edge case: current value is "1" (not a fraction) but min is "1/64"
-      mockGet.mockImplementation((prop: string) => {
-        if (prop === "name") return ["Division"];
-        if (prop === "original_name") return ["Division"];
-        if (prop === "state") return [0];
-        if (prop === "automation_state") return [0];
-        if (prop === "is_quantized") return [0];
-        if (prop === "value") return [0]; // corresponds to "1"
-        if (prop === "min") return [-2];
-        if (prop === "max") return [0];
-        if (prop === "is_enabled") return [1];
+      setupParamMock({ name: "Division", value: 0, min: -2, max: 0 });
 
-        return [0];
-      });
-
-      const divisionMap: Record<string, string | number> = {
+      setupDivisionMockCall({
         "-2": "1/4",
         "-1": "1/2",
         "0": 1,
-      };
-
-      mockCall.mockImplementation((method: string, value: number) => {
-        if (method === "str_for_value") {
-          return divisionMap[String(value)] ?? "";
-        }
-
-        return "";
       });
 
       const result = readParameter(createMockParamApi("param_10"));

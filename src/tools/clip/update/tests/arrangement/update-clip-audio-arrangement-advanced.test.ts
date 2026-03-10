@@ -14,6 +14,7 @@ import {
   assertBoundaryDetection,
   assertSourceClipEndMarker,
   mockContext,
+  setupArrangementAudioClip,
   setupArrangementAudioClipMock,
   setupArrangementClipPath,
   setupSessionTilingMock,
@@ -41,12 +42,7 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
   ])(
     "should extend warped clip via loop_end ($desc)",
     async ({ clipId, endTime, endMarker, name }) => {
-      const clips = setupArrangementClipPath(0, [clipId]);
-      const clip = clips.get(clipId);
-
-      expect(clip).toBeDefined();
-
-      setupArrangementAudioClipMock(clip!, {
+      const clip = setupArrangementAudioClip(0, clipId, {
         looping: 0,
         warping: 1,
         start_time: 0.0,
@@ -70,10 +66,10 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
       assertBoundaryDetection(mockCreate, sessionSlot);
 
       // Source clip loop_end set: loopStart(1) + target(14) = 15.0
-      expect(clip!.set).toHaveBeenCalledWith("loop_end", 15.0);
+      expect(clip.set).toHaveBeenCalledWith("loop_end", 15.0);
 
       // Source end_marker extended: startMarker(1) + target(14) = 15
-      assertSourceClipEndMarker(clip!, 15.0);
+      assertSourceClipEndMarker(clip, 15.0);
 
       expect(result).toStrictEqual({ id: clipId });
       mockCreate.mockRestore();
@@ -169,11 +165,9 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
     expect(sourceClip).toBeDefined();
     expect(movedClip).toBeDefined();
 
-    setupArrangementAudioClipMock(sourceClip!, {
+    const sharedOpts = {
       looping: 0,
       warping: 1,
-      start_time: 0.0,
-      end_time: 4.0,
       start_marker: 0.0,
       end_marker: 4.0,
       loop_start: 0.0,
@@ -181,20 +175,18 @@ describe("Unlooped audio clips - move + lengthen combination", () => {
       name: "Audio for move+lengthen",
       trackIndex,
       file_path: "/audio/test.wav",
+    };
+
+    setupArrangementAudioClipMock(sourceClip!, {
+      ...sharedOpts,
+      start_time: 0.0,
+      end_time: 4.0,
     });
 
     setupArrangementAudioClipMock(movedClip!, {
-      looping: 0,
-      warping: 1,
+      ...sharedOpts,
       start_time: 8.0,
       end_time: 12.0,
-      start_marker: 0.0,
-      end_marker: 4.0,
-      loop_start: 0.0,
-      loop_end: 4.0,
-      name: "Audio for move+lengthen",
-      trackIndex,
-      file_path: "/audio/test.wav",
     });
 
     const track = lookupMockObject(`track-${trackIndex}`);

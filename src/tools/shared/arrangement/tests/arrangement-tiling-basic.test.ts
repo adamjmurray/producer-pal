@@ -84,10 +84,20 @@ describe("createAudioClipInSession", () => {
 });
 
 describe("createShortenedClipInHolding", () => {
-  it("duplicates clip to holding area and shortens to target length", () => {
+  /**
+   * Set up standard mocks for a shortening test.
+   * @param opts - Shortening configuration
+   * @param opts.loopEnd - Loop end position
+   * @param opts.holdingEndTime - Holding clip end time
+   * @returns Source clip and track mocks
+   */
+  function setupShorteningMocks(opts: {
+    loopEnd: number;
+    holdingEndTime: number;
+  }) {
     const sourceClip = setupArrangementClip("100", 0, {
       loop_start: 0,
-      loop_end: 16,
+      loop_end: opts.loopEnd,
     });
     const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [["id", "200"]],
@@ -96,9 +106,16 @@ describe("createShortenedClipInHolding", () => {
     });
 
     setupClip("200", {
-      properties: {
-        end_time: 1016,
-      },
+      properties: { end_time: opts.holdingEndTime },
+    });
+
+    return { sourceClip, track };
+  }
+
+  it("duplicates clip to holding area and shortens to target length", () => {
+    const { sourceClip, track } = setupShorteningMocks({
+      loopEnd: 16,
+      holdingEndTime: 1016,
     });
 
     const result = createShortenedClipInHolding(
@@ -126,20 +143,9 @@ describe("createShortenedClipInHolding", () => {
   });
 
   it("calculates temp clip length correctly for different target lengths", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      loop_start: 0,
-      loop_end: 32,
-    });
-    const track = setupTrackWithQueuedMethods(0, {
-      duplicate_clip_to_arrangement: [["id", "200"]],
-      create_midi_clip: [["id", "300"]],
-      delete_clip: [null],
-    });
-
-    setupClip("200", {
-      properties: {
-        end_time: 2032,
-      },
+    const { sourceClip, track } = setupShorteningMocks({
+      loopEnd: 32,
+      holdingEndTime: 2032,
     });
 
     createShortenedClipInHolding(
@@ -282,37 +288,24 @@ describe("moveClipFromHolding", () => {
 });
 
 describe("adjustClipPreRoll", () => {
-  it("does nothing when clip has no pre-roll (start_marker >= loop_start)", () => {
-    setupClip("100", {
-      properties: {
-        start_marker: 4,
-        loop_start: 4,
-      },
-    });
-    const track = setupTrackWithQueuedMethods(0, {});
-    const clip = LiveAPI.from("id 100");
+  it.each([
+    ["start_marker == loop_start", 4, 4],
+    ["start_marker > loop_start", 8, 4],
+  ] as const)(
+    "does nothing when no pre-roll (%s)",
+    (_desc, startMarker, loopStart) => {
+      setupClip("100", {
+        properties: { start_marker: startMarker, loop_start: loopStart },
+      });
+      const track = setupTrackWithQueuedMethods(0, {});
+      const clip = LiveAPI.from("id 100");
 
-    adjustClipPreRoll(clip, track, true, mockContext);
+      adjustClipPreRoll(clip, track, true, mockContext);
 
-    expect(track.call).not.toHaveBeenCalled();
-    expect(clip.set).not.toHaveBeenCalled();
-  });
-
-  it("does nothing when start_marker > loop_start", () => {
-    setupClip("100", {
-      properties: {
-        start_marker: 8,
-        loop_start: 4,
-      },
-    });
-    const track = setupTrackWithQueuedMethods(0, {});
-    const clip = LiveAPI.from("id 100");
-
-    adjustClipPreRoll(clip, track, true, mockContext);
-
-    expect(track.call).not.toHaveBeenCalled();
-    expect(clip.set).not.toHaveBeenCalled();
-  });
+      expect(track.call).not.toHaveBeenCalled();
+      expect(clip.set).not.toHaveBeenCalled();
+    },
+  );
 
   it("adjusts start_marker and shortens clip when pre-roll exists", () => {
     setupClip("100", {

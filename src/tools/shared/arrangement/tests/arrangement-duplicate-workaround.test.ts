@@ -107,32 +107,13 @@ describe("clearClipAtDuplicateTarget", () => {
   it("does nothing when no arrangement clip overlaps target range", () => {
     // Source: 4 beats long (start_time=8, end_time=12), target position=0
     // Target range: 0 to 4. Existing clip at 16-20 doesn't overlap.
-    setupClip("100", {
-      properties: {
-        is_arrangement_clip: 1,
-        start_time: 8,
-        end_time: 12,
-      },
+    const trackMock = runClearTargetExpectingNoOp({
+      sourceStart: 8,
+      sourceEnd: 12,
+      existingStart: 16,
+      existingEnd: 20,
+      targetPosition: 0,
     });
-
-    const existingClip = setupArrangementClip("200", 0, {
-      start_time: 16,
-      end_time: 20,
-    });
-
-    const trackMock = setupTrack(0, {
-      properties: {
-        arrangement_clips: ["id", existingClip.id],
-      },
-    });
-
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      0,
-      true,
-      mockContext,
-    );
 
     expect(trackMock.call).not.toHaveBeenCalled();
   });
@@ -287,32 +268,13 @@ describe("clearClipAtDuplicateTarget", () => {
   it("does nothing when workaround is disabled", () => {
     setArrangementDuplicateCrashWorkaround(false);
 
-    setupClip("100", {
-      properties: {
-        is_arrangement_clip: 1,
-        start_time: 0,
-        end_time: 4,
-      },
+    const trackMock = runClearTargetExpectingNoOp({
+      sourceStart: 0,
+      sourceEnd: 4,
+      existingStart: 0,
+      existingEnd: 4,
+      targetPosition: 0,
     });
-
-    const existingClip = setupArrangementClip("200", 0, {
-      start_time: 0,
-      end_time: 4,
-    });
-
-    const trackMock = setupTrack(0, {
-      properties: {
-        arrangement_clips: ["id", existingClip.id],
-      },
-    });
-
-    clearClipAtDuplicateTarget(
-      LiveAPI.from(trackMock.path),
-      "100",
-      0,
-      true,
-      mockContext,
-    );
 
     expect(trackMock.call).not.toHaveBeenCalled();
   });
@@ -409,3 +371,50 @@ describe("clearClipAtDuplicateTarget", () => {
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 201");
   });
 });
+
+/**
+ * Set up mocks for a clearClipAtDuplicateTarget test that expects no track calls.
+ * @param opts - Source clip times, existing clip times, and target position
+ * @param opts.sourceStart - Source clip start time
+ * @param opts.sourceEnd - Source clip end time
+ * @param opts.existingStart - Existing clip start time
+ * @param opts.existingEnd - Existing clip end time
+ * @param opts.targetPosition - Target position for duplicate
+ * @returns The track mock for assertion
+ */
+function runClearTargetExpectingNoOp(opts: {
+  sourceStart: number;
+  sourceEnd: number;
+  existingStart: number;
+  existingEnd: number;
+  targetPosition: number;
+}): ReturnType<typeof setupTrack> {
+  setupClip("100", {
+    properties: {
+      is_arrangement_clip: 1,
+      start_time: opts.sourceStart,
+      end_time: opts.sourceEnd,
+    },
+  });
+
+  const existingClip = setupArrangementClip("200", 0, {
+    start_time: opts.existingStart,
+    end_time: opts.existingEnd,
+  });
+
+  const trackMock = setupTrack(0, {
+    properties: {
+      arrangement_clips: ["id", existingClip.id],
+    },
+  });
+
+  clearClipAtDuplicateTarget(
+    LiveAPI.from(trackMock.path),
+    "100",
+    opts.targetPosition,
+    true,
+    mockContext,
+  );
+
+  return trackMock;
+}
