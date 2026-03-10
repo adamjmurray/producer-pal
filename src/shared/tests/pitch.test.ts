@@ -541,6 +541,13 @@ describe("quantizePitchToScale", () => {
     expect(quantizePitchToScale(62, cMinorPentMask)).toBe(63); // D → Eb (closer)
     expect(quantizePitchToScale(64, cMinorPentMask)).toBe(65); // E → F (closer)
   });
+
+  it("returns clamped pitch when scale mask is empty (no pitches in scale)", () => {
+    // scaleMask of 0 means no pitch classes are in the scale
+    expect(quantizePitchToScale(60, 0)).toBe(60);
+    expect(quantizePitchToScale(200, 0)).toBe(127);
+    expect(quantizePitchToScale(-5, 0)).toBe(0);
+  });
 });
 
 describe("stepInScale", () => {

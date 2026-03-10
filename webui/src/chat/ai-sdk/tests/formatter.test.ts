@@ -201,6 +201,19 @@ describe("formatAiSdkMessages", () => {
     expect(result[0]!.parts).toStrictEqual([]);
   });
 
+  it("preserves responseModel on assistant messages", () => {
+    const history: AiSdkMessage[] = [
+      {
+        role: "assistant",
+        content: "Hello",
+        responseModel: "gpt-4o-2024-08-06",
+      },
+    ];
+    const result = formatAiSdkMessages(history);
+
+    expect(result[0]!.responseModel).toBe("gpt-4o-2024-08-06");
+  });
+
   it("appends reasoning to existing thought part in merged messages", () => {
     const history: AiSdkMessage[] = [
       { role: "assistant", content: "", reasoning: "Part 1" },

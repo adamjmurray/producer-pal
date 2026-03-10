@@ -68,6 +68,14 @@ describe("useViewState", () => {
     });
   });
 
+  it("resets corrupted settingsTab to default", () => {
+    localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({ settingsTab: 42 }));
+
+    const { result } = renderHook(() => useViewState());
+
+    expect(result.current.viewState.settingsTab).toBe("connection");
+  });
+
   it("updates settings tab", async () => {
     const { result } = renderHook(() => useViewState());
 
