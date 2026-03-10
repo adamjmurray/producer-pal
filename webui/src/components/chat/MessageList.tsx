@@ -94,8 +94,8 @@ export function MessageList({
             <div
               className={`${
                 isUser
-                  ? "text-black bg-blue-100 dark:text-white dark:bg-blue-900/80 shadow-sm dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)]"
-                  : "col-span-2 bg-zinc-50 dark:bg-zinc-800 shadow-sm dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)]"
+                  ? "text-black bg-blue-100 dark:text-white dark:bg-blue-900/80 shadow-sm dark:shadow-white/10 dark:border dark:border-t-zinc-600 dark:border-x-zinc-700 dark:border-b-zinc-800"
+                  : "col-span-2 bg-zinc-50 dark:bg-zinc-800 shadow-sm dark:shadow-white/10 dark:border dark:border-t-zinc-600 dark:border-x-zinc-700 dark:border-b-zinc-800"
               } min-w-0 rounded-lg py-0.5 px-3`}
               data-testid={isUser ? undefined : "assistant-message-bubble"}
             >

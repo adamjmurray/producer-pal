@@ -17,7 +17,7 @@ describe("EditButton", () => {
     const button = screen.getByRole("button");
 
     expect(button).toBeTruthy();
-    expect(button.textContent).toBe("✎");
+    expect(button.querySelector("svg")).toBeTruthy();
   });
 
   it("calls onClick when clicked", () => {

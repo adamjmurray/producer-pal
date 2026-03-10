@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { getProviderName } from "#webui/components/chat/controls/header/header-helpers";
+import { EditIcon } from "#webui/components/chat/controls/header/HeaderIcons";
 import { getModelName } from "#webui/lib/config";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import {
@@ -108,18 +109,7 @@ export function ConversationItem({
           aria-label="Rename conversation"
           title="Rename conversation"
         >
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 12 12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M8.5 1.5l2 2M1 11l.5-2L8.5 2l2 2-7 7-2 .5z" />
-          </svg>
+          <EditIcon />
         </button>
 
         <button

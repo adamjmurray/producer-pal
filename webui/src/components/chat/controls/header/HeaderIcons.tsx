@@ -4,6 +4,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
+ * Pencil icon for editing (messages, conversation titles)
+ * @returns SVG element
+ */
+export function EditIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 12 12"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8.5 1.5l2 2M1 11l.5-2L8.5 2l2 2-7 7-2 .5z" />
+    </svg>
+  );
+}
+
+/**
  * Pen-on-paper icon for new conversation
  * @returns SVG element
  */
