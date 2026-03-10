@@ -52,6 +52,7 @@ export function ChatInput({
   onTemperatureChange,
   onShowThoughtsChange,
   onResetToDefaults,
+  onOpenBehaviorSettings,
   showMessageSettings,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
@@ -88,6 +89,7 @@ export function ChatInput({
           onTemperatureChange={onTemperatureChange}
           onShowThoughtsChange={onShowThoughtsChange}
           onResetToDefaults={onResetToDefaults}
+          onOpenBehaviorSettings={onOpenBehaviorSettings}
         />
       )}
       <div className="p-4">

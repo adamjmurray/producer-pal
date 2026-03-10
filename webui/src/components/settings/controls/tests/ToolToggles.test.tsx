@@ -45,7 +45,9 @@ describe("ToolToggles", () => {
 
     it("renders Enable all button", () => {
       render(<ToolToggles {...defaultProps} />);
-      expect(screen.getByRole("button", { name: "Enable all" })).toBeDefined();
+      expect(
+        screen.getByRole("button", { name: "Enable all (default)" }),
+      ).toBeDefined();
     });
 
     it("renders Disable all button", () => {
@@ -96,7 +98,9 @@ describe("ToolToggles", () => {
         <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
       );
 
-      const button = screen.getByRole("button", { name: "Enable all" });
+      const button = screen.getByRole("button", {
+        name: "Enable all (default)",
+      });
 
       fireEvent.click(button);
 

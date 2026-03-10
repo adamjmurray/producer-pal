@@ -125,7 +125,7 @@ describe("MessageSettingsToolbar", () => {
   it("calls onResetToDefaults when reset button clicked", () => {
     const container = renderExpanded({ ...defaultProps, thinking: "High" });
     const resetButton = Array.from(container.querySelectorAll("button")).find(
-      (btn) => btn.textContent.includes("Use defaults"),
+      (btn) => btn.textContent.includes("Reset"),
     );
 
     fireEvent.click(resetButton!);
@@ -135,7 +135,7 @@ describe("MessageSettingsToolbar", () => {
   it("disables reset button when using defaults", () => {
     const container = renderExpanded();
     const resetButton = Array.from(container.querySelectorAll("button")).find(
-      (btn) => btn.textContent.includes("Use defaults"),
+      (btn) => btn.textContent.includes("Reset"),
     );
 
     expect(resetButton?.disabled).toBe(true);

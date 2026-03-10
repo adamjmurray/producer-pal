@@ -59,8 +59,14 @@ function loadViewState(): ViewState {
     if (!stored) return DEFAULT_VIEW_STATE;
 
     const parsed = JSON.parse(stored) as Partial<ViewState>;
+    const merged = { ...DEFAULT_VIEW_STATE, ...parsed };
 
-    return { ...DEFAULT_VIEW_STATE, ...parsed };
+    // Guard against corrupted settingsTab (e.g. stored as non-string value)
+    if (typeof merged.settingsTab !== "string") {
+      merged.settingsTab = DEFAULT_VIEW_STATE.settingsTab;
+    }
+
+    return merged;
   } catch {
     return DEFAULT_VIEW_STATE;
   }

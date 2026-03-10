@@ -15,6 +15,8 @@ interface BehaviorTabProps {
   setTemperature: (temp: number) => void;
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
+  showMessageSettings: boolean;
+  setShowMessageSettings: (show: boolean) => void;
   resetBehaviorToDefaults: () => void;
 }
 
@@ -29,6 +31,8 @@ interface BehaviorTabProps {
  * @param {Function} props.setTemperature - Function to update temperature
  * @param {boolean} props.showThoughts - Whether to show thought blocks
  * @param {Function} props.setShowThoughts - Function to toggle thought display
+ * @param {boolean} props.showMessageSettings - Whether to show per-conversation behavior overrides
+ * @param {Function} props.setShowMessageSettings - Function to toggle behavior overrides
  * @param {Function} props.resetBehaviorToDefaults - Function to reset behavior settings
  * @returns {JSX.Element} Behavior tab component
  */
@@ -41,6 +45,8 @@ export function BehaviorTab({
   setTemperature,
   showThoughts,
   setShowThoughts,
+  showMessageSettings,
+  setShowMessageSettings,
   resetBehaviorToDefaults,
 }: BehaviorTabProps) {
   // Render the behavior settings with thinking and temperature controls
@@ -65,16 +71,35 @@ export function BehaviorTab({
           showThoughts={showThoughts}
           setShowThoughts={setShowThoughts}
         />
+
         <div className="mt-8">
           <RandomnessSlider
             temperature={temperature}
             setTemperature={setTemperature}
           />
         </div>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-300 dark:border-zinc-600">
-          These are default values for new conversations. You can adjust
-          thinking and randomness for individual messages during chat.
-        </p>
+        <div className="pt-2 border-t border-zinc-300 dark:border-zinc-600">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-3">
+            These settings apply to new conversations.
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="showMessageSettings"
+              checked={showMessageSettings}
+              onChange={(e) =>
+                setShowMessageSettings((e.target as HTMLInputElement).checked)
+              }
+            />
+            <label htmlFor="showMessageSettings" className="text-sm">
+              Allow per-conversation behavior overrides
+            </label>
+          </div>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 ml-5">
+            Show a toolbar above the chat input to adjust thinking and
+            randomness for the current conversation.
+          </p>
+        </div>
       </div>
     </div>
   );

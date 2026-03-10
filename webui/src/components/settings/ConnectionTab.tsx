@@ -141,7 +141,7 @@ export function ConnectionTab({
         </p>
       )}
 
-      <div>
+      <div className="pt-2 border-t border-zinc-300 dark:border-zinc-600">
         <div className="flex items-center gap-2">
           <input
             type="checkbox"

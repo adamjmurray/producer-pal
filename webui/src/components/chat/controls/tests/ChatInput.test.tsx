@@ -230,7 +230,7 @@ describe("ChatInput", () => {
 
       // Reset to defaults
       const resetButton = Array.from(container.querySelectorAll("button")).find(
-        (btn) => btn.textContent.includes("Use defaults"),
+        (btn) => btn.textContent.includes("Reset"),
       );
 
       fireEvent.click(resetButton!);

@@ -42,6 +42,9 @@ describe("ChatScreen", () => {
     mcpError: null,
     checkMcpConnection: mockCheckMcpConnection,
     onOpenSettings: mockOnOpenSettings,
+    onOpenBehaviorSettings: vi.fn(),
+    onOpenToolsSettings: vi.fn(),
+    onOpenConnectionSettings: vi.fn(),
     onStop: mockOnStop,
     showTimestamps: true,
     showHelpLinks: true,
@@ -156,7 +159,7 @@ describe("ChatScreen", () => {
 
       // Find and click the reset button
       const resetButton = Array.from(document.querySelectorAll("button")).find(
-        (btn) => btn.textContent.includes("Use defaults"),
+        (btn) => btn.textContent.includes("Reset"),
       );
 
       expect(resetButton).toBeDefined();
@@ -182,7 +185,7 @@ describe("ChatScreen", () => {
 
       // Reset button should now be enabled
       const resetButton = Array.from(document.querySelectorAll("button")).find(
-        (btn) => btn.textContent.includes("Use defaults"),
+        (btn) => btn.textContent.includes("Reset"),
       );
 
       expect(resetButton).toBeDefined();
@@ -335,7 +338,7 @@ describe("ChatScreen", () => {
 
       // Now find and click the reset button (should be enabled now)
       const resetButton = Array.from(document.querySelectorAll("button")).find(
-        (btn) => btn.textContent!.includes("Use defaults"),
+        (btn) => btn.textContent!.includes("Reset"),
       );
 
       expect(resetButton).toBeDefined();

@@ -19,6 +19,7 @@ export interface MessageSettingsToolbarProps {
   onTemperatureChange: (temperature: number) => void;
   onShowThoughtsChange: (showThoughts: boolean) => void;
   onResetToDefaults: () => void;
+  onOpenBehaviorSettings?: () => void;
 }
 
 function isO1OrO3Model(model: string): boolean {
@@ -37,6 +38,7 @@ interface ExpandedPanelProps {
   onTemperatureChange: (temperature: number) => void;
   onShowThoughtsChange: (showThoughts: boolean) => void;
   onResetToDefaults: () => void;
+  onOpenBehaviorSettings?: () => void;
 }
 
 function ExpandedPanel({
@@ -51,6 +53,7 @@ function ExpandedPanel({
   onTemperatureChange,
   onShowThoughtsChange,
   onResetToDefaults,
+  onOpenBehaviorSettings,
 }: ExpandedPanelProps) {
   return (
     <div className="px-4 py-3 bg-zinc-50 dark:bg-zinc-800 flex flex-col gap-3">
@@ -105,7 +108,7 @@ function ExpandedPanel({
             className="px-3 py-1 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900 rounded disabled:opacity-50 disabled:cursor-not-allowed"
             type="button"
           >
-            ↺ Use defaults
+            ↺ Reset
           </button>
         </div>
       </div>
@@ -131,8 +134,20 @@ function ExpandedPanel({
       )}
 
       <p className="text-xs text-zinc-500 dark:text-zinc-500">
-        These settings apply only to your next message. Change defaults in
-        Settings → Behavior.
+        These settings apply to the rest of this conversation.
+        {onOpenBehaviorSettings && (
+          <>
+            {" "}
+            <button
+              type="button"
+              onClick={onOpenBehaviorSettings}
+              className="text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Behavior Settings
+            </button>{" "}
+            apply to new conversations.
+          </>
+        )}
       </p>
     </div>
   );
@@ -168,6 +183,7 @@ export function MessageSettingsToolbar({
   onTemperatureChange,
   onShowThoughtsChange,
   onResetToDefaults,
+  onOpenBehaviorSettings,
 }: MessageSettingsToolbarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -218,6 +234,7 @@ export function MessageSettingsToolbar({
           onTemperatureChange={onTemperatureChange}
           onShowThoughtsChange={onShowThoughtsChange}
           onResetToDefaults={onResetToDefaults}
+          onOpenBehaviorSettings={onOpenBehaviorSettings}
         />
       )}
     </div>

@@ -89,10 +89,17 @@ export function getBaseUrl(
  *
  * @returns {JSX.Element} - React component
  */
+// eslint-disable-next-line max-lines-per-function -- top-level app component with many settings
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
   const { viewState, setViewState } = useViewState();
+  const openSettings = (settingsTab?: TabId) =>
+    setViewState(
+      settingsTab
+        ? { settingsOpen: true, settingsTab }
+        : { settingsOpen: true },
+    );
   const [showTimestamps, setShowTimestamps] = useState(
     () => localStorage.getItem("producer_pal_show_timestamps") === "true",
   );
@@ -278,7 +285,10 @@ export function App() {
           mcpStatus={mcpStatus}
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
-          onOpenSettings={() => setViewState({ settingsOpen: true })}
+          onOpenSettings={() => openSettings()}
+          onOpenBehaviorSettings={() => openSettings("behavior")}
+          onOpenToolsSettings={() => openSettings("tools")}
+          onOpenConnectionSettings={() => openSettings("connection")}
           onStop={chat.stopResponse}
           showTimestamps={showTimestamps}
           showHelpLinks={showHelpLinks}

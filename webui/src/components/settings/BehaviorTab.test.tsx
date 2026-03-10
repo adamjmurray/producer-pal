@@ -24,6 +24,8 @@ describe("BehaviorTab", () => {
     setTemperature: mockSetTemperature,
     showThoughts: true,
     setShowThoughts: mockSetShowThoughts,
+    showMessageSettings: true,
+    setShowMessageSettings: vi.fn(),
     resetBehaviorToDefaults: mockResetBehaviorToDefaults,
   };
 
@@ -62,14 +64,11 @@ describe("BehaviorTab", () => {
     expect(slider).toBeDefined();
   });
 
-  it("renders helper text about per-message customization", () => {
+  it("renders helper text about new conversations", () => {
     const { container } = render(<BehaviorTab {...defaultProps} />);
 
     expect(container.textContent).toContain(
-      "These are default values for new conversations",
-    );
-    expect(container.textContent).toContain(
-      "adjust thinking and randomness for individual messages",
+      "These settings apply to new conversations",
     );
   });
 });

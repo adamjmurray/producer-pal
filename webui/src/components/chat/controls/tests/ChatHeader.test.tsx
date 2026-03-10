@@ -25,6 +25,8 @@ describe("ChatHeader", () => {
     showHelpLinks: true,
     latestVersion: null,
     onOpenSettings: vi.fn(),
+    onOpenToolsSettings: vi.fn(),
+    onOpenConnectionSettings: vi.fn(),
     onToggleHistory: vi.fn(),
     onNewConversation: vi.fn(),
   };
@@ -223,6 +225,45 @@ describe("ChatHeader", () => {
       fireEvent.click(button);
 
       expect(onOpenSettings).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("indicator links to settings tabs", () => {
+    it("calls onOpenToolsSettings when tools indicator clicked", () => {
+      const onOpenToolsSettings = vi.fn();
+
+      render(
+        <ChatHeader
+          {...defaultProps}
+          enabledToolsCount={15}
+          totalToolsCount={20}
+          onOpenToolsSettings={onOpenToolsSettings}
+        />,
+      );
+
+      const button = screen.getByTitle("Tools settings");
+
+      fireEvent.click(button);
+
+      expect(onOpenToolsSettings).toHaveBeenCalledOnce();
+    });
+
+    it("calls onOpenConnectionSettings when small model indicator clicked", () => {
+      const onOpenConnectionSettings = vi.fn();
+
+      render(
+        <ChatHeader
+          {...defaultProps}
+          smallModelMode={true}
+          onOpenConnectionSettings={onOpenConnectionSettings}
+        />,
+      );
+
+      const button = screen.getByTitle("Connection settings");
+
+      fireEvent.click(button);
+
+      expect(onOpenConnectionSettings).toHaveBeenCalledOnce();
     });
   });
 

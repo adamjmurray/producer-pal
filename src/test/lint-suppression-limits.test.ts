@@ -13,7 +13,7 @@ const ESLINT_DISABLE_LIMITS: TreeLimits = {
   src: 10,
   srcTests: 17,
   scripts: 0,
-  webui: 2,
+  webui: 3,
 };
 
 const TS_EXPECT_ERROR_LIMITS: TreeLimits = {

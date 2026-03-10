@@ -177,6 +177,8 @@ function SettingsTabContent(props: SettingsScreenProps) {
           setTemperature={props.setTemperature}
           showThoughts={props.showThoughts}
           setShowThoughts={props.setShowThoughts}
+          showMessageSettings={props.showMessageSettings}
+          setShowMessageSettings={props.setShowMessageSettings}
           resetBehaviorToDefaults={props.resetBehaviorToDefaults}
         />
       )}
@@ -198,8 +200,6 @@ function SettingsTabContent(props: SettingsScreenProps) {
           setShowTimestamps={props.setShowTimestamps}
           showHelpLinks={props.showHelpLinks}
           setShowHelpLinks={props.setShowHelpLinks}
-          showMessageSettings={props.showMessageSettings}
-          setShowMessageSettings={props.setShowMessageSettings}
         />
       )}
     </div>

@@ -44,6 +44,9 @@ interface ChatScreenProps {
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
   onOpenSettings: () => void;
+  onOpenBehaviorSettings: () => void;
+  onOpenToolsSettings: () => void;
+  onOpenConnectionSettings: () => void;
   onStop: () => void;
   showTimestamps: boolean;
   showHelpLinks: boolean;
@@ -109,6 +112,9 @@ export function ChatScreen({
   mcpError,
   checkMcpConnection,
   onOpenSettings,
+  onOpenBehaviorSettings,
+  onOpenToolsSettings,
+  onOpenConnectionSettings,
   onStop,
   showTimestamps,
   showHelpLinks,
@@ -156,6 +162,8 @@ export function ChatScreen({
         showHelpLinks={showHelpLinks}
         latestVersion={latestVersion}
         onOpenSettings={onOpenSettings}
+        onOpenToolsSettings={onOpenToolsSettings}
+        onOpenConnectionSettings={onOpenConnectionSettings}
         onToggleHistory={conversationPanel.onToggle}
         onNewConversation={conversationPanel.onNew}
         onToggleBookmark={
@@ -233,6 +241,7 @@ export function ChatScreen({
             onTemperatureChange={setTemperature}
             onShowThoughtsChange={setShowThoughts}
             onResetToDefaults={handleResetToDefaults}
+            onOpenBehaviorSettings={onOpenBehaviorSettings}
             showMessageSettings={showMessageSettings}
           />
         </div>

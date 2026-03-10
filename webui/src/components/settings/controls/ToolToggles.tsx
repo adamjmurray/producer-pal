@@ -89,7 +89,7 @@ export function ToolToggles({
             onClick={enableAllTools}
             className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
           >
-            Enable all
+            Enable all (default)
           </button>
           <button
             type="button"

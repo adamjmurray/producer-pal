@@ -6,40 +6,23 @@
 import { VERSION } from "#src/shared/version";
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
-import { CHAT_UI_DOCS_URL, getModelName } from "#webui/lib/config";
-import { type Provider } from "#webui/types/settings";
-import { getProviderName } from "./header/header-helpers";
+import { HeaderActions, type HeaderActionsProps } from "./header/HeaderActions";
 import {
   BookmarkIcon,
   NewConversationIcon,
   PanelToggleIcon,
-  SettingsIcon,
 } from "./header/HeaderIcons";
 import { HeaderStatus } from "./header/HeaderStatus";
-import { SmallModelIndicator } from "./header/SmallModelIndicator";
-import { ToolsIndicator } from "./header/ToolsIndicator";
 import { VersionDisplay } from "./header/VersionDisplay";
 
 const iconBtn =
   "p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors";
 
-const helpBtn =
-  "inline-flex items-center justify-center w-5 h-5 text-xs font-semibold leading-none rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500 dark:text-zinc-400 hover:border-zinc-200 hover:text-white dark:hover:border-zinc-300 dark:hover:text-white no-underline shrink-0";
-
-interface ChatHeaderProps {
+interface ChatHeaderProps extends HeaderActionsProps {
   mcpStatus: McpStatus;
-  activeModel: string | null;
-  activeProvider: Provider | null;
-  model: string;
-  provider: Provider;
-  enabledToolsCount: number;
-  totalToolsCount: number;
-  smallModelMode: boolean;
   isHistoryOpen: boolean;
   isActiveBookmarked?: boolean;
-  showHelpLinks: boolean;
   latestVersion: string | null;
-  onOpenSettings: () => void;
   onToggleHistory: () => void;
   onNewConversation: () => void;
   onToggleBookmark?: () => void;
@@ -47,7 +30,7 @@ interface ChatHeaderProps {
 
 /**
  * Header component for chat UI with responsive layout
- * @param props - Component props
+ * @param props - ChatHeaderProps
  * @param props.mcpStatus - MCP connection status
  * @param props.activeModel - Active model identifier
  * @param props.activeProvider - Active provider
@@ -61,6 +44,8 @@ interface ChatHeaderProps {
  * @param props.showHelpLinks - Whether to show help link buttons
  * @param props.latestVersion - Latest available version, or null if up to date
  * @param props.onOpenSettings - Callback to open settings
+ * @param props.onOpenToolsSettings - Callback to open tools settings tab
+ * @param props.onOpenConnectionSettings - Callback to open connection settings tab
  * @param props.onToggleHistory - Callback to toggle history panel
  * @param props.onNewConversation - Callback to start new conversation
  * @param props.onToggleBookmark - Callback to toggle bookmark
@@ -80,6 +65,8 @@ export function ChatHeader({
   showHelpLinks,
   latestVersion,
   onOpenSettings,
+  onOpenToolsSettings,
+  onOpenConnectionSettings,
   onToggleHistory,
   onNewConversation,
   onToggleBookmark,
@@ -140,41 +127,19 @@ export function ChatHeader({
         <HeaderStatus mcpStatus={mcpStatus} />
       </div>
 
-      <div className="ml-auto flex gap-2 sm:gap-3 items-center">
-        <span className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap truncate min-w-0 max-w-28 sm:max-w-48 md:max-w-none">
-          <span className="hidden sm:inline">
-            {getProviderName(activeProvider ?? provider)} |{" "}
-          </span>
-          {getModelName(activeModel ?? model)}
-        </span>
-
-        <ToolsIndicator
-          enabledToolsCount={enabledToolsCount}
-          totalToolsCount={totalToolsCount}
-        />
-
-        <SmallModelIndicator active={smallModelMode} />
-
-        <button
-          onClick={onOpenSettings}
-          className={iconBtn}
-          aria-label="Settings"
-          title="Settings"
-        >
-          <SettingsIcon />
-        </button>
-        {showHelpLinks && (
-          <a
-            href={CHAT_UI_DOCS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={helpBtn}
-            title="Documentation"
-          >
-            ?
-          </a>
-        )}
-      </div>
+      <HeaderActions
+        activeModel={activeModel}
+        activeProvider={activeProvider}
+        model={model}
+        provider={provider}
+        enabledToolsCount={enabledToolsCount}
+        totalToolsCount={totalToolsCount}
+        smallModelMode={smallModelMode}
+        showHelpLinks={showHelpLinks}
+        onOpenSettings={onOpenSettings}
+        onOpenToolsSettings={onOpenToolsSettings}
+        onOpenConnectionSettings={onOpenConnectionSettings}
+      />
     </header>
   );
 }

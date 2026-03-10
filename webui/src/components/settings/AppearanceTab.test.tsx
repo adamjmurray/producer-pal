@@ -19,8 +19,6 @@ describe("AppearanceTab", () => {
     setShowTimestamps: vi.fn(),
     showHelpLinks: true,
     setShowHelpLinks: vi.fn(),
-    showMessageSettings: false,
-    setShowMessageSettings: vi.fn(),
   };
 
   it("renders theme label", () => {
@@ -94,19 +92,5 @@ describe("AppearanceTab", () => {
 
     fireEvent.click(checkboxes[1]!);
     expect(setShowHelpLinks).toHaveBeenCalled();
-  });
-
-  it("calls setShowMessageSettings when checkbox toggled", () => {
-    const setShowMessageSettings = vi.fn();
-    const { container } = render(
-      <AppearanceTab
-        {...defaultProps}
-        setShowMessageSettings={setShowMessageSettings}
-      />,
-    );
-    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
-
-    fireEvent.click(checkboxes[2]!);
-    expect(setShowMessageSettings).toHaveBeenCalled();
   });
 });
