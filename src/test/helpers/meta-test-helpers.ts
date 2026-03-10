@@ -299,6 +299,32 @@ export function findTestFiles(dirPath: string): string[] {
   );
 }
 
+interface FileViolation {
+  file: string;
+  reason: string;
+}
+
+/**
+ * Format file violations as a message string and throw if any exist
+ * @param violations - Array of file violations
+ * @param errorHeader - Error message header
+ * @param errorFooter - Optional additional instructions appended after violations
+ */
+export function throwOnFileViolations(
+  violations: FileViolation[],
+  errorHeader: string,
+  errorFooter?: string,
+): void {
+  if (violations.length > 0) {
+    const message = violations
+      .map((v) => `  ${v.file}: ${v.reason}`)
+      .join("\n");
+    const suffix = errorFooter ? `\n\n${errorFooter}` : "";
+
+    throw new Error(`${errorHeader}:\n${message}${suffix}`);
+  }
+}
+
 /**
  * Assert that pattern occurrences don't exceed limits
  * @param tree - Tree name (e.g., "src", "srcTests", "webui")

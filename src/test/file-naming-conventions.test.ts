@@ -1,11 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { readdirSync, statSync } from "node:fs";
 import { join, basename, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
+import { throwOnFileViolations } from "#src/test/helpers/meta-test-helpers.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..", "..");
@@ -80,14 +82,7 @@ describe("File naming conventions", () => {
       }
     }
 
-    if (violations.length > 0) {
-      const message = violations
-        .map((v) => `  ${v.file}: ${v.reason}`)
-        .join("\n");
-
-      throw new Error(`File naming violations found:\n${message}`);
-    }
-
+    throwOnFileViolations(violations, "File naming violations found");
     expect(violations).toHaveLength(0);
   });
 
@@ -105,25 +100,19 @@ describe("File naming conventions", () => {
       }
     }
 
-    if (violations.length > 0) {
-      const message = violations
-        .map((v) => `  ${v.file}: ${v.reason}`)
-        .join("\n");
-
-      throw new Error(
-        `File naming violations found:\n${message}\n\n` +
-          `Allowed patterns:\n` +
-          `  - name.js (no dots in base name)\n` +
-          `  - name.test.js (.test suffix)\n` +
-          `  - name.def.js (.def suffix)\n` +
-          `  - name.d.ts (.d suffix)\n\n` +
-          `Invalid patterns:\n` +
-          `  - name.helper.js (use name-helper.js)\n` +
-          `  - name.util.js (use name-util.js or better: name-operations.js)\n` +
-          `  - name.config.js (use name-config.js)`,
-      );
-    }
-
+    throwOnFileViolations(
+      violations,
+      "File naming violations found",
+      `Allowed patterns:\n` +
+        `  - name.js (no dots in base name)\n` +
+        `  - name.test.js (.test suffix)\n` +
+        `  - name.def.js (.def suffix)\n` +
+        `  - name.d.ts (.d suffix)\n\n` +
+        `Invalid patterns:\n` +
+        `  - name.helper.js (use name-helper.js)\n` +
+        `  - name.util.js (use name-util.js or better: name-operations.js)\n` +
+        `  - name.config.js (use name-config.js)`,
+    );
     expect(violations).toHaveLength(0);
   });
 });
