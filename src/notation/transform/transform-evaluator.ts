@@ -99,10 +99,10 @@ export function applyTransforms(
     );
   }
 
-  // Delete notes where transforms reduced velocity below 1 or duration to 0 or below
+  // Delete notes where transforms reduced velocity to 0 or below, or duration to 0 or below
   // (consistent with v0 deletion in bar|beat notation)
   const surviving = notes.filter(
-    (note) => note.velocity >= 1 && note.duration > 0,
+    (note) => note.velocity > 0 && note.duration > 0,
   );
 
   if (surviving.length < notes.length) {

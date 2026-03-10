@@ -57,7 +57,7 @@ describe("applyTransforms", () => {
   });
 
   describe("range clamping and deletion", () => {
-    it("deletes note when velocity drops below 1 with += operator", () => {
+    it("deletes note when velocity drops to 0 or below with += operator", () => {
       const notes = createTestNote({ velocity: 10 });
 
       applyTransforms(notes, "velocity += -100", 4, 4);
@@ -76,6 +76,14 @@ describe("applyTransforms", () => {
 
       applyTransforms(notes, "velocity = 0", 4, 4);
       expect(notes).toHaveLength(0);
+    });
+
+    it("keeps note when velocity is fractional but above 0", () => {
+      const notes = createTestNote();
+
+      applyTransforms(notes, "velocity = 0.5", 4, 4);
+      expect(notes).toHaveLength(1);
+      expect(notes[0]!.velocity).toBe(0.5);
     });
 
     it("clamps velocity to maximum 127 with = operator", () => {
