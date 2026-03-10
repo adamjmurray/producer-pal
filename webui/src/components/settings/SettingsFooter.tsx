@@ -30,20 +30,20 @@ export function SettingsFooter({
       )}
 
       <div className="flex gap-2 mt-4">
-        <button
-          onClick={saveSettings}
-          className="flex-1 px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-        >
-          Save
-        </button>
         {settingsConfigured && (
           <button
             onClick={cancelSettings}
-            className="px-4 py-2 bg-gray-600 text-white rounded"
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded"
           >
             Cancel
           </button>
         )}
+        <button
+          onClick={saveSettings}
+          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50"
+        >
+          Save
+        </button>
       </div>
     </>
   );

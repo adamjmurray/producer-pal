@@ -53,7 +53,7 @@ export function ChatStart({
           <p className="text-sm text-red-600 dark:text-red-400">{mcpError}</p>
           <button
             onClick={() => void checkMcpConnection()}
-            className="mt-2 px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+            className="mt-2 px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-800"
           >
             Retry
           </button>
