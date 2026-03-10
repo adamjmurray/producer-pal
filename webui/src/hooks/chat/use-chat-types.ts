@@ -112,6 +112,7 @@ export interface UseChatProps<
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
+  smallModelMode: boolean;
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
   extraParams?: Record<string, unknown>;
 }

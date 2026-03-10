@@ -132,6 +132,7 @@ export function App() {
     thinking: settings.thinking,
     temperature: settings.temperature,
     enabledTools: settings.enabledTools,
+    smallModelMode: settings.smallModelMode,
     mcpStatus,
     mcpError,
     checkMcpConnection,

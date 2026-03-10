@@ -10,12 +10,12 @@ import {
   MAX_RETRY_ATTEMPTS,
 } from "#webui/lib/rate-limit";
 import { type UIMessage } from "#webui/types/messages";
-import { type Provider } from "#webui/types/settings";
 import {
   filterOverrides,
   handleMessageStream,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
+import { useActiveSettings } from "./helpers/use-active-settings";
 import {
   type ChatClient,
   type ConversationLockedSettings,
@@ -42,6 +42,7 @@ export function useChat<
   thinking,
   temperature,
   enabledTools,
+  smallModelMode,
   mcpStatus,
   mcpError,
   checkMcpConnection,
@@ -50,18 +51,7 @@ export function useChat<
 }: UseChatProps<TClient, TMessage, TConfig>): UseChatReturn {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
-  const [activeModel, setActiveModel] = useState<string | null>(null);
-  const [activeProvider, setActiveProvider] = useState<Provider | null>(null);
-  const [activeThinking, setActiveThinking] = useState<string | null>(null);
-  const [activeTemperature, setActiveTemperature] = useState<number | null>(
-    null,
-  );
-  const [activeShowThoughts, setActiveShowThoughts] = useState<boolean | null>(
-    null,
-  );
-  const [activeSmallModelMode, setActiveSmallModelMode] = useState<
-    boolean | null
-  >(null);
+  const active = useActiveSettings();
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
     null,
   );
@@ -69,27 +59,22 @@ export function useChat<
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const retryAbortRef = useRef<AbortController | null>(null);
-  const thinkingRef = useRef(activeThinking);
-  const temperatureRef = useRef(activeTemperature);
-  const showThoughtsRef = useRef(activeShowThoughts);
+  const thinkingRef = useRef(active.activeThinking);
+  const temperatureRef = useRef(active.activeTemperature);
+  const showThoughtsRef = useRef(active.activeShowThoughts);
 
-  thinkingRef.current = activeThinking;
-  temperatureRef.current = activeTemperature;
-  showThoughtsRef.current = activeShowThoughts;
+  thinkingRef.current = active.activeThinking;
+  temperatureRef.current = active.activeTemperature;
+  showThoughtsRef.current = active.activeShowThoughts;
 
   const clearConversation = useCallback(() => {
     setMessages([]);
     clientRef.current = null;
     pendingHistoryRef.current = null;
-    setActiveModel(null);
-    setActiveProvider(null);
-    setActiveThinking(null);
-    setActiveTemperature(null);
-    setActiveShowThoughts(null);
-    setActiveSmallModelMode(null);
+    active.clearSettings();
     setRateLimitState(null);
     retryAbortRef.current?.abort();
-  }, []);
+  }, [active]);
 
   const getChatHistory = useCallback(
     (): unknown[] =>
@@ -102,15 +87,10 @@ export function useChat<
       clientRef.current = null;
       pendingHistoryRef.current = chatHistory as TMessage[];
       setMessages(adapter.formatMessages(chatHistory as TMessage[]));
-      setActiveModel(lockedSettings?.model ?? null);
-      setActiveProvider(lockedSettings?.provider ?? null);
-      setActiveThinking(lockedSettings?.thinking ?? null);
-      setActiveTemperature(lockedSettings?.temperature ?? null);
-      setActiveShowThoughts(lockedSettings?.showThoughts ?? null);
-      setActiveSmallModelMode(lockedSettings?.smallModelMode ?? null);
+      active.restoreSettings(lockedSettings);
       setRateLimitState(null);
     },
-    [adapter],
+    [adapter, active],
   );
 
   const stopResponse = useCallback(() => {
@@ -138,13 +118,17 @@ export function useChat<
 
       clientRef.current = adapter.createClient(apiKey, config);
       await clientRef.current.initialize();
-      setActiveModel(model);
-      setActiveProvider(provider);
-      setActiveThinking(effectiveThinking);
-      setActiveTemperature(effectiveTemperature);
-      setActiveShowThoughts(overrides?.showThoughts ?? null);
+      active.lockSettings(
+        model,
+        provider,
+        effectiveThinking,
+        effectiveTemperature,
+        overrides?.showThoughts ?? null,
+        smallModelMode,
+      );
     },
     [
+      smallModelMode,
       mcpStatus,
       mcpError,
       checkMcpConnection,
@@ -156,6 +140,7 @@ export function useChat<
       apiKey,
       adapter,
       extraParams,
+      active,
     ],
   );
 
@@ -381,12 +366,7 @@ export function useChat<
   return {
     messages,
     isAssistantResponding,
-    activeModel,
-    activeProvider,
-    activeThinking,
-    activeTemperature,
-    activeShowThoughts,
-    activeSmallModelMode,
+    ...active,
     rateLimitState,
     handleSend,
     handleRetry,

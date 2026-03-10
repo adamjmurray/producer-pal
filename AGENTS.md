@@ -179,11 +179,12 @@ web UI architecture.
   - **Test file location**: Use colocated tests (same directory as source) for
     1-2 test files. Create a `tests/` subdirectory when 3+ test files exist for
     a feature to keep the main directory focused on source code
-  - **Prefer splitting over contorting**: When adding code would exceed file
-    limits, split the file into logical pieces rather than artificially
-    compressing code (e.g., merging tests into loops, removing whitespace,
-    inlining helpers). The goal of limits is smaller, focused files — not clever
-    formatting tricks to stay under the line count
+  - **Prefer refactoring over trimming**: When adding code would exceed file
+    limits, extract cohesive groups of logic into helper files rather than
+    artificially compressing code (e.g., merging tests into loops, collapsing
+    whitespace, shortening variable names, inlining helpers). The goal of limits
+    is smaller, focused files — not clever formatting tricks to stay under the
+    line count
 
 ## Test File Classification
 

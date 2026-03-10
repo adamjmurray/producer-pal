@@ -131,6 +131,7 @@ export function createDefaultProps(
     thinking: "Default",
     temperature: 1.0,
     enabledTools: {},
+    smallModelMode: false,
     mcpStatus: "connected" as const,
     mcpError: null,
     checkMcpConnection: vi.fn(),
