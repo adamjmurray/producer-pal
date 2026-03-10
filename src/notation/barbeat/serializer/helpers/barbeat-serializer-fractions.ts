@@ -25,17 +25,7 @@ export function formatBeatPosition(value: number): string {
 
   // For beat positions, only use mixed number format (not whole fractions like 5/4)
   // because "1+1/4" is more readable than "5/4" in a musical context
-  const intPart = Math.floor(value);
-  const fracPart = value - intPart;
-  const fraction = findFraction(fracPart);
-
-  if (fraction) {
-    const mixedStr = `${intPart}+${fraction.num}/${fraction.den}`;
-
-    return preferFractionOrDecimal(mixedStr, value);
-  }
-
-  return formatDecimal(value);
+  return formatMixedNumber(value) ?? formatDecimal(value);
 }
 
 /**
@@ -65,17 +55,7 @@ export function formatUnsignedValue(value: number): string {
   }
 
   // value >= 1 with fractional part
-  const intPart = Math.floor(value);
-  const fracPart = value - intPart;
-  const fraction = findFraction(fracPart);
-
-  if (fraction) {
-    const mixedStr = `${intPart}+${fraction.num}/${fraction.den}`;
-
-    return preferFractionOrDecimal(mixedStr, value);
-  }
-
-  return formatDecimal(value);
+  return formatMixedNumber(value) ?? formatDecimal(value);
 }
 
 /**
@@ -123,6 +103,23 @@ function findFraction(value: number): { num: number; den: number } | null {
   }
 
   return null;
+}
+
+/**
+ * Try to format a value >= 1 as a mixed number (e.g., "1+1/4").
+ * @param value - Number with integer and fractional parts
+ * @returns Mixed number string, or null if no clean fraction found
+ */
+function formatMixedNumber(value: number): string | null {
+  const intPart = Math.floor(value);
+  const fracPart = value - intPart;
+  const fraction = findFraction(fracPart);
+
+  if (!fraction) return null;
+
+  const mixedStr = `${intPart}+${fraction.num}/${fraction.den}`;
+
+  return preferFractionOrDecimal(mixedStr, value);
 }
 
 /**

@@ -26,19 +26,7 @@ export interface ConversationRecord {
 }
 
 /** Lightweight summary for list display (no messages) */
-export interface ConversationSummary {
-  id: string;
-  title: string | null;
-  createdAt: number;
-  updatedAt: number;
-  bookmarked: boolean;
-  provider: string | null;
-  model: string | null;
-  modelLabel: string | null;
-  thinking: string | null;
-  temperature: number | null;
-  showThoughts: boolean | null;
-}
+export type ConversationSummary = Omit<ConversationRecord, "messages">;
 
 /** Result of enforcing the conversation limit during save */
 export interface EnforceLimitResult {

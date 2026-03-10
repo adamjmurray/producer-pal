@@ -8,36 +8,13 @@ import {
   DEFAULT_MODELS,
   OPENROUTER_MODELS,
 } from "../../webui/src/lib/constants/models";
+import {
+  expectNoConsoleOutput,
+  navigateToChat,
+  setupConsoleCapture,
+} from "./webui-test-helpers";
 
-let consoleErrors: string[] = [];
-let consoleWarnings: string[] = [];
-let consoleLogs: string[] = [];
-
-test.beforeEach(({ page }) => {
-  consoleErrors = [];
-  consoleWarnings = [];
-  consoleLogs = [];
-
-  page.on("console", (msg) => {
-    const type = msg.type();
-    const text = msg.text();
-
-    if (type === "error") {
-      // Filter expected 405 on /mcp (stateless endpoint)
-      if (!text.includes("405")) {
-        consoleErrors.push(text);
-      }
-    } else if (type === "warning") {
-      consoleWarnings.push(text);
-    } else if (type === "log") {
-      consoleLogs.push(text);
-    }
-  });
-
-  page.on("pageerror", (error) => {
-    consoleErrors.push(error.message);
-  });
-});
+const consoleCapture = setupConsoleCapture();
 
 // Generate OpenRouter configs from the shared models list (paid models only)
 // Free models are excluded due to rate limits - test those manually
@@ -92,18 +69,7 @@ for (const config of TEST_CONFIGS) {
       }
 
       // Navigate to the chat UI (served by the Producer Pal device)
-      try {
-        await page.goto("/chat");
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-
-        throw new Error(
-          "Could not connect to Producer Pal. Make sure:\n" +
-            "1. Ableton Live is running with the Producer Pal device active\n" +
-            "2. The device is built with `npm run build:all`\n\n" +
-            `Original error: ${message}`,
-        );
-      }
+      await navigateToChat(page);
 
       // Configure settings via localStorage to avoid race conditions between
       // Playwright's fill() and Preact's deferred state batching. Preact
@@ -189,9 +155,7 @@ for (const config of TEST_CONFIGS) {
       ).toBeGreaterThanOrEqual(1);
 
       // Verify no unexpected console output
-      expect(consoleErrors, "Unexpected console errors").toEqual([]);
-      expect(consoleWarnings, "Unexpected console warnings").toEqual([]);
-      expect(consoleLogs, "Unexpected console logs").toEqual([]);
+      expectNoConsoleOutput(consoleCapture);
 
       console.log(
         `Test passed: ${config.providerLabel} ${config.modelLabel} Quick Connect successful`,

@@ -4,36 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect, test } from "@playwright/test";
+import {
+  expectNoConsoleOutput,
+  setupConsoleCapture,
+} from "./webui-test-helpers";
 
-let consoleErrors: string[] = [];
-let consoleWarnings: string[] = [];
-let consoleLogs: string[] = [];
-
-test.beforeEach(({ page }) => {
-  consoleErrors = [];
-  consoleWarnings = [];
-  consoleLogs = [];
-
-  page.on("console", (msg) => {
-    const type = msg.type();
-    const text = msg.text();
-
-    if (type === "error") {
-      // Filter expected 405 on /mcp (stateless endpoint)
-      if (!text.includes("405")) {
-        consoleErrors.push(text);
-      }
-    } else if (type === "warning") {
-      consoleWarnings.push(text);
-    } else if (type === "log") {
-      consoleLogs.push(text);
-    }
-  });
-
-  page.on("pageerror", (error) => {
-    consoleErrors.push(error.message);
-  });
-});
+const console = setupConsoleCapture();
 
 test.describe("Settings", () => {
   test("saves and restores settings across tabs", async ({ page }) => {
@@ -146,8 +122,6 @@ test.describe("Settings", () => {
 
     // --- Verify no unexpected console output ---
 
-    expect(consoleErrors, "Unexpected console errors").toEqual([]);
-    expect(consoleWarnings, "Unexpected console warnings").toEqual([]);
-    expect(consoleLogs, "Unexpected console logs").toEqual([]);
+    expectNoConsoleOutput(console);
   });
 });

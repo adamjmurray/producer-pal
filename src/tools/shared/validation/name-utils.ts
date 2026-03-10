@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
+import { parseCommaSeparatedValues } from "#src/tools/shared/validation/color-utils.ts";
 
 /**
  * Parse comma-separated names when creating/updating multiple items.
@@ -16,11 +17,7 @@ export function parseCommaSeparatedNames(
   value: string | undefined,
   count: number,
 ): string[] | null {
-  if (count <= 1 || !value?.includes(",")) {
-    return null;
-  }
-
-  return value.split(",").map((v) => v.trim());
+  return parseCommaSeparatedValues(value, count);
 }
 
 /**

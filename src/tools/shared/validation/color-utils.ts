@@ -4,6 +4,24 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
+ * Parse a comma-separated string when creating/updating multiple items.
+ * Only splits when count > 1 and the value contains a comma.
+ * @param value - Input string that may contain commas
+ * @param count - Number of items being processed
+ * @returns Array of trimmed strings, or null if not applicable
+ */
+export function parseCommaSeparatedValues(
+  value: string | undefined,
+  count: number,
+): string[] | null {
+  if (count <= 1 || !value?.includes(",")) {
+    return null;
+  }
+
+  return value.split(",").map((v) => v.trim());
+}
+
+/**
  * Parse comma-separated colors when creating/updating multiple items.
  * Only splits when count > 1 and the value contains a comma.
  * @param value - Input string that may contain commas
@@ -14,11 +32,7 @@ export function parseCommaSeparatedColors(
   value: string | undefined,
   count: number,
 ): string[] | null {
-  if (count <= 1 || !value?.includes(",")) {
-    return null;
-  }
-
-  return value.split(",").map((v) => v.trim());
+  return parseCommaSeparatedValues(value, count);
 }
 
 /**

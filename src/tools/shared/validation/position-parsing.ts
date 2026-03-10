@@ -37,22 +37,7 @@ export function parseSlot(input: string): SlotPosition {
     );
   }
 
-  const trackIndex = Number.parseInt(parts[0] as string);
-  const sceneIndex = Number.parseInt(parts[1] as string);
-
-  if (Number.isNaN(trackIndex) || Number.isNaN(sceneIndex)) {
-    throw new Error(
-      `invalid slot "${input}" - trackIndex and sceneIndex must be integers`,
-    );
-  }
-
-  if (trackIndex < 0 || sceneIndex < 0) {
-    throw new Error(
-      `invalid slot "${input}" - trackIndex and sceneIndex must be non-negative`,
-    );
-  }
-
-  return { trackIndex, sceneIndex };
+  return parseSlotParts(parts[0] as string, parts[1] as string, "slot", input);
 }
 
 /**
@@ -78,22 +63,12 @@ export function parseSlotList(input?: string | null): SlotPosition[] {
       );
     }
 
-    const trackIndex = Number.parseInt(parts[0] as string);
-    const sceneIndex = Number.parseInt(parts[1] as string);
-
-    if (Number.isNaN(trackIndex) || Number.isNaN(sceneIndex)) {
-      throw new Error(
-        `invalid toSlot "${entry}" - trackIndex and sceneIndex must be integers`,
-      );
-    }
-
-    if (trackIndex < 0 || sceneIndex < 0) {
-      throw new Error(
-        `invalid toSlot "${entry}" - trackIndex and sceneIndex must be non-negative`,
-      );
-    }
-
-    return { trackIndex, sceneIndex };
+    return parseSlotParts(
+      parts[0] as string,
+      parts[1] as string,
+      "toSlot",
+      entry,
+    );
   });
 }
 
@@ -123,4 +98,38 @@ export function parseSceneIndexList(input?: string | null): number[] {
  */
 export function parseArrangementStartList(input?: string | null): string[] {
   return parseCommaSeparatedIds(input);
+}
+
+// --- Helpers below main exports ---
+
+/**
+ * Validate and parse two string parts into a SlotPosition.
+ * @param trackPart - String to parse as trackIndex
+ * @param scenePart - String to parse as sceneIndex
+ * @param label - Label for error messages ("slot" or "toSlot")
+ * @param input - Original input string for error messages
+ * @returns Parsed slot position
+ */
+function parseSlotParts(
+  trackPart: string,
+  scenePart: string,
+  label: string,
+  input: string,
+): SlotPosition {
+  const trackIndex = Number.parseInt(trackPart);
+  const sceneIndex = Number.parseInt(scenePart);
+
+  if (Number.isNaN(trackIndex) || Number.isNaN(sceneIndex)) {
+    throw new Error(
+      `invalid ${label} "${input}" - trackIndex and sceneIndex must be integers`,
+    );
+  }
+
+  if (trackIndex < 0 || sceneIndex < 0) {
+    throw new Error(
+      `invalid ${label} "${input}" - trackIndex and sceneIndex must be non-negative`,
+    );
+  }
+
+  return { trackIndex, sceneIndex };
 }
