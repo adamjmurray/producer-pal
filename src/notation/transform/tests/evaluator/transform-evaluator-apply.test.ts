@@ -2,8 +2,9 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
   createTestNote,
@@ -583,12 +584,17 @@ probability += -0.2`;
     });
 
     it("warns about audio parameters for MIDI clips", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       const notes = createTestNote();
 
       applyTransforms(notes, "gain = 0.5", 4, 4);
 
+      expect(warnSpy).toHaveBeenCalledWith(
+        "Audio parameters (gain, pitchShift) ignored for MIDI clips",
+      );
       // Audio params should be skipped, velocity should be unchanged
       expect(notes[0]!.velocity).toBe(100);
+      warnSpy.mockRestore();
     });
   });
 

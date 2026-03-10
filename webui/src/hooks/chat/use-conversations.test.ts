@@ -600,11 +600,24 @@ describe("useConversations", () => {
         showThoughts: true,
       });
 
-      // Change props to exercise ref-update paths
+      // Change props, wait for effect to sync refs, then save and verify
       props.activeThinking = "disabled";
       props.activeTemperature = 1.0;
       props.activeShowThoughts = false;
+      // saveWithMessage triggers rerender which runs the ref-sync useEffect
+      await saveWithMessage(state, result, "ref sync 2");
       await waitForEffects();
+      await saveWithMessage(state, result, "ref sync 3");
+
+      const updated = await loadConversation(
+        result.current.activeConversationId!,
+      );
+
+      expect(updated).toMatchObject({
+        thinking: "disabled",
+        temperature: 1.0,
+        showThoughts: false,
+      });
     });
   });
 
