@@ -325,6 +325,26 @@ describe("AiSdkClient", () => {
       });
     });
 
+    it("captures response model ID on assistant messages", async () => {
+      async function* iterate(): AsyncIterable<Record<string, unknown>> {
+        yield { type: "text-delta", text: "Hi" };
+      }
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        fullStream: iterate(),
+        response: Promise.resolve({ modelId: "gpt-4o-mini" }),
+      });
+
+      const client = new AiSdkClient("key", createConfig());
+      let last: AiSdkMessage[] = [];
+
+      for await (const history of client.sendMessage("Hello")) {
+        last = history;
+      }
+
+      expect(last[1]!.responseModel).toBe("gpt-4o-mini");
+    });
+
     it("ignores unrecognized stream part types", async () => {
       const last = await sendWithParts([
         { type: "text-delta", text: "Hi" },

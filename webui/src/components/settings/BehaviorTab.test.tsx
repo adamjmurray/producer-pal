@@ -71,4 +71,21 @@ describe("BehaviorTab", () => {
       "These settings apply to new conversations",
     );
   });
+
+  it("calls setShowMessageSettings when checkbox is toggled", () => {
+    const mockSetShowMessageSettings = vi.fn();
+    const { container } = render(
+      <BehaviorTab
+        {...defaultProps}
+        showMessageSettings={false}
+        setShowMessageSettings={mockSetShowMessageSettings}
+      />,
+    );
+    const checkbox = container.querySelector(
+      "#showMessageSettings",
+    ) as HTMLInputElement;
+
+    fireEvent.change(checkbox, { target: { checked: true } });
+    expect(mockSetShowMessageSettings).toHaveBeenCalledWith(true);
+  });
 });
