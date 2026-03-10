@@ -87,4 +87,6 @@ export interface UseSettingsReturn {
   setEnabledTools: (tools: Record<string, boolean>) => void;
   resetBehaviorToDefaults: () => void;
   isToolEnabled: (toolId: string) => boolean;
+  smallModelMode: boolean;
+  setSmallModelMode: (enabled: boolean) => void;
 }

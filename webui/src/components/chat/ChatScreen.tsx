@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat";
-import { type RateLimitState } from "#webui/hooks/chat/use-chat-types";
+import {
+  type MessageOverrides,
+  type RateLimitState,
+} from "#webui/hooks/chat/use-chat-types";
 import { useUpdateCheck } from "#webui/hooks/use-update-check";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";

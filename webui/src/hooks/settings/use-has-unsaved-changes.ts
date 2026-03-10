@@ -29,6 +29,7 @@ function serialize(s: UseSettingsReturn, a: AppearanceSettings): string {
     temperature: s.temperature,
     showThoughts: s.showThoughts,
     enabledTools: s.enabledTools,
+    smallModelMode: s.smallModelMode,
     ...a,
   });
 }

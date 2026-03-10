@@ -19,6 +19,7 @@ export interface ActiveRefs {
   thinking: string | null;
   temperature: number | null;
   showThoughts: boolean | null;
+  smallModelMode: boolean | null;
 }
 
 /**
@@ -62,6 +63,7 @@ export function buildLockedSettings(
     thinking: record.thinking,
     temperature: record.temperature,
     showThoughts: record.showThoughts,
+    smallModelMode: record.smallModelMode,
   };
 }
 
@@ -93,6 +95,7 @@ export function buildSaveRecord(
     thinking: refs.thinking,
     temperature: refs.temperature,
     showThoughts: refs.showThoughts,
+    smallModelMode: refs.smallModelMode,
     messages: chatHistory as ConversationRecord["messages"],
   };
 }

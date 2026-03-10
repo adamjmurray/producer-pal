@@ -36,6 +36,7 @@ function createProps() {
       activeThinking: null as string | null,
       activeTemperature: null as number | null,
       activeShowThoughts: null as boolean | null,
+      activeSmallModelMode: null as boolean | null,
     },
   };
 }
@@ -160,6 +161,7 @@ describe("useConversations", () => {
       thinking: null,
       temperature: null,
       showThoughts: null,
+      smallModelMode: null,
       messages: [{ role: "user", content: "existing conversation" }],
     });
 
@@ -189,6 +191,7 @@ describe("useConversations", () => {
         thinking: null,
         temperature: null,
         showThoughts: null,
+        smallModelMode: null,
       },
     );
   });
@@ -227,6 +230,7 @@ describe("useConversations", () => {
       thinking: null,
       temperature: null,
       showThoughts: null,
+      smallModelMode: null,
       messages: [{ role: "user", content: "restored" }],
     });
     window.location.hash = existingId;
@@ -245,6 +249,7 @@ describe("useConversations", () => {
         thinking: null,
         temperature: null,
         showThoughts: null,
+        smallModelMode: null,
       },
     );
   });
@@ -340,6 +345,7 @@ describe("useConversations", () => {
       thinking: null,
       temperature: null,
       showThoughts: null,
+      smallModelMode: null,
       messages: [{ role: "user", content: "other" }],
     });
 
@@ -423,6 +429,7 @@ describe("useConversations", () => {
         thinking: null,
         temperature: null,
         showThoughts: null,
+        smallModelMode: null,
         messages: [{ role: "user", content: "from hash" }],
       });
 
@@ -444,6 +451,7 @@ describe("useConversations", () => {
           thinking: null,
           temperature: null,
           showThoughts: null,
+          smallModelMode: null,
         },
       );
     });

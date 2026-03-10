@@ -5,7 +5,7 @@
 
 import { vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
-import { type ChatClient, type ChatAdapter } from "./use-chat";
+import { type ChatAdapter, type ChatClient } from "./use-chat-types";
 
 /** Test message type for mock chat client */
 export interface TestMessage {

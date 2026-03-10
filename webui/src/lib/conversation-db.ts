@@ -22,6 +22,7 @@ export interface ConversationRecord {
   thinking: string | null;
   temperature: number | null;
   showThoughts: boolean | null;
+  smallModelMode: boolean | null;
   messages: AiSdkMessage[];
 }
 
@@ -82,6 +83,7 @@ export async function loadConversation(
   record.thinking ??= null;
   record.temperature ??= null;
   record.showThoughts ??= null;
+  record.smallModelMode ??= null;
 
   return record;
 }
@@ -158,6 +160,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         thinking,
         temperature,
         showThoughts,
+        smallModelMode,
       }) => ({
         id,
         title,
@@ -170,6 +173,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         thinking: thinking ?? null,
         temperature: temperature ?? null,
         showThoughts: showThoughts ?? null,
+        smallModelMode: smallModelMode ?? null,
       }),
     )
     .sort((a, b) => b.createdAt - a.createdAt);

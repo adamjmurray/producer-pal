@@ -18,6 +18,7 @@ import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
+import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
@@ -117,7 +118,8 @@ export function App() {
     () => Object.fromEntries(mcpTools?.map((t) => [t.id, t.name]) ?? []),
     [mcpTools],
   );
-  const { smallModelMode, setSmallModelMode } = useRemoteConfig(mcpStatus);
+  const { serverSmallModelMode, postSmallModelMode } =
+    useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
   const aiSdkChat = useChat({
@@ -148,6 +150,14 @@ export function App() {
   const { chat, wrappedHandleSend, wrappedClearConversation } =
     useConversationLock({ chat: aiSdkChat });
 
+  // Sync smallModelMode: seed from server when no active lock, post to server when lock changes
+  useSyncSmallModelMode(
+    serverSmallModelMode,
+    chat.activeSmallModelMode,
+    settings.setSmallModelMode,
+    postSmallModelMode,
+  );
+
   const conversationManager = useConversations({
     getChatHistory: chat.getChatHistory,
     restoreChatHistory: chat.restoreChatHistory,
@@ -157,6 +167,7 @@ export function App() {
     activeThinking: chat.activeThinking,
     activeTemperature: chat.activeTemperature,
     activeShowThoughts: chat.activeShowThoughts,
+    activeSmallModelMode: chat.activeSmallModelMode,
   });
 
   const transfer = useConversationTransfer(conversationManager.refreshList);
@@ -171,35 +182,25 @@ export function App() {
     prevMessageCountRef.current = chat.messages.length;
   }, [chat.messages.length, conversationManager]);
 
-  const handleNewConversation = useCallback(() => {
-    void conversationManager.startNewConversation();
-  }, [conversationManager]);
-
+  const handleNewConversation = useCallback(
+    () => void conversationManager.startNewConversation(),
+    [conversationManager],
+  );
   const handleSelectConversation = useCallback(
-    (id: string) => {
-      void conversationManager.switchConversation(id);
-    },
+    (id: string) => void conversationManager.switchConversation(id),
     [conversationManager],
   );
-
   const handleDeleteConversation = useCallback(
-    (id: string) => {
-      void conversationManager.deleteConversation(id);
-    },
+    (id: string) => void conversationManager.deleteConversation(id),
     [conversationManager],
   );
-
   const handleRenameConversation = useCallback(
-    (id: string, title: string | null) => {
-      void conversationManager.renameConversation(id, title);
-    },
+    (id: string, title: string | null) =>
+      void conversationManager.renameConversation(id, title),
     [conversationManager],
   );
-
   const handleToggleBookmark = useCallback(
-    (id: string) => {
-      void conversationManager.toggleBookmark(id);
-    },
+    (id: string) => void conversationManager.toggleBookmark(id),
     [conversationManager],
   );
 
@@ -239,6 +240,7 @@ export function App() {
   const handleSaveSettings = () => {
     closeSettings(() => {
       settings.saveSettings();
+      postSmallModelMode(settings.smallModelMode);
       const s = (k: string, v: boolean) =>
         localStorage.setItem(`producer_pal_${k}`, String(v));
 
@@ -291,7 +293,7 @@ export function App() {
           defaultShowThoughts={settings.showThoughts}
           enabledToolsCount={enabledToolsCount}
           totalToolsCount={totalToolsCount}
-          smallModelMode={smallModelMode}
+          smallModelMode={chat.activeSmallModelMode ?? settings.smallModelMode}
           mcpStatus={mcpStatus}
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
@@ -366,8 +368,8 @@ export function App() {
             setEnabledTools={settings.setEnabledTools}
             mcpTools={mcpTools}
             mcpStatus={mcpStatus}
-            smallModelMode={smallModelMode}
-            setSmallModelMode={setSmallModelMode}
+            smallModelMode={settings.smallModelMode}
+            setSmallModelMode={settings.setSmallModelMode}
             resetBehaviorToDefaults={settings.resetBehaviorToDefaults}
             saveSettings={handleSaveSettings}
             cancelSettings={handleCancelSettings}

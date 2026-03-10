@@ -65,6 +65,7 @@ export interface ConversationLockedSettings {
   thinking: string | null;
   temperature: number | null;
   showThoughts: boolean | null;
+  smallModelMode: boolean | null;
 }
 
 /** Rate limit retry state for UI display */
@@ -83,6 +84,7 @@ export interface UseChatReturn {
   activeThinking: string | null;
   activeTemperature: number | null;
   activeShowThoughts: boolean | null;
+  activeSmallModelMode: boolean | null;
   rateLimitState: RateLimitState | null;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;

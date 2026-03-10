@@ -20,7 +20,7 @@ import {
 import { SYSTEM_INSTRUCTION, getThinkingBudget } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 import { createFormattedErrorMessage } from "./helpers/streaming-helpers";
-import { type ChatAdapter } from "./use-chat";
+import { type ChatAdapter } from "./use-chat-types";
 
 /**
  * Build provider-specific options for reasoning/thinking.

@@ -321,6 +321,22 @@ export function buildAllProviderSettings(
 }
 
 /**
+ * Loads smallModelMode from localStorage
+ * @returns {boolean} Whether small model mode is enabled
+ */
+export function loadSmallModelMode(): boolean {
+  return localStorage.getItem("producer_pal_small_model_mode") === "true";
+}
+
+/**
+ * Saves smallModelMode to localStorage
+ * @param {boolean} enabled - Whether small model mode is enabled
+ */
+export function saveSmallModelMode(enabled: boolean): void {
+  localStorage.setItem("producer_pal_small_model_mode", String(enabled));
+}
+
+/**
  * Type for setters that apply loaded settings to state
  * @returns {any} - Hook return value
  */

@@ -12,7 +12,7 @@ import {
   stepCountIs,
   streamText,
 } from "ai";
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat";
+import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 import { type AiSdkClientConfig, type AiSdkMessage } from "./ai-sdk-types";
 import { createAiSdkMcpTools } from "./mcp-tools";

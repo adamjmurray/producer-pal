@@ -35,6 +35,7 @@ function createRecord(
     thinking: null,
     temperature: null,
     showThoughts: null,
+    smallModelMode: null,
     messages: [{ role: "user", content: "hello" }],
     ...overrides,
   };
@@ -121,6 +122,7 @@ describe("conversation-db", () => {
       thinking: null,
       temperature: null,
       showThoughts: null,
+      smallModelMode: null,
     });
     expect(
       (list[0] as unknown as Record<string, unknown>).messages,
@@ -194,6 +196,7 @@ describe("conversation-db", () => {
     delete (raw as Record<string, unknown>).thinking;
     delete (raw as Record<string, unknown>).temperature;
     delete (raw as Record<string, unknown>).showThoughts;
+    delete (raw as Record<string, unknown>).smallModelMode;
     await db.put("conversations", raw);
 
     const loaded = await loadConversation(record.id);
@@ -201,6 +204,7 @@ describe("conversation-db", () => {
     expect(loaded?.thinking).toBeNull();
     expect(loaded?.temperature).toBeNull();
     expect(loaded?.showThoughts).toBeNull();
+    expect(loaded?.smallModelMode).toBeNull();
   });
 
   it("defaults missing fields to null in list summaries", async () => {
@@ -215,6 +219,7 @@ describe("conversation-db", () => {
     delete (raw as Record<string, unknown>).thinking;
     delete (raw as Record<string, unknown>).temperature;
     delete (raw as Record<string, unknown>).showThoughts;
+    delete (raw as Record<string, unknown>).smallModelMode;
     await db.put("conversations", raw);
 
     const list = await listConversations();
@@ -222,6 +227,7 @@ describe("conversation-db", () => {
     expect(list[0]?.thinking).toBeNull();
     expect(list[0]?.temperature).toBeNull();
     expect(list[0]?.showThoughts).toBeNull();
+    expect(list[0]?.smallModelMode).toBeNull();
   });
 
   it("includes modelLabel in saved and listed conversations", async () => {

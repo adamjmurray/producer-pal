@@ -38,6 +38,7 @@ interface UseConversationsProps {
   activeThinking: string | null;
   activeTemperature: number | null;
   activeShowThoughts: boolean | null;
+  activeSmallModelMode: boolean | null;
 }
 
 export interface UseConversationsReturn {
@@ -66,6 +67,7 @@ export interface UseConversationsReturn {
  * @param props.activeThinking - Active thinking level for the current conversation
  * @param props.activeTemperature - Active temperature for the current conversation
  * @param props.activeShowThoughts - Active showThoughts setting for the current conversation
+ * @param props.activeSmallModelMode - Active smallModelMode setting for the current conversation
  * @returns Conversation management state and handlers
  */
 export function useConversations({
@@ -77,6 +79,7 @@ export function useConversations({
   activeThinking: activeThinkingProp,
   activeTemperature: activeTemperatureProp,
   activeShowThoughts: activeShowThoughtsProp,
+  activeSmallModelMode: activeSmallModelModeProp,
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const limit = useLimitNotification();
@@ -92,6 +95,7 @@ export function useConversations({
   const activeThinkingRef = useRef<string | null>(null);
   const activeTemperatureRef = useRef<number | null>(null);
   const activeShowThoughtsRef = useRef<boolean | null>(null);
+  const activeSmallModelModeRef = useRef<boolean | null>(null);
   const programmaticHashRef = useRef(false);
 
   useEffect(() => {
@@ -109,12 +113,15 @@ export function useConversations({
       activeTemperatureRef.current = activeTemperatureProp;
     if (activeShowThoughtsProp != null)
       activeShowThoughtsRef.current = activeShowThoughtsProp;
+    if (activeSmallModelModeProp != null)
+      activeSmallModelModeRef.current = activeSmallModelModeProp;
   }, [
     activeModelProp,
     activeProviderProp,
     activeThinkingProp,
     activeTemperatureProp,
     activeShowThoughtsProp,
+    activeSmallModelModeProp,
   ]);
 
   const refreshList = useCallback(async () => {
@@ -141,6 +148,7 @@ export function useConversations({
     activeThinkingRef.current = null;
     activeTemperatureRef.current = null;
     activeShowThoughtsRef.current = null;
+    activeSmallModelModeRef.current = null;
     programmaticHashRef.current = true;
     setLocationHash(null);
   }, []);
@@ -158,6 +166,7 @@ export function useConversations({
     activeThinkingRef.current = record.thinking;
     activeTemperatureRef.current = record.temperature;
     activeShowThoughtsRef.current = record.showThoughts;
+    activeSmallModelModeRef.current = record.smallModelMode ?? null;
   };
 
   /**
@@ -175,6 +184,7 @@ export function useConversations({
     thinking: activeThinkingRef.current,
     temperature: activeTemperatureRef.current,
     showThoughts: activeShowThoughtsRef.current,
+    smallModelMode: activeSmallModelModeRef.current,
   });
 
   // Load conversation from URL hash and conversation list on mount

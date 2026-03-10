@@ -50,6 +50,7 @@ function makeRecord(id: string): ConversationRecord {
     thinking: null,
     temperature: null,
     showThoughts: null,
+    smallModelMode: null,
     messages: [{ role: "user", content: "hi" }],
   };
 }

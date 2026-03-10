@@ -630,6 +630,7 @@ describe("useChat", () => {
             thinking: null,
             temperature: null,
             showThoughts: null,
+            smallModelMode: null,
           },
         );
       });

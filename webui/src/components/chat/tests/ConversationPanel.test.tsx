@@ -24,6 +24,7 @@ const conversations: ConversationSummary[] = [
     thinking: null,
     temperature: null,
     showThoughts: null,
+    smallModelMode: null,
   },
   {
     id: "conv-2",
@@ -37,6 +38,7 @@ const conversations: ConversationSummary[] = [
     thinking: null,
     temperature: null,
     showThoughts: null,
+    smallModelMode: null,
   },
 ];
 
@@ -275,6 +277,7 @@ describe("ConversationPanel", () => {
         thinking: null,
         temperature: null,
         showThoughts: null,
+        smallModelMode: null,
       },
     ];
 
@@ -301,6 +304,7 @@ describe("ConversationPanel", () => {
         thinking: null,
         temperature: null,
         showThoughts: null,
+        smallModelMode: null,
       },
     ];
 

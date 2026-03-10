@@ -22,6 +22,7 @@ export const mockChatHook = {
   activeModel: "test-model",
   activeThinking: null,
   activeTemperature: 1.0,
+  activeSmallModelMode: null,
 };
 
 export const mockSettingsHook = {
@@ -45,6 +46,8 @@ export const mockSettingsHook = {
   saveSettings: vi.fn(),
   cancelSettings: vi.fn(),
   settingsConfigured: true,
+  smallModelMode: false,
+  setSmallModelMode: vi.fn(),
 };
 
 /**
@@ -86,7 +89,7 @@ export function setupDefaultMocks(): void {
     setViewState: vi.fn(),
   });
   (useRemoteConfig as ReturnType<typeof vi.fn>).mockReturnValue({
-    smallModelMode: false,
-    setSmallModelMode: vi.fn(),
+    serverSmallModelMode: false,
+    postSmallModelMode: vi.fn(),
   });
 }

@@ -17,7 +17,6 @@ import {
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
 import {
-  type ChatAdapter,
   type ChatClient,
   type ConversationLockedSettings,
   type MessageOverrides,
@@ -25,8 +24,6 @@ import {
   type UseChatProps,
   type UseChatReturn,
 } from "./use-chat-types";
-
-export type { ChatAdapter, ChatClient, MessageOverrides };
 
 /**
  * Generic chat hook that works with any provider via an adapter
@@ -62,6 +59,9 @@ export function useChat<
   const [activeShowThoughts, setActiveShowThoughts] = useState<boolean | null>(
     null,
   );
+  const [activeSmallModelMode, setActiveSmallModelMode] = useState<
+    boolean | null
+  >(null);
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
     null,
   );
@@ -86,6 +86,7 @@ export function useChat<
     setActiveThinking(null);
     setActiveTemperature(null);
     setActiveShowThoughts(null);
+    setActiveSmallModelMode(null);
     setRateLimitState(null);
     retryAbortRef.current?.abort();
   }, []);
@@ -106,6 +107,7 @@ export function useChat<
       setActiveThinking(lockedSettings?.thinking ?? null);
       setActiveTemperature(lockedSettings?.temperature ?? null);
       setActiveShowThoughts(lockedSettings?.showThoughts ?? null);
+      setActiveSmallModelMode(lockedSettings?.smallModelMode ?? null);
       setRateLimitState(null);
     },
     [adapter],
@@ -384,6 +386,7 @@ export function useChat<
     activeThinking,
     activeTemperature,
     activeShowThoughts,
+    activeSmallModelMode,
     rateLimitState,
     handleSend,
     handleRetry,

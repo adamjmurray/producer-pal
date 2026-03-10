@@ -30,6 +30,7 @@ const makeRecord = (
   thinking: null,
   temperature: null,
   showThoughts: null,
+  smallModelMode: null,
   messages: [{ role: "user", content: `hello from ${id}` }],
 });
 
