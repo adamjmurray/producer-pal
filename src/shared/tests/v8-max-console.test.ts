@@ -126,7 +126,8 @@ describe("v8-max-console", () => {
     });
 
     it("falls back to 'Object' when constructor name is unavailable", () => {
-      // Create an object with a custom prototype that lacks constructor.name
+      // Object.create(null) would throw on String(), so we need toPrimitive
+      // to make String(obj) return "[object Object]" (triggering the fallback)
       const proto = { [Symbol.toPrimitive]: () => "[object Object]" };
 
       Object.defineProperty(proto, "constructor", { value: undefined });

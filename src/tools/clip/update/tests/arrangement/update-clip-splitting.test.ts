@@ -101,8 +101,11 @@ describe("updateClip - splitting smoke tests", () => {
       { holdingAreaStartBeats: 40000 },
     );
 
-    // Should complete successfully, filtering out the non-existent clip
+    // Should complete successfully, filtering out the non-existent clip (id "0")
     expectDuplicateCalled(callState.trackMock);
-    expect(result).toBeDefined();
+    const results = Array.isArray(result) ? result : [result];
+    const resultIds = results.map((r) => r.id);
+
+    expect(resultIds).not.toContain("0");
   });
 });

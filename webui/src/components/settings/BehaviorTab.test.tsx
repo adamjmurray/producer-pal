@@ -5,7 +5,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render } from "@testing-library/preact";
+import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { BehaviorTab } from "./BehaviorTab";
 
@@ -74,18 +74,19 @@ describe("BehaviorTab", () => {
 
   it("calls setShowMessageSettings when checkbox is toggled", () => {
     const mockSetShowMessageSettings = vi.fn();
-    const { container } = render(
+
+    render(
       <BehaviorTab
         {...defaultProps}
         showMessageSettings={false}
         setShowMessageSettings={mockSetShowMessageSettings}
       />,
     );
-    const checkbox = container.querySelector(
-      "#showMessageSettings",
-    ) as HTMLInputElement;
+    const checkbox = screen.getByRole("checkbox", {
+      name: /per-conversation behavior overrides/i,
+    });
 
-    fireEvent.change(checkbox, { target: { checked: true } });
+    fireEvent.click(checkbox);
     expect(mockSetShowMessageSettings).toHaveBeenCalledWith(true);
   });
 });
