@@ -12,7 +12,7 @@ import { type EvaluateExpressionFn } from "./transform-functions.ts";
 import * as waveforms from "./transform-waveforms.ts";
 
 /**
- * Evaluate multiple arguments by index, returning results in order.
+ * Evaluate multiple arguments by index, returning results as a tuple.
  * @param args - All function arguments
  * @param indices - Which argument indices to evaluate
  * @param position - Note position in beats
@@ -21,18 +21,19 @@ import * as waveforms from "./transform-waveforms.ts";
  * @param timeRange - Active time range
  * @param noteProperties - Note properties for variable access
  * @param evaluateExpression - Expression evaluator function
- * @returns Array of evaluated values in the same order as indices
+ * @returns Tuple of evaluated values in the same order as indices
  */
-export function evaluateArgs(
+export function evaluateArgs<T extends number[]>(
   args: ExpressionNode[],
-  indices: number[],
+  indices: [...T],
   position: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
   timeRange: TimeRange,
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
-): number[] {
+): { [K in keyof T]: number } {
+  // Cast is safe: map preserves array length, matching the input tuple
   return indices.map((i) =>
     evaluateExpression(
       args[i] as ExpressionNode,
@@ -42,7 +43,7 @@ export function evaluateArgs(
       timeRange,
       noteProperties,
     ),
-  );
+  ) as { [K in keyof T]: number };
 }
 
 /**
@@ -239,18 +240,13 @@ export function evaluateCurve(
     evaluateExpression,
   );
 
-  if ((exponent as number) <= 0) {
+  if (exponent <= 0) {
     throw new Error(`Function curve() exponent must be > 0, got ${exponent}`);
   }
 
   const phase = computePhase(position, timeRange);
 
-  return waveforms.curve(
-    phase,
-    start as number,
-    end as number,
-    exponent as number,
-  );
+  return waveforms.curve(phase, start, end, exponent);
 }
 
 /**

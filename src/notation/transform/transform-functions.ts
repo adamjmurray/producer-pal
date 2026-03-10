@@ -172,7 +172,7 @@ function evaluateRamp(
   );
   const phase = computePhase(position, timeRange);
 
-  return waveforms.ramp(phase, start as number, end as number);
+  return waveforms.ramp(phase, start, end);
 }
 
 /**
