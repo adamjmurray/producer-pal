@@ -1,12 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Codex (OpenAI)
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
+import {
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+} from "#src/tools/constants.ts";
 import { setupTrackMock } from "./read-track-registry-test-helpers.ts";
 import {
   createDrumChainMock,
@@ -289,6 +292,40 @@ export function setupEmptyRackMocks(): void {
       name: "Empty Chain",
       color: 0,
       deviceIds: [],
+    }),
+  });
+}
+
+/**
+ * Setup track with a drum rack device and a reverb audio effect.
+ * Registers track1 on track(0) with device1 (drum rack) and device2 (reverb).
+ */
+export function setupDrumRackWithReverbMocks(): void {
+  setupTrackMock({
+    trackId: "track1",
+    properties: {
+      devices: children("device1", "device2"),
+    },
+  });
+  registerMockObject("device1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: createRackDeviceMockProperties({
+      name: "My Drums",
+      className: "DrumGroupDevice",
+      classDisplayName: "Drum Rack",
+      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+      canHaveDrumPads: 1,
+    }),
+  });
+  registerMockObject("device2", {
+    path: livePath.track(0).device(1),
+    type: "Device",
+    properties: createDeviceMockProperties({
+      name: "Reverb",
+      className: "Reverb",
+      classDisplayName: "Reverb",
+      type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
     }),
   });
 }

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -96,15 +97,7 @@ describe("readTrack", () => {
     const result = readTrack({ trackIndex: 0 });
 
     expect(result).toStrictEqual({
-      id: "track1",
-      type: "midi",
-      name: "Track 1",
-      trackIndex: 0,
-
-      sessionClipCount: 0,
-      arrangementClipCount: 0,
-      deviceCount: 0,
-      state: "soloed",
+      ...expectedSoloedMidiTrackResult(),
       isArmed: true,
       playingSlotIndex: 2,
       firedSlotIndex: 3,
@@ -162,15 +155,7 @@ describe("readTrack", () => {
     const result = readTrack({ trackIndex: 0 });
 
     expect(result).toStrictEqual({
-      id: "track1",
-      type: "midi",
-      name: "Track 1",
-      trackIndex: 0,
-
-      sessionClipCount: 0,
-      arrangementClipCount: 0,
-      deviceCount: 0,
-      state: "soloed",
+      ...expectedSoloedMidiTrackResult(),
       isGroup: true,
       isGroupMember: true,
       groupId: "456",
@@ -447,3 +432,16 @@ describe("readTrack", () => {
     expect(result.instrument).toBeUndefined();
   });
 });
+
+function expectedSoloedMidiTrackResult(): Record<string, unknown> {
+  return {
+    id: "track1",
+    type: "midi",
+    name: "Track 1",
+    trackIndex: 0,
+    sessionClipCount: 0,
+    arrangementClipCount: 0,
+    deviceCount: 0,
+    state: "soloed",
+  };
+}

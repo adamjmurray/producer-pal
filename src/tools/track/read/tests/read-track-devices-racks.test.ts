@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -60,32 +61,7 @@ describe("readTrack", () => {
       });
     });
     it("combines device name and preset name", () => {
-      setupTrackMock({
-        trackId: "track1",
-        properties: {
-          devices: children("device1", "device2"),
-        },
-      });
-      registerMockObject("device1", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: createDeviceMockProperties({
-          name: "Reverb",
-          className: "Reverb",
-          classDisplayName: "Reverb",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-        }),
-      });
-      registerMockObject("device2", {
-        path: livePath.track(0).device(1),
-        type: "Device",
-        properties: createDeviceMockProperties({
-          name: "My Custom Reverb",
-          className: "Reverb",
-          classDisplayName: "Reverb",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-        }),
-      });
+      setupTwoReverbDeviceMocks();
 
       const result = readTrack({
         trackIndex: 0,
@@ -108,3 +84,32 @@ describe("readTrack", () => {
     });
   });
 });
+
+function setupTwoReverbDeviceMocks(): void {
+  setupTrackMock({
+    trackId: "track1",
+    properties: {
+      devices: children("device1", "device2"),
+    },
+  });
+  registerMockObject("device1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: createDeviceMockProperties({
+      name: "Reverb",
+      className: "Reverb",
+      classDisplayName: "Reverb",
+      type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+    }),
+  });
+  registerMockObject("device2", {
+    path: livePath.track(0).device(1),
+    type: "Device",
+    properties: createDeviceMockProperties({
+      name: "My Custom Reverb",
+      className: "Reverb",
+      classDisplayName: "Reverb",
+      type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+    }),
+  });
+}

@@ -19,11 +19,25 @@ beforeEach(() => {
 });
 
 describe("createPartialTile", () => {
-  it("creates partial tile by combining helper functions", () => {
+  /**
+   * Set up common mocks for createPartialTile tests.
+   * @param opts - Loop and holding clip configuration
+   * @param opts.loopStart - Loop start position
+   * @param opts.loopEnd - Loop end position
+   * @param opts.holdingEndTime - Holding clip end time
+   * @param opts.finalClipProps - Optional properties for final clip
+   * @returns Source clip and track mocks
+   */
+  function setupPartialTileMocks(opts: {
+    loopStart: number;
+    loopEnd: number;
+    holdingEndTime: number;
+    finalClipProps?: Record<string, unknown>;
+  }) {
     const sourceClip = setupArrangementClip("100", 0, {
-      loop_start: 2,
-      loop_end: 10,
-      start_marker: 2,
+      loop_start: opts.loopStart,
+      loop_end: opts.loopEnd,
+      start_marker: opts.loopStart,
     });
     const track = setupTrackWithQueuedMethods(0, {
       duplicate_clip_to_arrangement: [
@@ -34,16 +48,21 @@ describe("createPartialTile", () => {
       delete_clip: [null, null],
     });
 
-    setupClip("200", {
-      properties: {
-        end_time: 1008,
-      },
-    });
-    setupClip("400", {
-      properties: {
-        start_marker: 2,
-        loop_start: 2,
-      },
+    setupClip("200", { properties: { end_time: opts.holdingEndTime } });
+
+    if (opts.finalClipProps) {
+      setupClip("400", { properties: opts.finalClipProps });
+    }
+
+    return { sourceClip, track };
+  }
+
+  it("creates partial tile by combining helper functions", () => {
+    const { sourceClip, track } = setupPartialTileMocks({
+      loopStart: 2,
+      loopEnd: 10,
+      holdingEndTime: 1008,
+      finalClipProps: { start_marker: 2, loop_start: 2 },
     });
 
     const result = createPartialTile(
@@ -60,24 +79,10 @@ describe("createPartialTile", () => {
   });
 
   it("skips pre-roll adjustment when adjustPreRoll is false", () => {
-    const sourceClip = setupArrangementClip("100", 0, {
-      loop_start: 1,
-      loop_end: 11,
-      start_marker: 1,
-    });
-    const track = setupTrackWithQueuedMethods(0, {
-      duplicate_clip_to_arrangement: [
-        ["id", "200"],
-        ["id", "400"],
-      ],
-      create_midi_clip: [["id", "300"]],
-      delete_clip: [null, null],
-    });
-
-    setupClip("200", {
-      properties: {
-        end_time: 1010,
-      },
+    const { sourceClip, track } = setupPartialTileMocks({
+      loopStart: 1,
+      loopEnd: 11,
+      holdingEndTime: 1010,
     });
 
     createPartialTile(
@@ -313,18 +318,7 @@ describe("tileClipToRange", () => {
   });
 
   it("advances content offset correctly with custom tileLength", () => {
-    const sourceClip = setupMidiSourceClip("100", 0);
-    const track = setupTrackWithQueuedMethods(0, {
-      duplicate_clip_to_arrangement: [
-        ["id", "200"],
-        ["id", "201"],
-        ["id", "202"],
-      ],
-    });
-
-    const tile1 = setupTileClip("200");
-    const tile2 = setupTileClip("201");
-    const tile3 = setupTileClip("202");
+    const { sourceClip, track, tiles } = setupThreeTileMocks();
 
     // Use tileLength larger than clip to shift offset through content
     const result = tileClipToRange(
@@ -340,25 +334,14 @@ describe("tileClipToRange", () => {
     // tile0: offset=0, marker = 0+0 = 0
     // tile1: offset=5, marker = 0+(5%4) = 0+1 = 1
     // tile2: offset=10, marker = 0+(10%4) = 0+2 = 2
-    expect(tile1.set).toHaveBeenCalledWith("start_marker", 0);
-    expect(tile2.set).toHaveBeenCalledWith("start_marker", 1);
-    expect(tile3.set).toHaveBeenCalledWith("start_marker", 2);
+    expect(tiles[0]!.set).toHaveBeenCalledWith("start_marker", 0);
+    expect(tiles[1]!.set).toHaveBeenCalledWith("start_marker", 1);
+    expect(tiles[2]!.set).toHaveBeenCalledWith("start_marker", 2);
     expect(result).toHaveLength(3);
   });
 
   it("wraps start_marker correctly when offsetting through multiple loops", () => {
-    const sourceClip = setupMidiSourceClip("100", 0);
-    const track = setupTrackWithQueuedMethods(0, {
-      duplicate_clip_to_arrangement: [
-        ["id", "200"],
-        ["id", "201"],
-        ["id", "202"],
-      ],
-    });
-
-    const tile1 = setupTileClip("200");
-    const tile2 = setupTileClip("201");
-    const tile3 = setupTileClip("202");
+    const { sourceClip, track, tiles } = setupThreeTileMocks();
 
     const result = tileClipToRange(
       sourceClip,
@@ -372,9 +355,32 @@ describe("tileClipToRange", () => {
       },
     );
 
-    expect(tile1.set).toHaveBeenCalledWith("start_marker", 0);
-    expect(tile2.set).toHaveBeenCalledWith("start_marker", 0);
-    expect(tile3.set).toHaveBeenCalledWith("start_marker", 0);
+    expect(tiles[0]!.set).toHaveBeenCalledWith("start_marker", 0);
+    expect(tiles[1]!.set).toHaveBeenCalledWith("start_marker", 0);
+    expect(tiles[2]!.set).toHaveBeenCalledWith("start_marker", 0);
     expect(result).toHaveLength(3);
   });
 });
+
+/**
+ * Set up a MIDI source clip, track, and 3 tile clips for tileClipToRange tests.
+ * @returns Source clip, track, and tile mocks
+ */
+function setupThreeTileMocks() {
+  const sourceClip = setupMidiSourceClip("100", 0);
+  const track = setupTrackWithQueuedMethods(0, {
+    duplicate_clip_to_arrangement: [
+      ["id", "200"],
+      ["id", "201"],
+      ["id", "202"],
+    ],
+  });
+
+  const tiles = [
+    setupTileClip("200"),
+    setupTileClip("201"),
+    setupTileClip("202"),
+  ];
+
+  return { sourceClip, track, tiles };
+}

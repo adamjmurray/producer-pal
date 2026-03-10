@@ -80,6 +80,56 @@ async function sendWithParts(
   return last;
 }
 
+/**
+ * Send a tool-call + tool-error pair and return the final history.
+ * @param error - The error value to use in the tool-error part
+ * @returns Final chat history
+ */
+async function sendToolError(error: unknown): Promise<AiSdkMessage[]> {
+  return await sendWithParts([
+    {
+      type: "tool-call",
+      toolCallId: "tc1",
+      toolName: "ppal-connect",
+      input: {},
+    },
+    {
+      type: "tool-error",
+      toolCallId: "tc1",
+      toolName: "ppal-connect",
+      input: {},
+      error,
+    },
+  ]);
+}
+
+/**
+ * Send a message with pre-seeded chat history using an empty stream.
+ * Returns the streamText call arguments for assertion.
+ * @param chatHistory - Pre-seeded chat history
+ * @param message - User message text
+ * @returns The first call arguments passed to streamText
+ */
+async function sendWithHistory(
+  chatHistory: AiSdkMessage[],
+  message: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper accessing mock internals
+): Promise<Record<string, any>> {
+  async function* empty(): AsyncIterable<Record<string, unknown>> {}
+
+  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+    fullStream: empty(),
+  });
+
+  const client = new AiSdkClient("key", createConfig({ chatHistory }));
+
+  for await (const _ of client.sendMessage(message)) {
+    /* consume */
+  }
+
+  return (streamText as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+}
+
 describe("AiSdkClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -206,62 +256,20 @@ describe("AiSdkClient", () => {
     });
 
     it("processes tool-error stream parts", async () => {
-      const last = await sendWithParts([
-        {
-          type: "tool-call",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-        },
-        {
-          type: "tool-error",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-          error: "Connection failed",
-        },
-      ]);
+      const last = await sendToolError("Connection failed");
 
       expect(last[1]!.toolResults![0]!.isError).toBe(true);
       expect(last[1]!.toolResults![0]!.result).toBe("Connection failed");
     });
 
     it("extracts message from Error objects in tool-error parts", async () => {
-      const last = await sendWithParts([
-        {
-          type: "tool-call",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-        },
-        {
-          type: "tool-error",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-          error: new Error("bar|beat syntax error"),
-        },
-      ]);
+      const last = await sendToolError(new Error("bar|beat syntax error"));
 
       expect(last[1]!.toolResults![0]!.result).toBe("bar|beat syntax error");
     });
 
     it("converts non-string non-Error tool errors to string", async () => {
-      const last = await sendWithParts([
-        {
-          type: "tool-call",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-        },
-        {
-          type: "tool-error",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-          error: 42,
-        },
-      ]);
+      const last = await sendToolError(42);
 
       expect(last[1]!.toolResults![0]!.result).toBe("42");
     });
@@ -332,20 +340,7 @@ describe("AiSdkClient", () => {
         { role: "assistant", content: "Hello!" },
       ];
 
-      async function* empty(): AsyncIterable<Record<string, unknown>> {}
-
-      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: empty(),
-      });
-
-      const client = new AiSdkClient("key", createConfig({ chatHistory }));
-
-      for await (const _ of client.sendMessage("Follow-up")) {
-        /* consume */
-      }
-
-      const callArgs = (streamText as ReturnType<typeof vi.fn>).mock
-        .calls[0]![0];
+      const callArgs = await sendWithHistory(chatHistory, "Follow-up");
 
       // 3 messages: user, assistant (text-only), new user
       expect(callArgs.messages).toHaveLength(3);
@@ -372,23 +367,7 @@ describe("AiSdkClient", () => {
         },
       ];
 
-      async function* empty(): AsyncIterable<Record<string, unknown>> {}
-
-      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: empty(),
-      });
-
-      const client = new AiSdkClient("key", createConfig({ chatHistory }));
-      const results = [];
-
-      for await (const history of client.sendMessage("What happened?")) {
-        results.push(history);
-      }
-
-      // Verifies buildModelMessages handled tool-call history
-      expect(streamText).toHaveBeenCalled();
-      const callArgs = (streamText as ReturnType<typeof vi.fn>).mock
-        .calls[0]![0];
+      const callArgs = await sendWithHistory(chatHistory, "What happened?");
 
       // 4 messages: user, assistant (with tool calls), tool (results), new user
       expect(callArgs.messages).toHaveLength(4);
