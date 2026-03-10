@@ -219,6 +219,11 @@ describe("device-display-helpers", () => {
       expect(normalizePan("64R", 64)).toBe(1);
       expect(normalizePan("32L", 64)).toBe(-0.5);
     });
+
+    it("returns 0 for non-matching label", () => {
+      expect(normalizePan("invalid", 50)).toBe(0);
+      expect(normalizePan("", 50)).toBe(0);
+    });
   });
 
   describe("extractMaxPanValue", () => {
@@ -324,6 +329,15 @@ describe("device-display-helpers", () => {
       valueItems?: string[];
     }
 
+    // Helper to setup mockCall with a value-to-label map for str_for_value
+    const setupValueLabels = (labels: Record<number, string>) => {
+      mockCall.mockImplementation((method: string, value: number) => {
+        if (method === "str_for_value") return labels[value] ?? "";
+
+        return "";
+      });
+    };
+
     // Helper to setup mockCall with a division value map
     const setupDivisionMockCall = (
       divisionMap: Record<string, string | number>,
@@ -394,16 +408,7 @@ describe("device-display-helpers", () => {
 
     it("reads continuous parameter with dB unit", () => {
       setupParamMock({ name: "Volume", value: 0.85 });
-
-      mockCall.mockImplementation((method, value) => {
-        if (method === "str_for_value") {
-          if (value === 0.85) return "0 dB";
-          if (value === 0) return "-inf dB";
-          if (value === 1) return "6 dB";
-        }
-
-        return "";
-      });
+      setupValueLabels({ 0.85: "0 dB", 0: "-inf dB", 1: "6 dB" });
 
       const result = readParameter(createMockParamApi("param_4"));
 
@@ -419,16 +424,7 @@ describe("device-display-helpers", () => {
 
     it("reads pan parameter and normalizes to -1 to 1", () => {
       setupParamMock({ name: "Pan", value: 0.25 });
-
-      mockCall.mockImplementation((method, value) => {
-        if (method === "str_for_value") {
-          if (value === 0.25) return "25L";
-          if (value === 0) return "50L";
-          if (value === 1) return "50R";
-        }
-
-        return "";
-      });
+      setupValueLabels({ 0.25: "25L", 0: "50L", 1: "50R" });
 
       const result = readParameter(createMockParamApi("param_5"));
 
@@ -498,6 +494,80 @@ describe("device-display-helpers", () => {
         value: "1/8",
         options: ["1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1"],
       });
+    });
+
+    it("reads pan parameter at center position", () => {
+      setupParamMock({ name: "Pan", value: 0.5 });
+      setupValueLabels({ 0.5: "C", 0: "50L", 1: "50R" });
+
+      const result = readParameter(createMockParamApi("param_pan_c"));
+
+      expect(result).toStrictEqual({
+        id: "param_pan_c",
+        name: "Pan",
+        value: 0,
+        min: -1,
+        max: 1,
+        unit: "pan",
+      });
+    });
+
+    it("reads continuous parameter with Hz unit", () => {
+      setupParamMock({ name: "Frequency", value: 0.5 });
+      setupValueLabels({ 0.5: "1.00 kHz", 0: "20 Hz", 1: "20.0 kHz" });
+
+      const result = readParameter(createMockParamApi("param_freq"));
+
+      expect(result).toStrictEqual({
+        id: "param_freq",
+        name: "Frequency",
+        value: 1000,
+        min: 20,
+        max: 20000,
+        unit: "Hz",
+      });
+    });
+
+    it("reads parameter with no unit detected", () => {
+      setupParamMock({ name: "Amount", value: 0.5 });
+      setupValueLabels({ 0.5: "50", 0: "0", 1: "100" });
+
+      const result = readParameter(createMockParamApi("param_amt"));
+
+      expect(result).toStrictEqual({
+        id: "param_amt",
+        name: "Amount",
+        value: 50,
+        min: 0,
+        max: 100,
+      });
+    });
+
+    it("reads parameter with unparseable labels using display_value", () => {
+      setupParamMock({ name: "Mode" });
+
+      mockGet.mockImplementation((prop: string) => {
+        if (prop === "name") return ["Mode"];
+        if (prop === "original_name") return ["Mode"];
+        if (prop === "state") return [0];
+        if (prop === "automation_state") return [0];
+        if (prop === "is_quantized") return [0];
+        if (prop === "value") return [0.5];
+        if (prop === "min") return [0];
+        if (prop === "max") return [1];
+        if (prop === "is_enabled") return [1];
+        if (prop === "display_value") return ["Repitch"];
+
+        return [0];
+      });
+
+      mockCall.mockImplementation(() => "Repitch");
+
+      const result = readParameter(createMockParamApi("param_mode"));
+
+      // Value falls back to display_value when label can't be parsed to a number
+      expect(result.name).toBe("Mode");
+      expect(result.value).toBe("Repitch");
     });
 
     it("handles division param detected via minLabel", () => {

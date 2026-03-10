@@ -61,6 +61,23 @@ async function setupHook() {
 }
 
 /**
+ * Set chat history and save the current conversation.
+ * @param state - Mock state object with chatHistory
+ * @param result - Hook result ref with saveCurrentConversation
+ * @param content - Message content (default "hello")
+ */
+async function saveWithMessage(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper with loose typing
+  state: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper with loose typing
+  result: any,
+  content = "hello",
+) {
+  state.chatHistory = [{ role: "user", content }];
+  await act(() => result.current.saveCurrentConversation());
+}
+
+/**
  * Read the conversation ID from the current URL hash.
  * @returns The hash value without the leading #, or empty string
  */
@@ -89,11 +106,7 @@ describe("useConversations", () => {
   it("saves current conversation and updates URL hash", async () => {
     const { state, result } = await setupHook();
 
-    state.chatHistory = [{ role: "user", content: "hello" }];
-
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
+    await saveWithMessage(state, result);
 
     expect(result.current.activeConversationId).not.toBeNull();
     expect(result.current.conversations).toHaveLength(1);
@@ -110,14 +123,9 @@ describe("useConversations", () => {
 
     await waitForEffects();
 
-    state.chatHistory = [{ role: "user", content: "hello" }];
+    await saveWithMessage(state, result);
 
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
-
-    const id = result.current.activeConversationId!;
-    const loaded = await loadConversation(id);
+    const loaded = await loadConversation(result.current.activeConversationId!);
 
     expect(loaded?.model).toBe("gemini-2.5-pro");
     expect(loaded?.provider).toBe("gemini");
@@ -189,12 +197,7 @@ describe("useConversations", () => {
     const { props, state, result } = await setupHook();
 
     // Save a conversation first
-    state.chatHistory = [{ role: "user", content: "hello" }];
-
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
-
+    await saveWithMessage(state, result);
     expect(result.current.activeConversationId).not.toBeNull();
 
     // Start new
@@ -262,12 +265,7 @@ describe("useConversations", () => {
   it("preserves createdAt on subsequent saves", async () => {
     const { state, result } = await setupHook();
 
-    state.chatHistory = [{ role: "user", content: "hello" }];
-
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
-
+    await saveWithMessage(state, result);
     const firstSave = result.current.conversations[0];
 
     // Save again with updated content
@@ -292,12 +290,7 @@ describe("useConversations", () => {
     const { state, result } = await setupHook();
 
     // Create a conversation with history
-    state.chatHistory = [{ role: "user", content: "hello" }];
-
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
-
+    await saveWithMessage(state, result);
     expect(result.current.conversations).toHaveLength(1);
 
     // Start new — should auto-save
@@ -318,12 +311,7 @@ describe("useConversations", () => {
   it("deletes a conversation and removes it from list", async () => {
     const { props, state, result } = await setupHook();
 
-    state.chatHistory = [{ role: "user", content: "hello" }];
-
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
-
+    await saveWithMessage(state, result);
     const savedId = result.current.activeConversationId!;
 
     expect(result.current.conversations).toHaveLength(1);
@@ -382,12 +370,7 @@ describe("useConversations", () => {
   it("renames a conversation and refreshes list", async () => {
     const { state, result } = await setupHook();
 
-    state.chatHistory = [{ role: "user", content: "hello" }];
-
-    await act(async () => {
-      await result.current.saveCurrentConversation();
-    });
-
+    await saveWithMessage(state, result);
     const id = result.current.activeConversationId!;
 
     await act(async () => {
@@ -469,12 +452,7 @@ describe("useConversations", () => {
       const { props, state, result } = await setupHook();
 
       // First create an active conversation
-      state.chatHistory = [{ role: "user", content: "hello" }];
-
-      await act(async () => {
-        await result.current.saveCurrentConversation();
-      });
-
+      await saveWithMessage(state, result);
       expect(result.current.activeConversationId).not.toBeNull();
 
       // Simulate browser back to empty hash
@@ -579,12 +557,7 @@ describe("useConversations", () => {
     it("preserves manually renamed title", async () => {
       const { state, result } = await setupHook();
 
-      state.chatHistory = [{ role: "user", content: "hello" }];
-
-      await act(async () => {
-        await result.current.saveCurrentConversation();
-      });
-
+      await saveWithMessage(state, result);
       const id = result.current.activeConversationId!;
 
       await act(async () => {
@@ -605,16 +578,41 @@ describe("useConversations", () => {
     });
   });
 
+  describe("active ref sync", () => {
+    it("persists thinking/temperature/showThoughts from active refs", async () => {
+      const { props, state } = createProps();
+
+      props.activeThinking = "enabled";
+      props.activeTemperature = 0.7;
+      props.activeShowThoughts = true;
+
+      const { result } = renderHook(() => useConversations(props));
+
+      await waitForEffects();
+      await saveWithMessage(state, result, "ref sync");
+      const record = await loadConversation(
+        result.current.activeConversationId!,
+      );
+
+      expect(record).toMatchObject({
+        thinking: "enabled",
+        temperature: 0.7,
+        showThoughts: true,
+      });
+
+      // Change props to exercise ref-update paths
+      props.activeThinking = "disabled";
+      props.activeTemperature = 1.0;
+      props.activeShowThoughts = false;
+      await waitForEffects();
+    });
+  });
+
   describe("bookmark toggling", () => {
     it("toggles bookmark on a conversation", async () => {
       const { state, result } = await setupHook();
 
-      state.chatHistory = [{ role: "user", content: "hello" }];
-
-      await act(async () => {
-        await result.current.saveCurrentConversation();
-      });
-
+      await saveWithMessage(state, result);
       const id = result.current.activeConversationId!;
 
       expect(result.current.conversations[0]?.bookmarked).toBe(false);

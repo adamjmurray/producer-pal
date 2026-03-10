@@ -826,6 +826,9 @@ describe("MCP Express App", () => {
       expect(handler).toBeDefined();
       handler("test notes");
       handler("");
+      handler("bang"); // treated as empty string
+      handler(null);
+      handler(undefined);
     });
 
     it("should set memoryWritable with various inputs", () => {
@@ -856,6 +859,9 @@ describe("MCP Express App", () => {
       expect(handler).toBeDefined();
       handler("/path/to/samples");
       handler("");
+      handler("bang"); // treated as empty string
+      handler(null);
+      handler(undefined);
     });
   });
 });
