@@ -2,8 +2,9 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import {
   createTestNote,
@@ -508,6 +509,92 @@ probability += -0.2`;
       applyTransforms(notes, "probability += -0.3", 4, 4);
       // When probability is undefined, it defaults to 1.0, so 1.0 + -0.3 = 0.7
       expect(notes[0]!.probability).toBe(0.7);
+    });
+  });
+
+  describe("clip context variables", () => {
+    it("exposes clip:duration variable from clipContext", () => {
+      const notes = createTestNote({ velocity_deviation: 0 });
+
+      applyTransforms(notes, "velocity = clip.duration", 4, 4, {
+        clipDuration: 16,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 4,
+      });
+
+      expect(notes[0]!.velocity).toBe(16);
+    });
+
+    it("exposes clip:position when arrangementStart is set", () => {
+      const notes = createTestNote({ velocity_deviation: 0 });
+
+      applyTransforms(notes, "velocity = clip.position", 4, 4, {
+        clipDuration: 8,
+        clipIndex: 0,
+        clipCount: 1,
+        arrangementStart: 32,
+        barDuration: 4,
+      });
+
+      expect(notes[0]!.velocity).toBe(32);
+    });
+
+    it("exposes clip:index and clip:count variables", () => {
+      const notes = createTestNote({ velocity_deviation: 0 });
+
+      applyTransforms(notes, "velocity = clip.index + clip.count", 4, 4, {
+        clipDuration: 8,
+        clipIndex: 2,
+        clipCount: 5,
+        barDuration: 4,
+      });
+
+      expect(notes[0]!.velocity).toBe(7); // 2 + 5
+    });
+
+    it("exposes clip:barDuration variable", () => {
+      const notes = createTestNote({ velocity_deviation: 0 });
+
+      applyTransforms(notes, "velocity = clip.barDuration * 10", 3, 4, {
+        clipDuration: 12,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 3,
+      });
+
+      expect(notes[0]!.velocity).toBe(30);
+    });
+
+    it("uses scalePitchClassMask from clipContext via quant()", () => {
+      const notes = createTestNotes([
+        { start_time: 0, velocity: 100, pitch: 61 },
+      ]);
+
+      applyTransforms(notes, "pitch = quant(61)", 4, 4, {
+        clipDuration: 4,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 4,
+        scalePitchClassMask: 2741, // C Major
+      });
+
+      // C# (61) quantized to D (62) in C Major
+      expect(notes[0]!.pitch).toBe(62);
+    });
+
+    it("warns about audio parameters for MIDI clips", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const notes = createTestNote();
+
+      applyTransforms(notes, "gain = 0.5", 4, 4);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        "Audio parameters (gain, pitchShift) ignored for MIDI clips",
+      );
+      // Audio params should be skipped, velocity should be unchanged
+      expect(notes[0]!.velocity).toBe(100);
+      warnSpy.mockRestore();
     });
   });
 

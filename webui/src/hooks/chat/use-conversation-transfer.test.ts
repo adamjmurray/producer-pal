@@ -258,6 +258,71 @@ describe("useConversationTransfer", () => {
     expect(result.current.notification?.type).toBe("success");
   });
 
+  it("import shows only new count (no updates/skips)", async () => {
+    const file = new File(
+      [
+        JSON.stringify({
+          version: 1,
+          conversations: [makeRecord("n1"), makeRecord("n2")],
+        }),
+      ],
+      "t.json",
+    );
+    const { settled } = mockFileInput(file);
+    const { result } = renderHook(() => useConversationTransfer(refreshList));
+
+    await act(async () => {
+      await result.current.handleImport();
+      await settled;
+    });
+    expect(result.current.notification?.message).toContain("2 new");
+    expect(result.current.notification?.message).not.toContain("skipped");
+  });
+
+  it("import shows only skipped count when all invalid", async () => {
+    vi.spyOn(transferModule, "importConversations").mockResolvedValue({
+      newCount: 0,
+      updatedCount: 0,
+      skippedCount: 3,
+    });
+    const file = new File(
+      [JSON.stringify({ version: 1, conversations: [] })],
+      "t.json",
+    );
+    const { settled } = mockFileInput(file);
+    const { result } = renderHook(() => useConversationTransfer(refreshList));
+
+    await act(async () => {
+      await result.current.handleImport();
+      await settled;
+    });
+    expect(result.current.notification?.message).toContain("3 skipped");
+  });
+
+  it("dismissNotification clears auto-dismiss timer", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.spyOn(transferModule, "exportConversations").mockResolvedValue({
+      json: "[]",
+      count: 1,
+    });
+    mockDownloadApis();
+    const { result } = renderHook(() => useConversationTransfer(refreshList));
+
+    await act(async () => {
+      await result.current.handleExport();
+    });
+    expect(result.current.notification).not.toBeNull();
+    void act(() => {
+      result.current.dismissNotification();
+    });
+    expect(result.current.notification).toBeNull();
+    await act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(result.current.notification).toBeNull();
+    vi.useRealTimers();
+  });
+
   it("import shows updated and skipped counts in detail", async () => {
     // Pre-save a record so it counts as "updated" on import
     const existing = makeRecord("existing-1");
