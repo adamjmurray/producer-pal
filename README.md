@@ -7,7 +7,7 @@ Ollama, and more.
 
 <p align="center"><b>📖 <a href="https://producer-pal.org">producer-pal.org</a></b></p>
 
-<img src="./assets/image/screenshot.png" alt="Producer Pal Screenshot" width="1000">
+<a href="https://producer-pal.org"><img src="./assets/image/screenshot.png" alt="Producer Pal Screenshot" width="1000"></a>
 
 ## Quick Start
 
