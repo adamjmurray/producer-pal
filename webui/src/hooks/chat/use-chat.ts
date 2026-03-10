@@ -52,6 +52,7 @@ export function useChat<
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
   const active = useActiveSettings();
+  const { lockSettings, restoreSettings, clearSettings } = active;
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
     null,
   );
@@ -71,10 +72,10 @@ export function useChat<
     setMessages([]);
     clientRef.current = null;
     pendingHistoryRef.current = null;
-    active.clearSettings();
+    clearSettings();
     setRateLimitState(null);
     retryAbortRef.current?.abort();
-  }, [active]);
+  }, [clearSettings]);
 
   const getChatHistory = useCallback(
     (): unknown[] =>
@@ -87,10 +88,10 @@ export function useChat<
       clientRef.current = null;
       pendingHistoryRef.current = chatHistory as TMessage[];
       setMessages(adapter.formatMessages(chatHistory as TMessage[]));
-      active.restoreSettings(lockedSettings);
+      restoreSettings(lockedSettings);
       setRateLimitState(null);
     },
-    [adapter, active],
+    [adapter, restoreSettings],
   );
 
   const stopResponse = useCallback(() => {
@@ -118,7 +119,7 @@ export function useChat<
 
       clientRef.current = adapter.createClient(apiKey, config);
       await clientRef.current.initialize();
-      active.lockSettings(
+      lockSettings(
         model,
         provider,
         effectiveThinking,
@@ -140,7 +141,7 @@ export function useChat<
       apiKey,
       adapter,
       extraParams,
-      active,
+      lockSettings,
     ],
   );
 
