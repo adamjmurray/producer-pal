@@ -42,13 +42,15 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "clip name (comma-separated when creating multiple, indexed: session positions first, then arrangement)",
+        "name for all, or comma-separated for each (indexed: session positions first, then arrangement)",
       ),
 
     color: z
       .string()
       .optional()
-      .describe("#RRGGBB (comma-separated when creating multiple, cycles)"),
+      .describe(
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than positions)",
+      ),
 
     timeSignature: z
       .string()

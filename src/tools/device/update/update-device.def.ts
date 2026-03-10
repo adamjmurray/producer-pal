@@ -34,7 +34,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe(
-        "display name (comma-separated when updating multiple, not drum pads)",
+        "name for all, or comma-separated for each (extras keep existing name, not drum pads)",
       ),
     // Kept for potential future use
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
@@ -78,7 +78,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe(
-        "#RRGGBB (comma-separated when updating multiple, cycles; chains only)",
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids; chains only)",
       ),
     chokeGroup: z.coerce
       .number()

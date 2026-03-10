@@ -21,12 +21,14 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       .string()
       .optional()
       .describe(
-        "name (comma-separated when updating multiple), ideally unique",
+        "name for all, or comma-separated for each (extras keep existing name), ideally unique",
       ),
     color: z
       .string()
       .optional()
-      .describe("#RRGGBB (comma-separated when updating multiple, cycles)"),
+      .describe(
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids)",
+      ),
     gainDb: z.coerce
       .number()
       .min(-70)

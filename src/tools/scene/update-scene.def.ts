@@ -17,11 +17,15 @@ export const toolDefUpdateScene = defineTool("ppal-update-scene", {
     name: z
       .string()
       .optional()
-      .describe("name (comma-separated when updating multiple)"),
+      .describe(
+        "name for all, or comma-separated for each (extras keep existing name)",
+      ),
     color: z
       .string()
       .optional()
-      .describe("#RRGGBB (comma-separated when updating multiple, cycles)"),
+      .describe(
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids)",
+      ),
     tempo: z.coerce.number().optional().describe("BPM (-1 disables)"),
     timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
   },

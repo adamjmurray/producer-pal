@@ -34,11 +34,13 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
     name: z
       .string()
       .optional()
-      .describe("name (comma-separated when creating multiple)"),
+      .describe("name for all, or comma-separated for each"),
     color: z
       .string()
       .optional()
-      .describe("#RRGGBB (comma-separated when creating multiple, cycles)"),
+      .describe(
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than count)",
+      ),
     tempo: z.coerce
       .number()
       .optional()

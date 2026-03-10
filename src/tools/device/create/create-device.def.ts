@@ -27,7 +27,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     name: z
       .string()
       .optional()
-      .describe("display name (comma-separated when creating multiple)"),
+      .describe("name for all, or comma-separated for each"),
   },
 
   smallModelModeConfig: {

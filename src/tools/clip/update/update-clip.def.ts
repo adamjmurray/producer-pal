@@ -21,11 +21,15 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     name: z
       .string()
       .optional()
-      .describe("clip name (comma-separated when updating multiple)"),
+      .describe(
+        "name for all, or comma-separated for each (extras keep existing name)",
+      ),
     color: z
       .string()
       .optional()
-      .describe("#RRGGBB (comma-separated when updating multiple, cycles)"),
+      .describe(
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids)",
+      ),
     timeSignature: z.string().optional().describe("N/D (4/4)"),
 
     // Clip region and loop settings

@@ -53,7 +53,7 @@ function validateDeviceName(deviceName: string): void {
  * @param args - The device parameters
  * @param args.deviceName - Device name, omit to list available devices
  * @param args.path - Device path(s), comma-separated for multiple (required when deviceName provided)
- * @param args.name - Display name (comma-separated when creating multiple)
+ * @param args.name - Name for all, or comma-separated for each
  * @param args.focus - Select the device and show device detail view
  * @param _context - Internal context object (unused)
  * @returns Device list, or object(s) with deviceId and deviceIndex
