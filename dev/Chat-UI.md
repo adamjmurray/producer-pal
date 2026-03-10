@@ -164,7 +164,8 @@ save, load, switch, rename, delete, and auto-titling.
 
 **Storage**: IndexedDB via `idb` library. Database:
 `producer-pal-conversations`, single `conversations` object store with
-`updatedAt` index.
+`updatedAt` index. Max 200 conversations (`MAX_CONVERSATIONS`); oldest
+non-bookmarked conversations are auto-deleted on save when the limit is reached.
 
 **Schema** (`lib/conversation-db.ts`):
 
@@ -174,6 +175,10 @@ interface ConversationRecord {
   title: string | null; // null = auto-derived from first user message
   createdAt: number; // Date.now()
   updatedAt: number; // Date.now() at last save
+  bookmarked: boolean; // protected from auto-deletion
+  provider: string | null; // AI provider (e.g., "anthropic")
+  model: string | null; // model ID
+  modelLabel: string | null; // display name
   messages: AiSdkMessage[]; // full history including toolCalls, toolResults, reasoning
 }
 ```
@@ -183,6 +188,7 @@ interface ConversationRecord {
 | File                                    | Purpose                                                                       |
 | --------------------------------------- | ----------------------------------------------------------------------------- |
 | `lib/conversation-db.ts`                | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
+| `lib/conversation-db-helpers.ts`        | DB open/upgrade, version mismatch handling, JSON export                       |
 | `hooks/chat/use-conversations.ts`       | Orchestration hook (save/load/switch/new/delete/rename)                       |
 | `components/chat/ConversationPanel.tsx` | Slide-out sidebar panel with inline rename                                    |
 
