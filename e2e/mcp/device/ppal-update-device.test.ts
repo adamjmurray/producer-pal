@@ -79,7 +79,7 @@ describe("ppal-update-device", () => {
       name: "ppal-update-device",
       arguments: {
         ids: deviceId,
-        params: JSON.stringify({ [ratioParam!.name]: newRatio }),
+        params: `${ratioParam!.name} = ${newRatio}`,
       },
     });
 

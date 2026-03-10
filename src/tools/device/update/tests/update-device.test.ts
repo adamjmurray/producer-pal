@@ -126,7 +126,7 @@ describe("updateDevice", () => {
     it("should set display_value for numeric params", () => {
       const result = updateDevice({
         ids: "123",
-        params: '{"789": 1000}',
+        params: "789 = 1000",
       });
 
       expect(param789.set).toHaveBeenCalledWith("display_value", 1000);
@@ -136,7 +136,7 @@ describe("updateDevice", () => {
     it("should set multiple param values", () => {
       const result = updateDevice({
         ids: "123",
-        params: '{"789": 500, "790": 1000}',
+        params: "789 = 500\n790 = 1000",
       });
 
       expect(param789.set).toHaveBeenCalledWith("display_value", 500);
@@ -149,7 +149,7 @@ describe("updateDevice", () => {
 
       const result = updateDevice({
         ids: "123",
-        params: '{"999": 0.5}',
+        params: "999 = 0.5",
       });
 
       expect(outlet).toHaveBeenCalledWith(
@@ -159,13 +159,17 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123" });
     });
 
-    it("should throw error for invalid JSON in params", () => {
-      expect(() =>
-        updateDevice({
-          ids: "123",
-          params: "not valid json",
-        }),
-      ).toThrow();
+    it("should warn and skip lines without =", () => {
+      const result = updateDevice({
+        ids: "123",
+        params: "not valid format",
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'updateDevice: skipping line without "=": not valid format',
+      );
+      expect(result).toStrictEqual({ id: "123" });
     });
   });
 
@@ -184,7 +188,7 @@ describe("updateDevice", () => {
     it("should convert string value to index for quantized param", () => {
       const result = updateDevice({
         ids: "123",
-        params: '{"791": "Fade"}',
+        params: "791 = Fade",
       });
 
       expect(param791.set).toHaveBeenCalledWith("value", 1);
@@ -194,7 +198,7 @@ describe("updateDevice", () => {
     it("should log error for invalid enum value", () => {
       const result = updateDevice({
         ids: "123",
-        params: '{"791": "InvalidValue"}',
+        params: "791 = InvalidValue",
       });
 
       expect(outlet).toHaveBeenCalledWith(
@@ -219,7 +223,7 @@ describe("updateDevice", () => {
     it("should convert note name to MIDI number (Live convention: C3=60)", () => {
       const result = updateDevice({
         ids: "123",
-        params: '{"789": "C3"}',
+        params: "789 = C3",
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 60);
@@ -229,7 +233,7 @@ describe("updateDevice", () => {
     it("should handle sharps and flats", () => {
       updateDevice({
         ids: "123",
-        params: '{"789": "F#-1"}',
+        params: "789 = F#-1",
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 18);
@@ -249,7 +253,7 @@ describe("updateDevice", () => {
     it("should convert -1 to 1 range to internal range for pan", () => {
       const result = updateDevice({
         ids: "123",
-        params: '{"792": -0.5}',
+        params: "792 = -0.5",
       });
 
       // -0.5 → internal: ((-0.5 + 1) / 2) * (1 - 0) + 0 = 0.25
@@ -260,7 +264,7 @@ describe("updateDevice", () => {
     it("should handle full left pan", () => {
       updateDevice({
         ids: "123",
-        params: '{"792": -1}',
+        params: "792 = -1",
       });
 
       // -1 → internal: 0
@@ -270,7 +274,7 @@ describe("updateDevice", () => {
     it("should handle full right pan", () => {
       updateDevice({
         ids: "123",
-        params: '{"792": 1}',
+        params: "792 = 1",
       });
 
       // 1 → internal: 1
@@ -317,25 +321,25 @@ describe("updateDevice", () => {
     });
 
     it("should resolve param by exact name", () => {
-      updateDevice({ ids: "123", params: '{"Filter Freq": 1000}' });
+      updateDevice({ ids: "123", params: "Filter Freq = 1000" });
 
       expect(paramFreq.set).toHaveBeenCalledWith("display_value", 1000);
     });
 
     it("should resolve param by name case-insensitively", () => {
-      updateDevice({ ids: "123", params: '{"filter freq": 1000}' });
+      updateDevice({ ids: "123", params: "filter freq = 1000" });
 
       expect(paramFreq.set).toHaveBeenCalledWith("display_value", 1000);
     });
 
     it("should resolve rack macro by raw name", () => {
-      updateDevice({ ids: "123", params: '{"Reverb": 0.8}' });
+      updateDevice({ ids: "123", params: "Reverb = 0.8" });
 
       expect(paramMacro.set).toHaveBeenCalledWith("display_value", 0.8);
     });
 
     it("should resolve rack macro by formatted name", () => {
-      updateDevice({ ids: "123", params: '{"Reverb (Macro 1)": 0.8}' });
+      updateDevice({ ids: "123", params: "Reverb (Macro 1) = 0.8" });
 
       expect(paramMacro.set).toHaveBeenCalledWith("display_value", 0.8);
     });
@@ -343,7 +347,7 @@ describe("updateDevice", () => {
     it("should resolve multiple params by name", () => {
       updateDevice({
         ids: "123",
-        params: '{"Filter Freq": 1000, "Reverb": 0.8}',
+        params: "Filter Freq = 1000\nReverb = 0.8",
       });
 
       expect(paramFreq.set).toHaveBeenCalledWith("display_value", 1000);
@@ -351,7 +355,7 @@ describe("updateDevice", () => {
     });
 
     it("should warn for unresolvable non-integer key", () => {
-      updateDevice({ ids: "123", params: '{"Nonexistent": 0.5}' });
+      updateDevice({ ids: "123", params: "Nonexistent = 0.5" });
 
       expect(outlet).toHaveBeenCalledWith(
         1,

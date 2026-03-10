@@ -509,7 +509,7 @@ describe("updateDevice with path parameter", () => {
     it("should update params on multiple devices using param names", () => {
       const result = updateDevice({
         path: "t0/d0, t1/d0",
-        params: '{"Filter Freq": 1000}',
+        params: "Filter Freq = 1000",
       });
 
       expect(param100.set).toHaveBeenCalledWith("display_value", 1000);

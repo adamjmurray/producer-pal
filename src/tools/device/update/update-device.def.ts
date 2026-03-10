@@ -42,7 +42,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe(
-        'JSON: {"paramName": value}. Values in display units: enum string, note name, pan -1 to 1, or number',
+        "name=value per line (display units: enum string, note name, number)",
       ),
     macroVariation: z
       .enum(["create", "load", "delete", "revert", "randomize"])
@@ -111,6 +111,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       path: "device path like 't0/d0' (track 0, device 0)",
       toPath: "destination path to move device to",
       name: "display name (not drum pads)",
+      params: "name=value per line",
       color: "#RRGGBB (chains only)",
     },
   },

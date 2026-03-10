@@ -11,6 +11,7 @@ import {
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
+import { parseParamLines } from "./update-device-param-parser.ts";
 
 // ============================================================================
 // Device move helpers
@@ -113,14 +114,14 @@ export function moveDrumChainToPath(
 // ============================================================================
 
 /**
- * Set parameter values from JSON string
+ * Set parameter values from name=value lines
  * @param device - LiveAPI device object to update
- * @param paramsJson - JSON object mapping param names to values
+ * @param paramsInput - Multiline name=value string
  */
-export function setParamValues(device: LiveAPI, paramsJson: string): void {
-  const paramValues = JSON.parse(paramsJson) as Record<string, string | number>;
+export function setParamValues(device: LiveAPI, paramsInput: string): void {
+  const paramEntries = parseParamLines(paramsInput);
 
-  for (const [key, inputValue] of Object.entries(paramValues)) {
+  for (const [key, inputValue] of paramEntries) {
     const param =
       resolveParamByName(device, key) ??
       (/^\d+$/.test(key) ? resolveParamForDevice(device, key) : null);
