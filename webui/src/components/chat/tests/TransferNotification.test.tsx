@@ -41,6 +41,21 @@ describe("TransferNotification", () => {
     expect(banner.className).toContain("bg-red-50");
   });
 
+  it("renders warning notification with amber styling", () => {
+    render(
+      <TransferNotification
+        notification={{ message: "Some items skipped", type: "warning" }}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Some items skipped")).toBeDefined();
+
+    const banner = screen.getByRole("status");
+
+    expect(banner.className).toContain("bg-amber-50");
+  });
+
   it("calls onDismiss when dismiss button is clicked", () => {
     const onDismiss = vi.fn();
 

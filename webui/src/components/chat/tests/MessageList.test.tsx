@@ -507,4 +507,28 @@ describe("MessageList", () => {
       expect(screen.getByText("Still thinking...")).toBeDefined();
     });
   });
+
+  describe("ModelMismatchLabel", () => {
+    it("shows mismatch label when response model differs from requested", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          responseModel: "gpt-4o-mini-2024-07-18",
+        },
+      ];
+
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          showTimestamps={false}
+          requestedModel="gpt-4o"
+        />,
+      );
+
+      expect(screen.getByText(/responded as gpt-4o-mini/)).toBeDefined();
+    });
+  });
 });
