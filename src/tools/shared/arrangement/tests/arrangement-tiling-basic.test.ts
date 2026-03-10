@@ -88,13 +88,11 @@ describe("createShortenedClipInHolding", () => {
    * Set up standard mocks for a shortening test.
    * @param opts - Shortening configuration
    * @param opts.loopEnd - Loop end position
-   * @param opts.holdingOffset - Holding area offset
    * @param opts.holdingEndTime - Holding clip end time
    * @returns Source clip and track mocks
    */
   function setupShorteningMocks(opts: {
     loopEnd: number;
-    holdingOffset: number;
     holdingEndTime: number;
   }) {
     const sourceClip = setupArrangementClip("100", 0, {
@@ -117,7 +115,6 @@ describe("createShortenedClipInHolding", () => {
   it("duplicates clip to holding area and shortens to target length", () => {
     const { sourceClip, track } = setupShorteningMocks({
       loopEnd: 16,
-      holdingOffset: 1000,
       holdingEndTime: 1016,
     });
 
@@ -148,7 +145,6 @@ describe("createShortenedClipInHolding", () => {
   it("calculates temp clip length correctly for different target lengths", () => {
     const { sourceClip, track } = setupShorteningMocks({
       loopEnd: 32,
-      holdingOffset: 2000,
       holdingEndTime: 2032,
     });
 

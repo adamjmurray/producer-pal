@@ -107,7 +107,7 @@ describe("clearClipAtDuplicateTarget", () => {
   it("does nothing when no arrangement clip overlaps target range", () => {
     // Source: 4 beats long (start_time=8, end_time=12), target position=0
     // Target range: 0 to 4. Existing clip at 16-20 doesn't overlap.
-    const trackMock = setupClearTargetNoOp({
+    const trackMock = runClearTargetExpectingNoOp({
       sourceStart: 8,
       sourceEnd: 12,
       existingStart: 16,
@@ -268,7 +268,7 @@ describe("clearClipAtDuplicateTarget", () => {
   it("does nothing when workaround is disabled", () => {
     setArrangementDuplicateCrashWorkaround(false);
 
-    const trackMock = setupClearTargetNoOp({
+    const trackMock = runClearTargetExpectingNoOp({
       sourceStart: 0,
       sourceEnd: 4,
       existingStart: 0,
@@ -382,7 +382,7 @@ describe("clearClipAtDuplicateTarget", () => {
  * @param opts.targetPosition - Target position for duplicate
  * @returns The track mock for assertion
  */
-function setupClearTargetNoOp(opts: {
+function runClearTargetExpectingNoOp(opts: {
   sourceStart: number;
   sourceEnd: number;
   existingStart: number;
