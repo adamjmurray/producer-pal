@@ -53,11 +53,11 @@ function ExpandedPanel({
   onResetToDefaults,
 }: ExpandedPanelProps) {
   return (
-    <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 flex flex-col gap-3">
+    <div className="px-4 py-3 bg-stone-50 dark:bg-stone-800 flex flex-col gap-3">
       <div className="flex gap-4 items-center">
         {/* Thinking dropdown */}
         <div className="flex-1">
-          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+          <label className="block text-xs text-stone-600 dark:text-stone-400 mb-1">
             Thinking
           </label>
           <select
@@ -65,7 +65,7 @@ function ExpandedPanel({
             onChange={(e) =>
               onThinkingChange((e.target as HTMLSelectElement).value)
             }
-            className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+            className="w-full px-2 py-1 text-sm bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-600 rounded"
           >
             {!showSimplifiedOptions && <option value="Default">Default</option>}
             {!showSimplifiedOptions && <option value="Off">Off</option>}
@@ -79,7 +79,7 @@ function ExpandedPanel({
 
         {/* Randomness slider */}
         <div className="flex-1">
-          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+          <label className="block text-xs text-stone-600 dark:text-stone-400 mb-1">
             Randomness: {randomnessPercent}%
           </label>
           <input
@@ -123,14 +123,14 @@ function ExpandedPanel({
           />
           <label
             htmlFor="messageShowThoughts"
-            className="text-sm text-gray-600 dark:text-gray-400"
+            className="text-sm text-stone-600 dark:text-stone-400"
           >
             Show thinking process
           </label>
         </div>
       )}
 
-      <p className="text-xs text-gray-500 dark:text-gray-500">
+      <p className="text-xs text-stone-500 dark:text-stone-500">
         These settings apply only to your next message. Change defaults in
         Settings → Behavior.
       </p>
@@ -185,13 +185,13 @@ export function MessageSettingsToolbar({
     showThoughts === defaultShowThoughts;
 
   return (
-    <div className="border-b border-gray-300 dark:border-gray-700">
+    <div className="border-b border-stone-300 dark:border-stone-700">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        className="w-full px-4 py-2 flex items-center justify-between hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors"
         type="button"
       >
-        <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1.5">
+        <span className="text-sm text-stone-600 dark:text-stone-400 flex items-center gap-1.5">
           <span
             className={`transition-transform ${isExpanded ? "rotate-90" : ""}`}
           >
@@ -200,7 +200,7 @@ export function MessageSettingsToolbar({
           Behavior settings
           {!isUsingDefaults && " (customized)"}
         </span>
-        <span className="text-xs text-gray-500 dark:text-gray-500">
+        <span className="text-xs text-stone-500 dark:text-stone-500">
           Thinking: {thinking} • {randomnessPercent}% random
         </span>
       </button>

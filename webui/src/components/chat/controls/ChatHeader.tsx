@@ -21,10 +21,10 @@ import { ToolsIndicator } from "./header/ToolsIndicator";
 import { VersionDisplay } from "./header/VersionDisplay";
 
 const iconBtn =
-  "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors";
+  "p-1 rounded hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-600 dark:text-stone-300 transition-colors";
 
 const helpBtn =
-  "inline-flex items-center justify-center w-5 h-5 text-xs font-semibold leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-gray-200 hover:text-white dark:hover:border-gray-300 dark:hover:text-white no-underline shrink-0";
+  "inline-flex items-center justify-center w-5 h-5 text-xs font-semibold leading-none rounded-full border border-stone-400 dark:border-stone-500 text-stone-500 dark:text-stone-400 hover:border-stone-200 hover:text-white dark:hover:border-stone-300 dark:hover:text-white no-underline shrink-0";
 
 interface ChatHeaderProps {
   mcpStatus: McpStatus;
@@ -85,7 +85,7 @@ export function ChatHeader({
   onToggleBookmark,
 }: ChatHeaderProps) {
   return (
-    <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center gap-2">
+    <header className="bg-stone-200 dark:bg-stone-800 px-4 py-2 border-b border-stone-400 dark:border-stone-700 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.15)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.4)] flex items-center gap-2 relative z-20">
       <div className="flex items-center gap-0.75 -ml-2">
         <button
           onClick={onToggleHistory}
@@ -141,7 +141,7 @@ export function ChatHeader({
       </div>
 
       <div className="ml-auto flex gap-2 sm:gap-3 items-center">
-        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap truncate min-w-0 max-w-28 sm:max-w-48 md:max-w-none">
+        <span className="text-xs text-stone-500 dark:text-stone-400 whitespace-nowrap truncate min-w-0 max-w-28 sm:max-w-48 md:max-w-none">
           <span className="hidden sm:inline">
             {getProviderName(activeProvider ?? provider)} |{" "}
           </span>

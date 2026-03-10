@@ -24,7 +24,7 @@ export function SettingsFooter({
   return (
     <>
       {!settingsConfigured && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-6">
+        <p className="text-xs text-stone-500 dark:text-stone-400 mt-6">
           Settings will be stored in this web browser.
         </p>
       )}
@@ -33,14 +33,14 @@ export function SettingsFooter({
         {settingsConfigured && (
           <button
             onClick={cancelSettings}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded"
+            className="px-4 py-2 rounded-lg border border-stone-300 dark:border-stone-600 bg-stone-200 dark:bg-stone-600 hover:bg-stone-300 dark:hover:bg-stone-700"
           >
             Cancel
           </button>
         )}
         <button
           onClick={saveSettings}
-          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded disabled:opacity-50"
+          className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg disabled:opacity-50"
         >
           Save
         </button>

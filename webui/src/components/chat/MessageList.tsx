@@ -94,8 +94,8 @@ export function MessageList({
             <div
               className={`${
                 isUser
-                  ? "text-black bg-blue-100 dark:text-white dark:bg-blue-900"
-                  : "col-span-2 bg-gray-100 dark:bg-gray-800"
+                  ? "text-black bg-blue-100 dark:text-white dark:bg-blue-900/80 shadow-sm dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)]"
+                  : "col-span-2 bg-stone-50 dark:bg-stone-800 shadow-sm dark:shadow-[0_1px_4px_rgba(0,0,0,0.3)]"
               } min-w-0 rounded-lg py-0.5 px-3`}
               data-testid={isUser ? undefined : "assistant-message-bubble"}
             >
@@ -212,7 +212,7 @@ function RightGutter({
 function renderTimestamp(timestamp: number, visible: boolean) {
   return (
     <div
-      className={`text-[9px] leading-tight text-gray-300 dark:text-gray-600 whitespace-nowrap ${visible ? "" : "invisible"}`}
+      className={`text-[9px] leading-tight text-stone-400 dark:text-stone-600 whitespace-nowrap ${visible ? "" : "invisible"}`}
       data-testid="message-timestamp"
     >
       <div>{formatTimestampDate(timestamp)}</div>
@@ -274,7 +274,7 @@ function StreamingFooter({
   return (
     <>
       {showStillThinking && (
-        <div className="col-span-3 text-center text-sm text-gray-400 animate-pulse">
+        <div className="col-span-3 text-center text-sm text-stone-400 animate-pulse">
           Still thinking...
         </div>
       )}

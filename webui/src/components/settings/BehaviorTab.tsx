@@ -50,7 +50,7 @@ export function BehaviorTab({
         <button
           type="button"
           onClick={resetBehaviorToDefaults}
-          className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+          className="px-3 py-1 text-xs bg-stone-600 text-white rounded hover:bg-stone-700"
         >
           Reset to defaults
         </button>
@@ -71,7 +71,7 @@ export function BehaviorTab({
             setTemperature={setTemperature}
           />
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-300 dark:border-gray-600">
+        <p className="text-xs text-stone-500 dark:text-stone-400 pt-2 border-t border-stone-300 dark:border-stone-600">
           These are default values for new conversations. You can adjust
           thinking and randomness for individual messages during chat.
         </p>

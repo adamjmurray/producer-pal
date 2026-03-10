@@ -41,7 +41,7 @@ export function AssistantToolCall({
 
   return (
     <details
-      className={`disclosure text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded ${
+      className={`disclosure text-xs p-2 font-mono bg-stone-200/70 dark:bg-stone-900 rounded-lg ${
         result ? "" : "animate-pulse"
       } ${effectiveIsError ? "border-l-3 border-red-500" : hasWarnings ? "border-l-3 border-yellow-500" : ""}`}
     >
@@ -71,15 +71,15 @@ export function AssistantToolCall({
           </span>
         )}
       </summary>
-      <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
+      <div className="mt-1 p-1 break-all text-stone-500 dark:text-stone-500">
         {name}({JSON.stringify(args, null, 0)})
       </div>
       {result && (
         <details className="disclosure">
-          <summary className="px-2 my-1 truncate text-gray-600 dark:text-gray-400 flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+          <summary className="px-2 my-1 truncate text-stone-600 dark:text-stone-400 flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
             <DisclosureChevron />↳ {truncateString(result, 300)}
           </summary>
-          <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
+          <div className="mt-1 p-1 break-all text-stone-500 dark:text-stone-500">
             <FullResultDetails result={result} />
           </div>
         </details>

@@ -141,7 +141,7 @@ export function ChatScreen({
     : undefined;
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-stone-100 dark:bg-stone-950">
       <ChatHeader
         mcpStatus={mcpStatus}
         activeModel={activeModel}

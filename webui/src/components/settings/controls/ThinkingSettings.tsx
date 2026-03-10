@@ -53,7 +53,7 @@ export function ThinkingSettings({
         <select
           value={thinking}
           onChange={(e) => setThinking((e.target as HTMLSelectElement).value)}
-          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+          className="w-full px-3 py-2 bg-white dark:bg-stone-700 border border-stone-300 dark:border-stone-600 rounded"
         >
           <option value="Default">Default</option>
           <option value="Off">Off</option>

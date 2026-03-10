@@ -38,7 +38,7 @@ export function ToolToggles({
         <label className="block text-sm font-medium mb-3">
           Available Tools
         </label>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-stone-500">
           {mcpStatus === "error"
             ? "Tools cannot be loaded"
             : "Loading tools..."}
@@ -94,7 +94,7 @@ export function ToolToggles({
           <button
             type="button"
             onClick={disableAllTools}
-            className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+            className="px-3 py-1 text-xs bg-stone-600 text-white rounded hover:bg-stone-700"
           >
             Disable all
           </button>
@@ -133,7 +133,7 @@ function ToolGroupSection({
 }: ToolGroupSectionProps) {
   return (
     <div>
-      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+      <h4 className="text-xs font-semibold text-stone-400 uppercase tracking-wide mb-1">
         {group.label}
       </h4>
       <div className="space-y-1">

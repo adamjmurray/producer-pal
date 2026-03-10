@@ -17,7 +17,7 @@ export function EditButton({ onClick }: EditButtonProps) {
   return (
     <button
       onClick={onClick}
-      className="justify-self-start text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm px-1 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
+      className="justify-self-start text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 text-sm px-1 py-1 rounded hover:bg-stone-200 dark:hover:bg-stone-700"
       title="Edit message"
     >
       ✎

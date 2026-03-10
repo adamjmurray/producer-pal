@@ -49,7 +49,7 @@ export function UserMessageEditor({
     <div className="py-1">
       <textarea
         ref={textareaRef}
-        className="w-full px-2 py-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded resize-none text-sm"
+        className="w-full px-2 py-1 bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-600 rounded resize-none text-sm"
         value={text}
         onInput={(e) => onTextChange((e.target as HTMLTextAreaElement).value)}
         onKeyDown={handleKeyDown}
@@ -59,14 +59,14 @@ export function UserMessageEditor({
       <div className="flex gap-2 mt-1 justify-end">
         <button
           onClick={onCancel}
-          className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"
+          className="px-3 py-1 text-sm rounded-lg border border-stone-300 dark:border-stone-600 bg-stone-100 dark:bg-stone-600 hover:bg-stone-200 dark:hover:bg-stone-700"
         >
           Cancel
         </button>
         <button
           onClick={onSave}
           disabled={!text.trim()}
-          className="px-3 py-1 text-sm rounded bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
+          className="px-3 py-1 text-sm rounded-lg bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-700"
           data-testid="edit-message-save"
         >
           Save & Send

@@ -213,7 +213,7 @@ describe("MessageList", () => {
         createErrorMessage("Error message"),
       ]);
 
-      expect(container.querySelector(".bg-gray-100")).toBeDefined();
+      expect(container.querySelector(".bg-stone-100")).toBeDefined();
       expect(screen.getByText("Error message")).toBeDefined();
     });
 
@@ -222,7 +222,7 @@ describe("MessageList", () => {
         createModelMessage("Model message"),
       ]);
 
-      expect(container.querySelector(".bg-gray-100")).toBeDefined();
+      expect(container.querySelector(".bg-stone-100")).toBeDefined();
     });
   });
 

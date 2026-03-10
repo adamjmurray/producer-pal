@@ -22,7 +22,7 @@ export function VersionDisplay({
   latestVersion,
 }: VersionDisplayProps) {
   return (
-    <span className="hidden sm:inline text-xs text-gray-500 dark:text-gray-400 font-normal">
+    <span className="hidden sm:inline text-xs text-stone-500 dark:text-stone-400 font-normal">
       v{version}
       {latestVersion && (
         <>

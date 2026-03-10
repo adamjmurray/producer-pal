@@ -73,7 +73,7 @@ export function ChatInput({
   };
 
   return (
-    <div className="border-t border-gray-300 dark:border-gray-700">
+    <div className="border-t border-stone-300 dark:border-stone-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
       {showMessageSettings && (
         <MessageSettingsToolbar
           provider={provider}
@@ -97,21 +97,21 @@ export function ChatInput({
             onInput={(e) => setInput((e.target as HTMLTextAreaElement).value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message... (Shift+Enter for new line)"
-            className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded resize-none placeholder:dark:text-gray-400 placeholder:text-gray-500"
+            className="flex-1 px-3 py-2 bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-600 rounded-lg shadow-inner resize-none placeholder:dark:text-stone-400 placeholder:text-stone-500"
             rows={2}
           />
           <div className="flex flex-col gap-2">
             <button
               onClick={onStop}
               disabled={!isAssistantResponding}
-              className={`px-4 py-1 rounded text-sm ${isAssistantResponding ? "bg-orange-600 text-white hover:bg-orange-700" : "invisible"}`}
+              className={`px-4 py-1 rounded-lg text-sm ${isAssistantResponding ? "bg-orange-600 text-white hover:bg-orange-700" : "invisible"}`}
             >
               Stop
             </button>
             <button
               onClick={handleSendClick}
               disabled={isAssistantResponding || !input.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700"
             >
               {isAssistantResponding ? "..." : "Send"}
             </button>

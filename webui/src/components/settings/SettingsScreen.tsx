@@ -57,7 +57,7 @@ interface SettingsScreenProps {
 }
 
 const helpLinkClass =
-  "w-6 h-6 rounded-full border border-gray-400 dark:border-gray-500 text-gray-500! dark:text-gray-400! hover:border-gray-200 hover:text-white! dark:hover:border-gray-300 dark:hover:text-white! flex items-center justify-center text-sm font-semibold no-underline";
+  "w-6 h-6 rounded-full border border-stone-400 dark:border-stone-500 text-stone-500! dark:text-stone-400! hover:border-stone-200 hover:text-white! dark:hover:border-stone-300 dark:hover:text-white! flex items-center justify-center text-sm font-semibold no-underline";
 
 /**
  * Settings screen component with tabs for connection, behavior, tools, and appearance
@@ -110,7 +110,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
 
   return (
     <div className="flex justify-center min-h-screen p-4 pt-20">
-      <div className="max-w-xl w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 self-start shadow-[8px_20px_60px_rgba(0,0,0,0.15)] dark:shadow-[6px_16px_45px_rgba(255,255,255,0.04)] border border-gray-400 dark:border-gray-600">
+      <div className="max-w-xl w-full bg-stone-100 dark:bg-stone-800 rounded-xl p-6 self-start shadow-[8px_20px_60px_rgba(0,0,0,0.15)] dark:shadow-[6px_16px_45px_rgba(255,255,255,0.04)] border border-stone-300 dark:border-stone-600">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
           {showHelpLinks && (
