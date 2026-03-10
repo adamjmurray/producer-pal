@@ -31,6 +31,13 @@ const TS_NOCHECK_LIMITS: TreeLimits = {
   webui: 0,
 };
 
+const V8_IGNORE_LIMITS: TreeLimits = {
+  src: 0,
+  srcTests: 2, // This test file's pattern definitions
+  scripts: 0,
+  webui: 2, // Untestable IDB error callbacks in conversation-db.ts
+};
+
 const TREES = Object.keys(ESLINT_DISABLE_LIMITS);
 
 interface SuppressionConfig {
@@ -57,6 +64,12 @@ const SUPPRESSION_CONFIGS: Record<string, SuppressionConfig> = {
     limits: TS_NOCHECK_LIMITS,
     errorSuffix:
       "Add JSDoc type annotations and remove @ts-nocheck to enable type checking.",
+  },
+  "v8 ignore": {
+    pattern: /v8 ignore/,
+    limits: V8_IGNORE_LIMITS,
+    errorSuffix:
+      "Consider restructuring code to make error paths testable instead of ignoring coverage.",
   },
 };
 
