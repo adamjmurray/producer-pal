@@ -454,4 +454,28 @@ describe("duplicate - scene duplication", () => {
       });
     });
   });
+
+  it("should apply color when duplicating a scene", () => {
+    registerMockObject("scene1", { path: livePath.scene(0) });
+
+    const liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: [] },
+    });
+
+    const newScene = registerMockObject("live_set/scenes/1", {
+      path: livePath.scene(1),
+    });
+
+    const result = duplicate({
+      type: "scene",
+      id: "scene1",
+      color: "#00ff00",
+    }) as DuplicateSceneResult;
+
+    expect(liveSet.call).toHaveBeenCalledWith("duplicate_scene", 0);
+    expect(newScene.set).toHaveBeenCalledWith("color", 0x00ff00);
+    expect(result.id).toBe("live_set/scenes/1");
+    expect(result.sceneIndex).toBe(1);
+  });
 });

@@ -349,4 +349,22 @@ describe("duplicate - track duplication", () => {
       );
     });
   });
+
+  it("should apply color when duplicating a track", () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    const newTrack = registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    const result = duplicate({
+      type: "track",
+      id: "track1",
+      color: "#ff0000",
+    });
+
+    expect(result).toStrictEqual(createTrackResult(1));
+    expect(newTrack.set).toHaveBeenCalledWith("color", 0xff0000);
+  });
 });
