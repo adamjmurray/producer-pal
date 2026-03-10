@@ -371,6 +371,7 @@ export function App() {
             settingsConfigured={settings.settingsConfigured}
             shake={shake}
             onShakeEnd={clearShake}
+            hasUnsavedChanges={hasUnsavedChanges}
           />
         </div>
       )}

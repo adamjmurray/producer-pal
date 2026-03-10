@@ -169,6 +169,7 @@ describe("SettingsScreen", () => {
     settingsConfigured: false,
     shake: false,
     onShakeEnd: vi.fn(),
+    hasUnsavedChanges: false,
   };
 
   describe("help link", () => {

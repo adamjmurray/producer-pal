@@ -8,6 +8,7 @@ interface SettingsFooterProps {
   saveSettings: () => void;
   cancelSettings: () => void;
   pulse: boolean;
+  hasUnsavedChanges: boolean;
 }
 
 /**
@@ -17,6 +18,7 @@ interface SettingsFooterProps {
  * @param {Function} props.saveSettings - Function to save settings
  * @param {Function} props.cancelSettings - Function to cancel settings changes
  * @param {boolean} props.pulse - Whether to pulse buttons to draw attention
+ * @param {boolean} props.hasUnsavedChanges - Whether there are unsaved changes
  * @returns {JSX.Element} Settings footer component
  */
 export function SettingsFooter({
@@ -24,6 +26,7 @@ export function SettingsFooter({
   saveSettings,
   cancelSettings,
   pulse,
+  hasUnsavedChanges,
 }: SettingsFooterProps) {
   const pulseClass = pulse ? " settings-button-pulse" : "";
 
@@ -35,7 +38,13 @@ export function SettingsFooter({
         </p>
       )}
 
-      <div className="flex gap-2 mt-4">
+      {hasUnsavedChanges && (
+        <p className="text-xs text-red-600 dark:text-red-400 mt-4">
+          You have unsaved changes. Save or cancel to dismiss.
+        </p>
+      )}
+
+      <div className={`flex gap-2 ${hasUnsavedChanges ? "mt-2" : "mt-4"}`}>
         {settingsConfigured && (
           <button
             onClick={cancelSettings}

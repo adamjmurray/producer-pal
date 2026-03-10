@@ -56,6 +56,7 @@ interface SettingsScreenProps {
   settingsConfigured: boolean;
   shake: boolean;
   onShakeEnd: () => void;
+  hasUnsavedChanges: boolean;
 }
 
 const helpLinkClass =
@@ -100,6 +101,7 @@ const helpLinkClass =
  * @param props.settingsConfigured - Whether settings have been configured
  * @param props.shake - Whether to shake the dialog to indicate unsaved changes
  * @param props.onShakeEnd - Callback when shake animation ends
+ * @param props.hasUnsavedChanges - Whether there are unsaved settings changes
  * @returns Settings screen element
  */
 export function SettingsScreen(props: SettingsScreenProps) {
@@ -112,6 +114,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
     settingsConfigured,
     shake,
     onShakeEnd,
+    hasUnsavedChanges,
   } = props;
 
   const shakeClass = shake ? " settings-dialog-shake" : "";
@@ -147,6 +150,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           saveSettings={saveSettings}
           cancelSettings={cancelSettings}
           pulse={shake}
+          hasUnsavedChanges={hasUnsavedChanges}
         />
       </div>
     </div>
