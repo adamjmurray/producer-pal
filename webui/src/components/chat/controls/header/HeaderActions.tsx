@@ -61,12 +61,17 @@ export function HeaderActions({
 }: HeaderActionsProps) {
   return (
     <div className="ml-auto flex gap-2 sm:gap-3 items-center">
-      <span className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap truncate min-w-0 max-w-28 sm:max-w-48 md:max-w-none">
+      <button
+        type="button"
+        onClick={onOpenConnectionSettings}
+        className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap truncate min-w-0 max-w-28 sm:max-w-48 md:max-w-none hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+        title="Connection settings"
+      >
         <span className="hidden sm:inline">
           {getProviderName(activeProvider ?? provider)} |{" "}
         </span>
         {getModelName(activeModel ?? model)}
-      </span>
+      </button>
 
       <button
         type="button"

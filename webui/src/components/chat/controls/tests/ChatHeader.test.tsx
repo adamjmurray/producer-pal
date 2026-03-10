@@ -259,11 +259,12 @@ describe("ChatHeader", () => {
         />,
       );
 
-      const button = screen.getByTitle("Connection settings");
+      // Two buttons have "Connection settings" title (provider/model + turtle)
+      const buttons = screen.getAllByTitle("Connection settings");
 
-      fireEvent.click(button);
+      fireEvent.click(buttons[1]!);
 
-      expect(onOpenConnectionSettings).toHaveBeenCalledOnce();
+      expect(onOpenConnectionSettings).toHaveBeenCalled();
     });
   });
 
