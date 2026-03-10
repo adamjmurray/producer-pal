@@ -95,7 +95,7 @@ export function Tooltip({ text }: TooltipProps) {
       <button
         ref={buttonRef}
         type="button"
-        className="inline-flex items-center justify-center w-4 h-4 text-[10px] leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 dark:hover:border-blue-400 dark:hover:text-blue-400 cursor-help"
+        className="inline-flex items-center justify-center w-4 h-4 text-[10px] leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-blue-500 hover:text-blue-500 dark:hover:border-blue-400 dark:hover:text-blue-400 "
         aria-label="Tool description"
         onClick={handleClick}
         onMouseEnter={handleMouseEnter}

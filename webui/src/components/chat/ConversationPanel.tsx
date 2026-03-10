@@ -193,7 +193,7 @@ function SectionHeader({
   return (
     <button
       onClick={onToggle}
-      className="w-full px-4 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center gap-1.5 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+      className="w-full px-4 py-1.5 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 flex items-center gap-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
     >
       <span className={`transition-transform ${collapsed ? "" : "rotate-90"}`}>
         <DisclosureChevron />

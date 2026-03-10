@@ -56,7 +56,7 @@ export function UserMessageEditor({
         rows={3}
         data-testid="edit-message-textarea"
       />
-      <div className="flex gap-2 mt-2 justify-end">
+      <div className="flex gap-2 mt-1 justify-end">
         <button
           onClick={onCancel}
           className="px-3 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"

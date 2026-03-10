@@ -270,3 +270,10 @@ npm run build     # Includes UI build
 - React components: PascalCase (`ChatHeader.tsx`)
 - Everything else: kebab-case (`use-chat.ts`)
 - Never include file extensions in relative imports (bundled by Vite)
+
+**Cursor conventions:**
+
+- `<button>` and `<a>` elements: no cursor class (browser defaults are fine)
+- Non-semantic clickable elements (`<label>`, `<div onClick>`): use
+  `cursor-pointer`
+- No `cursor-help` or other special cursors

@@ -57,7 +57,7 @@ interface SettingsScreenProps {
 }
 
 const helpLinkClass =
-  "w-6 h-6 rounded-full border border-gray-400 dark:border-gray-500 text-gray-500! dark:text-gray-400! hover:border-gray-200 hover:text-white! dark:hover:border-gray-300 dark:hover:text-white! flex items-center justify-center text-sm font-semibold cursor-pointer no-underline";
+  "w-6 h-6 rounded-full border border-gray-400 dark:border-gray-500 text-gray-500! dark:text-gray-400! hover:border-gray-200 hover:text-white! dark:hover:border-gray-300 dark:hover:text-white! flex items-center justify-center text-sm font-semibold no-underline";
 
 /**
  * Settings screen component with tabs for connection, behavior, tools, and appearance

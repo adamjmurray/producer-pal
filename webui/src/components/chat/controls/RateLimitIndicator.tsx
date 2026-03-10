@@ -68,7 +68,7 @@ export function RateLimitIndicator({
       {onCancel && (
         <button
           onClick={onCancel}
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-3 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-3 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700"
         >
           Cancel
         </button>

@@ -21,10 +21,10 @@ import { ToolsIndicator } from "./header/ToolsIndicator";
 import { VersionDisplay } from "./header/VersionDisplay";
 
 const iconBtn =
-  "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors cursor-pointer";
+  "p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors";
 
 const helpBtn =
-  "inline-flex items-center justify-center w-5 h-5 text-xs font-semibold leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-gray-200 hover:text-white dark:hover:border-gray-300 dark:hover:text-white cursor-pointer no-underline shrink-0";
+  "inline-flex items-center justify-center w-5 h-5 text-xs font-semibold leading-none rounded-full border border-gray-400 dark:border-gray-500 text-gray-500 dark:text-gray-400 hover:border-gray-200 hover:text-white dark:hover:border-gray-300 dark:hover:text-white no-underline shrink-0";
 
 interface ChatHeaderProps {
   mcpStatus: McpStatus;
