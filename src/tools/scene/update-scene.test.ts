@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import {
   type RegisteredMockObject,
   mockNonExistentObjects,
@@ -244,22 +245,12 @@ describe("updateScene", () => {
   });
 
   describe("focus functionality", () => {
-    let selectMock: ReturnType<typeof vi.fn>;
-
-    beforeEach(async () => {
-      vi.mock(import("#src/tools/control/select.ts"), () => ({
-        select: vi.fn(),
-      }));
-      const selectModule = await import("#src/tools/control/select.ts");
-
-      selectMock = selectModule.select as ReturnType<typeof vi.fn>;
-      selectMock.mockClear();
-    });
+    const selectMockRef = setupSelectMock({ mock: true });
 
     it("should select scene in session view when focus=true", () => {
       updateScene({ ids: "123", name: "Test", focus: true });
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
         sceneId: "123",
       });
@@ -268,17 +259,17 @@ describe("updateScene", () => {
     it("should select last scene when focus=true with multiple scenes", () => {
       updateScene({ ids: "123,456", name: "Test", focus: true });
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
         sceneId: "456",
       });
-      expect(selectMock).toHaveBeenCalledTimes(1);
+      expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
     });
 
     it("should not call select when focus=false", () => {
       updateScene({ ids: "123", name: "Test", focus: false });
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
   });
 });

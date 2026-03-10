@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
@@ -569,22 +570,12 @@ describe("createDevice", () => {
   });
 
   describe("focus functionality", () => {
-    let selectMock: ReturnType<typeof vi.fn>;
-
-    beforeEach(async () => {
-      vi.mock(import("#src/tools/control/select.ts"), () => ({
-        select: vi.fn(),
-      }));
-      const selectModule = await import("#src/tools/control/select.ts");
-
-      selectMock = selectModule.select as ReturnType<typeof vi.fn>;
-      selectMock.mockClear();
-    });
+    const selectMockRef = setupSelectMock({ mock: true });
 
     it("should select device and show device detail when focus=true", () => {
       createDevice({ deviceName: "EQ Eight", path: "t0", focus: true });
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         deviceId: "device123",
         detailView: "device",
       });
@@ -593,7 +584,7 @@ describe("createDevice", () => {
     it("should not call select when focus=false", () => {
       createDevice({ deviceName: "EQ Eight", path: "t0", focus: false });
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
 
     it("should focus last device when multi-path with focus=true", () => {
@@ -605,8 +596,8 @@ describe("createDevice", () => {
         focus: true,
       });
 
-      expect(selectMock).toHaveBeenCalledTimes(1);
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         deviceId: "device456",
         detailView: "device",
       });
@@ -615,7 +606,7 @@ describe("createDevice", () => {
     it("should not call select in list mode", () => {
       createDevice({});
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
   });
 });

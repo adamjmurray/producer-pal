@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -477,14 +478,7 @@ describe("createScene", () => {
   });
 
   describe("focus functionality", () => {
-    let selectMock: ReturnType<typeof vi.fn>;
-
-    beforeEach(async () => {
-      const selectModule = await import("#src/tools/control/select.ts");
-
-      selectMock = selectModule.select as ReturnType<typeof vi.fn>;
-      selectMock.mockClear();
-    });
+    const selectMockRef = setupSelectMock();
 
     it("should select scene in session view when focus=true", () => {
       const result = createScene({
@@ -492,7 +486,7 @@ describe("createScene", () => {
         focus: true,
       });
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
         sceneId: "live_set/scenes/0",
       });
@@ -516,7 +510,7 @@ describe("createScene", () => {
         focus: true,
       });
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
         sceneId: "live_set/scenes/2",
       });
@@ -533,7 +527,7 @@ describe("createScene", () => {
         focus: false,
       });
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
 
     it("should focus last scene when creating multiple with focus=true", () => {
@@ -543,11 +537,11 @@ describe("createScene", () => {
         focus: true,
       });
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMockRef.get()).toHaveBeenCalledWith({
         view: "session",
         sceneId: "live_set/scenes/2",
       });
-      expect(selectMock).toHaveBeenCalledTimes(1);
+      expect(selectMockRef.get()).toHaveBeenCalledTimes(1);
       expect(Array.isArray(result)).toBe(true);
       expect(result).toHaveLength(3);
     });

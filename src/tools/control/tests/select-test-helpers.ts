@@ -332,3 +332,19 @@ export function expectReadState(
     ...changes,
   };
 }
+
+/**
+ * Mock implementation for toLiveApiView
+ * @param view - View name to convert
+ * @returns Live API view name
+ */
+export const viewMockToLive = (view: string): string =>
+  ({ session: "Session", arrangement: "Arranger" })[view] ?? "Session";
+
+/**
+ * Mock implementation for fromLiveApiView
+ * @param liveApiView - Live API view name to convert
+ * @returns View name
+ */
+export const viewMockFromLive = (liveApiView: string): string =>
+  ({ Session: "session", Arranger: "arrangement" })[liveApiView] ?? "session";
