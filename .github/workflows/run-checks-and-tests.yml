@@ -208,7 +208,7 @@ jobs:
 
           # Format duplication report as markdown table
           cat > /tmp/summary.md << EOF
-          ## Code Duplication Report (token-level)
+          ## Code Duplication Report
 
           | Code Group | Files Scanned | Duplications Found | Duplicated Lines | Max Allowed |
           |------------|---------------|--------------|------------------|-------------|
