@@ -61,10 +61,10 @@ export const OPENROUTER_MODELS = [
     value: "anthropic/claude-opus-4.6",
     label: "[Paid] Anthropic Claude Opus 4.6",
   },
-  { value: "openai/gpt-5.2", label: "[Paid] OpenAI GPT-5.2" },
+  { value: "openai/gpt-5.4", label: "[Paid] OpenAI GPT-5.4" },
   {
-    value: "openai/gpt-5.2-codex",
-    label: "[Paid] OpenAI GPT-5.2 Codex",
+    value: "openai/gpt-5.3-codex",
+    label: "[Paid] OpenAI GPT-5.3 Codex",
   },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "qwen/qwen3.5-397b-a17b", label: "[Paid] Qwen 3.5" },
