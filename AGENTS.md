@@ -143,6 +143,13 @@ web UI architecture.
   parameter descriptions in `.def.ts` files, and tool results need to be very
   short, clear, and focused on the most useful and relevant info.
 
+- **IndexedDB versioning**: IndexedDB is schemaless for record data — adding new
+  fields to stored records does NOT require a version bump. Handle missing
+  fields with sensible defaults when reading. Only bump `DB_VERSION` for
+  structural changes (creating/deleting object stores or indexes). Avoid
+  migration code that iterates and transforms existing records; prefer
+  backwards-compatible reads over upgrade-time data transforms.
+
 - **Chat UI builds**: The webui is built with Vite (config in
   `config/vite.config.ts`) and outputs a single self-contained
   `max-for-live-device/chat-ui.html` file. Use `npm run ui:build` to check the

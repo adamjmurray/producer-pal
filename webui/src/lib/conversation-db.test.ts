@@ -190,27 +190,6 @@ describe("conversation-db", () => {
     expect(list[0]?.modelLabel).toBe("Test Model Label");
   });
 
-  it("defaults modelLabel to null for records without it", async () => {
-    const db = await getConversationDb();
-
-    // Simulate a pre-v4 record missing modelLabel
-    await db.put("conversations", {
-      id: "legacy-record",
-      title: null,
-      createdAt: 1000,
-      updatedAt: 1000,
-      bookmarked: false,
-      provider: null,
-      model: "old-model",
-      messages: [],
-    });
-
-    const list = await listConversations();
-    const legacy = list.find((c) => c.id === "legacy-record");
-
-    expect(legacy?.modelLabel).toBeNull();
-  });
-
   it("sorts all conversations by createdAt desc regardless of bookmark", async () => {
     const oldest = createRecord({ createdAt: 1000 });
     const middle = createRecord({ createdAt: 2000 });
