@@ -5,7 +5,7 @@
 
 export interface TransferNotificationData {
   message: string;
-  type: "success" | "error";
+  type: "success" | "error" | "warning";
 }
 
 /**
@@ -22,15 +22,11 @@ export function TransferNotification({
   notification: TransferNotificationData;
   onDismiss: () => void;
 }) {
-  const isError = notification.type === "error";
+  const colorClass = notificationColorClass(notification.type);
 
   return (
     <div
-      className={`px-3 py-1.5 text-xs flex items-center gap-2 border-b ${
-        isError
-          ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800"
-          : "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800"
-      }`}
+      className={`px-3 py-1.5 text-xs flex items-center gap-2 border-b ${colorClass}`}
       role="status"
     >
       <span className="flex-1">{notification.message}</span>
@@ -53,4 +49,24 @@ export function TransferNotification({
       </button>
     </div>
   );
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Get Tailwind color classes for a notification type.
+ * @param type - Notification type
+ * @returns Tailwind class string
+ */
+function notificationColorClass(
+  type: TransferNotificationData["type"],
+): string {
+  switch (type) {
+    case "error":
+      return "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800";
+    case "warning":
+      return "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800";
+    default:
+      return "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800";
+  }
 }

@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
+import { useLimitNotification } from "#webui/hooks/chat/helpers/use-limit-notification";
 import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat";
 import { getModelName } from "#webui/lib/config";
 import {
@@ -31,6 +33,8 @@ interface UseConversationsProps {
 export interface UseConversationsReturn {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
+  limitNotification: TransferNotificationData | null;
+  dismissLimitNotification: () => void;
   saveCurrentConversation: () => Promise<void>;
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => Promise<void>;
@@ -59,6 +63,7 @@ export function useConversations({
   activeProvider: activeProviderProp,
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const limit = useLimitNotification();
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(() => getHashConversationId());
@@ -166,7 +171,7 @@ export function useConversations({
     activeModelRef.current = model;
     activeProviderRef.current = provider;
 
-    await saveConversation({
+    const result = await saveConversation({
       id,
       title,
       createdAt,
@@ -181,8 +186,9 @@ export function useConversations({
       }>,
     });
 
+    limit.showLimitNotification(result);
     await refreshList();
-  }, [getChatHistory, refreshList, setActiveId]);
+  }, [getChatHistory, refreshList, setActiveId, limit]);
 
   const switchConversation = useCallback(
     async (id: string) => {
@@ -338,6 +344,8 @@ export function useConversations({
   return {
     conversations,
     activeConversationId,
+    limitNotification: limit.limitNotification,
+    dismissLimitNotification: limit.dismissLimitNotification,
     saveCurrentConversation,
     switchConversation,
     startNewConversation,

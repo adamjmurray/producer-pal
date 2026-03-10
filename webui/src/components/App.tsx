@@ -304,8 +304,11 @@ export function App() {
             onToggleBookmark: handleToggleBookmark,
             onExport: () => void transfer.handleExport(),
             onImport: () => void transfer.handleImport(),
-            notification: transfer.notification,
-            onDismissNotification: transfer.dismissNotification,
+            notification:
+              transfer.notification ?? conversationManager.limitNotification,
+            onDismissNotification: transfer.notification
+              ? transfer.dismissNotification
+              : conversationManager.dismissLimitNotification,
           }}
         />
       </div>

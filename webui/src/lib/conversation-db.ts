@@ -3,12 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { openDB, type IDBPDatabase } from "idb";
+import { type IDBPDatabase } from "idb";
 import { type AiSdkMessage } from "#webui/chat/ai-sdk/ai-sdk-types";
+import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
 
-const DB_NAME = "producer-pal-conversations";
-const DB_VERSION = 1;
-const STORE_NAME = "conversations";
+export const MAX_CONVERSATIONS = 200;
 
 /** Full conversation record stored in IndexedDB */
 export interface ConversationRecord {
@@ -35,6 +34,13 @@ export interface ConversationSummary {
   modelLabel: string | null;
 }
 
+/** Result of enforcing the conversation limit during save */
+export interface EnforceLimitResult {
+  deletedCount: number;
+  /** True when all slots are consumed by bookmarked conversations */
+  limitReached: boolean;
+}
+
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
 /**
@@ -48,15 +54,19 @@ export function getConversationDb(): Promise<IDBPDatabase> {
 }
 
 /**
- * Save or update a conversation record.
+ * Save or update a conversation record, enforcing the conversation limit.
  * @param record - The conversation to save
+ * @returns Result indicating whether old conversations were deleted
  */
 export async function saveConversation(
   record: ConversationRecord,
-): Promise<void> {
+): Promise<EnforceLimitResult> {
+  const result = await enforceConversationLimit(record.id);
   const db = await getConversationDb();
 
   await db.put(STORE_NAME, record);
+
+  return result;
 }
 
 /**
@@ -175,139 +185,37 @@ export async function resetDbCache(): Promise<void> {
 // --- Helpers below main exports ---
 
 /**
- * Try to open the DB, handling version mismatch from downgrades.
- * @returns IndexedDB database instance
+ * Enforce the conversation limit by deleting oldest non-bookmarked conversations.
+ * @param excludeId - ID of the conversation being saved (excluded from deletion)
+ * @returns Result with deletion count and whether the limit is fully consumed by bookmarks
  */
-async function tryOpenDb(): Promise<IDBPDatabase> {
-  try {
-    return await openDb();
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "VersionError") {
-      return await handleVersionMismatch();
-    }
+async function enforceConversationLimit(
+  excludeId: string,
+): Promise<EnforceLimitResult> {
+  const db = await getConversationDb();
+  const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
 
-    /* v8 ignore next */
-    throw err;
-  }
-}
+  // The excludeId conversation will be saved after this, so count it
+  const existingExcluded = all.some((r) => r.id === excludeId);
+  const totalAfterSave = existingExcluded ? all.length : all.length + 1;
 
-/**
- * Open the conversations database at the expected version.
- * @returns IndexedDB database instance
- */
-function openDb(): Promise<IDBPDatabase> {
-  return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      const store = db.createObjectStore(STORE_NAME, { keyPath: "id" });
-
-      store.createIndex("updatedAt", "updatedAt");
-    },
-  });
-}
-
-/**
- * Handle a version mismatch by offering export and reset.
- * @returns Fresh IndexedDB database instance after reset
- */
-async function handleVersionMismatch(): Promise<IDBPDatabase> {
-  if (confirm("Export a backup of your conversations before resetting?")) {
-    await exportFromMismatchedDb();
+  if (totalAfterSave <= MAX_CONVERSATIONS) {
+    return { deletedCount: 0, limitReached: false };
   }
 
-  const deleteConfirmed = confirm(
-    "Delete all conversation history and reset the database? " +
-      "This cannot be undone. Cancel will keep your data, but conversations " +
-      "will not be saved until you upgrade Producer Pal.",
-  );
+  const excess = totalAfterSave - MAX_CONVERSATIONS;
+  const deletable = all
+    .filter((r) => !r.bookmarked && r.id !== excludeId)
+    .sort((a, b) => a.updatedAt - b.updatedAt);
 
-  if (!deleteConfirmed) {
-    throw new Error("Database version mismatch — upgrade Producer Pal");
+  const toDelete = deletable.slice(0, excess);
+
+  for (const record of toDelete) {
+    await db.delete(STORE_NAME, record.id);
   }
 
-  await deleteDb(DB_NAME);
-
-  return await openDb();
-}
-
-/**
- * Open the mismatched DB without a version to read and export its data.
- */
-async function exportFromMismatchedDb(): Promise<void> {
-  const db = await openDbVersionless();
-
-  try {
-    const all = await getAllFromRawDb(db);
-    const json = JSON.stringify(
-      {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        conversations: all,
-      },
-      null,
-      2,
-    );
-
-    downloadJson(
-      json,
-      `producer-pal-conversations-${new Date().toISOString().slice(0, 10)}.json`,
-    );
-  } finally {
-    db.close();
-  }
-}
-
-/**
- * Open the DB at its current version without triggering an upgrade.
- * @returns Raw IDBDatabase at whatever version exists
- */
-function openDbVersionless(): Promise<IDBDatabase> {
-  return wrapIdbRequest(indexedDB.open(DB_NAME));
-}
-
-/**
- * Read all records from a raw IDBDatabase (not the idb wrapper).
- * @param db - Raw IDBDatabase instance
- * @returns All conversation records
- */
-function getAllFromRawDb(db: IDBDatabase): Promise<unknown[]> {
-  const tx = db.transaction(STORE_NAME, "readonly");
-
-  return wrapIdbRequest(tx.objectStore(STORE_NAME).getAll());
-}
-
-/**
- * Delete an IndexedDB database by name.
- * @param name - Database name to delete
- */
-async function deleteDb(name: string): Promise<void> {
-  await wrapIdbRequest(indexedDB.deleteDatabase(name));
-}
-
-/**
- * Wrap a raw IDBRequest in a Promise.
- * @param request - The IDB request to wrap
- * @returns Promise resolving with the request result
- */
-function wrapIdbRequest<T>(request: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    /* v8 ignore next */
-    request.onerror = () => reject(request.error);
-  });
-}
-
-/**
- * Trigger a JSON file download in the browser.
- * @param json - JSON string content
- * @param filename - Download filename
- */
-function downloadJson(json: string, filename: string): void {
-  const blob = new Blob([json], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
+  return {
+    deletedCount: toDelete.length,
+    limitReached: toDelete.length < excess,
+  };
 }

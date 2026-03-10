@@ -9,6 +9,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type ConversationRecord,
+  MAX_CONVERSATIONS,
   deleteConversation,
   getConversationDb,
   listConversations,
@@ -318,5 +319,127 @@ describe("version mismatch recovery", () => {
     await expect(getConversationDb()).rejects.toThrow(
       "Database version mismatch",
     );
+  });
+});
+
+describe("conversation limit enforcement", () => {
+  const DB_NAME = "producer-pal-conversations";
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- restoreAllMocks removes the spy, leaving confirm undefined at runtime
+    window.confirm ??= () => false;
+    // resetDbCache may throw if prior test left a rejected dbPromise
+    await resetDbCache().catch(() => {});
+
+    // Delete DB to clear any version mismatch from prior tests
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.deleteDatabase(DB_NAME);
+
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+
+    const db = await getConversationDb();
+
+    await db.clear("conversations");
+  });
+
+  it("does nothing when under the limit", async () => {
+    const record = createRecord();
+    const result = await saveConversation(record);
+
+    expect(result).toStrictEqual({ deletedCount: 0, limitReached: false });
+
+    const list = await listConversations();
+
+    expect(list).toHaveLength(1);
+  });
+
+  it("deletes oldest non-bookmarked conversations when over limit", async () => {
+    // Fill up to the limit
+    const records: ConversationRecord[] = [];
+
+    for (let i = 0; i < MAX_CONVERSATIONS; i++) {
+      const r = createRecord({ updatedAt: 1000 + i });
+
+      records.push(r);
+      await saveConversation(r);
+    }
+
+    // Save one more — should delete the oldest
+    const newest = createRecord({ updatedAt: 99999 });
+    const result = await saveConversation(newest);
+
+    expect(result.deletedCount).toBe(1);
+    expect(result.limitReached).toBe(false);
+
+    const list = await listConversations();
+
+    expect(list).toHaveLength(MAX_CONVERSATIONS);
+    // The oldest (updatedAt: 1000) should have been deleted
+    expect(list.find((c) => c.id === records[0]?.id)).toBeUndefined();
+    // The newest should exist
+    expect(list.find((c) => c.id === newest.id)).toBeDefined();
+  });
+
+  it("skips bookmarked conversations during deletion", async () => {
+    // Fill to limit with the oldest being bookmarked
+    const bookmarked = createRecord({ updatedAt: 100, bookmarked: true });
+
+    await saveConversation(bookmarked);
+
+    for (let i = 1; i < MAX_CONVERSATIONS; i++) {
+      await saveConversation(createRecord({ updatedAt: 1000 + i }));
+    }
+
+    // Save one more — should delete oldest non-bookmarked, not the bookmarked one
+    const result = await saveConversation(createRecord({ updatedAt: 99999 }));
+
+    expect(result.deletedCount).toBe(1);
+
+    const loaded = await loadConversation(bookmarked.id);
+
+    expect(loaded).toBeDefined();
+    expect(loaded?.bookmarked).toBe(true);
+  });
+
+  it("returns limitReached when all conversations are bookmarked", async () => {
+    // Fill to limit, all bookmarked
+    for (let i = 0; i < MAX_CONVERSATIONS; i++) {
+      await saveConversation(
+        createRecord({ updatedAt: 1000 + i, bookmarked: true }),
+      );
+    }
+
+    const result = await saveConversation(createRecord({ updatedAt: 99999 }));
+
+    expect(result.limitReached).toBe(true);
+    // Still saved (total is now MAX + 1)
+    const list = await listConversations();
+
+    expect(list).toHaveLength(MAX_CONVERSATIONS + 1);
+  });
+
+  it("does not delete the conversation being saved", async () => {
+    // Fill to limit
+    for (let i = 0; i < MAX_CONVERSATIONS; i++) {
+      await saveConversation(createRecord({ updatedAt: 1000 + i }));
+    }
+
+    // Re-save an existing conversation (update) — should not delete itself
+    const allConvos = await listConversations();
+    const existing = allConvos.at(-1);
+    const updated = createRecord({
+      id: existing?.id,
+      updatedAt: 500, // oldest updatedAt, but it's the one being saved
+    });
+    const result = await saveConversation(updated);
+
+    expect(result.deletedCount).toBe(0);
+
+    const loaded = await loadConversation(updated.id);
+
+    expect(loaded).toBeDefined();
   });
 });
