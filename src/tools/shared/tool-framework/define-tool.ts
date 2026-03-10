@@ -46,6 +46,7 @@ export interface ToolDefFunction {
     mcpOptions?: McpOptions,
   ): void;
   toolName: string;
+  toolOptions: ToolOptions;
 }
 
 /**
@@ -128,6 +129,7 @@ export function defineTool(
   };
 
   fn.toolName = name;
+  fn.toolOptions = options;
 
   return fn;
 }

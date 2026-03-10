@@ -13,11 +13,15 @@ create.
 - Provides the AI with a Producer Pal skill set that adapts to different AI
   model capabilities
 
+<!--@include: ./_generated/ppal-connect-schema.md-->
+
 ### Project Context (`ppal-context`)
 
 - Read and write project memory — persistent notes that help the AI understand
   your goals across conversations
 - Search configured sample folder for audio files by filename or path
+
+<!--@include: ./_generated/ppal-context-schema.md-->
 
 ### Built-in Chat UI
 
@@ -43,6 +47,8 @@ create.
 - Control which tracks follow the Arrangement
 - Stop all clips or specific track clips
 
+<!--@include: ./_generated/ppal-playback-schema.md-->
+
 ## Live Set Management
 
 ### Read Live Set (`ppal-read-live-set`)
@@ -53,10 +59,14 @@ create.
 - View arrangement locators with times and names
 - Check what's playing and track states
 
+<!--@include: ./_generated/ppal-read-live-set-schema.md-->
+
 ### Update Live Set (`ppal-update-live-set`)
 
 - Change tempo, time signature, scale
 - Create, rename, or delete arrangement locators
+
+<!--@include: ./_generated/ppal-update-live-set-schema.md-->
 
 ## Scene Operations
 
@@ -67,16 +77,22 @@ create.
 - Scenes can follow song tempo or have their own
 - Ability to capture currently playing clips into a new scene
 
+<!--@include: ./_generated/ppal-create-scene-schema.md-->
+
 ### Read Scene (`ppal-read-scene`)
 
 - View scene details and all its clips
 - Check which clips are playing/triggered
 - See scene tempo and time signature
 
+<!--@include: ./_generated/ppal-read-scene-schema.md-->
+
 ### Update Scene (`ppal-update-scene`)
 
 - Change scene name, color, tempo, and time signature
 - Update multiple scenes at once
+
+<!--@include: ./_generated/ppal-update-scene-schema.md-->
 
 ## Track Management
 
@@ -86,6 +102,8 @@ create.
 - Position tracks exactly where you want
 - Set initial mute/solo/arm states
 
+<!--@include: ./_generated/ppal-create-track-schema.md-->
+
 ### Read Track (`ppal-read-track`)
 
 - Get detailed track information
@@ -94,12 +112,16 @@ create.
 - Check track states (muted, soloed, armed)
 - View mixer properties: gain, pan, panning mode, and send levels
 
+<!--@include: ./_generated/ppal-read-track-schema.md-->
+
 ### Update Track (`ppal-update-track`)
 
 - Change track gain (volume), panning, and send levels
 - Change mute, solo, arm, I/O routings, and monitoring state
 - Change track name and color
 - Update multiple tracks at once
+
+<!--@include: ./_generated/ppal-update-track-schema.md-->
 
 ## Device Management
 
@@ -111,11 +133,15 @@ create.
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
 
+<!--@include: ./_generated/ppal-create-device-schema.md-->
+
 ### Read Device (`ppal-read-device`)
 
 - Get detailed info about any device, including inside rack chains and drum pad
   chains
 - List device parameter names and values (the state of knobs, dials, etc)
+
+<!--@include: ./_generated/ppal-read-device-schema.md-->
 
 ### Update Device (`ppal-update-device`)
 
@@ -129,6 +155,8 @@ create.
 - Control chain and drum pad mute and solo state
 - Change the choke group and output MIDI note of drum chains
 
+<!--@include: ./_generated/ppal-update-device-schema.md-->
+
 ## Clip Creation & Editing
 
 ### Create Clip (`ppal-create-clip`)
@@ -138,11 +166,15 @@ create.
 - Support for probability, velocity ranges, and complex rhythms
 - Auto-create scenes as needed
 
+<!--@include: ./_generated/ppal-create-clip-schema.md-->
+
 ### Read Clip (`ppal-read-clip`)
 
 - Get detailed info about any clip in Session or Arrangement
 - Read MIDI notes in musical notation (C3, D#4, etc.)
 - Get audio clip gain, pitch, warp settings, and sample info
+
+<!--@include: ./_generated/ppal-read-clip-schema.md-->
 
 ### Update Clip (`ppal-update-clip`)
 
@@ -152,6 +184,8 @@ create.
 - Move clips and change their length in the Arrangement
 - Split arrangement clips at specified positions
 - Update multiple clips at once
+
+<!--@include: ./_generated/ppal-update-clip-schema.md-->
 
 ### Custom Music Notation
 
@@ -199,10 +233,14 @@ Apply complex changes to clips using math expressions:
 Note: Return tracks and devices on return tracks cannot be duplicated (Live API
 limitation).
 
+<!--@include: ./_generated/ppal-duplicate-schema.md-->
+
 ### Delete (`ppal-delete`)
 
 - Remove tracks, return tracks, scenes, clips, or devices
 - Bulk delete multiple objects
+
+<!--@include: ./_generated/ppal-delete-schema.md-->
 
 ## Selection State and View Control
 
@@ -220,3 +258,5 @@ limitation).
   - Auto-switches to session view for scene/clipSlot selection
   - Detail views auto-managed: clip detail opens on clip selection, device
     detail on device selection
+
+<!--@include: ./_generated/ppal-select-schema.md-->

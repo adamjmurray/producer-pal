@@ -1,0 +1,13 @@
+.vp-doc-muted {
+  color: var(--vp-c-text-3);
+}
+
+details > table th:nth-child(2),
+details > table td:nth-child(2) {
+  min-width: 15em;
+}
+
+details > table th:last-child,
+details > table td:last-child {
+  min-width: 15em;
+}

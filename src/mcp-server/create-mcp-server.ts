@@ -32,7 +32,7 @@ export type CallLiveApiFunction = (
   args: object,
 ) => Promise<object>;
 
-const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
+export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
   toolDefConnect,
   toolDefContext,
   toolDefReadLiveSet,
