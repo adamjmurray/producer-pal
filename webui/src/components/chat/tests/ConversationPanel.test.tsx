@@ -21,6 +21,9 @@ const conversations: ConversationSummary[] = [
     provider: "gemini",
     model: "gemini-2.5-pro",
     modelLabel: "Gemini 2.5 Pro",
+    thinking: null,
+    temperature: null,
+    showThoughts: null,
   },
   {
     id: "conv-2",
@@ -31,6 +34,9 @@ const conversations: ConversationSummary[] = [
     provider: null,
     model: null,
     modelLabel: null,
+    thinking: null,
+    temperature: null,
+    showThoughts: null,
   },
 ];
 
@@ -266,6 +272,9 @@ describe("ConversationPanel", () => {
         provider: "gemini",
         model: "gemini-1.5-pro-removed",
         modelLabel: "Gemini 1.5 Pro",
+        thinking: null,
+        temperature: null,
+        showThoughts: null,
       },
     ];
 
@@ -289,6 +298,9 @@ describe("ConversationPanel", () => {
         provider: null,
         model: "custom-model-xyz",
         modelLabel: null,
+        thinking: null,
+        temperature: null,
+        showThoughts: null,
       },
     ];
 

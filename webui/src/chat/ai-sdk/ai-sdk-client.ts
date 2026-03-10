@@ -55,15 +55,18 @@ export class AiSdkClient {
    * The AI SDK handles multi-step tool calling via stopWhen.
    * @param message - User message text
    * @param abortSignal - Signal to abort the stream
-   * @param _overrides - Per-message overrides (reserved for future use)
+   * @param overrides - Per-message overrides for thinking/temperature/showThoughts
    * @yields Complete chat history after each stream update
    */
   async *sendMessage(
     message: string,
     abortSignal?: AbortSignal,
-    _overrides?: MessageOverrides,
+    overrides?: MessageOverrides,
   ): AsyncGenerator<AiSdkMessage[], void, unknown> {
-    this.chatHistory.push({ role: "user", content: message });
+    const userMsg: AiSdkMessage = { role: "user", content: message };
+
+    stampOverrides(userMsg, overrides);
+    this.chatHistory.push(userMsg);
     yield [...this.chatHistory];
 
     const result = streamText({
@@ -80,17 +83,17 @@ export class AiSdkClient {
     const historyLengthBefore = this.chatHistory.length;
 
     yield* this.processStream(result);
-    yield* this.captureResponseModel(result, historyLengthBefore);
+    yield* this.captureResponseMetadata(result, historyLengthBefore);
   }
 
   /**
-   * Capture the response model ID from stream metadata and attach it
-   * to all assistant messages created during the current turn.
+   * Capture response metadata (model ID) and attach to all assistant messages
+   * created during the current turn.
    * @param result - The streamText result
    * @param historyLengthBefore - Chat history length before streaming started
-   * @yields Updated chat history if a response model was captured
+   * @yields Updated chat history if metadata was captured
    */
-  private async *captureResponseModel(
+  private async *captureResponseMetadata(
     result: ReturnType<typeof streamText>,
     historyLengthBefore: number,
   ): AsyncGenerator<AiSdkMessage[]> {
@@ -105,12 +108,12 @@ export class AiSdkClient {
             msg.responseModel = response.modelId;
           }
         }
-
-        yield [...this.chatHistory];
       }
     } catch {
       // Stream may have been aborted — response metadata not available
     }
+
+    yield [...this.chatHistory];
   }
 
   /**
@@ -141,6 +144,22 @@ export class AiSdkClient {
       }
     }
   }
+}
+
+/**
+ * Stamp per-message setting overrides onto a user message.
+ * Only sets fields that are present in the overrides.
+ * @param msg - User message to stamp
+ * @param overrides - Per-message overrides (undefined = no overrides)
+ */
+function stampOverrides(msg: AiSdkMessage, overrides?: MessageOverrides): void {
+  if (!overrides) return;
+
+  if (overrides.thinking != null) msg.thinkingOverride = overrides.thinking;
+  if (overrides.temperature != null)
+    msg.temperatureOverride = overrides.temperature;
+  if (overrides.showThoughts != null)
+    msg.showThoughtsOverride = overrides.showThoughts;
 }
 
 /**

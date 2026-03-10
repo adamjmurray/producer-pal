@@ -27,6 +27,9 @@ const makeRecord = (
   provider: null,
   model: null,
   modelLabel: null,
+  thinking: null,
+  temperature: null,
+  showThoughts: null,
   messages: [{ role: "user", content: `hello from ${id}` }],
 });
 

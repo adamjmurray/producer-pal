@@ -12,6 +12,7 @@ import {
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 import {
+  filterOverrides,
   handleMessageStream,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
@@ -25,18 +26,10 @@ import {
   type UseChatReturn,
 } from "./use-chat-types";
 
-export type {
-  ChatAdapter,
-  ChatClient,
-  ConversationLockedSettings,
-  MessageOverrides,
-  RateLimitState,
-  UseChatReturn,
-};
+export type { ChatAdapter, ChatClient, MessageOverrides };
 
 /**
  * Generic chat hook that works with any provider via an adapter
- *
  * @param {UseChatProps} props - Chat configuration and adapter
  * @returns {UseChatReturn} Chat state and handlers
  */
@@ -66,6 +59,9 @@ export function useChat<
   const [activeTemperature, setActiveTemperature] = useState<number | null>(
     null,
   );
+  const [activeShowThoughts, setActiveShowThoughts] = useState<boolean | null>(
+    null,
+  );
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
     null,
   );
@@ -73,6 +69,13 @@ export function useChat<
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const retryAbortRef = useRef<AbortController | null>(null);
+  const thinkingRef = useRef(activeThinking);
+  const temperatureRef = useRef(activeTemperature);
+  const showThoughtsRef = useRef(activeShowThoughts);
+
+  thinkingRef.current = activeThinking;
+  temperatureRef.current = activeTemperature;
+  showThoughtsRef.current = activeShowThoughts;
 
   const clearConversation = useCallback(() => {
     setMessages([]);
@@ -82,6 +85,7 @@ export function useChat<
     setActiveProvider(null);
     setActiveThinking(null);
     setActiveTemperature(null);
+    setActiveShowThoughts(null);
     setRateLimitState(null);
     retryAbortRef.current?.abort();
   }, []);
@@ -99,8 +103,9 @@ export function useChat<
       setMessages(adapter.formatMessages(chatHistory as TMessage[]));
       setActiveModel(lockedSettings?.model ?? null);
       setActiveProvider(lockedSettings?.provider ?? null);
-      setActiveThinking(null);
-      setActiveTemperature(null);
+      setActiveThinking(lockedSettings?.thinking ?? null);
+      setActiveTemperature(lockedSettings?.temperature ?? null);
+      setActiveShowThoughts(lockedSettings?.showThoughts ?? null);
       setRateLimitState(null);
     },
     [adapter],
@@ -135,6 +140,7 @@ export function useChat<
       setActiveProvider(provider);
       setActiveThinking(effectiveThinking);
       setActiveTemperature(effectiveTemperature);
+      setActiveShowThoughts(overrides?.showThoughts ?? null);
     },
     [
       mcpStatus,
@@ -151,11 +157,6 @@ export function useChat<
     ],
   );
 
-  /**
-   * Executes a stream request with automatic retry on rate limit errors.
-   * If content was received before the error, sends "continue" on retry
-   * instead of the original message.
-   */
   const executeWithRetry = useCallback(
     async (
       executeStream: (message: string) => AsyncIterable<TMessage[]>,
@@ -163,7 +164,6 @@ export function useChat<
       originalMessage: string,
     ): Promise<void> => {
       let attempt = 0;
-      // Use mutable object so callback can set it and loop can read updated value
       const contentState = { hasReceived: false };
 
       retryAbortRef.current = new AbortController();
@@ -175,13 +175,10 @@ export function useChat<
 
       while (shouldRetry(attempt)) {
         try {
-          const messageToSend = contentState.hasReceived
-            ? "continue"
-            : originalMessage;
-          const stream = executeStream(messageToSend);
+          const msg = contentState.hasReceived ? "continue" : originalMessage;
 
           await handleMessageStream(
-            stream,
+            executeStream(msg),
             adapter.formatMessages,
             onMessageUpdate,
           );
@@ -189,22 +186,17 @@ export function useChat<
 
           return;
         } catch (error) {
-          // Check if retry was aborted (using signal from loop-scoped controller)
-          if (retryAbortRef.current.signal.aborted) {
-            return;
-          }
+          if (retryAbortRef.current.signal.aborted) return;
 
           const rateLimitInfo = detectRateLimit(error);
 
           if (!rateLimitInfo.isRateLimited || !shouldRetry(attempt + 1)) {
-            // Not a rate limit error or no more retries - show error
             setMessages(adapter.createErrorMessage(error, getHistory()));
             setRateLimitState(null);
 
             return;
           }
 
-          // Calculate delay and update state for UI
           const delayMs = calculateRetryDelay(
             attempt,
             rateLimitInfo.retryAfterMs,
@@ -226,7 +218,6 @@ export function useChat<
               reject(new Error("Retry cancelled"));
             });
           });
-
           attempt++;
         }
       }
@@ -275,8 +266,14 @@ export function useChat<
 
         abortControllerRef.current = controller;
 
+        const filtered = filterOverrides(options, {
+          thinking: thinkingRef.current,
+          temperature: temperatureRef.current,
+          showThoughts: showThoughtsRef.current,
+        });
+
         await executeWithRetry(
-          (msg) => client.sendMessage(msg, controller.signal, options),
+          (msg) => client.sendMessage(msg, controller.signal, filtered),
           () => client.chatHistory,
           userMessage,
         );
@@ -390,6 +387,7 @@ export function useChat<
     activeProvider,
     activeThinking,
     activeTemperature,
+    activeShowThoughts,
     rateLimitState,
     handleSend,
     handleRetry,

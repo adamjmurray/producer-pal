@@ -58,10 +58,13 @@ export interface ChatAdapter<
   createUserMessage: (text: string) => TMessage;
 }
 
-/** Model/provider settings persisted with a conversation */
+/** Model/provider/behavior settings persisted with a conversation */
 export interface ConversationLockedSettings {
   model: string | null;
   provider: Provider | null;
+  thinking: string | null;
+  temperature: number | null;
+  showThoughts: boolean | null;
 }
 
 /** Rate limit retry state for UI display */
@@ -79,6 +82,7 @@ export interface UseChatReturn {
   activeProvider: Provider | null;
   activeThinking: string | null;
   activeTemperature: number | null;
+  activeShowThoughts: boolean | null;
   rateLimitState: RateLimitState | null;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;

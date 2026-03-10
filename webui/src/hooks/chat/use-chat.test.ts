@@ -24,6 +24,7 @@ vi.mock(import("./helpers/streaming-helpers"), () => ({
     return true;
   }),
   validateMcpConnection: vi.fn(),
+  filterOverrides: vi.fn((overrides) => overrides),
 }));
 
 const mockAdapter = createMockAdapter();
@@ -623,7 +624,13 @@ describe("useChat", () => {
             { role: "user", content: "hello" },
             { role: "assistant", content: "hi" },
           ],
-          { model: "gemini-2.5-pro", provider: "gemini" },
+          {
+            model: "gemini-2.5-pro",
+            provider: "gemini",
+            thinking: null,
+            temperature: null,
+            showThoughts: null,
+          },
         );
       });
 

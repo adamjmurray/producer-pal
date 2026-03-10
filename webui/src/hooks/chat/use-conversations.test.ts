@@ -33,6 +33,9 @@ function createProps() {
       clearConversation: vi.fn(),
       activeModel: null as string | null,
       activeProvider: null as Provider | null,
+      activeThinking: null as string | null,
+      activeTemperature: null as number | null,
+      activeShowThoughts: null as boolean | null,
     },
   };
 }
@@ -146,6 +149,9 @@ describe("useConversations", () => {
       provider: "gemini",
       model: "gemini-2.5-pro",
       modelLabel: "Gemini 2.5 Pro",
+      thinking: null,
+      temperature: null,
+      showThoughts: null,
       messages: [{ role: "user", content: "existing conversation" }],
     });
 
@@ -169,7 +175,13 @@ describe("useConversations", () => {
     expect(props.clearConversation).toHaveBeenCalled();
     expect(props.restoreChatHistory).toHaveBeenCalledWith(
       [{ role: "user", content: "existing conversation" }],
-      { model: "gemini-2.5-pro", provider: "gemini" },
+      {
+        model: "gemini-2.5-pro",
+        provider: "gemini",
+        thinking: null,
+        temperature: null,
+        showThoughts: null,
+      },
     );
   });
 
@@ -209,6 +221,9 @@ describe("useConversations", () => {
       provider: "anthropic",
       model: "claude-sonnet-4-6-20250514",
       modelLabel: "Claude Sonnet 4.6",
+      thinking: null,
+      temperature: null,
+      showThoughts: null,
       messages: [{ role: "user", content: "restored" }],
     });
     window.location.hash = existingId;
@@ -221,7 +236,13 @@ describe("useConversations", () => {
     expect(result.current.activeConversationId).toBe(existingId);
     expect(props.restoreChatHistory).toHaveBeenCalledWith(
       [{ role: "user", content: "restored" }],
-      { model: "claude-sonnet-4-6-20250514", provider: "anthropic" },
+      {
+        model: "claude-sonnet-4-6-20250514",
+        provider: "anthropic",
+        thinking: null,
+        temperature: null,
+        showThoughts: null,
+      },
     );
   });
 
@@ -328,6 +349,9 @@ describe("useConversations", () => {
       provider: null,
       model: null,
       modelLabel: null,
+      thinking: null,
+      temperature: null,
+      showThoughts: null,
       messages: [{ role: "user", content: "other" }],
     });
 
@@ -413,6 +437,9 @@ describe("useConversations", () => {
         provider: null,
         model: null,
         modelLabel: null,
+        thinking: null,
+        temperature: null,
+        showThoughts: null,
         messages: [{ role: "user", content: "from hash" }],
       });
 
@@ -428,7 +455,13 @@ describe("useConversations", () => {
       expect(result.current.activeConversationId).toBe(existingId);
       expect(props.restoreChatHistory).toHaveBeenCalledWith(
         [{ role: "user", content: "from hash" }],
-        { model: null, provider: null },
+        {
+          model: null,
+          provider: null,
+          thinking: null,
+          temperature: null,
+          showThoughts: null,
+        },
       );
     });
 

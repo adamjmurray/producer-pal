@@ -5,10 +5,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
-import { useLimitNotification } from "#webui/hooks/chat/helpers/use-limit-notification";
-import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat";
-import { getModelName } from "#webui/lib/config";
 import {
+  type ActiveRefs,
+  buildLockedSettings,
+  buildSaveRecord,
+  getHashConversationId,
+  setLocationHash,
+} from "#webui/hooks/chat/helpers/use-conversations-helpers";
+import { useLimitNotification } from "#webui/hooks/chat/helpers/use-limit-notification";
+import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
+import {
+  type ConversationRecord,
   type ConversationSummary,
   deleteConversation as dbDeleteConversation,
   listConversations,
@@ -28,6 +35,9 @@ interface UseConversationsProps {
   clearConversation: () => void;
   activeModel: string | null;
   activeProvider: Provider | null;
+  activeThinking: string | null;
+  activeTemperature: number | null;
+  activeShowThoughts: boolean | null;
 }
 
 export interface UseConversationsReturn {
@@ -53,6 +63,9 @@ export interface UseConversationsReturn {
  * @param props.clearConversation - Clears the current conversation
  * @param props.activeModel - Active model for the current conversation
  * @param props.activeProvider - Active provider for the current conversation
+ * @param props.activeThinking - Active thinking level for the current conversation
+ * @param props.activeTemperature - Active temperature for the current conversation
+ * @param props.activeShowThoughts - Active showThoughts setting for the current conversation
  * @returns Conversation management state and handlers
  */
 export function useConversations({
@@ -61,6 +74,9 @@ export function useConversations({
   clearConversation,
   activeModel: activeModelProp,
   activeProvider: activeProviderProp,
+  activeThinking: activeThinkingProp,
+  activeTemperature: activeTemperatureProp,
+  activeShowThoughts: activeShowThoughtsProp,
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const limit = useLimitNotification();
@@ -73,21 +89,33 @@ export function useConversations({
   const activeBookmarkedRef = useRef(false);
   const activeModelRef = useRef<string | null>(null);
   const activeProviderRef = useRef<Provider | null>(null);
+  const activeThinkingRef = useRef<string | null>(null);
+  const activeTemperatureRef = useRef<number | null>(null);
+  const activeShowThoughtsRef = useRef<boolean | null>(null);
   const programmaticHashRef = useRef(false);
 
   useEffect(() => {
     activeIdRef.current = activeConversationId;
   }, [activeConversationId]);
 
-  // Keep model/provider refs in sync with props from useChat
+  // Keep active refs in sync with props from useChat
   useEffect(() => {
     if (activeModelProp != null) activeModelRef.current = activeModelProp;
-  }, [activeModelProp]);
-
-  useEffect(() => {
     if (activeProviderProp != null)
       activeProviderRef.current = activeProviderProp;
-  }, [activeProviderProp]);
+    if (activeThinkingProp != null)
+      activeThinkingRef.current = activeThinkingProp;
+    if (activeTemperatureProp != null)
+      activeTemperatureRef.current = activeTemperatureProp;
+    if (activeShowThoughtsProp != null)
+      activeShowThoughtsRef.current = activeShowThoughtsProp;
+  }, [
+    activeModelProp,
+    activeProviderProp,
+    activeThinkingProp,
+    activeTemperatureProp,
+    activeShowThoughtsProp,
+  ]);
 
   const refreshList = useCallback(async () => {
     const list = await listConversations();
@@ -110,9 +138,44 @@ export function useConversations({
     activeBookmarkedRef.current = false;
     activeModelRef.current = null;
     activeProviderRef.current = null;
+    activeThinkingRef.current = null;
+    activeTemperatureRef.current = null;
+    activeShowThoughtsRef.current = null;
     programmaticHashRef.current = true;
     setLocationHash(null);
   }, []);
+
+  /**
+   * Sync all active refs from a loaded conversation record.
+   * @param record - Conversation record to sync from
+   */
+  const syncActiveRefs = (record: ConversationRecord) => {
+    activeTitleRef.current = record.title;
+    activeCreatedAtRef.current = record.createdAt;
+    activeBookmarkedRef.current = record.bookmarked;
+    activeModelRef.current = record.model;
+    activeProviderRef.current = record.provider as Provider | null;
+    activeThinkingRef.current = record.thinking;
+    activeTemperatureRef.current = record.temperature;
+    activeShowThoughtsRef.current = record.showThoughts;
+  };
+
+  /**
+   * Snapshot active refs for save record construction.
+   * @param id - Conversation ID
+   * @returns Active refs snapshot
+   */
+  const getActiveRefs = (id: string): ActiveRefs => ({
+    id,
+    title: activeTitleRef.current,
+    createdAt: activeCreatedAtRef.current,
+    bookmarked: activeBookmarkedRef.current,
+    model: activeModelRef.current,
+    provider: activeProviderRef.current,
+    thinking: activeThinkingRef.current,
+    temperature: activeTemperatureRef.current,
+    showThoughts: activeShowThoughtsRef.current,
+  });
 
   // Load conversation from URL hash and conversation list on mount
   useEffect(() => {
@@ -125,15 +188,8 @@ export function useConversations({
 
         if (record && record.messages.length > 0) {
           setActiveId(hashId);
-          restoreChatHistory(record.messages, {
-            model: record.model,
-            provider: record.provider as Provider | null,
-          });
-          activeTitleRef.current = record.title;
-          activeCreatedAtRef.current = record.createdAt;
-          activeBookmarkedRef.current = record.bookmarked;
-          activeModelRef.current = record.model;
-          activeProviderRef.current = record.provider as Provider | null;
+          restoreChatHistory(record.messages, buildLockedSettings(record));
+          syncActiveRefs(record);
         } else {
           // Hash ID no longer exists in DB
           clearActiveId();
@@ -149,7 +205,6 @@ export function useConversations({
 
     if (chatHistory.length === 0) return;
 
-    const now = Date.now();
     const isNew = activeIdRef.current == null;
     const id = activeIdRef.current ?? crypto.randomUUID();
 
@@ -157,34 +212,11 @@ export function useConversations({
     setActiveId(id);
 
     const existing = isNew ? undefined : await loadConversation(id);
-    const existingTitle = existing?.title ?? activeTitleRef.current ?? null;
-    const title = deriveTitle(existingTitle, chatHistory);
-    const createdAt = existing?.createdAt ?? activeCreatedAtRef.current ?? now;
-    const bookmarked = existing?.bookmarked ?? activeBookmarkedRef.current;
-    const model = activeModelRef.current;
-    const provider = activeProviderRef.current;
-    const modelLabel = model ? getModelName(model) : null;
+    const record = buildSaveRecord(getActiveRefs(id), existing, chatHistory);
 
-    activeTitleRef.current = title;
-    activeCreatedAtRef.current = createdAt;
-    activeBookmarkedRef.current = bookmarked;
-    activeModelRef.current = model;
-    activeProviderRef.current = provider;
+    syncActiveRefs(record);
 
-    const result = await saveConversation({
-      id,
-      title,
-      createdAt,
-      updatedAt: now,
-      bookmarked,
-      provider,
-      model,
-      modelLabel,
-      messages: chatHistory as Array<{
-        role: "user" | "assistant";
-        content: string;
-      }>,
-    });
+    const result = await saveConversation(record);
 
     limit.showLimitNotification(result);
     await refreshList();
@@ -202,16 +234,9 @@ export function useConversations({
       if (!record) return;
 
       clearConversation();
-      restoreChatHistory(record.messages, {
-        model: record.model,
-        provider: record.provider as Provider | null,
-      });
+      restoreChatHistory(record.messages, buildLockedSettings(record));
       setActiveId(id);
-      activeTitleRef.current = record.title;
-      activeCreatedAtRef.current = record.createdAt;
-      activeBookmarkedRef.current = record.bookmarked;
-      activeModelRef.current = record.model;
-      activeProviderRef.current = record.provider as Provider | null;
+      syncActiveRefs(record);
     },
     [
       getChatHistory,
@@ -314,26 +339,12 @@ export function useConversations({
 
       if (chatHistory.length === 0) return;
 
-      const now = Date.now();
       const id = activeIdRef.current ?? crypto.randomUUID();
 
-      const model = activeModelRef.current;
-
       // Best-effort save — IndexedDB writes are async but usually complete
-      void saveConversation({
-        id,
-        title: deriveTitle(activeTitleRef.current, chatHistory),
-        createdAt: activeCreatedAtRef.current ?? now,
-        updatedAt: now,
-        bookmarked: activeBookmarkedRef.current,
-        provider: activeProviderRef.current,
-        model,
-        modelLabel: model ? getModelName(model) : null,
-        messages: chatHistory as Array<{
-          role: "user" | "assistant";
-          content: string;
-        }>,
-      });
+      void saveConversation(
+        buildSaveRecord(getActiveRefs(id), undefined, chatHistory),
+      );
     };
 
     window.addEventListener("beforeunload", handler);
@@ -354,79 +365,4 @@ export function useConversations({
     toggleBookmark,
     refreshList,
   };
-}
-
-// --- Helpers below main export ---
-
-/**
- * Read the conversation ID from the URL hash.
- * @returns The conversation ID, or null if no hash is set
- */
-function getHashConversationId(): string | null {
-  const hash = window.location.hash.slice(1);
-
-  return hash || null;
-}
-
-/**
- * Set the URL hash to the given conversation ID (or clear it).
- * @param id - Conversation ID, or null to clear the hash
- */
-function setLocationHash(id: string | null): void {
-  if (id) {
-    window.location.hash = id;
-  } else {
-    // Remove hash without scrolling — pushState avoids hashchange event issues
-    history.replaceState(
-      null,
-      "",
-      window.location.pathname + window.location.search,
-    );
-  }
-}
-
-const CONNECT_PATTERN =
-  /^\s*(connect(\s+to\s+ableton)?|ableton)\s*[!,.:;?]*\s*$/i;
-
-/**
- * Extracts the first line of a message content string.
- * @param content - Raw message content
- * @returns First non-empty line, or the whole string if single-line
- */
-function firstLine(content: string): string {
-  return content.split("\n")[0]?.trim() ?? "";
-}
-
-/**
- * Derives an automatic title from chat history when no manual title exists.
- *
- * Uses the first user message's first line as the title. If that looks like
- * a "connect to Ableton" command, upgrades to the second user message's
- * first line when available.
- * @param currentTitle - Existing title (null if none)
- * @param chatHistory - Current chat messages
- * @returns Derived title, or currentTitle if already set manually
- */
-function deriveTitle(
-  currentTitle: string | null,
-  chatHistory: unknown[],
-): string | null {
-  const messages = chatHistory as Array<{ role: string; content: string }>;
-  const userMessages = messages.filter((m) => m.role === "user");
-
-  if (userMessages.length === 0) return currentTitle;
-
-  const firstUserLine = firstLine(userMessages[0]?.content ?? "");
-
-  // Keep manually-set titles that don't match auto-derived ones
-  if (currentTitle != null && !CONNECT_PATTERN.test(currentTitle)) {
-    return currentTitle;
-  }
-
-  // If first message is a connect command, try second user message
-  if (CONNECT_PATTERN.test(firstUserLine) && userMessages.length > 1) {
-    return firstLine(userMessages[1]?.content ?? "") || firstUserLine;
-  }
-
-  return firstUserLine || null;
 }

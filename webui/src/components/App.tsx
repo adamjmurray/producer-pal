@@ -154,6 +154,9 @@ export function App() {
     clearConversation: wrappedClearConversation,
     activeModel: chat.activeModel,
     activeProvider: chat.activeProvider,
+    activeThinking: chat.activeThinking,
+    activeTemperature: chat.activeTemperature,
+    activeShowThoughts: chat.activeShowThoughts,
   });
 
   const transfer = useConversationTransfer(conversationManager.refreshList);

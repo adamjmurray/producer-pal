@@ -31,6 +31,10 @@ export interface AiSdkMessage {
   reasoning?: string;
   /** Model ID from the API response (assistant messages only) */
   responseModel?: string;
+  /** Per-message setting overrides (only present when user overrode conversation defaults) */
+  thinkingOverride?: string;
+  temperatureOverride?: number;
+  showThoughtsOverride?: boolean;
 }
 
 /** Configuration for the AI SDK client */

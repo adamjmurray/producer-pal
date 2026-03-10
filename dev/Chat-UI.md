@@ -179,18 +179,22 @@ interface ConversationRecord {
   provider: string | null; // AI provider (e.g., "anthropic")
   model: string | null; // model ID
   modelLabel: string | null; // display name
+  thinking: string | null; // thinking level (e.g., "High", "Off")
+  temperature: number | null; // temperature setting
+  showThoughts: boolean | null; // whether thinking was displayed
   messages: AiSdkMessage[]; // full history including toolCalls, toolResults, reasoning, responseModel
 }
 ```
 
 **Files**:
 
-| File                                    | Purpose                                                                       |
-| --------------------------------------- | ----------------------------------------------------------------------------- |
-| `lib/conversation-db.ts`                | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
-| `lib/conversation-db-helpers.ts`        | DB open/upgrade, version mismatch handling, JSON export                       |
-| `hooks/chat/use-conversations.ts`       | Orchestration hook (save/load/switch/new/delete/rename)                       |
-| `components/chat/ConversationPanel.tsx` | Slide-out sidebar panel with inline rename                                    |
+| File                                              | Purpose                                                                       |
+| ------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `lib/conversation-db.ts`                          | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
+| `lib/conversation-db-helpers.ts`                  | DB open/upgrade, version mismatch handling, JSON export                       |
+| `hooks/chat/use-conversations.ts`                 | Orchestration hook (save/load/switch/new/delete/rename)                       |
+| `hooks/chat/helpers/use-conversations-helpers.ts` | Title derivation, URL hash, locked settings builders                          |
+| `components/chat/ConversationPanel.tsx`           | Slide-out sidebar panel with inline rename                                    |
 
 **Auto-save triggers** (wired in `App.tsx`):
 
@@ -238,6 +242,20 @@ for await (const part of result.fullStream) {
 All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Ollama) go
 through this single code path via provider-specific model factories in
 `provider-factories.ts`.
+
+**Locked Settings:**
+
+Provider, model, thinking level, temperature, and showThoughts are locked per
+conversation. When a conversation is saved, these settings are stored on the
+`ConversationRecord`. When restored, they're passed as
+`ConversationLockedSettings` to prevent settings changes from affecting the
+active conversation.
+
+Per-message overrides (`MessageOverrides`) can still override
+thinking/temperature/ showThoughts for individual messages. When used, the
+overridden values are stamped on the assistant `AiSdkMessage` as
+`thinkingOverride`, `temperatureOverride`, and `showThoughtsOverride` — only
+when they differ from the conversation defaults.
 
 **Response Model Tracking:**
 

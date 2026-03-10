@@ -21,6 +21,7 @@ vi.mock(import("./helpers/streaming-helpers"), () => ({
     return true;
   }),
   validateMcpConnection: vi.fn(),
+  filterOverrides: vi.fn((overrides) => overrides),
 }));
 
 describe("useChat handleEdit", () => {

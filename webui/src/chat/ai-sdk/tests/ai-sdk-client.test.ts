@@ -345,6 +345,26 @@ describe("AiSdkClient", () => {
       expect(last[1]!.responseModel).toBe("gpt-4o-mini");
     });
 
+    it("skips responseModel when response has no modelId", async () => {
+      async function* iterate(): AsyncIterable<Record<string, unknown>> {
+        yield { type: "text-delta", text: "Hi" };
+      }
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        fullStream: iterate(),
+        response: Promise.resolve({}),
+      });
+
+      const client = new AiSdkClient("key", createConfig());
+      let last: AiSdkMessage[] = [];
+
+      for await (const history of client.sendMessage("Hello")) {
+        last = history;
+      }
+
+      expect(last[1]!.responseModel).toBeUndefined();
+    });
+
     it("ignores unrecognized stream part types", async () => {
       const last = await sendWithParts([
         { type: "text-delta", text: "Hi" },
@@ -397,6 +417,91 @@ describe("AiSdkClient", () => {
         type: "text",
         value: "OK",
       });
+    });
+  });
+
+  describe("per-message overrides", () => {
+    it("stamps overrides on user message when provided", async () => {
+      async function* iterate(): AsyncIterable<Record<string, unknown>> {
+        yield { type: "text-delta", text: "response" };
+      }
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        fullStream: iterate(),
+        response: Promise.resolve({ modelId: "test-model" }),
+      });
+
+      const client = new AiSdkClient("key", createConfig());
+      let last: AiSdkMessage[] = [];
+
+      for await (const history of client.sendMessage("Hello", undefined, {
+        thinking: "High",
+        temperature: 0.5,
+        showThoughts: true,
+      })) {
+        last = history;
+      }
+
+      const user = last.find((m) => m.role === "user");
+
+      expect(user?.thinkingOverride).toBe("High");
+      expect(user?.temperatureOverride).toBe(0.5);
+      expect(user?.showThoughtsOverride).toBe(true);
+
+      // Assistant messages should NOT have overrides
+      const assistant = last.find((m) => m.role === "assistant");
+
+      expect(assistant?.thinkingOverride).toBeUndefined();
+    });
+
+    it("does not stamp overrides when none provided", async () => {
+      async function* iterate(): AsyncIterable<Record<string, unknown>> {
+        yield { type: "text-delta", text: "response" };
+      }
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        fullStream: iterate(),
+        response: Promise.resolve({ modelId: "test-model" }),
+      });
+
+      const client = new AiSdkClient("key", createConfig());
+      let last: AiSdkMessage[] = [];
+
+      for await (const history of client.sendMessage("Hello")) {
+        last = history;
+      }
+
+      const user = last.find((m) => m.role === "user");
+
+      expect(user?.thinkingOverride).toBeUndefined();
+      expect(user?.temperatureOverride).toBeUndefined();
+      expect(user?.showThoughtsOverride).toBeUndefined();
+    });
+
+    it("only stamps provided override fields", async () => {
+      async function* iterate(): AsyncIterable<Record<string, unknown>> {
+        yield { type: "text-delta", text: "response" };
+      }
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        fullStream: iterate(),
+        response: Promise.resolve({ modelId: "test-model" }),
+      });
+
+      const client = new AiSdkClient("key", createConfig());
+      let last: AiSdkMessage[] = [];
+
+      for await (const history of client.sendMessage("Hello", undefined, {
+        thinking: "Low",
+      })) {
+        last = history;
+      }
+
+      const user = last.find((m) => m.role === "user");
+
+      expect(user?.thinkingOverride).toBe("Low");
+      expect(user?.temperatureOverride).toBeUndefined();
+      expect(user?.showThoughtsOverride).toBeUndefined();
     });
   });
 });

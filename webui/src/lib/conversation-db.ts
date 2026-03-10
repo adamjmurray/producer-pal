@@ -19,6 +19,9 @@ export interface ConversationRecord {
   provider: string | null;
   model: string | null;
   modelLabel: string | null;
+  thinking: string | null;
+  temperature: number | null;
+  showThoughts: boolean | null;
   messages: AiSdkMessage[];
 }
 
@@ -32,6 +35,9 @@ export interface ConversationSummary {
   provider: string | null;
   model: string | null;
   modelLabel: string | null;
+  thinking: string | null;
+  temperature: number | null;
+  showThoughts: boolean | null;
 }
 
 /** Result of enforcing the conversation limit during save */
@@ -78,10 +84,18 @@ export async function loadConversation(
   id: string,
 ): Promise<ConversationRecord | undefined> {
   const db = await getConversationDb();
-
-  return await (db.get(STORE_NAME, id) as Promise<
+  const record = await (db.get(STORE_NAME, id) as Promise<
     ConversationRecord | undefined
   >);
+
+  if (!record) return undefined;
+
+  // Default new fields for old records that predate these columns
+  record.thinking ??= null;
+  record.temperature ??= null;
+  record.showThoughts ??= null;
+
+  return record;
 }
 
 /**
@@ -153,6 +167,9 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         provider,
         model,
         modelLabel,
+        thinking,
+        temperature,
+        showThoughts,
       }) => ({
         id,
         title,
@@ -162,6 +179,9 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         provider,
         model,
         modelLabel,
+        thinking: thinking ?? null,
+        temperature: temperature ?? null,
+        showThoughts: showThoughts ?? null,
       }),
     )
     .sort((a, b) => b.createdAt - a.createdAt);

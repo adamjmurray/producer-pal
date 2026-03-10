@@ -32,6 +32,9 @@ function createRecord(
     provider: null,
     model: null,
     modelLabel: null,
+    thinking: null,
+    temperature: null,
+    showThoughts: null,
     messages: [{ role: "user", content: "hello" }],
     ...overrides,
   };
@@ -115,6 +118,9 @@ describe("conversation-db", () => {
       provider: null,
       model: null,
       modelLabel: null,
+      thinking: null,
+      temperature: null,
+      showThoughts: null,
     });
     expect(
       (list[0] as unknown as Record<string, unknown>).messages,
@@ -174,6 +180,48 @@ describe("conversation-db", () => {
     const loaded = await loadConversation("nonexistent");
 
     expect(loaded).toBeUndefined();
+  });
+
+  it("defaults missing thinking/temperature/showThoughts to null on load", async () => {
+    const record = createRecord();
+
+    await saveConversation(record);
+
+    // Simulate an old record by removing the new fields directly in IndexedDB
+    const db = await getConversationDb();
+    const raw = await db.get("conversations", record.id);
+
+    delete (raw as Record<string, unknown>).thinking;
+    delete (raw as Record<string, unknown>).temperature;
+    delete (raw as Record<string, unknown>).showThoughts;
+    await db.put("conversations", raw);
+
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.thinking).toBeNull();
+    expect(loaded?.temperature).toBeNull();
+    expect(loaded?.showThoughts).toBeNull();
+  });
+
+  it("defaults missing fields to null in list summaries", async () => {
+    const record = createRecord();
+
+    await saveConversation(record);
+
+    // Simulate an old record by removing the new fields directly in IndexedDB
+    const db = await getConversationDb();
+    const raw = await db.get("conversations", record.id);
+
+    delete (raw as Record<string, unknown>).thinking;
+    delete (raw as Record<string, unknown>).temperature;
+    delete (raw as Record<string, unknown>).showThoughts;
+    await db.put("conversations", raw);
+
+    const list = await listConversations();
+
+    expect(list[0]?.thinking).toBeNull();
+    expect(list[0]?.temperature).toBeNull();
+    expect(list[0]?.showThoughts).toBeNull();
   });
 
   it("includes modelLabel in saved and listed conversations", async () => {

@@ -47,6 +47,9 @@ function makeRecord(id: string): ConversationRecord {
     provider: null,
     model: null,
     modelLabel: null,
+    thinking: null,
+    temperature: null,
+    showThoughts: null,
     messages: [{ role: "user", content: "hi" }],
   };
 }

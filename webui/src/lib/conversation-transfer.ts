@@ -111,6 +111,9 @@ function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
     provider: (record.provider as string | null | undefined) ?? null,
     model: (record.model as string | null | undefined) ?? null,
     modelLabel: (record.modelLabel as string | null | undefined) ?? null,
+    thinking: (record.thinking as string | null | undefined) ?? null,
+    temperature: (record.temperature as number | null | undefined) ?? null,
+    showThoughts: (record.showThoughts as boolean | null | undefined) ?? null,
     messages: record.messages as ConversationRecord["messages"],
   };
 }

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type UIMessage } from "#webui/types/messages";
 
@@ -83,4 +84,48 @@ export async function validateMcpConnection(
     await checkMcpConnection();
     throw new Error(`MCP connection failed: ${mcpError}`);
   }
+}
+
+interface ConversationDefaults {
+  thinking: string | null;
+  temperature: number | null;
+  showThoughts: boolean | null;
+}
+
+/**
+ * Filter per-message overrides to only include fields that differ from
+ * conversation defaults. Returns undefined if no fields differ.
+ * @param overrides - Raw overrides from the UI (always populated)
+ * @param defaults - Conversation-locked defaults
+ * @returns Filtered overrides, or undefined if nothing differs
+ */
+export function filterOverrides(
+  overrides: MessageOverrides | undefined,
+  defaults: ConversationDefaults,
+): MessageOverrides | undefined {
+  if (!overrides) return undefined;
+
+  const filtered: MessageOverrides = {};
+
+  if (overrides.thinking != null && overrides.thinking !== defaults.thinking)
+    filtered.thinking = overrides.thinking;
+
+  if (
+    overrides.temperature != null &&
+    overrides.temperature !== defaults.temperature
+  )
+    filtered.temperature = overrides.temperature;
+
+  if (
+    overrides.showThoughts != null &&
+    overrides.showThoughts !== defaults.showThoughts
+  )
+    filtered.showThoughts = overrides.showThoughts;
+
+  const hasOverrides =
+    filtered.thinking != null ||
+    filtered.temperature != null ||
+    filtered.showThoughts != null;
+
+  return hasOverrides ? filtered : undefined;
 }
