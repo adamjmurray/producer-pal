@@ -179,7 +179,7 @@ interface ConversationRecord {
   provider: string | null; // AI provider (e.g., "anthropic")
   model: string | null; // model ID
   modelLabel: string | null; // display name
-  messages: AiSdkMessage[]; // full history including toolCalls, toolResults, reasoning
+  messages: AiSdkMessage[]; // full history including toolCalls, toolResults, reasoning, responseModel
 }
 ```
 
@@ -238,6 +238,22 @@ for await (const part of result.fullStream) {
 All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Ollama) go
 through this single code path via provider-specific model factories in
 `provider-factories.ts`.
+
+**Response Model Tracking:**
+
+After each stream completes, `ai-sdk-client.ts` captures the `modelId` from the
+API response metadata and stores it on the assistant `AiSdkMessage` as
+`responseModel`. This persists to IndexedDB automatically (optional field, no
+migration needed).
+
+When the response model differs meaningfully from the requested model — after
+normalizing org prefixes and date suffixes — `MessageList.tsx` shows a
+"responded as {model}" label on the message bubble. This surfaces provider
+routing surprises (e.g., OpenRouter fallbacks, Ollama aliases).
+
+Mismatch detection logic is in `chat/helpers/model-identity.ts`. To test: use
+OpenRouter with the `openrouter/auto` model, which auto-selects a model and
+always triggers the mismatch indicator.
 
 **Formatting:**
 

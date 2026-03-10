@@ -95,6 +95,10 @@ export function formatAiSdkMessages(history: AiSdkMessage[]): UIMessage[] {
       addReasoning(msg.reasoning, currentMessage.parts);
       addTextContent(currentMessage.parts, msg.content);
       addToolParts(msg, currentMessage.parts);
+
+      if (msg.responseModel) {
+        currentMessage.responseModel = msg.responseModel;
+      }
     }
   }
 

@@ -203,6 +203,7 @@ export function ChatScreen({
                 handleRetry={handleRetry}
                 handleEdit={handleEdit}
                 showTimestamps={showTimestamps}
+                requestedModel={activeModel}
               />
             )}
           </div>

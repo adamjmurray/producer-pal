@@ -4,6 +4,7 @@
 
 import { Fragment, type VNode } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 import {
   formatTimestampDate,
   formatTimestampTime,
@@ -24,17 +25,19 @@ interface MessageListProps {
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
   showTimestamps: boolean;
+  requestedModel?: string | null;
 }
 
 /**
  * List of chat messages with auto-scroll
- * @param {MessageListProps} props - Component props
- * @param {UIMessage[]} props.messages - Chat messages to display
- * @param {boolean} props.isAssistantResponding - Whether assistant is responding
- * @param {(messageIndex: number) => Promise<void>} props.handleRetry - Retry message callback
- * @param {(messageIndex: number, newMessage: string) => Promise<void>} props.handleEdit - Edit and fork callback
- * @param {boolean} props.showTimestamps - Whether to show timestamps
- * @returns {JSX.Element} - React component
+ * @param {MessageListProps} root0 - Component props
+ * @param {UIMessage[]} root0.messages - Chat messages
+ * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
+ * @param {Function} root0.handleRetry - Retry callback
+ * @param {Function} root0.handleEdit - Edit and fork callback
+ * @param {boolean} root0.showTimestamps - Whether to show timestamps
+ * @param {string} [root0.requestedModel] - Requested model ID for mismatch detection
+ * @returns {JSX.Element} Message list
  */
 export function MessageList({
   messages,
@@ -42,6 +45,7 @@ export function MessageList({
   handleRetry,
   handleEdit,
   showTimestamps,
+  requestedModel,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [showStillThinking, setShowStillThinking] = useState(false);
@@ -96,10 +100,16 @@ export function MessageList({
               data-testid={isUser ? undefined : "assistant-message-bubble"}
             >
               {!isUser && (
-                <AssistantMessage
-                  parts={message.parts}
-                  isResponding={isAssistantResponding}
-                />
+                <>
+                  <ModelMismatchLabel
+                    requestedModel={requestedModel}
+                    responseModel={message.responseModel}
+                  />
+                  <AssistantMessage
+                    parts={message.parts}
+                    isResponding={isAssistantResponding}
+                  />
+                </>
               )}
               {isUser && isEditing && (
                 <UserMessageEditor
@@ -143,18 +153,10 @@ export function MessageList({
         );
       })}
 
-      {isAssistantResponding && (
-        <>
-          {showStillThinking && (
-            <div className="col-span-3 text-center text-sm text-gray-400 animate-pulse">
-              Still thinking...
-            </div>
-          )}
-          <div className="col-span-3">
-            <ActivityIndicator />
-          </div>
-        </>
-      )}
+      <StreamingFooter
+        isResponding={isAssistantResponding}
+        showStillThinking={showStillThinking}
+      />
 
       <div ref={messagesEndRef} className="col-span-3" />
     </div>
@@ -251,4 +253,58 @@ function formatUserContent(message: UIMessage): string {
       return "";
     })
     .join("");
+}
+
+/**
+ * Footer shown while assistant is streaming a response.
+ * @param props - Component props
+ * @param props.isResponding - Whether assistant is responding
+ * @param props.showStillThinking - Whether to show "Still thinking..." text
+ * @returns Footer element or null
+ */
+function StreamingFooter({
+  isResponding,
+  showStillThinking,
+}: {
+  isResponding: boolean;
+  showStillThinking: boolean;
+}) {
+  if (!isResponding) return null;
+
+  return (
+    <>
+      {showStillThinking && (
+        <div className="col-span-3 text-center text-sm text-gray-400 animate-pulse">
+          Still thinking...
+        </div>
+      )}
+      <div className="col-span-3">
+        <ActivityIndicator />
+      </div>
+    </>
+  );
+}
+
+/**
+ * Shows a label when the API responded with a different model than requested.
+ * @param props - Component props
+ * @param props.requestedModel - Model ID that was requested
+ * @param props.responseModel - Model ID from the API response
+ * @returns Label element or null
+ */
+function ModelMismatchLabel({
+  requestedModel,
+  responseModel,
+}: {
+  requestedModel?: string | null;
+  responseModel?: string;
+}) {
+  if (!responseModel || !requestedModel) return null;
+  if (!isModelMismatch(requestedModel, responseModel)) return null;
+
+  return (
+    <div className="text-xs text-zinc-400 dark:text-zinc-500 pt-1 text-right">
+      responded as {responseModel}
+    </div>
+  );
 }

@@ -29,6 +29,8 @@ export interface AiSdkMessage {
     isError?: boolean;
   }>;
   reasoning?: string;
+  /** Model ID from the API response (assistant messages only) */
+  responseModel?: string;
 }
 
 /** Configuration for the AI SDK client */

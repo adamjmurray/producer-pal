@@ -77,7 +77,40 @@ export class AiSdkClient {
       abortSignal,
     });
 
+    const historyLengthBefore = this.chatHistory.length;
+
     yield* this.processStream(result);
+    yield* this.captureResponseModel(result, historyLengthBefore);
+  }
+
+  /**
+   * Capture the response model ID from stream metadata and attach it
+   * to all assistant messages created during the current turn.
+   * @param result - The streamText result
+   * @param historyLengthBefore - Chat history length before streaming started
+   * @yields Updated chat history if a response model was captured
+   */
+  private async *captureResponseModel(
+    result: ReturnType<typeof streamText>,
+    historyLengthBefore: number,
+  ): AsyncGenerator<AiSdkMessage[]> {
+    try {
+      const response = await result.response;
+
+      if (response.modelId) {
+        for (let i = historyLengthBefore; i < this.chatHistory.length; i++) {
+          const msg = this.chatHistory[i];
+
+          if (msg?.role === "assistant") {
+            msg.responseModel = response.modelId;
+          }
+        }
+
+        yield [...this.chatHistory];
+      }
+    } catch {
+      // Stream may have been aborted — response metadata not available
+    }
   }
 
   /**
