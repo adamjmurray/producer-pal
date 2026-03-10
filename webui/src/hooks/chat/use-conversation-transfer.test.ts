@@ -121,7 +121,7 @@ function mockFileInput(file: File): { settled: Promise<void> } {
 
 describe("useConversationTransfer", () => {
   beforeEach(async () => {
-    resetDbCache();
+    await resetDbCache();
     const db = await getConversationDb();
 
     await db.clear("conversations");

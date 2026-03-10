@@ -31,8 +31,8 @@ const makeRecord = (
 });
 
 describe("conversation-transfer", () => {
-  beforeEach(() => {
-    resetDbCache();
+  beforeEach(async () => {
+    await resetDbCache();
   });
 
   it("exports all conversations as JSON", async () => {

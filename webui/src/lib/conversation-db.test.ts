@@ -6,7 +6,7 @@
 // @vitest-environment happy-dom
 
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type ConversationRecord,
   deleteConversation,
@@ -38,7 +38,8 @@ function createRecord(
 
 describe("conversation-db", () => {
   beforeEach(async () => {
-    resetDbCache();
+    await resetDbCache();
+
     const db = await getConversationDb();
 
     await db.clear("conversations");
@@ -206,5 +207,116 @@ describe("conversation-db", () => {
     expect(list[1]?.id).toBe(middle.id);
     expect(list[2]?.id).toBe(oldest.id);
     expect(list[2]?.bookmarked).toBe(true);
+  });
+});
+
+describe("version mismatch recovery", () => {
+  const DB_NAME = "producer-pal-conversations";
+
+  beforeEach(async () => {
+    vi.restoreAllMocks();
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- restoreAllMocks removes the spy, leaving confirm undefined at runtime
+    window.confirm ??= () => false;
+    await resetDbCache();
+
+    // Delete the DB directly (no open connections to block it)
+    await new Promise<void>((resolve, reject) => {
+      const req = indexedDB.deleteDatabase(DB_NAME);
+
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  });
+
+  /** Create a DB at a higher version to simulate a downgrade scenario. */
+  async function createHigherVersionDb(): Promise<void> {
+    const record = createRecord({ id: "saved-convo", title: "Important" });
+
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, 99);
+
+      request.onupgradeneeded = () => {
+        const db = request.result;
+
+        if (!db.objectStoreNames.contains("conversations")) {
+          const store = db.createObjectStore("conversations", {
+            keyPath: "id",
+          });
+
+          store.createIndex("updatedAt", "updatedAt");
+        }
+      };
+
+      request.onsuccess = () => {
+        const db = request.result;
+        const tx = db.transaction("conversations", "readwrite");
+
+        tx.objectStore("conversations").put(record);
+
+        tx.oncomplete = () => {
+          db.close();
+          resolve();
+        };
+
+        tx.onerror = () => reject(tx.error);
+      };
+
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  it("exports and resets DB when user confirms both", async () => {
+    await createHigherVersionDb();
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:mock");
+    vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+
+    const clickSpy = vi.fn();
+
+    vi.spyOn(document, "createElement").mockReturnValue({
+      set href(_v: string) {},
+      set download(_v: string) {},
+      click: clickSpy,
+    } as unknown as HTMLElement);
+
+    const db = await getConversationDb();
+
+    expect(db).toBeDefined();
+    // Verify file download was triggered
+    expect(clickSpy).toHaveBeenCalled();
+
+    // Verify DB was reset (empty)
+    const list = await listConversations();
+
+    expect(list).toHaveLength(0);
+  });
+
+  it("resets DB without export when user skips export", async () => {
+    await createHigherVersionDb();
+
+    vi.spyOn(window, "confirm")
+      .mockReturnValueOnce(false) // skip export
+      .mockReturnValueOnce(true); // confirm delete
+
+    const db = await getConversationDb();
+
+    expect(db).toBeDefined();
+
+    const list = await listConversations();
+
+    expect(list).toHaveLength(0);
+  });
+
+  it("throws when user cancels delete", async () => {
+    await createHigherVersionDb();
+
+    vi.spyOn(window, "confirm")
+      .mockReturnValueOnce(false) // skip export
+      .mockReturnValueOnce(false); // cancel delete
+
+    await expect(getConversationDb()).rejects.toThrow(
+      "Database version mismatch",
+    );
   });
 });
