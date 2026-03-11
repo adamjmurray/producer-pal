@@ -95,6 +95,7 @@ describe("MessageSettingsToolbar", () => {
     const { container } = render(
       <MessageSettingsToolbar
         {...defaultProps}
+        thinking="High"
         onOpenBehaviorSettings={onOpen}
       />,
     );
@@ -105,5 +106,19 @@ describe("MessageSettingsToolbar", () => {
     expect(defaultsButton).toBeDefined();
     fireEvent.click(defaultsButton!);
     expect(onOpen).toHaveBeenCalled();
+  });
+
+  it("disables Defaults link when using defaults", () => {
+    const { container } = render(
+      <MessageSettingsToolbar
+        {...defaultProps}
+        onOpenBehaviorSettings={vi.fn()}
+      />,
+    );
+    const defaultsButton = Array.from(
+      container.querySelectorAll("button"),
+    ).find((btn) => btn.textContent === "Defaults") as HTMLButtonElement;
+
+    expect(defaultsButton.disabled).toBe(true);
   });
 });

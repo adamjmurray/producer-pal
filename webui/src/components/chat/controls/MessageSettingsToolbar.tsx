@@ -94,7 +94,8 @@ export function MessageSettingsToolbar({
         <button
           type="button"
           onClick={onOpenBehaviorSettings}
-          className="text-xs text-blue-600 dark:text-blue-400 hover:underline shrink-0"
+          disabled={isUsingDefaults}
+          className="text-xs text-blue-600 dark:text-blue-400 hover:underline shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
         >
           Defaults
         </button>
