@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -115,21 +116,28 @@ const internalError = (message: string): JsonRpcError => ({
 export function createExpressApp(): Express {
   const app = express();
 
-  // CORS middleware for MCP Inspector support
-  app.use((req: Request, res: Response, next: NextFunction): void => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE");
-    res.setHeader("Access-Control-Allow-Headers", "*");
+  // CORS middleware for MCP Inspector and Vite dev server support.
+  // Only enabled in dev builds (ENABLE_DEV_CORS=true). Production builds
+  // serve the chat UI from the same origin, so no CORS headers are needed.
+  if (process.env.ENABLE_DEV_CORS === "true") {
+    app.use((req: Request, res: Response, next: NextFunction): void => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader(
+        "Access-Control-Allow-Methods",
+        "GET, POST, OPTIONS, DELETE",
+      );
+      res.setHeader("Access-Control-Allow-Headers", "*");
 
-    // Handle preflight requests
-    if (req.method === "OPTIONS") {
-      res.status(200).end();
+      // Handle preflight requests
+      if (req.method === "OPTIONS") {
+        res.status(200).end();
 
-      return;
-    }
+        return;
+      }
 
-    next();
-  });
+      next();
+    });
+  }
 
   app.use(express.json());
 

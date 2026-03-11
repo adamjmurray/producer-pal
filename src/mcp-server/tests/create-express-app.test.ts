@@ -9,8 +9,8 @@ import { type AddressInfo } from "node:net";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
-import { TOOL_NAMES } from "./create-mcp-server.ts";
-import { setTimeoutForTesting } from "./max-api-adapter.ts";
+import { TOOL_NAMES } from "../create-mcp-server.ts";
+import { setTimeoutForTesting } from "../max-api-adapter.ts";
 
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {
@@ -59,9 +59,10 @@ describe("MCP Express App", () => {
     // Enable feature-gated tools/params for testing
     process.env.ENABLE_RAW_LIVE_API = "true";
     process.env.ENABLE_CODE_EXEC = "true";
+    process.env.ENABLE_DEV_CORS = "true";
 
     // Import and start the server first
-    const { createExpressApp } = await import("./create-express-app.ts");
+    const { createExpressApp } = await import("../create-express-app.ts");
 
     const app = createExpressApp();
     const port = await new Promise<number>((resolve) => {
@@ -86,7 +87,7 @@ describe("MCP Express App", () => {
       vi.resetModules();
 
       // Re-import the module to trigger handler registration
-      await import("./create-express-app.ts");
+      await import("../create-express-app.ts");
 
       expect(Max.addHandler).toHaveBeenCalledWith(
         "mcp_response",
@@ -443,7 +444,7 @@ describe("MCP Express App", () => {
 
   describe("Configuration Options", () => {
     it("should create app successfully without configuration options", async () => {
-      const { createExpressApp } = await import("./create-express-app.ts");
+      const { createExpressApp } = await import("../create-express-app.ts");
       const app = createExpressApp();
 
       expect(app).toBeDefined();
@@ -451,24 +452,7 @@ describe("MCP Express App", () => {
     });
   });
 
-  describe("CORS", () => {
-    it("should handle OPTIONS preflight requests", async () => {
-      const response = await fetch(serverUrl, {
-        method: "OPTIONS",
-        headers: {
-          "Access-Control-Request-Method": "POST",
-          "Access-Control-Request-Headers": "content-type",
-        },
-      });
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("access-control-allow-origin")).toBe("*");
-      expect(response.headers.get("access-control-allow-methods")).toContain(
-        "POST",
-      );
-      expect(response.headers.get("access-control-allow-headers")).toBe("*");
-    });
-  });
+  // CORS tests are in create-express-app-cors.test.ts
 
   describe("Chat UI", () => {
     let chatUrl: string;
@@ -498,7 +482,7 @@ describe("MCP Express App", () => {
       chatUIHandler(0);
 
       // Create a new app instance to use the updated chatUIEnabled value
-      const { createExpressApp } = await import("./create-express-app.ts");
+      const { createExpressApp } = await import("../create-express-app.ts");
       const testApp = createExpressApp();
       const testServer = await new Promise<Server>((resolve) => {
         const s = testApp.listen(0, () => resolve(s));
