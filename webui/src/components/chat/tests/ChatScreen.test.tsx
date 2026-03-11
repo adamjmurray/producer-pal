@@ -32,8 +32,7 @@ describe("ChatScreen", () => {
     activeProvider: "gemini" as const,
     provider: "gemini" as const,
     model: "gemini-2.0-flash-thinking",
-    defaultThinking: "Default",
-    defaultTemperature: 1.0,
+    defaultThinking: "Adaptive",
     enabledToolsCount: 20,
     totalToolsCount: 20,
     smallModelMode: false,
@@ -134,47 +133,29 @@ describe("ChatScreen", () => {
     });
   });
 
-  describe("override state management", () => {
-    it("resets override state to defaults when reset button is clicked", () => {
-      // Use custom defaults different from the settings
-      const customProps = {
-        ...defaultProps,
-        defaultThinking: "High",
-        defaultTemperature: 0.8,
-      };
-
-      render(<ChatScreen {...customProps} />);
-
-      const resetButton = Array.from(document.querySelectorAll("button")).find(
-        (btn) => btn.textContent.includes("Reset"),
-      );
-
-      expect(resetButton).toBeDefined();
-      // Initially disabled since we're using defaults
-      expect(resetButton!.disabled).toBe(true);
-    });
-
-    it("enables reset button when settings differ from defaults", () => {
+  describe("thinking toggle", () => {
+    it("renders thinking toggle buttons", () => {
       render(<ChatScreen {...defaultProps} />);
 
-      const thinkingSelect = document.querySelector("select");
-
-      expect(thinkingSelect).toBeDefined();
-      fireEvent.change(thinkingSelect!, { target: { value: "High" } });
-
-      // Reset button should now be enabled
-      const resetButton = Array.from(document.querySelectorAll("button")).find(
-        (btn) => btn.textContent.includes("Reset"),
+      const adaptiveBtn = Array.from(document.querySelectorAll("button")).find(
+        (btn) => btn.getAttribute("aria-label") === "Adaptive",
       );
 
-      expect(resetButton).toBeDefined();
-      expect(resetButton!.disabled).toBe(false);
+      expect(adaptiveBtn).toBeDefined();
+    });
 
-      // Click reset button
-      fireEvent.click(resetButton!);
+    it("changes thinking level when toggle button clicked", () => {
+      render(<ChatScreen {...defaultProps} />);
 
-      // After reset, button should be disabled again (settings match defaults)
-      expect(resetButton!.disabled).toBe(true);
+      const highBtn = Array.from(document.querySelectorAll("button")).find(
+        (btn) => btn.getAttribute("aria-label") === "High",
+      );
+
+      expect(highBtn).toBeDefined();
+      fireEvent.click(highBtn!);
+
+      // High button should now have active styling
+      expect(highBtn!.className).toContain("bg-blue-600");
     });
   });
 
@@ -294,29 +275,6 @@ describe("ChatScreen", () => {
       const indicator = document.querySelector(".bg-yellow-50");
 
       expect(indicator).toBeDefined();
-    });
-  });
-
-  describe("handleResetToDefaults", () => {
-    it("resets thinking to defaults when reset button is clicked", () => {
-      render(<ChatScreen {...defaultProps} />);
-
-      const thinkingSelect = document.querySelector("select");
-
-      expect(thinkingSelect).toBeDefined();
-      fireEvent.change(thinkingSelect!, { target: { value: "High" } });
-
-      // Now find and click the reset button (should be enabled now)
-      const resetButton = Array.from(document.querySelectorAll("button")).find(
-        (btn) => btn.textContent!.includes("Reset"),
-      );
-
-      expect(resetButton).toBeDefined();
-      expect(resetButton!.disabled).toBe(false);
-      fireEvent.click(resetButton!);
-
-      // The function was called - state was reset to defaults
-      // (Internal state is not directly observable, but function coverage is achieved)
     });
   });
 

@@ -13,10 +13,8 @@ const defaultProps = {
   handleSend: vi.fn(),
   isAssistantResponding: false,
   onStop: vi.fn(),
-  defaultThinking: "Adaptive",
   thinking: "Adaptive",
   onThinkingChange: vi.fn(),
-  onResetToDefaults: vi.fn(),
 };
 
 describe("ChatInput", () => {
@@ -43,6 +41,26 @@ describe("ChatInput", () => {
       expect(textarea.getAttribute("placeholder")).toBe(
         "Type a message... (Shift+Enter for new line)",
       );
+    });
+
+    it("shows thinking toggle when not responding", () => {
+      render(<ChatInput {...defaultProps} />);
+      expect(screen.getByRole("button", { name: "Adaptive" })).toBeDefined();
+    });
+
+    it("hides thinking toggle when responding", () => {
+      render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
+      expect(screen.queryByRole("button", { name: "Adaptive" })).toBeNull();
+    });
+
+    it("shows Stop button when responding", () => {
+      render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
+      expect(screen.getByRole("button", { name: "Stop" })).toBeDefined();
+    });
+
+    it("hides Stop button when not responding", () => {
+      render(<ChatInput {...defaultProps} />);
+      expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
     });
   });
 
@@ -200,24 +218,16 @@ describe("ChatInput", () => {
     );
   });
 
-  describe("per-message settings", () => {
-    it("calls onResetToDefaults when reset button clicked", () => {
-      const onResetToDefaults = vi.fn();
-      const { container } = render(
-        <ChatInput
-          {...defaultProps}
-          thinking="High"
-          onResetToDefaults={onResetToDefaults}
-        />,
+  describe("thinking toggle", () => {
+    it("calls onThinkingChange when toggle button clicked", () => {
+      const onThinkingChange = vi.fn();
+
+      render(
+        <ChatInput {...defaultProps} onThinkingChange={onThinkingChange} />,
       );
 
-      const resetButton = Array.from(container.querySelectorAll("button")).find(
-        (btn) => btn.textContent.includes("Reset"),
-      );
-
-      fireEvent.click(resetButton!);
-
-      expect(onResetToDefaults).toHaveBeenCalledOnce();
+      fireEvent.click(screen.getByRole("button", { name: "High" }));
+      expect(onThinkingChange).toHaveBeenCalledWith("High");
     });
   });
 });

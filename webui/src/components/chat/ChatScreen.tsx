@@ -118,10 +118,6 @@ export function ChatScreen({
   // Per-conversation thinking override (lifted from ChatInput so ChatStart can also use it)
   const [thinking, setThinking] = useState(defaultThinking);
 
-  const handleResetToDefaults = () => {
-    setThinking(defaultThinking);
-  };
-
   const currentOverrides: MessageOverrides = {
     thinking,
   };
@@ -217,10 +213,8 @@ export function ChatScreen({
               handleSend={handleSend}
               isAssistantResponding={isAssistantResponding}
               onStop={onStop}
-              defaultThinking={defaultThinking}
               thinking={thinking}
               onThinkingChange={setThinking}
-              onResetToDefaults={handleResetToDefaults}
             />
           </div>
         </div>

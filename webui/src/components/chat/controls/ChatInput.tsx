@@ -5,12 +5,9 @@
 
 import { useState } from "preact/hooks";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
-import {
-  MessageSettingsToolbar,
-  type MessageSettingsToolbarProps,
-} from "./MessageSettingsToolbar";
+import { ThinkingToggle, type ThinkingToggleProps } from "./ThinkingToggle";
 
-interface ChatInputProps extends MessageSettingsToolbarProps {
+interface ChatInputProps extends ThinkingToggleProps {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   isAssistantResponding: boolean;
   onStop: () => void;
@@ -18,24 +15,20 @@ interface ChatInputProps extends MessageSettingsToolbarProps {
 
 /**
  * Input component for chat messages
- * @param {ChatInputProps} props - Component props
- * @param {(message: string) => Promise<void>} props.handleSend - Callback to send message
- * @param {boolean} props.isAssistantResponding - Whether assistant is currently responding
- * @param {() => void} props.onStop - Callback to stop assistant response
- * @param {string} props.defaultThinking - Default thinking mode from settings
- * @param {string} props.thinking - Current thinking mode
- * @param {Function} props.onThinkingChange - Callback for thinking change
- * @param {Function} props.onResetToDefaults - Callback to reset to defaults
- * @returns {JSX.Element} - React component
+ * @param props - Component props
+ * @param props.handleSend - Callback to send message
+ * @param props.isAssistantResponding - Whether assistant is currently responding
+ * @param props.onStop - Callback to stop assistant response
+ * @param props.thinking - Current thinking mode
+ * @param props.onThinkingChange - Callback for thinking change
+ * @returns Chat input element
  */
 export function ChatInput({
   handleSend,
   isAssistantResponding,
   onStop,
-  defaultThinking,
   thinking,
   onThinkingChange,
-  onResetToDefaults,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
 
@@ -57,12 +50,6 @@ export function ChatInput({
 
   return (
     <div className="border-t border-zinc-300 dark:border-zinc-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
-      <MessageSettingsToolbar
-        defaultThinking={defaultThinking}
-        thinking={thinking}
-        onThinkingChange={onThinkingChange}
-        onResetToDefaults={onResetToDefaults}
-      />
       <div className="p-4">
         <div className="flex gap-3">
           <textarea
@@ -74,13 +61,19 @@ export function ChatInput({
             rows={2}
           />
           <div className="flex flex-col gap-2">
-            <button
-              onClick={onStop}
-              disabled={!isAssistantResponding}
-              className={`px-4 py-1 rounded-lg text-sm ${isAssistantResponding ? "bg-orange-600 text-white hover:bg-orange-700" : "invisible"}`}
-            >
-              Stop
-            </button>
+            {isAssistantResponding ? (
+              <button
+                onClick={onStop}
+                className="px-4 py-1 rounded-lg text-sm bg-orange-600 text-white hover:bg-orange-700"
+              >
+                Stop
+              </button>
+            ) : (
+              <ThinkingToggle
+                thinking={thinking}
+                onThinkingChange={onThinkingChange}
+              />
+            )}
             <button
               onClick={handleSendClick}
               disabled={isAssistantResponding || !input.trim()}
