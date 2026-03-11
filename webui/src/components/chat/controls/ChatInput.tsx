@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
@@ -13,7 +14,6 @@ interface ChatInputProps extends MessageSettingsToolbarProps {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   isAssistantResponding: boolean;
   onStop: () => void;
-  showMessageSettings: boolean;
 }
 
 /**
@@ -25,11 +25,8 @@ interface ChatInputProps extends MessageSettingsToolbarProps {
  * @param {Provider} props.provider - Current provider
  * @param {string} props.model - Current model
  * @param {string} props.defaultThinking - Default thinking mode from settings
- * @param {boolean} props.defaultShowThoughts - Default showThoughts from settings
  * @param {string} props.thinking - Current thinking mode
- * @param {boolean} props.showThoughts - Current showThoughts
  * @param {Function} props.onThinkingChange - Callback for thinking change
- * @param {Function} props.onShowThoughtsChange - Callback for showThoughts change
  * @param {Function} props.onResetToDefaults - Callback to reset to defaults
  * @returns {JSX.Element} - React component
  */
@@ -40,13 +37,9 @@ export function ChatInput({
   provider,
   model,
   defaultThinking,
-  defaultShowThoughts,
   thinking,
-  showThoughts,
   onThinkingChange,
-  onShowThoughtsChange,
   onResetToDefaults,
-  showMessageSettings,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
 
@@ -55,32 +48,27 @@ export function ChatInput({
       e.preventDefault();
 
       if (!isAssistantResponding && input.trim()) {
-        void handleSend(input, { thinking, showThoughts });
+        void handleSend(input, { thinking });
         setInput("");
       }
     }
   };
 
   const handleSendClick = () => {
-    void handleSend(input, { thinking, showThoughts });
+    void handleSend(input, { thinking });
     setInput("");
   };
 
   return (
     <div className="border-t border-zinc-300 dark:border-zinc-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
-      {showMessageSettings && (
-        <MessageSettingsToolbar
-          provider={provider}
-          model={model}
-          defaultThinking={defaultThinking}
-          defaultShowThoughts={defaultShowThoughts}
-          thinking={thinking}
-          showThoughts={showThoughts}
-          onThinkingChange={onThinkingChange}
-          onShowThoughtsChange={onShowThoughtsChange}
-          onResetToDefaults={onResetToDefaults}
-        />
-      )}
+      <MessageSettingsToolbar
+        provider={provider}
+        model={model}
+        defaultThinking={defaultThinking}
+        thinking={thinking}
+        onThinkingChange={onThinkingChange}
+        onResetToDefaults={onResetToDefaults}
+      />
       <div className="p-4">
         <div className="flex gap-3">
           <textarea

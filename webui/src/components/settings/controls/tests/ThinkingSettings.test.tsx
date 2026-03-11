@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -19,26 +20,25 @@ import {
 
 type RenderProps = Partial<ThinkingSettingsProps> & {
   setThinking?: Mock;
-  setShowThoughts?: Mock;
+  resetToDefaults?: Mock;
 };
 
 function renderThinkingSettings(
   props: RenderProps = {},
-): RenderResult & { setThinking: Mock; setShowThoughts: Mock } {
+): RenderResult & { setThinking: Mock; resetToDefaults: Mock } {
   const setThinking = props.setThinking ?? vi.fn();
-  const setShowThoughts = props.setShowThoughts ?? vi.fn();
+  const resetToDefaults = props.resetToDefaults ?? vi.fn();
   const result = render(
     <ThinkingSettings
       provider={props.provider ?? "gemini"}
       model={props.model ?? "gemini-2.5-flash"}
       thinking={props.thinking ?? "Default"}
       setThinking={setThinking}
-      showThoughts={props.showThoughts ?? true}
-      setShowThoughts={setShowThoughts}
+      resetToDefaults={resetToDefaults}
     />,
   );
 
-  return { ...result, setThinking, setShowThoughts };
+  return { ...result, setThinking, resetToDefaults };
 }
 
 function expectAllThinkingOptions(): void {
@@ -49,16 +49,6 @@ function expectAllThinkingOptions(): void {
   expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
   expect(screen.getByRole("option", { name: "High" })).toBeDefined();
   expect(screen.getByRole("option", { name: "Ultra" })).toBeDefined();
-}
-
-function expectCheckboxVisible(): void {
-  expect(screen.getByRole("checkbox")).toBeDefined();
-  expect(screen.getByText("Show thinking")).toBeDefined();
-}
-
-function expectCheckboxHidden(): void {
-  expect(screen.queryByRole("checkbox")).toBeNull();
-  expect(screen.queryByText("Show thinking")).toBeNull();
 }
 
 describe("ThinkingSettings", () => {
@@ -74,16 +64,6 @@ describe("ThinkingSettings", () => {
       renderThinkingSettings();
       expectAllThinkingOptions();
     });
-
-    it("shows checkbox when thinking is not Off", () => {
-      renderThinkingSettings();
-      expectCheckboxVisible();
-    });
-
-    it("hides checkbox when thinking is Off", () => {
-      renderThinkingSettings({ thinking: "Off" });
-      expectCheckboxHidden();
-    });
   });
 
   describe("OpenAI provider", () => {
@@ -94,24 +74,6 @@ describe("ThinkingSettings", () => {
         thinking: "Low",
       });
       expectAllThinkingOptions();
-    });
-
-    it("shows checkbox when thinking is not Off", () => {
-      renderThinkingSettings({
-        provider: "openai",
-        model: "gpt-5-2025-08-07",
-        thinking: "Low",
-      });
-      expectCheckboxVisible();
-    });
-
-    it("hides checkbox when thinking is Off", () => {
-      renderThinkingSettings({
-        provider: "openai",
-        model: "gpt-5-2025-08-07",
-        thinking: "Off",
-      });
-      expectCheckboxHidden();
     });
   });
 
@@ -124,15 +86,6 @@ describe("ThinkingSettings", () => {
       });
       expectAllThinkingOptions();
     });
-
-    it("does not show checkbox for Ollama provider", () => {
-      renderThinkingSettings({
-        provider: "ollama",
-        model: "qwen3.5",
-        thinking: "Low",
-      });
-      expectCheckboxHidden();
-    });
   });
 
   describe("LM Studio provider", () => {
@@ -144,15 +97,6 @@ describe("ThinkingSettings", () => {
       });
       expectAllThinkingOptions();
     });
-
-    it("does not show checkbox for LM Studio provider", () => {
-      renderThinkingSettings({
-        provider: "lmstudio",
-        model: "gpt-oss",
-        thinking: "Low",
-      });
-      expectCheckboxHidden();
-    });
   });
 
   describe("Anthropic provider", () => {
@@ -163,15 +107,6 @@ describe("ThinkingSettings", () => {
         thinking: "High",
       });
       expectAllThinkingOptions();
-    });
-
-    it("does not show checkbox (thinking tokens cannot be suppressed)", () => {
-      renderThinkingSettings({
-        provider: "anthropic",
-        model: "claude-sonnet-4-6-20250514",
-        thinking: "High",
-      });
-      expectCheckboxHidden();
     });
   });
 
@@ -197,24 +132,6 @@ describe("ThinkingSettings", () => {
       });
       expectAllThinkingOptions();
     });
-
-    it("shows checkbox when thinking is not Off", () => {
-      renderThinkingSettings({
-        provider: "openrouter",
-        model: "anthropic/claude-sonnet",
-        thinking: "Low",
-      });
-      expectCheckboxVisible();
-    });
-
-    it("hides checkbox when thinking is Off", () => {
-      renderThinkingSettings({
-        provider: "openrouter",
-        model: "anthropic/claude-sonnet",
-        thinking: "Off",
-      });
-      expectCheckboxHidden();
-    });
   });
 
   describe("common behavior", () => {
@@ -227,36 +144,22 @@ describe("ThinkingSettings", () => {
       expect(setThinking).toHaveBeenCalledExactlyOnceWith("High");
     });
 
-    it("checkbox reflects showThoughts prop", () => {
-      renderThinkingSettings({ showThoughts: false });
-      expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(
-        false,
-      );
-    });
-
-    it("checkbox is checked when showThoughts is true", () => {
-      renderThinkingSettings({ showThoughts: true });
-      expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(
-        true,
-      );
-    });
-
-    it("triggers setShowThoughts callback on checkbox change", () => {
-      const { setShowThoughts } = renderThinkingSettings({
-        showThoughts: false,
+    it("renders reset to defaults button", () => {
+      renderThinkingSettings();
+      const resetButton = screen.getByRole("button", {
+        name: "Reset to defaults",
       });
 
-      fireEvent.click(screen.getByRole("checkbox"));
-      expect(setShowThoughts).toHaveBeenCalledExactlyOnceWith(true);
+      expect(resetButton).toBeDefined();
     });
 
-    it("calls setShowThoughts with false when unchecking", () => {
-      const { setShowThoughts } = renderThinkingSettings({
-        showThoughts: true,
-      });
+    it("triggers resetToDefaults callback when reset button clicked", () => {
+      const { resetToDefaults } = renderThinkingSettings();
 
-      fireEvent.click(screen.getByRole("checkbox"));
-      expect(setShowThoughts).toHaveBeenCalledExactlyOnceWith(false);
+      fireEvent.click(
+        screen.getByRole("button", { name: "Reset to defaults" }),
+      );
+      expect(resetToDefaults).toHaveBeenCalledOnce();
     });
   });
 });

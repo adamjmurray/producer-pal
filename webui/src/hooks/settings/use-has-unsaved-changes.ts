@@ -10,7 +10,6 @@ export interface AppearanceSettings {
   theme: string;
   showTimestamps: boolean;
   showHelpLinks: boolean;
-  showMessageSettings: boolean;
 }
 
 /**

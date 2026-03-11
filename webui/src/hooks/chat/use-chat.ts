@@ -62,11 +62,9 @@ export function useChat<
   const retryAbortRef = useRef<AbortController | null>(null);
   const thinkingRef = useRef(active.activeThinking);
   const temperatureRef = useRef(active.activeTemperature);
-  const showThoughtsRef = useRef(active.activeShowThoughts);
 
   thinkingRef.current = active.activeThinking;
   temperatureRef.current = active.activeTemperature;
-  showThoughtsRef.current = active.activeShowThoughts;
 
   const clearConversation = useCallback(() => {
     setMessages([]);
@@ -123,7 +121,7 @@ export function useChat<
         provider,
         effectiveThinking,
         temperature,
-        overrides?.showThoughts ?? null,
+        null,
         smallModelMode,
       );
     },
@@ -275,7 +273,6 @@ export function useChat<
 
         const filtered = filterOverrides(options, {
           thinking: thinkingRef.current,
-          showThoughts: showThoughtsRef.current,
         });
 
         await executeWithRetry(

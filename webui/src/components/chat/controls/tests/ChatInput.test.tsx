@@ -17,13 +17,9 @@ const defaultProps = {
   provider: "gemini" as Provider,
   model: "gemini-2.0-flash-thinking",
   defaultThinking: "Default",
-  defaultShowThoughts: true,
   thinking: "Default",
-  showThoughts: true,
   onThinkingChange: vi.fn(),
-  onShowThoughtsChange: vi.fn(),
   onResetToDefaults: vi.fn(),
-  showMessageSettings: true,
 };
 
 describe("ChatInput", () => {
@@ -139,7 +135,6 @@ describe("ChatInput", () => {
       triggerSend(textarea);
       expect(handleSend).toHaveBeenCalledExactlyOnceWith("Hello", {
         thinking: "Default",
-        showThoughts: true,
       });
     });
 
@@ -226,50 +221,6 @@ describe("ChatInput", () => {
       fireEvent.click(resetButton!);
 
       expect(onResetToDefaults).toHaveBeenCalledOnce();
-    });
-
-    it("passes showThoughts: false when showThoughts prop is false", () => {
-      const handleSend = vi.fn();
-
-      render(
-        <ChatInput
-          {...defaultProps}
-          handleSend={handleSend}
-          showThoughts={false}
-        />,
-      );
-
-      // Send message and verify showThoughts is false
-      const textarea = screen.getByRole("textbox");
-
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-      const sendButton = screen.getByRole("button", { name: "Send" });
-
-      fireEvent.click(sendButton);
-
-      expect(handleSend).toHaveBeenCalledWith("Hello", {
-        thinking: "Default",
-        showThoughts: false,
-      });
-    });
-
-    it("calls onShowThoughtsChange when checkbox is clicked", () => {
-      const onShowThoughtsChange = vi.fn();
-      const { container } = render(
-        <ChatInput
-          {...defaultProps}
-          onShowThoughtsChange={onShowThoughtsChange}
-        />,
-      );
-
-      const checkbox = container.querySelector(
-        'input[type="checkbox"]',
-      ) as HTMLInputElement;
-
-      expect(checkbox).toBeDefined();
-      fireEvent.click(checkbox);
-
-      expect(onShowThoughtsChange).toHaveBeenCalledWith(false);
     });
   });
 });

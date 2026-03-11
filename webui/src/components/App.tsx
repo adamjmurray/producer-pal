@@ -90,10 +90,8 @@ export function getBaseUrl(
 }
 
 /**
- *
  * @returns {JSX.Element} - React component
  */
-// eslint-disable-next-line max-lines-per-function -- top-level app component with many settings
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
@@ -109,9 +107,6 @@ export function App() {
   );
   const [showHelpLinks, setShowHelpLinks] = useState(
     () => localStorage.getItem("producer_pal_show_help_links") !== "false",
-  );
-  const [showMessageSettings, setShowMessageSettings] = useState(
-    () => localStorage.getItem("producer_pal_show_message_settings") === "true",
   );
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
@@ -203,7 +198,6 @@ export function App() {
   const originalThemeRef = useRef(theme);
   const originalShowTimestampsRef = useRef(showTimestamps);
   const originalShowHelpLinksRef = useRef(showHelpLinks);
-  const originalShowMessageSettingsRef = useRef(showMessageSettings);
   const prevShowSettingsRef = useRef(showSettings);
 
   // Save originals only when settings transitions from closed to open
@@ -212,15 +206,14 @@ export function App() {
       originalThemeRef.current = theme;
       originalShowTimestampsRef.current = showTimestamps;
       originalShowHelpLinksRef.current = showHelpLinks;
-      originalShowMessageSettingsRef.current = showMessageSettings;
     }
 
     prevShowSettingsRef.current = showSettings;
-  }, [showSettings, theme, showTimestamps, showHelpLinks, showMessageSettings]);
+  }, [showSettings, theme, showTimestamps, showHelpLinks]);
 
   const hasUnsavedChanges = useHasUnsavedChanges(
     settings,
-    { theme, showTimestamps, showHelpLinks, showMessageSettings },
+    { theme, showTimestamps, showHelpLinks },
     showSettings,
   );
 
@@ -233,7 +226,6 @@ export function App() {
 
       s("show_timestamps", showTimestamps);
       s("show_help_links", showHelpLinks);
-      s("show_message_settings", showMessageSettings);
     });
   };
 
@@ -243,7 +235,6 @@ export function App() {
       setTheme(originalThemeRef.current);
       setShowTimestamps(originalShowTimestampsRef.current);
       setShowHelpLinks(originalShowHelpLinksRef.current);
-      setShowMessageSettings(originalShowMessageSettingsRef.current);
     });
   }, [closeSettings, settings, setTheme]);
 
@@ -276,7 +267,6 @@ export function App() {
           provider={settings.provider}
           model={settings.model}
           defaultThinking={settings.thinking}
-          defaultShowThoughts={settings.showThoughts}
           enabledToolsCount={enabledToolsCount}
           totalToolsCount={totalToolsCount}
           smallModelMode={chat.activeSmallModelMode ?? settings.smallModelMode}
@@ -290,7 +280,6 @@ export function App() {
           onStop={chat.stopResponse}
           showTimestamps={showTimestamps}
           showHelpLinks={showHelpLinks}
-          showMessageSettings={showMessageSettings}
           conversationPanel={{
             conversations: conversationManager.conversations,
             activeConversationId: conversationManager.activeConversationId,
@@ -338,16 +327,12 @@ export function App() {
             setModel={settings.setModel}
             thinking={settings.thinking}
             setThinking={settings.setThinking}
-            showThoughts={settings.showThoughts}
-            setShowThoughts={settings.setShowThoughts}
             theme={theme}
             setTheme={setTheme}
             showTimestamps={showTimestamps}
             setShowTimestamps={setShowTimestamps}
             showHelpLinks={showHelpLinks}
             setShowHelpLinks={setShowHelpLinks}
-            showMessageSettings={showMessageSettings}
-            setShowMessageSettings={setShowMessageSettings}
             enabledTools={settings.enabledTools}
             setEnabledTools={settings.setEnabledTools}
             mcpTools={mcpTools}

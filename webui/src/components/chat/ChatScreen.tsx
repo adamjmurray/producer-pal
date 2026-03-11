@@ -35,7 +35,6 @@ interface ChatScreenProps {
   provider: Provider;
   model: string;
   defaultThinking: string;
-  defaultShowThoughts: boolean;
   enabledToolsCount: number;
   totalToolsCount: number;
   smallModelMode: boolean;
@@ -49,7 +48,6 @@ interface ChatScreenProps {
   onStop: () => void;
   showTimestamps: boolean;
   showHelpLinks: boolean;
-  showMessageSettings: boolean;
   conversationPanel: ConversationPanelState;
 }
 
@@ -77,7 +75,6 @@ export interface ConversationPanelState extends Omit<
  * @param {Provider} props.provider - Provider from settings
  * @param {string} props.model - Model from settings
  * @param {string} props.defaultThinking - Default thinking mode from settings
- * @param {boolean} props.defaultShowThoughts - Default showThoughts from settings
  * @param {number} props.enabledToolsCount - Number of enabled tools
  * @param {number} props.totalToolsCount - Total number of available tools
  * @param {boolean} props.smallModelMode - Whether small model mode is active
@@ -101,7 +98,6 @@ export function ChatScreen({
   provider,
   model,
   defaultThinking,
-  defaultShowThoughts,
   enabledToolsCount,
   totalToolsCount,
   smallModelMode,
@@ -115,23 +111,19 @@ export function ChatScreen({
   onStop,
   showTimestamps,
   showHelpLinks,
-  showMessageSettings,
   conversationPanel,
 }: ChatScreenProps) {
   const latestVersion = useUpdateCheck();
 
-  // Per-message override state (lifted from ChatInput so ChatStart can also use it)
+  // Per-conversation thinking override (lifted from ChatInput so ChatStart can also use it)
   const [thinking, setThinking] = useState(defaultThinking);
-  const [showThoughts, setShowThoughts] = useState(defaultShowThoughts);
 
   const handleResetToDefaults = () => {
     setThinking(defaultThinking);
-    setShowThoughts(defaultShowThoughts);
   };
 
   const currentOverrides: MessageOverrides = {
     thinking,
-    showThoughts,
   };
 
   const activeConv = conversationPanel.activeConversationId
@@ -228,13 +220,9 @@ export function ChatScreen({
               provider={provider}
               model={model}
               defaultThinking={defaultThinking}
-              defaultShowThoughts={defaultShowThoughts}
               thinking={thinking}
-              showThoughts={showThoughts}
               onThinkingChange={setThinking}
-              onShowThoughtsChange={setShowThoughts}
               onResetToDefaults={handleResetToDefaults}
-              showMessageSettings={showMessageSettings}
             />
           </div>
         </div>

@@ -34,7 +34,6 @@ describe("ChatScreen", () => {
     model: "gemini-2.0-flash-thinking",
     defaultThinking: "Default",
     defaultTemperature: 1.0,
-    defaultShowThoughts: true,
     enabledToolsCount: 20,
     totalToolsCount: 20,
     smallModelMode: false,
@@ -48,7 +47,6 @@ describe("ChatScreen", () => {
     onStop: mockOnStop,
     showTimestamps: true,
     showHelpLinks: true,
-    showMessageSettings: false,
     conversationPanel: {
       conversations: [],
       activeConversationId: null,
@@ -141,10 +139,8 @@ describe("ChatScreen", () => {
       // Use custom defaults different from the settings
       const customProps = {
         ...defaultProps,
-        showMessageSettings: true,
         defaultThinking: "High",
         defaultTemperature: 0.8,
-        defaultShowThoughts: false,
       };
 
       render(<ChatScreen {...customProps} />);
@@ -159,7 +155,7 @@ describe("ChatScreen", () => {
     });
 
     it("enables reset button when settings differ from defaults", () => {
-      render(<ChatScreen {...defaultProps} showMessageSettings={true} />);
+      render(<ChatScreen {...defaultProps} />);
 
       const thinkingSelect = document.querySelector("select");
 
@@ -302,8 +298,8 @@ describe("ChatScreen", () => {
   });
 
   describe("handleResetToDefaults", () => {
-    it("resets thinking and showThoughts to defaults when reset button is clicked", () => {
-      render(<ChatScreen {...defaultProps} showMessageSettings={true} />);
+    it("resets thinking to defaults when reset button is clicked", () => {
+      render(<ChatScreen {...defaultProps} />);
 
       const thinkingSelect = document.querySelector("select");
 

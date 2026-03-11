@@ -11,7 +11,6 @@ import {
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 import { AppearanceTab } from "./AppearanceTab";
-import { BehaviorTab } from "./BehaviorTab";
 import { ConnectionTab } from "./ConnectionTab";
 import { ToolToggles } from "./controls/ToolToggles";
 import { LockedSettingsNotice } from "./LockedSettingsNotice";
@@ -31,8 +30,6 @@ interface SettingsScreenProps {
   setModel: (model: string) => void;
   thinking: string;
   setThinking: (thinking: string) => void;
-  showThoughts: boolean;
-  setShowThoughts: (show: boolean) => void;
 
   theme: string;
   setTheme: (theme: string) => void;
@@ -40,8 +37,6 @@ interface SettingsScreenProps {
   setShowTimestamps: (show: boolean) => void;
   showHelpLinks: boolean;
   setShowHelpLinks: (show: boolean) => void;
-  showMessageSettings: boolean;
-  setShowMessageSettings: (show: boolean) => void;
 
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
@@ -64,7 +59,7 @@ const helpLinkClass =
   "w-6 h-6 rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500! dark:text-zinc-400! hover:border-zinc-200 hover:text-white! dark:hover:border-zinc-300 dark:hover:text-white! flex items-center justify-center text-sm font-semibold no-underline";
 
 /**
- * Settings screen component with tabs for connection, behavior, tools, and appearance
+ * Settings screen component with tabs for connection, tools, and appearance
  * @param props - Component props
  * @param props.activeTab - Currently active settings tab
  * @param props.onTabChange - Callback when settings tab changes
@@ -78,16 +73,12 @@ const helpLinkClass =
  * @param props.setModel - Function to update model
  * @param props.thinking - Thinking mode setting
  * @param props.setThinking - Function to update thinking mode
- * @param props.showThoughts - Whether to show thought blocks
- * @param props.setShowThoughts - Function to toggle thought display
  * @param props.theme - UI theme setting
  * @param props.setTheme - Function to update theme
  * @param props.showTimestamps - Whether to show message timestamps
  * @param props.setShowTimestamps - Function to toggle timestamps
  * @param props.showHelpLinks - Whether to show help link buttons
  * @param props.setShowHelpLinks - Function to toggle help links
- * @param props.showMessageSettings - Whether to show per-message behavior settings
- * @param props.setShowMessageSettings - Function to toggle message settings
  * @param props.enabledTools - Map of enabled/disabled tools
  * @param props.setEnabledTools - Function to update enabled tools
  * @param props.mcpTools - Available tools from MCP server
@@ -190,20 +181,6 @@ function SettingsTabContent(props: SettingsScreenProps) {
         />
       )}
 
-      {activeTab === "behavior" && (
-        <BehaviorTab
-          provider={props.provider}
-          model={props.model}
-          thinking={props.thinking}
-          setThinking={props.setThinking}
-          showThoughts={props.showThoughts}
-          setShowThoughts={props.setShowThoughts}
-          showMessageSettings={props.showMessageSettings}
-          setShowMessageSettings={props.setShowMessageSettings}
-          resetBehaviorToDefaults={props.resetBehaviorToDefaults}
-        />
-      )}
-
       {activeTab === "tools" && (
         <ToolToggles
           tools={props.mcpTools}
@@ -213,14 +190,19 @@ function SettingsTabContent(props: SettingsScreenProps) {
         />
       )}
 
-      {activeTab === "appearance" && (
+      {activeTab === "behavior" && (
         <AppearanceTab
+          provider={props.provider}
+          model={props.model}
+          thinking={props.thinking}
+          setThinking={props.setThinking}
           theme={props.theme}
           setTheme={props.setTheme}
           showTimestamps={props.showTimestamps}
           setShowTimestamps={props.setShowTimestamps}
           showHelpLinks={props.showHelpLinks}
           setShowHelpLinks={props.setShowHelpLinks}
+          resetBehaviorToDefaults={props.resetBehaviorToDefaults}
         />
       )}
     </div>

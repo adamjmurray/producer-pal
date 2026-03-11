@@ -6,10 +6,9 @@
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 
-/** Per-message overrides for thinking and showThoughts */
+/** Per-message overrides for thinking */
 export interface MessageOverrides {
   thinking?: string;
-  showThoughts?: boolean;
 }
 
 /** Chat client interface that all providers must implement */

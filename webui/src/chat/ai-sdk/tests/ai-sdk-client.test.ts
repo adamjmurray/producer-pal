@@ -441,13 +441,12 @@ describe("AiSdkClient", () => {
     it("stamps overrides on user message when provided", async () => {
       const last = await sendWithResponse({
         modelId: "test-model",
-        overrides: { thinking: "High", showThoughts: true },
+        overrides: { thinking: "High" },
       });
 
       const user = last.find((m) => m.role === "user");
 
       expect(user?.thinkingOverride).toBe("High");
-      expect(user?.showThoughtsOverride).toBe(true);
 
       // Assistant messages should NOT have overrides
       const assistant = last.find((m) => m.role === "assistant");

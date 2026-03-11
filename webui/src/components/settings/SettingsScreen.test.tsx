@@ -109,13 +109,16 @@ vi.mock(import("./controls/ThinkingSettings"), () => ({
     provider,
     model,
     thinking,
+    resetToDefaults,
   }: {
     provider: string;
     model: string;
     thinking: string;
+    resetToDefaults: () => void;
   }) => (
     <div data-testid="thinking-settings">
       {provider}-{model}-{thinking}
+      <button onClick={resetToDefaults}>Reset to defaults</button>
     </div>
   ),
 }));
@@ -136,16 +139,12 @@ describe("SettingsScreen", () => {
     setModel: vi.fn(),
     thinking: "Medium",
     setThinking: vi.fn(),
-    showThoughts: false,
-    setShowThoughts: vi.fn(),
     theme: "system",
     setTheme: vi.fn(),
     showTimestamps: false,
     setShowTimestamps: vi.fn(),
     showHelpLinks: true,
     setShowHelpLinks: vi.fn(),
-    showMessageSettings: false,
-    setShowMessageSettings: vi.fn(),
     enabledTools: {},
     setEnabledTools: vi.fn(),
     mcpTools: [
@@ -177,13 +176,6 @@ describe("SettingsScreen", () => {
       expect(link.target).toBe("_blank");
     });
 
-    it("updates help link when switching to behavior tab", () => {
-      render(<SettingsScreen {...defaultProps} activeTab="behavior" />);
-      const link = screen.getByTitle("Documentation") as HTMLAnchorElement;
-
-      expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#behavior");
-    });
-
     it("updates help link when switching to tools tab", () => {
       render(<SettingsScreen {...defaultProps} activeTab="tools" />);
       const link = screen.getByTitle("Documentation") as HTMLAnchorElement;
@@ -191,13 +183,11 @@ describe("SettingsScreen", () => {
       expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#tools");
     });
 
-    it("updates help link when switching to appearance tab", () => {
-      render(<SettingsScreen {...defaultProps} activeTab="appearance" />);
+    it("updates help link when switching to behavior tab", () => {
+      render(<SettingsScreen {...defaultProps} activeTab="behavior" />);
       const link = screen.getByTitle("Documentation") as HTMLAnchorElement;
 
-      expect(link.href).toBe(
-        "https://producer-pal.org/guide/chat-ui#appearance",
-      );
+      expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#behavior");
     });
   });
 
@@ -217,17 +207,17 @@ describe("SettingsScreen", () => {
       expect(screen.getByTestId("model-selector")).toBeDefined();
       unmount();
 
-      // Behavior tab
+      // Tools tab
       const { unmount: unmount2 } = render(
-        <SettingsScreen {...defaultProps} activeTab="behavior" />,
+        <SettingsScreen {...defaultProps} activeTab="tools" />,
       );
 
-      expect(screen.getByTestId("thinking-settings")).toBeDefined();
+      expect(screen.getByTestId("tool-toggles")).toBeDefined();
       unmount2();
 
-      // Tools tab
-      render(<SettingsScreen {...defaultProps} activeTab="tools" />);
-      expect(screen.getByTestId("tool-toggles")).toBeDefined();
+      // Appearance tab (includes thinking settings)
+      render(<SettingsScreen {...defaultProps} activeTab="behavior" />);
+      expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
 
     it("renders Save button", () => {
@@ -237,13 +227,13 @@ describe("SettingsScreen", () => {
   });
 
   describe("theme selector", () => {
-    it("renders Appearance label", () => {
+    it("renders Behavior label", () => {
       render(<SettingsScreen {...defaultProps} />);
-      expect(screen.getByRole("button", { name: "Appearance" })).toBeDefined();
+      expect(screen.getByRole("button", { name: "Behavior" })).toBeDefined();
     });
 
     it("renders theme selector with options", () => {
-      render(<SettingsScreen {...defaultProps} activeTab="appearance" />);
+      render(<SettingsScreen {...defaultProps} activeTab="behavior" />);
       expect(screen.getByRole("option", { name: "System" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Light" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Dark" })).toBeDefined();
@@ -251,11 +241,7 @@ describe("SettingsScreen", () => {
 
     it("has correct initial value", () => {
       render(
-        <SettingsScreen
-          {...defaultProps}
-          activeTab="appearance"
-          theme="dark"
-        />,
+        <SettingsScreen {...defaultProps} activeTab="behavior" theme="dark" />,
       );
       const select = screen.getByLabelText("Theme") as HTMLSelectElement;
 
@@ -268,7 +254,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          activeTab="appearance"
+          activeTab="behavior"
           setTheme={setTheme}
         />,
       );
@@ -460,7 +446,7 @@ describe("SettingsScreen", () => {
       );
     });
 
-    it("passes correct props to behavior tab", () => {
+    it("passes correct props to appearance tab thinking settings", () => {
       render(
         <SettingsScreen
           {...defaultProps}
@@ -470,7 +456,7 @@ describe("SettingsScreen", () => {
         />,
       );
 
-      expect(screen.getByTestId("thinking-settings").textContent).toBe(
+      expect(screen.getByTestId("thinking-settings").textContent).toContain(
         "gemini-gemini-2.5-flash-High",
       );
     });

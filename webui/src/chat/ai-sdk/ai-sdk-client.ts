@@ -55,7 +55,7 @@ export class AiSdkClient {
    * The AI SDK handles multi-step tool calling via stopWhen.
    * @param message - User message text
    * @param abortSignal - Signal to abort the stream
-   * @param overrides - Per-message overrides for thinking/temperature/showThoughts
+   * @param overrides - Per-message overrides for thinking
    * @yields Complete chat history after each stream update
    */
   async *sendMessage(
@@ -156,8 +156,6 @@ function stampOverrides(msg: AiSdkMessage, overrides?: MessageOverrides): void {
   if (!overrides) return;
 
   if (overrides.thinking != null) msg.thinkingOverride = overrides.thinking;
-  if (overrides.showThoughts != null)
-    msg.showThoughtsOverride = overrides.showThoughts;
 }
 
 /**

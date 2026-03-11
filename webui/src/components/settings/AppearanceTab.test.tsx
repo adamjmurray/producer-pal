@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -13,31 +14,38 @@ describe("AppearanceTab", () => {
   const mockSetTheme = vi.fn();
 
   const defaultProps = {
+    provider: "gemini" as const,
+    model: "gemini-2.5-flash",
+    thinking: "Default",
+    setThinking: vi.fn(),
     theme: "system",
     setTheme: mockSetTheme,
     showTimestamps: false,
     setShowTimestamps: vi.fn(),
     showHelpLinks: true,
     setShowHelpLinks: vi.fn(),
+    resetBehaviorToDefaults: vi.fn(),
   };
 
   it("renders theme label", () => {
     const { container } = render(<AppearanceTab {...defaultProps} />);
-    const label = container.querySelector("label");
+    const label = container.querySelector('[for="theme-select"]');
 
     expect(label?.textContent).toBe("Theme");
   });
 
   it("renders theme select with correct value", () => {
     const { container } = render(<AppearanceTab {...defaultProps} />);
-    const select = container.querySelector("select") as HTMLSelectElement;
+    const select = container.querySelector(
+      "#theme-select",
+    ) as HTMLSelectElement;
 
     expect(select.value).toBe("system");
   });
 
   it("renders all theme options", () => {
     const { container } = render(<AppearanceTab {...defaultProps} />);
-    const select = container.querySelector("select");
+    const select = container.querySelector("#theme-select");
 
     expect(select?.innerHTML).toContain("System");
     expect(select?.innerHTML).toContain("Light");
@@ -46,7 +54,7 @@ describe("AppearanceTab", () => {
 
   it("calls setTheme when selection changes", () => {
     const { container } = render(<AppearanceTab {...defaultProps} />);
-    const select = container.querySelector("select");
+    const select = container.querySelector("#theme-select");
 
     fireEvent.change(select!, { target: { value: "dark" } });
     expect(mockSetTheme).toHaveBeenCalledWith("dark");
@@ -56,7 +64,9 @@ describe("AppearanceTab", () => {
     const { container } = render(
       <AppearanceTab {...defaultProps} theme="light" />,
     );
-    const select = container.querySelector("select") as HTMLSelectElement;
+    const select = container.querySelector(
+      "#theme-select",
+    ) as HTMLSelectElement;
 
     expect(select.value).toBe("light");
   });
@@ -65,7 +75,9 @@ describe("AppearanceTab", () => {
     const { container } = render(
       <AppearanceTab {...defaultProps} theme="dark" />,
     );
-    const select = container.querySelector("select") as HTMLSelectElement;
+    const select = container.querySelector(
+      "#theme-select",
+    ) as HTMLSelectElement;
 
     expect(select.value).toBe("dark");
   });

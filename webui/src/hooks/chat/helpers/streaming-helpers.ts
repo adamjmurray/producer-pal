@@ -88,7 +88,6 @@ export async function validateMcpConnection(
 
 interface ConversationDefaults {
   thinking: string | null;
-  showThoughts: boolean | null;
 }
 
 /**
@@ -104,19 +103,9 @@ export function filterOverrides(
 ): MessageOverrides | undefined {
   if (!overrides) return undefined;
 
-  const filtered: MessageOverrides = {};
+  if (overrides.thinking != null && overrides.thinking !== defaults.thinking) {
+    return { thinking: overrides.thinking };
+  }
 
-  if (overrides.thinking != null && overrides.thinking !== defaults.thinking)
-    filtered.thinking = overrides.thinking;
-
-  if (
-    overrides.showThoughts != null &&
-    overrides.showThoughts !== defaults.showThoughts
-  )
-    filtered.showThoughts = overrides.showThoughts;
-
-  const hasOverrides =
-    filtered.thinking != null || filtered.showThoughts != null;
-
-  return hasOverrides ? filtered : undefined;
+  return undefined;
 }

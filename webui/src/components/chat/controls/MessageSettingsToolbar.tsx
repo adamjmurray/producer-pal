@@ -3,18 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { isShowThoughtsSupported } from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
 
 export interface MessageSettingsToolbarProps {
   provider: Provider;
   model: string;
   defaultThinking: string;
-  defaultShowThoughts: boolean;
   thinking: string;
-  showThoughts: boolean;
   onThinkingChange: (thinking: string) => void;
-  onShowThoughtsChange: (showThoughts: boolean) => void;
   onResetToDefaults: () => void;
 }
 
@@ -24,11 +20,8 @@ export interface MessageSettingsToolbarProps {
  * @param {Provider} root0.provider - Selected provider
  * @param {string} root0.model - Selected model
  * @param {string} root0.defaultThinking - Default thinking mode
- * @param {boolean} root0.defaultShowThoughts - Default showThoughts setting
  * @param {string} root0.thinking - Current thinking mode
- * @param {boolean} root0.showThoughts - Current showThoughts setting
  * @param {Function} root0.onThinkingChange - Callback for thinking change
- * @param {Function} root0.onShowThoughtsChange - Callback for showThoughts change
  * @param {Function} root0.onResetToDefaults - Callback to reset to defaults
  * @returns {JSX.Element} Settings toolbar component
  */
@@ -36,19 +29,14 @@ export function MessageSettingsToolbar({
   provider,
   model,
   defaultThinking,
-  defaultShowThoughts,
   thinking,
-  showThoughts,
   onThinkingChange,
-  onShowThoughtsChange,
   onResetToDefaults,
 }: MessageSettingsToolbarProps) {
   const showSimplifiedOptions =
     provider === "openai" && (model === "o1" || model === "o3-mini");
-  const showShowThoughtsCheckbox = isShowThoughtsSupported(provider, thinking);
 
-  const isUsingDefaults =
-    thinking === defaultThinking && showThoughts === defaultShowThoughts;
+  const isUsingDefaults = thinking === defaultThinking;
 
   return (
     <div className="border-t border-zinc-300 dark:border-zinc-700 px-4 py-1.5 flex justify-end">
@@ -71,20 +59,6 @@ export function MessageSettingsToolbar({
           <option value="High">High</option>
           {!showSimplifiedOptions && <option value="Ultra">Ultra</option>}
         </select>
-
-        {showShowThoughtsCheckbox && (
-          <label className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 shrink-0">
-            <input
-              type="checkbox"
-              id="messageShowThoughts"
-              checked={showThoughts}
-              onChange={(e) =>
-                onShowThoughtsChange((e.target as HTMLInputElement).checked)
-              }
-            />
-            Show thinking
-          </label>
-        )}
 
         <button
           onClick={onResetToDefaults}
