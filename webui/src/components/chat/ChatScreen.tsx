@@ -190,7 +190,7 @@ export function ChatScreen({
         <div
           className={`flex flex-col flex-1 min-w-0 ${conversationPanel.isOpen ? "hidden md:flex" : ""}`}
         >
-          <div className="flex flex-col flex-1 min-h-0 w-full max-w-4xl mx-auto border-x border-zinc-300 dark:border-zinc-700 shadow-lg dark:shadow-black/40 bg-white dark:bg-zinc-900">
+          <div className="flex flex-col flex-1 min-h-0 w-full max-w-5xl mx-auto border-x border-zinc-300 dark:border-zinc-700 shadow-lg dark:shadow-black/40 bg-white dark:bg-zinc-900">
             <div className="flex-1 overflow-y-auto">
               {messages.length === 0 ? (
                 <ChatStart
