@@ -3,13 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
 import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
@@ -25,6 +19,10 @@ import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
 import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
+import {
+  useDisplaySettings,
+  saveDisplaySettings,
+} from "#webui/hooks/use-display-settings";
 import { useViewState } from "#webui/hooks/use-view-state";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
@@ -102,12 +100,7 @@ export function App() {
         ? { settingsOpen: true, settingsTab }
         : { settingsOpen: true },
     );
-  const [showTimestamps, setShowTimestamps] = useState(
-    () => localStorage.getItem("producer_pal_show_timestamps") === "true",
-  );
-  const [showHelpLinks, setShowHelpLinks] = useState(
-    () => localStorage.getItem("producer_pal_show_help_links") !== "false",
-  );
+  const display = useDisplaySettings();
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
   const toolNamesMap = useMemo(
@@ -196,24 +189,27 @@ export function App() {
 
   // Track original appearance settings when settings opened (for cancel)
   const originalThemeRef = useRef(theme);
-  const originalShowTimestampsRef = useRef(showTimestamps);
-  const originalShowHelpLinksRef = useRef(showHelpLinks);
+  const originalDisplayRef = useRef(display);
   const prevShowSettingsRef = useRef(showSettings);
 
   // Save originals only when settings transitions from closed to open
   useEffect(() => {
     if (showSettings && !prevShowSettingsRef.current) {
       originalThemeRef.current = theme;
-      originalShowTimestampsRef.current = showTimestamps;
-      originalShowHelpLinksRef.current = showHelpLinks;
+      originalDisplayRef.current = { ...display };
     }
 
     prevShowSettingsRef.current = showSettings;
-  }, [showSettings, theme, showTimestamps, showHelpLinks]);
+  }, [showSettings, theme, display]);
 
+  const appearance = {
+    theme,
+    showTimestamps: display.showTimestamps,
+    showHelpLinks: display.showHelpLinks,
+  };
   const hasUnsavedChanges = useHasUnsavedChanges(
     settings,
-    { theme, showTimestamps, showHelpLinks },
+    appearance,
     showSettings,
   );
 
@@ -221,11 +217,7 @@ export function App() {
     closeSettings(() => {
       settings.saveSettings();
       postSmallModelMode(settings.smallModelMode);
-      const s = (k: string, v: boolean) =>
-        localStorage.setItem(`producer_pal_${k}`, String(v));
-
-      s("show_timestamps", showTimestamps);
-      s("show_help_links", showHelpLinks);
+      saveDisplaySettings(display);
     });
   };
 
@@ -233,10 +225,12 @@ export function App() {
     closeSettings(() => {
       settings.cancelSettings();
       setTheme(originalThemeRef.current);
-      setShowTimestamps(originalShowTimestampsRef.current);
-      setShowHelpLinks(originalShowHelpLinksRef.current);
+      const orig = originalDisplayRef.current;
+
+      display.setShowTimestamps(orig.showTimestamps);
+      display.setShowHelpLinks(orig.showHelpLinks);
     });
-  }, [closeSettings, settings, setTheme]);
+  }, [closeSettings, settings, setTheme, display]);
 
   const { shake, clearShake, handleSettingsDismiss } = useSettingsDismiss({
     showSettings,
@@ -278,8 +272,8 @@ export function App() {
           onOpenToolsSettings={() => openSettings("tools")}
           onOpenConnectionSettings={() => openSettings("connection")}
           onStop={chat.stopResponse}
-          showTimestamps={showTimestamps}
-          showHelpLinks={showHelpLinks}
+          showTimestamps={display.showTimestamps}
+          showHelpLinks={display.showHelpLinks}
           conversationPanel={{
             conversations: conversationManager.conversations,
             activeConversationId: conversationManager.activeConversationId,
@@ -329,10 +323,10 @@ export function App() {
             setThinking={settings.setThinking}
             theme={theme}
             setTheme={setTheme}
-            showTimestamps={showTimestamps}
-            setShowTimestamps={setShowTimestamps}
-            showHelpLinks={showHelpLinks}
-            setShowHelpLinks={setShowHelpLinks}
+            showTimestamps={display.showTimestamps}
+            setShowTimestamps={display.setShowTimestamps}
+            showHelpLinks={display.showHelpLinks}
+            setShowHelpLinks={display.setShowHelpLinks}
             enabledTools={settings.enabledTools}
             setEnabledTools={settings.setEnabledTools}
             mcpTools={mcpTools}
