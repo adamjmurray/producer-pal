@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
@@ -14,6 +14,7 @@ import {
   registerTrackWithArrangementDup,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 
 vi.mock(import("#src/tools/control/select.ts"), () => ({
   select: vi.fn(),
@@ -116,14 +117,7 @@ describe("duplicate - routeToSource with duplicate track names", () => {
 });
 
 describe("duplicate - focus functionality", () => {
-  let selectMock: ReturnType<typeof vi.fn>;
-
-  beforeEach(async () => {
-    const selectModule = await import("#src/tools/control/select.ts");
-
-    selectMock = selectModule.select as ReturnType<typeof vi.fn>;
-    selectMock.mockClear();
-  });
+  const selectMock = setupSelectMock();
 
   it("should select clip and show clip detail when duplicating to arrangement", () => {
     registerMockObject("clip1", {
@@ -141,7 +135,7 @@ describe("duplicate - focus functionality", () => {
       focus: true,
     });
 
-    expect(selectMock).toHaveBeenCalledWith({
+    expect(selectMock.get()).toHaveBeenCalledWith({
       clipId: livePath.track(0).arrangementClip(0),
       detailView: "clip",
     });
@@ -174,7 +168,7 @@ describe("duplicate - focus functionality", () => {
       toSlot: "0/1",
     });
 
-    expect(selectMock).toHaveBeenCalledWith({
+    expect(selectMock.get()).toHaveBeenCalledWith({
       clipId: expect.any(String),
       detailView: "clip",
     });
@@ -189,7 +183,7 @@ describe("duplicate - focus functionality", () => {
       focus: true,
     });
 
-    expect(selectMock).not.toHaveBeenCalled();
+    expect(selectMock.get()).not.toHaveBeenCalled();
   });
 
   it("should select scene in session view when duplicating scenes", () => {
@@ -210,7 +204,7 @@ describe("duplicate - focus functionality", () => {
       focus: true,
     });
 
-    expect(selectMock).toHaveBeenCalledWith({
+    expect(selectMock.get()).toHaveBeenCalledWith({
       view: "session",
       sceneId: expect.any(String),
     });
@@ -225,7 +219,7 @@ describe("duplicate - focus functionality", () => {
       focus: false,
     });
 
-    expect(selectMock).not.toHaveBeenCalled();
+    expect(selectMock.get()).not.toHaveBeenCalled();
   });
 
   it("should not call select for multiple track duplicates when focus=true", () => {
@@ -243,7 +237,7 @@ describe("duplicate - focus functionality", () => {
       focus: true,
     });
 
-    expect(selectMock).not.toHaveBeenCalled();
+    expect(selectMock.get()).not.toHaveBeenCalled();
     expect(result).toHaveLength(2);
   });
 });

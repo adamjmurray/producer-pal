@@ -2,7 +2,8 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { focusIfRequested } from "./duplicate-misc-helpers.ts";
 
 // Mock the select module to avoid Live API dependencies
@@ -12,31 +13,24 @@ vi.mock(import("#src/tools/control/select.ts"), () => ({
 
 describe("duplicate-misc-helpers", () => {
   describe("focusIfRequested", () => {
-    let selectMock: ReturnType<typeof vi.fn>;
-
-    beforeEach(async () => {
-      vi.clearAllMocks();
-      const selectModule = await import("#src/tools/control/select.ts");
-
-      selectMock = selectModule.select as ReturnType<typeof vi.fn>;
-    });
+    const selectMock = setupSelectMock();
 
     it("does nothing when focus is false", () => {
       focusIfRequested(false, "arrangement", "clip", [{ id: "clip1" }]);
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMock.get()).not.toHaveBeenCalled();
     });
 
     it("does nothing when focus is undefined", () => {
       focusIfRequested(undefined, "arrangement", "clip", [{ id: "clip1" }]);
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMock.get()).not.toHaveBeenCalled();
     });
 
     it("selects clip with detail view when type is clip", () => {
       focusIfRequested(true, "arrangement", "clip", [{ id: "clip1" }]);
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMock.get()).toHaveBeenCalledWith({
         clipId: "clip1",
         detailView: "clip",
       });
@@ -48,7 +42,7 @@ describe("duplicate-misc-helpers", () => {
         { id: "clip2" },
       ]);
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMock.get()).toHaveBeenCalledWith({
         clipId: "clip2",
         detailView: "clip",
       });
@@ -57,7 +51,7 @@ describe("duplicate-misc-helpers", () => {
     it("selects scene in session view when type is scene", () => {
       focusIfRequested(true, undefined, "scene", [{ id: "scene1" }]);
 
-      expect(selectMock).toHaveBeenCalledWith({
+      expect(selectMock.get()).toHaveBeenCalledWith({
         view: "session",
         sceneId: "scene1",
       });
@@ -66,31 +60,31 @@ describe("duplicate-misc-helpers", () => {
     it("does nothing when destination is undefined and type is device", () => {
       focusIfRequested(true, undefined, "device", [{ id: "device1" }]);
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMock.get()).not.toHaveBeenCalled();
     });
 
     it("does nothing when type is track", () => {
       focusIfRequested(true, undefined, "track", [{ id: "track1" }]);
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMock.get()).not.toHaveBeenCalled();
     });
 
     it("falls back to view switch for clips without id", () => {
       focusIfRequested(true, "session", "clip", [{}]);
 
-      expect(selectMock).toHaveBeenCalledWith({ view: "session" });
+      expect(selectMock.get()).toHaveBeenCalledWith({ view: "session" });
     });
 
     it("falls back to arrangement view for clips without id when destination is arrangement", () => {
       focusIfRequested(true, "arrangement", "clip", [{}]);
 
-      expect(selectMock).toHaveBeenCalledWith({ view: "arrangement" });
+      expect(selectMock.get()).toHaveBeenCalledWith({ view: "arrangement" });
     });
 
     it("does nothing for clips without id and no destination", () => {
       focusIfRequested(true, undefined, "clip", [{}]);
 
-      expect(selectMock).not.toHaveBeenCalled();
+      expect(selectMock.get()).not.toHaveBeenCalled();
     });
   });
 

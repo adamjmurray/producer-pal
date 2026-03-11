@@ -81,6 +81,48 @@ async function sendWithParts(
 }
 
 /**
+ * Send a message with full control over stream response and per-message overrides.
+ * @param options - Send options
+ * @param options.text - Text to yield in the stream (default: "response")
+ * @param options.modelId - Model ID for the response promise
+ * @param options.overrides - Per-message overrides
+ * @returns Final chat history
+ */
+async function sendWithResponse(
+  options: {
+    text?: string;
+    modelId?: string;
+    overrides?: Parameters<AiSdkClient["sendMessage"]>[2];
+  } = {},
+): Promise<AiSdkMessage[]> {
+  const text = options.text ?? "response";
+
+  async function* iterate(): AsyncIterable<Record<string, unknown>> {
+    yield { type: "text-delta", text };
+  }
+
+  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+    fullStream: iterate(),
+    response: Promise.resolve(
+      options.modelId != null ? { modelId: options.modelId } : {},
+    ),
+  });
+
+  const client = new AiSdkClient("key", createConfig());
+  let last: AiSdkMessage[] = [];
+
+  for await (const history of client.sendMessage(
+    "Hello",
+    undefined,
+    options.overrides,
+  )) {
+    last = history;
+  }
+
+  return last;
+}
+
+/**
  * Send a tool-call + tool-error pair and return the final history.
  * @param error - The error value to use in the tool-error part
  * @returns Final chat history
@@ -326,41 +368,16 @@ describe("AiSdkClient", () => {
     });
 
     it("captures response model ID on assistant messages", async () => {
-      async function* iterate(): AsyncIterable<Record<string, unknown>> {
-        yield { type: "text-delta", text: "Hi" };
-      }
-
-      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: iterate(),
-        response: Promise.resolve({ modelId: "gpt-4o-mini" }),
+      const last = await sendWithResponse({
+        text: "Hi",
+        modelId: "gpt-4o-mini",
       });
-
-      const client = new AiSdkClient("key", createConfig());
-      let last: AiSdkMessage[] = [];
-
-      for await (const history of client.sendMessage("Hello")) {
-        last = history;
-      }
 
       expect(last[1]!.responseModel).toBe("gpt-4o-mini");
     });
 
     it("skips responseModel when response has no modelId", async () => {
-      async function* iterate(): AsyncIterable<Record<string, unknown>> {
-        yield { type: "text-delta", text: "Hi" };
-      }
-
-      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: iterate(),
-        response: Promise.resolve({}),
-      });
-
-      const client = new AiSdkClient("key", createConfig());
-      let last: AiSdkMessage[] = [];
-
-      for await (const history of client.sendMessage("Hello")) {
-        last = history;
-      }
+      const last = await sendWithResponse({ text: "Hi" });
 
       expect(last[1]!.responseModel).toBeUndefined();
     });
@@ -422,25 +439,10 @@ describe("AiSdkClient", () => {
 
   describe("per-message overrides", () => {
     it("stamps overrides on user message when provided", async () => {
-      async function* iterate(): AsyncIterable<Record<string, unknown>> {
-        yield { type: "text-delta", text: "response" };
-      }
-
-      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: iterate(),
-        response: Promise.resolve({ modelId: "test-model" }),
+      const last = await sendWithResponse({
+        modelId: "test-model",
+        overrides: { thinking: "High", temperature: 0.5, showThoughts: true },
       });
-
-      const client = new AiSdkClient("key", createConfig());
-      let last: AiSdkMessage[] = [];
-
-      for await (const history of client.sendMessage("Hello", undefined, {
-        thinking: "High",
-        temperature: 0.5,
-        showThoughts: true,
-      })) {
-        last = history;
-      }
 
       const user = last.find((m) => m.role === "user");
 
@@ -455,21 +457,7 @@ describe("AiSdkClient", () => {
     });
 
     it("does not stamp overrides when none provided", async () => {
-      async function* iterate(): AsyncIterable<Record<string, unknown>> {
-        yield { type: "text-delta", text: "response" };
-      }
-
-      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: iterate(),
-        response: Promise.resolve({ modelId: "test-model" }),
-      });
-
-      const client = new AiSdkClient("key", createConfig());
-      let last: AiSdkMessage[] = [];
-
-      for await (const history of client.sendMessage("Hello")) {
-        last = history;
-      }
+      const last = await sendWithResponse({ modelId: "test-model" });
 
       const user = last.find((m) => m.role === "user");
 
@@ -479,23 +467,10 @@ describe("AiSdkClient", () => {
     });
 
     it("only stamps provided override fields", async () => {
-      async function* iterate(): AsyncIterable<Record<string, unknown>> {
-        yield { type: "text-delta", text: "response" };
-      }
-
-      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: iterate(),
-        response: Promise.resolve({ modelId: "test-model" }),
+      const last = await sendWithResponse({
+        modelId: "test-model",
+        overrides: { thinking: "Low" },
       });
-
-      const client = new AiSdkClient("key", createConfig());
-      let last: AiSdkMessage[] = [];
-
-      for await (const history of client.sendMessage("Hello", undefined, {
-        thinking: "Low",
-      })) {
-        last = history;
-      }
 
       const user = last.find((m) => m.role === "user");
 
