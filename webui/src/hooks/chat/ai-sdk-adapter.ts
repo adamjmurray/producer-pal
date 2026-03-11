@@ -59,7 +59,7 @@ function buildProviderOptions(
         openrouter: {
           reasoning: {
             effort,
-            ...(effort === "none" || !showThoughts ? { exclude: true } : {}),
+            ...(!showThoughts ? { exclude: true } : {}),
           },
         },
       };

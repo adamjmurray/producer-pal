@@ -33,6 +33,8 @@ describe("ConnectionTab", () => {
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
     providerLabel: "Gemini",
+    thinking: "Adaptive",
+    setThinking: vi.fn(),
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
   };

@@ -217,8 +217,6 @@ export function ChatScreen({
               handleSend={handleSend}
               isAssistantResponding={isAssistantResponding}
               onStop={onStop}
-              provider={provider}
-              model={model}
               defaultThinking={defaultThinking}
               thinking={thinking}
               onThinkingChange={setThinking}

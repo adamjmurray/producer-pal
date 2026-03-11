@@ -5,6 +5,7 @@
 import { type Provider } from "#webui/types/settings";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
+import { THINKING_LEVELS } from "./controls/thinking-levels";
 
 export const API_KEY_URLS: Record<string, string | undefined> = {
   anthropic: "https://console.anthropic.com/settings/keys",
@@ -39,6 +40,8 @@ interface ConnectionTabProps {
   model: string;
   setModel: (model: string) => void;
   providerLabel: string;
+  thinking: string;
+  setThinking: (thinking: string) => void;
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
 }
@@ -55,6 +58,8 @@ interface ConnectionTabProps {
  * @param {string} props.model - Current model
  * @param {(model: string) => void} props.setModel - Model setter callback
  * @param {string} props.providerLabel - Display name for provider
+ * @param {string} props.thinking - Default thinking level
+ * @param {(thinking: string) => void} props.setThinking - Thinking level setter callback
  * @param {boolean} props.smallModelMode - Whether small model mode is enabled
  * @param {Function} props.setSmallModelMode - Function to toggle small model mode
  * @returns {JSX.Element} - React component
@@ -69,6 +74,8 @@ export function ConnectionTab({
   model,
   setModel,
   providerLabel,
+  thinking,
+  setThinking,
   smallModelMode,
   setSmallModelMode,
 }: ConnectionTabProps) {
@@ -141,8 +148,26 @@ export function ConnectionTab({
         </p>
       )}
 
-      <div className="pt-2 border-t border-zinc-300 dark:border-zinc-600">
+      <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
+          <label htmlFor="thinking-select" className="text-sm shrink-0">
+            Thinking
+          </label>
+          <select
+            id="thinking-select"
+            value={thinking}
+            onChange={(e) => setThinking((e.target as HTMLSelectElement).value)}
+            className="px-2 py-1 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded text-sm"
+          >
+            {THINKING_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {level}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
           <input
             type="checkbox"
             id="smallModelMode"
@@ -151,13 +176,8 @@ export function ConnectionTab({
               setSmallModelMode((e.target as HTMLInputElement).checked)
             }
           />
-          <label htmlFor="smallModelMode" className="text-sm">
-            Small model mode
-          </label>
-        </div>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 ml-5">
-          Fewer features, better compatibility with smaller models.
-        </p>
+          Small model mode
+        </label>
       </div>
     </>
   );

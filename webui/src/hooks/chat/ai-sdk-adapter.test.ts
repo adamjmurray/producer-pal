@@ -127,15 +127,15 @@ describe("aiSdkAdapter", () => {
       );
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningEffort: "high", reasoningSummary: "auto" },
+        openai: { reasoningEffort: "xhigh", reasoningSummary: "auto" },
       });
     });
 
-    it("sets only reasoningSummary for openai reasoning model with Default thinking", () => {
+    it("sets only reasoningSummary for openai reasoning model with Adaptive thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "gpt-5.2",
         1.0,
-        "Default",
+        "Adaptive",
         {},
         undefined,
         { ...extraParams, provider: "openai", showThoughts: true },
@@ -159,7 +159,7 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toStrictEqual({
         openrouter: {
           reasoning: {
-            effort: "high",
+            effort: "xhigh",
           },
         },
       });
@@ -178,7 +178,7 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toStrictEqual({
         openrouter: {
           reasoning: {
-            effort: "high",
+            effort: "xhigh",
             exclude: true,
           },
         },
@@ -198,7 +198,7 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toStrictEqual({
         google: {
           thinkingConfig: {
-            thinkingBudget: 8192,
+            thinkingBudget: 16384,
             includeThoughts: false,
           },
         },
@@ -225,17 +225,24 @@ describe("aiSdkAdapter", () => {
       });
     });
 
-    it("returns undefined providerOptions for gemini with Off thinking", () => {
+    it("sets Gemini thinkingConfig with -1 budget for Adaptive thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "gemini-2.0-flash",
         1.0,
-        "Off",
+        "Adaptive",
         {},
         undefined,
         { ...extraParams, provider: "gemini" },
       );
 
-      expect(config.providerOptions).toBeUndefined();
+      expect(config.providerOptions).toStrictEqual({
+        google: {
+          thinkingConfig: {
+            thinkingBudget: -1,
+            includeThoughts: false,
+          },
+        },
+      });
     });
 
     it("returns undefined providerOptions for default thinking", () => {
@@ -292,24 +299,17 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("sets openrouter reasoning none with exclude", () => {
+    it("returns undefined providerOptions for openrouter with Adaptive thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "some-model",
         1.0,
-        "Off",
+        "Adaptive",
         {},
         undefined,
         { ...extraParams, provider: "openrouter", showThoughts: true },
       );
 
-      expect(config.providerOptions).toStrictEqual({
-        openrouter: {
-          reasoning: {
-            effort: "none",
-            exclude: true,
-          },
-        },
-      });
+      expect(config.providerOptions).toBeUndefined();
     });
 
     it("sets anthropic thinking options for High thinking", () => {
@@ -324,7 +324,7 @@ describe("aiSdkAdapter", () => {
 
       expect(config.providerOptions).toStrictEqual({
         anthropic: {
-          thinking: { type: "enabled", budgetTokens: 8192 },
+          thinking: { type: "enabled", budgetTokens: 16384 },
         },
       });
     });
@@ -342,24 +342,25 @@ describe("aiSdkAdapter", () => {
       expect(config.temperature).toBeUndefined();
     });
 
-    it("preserves temperature for anthropic when thinking is off", () => {
+    it("preserves temperature for anthropic with Adaptive thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         0.7,
-        "Off",
+        "Adaptive",
         {},
         undefined,
         { ...extraParams, provider: "anthropic" },
       );
 
-      expect(config.temperature).toBe(0.7);
+      // Adaptive maps to default budget (10240), which enables thinking and suppresses temperature
+      expect(config.temperature).toBeUndefined();
     });
 
-    it("sets anthropic default thinking budget for Default thinking", () => {
+    it("sets anthropic default thinking budget for Adaptive thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         1.0,
-        "Default",
+        "Adaptive",
         {},
         undefined,
         { ...extraParams, provider: "anthropic" },
@@ -370,19 +371,6 @@ describe("aiSdkAdapter", () => {
           thinking: { type: "enabled", budgetTokens: 10240 },
         },
       });
-    });
-
-    it("returns undefined provider options for anthropic with Off thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
-        "claude-sonnet-4-6-20250514",
-        1.0,
-        "Off",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
-
-      expect(config.providerOptions).toBeUndefined();
     });
 
     it("returns undefined provider options for mistral provider", () => {

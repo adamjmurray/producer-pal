@@ -128,7 +128,7 @@ export function createDefaultProps(
     provider: "gemini" as const,
     apiKey: "test-key",
     model: "test-model",
-    thinking: "Default",
+    thinking: "Adaptive",
     temperature: 1.0,
     enabledTools: {},
     smallModelMode: false,

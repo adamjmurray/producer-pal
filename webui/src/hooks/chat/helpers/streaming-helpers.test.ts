@@ -151,10 +151,10 @@ describe("streaming-helpers", () => {
     });
 
     it("returns thinking when it differs from defaults", () => {
-      const result = filterOverrides({ thinking: "Ultra" }, defaults);
+      const result = filterOverrides({ thinking: "High" }, defaults);
 
       expect(result).toStrictEqual({
-        thinking: "Ultra",
+        thinking: "High",
       });
     });
   });

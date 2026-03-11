@@ -325,6 +325,8 @@ export function App() {
             setBaseUrl={settings.setBaseUrl}
             model={settings.model}
             setModel={settings.setModel}
+            thinking={settings.thinking}
+            setThinking={settings.setThinking}
             theme={theme}
             setTheme={setTheme}
             showTimestamps={showTimestamps}

@@ -4,7 +4,7 @@
 
 import { type VNode } from "preact";
 
-export type TabId = "connection" | "tools" | "behavior";
+export type TabId = "connection" | "tools" | "display";
 
 interface Tab {
   id: TabId;
@@ -19,8 +19,8 @@ interface SettingsTabsProps {
 
 const tabs: Tab[] = [
   { id: "connection", label: "Connection" },
-  { id: "behavior", label: "Behavior" },
   { id: "tools", label: "Tools" },
+  { id: "display", label: "Display" },
 ];
 
 /**

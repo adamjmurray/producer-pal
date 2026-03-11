@@ -21,7 +21,7 @@ describe("useSettings", () => {
     expect(result.current).toMatchObject({
       apiKey: "",
       model: "gemini-3-flash-preview",
-      thinking: "Default",
+      thinking: "Adaptive",
       temperature: 1.0,
       showThoughts: true,
       hasApiKey: false,
@@ -80,7 +80,7 @@ describe("useSettings", () => {
       JSON.stringify({
         apiKey: "new-key",
         model: "gemini-3-flash-preview",
-        thinking: "Default",
+        thinking: "Adaptive",
         temperature: 1.0,
         showThoughts: true,
       }),
@@ -109,7 +109,7 @@ describe("useSettings", () => {
 
     const { result } = renderHook(() => useSettings());
 
-    // Must be "High" on first render (not "Off" default) so that
+    // Must be "High" on first render (not "Adaptive" default) so that
     // ChatScreen's useState(defaultThinking) captures the saved value
     expect(result.current.thinking).toBe("High");
   });
@@ -266,7 +266,7 @@ describe("useSettings", () => {
     expect(result.current).toMatchObject({
       apiKey: "",
       model: "gpt-5.4",
-      thinking: "Default",
+      thinking: "Adaptive",
       temperature: 1.0,
       showThoughts: true,
     });
@@ -484,7 +484,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       temperature: 1.0,
-      thinking: "Default", // Default for gemini
+      thinking: "Adaptive", // Default for gemini
       showThoughts: true,
     });
   });
@@ -565,7 +565,7 @@ describe("useSettings", () => {
     await act(() => {
       result.current.setProvider("openai");
     });
-    expect(result.current.thinking).toBe("Default"); // Default for OpenAI
+    expect(result.current.thinking).toBe("Adaptive"); // Default for OpenAI
   });
 
   it("hasApiKey returns false when localStorage has invalid JSON", async () => {

@@ -29,7 +29,7 @@ export function SmallModelIndicator({
   const color = diverges ? amberColor : neutralColor;
 
   return (
-    <span className={`text-xs ${color}`}>
+    <span className={`text-xs leading-none ${color}`}>
       <span className="hidden sm:inline" aria-label={label}>
         {emoji} {label}
       </span>

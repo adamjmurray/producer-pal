@@ -208,7 +208,7 @@ describe("useChat", () => {
       expect(mockAdapter.createClient).toHaveBeenCalledWith("test-key", {
         model: "test-model",
         temperature: 1.0,
-        thinking: "Default",
+        thinking: "Adaptive",
       });
     });
 
@@ -220,7 +220,7 @@ describe("useChat", () => {
       });
 
       expect(result.current.activeModel).toBe("test-model");
-      expect(result.current.activeThinking).toBe("Default");
+      expect(result.current.activeThinking).toBe("Adaptive");
       expect(result.current.activeTemperature).toBe(1.0);
     });
 
@@ -675,7 +675,7 @@ describe("useChat", () => {
       expect(mockAdapter.buildConfig).toHaveBeenCalledWith(
         "test-model",
         1.0,
-        "Default",
+        "Adaptive",
         {},
         history,
         undefined,

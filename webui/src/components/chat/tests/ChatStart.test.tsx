@@ -18,7 +18,7 @@ import {
 } from "#webui/components/chat/ChatStart";
 
 const defaultOverrides = {
-  thinking: "Default",
+  thinking: "Adaptive",
   temperature: 1.0,
   showThoughts: true,
 };

@@ -28,6 +28,8 @@ interface SettingsScreenProps {
   setBaseUrl?: (url: string) => void;
   model: string;
   setModel: (model: string) => void;
+  thinking: string;
+  setThinking: (thinking: string) => void;
   theme: string;
   setTheme: (theme: string) => void;
   showTimestamps: boolean;
@@ -67,6 +69,8 @@ const helpLinkClass =
  * @param props.setBaseUrl - Function to update base URL
  * @param props.model - Selected model
  * @param props.setModel - Function to update model
+ * @param props.thinking - Default thinking level
+ * @param props.setThinking - Function to update thinking level
  * @param props.theme - UI theme setting
  * @param props.setTheme - Function to update theme
  * @param props.showTimestamps - Whether to show message timestamps
@@ -169,6 +173,8 @@ function SettingsTabContent(props: SettingsScreenProps) {
           model={props.model}
           setModel={props.setModel}
           providerLabel={providerLabel}
+          thinking={props.thinking}
+          setThinking={props.setThinking}
           smallModelMode={props.smallModelMode}
           setSmallModelMode={props.setSmallModelMode}
         />
@@ -183,7 +189,7 @@ function SettingsTabContent(props: SettingsScreenProps) {
         />
       )}
 
-      {activeTab === "behavior" && (
+      {activeTab === "display" && (
         <AppearanceTab
           theme={props.theme}
           setTheme={props.setTheme}

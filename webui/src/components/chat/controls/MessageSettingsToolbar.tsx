@@ -3,11 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type Provider } from "#webui/types/settings";
+import { THINKING_LEVELS } from "#webui/components/settings/controls/thinking-levels";
 
 export interface MessageSettingsToolbarProps {
-  provider: Provider;
-  model: string;
   defaultThinking: string;
   thinking: string;
   onThinkingChange: (thinking: string) => void;
@@ -17,8 +15,6 @@ export interface MessageSettingsToolbarProps {
 /**
  * Single-row toolbar for per-conversation thinking settings
  * @param {MessageSettingsToolbarProps} root0 - Component props
- * @param {Provider} root0.provider - Selected provider
- * @param {string} root0.model - Selected model
  * @param {string} root0.defaultThinking - Default thinking mode
  * @param {string} root0.thinking - Current thinking mode
  * @param {Function} root0.onThinkingChange - Callback for thinking change
@@ -26,16 +22,11 @@ export interface MessageSettingsToolbarProps {
  * @returns {JSX.Element} Settings toolbar component
  */
 export function MessageSettingsToolbar({
-  provider,
-  model,
   defaultThinking,
   thinking,
   onThinkingChange,
   onResetToDefaults,
 }: MessageSettingsToolbarProps) {
-  const showSimplifiedOptions =
-    provider === "openai" && (model === "o1" || model === "o3-mini");
-
   const isUsingDefaults = thinking === defaultThinking;
 
   return (
@@ -51,13 +42,11 @@ export function MessageSettingsToolbar({
           }
           className="px-2 py-0.5 text-sm bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
         >
-          {!showSimplifiedOptions && <option value="Default">Default</option>}
-          {!showSimplifiedOptions && <option value="Off">Off</option>}
-          {!showSimplifiedOptions && <option value="Minimal">Minimal</option>}
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-          {!showSimplifiedOptions && <option value="Ultra">Ultra</option>}
+          {THINKING_LEVELS.map((level) => (
+            <option key={level} value={level}>
+              {level}
+            </option>
+          ))}
         </select>
 
         <button

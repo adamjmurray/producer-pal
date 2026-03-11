@@ -22,8 +22,6 @@ interface ChatInputProps extends MessageSettingsToolbarProps {
  * @param {(message: string) => Promise<void>} props.handleSend - Callback to send message
  * @param {boolean} props.isAssistantResponding - Whether assistant is currently responding
  * @param {() => void} props.onStop - Callback to stop assistant response
- * @param {Provider} props.provider - Current provider
- * @param {string} props.model - Current model
  * @param {string} props.defaultThinking - Default thinking mode from settings
  * @param {string} props.thinking - Current thinking mode
  * @param {Function} props.onThinkingChange - Callback for thinking change
@@ -34,8 +32,6 @@ export function ChatInput({
   handleSend,
   isAssistantResponding,
   onStop,
-  provider,
-  model,
   defaultThinking,
   thinking,
   onThinkingChange,
@@ -62,8 +58,6 @@ export function ChatInput({
   return (
     <div className="border-t border-zinc-300 dark:border-zinc-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
       <MessageSettingsToolbar
-        provider={provider}
-        model={model}
         defaultThinking={defaultThinking}
         thinking={thinking}
         onThinkingChange={onThinkingChange}

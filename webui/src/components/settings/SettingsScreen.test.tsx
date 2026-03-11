@@ -118,6 +118,8 @@ describe("SettingsScreen", () => {
     setApiKey: vi.fn(),
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
+    thinking: "Adaptive",
+    setThinking: vi.fn(),
     theme: "system",
     setTheme: vi.fn(),
     showTimestamps: false,
@@ -161,11 +163,11 @@ describe("SettingsScreen", () => {
       expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#tools");
     });
 
-    it("updates help link when switching to behavior tab", () => {
-      render(<SettingsScreen {...defaultProps} activeTab="behavior" />);
+    it("updates help link when switching to display tab", () => {
+      render(<SettingsScreen {...defaultProps} activeTab="display" />);
       const link = screen.getByTitle("Documentation") as HTMLAnchorElement;
 
-      expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#behavior");
+      expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#display");
     });
   });
 
@@ -193,8 +195,8 @@ describe("SettingsScreen", () => {
       expect(screen.getByTestId("tool-toggles")).toBeDefined();
       unmount2();
 
-      // Behavior tab
-      render(<SettingsScreen {...defaultProps} activeTab="behavior" />);
+      // Display tab
+      render(<SettingsScreen {...defaultProps} activeTab="display" />);
       expect(screen.getByLabelText("Theme")).toBeDefined();
     });
 
@@ -205,13 +207,13 @@ describe("SettingsScreen", () => {
   });
 
   describe("theme selector", () => {
-    it("renders Behavior label", () => {
+    it("renders Display label", () => {
       render(<SettingsScreen {...defaultProps} />);
-      expect(screen.getByRole("button", { name: "Behavior" })).toBeDefined();
+      expect(screen.getByRole("button", { name: "Display" })).toBeDefined();
     });
 
     it("renders theme selector with options", () => {
-      render(<SettingsScreen {...defaultProps} activeTab="behavior" />);
+      render(<SettingsScreen {...defaultProps} activeTab="display" />);
       expect(screen.getByRole("option", { name: "System" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Light" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Dark" })).toBeDefined();
@@ -219,7 +221,7 @@ describe("SettingsScreen", () => {
 
     it("has correct initial value", () => {
       render(
-        <SettingsScreen {...defaultProps} activeTab="behavior" theme="dark" />,
+        <SettingsScreen {...defaultProps} activeTab="display" theme="dark" />,
       );
       const select = screen.getByLabelText("Theme") as HTMLSelectElement;
 
@@ -232,7 +234,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          activeTab="behavior"
+          activeTab="display"
           setTheme={setTheme}
         />,
       );

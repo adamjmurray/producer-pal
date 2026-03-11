@@ -12,18 +12,12 @@ import { MessageSettingsToolbar } from "#webui/components/chat/controls/MessageS
 
 describe("MessageSettingsToolbar", () => {
   const mockOnThinkingChange = vi.fn();
-  const mockOnShowThoughtsChange = vi.fn();
   const mockOnResetToDefaults = vi.fn();
 
   const defaultProps = {
-    provider: "gemini" as const,
-    model: "gemini-2.0-flash-thinking",
-    defaultThinking: "Default",
-    defaultShowThoughts: true,
-    thinking: "Default",
-    showThoughts: true,
+    defaultThinking: "Adaptive",
+    thinking: "Adaptive",
     onThinkingChange: mockOnThinkingChange,
-    onShowThoughtsChange: mockOnShowThoughtsChange,
     onResetToDefaults: mockOnResetToDefaults,
   };
 
@@ -32,33 +26,17 @@ describe("MessageSettingsToolbar", () => {
     const select = container.querySelector("select") as HTMLSelectElement;
 
     expect(select).toBeDefined();
-    expect(select.value).toBe("Default");
+    expect(select.value).toBe("Adaptive");
   });
 
-  it.each([
-    ["o1", "openai"],
-    ["o3-mini", "openai"],
-  ] as const)("hides Off and Ultra options for %s model", (model, provider) => {
-    const { container } = render(
-      <MessageSettingsToolbar
-        {...defaultProps}
-        provider={provider}
-        model={model}
-      />,
-    );
-    const select = container.querySelector("select");
-
-    expect(select?.innerHTML).not.toContain("Off");
-    expect(select?.innerHTML).not.toContain("Ultra");
-  });
-
-  it("shows all thinking options for Gemini", () => {
+  it("shows all thinking options", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const select = container.querySelector("select");
 
-    expect(select?.innerHTML).toContain("Default");
-    expect(select?.innerHTML).toContain("Off");
-    expect(select?.innerHTML).toContain("Ultra");
+    expect(select?.innerHTML).toContain("Adaptive");
+    expect(select?.innerHTML).toContain("Low");
+    expect(select?.innerHTML).toContain("Medium");
+    expect(select?.innerHTML).toContain("High");
   });
 
   it("calls onThinkingChange when thinking changes", () => {

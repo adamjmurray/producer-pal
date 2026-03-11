@@ -350,12 +350,12 @@ describe("App", () => {
       });
       const { container } = render(<App />);
       const tab = Array.from(container.querySelectorAll("button")).find(
-        (b) => b.textContent === "Behavior",
+        (b) => b.textContent === "Display",
       );
 
       if (tab) fireEvent.click(tab);
       expect(mockSetViewState).toHaveBeenCalledWith({
-        settingsTab: "behavior",
+        settingsTab: "display",
       });
     });
   });

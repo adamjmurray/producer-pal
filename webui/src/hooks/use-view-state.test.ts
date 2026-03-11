@@ -80,9 +80,9 @@ describe("useViewState", () => {
     const { result } = renderHook(() => useViewState());
 
     await act(async () => {
-      result.current.setViewState({ settingsTab: "behavior" });
+      result.current.setViewState({ settingsTab: "display" });
     });
 
-    expect(result.current.viewState.settingsTab).toBe("behavior");
+    expect(result.current.viewState.settingsTab).toBe("display");
   });
 });

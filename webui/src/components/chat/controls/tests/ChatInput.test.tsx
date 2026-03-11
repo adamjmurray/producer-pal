@@ -8,16 +8,13 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ChatInput } from "#webui/components/chat/controls/ChatInput";
-import { type Provider } from "#webui/types/settings";
 
 const defaultProps = {
   handleSend: vi.fn(),
   isAssistantResponding: false,
   onStop: vi.fn(),
-  provider: "gemini" as Provider,
-  model: "gemini-2.0-flash-thinking",
-  defaultThinking: "Default",
-  thinking: "Default",
+  defaultThinking: "Adaptive",
+  thinking: "Adaptive",
   onThinkingChange: vi.fn(),
   onResetToDefaults: vi.fn(),
 };
@@ -134,7 +131,7 @@ describe("ChatInput", () => {
       fireEvent.input(textarea, { target: { value: "Hello" } });
       triggerSend(textarea);
       expect(handleSend).toHaveBeenCalledExactlyOnceWith("Hello", {
-        thinking: "Default",
+        thinking: "Adaptive",
       });
     });
 
