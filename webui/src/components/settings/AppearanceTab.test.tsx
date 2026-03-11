@@ -14,17 +14,12 @@ describe("AppearanceTab", () => {
   const mockSetTheme = vi.fn();
 
   const defaultProps = {
-    provider: "gemini" as const,
-    model: "gemini-2.5-flash",
-    thinking: "Default",
-    setThinking: vi.fn(),
     theme: "system",
     setTheme: mockSetTheme,
     showTimestamps: false,
     setShowTimestamps: vi.fn(),
     showHelpLinks: true,
     setShowHelpLinks: vi.fn(),
-    resetBehaviorToDefaults: vi.fn(),
   };
 
   it("renders theme label", () => {

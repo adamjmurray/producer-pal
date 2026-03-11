@@ -104,25 +104,6 @@ vi.mock(import("./ConnectionTab"), async (importOriginal) => {
   };
 });
 
-vi.mock(import("./controls/ThinkingSettings"), () => ({
-  ThinkingSettings: ({
-    provider,
-    model,
-    thinking,
-    resetToDefaults,
-  }: {
-    provider: string;
-    model: string;
-    thinking: string;
-    resetToDefaults: () => void;
-  }) => (
-    <div data-testid="thinking-settings">
-      {provider}-{model}-{thinking}
-      <button onClick={resetToDefaults}>Reset to defaults</button>
-    </div>
-  ),
-}));
-
 vi.mock(import("./controls/ToolToggles"), () => ({
   ToolToggles: () => <div data-testid="tool-toggles">Tool Toggles</div>,
 }));
@@ -137,8 +118,6 @@ describe("SettingsScreen", () => {
     setApiKey: vi.fn(),
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
-    thinking: "Medium",
-    setThinking: vi.fn(),
     theme: "system",
     setTheme: vi.fn(),
     showTimestamps: false,
@@ -154,7 +133,6 @@ describe("SettingsScreen", () => {
     mcpStatus: "connected" as const,
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
-    resetBehaviorToDefaults: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     settingsConfigured: false,
@@ -215,9 +193,9 @@ describe("SettingsScreen", () => {
       expect(screen.getByTestId("tool-toggles")).toBeDefined();
       unmount2();
 
-      // Appearance tab (includes thinking settings)
+      // Behavior tab
       render(<SettingsScreen {...defaultProps} activeTab="behavior" />);
-      expect(screen.getByTestId("thinking-settings")).toBeDefined();
+      expect(screen.getByLabelText("Theme")).toBeDefined();
     });
 
     it("renders Save button", () => {
@@ -270,53 +248,6 @@ describe("SettingsScreen", () => {
     it("passes correct label for Anthropic provider", () => {
       render(<SettingsScreen {...defaultProps} provider="anthropic" />);
       expect(screen.getByText("Anthropic")).toBeDefined();
-    });
-  });
-
-  describe("thinking settings visibility", () => {
-    it("shows thinking settings for Gemini", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          activeTab="behavior"
-          provider="gemini"
-        />,
-      );
-      expect(screen.getByTestId("thinking-settings")).toBeDefined();
-    });
-
-    it("shows thinking settings for OpenAI", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          activeTab="behavior"
-          provider="openai"
-          model="gpt-5-2025-08-07"
-        />,
-      );
-      expect(screen.getByTestId("thinking-settings")).toBeDefined();
-    });
-
-    it("shows thinking settings for Mistral", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          activeTab="behavior"
-          provider="mistral"
-        />,
-      );
-      expect(screen.getByTestId("thinking-settings")).toBeDefined();
-    });
-
-    it("shows thinking settings for Custom provider", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          activeTab="behavior"
-          provider="custom"
-        />,
-      );
-      expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
   });
 
@@ -443,21 +374,6 @@ describe("SettingsScreen", () => {
 
       expect(screen.getByTestId("model-selector").textContent).toBe(
         "gemini-2.5-flash",
-      );
-    });
-
-    it("passes correct props to appearance tab thinking settings", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          activeTab="behavior"
-          model="gemini-2.5-flash"
-          thinking="High"
-        />,
-      );
-
-      expect(screen.getByTestId("thinking-settings").textContent).toContain(
-        "gemini-gemini-2.5-flash-High",
       );
     });
   });
@@ -616,26 +532,6 @@ describe("SettingsScreen", () => {
 
       fireEvent.change(input, { target: { value: "https://custom.api/v1" } });
       expect(setBaseUrl).toHaveBeenCalledWith("https://custom.api/v1");
-    });
-  });
-
-  describe("reset behavior button", () => {
-    it("calls resetBehaviorToDefaults when clicked", () => {
-      const resetBehaviorToDefaults = vi.fn();
-
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          activeTab="behavior"
-          resetBehaviorToDefaults={resetBehaviorToDefaults}
-        />,
-      );
-      const resetButton = screen.getByRole("button", {
-        name: "Reset to defaults",
-      });
-
-      fireEvent.click(resetButton);
-      expect(resetBehaviorToDefaults).toHaveBeenCalledOnce();
     });
   });
 

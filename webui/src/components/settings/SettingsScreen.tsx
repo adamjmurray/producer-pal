@@ -28,9 +28,6 @@ interface SettingsScreenProps {
   setBaseUrl?: (url: string) => void;
   model: string;
   setModel: (model: string) => void;
-  thinking: string;
-  setThinking: (thinking: string) => void;
-
   theme: string;
   setTheme: (theme: string) => void;
   showTimestamps: boolean;
@@ -44,7 +41,6 @@ interface SettingsScreenProps {
   mcpStatus: McpStatus;
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
-  resetBehaviorToDefaults: () => void;
   saveSettings: () => void;
   cancelSettings: () => void;
   settingsConfigured: boolean;
@@ -71,8 +67,6 @@ const helpLinkClass =
  * @param props.setBaseUrl - Function to update base URL
  * @param props.model - Selected model
  * @param props.setModel - Function to update model
- * @param props.thinking - Thinking mode setting
- * @param props.setThinking - Function to update thinking mode
  * @param props.theme - UI theme setting
  * @param props.setTheme - Function to update theme
  * @param props.showTimestamps - Whether to show message timestamps
@@ -85,7 +79,6 @@ const helpLinkClass =
  * @param props.mcpStatus - MCP connection status
  * @param props.smallModelMode - Whether small model mode is enabled
  * @param props.setSmallModelMode - Function to toggle small model mode
- * @param props.resetBehaviorToDefaults - Function to reset behavior settings
  * @param props.saveSettings - Function to save settings
  * @param props.cancelSettings - Function to cancel settings changes
  * @param props.settingsConfigured - Whether settings have been configured
@@ -192,17 +185,12 @@ function SettingsTabContent(props: SettingsScreenProps) {
 
       {activeTab === "behavior" && (
         <AppearanceTab
-          provider={props.provider}
-          model={props.model}
-          thinking={props.thinking}
-          setThinking={props.setThinking}
           theme={props.theme}
           setTheme={props.setTheme}
           showTimestamps={props.showTimestamps}
           setShowTimestamps={props.setShowTimestamps}
           showHelpLinks={props.showHelpLinks}
           setShowHelpLinks={props.setShowHelpLinks}
-          resetBehaviorToDefaults={props.resetBehaviorToDefaults}
         />
       )}
     </div>

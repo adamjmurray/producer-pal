@@ -3,62 +3,36 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type Provider } from "#webui/types/settings";
-import { ThinkingSettings } from "./controls/ThinkingSettings";
-
 interface AppearanceTabProps {
-  provider: Provider;
-  model: string;
-  thinking: string;
-  setThinking: (thinking: string) => void;
   theme: string;
   setTheme: (theme: string) => void;
   showTimestamps: boolean;
   setShowTimestamps: (show: boolean) => void;
   showHelpLinks: boolean;
   setShowHelpLinks: (show: boolean) => void;
-  resetBehaviorToDefaults: () => void;
 }
 
 /**
- * Appearance tab component for settings
+ * Behavior tab component for settings (theme and display options)
  * @param {object} props - Component props
- * @param {Provider} props.provider - Selected provider
- * @param {string} props.model - Selected model
- * @param {string} props.thinking - Thinking mode setting
- * @param {Function} props.setThinking - Function to update thinking mode
  * @param {string} props.theme - UI theme setting
  * @param {Function} props.setTheme - Function to update theme
  * @param {boolean} props.showTimestamps - Whether to show message timestamps
  * @param {Function} props.setShowTimestamps - Function to toggle timestamps
  * @param {boolean} props.showHelpLinks - Whether to show help link buttons
  * @param {Function} props.setShowHelpLinks - Function to toggle help links
- * @param {Function} props.resetBehaviorToDefaults - Function to reset behavior settings
- * @returns {JSX.Element} Appearance tab component
+ * @returns {JSX.Element} Behavior tab component
  */
 export function AppearanceTab({
-  provider,
-  model,
-  thinking,
-  setThinking,
   theme,
   setTheme,
   showTimestamps,
   setShowTimestamps,
   showHelpLinks,
   setShowHelpLinks,
-  resetBehaviorToDefaults,
 }: AppearanceTabProps) {
   return (
     <div className="space-y-4">
-      <ThinkingSettings
-        provider={provider}
-        model={model}
-        thinking={thinking}
-        setThinking={setThinking}
-        resetToDefaults={resetBehaviorToDefaults}
-      />
-
       <div>
         <label htmlFor="theme-select" className="block text-sm mb-2">
           Theme

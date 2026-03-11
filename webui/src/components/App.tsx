@@ -325,8 +325,6 @@ export function App() {
             setBaseUrl={settings.setBaseUrl}
             model={settings.model}
             setModel={settings.setModel}
-            thinking={settings.thinking}
-            setThinking={settings.setThinking}
             theme={theme}
             setTheme={setTheme}
             showTimestamps={showTimestamps}
@@ -339,7 +337,6 @@ export function App() {
             mcpStatus={mcpStatus}
             smallModelMode={settings.smallModelMode}
             setSmallModelMode={settings.setSmallModelMode}
-            resetBehaviorToDefaults={settings.resetBehaviorToDefaults}
             saveSettings={handleSaveSettings}
             cancelSettings={handleCancelSettings}
             settingsConfigured={settings.settingsConfigured}
