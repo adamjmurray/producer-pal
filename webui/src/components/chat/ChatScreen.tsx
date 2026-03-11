@@ -190,51 +190,53 @@ export function ChatScreen({
         <div
           className={`flex flex-col flex-1 min-w-0 ${conversationPanel.isOpen ? "hidden md:flex" : ""}`}
         >
-          <div className="flex-1 overflow-y-auto">
-            {messages.length === 0 ? (
-              <ChatStart
-                mcpStatus={mcpStatus}
-                mcpError={mcpError}
-                checkMcpConnection={checkMcpConnection}
-                handleSend={handleSend}
-                overrides={currentOverrides}
-              />
-            ) : (
-              <MessageList
-                messages={messages}
-                isAssistantResponding={isAssistantResponding}
-                handleRetry={handleRetry}
-                handleEdit={handleEdit}
-                showTimestamps={showTimestamps}
-                requestedModel={activeModel}
+          <div className="flex flex-col flex-1 min-h-0 w-full max-w-4xl mx-auto border-x border-zinc-300 dark:border-zinc-700 shadow-lg dark:shadow-black/40 bg-white dark:bg-zinc-900">
+            <div className="flex-1 overflow-y-auto">
+              {messages.length === 0 ? (
+                <ChatStart
+                  mcpStatus={mcpStatus}
+                  mcpError={mcpError}
+                  checkMcpConnection={checkMcpConnection}
+                  handleSend={handleSend}
+                  overrides={currentOverrides}
+                />
+              ) : (
+                <MessageList
+                  messages={messages}
+                  isAssistantResponding={isAssistantResponding}
+                  handleRetry={handleRetry}
+                  handleEdit={handleEdit}
+                  showTimestamps={showTimestamps}
+                  requestedModel={activeModel}
+                />
+              )}
+            </div>
+
+            {rateLimitState?.isRetrying && (
+              <RateLimitIndicator
+                retryAttempt={rateLimitState.attempt}
+                maxAttempts={rateLimitState.maxAttempts}
+                retryDelayMs={rateLimitState.delayMs}
+                onCancel={onStop}
               />
             )}
-          </div>
 
-          {rateLimitState?.isRetrying && (
-            <RateLimitIndicator
-              retryAttempt={rateLimitState.attempt}
-              maxAttempts={rateLimitState.maxAttempts}
-              retryDelayMs={rateLimitState.delayMs}
-              onCancel={onStop}
+            <ChatInput
+              handleSend={handleSend}
+              isAssistantResponding={isAssistantResponding}
+              onStop={onStop}
+              provider={provider}
+              model={model}
+              defaultThinking={defaultThinking}
+              defaultShowThoughts={defaultShowThoughts}
+              thinking={thinking}
+              showThoughts={showThoughts}
+              onThinkingChange={setThinking}
+              onShowThoughtsChange={setShowThoughts}
+              onResetToDefaults={handleResetToDefaults}
+              showMessageSettings={showMessageSettings}
             />
-          )}
-
-          <ChatInput
-            handleSend={handleSend}
-            isAssistantResponding={isAssistantResponding}
-            onStop={onStop}
-            provider={provider}
-            model={model}
-            defaultThinking={defaultThinking}
-            defaultShowThoughts={defaultShowThoughts}
-            thinking={thinking}
-            showThoughts={showThoughts}
-            onThinkingChange={setThinking}
-            onShowThoughtsChange={setShowThoughts}
-            onResetToDefaults={handleResetToDefaults}
-            showMessageSettings={showMessageSettings}
-          />
+          </div>
         </div>
       </div>
     </div>

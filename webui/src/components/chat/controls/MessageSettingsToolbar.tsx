@@ -51,50 +51,50 @@ export function MessageSettingsToolbar({
     thinking === defaultThinking && showThoughts === defaultShowThoughts;
 
   return (
-    <div className="border-b border-zinc-300 dark:border-zinc-700 px-4 py-1.5 flex items-center gap-3">
-      <div className="flex-1" />
-
-      <label className="text-xs text-zinc-600 dark:text-zinc-400 shrink-0">
-        Thinking
-      </label>
-      <select
-        value={thinking}
-        onChange={(e) =>
-          onThinkingChange((e.target as HTMLSelectElement).value)
-        }
-        className="px-2 py-0.5 text-sm bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
-      >
-        {!showSimplifiedOptions && <option value="Default">Default</option>}
-        {!showSimplifiedOptions && <option value="Off">Off</option>}
-        {!showSimplifiedOptions && <option value="Minimal">Minimal</option>}
-        <option value="Low">Low</option>
-        <option value="Medium">Medium</option>
-        <option value="High">High</option>
-        {!showSimplifiedOptions && <option value="Ultra">Ultra</option>}
-      </select>
-
-      {showShowThoughtsCheckbox && (
-        <label className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 shrink-0">
-          <input
-            type="checkbox"
-            id="messageShowThoughts"
-            checked={showThoughts}
-            onChange={(e) =>
-              onShowThoughtsChange((e.target as HTMLInputElement).checked)
-            }
-          />
-          Show thinking
+    <div className="border-t border-zinc-300 dark:border-zinc-700 px-4 py-1.5 flex justify-end">
+      <div className="flex items-center gap-3">
+        <label className="text-xs text-zinc-600 dark:text-zinc-400 shrink-0">
+          Thinking
         </label>
-      )}
+        <select
+          value={thinking}
+          onChange={(e) =>
+            onThinkingChange((e.target as HTMLSelectElement).value)
+          }
+          className="px-2 py-0.5 text-sm bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+        >
+          {!showSimplifiedOptions && <option value="Default">Default</option>}
+          {!showSimplifiedOptions && <option value="Off">Off</option>}
+          {!showSimplifiedOptions && <option value="Minimal">Minimal</option>}
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          {!showSimplifiedOptions && <option value="Ultra">Ultra</option>}
+        </select>
 
-      <button
-        onClick={onResetToDefaults}
-        disabled={isUsingDefaults}
-        className="px-2 py-0.5 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900 rounded disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-        type="button"
-      >
-        ↺ Reset
-      </button>
+        {showShowThoughtsCheckbox && (
+          <label className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 shrink-0">
+            <input
+              type="checkbox"
+              id="messageShowThoughts"
+              checked={showThoughts}
+              onChange={(e) =>
+                onShowThoughtsChange((e.target as HTMLInputElement).checked)
+              }
+            />
+            Show thinking
+          </label>
+        )}
+
+        <button
+          onClick={onResetToDefaults}
+          disabled={isUsingDefaults}
+          className="px-2 py-0.5 text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900 rounded disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          type="button"
+        >
+          ↺ Reset
+        </button>
+      </div>
     </div>
   );
 }
