@@ -86,9 +86,12 @@ describe("AssistantToolCall", () => {
       expect(screen.getByText(/using tool:/)).toBeDefined();
     });
 
-    it("shows 'used tool:' when has result and not error", () => {
+    it("shows tool name without prefix when has result and not error", () => {
       render(<AssistantToolCall {...defaultProps} result="Success" />);
-      expect(screen.getByText(/used tool:/)).toBeDefined();
+      const summary = document.querySelector("summary");
+
+      expect(summary!.textContent).toContain("test-tool");
+      expect(summary!.textContent).not.toContain("used tool:");
     });
 
     it("shows 'tool failed:' when has result and is error", () => {
@@ -399,7 +402,7 @@ describe("AssistantToolCall", () => {
       const details = document.querySelector("details");
 
       expect(details!.className).not.toContain("border-red-500");
-      expect(screen.getByText(/used tool:/)).toBeDefined();
+      expect(details!.className).not.toContain("border-yellow-500");
     });
   });
 

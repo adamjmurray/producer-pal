@@ -62,10 +62,10 @@ export function AssistantThought({
         <span
           className="group-open:hidden"
           dangerouslySetInnerHTML={{
-            __html: sanitizeMarkdownInline(`💭 Thought about: ${firstLine}`),
+            __html: sanitizeMarkdownInline(`💭 ${firstLine}`),
           }}
         />
-        <span className="hidden group-open:inline">💭 Thought about:</span>
+        <span className="hidden group-open:inline">💭</span>
       </summary>
       <div
         className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"

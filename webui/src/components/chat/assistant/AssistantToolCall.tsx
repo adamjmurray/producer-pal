@@ -53,7 +53,7 @@ export function AssistantToolCall({
         ) : effectiveIsError ? (
           <span className="text-red-700 dark:text-red-400">tool failed: </span>
         ) : (
-          "used tool: "
+          ""
         )}
         {toolNames[name] ?? name}
         {effectiveIsError && (
