@@ -430,15 +430,23 @@ describe("ChatHeader", () => {
     });
   });
 
-  describe("small model mode indicator", () => {
-    it("does not show indicator when smallModelMode is false", () => {
+  describe("model size indicator", () => {
+    it("shows large model with elephant when smallModelMode is false", () => {
       render(<ChatHeader {...defaultProps} smallModelMode={false} />);
-      expect(screen.queryByLabelText("small model")).toBeNull();
+      expect(screen.getAllByLabelText("large model").length).toBeGreaterThan(0);
+      const elements = screen.getAllByLabelText("large model");
+      const mobileEl = elements.find((el) => el.textContent.trim() === "🐘");
+
+      expect(mobileEl).toBeDefined();
     });
 
-    it("shows indicator when smallModelMode is true", () => {
+    it("shows small model with turtle when smallModelMode is true", () => {
       render(<ChatHeader {...defaultProps} smallModelMode={true} />);
       expect(screen.getAllByLabelText("small model").length).toBeGreaterThan(0);
+      const elements = screen.getAllByLabelText("small model");
+      const mobileEl = elements.find((el) => el.textContent.trim() === "🐢");
+
+      expect(mobileEl).toBeDefined();
     });
 
     it("shows full text at sm breakpoint", () => {
@@ -449,14 +457,6 @@ describe("ChatHeader", () => {
       );
 
       expect(fullText).toBeDefined();
-    });
-
-    it("shows turtle-only variant for mobile", () => {
-      render(<ChatHeader {...defaultProps} smallModelMode={true} />);
-      const elements = screen.getAllByLabelText("small model");
-      const mobileEl = elements.find((el) => el.textContent.trim() === "🐢");
-
-      expect(mobileEl).toBeDefined();
     });
   });
 

@@ -101,19 +101,17 @@ export function HeaderActions({
         />
       </button>
 
-      {(smallModelMode || smallModelDiverges) && (
-        <button
-          type="button"
-          onClick={onOpenConnectionSettings}
-          className="hover:opacity-70 transition-opacity cursor-pointer"
-          title="Connection settings"
-        >
-          <SmallModelIndicator
-            active={smallModelMode}
-            locked={smallModelDiverges}
-          />
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={onOpenConnectionSettings}
+        className="hover:opacity-70 transition-opacity cursor-pointer"
+        title="Connection settings"
+      >
+        <SmallModelIndicator
+          active={smallModelMode}
+          diverges={smallModelDiverges}
+        />
+      </button>
 
       <button
         onClick={onOpenSettings}
