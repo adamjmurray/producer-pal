@@ -219,12 +219,6 @@ describe("ChatInput", () => {
         />,
       );
 
-      // Expand settings toolbar
-      const expandButton = container.querySelector("button");
-
-      fireEvent.click(expandButton!);
-
-      // Reset to defaults
       const resetButton = Array.from(container.querySelectorAll("button")).find(
         (btn) => btn.textContent.includes("Reset"),
       );
@@ -268,12 +262,6 @@ describe("ChatInput", () => {
         />,
       );
 
-      // Expand settings toolbar
-      const expandButton = container.querySelector("button");
-
-      fireEvent.click(expandButton!);
-
-      // Click showThoughts checkbox
       const checkbox = container.querySelector(
         'input[type="checkbox"]',
       ) as HTMLInputElement;

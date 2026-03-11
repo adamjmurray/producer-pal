@@ -150,15 +150,6 @@ describe("ChatScreen", () => {
 
       render(<ChatScreen {...customProps} />);
 
-      // Expand the message settings panel
-      const settingsButton = Array.from(
-        document.querySelectorAll("button"),
-      ).find((btn) => btn.textContent.includes("Behavior settings"));
-
-      expect(settingsButton).toBeDefined();
-      fireEvent.click(settingsButton!);
-
-      // Find and click the reset button
       const resetButton = Array.from(document.querySelectorAll("button")).find(
         (btn) => btn.textContent.includes("Reset"),
       );
@@ -171,14 +162,6 @@ describe("ChatScreen", () => {
     it("enables reset button when settings differ from defaults", () => {
       render(<ChatScreen {...defaultProps} showMessageSettings={true} />);
 
-      // Expand the message settings panel
-      const settingsButton = Array.from(
-        document.querySelectorAll("button"),
-      ).find((btn) => btn.textContent.includes("Behavior settings"));
-
-      fireEvent.click(settingsButton!);
-
-      // Change the thinking setting to differ from default
       const thinkingSelect = document.querySelector("select");
 
       expect(thinkingSelect).toBeDefined();
@@ -320,18 +303,9 @@ describe("ChatScreen", () => {
   });
 
   describe("handleResetToDefaults", () => {
-    it("resets thinking, temperature, and showThoughts to defaults when reset button is clicked", () => {
+    it("resets thinking and showThoughts to defaults when reset button is clicked", () => {
       render(<ChatScreen {...defaultProps} showMessageSettings={true} />);
 
-      // First, expand the message settings panel
-      const settingsButton = Array.from(
-        document.querySelectorAll("button"),
-      ).find((btn) => btn.textContent!.includes("Behavior settings"));
-
-      expect(settingsButton).toBeDefined();
-      fireEvent.click(settingsButton!);
-
-      // Change a value away from default (to enable the reset button)
       const thinkingSelect = document.querySelector("select");
 
       expect(thinkingSelect).toBeDefined();

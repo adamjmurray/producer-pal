@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -26,51 +27,13 @@ describe("MessageSettingsToolbar", () => {
     onResetToDefaults: mockOnResetToDefaults,
   };
 
-  /**
-   * Render toolbar expanded and return container
-   * @param props - Props to pass to MessageSettingsToolbar
-   * @returns Container element
-   */
-  function renderExpanded(props = defaultProps) {
-    const { container } = render(<MessageSettingsToolbar {...props} />);
-
-    fireEvent.click(container.querySelector("button")!);
-
-    return container;
-  }
-
-  it("renders collapsed by default", () => {
+  it("renders thinking dropdown with current value", () => {
     const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
-    const toolbar = container.querySelector(".w-full.px-4.py-2");
+    const select = container.querySelector("select") as HTMLSelectElement;
 
-    expect(toolbar).toBeDefined();
-    const chevronWrap = toolbar?.querySelector("svg")?.parentElement;
-
-    expect(chevronWrap).toBeDefined();
-    expect(chevronWrap?.className).not.toContain("rotate-90");
+    expect(select).toBeDefined();
+    expect(select.value).toBe("Default");
   });
-
-  it("expands and collapses when clicked", () => {
-    const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
-    const button = container.querySelector("button");
-    const chevronWrap = container.querySelector("svg")?.parentElement;
-
-    fireEvent.click(button!);
-    expect(chevronWrap?.className).toContain("rotate-90");
-    fireEvent.click(button!);
-    expect(chevronWrap?.className).not.toContain("rotate-90");
-  });
-
-  it.each([{ thinking: "High" }, { showThoughts: false }])(
-    "shows customized indicator when thinking or showThoughts differs from default",
-    (propOverride) => {
-      const { container } = render(
-        <MessageSettingsToolbar {...defaultProps} {...propOverride} />,
-      );
-
-      expect(container.textContent).toContain("(customized)");
-    },
-  );
 
   it.each([
     ["o1", "openai"],
@@ -83,10 +46,6 @@ describe("MessageSettingsToolbar", () => {
         model={model}
       />,
     );
-    const button = container.querySelector("button");
-
-    fireEvent.click(button!);
-
     const select = container.querySelector("select");
 
     expect(select?.innerHTML).not.toContain("Off");
@@ -94,7 +53,7 @@ describe("MessageSettingsToolbar", () => {
   });
 
   it("shows all thinking options for Gemini", () => {
-    const container = renderExpanded();
+    const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const select = container.querySelector("select");
 
     expect(select?.innerHTML).toContain("Default");
@@ -103,7 +62,7 @@ describe("MessageSettingsToolbar", () => {
   });
 
   it("calls onThinkingChange when thinking changes", () => {
-    const container = renderExpanded();
+    const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const select = container.querySelector("select");
 
     fireEvent.change(select!, { target: { value: "High" } });
@@ -111,7 +70,9 @@ describe("MessageSettingsToolbar", () => {
   });
 
   it("calls onResetToDefaults when reset button clicked", () => {
-    const container = renderExpanded({ ...defaultProps, thinking: "High" });
+    const { container } = render(
+      <MessageSettingsToolbar {...defaultProps} thinking="High" />,
+    );
     const resetButton = Array.from(container.querySelectorAll("button")).find(
       (btn) => btn.textContent.includes("Reset"),
     );
@@ -121,11 +82,28 @@ describe("MessageSettingsToolbar", () => {
   });
 
   it("disables reset button when using defaults", () => {
-    const container = renderExpanded();
+    const { container } = render(<MessageSettingsToolbar {...defaultProps} />);
     const resetButton = Array.from(container.querySelectorAll("button")).find(
       (btn) => btn.textContent.includes("Reset"),
     );
 
     expect(resetButton?.disabled).toBe(true);
+  });
+
+  it("shows Defaults link when onOpenBehaviorSettings provided", () => {
+    const onOpen = vi.fn();
+    const { container } = render(
+      <MessageSettingsToolbar
+        {...defaultProps}
+        onOpenBehaviorSettings={onOpen}
+      />,
+    );
+    const defaultsButton = Array.from(
+      container.querySelectorAll("button"),
+    ).find((btn) => btn.textContent === "Defaults");
+
+    expect(defaultsButton).toBeDefined();
+    fireEvent.click(defaultsButton!);
+    expect(onOpen).toHaveBeenCalled();
   });
 });
