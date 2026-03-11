@@ -7,7 +7,10 @@ import { useEffect, useRef } from "preact/hooks";
 
 /**
  * Syncs smallModelMode between server and local settings based on conversation lock state.
- * Seeds from server when no active conversation; posts to server when conversation is locked.
+ * Two independent effects:
+ * - Seed: updates local from server when server value changes and no conversation is active
+ * - Post: sends locked value to server when a conversation starts or its SMM changes
+ * Split to prevent the post effect from undoing a settings save while a conversation is active.
  * @param serverValue - Server-fetched smallModelMode value
  * @param activeValue - Conversation-locked value (null when no active conversation)
  * @param setLocal - Setter for local settings state
@@ -21,17 +24,25 @@ export function useSyncSmallModelMode(
 ): void {
   const setLocalRef = useRef(setLocal);
   const postRef = useRef(postToServer);
+  const activeValueRef = useRef(activeValue);
 
   useEffect(() => {
     setLocalRef.current = setLocal;
     postRef.current = postToServer;
+    activeValueRef.current = activeValue;
   });
 
+  // Seed local from server when server value changes (only if no active conversation)
   useEffect(() => {
-    if (activeValue == null) {
+    if (activeValueRef.current == null) {
       setLocalRef.current(serverValue);
-    } else {
+    }
+  }, [serverValue]);
+
+  // Post locked value to server when conversation starts or its SMM changes
+  useEffect(() => {
+    if (activeValue != null) {
       postRef.current(activeValue);
     }
-  }, [serverValue, activeValue]);
+  }, [activeValue]);
 }

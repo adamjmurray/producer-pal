@@ -73,6 +73,7 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   }, [fetchConfig]);
 
   const postSmallModelMode = useCallback((enabled: boolean) => {
+    setServerSmallModelMode(enabled);
     void fetch(getConfigUrl(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
