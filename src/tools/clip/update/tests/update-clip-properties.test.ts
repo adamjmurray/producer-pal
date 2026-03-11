@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import {
   setupMidiClipMock,
@@ -215,15 +216,11 @@ describe("updateClip - Properties and ID handling", () => {
 });
 
 describe("updateClip - focus functionality", () => {
-  let selectMock: ReturnType<typeof vi.fn>;
+  const selectMock = setupSelectMock();
   let mocks: UpdateClipMocks;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     mocks = setupUpdateClipMocks();
-    const selectModule = await import("#src/tools/control/select.ts");
-
-    selectMock = selectModule.select as ReturnType<typeof vi.fn>;
-    selectMock.mockClear();
   });
 
   it("should select clip and show clip detail when focus=true", async () => {
@@ -231,7 +228,7 @@ describe("updateClip - focus functionality", () => {
 
     await updateClip({ ids: "123", name: "Test", focus: true });
 
-    expect(selectMock).toHaveBeenCalledWith({
+    expect(selectMock.get()).toHaveBeenCalledWith({
       clipId: "123",
       detailView: "clip",
     });
@@ -243,11 +240,11 @@ describe("updateClip - focus functionality", () => {
 
     await updateClip({ ids: "123,456", name: "Test", focus: true });
 
-    expect(selectMock).toHaveBeenCalledWith({
+    expect(selectMock.get()).toHaveBeenCalledWith({
       clipId: "456",
       detailView: "clip",
     });
-    expect(selectMock).toHaveBeenCalledTimes(1);
+    expect(selectMock.get()).toHaveBeenCalledTimes(1);
   });
 
   it("should not call select when focus=false", async () => {
@@ -255,7 +252,7 @@ describe("updateClip - focus functionality", () => {
 
     await updateClip({ ids: "123", name: "Test", focus: false });
 
-    expect(selectMock).not.toHaveBeenCalled();
+    expect(selectMock.get()).not.toHaveBeenCalled();
   });
 
   it("should not call select when focus is omitted", async () => {
@@ -263,6 +260,6 @@ describe("updateClip - focus functionality", () => {
 
     await updateClip({ ids: "123", name: "Test" });
 
-    expect(selectMock).not.toHaveBeenCalled();
+    expect(selectMock.get()).not.toHaveBeenCalled();
   });
 });

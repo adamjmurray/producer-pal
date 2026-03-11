@@ -122,18 +122,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track without devices when withoutDevices is true", () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    const liveSet = registerMockObject("live_set", {
-      path: livePath.liveSet,
-    });
-    const newTrack = registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: {
-        devices: children("device0", "device1", "device2"),
-        clip_slots: [],
-        arrangement_clips: [],
-      },
-    });
+    const { liveSet, newTrack } = setupProducerPalDeviceMocks();
 
     const result = duplicate({
       type: "track",

@@ -124,6 +124,45 @@ function mockFileInput(file: File): { settled: Promise<void> } {
 }
 
 describe("useConversationTransfer", () => {
+  /**
+   * Render the hook and return its result ref.
+   * @returns The renderHook return value
+   */
+  function renderTransferHook() {
+    return renderHook(() => useConversationTransfer(refreshList));
+  }
+
+  /**
+   * Render the hook, call handleExport inside act(), and return the result.
+   * @returns The renderHook return value (after export completes)
+   */
+  async function renderAndExport() {
+    const hook = renderTransferHook();
+
+    await act(async () => {
+      await hook.result.current.handleExport();
+    });
+
+    return hook;
+  }
+
+  /**
+   * Render the hook, call handleImport inside act(), and return the result.
+   * @param file - The file to import
+   * @returns The renderHook return value (after import completes)
+   */
+  async function renderAndImport(file: File) {
+    const { settled } = mockFileInput(file);
+    const hook = renderTransferHook();
+
+    await act(async () => {
+      await hook.result.current.handleImport();
+      await settled;
+    });
+
+    return hook;
+  }
+
   beforeEach(async () => {
     await resetDbCache();
     const db = await getConversationDb();
@@ -132,7 +171,7 @@ describe("useConversationTransfer", () => {
   });
 
   it("starts with null notification", () => {
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
+    const { result } = renderTransferHook();
 
     expect(result.current.notification).toBeNull();
   });
@@ -141,11 +180,7 @@ describe("useConversationTransfer", () => {
     await saveConversation(makeRecord("test-1"));
 
     const clickSpy = mockDownloadApis();
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-    await act(async () => {
-      await result.current.handleExport();
-    });
+    const { result } = await renderAndExport();
 
     expect(clickSpy).toHaveBeenCalledOnce();
     expect(result.current.notification).toStrictEqual({
@@ -158,11 +193,7 @@ describe("useConversationTransfer", () => {
     await saveConversation(makeRecord("test-1"));
     mockDownloadApis();
 
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-    await act(async () => {
-      await result.current.handleExport();
-    });
+    const { result } = await renderAndExport();
 
     expect(result.current.notification).not.toBeNull();
 
@@ -178,11 +209,7 @@ describe("useConversationTransfer", () => {
       throw new Error("blob failed");
     });
 
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-    await act(async () => {
-      await result.current.handleExport();
-    });
+    const { result } = await renderAndExport();
 
     expect(result.current.notification).toStrictEqual({
       message: "Export failed: blob failed",
@@ -193,14 +220,8 @@ describe("useConversationTransfer", () => {
   it("imports conversations from file", async () => {
     const data = { version: 1, conversations: [makeRecord("imported-1")] };
     const file = new File([JSON.stringify(data)], "test.json");
-    const { settled } = mockFileInput(file);
 
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-    await act(async () => {
-      await result.current.handleImport();
-      await settled;
-    });
+    const { result } = await renderAndImport(file);
 
     expect(refreshList).toHaveBeenCalled();
     expect(result.current.notification?.type).toBe("success");
@@ -209,14 +230,8 @@ describe("useConversationTransfer", () => {
 
   it("shows error notification on import failure", async () => {
     const file = new File(["not json"], "bad.json");
-    const { settled } = mockFileInput(file);
 
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-    await act(async () => {
-      await result.current.handleImport();
-      await settled;
-    });
+    const { result } = await renderAndImport(file);
 
     expect(result.current.notification?.type).toBe("error");
     expect(result.current.notification?.message).toContain("Import failed");
@@ -227,11 +242,7 @@ describe("useConversationTransfer", () => {
     await saveConversation(makeRecord("test-2"));
     mockDownloadApis();
 
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-    await act(async () => {
-      await result.current.handleExport();
-    });
+    const { result } = await renderAndExport();
 
     expect(result.current.notification?.message).toBe(
       "Exported 2 conversations",
@@ -242,12 +253,7 @@ describe("useConversationTransfer", () => {
     await saveConversation(makeRecord("test-1"));
     mockDownloadApis();
 
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-    // First export sets a timer
-    await act(async () => {
-      await result.current.handleExport();
-    });
+    const { result } = await renderAndExport();
 
     expect(result.current.notification).not.toBeNull();
 
@@ -269,13 +275,9 @@ describe("useConversationTransfer", () => {
       ],
       "t.json",
     );
-    const { settled } = mockFileInput(file);
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
 
-    await act(async () => {
-      await result.current.handleImport();
-      await settled;
-    });
+    const { result } = await renderAndImport(file);
+
     expect(result.current.notification?.message).toContain("2 new");
     expect(result.current.notification?.message).not.toContain("skipped");
   });
@@ -290,13 +292,9 @@ describe("useConversationTransfer", () => {
       [JSON.stringify({ version: 1, conversations: [] })],
       "t.json",
     );
-    const { settled } = mockFileInput(file);
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
 
-    await act(async () => {
-      await result.current.handleImport();
-      await settled;
-    });
+    const { result } = await renderAndImport(file);
+
     expect(result.current.notification?.message).toContain("3 skipped");
   });
 
@@ -307,11 +305,9 @@ describe("useConversationTransfer", () => {
       count: 1,
     });
     mockDownloadApis();
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
 
-    await act(async () => {
-      await result.current.handleExport();
-    });
+    const { result } = await renderAndExport();
+
     expect(result.current.notification).not.toBeNull();
     void act(() => {
       result.current.dismissNotification();
@@ -339,14 +335,8 @@ describe("useConversationTransfer", () => {
       ],
     };
     const file = new File([JSON.stringify(data)], "test.json");
-    const { settled } = mockFileInput(file);
 
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-    await act(async () => {
-      await result.current.handleImport();
-      await settled;
-    });
+    const { result } = await renderAndImport(file);
 
     expect(result.current.notification?.type).toBe("success");
     expect(result.current.notification?.message).toContain("new");
@@ -360,11 +350,7 @@ describe("useConversationTransfer", () => {
       throw "string error";
     });
 
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-    await act(async () => {
-      await result.current.handleExport();
-    });
+    const { result } = await renderAndExport();
 
     expect(result.current.notification?.message).toBe(
       "Export failed: unknown error",
@@ -378,14 +364,8 @@ describe("useConversationTransfer", () => {
     });
 
     const file = new File(["{}"], "test.json");
-    const { settled } = mockFileInput(file);
 
-    const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-    await act(async () => {
-      await result.current.handleImport();
-      await settled;
-    });
+    const { result } = await renderAndImport(file);
 
     expect(result.current.notification?.message).toBe(
       "Import failed: unknown error",
@@ -396,14 +376,7 @@ describe("useConversationTransfer", () => {
     await saveConversation(makeRecord("test-1"));
     mockDownloadApis();
 
-    const { result, unmount } = renderHook(() =>
-      useConversationTransfer(refreshList),
-    );
-
-    // Trigger export to start the auto-dismiss timer
-    await act(async () => {
-      await result.current.handleExport();
-    });
+    const { result, unmount } = await renderAndExport();
 
     expect(result.current.notification).not.toBeNull();
 
@@ -421,11 +394,7 @@ describe("useConversationTransfer", () => {
       });
       mockDownloadApis();
 
-      const { result } = renderHook(() => useConversationTransfer(refreshList));
-
-      await act(async () => {
-        await result.current.handleExport();
-      });
+      const { result } = await renderAndExport();
 
       expect(result.current.notification).not.toBeNull();
 

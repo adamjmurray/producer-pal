@@ -38,3 +38,18 @@ export const drumPatternNotes: NoteEvent[] = [
 
 export const drumPatternNotation =
   "t/4 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1 D1 v100 p0.9 Gb1 1|2";
+
+/**
+ * Sort notes by start_time (with epsilon tolerance), then pitch for comparison.
+ * Uses epsilon comparison for floating-point start_time to handle fraction drift.
+ * @param notes - Notes to sort
+ * @returns Sorted copy
+ */
+export function sortNotes(notes: NoteEvent[]): NoteEvent[] {
+  return [...notes].sort((a, b) => {
+    if (Math.abs(a.start_time - b.start_time) > 0.001)
+      return a.start_time - b.start_time;
+
+    return a.pitch - b.pitch;
+  });
+}
