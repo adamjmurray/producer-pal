@@ -285,7 +285,6 @@ export function App() {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           onOpenSettings={() => openSettings()}
-          onOpenBehaviorSettings={() => openSettings("behavior")}
           onOpenToolsSettings={() => openSettings("tools")}
           onOpenConnectionSettings={() => openSettings("connection")}
           onStop={chat.stopResponse}

@@ -89,36 +89,4 @@ describe("MessageSettingsToolbar", () => {
 
     expect(resetButton?.disabled).toBe(true);
   });
-
-  it("shows Defaults link when onOpenBehaviorSettings provided", () => {
-    const onOpen = vi.fn();
-    const { container } = render(
-      <MessageSettingsToolbar
-        {...defaultProps}
-        thinking="High"
-        onOpenBehaviorSettings={onOpen}
-      />,
-    );
-    const defaultsButton = Array.from(
-      container.querySelectorAll("button"),
-    ).find((btn) => btn.textContent === "Defaults");
-
-    expect(defaultsButton).toBeDefined();
-    fireEvent.click(defaultsButton!);
-    expect(onOpen).toHaveBeenCalled();
-  });
-
-  it("disables Defaults link when using defaults", () => {
-    const { container } = render(
-      <MessageSettingsToolbar
-        {...defaultProps}
-        onOpenBehaviorSettings={vi.fn()}
-      />,
-    );
-    const defaultsButton = Array.from(
-      container.querySelectorAll("button"),
-    ).find((btn) => btn.textContent === "Defaults") as HTMLButtonElement;
-
-    expect(defaultsButton.disabled).toBe(true);
-  });
 });

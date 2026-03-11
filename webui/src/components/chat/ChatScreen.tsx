@@ -44,7 +44,6 @@ interface ChatScreenProps {
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
   onOpenSettings: () => void;
-  onOpenBehaviorSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
   onStop: () => void;
@@ -111,7 +110,6 @@ export function ChatScreen({
   mcpError,
   checkMcpConnection,
   onOpenSettings,
-  onOpenBehaviorSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
   onStop,
@@ -235,7 +233,6 @@ export function ChatScreen({
             onThinkingChange={setThinking}
             onShowThoughtsChange={setShowThoughts}
             onResetToDefaults={handleResetToDefaults}
-            onOpenBehaviorSettings={onOpenBehaviorSettings}
             showMessageSettings={showMessageSettings}
           />
         </div>

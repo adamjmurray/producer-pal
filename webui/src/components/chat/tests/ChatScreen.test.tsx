@@ -43,7 +43,6 @@ describe("ChatScreen", () => {
     mcpError: null,
     checkMcpConnection: mockCheckMcpConnection,
     onOpenSettings: mockOnOpenSettings,
-    onOpenBehaviorSettings: vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
     onStop: mockOnStop,

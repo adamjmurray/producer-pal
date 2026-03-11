@@ -16,7 +16,6 @@ export interface MessageSettingsToolbarProps {
   onThinkingChange: (thinking: string) => void;
   onShowThoughtsChange: (showThoughts: boolean) => void;
   onResetToDefaults: () => void;
-  onOpenBehaviorSettings?: () => void;
 }
 
 /**
@@ -31,7 +30,6 @@ export interface MessageSettingsToolbarProps {
  * @param {Function} root0.onThinkingChange - Callback for thinking change
  * @param {Function} root0.onShowThoughtsChange - Callback for showThoughts change
  * @param {Function} root0.onResetToDefaults - Callback to reset to defaults
- * @param {Function} root0.onOpenBehaviorSettings - Callback to open behavior settings
  * @returns {JSX.Element} Settings toolbar component
  */
 export function MessageSettingsToolbar({
@@ -44,7 +42,6 @@ export function MessageSettingsToolbar({
   onThinkingChange,
   onShowThoughtsChange,
   onResetToDefaults,
-  onOpenBehaviorSettings,
 }: MessageSettingsToolbarProps) {
   const showSimplifiedOptions =
     provider === "openai" && (model === "o1" || model === "o3-mini");
@@ -55,6 +52,8 @@ export function MessageSettingsToolbar({
 
   return (
     <div className="border-b border-zinc-300 dark:border-zinc-700 px-4 py-1.5 flex items-center gap-3">
+      <div className="flex-1" />
+
       <label className="text-xs text-zinc-600 dark:text-zinc-400 shrink-0">
         Thinking
       </label>
@@ -86,19 +85,6 @@ export function MessageSettingsToolbar({
           />
           Show thinking
         </label>
-      )}
-
-      <div className="flex-1" />
-
-      {onOpenBehaviorSettings && (
-        <button
-          type="button"
-          onClick={onOpenBehaviorSettings}
-          disabled={isUsingDefaults}
-          className="text-xs text-blue-600 dark:text-blue-400 hover:underline shrink-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
-        >
-          Defaults
-        </button>
       )}
 
       <button
