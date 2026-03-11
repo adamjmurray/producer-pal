@@ -1,5 +1,6 @@
 // Producer Pal
-// Copyright (C) 2026 Adam Murray
+// Copyright (C) 2026 Adam Murray, Eike Haß
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
