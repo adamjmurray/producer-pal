@@ -40,6 +40,7 @@ interface ChatScreenProps {
   enabledToolsCount: number;
   totalToolsCount: number;
   smallModelMode: boolean;
+  defaultSmallModelMode: boolean;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
@@ -108,6 +109,7 @@ export function ChatScreen({
   enabledToolsCount,
   totalToolsCount,
   smallModelMode,
+  defaultSmallModelMode,
   mcpStatus,
   mcpError,
   checkMcpConnection,
@@ -157,6 +159,7 @@ export function ChatScreen({
         enabledToolsCount={enabledToolsCount}
         totalToolsCount={totalToolsCount}
         smallModelMode={smallModelMode}
+        defaultSmallModelMode={defaultSmallModelMode}
         isHistoryOpen={conversationPanel.isOpen}
         isActiveBookmarked={activeConv?.bookmarked}
         showHelpLinks={showHelpLinks}

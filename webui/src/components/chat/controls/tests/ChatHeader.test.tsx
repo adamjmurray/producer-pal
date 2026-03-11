@@ -21,6 +21,7 @@ describe("ChatHeader", () => {
     enabledToolsCount: 20,
     totalToolsCount: 20,
     smallModelMode: false,
+    defaultSmallModelMode: false,
     isHistoryOpen: false,
     showHelpLinks: true,
     latestVersion: null,
@@ -432,19 +433,17 @@ describe("ChatHeader", () => {
   describe("small model mode indicator", () => {
     it("does not show indicator when smallModelMode is false", () => {
       render(<ChatHeader {...defaultProps} smallModelMode={false} />);
-      expect(screen.queryByLabelText("Small model mode")).toBeNull();
+      expect(screen.queryByLabelText("small model")).toBeNull();
     });
 
     it("shows indicator when smallModelMode is true", () => {
       render(<ChatHeader {...defaultProps} smallModelMode={true} />);
-      expect(
-        screen.getAllByLabelText("Small model mode").length,
-      ).toBeGreaterThan(0);
+      expect(screen.getAllByLabelText("small model").length).toBeGreaterThan(0);
     });
 
     it("shows full text at sm breakpoint", () => {
       render(<ChatHeader {...defaultProps} smallModelMode={true} />);
-      const elements = screen.getAllByLabelText("Small model mode");
+      const elements = screen.getAllByLabelText("small model");
       const fullText = elements.find((el) =>
         el.textContent.includes("small model"),
       );
@@ -454,7 +453,7 @@ describe("ChatHeader", () => {
 
     it("shows turtle-only variant for mobile", () => {
       render(<ChatHeader {...defaultProps} smallModelMode={true} />);
-      const elements = screen.getAllByLabelText("Small model mode");
+      const elements = screen.getAllByLabelText("small model");
       const mobileEl = elements.find((el) => el.textContent.trim() === "🐢");
 
       expect(mobileEl).toBeDefined();

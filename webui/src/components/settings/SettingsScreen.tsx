@@ -14,6 +14,7 @@ import { AppearanceTab } from "./AppearanceTab";
 import { BehaviorTab } from "./BehaviorTab";
 import { ConnectionTab } from "./ConnectionTab";
 import { ToolToggles } from "./controls/ToolToggles";
+import { LockedSettingsNotice } from "./LockedSettingsNotice";
 import { SettingsFooter } from "./SettingsFooter";
 import { type TabId, SettingsTabs } from "./SettingsTabs";
 
@@ -57,6 +58,8 @@ interface SettingsScreenProps {
   shake: boolean;
   onShakeEnd: () => void;
   hasUnsavedChanges: boolean;
+  activeModel: string | null;
+  activeProvider: Provider | null;
 }
 
 const helpLinkClass =
@@ -140,6 +143,13 @@ export function SettingsScreen(props: SettingsScreenProps) {
             </a>
           )}
         </div>
+
+        <LockedSettingsNotice
+          activeModel={props.activeModel}
+          activeProvider={props.activeProvider}
+          model={props.model}
+          provider={props.provider}
+        />
 
         <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>
           {() => <SettingsTabContent {...props} />}

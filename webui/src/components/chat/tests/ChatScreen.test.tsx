@@ -38,6 +38,7 @@ describe("ChatScreen", () => {
     enabledToolsCount: 20,
     totalToolsCount: 20,
     smallModelMode: false,
+    defaultSmallModelMode: false,
     mcpStatus: "connected" as const,
     mcpError: null,
     checkMcpConnection: mockCheckMcpConnection,

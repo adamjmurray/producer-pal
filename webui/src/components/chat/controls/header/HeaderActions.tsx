@@ -24,6 +24,7 @@ export interface HeaderActionsProps {
   enabledToolsCount: number;
   totalToolsCount: number;
   smallModelMode: boolean;
+  defaultSmallModelMode: boolean;
   showHelpLinks: boolean;
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
@@ -39,7 +40,8 @@ export interface HeaderActionsProps {
  * @param props.provider - Configured provider
  * @param props.enabledToolsCount - Number of enabled tools
  * @param props.totalToolsCount - Total number of available tools
- * @param props.smallModelMode - Whether small model mode is active
+ * @param props.smallModelMode - Whether small model mode is active for this conversation
+ * @param props.defaultSmallModelMode - Current default small model mode from settings
  * @param props.showHelpLinks - Whether to show help link buttons
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onOpenToolsSettings - Callback to open tools settings tab
@@ -54,18 +56,32 @@ export function HeaderActions({
   enabledToolsCount,
   totalToolsCount,
   smallModelMode,
+  defaultSmallModelMode,
   showHelpLinks,
   onOpenSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
 }: HeaderActionsProps) {
+  const modelDiverges =
+    activeModel != null &&
+    (activeModel !== model || activeProvider !== provider);
+  const smallModelDiverges =
+    activeModel != null && smallModelMode !== defaultSmallModelMode;
+
+  const modelColor = modelDiverges
+    ? "text-amber-600 dark:text-amber-400"
+    : "text-zinc-500 dark:text-zinc-400";
+  const modelTitle = modelDiverges
+    ? `Locked: ${getProviderName(activeProvider ?? provider)} | ${getModelName(activeModel)} (default is now ${getProviderName(provider)} | ${getModelName(model)})`
+    : "Connection settings";
+
   return (
     <div className="ml-auto flex gap-2 sm:gap-3 items-center">
       <button
         type="button"
         onClick={onOpenConnectionSettings}
-        className="text-xs text-zinc-500 dark:text-zinc-400 whitespace-nowrap truncate min-w-0 max-w-28 sm:max-w-48 md:max-w-none hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-        title="Connection settings"
+        className={`text-xs ${modelColor} whitespace-nowrap truncate min-w-0 max-w-28 sm:max-w-48 md:max-w-none hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer`}
+        title={modelTitle}
       >
         <span className="hidden sm:inline">
           {getProviderName(activeProvider ?? provider)} |{" "}
@@ -85,14 +101,17 @@ export function HeaderActions({
         />
       </button>
 
-      {smallModelMode && (
+      {(smallModelMode || smallModelDiverges) && (
         <button
           type="button"
           onClick={onOpenConnectionSettings}
           className="hover:opacity-70 transition-opacity cursor-pointer"
           title="Connection settings"
         >
-          <SmallModelIndicator active={smallModelMode} />
+          <SmallModelIndicator
+            active={smallModelMode}
+            locked={smallModelDiverges}
+          />
         </button>
       )}
 

@@ -11,6 +11,7 @@ import {
   useState,
 } from "preact/hooks";
 import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
+import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
@@ -172,6 +173,13 @@ export function App() {
   });
 
   const transfer = useConversationTransfer(conversationManager.refreshList);
+  const {
+    handleNew: handleNewConversation,
+    handleSelect: handleSelectConversation,
+    handleDelete: handleDeleteConversation,
+    handleRename: handleRenameConversation,
+    handleToggleBookmark,
+  } = useConversationHandlers(conversationManager);
 
   const prevMessageCountRef = useRef(0); // Auto-save on message change
 
@@ -182,28 +190,6 @@ export function App() {
 
     prevMessageCountRef.current = chat.messages.length;
   }, [chat.messages.length, conversationManager]);
-
-  const handleNewConversation = useCallback(
-    () => void conversationManager.startNewConversation(),
-    [conversationManager],
-  );
-  const handleSelectConversation = useCallback(
-    (id: string) => void conversationManager.switchConversation(id),
-    [conversationManager],
-  );
-  const handleDeleteConversation = useCallback(
-    (id: string) => void conversationManager.deleteConversation(id),
-    [conversationManager],
-  );
-  const handleRenameConversation = useCallback(
-    (id: string, title: string | null) =>
-      void conversationManager.renameConversation(id, title),
-    [conversationManager],
-  );
-  const handleToggleBookmark = useCallback(
-    (id: string) => void conversationManager.toggleBookmark(id),
-    [conversationManager],
-  );
 
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
@@ -295,6 +281,7 @@ export function App() {
           enabledToolsCount={enabledToolsCount}
           totalToolsCount={totalToolsCount}
           smallModelMode={chat.activeSmallModelMode ?? settings.smallModelMode}
+          defaultSmallModelMode={settings.smallModelMode}
           mcpStatus={mcpStatus}
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
@@ -378,6 +365,8 @@ export function App() {
             shake={shake}
             onShakeEnd={clearShake}
             hasUnsavedChanges={hasUnsavedChanges}
+            activeModel={chat.activeModel}
+            activeProvider={chat.activeProvider}
           />
         </div>
       )}

@@ -39,6 +39,7 @@ interface ChatHeaderProps extends HeaderActionsProps {
  * @param props.enabledToolsCount - Number of enabled tools
  * @param props.totalToolsCount - Total number of available tools
  * @param props.smallModelMode - Whether small model mode is active
+ * @param props.defaultSmallModelMode - Current default small model mode from settings
  * @param props.isHistoryOpen - Whether conversation history panel is open
  * @param props.isActiveBookmarked - Whether the active conversation is bookmarked
  * @param props.showHelpLinks - Whether to show help link buttons
@@ -60,6 +61,7 @@ export function ChatHeader({
   enabledToolsCount,
   totalToolsCount,
   smallModelMode,
+  defaultSmallModelMode,
   isHistoryOpen,
   isActiveBookmarked,
   showHelpLinks,
@@ -135,6 +137,7 @@ export function ChatHeader({
         enabledToolsCount={enabledToolsCount}
         totalToolsCount={totalToolsCount}
         smallModelMode={smallModelMode}
+        defaultSmallModelMode={defaultSmallModelMode}
         showHelpLinks={showHelpLinks}
         onOpenSettings={onOpenSettings}
         onOpenToolsSettings={onOpenToolsSettings}
