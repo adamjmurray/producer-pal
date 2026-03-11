@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { drumPatternNotes } from "../../barbeat-test-fixtures.ts";
+import { drumPatternNotes, sortNotes } from "../../barbeat-test-fixtures.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
 
@@ -49,20 +49,6 @@ function expectRoundTrip(
       Math.abs((repr.velocity_deviation ?? 0) - (orig.velocity_deviation ?? 0)),
     ).toBeLessThan(EPSILON);
   }
-}
-
-/**
- * Sort notes by start_time, then pitch for deterministic comparison
- * @param notes - Notes to sort
- * @returns Sorted copy
- */
-function sortNotes(notes: NoteEvent[]): NoteEvent[] {
-  return [...notes].sort((a, b) => {
-    if (Math.abs(a.start_time - b.start_time) > 0.001)
-      return a.start_time - b.start_time;
-
-    return a.pitch - b.pitch;
-  });
 }
 
 describe("round-trip: serialize → parse → interpret", () => {

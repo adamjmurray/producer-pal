@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
-import { drumPatternNotes } from "../../barbeat-test-fixtures.ts";
+import { drumPatternNotes, sortNotes } from "../../barbeat-test-fixtures.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
 
@@ -37,19 +37,6 @@ function expectDrumRoundTrip(
     expect(repr.duration).toBeCloseTo(orig.duration, 8);
     expect(repr.velocity).toBeCloseTo(orig.velocity, 8);
   }
-}
-
-/**
- * Sort notes for comparison (by start_time, then pitch)
- * @param notes - Notes to sort
- * @returns Sorted copy
- */
-function sortNotes(notes: NoteEvent[]): NoteEvent[] {
-  return [...notes].sort((a, b) =>
-    a.start_time !== b.start_time
-      ? a.start_time - b.start_time
-      : a.pitch - b.pitch,
-  );
 }
 
 describe("drum mode serializer", () => {

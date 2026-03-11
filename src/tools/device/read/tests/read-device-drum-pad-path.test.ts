@@ -6,16 +6,48 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readDevice } from "../read-device.ts";
 import { setupDrumPadMocks } from "./read-device-test-helpers.ts";
 
+/** Simpler device props reused across tests */
+const simplerDevice = {
+  name: "Simpler",
+  class_display_name: "Simpler",
+  type: 1,
+};
+
+/**
+ * Setup drum pad mocks with a standard C1/Kick pad and optional chain/device config.
+ * @param overrides - Optional pad property overrides and chain/device config
+ * @param overrides.padExtra - Extra properties to merge into the pad-36 config
+ * @param overrides.chainProperties - Chain properties keyed by chain ID
+ * @param overrides.deviceProperties - Device properties keyed by device ID
+ */
+function setupKickPadMocks(
+  overrides: {
+    padExtra?: Record<string, unknown>;
+    chainProperties?: Parameters<
+      typeof setupDrumPadMocks
+    >[0]["chainProperties"];
+    deviceProperties?: Parameters<
+      typeof setupDrumPadMocks
+    >[0]["deviceProperties"];
+  } = {},
+) {
+  setupDrumPadMocks({
+    padIds: ["pad-36"],
+    padProperties: {
+      "pad-36": { note: 36, name: "Kick", ...overrides.padExtra },
+    },
+    chainProperties: overrides.chainProperties,
+    deviceProperties: overrides.deviceProperties,
+  });
+}
+
 describe("readDevice with drum pad path", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("should read drum pad by path", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: { "pad-36": { note: 36, name: "Kick" } },
-    });
+    setupKickPadMocks();
 
     const result = readDevice({ path: "t1/d0/pC1", include: [] });
 
@@ -29,10 +61,7 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should read muted drum pad", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: { "pad-36": { note: 36, name: "Kick", mute: 1 } },
-    });
+    setupKickPadMocks({ padExtra: { mute: 1 } });
 
     const result = readDevice({ path: "t1/d0/pC1", include: [] });
 
@@ -40,10 +69,7 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should read soloed drum pad", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: { "pad-36": { note: 36, name: "Kick", solo: 1 } },
-    });
+    setupKickPadMocks({ padExtra: { solo: 1 } });
 
     const result = readDevice({ path: "t1/d0/pC1", include: [] });
 
@@ -51,11 +77,8 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should read drum pad with chains when includeChains is requested", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: {
-        "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-      },
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
       chainProperties: {
         "chain-1": {
           name: "Layer 1",
@@ -84,11 +107,8 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should read drum pad with chains containing devices", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: {
-        "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-      },
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
       chainProperties: {
         "chain-1": {
           name: "Layer 1",
@@ -97,13 +117,7 @@ describe("readDevice with drum pad path", () => {
           deviceIds: ["device-1"],
         },
       },
-      deviceProperties: {
-        "device-1": {
-          name: "Simpler",
-          class_display_name: "Simpler",
-          type: 1,
-        },
-      },
+      deviceProperties: { "device-1": simplerDevice },
     });
 
     const result = readDevice({ path: "t1/d0/pC1", include: ["chains"] });
@@ -122,11 +136,8 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should read drum pad chain by path", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: {
-        "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-      },
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
       chainProperties: {
         "chain-1": { name: "Layer 1", color: 0x00ff00, out_note: 60 },
       },
@@ -146,11 +157,8 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should read drum pad chain with devices", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: {
-        "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-      },
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
       chainProperties: {
         "chain-1": {
           name: "Layer 1",
@@ -159,13 +167,7 @@ describe("readDevice with drum pad path", () => {
           deviceIds: ["device-1"],
         },
       },
-      deviceProperties: {
-        "device-1": {
-          name: "Simpler",
-          class_display_name: "Simpler",
-          type: 1,
-        },
-      },
+      deviceProperties: { "device-1": simplerDevice },
     });
 
     const result = readDevice({ path: "t1/d0/pC1/c0" });
@@ -188,10 +190,7 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should throw error when drum pad not found", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: { "pad-36": { note: 36, name: "Kick" } }, // C1, not C3
-    });
+    setupKickPadMocks(); // C1, not C3
 
     expect(() => readDevice({ path: "t1/d0/pC3" })).toThrow(
       "Drum pad C3 not found",
@@ -199,10 +198,7 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should throw error for invalid drum pad note name", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: { "pad-36": { note: 36, name: "Kick" } },
-    });
+    setupKickPadMocks();
 
     expect(() => readDevice({ path: "t1/d0/pXYZ" })).toThrow(
       "Invalid drum pad note name: XYZ",
@@ -210,10 +206,7 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should throw error for invalid chain index in drum pad", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: { "pad-36": { note: 36, name: "Kick", chainIds: [] } },
-    });
+    setupKickPadMocks({ padExtra: { chainIds: [] } });
 
     expect(() => readDevice({ path: "t1/d0/pC1/c5" })).toThrow(
       "Invalid chain index in path: t1/d0/pC1/c5",
@@ -221,21 +214,12 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should read device inside drum pad chain", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: {
-        "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-      },
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
       chainProperties: {
         "chain-1": { name: "Layer 1", deviceIds: ["device-1"] },
       },
-      deviceProperties: {
-        "device-1": {
-          name: "Simpler",
-          class_display_name: "Simpler",
-          type: 1,
-        },
-      },
+      deviceProperties: { "device-1": simplerDevice },
     });
 
     const result = readDevice({ path: "t1/d0/pC1/c0/d0" });
@@ -245,11 +229,8 @@ describe("readDevice with drum pad path", () => {
   });
 
   it("should throw error for invalid device index in drum pad chain", () => {
-    setupDrumPadMocks({
-      padIds: ["pad-36"],
-      padProperties: {
-        "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
-      },
+    setupKickPadMocks({
+      padExtra: { chainIds: ["chain-1"] },
       chainProperties: { "chain-1": { name: "Layer 1", deviceIds: [] } },
     });
 
