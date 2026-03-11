@@ -25,13 +25,10 @@ interface ChatInputProps extends MessageSettingsToolbarProps {
  * @param {Provider} props.provider - Current provider
  * @param {string} props.model - Current model
  * @param {string} props.defaultThinking - Default thinking mode from settings
- * @param {number} props.defaultTemperature - Default temperature from settings
  * @param {boolean} props.defaultShowThoughts - Default showThoughts from settings
  * @param {string} props.thinking - Current thinking mode
- * @param {number} props.temperature - Current temperature
  * @param {boolean} props.showThoughts - Current showThoughts
  * @param {Function} props.onThinkingChange - Callback for thinking change
- * @param {Function} props.onTemperatureChange - Callback for temperature change
  * @param {Function} props.onShowThoughtsChange - Callback for showThoughts change
  * @param {Function} props.onResetToDefaults - Callback to reset to defaults
  * @returns {JSX.Element} - React component
@@ -43,13 +40,10 @@ export function ChatInput({
   provider,
   model,
   defaultThinking,
-  defaultTemperature,
   defaultShowThoughts,
   thinking,
-  temperature,
   showThoughts,
   onThinkingChange,
-  onTemperatureChange,
   onShowThoughtsChange,
   onResetToDefaults,
   onOpenBehaviorSettings,
@@ -62,14 +56,14 @@ export function ChatInput({
       e.preventDefault();
 
       if (!isAssistantResponding && input.trim()) {
-        void handleSend(input, { thinking, temperature, showThoughts });
+        void handleSend(input, { thinking, showThoughts });
         setInput("");
       }
     }
   };
 
   const handleSendClick = () => {
-    void handleSend(input, { thinking, temperature, showThoughts });
+    void handleSend(input, { thinking, showThoughts });
     setInput("");
   };
 
@@ -80,13 +74,10 @@ export function ChatInput({
           provider={provider}
           model={model}
           defaultThinking={defaultThinking}
-          defaultTemperature={defaultTemperature}
           defaultShowThoughts={defaultShowThoughts}
           thinking={thinking}
-          temperature={temperature}
           showThoughts={showThoughts}
           onThinkingChange={onThinkingChange}
-          onTemperatureChange={onTemperatureChange}
           onShowThoughtsChange={onShowThoughtsChange}
           onResetToDefaults={onResetToDefaults}
           onOpenBehaviorSettings={onOpenBehaviorSettings}

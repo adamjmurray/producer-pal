@@ -35,7 +35,6 @@ interface ChatScreenProps {
   provider: Provider;
   model: string;
   defaultThinking: string;
-  defaultTemperature: number;
   defaultShowThoughts: boolean;
   enabledToolsCount: number;
   totalToolsCount: number;
@@ -79,7 +78,6 @@ export interface ConversationPanelState extends Omit<
  * @param {Provider} props.provider - Provider from settings
  * @param {string} props.model - Model from settings
  * @param {string} props.defaultThinking - Default thinking mode from settings
- * @param {number} props.defaultTemperature - Default temperature from settings
  * @param {boolean} props.defaultShowThoughts - Default showThoughts from settings
  * @param {number} props.enabledToolsCount - Number of enabled tools
  * @param {number} props.totalToolsCount - Total number of available tools
@@ -104,7 +102,6 @@ export function ChatScreen({
   provider,
   model,
   defaultThinking,
-  defaultTemperature,
   defaultShowThoughts,
   enabledToolsCount,
   totalToolsCount,
@@ -127,18 +124,15 @@ export function ChatScreen({
 
   // Per-message override state (lifted from ChatInput so ChatStart can also use it)
   const [thinking, setThinking] = useState(defaultThinking);
-  const [temperature, setTemperature] = useState(defaultTemperature);
   const [showThoughts, setShowThoughts] = useState(defaultShowThoughts);
 
   const handleResetToDefaults = () => {
     setThinking(defaultThinking);
-    setTemperature(defaultTemperature);
     setShowThoughts(defaultShowThoughts);
   };
 
   const currentOverrides: MessageOverrides = {
     thinking,
-    temperature,
     showThoughts,
   };
 
@@ -235,13 +229,10 @@ export function ChatScreen({
             provider={provider}
             model={model}
             defaultThinking={defaultThinking}
-            defaultTemperature={defaultTemperature}
             defaultShowThoughts={defaultShowThoughts}
             thinking={thinking}
-            temperature={temperature}
             showThoughts={showThoughts}
             onThinkingChange={setThinking}
-            onTemperatureChange={setTemperature}
             onShowThoughtsChange={setShowThoughts}
             onResetToDefaults={handleResetToDefaults}
             onOpenBehaviorSettings={onOpenBehaviorSettings}

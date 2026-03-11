@@ -17,13 +17,10 @@ const defaultProps = {
   provider: "gemini" as Provider,
   model: "gemini-2.0-flash-thinking",
   defaultThinking: "Default",
-  defaultTemperature: 1.0,
   defaultShowThoughts: true,
   thinking: "Default",
-  temperature: 1.0,
   showThoughts: true,
   onThinkingChange: vi.fn(),
-  onTemperatureChange: vi.fn(),
   onShowThoughtsChange: vi.fn(),
   onResetToDefaults: vi.fn(),
   showMessageSettings: true,
@@ -142,7 +139,6 @@ describe("ChatInput", () => {
       triggerSend(textarea);
       expect(handleSend).toHaveBeenCalledExactlyOnceWith("Hello", {
         thinking: "Default",
-        temperature: 1.0,
         showThoughts: true,
       });
     });
@@ -259,7 +255,6 @@ describe("ChatInput", () => {
 
       expect(handleSend).toHaveBeenCalledWith("Hello", {
         thinking: "Default",
-        temperature: 1.0,
         showThoughts: false,
       });
     });

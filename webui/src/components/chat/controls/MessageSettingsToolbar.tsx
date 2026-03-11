@@ -4,38 +4,29 @@
 
 import { useState } from "preact/hooks";
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
+import { isShowThoughtsSupported } from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
 
 export interface MessageSettingsToolbarProps {
   provider: Provider;
   model: string;
   defaultThinking: string;
-  defaultTemperature: number;
   defaultShowThoughts: boolean;
   thinking: string;
-  temperature: number;
   showThoughts: boolean;
   onThinkingChange: (thinking: string) => void;
-  onTemperatureChange: (temperature: number) => void;
   onShowThoughtsChange: (showThoughts: boolean) => void;
   onResetToDefaults: () => void;
   onOpenBehaviorSettings?: () => void;
 }
 
-function isO1OrO3Model(model: string): boolean {
-  return model === "o1" || model === "o3-mini";
-}
-
 interface ExpandedPanelProps {
   thinking: string;
-  temperature: number;
   showThoughts: boolean;
   showSimplifiedOptions: boolean;
   showShowThoughtsCheckbox: boolean;
   isUsingDefaults: boolean;
-  randomnessPercent: number;
   onThinkingChange: (thinking: string) => void;
-  onTemperatureChange: (temperature: number) => void;
   onShowThoughtsChange: (showThoughts: boolean) => void;
   onResetToDefaults: () => void;
   onOpenBehaviorSettings?: () => void;
@@ -43,14 +34,11 @@ interface ExpandedPanelProps {
 
 function ExpandedPanel({
   thinking,
-  temperature,
   showThoughts,
   showSimplifiedOptions,
   showShowThoughtsCheckbox,
   isUsingDefaults,
-  randomnessPercent,
   onThinkingChange,
-  onTemperatureChange,
   onShowThoughtsChange,
   onResetToDefaults,
   onOpenBehaviorSettings,
@@ -78,26 +66,6 @@ function ExpandedPanel({
             <option value="High">High</option>
             {!showSimplifiedOptions && <option value="Ultra">Ultra</option>}
           </select>
-        </div>
-
-        {/* Randomness slider */}
-        <div className="flex-1">
-          <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-1">
-            Randomness: {randomnessPercent}%
-          </label>
-          <input
-            type="range"
-            min="0"
-            max="2"
-            step="0.1"
-            value={temperature}
-            onInput={(e) =>
-              onTemperatureChange(
-                Number.parseFloat((e.target as HTMLInputElement).value),
-              )
-            }
-            className="w-full"
-          />
         </div>
 
         {/* Reset button */}
@@ -128,7 +96,7 @@ function ExpandedPanel({
             htmlFor="messageShowThoughts"
             className="text-sm text-zinc-600 dark:text-zinc-400"
           >
-            Show thinking process
+            Show thinking
           </label>
         </div>
       )}
@@ -154,18 +122,15 @@ function ExpandedPanel({
 }
 
 /**
- * Toolbar for per-message thinking and randomness settings
+ * Toolbar for per-conversation thinking settings
  * @param {MessageSettingsToolbarProps} root0 - Component props
  * @param {Provider} root0.provider - Selected provider
  * @param {string} root0.model - Selected model
  * @param {string} root0.defaultThinking - Default thinking mode
- * @param {number} root0.defaultTemperature - Default temperature
  * @param {boolean} root0.defaultShowThoughts - Default showThoughts setting
  * @param {string} root0.thinking - Current thinking mode
- * @param {number} root0.temperature - Current temperature
  * @param {boolean} root0.showThoughts - Current showThoughts setting
  * @param {Function} root0.onThinkingChange - Callback for thinking change
- * @param {Function} root0.onTemperatureChange - Callback for temperature change
  * @param {Function} root0.onShowThoughtsChange - Callback for showThoughts change
  * @param {Function} root0.onResetToDefaults - Callback to reset to defaults
  * @returns {JSX.Element} Settings toolbar component
@@ -174,31 +139,22 @@ export function MessageSettingsToolbar({
   provider,
   model,
   defaultThinking,
-  defaultTemperature,
   defaultShowThoughts,
   thinking,
-  temperature,
   showThoughts,
   onThinkingChange,
-  onTemperatureChange,
   onShowThoughtsChange,
   onResetToDefaults,
   onOpenBehaviorSettings,
 }: MessageSettingsToolbarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const isOpenAIReasoning = provider === "openai" && isO1OrO3Model(model);
-  const showSimplifiedOptions = isOpenAIReasoning;
-  const isGemini = provider === "gemini";
-  const showShowThoughtsCheckbox =
-    (isGemini || provider === "openrouter" || provider === "openai") &&
-    thinking !== "Off";
+  const showSimplifiedOptions =
+    provider === "openai" && (model === "o1" || model === "o3-mini");
+  const showShowThoughtsCheckbox = isShowThoughtsSupported(provider, thinking);
 
-  const randomnessPercent = Math.round((temperature / 2) * 100);
   const isUsingDefaults =
-    thinking === defaultThinking &&
-    temperature === defaultTemperature &&
-    showThoughts === defaultShowThoughts;
+    thinking === defaultThinking && showThoughts === defaultShowThoughts;
 
   return (
     <div className="border-b border-zinc-300 dark:border-zinc-700">
@@ -217,21 +173,18 @@ export function MessageSettingsToolbar({
           {!isUsingDefaults && " (customized)"}
         </span>
         <span className="text-xs text-zinc-500 dark:text-zinc-500">
-          Thinking: {thinking} • {randomnessPercent}% random
+          Thinking: {thinking}
         </span>
       </button>
 
       {isExpanded && (
         <ExpandedPanel
           thinking={thinking}
-          temperature={temperature}
           showThoughts={showThoughts}
           showSimplifiedOptions={showSimplifiedOptions}
           showShowThoughtsCheckbox={showShowThoughtsCheckbox}
           isUsingDefaults={isUsingDefaults}
-          randomnessPercent={randomnessPercent}
           onThinkingChange={onThinkingChange}
-          onTemperatureChange={onTemperatureChange}
           onShowThoughtsChange={onShowThoughtsChange}
           onResetToDefaults={onResetToDefaults}
           onOpenBehaviorSettings={onOpenBehaviorSettings}

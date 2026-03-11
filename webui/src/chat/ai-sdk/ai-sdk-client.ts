@@ -156,8 +156,6 @@ function stampOverrides(msg: AiSdkMessage, overrides?: MessageOverrides): void {
   if (!overrides) return;
 
   if (overrides.thinking != null) msg.thinkingOverride = overrides.thinking;
-  if (overrides.temperature != null)
-    msg.temperatureOverride = overrides.temperature;
   if (overrides.showThoughts != null)
     msg.showThoughtsOverride = overrides.showThoughts;
 }

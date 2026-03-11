@@ -31,8 +31,6 @@ interface SettingsScreenProps {
   setModel: (model: string) => void;
   thinking: string;
   setThinking: (thinking: string) => void;
-  temperature: number;
-  setTemperature: (temp: number) => void;
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
 
@@ -80,8 +78,6 @@ const helpLinkClass =
  * @param props.setModel - Function to update model
  * @param props.thinking - Thinking mode setting
  * @param props.setThinking - Function to update thinking mode
- * @param props.temperature - Temperature/randomness setting
- * @param props.setTemperature - Function to update temperature
  * @param props.showThoughts - Whether to show thought blocks
  * @param props.setShowThoughts - Function to toggle thought display
  * @param props.theme - UI theme setting
@@ -200,8 +196,6 @@ function SettingsTabContent(props: SettingsScreenProps) {
           model={props.model}
           thinking={props.thinking}
           setThinking={props.setThinking}
-          temperature={props.temperature}
-          setTemperature={props.setTemperature}
           showThoughts={props.showThoughts}
           setShowThoughts={props.setShowThoughts}
           showMessageSettings={props.showMessageSettings}

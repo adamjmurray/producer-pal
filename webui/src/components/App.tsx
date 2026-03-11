@@ -276,7 +276,6 @@ export function App() {
           provider={settings.provider}
           model={settings.model}
           defaultThinking={settings.thinking}
-          defaultTemperature={settings.temperature}
           defaultShowThoughts={settings.showThoughts}
           enabledToolsCount={enabledToolsCount}
           totalToolsCount={totalToolsCount}
@@ -340,8 +339,6 @@ export function App() {
             setModel={settings.setModel}
             thinking={settings.thinking}
             setThinking={settings.setThinking}
-            temperature={settings.temperature}
-            setTemperature={settings.setTemperature}
             showThoughts={settings.showThoughts}
             setShowThoughts={settings.setShowThoughts}
             theme={theme}

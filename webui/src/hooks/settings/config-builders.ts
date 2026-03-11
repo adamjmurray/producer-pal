@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type Provider } from "#webui/types/settings";
+
 export type ReasoningEffort =
   | "none"
   | "minimal"
@@ -175,4 +177,24 @@ export function mapThinkingToOllamaThink(
     default:
       return undefined;
   }
+}
+
+/**
+ * Checks if the "Show thinking" checkbox is supported for the given provider.
+ * Only Gemini, OpenRouter, and OpenAI support controlling thinking token inclusion.
+ * Anthropic always returns thinking tokens (cannot be suppressed).
+ * @param {Provider} provider - Current provider
+ * @param {string} thinking - Thinking level from UI settings
+ * @returns {boolean} - True if show thoughts checkbox should be shown
+ */
+export function isShowThoughtsSupported(
+  provider: Provider,
+  thinking: string,
+): boolean {
+  return (
+    (provider === "gemini" ||
+      provider === "openrouter" ||
+      provider === "openai") &&
+    thinking !== "Off"
+  );
 }

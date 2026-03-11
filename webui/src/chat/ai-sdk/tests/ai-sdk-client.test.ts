@@ -436,7 +436,6 @@ describe("AiSdkClient", () => {
 
       for await (const history of client.sendMessage("Hello", undefined, {
         thinking: "High",
-        temperature: 0.5,
         showThoughts: true,
       })) {
         last = history;
@@ -445,7 +444,6 @@ describe("AiSdkClient", () => {
       const user = last.find((m) => m.role === "user");
 
       expect(user?.thinkingOverride).toBe("High");
-      expect(user?.temperatureOverride).toBe(0.5);
       expect(user?.showThoughtsOverride).toBe(true);
 
       // Assistant messages should NOT have overrides
@@ -474,7 +472,6 @@ describe("AiSdkClient", () => {
       const user = last.find((m) => m.role === "user");
 
       expect(user?.thinkingOverride).toBeUndefined();
-      expect(user?.temperatureOverride).toBeUndefined();
       expect(user?.showThoughtsOverride).toBeUndefined();
     });
 
@@ -500,7 +497,6 @@ describe("AiSdkClient", () => {
       const user = last.find((m) => m.role === "user");
 
       expect(user?.thinkingOverride).toBe("Low");
-      expect(user?.temperatureOverride).toBeUndefined();
       expect(user?.showThoughtsOverride).toBeUndefined();
     });
   });

@@ -53,12 +53,12 @@ function expectAllThinkingOptions(): void {
 
 function expectCheckboxVisible(): void {
   expect(screen.getByRole("checkbox")).toBeDefined();
-  expect(screen.getByText("Show thinking process")).toBeDefined();
+  expect(screen.getByText("Show thinking")).toBeDefined();
 }
 
 function expectCheckboxHidden(): void {
   expect(screen.queryByRole("checkbox")).toBeNull();
-  expect(screen.queryByText("Show thinking process")).toBeNull();
+  expect(screen.queryByText("Show thinking")).toBeNull();
 }
 
 describe("ThinkingSettings", () => {
@@ -165,20 +165,11 @@ describe("ThinkingSettings", () => {
       expectAllThinkingOptions();
     });
 
-    it("shows checkbox when thinking is not Off", () => {
+    it("does not show checkbox (thinking tokens cannot be suppressed)", () => {
       renderThinkingSettings({
         provider: "anthropic",
         model: "claude-sonnet-4-6-20250514",
         thinking: "High",
-      });
-      expectCheckboxVisible();
-    });
-
-    it("hides checkbox when thinking is Off", () => {
-      renderThinkingSettings({
-        provider: "anthropic",
-        model: "claude-sonnet-4-6-20250514",
-        thinking: "Off",
       });
       expectCheckboxHidden();
     });

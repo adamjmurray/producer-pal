@@ -106,11 +106,10 @@ export function useChat<
       await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
 
       const effectiveThinking = overrides?.thinking ?? thinking;
-      const effectiveTemperature = overrides?.temperature ?? temperature;
 
       const config = adapter.buildConfig(
         model,
-        effectiveTemperature,
+        temperature,
         effectiveThinking,
         enabledTools,
         chatHistory,
@@ -123,7 +122,7 @@ export function useChat<
         model,
         provider,
         effectiveThinking,
-        effectiveTemperature,
+        temperature,
         overrides?.showThoughts ?? null,
         smallModelMode,
       );
@@ -276,7 +275,6 @@ export function useChat<
 
         const filtered = filterOverrides(options, {
           thinking: thinkingRef.current,
-          temperature: temperatureRef.current,
           showThoughts: showThoughtsRef.current,
         });
 

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isShowThoughtsSupported } from "#webui/hooks/settings/config-builders";
 import { type Provider } from "#webui/types/settings";
 
 export interface ThinkingSettingsProps {
@@ -44,8 +45,6 @@ export function ThinkingSettings({
     return null;
   }
 
-  const isGemini = provider === "gemini";
-
   return (
     <>
       <div>
@@ -64,25 +63,21 @@ export function ThinkingSettings({
           <option value="Ultra">Ultra</option>
         </select>
       </div>
-      {(isGemini ||
-        provider === "anthropic" ||
-        provider === "openrouter" ||
-        provider === "openai") &&
-        thinking !== "Off" && (
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="showThoughts"
-              checked={showThoughts}
-              onChange={(e) =>
-                setShowThoughts((e.target as HTMLInputElement).checked)
-              }
-            />
-            <label htmlFor="showThoughts" className="text-sm">
-              Show thinking process
-            </label>
-          </div>
-        )}
+      {isShowThoughtsSupported(provider, thinking) && (
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="showThoughts"
+            checked={showThoughts}
+            onChange={(e) =>
+              setShowThoughts((e.target as HTMLInputElement).checked)
+            }
+          />
+          <label htmlFor="showThoughts" className="text-sm">
+            Show thinking
+          </label>
+        </div>
+      )}
     </>
   );
 }

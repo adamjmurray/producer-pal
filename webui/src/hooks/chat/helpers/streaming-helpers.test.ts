@@ -138,7 +138,6 @@ describe("streaming-helpers", () => {
   describe("filterOverrides", () => {
     const defaults = {
       thinking: "Medium",
-      temperature: 1,
       showThoughts: null as boolean | null,
     };
 
@@ -147,35 +146,30 @@ describe("streaming-helpers", () => {
     });
 
     it("returns undefined when all overrides match defaults", () => {
-      const result = filterOverrides(
-        { thinking: "Medium", temperature: 1 },
-        defaults,
-      );
+      const result = filterOverrides({ thinking: "Medium" }, defaults);
 
       expect(result).toBeUndefined();
     });
 
     it("includes only fields that differ from defaults", () => {
       const result = filterOverrides(
-        { thinking: "Medium", temperature: 0.5, showThoughts: true },
+        { thinking: "Medium", showThoughts: true },
         defaults,
       );
 
       expect(result).toStrictEqual({
-        temperature: 0.5,
         showThoughts: true,
       });
     });
 
     it("returns all fields when all differ", () => {
       const result = filterOverrides(
-        { thinking: "Ultra", temperature: 0.5, showThoughts: true },
+        { thinking: "Ultra", showThoughts: true },
         defaults,
       );
 
       expect(result).toStrictEqual({
         thinking: "Ultra",
-        temperature: 0.5,
         showThoughts: true,
       });
     });

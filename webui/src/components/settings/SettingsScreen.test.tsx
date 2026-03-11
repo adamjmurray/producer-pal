@@ -120,12 +120,6 @@ vi.mock(import("./controls/ThinkingSettings"), () => ({
   ),
 }));
 
-vi.mock(import("./controls/RandomnessSlider"), () => ({
-  RandomnessSlider: ({ temperature }: { temperature: number }) => (
-    <div data-testid="randomness-slider">{temperature}</div>
-  ),
-}));
-
 vi.mock(import("./controls/ToolToggles"), () => ({
   ToolToggles: () => <div data-testid="tool-toggles">Tool Toggles</div>,
 }));
@@ -142,8 +136,6 @@ describe("SettingsScreen", () => {
     setModel: vi.fn(),
     thinking: "Medium",
     setThinking: vi.fn(),
-    temperature: 1.0,
-    setTemperature: vi.fn(),
     showThoughts: false,
     setShowThoughts: vi.fn(),
     theme: "system",
@@ -231,7 +223,6 @@ describe("SettingsScreen", () => {
       );
 
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
-      expect(screen.getByTestId("randomness-slider")).toBeDefined();
       unmount2();
 
       // Tools tab
@@ -476,14 +467,12 @@ describe("SettingsScreen", () => {
           activeTab="behavior"
           model="gemini-2.5-flash"
           thinking="High"
-          temperature={1.5}
         />,
       );
 
       expect(screen.getByTestId("thinking-settings").textContent).toBe(
         "gemini-gemini-2.5-flash-High",
       );
-      expect(screen.getByTestId("randomness-slider").textContent).toBe("1.5");
     });
   });
 

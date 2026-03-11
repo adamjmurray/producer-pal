@@ -6,10 +6,9 @@
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 
-/** Per-message overrides for thinking, temperature, and showThoughts */
+/** Per-message overrides for thinking and showThoughts */
 export interface MessageOverrides {
   thinking?: string;
-  temperature?: number;
   showThoughts?: boolean;
 }
 

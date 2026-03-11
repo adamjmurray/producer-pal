@@ -11,7 +11,6 @@ import { MessageSettingsToolbar } from "#webui/components/chat/controls/MessageS
 
 describe("MessageSettingsToolbar", () => {
   const mockOnThinkingChange = vi.fn();
-  const mockOnTemperatureChange = vi.fn();
   const mockOnShowThoughtsChange = vi.fn();
   const mockOnResetToDefaults = vi.fn();
 
@@ -19,13 +18,10 @@ describe("MessageSettingsToolbar", () => {
     provider: "gemini" as const,
     model: "gemini-2.0-flash-thinking",
     defaultThinking: "Default",
-    defaultTemperature: 1.0,
     defaultShowThoughts: true,
     thinking: "Default",
-    temperature: 1.0,
     showThoughts: true,
     onThinkingChange: mockOnThinkingChange,
-    onTemperatureChange: mockOnTemperatureChange,
     onShowThoughtsChange: mockOnShowThoughtsChange,
     onResetToDefaults: mockOnResetToDefaults,
   };
@@ -65,8 +61,8 @@ describe("MessageSettingsToolbar", () => {
     expect(chevronWrap?.className).not.toContain("rotate-90");
   });
 
-  it.each([{ thinking: "High" }, { temperature: 1.5 }])(
-    "shows customized indicator when $thinking$temperature differs from default",
+  it.each([{ thinking: "High" }, { showThoughts: false }])(
+    "shows customized indicator when thinking or showThoughts differs from default",
     (propOverride) => {
       const { container } = render(
         <MessageSettingsToolbar {...defaultProps} {...propOverride} />,
@@ -112,14 +108,6 @@ describe("MessageSettingsToolbar", () => {
 
     fireEvent.change(select!, { target: { value: "High" } });
     expect(mockOnThinkingChange).toHaveBeenCalledWith("High");
-  });
-
-  it("calls onTemperatureChange when slider changes", () => {
-    const container = renderExpanded();
-    const slider = container.querySelector('input[type="range"]');
-
-    fireEvent.input(slider!, { target: { value: "1.5" } });
-    expect(mockOnTemperatureChange).toHaveBeenCalledWith(1.5);
   });
 
   it("calls onResetToDefaults when reset button clicked", () => {
