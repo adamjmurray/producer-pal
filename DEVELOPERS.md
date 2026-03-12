@@ -9,7 +9,6 @@ moving quickly. But there's plenty of room to collaborate:
 
 - End-to-end testing automation and LLM evaluations
 - Small language model optimization (making Ollama/LM Studio work better)
-- Voice interaction development
 - Documentation improvements
 
 **Always welcome:**
@@ -31,6 +30,20 @@ Also feel free to:
   [the discussions](https://github.com/adamjmurray/producer-pal/discussions)
 - Learn from the implementation
 - Fork and modify for your own needs. Please attribute me.
+
+## Branching Strategy
+
+- **`main`** — latest stable release
+- **`dev`** — where the next release is prepared; PRs merge here
+
+**Which branch to work from?** You can base your work off either branch:
+
+- **From `main`** (recommended for most contributors) — more stable starting
+  point. When you're ready to merge, AI tooling can help resolve any conflicts
+  with `dev`.
+- **From `dev`** — gives you the latest in-progress changes, but `dev` is
+  heavily iterated on and can be volatile. New conflicts may appear as it
+  evolves, and it may be temporarily unstable.
 
 ## Building from source
 
