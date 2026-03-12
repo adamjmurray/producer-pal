@@ -69,6 +69,11 @@ export class AiSdkClient {
     this.chatHistory.push(userMsg);
     yield [...this.chatHistory];
 
+    const providerOptions =
+      overrides?.thinking != null && this.config.buildProviderOptions
+        ? this.config.buildProviderOptions(overrides.thinking)
+        : this.config.providerOptions;
+
     const result = streamText({
       model: this.config.model,
       system: this.config.systemInstruction,
@@ -76,7 +81,7 @@ export class AiSdkClient {
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
       stopWhen: stepCountIs(MAX_TOOL_STEPS),
       temperature: this.config.temperature,
-      providerOptions: this.config.providerOptions,
+      providerOptions,
       abortSignal,
     });
 

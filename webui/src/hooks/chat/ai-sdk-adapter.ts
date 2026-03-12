@@ -188,6 +188,8 @@ export const aiSdkAdapter: ChatAdapter<
       enabledTools,
       showThoughts,
       providerOptions,
+      buildProviderOptions: (overrideThinking: string) =>
+        buildProviderOptions(provider, overrideThinking, model, showThoughts),
       chatHistory,
     };
   },

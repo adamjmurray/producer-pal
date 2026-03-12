@@ -260,6 +260,7 @@ export function App() {
           activeProvider={chat.activeProvider}
           provider={settings.provider}
           model={settings.model}
+          activeThinking={chat.activeThinking}
           defaultThinking={settings.thinking}
           enabledToolsCount={enabledToolsCount}
           totalToolsCount={totalToolsCount}

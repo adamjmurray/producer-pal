@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import {
   type MessageOverrides,
   type RateLimitState,
@@ -34,6 +34,7 @@ interface ChatScreenProps {
   activeProvider: Provider | null;
   provider: Provider;
   model: string;
+  activeThinking: string | null;
   defaultThinking: string;
   enabledToolsCount: number;
   totalToolsCount: number;
@@ -74,6 +75,7 @@ export interface ConversationPanelState extends Omit<
  * @param {Provider | null} props.activeProvider - Active provider
  * @param {Provider} props.provider - Provider from settings
  * @param {string} props.model - Model from settings
+ * @param {string | null} props.activeThinking - Locked thinking level for the active conversation
  * @param {string} props.defaultThinking - Default thinking mode from settings
  * @param {number} props.enabledToolsCount - Number of enabled tools
  * @param {number} props.totalToolsCount - Total number of available tools
@@ -97,6 +99,7 @@ export function ChatScreen({
   activeProvider,
   provider,
   model,
+  activeThinking,
   defaultThinking,
   enabledToolsCount,
   totalToolsCount,
@@ -115,8 +118,14 @@ export function ChatScreen({
 }: ChatScreenProps) {
   const latestVersion = useUpdateCheck();
 
-  // Per-conversation thinking override (lifted from ChatInput so ChatStart can also use it)
-  const [thinking, setThinking] = useState(defaultThinking);
+  // Per-conversation thinking override (lifted from ChatInput so ChatStart can also use it).
+  // Syncs to activeThinking when a conversation is loaded/switched, or to defaultThinking
+  // (from settings) when starting fresh (activeThinking is null).
+  const [thinking, setThinking] = useState(activeThinking ?? defaultThinking);
+
+  useEffect(() => {
+    setThinking(activeThinking ?? defaultThinking);
+  }, [activeThinking, defaultThinking]);
 
   const currentOverrides: MessageOverrides = {
     thinking,
