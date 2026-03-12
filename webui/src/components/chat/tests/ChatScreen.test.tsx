@@ -5,7 +5,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render } from "@testing-library/preact";
+import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatScreen } from "#webui/components/chat/ChatScreen";
@@ -32,7 +32,7 @@ describe("ChatScreen", () => {
     activeProvider: "gemini" as const,
     provider: "gemini" as const,
     model: "gemini-2.0-flash-thinking",
-    defaultThinking: "Adaptive",
+    defaultThinking: "Default",
     enabledToolsCount: 20,
     totalToolsCount: 20,
     smallModelMode: false,
@@ -134,28 +134,27 @@ describe("ChatScreen", () => {
   });
 
   describe("thinking toggle", () => {
-    it("renders thinking toggle buttons", () => {
+    it("renders thinking level button", () => {
       render(<ChatScreen {...defaultProps} />);
 
-      const adaptiveBtn = Array.from(document.querySelectorAll("button")).find(
-        (btn) => btn.getAttribute("aria-label") === "Adaptive",
-      );
-
-      expect(adaptiveBtn).toBeDefined();
+      expect(
+        screen.getByRole("button", { name: /Thinking level/ }),
+      ).toBeDefined();
     });
 
-    it("changes thinking level when toggle button clicked", () => {
+    it("changes thinking level when button is clicked", () => {
       render(<ChatScreen {...defaultProps} />);
 
-      const highBtn = Array.from(document.querySelectorAll("button")).find(
-        (btn) => btn.getAttribute("aria-label") === "High",
-      );
+      const btn = screen.getByRole("button", {
+        name: /Thinking level: Default/,
+      });
 
-      expect(highBtn).toBeDefined();
-      fireEvent.click(highBtn!);
+      fireEvent.click(btn);
 
-      // High button should now have active styling
-      expect(highBtn!.className).toContain("bg-blue-600");
+      // Default → Max
+      expect(
+        screen.getByRole("button", { name: /Thinking level: Max/ }),
+      ).toBeDefined();
     });
   });
 

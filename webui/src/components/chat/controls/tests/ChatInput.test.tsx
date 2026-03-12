@@ -13,7 +13,7 @@ const defaultProps = {
   handleSend: vi.fn(),
   isAssistantResponding: false,
   onStop: vi.fn(),
-  thinking: "Adaptive",
+  thinking: "Default",
   onThinkingChange: vi.fn(),
 };
 
@@ -45,12 +45,16 @@ describe("ChatInput", () => {
 
     it("shows thinking toggle when not responding", () => {
       render(<ChatInput {...defaultProps} />);
-      expect(screen.getByRole("button", { name: "Adaptive" })).toBeDefined();
+      expect(
+        screen.getByRole("button", { name: /Thinking level/ }),
+      ).toBeDefined();
     });
 
     it("hides thinking toggle when responding", () => {
       render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
-      expect(screen.queryByRole("button", { name: "Adaptive" })).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: /Thinking level/ }),
+      ).toBeNull();
     });
 
     it("shows Stop button when responding", () => {
@@ -149,7 +153,7 @@ describe("ChatInput", () => {
       fireEvent.input(textarea, { target: { value: "Hello" } });
       triggerSend(textarea);
       expect(handleSend).toHaveBeenCalledExactlyOnceWith("Hello", {
-        thinking: "Adaptive",
+        thinking: "Default",
       });
     });
 
@@ -219,15 +223,17 @@ describe("ChatInput", () => {
   });
 
   describe("thinking toggle", () => {
-    it("calls onThinkingChange when toggle button clicked", () => {
+    it("calls onThinkingChange with next level when button is clicked", () => {
       const onThinkingChange = vi.fn();
 
       render(
         <ChatInput {...defaultProps} onThinkingChange={onThinkingChange} />,
       );
 
-      fireEvent.click(screen.getByRole("button", { name: "High" }));
-      expect(onThinkingChange).toHaveBeenCalledWith("High");
+      fireEvent.click(screen.getByRole("button", { name: /Thinking level/ }));
+
+      // Default → Max is the first cycle step
+      expect(onThinkingChange).toHaveBeenCalledWith("Max");
     });
   });
 });
