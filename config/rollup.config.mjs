@@ -42,6 +42,7 @@ const envVarReplacements = {
   "process.env.ENABLE_WARP_MARKERS": JSON.stringify(
     process.env.ENABLE_WARP_MARKERS,
   ),
+  "process.env.ENABLE_DEV_CORS": JSON.stringify(process.env.ENABLE_DEV_CORS),
 };
 
 // When code execution is disabled, substitute the real code-exec modules with

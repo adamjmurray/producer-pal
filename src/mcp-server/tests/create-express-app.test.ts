@@ -59,6 +59,7 @@ describe("MCP Express App", () => {
       // Enable feature-gated tools/params for testing
       process.env.ENABLE_RAW_LIVE_API = "true";
       process.env.ENABLE_CODE_EXEC = "true";
+      process.env.ENABLE_DEV_CORS = "true";
     },
   });
 
