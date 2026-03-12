@@ -39,19 +39,35 @@ interface JsonSchema {
   required?: string[];
 }
 
+/** Marker for large-model-only params and enum values */
+const LARGE_ONLY_MARKER = "🐘";
+
 /**
  * Formats a JSON Schema property type for display in a markdown table
  * @param prop - JSON Schema property object
  * @param isRequired - Whether the parameter is required
+ * @param excludedEnumValues - Enum values excluded in small model mode
  * @returns Formatted type string with constraint and required annotations
  */
-function formatType(prop: JsonSchemaProperty, isRequired: boolean): string {
+function formatType(
+  prop: JsonSchemaProperty,
+  isRequired: boolean,
+  excludedEnumValues?: Set<string>,
+): string {
   const enumValues = prop.enum ?? prop.items?.enum;
 
   if (enumValues) {
     const prefix =
-      prop.type === "array" ? `${MUTED}array of:${MUTED_END} ` : "";
-    const values = enumValues.map((v) => `\`"${v}"\``).join(`&nbsp;\\|<br>`);
+      prop.type === "array" ? `${MUTED}array of:${MUTED_END}<br>` : "";
+    const values = enumValues
+      .map((v) => {
+        const badge = excludedEnumValues?.has(v)
+          ? `&nbsp;${LARGE_ONLY_MARKER}`
+          : "";
+
+        return `\`"${v}"\`${badge}`;
+      })
+      .join(`&nbsp;\\|<br>`);
     const suffix = isRequired ? `<br>${MUTED}(required)${MUTED_END}` : "";
 
     return prefix + values + suffix;
@@ -104,12 +120,15 @@ function escapeTableCell(text: string): string {
  */
 function generateToolPartial(toolDef: ToolDefFunction): string {
   const { toolOptions } = toolDef;
-  const { inputSchema } = toolOptions;
+  const { inputSchema, smallModelModeConfig } = toolOptions;
   const schemaKeys = Object.keys(inputSchema);
 
   if (schemaKeys.length === 0) {
     return `<p class="vp-doc-muted">(no parameters)</p>\n`;
   }
+
+  const excludedParams = new Set(smallModelModeConfig?.excludeParams ?? []);
+  const excludedEnumMap = smallModelModeConfig?.excludeEnumValues ?? {};
 
   const objectSchema = z.object(inputSchema);
   const jsonSchema = toJSONSchema(objectSchema) as JsonSchema;
@@ -124,15 +143,40 @@ function generateToolPartial(toolDef: ToolDefFunction): string {
     "|-----------|------|-------------|",
   ];
 
+  let hasMarker = false;
+
   for (const key of schemaKeys) {
     const prop = properties[key];
 
     if (!prop) continue;
     const isRequired = required.has(key) && prop.default == null;
-    const type = formatType(prop, isRequired);
-    const desc = escapeTableCell(prop.description ?? "");
 
-    lines.push(`| \`${key}\` | ${type} | ${desc} |`);
+    const paramExcludedValues = excludedEnumMap[key];
+    const excludedSet = paramExcludedValues
+      ? new Set(paramExcludedValues)
+      : undefined;
+
+    if (excludedSet && (prop.enum ?? prop.items?.enum)) {
+      hasMarker = true;
+    }
+
+    const type = formatType(prop, isRequired, excludedSet);
+    const desc = escapeTableCell(prop.description ?? "");
+    const isExcluded = excludedParams.has(key);
+
+    if (isExcluded) hasMarker = true;
+    const paramCell = isExcluded
+      ? `\`${key}\` ${LARGE_ONLY_MARKER}`
+      : `\`${key}\``;
+
+    lines.push(`| ${paramCell} | ${type} | ${desc} |`);
+  }
+
+  if (hasMarker) {
+    lines.push(
+      "",
+      `_${LARGE_ONLY_MARKER} = large model only (hidden in small model mode)_`,
+    );
   }
 
   lines.push("", "</details>", "");
