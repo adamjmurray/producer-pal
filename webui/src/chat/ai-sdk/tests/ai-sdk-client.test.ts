@@ -441,12 +441,12 @@ describe("AiSdkClient", () => {
     it("stamps overrides on user message when provided", async () => {
       const last = await sendWithResponse({
         modelId: "test-model",
-        overrides: { thinking: "High" },
+        overrides: { thinking: "Max" },
       });
 
       const user = last.find((m) => m.role === "user");
 
-      expect(user?.thinkingOverride).toBe("High");
+      expect(user?.thinkingOverride).toBe("Max");
 
       // Assistant messages should NOT have overrides
       const assistant = last.find((m) => m.role === "assistant");
@@ -466,12 +466,12 @@ describe("AiSdkClient", () => {
     it("only stamps provided override fields", async () => {
       const last = await sendWithResponse({
         modelId: "test-model",
-        overrides: { thinking: "Low" },
+        overrides: { thinking: "Off" },
       });
 
       const user = last.find((m) => m.role === "user");
 
-      expect(user?.thinkingOverride).toBe("Low");
+      expect(user?.thinkingOverride).toBe("Off");
       expect(user?.showThoughtsOverride).toBeUndefined();
     });
   });

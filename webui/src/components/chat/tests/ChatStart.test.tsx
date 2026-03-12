@@ -18,7 +18,7 @@ import {
 } from "#webui/components/chat/ChatStart";
 
 const defaultOverrides = {
-  thinking: "Adaptive",
+  thinking: "Default",
   temperature: 1.0,
   showThoughts: true,
 };
@@ -64,7 +64,7 @@ describe("ChatStart", () => {
 
     it("calls handleSend with Connect to Ableton and overrides when Quick Connect is clicked", () => {
       const overrides = {
-        thinking: "High",
+        thinking: "Max",
         temperature: 0.5,
         showThoughts: false,
       };

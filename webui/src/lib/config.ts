@@ -31,13 +31,11 @@ export const getModelName = (modelId: string): string =>
 
 export const getThinkingBudget = (level: string): number => {
   switch (level) {
-    case "Low":
-      return 2048;
-    case "Medium":
-      return 4096;
-    case "High":
+    case "Off":
+      return 0;
+    case "Max":
       return 16384;
     default:
-      return -1; // Adaptive / unknown → let API decide
+      return -1; // Default / unknown → let API decide
   }
 };

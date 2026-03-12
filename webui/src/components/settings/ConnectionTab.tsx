@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { ThinkingStateIcon } from "#webui/components/chat/controls/ThinkingToggle";
 import { type Provider } from "#webui/types/settings";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
@@ -148,8 +149,9 @@ export function ConnectionTab({
         </p>
       )}
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
+          <ThinkingStateIcon level={thinking} />
           <label htmlFor="thinking-select" className="text-sm shrink-0">
             Thinking
           </label>

@@ -164,7 +164,10 @@ export const aiSdkAdapter: ChatAdapter<
     const provider = extraParams?.provider as Provider;
     const baseUrl = extraParams?.baseUrl as string | undefined;
     const apiKey = extraParams?.apiKey as string;
-    const showThoughts = Boolean(extraParams?.showThoughts);
+    // When thinking is Off, always exclude reasoning tokens even if the model generates them.
+    // The stored showThoughts setting is preserved for when the UI toggle is re-introduced.
+    const showThoughts =
+      thinking !== "Off" && Boolean(extraParams?.showThoughts);
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
     const providerOptions = buildProviderOptions(

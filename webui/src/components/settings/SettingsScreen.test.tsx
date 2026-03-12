@@ -118,7 +118,7 @@ describe("SettingsScreen", () => {
     setApiKey: vi.fn(),
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
-    thinking: "Adaptive",
+    thinking: "Default",
     setThinking: vi.fn(),
     theme: "system",
     setTheme: vi.fn(),

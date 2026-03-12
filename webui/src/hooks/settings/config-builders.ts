@@ -15,14 +15,10 @@ export function mapThinkingToOpenRouterEffort(
   thinking: string,
 ): ReasoningEffort | undefined {
   switch (thinking) {
-    case "Low":
-      return "low";
-    case "Medium":
-      return "medium";
-    case "High":
+    case "Max":
       return "xhigh";
     default:
-      return undefined; // Adaptive - let API decide
+      return undefined; // Default/Off - let API decide
   }
 }
 
@@ -99,27 +95,19 @@ export function mapThinkingToReasoningEffort(
   if (isO1O3) {
     // o1/o3: only supports low, medium, high
     switch (thinking) {
-      case "Low":
-        return "low";
-      case "Medium":
-        return "medium";
-      case "High":
+      case "Max":
         return "high";
       default:
-        return undefined; // Adaptive - let API decide
+        return undefined; // Default/Off - let API decide
     }
   }
 
   // gpt-5.1+: supports low, medium, high, (xhigh for 5.2+ or codex-max)
   switch (thinking) {
-    case "Low":
-      return "low";
-    case "Medium":
-      return "medium";
-    case "High":
+    case "Max":
       return supportsXHigh(model) ? "xhigh" : "high";
     default:
-      return undefined; // Adaptive - let API decide
+      return undefined; // Default/Off - let API decide
   }
 }
 
@@ -138,13 +126,11 @@ export function mapThinkingToOllamaThink(
   const gptOss = model.includes("gpt-oss");
 
   switch (thinking) {
-    case "Low":
-      return gptOss ? "low" : true;
-    case "Medium":
-      return gptOss ? "medium" : true;
-    case "High":
+    case "Off":
+      return false;
+    case "Max":
       return gptOss ? "high" : true;
     default:
-      return undefined; // Adaptive - let API decide
+      return undefined; // Default - let API decide
   }
 }

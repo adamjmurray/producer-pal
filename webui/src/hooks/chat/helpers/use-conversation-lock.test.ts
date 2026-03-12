@@ -52,7 +52,7 @@ describe("useConversationLock", () => {
   it("passes message options to handleSend", async () => {
     const chat = createMockChat();
     const { result } = renderHook(() => useConversationLock({ chat }));
-    const options = { thinking: "High", temperature: 0.5 };
+    const options = { thinking: "Max", temperature: 0.5 };
 
     await act(async () => {
       await result.current.wrappedHandleSend("Hello", options);

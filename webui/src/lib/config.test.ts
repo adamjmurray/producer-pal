@@ -38,25 +38,21 @@ describe("config", () => {
   });
 
   describe("getThinkingBudget", () => {
-    it("returns 2048 for Low level", () => {
-      expect(getThinkingBudget("Low")).toBe(2048);
+    it("returns 0 for Off level", () => {
+      expect(getThinkingBudget("Off")).toBe(0);
     });
 
-    it("returns 4096 for Medium level", () => {
-      expect(getThinkingBudget("Medium")).toBe(4096);
+    it("returns 16384 for Max level", () => {
+      expect(getThinkingBudget("Max")).toBe(16384);
     });
 
-    it("returns 16384 for High level", () => {
-      expect(getThinkingBudget("High")).toBe(16384);
+    it("returns -1 for Default level", () => {
+      expect(getThinkingBudget("Default")).toBe(-1);
     });
 
-    it("returns -1 for Adaptive level", () => {
-      expect(getThinkingBudget("Adaptive")).toBe(-1);
-    });
-
-    it("returns -1 (Adaptive) for unknown levels", () => {
+    it("returns -1 for unknown levels", () => {
       expect(getThinkingBudget("Unknown")).toBe(-1);
-      expect(getThinkingBudget("VeryHigh")).toBe(-1);
+      expect(getThinkingBudget("High")).toBe(-1);
     });
   });
 });

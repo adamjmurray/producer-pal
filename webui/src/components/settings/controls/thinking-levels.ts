@@ -3,4 +3,4 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-export const THINKING_LEVELS = ["Adaptive", "Low", "Medium", "High"] as const;
+export const THINKING_LEVELS = ["Default", "Max", "Off"] as const;

@@ -2,8 +2,11 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { THINKING_LEVELS } from "#webui/components/settings/controls/thinking-levels";
 import { DEFAULT_MODELS } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
+
+const VALID_THINKING_LEVELS: readonly string[] = THINKING_LEVELS;
 
 export interface ProviderSettings {
   apiKey: string;
@@ -19,35 +22,35 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   anthropic: {
     apiKey: "",
     model: DEFAULT_MODELS.anthropic,
-    thinking: "Adaptive",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
   gemini: {
     apiKey: "",
     model: DEFAULT_MODELS.gemini,
-    thinking: "Adaptive",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
   openai: {
     apiKey: "",
     model: DEFAULT_MODELS.openai,
-    thinking: "Adaptive",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
   mistral: {
     apiKey: "",
     model: DEFAULT_MODELS.mistral,
-    thinking: "Adaptive",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
   openrouter: {
     apiKey: "",
     model: DEFAULT_MODELS.openrouter,
-    thinking: "Adaptive",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
@@ -55,7 +58,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     apiKey: "",
     model: DEFAULT_MODELS.lmstudio,
     baseUrl: "http://localhost:1234",
-    thinking: "Adaptive",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
@@ -63,7 +66,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     apiKey: "",
     model: DEFAULT_MODELS.ollama,
     baseUrl: "http://localhost:11434",
-    thinking: "Adaptive",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
@@ -71,7 +74,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     apiKey: "",
     model: DEFAULT_MODELS.custom,
     baseUrl: "",
-    thinking: "Adaptive",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
@@ -96,7 +99,13 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
         parsed.baseUrl = `http://localhost:${parsed.port}/v1`;
       }
 
-      return { ...DEFAULT_SETTINGS[provider], ...parsed };
+      const settings = { ...DEFAULT_SETTINGS[provider], ...parsed };
+
+      if (!VALID_THINKING_LEVELS.includes(settings.thinking)) {
+        settings.thinking = "Default";
+      }
+
+      return settings;
     } catch {
       // Invalid JSON, fall through to defaults or migration
     }

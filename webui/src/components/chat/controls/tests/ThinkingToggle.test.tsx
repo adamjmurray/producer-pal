@@ -11,51 +11,75 @@ import { describe, expect, it, vi } from "vitest";
 import { ThinkingToggle } from "#webui/components/chat/controls/ThinkingToggle";
 
 describe("ThinkingToggle", () => {
-  const defaultProps = {
-    thinking: "Adaptive",
-    onThinkingChange: vi.fn(),
-  };
+  it("renders a button with the current thinking level in aria-label", () => {
+    render(<ThinkingToggle thinking="Default" onThinkingChange={vi.fn()} />);
 
-  it("renders all four thinking level buttons", () => {
-    render(<ThinkingToggle {...defaultProps} />);
-
-    expect(screen.getByRole("button", { name: "Adaptive" })).toBeDefined();
-    expect(screen.getByRole("button", { name: "Low" })).toBeDefined();
-    expect(screen.getByRole("button", { name: "Medium" })).toBeDefined();
-    expect(screen.getByRole("button", { name: "High" })).toBeDefined();
+    expect(
+      screen.getByRole("button", { name: /Thinking level: Default/ }),
+    ).toBeDefined();
   });
 
-  it("shows short labels A, L, M, H", () => {
-    render(<ThinkingToggle {...defaultProps} />);
+  it("shows Off level in aria-label", () => {
+    render(<ThinkingToggle thinking="Off" onThinkingChange={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: "Adaptive" }).textContent).toBe(
-      "A",
-    );
-    expect(screen.getByRole("button", { name: "Low" }).textContent).toBe("L");
-    expect(screen.getByRole("button", { name: "Medium" }).textContent).toBe(
-      "M",
-    );
-    expect(screen.getByRole("button", { name: "High" }).textContent).toBe("H");
+    expect(
+      screen.getByRole("button", { name: /Thinking level: Off/ }),
+    ).toBeDefined();
   });
 
-  it("highlights the active thinking level", () => {
-    render(<ThinkingToggle {...defaultProps} thinking="High" />);
+  it("shows Max level in aria-label", () => {
+    render(<ThinkingToggle thinking="Max" onThinkingChange={vi.fn()} />);
 
-    const highBtn = screen.getByRole("button", { name: "High" });
-    const adaptiveBtn = screen.getByRole("button", { name: "Adaptive" });
-
-    expect(highBtn.className).toContain("bg-blue-600");
-    expect(adaptiveBtn.className).not.toContain("bg-blue-600");
+    expect(
+      screen.getByRole("button", { name: /Thinking level: Max/ }),
+    ).toBeDefined();
   });
 
-  it("calls onThinkingChange when a button is clicked", () => {
+  it("cycles Default → Max on click", () => {
     const onThinkingChange = vi.fn();
 
     render(
-      <ThinkingToggle {...defaultProps} onThinkingChange={onThinkingChange} />,
+      <ThinkingToggle thinking="Default" onThinkingChange={onThinkingChange} />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Medium" }));
-    expect(onThinkingChange).toHaveBeenCalledWith("Medium");
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(onThinkingChange).toHaveBeenCalledWith("Max");
+  });
+
+  it("cycles Max → Off on click", () => {
+    const onThinkingChange = vi.fn();
+
+    render(
+      <ThinkingToggle thinking="Max" onThinkingChange={onThinkingChange} />,
+    );
+
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(onThinkingChange).toHaveBeenCalledWith("Off");
+  });
+
+  it("cycles Off → Default on click", () => {
+    const onThinkingChange = vi.fn();
+
+    render(
+      <ThinkingToggle thinking="Off" onThinkingChange={onThinkingChange} />,
+    );
+
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(onThinkingChange).toHaveBeenCalledWith("Default");
+  });
+
+  it("cycles unknown level → Default on click", () => {
+    const onThinkingChange = vi.fn();
+
+    render(
+      <ThinkingToggle thinking="Legacy" onThinkingChange={onThinkingChange} />,
+    );
+
+    fireEvent.click(screen.getByRole("button"));
+
+    expect(onThinkingChange).toHaveBeenCalledWith("Default");
   });
 });

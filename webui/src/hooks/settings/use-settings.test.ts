@@ -21,7 +21,7 @@ describe("useSettings", () => {
     expect(result.current).toMatchObject({
       apiKey: "",
       model: "gemini-3-flash-preview",
-      thinking: "Adaptive",
+      thinking: "Default",
       temperature: 1.0,
       showThoughts: true,
       hasApiKey: false,
@@ -53,7 +53,7 @@ describe("useSettings", () => {
       JSON.stringify({
         apiKey: "new-key",
         model: "gemini-3-flash-preview",
-        thinking: "Low",
+        thinking: "Max",
         temperature: 1.5,
         showThoughts: false,
       }),
@@ -64,7 +64,7 @@ describe("useSettings", () => {
     expect(result.current).toMatchObject({
       apiKey: "new-key",
       model: "gemini-3-flash-preview",
-      thinking: "Low",
+      thinking: "Max",
       temperature: 1.5,
       showThoughts: false,
       hasApiKey: true,
@@ -101,7 +101,7 @@ describe("useSettings", () => {
         apiKey: "",
         model: "qwen3.5",
         baseUrl: "http://localhost:11434",
-        thinking: "High",
+        thinking: "Max",
         temperature: 1.0,
         showThoughts: true,
       }),
@@ -109,9 +109,9 @@ describe("useSettings", () => {
 
     const { result } = renderHook(() => useSettings());
 
-    // Must be "High" on first render (not "Adaptive" default) so that
+    // Must be "Max" on first render (not "Default") so that
     // ChatScreen's useState(defaultThinking) captures the saved value
-    expect(result.current.thinking).toBe("High");
+    expect(result.current.thinking).toBe("Max");
   });
 
   it("updates apiKey when setApiKey is called", async () => {
@@ -138,10 +138,10 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     await act(() => {
-      result.current.setThinking("Low");
+      result.current.setThinking("Off");
     });
 
-    expect(result.current.thinking).toBe("Low");
+    expect(result.current.thinking).toBe("Off");
   });
 
   it("updates temperature when setTemperature is called", async () => {
@@ -170,7 +170,7 @@ describe("useSettings", () => {
     await act(() => {
       result.current.setApiKey("new-key");
       result.current.setModel("gemini-3-flash-preview");
-      result.current.setThinking("Medium");
+      result.current.setThinking("Max");
       result.current.setTemperature(0.8);
       result.current.setShowThoughts(false);
     });
@@ -188,7 +188,7 @@ describe("useSettings", () => {
     ).toMatchObject({
       apiKey: "new-key",
       model: "gemini-3-flash-preview",
-      thinking: "Medium",
+      thinking: "Max",
       temperature: 0.8,
       showThoughts: false,
     });
@@ -246,14 +246,14 @@ describe("useSettings", () => {
     await act(() => {
       result.current.setApiKey("gemini-key");
       result.current.setModel("gemini-2.5-pro");
-      result.current.setThinking("High");
+      result.current.setThinking("Max");
       result.current.setTemperature(0.5);
       result.current.setShowThoughts(false);
     });
 
     expect(result.current).toMatchObject({
       model: "gemini-2.5-pro",
-      thinking: "High",
+      thinking: "Max",
       temperature: 0.5,
       showThoughts: false,
     });
@@ -266,7 +266,7 @@ describe("useSettings", () => {
     expect(result.current).toMatchObject({
       apiKey: "",
       model: "gpt-5.4",
-      thinking: "Adaptive",
+      thinking: "Default",
       temperature: 1.0,
       showThoughts: true,
     });
@@ -275,7 +275,7 @@ describe("useSettings", () => {
     await act(() => {
       result.current.setApiKey("openai-key");
       result.current.setModel("gpt-5-mini");
-      result.current.setThinking("Low");
+      result.current.setThinking("Off");
       result.current.setTemperature(1.5);
       result.current.setShowThoughts(false);
     });
@@ -288,7 +288,7 @@ describe("useSettings", () => {
     expect(result.current).toMatchObject({
       apiKey: "gemini-key",
       model: "gemini-2.5-pro",
-      thinking: "High",
+      thinking: "Max",
       temperature: 0.5,
       showThoughts: false,
     });
@@ -301,7 +301,7 @@ describe("useSettings", () => {
     expect(result.current).toMatchObject({
       apiKey: "openai-key",
       model: "gpt-5-mini",
-      thinking: "Low",
+      thinking: "Off",
       temperature: 1.5,
       showThoughts: false,
     });
@@ -317,7 +317,7 @@ describe("useSettings", () => {
     await act(() => {
       result.current.setApiKey("gemini-key");
       result.current.setModel("gemini-2.5-pro");
-      result.current.setThinking("High");
+      result.current.setThinking("Max");
       result.current.setTemperature(0.5);
     });
 
@@ -327,7 +327,7 @@ describe("useSettings", () => {
     await act(() => {
       result.current.setApiKey("openai-key");
       result.current.setModel("gpt-5-mini");
-      result.current.setThinking("Low");
+      result.current.setThinking("Off");
       result.current.setTemperature(1.5);
     });
 
@@ -360,7 +360,7 @@ describe("useSettings", () => {
     ).toMatchObject({
       apiKey: "gemini-key",
       model: "gemini-2.5-pro",
-      thinking: "High",
+      thinking: "Max",
       temperature: 0.5,
     });
 
@@ -369,7 +369,7 @@ describe("useSettings", () => {
     ).toMatchObject({
       apiKey: "openai-key",
       model: "gpt-5-mini",
-      thinking: "Low",
+      thinking: "Off",
       temperature: 1.5,
     });
 
@@ -409,7 +409,7 @@ describe("useSettings", () => {
     expect(result2.current).toMatchObject({
       apiKey: "gemini-key",
       model: "gemini-2.5-pro",
-      thinking: "High",
+      thinking: "Max",
       temperature: 0.5,
     });
 
@@ -419,7 +419,7 @@ describe("useSettings", () => {
     expect(result2.current).toMatchObject({
       apiKey: "openai-key",
       model: "gpt-5-mini",
-      thinking: "Low",
+      thinking: "Off",
       temperature: 1.5,
     });
 
@@ -467,13 +467,13 @@ describe("useSettings", () => {
     // Set some non-default values
     await act(() => {
       result.current.setTemperature(0.5);
-      result.current.setThinking("Low");
+      result.current.setThinking("Off");
       result.current.setShowThoughts(false);
     });
 
     expect(result.current).toMatchObject({
       temperature: 0.5,
-      thinking: "Low",
+      thinking: "Off",
       showThoughts: false,
     });
 
@@ -484,7 +484,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       temperature: 1.0,
-      thinking: "Adaptive", // Default for gemini
+      thinking: "Default", // Default for gemini
       showThoughts: true,
     });
   });
@@ -555,17 +555,17 @@ describe("useSettings", () => {
   it("setProvider preserves thinking value when switching providers", async () => {
     const { result } = renderHook(() => useSettings());
 
-    // Set thinking to "High" for gemini
+    // Set thinking to "Max" for gemini
     await act(() => {
       result.current.setProvider("gemini");
-      result.current.setThinking("High");
+      result.current.setThinking("Max");
     });
-    expect(result.current.thinking).toBe("High");
+    expect(result.current.thinking).toBe("Max");
     // Switch to OpenAI - thinking should use OpenAI's saved setting (Default by default)
     await act(() => {
       result.current.setProvider("openai");
     });
-    expect(result.current.thinking).toBe("Adaptive"); // Default for OpenAI
+    expect(result.current.thinking).toBe("Default"); // Default for OpenAI
   });
 
   it("hasApiKey returns false when localStorage has invalid JSON", async () => {
