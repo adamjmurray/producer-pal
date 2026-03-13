@@ -66,10 +66,10 @@ export function ConversationPanel({
 }: ConversationPanelProps) {
   return (
     <div
-      className={`shrink-0 h-full overflow-hidden transition-[width,flex-basis,min-width] duration-200 ${isOpen ? "w-full sm:w-auto sm:grow sm:basis-60 sm:min-w-60" : "w-0 sm:w-auto sm:grow-0 sm:basis-0 sm:min-w-0"}`}
+      className={`shrink-0 h-full overflow-hidden transition-[width,flex-basis,min-width] duration-200 ${isOpen ? "w-full sm:w-auto sm:grow sm:basis-64 sm:min-w-64" : "w-0 sm:w-auto sm:grow-0 sm:basis-0 sm:min-w-0"}`}
     >
       <div
-        className={`w-full min-w-screen sm:min-w-60 h-full bg-zinc-200 dark:bg-zinc-900 border-r border-zinc-400 dark:border-zinc-700 shadow-[3px_0_10px_-2px_rgba(0,0,0,0.12)] dark:shadow-[3px_0_10px_-2px_rgba(0,0,0,0.4)] flex flex-col relative z-10 transition-transform duration-200 ${isOpen ? "" : "-translate-x-full"}`}
+        className={`w-full min-w-screen sm:min-w-64 h-full bg-zinc-200 dark:bg-zinc-900 border-r border-zinc-400 dark:border-zinc-700 shadow-[3px_0_10px_-2px_rgba(0,0,0,0.12)] dark:shadow-[3px_0_10px_-2px_rgba(0,0,0,0.4)] flex flex-col relative z-10 transition-transform duration-200 ${isOpen ? "" : "-translate-x-full"}`}
       >
         <PanelToolbar
           onNewConversation={onNewConversation}
@@ -121,10 +121,11 @@ function PanelToolbar({
     <div className="px-2 py-2 border-b border-zinc-300 dark:border-zinc-700 flex items-center gap-1.5">
       <button
         onClick={onNewConversation}
-        className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+        className="max-w-48 flex items-center justify-center gap-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap"
       >
         <NewConversationIcon /> New Conversation
       </button>
+      <div className="flex-1" />
       <button
         onClick={onExport}
         className="p-1.5 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
