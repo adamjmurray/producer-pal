@@ -96,7 +96,7 @@
     "@ai-sdk/mistral": "^3.0.24",
     "@ai-sdk/openai": "^3.0.41",
     "@modelcontextprotocol/sdk": "^1.27.1",
-    "@openrouter/ai-sdk-provider": "^2.3.0",
+    "@openrouter/ai-sdk-provider": "^2.3.1",
     "@tailwindcss/typography": "^0.5.19",
     "ai": "^6.0.116",
     "dompurify": "^3.3.3",
