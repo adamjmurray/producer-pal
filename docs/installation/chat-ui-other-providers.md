@@ -97,7 +97,7 @@ with the built-in chat UI instead of [LM Studio's native UI](./lm-studio).
    - **Serve on Local Network** - Enable this if running LM Studio on a
      different computer (allows other devices to connect)
 
-   ![LM Studio server settings](/lm-studio-server-settings.png)
+   ![LM Studio server settings](/img/lm-studio-server-settings.png)
 
 4. Start the LM Studio server (should say "Status: Running")
 5. In the Producer Pal Chat UI settings:
@@ -117,7 +117,7 @@ If the model responds with garbled text like `<|tool_call_start|>...` or says it
 can't connect to Ableton, the model doesn't support tools. Look for the hammer
 icon next to models:
 
-![LM Studio tool icon](/lm-studio-tool-icon.png)
+![LM Studio tool icon](/img/lm-studio-tool-icon.png)
 
 :::
 

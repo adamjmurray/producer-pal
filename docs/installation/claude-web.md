@@ -18,7 +18,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
+<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -34,7 +34,7 @@ cloudflared tunnel --url http://localhost:3350
 
 will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
-![Cloudflare web tunnel](/cloudflare-tunnel.png)
+![Cloudflare web tunnel](/img/cloudflare-tunnel.png)
 
 ### 3. Configure Claude Web App
 
@@ -44,23 +44,23 @@ will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
    (e.g. `https://abc-xyz.trycloudflare.com/mcp`):
 
-   ![Claude web connector setup](/claude-web-setup.png)
+   ![Claude web connector setup](/img/claude-web-setup.png)
 
 ### 4. Verify Installation
 
 You should see Producer Pal tools in Claude's "Connectors" menu (make sure it's
 enabled when starting a conversation):
 
-![Producer Pal tools in Claude web app](/claude-web-tool-list.png)
+![Producer Pal tools in Claude web app](/img/claude-web-tool-list.png)
 
 ### 5. Start Using Producer Pal
 
 1. Start a conversation with "connect to ableton"
 2. Allow Producer Pal tools to be used when Claude tries to use them:
 
-![Claude web tool permission prompt](/claude-web-permissions.png)
+![Claude web tool permission prompt](/img/claude-web-permissions.png)
 
-![Claude web successfully connected to Producer Pal](/claude-web-success.png)
+![Claude web successfully connected to Producer Pal](/img/claude-web-success.png)
 
 ## Troubleshooting
 

@@ -5,7 +5,7 @@ to AI by giving it an interface to the Live API.
 
 ## Main Tab
 
-<img src="/device-main-tab.png" alt="Main tab" width="500"/>
+<img src="/img/device-main-tab.png" alt="Main tab" width="500"/>
 
 The Main tab shows the connection status and provides quick access to common
 actions.
@@ -24,11 +24,11 @@ If you see "Producer Pal Error", click the three-dot menu in the upper right of
 the device, select "Open Max Window", scroll down if needed, and look for an
 error message.
 
-![Startup error example](/producer-pal-startup-error.png)
+![Startup error example](/img/producer-pal-startup-error.png)
 
 ## Context Tab
 
-<img src="/device-context-tab.png" alt="Context tab" width="500"/>
+<img src="/img/device-context-tab.png" alt="Context tab" width="500"/>
 
 Project memory helps AI understand your creative goals and preferences. Memory
 is saved with your Ableton Live Set file.
@@ -46,7 +46,7 @@ Example notes:
 
 ## Setup Tab
 
-<img src="/device-setup-tab.png" alt="Setup tab" width="500"/>
+<img src="/img/device-setup-tab.png" alt="Setup tab" width="500"/>
 
 ### Server
 

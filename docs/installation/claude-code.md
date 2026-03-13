@@ -19,7 +19,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
+<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -48,18 +48,18 @@ coding)
 
 Run `/mcp` in Claude Code to confirm the Producer Pal tools are available:
 
-![Producer Pal tools listed in Claude Code](/claude-code-tool-list.png)
+![Producer Pal tools listed in Claude Code](/img/claude-code-tool-list.png)
 
-![Producer Pal tools listed in Claude Code (continued)](/claude-code-tool-list2.png)
+![Producer Pal tools listed in Claude Code (continued)](/img/claude-code-tool-list2.png)
 
 ### 5. Start Using Producer Pal
 
 1. Start a conversation with "connect to ableton"
 2. Allow Producer Pal tools to be used when Claude tries to use them:
 
-![Claude Code tool permission prompt](/claude-code-permissions.png)
+![Claude Code tool permission prompt](/img/claude-code-permissions.png)
 
-![Claude Code successfully connected to Producer Pal](/claude-code-success.png)
+![Claude Code successfully connected to Producer Pal](/img/claude-code-success.png)
 
 ## Troubleshooting
 

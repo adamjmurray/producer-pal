@@ -3,7 +3,7 @@
 The built-in Chat UI provides a browser-based interface for chatting with AI
 directly from within Producer Pal.
 
-![Chat UI](/producer-pal-chat.png)
+![Chat UI](/img/producer-pal-chat.png)
 
 ## Getting Started
 
@@ -24,7 +24,7 @@ directly from within Producer Pal.
 
 ## Conversations
 
-![Conversation](/producer-pal-chat-conversation.png)
+![Conversation](/img/producer-pal-chat-conversation.png)
 
 During conversations, you'll see:
 
@@ -39,7 +39,7 @@ During conversations, you'll see:
 Some AI models output "thoughts". When they do, you can click "Thought about:"
 sections to see the AI's reasoning process:
 
-![Expandable thoughts](/producer-pal-chat-expandable-thoughts.png)
+![Expandable thoughts](/img/producer-pal-chat-expandable-thoughts.png)
 
 ## Message Input
 
@@ -62,7 +62,7 @@ For more information about how to configure specific AI providers, see the
 
 The Connection tab is where you choose and configure your AI provider and model:
 
-<img src="/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
 Configure your AI provider:
 
@@ -73,7 +73,7 @@ Configure your AI provider:
 
 #### Local AI settings (Ollama, LM Studio)
 
-<img src="/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
 
 Local models, such as those you can run with Ollama, do not require any API
 keys. Instead, they have a configurable URL.
@@ -101,7 +101,7 @@ recommended options in the model dropdown box. To use a different model, select
 "Other...". An additional text input appears where you can enter an arbitrary
 model id. Consult your AI provider for the models that are currently available.
 
-<img src="/producer-pal-chat-settings-connection-open-router-other-model.png" alt="OpenRouter settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-connection-open-router-other-model.png" alt="OpenRouter settings" width="500"/>
 
 #### Custom providers
 
@@ -112,13 +112,13 @@ provider's documentation to determine the correct setting.
 
 For example, one could use [groq.com](https://groq.com/) as follows:
 
-<img src="/producer-pal-chat-settings-custom-provider.png" alt="Custom provider" width="500"/>
+<img src="/img/producer-pal-chat-settings-custom-provider.png" alt="Custom provider" width="500"/>
 
 ### Behavior
 
 The behavior tab lets you control aspects of how the AI behaves:
 
-<img src="/producer-pal-chat-settings-behavior.png" alt="Behavior settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-behavior.png" alt="Behavior settings" width="500"/>
 
 - **Thinking** - Control AI thinking effort. The choices and availability of
   this option depend on the provider selected in
@@ -139,11 +139,11 @@ you want to prevent the AI from using a specific tool, you can disable it here.
 
 Consult [the Features page](/features) for more info on what each tool does.
 
-<img src="/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>
 
 ### Appearance
 
 The Appearance tab lets you choose between light mode or dark mode, or follow
 the system settings:
 
-<img src="/producer-pal-chat-settings-appearance.png" alt="Appearance settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-appearance.png" alt="Appearance settings" width="500"/>

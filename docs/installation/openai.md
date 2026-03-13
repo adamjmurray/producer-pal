@@ -33,7 +33,7 @@ and drag it to a MIDI track in Ableton Live.
 
 It should display "Producer Pal Running":
 
-<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
+<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 ## 3. Open the Chat UI
 

@@ -20,7 +20,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
+<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -36,7 +36,7 @@ cloudflared tunnel --url http://localhost:3350
 
 will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
-![Cloudflare web tunnel](/cloudflare-tunnel.png)
+![Cloudflare web tunnel](/img/cloudflare-tunnel.png)
 
 ### 3. Enable Developer Mode
 
@@ -44,7 +44,7 @@ Go to
 [ChatGPT → Settings → Apps & Connectors → Advanced](https://chatgpt.com/#settings/Connectors/Advanced)
 and enable Developer Mode (this option might not appear for free accounts):
 
-![ChatGPT developer mode settings](/chatgpt-setup.png)
+![ChatGPT developer mode settings](/img/chatgpt-setup.png)
 
 ### 4. Create Custom Connector
 
@@ -55,21 +55,21 @@ create a custom connector:
 - No authentication
 - Trust the app
 
-![ChatGPT custom connector setup](/chatgpt-setup2.png)
+![ChatGPT custom connector setup](/img/chatgpt-setup2.png)
 
 ### 5. Enable Tools in Conversation
 
 Explicitly enable the Producer Pal tools for each conversation where you want to
 use them:
 
-![Enabling Producer Pal tools in ChatGPT](/chatgpt-enable-tools.png)
+![Enabling Producer Pal tools in ChatGPT](/img/chatgpt-enable-tools.png)
 
 ### 6. Start Using Producer Pal
 
 Start a new chat with "connect to ableton with your producer pal tools" (note
 that ChatGPT tends to need more nudging than "connect to ableton"):
 
-![ChatGPT successfully connected to Producer Pal](/chatgpt-success.png)
+![ChatGPT successfully connected to Producer Pal](/img/chatgpt-success.png)
 
 ## Troubleshooting
 

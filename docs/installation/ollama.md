@@ -31,14 +31,14 @@ and drag it to a MIDI track in Ableton Live.
 
 It should display "Producer Pal Running":
 
-<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
+<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 ## 4. Enable Small Model Mode (Optional but Recommended)
 
 In [the Producer Pal "Setup" tab](/guide/device#setup-tab), enable **Small Model
 Mode**.
 
-<img src="/small-model-mode.png" alt="Small model mode setting" width="375"/>
+<img src="/img/small-model-mode.png" alt="Small model mode setting" width="375"/>
 
 This provides a smaller, simpler interface optimized for small/local language
 models.
@@ -48,7 +48,7 @@ models.
 In the Producer Pal device's Main tab, click "Open Chat UI". The built-in chat
 UI opens in a browser:
 
-![Chat UI](/producer-pal-chat.png)
+![Chat UI](/img/producer-pal-chat.png)
 
 ## 6. Configure Ollama
 
@@ -64,7 +64,7 @@ In the chat UI settings:
 
 Click "Save".
 
-<img src="/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
 
 ::: tip Ollama Model Aliases
 
@@ -79,7 +79,7 @@ alias. It won't re-download the model.
 
 Click "Quick Connect" and say "connect to ableton":
 
-![Producer Pal Chat UI conversation](/producer-pal-chat-conversation.png)
+![Producer Pal Chat UI conversation](/img/producer-pal-chat-conversation.png)
 
 ::: tip Local Model Limitations
 
