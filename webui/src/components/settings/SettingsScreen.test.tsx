@@ -143,6 +143,7 @@ describe("SettingsScreen", () => {
     hasUnsavedChanges: false,
     activeModel: null,
     activeProvider: null,
+    activeSmallModelMode: null,
   };
 
   describe("help link", () => {

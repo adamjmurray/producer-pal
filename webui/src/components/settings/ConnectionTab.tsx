@@ -7,6 +7,7 @@ import { type Provider } from "#webui/types/settings";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
 import { THINKING_LEVELS } from "./controls/thinking-levels";
+import { Tooltip } from "./controls/Tooltip";
 
 export const API_KEY_URLS: Record<string, string | undefined> = {
   anthropic: "https://console.anthropic.com/settings/keys",
@@ -167,6 +168,7 @@ export function ConnectionTab({
               </option>
             ))}
           </select>
+          <Tooltip text="Default for new conversations. Can be changed at any time during a chat using the in-chat toggle." />
         </div>
 
         <label className="flex items-center gap-2 text-sm cursor-pointer">

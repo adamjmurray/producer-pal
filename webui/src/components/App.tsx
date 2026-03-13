@@ -342,6 +342,7 @@ export function App() {
             hasUnsavedChanges={hasUnsavedChanges}
             activeModel={chat.activeModel}
             activeProvider={chat.activeProvider}
+            activeSmallModelMode={chat.activeSmallModelMode}
           />
         </div>
       )}

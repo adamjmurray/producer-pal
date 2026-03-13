@@ -119,13 +119,21 @@ export function ChatScreen({
   const latestVersion = useUpdateCheck();
 
   // Per-conversation thinking override (lifted from ChatInput so ChatStart can also use it).
-  // Syncs to activeThinking when a conversation is loaded/switched, or to defaultThinking
-  // (from settings) when starting fresh (activeThinking is null).
+  // Two separate effects so settings changes apply immediately even mid-conversation,
+  // while conversation switches always restore the locked level.
   const [thinking, setThinking] = useState(activeThinking ?? defaultThinking);
 
   useEffect(() => {
-    setThinking(activeThinking ?? defaultThinking);
-  }, [activeThinking, defaultThinking]);
+    // Settings change: always update the in-chat toggle immediately
+    setThinking(defaultThinking);
+  }, [defaultThinking]);
+
+  useEffect(() => {
+    // Conversation switch/restore: use the locked level when available
+    if (activeThinking != null) {
+      setThinking(activeThinking);
+    }
+  }, [activeThinking]);
 
   const currentOverrides: MessageOverrides = {
     thinking,

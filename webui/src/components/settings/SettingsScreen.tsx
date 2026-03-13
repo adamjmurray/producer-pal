@@ -51,6 +51,7 @@ interface SettingsScreenProps {
   hasUnsavedChanges: boolean;
   activeModel: string | null;
   activeProvider: Provider | null;
+  activeSmallModelMode: boolean | null;
 }
 
 const helpLinkClass =
@@ -89,6 +90,7 @@ const helpLinkClass =
  * @param props.shake - Whether to shake the dialog to indicate unsaved changes
  * @param props.onShakeEnd - Callback when shake animation ends
  * @param props.hasUnsavedChanges - Whether there are unsaved settings changes
+ * @param props.activeSmallModelMode - Locked small model mode for the active conversation
  * @returns Settings screen element
  */
 export function SettingsScreen(props: SettingsScreenProps) {
@@ -131,8 +133,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
         <LockedSettingsNotice
           activeModel={props.activeModel}
           activeProvider={props.activeProvider}
+          activeSmallModelMode={props.activeSmallModelMode}
           model={props.model}
           provider={props.provider}
+          smallModelMode={props.smallModelMode}
         />
 
         <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>
