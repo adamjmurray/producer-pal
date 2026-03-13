@@ -125,7 +125,7 @@
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
     "@vitest/coverage-v8": "^4.0.18",
-    "@vitest/eslint-plugin": "^1.6.10",
+    "@vitest/eslint-plugin": "^1.6.11",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.3",
     "eslint": "^9.39.4",
