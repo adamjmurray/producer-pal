@@ -115,7 +115,7 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
     const onFileSelected = async (file: File) => {
       try {
         const text = await file.text();
-        const { newCount, updatedCount, skippedCount } =
+        const { newCount, updatedCount, skippedCount, ignoredCount } =
           await importConversations(text);
 
         await refreshList();
@@ -125,6 +125,7 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
         if (newCount > 0) parts.push(`${newCount} new`);
         if (updatedCount > 0) parts.push(`${updatedCount} updated`);
         if (skippedCount > 0) parts.push(`${skippedCount} skipped`);
+        if (ignoredCount > 0) parts.push(`${ignoredCount} older ignored`);
 
         const total = newCount + updatedCount;
         const detail = parts.length > 0 ? ` (${parts.join(", ")})` : "";

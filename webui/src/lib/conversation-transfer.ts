@@ -56,15 +56,21 @@ export async function exportConversations(): Promise<{
   return { json: JSON.stringify(data, null, 2), count: all.length };
 }
 
+export interface ImportResult {
+  newCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  ignoredCount: number;
+}
+
 /**
  * Import conversations from a JSON string, merging into the existing database.
- * Matching IDs overwrite existing records; new IDs are inserted.
+ * Matching IDs overwrite existing records only if the imported version is newer.
+ * New IDs are inserted. Older imported versions are ignored.
  * @param json - JSON string in the export format
- * @returns Counts of new, updated, and skipped conversations
+ * @returns Counts of new, updated, skipped, and ignored conversations
  */
-export async function importConversations(
-  json: string,
-): Promise<{ newCount: number; updatedCount: number; skippedCount: number }> {
+export async function importConversations(json: string): Promise<ImportResult> {
   const data = JSON.parse(json) as Record<string, unknown>;
 
   if (!Array.isArray(data.conversations)) {
@@ -74,6 +80,7 @@ export async function importConversations(
   let newCount = 0;
   let updatedCount = 0;
   let skippedCount = 0;
+  let ignoredCount = 0;
 
   for (const raw of data.conversations as unknown[]) {
     const record = raw as Record<string, unknown>;
@@ -84,9 +91,15 @@ export async function importConversations(
     }
 
     try {
-      const existing = await loadConversation(record.id as string);
+      const normalized = normalizeRecord(record);
+      const existing = await loadConversation(normalized.id);
 
-      await saveConversation(normalizeRecord(record));
+      if (existing && existing.updatedAt >= normalized.updatedAt) {
+        ignoredCount++;
+        continue;
+      }
+
+      await saveConversation(normalized);
 
       if (existing) {
         updatedCount++;
@@ -98,7 +111,7 @@ export async function importConversations(
     }
   }
 
-  return { newCount, updatedCount, skippedCount };
+  return { newCount, updatedCount, skippedCount, ignoredCount };
 }
 
 // --- Helpers below main exports ---

@@ -72,10 +72,15 @@ describe("conversation-transfer", () => {
     expect(updatedCount).toBe(0);
   });
 
-  it("overwrites existing conversations on matching ID", async () => {
-    await saveConversation(makeRecord("x", "Original"));
+  it("overwrites existing conversations when imported version is newer", async () => {
+    const original = makeRecord("x", "Original");
+
+    original.updatedAt = 1000;
+    await saveConversation(original);
 
     const updated = makeRecord("x", "Updated");
+
+    updated.updatedAt = 2000;
     const data = { version: 1, conversations: [updated] };
 
     const { newCount, updatedCount } = await importConversations(
@@ -84,6 +89,45 @@ describe("conversation-transfer", () => {
 
     expect(newCount).toBe(0);
     expect(updatedCount).toBe(1);
+  });
+
+  it("ignores imported conversations older than local version", async () => {
+    const local = makeRecord("x", "Local");
+
+    local.updatedAt = 2000;
+    await saveConversation(local);
+
+    const older = makeRecord("x", "Older");
+
+    older.updatedAt = 1000;
+    const data = { version: 1, conversations: [older] };
+
+    const { newCount, updatedCount, ignoredCount } = await importConversations(
+      JSON.stringify(data),
+    );
+
+    expect(newCount).toBe(0);
+    expect(updatedCount).toBe(0);
+    expect(ignoredCount).toBe(1);
+  });
+
+  it("ignores imported conversations with same updatedAt as local", async () => {
+    const local = makeRecord("x", "Local");
+
+    local.updatedAt = 1000;
+    await saveConversation(local);
+
+    const same = makeRecord("x", "Same");
+
+    same.updatedAt = 1000;
+    const data = { version: 1, conversations: [same] };
+
+    const { updatedCount, ignoredCount } = await importConversations(
+      JSON.stringify(data),
+    );
+
+    expect(updatedCount).toBe(0);
+    expect(ignoredCount).toBe(1);
   });
 
   it("rejects invalid JSON structure", async () => {

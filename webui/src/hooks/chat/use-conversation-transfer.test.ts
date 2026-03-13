@@ -317,6 +317,7 @@ describe("useConversationTransfer", () => {
       newCount: 0,
       updatedCount: 0,
       skippedCount: 3,
+      ignoredCount: 0,
     });
     const file = new File(
       [JSON.stringify({ version: 1, conversations: [] })],
@@ -354,12 +355,17 @@ describe("useConversationTransfer", () => {
     // Pre-save a record so it counts as "updated" on import
     const existing = makeRecord("existing-1");
 
+    existing.updatedAt = 1000;
     await saveConversation(existing);
+
+    const newerVersion = makeRecord("existing-1");
+
+    newerVersion.updatedAt = 2000;
 
     const data = {
       version: 1,
       conversations: [
-        existing, // will be updated
+        newerVersion, // will be updated (newer than local)
         makeRecord("new-1"), // will be new
         { id: 123, messages: "invalid" }, // will be skipped (invalid)
       ],
@@ -372,6 +378,24 @@ describe("useConversationTransfer", () => {
     expect(result.current.notification?.message).toContain("new");
     expect(result.current.notification?.message).toContain("updated");
     expect(result.current.notification?.message).toContain("skipped");
+  });
+
+  it("import shows ignored count for older conversations", async () => {
+    vi.spyOn(transferModule, "importConversations").mockResolvedValue({
+      newCount: 1,
+      updatedCount: 0,
+      skippedCount: 0,
+      ignoredCount: 2,
+    });
+    const file = new File(
+      [JSON.stringify({ version: 1, conversations: [] })],
+      "t.json",
+    );
+
+    const { result } = await renderAndImport(file);
+
+    expect(result.current.notification?.message).toContain("1 new");
+    expect(result.current.notification?.message).toContain("2 older ignored");
   });
 
   it("export shows unknown error for non-Error throws", async () => {
