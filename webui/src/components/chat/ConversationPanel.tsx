@@ -3,14 +3,12 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState } from "preact/hooks";
 import {
-  DisclosureChevron,
   ExportIcon,
   ImportIcon,
   NewConversationIcon,
 } from "#webui/components/chat/controls/header/HeaderIcons";
-import { ConversationItem } from "#webui/components/chat/ConversationItem";
+import { ConversationList } from "#webui/components/chat/ConversationList";
 import {
   TransferNotification,
   type TransferNotificationData,
@@ -66,69 +64,18 @@ export function ConversationPanel({
   notification,
   onDismissNotification,
 }: ConversationPanelProps) {
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState("");
-  const [bookmarksCollapsed, setBookmarksCollapsed] = useState(false);
-  const [allCollapsed, setAllCollapsed] = useState(false);
-  const bookmarked = conversations.filter((c) => c.bookmarked);
-
-  const renderItems = (items: ConversationSummary[]) =>
-    items.map((conv) => (
-      <ConversationItem
-        key={conv.id}
-        conv={conv}
-        isActive={conv.id === activeConversationId}
-        isEditing={conv.id === editingId}
-        editValue={editValue}
-        onSelect={onSelect}
-        onDelete={onDelete}
-        onExport={onExportItem}
-        onToggleBookmark={onToggleBookmark}
-        onEditStart={() => {
-          setEditingId(conv.id);
-          setEditValue(conv.title ?? "");
-        }}
-        onEditChange={setEditValue}
-        onEditCommit={() => {
-          const trimmed = editValue.trim();
-
-          onRename(conv.id, trimmed || null);
-          setEditingId(null);
-        }}
-        onEditCancel={() => setEditingId(null)}
-      />
-    ));
-
   return (
     <div
-      className={`shrink-0 h-full overflow-hidden transition-[width] duration-200 ${isOpen ? "w-full md:w-72" : "w-0"}`}
+      className={`shrink-0 h-full overflow-hidden transition-[width,flex-basis,min-width] duration-200 ${isOpen ? "w-full sm:w-auto sm:grow sm:basis-60 sm:min-w-60" : "w-0 sm:w-auto sm:grow-0 sm:basis-0 sm:min-w-0"}`}
     >
-      <div className="w-full md:w-72 h-full bg-zinc-200 dark:bg-zinc-900 border-r border-zinc-400 dark:border-zinc-700 shadow-[3px_0_10px_-2px_rgba(0,0,0,0.12)] dark:shadow-[3px_0_10px_-2px_rgba(0,0,0,0.4)] flex flex-col relative z-10">
-        {/* New conversation + export/import */}
-        <div className="px-2 py-2 border-b border-zinc-300 dark:border-zinc-700 flex items-center gap-1.5">
-          <button
-            onClick={onNewConversation}
-            className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            <NewConversationIcon /> New Conversation
-          </button>
-          <button
-            onClick={onExport}
-            className="p-1.5 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
-            aria-label="Export conversations"
-            title="Export conversations"
-          >
-            <ExportIcon />
-          </button>
-          <button
-            onClick={onImport}
-            className="p-1.5 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
-            aria-label="Import conversations"
-            title="Import conversations"
-          >
-            <ImportIcon />
-          </button>
-        </div>
+      <div
+        className={`w-full min-w-screen sm:min-w-60 h-full bg-zinc-200 dark:bg-zinc-900 border-r border-zinc-400 dark:border-zinc-700 shadow-[3px_0_10px_-2px_rgba(0,0,0,0.12)] dark:shadow-[3px_0_10px_-2px_rgba(0,0,0,0.4)] flex flex-col relative z-10 transition-transform duration-200 ${isOpen ? "" : "-translate-x-full"}`}
+      >
+        <PanelToolbar
+          onNewConversation={onNewConversation}
+          onExport={onExport}
+          onImport={onImport}
+        />
 
         {notification && (
           <TransferNotification
@@ -137,36 +84,15 @@ export function ConversationPanel({
           />
         )}
 
-        {/* Conversation list */}
-        <div className="flex-1 overflow-y-auto">
-          {conversations.length === 0 ? (
-            <p className="px-4 py-3 text-xs text-zinc-500 dark:text-zinc-400">
-              No conversations yet
-            </p>
-          ) : (
-            <>
-              {bookmarked.length > 0 && (
-                <>
-                  <SectionHeader
-                    label="Bookmarks"
-                    count={bookmarked.length}
-                    collapsed={bookmarksCollapsed}
-                    onToggle={() => setBookmarksCollapsed(!bookmarksCollapsed)}
-                  />
-                  {!bookmarksCollapsed && renderItems(bookmarked)}
-                </>
-              )}
-
-              <SectionHeader
-                label="All Conversations"
-                count={conversations.length}
-                collapsed={allCollapsed}
-                onToggle={() => setAllCollapsed(!allCollapsed)}
-              />
-              {!allCollapsed && renderItems(conversations)}
-            </>
-          )}
-        </div>
+        <ConversationList
+          conversations={conversations}
+          activeConversationId={activeConversationId}
+          onSelect={onSelect}
+          onDelete={onDelete}
+          onExportItem={onExportItem}
+          onRename={onRename}
+          onToggleBookmark={onToggleBookmark}
+        />
       </div>
     </div>
   );
@@ -175,36 +101,46 @@ export function ConversationPanel({
 // --- Helpers below main export ---
 
 /**
- * Collapsible section header for conversation sublists.
+ * Toolbar with new conversation, export, and import buttons.
  * @param props - Component props
- * @param props.label - Section label text
- * @param props.count - Number of conversations in this section
- * @param props.collapsed - Whether the section is collapsed
- * @param props.onToggle - Toggle collapse callback
- * @returns Section header button element
+ * @param props.onNewConversation - Callback to start a new conversation
+ * @param props.onExport - Callback to export conversations
+ * @param props.onImport - Callback to import conversations
+ * @returns Toolbar component
  */
-function SectionHeader({
-  label,
-  count,
-  collapsed,
-  onToggle,
+function PanelToolbar({
+  onNewConversation,
+  onExport,
+  onImport,
 }: {
-  label: string;
-  count: number;
-  collapsed: boolean;
-  onToggle: () => void;
+  onNewConversation: () => void;
+  onExport: () => void;
+  onImport: () => void;
 }) {
   return (
-    <button
-      onClick={onToggle}
-      className="w-full px-4 py-1.5 border-b border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 flex items-center gap-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
-    >
-      <span className={`transition-transform ${collapsed ? "" : "rotate-90"}`}>
-        <DisclosureChevron />
-      </span>
-      <span className="text-[10px] text-zinc-600 dark:text-zinc-300 uppercase tracking-wide">
-        {label} ({count})
-      </span>
-    </button>
+    <div className="px-2 py-2 border-b border-zinc-300 dark:border-zinc-700 flex items-center gap-1.5">
+      <button
+        onClick={onNewConversation}
+        className="flex-1 flex items-center justify-center gap-1 text-xs px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+      >
+        <NewConversationIcon /> New Conversation
+      </button>
+      <button
+        onClick={onExport}
+        className="p-1.5 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
+        aria-label="Export conversations"
+        title="Export conversations"
+      >
+        <ExportIcon />
+      </button>
+      <button
+        onClick={onImport}
+        className="p-1.5 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors rounded hover:bg-zinc-200 dark:hover:bg-zinc-800"
+        aria-label="Import conversations"
+        title="Import conversations"
+      >
+        <ImportIcon />
+      </button>
+    </div>
   );
 }
