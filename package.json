@@ -124,7 +124,7 @@
     "@types/node": "^25.5.0",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.0",
     "@vitest/eslint-plugin": "^1.6.11",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.3",
@@ -138,7 +138,7 @@
     "eslint-plugin-sonarjs": "^4.0.2",
     "eslint-plugin-unicorn": "^63.0.0",
     "fake-indexeddb": "^6.2.5",
-    "happy-dom": "^20.8.3",
+    "happy-dom": "^20.8.4",
     "jscpd": "^4.0.8",
     "peggy": "^5.1.0",
     "prettier": "^3.8.1",
@@ -149,6 +149,6 @@
     "vite": "^7.3.1",
     "vite-plugin-singlefile": "^2.3.0",
     "vitepress": "^1.6.4",
-    "vitest": "^4.0.17"
+    "vitest": "^4.1.0"
   }
 }

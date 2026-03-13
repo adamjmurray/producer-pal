@@ -39,7 +39,7 @@ describe("BarBeatScript Parser - parser features", () => {
     it("formats syntax errors with source context", () => {
       expect(() =>
         parser.parse("1|1 X3", { grammarSource: "test.txt" }),
-      ).toThrowError(
+      ).toThrow(
         expect.objectContaining({
           name: "SyntaxError",
           location: expect.objectContaining({
