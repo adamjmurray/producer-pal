@@ -176,7 +176,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         smallModelMode: smallModelMode ?? null,
       }),
     )
-    .sort((a, b) => b.createdAt - a.createdAt);
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 /**

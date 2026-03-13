@@ -86,10 +86,10 @@ describe("conversation-db", () => {
     expect(loaded?.updatedAt).toBe(updated.updatedAt);
   });
 
-  it("lists conversations sorted by createdAt descending", async () => {
-    const older = createRecord({ createdAt: 1000 });
-    const newer = createRecord({ createdAt: 2000 });
-    const middle = createRecord({ createdAt: 1500 });
+  it("lists conversations sorted by updatedAt descending", async () => {
+    const older = createRecord({ updatedAt: 1000 });
+    const newer = createRecord({ updatedAt: 2000 });
+    const middle = createRecord({ updatedAt: 1500 });
 
     await saveConversation(older);
     await saveConversation(newer);
@@ -246,10 +246,10 @@ describe("conversation-db", () => {
     expect(list[0]?.modelLabel).toBe("Test Model Label");
   });
 
-  it("sorts all conversations by createdAt desc regardless of bookmark", async () => {
-    const oldest = createRecord({ createdAt: 1000 });
-    const middle = createRecord({ createdAt: 2000 });
-    const newest = createRecord({ createdAt: 3000 });
+  it("sorts all conversations by updatedAt desc regardless of bookmark", async () => {
+    const oldest = createRecord({ updatedAt: 1000 });
+    const middle = createRecord({ updatedAt: 2000 });
+    const newest = createRecord({ updatedAt: 3000 });
 
     await saveConversation(oldest);
     await saveConversation(middle);

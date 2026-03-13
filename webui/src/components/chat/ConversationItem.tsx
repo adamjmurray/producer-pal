@@ -64,7 +64,7 @@ export function ConversationItem({
 }: ConversationItemProps) {
   const displayTitle =
     conv.title ??
-    `${formatTimestampDate(conv.createdAt)}, ${formatTimestampTime(conv.createdAt)}`;
+    `${formatTimestampDate(conv.updatedAt)}, ${formatTimestampTime(conv.updatedAt)}`;
 
   return (
     <button
@@ -233,8 +233,8 @@ function ConversationMeta({ conv }: { conv: ConversationSummary }) {
   return (
     <div className="w-full text-left px-4 pt-0.5 pb-2 flex justify-between gap-2">
       <div className="text-[10px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
-        {formatTimestampDate(conv.createdAt)},{" "}
-        {formatTimestampTime(conv.createdAt)}
+        {formatTimestampDate(conv.updatedAt)},{" "}
+        {formatTimestampTime(conv.updatedAt)}
       </div>
       {conv.model && (
         <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate text-right">
