@@ -29,11 +29,28 @@ vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
   StreamableHTTPClientTransport: vi.fn(),
 }));
 
+const mockIsViteDevServer = vi.fn<() => boolean>(() => false);
+const mockDetectCorsBlock = vi.fn<(url: string) => Promise<boolean>>(() =>
+  Promise.resolve(false),
+);
+
+vi.mock(import("#webui/utils/mcp-url"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return {
+    ...actual,
+    isViteDevServer: () => mockIsViteDevServer(),
+    detectCorsBlock: (url: string) => mockDetectCorsBlock(url),
+  };
+});
+
 import { useMcpConnection } from "./use-mcp-connection";
 
 describe("useMcpConnection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockIsViteDevServer.mockReturnValue(false);
+    mockDetectCorsBlock.mockResolvedValue(false);
     mockConnect.mockResolvedValue(undefined);
     mockClose.mockResolvedValue(undefined);
     mockListTools.mockResolvedValue({
@@ -161,5 +178,41 @@ describe("useMcpConnection", () => {
       expect(result.current.mcpError).toBe("listTools failed");
       expect(result.current.mcpTools).toBe(null);
     });
+  });
+
+  it("shows CORS hint when on Vite dev server and server is reachable", async () => {
+    mockConnect.mockRejectedValue(new Error("Failed to fetch"));
+    mockIsViteDevServer.mockReturnValue(true);
+    mockDetectCorsBlock.mockResolvedValue(true);
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("error");
+      expect(result.current.mcpError).toContain("Rebuild in dev mode");
+    });
+  });
+
+  it("shows generic error when on Vite dev server but server is unreachable", async () => {
+    mockConnect.mockRejectedValue(new Error("Failed to fetch"));
+    mockIsViteDevServer.mockReturnValue(true);
+    mockDetectCorsBlock.mockResolvedValue(false);
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("error");
+      expect(result.current.mcpError).toBe("Failed to fetch");
+    });
+  });
+
+  it("does not check for CORS when not on Vite dev server", async () => {
+    mockConnect.mockRejectedValue(new Error("Connection failed"));
+    mockIsViteDevServer.mockReturnValue(false);
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("error");
+      expect(result.current.mcpError).toBe("Connection failed");
+    });
+    expect(mockDetectCorsBlock).not.toHaveBeenCalled();
   });
 });

@@ -6,7 +6,11 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { useCallback, useEffect, useState } from "preact/hooks";
-import { getMcpUrl } from "#webui/utils/mcp-url";
+import {
+  detectCorsBlock,
+  getMcpUrl,
+  isViteDevServer,
+} from "#webui/utils/mcp-url";
 
 export type McpStatus = "connected" | "connecting" | "error";
 
@@ -36,8 +40,10 @@ export function useMcpConnection(): UseMcpConnectionReturn {
     setMcpError(null);
     setMcpTools(null);
 
+    const mcpUrl = getMcpUrl();
+
     try {
-      const transport = new StreamableHTTPClientTransport(new URL(getMcpUrl()));
+      const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
       const client = new Client({
         name: "producer-pal-chat-ui-test",
         version: "1.0.0",
@@ -57,7 +63,15 @@ export function useMcpConnection(): UseMcpConnectionReturn {
       setMcpStatus("connected");
     } catch (error: unknown) {
       setMcpStatus("error");
-      setMcpError(error instanceof Error ? error.message : "Unknown error");
+      const message = error instanceof Error ? error.message : "Unknown error";
+
+      if (isViteDevServer() && (await detectCorsBlock(mcpUrl))) {
+        setMcpError(
+          "MCP server is running but blocking cross-origin requests. Rebuild in dev mode.",
+        );
+      } else {
+        setMcpError(message);
+      }
     }
   }, []);
 
