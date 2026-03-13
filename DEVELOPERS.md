@@ -51,15 +51,16 @@ Requires [Node.js](https://nodejs.org) (recommended v24 or higher)
 
 1. Clone this repository
 2. `npm install`
-3. `npm run build` (for production) or `npm run build:all` (for development with
-   debugging tools)
+3. `npm run build` (for production) or `npm run build:debug` (for development
+   with debugging tools)
 4. Add the `max-for-live-device/Producer_Pal.amxd` Max for Live device to a MIDI
    track in Ableton Live
 5. Drag and drop `claude-desktop-extension/Producer_Pal.mcpb` to Claude Desktop
    → Settings → Extension
 
-**Note**: For development and testing, use `npm run build:all` to include
-debugging tools like `ppal-raw-live-api`.
+**Note**: For development and testing, use `npm run build:debug` to include
+debugging tools like `ppal-raw-live-api`. Use `npm run build:dev` for a normal
+build with CORS enabled (for `npm run ui:dev`).
 
 ## Core Development Scripts
 

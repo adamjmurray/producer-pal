@@ -301,7 +301,8 @@ npm run build     # Includes UI build
 **Development workflow:**
 
 - UI only: `npm run ui:dev` for hot reload at localhost:5173
-- Full-stack: Run `npm run dev` + `npm run ui:dev` in separate terminals
+- Full-stack: Run `npm run dev` (or `npm run build:dev`) + `npm run ui:dev` in
+  separate terminals
 - Tests colocated with source (`.test.ts` / `.test.tsx`), run with `npm test`
 - See `DEVELOPERS.md` for detailed workflow scenarios
 

@@ -8,7 +8,7 @@ codebase is written entirely in TypeScript.
 
 ```bash
 # Build with all tools (use this for development/testing!)
-npm run build:all
+npm run build:debug
 
 # Code quality checks
 npm run fix   # Auto-fix formatting and linting issues
@@ -95,7 +95,7 @@ web UI architecture.
 - **No barrel files**: Do not create index.ts or other files that only re-export
   from other modules. Import directly from the source file instead.
 
-- **Testing builds**: Always use `npm run build:all` for development (includes
+- **Testing builds**: Always use `npm run build:debug` for development (includes
   debugging tools like `ppal-raw-live-api`)
 
 - **Zod limitations**: Use only primitive types and enums in tool input schemas.

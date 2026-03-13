@@ -172,7 +172,7 @@ Use the mock registry (`src/test/mocks/mock-registry.ts`) for LiveAPI tests:
 
 ## Builds
 
-- Dev: `npm run build:all` (includes debugging tools)
+- Dev: `npm run build:debug` (includes debugging tools)
 - Prod: `npm run build` (excludes debugging)
 
 ## Design
