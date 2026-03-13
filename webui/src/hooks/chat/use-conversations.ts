@@ -6,7 +6,9 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
+  type ActiveMeta,
   type ActiveRefs,
+  DEFAULT_META,
   buildLockedSettings,
   buildSaveRecord,
   getHashConversationId,
@@ -87,34 +89,27 @@ export function useConversations({
     string | null
   >(() => getHashConversationId());
   const activeIdRef = useRef(activeConversationId);
-  const activeTitleRef = useRef<string | null>(null);
-  const activeCreatedAtRef = useRef<number | null>(null);
-  const activeBookmarkedRef = useRef(false);
-  const activeModelRef = useRef<string | null>(null);
-  const activeProviderRef = useRef<Provider | null>(null);
-  const activeThinkingRef = useRef<string | null>(null);
-  const activeTemperatureRef = useRef<number | null>(null);
-  const activeShowThoughtsRef = useRef<boolean | null>(null);
-  const activeSmallModelModeRef = useRef<boolean | null>(null);
+  const activeMetaRef = useRef<ActiveMeta | null>(null);
   const programmaticHashRef = useRef(false);
 
   useEffect(() => {
     activeIdRef.current = activeConversationId;
   }, [activeConversationId]);
 
-  // Keep active refs in sync with props from useChat
+  // Keep active meta in sync with props from useChat
   useEffect(() => {
-    if (activeModelProp != null) activeModelRef.current = activeModelProp;
-    if (activeProviderProp != null)
-      activeProviderRef.current = activeProviderProp;
-    if (activeThinkingProp != null)
-      activeThinkingRef.current = activeThinkingProp;
-    if (activeTemperatureProp != null)
-      activeTemperatureRef.current = activeTemperatureProp;
+    activeMetaRef.current ??= { ...DEFAULT_META };
+
+    const meta = activeMetaRef.current;
+
+    if (activeModelProp != null) meta.model = activeModelProp;
+    if (activeProviderProp != null) meta.provider = activeProviderProp;
+    if (activeThinkingProp != null) meta.thinking = activeThinkingProp;
+    if (activeTemperatureProp != null) meta.temperature = activeTemperatureProp;
     if (activeShowThoughtsProp != null)
-      activeShowThoughtsRef.current = activeShowThoughtsProp;
+      meta.showThoughts = activeShowThoughtsProp;
     if (activeSmallModelModeProp != null)
-      activeSmallModelModeRef.current = activeSmallModelModeProp;
+      meta.smallModelMode = activeSmallModelModeProp;
   }, [
     activeModelProp,
     activeProviderProp,
@@ -140,52 +135,38 @@ export function useConversations({
   const clearActiveId = useCallback(() => {
     setActiveConversationId(null);
     activeIdRef.current = null;
-    activeTitleRef.current = null;
-    activeCreatedAtRef.current = null;
-    activeBookmarkedRef.current = false;
-    activeModelRef.current = null;
-    activeProviderRef.current = null;
-    activeThinkingRef.current = null;
-    activeTemperatureRef.current = null;
-    activeShowThoughtsRef.current = null;
-    activeSmallModelModeRef.current = null;
+    activeMetaRef.current = null;
     // No programmaticHashRef here — setLocationHash(null) uses replaceState
     // which doesn't fire hashchange, so no guard is needed
     setLocationHash(null);
   }, []);
 
   /**
-   * Sync all active refs from a loaded conversation record.
+   * Sync active metadata from a loaded conversation record.
    * @param record - Conversation record to sync from
    */
-  const syncActiveRefs = (record: ConversationRecord) => {
-    activeTitleRef.current = record.title;
-    activeCreatedAtRef.current = record.createdAt;
-    activeBookmarkedRef.current = record.bookmarked;
-    activeModelRef.current = record.model;
-    activeProviderRef.current = record.provider as Provider | null;
-    activeThinkingRef.current = record.thinking;
-    activeTemperatureRef.current = record.temperature;
-    activeShowThoughtsRef.current = record.showThoughts;
-    activeSmallModelModeRef.current = record.smallModelMode ?? null;
+  const syncActiveMeta = (record: ConversationRecord) => {
+    activeMetaRef.current = {
+      title: record.title,
+      createdAt: record.createdAt,
+      bookmarked: record.bookmarked,
+      model: record.model,
+      provider: record.provider as Provider | null,
+      thinking: record.thinking,
+      temperature: record.temperature,
+      showThoughts: record.showThoughts,
+      smallModelMode: record.smallModelMode ?? null,
+    };
   };
 
   /**
-   * Snapshot active refs for save record construction.
+   * Snapshot active metadata for save record construction.
    * @param id - Conversation ID
    * @returns Active refs snapshot
    */
   const getActiveRefs = (id: string): ActiveRefs => ({
     id,
-    title: activeTitleRef.current,
-    createdAt: activeCreatedAtRef.current,
-    bookmarked: activeBookmarkedRef.current,
-    model: activeModelRef.current,
-    provider: activeProviderRef.current,
-    thinking: activeThinkingRef.current,
-    temperature: activeTemperatureRef.current,
-    showThoughts: activeShowThoughtsRef.current,
-    smallModelMode: activeSmallModelModeRef.current,
+    ...(activeMetaRef.current ?? DEFAULT_META),
   });
 
   // Load conversation from URL hash and conversation list on mount
@@ -200,7 +181,7 @@ export function useConversations({
         if (record && record.messages.length > 0) {
           setActiveId(hashId);
           restoreChatHistory(record.messages, buildLockedSettings(record));
-          syncActiveRefs(record);
+          syncActiveMeta(record);
         } else {
           // Hash ID no longer exists in DB
           clearActiveId();
@@ -225,7 +206,7 @@ export function useConversations({
     const existing = isNew ? undefined : await loadConversation(id);
     const record = buildSaveRecord(getActiveRefs(id), existing, chatHistory);
 
-    syncActiveRefs(record);
+    syncActiveMeta(record);
 
     const result = await saveConversation(record);
 
@@ -242,17 +223,22 @@ export function useConversations({
 
       const record = await loadConversation(id);
 
-      if (!record) return;
+      if (!record) {
+        clearActiveId();
+
+        return;
+      }
 
       clearConversation();
       restoreChatHistory(record.messages, buildLockedSettings(record));
       setActiveId(id);
-      syncActiveRefs(record);
+      syncActiveMeta(record);
     },
     [
       getChatHistory,
       saveCurrentConversation,
       clearConversation,
+      clearActiveId,
       restoreChatHistory,
       setActiveId,
     ],
@@ -290,8 +276,8 @@ export function useConversations({
     async (id: string, title: string | null) => {
       await dbRenameConversation(id, title);
 
-      if (id === activeIdRef.current) {
-        activeTitleRef.current = title;
+      if (id === activeIdRef.current && activeMetaRef.current) {
+        activeMetaRef.current.title = title;
       }
 
       await refreshList();
@@ -309,8 +295,8 @@ export function useConversations({
 
       await setBookmark(id, newValue);
 
-      if (id === activeIdRef.current) {
-        activeBookmarkedRef.current = newValue;
+      if (id === activeIdRef.current && activeMetaRef.current) {
+        activeMetaRef.current.bookmarked = newValue;
       }
 
       await refreshList();

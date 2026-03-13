@@ -8,9 +8,8 @@ import { getModelName } from "#webui/lib/config";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
 
-/** Ref snapshot for building a save record */
-export interface ActiveRefs {
-  id: string;
+/** Mutable metadata for the active conversation (excludes ID which is tracked separately) */
+export interface ActiveMeta {
   title: string | null;
   createdAt: number | null;
   bookmarked: boolean;
@@ -20,6 +19,23 @@ export interface ActiveRefs {
   temperature: number | null;
   showThoughts: boolean | null;
   smallModelMode: boolean | null;
+}
+
+export const DEFAULT_META: ActiveMeta = {
+  title: null,
+  createdAt: null,
+  bookmarked: false,
+  model: null,
+  provider: null,
+  thinking: null,
+  temperature: null,
+  showThoughts: null,
+  smallModelMode: null,
+};
+
+/** Ref snapshot for building a save record */
+export interface ActiveRefs extends ActiveMeta {
+  id: string;
 }
 
 /**
