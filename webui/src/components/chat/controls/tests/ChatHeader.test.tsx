@@ -9,21 +9,35 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ChatHeader } from "#webui/components/chat/controls/ChatHeader";
+import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
 import { VersionDisplay } from "#webui/components/chat/controls/header/VersionDisplay";
+
+const defaultHeaderInfo: HeaderInfo = {
+  activeModel: null,
+  activeProvider: null,
+  model: "gemini-3.1-pro-preview",
+  provider: "gemini",
+  enabledToolsCount: 20,
+  totalToolsCount: 20,
+  smallModelMode: false,
+  defaultSmallModelMode: false,
+  showHelpLinks: true,
+};
+
+/**
+ * Build headerInfo with optional overrides merged into defaults.
+ * @param overrides - partial HeaderInfo fields to override
+ * @returns merged HeaderInfo object
+ */
+function hi(overrides?: Partial<HeaderInfo>): HeaderInfo {
+  return { ...defaultHeaderInfo, ...overrides };
+}
 
 describe("ChatHeader", () => {
   const defaultProps = {
+    headerInfo: defaultHeaderInfo,
     mcpStatus: "connected" as const,
-    activeModel: null,
-    activeProvider: null,
-    model: "gemini-3.1-pro-preview",
-    provider: "gemini" as const,
-    enabledToolsCount: 20,
-    totalToolsCount: 20,
-    smallModelMode: false,
-    defaultSmallModelMode: false,
     isHistoryOpen: false,
-    showHelpLinks: true,
     latestVersion: null,
     onOpenSettings: vi.fn(),
     onOpenToolsSettings: vi.fn(),
@@ -87,7 +101,9 @@ describe("ChatHeader", () => {
 
   describe("activeModel display", () => {
     it("shows fallback model when activeModel is null", () => {
-      render(<ChatHeader {...defaultProps} activeModel={null} />);
+      render(
+        <ChatHeader {...defaultProps} headerInfo={hi({ activeModel: null })} />,
+      );
       // Falls back to model prop from settings
       expect(screen.getByText(/Google \|/)).toBeDefined();
       expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
@@ -97,8 +113,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-3.1-pro-preview"
-          activeProvider="gemini"
+          headerInfo={hi({
+            activeModel: "gemini-3.1-pro-preview",
+            activeProvider: "gemini",
+          })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
@@ -109,8 +127,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-3.1-flash-lite-preview"
-          activeProvider="gemini"
+          headerInfo={hi({
+            activeModel: "gemini-3.1-flash-lite-preview",
+            activeProvider: "gemini",
+          })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
@@ -121,8 +141,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-3-flash-preview"
-          activeProvider="gemini"
+          headerInfo={hi({
+            activeModel: "gemini-3-flash-preview",
+            activeProvider: "gemini",
+          })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
@@ -133,8 +155,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="unknown-model"
-          activeProvider="openai"
+          headerInfo={hi({
+            activeModel: "unknown-model",
+            activeProvider: "openai",
+          })}
         />,
       );
       expect(screen.getByText(/OpenAI \|/)).toBeDefined();
@@ -145,8 +169,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-3.1-pro-preview"
-          activeProvider={null}
+          headerInfo={hi({
+            activeModel: "gemini-3.1-pro-preview",
+            activeProvider: null,
+          })}
         />,
       );
       // Falls back to provider prop from settings
@@ -160,8 +186,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          enabledToolsCount={20}
-          totalToolsCount={20}
+          headerInfo={hi({ enabledToolsCount: 20, totalToolsCount: 20 })}
         />,
       );
       expect(screen.getByText("20/20 tools")).toBeDefined();
@@ -171,8 +196,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          enabledToolsCount={15}
-          totalToolsCount={20}
+          headerInfo={hi({ enabledToolsCount: 15, totalToolsCount: 20 })}
         />,
       );
       expect(screen.getByText("15/20 tools")).toBeDefined();
@@ -182,8 +206,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          enabledToolsCount={0}
-          totalToolsCount={20}
+          headerInfo={hi({ enabledToolsCount: 0, totalToolsCount: 20 })}
         />,
       );
       expect(screen.getByText("0/20 tools")).toBeDefined();
@@ -193,8 +216,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          enabledToolsCount={20}
-          totalToolsCount={20}
+          headerInfo={hi({ enabledToolsCount: 20, totalToolsCount: 20 })}
         />,
       );
       expect(screen.getByTitle("20/20 tools enabled")).toBeDefined();
@@ -204,8 +226,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          enabledToolsCount={15}
-          totalToolsCount={20}
+          headerInfo={hi({ enabledToolsCount: 15, totalToolsCount: 20 })}
         />,
       );
       const indicator = screen.getByTitle("15/20 tools enabled");
@@ -236,8 +257,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          enabledToolsCount={15}
-          totalToolsCount={20}
+          headerInfo={hi({ enabledToolsCount: 15, totalToolsCount: 20 })}
           onOpenToolsSettings={onOpenToolsSettings}
         />,
       );
@@ -255,7 +275,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          smallModelMode={true}
+          headerInfo={hi({ smallModelMode: true })}
           onOpenConnectionSettings={onOpenConnectionSettings}
         />,
       );
@@ -275,10 +295,12 @@ describe("ChatHeader", () => {
         <ChatHeader
           {...defaultProps}
           mcpStatus="connected"
-          activeModel="gemini-3.1-pro-preview"
-          activeProvider="gemini"
-          enabledToolsCount={18}
-          totalToolsCount={20}
+          headerInfo={hi({
+            activeModel: "gemini-3.1-pro-preview",
+            activeProvider: "gemini",
+            enabledToolsCount: 18,
+            totalToolsCount: 20,
+          })}
         />,
       );
 
@@ -294,8 +316,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="claude-sonnet-4-6-20250514"
-          activeProvider="anthropic"
+          headerInfo={hi({
+            activeModel: "claude-sonnet-4-6-20250514",
+            activeProvider: "anthropic",
+          })}
         />,
       );
       expect(screen.getByText(/Anthropic \|/)).toBeDefined();
@@ -305,8 +329,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-3.1-pro-preview"
-          activeProvider="gemini"
+          headerInfo={hi({
+            activeModel: "gemini-3.1-pro-preview",
+            activeProvider: "gemini",
+          })}
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
@@ -316,8 +342,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gpt-4"
-          activeProvider="openai"
+          headerInfo={hi({
+            activeModel: "gpt-4",
+            activeProvider: "openai",
+          })}
         />,
       );
       expect(screen.getByText(/OpenAI \|/)).toBeDefined();
@@ -327,8 +355,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="mistral-large"
-          activeProvider="mistral"
+          headerInfo={hi({
+            activeModel: "mistral-large",
+            activeProvider: "mistral",
+          })}
         />,
       );
       expect(screen.getByText(/Mistral \|/)).toBeDefined();
@@ -338,8 +368,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="some-model"
-          activeProvider="openrouter"
+          headerInfo={hi({
+            activeModel: "some-model",
+            activeProvider: "openrouter",
+          })}
         />,
       );
       expect(screen.getByText(/OpenRouter \|/)).toBeDefined();
@@ -349,8 +381,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="local-model"
-          activeProvider="lmstudio"
+          headerInfo={hi({
+            activeModel: "local-model",
+            activeProvider: "lmstudio",
+          })}
         />,
       );
       expect(screen.getByText(/LM Studio \|/)).toBeDefined();
@@ -360,8 +394,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="llama2"
-          activeProvider="ollama"
+          headerInfo={hi({
+            activeModel: "llama2",
+            activeProvider: "ollama",
+          })}
         />,
       );
       expect(screen.getByText(/Ollama \|/)).toBeDefined();
@@ -371,8 +407,10 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="custom-model"
-          activeProvider="custom"
+          headerInfo={hi({
+            activeModel: "custom-model",
+            activeProvider: "custom",
+          })}
         />,
       );
       expect(screen.getByText(/Custom \|/)).toBeDefined();
@@ -432,7 +470,12 @@ describe("ChatHeader", () => {
 
   describe("model size indicator", () => {
     it("shows large model with elephant when smallModelMode is false", () => {
-      render(<ChatHeader {...defaultProps} smallModelMode={false} />);
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({ smallModelMode: false })}
+        />,
+      );
       expect(screen.getAllByLabelText("large model").length).toBeGreaterThan(0);
       const elements = screen.getAllByLabelText("large model");
       const mobileEl = elements.find((el) => el.textContent.trim() === "🐘");
@@ -441,7 +484,12 @@ describe("ChatHeader", () => {
     });
 
     it("shows small model with turtle when smallModelMode is true", () => {
-      render(<ChatHeader {...defaultProps} smallModelMode={true} />);
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({ smallModelMode: true })}
+        />,
+      );
       expect(screen.getAllByLabelText("small model").length).toBeGreaterThan(0);
       const elements = screen.getAllByLabelText("small model");
       const mobileEl = elements.find((el) => el.textContent.trim() === "🐢");
@@ -450,7 +498,12 @@ describe("ChatHeader", () => {
     });
 
     it("shows full text at sm breakpoint", () => {
-      render(<ChatHeader {...defaultProps} smallModelMode={true} />);
+      render(
+        <ChatHeader
+          {...defaultProps}
+          headerInfo={hi({ smallModelMode: true })}
+        />,
+      );
       const elements = screen.getAllByLabelText("small model");
       const fullText = elements.find((el) =>
         el.textContent.includes("small model"),

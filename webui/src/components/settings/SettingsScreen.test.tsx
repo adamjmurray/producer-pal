@@ -7,6 +7,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
+import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "./SettingsScreen";
 
 // Mock child components
@@ -109,9 +110,7 @@ vi.mock(import("./controls/ToolToggles"), () => ({
 }));
 
 describe("SettingsScreen", () => {
-  const defaultProps = {
-    activeTab: "connection" as const,
-    onTabChange: vi.fn(),
+  const defaultSettings = {
     provider: "gemini" as const,
     setProvider: vi.fn(),
     apiKey: "",
@@ -120,31 +119,77 @@ describe("SettingsScreen", () => {
     setModel: vi.fn(),
     thinking: "Default",
     setThinking: vi.fn(),
-    theme: "system",
-    setTheme: vi.fn(),
+    temperature: 1,
+    setTemperature: vi.fn(),
+    showThoughts: false,
+    setShowThoughts: vi.fn(),
+    saveSettings: vi.fn(),
+    cancelSettings: vi.fn(),
+    hasApiKey: false,
+    settingsConfigured: false,
+    enabledTools: {} as Record<string, boolean>,
+    setEnabledTools: vi.fn(),
+    resetBehaviorToDefaults: vi.fn(),
+    isToolEnabled: () => true,
+    smallModelMode: false,
+    setSmallModelMode: vi.fn(),
+  };
+
+  const defaultDisplay = {
     showTimestamps: false,
     setShowTimestamps: vi.fn(),
     showHelpLinks: true,
     setShowHelpLinks: vi.fn(),
-    enabledTools: {},
-    setEnabledTools: vi.fn(),
+  };
+
+  const defaultProps = {
+    settings: defaultSettings,
+    display: defaultDisplay,
+    activeTab: "connection" as const,
+    onTabChange: vi.fn(),
+    theme: "system",
+    setTheme: vi.fn(),
     mcpTools: [
       { id: "ppal-connect", name: "Connect to Ableton" },
       { id: "ppal-read-live-set", name: "Read Live Set" },
     ],
     mcpStatus: "connected" as const,
-    smallModelMode: false,
-    setSmallModelMode: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
-    settingsConfigured: false,
     shake: false,
     onShakeEnd: vi.fn(),
     hasUnsavedChanges: false,
-    activeModel: null,
-    activeProvider: null,
-    activeSmallModelMode: null,
+    conversationLock: {
+      activeModel: null,
+      activeProvider: null,
+      activeSmallModelMode: null,
+    },
   };
+
+  /**
+   * Build settings with optional overrides merged into defaults.
+   * @param overrides - partial UseSettingsReturn fields to override
+   * @returns merged UseSettingsReturn object
+   */
+  function ss(overrides?: Partial<UseSettingsReturn>): UseSettingsReturn {
+    return { ...defaultSettings, ...overrides };
+  }
+
+  const lmstudioSettings = ss({
+    provider: "lmstudio",
+    baseUrl: "http://localhost:1234/v1",
+    setBaseUrl: vi.fn(),
+  });
+  const ollamaSettings = ss({
+    provider: "ollama",
+    baseUrl: "http://localhost:11434/v1",
+    setBaseUrl: vi.fn(),
+  });
+  const customSettings = ss({
+    provider: "custom",
+    baseUrl: "https://api.example.com/v1",
+    setBaseUrl: vi.fn(),
+  });
 
   describe("help link", () => {
     it("renders help link with connection tab anchor by default", () => {
@@ -249,21 +294,36 @@ describe("SettingsScreen", () => {
 
   describe("provider labels", () => {
     it("passes correct label for Anthropic provider", () => {
-      render(<SettingsScreen {...defaultProps} provider="anthropic" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "anthropic" })}
+        />,
+      );
       expect(screen.getByText("Anthropic")).toBeDefined();
     });
   });
 
   describe("conditional note text", () => {
     it("shows browser storage message when settings not configured", () => {
-      render(<SettingsScreen {...defaultProps} settingsConfigured={false} />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ settingsConfigured: false })}
+        />,
+      );
       expect(
         screen.getByText("Settings will be stored in this web browser."),
       ).toBeDefined();
     });
 
     it("does not show browser storage message when settings configured", () => {
-      render(<SettingsScreen {...defaultProps} settingsConfigured={true} />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ settingsConfigured: true })}
+        />,
+      );
       expect(
         screen.queryByText("Settings will be stored in this web browser."),
       ).toBeNull();
@@ -272,12 +332,22 @@ describe("SettingsScreen", () => {
 
   describe("Cancel button", () => {
     it("is not shown when settings not configured", () => {
-      render(<SettingsScreen {...defaultProps} settingsConfigured={false} />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ settingsConfigured: false })}
+        />,
+      );
       expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
     });
 
     it("is shown when settings configured", () => {
-      render(<SettingsScreen {...defaultProps} settingsConfigured={true} />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ settingsConfigured: true })}
+        />,
+      );
       expect(screen.getByRole("button", { name: "Cancel" })).toBeDefined();
     });
 
@@ -287,7 +357,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          settingsConfigured={true}
+          settings={ss({ settingsConfigured: true })}
           cancelSettings={cancelSettings}
         />,
       );
@@ -302,7 +372,9 @@ describe("SettingsScreen", () => {
 
   describe("Save button", () => {
     it("is enabled even when no API key", () => {
-      render(<SettingsScreen {...defaultProps} apiKey="" />);
+      render(
+        <SettingsScreen {...defaultProps} settings={ss({ apiKey: "" })} />,
+      );
 
       const button = screen.getByRole("button", {
         name: "Save",
@@ -312,7 +384,12 @@ describe("SettingsScreen", () => {
     });
 
     it("is enabled when API key is provided", () => {
-      render(<SettingsScreen {...defaultProps} apiKey="test-key" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ apiKey: "test-key" })}
+        />,
+      );
 
       const button = screen.getByRole("button", {
         name: "Save",
@@ -327,7 +404,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          apiKey=""
+          settings={ss({ apiKey: "" })}
           saveSettings={saveSettings}
         />,
       );
@@ -345,7 +422,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          apiKey="test-key"
+          settings={ss({ apiKey: "test-key" })}
           saveSettings={saveSettings}
         />,
       );
@@ -363,8 +440,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          apiKey="my-key"
-          model="gemini-2.5-flash"
+          settings={ss({ apiKey: "my-key", model: "gemini-2.5-flash" })}
         />,
       );
 
@@ -383,7 +459,12 @@ describe("SettingsScreen", () => {
 
   describe("API key links", () => {
     it("shows Anthropic API key link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} provider="anthropic" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "anthropic" })}
+        />,
+      );
       const link = screen.getByText("Anthropic API keys");
 
       expect(link).toBeDefined();
@@ -394,7 +475,12 @@ describe("SettingsScreen", () => {
     });
 
     it("shows Gemini API key link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} provider="gemini" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "gemini" })}
+        />,
+      );
       const link = screen.getByText("Gemini API keys");
 
       expect(link).toBeDefined();
@@ -405,7 +491,12 @@ describe("SettingsScreen", () => {
     });
 
     it("shows OpenAI API key link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} provider="openai" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "openai" })}
+        />,
+      );
       const link = screen.getByText("OpenAI API keys");
 
       expect(link).toBeDefined();
@@ -415,7 +506,12 @@ describe("SettingsScreen", () => {
     });
 
     it("shows Mistral API key link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} provider="mistral" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "mistral" })}
+        />,
+      );
       const link = screen.getByText("Mistral API keys");
 
       expect(link).toBeDefined();
@@ -425,7 +521,12 @@ describe("SettingsScreen", () => {
     });
 
     it("shows OpenRouter API key link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} provider="openrouter" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "openrouter" })}
+        />,
+      );
       const link = screen.getByText("OpenRouter API keys");
 
       expect(link).toBeDefined();
@@ -435,38 +536,17 @@ describe("SettingsScreen", () => {
     });
 
     it("does not show API key link for LM Studio", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          provider="lmstudio"
-          baseUrl="http://localhost:1234/v1"
-          setBaseUrl={vi.fn()}
-        />,
-      );
+      render(<SettingsScreen {...defaultProps} settings={lmstudioSettings} />);
       expect(screen.queryByText(/Get a.*API key/)).toBeNull();
     });
 
     it("does not show API key link for Ollama", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          provider="ollama"
-          baseUrl="http://localhost:11434/v1"
-          setBaseUrl={vi.fn()}
-        />,
-      );
+      render(<SettingsScreen {...defaultProps} settings={ollamaSettings} />);
       expect(screen.queryByText(/Get a.*API key/)).toBeNull();
     });
 
     it("does not show API key link for custom provider", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          provider="custom"
-          baseUrl="https://api.example.com/v1"
-          setBaseUrl={vi.fn()}
-        />,
-      );
+      render(<SettingsScreen {...defaultProps} settings={customSettings} />);
       expect(screen.queryByText(/Get a.*API key/)).toBeNull();
     });
   });
@@ -475,7 +555,7 @@ describe("SettingsScreen", () => {
     it("calls setApiKey when API key input changes", () => {
       const setApiKey = vi.fn();
 
-      render(<SettingsScreen {...defaultProps} setApiKey={setApiKey} />);
+      render(<SettingsScreen {...defaultProps} settings={ss({ setApiKey })} />);
       const input = screen.getByPlaceholderText(/enter your gemini api key/i);
 
       fireEvent.change(input, { target: { value: "new-api-key" } });
@@ -488,9 +568,11 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          provider="lmstudio"
-          baseUrl="http://localhost:1234/v1"
-          setBaseUrl={setBaseUrl}
+          settings={ss({
+            provider: "lmstudio",
+            baseUrl: "http://localhost:1234/v1",
+            setBaseUrl,
+          })}
         />,
       );
       const input = screen.getByPlaceholderText("http://localhost:1234");
@@ -507,9 +589,11 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          provider="ollama"
-          baseUrl="http://localhost:11434/v1"
-          setBaseUrl={setBaseUrl}
+          settings={ss({
+            provider: "ollama",
+            baseUrl: "http://localhost:11434/v1",
+            setBaseUrl,
+          })}
         />,
       );
       const input = screen.getByPlaceholderText("http://localhost:11434");
@@ -526,9 +610,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          provider="custom"
-          baseUrl=""
-          setBaseUrl={setBaseUrl}
+          settings={ss({ provider: "custom", baseUrl: "", setBaseUrl })}
         />,
       );
       const input = screen.getByPlaceholderText("https://api.example.com/v1");
@@ -540,7 +622,12 @@ describe("SettingsScreen", () => {
 
   describe("Model documentation links", () => {
     it("shows Anthropic models link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} provider="anthropic" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "anthropic" })}
+        />,
+      );
       const link = screen.getByText("Anthropic models");
 
       expect(link).toBeDefined();
@@ -551,7 +638,12 @@ describe("SettingsScreen", () => {
     });
 
     it("shows Gemini models link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} provider="gemini" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "gemini" })}
+        />,
+      );
       const link = screen.getByText("Gemini models");
 
       expect(link).toBeDefined();
@@ -562,7 +654,12 @@ describe("SettingsScreen", () => {
     });
 
     it("shows OpenAI models link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} provider="openai" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "openai" })}
+        />,
+      );
       const link = screen.getByText("OpenAI models");
 
       expect(link).toBeDefined();
@@ -572,7 +669,12 @@ describe("SettingsScreen", () => {
     });
 
     it("shows Mistral models link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} provider="mistral" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "mistral" })}
+        />,
+      );
       const link = screen.getByText("Mistral models");
 
       expect(link).toBeDefined();
@@ -582,7 +684,12 @@ describe("SettingsScreen", () => {
     });
 
     it("shows OpenRouter models link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} provider="openrouter" />);
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          settings={ss({ provider: "openrouter" })}
+        />,
+      );
       const link = screen.getByText("OpenRouter models");
 
       expect(link).toBeDefined();
@@ -592,14 +699,7 @@ describe("SettingsScreen", () => {
     });
 
     it("shows LM Studio models link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          provider="lmstudio"
-          baseUrl="http://localhost:1234/v1"
-          setBaseUrl={vi.fn()}
-        />,
-      );
+      render(<SettingsScreen {...defaultProps} settings={lmstudioSettings} />);
       const link = screen.getByText("LM Studio models");
 
       expect(link).toBeDefined();
@@ -609,14 +709,7 @@ describe("SettingsScreen", () => {
     });
 
     it("shows Ollama models link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          provider="ollama"
-          baseUrl="http://localhost:11434/v1"
-          setBaseUrl={vi.fn()}
-        />,
-      );
+      render(<SettingsScreen {...defaultProps} settings={ollamaSettings} />);
       const link = screen.getByText("Ollama models");
 
       expect(link).toBeDefined();
@@ -626,14 +719,7 @@ describe("SettingsScreen", () => {
     });
 
     it("does not show models link for custom provider", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          provider="custom"
-          baseUrl="https://api.example.com/v1"
-          setBaseUrl={vi.fn()}
-        />,
-      );
+      render(<SettingsScreen {...defaultProps} settings={customSettings} />);
       expect(screen.queryByText(/models$/)).toBeNull();
     });
   });

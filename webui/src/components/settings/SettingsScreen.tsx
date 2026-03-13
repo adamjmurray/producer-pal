@@ -8,50 +8,34 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
+import { type DisplaySettings } from "#webui/hooks/use-display-settings";
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
-import { type Provider } from "#webui/types/settings";
+import { type UseSettingsReturn } from "#webui/types/settings";
 import { AppearanceTab } from "./AppearanceTab";
 import { ConnectionTab } from "./ConnectionTab";
 import { ToolToggles } from "./controls/ToolToggles";
-import { LockedSettingsNotice } from "./LockedSettingsNotice";
+import {
+  type ConversationLock,
+  LockedSettingsNotice,
+} from "./LockedSettingsNotice";
 import { SettingsFooter } from "./SettingsFooter";
 import { type TabId, SettingsTabs } from "./SettingsTabs";
 
 interface SettingsScreenProps {
-  activeTab: TabId;
-  onTabChange: (tab: TabId) => void;
-  provider: Provider;
-  setProvider: (provider: Provider) => void;
-  apiKey: string;
-  setApiKey: (key: string) => void;
-  baseUrl?: string;
-  setBaseUrl?: (url: string) => void;
-  model: string;
-  setModel: (model: string) => void;
-  thinking: string;
-  setThinking: (thinking: string) => void;
+  settings: UseSettingsReturn;
+  display: DisplaySettings;
   theme: string;
   setTheme: (theme: string) => void;
-  showTimestamps: boolean;
-  setShowTimestamps: (show: boolean) => void;
-  showHelpLinks: boolean;
-  setShowHelpLinks: (show: boolean) => void;
-
-  enabledTools: Record<string, boolean>;
-  setEnabledTools: (tools: Record<string, boolean>) => void;
   mcpTools: McpTool[] | null;
   mcpStatus: McpStatus;
-  smallModelMode: boolean;
-  setSmallModelMode: (enabled: boolean) => void;
   saveSettings: () => void;
   cancelSettings: () => void;
-  settingsConfigured: boolean;
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
   shake: boolean;
   onShakeEnd: () => void;
   hasUnsavedChanges: boolean;
-  activeModel: string | null;
-  activeProvider: Provider | null;
-  activeSmallModelMode: boolean | null;
+  conversationLock: ConversationLock;
 }
 
 const helpLinkClass =
@@ -59,48 +43,17 @@ const helpLinkClass =
 
 /**
  * Settings screen component with tabs for connection, tools, and appearance
- * @param props - Component props
- * @param props.activeTab - Currently active settings tab
- * @param props.onTabChange - Callback when settings tab changes
- * @param props.provider - Selected provider
- * @param props.setProvider - Function to update provider
- * @param props.apiKey - API key for the provider
- * @param props.setApiKey - Function to update API key
- * @param props.baseUrl - Base URL for custom and local providers
- * @param props.setBaseUrl - Function to update base URL
- * @param props.model - Selected model
- * @param props.setModel - Function to update model
- * @param props.thinking - Default thinking level
- * @param props.setThinking - Function to update thinking level
- * @param props.theme - UI theme setting
- * @param props.setTheme - Function to update theme
- * @param props.showTimestamps - Whether to show message timestamps
- * @param props.setShowTimestamps - Function to toggle timestamps
- * @param props.showHelpLinks - Whether to show help link buttons
- * @param props.setShowHelpLinks - Function to toggle help links
- * @param props.enabledTools - Map of enabled/disabled tools
- * @param props.setEnabledTools - Function to update enabled tools
- * @param props.mcpTools - Available tools from MCP server
- * @param props.mcpStatus - MCP connection status
- * @param props.smallModelMode - Whether small model mode is enabled
- * @param props.setSmallModelMode - Function to toggle small model mode
- * @param props.saveSettings - Function to save settings
- * @param props.cancelSettings - Function to cancel settings changes
- * @param props.settingsConfigured - Whether settings have been configured
- * @param props.shake - Whether to shake the dialog to indicate unsaved changes
- * @param props.onShakeEnd - Callback when shake animation ends
- * @param props.hasUnsavedChanges - Whether there are unsaved settings changes
- * @param props.activeSmallModelMode - Locked small model mode for the active conversation
+ * @param props - SettingsScreenProps
  * @returns Settings screen element
  */
 export function SettingsScreen(props: SettingsScreenProps) {
   const {
+    settings,
+    display,
     activeTab,
     onTabChange,
-    showHelpLinks,
     saveSettings,
     cancelSettings,
-    settingsConfigured,
     shake,
     onShakeEnd,
     hasUnsavedChanges,
@@ -117,7 +70,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
-          {showHelpLinks && (
+          {display.showHelpLinks && (
             <a
               href={`${CHAT_UI_DOCS_URL}#${activeTab}`}
               target="_blank"
@@ -131,12 +84,10 @@ export function SettingsScreen(props: SettingsScreenProps) {
         </div>
 
         <LockedSettingsNotice
-          activeModel={props.activeModel}
-          activeProvider={props.activeProvider}
-          activeSmallModelMode={props.activeSmallModelMode}
-          model={props.model}
-          provider={props.provider}
-          smallModelMode={props.smallModelMode}
+          conversationLock={props.conversationLock}
+          model={settings.model}
+          provider={settings.provider}
+          smallModelMode={settings.smallModelMode}
         />
 
         <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>
@@ -144,7 +95,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
         </SettingsTabs>
 
         <SettingsFooter
-          settingsConfigured={settingsConfigured}
+          settingsConfigured={settings.settingsConfigured}
           saveSettings={saveSettings}
           cancelSettings={cancelSettings}
           pulse={shake}
@@ -161,26 +112,26 @@ export function SettingsScreen(props: SettingsScreenProps) {
  * @returns Tab content element
  */
 function SettingsTabContent(props: SettingsScreenProps) {
-  const { activeTab, provider } = props;
-  const providerLabel = getProviderName(provider, "product");
+  const { settings, display, activeTab } = props;
+  const providerLabel = getProviderName(settings.provider, "product");
 
   return (
     <div className="space-y-4">
       {activeTab === "connection" && (
         <ConnectionTab
-          provider={props.provider}
-          setProvider={props.setProvider}
-          apiKey={props.apiKey}
-          setApiKey={props.setApiKey}
-          baseUrl={props.baseUrl}
-          setBaseUrl={props.setBaseUrl}
-          model={props.model}
-          setModel={props.setModel}
+          provider={settings.provider}
+          setProvider={settings.setProvider}
+          apiKey={settings.apiKey}
+          setApiKey={settings.setApiKey}
+          baseUrl={settings.baseUrl}
+          setBaseUrl={settings.setBaseUrl}
+          model={settings.model}
+          setModel={settings.setModel}
           providerLabel={providerLabel}
-          thinking={props.thinking}
-          setThinking={props.setThinking}
-          smallModelMode={props.smallModelMode}
-          setSmallModelMode={props.setSmallModelMode}
+          thinking={settings.thinking}
+          setThinking={settings.setThinking}
+          smallModelMode={settings.smallModelMode}
+          setSmallModelMode={settings.setSmallModelMode}
         />
       )}
 
@@ -188,8 +139,8 @@ function SettingsTabContent(props: SettingsScreenProps) {
         <ToolToggles
           tools={props.mcpTools}
           mcpStatus={props.mcpStatus}
-          enabledTools={props.enabledTools}
-          setEnabledTools={props.setEnabledTools}
+          enabledTools={settings.enabledTools}
+          setEnabledTools={settings.setEnabledTools}
         />
       )}
 
@@ -197,10 +148,10 @@ function SettingsTabContent(props: SettingsScreenProps) {
         <AppearanceTab
           theme={props.theme}
           setTheme={props.setTheme}
-          showTimestamps={props.showTimestamps}
-          setShowTimestamps={props.setShowTimestamps}
-          showHelpLinks={props.showHelpLinks}
-          setShowHelpLinks={props.setShowHelpLinks}
+          showTimestamps={display.showTimestamps}
+          setShowTimestamps={display.setShowTimestamps}
+          showHelpLinks={display.showHelpLinks}
+          setShowHelpLinks={display.setShowHelpLinks}
         />
       )}
     </div>

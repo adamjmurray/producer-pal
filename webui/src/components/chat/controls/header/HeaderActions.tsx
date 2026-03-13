@@ -16,7 +16,8 @@ const iconBtn =
 const helpBtn =
   "inline-flex items-center justify-center w-5 h-5 text-xs font-semibold leading-none rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500 dark:text-zinc-400 hover:border-zinc-200 hover:text-white dark:hover:border-zinc-300 dark:hover:text-white no-underline shrink-0";
 
-export interface HeaderActionsProps {
+/** Header display state: model/provider/tools/small-model info passed through the component tree */
+export interface HeaderInfo {
   activeModel: string | null;
   activeProvider: Provider | null;
   model: string;
@@ -26,6 +27,10 @@ export interface HeaderActionsProps {
   smallModelMode: boolean;
   defaultSmallModelMode: boolean;
   showHelpLinks: boolean;
+}
+
+export interface HeaderActionsProps {
+  headerInfo: HeaderInfo;
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
@@ -34,34 +39,29 @@ export interface HeaderActionsProps {
 /**
  * Right-side header actions: model display, tool/small-model indicators, settings, help
  * @param props - HeaderActionsProps
- * @param props.activeModel - Active model identifier
- * @param props.activeProvider - Active provider
- * @param props.model - Configured model
- * @param props.provider - Configured provider
- * @param props.enabledToolsCount - Number of enabled tools
- * @param props.totalToolsCount - Total number of available tools
- * @param props.smallModelMode - Whether small model mode is active for this conversation
- * @param props.defaultSmallModelMode - Current default small model mode from settings
- * @param props.showHelpLinks - Whether to show help link buttons
+ * @param props.headerInfo - Header display state
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onOpenToolsSettings - Callback to open tools settings tab
  * @param props.onOpenConnectionSettings - Callback to open connection settings tab
  * @returns Header actions element
  */
 export function HeaderActions({
-  activeModel,
-  activeProvider,
-  model,
-  provider,
-  enabledToolsCount,
-  totalToolsCount,
-  smallModelMode,
-  defaultSmallModelMode,
-  showHelpLinks,
+  headerInfo,
   onOpenSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
 }: HeaderActionsProps) {
+  const {
+    activeModel,
+    activeProvider,
+    model,
+    provider,
+    enabledToolsCount,
+    totalToolsCount,
+    smallModelMode,
+    defaultSmallModelMode,
+    showHelpLinks,
+  } = headerInfo;
   const modelDiverges =
     activeModel != null &&
     (activeModel !== model || activeProvider !== provider);

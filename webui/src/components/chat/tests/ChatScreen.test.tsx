@@ -9,10 +9,23 @@ import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
 import { ChatScreen } from "#webui/components/chat/ChatScreen";
+import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
 
 vi.mock(import("#webui/hooks/use-update-check"), () => ({
   useUpdateCheck: () => null,
 }));
+
+const defaultHeaderInfo: HeaderInfo = {
+  activeModel: "gemini-1.5-flash",
+  activeProvider: "gemini",
+  model: "gemini-2.0-flash-thinking",
+  provider: "gemini",
+  enabledToolsCount: 20,
+  totalToolsCount: 20,
+  smallModelMode: false,
+  defaultSmallModelMode: false,
+  showHelpLinks: true,
+};
 
 describe("ChatScreen", () => {
   const mockHandleSend = vi.fn();
@@ -28,16 +41,9 @@ describe("ChatScreen", () => {
     handleSend: mockHandleSend,
     handleRetry: mockHandleRetry,
     handleEdit: vi.fn(),
-    activeModel: "gemini-1.5-flash",
-    activeProvider: "gemini" as const,
-    provider: "gemini" as const,
-    model: "gemini-2.0-flash-thinking",
+    headerInfo: defaultHeaderInfo,
     activeThinking: null,
     defaultThinking: "Default",
-    enabledToolsCount: 20,
-    totalToolsCount: 20,
-    smallModelMode: false,
-    defaultSmallModelMode: false,
     mcpStatus: "connected" as const,
     mcpError: null,
     checkMcpConnection: mockCheckMcpConnection,
@@ -46,7 +52,6 @@ describe("ChatScreen", () => {
     onOpenConnectionSettings: vi.fn(),
     onStop: mockOnStop,
     showTimestamps: true,
-    showHelpLinks: true,
     conversationPanel: {
       conversations: [],
       activeConversationId: null,
@@ -165,8 +170,11 @@ describe("ChatScreen", () => {
       render(
         <ChatScreen
           {...defaultProps}
-          activeModel="test-model"
-          activeProvider="openai"
+          headerInfo={{
+            ...defaultHeaderInfo,
+            activeModel: "test-model",
+            activeProvider: "openai",
+          }}
           messages={[
             {
               role: "user",

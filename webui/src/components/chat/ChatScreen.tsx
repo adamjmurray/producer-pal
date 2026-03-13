@@ -9,10 +9,10 @@ import {
 } from "#webui/hooks/chat/use-chat-types";
 import { useUpdateCheck } from "#webui/hooks/use-update-check";
 import { type UIMessage } from "#webui/types/messages";
-import { type Provider } from "#webui/types/settings";
 import { ChatStart } from "./ChatStart";
 import { ChatHeader } from "./controls/ChatHeader";
 import { ChatInput } from "./controls/ChatInput";
+import { type HeaderInfo } from "./controls/header/HeaderActions";
 import { RateLimitIndicator } from "./controls/RateLimitIndicator";
 import {
   ConversationPanel,
@@ -30,16 +30,9 @@ interface ChatScreenProps {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
-  activeModel: string | null;
-  activeProvider: Provider | null;
-  provider: Provider;
-  model: string;
+  headerInfo: HeaderInfo;
   activeThinking: string | null;
   defaultThinking: string;
-  enabledToolsCount: number;
-  totalToolsCount: number;
-  smallModelMode: boolean;
-  defaultSmallModelMode: boolean;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
@@ -48,7 +41,6 @@ interface ChatScreenProps {
   onOpenConnectionSettings: () => void;
   onStop: () => void;
   showTimestamps: boolean;
-  showHelpLinks: boolean;
   conversationPanel: ConversationPanelState;
 }
 
@@ -64,76 +56,48 @@ export interface ConversationPanelState extends Omit<
 
 /**
  * Main chat screen component
- * @param {ChatScreenProps} props - Component props
- * @param {UIMessage[]} props.messages - Chat messages
- * @param {boolean} props.isAssistantResponding - Whether assistant is responding
- * @param {RateLimitState | null} props.rateLimitState - Rate limit retry state
- * @param {(message: string) => Promise<void>} props.handleSend - Send message callback
- * @param {(messageIndex: number) => Promise<void>} props.handleRetry - Retry message callback
- * @param {(messageIndex: number, newMessage: string) => Promise<void>} props.handleEdit - Edit and fork message callback
- * @param {string | null} props.activeModel - Active model identifier
- * @param {Provider | null} props.activeProvider - Active provider
- * @param {Provider} props.provider - Provider from settings
- * @param {string} props.model - Model from settings
- * @param {string | null} props.activeThinking - Locked thinking level for the active conversation
- * @param {string} props.defaultThinking - Default thinking mode from settings
- * @param {number} props.enabledToolsCount - Number of enabled tools
- * @param {number} props.totalToolsCount - Total number of available tools
- * @param {boolean} props.smallModelMode - Whether small model mode is active
- * @param {"connected" | "connecting" | "error"} props.mcpStatus - MCP connection status
- * @param {string | null} props.mcpError - MCP error message
- * @param {() => Promise<void>} props.checkMcpConnection - Check MCP connection callback
- * @param {() => void} props.onOpenSettings - Open settings callback
- * @param {() => void} props.onStop - Stop response callback
- * @returns {JSX.Element} - React component
+ * @param props - ChatScreenProps
+ * @param props.messages - Chat messages
+ * @param props.isAssistantResponding - Whether assistant is currently responding
+ * @param props.rateLimitState - Rate limit retry state
+ * @param props.handleSend - Send message handler
+ * @param props.handleRetry - Retry message handler
+ * @param props.handleEdit - Edit message handler
+ * @param props.headerInfo - Header display state
+ * @param props.activeThinking - Locked thinking level from conversation
+ * @param props.defaultThinking - Default thinking level from settings
+ * @param props.mcpStatus - MCP connection status
+ * @param props.mcpError - MCP error message
+ * @param props.checkMcpConnection - Reconnect to MCP
+ * @param props.onOpenSettings - Open settings callback
+ * @param props.onOpenToolsSettings - Open tools settings tab
+ * @param props.onOpenConnectionSettings - Open connection settings tab
+ * @param props.onStop - Stop response callback
+ * @param props.showTimestamps - Whether to show message timestamps
+ * @param props.conversationPanel - Conversation history panel state
+ * @returns Chat screen element
  */
-// eslint-disable-next-line max-lines-per-function -- layout component with many props
-export function ChatScreen({
-  messages,
-  isAssistantResponding,
-  rateLimitState,
-  handleSend,
-  handleRetry,
-  handleEdit,
-  activeModel,
-  activeProvider,
-  provider,
-  model,
-  activeThinking,
-  defaultThinking,
-  enabledToolsCount,
-  totalToolsCount,
-  smallModelMode,
-  defaultSmallModelMode,
-  mcpStatus,
-  mcpError,
-  checkMcpConnection,
-  onOpenSettings,
-  onOpenToolsSettings,
-  onOpenConnectionSettings,
-  onStop,
-  showTimestamps,
-  showHelpLinks,
-  conversationPanel,
-}: ChatScreenProps) {
+export function ChatScreen(props: ChatScreenProps) {
+  const {
+    messages,
+    isAssistantResponding,
+    rateLimitState,
+    handleSend,
+    handleRetry,
+    handleEdit,
+    headerInfo,
+    mcpStatus,
+    mcpError,
+    checkMcpConnection,
+    onOpenSettings,
+    onOpenToolsSettings,
+    onOpenConnectionSettings,
+    onStop,
+    showTimestamps,
+    conversationPanel,
+  } = props;
   const latestVersion = useUpdateCheck();
-
-  // Per-conversation thinking override (lifted from ChatInput so ChatStart can also use it).
-  // Two separate effects so settings changes apply immediately even mid-conversation,
-  // while conversation switches always restore the locked level.
-  const [thinking, setThinking] = useState(activeThinking ?? defaultThinking);
-
-  useEffect(() => {
-    // Settings change: always update the in-chat toggle immediately
-    setThinking(defaultThinking);
-  }, [defaultThinking]);
-
-  useEffect(() => {
-    // Conversation switch/restore: use the locked level when available
-    if (activeThinking != null) {
-      setThinking(activeThinking);
-    }
-  }, [activeThinking]);
+  const [thinking, setThinking] = useThinkingOverride(props);
 
   const currentOverrides: MessageOverrides = {
     thinking,
@@ -148,18 +112,10 @@ export function ChatScreen({
   return (
     <div className="flex flex-col h-screen bg-zinc-100 dark:bg-zinc-950">
       <ChatHeader
+        headerInfo={headerInfo}
         mcpStatus={mcpStatus}
-        activeModel={activeModel}
-        activeProvider={activeProvider}
-        model={model}
-        provider={provider}
-        enabledToolsCount={enabledToolsCount}
-        totalToolsCount={totalToolsCount}
-        smallModelMode={smallModelMode}
-        defaultSmallModelMode={defaultSmallModelMode}
         isHistoryOpen={conversationPanel.isOpen}
         isActiveBookmarked={activeConv?.bookmarked}
-        showHelpLinks={showHelpLinks}
         latestVersion={latestVersion}
         onOpenSettings={onOpenSettings}
         onOpenToolsSettings={onOpenToolsSettings}
@@ -213,7 +169,7 @@ export function ChatScreen({
                   handleRetry={handleRetry}
                   handleEdit={handleEdit}
                   showTimestamps={showTimestamps}
-                  requestedModel={activeModel}
+                  requestedModel={headerInfo.activeModel}
                 />
               )}
             </div>
@@ -239,4 +195,29 @@ export function ChatScreen({
       </div>
     </div>
   );
+}
+
+/**
+ * Per-conversation thinking override. Settings changes apply immediately,
+ * while conversation switches restore the locked level.
+ * @param props - Props with activeThinking and defaultThinking
+ * @returns [thinking, setThinking] state tuple
+ */
+function useThinkingOverride(
+  props: Pick<ChatScreenProps, "activeThinking" | "defaultThinking">,
+): [string, (v: string) => void] {
+  const { activeThinking, defaultThinking } = props;
+  const [thinking, setThinking] = useState(activeThinking ?? defaultThinking);
+
+  useEffect(() => {
+    setThinking(defaultThinking);
+  }, [defaultThinking]);
+
+  useEffect(() => {
+    if (activeThinking != null) {
+      setThinking(activeThinking);
+    }
+  }, [activeThinking]);
+
+  return [thinking, setThinking];
 }

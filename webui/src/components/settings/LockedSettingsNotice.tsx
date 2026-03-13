@@ -7,10 +7,15 @@ import { getProviderName } from "#webui/components/chat/controls/header/header-h
 import { getModelName } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 
-interface LockedSettingsNoticeProps {
+/** Locked conversation state: model/provider/small-model mode from the active conversation */
+export interface ConversationLock {
   activeModel: string | null;
   activeProvider: Provider | null;
   activeSmallModelMode: boolean | null;
+}
+
+interface LockedSettingsNoticeProps {
+  conversationLock: ConversationLock;
   model: string;
   provider: Provider;
   smallModelMode: boolean;
@@ -21,22 +26,21 @@ interface LockedSettingsNoticeProps {
  * Only renders when the active conversation's model, provider, or small model mode
  * differs from current settings.
  * @param props - Component props
- * @param props.activeModel - Locked model for the active conversation
- * @param props.activeProvider - Locked provider for the active conversation
- * @param props.activeSmallModelMode - Locked small model mode for the active conversation
+ * @param props.conversationLock - Locked state from the active conversation
  * @param props.model - Current default model from settings
  * @param props.provider - Current default provider from settings
  * @param props.smallModelMode - Current small model mode setting
  * @returns Notice element or null
  */
 export function LockedSettingsNotice({
-  activeModel,
-  activeProvider,
-  activeSmallModelMode,
+  conversationLock,
   model,
   provider,
   smallModelMode,
 }: LockedSettingsNoticeProps) {
+  const { activeModel, activeProvider, activeSmallModelMode } =
+    conversationLock;
+
   if (activeModel == null) return null;
 
   const modelDiverges = activeModel !== model || activeProvider !== provider;

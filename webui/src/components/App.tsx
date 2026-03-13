@@ -256,16 +256,20 @@ export function App() {
           handleSend={wrappedHandleSend}
           handleRetry={chat.handleRetry}
           handleEdit={chat.handleEdit}
-          activeModel={chat.activeModel}
-          activeProvider={chat.activeProvider}
-          provider={settings.provider}
-          model={settings.model}
+          headerInfo={{
+            activeModel: chat.activeModel,
+            activeProvider: chat.activeProvider,
+            model: settings.model,
+            provider: settings.provider,
+            enabledToolsCount,
+            totalToolsCount,
+            smallModelMode:
+              chat.activeSmallModelMode ?? settings.smallModelMode,
+            defaultSmallModelMode: settings.smallModelMode,
+            showHelpLinks: display.showHelpLinks,
+          }}
           activeThinking={chat.activeThinking}
           defaultThinking={settings.thinking}
-          enabledToolsCount={enabledToolsCount}
-          totalToolsCount={totalToolsCount}
-          smallModelMode={chat.activeSmallModelMode ?? settings.smallModelMode}
-          defaultSmallModelMode={settings.smallModelMode}
           mcpStatus={mcpStatus}
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
@@ -274,7 +278,6 @@ export function App() {
           onOpenConnectionSettings={() => openSettings("connection")}
           onStop={chat.stopResponse}
           showTimestamps={display.showTimestamps}
-          showHelpLinks={display.showHelpLinks}
           conversationPanel={{
             conversations: conversationManager.conversations,
             activeConversationId: conversationManager.activeConversationId,
@@ -311,39 +314,24 @@ export function App() {
           onClick={handleSettingsDismiss}
         >
           <SettingsScreen
-            activeTab={viewState.settingsTab}
-            onTabChange={(tab: TabId) => setViewState({ settingsTab: tab })}
-            provider={settings.provider}
-            setProvider={settings.setProvider}
-            apiKey={settings.apiKey}
-            setApiKey={settings.setApiKey}
-            baseUrl={settings.baseUrl}
-            setBaseUrl={settings.setBaseUrl}
-            model={settings.model}
-            setModel={settings.setModel}
-            thinking={settings.thinking}
-            setThinking={settings.setThinking}
+            settings={settings}
+            display={display}
             theme={theme}
             setTheme={setTheme}
-            showTimestamps={display.showTimestamps}
-            setShowTimestamps={display.setShowTimestamps}
-            showHelpLinks={display.showHelpLinks}
-            setShowHelpLinks={display.setShowHelpLinks}
-            enabledTools={settings.enabledTools}
-            setEnabledTools={settings.setEnabledTools}
             mcpTools={mcpTools}
             mcpStatus={mcpStatus}
-            smallModelMode={settings.smallModelMode}
-            setSmallModelMode={settings.setSmallModelMode}
             saveSettings={handleSaveSettings}
             cancelSettings={handleCancelSettings}
-            settingsConfigured={settings.settingsConfigured}
+            activeTab={viewState.settingsTab}
+            onTabChange={(tab: TabId) => setViewState({ settingsTab: tab })}
             shake={shake}
             onShakeEnd={clearShake}
             hasUnsavedChanges={hasUnsavedChanges}
-            activeModel={chat.activeModel}
-            activeProvider={chat.activeProvider}
-            activeSmallModelMode={chat.activeSmallModelMode}
+            conversationLock={{
+              activeModel: chat.activeModel,
+              activeProvider: chat.activeProvider,
+              activeSmallModelMode: chat.activeSmallModelMode,
+            }}
           />
         </div>
       )}

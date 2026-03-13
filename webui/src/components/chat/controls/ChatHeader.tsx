@@ -6,7 +6,7 @@
 import { VERSION } from "#src/shared/version";
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
-import { HeaderActions, type HeaderActionsProps } from "./header/HeaderActions";
+import { HeaderActions, type HeaderInfo } from "./header/HeaderActions";
 import {
   BookmarkIcon,
   NewConversationIcon,
@@ -18,11 +18,15 @@ import { VersionDisplay } from "./header/VersionDisplay";
 const iconBtn =
   "p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors";
 
-interface ChatHeaderProps extends HeaderActionsProps {
+interface ChatHeaderProps {
+  headerInfo: HeaderInfo;
   mcpStatus: McpStatus;
   isHistoryOpen: boolean;
   isActiveBookmarked?: boolean;
   latestVersion: string | null;
+  onOpenSettings: () => void;
+  onOpenToolsSettings: () => void;
+  onOpenConnectionSettings: () => void;
   onToggleHistory: () => void;
   onNewConversation: () => void;
   onToggleBookmark?: () => void;
@@ -31,18 +35,10 @@ interface ChatHeaderProps extends HeaderActionsProps {
 /**
  * Header component for chat UI with responsive layout
  * @param props - ChatHeaderProps
+ * @param props.headerInfo - Header display state (model/provider/tools/small-model info)
  * @param props.mcpStatus - MCP connection status
- * @param props.activeModel - Active model identifier
- * @param props.activeProvider - Active provider
- * @param props.model - Configured model
- * @param props.provider - Configured provider
- * @param props.enabledToolsCount - Number of enabled tools
- * @param props.totalToolsCount - Total number of available tools
- * @param props.smallModelMode - Whether small model mode is active
- * @param props.defaultSmallModelMode - Current default small model mode from settings
  * @param props.isHistoryOpen - Whether conversation history panel is open
  * @param props.isActiveBookmarked - Whether the active conversation is bookmarked
- * @param props.showHelpLinks - Whether to show help link buttons
  * @param props.latestVersion - Latest available version, or null if up to date
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onOpenToolsSettings - Callback to open tools settings tab
@@ -53,18 +49,10 @@ interface ChatHeaderProps extends HeaderActionsProps {
  * @returns Header element
  */
 export function ChatHeader({
+  headerInfo,
   mcpStatus,
-  activeModel,
-  activeProvider,
-  model,
-  provider,
-  enabledToolsCount,
-  totalToolsCount,
-  smallModelMode,
-  defaultSmallModelMode,
   isHistoryOpen,
   isActiveBookmarked,
-  showHelpLinks,
   latestVersion,
   onOpenSettings,
   onOpenToolsSettings,
@@ -130,15 +118,7 @@ export function ChatHeader({
       </div>
 
       <HeaderActions
-        activeModel={activeModel}
-        activeProvider={activeProvider}
-        model={model}
-        provider={provider}
-        enabledToolsCount={enabledToolsCount}
-        totalToolsCount={totalToolsCount}
-        smallModelMode={smallModelMode}
-        defaultSmallModelMode={defaultSmallModelMode}
-        showHelpLinks={showHelpLinks}
+        headerInfo={headerInfo}
         onOpenSettings={onOpenSettings}
         onOpenToolsSettings={onOpenToolsSettings}
         onOpenConnectionSettings={onOpenConnectionSettings}
