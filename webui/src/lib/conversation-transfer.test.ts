@@ -11,6 +11,7 @@ import {
   type ConversationRecord,
 } from "#webui/lib/conversation-db";
 import {
+  exportConversation,
   exportConversations,
   importConversations,
 } from "#webui/lib/conversation-transfer";
@@ -107,6 +108,28 @@ describe("conversation-transfer", () => {
 
     expect(newCount).toBe(1);
     expect(skippedCount).toBe(2);
+  });
+
+  it("exports a single conversation by ID", async () => {
+    await saveConversation(makeRecord("a", "Session A"));
+    await saveConversation(makeRecord("b", "Session B"));
+
+    const { json, title } = await exportConversation("a");
+
+    expect(title).toBe("Session A");
+
+    const parsed = JSON.parse(json) as {
+      version: number;
+      conversations: ConversationRecord[];
+    };
+
+    expect(parsed.version).toBe(1);
+    expect(parsed.conversations).toHaveLength(1);
+    expect(parsed.conversations[0]?.id).toBe("a");
+  });
+
+  it("throws when exporting a non-existent conversation", async () => {
+    await expect(exportConversation("missing")).rejects.toThrow("not found");
   });
 
   it("normalizes missing optional fields", async () => {

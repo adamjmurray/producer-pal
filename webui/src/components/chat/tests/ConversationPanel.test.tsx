@@ -48,6 +48,7 @@ const defaultProps = {
   onSelect: vi.fn(),
   onNewConversation: vi.fn(),
   onDelete: vi.fn(),
+  onExportItem: vi.fn(),
   onRename: vi.fn(),
   onToggleBookmark: vi.fn(),
   onExport: vi.fn(),
@@ -157,6 +158,22 @@ describe("ConversationPanel", () => {
     fireEvent.click(getAllByLabelText("Delete conversation")[0] as HTMLElement);
 
     expect(onDelete).toHaveBeenCalledWith("conv-1");
+  });
+
+  it("calls onExportItem when clicking export icon", () => {
+    const onExportItem = vi.fn();
+
+    const { getAllByLabelText } = render(
+      <ConversationPanel
+        {...defaultProps}
+        conversations={conversations}
+        onExportItem={onExportItem}
+      />,
+    );
+
+    fireEvent.click(getAllByLabelText("Export conversation")[0] as HTMLElement);
+
+    expect(onExportItem).toHaveBeenCalledWith("conv-1");
   });
 
   it("supports inline rename: commit, cancel, and empty clears title", () => {

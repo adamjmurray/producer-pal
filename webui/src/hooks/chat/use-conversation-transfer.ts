@@ -6,9 +6,20 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
+  exportConversation,
   exportConversations,
   importConversations,
 } from "#webui/lib/conversation-transfer";
+
+/**
+ * Format an error for user-facing notification.
+ * @param label - Operation label (e.g. "Export", "Import")
+ * @param err - Caught error value
+ * @returns Formatted error message
+ */
+function formatError(label: string, err: unknown): string {
+  return `${label} failed: ${err instanceof Error ? err.message : "unknown error"}`;
+}
 
 /**
  * Hook managing conversation export/import with notification feedback.
@@ -19,6 +30,7 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
   notification: TransferNotificationData | null;
   dismissNotification: () => void;
   handleExport: () => Promise<void>;
+  handleExportOne: (id: string) => Promise<void>;
   handleImport: () => Promise<void>;
 } {
   const [notification, setNotification] =
@@ -62,12 +74,37 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
         "success",
       );
     } catch (err) {
-      showNotification(
-        `Export failed: ${err instanceof Error ? err.message : "unknown error"}`,
-        "error",
-      );
+      showNotification(formatError("Export", err), "error");
     }
   }, [showNotification]);
+
+  const handleExportOne = useCallback(
+    async (id: string) => {
+      try {
+        const { json, title } = await exportConversation(id);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const date = new Date().toISOString().slice(0, 10);
+        const slug = title
+          ? `-${title
+              .toLowerCase()
+              .replaceAll(/[^\da-z]+/g, "-")
+              .replaceAll(/(^-|-$)/g, "")}`
+          : "";
+
+        a.href = url;
+        a.download = `producer-pal-conversation${slug}-${date}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        showNotification("Exported conversation", "success");
+      } catch (err) {
+        showNotification(formatError("Export", err), "error");
+      }
+    },
+    [showNotification],
+  );
 
   const handleImport = useCallback(async () => {
     const input = document.createElement("input");
@@ -97,10 +134,7 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
           "success",
         );
       } catch (err) {
-        showNotification(
-          `Import failed: ${err instanceof Error ? err.message : "unknown error"}`,
-          "error",
-        );
+        showNotification(formatError("Import", err), "error");
       }
     };
 
@@ -113,5 +147,11 @@ export function useConversationTransfer(refreshList: () => Promise<void>): {
     input.click();
   }, [refreshList, showNotification]);
 
-  return { notification, dismissNotification, handleExport, handleImport };
+  return {
+    notification,
+    dismissNotification,
+    handleExport,
+    handleExportOne,
+    handleImport,
+  };
 }

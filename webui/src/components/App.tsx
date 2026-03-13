@@ -292,6 +292,7 @@ export function App() {
               if (isMobile()) setViewState({ historyPanelOpen: false });
             },
             onDelete: handleDeleteConversation,
+            onExportItem: transfer.handleExportOne,
             onRename: handleRenameConversation,
             onToggleBookmark: handleToggleBookmark,
             onExport: () => void transfer.handleExport(),

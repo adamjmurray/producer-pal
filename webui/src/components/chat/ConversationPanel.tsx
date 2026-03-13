@@ -24,6 +24,7 @@ export interface ConversationPanelProps {
   onSelect: (id: string) => void;
   onNewConversation: () => void;
   onDelete: (id: string) => void;
+  onExportItem: (id: string) => void | Promise<void>;
   onRename: (id: string, title: string | null) => void;
   onToggleBookmark: (id: string) => void;
   onExport: () => void;
@@ -41,6 +42,7 @@ export interface ConversationPanelProps {
  * @param props.onSelect - Callback when a conversation is selected
  * @param props.onNewConversation - Callback to start a new conversation
  * @param props.onDelete - Callback to delete a conversation
+ * @param props.onExportItem - Callback to export a single conversation
  * @param props.onRename - Callback to rename a conversation
  * @param props.onToggleBookmark - Callback to toggle bookmark on a conversation
  * @param props.onExport - Callback to export all conversations
@@ -56,6 +58,7 @@ export function ConversationPanel({
   onSelect,
   onNewConversation,
   onDelete,
+  onExportItem,
   onRename,
   onToggleBookmark,
   onExport,
@@ -79,6 +82,7 @@ export function ConversationPanel({
         editValue={editValue}
         onSelect={onSelect}
         onDelete={onDelete}
+        onExport={onExportItem}
         onToggleBookmark={onToggleBookmark}
         onEditStart={() => {
           setEditingId(conv.id);

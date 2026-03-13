@@ -217,6 +217,36 @@ describe("useConversationTransfer", () => {
     });
   });
 
+  it("exports a single conversation and triggers download", async () => {
+    await saveConversation(makeRecord("single-1"));
+
+    const clickSpy = mockDownloadApis();
+    const hook = renderTransferHook();
+
+    await act(async () => {
+      await hook.result.current.handleExportOne("single-1");
+    });
+
+    expect(clickSpy).toHaveBeenCalledOnce();
+    expect(hook.result.current.notification).toStrictEqual({
+      message: "Exported conversation",
+      type: "success",
+    });
+  });
+
+  it("shows error when exporting non-existent conversation", async () => {
+    const hook = renderTransferHook();
+
+    await act(async () => {
+      await hook.result.current.handleExportOne("missing");
+    });
+
+    expect(hook.result.current.notification?.type).toBe("error");
+    expect(hook.result.current.notification?.message).toContain(
+      "Export failed",
+    );
+  });
+
   it("imports conversations from file", async () => {
     const data = { version: 1, conversations: [makeRecord("imported-1")] };
     const file = new File([JSON.stringify(data)], "test.json");

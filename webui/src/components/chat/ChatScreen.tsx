@@ -184,6 +184,7 @@ export function ChatScreen({
           onSelect={conversationPanel.onSelect}
           onNewConversation={conversationPanel.onNew}
           onDelete={conversationPanel.onDelete}
+          onExportItem={conversationPanel.onExportItem}
           onRename={conversationPanel.onRename}
           onToggleBookmark={conversationPanel.onToggleBookmark}
           onExport={conversationPanel.onExport}

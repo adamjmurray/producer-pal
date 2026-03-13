@@ -131,6 +131,28 @@ export function ExportIcon() {
 }
 
 /**
+ * Small 12x12 export icon for inline use in conversation items
+ * @returns SVG element
+ */
+export function ExportIconSmall() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 2v8M5 7l3 3 3-3" />
+      <path d="M3 11v2a1 1 0 001 1h8a1 1 0 001-1v-2" />
+    </svg>
+  );
+}
+
+/**
  * Up-arrow-from-tray icon for importing conversations
  * @returns SVG element
  */

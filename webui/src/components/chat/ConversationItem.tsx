@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { getProviderName } from "#webui/components/chat/controls/header/header-helpers";
-import { EditIcon } from "#webui/components/chat/controls/header/HeaderIcons";
+import {
+  EditIcon,
+  ExportIconSmall,
+} from "#webui/components/chat/controls/header/HeaderIcons";
 import { getModelName } from "#webui/lib/config";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import {
@@ -20,6 +23,7 @@ export interface ConversationItemProps {
   editValue: string;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onExport: (id: string) => void | Promise<void>;
   onToggleBookmark: (id: string) => void;
   onEditStart: () => void;
   onEditChange: (value: string) => void;
@@ -36,6 +40,7 @@ export interface ConversationItemProps {
  * @param props.editValue - Current edit input value
  * @param props.onSelect - Select callback
  * @param props.onDelete - Delete callback
+ * @param props.onExport - Export single conversation callback
  * @param props.onToggleBookmark - Toggle bookmark callback
  * @param props.onEditStart - Start editing callback
  * @param props.onEditChange - Edit value change callback
@@ -50,6 +55,7 @@ export function ConversationItem({
   editValue,
   onSelect,
   onDelete,
+  onExport,
   onToggleBookmark,
   onEditStart,
   onEditChange,
@@ -110,6 +116,18 @@ export function ConversationItem({
           title="Rename conversation"
         >
           <EditIcon />
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            void onExport(conv.id);
+          }}
+          className="px-1 py-1 text-zinc-400 hover:text-blue-500 dark:text-zinc-500 dark:hover:text-blue-400 transition-colors"
+          aria-label="Export conversation"
+          title="Export conversation"
+        >
+          <ExportIconSmall />
         </button>
 
         <button

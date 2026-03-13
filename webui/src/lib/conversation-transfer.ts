@@ -17,6 +17,27 @@ interface ExportData {
 }
 
 /**
+ * Export a single conversation from IndexedDB as a JSON string.
+ * @param id - Conversation ID to export
+ * @returns JSON string and conversation title (null if untitled)
+ */
+export async function exportConversation(
+  id: string,
+): Promise<{ json: string; title: string | null }> {
+  const record = await loadConversation(id);
+
+  if (!record) throw new Error(`Conversation ${id} not found`);
+
+  const data: ExportData = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    conversations: [record],
+  };
+
+  return { json: JSON.stringify(data, null, 2), title: record.title };
+}
+
+/**
  * Export all conversations from IndexedDB as a JSON string.
  * @returns JSON string and conversation count
  */
