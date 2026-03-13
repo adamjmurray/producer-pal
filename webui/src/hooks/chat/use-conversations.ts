@@ -128,7 +128,14 @@ export function useConversations({
   const setActiveId = useCallback((id: string | null) => {
     setActiveConversationId(id);
     activeIdRef.current = id;
-    programmaticHashRef.current = true;
+    // Only guard if the hash will actually change — setting the same hash
+    // doesn't fire hashchange, leaving the flag stuck
+    const currentHash = getHashConversationId();
+
+    if (id !== currentHash) {
+      programmaticHashRef.current = true;
+    }
+
     setLocationHash(id);
   }, []);
 

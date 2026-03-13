@@ -12,25 +12,31 @@ import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations
  * @returns Stable callback handlers for conversation operations
  */
 export function useConversationHandlers(manager: UseConversationsReturn) {
-  const handleNew = useCallback(
-    () => void manager.startNewConversation(),
-    [manager],
-  );
+  const handleNew = useCallback(() => {
+    manager.startNewConversation().catch(console.error);
+  }, [manager]);
   const handleSelect = useCallback(
-    (id: string) => void manager.switchConversation(id),
+    (id: string) => {
+      manager.switchConversation(id).catch(console.error);
+    },
     [manager],
   );
   const handleDelete = useCallback(
-    (id: string) => void manager.deleteConversation(id),
+    (id: string) => {
+      manager.deleteConversation(id).catch(console.error);
+    },
     [manager],
   );
   const handleRename = useCallback(
-    (id: string, title: string | null) =>
-      void manager.renameConversation(id, title),
+    (id: string, title: string | null) => {
+      manager.renameConversation(id, title).catch(console.error);
+    },
     [manager],
   );
   const handleToggleBookmark = useCallback(
-    (id: string) => void manager.toggleBookmark(id),
+    (id: string) => {
+      manager.toggleBookmark(id).catch(console.error);
+    },
     [manager],
   );
 

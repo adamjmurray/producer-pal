@@ -73,12 +73,12 @@ export function setupDefaultMocks(): void {
   (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
     conversations: [],
     activeConversationId: null,
-    saveCurrentConversation: vi.fn(),
-    switchConversation: vi.fn(),
-    startNewConversation: vi.fn(),
-    deleteConversation: vi.fn(),
-    renameConversation: vi.fn(),
-    toggleBookmark: vi.fn(),
+    saveCurrentConversation: vi.fn().mockResolvedValue(undefined),
+    switchConversation: vi.fn().mockResolvedValue(undefined),
+    startNewConversation: vi.fn().mockResolvedValue(undefined),
+    deleteConversation: vi.fn().mockResolvedValue(undefined),
+    renameConversation: vi.fn().mockResolvedValue(undefined),
+    toggleBookmark: vi.fn().mockResolvedValue(undefined),
   });
   (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
     viewState: {

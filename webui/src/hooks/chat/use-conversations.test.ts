@@ -473,6 +473,66 @@ describe("useConversations", () => {
       expect(result.current.activeConversationId).toBeNull();
       expect(props.clearConversation).toHaveBeenCalled();
     });
+
+    it("does not stall programmatic guard when hash already matches", async () => {
+      const existingId = crypto.randomUUID();
+
+      await saveConversation({
+        id: existingId,
+        title: null,
+        createdAt: 1000,
+        updatedAt: 1000,
+        bookmarked: false,
+        provider: null,
+        model: null,
+        modelLabel: null,
+        thinking: null,
+        temperature: null,
+        showThoughts: null,
+        smallModelMode: null,
+        messages: [{ role: "user", content: "first" }],
+      });
+
+      const secondId = crypto.randomUUID();
+
+      await saveConversation({
+        id: secondId,
+        title: null,
+        createdAt: 2000,
+        updatedAt: 2000,
+        bookmarked: false,
+        provider: null,
+        model: null,
+        modelLabel: null,
+        thinking: null,
+        temperature: null,
+        showThoughts: null,
+        smallModelMode: null,
+        messages: [{ role: "user", content: "second" }],
+      });
+
+      const { props } = await setupHook();
+
+      // Navigate to first conversation via hashchange
+      window.location.hash = existingId;
+      await act(async () => {
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      // switchConversation calls setActiveId with same hash — guard must not stall
+      // Now navigate to second conversation — this should NOT be swallowed
+      window.location.hash = secondId;
+      await act(async () => {
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(props.restoreChatHistory).toHaveBeenCalledWith(
+        [{ role: "user", content: "second" }],
+        expect.any(Object),
+      );
+    });
   });
 
   describe("auto-title derivation", () => {

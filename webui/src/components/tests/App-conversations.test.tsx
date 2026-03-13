@@ -47,16 +47,18 @@ describe("App conversation management", () => {
     setViewState: vi.fn(),
   };
 
+  const asyncMock = () => vi.fn().mockResolvedValue(undefined);
+
   const mockConversations = (overrides: Record<string, unknown>) => {
     (useConversations as ReturnType<typeof vi.fn>).mockReturnValue({
       conversations: [],
       activeConversationId: null,
-      saveCurrentConversation: vi.fn(),
-      switchConversation: vi.fn(),
-      startNewConversation: vi.fn(),
-      deleteConversation: vi.fn(),
-      renameConversation: vi.fn(),
-      toggleBookmark: vi.fn(),
+      saveCurrentConversation: asyncMock(),
+      switchConversation: asyncMock(),
+      startNewConversation: asyncMock(),
+      deleteConversation: asyncMock(),
+      renameConversation: asyncMock(),
+      toggleBookmark: asyncMock(),
       ...overrides,
     });
     (useViewState as ReturnType<typeof vi.fn>).mockReturnValue(
@@ -122,7 +124,7 @@ describe("App conversation management", () => {
   });
 
   it("calls deleteConversation on delete button click", () => {
-    const mockDelete = vi.fn();
+    const mockDelete = asyncMock();
 
     mockConversations({
       conversations: [
@@ -137,7 +139,7 @@ describe("App conversation management", () => {
   });
 
   it("calls renameConversation on rename", () => {
-    const mockRename = vi.fn();
+    const mockRename = asyncMock();
 
     mockConversations({
       conversations: [
@@ -156,7 +158,7 @@ describe("App conversation management", () => {
   });
 
   it("calls toggleBookmark on bookmark button click", () => {
-    const mockToggleBookmark = vi.fn();
+    const mockToggleBookmark = asyncMock();
 
     mockConversations({
       conversations: [
