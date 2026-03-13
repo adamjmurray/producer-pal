@@ -476,11 +476,9 @@ describe("ChatHeader", () => {
           headerInfo={hi({ smallModelMode: false })}
         />,
       );
-      expect(screen.getAllByLabelText("large model").length).toBeGreaterThan(0);
-      const elements = screen.getAllByLabelText("large model");
-      const mobileEl = elements.find((el) => el.textContent.trim() === "🐘");
+      const el = screen.getByLabelText("large model");
 
-      expect(mobileEl).toBeDefined();
+      expect(el.textContent).toContain("🐘");
     });
 
     it("shows small model with turtle when smallModelMode is true", () => {
@@ -490,11 +488,9 @@ describe("ChatHeader", () => {
           headerInfo={hi({ smallModelMode: true })}
         />,
       );
-      expect(screen.getAllByLabelText("small model").length).toBeGreaterThan(0);
-      const elements = screen.getAllByLabelText("small model");
-      const mobileEl = elements.find((el) => el.textContent.trim() === "🐢");
+      const el = screen.getByLabelText("small model");
 
-      expect(mobileEl).toBeDefined();
+      expect(el.textContent).toContain("🐢");
     });
 
     it("shows full text at sm breakpoint", () => {

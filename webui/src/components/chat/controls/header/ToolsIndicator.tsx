@@ -12,7 +12,7 @@ const textColor = "text-zinc-500 dark:text-zinc-400";
 
 /**
  * Responsive tools count indicator.
- * Shows wrench emoji + full text at lg+, wrench with optional count below lg.
+ * Hidden below sm. Shows wrench + count at sm. Full text at md+.
  * @param props - Component props
  * @param props.enabledToolsCount - Number of enabled tools
  * @param props.totalToolsCount - Total number of available tools
@@ -22,25 +22,18 @@ export function ToolsIndicator({
   enabledToolsCount,
   totalToolsCount,
 }: ToolsIndicatorProps) {
-  const allEnabled = enabledToolsCount === totalToolsCount;
   const titleText = `${enabledToolsCount}/${totalToolsCount} tools enabled`;
 
-  // When all enabled, hide below lg (no need for icon-only wrench).
-  // When subset, always show wrench with count.
-  const visibility = allEnabled ? "hidden lg:inline" : "";
-
   return (
-    <span className={`text-xs ${textColor} ${visibility}`} title={titleText}>
+    <span className={`text-xs ${textColor} hidden sm:inline`} title={titleText}>
       🔧
-      {/* Full text at lg+ */}
-      <span className="hidden lg:inline">
+      {/* Full text at md+ */}
+      <span className="hidden md:inline">
         {" "}
         {enabledToolsCount}/{totalToolsCount} tools
       </span>
-      {/* Compact count at sm–lg, only when subset enabled */}
-      {!allEnabled && (
-        <span className="hidden sm:inline lg:hidden"> {enabledToolsCount}</span>
-      )}
+      {/* Compact count at sm only */}
+      <span className="md:hidden"> {enabledToolsCount}</span>
     </span>
   );
 }

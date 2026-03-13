@@ -31,12 +31,9 @@ export function SmallModelIndicator({
 
   return (
     <span className={`text-xs leading-none ${color}`}>
-      <span className="hidden sm:inline" aria-label={label}>
-        {emoji} {label}
-      </span>
-
-      <span className="sm:hidden" aria-label={label}>
+      <span aria-label={label}>
         {emoji}
+        <span className="hidden md:inline"> {label}</span>
       </span>
     </span>
   );
