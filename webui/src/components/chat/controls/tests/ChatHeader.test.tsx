@@ -16,7 +16,7 @@ describe("ChatHeader", () => {
     mcpStatus: "connected" as const,
     activeModel: null,
     activeProvider: null,
-    model: "gemini-2.5-pro",
+    model: "gemini-3.1-pro-preview",
     provider: "gemini" as const,
     enabledToolsCount: 20,
     totalToolsCount: 20,
@@ -90,31 +90,31 @@ describe("ChatHeader", () => {
       render(<ChatHeader {...defaultProps} activeModel={null} />);
       // Falls back to model prop from settings
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
     });
 
     it("shows provider and model name when both are set", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-2.5-pro"
+          activeModel="gemini-3.1-pro-preview"
           activeProvider="gemini"
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
     });
 
     it("shows Flash model with provider", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-2.5-flash"
+          activeModel="gemini-3.1-flash-lite-preview"
           activeProvider="gemini"
         />,
       );
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 2.5 Flash")).toBeDefined();
+      expect(screen.getByText("Gemini 3.1 Flash Lite")).toBeDefined();
     });
 
     it("shows Gemini 3 Flash model with provider", () => {
@@ -145,13 +145,13 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-2.5-pro"
+          activeModel="gemini-3.1-pro-preview"
           activeProvider={null}
         />,
       );
       // Falls back to provider prop from settings
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
     });
   });
 
@@ -275,7 +275,7 @@ describe("ChatHeader", () => {
         <ChatHeader
           {...defaultProps}
           mcpStatus="connected"
-          activeModel="gemini-2.5-pro"
+          activeModel="gemini-3.1-pro-preview"
           activeProvider="gemini"
           enabledToolsCount={18}
           totalToolsCount={20}
@@ -284,7 +284,7 @@ describe("ChatHeader", () => {
 
       expect(screen.getByText(/Ready/)).toBeDefined();
       expect(screen.getByText(/Google \|/)).toBeDefined();
-      expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
+      expect(screen.getByText("Gemini 3.1 Pro")).toBeDefined();
       expect(screen.getByText("18/20 tools")).toBeDefined();
     });
   });
@@ -305,7 +305,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-2.5-pro"
+          activeModel="gemini-3.1-pro-preview"
           activeProvider="gemini"
         />,
       );

@@ -26,7 +26,7 @@ function renderModelSelector(
   const result = render(
     <ModelSelector
       provider={props.provider ?? "gemini"}
-      model={props.model ?? "gemini-2.5-flash"}
+      model={props.model ?? "gemini-3.1-flash-lite-preview"}
       setModel={setModel}
     />,
   );
@@ -43,7 +43,7 @@ describe("ModelSelector", () => {
   it("renders with correct selected model", () => {
     renderModelSelector();
     expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
-      "gemini-2.5-flash",
+      "gemini-3.1-flash-lite-preview",
     );
   });
 
@@ -63,15 +63,14 @@ describe("ModelSelector", () => {
 
     expect(options[0]!.value).toBe("gemini-3-flash-preview");
     expect(options[1]!.value).toBe("gemini-3.1-pro-preview");
-    expect(options[2]!.value).toBe("gemini-2.5-flash");
-    expect(options[3]!.value).toBe("gemini-2.5-pro");
+    expect(options[2]!.value).toBe("gemini-3.1-flash-lite-preview");
   });
 
   it("triggers setModel callback on change", () => {
     const { setModel } = renderModelSelector();
 
-    expectModelSelected("gemini-2.5-pro", setModel);
-    expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-2.5-pro");
+    expectModelSelected("gemini-3.1-pro-preview", setModel);
+    expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-3.1-pro-preview");
   });
 
   it("can select gemini-3-flash-preview", () => {
@@ -83,7 +82,6 @@ describe("ModelSelector", () => {
   describe("OpenAI provider", () => {
     it("renders OpenAI models", () => {
       renderModelSelector({ provider: "openai", model: "gpt-5.4" });
-      expect(screen.getByRole("option", { name: /^GPT-5\.2$/ })).toBeDefined();
       expect(screen.getByRole("option", { name: /^GPT-5\.4$/ })).toBeDefined();
       expect(
         screen.getByRole("option", { name: /^GPT-5 Mini$/ }),
@@ -120,7 +118,7 @@ describe("ModelSelector", () => {
         model: "mistral-large-latest",
       });
 
-      expectModelSelected("mistral-small-latest", setModel);
+      expectModelSelected("devstral-latest", setModel);
     });
   });
 
