@@ -11,9 +11,9 @@ import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "./SettingsScreen";
 
 // Mock child components
-vi.mock(import("./ConnectionTab"), async (importOriginal) => {
+vi.mock(import("./ConnectionTab"), async () => {
   const { API_KEY_URLS, MODEL_DOCS_URLS, DEFAULT_LOCAL_URLS } =
-    await importOriginal();
+    await import("./connection-tab-helpers");
 
   return {
     ConnectionTab: ({

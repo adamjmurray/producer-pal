@@ -24,7 +24,8 @@ export function SmallModelIndicator({
   active,
   diverges,
 }: SmallModelIndicatorProps) {
-  const emoji = active ? "🐢" : "🐘";
+  const emojiClass = active ? "" : "text-base";
+  const emoji = <span className={emojiClass}>{active ? "🐢" : "🐘"}</span>;
   const label = active ? "small model" : "large model";
   const color = diverges ? amberColor : neutralColor;
 
