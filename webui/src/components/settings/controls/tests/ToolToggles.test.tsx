@@ -137,7 +137,7 @@ describe("ToolToggles", () => {
         name: "Tool description",
       });
 
-      expect(infoButtons).toHaveLength(2); // connect and read-live-set have descriptions
+      expect(infoButtons).toHaveLength(3); // connect, read-live-set descriptions + header tooltip
     });
 
     it("does not render info icon for tools without descriptions", () => {
@@ -146,9 +146,11 @@ describe("ToolToggles", () => {
       ];
 
       render(<ToolToggles {...defaultProps} tools={tools} />);
-      expect(
-        screen.queryByRole("button", { name: "Tool description" }),
-      ).toBeNull();
+      const infoButtons = screen.getAllByRole("button", {
+        name: "Tool description",
+      });
+
+      expect(infoButtons).toHaveLength(1); // only the header tooltip, no per-tool tooltips
     });
   });
 

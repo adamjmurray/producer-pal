@@ -99,7 +99,7 @@ export function SmallModelToggle({
         }
       />
       Small model mode
-      <Tooltip text="Simplifies skills and tool parameters for less capable models. Recommended for Ollama and LM Studio." />
+      <Tooltip text="Simplifies skills and tool parameters for less capable models. Recommended for local models (Ollama and LM Studio)." />
     </label>
   );
 }

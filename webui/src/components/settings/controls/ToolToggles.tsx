@@ -98,6 +98,7 @@ export function ToolToggles({
           >
             Disable all
           </button>
+          <Tooltip text="Remove tools to simplify the interface for less capable models, or to focus on specific tasks. Recommended to enable all tools, except with local models (Ollama and LM Studio)." />
         </div>
       </div>
 
