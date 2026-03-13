@@ -213,11 +213,12 @@ function useThinkingOverride(
     setThinking(defaultThinking);
   }, [defaultThinking]);
 
-  useEffect(() => {
-    if (activeThinking != null) {
-      setThinking(activeThinking);
-    }
-  }, [activeThinking]);
+  // Restore locked level for existing conversations, reset to default for new.
+  // defaultThinking is excluded from deps: it has its own sync effect above.
+  useEffect(
+    () => setThinking(activeThinking ?? defaultThinking),
+    [activeThinking], // eslint-disable-line react-hooks/exhaustive-deps -- defaultThinking synced separately
+  );
 
   return [thinking, setThinking];
 }

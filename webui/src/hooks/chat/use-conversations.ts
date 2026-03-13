@@ -149,7 +149,8 @@ export function useConversations({
     activeTemperatureRef.current = null;
     activeShowThoughtsRef.current = null;
     activeSmallModelModeRef.current = null;
-    programmaticHashRef.current = true;
+    // No programmaticHashRef here — setLocationHash(null) uses replaceState
+    // which doesn't fire hashchange, so no guard is needed
     setLocationHash(null);
   }, []);
 

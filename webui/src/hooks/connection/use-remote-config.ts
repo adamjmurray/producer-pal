@@ -58,16 +58,17 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
 
   // Re-fetch when window gains focus (syncs with Max device changes)
   useEffect(() => {
-    const controller = new AbortController();
+    let controller: AbortController | undefined;
 
     const handleFocus = () => {
+      controller = new AbortController();
       void fetchConfig(controller.signal);
     };
 
     window.addEventListener("focus", handleFocus);
 
     return () => {
-      controller.abort();
+      controller?.abort();
       window.removeEventListener("focus", handleFocus);
     };
   }, [fetchConfig]);
