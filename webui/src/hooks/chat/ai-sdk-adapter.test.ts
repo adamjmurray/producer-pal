@@ -131,7 +131,7 @@ describe("aiSdkAdapter", () => {
       });
     });
 
-    it("sets only reasoningSummary for openai reasoning model with Default thinking", () => {
+    it("sets reasoningEffort and reasoningSummary for openai reasoning model with Default thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "gpt-5.2",
         1.0,
@@ -142,7 +142,7 @@ describe("aiSdkAdapter", () => {
       );
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningSummary: "auto" },
+        openai: { reasoningEffort: "medium", reasoningSummary: "auto" },
       });
     });
 
@@ -314,7 +314,7 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("returns undefined providerOptions for openrouter with Default thinking", () => {
+    it("sets medium reasoning effort for openrouter with Default thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "some-model",
         1.0,
@@ -324,7 +324,14 @@ describe("aiSdkAdapter", () => {
         { ...extraParams, provider: "openrouter" },
       );
 
-      expect(config.providerOptions).toBeUndefined();
+      expect(config.providerOptions).toStrictEqual({
+        openrouter: {
+          reasoning: {
+            effort: "medium",
+            exclude: true,
+          },
+        },
+      });
     });
 
     it("returns undefined providerOptions for openrouter with Off thinking", () => {

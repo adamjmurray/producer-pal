@@ -17,8 +17,10 @@ export function mapThinkingToOpenRouterEffort(
   switch (thinking) {
     case "Max":
       return "xhigh";
+    case "Off":
+      return undefined;
     default:
-      return undefined; // Default/Off - let API decide
+      return "medium";
   }
 }
 
@@ -97,8 +99,10 @@ export function mapThinkingToReasoningEffort(
     switch (thinking) {
       case "Max":
         return "high";
+      case "Off":
+        return undefined;
       default:
-        return undefined; // Default/Off - let API decide
+        return "medium";
     }
   }
 
@@ -106,8 +110,10 @@ export function mapThinkingToReasoningEffort(
   switch (thinking) {
     case "Max":
       return supportsXHigh(model) ? "xhigh" : "high";
+    case "Off":
+      return undefined;
     default:
-      return undefined; // Default/Off - let API decide
+      return "medium";
   }
 }
 

@@ -50,8 +50,8 @@ describe("config-builders", () => {
         expect(mapThinkingToReasoningEffort("Max", "o1")).toBe("high");
       });
 
-      it("should return undefined for Default", () => {
-        expect(mapThinkingToReasoningEffort("Default", "o1")).toBeUndefined();
+      it("should map Default to medium", () => {
+        expect(mapThinkingToReasoningEffort("Default", "o1")).toBe("medium");
       });
 
       it("should return undefined for Off", () => {
@@ -72,10 +72,10 @@ describe("config-builders", () => {
         );
       });
 
-      it("should return undefined for Default", () => {
+      it("should map Default to medium", () => {
         expect(
           mapThinkingToReasoningEffort("Default", "gpt-5.1-2025-01-01"),
-        ).toBeUndefined();
+        ).toBe("medium");
       });
     });
 
@@ -86,10 +86,10 @@ describe("config-builders", () => {
         );
       });
 
-      it("should return undefined for Default", () => {
+      it("should map Default to medium", () => {
         expect(
           mapThinkingToReasoningEffort("Default", "gpt-5.2-2025-12-11"),
-        ).toBeUndefined();
+        ).toBe("medium");
       });
     });
   });
@@ -99,8 +99,8 @@ describe("config-builders", () => {
       expect(mapThinkingToOpenRouterEffort("Max")).toBe("xhigh");
     });
 
-    it("should return undefined for Default", () => {
-      expect(mapThinkingToOpenRouterEffort("Default")).toBeUndefined();
+    it("should map Default to medium", () => {
+      expect(mapThinkingToOpenRouterEffort("Default")).toBe("medium");
     });
 
     it("should return undefined for Off", () => {
