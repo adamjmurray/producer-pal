@@ -48,6 +48,7 @@ export function MessageList({
   requestedModel,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const prevMessageCountRef = useRef(0);
   const [showStillThinking, setShowStillThinking] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
@@ -65,10 +66,9 @@ export function MessageList({
     return () => clearTimeout(timer);
   }, [isAssistantResponding, messages]);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  // Auto-scroll to bottom only when a new user message is added (not during
+  // AI streaming), so the user can read without being interrupted.
+  useScrollOnUserMessage(messages, messagesEndRef, prevMessageCountRef);
 
   return (
     <div
@@ -161,6 +161,37 @@ export function MessageList({
       <div ref={messagesEndRef} className="col-span-3" />
     </div>
   );
+}
+
+/**
+ * Scrolls to bottom only when new user messages are added, not during AI
+ * streaming. This prevents auto-scroll from interfering with reading.
+ * @param messages - Current messages array
+ * @param endRef - Ref to the scroll target element
+ * @param endRef.current - The scroll target DOM element
+ * @param prevCountRef - Ref tracking previous message count
+ * @param prevCountRef.current - Previous message count value
+ */
+function useScrollOnUserMessage(
+  messages: UIMessage[],
+  endRef: { current: HTMLDivElement | null },
+  prevCountRef: { current: number },
+): void {
+  useEffect(() => {
+    const prevCount = prevCountRef.current;
+
+    prevCountRef.current = messages.length;
+
+    if (messages.length <= prevCount) return;
+
+    const hasNewUserMessage = messages
+      .slice(prevCount)
+      .some((m) => m.role === "user");
+
+    if (hasNewUserMessage) {
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, endRef, prevCountRef]);
 }
 
 /**
