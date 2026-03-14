@@ -3,20 +3,41 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState, useEffect, useMemo, useRef } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
+import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
+import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
+import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
+import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
 import { useSettings } from "#webui/hooks/settings/use-settings";
+import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
+import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
+import {
+  usePreferencesSettings,
+  savePreferencesSettings,
+} from "#webui/hooks/use-preferences-settings";
+import { useViewState } from "#webui/hooks/use-view-state";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
+import { type TabId } from "./settings/SettingsTabs";
 
 // Placeholder API key for local providers that don't require authentication
 const LOCAL_PROVIDER_API_KEY = "not-needed";
+
+/**
+ * Check if viewport is below Tailwind's md breakpoint (768px)
+ * @returns true on mobile-width screens
+ */
+export function isMobile(): boolean {
+  return window.matchMedia("(max-width: 767px)").matches;
+}
 
 // Base URLs for each provider
 const PROVIDER_BASE_URLS = {
@@ -30,7 +51,7 @@ const PROVIDER_BASE_URLS = {
  * @param {string} url - URL to normalize
  * @returns {string} - Normalized URL with /v1 suffix
  */
-function normalizeLocalProviderUrl(url: string): string {
+export function normalizeLocalProviderUrl(url: string): string {
   // Remove trailing slashes
   const trimmed = url.replace(/\/+$/, "");
 
@@ -48,7 +69,7 @@ function normalizeLocalProviderUrl(url: string): string {
  * @param {string | undefined} baseUrl - Base URL for custom/local providers
  * @returns {string | undefined} - Base URL or undefined for Gemini
  */
-function getBaseUrl(
+export function getBaseUrl(
   provider: string,
   baseUrl: string | undefined,
 ): string | undefined {
@@ -67,28 +88,27 @@ function getBaseUrl(
 }
 
 /**
- *
  * @returns {JSX.Element} - React component
  */
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
-  const [showTimestamps, setShowTimestamps] = useState(
-    () => localStorage.getItem("producer_pal_show_timestamps") === "true",
-  );
+  const { viewState, setViewState } = useViewState();
+  const openSettings = (settingsTab?: TabId) =>
+    setViewState(
+      settingsTab
+        ? { settingsOpen: true, settingsTab }
+        : { settingsOpen: true },
+    );
+  const display = usePreferencesSettings();
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
-  const toolNamesMap = useMemo(() => {
-    if (!mcpTools) return {};
-    const map: Record<string, string> = {};
-
-    for (const tool of mcpTools) {
-      map[tool.id] = tool.name;
-    }
-
-    return map;
-  }, [mcpTools]);
-  const { smallModelMode, setSmallModelMode } = useRemoteConfig(mcpStatus);
+  const toolNamesMap = useMemo(
+    () => Object.fromEntries(mcpTools?.map((t) => [t.id, t.name]) ?? []),
+    [mcpTools],
+  );
+  const { serverSmallModelMode, postSmallModelMode } =
+    useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
   const aiSdkChat = useChat({
@@ -101,6 +121,7 @@ export function App() {
     thinking: settings.thinking,
     temperature: settings.temperature,
     enabledTools: settings.enabledTools,
+    smallModelMode: settings.smallModelMode,
     mcpStatus,
     mcpError,
     checkMcpConnection,
@@ -119,111 +140,201 @@ export function App() {
   const { chat, wrappedHandleSend, wrappedClearConversation } =
     useConversationLock({ chat: aiSdkChat });
 
-  // Calculate tools counts for header display
+  // Sync smallModelMode: seed from server when no active lock, post to server when lock changes
+  useSyncSmallModelMode(
+    serverSmallModelMode,
+    chat.activeSmallModelMode,
+    settings.setSmallModelMode,
+    postSmallModelMode,
+  );
+
+  const conversationManager = useConversations({
+    getChatHistory: chat.getChatHistory,
+    restoreChatHistory: chat.restoreChatHistory,
+    clearConversation: wrappedClearConversation,
+    activeModel: chat.activeModel,
+    activeProvider: chat.activeProvider,
+    activeThinking: chat.activeThinking,
+    activeTemperature: chat.activeTemperature,
+    activeShowThoughts: chat.activeShowThoughts,
+    activeSmallModelMode: chat.activeSmallModelMode,
+  });
+
+  const transfer = useConversationTransfer(conversationManager.refreshList);
+  const {
+    handleNew: handleNewConversation,
+    handleSelect: handleSelectConversation,
+    handleDelete: handleDeleteConversation,
+    handleRename: handleRenameConversation,
+    handleToggleBookmark,
+  } = useConversationHandlers(conversationManager);
+
+  const prevMessageCountRef = useRef(0); // Auto-save on message change
+
+  useEffect(() => {
+    if (chat.messages.length > prevMessageCountRef.current) {
+      void conversationManager.saveCurrentConversation();
+    }
+
+    prevMessageCountRef.current = chat.messages.length;
+  }, [chat.messages.length, conversationManager]);
+
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
     ? mcpTools.filter((t) => settings.enabledTools[t.id] !== false).length
     : 0;
 
-  const [showSettings, setShowSettings] = useState(
-    !settings.settingsConfigured,
-  );
+  const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
+  const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
 
   // Track original appearance settings when settings opened (for cancel)
   const originalThemeRef = useRef(theme);
-  const originalShowTimestampsRef = useRef(showTimestamps);
+  const originalDisplayRef = useRef(display);
   const prevShowSettingsRef = useRef(showSettings);
 
   // Save originals only when settings transitions from closed to open
   useEffect(() => {
     if (showSettings && !prevShowSettingsRef.current) {
       originalThemeRef.current = theme;
-      originalShowTimestampsRef.current = showTimestamps;
+      originalDisplayRef.current = { ...display };
     }
 
     prevShowSettingsRef.current = showSettings;
-  }, [showSettings, theme, showTimestamps]);
+  }, [showSettings, theme, display]);
+
+  const appearance = {
+    theme,
+    showTimestamps: display.showTimestamps,
+    showHelpLinks: display.showHelpLinks,
+  };
+  const hasUnsavedChanges = useHasUnsavedChanges(
+    settings,
+    appearance,
+    showSettings,
+  );
 
   const handleSaveSettings = () => {
-    settings.saveSettings();
-    localStorage.setItem(
-      "producer_pal_show_timestamps",
-      String(showTimestamps),
-    );
-    setShowSettings(false);
+    closeSettings(() => {
+      settings.saveSettings();
+      postSmallModelMode(settings.smallModelMode);
+      savePreferencesSettings(display);
+    });
   };
 
-  const handleCancelSettings = () => {
-    settings.cancelSettings();
-    setTheme(originalThemeRef.current);
-    setShowTimestamps(originalShowTimestampsRef.current);
-    setShowSettings(false);
-  };
+  const handleCancelSettings = useCallback(() => {
+    closeSettings(() => {
+      settings.cancelSettings();
+      setTheme(originalThemeRef.current);
+      const orig = originalDisplayRef.current;
 
-  if (showSettings) {
-    return (
-      <ToolNamesContext.Provider value={toolNamesMap}>
-        <SettingsScreen
-          provider={settings.provider}
-          setProvider={settings.setProvider}
-          apiKey={settings.apiKey}
-          setApiKey={settings.setApiKey}
-          baseUrl={settings.baseUrl}
-          setBaseUrl={settings.setBaseUrl}
-          model={settings.model}
-          setModel={settings.setModel}
-          thinking={settings.thinking}
-          setThinking={settings.setThinking}
-          temperature={settings.temperature}
-          setTemperature={settings.setTemperature}
-          showThoughts={settings.showThoughts}
-          setShowThoughts={settings.setShowThoughts}
-          theme={theme}
-          setTheme={setTheme}
-          showTimestamps={showTimestamps}
-          setShowTimestamps={setShowTimestamps}
-          enabledTools={settings.enabledTools}
-          setEnabledTools={settings.setEnabledTools}
-          mcpTools={mcpTools}
-          mcpStatus={mcpStatus}
-          smallModelMode={smallModelMode}
-          setSmallModelMode={setSmallModelMode}
-          resetBehaviorToDefaults={settings.resetBehaviorToDefaults}
-          saveSettings={handleSaveSettings}
-          cancelSettings={handleCancelSettings}
-          settingsConfigured={settings.settingsConfigured}
-        />
-      </ToolNamesContext.Provider>
-    );
-  }
+      display.setShowTimestamps(orig.showTimestamps);
+      display.setShowHelpLinks(orig.showHelpLinks);
+    });
+  }, [closeSettings, settings, setTheme, display]);
+
+  const { shake, clearShake, handleSettingsDismiss } = useSettingsDismiss({
+    showSettings,
+    settingsConfigured: settings.settingsConfigured,
+    settingsClosing,
+    hasUnsavedChanges,
+    handleCancelSettings,
+  });
 
   return (
     <ToolNamesContext.Provider value={toolNamesMap}>
-      <ChatScreen
-        messages={chat.messages}
-        isAssistantResponding={chat.isAssistantResponding}
-        rateLimitState={chat.rateLimitState}
-        handleSend={wrappedHandleSend}
-        handleRetry={chat.handleRetry}
-        handleEdit={chat.handleEdit}
-        activeModel={chat.activeModel}
-        activeProvider={chat.activeProvider}
-        provider={settings.provider}
-        model={settings.model}
-        defaultThinking={settings.thinking}
-        defaultTemperature={settings.temperature}
-        defaultShowThoughts={settings.showThoughts}
-        enabledToolsCount={enabledToolsCount}
-        totalToolsCount={totalToolsCount}
-        smallModelMode={smallModelMode}
-        mcpStatus={mcpStatus}
-        mcpError={mcpError}
-        checkMcpConnection={checkMcpConnection}
-        onOpenSettings={() => setShowSettings(true)}
-        onClearConversation={wrappedClearConversation}
-        onStop={chat.stopResponse}
-        showTimestamps={showTimestamps}
-      />
+      <div
+        className={
+          showSettings
+            ? `pointer-events-none ${settingsClosing ? "settings-blur-out" : "settings-blur"}`
+            : ""
+        }
+      >
+        <ChatScreen
+          messages={chat.messages}
+          isAssistantResponding={chat.isAssistantResponding}
+          rateLimitState={chat.rateLimitState}
+          handleSend={wrappedHandleSend}
+          handleRetry={chat.handleRetry}
+          handleEdit={chat.handleEdit}
+          headerInfo={{
+            activeModel: chat.activeModel,
+            activeProvider: chat.activeProvider,
+            model: settings.model,
+            provider: settings.provider,
+            enabledToolsCount,
+            totalToolsCount,
+            smallModelMode:
+              chat.activeSmallModelMode ?? settings.smallModelMode,
+            defaultSmallModelMode: settings.smallModelMode,
+            showHelpLinks: display.showHelpLinks,
+          }}
+          activeThinking={chat.activeThinking}
+          defaultThinking={settings.thinking}
+          mcpStatus={mcpStatus}
+          mcpError={mcpError}
+          checkMcpConnection={checkMcpConnection}
+          onOpenSettings={() => openSettings()}
+          onOpenToolsSettings={() => openSettings("tools")}
+          onOpenConnectionSettings={() => openSettings("connection")}
+          onStop={chat.stopResponse}
+          showTimestamps={display.showTimestamps}
+          conversationPanel={{
+            conversations: conversationManager.conversations,
+            activeConversationId: conversationManager.activeConversationId,
+            isOpen: viewState.historyPanelOpen,
+            onToggle: () =>
+              setViewState({
+                historyPanelOpen: !viewState.historyPanelOpen,
+              }),
+            onSelect: (id: string) => {
+              handleSelectConversation(id);
+              if (isMobile()) setViewState({ historyPanelOpen: false });
+            },
+            onNew: () => {
+              handleNewConversation();
+              if (isMobile()) setViewState({ historyPanelOpen: false });
+            },
+            onDelete: handleDeleteConversation,
+            onExportItem: transfer.handleExportOne,
+            onRename: handleRenameConversation,
+            onToggleBookmark: handleToggleBookmark,
+            onExport: () => void transfer.handleExport(),
+            onImport: () => void transfer.handleImport(),
+            notification:
+              transfer.notification ?? conversationManager.limitNotification,
+            onDismissNotification: transfer.notification
+              ? transfer.dismissNotification
+              : conversationManager.dismissLimitNotification,
+          }}
+        />
+      </div>
+      {showSettings && (
+        <div
+          className={`settings-overlay ${settingsClosing ? "settings-closing" : ""}`}
+          onClick={handleSettingsDismiss}
+        >
+          <SettingsScreen
+            settings={settings}
+            display={display}
+            theme={theme}
+            setTheme={setTheme}
+            mcpTools={mcpTools}
+            mcpStatus={mcpStatus}
+            saveSettings={handleSaveSettings}
+            cancelSettings={handleCancelSettings}
+            activeTab={viewState.settingsTab}
+            onTabChange={(tab: TabId) => setViewState({ settingsTab: tab })}
+            shake={shake}
+            onShakeEnd={clearShake}
+            hasUnsavedChanges={hasUnsavedChanges}
+            conversationLock={{
+              activeModel: chat.activeModel,
+              activeProvider: chat.activeProvider,
+              activeSmallModelMode: chat.activeSmallModelMode,
+            }}
+          />
+        </div>
+      )}
     </ToolNamesContext.Provider>
   );
 }

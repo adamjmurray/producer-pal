@@ -2,8 +2,11 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { THINKING_LEVELS } from "#webui/components/settings/controls/thinking-levels";
 import { DEFAULT_MODELS } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
+
+const VALID_THINKING_LEVELS: readonly string[] = THINKING_LEVELS;
 
 export interface ProviderSettings {
   apiKey: string;
@@ -55,7 +58,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     apiKey: "",
     model: DEFAULT_MODELS.lmstudio,
     baseUrl: "http://localhost:1234",
-    thinking: "Off",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
@@ -63,7 +66,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     apiKey: "",
     model: DEFAULT_MODELS.ollama,
     baseUrl: "http://localhost:11434",
-    thinking: "Off",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
@@ -96,7 +99,13 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
         parsed.baseUrl = `http://localhost:${parsed.port}/v1`;
       }
 
-      return { ...DEFAULT_SETTINGS[provider], ...parsed };
+      const settings = { ...DEFAULT_SETTINGS[provider], ...parsed };
+
+      if (!VALID_THINKING_LEVELS.includes(settings.thinking)) {
+        settings.thinking = "Default";
+      }
+
+      return settings;
     } catch {
       // Invalid JSON, fall through to defaults or migration
     }
@@ -318,6 +327,22 @@ export function buildAllProviderSettings(
     ollama,
     custom,
   };
+}
+
+/**
+ * Loads smallModelMode from localStorage
+ * @returns {boolean} Whether small model mode is enabled
+ */
+export function loadSmallModelMode(): boolean {
+  return localStorage.getItem("producer_pal_small_model_mode") === "true";
+}
+
+/**
+ * Saves smallModelMode to localStorage
+ * @param {boolean} enabled - Whether small model mode is enabled
+ */
+export function saveSmallModelMode(enabled: boolean): void {
+  localStorage.setItem("producer_pal_small_model_mode", String(enabled));
 }
 
 /**

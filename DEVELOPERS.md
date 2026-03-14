@@ -9,7 +9,6 @@ moving quickly. But there's plenty of room to collaborate:
 
 - End-to-end testing automation and LLM evaluations
 - Small language model optimization (making Ollama/LM Studio work better)
-- Voice interaction development
 - Documentation improvements
 
 **Always welcome:**
@@ -32,21 +31,36 @@ Also feel free to:
 - Learn from the implementation
 - Fork and modify for your own needs. Please attribute me.
 
+## Branching Strategy
+
+- **`main`** — latest stable release
+- **`dev`** — where the next release is prepared; PRs merge here
+
+**Which branch to work from?** You can base your work off either branch:
+
+- **From `main`** (recommended for most contributors) — more stable starting
+  point. When you're ready to merge, AI tooling can help resolve any conflicts
+  with `dev`.
+- **From `dev`** — gives you the latest in-progress changes, but `dev` is
+  heavily iterated on and can be volatile. New conflicts may appear as it
+  evolves, and it may be temporarily unstable.
+
 ## Building from source
 
 Requires [Node.js](https://nodejs.org) (recommended v24 or higher)
 
 1. Clone this repository
 2. `npm install`
-3. `npm run build` (for production) or `npm run build:all` (for development with
-   debugging tools)
+3. `npm run build` (for production) or `npm run build:debug` (for development
+   with debugging tools)
 4. Add the `max-for-live-device/Producer_Pal.amxd` Max for Live device to a MIDI
    track in Ableton Live
 5. Drag and drop `claude-desktop-extension/Producer_Pal.mcpb` to Claude Desktop
    → Settings → Extension
 
-**Note**: For development and testing, use `npm run build:all` to include
-debugging tools like `ppal-raw-live-api`.
+**Note**: For development and testing, use `npm run build:debug` to include
+debugging tools like `ppal-raw-live-api`. Use `npm run build:dev` for a normal
+build with CORS enabled (for `npm run ui:dev`).
 
 ## Core Development Scripts
 

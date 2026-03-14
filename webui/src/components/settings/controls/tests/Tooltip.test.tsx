@@ -7,7 +7,7 @@
  * @vitest-environment happy-dom
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Tooltip } from "#webui/components/settings/controls/Tooltip";
 
 describe("Tooltip", () => {
@@ -71,11 +71,96 @@ describe("Tooltip", () => {
     expect(screen.queryByText("Some description")).toBeNull();
   });
 
-  it("renders multi-line text as separate paragraphs", () => {
+  it("collapses newlines into spaces", () => {
     render(<Tooltip text={"Line one\nLine two"} />);
     fireEvent.click(infoButton());
-    expect(screen.getByText("Line one")).toBeDefined();
-    expect(screen.getByText("Line two")).toBeDefined();
+    expect(screen.getByText("Line one Line two")).toBeDefined();
+  });
+
+  it("does not dismiss when clicking inside while pinned", () => {
+    render(<Tooltip text={"Line one\nLine two"} />);
+    fireEvent.click(infoButton());
+    const tooltip = screen.getByRole("tooltip");
+
+    expect(tooltip).toBeDefined();
+
+    // Click inside the tooltip content (not outside)
+    fireEvent.mouseDown(tooltip);
+    expect(screen.getByRole("tooltip")).toBeDefined();
+  });
+
+  it("does not re-show tooltip on mouse enter when already pinned", () => {
+    render(<Tooltip text="Some description" />);
+    fireEvent.click(infoButton());
+    expect(screen.getByText("Some description")).toBeDefined();
+
+    // Mouse enter while pinned should be a no-op — verify by checking
+    // that a subsequent mouse leave doesn't dismiss (proves hover state
+    // wasn't set, so pinned state is still solely responsible for visibility)
+    fireEvent.mouseEnter(infoButton());
+    fireEvent.mouseLeave(infoButton());
+    expect(screen.getByText("Some description")).toBeDefined();
+  });
+
+  it("adjusts position when tooltip overflows viewport", async () => {
+    // Set a narrow viewport
+    Object.defineProperty(window, "innerWidth", { value: 200, writable: true });
+
+    // Spy on Element.prototype.getBoundingClientRect so all elements
+    // (including the tooltip div created after the first render) get the mock.
+    const origGetBCR = Element.prototype.getBoundingClientRect;
+    let callCount = 0;
+
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: Element) {
+        callCount++;
+
+        // First call is for the button (positioning effect)
+        if (callCount === 1) {
+          return {
+            top: 0,
+            left: 150,
+            right: 170,
+            bottom: 20,
+            width: 20,
+            height: 20,
+            x: 150,
+            y: 0,
+            toJSON: () => ({}),
+          } as DOMRect;
+        }
+
+        // Second call is for the tooltip (overflow check effect)
+        if (callCount === 2) {
+          return {
+            top: 26,
+            left: 150,
+            right: 400,
+            bottom: 50,
+            width: 250,
+            height: 24,
+            x: 150,
+            y: 26,
+            toJSON: () => ({}),
+          } as DOMRect;
+        }
+
+        return origGetBCR.call(this);
+      },
+    );
+
+    render(<Tooltip text="Some description" />);
+    fireEvent.mouseEnter(infoButton());
+
+    // Wait for the overflow adjustment to reposition the tooltip.
+    // With innerWidth=200 and tooltip width=250: Math.max(8, 200-250-8) = 8
+    await vi.waitFor(() => {
+      const tooltip = screen.getByRole("tooltip");
+
+      expect((tooltip as HTMLElement).style.left).toBe("8px");
+    });
+
+    vi.restoreAllMocks();
   });
 
   it("does not propagate click event", () => {

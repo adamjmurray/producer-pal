@@ -1,39 +1,40 @@
 # Features
 
-Producer Pal provides AI-powered tools for music production in Ableton Live.
-Simply ask the AI what you want to do, and it will use these tools to help you
-create.
+Producer Pal is an AI-powered music production assistant for Ableton Live. Tell
+the AI what you want and it uses 20 specialized tools to read, create, and
+modify tracks, clips, devices, and more in your Live Set.
 
-## Connection & Setup
+It works with virtually any AI, including its
+[built-in Chat UI](/guide/chat-ui), desktop apps like
+[Claude Desktop](/installation/claude-desktop) and
+[Codex](/installation/codex-app), CLI tools, and web apps.
 
-### Connect to Ableton (`ppal-connect`)
+[Get started →](/installation)
+
+## Core Tools
+
+### 🔧 Connect (`ppal-connect`) {#ppal-connect}
 
 - Establish the connection with Ableton Live (required before using other tools)
 - Summarizes the state of the current Live Set
-- Provides the AI with a Producer Pal skill set that adapts to different AI
-  model capabilities
+- Returns a [skill set](#skills) that teaches the AI how to use Producer Pal
+  effectively. Standard skills cover the full feature set.
+  [Small model mode](#small-model-mode) provides simplified skills and schemas
+  for less capable models.
 
-### Project Context (`ppal-context`)
+<!--@include: ./_generated/ppal-connect-schema.md-->
+
+### 🔧 Context (`ppal-context`) {#ppal-context}
 
 - Read and write project memory — persistent notes that help the AI understand
   your goals across conversations
 - Search configured sample folder for audio files by filename or path
 
-### Built-in Chat UI
+<!--@include: ./_generated/ppal-context-schema.md-->
 
-- Control Producer Pal with its built-in text-based interface
-- Compatible with Google Gemini, OpenAI, and OpenAI-compatible online services
-  (Mistral, OpenRouter, etc)
-- Compatible with local SLMs (Ollama, LM Studio)
+## Transport Tools
 
-### Network Control
-
-- Control Ableton Live with another computer on your network for collaborative
-  production and remote control workflows
-
-## Transport & Playback
-
-### Transport Control (`ppal-playback`)
+### 🔧 Playback (`ppal-playback`) {#ppal-playback}
 
 - Start/stop playback in Session or Arrangement view
 - Play specific scenes or clips
@@ -43,9 +44,11 @@ create.
 - Control which tracks follow the Arrangement
 - Stop all clips or specific track clips
 
-## Live Set Management
+<!--@include: ./_generated/ppal-playback-schema.md-->
 
-### Read Live Set (`ppal-read-live-set`)
+## Live Set Tools
+
+### 🔧 Read Live Set (`ppal-read-live-set`) {#ppal-read-live-set}
 
 - Get complete Live project overview
 - View all tracks, scenes, and clips at once
@@ -53,40 +56,26 @@ create.
 - View arrangement locators with times and names
 - Check what's playing and track states
 
-### Update Live Set (`ppal-update-live-set`)
+<!--@include: ./_generated/ppal-read-live-set-schema.md-->
+
+### 🔧 Update Live Set (`ppal-update-live-set`) {#ppal-update-live-set}
 
 - Change tempo, time signature, scale
 - Create, rename, or delete arrangement locators
 
-## Scene Operations
+<!--@include: ./_generated/ppal-update-live-set-schema.md-->
 
-### Create Scene (`ppal-create-scene`)
+## Track Tools
 
-- Add new scenes at any position
-- Set scene name, color, tempo, and time signature
-- Scenes can follow song tempo or have their own
-- Ability to capture currently playing clips into a new scene
-
-### Read Scene (`ppal-read-scene`)
-
-- View scene details and all its clips
-- Check which clips are playing/triggered
-- See scene tempo and time signature
-
-### Update Scene (`ppal-update-scene`)
-
-- Change scene name, color, tempo, and time signature
-- Update multiple scenes at once
-
-## Track Management
-
-### Create Track (`ppal-create-track`)
+### 🔧 Create Track (`ppal-create-track`) {#ppal-create-track}
 
 - Add MIDI, audio, or return tracks
 - Position tracks exactly where you want
 - Set initial mute/solo/arm states
 
-### Read Track (`ppal-read-track`)
+<!--@include: ./_generated/ppal-create-track-schema.md-->
+
+### 🔧 Read Track (`ppal-read-track`) {#ppal-read-track}
 
 - Get detailed track information
 - View all clips in Session and Arrangement
@@ -94,16 +83,46 @@ create.
 - Check track states (muted, soloed, armed)
 - View mixer properties: gain, pan, panning mode, and send levels
 
-### Update Track (`ppal-update-track`)
+<!--@include: ./_generated/ppal-read-track-schema.md-->
+
+### 🔧 Update Track (`ppal-update-track`) {#ppal-update-track}
 
 - Change track gain (volume), panning, and send levels
 - Change mute, solo, arm, I/O routings, and monitoring state
 - Change track name and color
 - Update multiple tracks at once
 
-## Device Management
+<!--@include: ./_generated/ppal-update-track-schema.md-->
 
-### Create Device (`ppal-create-device`)
+## Scene Tools
+
+### 🔧 Create Scene (`ppal-create-scene`) {#ppal-create-scene}
+
+- Add new scenes at any position
+- Set scene name, color, tempo, and time signature
+- Scenes can follow song tempo or have their own
+- Ability to capture currently playing clips into a new scene
+
+<!--@include: ./_generated/ppal-create-scene-schema.md-->
+
+### 🔧 Read Scene (`ppal-read-scene`) {#ppal-read-scene}
+
+- View scene details and all its clips
+- Check which clips are playing/triggered
+- See scene tempo and time signature
+
+<!--@include: ./_generated/ppal-read-scene-schema.md-->
+
+### 🔧 Update Scene (`ppal-update-scene`) {#ppal-update-scene}
+
+- Change scene name, color, tempo, and time signature
+- Update multiple scenes at once
+
+<!--@include: ./_generated/ppal-update-scene-schema.md-->
+
+## Device Tools
+
+### 🔧 Create Device (`ppal-create-device`) {#ppal-create-device}
 
 - Add native Live devices (instruments, MIDI effects, audio effects)
 - Place devices on any track type: MIDI, audio, return, or master
@@ -111,13 +130,17 @@ create.
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
 
-### Read Device (`ppal-read-device`)
+<!--@include: ./_generated/ppal-create-device-schema.md-->
+
+### 🔧 Read Device (`ppal-read-device`) {#ppal-read-device}
 
 - Get detailed info about any device, including inside rack chains and drum pad
   chains
 - List device parameter names and values (the state of knobs, dials, etc)
 
-### Update Device (`ppal-update-device`)
+<!--@include: ./_generated/ppal-read-device-schema.md-->
+
+### 🔧 Update Device (`ppal-update-device`) {#ppal-update-device}
 
 - Change device name
 - Change device parameter values (control knobs, dials, etc)
@@ -129,63 +152,51 @@ create.
 - Control chain and drum pad mute and solo state
 - Change the choke group and output MIDI note of drum chains
 
-## Clip Creation & Editing
+<!--@include: ./_generated/ppal-update-device-schema.md-->
 
-### Create Clip (`ppal-create-clip`)
+## Clip Tools
 
-- Generate MIDI clips with notes, velocities, and timing
+### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
+
+- Generate MIDI clips with notes, velocities, and timing using
+  [custom notation](#custom-music-notation)
 - Place clips in Session slots or Arrangement timeline
 - Support for probability, velocity ranges, and complex rhythms
+- Apply [transforms](#transforms) to shape notes with math expressions
 - Auto-create scenes as needed
 
-### Read Clip (`ppal-read-clip`)
+<!--@include: ./_generated/ppal-create-clip-schema.md-->
+
+### 🔧 Read Clip (`ppal-read-clip`) {#ppal-read-clip}
 
 - Get detailed info about any clip in Session or Arrangement
-- Read MIDI notes in musical notation (C3, D#4, etc.)
+- Read MIDI notes in [custom notation](#custom-music-notation) (C3, D#4, etc.)
 - Get audio clip gain, pitch, warp settings, and sample info
 
-### Update Clip (`ppal-update-clip`)
+<!--@include: ./_generated/ppal-read-clip-schema.md-->
+
+### 🔧 Update Clip (`ppal-update-clip`) {#ppal-update-clip}
 
 - Change clip name, color, and loop settings
-- Add/remove MIDI notes and change note pitch, timing, velocity, and probability
+- Add/remove MIDI notes using [custom notation](#custom-music-notation)
+- Apply [transforms](#transforms) to modify existing notes and audio properties
 - Change audio clip gain, pitch shift, and warp settings
 - Move clips and change their length in the Arrangement
 - Split arrangement clips at specified positions
 - Update multiple clips at once
 
-### Custom Music Notation
+<!--@include: ./_generated/ppal-update-clip-schema.md-->
 
-Producer Pal uses a text-based music notation syntax called `bar|beat` to work
-with MIDI clips. It helps LLMs translate natural language expressions of time to
-the correct time positions in Ableton Live clips and the arrangement timeline.
+## Action Tools
 
-- **Pitches**: Standard notation (C3 = middle C, F#4, Bb2, etc.)
-- **Time positions**: bar|beat format (1|1 = first beat, 2|3 = bar 2, beat 3)
-- **Durations**: bar:beat format (4:0 = 4 bars, 1:2 = 1 bar + 2 beats)
-- **Velocity**: Values from 1-127 (or ranges like 80-100)
-- **Probability**: 0.0 to 1.0 (1.0 = always plays)
-- **Bar copying**: Copy bars with `@2=1` (bar 1→2), ranges with `@2-8=1` (bar
-  1→bars 2-8), or tile patterns with `@3-10=1-2` (repeat 2-bar pattern across
-  bars 3-10)
+### 🔧 Delete (`ppal-delete`) {#ppal-delete}
 
-### Transforms
+- Remove tracks, return tracks, scenes, clips, or devices
+- Bulk delete multiple objects
 
-Apply complex changes to clips using math expressions:
+<!--@include: ./_generated/ppal-delete-schema.md-->
 
-- **Transform MIDI notes**: velocity, pitch, timing, duration, probability
-- **Transform audio clips**: gain, pitch shift
-- **Shapes**: LFO waveforms (sine, tri, saw), ramps, curves, randomization with
-  arbitrary ranges, choose from sets of values (e.g. chord notes)
-- **Context variables**: Access note order (`note.index`), clip metadata
-  (`clip.duration`, `clip.index`, `clip.position`, `clip.barDuration`) in
-  expressions
-- **Selectors**: Target specific pitch ranges (e.g., `C3:`, `C3-C5:`) or time
-  ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
-  `1|1-2|4 C3:`)
-
-## Object Management
-
-### Duplicate (`ppal-duplicate`)
+### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
 
 - Copy tracks, scenes, clips, or devices
 - Create multiple copies at once
@@ -199,14 +210,9 @@ Apply complex changes to clips using math expressions:
 Note: Return tracks and devices on return tracks cannot be duplicated (Live API
 limitation).
 
-### Delete (`ppal-delete`)
+<!--@include: ./_generated/ppal-duplicate-schema.md-->
 
-- Remove tracks, return tracks, scenes, clips, or devices
-- Bulk delete multiple objects
-
-## Selection State and View Control
-
-### Select (`ppal-select`)
+### 🔧 Select (`ppal-select`) {#ppal-select}
 
 - Read current selection and view state (when no arguments)
   - Returns only non-null fields: selected track, scene, clip, device
@@ -220,3 +226,64 @@ limitation).
   - Auto-switches to session view for scene/clipSlot selection
   - Detail views auto-managed: clip detail opens on clip selection, device
     detail on device selection
+
+<!--@include: ./_generated/ppal-select-schema.md-->
+
+## Custom Music Notation {#custom-music-notation}
+
+Producer Pal uses a text-based music notation syntax called `bar|beat` to work
+with MIDI clips. Used by [Create Clip](#ppal-create-clip),
+[Update Clip](#ppal-update-clip), and [Read Clip](#ppal-read-clip). It helps
+LLMs translate natural language expressions of time to the correct time
+positions in Ableton Live clips and the arrangement timeline.
+
+- **Pitches**: Standard notation (C3 = middle C, F#4, Bb2, etc.)
+- **Time positions**: bar|beat format (1|1 = first beat, 2|3 = bar 2, beat 3)
+- **Durations**: bar:beat format (4:0 = 4 bars, 1:2 = 1 bar + 2 beats)
+- **Velocity**: Values from 1-127 (or ranges like 80-100)
+- **Probability**: 0.0 to 1.0 (1.0 = always plays)
+- **Bar copying**: Copy bars with `@2=1` (bar 1→2), ranges with `@2-8=1` (bar
+  1→bars 2-8), or tile patterns with `@3-10=1-2` (repeat 2-bar pattern across
+  bars 3-10)
+
+## Transforms {#transforms}
+
+Apply complex changes to clips using math expressions via
+[Create Clip](#ppal-create-clip) and [Update Clip](#ppal-update-clip):
+
+- **Transform MIDI notes**: velocity, pitch, timing, duration, probability
+- **Transform audio clips**: gain, pitch shift
+- **Shapes**: LFO waveforms (sine, tri, saw), ramps, curves, randomization with
+  arbitrary ranges, choose from sets of values (e.g. chord notes)
+- **Context variables**: Access note order (`note.index`), clip metadata
+  (`clip.duration`, `clip.index`, `clip.position`, `clip.barDuration`) in
+  expressions
+- **Selectors**: Target specific pitch ranges (e.g., `C3:`, `C3-C5:`) or time
+  ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
+  `1|1-2|4 C3:`)
+
+## Network Control
+
+Control Ableton Live from another computer on your local network, no extra setup
+required. For fully remote control, use
+[web tunnels](/installation/web-tunnels).
+
+## Small Model Mode {#small-model-mode}
+
+Adapts Producer Pal for less capable AI models by returning simplified
+[skills](#skills) and removing advanced parameters from tool schemas. This is an
+ongoing R&D effort aimed at making [local models](/installation/choose-local)
+viable for completely offline, free, and private usage. Enable it in the
+[Chat UI](/guide/chat-ui) settings or with `--small-model-mode` on the command
+line.
+
+## Skills {#skills}
+
+The [Connect tool](#ppal-connect) returns a skill set that teaches the AI how to
+use Producer Pal's [custom notation](#custom-music-notation),
+[transforms](#transforms), device paths, and other conventions. Two variants are
+available depending on [small model mode](#small-model-mode):
+
+<!--@include: ./_generated/skills-standard.md-->
+
+<!--@include: ./_generated/skills-basic.md-->

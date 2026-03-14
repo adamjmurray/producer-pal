@@ -5,9 +5,9 @@
 AI-powered assistant for music production. Works with Claude, Gemini, ChatGPT,
 Ollama, and more.
 
-Official website: <a href="https://producer-pal.org">producer-pal.org</a>
+<p align="center"><b>📖 <a href="https://producer-pal.org">producer-pal.org</a></b></p>
 
-<img src="./assets/image/screenshot.png" alt="Producer Pal Screenshot" width="1000">
+<a href="https://producer-pal.org"><img src="./assets/image/screenshot.png" alt="Producer Pal Screenshot" width="1000"></a>
 
 ## Quick Start
 
@@ -29,6 +29,7 @@ Official website: <a href="https://producer-pal.org">producer-pal.org</a>
 - [Documentation](https://producer-pal.org)
 - [Video Tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
 - [Latest Releases](https://github.com/adamjmurray/producer-pal/releases)
+- [Feedback & Support](https://forms.gle/YTrnUJQTBrrdwNiu5)
 - [Discussions](https://github.com/adamjmurray/producer-pal/discussions)
 - [Issues](https://github.com/adamjmurray/producer-pal/issues)
 

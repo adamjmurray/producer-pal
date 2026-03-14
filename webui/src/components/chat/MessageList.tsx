@@ -2,7 +2,9 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { Fragment, type VNode } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 import {
   formatTimestampDate,
   formatTimestampTime,
@@ -23,17 +25,19 @@ interface MessageListProps {
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
   showTimestamps: boolean;
+  requestedModel?: string | null;
 }
 
 /**
  * List of chat messages with auto-scroll
- * @param {MessageListProps} props - Component props
- * @param {UIMessage[]} props.messages - Chat messages to display
- * @param {boolean} props.isAssistantResponding - Whether assistant is responding
- * @param {(messageIndex: number) => Promise<void>} props.handleRetry - Retry message callback
- * @param {(messageIndex: number, newMessage: string) => Promise<void>} props.handleEdit - Edit and fork callback
- * @param {boolean} props.showTimestamps - Whether to show timestamps
- * @returns {JSX.Element} - React component
+ * @param {MessageListProps} root0 - Component props
+ * @param {UIMessage[]} root0.messages - Chat messages
+ * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
+ * @param {Function} root0.handleRetry - Retry callback
+ * @param {Function} root0.handleEdit - Edit and fork callback
+ * @param {boolean} root0.showTimestamps - Whether to show timestamps
+ * @param {string} [root0.requestedModel] - Requested model ID for mismatch detection
+ * @returns {JSX.Element} Message list
  */
 export function MessageList({
   messages,
@@ -41,8 +45,10 @@ export function MessageList({
   handleRetry,
   handleEdit,
   showTimestamps,
+  requestedModel,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const prevMessageCountRef = useRef(0);
   const [showStillThinking, setShowStillThinking] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
@@ -60,13 +66,15 @@ export function MessageList({
     return () => clearTimeout(timer);
   }, [isAssistantResponding, messages]);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  // Auto-scroll to bottom only when a new user message is added (not during
+  // AI streaming), so the user can read without being interrupted.
+  useScrollOnUserMessage(messages, messagesEndRef, prevMessageCountRef);
 
   return (
-    <div className="p-4 space-y-4" data-testid="message-list">
+    <div
+      className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-4 items-start p-4"
+      data-testid="message-list"
+    >
       {messages.map((message, originalIdx) => {
         if (!hasContent(message)) return null;
 
@@ -81,37 +89,27 @@ export function MessageList({
         const timestamp = renderTimestamp(message.timestamp, showTimestamps);
 
         return (
-          <div
-            key={originalIdx}
-            className={`flex items-start gap-2 ${isUser ? "justify-end" : ""}`}
-          >
-            {isUser ? (
-              timestamp
-            ) : (
-              <div className="order-last ml-auto flex flex-col items-start self-stretch">
-                {timestamp}
-                {showRetry && (
-                  <div className="mt-auto">
-                    <RetryButton
-                      onClick={() => void handleRetry(previousUserMessageIdx)}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
+          <Fragment key={originalIdx}>
+            {isUser && timestamp}
             <div
               className={`${
                 isUser
-                  ? "text-black bg-blue-100 dark:text-white dark:bg-blue-900"
-                  : "bg-gray-100 dark:bg-gray-800"
-              } flex-1 min-w-0 rounded-lg py-0.5 px-3`}
+                  ? "text-black bg-blue-100 dark:text-white dark:bg-blue-900/80 shadow-sm dark:shadow-white/10 dark:border dark:border-blue-700/40"
+                  : "col-span-2 bg-zinc-50 dark:bg-zinc-800 shadow-sm dark:shadow-white/10 dark:border dark:border-zinc-700"
+              } min-w-0 rounded-lg py-0.5 px-3`}
               data-testid={isUser ? undefined : "assistant-message-bubble"}
             >
               {!isUser && (
-                <AssistantMessage
-                  parts={message.parts}
-                  isResponding={isAssistantResponding}
-                />
+                <>
+                  <ModelMismatchLabel
+                    requestedModel={requestedModel}
+                    responseModel={message.responseModel}
+                  />
+                  <AssistantMessage
+                    parts={message.parts}
+                    isResponding={isAssistantResponding}
+                  />
+                </>
               )}
               {isUser && isEditing && (
                 <UserMessageEditor
@@ -133,32 +131,67 @@ export function MessageList({
                 />
               )}
             </div>
-            {canEdit && !isEditing && (
-              <EditButton
-                onClick={() => {
-                  setEditingIndex(originalIdx);
-                  setEditText(formatUserContent(message));
-                }}
+            {isUser ? (
+              canEdit && !isEditing ? (
+                <EditButton
+                  onClick={() => {
+                    setEditingIndex(originalIdx);
+                    setEditText(formatUserContent(message));
+                  }}
+                />
+              ) : (
+                <div />
+              )
+            ) : (
+              <RightGutter
+                timestamp={timestamp}
+                showRetry={showRetry}
+                onRetry={() => void handleRetry(previousUserMessageIdx)}
               />
             )}
-          </div>
+          </Fragment>
         );
       })}
 
-      {isAssistantResponding && (
-        <>
-          {showStillThinking && (
-            <div className="text-center text-sm text-gray-400 animate-pulse">
-              Still thinking...
-            </div>
-          )}
-          <ActivityIndicator />
-        </>
-      )}
+      <StreamingFooter
+        isResponding={isAssistantResponding}
+        showStillThinking={showStillThinking}
+      />
 
-      <div ref={messagesEndRef} />
+      <div ref={messagesEndRef} className="col-span-3" />
     </div>
   );
+}
+
+/**
+ * Scrolls to bottom only when new user messages are added, not during AI
+ * streaming. This prevents auto-scroll from interfering with reading.
+ * @param messages - Current messages array
+ * @param endRef - Ref to the scroll target element
+ * @param endRef.current - The scroll target DOM element
+ * @param prevCountRef - Ref tracking previous message count
+ * @param prevCountRef.current - Previous message count value
+ */
+function useScrollOnUserMessage(
+  messages: UIMessage[],
+  endRef: { current: HTMLDivElement | null },
+  prevCountRef: { current: number },
+): void {
+  useEffect(() => {
+    const prevCount = prevCountRef.current;
+
+    prevCountRef.current = messages.length;
+
+    if (messages.length <= prevCount) return;
+
+    const hasNewUserMessage = messages
+      .slice(prevCount)
+      .some((m) => m.role === "user");
+
+    if (hasNewUserMessage) {
+      endRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, endRef, prevCountRef]);
 }
 
 /**
@@ -173,6 +206,35 @@ function hasContent(message: UIMessage): boolean {
 }
 
 /**
+ * Right gutter for AI messages: timestamp at top, retry button at bottom.
+ * @param props - Component props
+ * @param props.timestamp - Timestamp element
+ * @param props.showRetry - Whether to show retry button
+ * @param props.onRetry - Retry callback
+ * @returns Gutter element
+ */
+function RightGutter({
+  timestamp,
+  showRetry,
+  onRetry,
+}: {
+  timestamp: VNode;
+  showRetry: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-start self-stretch">
+      {timestamp}
+      {showRetry && (
+        <div className="mt-auto">
+          <RetryButton onClick={onRetry} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Renders a timestamp element for a message
  * @param {number} timestamp - Unix timestamp in milliseconds
  * @param {boolean} visible - Whether timestamp should be visible
@@ -181,7 +243,7 @@ function hasContent(message: UIMessage): boolean {
 function renderTimestamp(timestamp: number, visible: boolean) {
   return (
     <div
-      className={`text-[9px] leading-tight text-gray-300 dark:text-gray-600 whitespace-nowrap ${visible ? "" : "invisible"}`}
+      className={`text-[9px] leading-tight text-zinc-400 dark:text-zinc-600 whitespace-nowrap ${visible ? "" : "invisible"}`}
       data-testid="message-timestamp"
     >
       <div>{formatTimestampDate(timestamp)}</div>
@@ -222,4 +284,58 @@ function formatUserContent(message: UIMessage): string {
       return "";
     })
     .join("");
+}
+
+/**
+ * Footer shown while assistant is streaming a response.
+ * @param props - Component props
+ * @param props.isResponding - Whether assistant is responding
+ * @param props.showStillThinking - Whether to show "Still thinking..." text
+ * @returns Footer element or null
+ */
+function StreamingFooter({
+  isResponding,
+  showStillThinking,
+}: {
+  isResponding: boolean;
+  showStillThinking: boolean;
+}) {
+  if (!isResponding) return null;
+
+  return (
+    <>
+      {showStillThinking && (
+        <div className="col-span-3 text-center text-sm text-zinc-400 animate-pulse">
+          Still thinking...
+        </div>
+      )}
+      <div className="col-span-3">
+        <ActivityIndicator />
+      </div>
+    </>
+  );
+}
+
+/**
+ * Shows a label when the API responded with a different model than requested.
+ * @param props - Component props
+ * @param props.requestedModel - Model ID that was requested
+ * @param props.responseModel - Model ID from the API response
+ * @returns Label element or null
+ */
+function ModelMismatchLabel({
+  requestedModel,
+  responseModel,
+}: {
+  requestedModel?: string | null;
+  responseModel?: string;
+}) {
+  if (!responseModel || !requestedModel) return null;
+  if (!isModelMismatch(requestedModel, responseModel)) return null;
+
+  return (
+    <div className="text-xs text-zinc-400 dark:text-zinc-500 pt-1 text-right">
+      responded as {responseModel}
+    </div>
+  );
 }

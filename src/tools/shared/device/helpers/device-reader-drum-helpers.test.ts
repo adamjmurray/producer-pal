@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -28,64 +29,76 @@ vi.mock(import("./device-state-helpers.ts"), () => ({
 const pad = (note: number, pitch: string, name: string, state?: string) =>
   state !== undefined ? { note, pitch, name, state } : { note, pitch, name };
 
+// Helper to assert pad states after calling updateDrumPadSoloStates
+type DrumPadInput = {
+  note: number;
+  pitch: string;
+  name: string;
+  state?: string;
+};
+
+const expectSoloStates = (
+  drumPads: DrumPadInput[],
+  expectedStates: (string | undefined)[],
+) => {
+  updateDrumPadSoloStates(drumPads);
+
+  for (const [i, expected] of expectedStates.entries()) {
+    if (expected === undefined) {
+      expect(drumPads[i]!.state).toBeUndefined();
+    } else {
+      expect(drumPads[i]!.state).toBe(expected);
+    }
+  }
+};
+
 describe("device-reader-drum-helpers", () => {
   describe("updateDrumPadSoloStates", () => {
     it("should not modify pads when none are soloed", () => {
-      const drumPads = [pad(36, "C1", "Kick"), pad(37, "C#1", "Snare")];
-
-      updateDrumPadSoloStates(drumPads);
-      expect(drumPads[0]!.state).toBeUndefined();
-      expect(drumPads[1]!.state).toBeUndefined();
+      expectSoloStates(
+        [pad(36, "C1", "Kick"), pad(37, "C#1", "Snare")],
+        [undefined, undefined],
+      );
     });
 
     it("should keep soloed pads as soloed and mute others via solo", () => {
-      const drumPads = [
-        pad(36, "C1", "Kick", STATE.SOLOED),
-        pad(37, "C#1", "Snare"),
-        pad(38, "D1", "Clap"),
-      ];
-
-      updateDrumPadSoloStates(drumPads);
-      expect(drumPads[0]!.state).toBe(STATE.SOLOED);
-      expect(drumPads[1]!.state).toBe(STATE.MUTED_VIA_SOLO);
-      expect(drumPads[2]!.state).toBe(STATE.MUTED_VIA_SOLO);
+      expectSoloStates(
+        [
+          pad(36, "C1", "Kick", STATE.SOLOED),
+          pad(37, "C#1", "Snare"),
+          pad(38, "D1", "Clap"),
+        ],
+        [STATE.SOLOED, STATE.MUTED_VIA_SOLO, STATE.MUTED_VIA_SOLO],
+      );
     });
 
     it("should mark already-muted pads as muted_also_via_solo when others are soloed", () => {
-      const drumPads = [
-        pad(36, "C1", "Kick", STATE.SOLOED),
-        pad(37, "C#1", "Snare", STATE.MUTED),
-        pad(38, "D1", "Clap"),
-      ];
-
-      updateDrumPadSoloStates(drumPads);
-      expect(drumPads[0]!.state).toBe(STATE.SOLOED);
-      expect(drumPads[1]!.state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
-      expect(drumPads[2]!.state).toBe(STATE.MUTED_VIA_SOLO);
+      expectSoloStates(
+        [
+          pad(36, "C1", "Kick", STATE.SOLOED),
+          pad(37, "C#1", "Snare", STATE.MUTED),
+          pad(38, "D1", "Clap"),
+        ],
+        [STATE.SOLOED, STATE.MUTED_ALSO_VIA_SOLO, STATE.MUTED_VIA_SOLO],
+      );
     });
 
     it("should handle multiple soloed pads", () => {
-      const drumPads = [
-        pad(36, "C1", "Kick", STATE.SOLOED),
-        pad(37, "C#1", "Snare", STATE.SOLOED),
-        pad(38, "D1", "Clap"),
-      ];
-
-      updateDrumPadSoloStates(drumPads);
-      expect(drumPads[0]!.state).toBe(STATE.SOLOED);
-      expect(drumPads[1]!.state).toBe(STATE.SOLOED);
-      expect(drumPads[2]!.state).toBe(STATE.MUTED_VIA_SOLO);
+      expectSoloStates(
+        [
+          pad(36, "C1", "Kick", STATE.SOLOED),
+          pad(37, "C#1", "Snare", STATE.SOLOED),
+          pad(38, "D1", "Clap"),
+        ],
+        [STATE.SOLOED, STATE.SOLOED, STATE.MUTED_VIA_SOLO],
+      );
     });
 
     it("should not modify pads when only muted pads exist", () => {
-      const drumPads = [
-        pad(36, "C1", "Kick", STATE.MUTED),
-        pad(37, "C#1", "Snare"),
-      ];
-
-      updateDrumPadSoloStates(drumPads);
-      expect(drumPads[0]!.state).toBe(STATE.MUTED);
-      expect(drumPads[1]!.state).toBeUndefined();
+      expectSoloStates(
+        [pad(36, "C1", "Kick", STATE.MUTED), pad(37, "C#1", "Snare")],
+        [STATE.MUTED, undefined],
+      );
     });
   });
 

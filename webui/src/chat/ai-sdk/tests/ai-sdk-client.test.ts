@@ -80,6 +80,98 @@ async function sendWithParts(
   return last;
 }
 
+/**
+ * Send a message with full control over stream response and per-message overrides.
+ * @param options - Send options
+ * @param options.text - Text to yield in the stream (default: "response")
+ * @param options.modelId - Model ID for the response promise
+ * @param options.overrides - Per-message overrides
+ * @returns Final chat history
+ */
+async function sendWithResponse(
+  options: {
+    text?: string;
+    modelId?: string;
+    overrides?: Parameters<AiSdkClient["sendMessage"]>[2];
+  } = {},
+): Promise<AiSdkMessage[]> {
+  const text = options.text ?? "response";
+
+  async function* iterate(): AsyncIterable<Record<string, unknown>> {
+    yield { type: "text-delta", text };
+  }
+
+  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+    fullStream: iterate(),
+    response: Promise.resolve(
+      options.modelId != null ? { modelId: options.modelId } : {},
+    ),
+  });
+
+  const client = new AiSdkClient("key", createConfig());
+  let last: AiSdkMessage[] = [];
+
+  for await (const history of client.sendMessage(
+    "Hello",
+    undefined,
+    options.overrides,
+  )) {
+    last = history;
+  }
+
+  return last;
+}
+
+/**
+ * Send a tool-call + tool-error pair and return the final history.
+ * @param error - The error value to use in the tool-error part
+ * @returns Final chat history
+ */
+async function sendToolError(error: unknown): Promise<AiSdkMessage[]> {
+  return await sendWithParts([
+    {
+      type: "tool-call",
+      toolCallId: "tc1",
+      toolName: "ppal-connect",
+      input: {},
+    },
+    {
+      type: "tool-error",
+      toolCallId: "tc1",
+      toolName: "ppal-connect",
+      input: {},
+      error,
+    },
+  ]);
+}
+
+/**
+ * Send a message with pre-seeded chat history using an empty stream.
+ * Returns the streamText call arguments for assertion.
+ * @param chatHistory - Pre-seeded chat history
+ * @param message - User message text
+ * @returns The first call arguments passed to streamText
+ */
+async function sendWithHistory(
+  chatHistory: AiSdkMessage[],
+  message: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper accessing mock internals
+): Promise<Record<string, any>> {
+  async function* empty(): AsyncIterable<Record<string, unknown>> {}
+
+  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+    fullStream: empty(),
+  });
+
+  const client = new AiSdkClient("key", createConfig({ chatHistory }));
+
+  for await (const _ of client.sendMessage(message)) {
+    /* consume */
+  }
+
+  return (streamText as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+}
+
 describe("AiSdkClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -206,62 +298,20 @@ describe("AiSdkClient", () => {
     });
 
     it("processes tool-error stream parts", async () => {
-      const last = await sendWithParts([
-        {
-          type: "tool-call",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-        },
-        {
-          type: "tool-error",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-          error: "Connection failed",
-        },
-      ]);
+      const last = await sendToolError("Connection failed");
 
       expect(last[1]!.toolResults![0]!.isError).toBe(true);
       expect(last[1]!.toolResults![0]!.result).toBe("Connection failed");
     });
 
     it("extracts message from Error objects in tool-error parts", async () => {
-      const last = await sendWithParts([
-        {
-          type: "tool-call",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-        },
-        {
-          type: "tool-error",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-          error: new Error("bar|beat syntax error"),
-        },
-      ]);
+      const last = await sendToolError(new Error("bar|beat syntax error"));
 
       expect(last[1]!.toolResults![0]!.result).toBe("bar|beat syntax error");
     });
 
     it("converts non-string non-Error tool errors to string", async () => {
-      const last = await sendWithParts([
-        {
-          type: "tool-call",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-        },
-        {
-          type: "tool-error",
-          toolCallId: "tc1",
-          toolName: "ppal-connect",
-          input: {},
-          error: 42,
-        },
-      ]);
+      const last = await sendToolError(42);
 
       expect(last[1]!.toolResults![0]!.result).toBe("42");
     });
@@ -317,6 +367,21 @@ describe("AiSdkClient", () => {
       });
     });
 
+    it("captures response model ID on assistant messages", async () => {
+      const last = await sendWithResponse({
+        text: "Hi",
+        modelId: "gpt-4o-mini",
+      });
+
+      expect(last[1]!.responseModel).toBe("gpt-4o-mini");
+    });
+
+    it("skips responseModel when response has no modelId", async () => {
+      const last = await sendWithResponse({ text: "Hi" });
+
+      expect(last[1]!.responseModel).toBeUndefined();
+    });
+
     it("ignores unrecognized stream part types", async () => {
       const last = await sendWithParts([
         { type: "text-delta", text: "Hi" },
@@ -332,20 +397,7 @@ describe("AiSdkClient", () => {
         { role: "assistant", content: "Hello!" },
       ];
 
-      async function* empty(): AsyncIterable<Record<string, unknown>> {}
-
-      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: empty(),
-      });
-
-      const client = new AiSdkClient("key", createConfig({ chatHistory }));
-
-      for await (const _ of client.sendMessage("Follow-up")) {
-        /* consume */
-      }
-
-      const callArgs = (streamText as ReturnType<typeof vi.fn>).mock
-        .calls[0]![0];
+      const callArgs = await sendWithHistory(chatHistory, "Follow-up");
 
       // 3 messages: user, assistant (text-only), new user
       expect(callArgs.messages).toHaveLength(3);
@@ -372,23 +424,7 @@ describe("AiSdkClient", () => {
         },
       ];
 
-      async function* empty(): AsyncIterable<Record<string, unknown>> {}
-
-      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: empty(),
-      });
-
-      const client = new AiSdkClient("key", createConfig({ chatHistory }));
-      const results = [];
-
-      for await (const history of client.sendMessage("What happened?")) {
-        results.push(history);
-      }
-
-      // Verifies buildModelMessages handled tool-call history
-      expect(streamText).toHaveBeenCalled();
-      const callArgs = (streamText as ReturnType<typeof vi.fn>).mock
-        .calls[0]![0];
+      const callArgs = await sendWithHistory(chatHistory, "What happened?");
 
       // 4 messages: user, assistant (with tool calls), tool (results), new user
       expect(callArgs.messages).toHaveLength(4);
@@ -398,6 +434,45 @@ describe("AiSdkClient", () => {
         type: "text",
         value: "OK",
       });
+    });
+  });
+
+  describe("per-message overrides", () => {
+    it("stamps overrides on user message when provided", async () => {
+      const last = await sendWithResponse({
+        modelId: "test-model",
+        overrides: { thinking: "Max" },
+      });
+
+      const user = last.find((m) => m.role === "user");
+
+      expect(user?.thinkingOverride).toBe("Max");
+
+      // Assistant messages should NOT have overrides
+      const assistant = last.find((m) => m.role === "assistant");
+
+      expect(assistant?.thinkingOverride).toBeUndefined();
+    });
+
+    it("does not stamp overrides when none provided", async () => {
+      const last = await sendWithResponse({ modelId: "test-model" });
+
+      const user = last.find((m) => m.role === "user");
+
+      expect(user?.thinkingOverride).toBeUndefined();
+      expect(user?.showThoughtsOverride).toBeUndefined();
+    });
+
+    it("only stamps provided override fields", async () => {
+      const last = await sendWithResponse({
+        modelId: "test-model",
+        overrides: { thinking: "Off" },
+      });
+
+      const user = last.find((m) => m.role === "user");
+
+      expect(user?.thinkingOverride).toBe("Off");
+      expect(user?.showThoughtsOverride).toBeUndefined();
     });
   });
 });

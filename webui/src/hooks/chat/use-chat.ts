@@ -10,31 +10,23 @@ import {
   MAX_RETRY_ATTEMPTS,
 } from "#webui/lib/rate-limit";
 import { type UIMessage } from "#webui/types/messages";
-import { type Provider } from "#webui/types/settings";
 import {
+  filterOverrides,
   handleMessageStream,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
+import { useActiveSettings } from "./helpers/use-active-settings";
 import {
-  type ChatAdapter,
   type ChatClient,
+  type ConversationLockedSettings,
   type MessageOverrides,
   type RateLimitState,
   type UseChatProps,
   type UseChatReturn,
 } from "./use-chat-types";
 
-export type {
-  ChatAdapter,
-  ChatClient,
-  MessageOverrides,
-  RateLimitState,
-  UseChatReturn,
-};
-
 /**
  * Generic chat hook that works with any provider via an adapter
- *
  * @param {UseChatProps} props - Chat configuration and adapter
  * @returns {UseChatReturn} Chat state and handlers
  */
@@ -50,6 +42,7 @@ export function useChat<
   thinking,
   temperature,
   enabledTools,
+  smallModelMode,
   mcpStatus,
   mcpError,
   checkMcpConnection,
@@ -58,29 +51,46 @@ export function useChat<
 }: UseChatProps<TClient, TMessage, TConfig>): UseChatReturn {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
-  const [activeModel, setActiveModel] = useState<string | null>(null);
-  const [activeProvider, setActiveProvider] = useState<Provider | null>(null);
-  const [activeThinking, setActiveThinking] = useState<string | null>(null);
-  const [activeTemperature, setActiveTemperature] = useState<number | null>(
-    null,
-  );
+  const active = useActiveSettings();
+  const { lockSettings, restoreSettings, clearSettings } = active;
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
     null,
   );
   const clientRef = useRef<TClient | null>(null);
+  const pendingHistoryRef = useRef<TMessage[] | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const retryAbortRef = useRef<AbortController | null>(null);
+  const thinkingRef = useRef(active.activeThinking);
+  const temperatureRef = useRef(active.activeTemperature);
+
+  thinkingRef.current = active.activeThinking;
+  temperatureRef.current = active.activeTemperature;
 
   const clearConversation = useCallback(() => {
     setMessages([]);
     clientRef.current = null;
-    setActiveModel(null);
-    setActiveProvider(null);
-    setActiveThinking(null);
-    setActiveTemperature(null);
+    pendingHistoryRef.current = null;
+    clearSettings();
     setRateLimitState(null);
     retryAbortRef.current?.abort();
-  }, []);
+  }, [clearSettings]);
+
+  const getChatHistory = useCallback(
+    (): unknown[] =>
+      clientRef.current?.chatHistory ?? pendingHistoryRef.current ?? [],
+    [],
+  );
+
+  const restoreChatHistory = useCallback(
+    (chatHistory: unknown[], lockedSettings?: ConversationLockedSettings) => {
+      clientRef.current = null;
+      pendingHistoryRef.current = chatHistory as TMessage[];
+      setMessages(adapter.formatMessages(chatHistory as TMessage[]));
+      restoreSettings(lockedSettings);
+      setRateLimitState(null);
+    },
+    [adapter, restoreSettings],
+  );
 
   const stopResponse = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -94,11 +104,10 @@ export function useChat<
       await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
 
       const effectiveThinking = overrides?.thinking ?? thinking;
-      const effectiveTemperature = overrides?.temperature ?? temperature;
 
       const config = adapter.buildConfig(
         model,
-        effectiveTemperature,
+        temperature,
         effectiveThinking,
         enabledTools,
         chatHistory,
@@ -107,12 +116,17 @@ export function useChat<
 
       clientRef.current = adapter.createClient(apiKey, config);
       await clientRef.current.initialize();
-      setActiveModel(model);
-      setActiveProvider(provider);
-      setActiveThinking(effectiveThinking);
-      setActiveTemperature(effectiveTemperature);
+      lockSettings(
+        model,
+        provider,
+        effectiveThinking,
+        temperature,
+        null,
+        smallModelMode,
+      );
     },
     [
+      smallModelMode,
       mcpStatus,
       mcpError,
       checkMcpConnection,
@@ -124,22 +138,17 @@ export function useChat<
       apiKey,
       adapter,
       extraParams,
+      lockSettings,
     ],
   );
 
-  /**
-   * Executes a stream request with automatic retry on rate limit errors.
-   * If content was received before the error, sends "continue" on retry
-   * instead of the original message.
-   */
   const executeWithRetry = useCallback(
     async (
       executeStream: (message: string) => AsyncIterable<TMessage[]>,
-      getChatHistory: () => TMessage[],
+      getHistory: () => TMessage[],
       originalMessage: string,
     ): Promise<void> => {
       let attempt = 0;
-      // Use mutable object so callback can set it and loop can read updated value
       const contentState = { hasReceived: false };
 
       retryAbortRef.current = new AbortController();
@@ -151,13 +160,10 @@ export function useChat<
 
       while (shouldRetry(attempt)) {
         try {
-          const messageToSend = contentState.hasReceived
-            ? "continue"
-            : originalMessage;
-          const stream = executeStream(messageToSend);
+          const msg = contentState.hasReceived ? "continue" : originalMessage;
 
           await handleMessageStream(
-            stream,
+            executeStream(msg),
             adapter.formatMessages,
             onMessageUpdate,
           );
@@ -165,22 +171,17 @@ export function useChat<
 
           return;
         } catch (error) {
-          // Check if retry was aborted (using signal from loop-scoped controller)
-          if (retryAbortRef.current.signal.aborted) {
-            return;
-          }
+          if (retryAbortRef.current.signal.aborted) return;
 
           const rateLimitInfo = detectRateLimit(error);
 
           if (!rateLimitInfo.isRateLimited || !shouldRetry(attempt + 1)) {
-            // Not a rate limit error or no more retries - show error
-            setMessages(adapter.createErrorMessage(error, getChatHistory()));
+            setMessages(adapter.createErrorMessage(error, getHistory()));
             setRateLimitState(null);
 
             return;
           }
 
-          // Calculate delay and update state for UI
           const delayMs = calculateRetryDelay(
             attempt,
             rateLimitInfo.retryAfterMs,
@@ -202,9 +203,30 @@ export function useChat<
               reject(new Error("Retry cancelled"));
             });
           });
-
           attempt++;
         }
+      }
+    },
+    [adapter],
+  );
+
+  const runWithChat = useCallback(
+    async (fn: () => Promise<void>) => {
+      setIsAssistantResponding(true);
+
+      try {
+        await fn();
+      } catch (error) {
+        setMessages(
+          adapter.createErrorMessage(
+            error,
+            clientRef.current?.chatHistory ?? [],
+          ),
+        );
+      } finally {
+        abortControllerRef.current = null;
+        setIsAssistantResponding(false);
+        setRateLimitState(null);
       }
     },
     [adapter],
@@ -231,11 +253,12 @@ export function useChat<
         return;
       }
 
-      setIsAssistantResponding(true);
-
-      try {
+      await runWithChat(async () => {
         if (!clientRef.current) {
-          await initializeChat(undefined, options);
+          const pendingHistory = pendingHistoryRef.current ?? undefined;
+
+          pendingHistoryRef.current = null;
+          await initializeChat(pendingHistory, options);
         }
 
         const client = clientRef.current;
@@ -248,41 +271,38 @@ export function useChat<
 
         abortControllerRef.current = controller;
 
+        const filtered = filterOverrides(options, {
+          thinking: thinkingRef.current,
+        });
+
         await executeWithRetry(
-          (msg) => client.sendMessage(msg, controller.signal, options),
+          (msg) => client.sendMessage(msg, controller.signal, filtered),
           () => client.chatHistory,
           userMessage,
         );
-      } catch (error) {
-        setMessages(
-          adapter.createErrorMessage(
-            error,
-            clientRef.current?.chatHistory ?? [],
-          ),
-        );
-      } finally {
-        abortControllerRef.current = null;
-        setIsAssistantResponding(false);
-        setRateLimitState(null);
-      }
+      });
     },
-    [apiKey, initializeChat, adapter, executeWithRetry],
+    [apiKey, adapter, initializeChat, runWithChat, executeWithRetry],
   );
 
   const forkConversation = useCallback(
     async (mergedMessageIndex: number, newMessage: string) => {
-      if (!apiKey || !clientRef.current) return;
+      if (!apiKey) return;
 
       const message = messages[mergedMessageIndex];
 
       if (message?.role !== "user") return;
 
       const rawIndex = message.rawHistoryIndex;
+      const history =
+        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
 
-      setIsAssistantResponding(true);
+      if (!history) return;
 
-      try {
-        const slicedHistory = clientRef.current.chatHistory.slice(0, rawIndex);
+      await runWithChat(async () => {
+        const slicedHistory = history.slice(0, rawIndex);
+
+        pendingHistoryRef.current = null;
 
         await initializeChat(slicedHistory);
 
@@ -299,28 +319,23 @@ export function useChat<
           () => client.chatHistory,
           newMessage,
         );
-      } catch (error) {
-        setMessages(
-          adapter.createErrorMessage(error, clientRef.current.chatHistory),
-        );
-      } finally {
-        abortControllerRef.current = null;
-        setIsAssistantResponding(false);
-        setRateLimitState(null);
-      }
+      });
     },
-    [apiKey, messages, initializeChat, adapter, executeWithRetry],
+    [apiKey, messages, initializeChat, runWithChat, executeWithRetry],
   );
 
   const handleRetry = useCallback(
     async (mergedMessageIndex: number) => {
-      if (!clientRef.current) return;
-
       const message = messages[mergedMessageIndex];
 
       if (message?.role !== "user") return;
 
-      const rawMessage = clientRef.current.chatHistory[message.rawHistoryIndex];
+      const history =
+        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
+
+      if (!history) return;
+
+      const rawMessage = history[message.rawHistoryIndex];
 
       if (!rawMessage) return;
 
@@ -347,15 +362,14 @@ export function useChat<
   return {
     messages,
     isAssistantResponding,
-    activeModel,
-    activeProvider,
-    activeThinking,
-    activeTemperature,
+    ...active,
     rateLimitState,
     handleSend,
     handleRetry,
     handleEdit,
     clearConversation,
     stopResponse,
+    getChatHistory,
+    restoreChatHistory,
   };
 }

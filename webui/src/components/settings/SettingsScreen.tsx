@@ -3,224 +3,157 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useState } from "preact/hooks";
+import { getProviderName } from "#webui/components/chat/controls/header/header-helpers";
 import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
+import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
-import { type Provider } from "#webui/types/settings";
-import { AppearanceTab } from "./AppearanceTab";
-import { BehaviorTab } from "./BehaviorTab";
+import { type UseSettingsReturn } from "#webui/types/settings";
 import { ConnectionTab } from "./ConnectionTab";
 import { ToolToggles } from "./controls/ToolToggles";
+import {
+  type ConversationLock,
+  LockedSettingsNotice,
+} from "./LockedSettingsNotice";
+import { PreferencesTab } from "./PreferencesTab";
 import { SettingsFooter } from "./SettingsFooter";
 import { type TabId, SettingsTabs } from "./SettingsTabs";
 
 interface SettingsScreenProps {
-  provider: Provider;
-  setProvider: (provider: Provider) => void;
-  apiKey: string;
-  setApiKey: (key: string) => void;
-  baseUrl?: string;
-  setBaseUrl?: (url: string) => void;
-  model: string;
-  setModel: (model: string) => void;
-  thinking: string;
-  setThinking: (thinking: string) => void;
-  temperature: number;
-  setTemperature: (temp: number) => void;
-  showThoughts: boolean;
-  setShowThoughts: (show: boolean) => void;
+  settings: UseSettingsReturn;
+  display: PreferencesSettings;
   theme: string;
   setTheme: (theme: string) => void;
-  showTimestamps: boolean;
-  setShowTimestamps: (show: boolean) => void;
-
-  enabledTools: Record<string, boolean>;
-  setEnabledTools: (tools: Record<string, boolean>) => void;
   mcpTools: McpTool[] | null;
   mcpStatus: McpStatus;
-  smallModelMode: boolean;
-  setSmallModelMode: (enabled: boolean) => void;
-  resetBehaviorToDefaults: () => void;
   saveSettings: () => void;
   cancelSettings: () => void;
-  settingsConfigured: boolean;
+  activeTab: TabId;
+  onTabChange: (tab: TabId) => void;
+  shake: boolean;
+  onShakeEnd: () => void;
+  hasUnsavedChanges: boolean;
+  conversationLock: ConversationLock;
 }
 
-/**
- * Gets a display label for the provider
- * @param {string} provider - The provider identifier
- * @returns {string} Display label for the provider
- */
-function getProviderLabel(provider: string): string {
-  switch (provider) {
-    case "anthropic":
-      return "Anthropic";
-    case "gemini":
-      return "Gemini";
-    case "openai":
-      return "OpenAI";
-    case "mistral":
-      return "Mistral";
-    case "openrouter":
-      return "OpenRouter";
-    case "lmstudio":
-      return "LM Studio";
-    case "ollama":
-      return "Ollama";
-    default:
-      return "Custom";
-  }
-}
+const helpLinkClass =
+  "w-6 h-6 rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500! dark:text-zinc-400! hover:border-zinc-200 hover:text-white! dark:hover:border-zinc-300 dark:hover:text-white! flex items-center justify-center text-sm font-semibold no-underline";
 
 /**
- * Settings screen component
- * @param {object} props - Component props
- * @param {Provider} props.provider - Selected provider
- * @param {Function} props.setProvider - Function to update provider
- * @param {string} props.apiKey - API key for the provider
- * @param {Function} props.setApiKey - Function to update API key
- * @param {string} props.baseUrl - Base URL for custom and local providers
- * @param {Function} props.setBaseUrl - Function to update base URL
- * @param {string} props.model - Selected model
- * @param {Function} props.setModel - Function to update model
- * @param {string} props.thinking - Thinking mode setting
- * @param {Function} props.setThinking - Function to update thinking mode
- * @param {number} props.temperature - Temperature/randomness setting
- * @param {Function} props.setTemperature - Function to update temperature
- * @param {boolean} props.showThoughts - Whether to show thought blocks
- * @param {Function} props.setShowThoughts - Function to toggle thought display
- * @param {string} props.theme - UI theme setting
- * @param {Function} props.setTheme - Function to update theme
- * @param {boolean} props.showTimestamps - Whether to show message timestamps
- * @param {Function} props.setShowTimestamps - Function to toggle timestamps
- * @param {object} props.enabledTools - Map of enabled/disabled tools
- * @param {Function} props.setEnabledTools - Function to update enabled tools
- * @param {McpTool[] | null} props.mcpTools - Available tools from MCP server
- * @param {McpStatus} props.mcpStatus - MCP connection status
- * @param {boolean} props.smallModelMode - Whether small model mode is enabled
- * @param {Function} props.setSmallModelMode - Function to toggle small model mode
- * @param {Function} props.resetBehaviorToDefaults - Function to reset behavior settings
- * @param {Function} props.saveSettings - Function to save settings
- * @param {Function} props.cancelSettings - Function to cancel settings changes
- * @param {boolean} props.settingsConfigured - Whether settings have been configured
- * @returns {JSX.Element} Settings screen component
+ * Settings screen component with tabs for connection, tools, and preferences
+ * @param props - SettingsScreenProps
+ * @returns Settings screen element
  */
-export function SettingsScreen({
-  provider,
-  setProvider,
-  apiKey,
-  setApiKey,
-  baseUrl,
-  setBaseUrl,
-  model,
-  setModel,
-  thinking,
-  setThinking,
-  temperature,
-  setTemperature,
-  showThoughts,
-  setShowThoughts,
-  theme,
-  setTheme,
-  showTimestamps,
-  setShowTimestamps,
-  enabledTools,
-  setEnabledTools,
-  mcpTools,
-  mcpStatus,
-  smallModelMode,
-  setSmallModelMode,
-  resetBehaviorToDefaults,
-  saveSettings,
-  cancelSettings,
-  settingsConfigured,
-}: SettingsScreenProps) {
-  const providerLabel = getProviderLabel(provider);
-  const [activeTab, setActiveTab] = useState<TabId>("connection");
+export function SettingsScreen(props: SettingsScreenProps) {
+  const {
+    settings,
+    display,
+    activeTab,
+    onTabChange,
+    saveSettings,
+    cancelSettings,
+    shake,
+    onShakeEnd,
+    hasUnsavedChanges,
+  } = props;
+
+  const shakeClass = shake ? " settings-dialog-shake" : "";
 
   return (
     <div className="flex justify-center min-h-screen p-4 pt-20">
-      <div className="max-w-xl w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 self-start">
+      <div
+        className={`max-w-xl w-full bg-zinc-100 dark:bg-zinc-800 rounded-xl p-6 self-start shadow-[8px_20px_60px_rgba(0,0,0,0.15)] dark:shadow-[6px_16px_45px_rgba(255,255,255,0.04)] border border-zinc-300 dark:border-zinc-600${shakeClass}`}
+        onClick={(e) => e.stopPropagation()}
+        onAnimationEnd={onShakeEnd}
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
-          <a
-            href={`${CHAT_UI_DOCS_URL}#${activeTab}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-6 h-6 rounded-full border border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 flex items-center justify-center text-sm font-semibold"
-            title="Help"
-          >
-            ?
-          </a>
+          {display.showHelpLinks && (
+            <a
+              href={`${CHAT_UI_DOCS_URL}#${activeTab}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={helpLinkClass}
+              title="Documentation"
+            >
+              ?
+            </a>
+          )}
         </div>
 
-        <SettingsTabs activeTab={activeTab} onTabChange={setActiveTab}>
-          {() => (
-            <div className="space-y-4">
-              {/* Connection Tab */}
-              {activeTab === "connection" && (
-                <ConnectionTab
-                  provider={provider}
-                  setProvider={setProvider}
-                  apiKey={apiKey}
-                  setApiKey={setApiKey}
-                  baseUrl={baseUrl}
-                  setBaseUrl={setBaseUrl}
-                  model={model}
-                  setModel={setModel}
-                  providerLabel={providerLabel}
-                  smallModelMode={smallModelMode}
-                  setSmallModelMode={setSmallModelMode}
-                />
-              )}
+        <LockedSettingsNotice
+          conversationLock={props.conversationLock}
+          model={settings.model}
+          provider={settings.provider}
+          smallModelMode={settings.smallModelMode}
+        />
 
-              {/* Behavior Tab */}
-              {activeTab === "behavior" && (
-                <BehaviorTab
-                  provider={provider}
-                  model={model}
-                  thinking={thinking}
-                  setThinking={setThinking}
-                  temperature={temperature}
-                  setTemperature={setTemperature}
-                  showThoughts={showThoughts}
-                  setShowThoughts={setShowThoughts}
-                  resetBehaviorToDefaults={resetBehaviorToDefaults}
-                />
-              )}
-
-              {/* Tools Tab */}
-              {activeTab === "tools" && (
-                <ToolToggles
-                  tools={mcpTools}
-                  mcpStatus={mcpStatus}
-                  enabledTools={enabledTools}
-                  setEnabledTools={setEnabledTools}
-                />
-              )}
-
-              {/* Appearance Tab */}
-              {activeTab === "appearance" && (
-                <AppearanceTab
-                  theme={theme}
-                  setTheme={setTheme}
-                  showTimestamps={showTimestamps}
-                  setShowTimestamps={setShowTimestamps}
-                />
-              )}
-            </div>
-          )}
+        <SettingsTabs activeTab={activeTab} onTabChange={onTabChange}>
+          {() => <SettingsTabContent {...props} />}
         </SettingsTabs>
 
         <SettingsFooter
-          settingsConfigured={settingsConfigured}
+          settingsConfigured={settings.settingsConfigured}
           saveSettings={saveSettings}
           cancelSettings={cancelSettings}
+          pulse={shake}
+          hasUnsavedChanges={hasUnsavedChanges}
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Renders the content for the active settings tab
+ * @param props - Settings screen props (uses activeTab to determine which tab to render)
+ * @returns Tab content element
+ */
+function SettingsTabContent(props: SettingsScreenProps) {
+  const { settings, display, activeTab } = props;
+  const providerLabel = getProviderName(settings.provider, "product");
+
+  return (
+    <div className="space-y-4">
+      {activeTab === "connection" && (
+        <ConnectionTab
+          provider={settings.provider}
+          setProvider={settings.setProvider}
+          apiKey={settings.apiKey}
+          setApiKey={settings.setApiKey}
+          baseUrl={settings.baseUrl}
+          setBaseUrl={settings.setBaseUrl}
+          model={settings.model}
+          setModel={settings.setModel}
+          providerLabel={providerLabel}
+          thinking={settings.thinking}
+          setThinking={settings.setThinking}
+          smallModelMode={settings.smallModelMode}
+          setSmallModelMode={settings.setSmallModelMode}
+        />
+      )}
+
+      {activeTab === "tools" && (
+        <ToolToggles
+          tools={props.mcpTools}
+          mcpStatus={props.mcpStatus}
+          enabledTools={settings.enabledTools}
+          setEnabledTools={settings.setEnabledTools}
+        />
+      )}
+
+      {activeTab === "preferences" && (
+        <PreferencesTab
+          theme={props.theme}
+          setTheme={props.setTheme}
+          showTimestamps={display.showTimestamps}
+          setShowTimestamps={display.setShowTimestamps}
+          showHelpLinks={display.showHelpLinks}
+          setShowHelpLinks={display.setShowHelpLinks}
+        />
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 ## Upcoming
 
-### 1.5 - Customization and Context Management
+### 1.5 - Personalization and Customization
 
 - Global context: add your own reference material and custom instructions across
   all Live projects
@@ -70,7 +70,6 @@ manipulation and basic Live Set management.
 
 - Support new Live API features as they become available
 - Take lane support
-- Persistent conversations in the built-in chat UI
 - Chord notation and pitches as scale/chord degrees
 - Voice interface
 - Custom algorithm execution for MIDI generation and transformation

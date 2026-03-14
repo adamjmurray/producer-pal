@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,9 +17,33 @@ import {
   type UpdateClipMocks,
   setupArrangementClipPath,
   setupMockProperties,
+  setupSingleArrangementClip,
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+
+/** Standard properties for a 4-bar arrangement MIDI clip (beats 0-16). */
+const FOUR_BAR_CLIP_PROPS = {
+  is_arrangement_clip: 1,
+  is_midi_clip: 1,
+  start_time: 0.0,
+  end_time: 16.0,
+  signature_numerator: 4,
+  signature_denominator: 4,
+} as const;
+
+/**
+ * Set up a single 4-bar arrangement MIDI clip at track 0 (beats 0-16).
+ * @returns sourceClip and track mocks
+ */
+function setupFourBarArrangementClip() {
+  const trackIndex = 0;
+  const { sourceClip, track } = setupSingleArrangementClip(trackIndex);
+
+  setupMockProperties(sourceClip, { ...FOUR_BAR_CLIP_PROPS, trackIndex });
+
+  return { sourceClip, track };
+}
 
 describe("updateClip - arrangementLength (shortening only)", () => {
   let defaultMocks: UpdateClipMocks;
@@ -28,27 +53,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   });
 
   it("should shorten arrangement clip to 50% of original length", async () => {
-    const trackIndex = 0;
-
-    const clips = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clips.get("789");
-    const track = requireMockTrack(trackIndex);
-
-    expect(sourceClip).toBeDefined();
-
-    if (sourceClip == null) {
-      throw new Error("Expected source clip mock for 789");
-    }
-
-    setupMockProperties(sourceClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0.0, // 4 bars starting at beat 0
-      end_time: 16.0, // 4 bars ending at beat 16
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    });
+    const { track } = setupFourBarArrangementClip();
 
     const result = await updateClip({
       ids: "789",
@@ -69,27 +74,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   });
 
   it("should shorten arrangement clip to single beat", async () => {
-    const trackIndex = 0;
-
-    const clips = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clips.get("789");
-    const track = requireMockTrack(trackIndex);
-
-    expect(sourceClip).toBeDefined();
-
-    if (sourceClip == null) {
-      throw new Error("Expected source clip mock for 789");
-    }
-
-    setupMockProperties(sourceClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0.0,
-      end_time: 16.0, // 4 bars
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    });
+    const { track } = setupFourBarArrangementClip();
 
     const result = await updateClip({
       ids: "789",
@@ -135,14 +120,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   });
 
   it("should handle zero length with clear error", async () => {
-    setupMockProperties(defaultMocks.clip789, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0.0,
-      end_time: 16.0,
-      signature_numerator: 4,
-      signature_denominator: 4,
-    });
+    setupMockProperties(defaultMocks.clip789, FOUR_BAR_CLIP_PROPS);
 
     await expect(
       updateClip({
@@ -153,26 +131,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
   });
 
   it("should handle same length as no-op", async () => {
-    const trackIndex = 0;
-    const clips = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clips.get("789");
-    const track = requireMockTrack(trackIndex);
-
-    expect(sourceClip).toBeDefined();
-
-    if (sourceClip == null) {
-      throw new Error("Expected source clip mock for 789");
-    }
-
-    setupMockProperties(sourceClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0.0,
-      end_time: 16.0, // 4 bars
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    });
+    const { track } = setupFourBarArrangementClip();
 
     track.call.mockClear();
 
@@ -208,15 +167,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
       throw new Error("Expected source and moved clip mocks");
     }
 
-    setupMockProperties(sourceClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0.0,
-      end_time: 16.0, // 4 bars at original position
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    });
+    setupMockProperties(sourceClip, { ...FOUR_BAR_CLIP_PROPS, trackIndex });
     setupMockProperties(movedClip, {
       is_arrangement_clip: 1,
       is_midi_clip: 1,

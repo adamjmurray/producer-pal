@@ -246,4 +246,14 @@ describe("includeArrayFromFlags", () => {
       expect(result).toContain("instruments");
     });
   });
+
+  describe("wildcard expansion fallback", () => {
+    it("falls back to song options when defaults have no known structure", () => {
+      const result = parseIncludeArray(["*"], {});
+
+      // Should expand '*' using song options as fallback
+      expect(result.includeTracks).toBe(true);
+      expect(result.includeScenes).toBe(true);
+    });
+  });
 });

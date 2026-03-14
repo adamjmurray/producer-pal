@@ -3,13 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-export type ReasoningEffort =
-  | "none"
-  | "minimal"
-  | "low"
-  | "medium"
-  | "high"
-  | "xhigh";
+export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 /**
  * Maps thinking UI setting to reasoning effort for OpenRouter.
@@ -21,20 +15,12 @@ export function mapThinkingToOpenRouterEffort(
   thinking: string,
 ): ReasoningEffort | undefined {
   switch (thinking) {
-    case "Off":
-      return "none";
-    case "Minimal":
-      return "minimal";
-    case "Low":
-      return "low";
-    case "Medium":
-      return "medium";
-    case "High":
-      return "high";
-    case "Ultra":
+    case "Max":
       return "xhigh";
+    case "Off":
+      return undefined;
     default:
-      return undefined; // Default - let API use its default
+      return "medium";
   }
 }
 
@@ -88,9 +74,8 @@ function supportsXHigh(model: string): boolean {
 
 /**
  * Maps thinking UI setting to OpenAI reasoning_effort parameter based on model.
- * - o1/o3: low, medium, high (Minimal→low, Ultra→high)
- * - gpt-5.1: none, minimal, low, medium, high (Ultra→high, except codex-max)
- * - gpt-5.2+: none, minimal, low, medium, high, xhigh
+ * - o1/o3: low, medium, high
+ * - gpt-5.1+: low, medium, high (xhigh for 5.2+ or codex-max)
  * - Other models: undefined (no reasoning_effort sent)
  * @param {string} thinking - Thinking mode setting from UI
  * @param {string} model - Model identifier
@@ -110,39 +95,25 @@ export function mapThinkingToReasoningEffort(
 
   // Map thinking UI values to reasoning_effort
   if (isO1O3) {
-    // o1/o3: only supports low, medium, high (no "none" option)
+    // o1/o3: only supports low, medium, high
     switch (thinking) {
-      case "Off":
-      case "Minimal":
-        return "low"; // o1/o3 minimum is low
-      case "Low":
-        return "low";
-      case "Medium":
-        return "medium";
-      case "High":
-      case "Ultra":
+      case "Max":
         return "high";
+      case "Off":
+        return undefined;
       default:
-        return undefined; // Default - let API use its default
+        return "medium";
     }
   }
 
-  // gpt-5.1+: supports none, minimal, low, medium, high, (xhigh for 5.2+ or codex-max)
+  // gpt-5.1+: supports low, medium, high, (xhigh for 5.2+ or codex-max)
   switch (thinking) {
-    case "Off":
-      return "none";
-    case "Minimal":
-      return "minimal";
-    case "Low":
-      return "low";
-    case "Medium":
-      return "medium";
-    case "High":
-      return "high";
-    case "Ultra":
+    case "Max":
       return supportsXHigh(model) ? "xhigh" : "high";
+    case "Off":
+      return undefined;
     default:
-      return undefined; // Default - let API use its default
+      return "medium";
   }
 }
 
@@ -152,27 +123,20 @@ export function mapThinkingToReasoningEffort(
  * Other models accept boolean true/false.
  * @param {string} thinking - Thinking mode setting from UI
  * @param {string} model - Model name for GPT-OSS detection
- * @returns {boolean | string | undefined} - false = disable, true/level = enable, undefined = default
+ * @returns {boolean | string | undefined} - true/level = enable, undefined = adaptive/default
  */
 export function mapThinkingToOllamaThink(
   thinking: string,
   model: string,
 ): boolean | string | undefined {
-  if (thinking === "Off") return false;
-  if (thinking === "Default") return undefined;
-
   const gptOss = model.includes("gpt-oss");
 
   switch (thinking) {
-    case "Minimal":
-    case "Low":
-      return gptOss ? "low" : true;
-    case "Medium":
-      return gptOss ? "medium" : true;
-    case "High":
-    case "Ultra":
+    case "Off":
+      return false;
+    case "Max":
       return gptOss ? "high" : true;
     default:
-      return undefined;
+      return undefined; // Default - let API decide
   }
 }

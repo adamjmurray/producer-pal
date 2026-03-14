@@ -122,18 +122,7 @@ describe("duplicate - track duplication", () => {
   });
 
   it("should duplicate a track without devices when withoutDevices is true", () => {
-    registerMockObject("track1", { path: livePath.track(0) });
-    const liveSet = registerMockObject("live_set", {
-      path: livePath.liveSet,
-    });
-    const newTrack = registerMockObject("live_set/tracks/1", {
-      path: livePath.track(1),
-      properties: {
-        devices: children("device0", "device1", "device2"),
-        clip_slots: [],
-        arrangement_clips: [],
-      },
-    });
+    const { liveSet, newTrack } = setupProducerPalDeviceMocks();
 
     const result = duplicate({
       type: "track",
@@ -348,5 +337,23 @@ describe("duplicate - track duplication", () => {
         "routeToSource: Armed the source track",
       );
     });
+  });
+
+  it("should apply color when duplicating a track", () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    const newTrack = registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    const result = duplicate({
+      type: "track",
+      id: "track1",
+      color: "#ff0000",
+    });
+
+    expect(result).toStrictEqual(createTrackResult(1));
+    expect(newTrack.set).toHaveBeenCalledWith("color", 0xff0000);
   });
 });

@@ -42,7 +42,7 @@ describe("ProviderSelector", () => {
       expect(select!.className).toContain("px-3");
       expect(select!.className).toContain("py-2");
       expect(select!.className).toContain("bg-white");
-      expect(select!.className).toContain("dark:bg-gray-700");
+      expect(select!.className).toContain("dark:bg-zinc-700");
     });
   });
 
@@ -64,13 +64,13 @@ describe("ProviderSelector", () => {
       }));
 
       expect(optionData).toStrictEqual([
-        { value: "anthropic", text: "Anthropic" },
         { value: "gemini", text: "Google" },
-        { value: "openai", text: "OpenAI" },
         { value: "mistral", text: "Mistral" },
-        { value: "openrouter", text: "OpenRouter" },
-        { value: "lmstudio", text: "LM Studio (local)" },
+        { value: "openai", text: "OpenAI" },
+        { value: "anthropic", text: "Anthropic" },
         { value: "ollama", text: "Ollama (local)" },
+        { value: "lmstudio", text: "LM Studio (local)" },
+        { value: "openrouter", text: "OpenRouter" },
         { value: "custom", text: "Custom (OpenAI-compatible)" },
       ]);
     });

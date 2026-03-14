@@ -20,7 +20,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
+<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -105,7 +105,7 @@ Once Producer Pal is configured, start a new chat with Producer Pal tools
 enabled, say "connect to ableton" or "connect to ableton with your producer pal
 tools", and allow the tools to be used:
 
-![Using Producer Pal with Cline](/cline-success.png)
+![Using Producer Pal with Cline](/img/cline-success.png)
 
 ## Troubleshooting
 

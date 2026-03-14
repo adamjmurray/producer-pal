@@ -29,11 +29,13 @@ describe("useRemoteConfig", () => {
     vi.restoreAllMocks();
   });
 
-  it("defaults smallModelMode to false", () => {
-    vi.spyOn(globalThis, "fetch").mockReturnValue(new Promise(() => {}));
+  it("defaults serverSmallModelMode to false", () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false }),
+    );
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
-    expect(result.current.smallModelMode).toBe(false);
+    expect(result.current.serverSmallModelMode).toBe(false);
   });
 
   it("fetches config on mount", async () => {
@@ -44,9 +46,12 @@ describe("useRemoteConfig", () => {
     const { result } = renderHook(() => useRemoteConfig("connecting"));
 
     await waitFor(() => {
-      expect(result.current.smallModelMode).toBe(true);
+      expect(result.current.serverSmallModelMode).toBe(true);
     });
-    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/config"));
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/config"),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it("re-fetches when mcpStatus changes to connected", async () => {
@@ -60,14 +65,14 @@ describe("useRemoteConfig", () => {
     );
 
     await waitFor(() => {
-      expect(result.current.smallModelMode).toBe(true);
+      expect(result.current.serverSmallModelMode).toBe(true);
     });
 
     mockFetch.mockResolvedValue(mockConfigResponse({ smallModelMode: false }));
     rerender({ status: "connected" });
 
     await waitFor(() => {
-      expect(result.current.smallModelMode).toBe(false);
+      expect(result.current.serverSmallModelMode).toBe(false);
     });
   });
 
@@ -79,7 +84,7 @@ describe("useRemoteConfig", () => {
     const { result } = renderHook(() => useRemoteConfig("connected"));
 
     await waitFor(() => {
-      expect(result.current.smallModelMode).toBe(false);
+      expect(result.current.serverSmallModelMode).toBe(false);
     });
 
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
@@ -91,11 +96,11 @@ describe("useRemoteConfig", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.smallModelMode).toBe(true);
+      expect(result.current.serverSmallModelMode).toBe(true);
     });
   });
 
-  it("POSTs to config endpoint when setSmallModelMode called", async () => {
+  it("POSTs to config endpoint when postSmallModelMode called", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       mockConfigResponse({ smallModelMode: false }),
     );
@@ -103,7 +108,7 @@ describe("useRemoteConfig", () => {
     const { result } = renderHook(() => useRemoteConfig("connected"));
 
     await waitFor(() => {
-      expect(result.current.smallModelMode).toBe(false);
+      expect(result.current.serverSmallModelMode).toBe(false);
     });
 
     const mockFetch = vi
@@ -111,10 +116,9 @@ describe("useRemoteConfig", () => {
       .mockResolvedValue(mockConfigResponse({ smallModelMode: true }));
 
     await act(() => {
-      result.current.setSmallModelMode(true);
+      result.current.postSmallModelMode(true);
     });
 
-    expect(result.current.smallModelMode).toBe(true);
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("/config"),
       expect.objectContaining({
@@ -122,32 +126,6 @@ describe("useRemoteConfig", () => {
         body: JSON.stringify({ smallModelMode: true }),
       }),
     );
-  });
-
-  it("reverts on POST failure", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      mockConfigResponse({ smallModelMode: false }),
-    );
-
-    const { result } = renderHook(() => useRemoteConfig("connected"));
-
-    await waitFor(() => {
-      expect(result.current.smallModelMode).toBe(false);
-    });
-
-    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
-
-    await act(() => {
-      result.current.setSmallModelMode(true);
-    });
-
-    // Optimistic update
-    expect(result.current.smallModelMode).toBe(true);
-
-    // Reverts after failure
-    await waitFor(() => {
-      expect(result.current.smallModelMode).toBe(false);
-    });
   });
 
   it("keeps default state when response is not ok", async () => {
@@ -159,7 +137,7 @@ describe("useRemoteConfig", () => {
 
     // Wait for the fetch to resolve, then verify state stayed at default
     await waitFor(() => {
-      expect(result.current.smallModelMode).toBe(false);
+      expect(result.current.serverSmallModelMode).toBe(false);
     });
   });
 
@@ -170,12 +148,14 @@ describe("useRemoteConfig", () => {
 
     // Should stay at default, not throw
     await waitFor(() => {
-      expect(result.current.smallModelMode).toBe(false);
+      expect(result.current.serverSmallModelMode).toBe(false);
     });
   });
 
   it("cleans up focus listener on unmount", () => {
-    vi.spyOn(globalThis, "fetch").mockReturnValue(new Promise(() => {}));
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false }),
+    );
     const removeSpy = vi.spyOn(window, "removeEventListener");
 
     const { unmount } = renderHook(() => useRemoteConfig("connecting"));

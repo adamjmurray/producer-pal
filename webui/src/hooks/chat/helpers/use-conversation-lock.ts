@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback } from "preact/hooks";
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat";
+import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 
 interface ChatHookResult {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;

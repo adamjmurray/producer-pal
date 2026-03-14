@@ -49,6 +49,8 @@ export interface UIMessage {
   parts: UIPart[];
   rawHistoryIndex: number; // Maps back to the original index in the raw chat history (used for retry)
   timestamp: number; // Unix timestamp in milliseconds
+  /** Model ID from the API response (assistant messages only) */
+  responseModel?: string;
 }
 
 // Formatter Interface

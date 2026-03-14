@@ -11,3 +11,180 @@
   margin-top: 0;
   margin-bottom: 0.6em;
 }
+
+/* Prevent inline code from overflowing chat bubbles */
+.prose :where(code):not(:where(pre code)) {
+  overflow-x: auto;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+}
+
+/* Rotate chevron when details element is open */
+.disclosure[open] > summary .chevron {
+  transform: rotate(90deg);
+}
+
+/* Animated blur on chat content when settings open */
+.settings-blur {
+  animation: chat-blur-in 150ms ease-out forwards;
+}
+
+@keyframes chat-blur-in {
+  from {
+    filter: blur(0);
+  }
+  to {
+    filter: blur(3px);
+  }
+}
+
+/* Settings overlay backdrop */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0);
+  animation: settings-backdrop-in 150ms ease-out forwards;
+}
+
+/* Settings panel fade-in with shadow */
+.settings-overlay > * {
+  opacity: 0;
+  animation: settings-panel-in 150ms ease-out 0.05s forwards;
+}
+
+@keyframes settings-backdrop-in {
+  to {
+    background: rgba(0, 0, 0, 0.5);
+  }
+}
+
+:is(.dark) .settings-overlay {
+  animation-name: settings-backdrop-in-dark;
+}
+
+@keyframes settings-backdrop-in-dark {
+  to {
+    background: rgba(0, 0, 0, 0.6);
+  }
+}
+
+@keyframes settings-panel-in {
+  to {
+    opacity: 1;
+  }
+}
+
+/* Settings close animations */
+.settings-blur-out {
+  animation: chat-blur-out 150ms ease-in forwards;
+  filter: blur(3px);
+}
+
+@keyframes chat-blur-out {
+  to {
+    filter: blur(0);
+  }
+}
+
+.settings-overlay.settings-closing {
+  animation: settings-backdrop-out 150ms ease-in forwards;
+}
+
+.settings-overlay.settings-closing > * {
+  animation: settings-panel-out 150ms ease-in forwards;
+}
+
+@keyframes settings-backdrop-out {
+  from {
+    background: rgba(0, 0, 0, 0.5);
+  }
+  to {
+    background: rgba(0, 0, 0, 0);
+  }
+}
+
+:is(.dark) .settings-overlay.settings-closing {
+  animation-name: settings-backdrop-out-dark;
+}
+
+@keyframes settings-backdrop-out-dark {
+  from {
+    background: rgba(0, 0, 0, 0.6);
+  }
+  to {
+    background: rgba(0, 0, 0, 0);
+  }
+}
+
+@keyframes settings-panel-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Settings dialog shake animation for unsaved changes attention */
+.settings-dialog-shake {
+  animation: settings-dialog-shake 400ms ease-out;
+}
+
+@keyframes settings-dialog-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15% {
+    transform: translateX(-8px);
+  }
+  30% {
+    transform: translateX(8px);
+  }
+  45% {
+    transform: translateX(-6px);
+  }
+  60% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-3px);
+  }
+  90% {
+    transform: translateX(3px);
+  }
+}
+
+/* Settings button pulse animation for unsaved changes attention */
+.settings-button-pulse {
+  animation: settings-button-pulse 500ms ease-out;
+}
+
+@keyframes settings-button-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+/* Tooltip fade-in animation */
+.tooltip-fade-in {
+  animation: tooltip-in 150ms ease-out forwards;
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

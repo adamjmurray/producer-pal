@@ -210,14 +210,14 @@ jobs:
           cat > /tmp/summary.md << EOF
           ## Code Duplication Report
 
-          | Code Group | Line Dupe % | Max Allowed | Files with Dupes | Exact Clones |
-          |------------|-------------|-------------|------------------|--------------|
+          | Code Group | Files Scanned | Duplications Found | Duplicated Lines | Max Allowed |
+          |------------|---------------|--------------|------------------|-------------|
           EOF
-          grep "^Source " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \2% | ${MAX_SOURCE}% | \3 | \1 |/" >> /tmp/summary.md
-          grep "^Tests " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \2% | ${MAX_TESTS}% | \3 | \1 |/" >> /tmp/summary.md
-          grep "^Scripts " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Scripts | \2% | ${MAX_SCRIPTS}% | \3 | \1 |/" >> /tmp/summary.md
-          grep "^Evals " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Evals | \2% | ${MAX_EVALS}% | \3 | \1 |/" >> /tmp/summary.md
-          grep "^E2E " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| E2E | \2% | ${MAX_E2E}% | \3 | \1 |/" >> /tmp/summary.md
+          grep "^Source " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Source | \3 | \1 | \2% | ${MAX_SOURCE}% |/" >> /tmp/summary.md
+          grep "^Tests " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Tests | \3 | \1 | \2% | ${MAX_TESTS}% |/" >> /tmp/summary.md
+          grep "^Scripts " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Scripts | \3 | \1 | \2% | ${MAX_SCRIPTS}% |/" >> /tmp/summary.md
+          grep "^Evals " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| Evals | \3 | \1 | \2% | ${MAX_EVALS}% |/" >> /tmp/summary.md
+          grep "^E2E " duplication-output.txt | sed "s/.*Found \([0-9]*\) exact clones with [0-9]*(\([0-9.]*\)%) duplicated lines in \([0-9]*\).*/| E2E | \3 | \1 | \2% | ${MAX_E2E}% |/" >> /tmp/summary.md
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY

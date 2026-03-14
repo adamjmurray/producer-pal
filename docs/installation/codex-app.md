@@ -28,7 +28,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
+<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -36,7 +36,7 @@ _It should display "Producer Pal Running" or something isn't working._
 
 In the Codex app, go to Settings &rarr; MCP Servers and click "+ Add server":
 
-<img src="/codex-app-mcp-server-settings.png" alt="Codex MCP Servers settings page" width="650"/><br>
+<img src="/img/codex-app-mcp-server-settings.png" alt="Codex MCP Servers settings page" width="650"/><br>
 
 **Option A: With npx (recommended)** — Allows flexible startup order and
 auto-reconnection:
@@ -48,7 +48,7 @@ Select the **STDIO** tab and fill in:
 - **Arguments:** `-y` and `producer-pal` as separate entries (click "+ Add
   argument" for each one)
 
-<img src="/codex-app-add-mcp-stdio.png" alt="Codex STDIO MCP configuration for Producer Pal" width="650"/><br>
+<img src="/img/codex-app-add-mcp-stdio.png" alt="Codex STDIO MCP configuration for Producer Pal" width="650"/><br>
 
 **Option B: Direct HTTP** — Requires Ableton running first, no
 auto-reconnection:
@@ -58,7 +58,7 @@ Select the **Streamable HTTP** tab and fill in:
 - **Name:** `Producer Pal`
 - **URL:** `http://localhost:3350/mcp`
 
-<img src="/codex-app-add-mcp-http.png" alt="Codex Streamable HTTP MCP configuration for Producer Pal" width="650"/>
+<img src="/img/codex-app-add-mcp-http.png" alt="Codex Streamable HTTP MCP configuration for Producer Pal" width="650"/>
 
 ### 3. Start a Conversation
 
@@ -70,13 +70,13 @@ your preferred musical style and production techniques.
 
 Start a conversation with "connect to ableton":
 
-<img src="/codex-app-conversation-start.png" alt="Starting a conversation in the Codex app" width="600"/>
+<img src="/img/codex-app-conversation-start.png" alt="Starting a conversation in the Codex app" width="600"/>
 
 ### 4. Verify Connection
 
 You should see a successful connection to Ableton Live:
 
-<img src="/codex-app-connected.png" alt="Codex app successfully connected to Producer Pal" width="600"/>
+<img src="/img/codex-app-connected.png" alt="Codex app successfully connected to Producer Pal" width="600"/>
 
 ## Troubleshooting
 

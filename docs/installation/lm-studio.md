@@ -27,7 +27,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
+<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -41,7 +41,7 @@ enables small model mode on the device when connected.
 
 Alternatively, you can enable it manually in Producer Pal's "Setup" tab:
 
-<img src="/small-model-mode.png" alt="Small model mode setting" width="375"/>
+<img src="/img/small-model-mode.png" alt="Small model mode setting" width="375"/>
 
 ### 3. Install a Compatible Model
 
@@ -90,7 +90,7 @@ Producer Pal device are not running, to let you know there's a problem.
 
 Confirm the Producer Pal tools are listed under Settings → Program:
 
-<img src="/lm-studio-tool-list.png" alt="Producer Pal tools listed in LM Studio" width="375"/>
+<img src="/img/lm-studio-tool-list.png" alt="Producer Pal tools listed in LM Studio" width="375"/>
 
 _See below for tips on using a subset of tools._
 
@@ -101,9 +101,9 @@ _See below for tips on using a subset of tools._
 2. If you didn't enable "Allow all" under Settings → Program, then allow
    Producer Pal tools in the conversation:
 
-![LM Studio tool permission prompt](/lm-studio-permissions.png)
+![LM Studio tool permission prompt](/img/lm-studio-permissions.png)
 
-![LM Studio successfully connected to Producer Pal](/lm-studio-success.png)
+![LM Studio successfully connected to Producer Pal](/img/lm-studio-success.png)
 
 ## Local Model Tips
 

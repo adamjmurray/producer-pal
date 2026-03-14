@@ -1,6 +1,7 @@
 # Installation Guide
 
-Choose your preferred AI platform to get started with Producer Pal™:
+Producer Pal is free and open source. Choose your preferred AI platform to get
+started. Note that some AI services charge for usage.
 
 ::: tip Prerequisites
 

@@ -6,7 +6,8 @@
     "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
-      "#webui/*": ["src/*"]
+      "#webui/*": ["src/*"],
+      "#src/*": ["../src/*"]
     },
     "jsx": "react-jsx",
     "jsxImportSource": "preact",

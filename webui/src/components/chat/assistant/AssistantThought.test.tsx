@@ -26,9 +26,9 @@ describe("AssistantThought", () => {
       render(<AssistantThought content="Test thought" isOpen={false} />);
       const details = document.querySelector("details");
 
-      expect(details!.className).toContain("bg-gray-200");
-      expect(details!.className).toContain("dark:bg-gray-700");
-      expect(details!.className).toContain("border-green-500");
+      expect(details!.className).toContain("bg-zinc-200");
+      expect(details!.className).toContain("dark:bg-zinc-700");
+      expect(details!.className).toContain("border-emerald-500");
     });
   });
 
@@ -112,12 +112,12 @@ describe("AssistantThought", () => {
       expect(summary!.innerHTML).toContain("Single line");
     });
 
-    it("shows 'Thought about:' label when details is opened", () => {
+    it("shows thought emoji label when details is opened", () => {
       render(<AssistantThought content={MULTI_LINE} isOpen={false} />);
       const summary = document.querySelector("summary");
       const openLabel = summary!.querySelector(".hidden.group-open\\:inline");
 
-      expect(openLabel!.textContent).toBe("💭 Thought about:");
+      expect(openLabel!.textContent).toBe("💭");
     });
   });
 

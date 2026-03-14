@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { isErrorResult } from "#webui/chat/helpers/formatter-helpers";
+import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { useToolNames } from "#webui/hooks/connection/tool-names-context";
 import { truncateString } from "#webui/lib/utils/truncate-string";
 import { extractErrorSummary } from "./helpers/tool-call-error-helpers";
@@ -40,18 +41,19 @@ export function AssistantToolCall({
 
   return (
     <details
-      className={`text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded ${
+      className={`disclosure text-xs p-2 font-mono bg-zinc-200/70 dark:bg-zinc-900 rounded-lg ${
         result ? "" : "animate-pulse"
       } ${effectiveIsError ? "border-l-3 border-red-500" : hasWarnings ? "border-l-3 border-yellow-500" : ""}`}
     >
-      <summary>
-        &nbsp;🔧{" "}
+      <summary className="flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+        <DisclosureChevron />
+        🔧{" "}
         {!result ? (
           "using tool: "
         ) : effectiveIsError ? (
           <span className="text-red-700 dark:text-red-400">tool failed: </span>
         ) : (
-          "used tool: "
+          ""
         )}
         {toolNames[name] ?? name}
         {effectiveIsError && (
@@ -69,15 +71,18 @@ export function AssistantToolCall({
           </span>
         )}
       </summary>
-      <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
+      <div className="mt-1 p-1 break-all text-zinc-500 dark:text-zinc-500">
         {name}({JSON.stringify(args, null, 0)})
       </div>
       {result && (
-        <details>
-          <summary className="px-2 my-1 truncate text-gray-600 dark:text-gray-400">
-            &nbsp;↳ {truncateString(result, 300)}
+        <details className="disclosure">
+          <summary className="px-2 my-1 overflow-hidden text-zinc-600 dark:text-zinc-400 flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+            <DisclosureChevron />
+            <span className="truncate min-w-0">
+              ↳ {truncateString(result, 300)}
+            </span>
           </summary>
-          <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
+          <div className="mt-1 p-1 break-all text-zinc-500 dark:text-zinc-500">
             <FullResultDetails result={result} />
           </div>
         </details>

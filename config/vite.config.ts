@@ -14,16 +14,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
-
 export default defineConfig({
-  define: {
-    "import.meta.env.ENABLE_RAW_LIVE_API": JSON.stringify(
-      process.env.ENABLE_RAW_LIVE_API === "true",
-    ),
-  },
   resolve: {
     alias: {
       "#webui": resolve(__dirname, "../webui/src"),
+      "#src": resolve(__dirname, "../src"),
     },
   },
   plugins: [

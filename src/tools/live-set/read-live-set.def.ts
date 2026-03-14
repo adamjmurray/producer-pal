@@ -7,8 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
   title: "Read Live Set",
-  description: `Read Live Set global settings, track/scene overview.
-Returns overview by default. Use include to add detail.`,
+  description:
+    "Read Live Set global settings, track/scene overview. Returns overview by default. Use include to add detail.",
 
   annotations: {
     readOnlyHint: true,
@@ -34,10 +34,10 @@ Returns overview by default. Use include to add detail.`,
   },
 
   smallModelModeConfig: {
-    excludeEnumValues: { include: ["locators"] },
+    excludeEnumValues: { include: ["locators", "*"] },
     descriptionOverrides: {
       include:
-        'tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes). "*" = all',
+        "tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes)",
     },
   },
 });

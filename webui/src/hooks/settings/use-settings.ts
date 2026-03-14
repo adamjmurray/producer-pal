@@ -12,8 +12,10 @@ import {
   loadCurrentProvider,
   loadEnabledTools,
   loadProviderSettings,
+  loadSmallModelMode,
   type ProviderSettings,
   saveCurrentSettings,
+  saveSmallModelMode,
 } from "./settings-helpers";
 
 type ProviderStateSetters = Record<
@@ -53,6 +55,8 @@ export function useSettings(): UseSettingsReturn {
   );
   const [enabledTools, setEnabledToolsState] =
     useState<Record<string, boolean>>(loadEnabledTools);
+  const [smallModelMode, setSmallModelModeState] =
+    useState<boolean>(loadSmallModelMode);
   const [anthropicSettings, setAnthropicSettings] = useState<ProviderSettings>(
     () => loadProviderSettings("anthropic"),
   );
@@ -134,10 +138,12 @@ export function useSettings(): UseSettingsReturn {
     );
 
     saveCurrentSettings(provider, enabledTools, allSettings);
+    saveSmallModelMode(smallModelMode);
     setSettingsConfigured(true);
   }, [
     provider,
     enabledTools,
+    smallModelMode,
     anthropicSettings,
     geminiSettings,
     openaiSettings,
@@ -151,6 +157,7 @@ export function useSettings(): UseSettingsReturn {
   const cancelSettings = useCallback(() => {
     setProviderState(loadCurrentProvider());
     setEnabledToolsState(loadEnabledTools());
+    setSmallModelModeState(loadSmallModelMode());
     applyLoadedSettings(loadAllProviderSettings());
   }, [applyLoadedSettings]);
 
@@ -220,5 +227,7 @@ export function useSettings(): UseSettingsReturn {
     setEnabledTools: setEnabledToolsState,
     resetBehaviorToDefaults,
     isToolEnabled,
+    smallModelMode,
+    setSmallModelMode: setSmallModelModeState,
   };
 }

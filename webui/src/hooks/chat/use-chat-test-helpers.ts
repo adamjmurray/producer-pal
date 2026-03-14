@@ -5,7 +5,7 @@
 
 import { vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
-import { type ChatClient, type ChatAdapter } from "./use-chat";
+import { type ChatAdapter, type ChatClient } from "./use-chat-types";
 
 /** Test message type for mock chat client */
 export interface TestMessage {
@@ -131,6 +131,7 @@ export function createDefaultProps(
     thinking: "Default",
     temperature: 1.0,
     enabledTools: {},
+    smallModelMode: false,
     mcpStatus: "connected" as const,
     mcpError: null,
     checkMcpConnection: vi.fn(),

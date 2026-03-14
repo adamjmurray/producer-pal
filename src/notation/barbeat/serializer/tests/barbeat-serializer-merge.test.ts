@@ -85,6 +85,31 @@ describe("comma merging", () => {
     expect(formatNotation(notes)).toBe("v80-100 C3 1|1 v80 C3 1|2");
   });
 
+  it("merges notes when both have undefined probability and velocity_deviation", () => {
+    // Tests ?? fallback in notesMatch for both probability and velocity_deviation
+    const notes = [
+      { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
+      { pitch: 60, start_time: 1, duration: 1, velocity: 100 },
+    ] as NoteEvent[];
+
+    expect(formatNotation(notes)).toBe("C3 1|1,2");
+  });
+
+  it("does not merge when one note has probability and other has undefined", () => {
+    const notes = [
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 0.5,
+      },
+      { pitch: 60, start_time: 1, duration: 1, velocity: 100 },
+    ] as NoteEvent[];
+
+    expect(formatNotation(notes)).toBe("p0.5 C3 1|1 p1 C3 1|2");
+  });
+
   it("merges more than 2 groups", () => {
     const notes = [
       createNote({ start_time: 0 }),

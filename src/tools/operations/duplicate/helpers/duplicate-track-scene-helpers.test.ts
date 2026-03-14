@@ -323,37 +323,30 @@ describe("duplicate-track-scene-helpers", () => {
       );
     });
 
-    it("should change source track input routing from non-'No Input' to 'No Input'", () => {
-      setupRoutingMocks(
-        {
-          arm: 0,
-          input_routing_type: { display_name: "Audio In" },
-          available_input_routing_types: [
-            { display_name: "No Input", identifier: "no_input_id" },
-            { display_name: "Audio In", identifier: "audio_in_id" },
-          ],
-        },
-        [{ display_name: "Source Track", identifier: "source_track_id" }],
-      );
-
-      duplicateTrack(0, undefined, undefined, false, false, true, 0);
-
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining(
+    it.each([
+      {
+        desc: "should change source track input routing from non-'No Input' to 'No Input'",
+        availableInputRouting: [
+          { display_name: "No Input", identifier: "no_input_id" },
+          { display_name: "Audio In", identifier: "audio_in_id" },
+        ],
+        expectedMessage:
           'Changed track "Source Track" input routing from "Audio In" to "No Input"',
-        ),
-      );
-    });
-
-    it("should warn when No Input routing option is not available", () => {
+      },
+      {
+        desc: "should warn when No Input routing option is not available",
+        availableInputRouting: [
+          { display_name: "Audio In", identifier: "audio_in_id" },
+        ],
+        expectedMessage:
+          'Tried to change track "Source Track" input routing from "Audio In" to "No Input" but could not find "No Input"',
+      },
+    ])("$desc", ({ availableInputRouting, expectedMessage }) => {
       setupRoutingMocks(
         {
           arm: 0,
           input_routing_type: { display_name: "Audio In" },
-          available_input_routing_types: [
-            { display_name: "Audio In", identifier: "audio_in_id" },
-          ],
+          available_input_routing_types: availableInputRouting,
         },
         [{ display_name: "Source Track", identifier: "source_track_id" }],
       );
@@ -362,9 +355,7 @@ describe("duplicate-track-scene-helpers", () => {
 
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining(
-          'Tried to change track "Source Track" input routing from "Audio In" to "No Input" but could not find "No Input"',
-        ),
+        expect.stringContaining(expectedMessage),
       );
     });
 
@@ -459,15 +450,30 @@ describe("duplicate-track-scene-helpers", () => {
     });
   });
 
+  /**
+   * Register common mocks for duplicateScene tests (liveSet, clipSlot, scene).
+   * @returns Object with liveSet and scene mocks
+   */
+  function setupDuplicateSceneMocks(): {
+    liveSet: RegisteredMockObject;
+    scene: RegisteredMockObject;
+  } {
+    const liveSet = registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: children("track0") },
+    });
+
+    registerClipSlot(0, 1, false);
+    const scene = registerMockObject("live_set/scenes/1", {
+      path: livePath.scene(1),
+    });
+
+    return { liveSet, scene };
+  }
+
   describe("duplicateScene", () => {
     it("should duplicate a scene and return basic info", () => {
-      const liveSet = registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: children("track0") },
-      });
-
-      registerClipSlot(0, 1, false);
-      registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
+      const { liveSet } = setupDuplicateSceneMocks();
 
       const result = duplicateScene(0);
 
@@ -480,14 +486,7 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should set name when provided", () => {
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: children("track0") },
-      });
-      registerClipSlot(0, 1, false);
-      const scene = registerMockObject("live_set/scenes/1", {
-        path: livePath.scene(1),
-      });
+      const { scene } = setupDuplicateSceneMocks();
 
       duplicateScene(0, "New Scene");
 
@@ -495,14 +494,7 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should not set color when color is not provided", () => {
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: children("track0") },
-      });
-      registerClipSlot(0, 1, false);
-      const scene = registerMockObject("live_set/scenes/1", {
-        path: livePath.scene(1),
-      });
+      const { scene } = setupDuplicateSceneMocks();
 
       duplicateScene(0, "Named Scene");
 
@@ -553,6 +545,20 @@ describe("duplicate-track-scene-helpers", () => {
     });
   });
 
+  /**
+   * Register scene and liveSet mocks for duplicateSceneToArrangement tests.
+   * @param extraLiveSetProps - Additional properties for the liveSet mock
+   */
+  function setupSceneToArrangementBaseMocks(
+    extraLiveSetProps: Record<string, unknown> = {},
+  ): void {
+    registerMockObject("scene1", { path: livePath.scene(0) });
+    registerMockObject("live_set", {
+      path: livePath.liveSet,
+      properties: { tracks: children("track0"), ...extraLiveSetProps },
+    });
+  }
+
   describe("duplicateSceneToArrangement", () => {
     it("should throw error when scene does not exist", () => {
       mockNonExistentObjects();
@@ -587,11 +593,7 @@ describe("duplicate-track-scene-helpers", () => {
     });
 
     it("should return empty clips when withoutClips is true", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: children("track0") },
-      });
+      setupSceneToArrangementBaseMocks();
       registerClipSlot(0, 0, true);
       registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
         path: livePath.track(0).clipSlot(0).clip(),
@@ -613,88 +615,66 @@ describe("duplicate-track-scene-helpers", () => {
       });
     });
 
-    it("should use provided arrangementLength", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: children("track0") },
-      });
-      registerClipSlot(0, 0, true, {
-        length: 4,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_midi_clip: 1,
-      });
-      registerMockObject("live_set/tracks/0", {
-        path: livePath.track(0),
-        methods: {
-          duplicate_clip_to_arrangement: () => [
-            "id",
-            livePath.track(0).arrangementClip(0),
-          ],
-        },
-      });
-      registerMockObject(livePath.track(0).arrangementClip(0), {
-        path: livePath.track(0).arrangementClip(0),
-        properties: { is_arrangement_clip: 1, start_time: 16 },
-      });
-
-      const result = duplicateSceneToArrangement(
-        "scene1",
-        16,
-        undefined,
-        false,
-        "2:0", // 8 beats
-        4,
-        4,
-      );
-
-      expect(result).toHaveProperty("arrangementStart");
-      expect(result).toHaveProperty("clips");
-    });
-
-    it("should use calculateSceneLength when arrangementLength is not provided", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: {
-          tracks: children("track0"),
+    it.each([
+      {
+        desc: "should use provided arrangementLength",
+        clipLength: 4,
+        liveSetExtra: {},
+        sceneName: undefined as string | undefined,
+        arrangementLength: "2:0" as string | undefined,
+        expectedStart: expect.any(String) as string,
+      },
+      {
+        desc: "should use calculateSceneLength when arrangementLength is not provided",
+        clipLength: 8,
+        liveSetExtra: { signature_numerator: 4, signature_denominator: 4 },
+        sceneName: "Scene Name",
+        arrangementLength: undefined,
+        expectedStart: "5|1",
+      },
+    ])(
+      "$desc",
+      ({
+        clipLength,
+        liveSetExtra,
+        sceneName,
+        arrangementLength,
+        expectedStart,
+      }) => {
+        setupSceneToArrangementBaseMocks(liveSetExtra);
+        registerClipSlot(0, 0, true, {
+          length: clipLength,
           signature_numerator: 4,
           signature_denominator: 4,
-        },
-      });
-      registerClipSlot(0, 0, true, {
-        length: 8,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        is_midi_clip: 1,
-      });
-      registerMockObject("live_set/tracks/0", {
-        path: livePath.track(0),
-        methods: {
-          duplicate_clip_to_arrangement: () => [
-            "id",
-            livePath.track(0).arrangementClip(0),
-          ],
-        },
-      });
-      registerMockObject(livePath.track(0).arrangementClip(0), {
-        path: livePath.track(0).arrangementClip(0),
-        properties: { is_arrangement_clip: 1, start_time: 16 },
-      });
+          is_midi_clip: 1,
+        });
+        registerMockObject("live_set/tracks/0", {
+          path: livePath.track(0),
+          methods: {
+            duplicate_clip_to_arrangement: () => [
+              "id",
+              livePath.track(0).arrangementClip(0),
+            ],
+          },
+        });
+        registerMockObject(livePath.track(0).arrangementClip(0), {
+          path: livePath.track(0).arrangementClip(0),
+          properties: { is_arrangement_clip: 1, start_time: 16 },
+        });
 
-      const result = duplicateSceneToArrangement(
-        "scene1",
-        16,
-        "Scene Name",
-        false,
-        undefined,
-        4,
-        4,
-      );
+        const result = duplicateSceneToArrangement(
+          "scene1",
+          16,
+          sceneName,
+          false,
+          arrangementLength,
+          4,
+          4,
+        );
 
-      expect(result).toHaveProperty("arrangementStart", "5|1");
-      expect(result).toHaveProperty("clips");
-    });
+        expect(result).toHaveProperty("clips");
+        expect(result).toHaveProperty("arrangementStart", expectedStart);
+      },
+    );
   });
 });

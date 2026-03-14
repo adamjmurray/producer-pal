@@ -38,7 +38,7 @@ export function ToolToggles({
         <label className="block text-sm font-medium mb-3">
           Available Tools
         </label>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-zinc-500">
           {mcpStatus === "error"
             ? "Tools cannot be loaded"
             : "Loading tools..."}
@@ -89,15 +89,16 @@ export function ToolToggles({
             onClick={enableAllTools}
             className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
           >
-            Enable all
+            Enable all (default)
           </button>
           <button
             type="button"
             onClick={disableAllTools}
-            className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+            className="px-3 py-1 text-xs bg-zinc-600 text-white rounded hover:bg-zinc-700"
           >
             Disable all
           </button>
+          <Tooltip text="Remove tools to simplify the interface for less capable models, or to focus on specific tasks. Recommended to enable all tools, except with local models (Ollama and LM Studio)." />
         </div>
       </div>
 
@@ -133,7 +134,7 @@ function ToolGroupSection({
 }: ToolGroupSectionProps) {
   return (
     <div>
-      <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+      <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide mb-1">
         {group.label}
       </h4>
       <div className="space-y-1">

@@ -49,8 +49,8 @@ describe("AssistantToolCall", () => {
       render(<AssistantToolCall {...defaultProps} />);
       const details = document.querySelector("details");
 
-      expect(details!.className).toContain("bg-gray-200");
-      expect(details!.className).toContain("dark:bg-gray-900");
+      expect(details!.className).toContain("bg-zinc-200");
+      expect(details!.className).toContain("dark:bg-zinc-900");
       expect(details!.className).toContain("font-mono");
     });
   });
@@ -86,9 +86,12 @@ describe("AssistantToolCall", () => {
       expect(screen.getByText(/using tool:/)).toBeDefined();
     });
 
-    it("shows 'used tool:' when has result and not error", () => {
+    it("shows tool name without prefix when has result and not error", () => {
       render(<AssistantToolCall {...defaultProps} result="Success" />);
-      expect(screen.getByText(/used tool:/)).toBeDefined();
+      const summary = document.querySelector("summary");
+
+      expect(summary!.textContent).toContain("test-tool");
+      expect(summary!.textContent).not.toContain("used tool:");
     });
 
     it("shows 'tool failed:' when has result and is error", () => {
@@ -237,7 +240,7 @@ describe("AssistantToolCall", () => {
       expect(allDetails).toHaveLength(2); // Outer + result disclosure
       const resultSummary = document.querySelectorAll("summary")[1]!;
 
-      expect(resultSummary.className).toContain("text-gray-600");
+      expect(resultSummary.className).toContain("text-zinc-600");
     });
   });
 
@@ -250,7 +253,7 @@ describe("AssistantToolCall", () => {
           args={{ foo: "bar", num: 42 }}
         />,
       );
-      const funcDiv = document.querySelector(".text-gray-500");
+      const funcDiv = document.querySelector("details > div.text-zinc-500");
 
       expect(funcDiv!.textContent).toContain("test-tool");
       expect(funcDiv!.textContent).toContain("foo");
@@ -265,7 +268,7 @@ describe("AssistantToolCall", () => {
           args={{ key: "value" }}
         />,
       );
-      const funcDiv = document.querySelector(".text-gray-500");
+      const funcDiv = document.querySelector("details > div.text-zinc-500");
 
       expect(funcDiv!.textContent).toContain('"key":"value"');
     });
@@ -399,7 +402,7 @@ describe("AssistantToolCall", () => {
       const details = document.querySelector("details");
 
       expect(details!.className).not.toContain("border-red-500");
-      expect(screen.getByText(/used tool:/)).toBeDefined();
+      expect(details!.className).not.toContain("border-yellow-500");
     });
   });
 
@@ -518,8 +521,8 @@ describe("AssistantToolCall", () => {
       );
       const resultSummary = document.querySelectorAll("summary")[1]!; // Second summary (inner details)
 
-      expect(resultSummary.className).toContain("text-gray-600");
-      expect(resultSummary.className).toContain("dark:text-gray-400");
+      expect(resultSummary.className).toContain("text-zinc-600");
+      expect(resultSummary.className).toContain("dark:text-zinc-400");
     });
   });
 });

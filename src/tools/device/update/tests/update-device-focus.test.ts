@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import {
   mockNonExistentObjects,
   registerMockObject,
@@ -17,9 +18,9 @@ vi.mock(import("#src/tools/control/select.ts"), () => ({
 }));
 
 describe("updateDevice - focus functionality", () => {
-  let selectMock: ReturnType<typeof vi.fn>;
+  const selectMock = setupSelectMock();
 
-  beforeEach(async () => {
+  beforeEach(() => {
     mockNonExistentObjects();
 
     registerMockObject("123", {
@@ -31,17 +32,12 @@ describe("updateDevice - focus functionality", () => {
       path: livePath.track(0).device(1),
       type: "Device",
     });
-
-    const selectModule = await import("#src/tools/control/select.ts");
-
-    selectMock = selectModule.select as ReturnType<typeof vi.fn>;
-    selectMock.mockClear();
   });
 
   it("should select device and show device detail when focus=true", () => {
     updateDevice({ ids: "123", name: "Test", focus: true });
 
-    expect(selectMock).toHaveBeenCalledWith({
+    expect(selectMock.get()).toHaveBeenCalledWith({
       deviceId: "123",
       detailView: "device",
     });
@@ -50,22 +46,22 @@ describe("updateDevice - focus functionality", () => {
   it("should select last device when focus=true with multiple devices", () => {
     updateDevice({ ids: "123,456", name: "Test", focus: true });
 
-    expect(selectMock).toHaveBeenCalledWith({
+    expect(selectMock.get()).toHaveBeenCalledWith({
       deviceId: "456",
       detailView: "device",
     });
-    expect(selectMock).toHaveBeenCalledTimes(1);
+    expect(selectMock.get()).toHaveBeenCalledTimes(1);
   });
 
   it("should not call select when focus=false", () => {
     updateDevice({ ids: "123", name: "Test", focus: false });
 
-    expect(selectMock).not.toHaveBeenCalled();
+    expect(selectMock.get()).not.toHaveBeenCalled();
   });
 
   it("should not call select when focus is omitted", () => {
     updateDevice({ ids: "123", name: "Test" });
 
-    expect(selectMock).not.toHaveBeenCalled();
+    expect(selectMock.get()).not.toHaveBeenCalled();
   });
 });

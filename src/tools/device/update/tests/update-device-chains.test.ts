@@ -234,7 +234,7 @@ describe("updateDevice - Chain and DrumPad support", () => {
     it("should warn when params is used on a DrumPad", () => {
       const result = updateDevice({
         ids: "790",
-        params: '{"789": 0.5}',
+        params: "789 = 0.5",
       });
 
       expect(outlet).toHaveBeenCalledWith(

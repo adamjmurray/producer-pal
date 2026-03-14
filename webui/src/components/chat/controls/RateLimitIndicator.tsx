@@ -48,12 +48,12 @@ export function RateLimitIndicator({
         <span className="font-medium">Rate limit reached</span>
       </div>
 
-      <div className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+      <div className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
         Retry attempt {retryAttempt + 1} of {maxAttempts}
       </div>
 
       <div className="w-48 mb-3">
-        <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
           <div
             className="h-full bg-amber-500 dark:bg-amber-400 transition-all duration-100 ease-linear"
             style={{ width: `${progress * 100}%` }}
@@ -61,14 +61,14 @@ export function RateLimitIndicator({
         </div>
       </div>
 
-      <div className="text-lg font-mono text-gray-700 dark:text-gray-300 mb-3">
+      <div className="text-lg font-mono text-zinc-700 dark:text-zinc-300 mb-3">
         Retrying in {remainingSeconds}s
       </div>
 
       {onCancel && (
         <button
           onClick={onCancel}
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 px-3 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+          className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 px-3 py-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
         >
           Cancel
         </button>

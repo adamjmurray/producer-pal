@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -422,37 +423,15 @@ describe("readTrack", () => {
 
     describe("regular tracks (default behavior)", () => {
       it("defaults to regular track when trackType is not specified", () => {
-        setupTrackPathMappedMocks({
-          trackId: "track1",
-          objects: {
-            Track: mockTrackProperties({
-              name: "Default Track",
-            }),
-          },
-        });
+        const result = setupAndReadRegularTrack("Default Track");
 
-        const result = readTrack({ trackIndex: 0 });
-
-        expect(result.trackIndex).toBe(0);
-        expect(result.returnTrackIndex).toBeUndefined();
-        expect(result.id).toBe("track1");
+        expectRegularTrackResult(result);
       });
 
       it("reads regular track when trackType is omitted", () => {
-        setupTrackPathMappedMocks({
-          trackId: "track1",
-          objects: {
-            Track: mockTrackProperties({
-              name: "Regular Track",
-            }),
-          },
-        });
+        const result = setupAndReadRegularTrack("Regular Track");
 
-        const result = readTrack({ trackIndex: 0 });
-
-        expect(result.trackIndex).toBe(0);
-        expect(result.returnTrackIndex).toBeUndefined();
-        expect(result.id).toBe("track1");
+        expectRegularTrackResult(result);
       });
     });
 
@@ -467,3 +446,20 @@ describe("readTrack", () => {
     });
   });
 });
+
+function setupAndReadRegularTrack(name: string): ReturnType<typeof readTrack> {
+  setupTrackPathMappedMocks({
+    trackId: "track1",
+    objects: {
+      Track: mockTrackProperties({ name }),
+    },
+  });
+
+  return readTrack({ trackIndex: 0 });
+}
+
+function expectRegularTrackResult(result: ReturnType<typeof readTrack>): void {
+  expect(result.trackIndex).toBe(0);
+  expect(result.returnTrackIndex).toBeUndefined();
+  expect(result.id).toBe("track1");
+}

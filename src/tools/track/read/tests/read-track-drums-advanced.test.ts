@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -141,14 +142,10 @@ describe("readTrack", () => {
           devices: children("wavetable"),
         },
       });
-      registerMockObject("wavetable", {
-        path: livePath.track(0).device(0).chain(0).device(0),
-        type: "Device",
-        properties: {
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          can_have_drum_pads: 0,
-        },
-      });
+      registerNonDrumInstrumentMock(
+        "wavetable",
+        livePath.track(0).device(0).chain(0).device(0),
+      );
       const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(result.drumMap).toBeUndefined();
@@ -180,14 +177,10 @@ describe("readTrack", () => {
           devices: children("kickdevice"),
         },
       });
-      registerMockObject("kickdevice", {
-        path: livePath.track(0).device(0).chain(0).device(0),
-        type: "Device",
-        properties: {
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          can_have_drum_pads: 0,
-        },
-      });
+      registerNonDrumInstrumentMock(
+        "kickdevice",
+        livePath.track(0).device(0).chain(0).device(0),
+      );
       registerMockObject("instrumentRack", {
         path: livePath.track(0).device(1),
         type: "Device",
@@ -223,14 +216,10 @@ describe("readTrack", () => {
           devices: children("snaredevice"),
         },
       });
-      registerMockObject("snaredevice", {
-        path: livePath.track(0).device(1).chain(0).device(0).chain(0).device(0),
-        type: "Device",
-        properties: {
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          can_have_drum_pads: 0,
-        },
-      });
+      registerNonDrumInstrumentMock(
+        "snaredevice",
+        livePath.track(0).device(1).chain(0).device(0).chain(0).device(0),
+      );
       const result = readTrack({ trackIndex: 0, include: ["drum-map"] });
 
       expect(result.drumMap).toStrictEqual({ C3: "Direct Kick" });
@@ -287,15 +276,7 @@ describe("readTrack", () => {
     });
 
     it("detects instruments nested within racks in drum chain chains", () => {
-      setupTrackMock({
-        trackId: "track1",
-        properties: mockTrackProperties({ devices: children("drum_rack") }),
-      });
-      registerMockObject("drum_rack", {
-        path: livePath.track(0).device(0),
-        type: "Device",
-        properties: createDrumRackMock({ chainIds: ["kick_chain"] }),
-      });
+      setupTrackWithDrumRack(["kick_chain"]);
       registerMockObject("kick_chain", {
         path: livePath.track(0).device(0).chain(0),
         type: "Chain",
@@ -361,3 +342,17 @@ describe("readTrack", () => {
     });
   });
 });
+
+function registerNonDrumInstrumentMock(
+  id: string,
+  path: { toString: () => string },
+): void {
+  registerMockObject(id, {
+    path,
+    type: "Device",
+    properties: {
+      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+      can_have_drum_pads: 0,
+    },
+  });
+}

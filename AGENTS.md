@@ -8,7 +8,7 @@ codebase is written entirely in TypeScript.
 
 ```bash
 # Build with all tools (use this for development/testing!)
-npm run build:all
+npm run build:debug
 
 # Code quality checks
 npm run fix   # Auto-fix formatting and linting issues
@@ -95,7 +95,7 @@ web UI architecture.
 - **No barrel files**: Do not create index.ts or other files that only re-export
   from other modules. Import directly from the source file instead.
 
-- **Testing builds**: Always use `npm run build:all` for development (includes
+- **Testing builds**: Always use `npm run build:debug` for development (includes
   debugging tools like `ppal-raw-live-api`)
 
 - **Zod limitations**: Use only primitive types and enums in tool input schemas.
@@ -143,6 +143,13 @@ web UI architecture.
   parameter descriptions in `.def.ts` files, and tool results need to be very
   short, clear, and focused on the most useful and relevant info.
 
+- **IndexedDB versioning**: IndexedDB is schemaless for record data — adding new
+  fields to stored records does NOT require a version bump. Handle missing
+  fields with sensible defaults when reading. Only bump `DB_VERSION` for
+  structural changes (creating/deleting object stores or indexes). Avoid
+  migration code that iterates and transforms existing records; prefer
+  backwards-compatible reads over upgrade-time data transforms.
+
 - **Chat UI builds**: The webui is built with Vite (config in
   `config/vite.config.ts`) and outputs a single self-contained
   `max-for-live-device/chat-ui.html` file. Use `npm run ui:build` to check the
@@ -172,6 +179,12 @@ web UI architecture.
   - **Test file location**: Use colocated tests (same directory as source) for
     1-2 test files. Create a `tests/` subdirectory when 3+ test files exist for
     a feature to keep the main directory focused on source code
+  - **Prefer refactoring over trimming**: When adding code would exceed file
+    limits, extract cohesive groups of logic into helper files rather than
+    artificially compressing code (e.g., merging tests into loops, collapsing
+    whitespace, shortening variable names, inlining helpers). The goal of limits
+    is smaller, focused files — not clever formatting tricks to stay under the
+    line count
 
 ## Test File Classification
 

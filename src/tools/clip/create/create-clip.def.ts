@@ -9,8 +9,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
   description:
-    "Create MIDI or audio clip(s).\n" +
-    "Requires slot (session) and/or trackIndex + arrangementStart (arrangement).\n" +
+    "Create MIDI or audio clip(s). Requires slot (session) and/or trackIndex + arrangementStart (arrangement). " +
     "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip.",
   annotations: {
     readOnlyHint: false,
@@ -43,13 +42,15 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "clip name (comma-separated when creating multiple, indexed: session positions first, then arrangement)",
+        "name for all, or comma-separated for each (indexed: session positions first, then arrangement)",
       ),
 
     color: z
       .string()
       .optional()
-      .describe("#RRGGBB (comma-separated when creating multiple, cycles)"),
+      .describe(
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than positions)",
+      ),
 
     timeSignature: z
       .string()

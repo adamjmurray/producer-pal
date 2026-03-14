@@ -24,6 +24,7 @@ vi.mock(import("./helpers/streaming-helpers"), () => ({
     return true;
   }),
   validateMcpConnection: vi.fn(),
+  filterOverrides: vi.fn((overrides) => overrides),
 }));
 
 const mockAdapter = createMockAdapter();
@@ -389,7 +390,7 @@ describe("useChat", () => {
       expect(mockAdapter.createClient).not.toHaveBeenCalled();
     });
 
-    it("does nothing if no client initialized", async () => {
+    it("does nothing if no client and no pending history", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
       await act(async () => {
@@ -397,6 +398,30 @@ describe("useChat", () => {
       });
 
       expect(mockAdapter.extractUserMessage).not.toHaveBeenCalled();
+    });
+
+    it("retries from restored conversation using pending history", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        result.current.restoreChatHistory([
+          { role: "user", content: "restored msg" },
+          { role: "assistant", content: "restored reply" },
+        ]);
+      });
+
+      vi.clearAllMocks();
+
+      await act(async () => {
+        await result.current.handleRetry(0);
+      });
+
+      // Should initialize a client and extract the user message for retry
+      expect(mockAdapter.extractUserMessage).toHaveBeenCalled();
+      expect(mockAdapter.createClient).toHaveBeenCalled();
+      expect(result.current.messages.some((m) => m.role === "model")).toBe(
+        true,
+      );
     });
 
     it("successfully retries from a user message", async () => {
@@ -537,6 +562,141 @@ describe("useChat", () => {
 
       // Should be false after completion
       expect(result.current.isAssistantResponding).toBe(false);
+    });
+  });
+
+  describe("getChatHistory", () => {
+    it("returns empty array when no client and no pending history", () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      expect(result.current.getChatHistory()).toStrictEqual([]);
+    });
+
+    it("returns client chatHistory when client exists", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      const history = result.current.getChatHistory();
+
+      expect(history.length).toBeGreaterThan(0);
+    });
+
+    it("returns pending history after restoreChatHistory", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+      const history = [
+        { role: "user" as const, content: "saved message" },
+        { role: "assistant" as const, content: "saved response" },
+      ];
+
+      await act(async () => {
+        result.current.restoreChatHistory(history);
+      });
+
+      expect(result.current.getChatHistory()).toStrictEqual(history);
+    });
+  });
+
+  describe("restoreChatHistory", () => {
+    it("sets messages from loaded history", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+      const history = [
+        { role: "user" as const, content: "hello" },
+        { role: "assistant" as const, content: "hi" },
+      ];
+
+      await act(async () => {
+        result.current.restoreChatHistory(history);
+      });
+
+      expect(result.current.messages).toHaveLength(2);
+      expect(mockAdapter.formatMessages).toHaveBeenCalledWith(history);
+    });
+
+    it("restores active model and provider from lockedSettings", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        result.current.restoreChatHistory(
+          [
+            { role: "user", content: "hello" },
+            { role: "assistant", content: "hi" },
+          ],
+          {
+            model: "gemini-2.5-pro",
+            provider: "gemini",
+            thinking: null,
+            temperature: null,
+            showThoughts: null,
+            smallModelMode: null,
+          },
+        );
+      });
+
+      expect(result.current.activeModel).toBe("gemini-2.5-pro");
+      expect(result.current.activeProvider).toBe("gemini");
+    });
+
+    it("resets active state", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      expect(result.current.activeModel).toBe("test-model");
+
+      await act(async () => {
+        result.current.restoreChatHistory([]);
+      });
+
+      expect(result.current.activeModel).toBeNull();
+      expect(result.current.activeProvider).toBeNull();
+    });
+
+    it("uses pending history on next handleSend", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+      const history = [
+        { role: "user" as const, content: "prior msg" },
+        { role: "assistant" as const, content: "prior response" },
+      ];
+
+      await act(async () => {
+        result.current.restoreChatHistory(history);
+      });
+
+      await act(async () => {
+        await result.current.handleSend("New message");
+      });
+
+      // buildConfig should have been called with the pending history
+      expect(mockAdapter.buildConfig).toHaveBeenCalledWith(
+        "test-model",
+        1.0,
+        "Default",
+        {},
+        history,
+        undefined,
+      );
+    });
+
+    it("clears pending history after clearConversation", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        result.current.restoreChatHistory([
+          { role: "user" as const, content: "test" },
+        ]);
+      });
+
+      await act(async () => {
+        result.current.clearConversation();
+      });
+
+      expect(result.current.getChatHistory()).toStrictEqual([]);
+      expect(result.current.messages).toStrictEqual([]);
     });
   });
 

@@ -12,7 +12,7 @@ import {
   stepCountIs,
   streamText,
 } from "ai";
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat";
+import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 import { type AiSdkClientConfig, type AiSdkMessage } from "./ai-sdk-types";
 import { createAiSdkMcpTools } from "./mcp-tools";
@@ -55,16 +55,24 @@ export class AiSdkClient {
    * The AI SDK handles multi-step tool calling via stopWhen.
    * @param message - User message text
    * @param abortSignal - Signal to abort the stream
-   * @param _overrides - Per-message overrides (reserved for future use)
+   * @param overrides - Per-message overrides for thinking
    * @yields Complete chat history after each stream update
    */
   async *sendMessage(
     message: string,
     abortSignal?: AbortSignal,
-    _overrides?: MessageOverrides,
+    overrides?: MessageOverrides,
   ): AsyncGenerator<AiSdkMessage[], void, unknown> {
-    this.chatHistory.push({ role: "user", content: message });
+    const userMsg: AiSdkMessage = { role: "user", content: message };
+
+    stampOverrides(userMsg, overrides);
+    this.chatHistory.push(userMsg);
     yield [...this.chatHistory];
+
+    const providerOptions =
+      overrides?.thinking != null && this.config.buildProviderOptions
+        ? this.config.buildProviderOptions(overrides.thinking)
+        : this.config.providerOptions;
 
     const result = streamText({
       model: this.config.model,
@@ -73,11 +81,44 @@ export class AiSdkClient {
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
       stopWhen: stepCountIs(MAX_TOOL_STEPS),
       temperature: this.config.temperature,
-      providerOptions: this.config.providerOptions,
+      providerOptions,
       abortSignal,
     });
 
+    const historyLengthBefore = this.chatHistory.length;
+
     yield* this.processStream(result);
+    yield* this.captureResponseMetadata(result, historyLengthBefore);
+  }
+
+  /**
+   * Capture response metadata (model ID) and attach to all assistant messages
+   * created during the current turn.
+   * @param result - The streamText result
+   * @param historyLengthBefore - Chat history length before streaming started
+   * @yields Updated chat history if metadata was captured
+   */
+  private async *captureResponseMetadata(
+    result: ReturnType<typeof streamText>,
+    historyLengthBefore: number,
+  ): AsyncGenerator<AiSdkMessage[]> {
+    try {
+      const response = await result.response;
+
+      if (response.modelId) {
+        for (let i = historyLengthBefore; i < this.chatHistory.length; i++) {
+          const msg = this.chatHistory[i];
+
+          if (msg?.role === "assistant") {
+            msg.responseModel = response.modelId;
+          }
+        }
+      }
+    } catch {
+      // Stream may have been aborted — response metadata not available
+    }
+
+    yield [...this.chatHistory];
   }
 
   /**
@@ -108,6 +149,18 @@ export class AiSdkClient {
       }
     }
   }
+}
+
+/**
+ * Stamp per-message setting overrides onto a user message.
+ * Only sets fields that are present in the overrides.
+ * @param msg - User message to stamp
+ * @param overrides - Per-message overrides (undefined = no overrides)
+ */
+function stampOverrides(msg: AiSdkMessage, overrides?: MessageOverrides): void {
+  if (!overrides) return;
+
+  if (overrides.thinking != null) msg.thinkingOverride = overrides.thinking;
 }
 
 /**

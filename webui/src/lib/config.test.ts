@@ -19,16 +19,24 @@ describe("config", () => {
   });
 
   describe("getModelName", () => {
-    it("returns display name for gemini-2.5-pro", () => {
-      expect(getModelName("gemini-2.5-pro")).toBe("Gemini 2.5 Pro");
-    });
-
-    it("returns display name for gemini-2.5-flash", () => {
-      expect(getModelName("gemini-2.5-flash")).toBe("Gemini 2.5 Flash");
-    });
-
     it("returns display name for gemini-3-flash-preview", () => {
       expect(getModelName("gemini-3-flash-preview")).toBe("Gemini 3 Flash");
+    });
+
+    it("returns display name for gemini-3.1-flash-lite-preview", () => {
+      expect(getModelName("gemini-3.1-flash-lite-preview")).toBe(
+        "Gemini 3.1 Flash Lite",
+      );
+    });
+
+    it("strips [Paid] tag from OpenRouter model labels", () => {
+      expect(getModelName("google/gemini-3-flash-preview")).toBe(
+        "Google Gemini 3 Flash",
+      );
+    });
+
+    it("strips [Free] tag from OpenRouter model labels", () => {
+      expect(getModelName("z-ai/glm-4.5-air:free")).toBe("Z.AI GLM 4.5 Air");
     });
 
     it("returns the modelId unchanged for unknown models", () => {
@@ -42,29 +50,17 @@ describe("config", () => {
       expect(getThinkingBudget("Off")).toBe(0);
     });
 
-    it("returns 2048 for Low level", () => {
-      expect(getThinkingBudget("Low")).toBe(2048);
+    it("returns 16384 for Max level", () => {
+      expect(getThinkingBudget("Max")).toBe(16384);
     });
 
-    it("returns 4096 for Medium level", () => {
-      expect(getThinkingBudget("Medium")).toBe(4096);
-    });
-
-    it("returns 8192 for High level", () => {
-      expect(getThinkingBudget("High")).toBe(8192);
-    });
-
-    it("returns 16384 for Ultra level", () => {
-      expect(getThinkingBudget("Ultra")).toBe(16384);
-    });
-
-    it("returns -1 for Auto level", () => {
+    it("returns -1 for Default level", () => {
       expect(getThinkingBudget("Default")).toBe(-1);
     });
 
-    it("returns -1 (Auto) for unknown levels", () => {
+    it("returns -1 for unknown levels", () => {
       expect(getThinkingBudget("Unknown")).toBe(-1);
-      expect(getThinkingBudget("VeryHigh")).toBe(-1);
+      expect(getThinkingBudget("High")).toBe(-1);
     });
   });
 });

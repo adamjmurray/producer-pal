@@ -29,6 +29,12 @@ export interface AiSdkMessage {
     isError?: boolean;
   }>;
   reasoning?: string;
+  /** Model ID from the API response (assistant messages only) */
+  responseModel?: string;
+  /** Per-message setting overrides (only present when user overrode conversation defaults) */
+  thinkingOverride?: string;
+  temperatureOverride?: number;
+  showThoughtsOverride?: boolean;
 }
 
 /** Configuration for the AI SDK client */
@@ -40,5 +46,7 @@ export interface AiSdkClientConfig {
   enabledTools?: Record<string, boolean>;
   showThoughts: boolean;
   providerOptions?: ProviderOptions;
+  /** Recompute provider options for a given thinking level (used for mid-conversation overrides) */
+  buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
   chatHistory?: AiSdkMessage[];
 }

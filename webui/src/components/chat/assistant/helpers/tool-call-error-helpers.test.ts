@@ -39,6 +39,12 @@ describe("extractErrorSummary", () => {
     it("returns null for malformed MCP content array", () => {
       expect(extractErrorSummary("[invalid json")).toBeNull();
     });
+
+    it("returns null for MCP content array with no text items", () => {
+      const result = JSON.stringify([{ type: "image", data: "base64..." }]);
+
+      expect(extractErrorSummary(result)).toBeNull();
+    });
   });
 
   describe("Error executing tool prefix", () => {

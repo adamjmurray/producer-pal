@@ -5,6 +5,7 @@
 
 import { expect, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { requireMockTrack } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { MockSequence } from "#src/test/mocks/mock-live-api-property-helpers.ts";
 import {
   type RegisteredMockObject,
@@ -190,6 +191,29 @@ function setupArrangementClip(
 }
 
 /**
+ * Setup a single arrangement clip "789" with track mock and assertions.
+ * Combines setupArrangementClipPath, requireMockTrack, and null guard.
+ * @param trackIndex - Track index (default 0)
+ * @returns sourceClip and track mocks
+ */
+export function setupSingleArrangementClip(trackIndex = 0): {
+  sourceClip: RegisteredMockObject;
+  track: RegisteredMockObject;
+} {
+  const clips = setupArrangementClipPath(trackIndex, ["789"]);
+  const sourceClip = clips.get("789");
+  const track = requireMockTrack(trackIndex);
+
+  expect(sourceClip).toBeDefined();
+
+  if (sourceClip == null) {
+    throw new Error("Expected source clip mock for 789");
+  }
+
+  return { sourceClip, track };
+}
+
+/**
  * Assert that source clip end_marker was set correctly.
  * @param clip - Registered mock clip
  * @param expectedEndMarker - Expected end marker value
@@ -207,6 +231,31 @@ interface MidiClipMockOptions {
   /** Clip length in beats */
   length?: number;
   [key: string]: unknown;
+}
+
+/**
+ * Set up arrangement clip path and audio clip mock in one call.
+ * Combines setupArrangementClipPath, clip lookup, assertion, and setupArrangementAudioClipMock.
+ * @param trackIndex - Track index
+ * @param clipId - Clip ID
+ * @param audioOpts - Audio clip mock options
+ * @returns The configured clip mock
+ */
+export function setupArrangementAudioClip(
+  trackIndex: number,
+  clipId: string,
+  audioOpts: Record<string, unknown>,
+): RegisteredMockObject {
+  const clips = setupArrangementClipPath(trackIndex, [clipId]);
+  const clip = clips.get(clipId);
+
+  if (clip == null) {
+    throw new Error(`Clip ${clipId} not found in arrangement clip path setup`);
+  }
+
+  setupArrangementAudioClipMock(clip, audioOpts);
+
+  return clip;
 }
 
 /**

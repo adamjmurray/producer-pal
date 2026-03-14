@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
-import { drumPatternNotes } from "../../barbeat-test-fixtures.ts";
+import { drumPatternNotes, sortNotes } from "../../barbeat-test-fixtures.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
 
@@ -37,19 +37,6 @@ function expectDrumRoundTrip(
     expect(repr.duration).toBeCloseTo(orig.duration, 8);
     expect(repr.velocity).toBeCloseTo(orig.velocity, 8);
   }
-}
-
-/**
- * Sort notes for comparison (by start_time, then pitch)
- * @param notes - Notes to sort
- * @returns Sorted copy
- */
-function sortNotes(notes: NoteEvent[]): NoteEvent[] {
-  return [...notes].sort((a, b) =>
-    a.start_time !== b.start_time
-      ? a.start_time - b.start_time
-      : a.pitch - b.pitch,
-  );
 }
 
 describe("drum mode serializer", () => {
@@ -95,6 +82,49 @@ describe("drum mode serializer", () => {
 
     // Step equals duration (0.25), so @step is omitted
     expect(result).toBe("v80 t/4 Gb1 1|1x16");
+  });
+
+  it("does not use repeat pattern for non-uniform spacing", () => {
+    // 3 notes with non-uniform spacing: 0, 1, 3 (steps 1, 2 - irregular)
+    const notes: NoteEvent[] = [
+      createNote({ pitch: 36, start_time: 0, duration: 0.25 }),
+      createNote({ pitch: 36, start_time: 1, duration: 0.25 }),
+      createNote({ pitch: 36, start_time: 3, duration: 0.25 }),
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes, { drumMode: true });
+
+    // Should list positions individually, not use repeat pattern
+    expect(result).not.toContain("x3");
+    expect(result).toContain("1|1");
+  });
+
+  it("prefers listing when repeat format is not shorter", () => {
+    // Non-uniform in-bar spacing: beats 1, 2.5, 4
+    const notes: NoteEvent[] = [
+      createNote({ pitch: 36, start_time: 0, duration: 1 }),
+      createNote({ pitch: 36, start_time: 1.5, duration: 1 }),
+      createNote({ pitch: 36, start_time: 3, duration: 1 }),
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes, { drumMode: true });
+
+    // Non-uniform spacing, should use comma merge
+    expect(result).not.toContain("x3");
+  });
+
+  it("handles drum notes with undefined probability", () => {
+    // Tests ?? fallback in sameState for probability
+    const notes = [
+      { pitch: 36, start_time: 0, duration: 0.25, velocity: 80 },
+      { pitch: 36, start_time: 1, duration: 0.25, velocity: 80 },
+    ] as NoteEvent[];
+
+    const result = formatNotation(notes, { drumMode: true });
+
+    // Both notes have same state (undefined probability defaults equal),
+    // so they should merge into comma format with no probability prefix
+    expect(result).toBe("v80 t/4 C1 1|1,2");
   });
 
   it("includes @step when step differs from duration", () => {

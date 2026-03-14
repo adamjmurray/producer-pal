@@ -6,7 +6,11 @@
 import { describe, expect, it, vi, type Mock } from "vitest";
 import { z, type ZodRawShape } from "zod";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { defineTool, type ToolOptions } from "./define-tool.ts";
+import {
+  defineTool,
+  filterExcludedEnumValues,
+  type ToolOptions,
+} from "./define-tool.ts";
 
 type MockServer = McpServer & { registerTool: Mock };
 
@@ -366,6 +370,54 @@ describe("defineTool", () => {
     });
   });
 
+  it("should apply runtime filter for valid values in smallModelMode with excludeEnumValues", async () => {
+    const { mockServer, mockCallLiveApi } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Test",
+        inputSchema: {
+          include: z.array(z.enum(["notes", "timing", "sample"])).default([]),
+        },
+        smallModelModeConfig: {
+          excludeEnumValues: { include: ["timing"] },
+        },
+      },
+      { smallModelMode: true, successMock: true },
+    );
+
+    const toolHandler = getRegisteredHandler(mockServer);
+
+    // Send valid values — runtime filter runs but nothing to remove
+    await toolHandler({ include: ["notes", "sample"] });
+
+    expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
+      include: ["notes", "sample"],
+    });
+  });
+
+  it("should reject excluded enum values via Zod in smallModelMode", async () => {
+    const { mockServer } = registerTestTool(
+      {
+        title: "Test Tool",
+        description: "Test",
+        inputSchema: {
+          include: z.array(z.enum(["notes", "timing", "sample"])).default([]),
+        },
+        smallModelModeConfig: {
+          excludeEnumValues: { include: ["timing"] },
+        },
+      },
+      { smallModelMode: true, successMock: true },
+    );
+
+    const toolHandler = getRegisteredHandler(mockServer);
+
+    // Model hallucinated "timing" — Zod rejects it (primary gate)
+    await expect(
+      toolHandler({ include: ["notes", "timing"] }),
+    ).rejects.toThrow();
+  });
+
   it("should coerce number to string when using z.coerce.string()", async () => {
     const { mockServer, mockCallLiveApi } = registerTestTool(
       {
@@ -389,5 +441,64 @@ describe("defineTool", () => {
     expect(mockCallLiveApi).toHaveBeenCalledWith("test-tool", {
       sceneIndex: "0",
     });
+  });
+});
+
+describe("filterExcludedEnumValues", () => {
+  it("should remove excluded values from array params", () => {
+    const args = { include: ["notes", "timing", "sample"], name: "test" };
+
+    const result = filterExcludedEnumValues(args, {
+      include: ["timing"],
+    });
+
+    expect(result).toStrictEqual({
+      include: ["notes", "sample"],
+      name: "test",
+    });
+  });
+
+  it("should remove multiple excluded values", () => {
+    const args = { include: ["notes", "timing", "warp", "sample"] };
+
+    const result = filterExcludedEnumValues(args, {
+      include: ["timing", "warp"],
+    });
+
+    expect(result).toStrictEqual({ include: ["notes", "sample"] });
+  });
+
+  it("should not modify non-array params", () => {
+    const args = { include: "timing", count: 5 };
+
+    const result = filterExcludedEnumValues(args, {
+      include: ["timing"],
+    });
+
+    expect(result).toStrictEqual({ include: "timing", count: 5 });
+  });
+
+  it("should not modify params not in exclusion map", () => {
+    const args = { include: ["notes", "timing"], other: ["a", "b"] };
+
+    const result = filterExcludedEnumValues(args, {
+      include: ["timing"],
+    });
+
+    expect(result).toStrictEqual({
+      include: ["notes"],
+      other: ["a", "b"],
+    });
+  });
+
+  it("should return shallow copy without modifying original", () => {
+    const args = { include: ["notes", "timing"] };
+
+    const result = filterExcludedEnumValues(args, {
+      include: ["timing"],
+    });
+
+    expect(args.include).toStrictEqual(["notes", "timing"]);
+    expect(result).not.toBe(args);
   });
 });

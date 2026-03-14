@@ -125,6 +125,21 @@ describe("v8-max-console", () => {
       expect(consoleLogSpy).toHaveBeenCalledWith('CustomClass{"prop":"value"}');
     });
 
+    it("falls back to 'Object' when constructor name is unavailable", () => {
+      // Object.create(null) would throw on String(), so we need toPrimitive
+      // to make String(obj) return "[object Object]" (triggering the fallback)
+      const proto = { [Symbol.toPrimitive]: () => "[object Object]" };
+
+      Object.defineProperty(proto, "constructor", { value: undefined });
+      const obj = Object.create(proto) as Record<string, unknown>;
+
+      obj.x = 1;
+      log(obj);
+      // String(obj) → "[object Object]" via toPrimitive, triggers fallback branch
+      // constructor is undefined → ?? "Object"
+      expect(consoleLogSpy).toHaveBeenCalledWith('Object{"x":1}');
+    });
+
     it("logs Max Dict objects when Dict global is defined", () => {
       // Create a mock Dict class to simulate Max's Dict
       class Dict {

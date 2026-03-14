@@ -251,6 +251,21 @@ describe("filterSchemaForSmallModel", () => {
     expect(getEnumOptions(filtered.include)).toStrictEqual(["a", "c"]);
   });
 
+  it("should remove wildcard '*' from enum values", () => {
+    const schema = {
+      include: z.array(z.enum(["notes", "timing", "warp", "*"])).default([]),
+    };
+
+    const filtered = filterSchemaForSmallModel(
+      schema,
+      [],
+      {},
+      { include: ["warp", "*"] },
+    );
+
+    expect(getEnumOptions(filtered.include)).toStrictEqual(["notes", "timing"]);
+  });
+
   it("should return original schema when all filter options are empty", () => {
     const schema = {
       param1: z.string(),

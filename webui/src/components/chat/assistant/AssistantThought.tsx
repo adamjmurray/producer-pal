@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import {
   sanitizeMarkdown,
   sanitizeMarkdownInline,
@@ -15,7 +16,7 @@ interface AssistantThoughtProps {
 }
 
 const baseClasses =
-  "p-2 text-xs bg-gray-200 dark:bg-gray-700 rounded border-l-3 border-green-500";
+  "p-2 text-xs bg-zinc-200/70 dark:bg-zinc-700 rounded-lg border-l-3 border-emerald-500";
 
 /**
  * Collapsible thought/reasoning display
@@ -38,10 +39,13 @@ export function AssistantThought({
   if (isOpen) {
     return (
       <details
-        className={`${baseClasses}${isResponding ? " animate-pulse" : ""}`}
+        className={`disclosure ${baseClasses}${isResponding ? " animate-pulse" : ""}`}
         open
       >
-        <summary className="font-semibold truncate">💭 Thinking...</summary>
+        <summary className="font-semibold overflow-hidden flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+          <DisclosureChevron />
+          <span className="truncate min-w-0">💭 Thinking...</span>
+        </summary>
         <div
           className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"
           dangerouslySetInnerHTML={{ __html: sanitizeMarkdown(trimmed) }}
@@ -52,15 +56,16 @@ export function AssistantThought({
 
   // Completed thought — summary swaps content via group-open
   return (
-    <details className={`group ${baseClasses}`}>
-      <summary className="font-semibold truncate">
+    <details className={`disclosure group ${baseClasses}`}>
+      <summary className="font-semibold overflow-hidden flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+        <DisclosureChevron />
         <span
-          className="group-open:hidden"
+          className="truncate min-w-0 group-open:hidden"
           dangerouslySetInnerHTML={{
-            __html: sanitizeMarkdownInline(`💭 Thought about: ${firstLine}`),
+            __html: sanitizeMarkdownInline(`💭 ${firstLine}`),
           }}
         />
-        <span className="hidden group-open:inline">💭 Thought about:</span>
+        <span className="hidden group-open:inline">💭</span>
       </summary>
       <div
         className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"

@@ -6,11 +6,9 @@
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 
-/** Per-message overrides for thinking, temperature, and showThoughts */
+/** Per-message overrides for thinking */
 export interface MessageOverrides {
   thinking?: string;
-  temperature?: number;
-  showThoughts?: boolean;
 }
 
 /** Chat client interface that all providers must implement */
@@ -58,6 +56,16 @@ export interface ChatAdapter<
   createUserMessage: (text: string) => TMessage;
 }
 
+/** Model/provider/behavior settings persisted with a conversation */
+export interface ConversationLockedSettings {
+  model: string | null;
+  provider: Provider | null;
+  thinking: string | null;
+  temperature: number | null;
+  showThoughts: boolean | null;
+  smallModelMode: boolean | null;
+}
+
 /** Rate limit retry state for UI display */
 export interface RateLimitState {
   isRetrying: boolean;
@@ -73,12 +81,19 @@ export interface UseChatReturn {
   activeProvider: Provider | null;
   activeThinking: string | null;
   activeTemperature: number | null;
+  activeShowThoughts: boolean | null;
+  activeSmallModelMode: boolean | null;
   rateLimitState: RateLimitState | null;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;
   clearConversation: () => void;
   stopResponse: () => void;
+  getChatHistory: () => unknown[];
+  restoreChatHistory: (
+    chatHistory: unknown[],
+    lockedSettings?: ConversationLockedSettings,
+  ) => void;
 }
 
 export interface UseChatProps<
@@ -95,6 +110,7 @@ export interface UseChatProps<
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
+  smallModelMode: boolean;
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
   extraParams?: Record<string, unknown>;
 }

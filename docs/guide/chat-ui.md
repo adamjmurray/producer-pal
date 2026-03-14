@@ -3,28 +3,82 @@
 The built-in Chat UI provides a browser-based interface for chatting with AI
 directly from within Producer Pal.
 
-![Chat UI](/producer-pal-chat.png)
+![Chat UI](/img/producer-pal-chat.png)
 
 ## Getting Started
 
-1. Enable Chat UI in the [Device Interface](/guide/device) Main tab
-2. Click "Open Chat UI" or navigate to `http://localhost:3350/chat`
-3. If this is your first time using the chat UI, you need to configure which AI
-   to use. See [the Settings documentation](#settings) below
-4. Click "Quick Connect" to connect to Ableton Live (this is a shortcut sending
-   "Connect to Ableton" via the message input)
+1. Click "Open Chat UI" in the [Device Interface](/guide/device) Main tab (make
+   sure the Chat UI is enabled)
+2. Configure your AI provider in [Settings](#settings) (opens automatically on
+   first use)
+3. Click "Quick Connect" to connect to Ableton Live
 
 ## Header Bar
 
-- **Status** - Shows "Ready" (green) when connected to Ableton
-- **Provider & Model** - Current AI provider and model
-- **Tools** - Number of enabled tools (e.g., "22/22 tools")
-- **Settings** - Open settings dialog
-- **Restart** - Start a new conversation (appears during chat)
+The header is organized into two areas:
+
+### Left
+
+<img src="/img/producer-pal-chat-header-left.png" alt="Header left" width="400"/>
+
+- **History panel** - Toggle the conversation history sidebar
+- **New conversation** - Start a fresh conversation
+- **Bookmark star** - Pin the active conversation
+- **Logo, title & version** - Shows an "update" link when a newer version is
+  available
+- **Connection status** - Shows "Ready" when connected to Ableton
+
+### Right
+
+<img src="/img/producer-pal-chat-header-right.png" alt="Header right" width="450"/>
+
+- **Provider & Model** - Click to open connection settings
+- **Tools count** - Click to open tools settings
+- **Model size** - Shows "large model" or "small model" mode
+- **Settings gear** - Open settings dialog
+- **Help (?)** - Link to documentation
+
+## Conversation History
+
+<img src="/img/producer-pal-chat-history-panel.png" alt="Conversation history" width="400"/>
+
+Toggle the history panel using the panel icon in the header. On mobile it takes
+the full width; on larger screens it appears as a sidebar.
+
+### Bookmarks
+
+Star a conversation to pin it to the **Bookmarks** section at the top of the
+list. Bookmarked conversations are never auto-deleted when the storage limit is
+reached. You can toggle the bookmark from the header star icon or from the
+conversation row.
+
+### Managing Conversations
+
+Each conversation in the list has action buttons that appear on hover:
+
+- **Rename** - Click the pencil icon to edit the title inline (Enter to save,
+  Escape to cancel)
+- **Export** - Download a single conversation as a JSON file
+- **Delete** - Remove the conversation from history
+
+Conversations are auto-saved to your browser's storage as you chat. Up to 200
+conversations are kept; when the limit is reached, the oldest non-bookmarked
+conversations are automatically removed.
+
+### Export & Import
+
+The toolbar at the top of the history panel has buttons to:
+
+- **Export all** - Download all conversations as a single JSON file
+- **Import** - Load conversations from a previously exported JSON file. New
+  conversations are added and existing ones are updated if the imported version
+  is newer
+
+A notification banner confirms the result of each operation.
 
 ## Conversations
 
-![Conversation](/producer-pal-chat-conversation.png)
+![Conversation](/img/producer-pal-chat-conversation.png)
 
 During conversations, you'll see:
 
@@ -39,21 +93,44 @@ During conversations, you'll see:
 Some AI models output "thoughts". When they do, you can click "Thought about:"
 sections to see the AI's reasoning process:
 
-![Expandable thoughts](/producer-pal-chat-expandable-thoughts.png)
+![Expandable thoughts](/img/producer-pal-chat-expandable-thoughts.png)
 
 ## Message Input
 
-- **Thinking indicator** - Shows current thinking mode and randomness (this can
-  be changed in settings)
+### Thinking Toggle
+
+The thinking toggle next to the text area controls how much reasoning effort the
+AI uses for the next message. Click it to cycle through three levels:
+
+- <img src="/img/thinking-off.png" alt="Off" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+  **Off** - No thinking
+- <img src="/img/thinking-default.png" alt="Default" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+  **Default** - Let the AI decide
+- <img src="/img/thinking-max.png" alt="Max" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+  **Max** - Maximum thinking effort
+
+The default thinking level for new conversations is set in
+[Connection settings](#connection). The toggle in the message input area
+overrides it for individual messages.
+
+### Text Area & Send
+
 - **Text area** - Type your message (Shift+Enter for new line)
-- **Send** - Send your message
+- **Send / Stop** - Send your message, or stop a response in progress
 
 ## Settings
 
-Settings are stored on your computer in your browser's local storage so you
-don't have to redo the setup every time you use Producer Pal. If entering an AI
-cloud provider's API key concerns you, use a private browser or clear your
-settings after use.
+Settings open as a modal overlay. Press Escape or click outside to close (if
+there are unsaved changes, the dialog will shake as a reminder to save or
+cancel).
+
+Settings are stored in your browser so you don't have to redo the setup every
+time. If entering an AI cloud provider's API key concerns you, use a private
+browser or clear your settings after use.
+
+When an active conversation was started with a different model or provider than
+the current defaults, a notice appears indicating that changes apply to new
+conversations only.
 
 For more information about how to configure specific AI providers, see the
 [installation guide for AI with the chat UI](/installation/chat-ui).
@@ -62,18 +139,21 @@ For more information about how to configure specific AI providers, see the
 
 The Connection tab is where you choose and configure your AI provider and model:
 
-<img src="/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
-Configure your AI provider:
-
-- **Provider** - Choose from Gemini, OpenAI, Mistral, OpenRouter, Ollama
-  (local), LM Studio (local), or Other
+- **Provider** - Choose from Google, Mistral, OpenAI, Anthropic, Ollama (local),
+  LM Studio (local), OpenRouter, or Custom
 - **API Key** - Your API key (for cloud providers)
 - **Model** - Select a model or enter a custom model name
+- **Thinking** - Default thinking level for new conversations (Off, Default, or
+  Max). Can also be overridden per-message using the thinking toggle in the
+  message input area
+- **Small model mode** - Reduces tool descriptions to save context for local
+  models. Recommended when using Ollama or LM Studio
 
 #### Local AI settings (Ollama, LM Studio)
 
-<img src="/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
 
 Local models, such as those you can run with Ollama, do not require any API
 keys. Instead, they have a configurable URL.
@@ -94,40 +174,6 @@ You may need to change the URL if:
   focuses on running Ableton Live. Replace `localhost` with the other computer's
   network address (e.g., `http://192.168.1.100:11434`)
 
-#### Other models
-
-Each AI provider supports multiple models and Producer Pal provides some
-recommended options in the model dropdown box. To use a different model, select
-"Other...". An additional text input appears where you can enter an arbitrary
-model id. Consult your AI provider for the models that are currently available.
-
-<img src="/producer-pal-chat-settings-connection-open-router-other-model.png" alt="OpenRouter settings" width="500"/>
-
-#### Custom providers
-
-Producer Pal can work with any AI provider that has an API compatible with
-OpenAI's chat API. Most providers support this. When setting up a custom
-provider, you also need to enter the **URL** for the provider's API. Consult the
-provider's documentation to determine the correct setting.
-
-For example, one could use [groq.com](https://groq.com/) as follows:
-
-<img src="/producer-pal-chat-settings-custom-provider.png" alt="Custom provider" width="500"/>
-
-### Behavior
-
-The behavior tab lets you control aspects of how the AI behaves:
-
-<img src="/producer-pal-chat-settings-behavior.png" alt="Behavior settings" width="500"/>
-
-- **Thinking** - Control AI thinking effort. The choices and availability of
-  this option depend on the provider selected in
-  [the Connection tab](#connection)
-- **Show thinking process** - Display AI reasoning in chat. If you don't care
-  about this, you can disable it to reduce clutter.
-- **Randomness** - Creativity level (0% = deterministic, 100% = creative)
-- **Reset to defaults** - Restore default behavior settings
-
 ### Tools
 
 The Tools tab controls which tools are available to the AI when using the chat
@@ -139,11 +185,15 @@ you want to prevent the AI from using a specific tool, you can disable it here.
 
 Consult [the Features page](/features) for more info on what each tool does.
 
-<img src="/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>
 
-### Appearance
+### Preferences
 
-The Appearance tab lets you choose between light mode or dark mode, or follow
-the system settings:
+The Preferences tab controls visual preferences:
 
-<img src="/producer-pal-chat-settings-appearance.png" alt="Appearance settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-preferences.png" alt="Preferences settings" width="500"/>
+
+- **Theme** - Light, Dark, or System (follow your OS preference)
+- **Show message timestamps** - Display the date and time next to each message
+- **Show help links** - Show or hide the documentation help buttons (?) in the
+  header and settings

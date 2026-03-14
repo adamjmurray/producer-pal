@@ -7,8 +7,8 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
-  description: `Read track settings, clips, devices.
-Returns overview by default. Use include to add detail.`,
+  description:
+    "Read track settings, clips, and devices. Returns overview by default. Use include to add detail.",
 
   annotations: {
     readOnlyHint: true,
@@ -56,10 +56,10 @@ Returns overview by default. Use include to add detail.`,
   },
 
   smallModelModeConfig: {
-    excludeEnumValues: { include: ["available-routings"] },
+    excludeEnumValues: { include: ["available-routings", "*"] },
     descriptionOverrides: {
       include:
-        'session-clips, arrangement-clips = clip lists. notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, mixer = track data. color = track + clip color. "*" = all',
+        "session-clips, arrangement-clips = clip lists. notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, mixer = track data. color = track + clip color",
     },
   },
 });

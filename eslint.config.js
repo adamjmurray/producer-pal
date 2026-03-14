@@ -374,6 +374,17 @@ export default [
       ...jsdocRules, // JSDoc required for TS (but not type annotations)
       ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
       "no-undef": "off", // TypeScript handles undefined variable checks
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "^#src/(?!shared/)",
+              message: "webui may only import from #src/shared/",
+            },
+          ],
+        },
+      ],
     },
   },
 

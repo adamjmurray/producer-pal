@@ -101,11 +101,11 @@ describe("aiSdkAdapter", () => {
       expect(config.chatHistory).toStrictEqual(history);
     });
 
-    it("sets reasoning effort for openai provider with High thinking", () => {
+    it("sets reasoning effort for openai provider with Max thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "o3-mini",
         1.0,
-        "High",
+        "Max",
         {},
         undefined,
         { ...extraParams, provider: "openai" },
@@ -120,18 +120,18 @@ describe("aiSdkAdapter", () => {
       const config = aiSdkAdapter.buildConfig(
         "gpt-5.2",
         1.0,
-        "High",
+        "Max",
         {},
         undefined,
         { ...extraParams, provider: "openai", showThoughts: true },
       );
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningEffort: "high", reasoningSummary: "auto" },
+        openai: { reasoningEffort: "xhigh", reasoningSummary: "auto" },
       });
     });
 
-    it("sets only reasoningSummary for openai reasoning model with Default thinking", () => {
+    it("sets reasoningEffort and reasoningSummary for openai reasoning model with Default thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "gpt-5.2",
         1.0,
@@ -142,15 +142,15 @@ describe("aiSdkAdapter", () => {
       );
 
       expect(config.providerOptions).toStrictEqual({
-        openai: { reasoningSummary: "auto" },
+        openai: { reasoningEffort: "medium", reasoningSummary: "auto" },
       });
     });
 
-    it("sets reasoning for openrouter provider", () => {
+    it("sets reasoning for openrouter provider with Max thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "some-model",
         1.0,
-        "High",
+        "Max",
         {},
         undefined,
         { ...extraParams, provider: "openrouter", showThoughts: true },
@@ -159,7 +159,7 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toStrictEqual({
         openrouter: {
           reasoning: {
-            effort: "high",
+            effort: "xhigh",
           },
         },
       });
@@ -169,7 +169,7 @@ describe("aiSdkAdapter", () => {
       const config = aiSdkAdapter.buildConfig(
         "some-model",
         1.0,
-        "High",
+        "Max",
         {},
         undefined,
         { ...extraParams, provider: "openrouter", showThoughts: false },
@@ -178,18 +178,18 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toStrictEqual({
         openrouter: {
           reasoning: {
-            effort: "high",
+            effort: "xhigh",
             exclude: true,
           },
         },
       });
     });
 
-    it("sets Gemini thinkingConfig for High thinking", () => {
+    it("sets Gemini thinkingConfig for Max thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "High",
+        "Max",
         {},
         undefined,
         { ...extraParams, provider: "gemini" },
@@ -198,7 +198,7 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toStrictEqual({
         google: {
           thinkingConfig: {
-            thinkingBudget: 8192,
+            thinkingBudget: 16384,
             includeThoughts: false,
           },
         },
@@ -209,7 +209,7 @@ describe("aiSdkAdapter", () => {
       const config = aiSdkAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Medium",
+        "Max",
         {},
         undefined,
         { ...extraParams, provider: "gemini", showThoughts: true },
@@ -218,14 +218,34 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toStrictEqual({
         google: {
           thinkingConfig: {
-            thinkingBudget: 4096,
+            thinkingBudget: 16384,
             includeThoughts: true,
           },
         },
       });
     });
 
-    it("returns undefined providerOptions for gemini with Off thinking", () => {
+    it("sets Gemini thinkingConfig with -1 budget for Default thinking", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "gemini-2.0-flash",
+        1.0,
+        "Default",
+        {},
+        undefined,
+        { ...extraParams, provider: "gemini" },
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        google: {
+          thinkingConfig: {
+            thinkingBudget: -1,
+            includeThoughts: false,
+          },
+        },
+      });
+    });
+
+    it("returns undefined providerOptions for Gemini with Off thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "gemini-2.0-flash",
         1.0,
@@ -255,7 +275,7 @@ describe("aiSdkAdapter", () => {
       const config = aiSdkAdapter.buildConfig(
         "qwq",
         1.0,
-        "High",
+        "Max",
         {},
         undefined,
         { ...extraParams, provider: "ollama" },
@@ -266,11 +286,26 @@ describe("aiSdkAdapter", () => {
       });
     });
 
-    it("returns undefined providerOptions for ollama with default thinking", () => {
+    it("sets ollama think:false for Off thinking", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "qwq",
+        1.0,
+        "Off",
+        {},
+        undefined,
+        { ...extraParams, provider: "ollama" },
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        openai: { think: false },
+      });
+    });
+
+    it("returns undefined providerOptions for ollama with Default thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "llama3",
         1.0,
-        "default",
+        "Default",
         {},
         undefined,
         { ...extraParams, provider: "ollama" },
@@ -279,20 +314,27 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("returns undefined providerOptions for openrouter with default thinking", () => {
+    it("sets medium reasoning effort for openrouter with Default thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "some-model",
         1.0,
-        "default",
+        "Default",
         {},
         undefined,
         { ...extraParams, provider: "openrouter" },
       );
 
-      expect(config.providerOptions).toBeUndefined();
+      expect(config.providerOptions).toStrictEqual({
+        openrouter: {
+          reasoning: {
+            effort: "medium",
+            exclude: true,
+          },
+        },
+      });
     });
 
-    it("sets openrouter reasoning none with exclude", () => {
+    it("returns undefined providerOptions for openrouter with Off thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "some-model",
         1.0,
@@ -302,21 +344,14 @@ describe("aiSdkAdapter", () => {
         { ...extraParams, provider: "openrouter", showThoughts: true },
       );
 
-      expect(config.providerOptions).toStrictEqual({
-        openrouter: {
-          reasoning: {
-            effort: "none",
-            exclude: true,
-          },
-        },
-      });
+      expect(config.providerOptions).toBeUndefined();
     });
 
-    it("sets anthropic thinking options for High thinking", () => {
+    it("sets anthropic thinking options for Max thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         1.0,
-        "High",
+        "Max",
         {},
         undefined,
         { ...extraParams, provider: "anthropic" },
@@ -324,7 +359,7 @@ describe("aiSdkAdapter", () => {
 
       expect(config.providerOptions).toStrictEqual({
         anthropic: {
-          thinking: { type: "enabled", budgetTokens: 8192 },
+          thinking: { type: "enabled", budgetTokens: 16384 },
         },
       });
     });
@@ -333,7 +368,7 @@ describe("aiSdkAdapter", () => {
       const config = aiSdkAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         0.7,
-        "High",
+        "Max",
         {},
         undefined,
         { ...extraParams, provider: "anthropic" },
@@ -342,17 +377,18 @@ describe("aiSdkAdapter", () => {
       expect(config.temperature).toBeUndefined();
     });
 
-    it("preserves temperature for anthropic when thinking is off", () => {
+    it("suppresses temperature for anthropic with Default thinking", () => {
       const config = aiSdkAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         0.7,
-        "Off",
+        "Default",
         {},
         undefined,
         { ...extraParams, provider: "anthropic" },
       );
 
-      expect(config.temperature).toBe(0.7);
+      // Default maps to budget 10240, which enables thinking and suppresses temperature
+      expect(config.temperature).toBeUndefined();
     });
 
     it("sets anthropic default thinking budget for Default thinking", () => {
@@ -385,11 +421,24 @@ describe("aiSdkAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
+    it("preserves temperature for anthropic with Off thinking", () => {
+      const config = aiSdkAdapter.buildConfig(
+        "claude-sonnet-4-6-20250514",
+        0.7,
+        "Off",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.temperature).toBe(0.7);
+    });
+
     it("returns undefined provider options for mistral provider", () => {
       const config = aiSdkAdapter.buildConfig(
         "mistral-large",
         1.0,
-        "High",
+        "Max",
         {},
         undefined,
         { ...extraParams, provider: "mistral" },

@@ -36,165 +36,100 @@ describe("config-builders", () => {
 
   describe("mapThinkingToReasoningEffort", () => {
     it("should return undefined for unsupported models", () => {
-      expect(mapThinkingToReasoningEffort("Medium", "gpt-4")).toBeUndefined();
+      expect(mapThinkingToReasoningEffort("Max", "gpt-4")).toBeUndefined();
     });
 
     it("should return undefined for gpt-5 without decimal", () => {
       expect(
-        mapThinkingToReasoningEffort("Medium", "gpt-5-2025-08-07"),
+        mapThinkingToReasoningEffort("Max", "gpt-5-2025-08-07"),
       ).toBeUndefined();
     });
 
     describe("o1/o3 models", () => {
-      it("should map Low to low", () => {
-        expect(mapThinkingToReasoningEffort("Low", "o1-preview")).toBe("low");
+      it("should map Max to high", () => {
+        expect(mapThinkingToReasoningEffort("Max", "o1")).toBe("high");
       });
 
-      it("should map Minimal to low", () => {
-        expect(mapThinkingToReasoningEffort("Minimal", "o3-mini")).toBe("low");
+      it("should map Default to medium", () => {
+        expect(mapThinkingToReasoningEffort("Default", "o1")).toBe("medium");
       });
 
-      it("should map Medium to medium", () => {
-        expect(mapThinkingToReasoningEffort("Medium", "o1")).toBe("medium");
-      });
-
-      it("should map High to high", () => {
-        expect(mapThinkingToReasoningEffort("High", "o1")).toBe("high");
-      });
-
-      it("should map Ultra to high (capped)", () => {
-        expect(mapThinkingToReasoningEffort("Ultra", "o3")).toBe("high");
-      });
-
-      it("should map Off to low (minimum for o1/o3)", () => {
-        expect(mapThinkingToReasoningEffort("Off", "o1")).toBe("low");
-      });
-
-      it("should return undefined for Default", () => {
-        expect(mapThinkingToReasoningEffort("Default", "o1")).toBeUndefined();
+      it("should return undefined for Off", () => {
+        expect(mapThinkingToReasoningEffort("Off", "o1")).toBeUndefined();
       });
     });
 
     describe("gpt-5.1 models", () => {
-      it("should map Off to none", () => {
-        expect(mapThinkingToReasoningEffort("Off", "gpt-5.1-2025-01-01")).toBe(
-          "none",
-        );
-      });
-
-      it("should map Minimal to minimal", () => {
-        expect(
-          mapThinkingToReasoningEffort("Minimal", "gpt-5.1-2025-01-01"),
-        ).toBe("minimal");
-      });
-
-      it("should map Low to low", () => {
-        expect(mapThinkingToReasoningEffort("Low", "gpt-5.1-2025-01-01")).toBe(
-          "low",
-        );
-      });
-
-      it("should map Medium to medium", () => {
-        expect(
-          mapThinkingToReasoningEffort("Medium", "gpt-5.1-2025-01-01"),
-        ).toBe("medium");
-      });
-
-      it("should map High to high", () => {
-        expect(mapThinkingToReasoningEffort("High", "gpt-5.1-2025-01-01")).toBe(
+      it("should map Max to high (capped for 5.1)", () => {
+        expect(mapThinkingToReasoningEffort("Max", "gpt-5.1-2025-01-01")).toBe(
           "high",
         );
       });
 
-      it("should map Ultra to high (capped for 5.1)", () => {
-        expect(
-          mapThinkingToReasoningEffort("Ultra", "gpt-5.1-2025-01-01"),
-        ).toBe("high");
-      });
-
       it("should allow xhigh for gpt-5.1-codex-max", () => {
-        expect(mapThinkingToReasoningEffort("Ultra", "gpt-5.1-codex-max")).toBe(
+        expect(mapThinkingToReasoningEffort("Max", "gpt-5.1-codex-max")).toBe(
           "xhigh",
         );
       });
 
-      it("should return undefined for Default", () => {
+      it("should map Default to medium", () => {
         expect(
           mapThinkingToReasoningEffort("Default", "gpt-5.1-2025-01-01"),
-        ).toBeUndefined();
+        ).toBe("medium");
       });
     });
 
     describe("gpt-5.2+ models", () => {
-      it("should map Off to none", () => {
-        expect(mapThinkingToReasoningEffort("Off", "gpt-5.2-2025-12-11")).toBe(
-          "none",
+      it("should map Max to xhigh", () => {
+        expect(mapThinkingToReasoningEffort("Max", "gpt-5.2-2025-12-11")).toBe(
+          "xhigh",
         );
       });
 
-      it("should map Ultra to xhigh", () => {
-        expect(
-          mapThinkingToReasoningEffort("Ultra", "gpt-5.2-2025-12-11"),
-        ).toBe("xhigh");
-      });
-
-      it("should return undefined for Default", () => {
+      it("should map Default to medium", () => {
         expect(
           mapThinkingToReasoningEffort("Default", "gpt-5.2-2025-12-11"),
-        ).toBeUndefined();
+        ).toBe("medium");
       });
     });
   });
 
   describe("mapThinkingToOpenRouterEffort", () => {
-    it("should map Off to none", () => {
-      expect(mapThinkingToOpenRouterEffort("Off")).toBe("none");
+    it("should map Max to xhigh", () => {
+      expect(mapThinkingToOpenRouterEffort("Max")).toBe("xhigh");
     });
 
-    it("should map Minimal to minimal", () => {
-      expect(mapThinkingToOpenRouterEffort("Minimal")).toBe("minimal");
+    it("should map Default to medium", () => {
+      expect(mapThinkingToOpenRouterEffort("Default")).toBe("medium");
     });
 
-    it("should map Low to low", () => {
-      expect(mapThinkingToOpenRouterEffort("Low")).toBe("low");
-    });
-
-    it("should map Medium to medium", () => {
-      expect(mapThinkingToOpenRouterEffort("Medium")).toBe("medium");
-    });
-
-    it("should map High to high", () => {
-      expect(mapThinkingToOpenRouterEffort("High")).toBe("high");
-    });
-
-    it("should map Ultra to xhigh", () => {
-      expect(mapThinkingToOpenRouterEffort("Ultra")).toBe("xhigh");
-    });
-
-    it("should return undefined for Default", () => {
-      expect(mapThinkingToOpenRouterEffort("Default")).toBeUndefined();
+    it("should return undefined for Off", () => {
+      expect(mapThinkingToOpenRouterEffort("Off")).toBeUndefined();
     });
   });
 
   describe("mapThinkingToOllamaThink", () => {
-    it("should return false for Off", () => {
-      expect(mapThinkingToOllamaThink("Off", "qwen3.5")).toBe(false);
-    });
-
     it("should return undefined for Default", () => {
       expect(mapThinkingToOllamaThink("Default", "qwen3.5")).toBeUndefined();
     });
 
-    it("should return true for non-GPT-OSS levels", () => {
-      expect(mapThinkingToOllamaThink("Low", "qwen3.5")).toBe(true);
-      expect(mapThinkingToOllamaThink("Medium", "qwen3.5")).toBe(true);
-      expect(mapThinkingToOllamaThink("High", "qwen3.5")).toBe(true);
+    it("should return false for Off", () => {
+      expect(mapThinkingToOllamaThink("Off", "qwen3.5")).toBe(false);
+      expect(mapThinkingToOllamaThink("Off", "gpt-oss")).toBe(false);
     });
 
-    it("should return level strings for GPT-OSS", () => {
-      expect(mapThinkingToOllamaThink("Low", "gpt-oss")).toBe("low");
-      expect(mapThinkingToOllamaThink("Medium", "gpt-oss")).toBe("medium");
-      expect(mapThinkingToOllamaThink("High", "gpt-oss")).toBe("high");
+    it("should return true for Max on non-GPT-OSS", () => {
+      expect(mapThinkingToOllamaThink("Max", "qwen3.5")).toBe(true);
+    });
+
+    it("should return high string for Max on GPT-OSS", () => {
+      expect(mapThinkingToOllamaThink("Max", "gpt-oss")).toBe("high");
+    });
+
+    it("should return undefined for unknown thinking level", () => {
+      expect(
+        mapThinkingToOllamaThink("UnknownLevel", "qwen3.5"),
+      ).toBeUndefined();
     });
   });
 });

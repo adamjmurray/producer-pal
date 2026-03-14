@@ -44,7 +44,7 @@ update state in Ableton Live.
 
 ## Raw Live API Tool
 
-Available only in development builds (`npm run build:all` or `npm run dev`).
+Available only in debug builds (`npm run build:debug` or `npm run dev:debug`).
 
 ### Purpose
 
@@ -181,7 +181,7 @@ node scripts/ppal-client.ts tools/call ppal-read-live-set '{}'
 ```bash
 # Clean build
 npm run clean
-npm run build:all
+npm run build:debug
 
 # Run all tests with coverage
 npm run test:coverage

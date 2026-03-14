@@ -7,7 +7,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
-  description: "Update device(s), chain(s), or drum pad(s)",
+  description: "Update device(s), chain(s), or drum pad(s).",
 
   annotations: {
     readOnlyHint: false,
@@ -34,7 +34,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe(
-        "display name (comma-separated when updating multiple, not drum pads)",
+        "name for all, or comma-separated for each (extras keep existing name, not drum pads)",
       ),
     // Kept for potential future use
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
@@ -42,7 +42,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe(
-        'JSON: {"paramName": value}. Values in display units: enum string, note name, pan -1 to 1, or number',
+        "name=value per line (display units: enum string, note name, number)",
       ),
     macroVariation: z
       .enum(["create", "load", "delete", "revert", "randomize"])
@@ -78,7 +78,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe(
-        "#RRGGBB (comma-separated when updating multiple, cycles; chains only)",
+        "#RRGGBB for all, or comma-separated for each (cycles if fewer than ids; chains only)",
       ),
     chokeGroup: z.coerce
       .number()
@@ -111,6 +111,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       path: "device path like 't0/d0' (track 0, device 0)",
       toPath: "destination path to move device to",
       name: "display name (not drum pads)",
+      params: "name=value per line",
       color: "#RRGGBB (chains only)",
     },
   },

@@ -28,16 +28,16 @@ export function ProviderSelector({
         onChange={(e) =>
           setProvider((e.target as HTMLSelectElement).value as Provider)
         }
-        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+        className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
         data-testid="provider-select"
       >
-        <option value="anthropic">Anthropic</option>
         <option value="gemini">Google</option>
-        <option value="openai">OpenAI</option>
         <option value="mistral">Mistral</option>
-        <option value="openrouter">OpenRouter</option>
-        <option value="lmstudio">LM Studio (local)</option>
+        <option value="openai">OpenAI</option>
+        <option value="anthropic">Anthropic</option>
         <option value="ollama">Ollama (local)</option>
+        <option value="lmstudio">LM Studio (local)</option>
+        <option value="openrouter">OpenRouter</option>
         <option value="custom">Custom (OpenAI-compatible)</option>
       </select>
     </div>

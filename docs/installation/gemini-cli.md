@@ -34,7 +34,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
+<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -79,16 +79,16 @@ coding)
 Run `/mcp list` in the Gemini CLI to confirm the Producer Pal tools are
 available:
 
-![Producer Pal tools listed in Gemini CLI](/gemini-tool-list.png)
+![Producer Pal tools listed in Gemini CLI](/img/gemini-tool-list.png)
 
 ### 5. Start Using Producer Pal
 
 1. Start a conversation with "connect to ableton"
 2. Allow Producer Pal tools to be used when Gemini tries to use them:
 
-![Gemini CLI tool permission prompt](/gemini-tool-permissions.png)
+![Gemini CLI tool permission prompt](/img/gemini-tool-permissions.png)
 
-![Gemini CLI successfully connected to Producer Pal](/gemini-success.png)
+![Gemini CLI successfully connected to Producer Pal](/img/gemini-success.png)
 
 ## Troubleshooting
 

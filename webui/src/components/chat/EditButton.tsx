@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { EditIcon } from "#webui/components/chat/controls/header/HeaderIcons";
+
 interface EditButtonProps {
   onClick: () => void;
 }
@@ -17,10 +19,10 @@ export function EditButton({ onClick }: EditButtonProps) {
   return (
     <button
       onClick={onClick}
-      className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
+      className="justify-self-start text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 size-7 flex items-center justify-center rounded hover:bg-zinc-200 dark:hover:bg-zinc-700"
       title="Edit message"
     >
-      ✎
+      <EditIcon />
     </button>
   );
 }

@@ -20,7 +20,7 @@ import {
 import { SYSTEM_INSTRUCTION, getThinkingBudget } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 import { createFormattedErrorMessage } from "./helpers/streaming-helpers";
-import { type ChatAdapter } from "./use-chat";
+import { type ChatAdapter } from "./use-chat-types";
 
 /**
  * Build provider-specific options for reasoning/thinking.
@@ -59,7 +59,7 @@ function buildProviderOptions(
         openrouter: {
           reasoning: {
             effort,
-            ...(effort === "none" || !showThoughts ? { exclude: true } : {}),
+            ...(!showThoughts ? { exclude: true } : {}),
           },
         },
       };
@@ -164,7 +164,10 @@ export const aiSdkAdapter: ChatAdapter<
     const provider = extraParams?.provider as Provider;
     const baseUrl = extraParams?.baseUrl as string | undefined;
     const apiKey = extraParams?.apiKey as string;
-    const showThoughts = Boolean(extraParams?.showThoughts);
+    // When thinking is Off, always exclude reasoning tokens even if the model generates them.
+    // The stored showThoughts setting is preserved for when the UI toggle is re-introduced.
+    const showThoughts =
+      thinking !== "Off" && Boolean(extraParams?.showThoughts);
 
     const languageModel = createProviderModel(provider, model, apiKey, baseUrl);
     const providerOptions = buildProviderOptions(
@@ -185,6 +188,8 @@ export const aiSdkAdapter: ChatAdapter<
       enabledTools,
       showThoughts,
       providerOptions,
+      buildProviderOptions: (overrideThinking: string) =>
+        buildProviderOptions(provider, overrideThinking, model, showThoughts),
       chatHistory,
     };
   },

@@ -7,6 +7,32 @@ const DEFAULT_MCP_PORT = "3350";
 const DEFAULT_MCP_URL = `http://localhost:${DEFAULT_MCP_PORT}/mcp`;
 
 /**
+ * Whether the page is served from the Vite dev server (port 5173).
+ * @returns {boolean} True if on Vite dev server
+ */
+export function isViteDevServer(): boolean {
+  return (
+    typeof window !== "undefined" && window.location.port === VITE_DEV_PORT
+  );
+}
+
+/**
+ * Detects whether a connection failure is due to CORS blocking.
+ * Uses a no-cors fetch to check if the server is reachable despite CORS.
+ * @param url - The URL that failed to connect
+ * @returns {Promise<boolean>} True if the server is reachable but CORS is blocking
+ */
+export async function detectCorsBlock(url: string): Promise<boolean> {
+  try {
+    await fetch(url, { mode: "no-cors" });
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Gets the config endpoint URL based on the MCP URL.
  * @returns {string} The config endpoint URL
  */

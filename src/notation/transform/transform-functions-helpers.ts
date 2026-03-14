@@ -12,6 +12,53 @@ import { type EvaluateExpressionFn } from "./transform-functions.ts";
 import * as waveforms from "./transform-waveforms.ts";
 
 /**
+ * Evaluate multiple arguments by index, returning results as a tuple.
+ * @param args - All function arguments
+ * @param indices - Which argument indices to evaluate
+ * @param position - Note position in beats
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties for variable access
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Tuple of evaluated values in the same order as indices
+ */
+export function evaluateArgs<T extends number[]>(
+  args: ExpressionNode[],
+  indices: [...T],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): { [K in keyof T]: number } {
+  // Cast is safe: map preserves array length, matching the input tuple
+  return indices.map((i) =>
+    evaluateExpression(
+      args[i] as ExpressionNode,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+    ),
+  ) as { [K in keyof T]: number };
+}
+
+/**
+ * Calculate normalized phase from position within a time range.
+ * @param position - Current position in beats
+ * @param timeRange - Active time range
+ * @returns Phase value between 0 and 1
+ */
+export function computePhase(position: number, timeRange: TimeRange): number {
+  const duration = timeRange.end - timeRange.start;
+
+  return duration > 0 ? (position - timeRange.start) / duration : 0;
+}
+
+/**
  * Evaluate rand function
  * @param args - Function arguments (0, 1, or 2)
  * @param position - Note position in beats
@@ -182,43 +229,22 @@ export function evaluateCurve(
     );
   }
 
-  const start = evaluateExpression(
-    args[0] as ExpressionNode,
+  const [start, end, exponent] = evaluateArgs(
+    args,
+    [0, 1, 2],
     position,
     timeSigNumerator,
     timeSigDenominator,
     timeRange,
     noteProperties,
-  );
-
-  const end = evaluateExpression(
-    args[1] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
-  );
-
-  const exponent = evaluateExpression(
-    args[2] as ExpressionNode,
-    position,
-    timeSigNumerator,
-    timeSigDenominator,
-    timeRange,
-    noteProperties,
+    evaluateExpression,
   );
 
   if (exponent <= 0) {
     throw new Error(`Function curve() exponent must be > 0, got ${exponent}`);
   }
 
-  // Calculate phase based on position within timeRange (same as ramp)
-  const timeRangeDuration = timeRange.end - timeRange.start;
-  const phase =
-    timeRangeDuration > 0
-      ? (position - timeRange.start) / timeRangeDuration
-      : 0;
+  const phase = computePhase(position, timeRange);
 
   return waveforms.curve(phase, start, end, exponent);
 }

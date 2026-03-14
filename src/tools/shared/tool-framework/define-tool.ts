@@ -46,6 +46,7 @@ export interface ToolDefFunction {
     mcpOptions?: McpOptions,
   ): void;
   toolName: string;
+  toolOptions: ToolOptions;
 }
 
 /**
@@ -103,7 +104,17 @@ export function defineTool(
         // Parse with strict schema (strips extra keys for callLiveApi)
         const validated = z.object(finalInputSchema).parse(args);
 
-        const result = (await callLiveApi(name, validated)) as CallToolResult;
+        // In small model mode, filter out excluded enum values as defense-in-depth
+        // (schema validation is primary gate, this catches hallucinated values)
+        const finalArgs =
+          smallModelMode && smallModelModeConfig?.excludeEnumValues
+            ? filterExcludedEnumValues(
+                validated,
+                smallModelModeConfig.excludeEnumValues,
+              )
+            : validated;
+
+        const result = (await callLiveApi(name, finalArgs)) as CallToolResult;
 
         // Append warning for extra keys so LLMs learn correct usage
         if (extraKeys.length > 0) {
@@ -118,6 +129,34 @@ export function defineTool(
   };
 
   fn.toolName = name;
+  fn.toolOptions = options;
 
   return fn;
+}
+
+/**
+ * Filter excluded enum values from validated args before sending to V8 layer
+ * @param validated - Zod-validated args
+ * @param excludeEnumValues - Map of param names to values to remove
+ * @returns Args with excluded values filtered from array params
+ */
+export function filterExcludedEnumValues(
+  validated: Record<string, unknown>,
+  excludeEnumValues: Record<string, string[]>,
+): Record<string, unknown> {
+  const result = { ...validated };
+
+  for (const [paramName, valuesToExclude] of Object.entries(
+    excludeEnumValues,
+  )) {
+    const value = result[paramName];
+
+    if (Array.isArray(value)) {
+      result[paramName] = value.filter(
+        (v: unknown) => !valuesToExclude.includes(v as string),
+      );
+    }
+  }
+
+  return result;
 }

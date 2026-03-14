@@ -45,7 +45,9 @@ describe("ToolToggles", () => {
 
     it("renders Enable all button", () => {
       render(<ToolToggles {...defaultProps} />);
-      expect(screen.getByRole("button", { name: "Enable all" })).toBeDefined();
+      expect(
+        screen.getByRole("button", { name: "Enable all (default)" }),
+      ).toBeDefined();
     });
 
     it("renders Disable all button", () => {
@@ -96,7 +98,9 @@ describe("ToolToggles", () => {
         <ToolToggles {...defaultProps} setEnabledTools={setEnabledTools} />,
       );
 
-      const button = screen.getByRole("button", { name: "Enable all" });
+      const button = screen.getByRole("button", {
+        name: "Enable all (default)",
+      });
 
       fireEvent.click(button);
 
@@ -133,7 +137,7 @@ describe("ToolToggles", () => {
         name: "Tool description",
       });
 
-      expect(infoButtons).toHaveLength(2); // connect and read-live-set have descriptions
+      expect(infoButtons).toHaveLength(3); // connect, read-live-set descriptions + header tooltip
     });
 
     it("does not render info icon for tools without descriptions", () => {
@@ -142,9 +146,11 @@ describe("ToolToggles", () => {
       ];
 
       render(<ToolToggles {...defaultProps} tools={tools} />);
-      expect(
-        screen.queryByRole("button", { name: "Tool description" }),
-      ).toBeNull();
+      const infoButtons = screen.getAllByRole("button", {
+        name: "Tool description",
+      });
+
+      expect(infoButtons).toHaveLength(1); // only the header tooltip, no per-tool tooltips
     });
   });
 

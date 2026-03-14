@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
@@ -19,6 +20,13 @@ import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangem
 
 const g = globalThis as Record<string, unknown>;
 
+function mockLiveSetWithTracks(trackIds: string[] = ["track-1"]): LiveAPI {
+  return {
+    get: vi.fn().mockReturnValue([100]),
+    getChildIds: vi.fn().mockReturnValue(trackIds),
+  } as unknown as LiveAPI;
+}
+
 describe("update-live-set-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,10 +45,7 @@ describe("update-live-set-helpers", () => {
     });
 
     it("should throw error if no tracks available", () => {
-      const mockLiveSet = {
-        get: vi.fn().mockReturnValue([100]), // song_length = 100
-        getChildIds: vi.fn().mockReturnValue([]),
-      } as unknown as LiveAPI;
+      const mockLiveSet = mockLiveSetWithTracks([]);
 
       expect(() => extendSongIfNeeded(mockLiveSet, 200, {})).toThrow(
         "Cannot create locator past song end: no tracks available to extend song",
@@ -63,10 +68,7 @@ describe("update-live-set-helpers", () => {
         }),
       };
 
-      const mockLiveSet = {
-        get: vi.fn().mockReturnValue([100]),
-        getChildIds: vi.fn().mockReturnValue(["track-1"]),
-      } as unknown as LiveAPI;
+      const mockLiveSet = mockLiveSetWithTracks();
 
       const result = extendSongIfNeeded(mockLiveSet, 200, {});
 
@@ -105,10 +107,7 @@ describe("update-live-set-helpers", () => {
         }),
       };
 
-      const mockLiveSet = {
-        get: vi.fn().mockReturnValue([100]),
-        getChildIds: vi.fn().mockReturnValue(["track-1"]),
-      } as unknown as LiveAPI;
+      const mockLiveSet = mockLiveSetWithTracks();
 
       const result = extendSongIfNeeded(mockLiveSet, 200, {
         silenceWavPath: "/path/to/silence.wav",
@@ -141,10 +140,7 @@ describe("update-live-set-helpers", () => {
         from: vi.fn().mockReturnValue(mockAudioTrack),
       };
 
-      const mockLiveSet = {
-        get: vi.fn().mockReturnValue([100]),
-        getChildIds: vi.fn().mockReturnValue(["track-1"]),
-      } as unknown as LiveAPI;
+      const mockLiveSet = mockLiveSetWithTracks();
 
       expect(() => extendSongIfNeeded(mockLiveSet, 200, {})).toThrow(
         "Cannot create locator past song end: no MIDI tracks and silenceWavPath not available",
@@ -171,10 +167,7 @@ describe("update-live-set-helpers", () => {
         }),
       };
 
-      const mockLiveSet = {
-        get: vi.fn().mockReturnValue([100]),
-        getChildIds: vi.fn().mockReturnValue(["audio-track", "midi-track"]),
-      } as unknown as LiveAPI;
+      const mockLiveSet = mockLiveSetWithTracks(["audio-track", "midi-track"]);
 
       const result = extendSongIfNeeded(mockLiveSet, 200, {});
 

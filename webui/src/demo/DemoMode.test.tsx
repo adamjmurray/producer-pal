@@ -32,7 +32,7 @@ describe("DemoMode", () => {
   it("renders tool call summaries", () => {
     render(<DemoMode />);
     // Success tool calls
-    expect(screen.getAllByText(/used tool:/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/🔧/).length).toBeGreaterThan(0);
     // Error tool calls
     expect(screen.getAllByText(/tool failed:/).length).toBeGreaterThan(0);
     // Pending tool call

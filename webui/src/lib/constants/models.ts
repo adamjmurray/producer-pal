@@ -22,24 +22,22 @@ export const ANTHROPIC_MODELS = [
 export const GEMINI_MODELS = [
   { value: "gemini-3-flash-preview", label: "Gemini 3 Flash" },
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
-  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  { value: "gemini-3.1-flash-lite-preview", label: "Gemini 3.1 Flash Lite" },
   OTHER_MODEL_OPTION,
 ];
 
 export const OPENAI_MODELS = [
   { value: "gpt-5.4", label: "GPT-5.4" },
   { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
-  { value: "gpt-5.2", label: "GPT-5.2" },
   { value: "gpt-5-mini", label: "GPT-5 Mini" },
   OTHER_MODEL_OPTION,
 ];
 
 export const MISTRAL_MODELS = [
-  { value: "devstral-latest", label: "Devstral" },
-  { value: "mistral-large-latest", label: "Mistral Large" },
   { value: "mistral-medium-latest", label: "Mistral Medium" },
-  { value: "mistral-small-latest", label: "Mistral Small" },
+  { value: "magistral-medium-2509", label: "Magistral Medium" },
+  { value: "mistral-large-latest", label: "Mistral Large" },
+  { value: "devstral-latest", label: "Devstral" },
   OTHER_MODEL_OPTION,
 ];
 
@@ -61,10 +59,10 @@ export const OPENROUTER_MODELS = [
     value: "anthropic/claude-opus-4.6",
     label: "[Paid] Anthropic Claude Opus 4.6",
   },
-  { value: "openai/gpt-5.2", label: "[Paid] OpenAI GPT-5.2" },
+  { value: "openai/gpt-5.4", label: "[Paid] OpenAI GPT-5.4" },
   {
-    value: "openai/gpt-5.2-codex",
-    label: "[Paid] OpenAI GPT-5.2 Codex",
+    value: "openai/gpt-5.3-codex",
+    label: "[Paid] OpenAI GPT-5.3 Codex",
   },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "qwen/qwen3.5-397b-a17b", label: "[Paid] Qwen 3.5" },
@@ -97,12 +95,13 @@ export const OLLAMA_MODELS = [
  * Used by settings initialization and E2E tests.
  */
 export const DEFAULT_MODELS = {
-  anthropic: ANTHROPIC_MODELS[0]?.value ?? "",
-  gemini: GEMINI_MODELS[0]?.value ?? "",
-  openai: OPENAI_MODELS[0]?.value ?? "",
-  mistral: MISTRAL_MODELS[0]?.value ?? "",
-  openrouter: OPENROUTER_MODELS[0]?.value ?? "",
-  ollama: OLLAMA_MODELS[0]?.value ?? "",
+  // First element always exists — cast to satisfy noUncheckedIndexedAccess
+  anthropic: (ANTHROPIC_MODELS[0] as (typeof ANTHROPIC_MODELS)[0]).value,
+  gemini: (GEMINI_MODELS[0] as (typeof GEMINI_MODELS)[0]).value,
+  openai: (OPENAI_MODELS[0] as (typeof OPENAI_MODELS)[0]).value,
+  mistral: (MISTRAL_MODELS[0] as (typeof MISTRAL_MODELS)[0]).value,
+  openrouter: (OPENROUTER_MODELS[0] as (typeof OPENROUTER_MODELS)[0]).value,
+  ollama: (OLLAMA_MODELS[0] as (typeof OLLAMA_MODELS)[0]).value,
   lmstudio: "",
   custom: "",
 } as const;

@@ -30,7 +30,7 @@ export function DemoMode() {
   return (
     <ToolNamesContext.Provider value={DEMO_TOOL_NAMES}>
       <div className="flex flex-col h-screen">
-        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-yellow-50 dark:bg-yellow-900/30">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 bg-yellow-50 dark:bg-yellow-900/30">
           <span className="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
             Demo Mode — Visual Testing
           </span>

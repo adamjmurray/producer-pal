@@ -16,12 +16,12 @@ describe("useSettings - provider-specific settings", () => {
   });
   describe("setThinking for all providers", () => {
     it.each([
-      ["anthropic", "High"],
-      ["mistral", "High"],
-      ["openrouter", "Medium"],
-      ["lmstudio", "Low"],
-      ["ollama", "High"],
-      ["custom", "Medium"],
+      ["anthropic", "Max"],
+      ["mistral", "Max"],
+      ["openrouter", "Off"],
+      ["lmstudio", "Off"],
+      ["ollama", "Max"],
+      ["custom", "Off"],
     ] as const)("sets thinking for %s provider", async (provider, thinking) => {
       const { result } = renderHook(() => useSettings());
 

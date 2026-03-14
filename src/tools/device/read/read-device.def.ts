@@ -8,7 +8,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefReadDevice = defineTool("ppal-read-device", {
   title: "Read Device",
   description:
-    "Read information about a device, chain, or drum pad by ID or path.\nReturns overview by default. Use include to add detail.",
+    "Read information about a device, chain, or drum pad by ID or path. Returns overview by default. Use include to add detail.",
 
   annotations: {
     readOnlyHint: true,
@@ -55,10 +55,10 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
   },
 
   smallModelModeConfig: {
-    excludeEnumValues: { include: ["drum-pads", "return-chains"] },
+    excludeEnumValues: { include: ["drum-pads", "return-chains", "*"] },
     descriptionOverrides: {
       include:
-        'chains = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file. "*" = all',
+        "chains = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file",
       maxDepth:
         "Device tree depth for chains. 0=chains only with deviceCount, 1=direct devices, 2+=deeper",
     },

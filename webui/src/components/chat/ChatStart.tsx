@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat";
+import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 
 export interface ChatStartProps {
   mcpStatus: "connected" | "connecting" | "error";
@@ -33,12 +33,12 @@ export function ChatStart({
     <div className="h-full items-center justify-center flex flex-col gap-8">
       {mcpStatus === "connected" && (
         <>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-zinc-500 dark:text-zinc-400">
             Start a conversation with Producer Pal
           </p>
           <button
             onClick={() => void handleSend("Connect to Ableton.", overrides)}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
           >
             Quick Connect
           </button>
@@ -53,7 +53,7 @@ export function ChatStart({
           <p className="text-sm text-red-600 dark:text-red-400">{mcpError}</p>
           <button
             onClick={() => void checkMcpConnection()}
-            className="mt-2 px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+            className="mt-2 px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded hover:bg-zinc-300 dark:hover:bg-zinc-800"
           >
             Retry
           </button>

@@ -1,159 +1,128 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { VERSION } from "#src/shared/version";
 import logoSvg from "#webui/assets/producer-pal-logo.svg";
-import { CHAT_UI_DOCS_URL, getModelName } from "#webui/lib/config";
-import { type Provider } from "#webui/types/settings";
+import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
+import { HeaderActions, type HeaderInfo } from "./header/HeaderActions";
+import {
+  BookmarkIcon,
+  NewConversationIcon,
+  PanelToggleIcon,
+} from "./header/HeaderIcons";
+import { HeaderStatus } from "./header/HeaderStatus";
+import { VersionDisplay } from "./header/VersionDisplay";
+
+const iconBtn =
+  "p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 transition-colors";
 
 interface ChatHeaderProps {
-  mcpStatus: "connected" | "connecting" | "error";
-  activeModel: string | null;
-  activeProvider: Provider | null;
-  model: string;
-  provider: Provider;
-  enabledToolsCount: number;
-  totalToolsCount: number;
-  smallModelMode: boolean;
-  hasMessages: boolean;
+  headerInfo: HeaderInfo;
+  mcpStatus: McpStatus;
+  isHistoryOpen: boolean;
+  isActiveBookmarked?: boolean;
+  latestVersion: string | null;
   onOpenSettings: () => void;
-  onClearConversation: () => void;
+  onOpenToolsSettings: () => void;
+  onOpenConnectionSettings: () => void;
+  onToggleHistory: () => void;
+  onNewConversation: () => void;
+  onToggleBookmark?: () => void;
 }
 
 /**
- * Gets display name for provider
- * @param {Provider} provider - Provider identifier
- * @returns {JSX.Element} - React component
- */
-function getProviderName(provider: Provider): string {
-  switch (provider) {
-    case "anthropic":
-      return "Anthropic";
-    case "gemini":
-      return "Google";
-    case "openai":
-      return "OpenAI";
-    case "mistral":
-      return "Mistral";
-    case "openrouter":
-      return "OpenRouter";
-    case "lmstudio":
-      return "LM Studio";
-    case "ollama":
-      return "Ollama";
-    case "custom":
-      return "Custom";
-  }
-}
-
-/**
- * Header component for chat UI
- * @param {ChatHeaderProps} props - Component props
- * @param {"connected" | "connecting" | "error"} props.mcpStatus - MCP connection status
- * @param {string | null} props.activeModel - Active model identifier
- * @param {Provider | null} props.activeProvider - Active provider
- * @param {number} props.enabledToolsCount - Number of enabled tools
- * @param {number} props.totalToolsCount - Total number of available tools
- * @param {boolean} props.smallModelMode - Whether small model mode is active
- * @param {boolean} props.hasMessages - Whether conversation has messages
- * @param {() => void} props.onOpenSettings - Callback to open settings
- * @param {() => void} props.onClearConversation - Callback to clear conversation
- * @returns {JSX.Element} - React component
+ * Header component for chat UI with responsive layout
+ * @param props - ChatHeaderProps
+ * @param props.headerInfo - Header display state (model/provider/tools/small-model info)
+ * @param props.mcpStatus - MCP connection status
+ * @param props.isHistoryOpen - Whether conversation history panel is open
+ * @param props.isActiveBookmarked - Whether the active conversation is bookmarked
+ * @param props.latestVersion - Latest available version, or null if up to date
+ * @param props.onOpenSettings - Callback to open settings
+ * @param props.onOpenToolsSettings - Callback to open tools settings tab
+ * @param props.onOpenConnectionSettings - Callback to open connection settings tab
+ * @param props.onToggleHistory - Callback to toggle history panel
+ * @param props.onNewConversation - Callback to start new conversation
+ * @param props.onToggleBookmark - Callback to toggle bookmark
+ * @returns Header element
  */
 export function ChatHeader({
+  headerInfo,
   mcpStatus,
-  activeModel,
-  activeProvider,
-  model,
-  provider,
-  enabledToolsCount,
-  totalToolsCount,
-  smallModelMode,
-  hasMessages,
+  isHistoryOpen,
+  isActiveBookmarked,
+  latestVersion,
   onOpenSettings,
-  onClearConversation,
+  onOpenToolsSettings,
+  onOpenConnectionSettings,
+  onToggleHistory,
+  onNewConversation,
+  onToggleBookmark,
 }: ChatHeaderProps) {
-  const handleRestart = () => {
-    if (window.confirm("Clear all messages and restart conversation?")) {
-      onClearConversation();
-    }
-  };
-
   return (
-    <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center">
+    <header className="bg-zinc-200 dark:bg-zinc-800 px-4 py-2 border-b border-zinc-400 dark:border-zinc-700 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.15)] dark:shadow-[0_2px_8px_-2px_rgba(0,0,0,0.4)] flex items-center gap-2 relative z-20">
+      <div className="flex items-center gap-0.75 -ml-2">
+        <button
+          onClick={onToggleHistory}
+          className={iconBtn}
+          aria-label="Toggle conversation history"
+          title="Conversation history"
+        >
+          <PanelToggleIcon isOpen={isHistoryOpen} />
+        </button>
+        <button
+          onClick={onNewConversation}
+          className={iconBtn}
+          aria-label="New conversation"
+          title="New conversation"
+        >
+          <NewConversationIcon />
+        </button>
+        <button
+          onClick={onToggleBookmark}
+          className={`${iconBtn}${isActiveBookmarked ? " text-amber-400! dark:text-amber-400!" : ""}${onToggleBookmark ? "" : " opacity-30 cursor-default!"}`}
+          disabled={!onToggleBookmark}
+          aria-label={
+            isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
+          }
+          title={
+            isActiveBookmarked ? "Remove bookmark" : "Bookmark conversation"
+          }
+        >
+          <BookmarkIcon bookmarked={isActiveBookmarked ?? false} />
+        </button>
+      </div>
+
       <a
-        href={CHAT_UI_DOCS_URL}
+        href="https://producer-pal.org"
         target="_blank"
         rel="noopener noreferrer"
-        className="relative flex items-center pl-9 hover:opacity-80 transition-opacity"
+        className="relative flex items-center pl-7 lg:pl-9 ml-2.5 hover:opacity-80 transition-opacity no-underline shrink-0"
+        title="Producer Pal website"
       >
         <img
           src={logoSvg}
           alt="Producer Pal"
           className="absolute left-0 h-5 scale-200"
         />
-        <h1 className="hidden md:inline text-lg font-semibold">
+        <h1 className="hidden lg:inline text-lg font-semibold">
           Producer Pal Chat
         </h1>
       </a>
-      <div className="ml-2 flex gap-1 text-xs">
-        {mcpStatus === "connected" && (
-          <span className="text-green-600 dark:text-green-400">✓ Ready</span>
-        )}
-        {mcpStatus === "connecting" && (
-          <span className="text-gray-500 dark:text-gray-400">
-            👀 Looking for Producer Pal...
-          </span>
-        )}
-        {mcpStatus === "error" && (
-          <span className="text-red-600 dark:text-red-400">✗ Error</span>
-        )}
+      <VersionDisplay version={VERSION} latestVersion={latestVersion} />
+
+      <div className="flex gap-1 text-xs">
+        <HeaderStatus mcpStatus={mcpStatus} />
       </div>
 
-      {hasMessages && <div className="flex-1" />}
-      {hasMessages && (
-        <button
-          onClick={handleRestart}
-          className="hidden sm:inline-block text-xs px-2 py-1 border border-red-500 text-red-500 bg-transparent hover:bg-red-500 hover:text-white rounded transition-colors"
-        >
-          Restart
-        </button>
-      )}
-      {hasMessages && <div className="flex-1" />}
-
-      <div
-        className={
-          hasMessages
-            ? "flex gap-3 items-baseline"
-            : "ml-auto flex gap-3 items-baseline"
-        }
-      >
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          <span className="hidden lg:inline">
-            {getProviderName(activeProvider ?? provider)} |{" "}
-          </span>
-          {getModelName(activeModel ?? model)}
-        </span>
-        <span className="hidden lg:inline text-xs text-gray-500 dark:text-gray-400">
-          {enabledToolsCount}/{totalToolsCount} tools
-        </span>
-        {smallModelMode && (
-          <span className="text-xs text-amber-600 dark:text-amber-400">
-            <span className="hidden sm:inline" aria-label="Small model mode">
-              🐢 small model
-            </span>
-            <span className="sm:hidden" aria-label="Small model mode">
-              🐢
-            </span>
-          </span>
-        )}
-        <button
-          onClick={onOpenSettings}
-          className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-        >
-          ⚙<span className="hidden sm:inline"> Settings</span>
-        </button>
-      </div>
+      <HeaderActions
+        headerInfo={headerInfo}
+        onOpenSettings={onOpenSettings}
+        onOpenToolsSettings={onOpenToolsSettings}
+        onOpenConnectionSettings={onOpenConnectionSettings}
+      />
     </header>
   );
 }

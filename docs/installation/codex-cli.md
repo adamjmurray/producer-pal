@@ -29,7 +29,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-<img src="/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
+<img src="/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="375"/>
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -63,13 +63,13 @@ coding)
 
 Run `/mcp` in the Codex CLI to confirm the Producer Pal tools are available:
 
-![Producer Pal tools listed in Codex CLI](/codex-tool-list.png)
+![Producer Pal tools listed in Codex CLI](/img/codex-tool-list.png)
 
 ### 5. Start Using Producer Pal
 
 Start a conversation with "connect to ableton"
 
-![Codex CLI successfully connected to Producer Pal](/codex-success.png)
+![Codex CLI successfully connected to Producer Pal](/img/codex-success.png)
 
 ## Troubleshooting
 

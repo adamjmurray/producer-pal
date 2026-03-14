@@ -7,6 +7,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, it, expect } from "vitest";
+import { throwOnFileViolations } from "./meta-test-helpers.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..", "..", "..");
@@ -115,21 +116,15 @@ describe("License headers", () => {
       }
     }
 
-    if (violations.length > 0) {
-      const message = violations
-        .map((v) => `  ${v.file}: ${v.reason}`)
-        .join("\n");
-
-      throw new Error(
-        `License header violations found (${violations.length} files):\n${message}\n\n` +
-          `Expected format:\n` +
-          `  // Producer Pal\n` +
-          `  // Copyright (C) <year> <author>\n` +
-          `  // AI assistance: <AI tool> (<company>)  (if AI-assisted)\n` +
-          `  // SPDX-License-Identifier: GPL-3.0-or-later`,
-      );
-    }
-
+    throwOnFileViolations(
+      violations,
+      `License header violations found (${violations.length} files)`,
+      `Expected format:\n` +
+        `  // Producer Pal\n` +
+        `  // Copyright (C) <year> <author>\n` +
+        `  // AI assistance: <AI tool> (<company>)  (if AI-assisted)\n` +
+        `  // SPDX-License-Identifier: GPL-3.0-or-later`,
+    );
     expect(violations).toHaveLength(0);
   });
 });

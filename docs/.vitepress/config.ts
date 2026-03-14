@@ -14,6 +14,8 @@ export default defineConfig({
 
   cleanUrls: true,
 
+  srcExclude: ["_generated/**"],
+
   transformPageData(pageData) {
     const path = pageData.relativePath
       .replace(/\.md$/, "")

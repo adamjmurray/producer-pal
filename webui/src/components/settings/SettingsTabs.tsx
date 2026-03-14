@@ -4,7 +4,7 @@
 
 import { type VNode } from "preact";
 
-export type TabId = "connection" | "behavior" | "tools" | "appearance";
+export type TabId = "connection" | "tools" | "preferences";
 
 interface Tab {
   id: TabId;
@@ -19,9 +19,8 @@ interface SettingsTabsProps {
 
 const tabs: Tab[] = [
   { id: "connection", label: "Connection" },
-  { id: "behavior", label: "Behavior" },
   { id: "tools", label: "Tools" },
-  { id: "appearance", label: "Appearance" },
+  { id: "preferences", label: "Preferences" },
 ];
 
 /**
@@ -40,7 +39,7 @@ export function SettingsTabs({
   return (
     <div>
       {/* Tab buttons */}
-      <div className="flex overflow-x-auto border-b border-gray-300 dark:border-gray-600 mb-6">
+      <div className="flex overflow-x-auto border-b border-zinc-300 dark:border-zinc-600 mb-6">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -48,7 +47,7 @@ export function SettingsTabs({
             className={`shrink-0 px-4 py-2 font-medium text-sm transition-colors ${
               activeTab === tab.id
                 ? "text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400"
-                : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
             }`}
           >
             {tab.label}

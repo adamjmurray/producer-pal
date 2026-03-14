@@ -1,15 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useState } from "preact/hooks";
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat";
-import {
-  MessageSettingsToolbar,
-  type MessageSettingsToolbarProps,
-} from "./MessageSettingsToolbar";
+import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
+import { ThinkingToggle, type ThinkingToggleProps } from "./ThinkingToggle";
 
-interface ChatInputProps extends MessageSettingsToolbarProps {
+interface ChatInputProps extends ThinkingToggleProps {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   isAssistantResponding: boolean;
   onStop: () => void;
@@ -17,40 +15,20 @@ interface ChatInputProps extends MessageSettingsToolbarProps {
 
 /**
  * Input component for chat messages
- * @param {ChatInputProps} props - Component props
- * @param {(message: string) => Promise<void>} props.handleSend - Callback to send message
- * @param {boolean} props.isAssistantResponding - Whether assistant is currently responding
- * @param {() => void} props.onStop - Callback to stop assistant response
- * @param {Provider} props.provider - Current provider
- * @param {string} props.model - Current model
- * @param {string} props.defaultThinking - Default thinking mode from settings
- * @param {number} props.defaultTemperature - Default temperature from settings
- * @param {boolean} props.defaultShowThoughts - Default showThoughts from settings
- * @param {string} props.thinking - Current thinking mode
- * @param {number} props.temperature - Current temperature
- * @param {boolean} props.showThoughts - Current showThoughts
- * @param {Function} props.onThinkingChange - Callback for thinking change
- * @param {Function} props.onTemperatureChange - Callback for temperature change
- * @param {Function} props.onShowThoughtsChange - Callback for showThoughts change
- * @param {Function} props.onResetToDefaults - Callback to reset to defaults
- * @returns {JSX.Element} - React component
+ * @param props - Component props
+ * @param props.handleSend - Callback to send message
+ * @param props.isAssistantResponding - Whether assistant is currently responding
+ * @param props.onStop - Callback to stop assistant response
+ * @param props.thinking - Current thinking mode
+ * @param props.onThinkingChange - Callback for thinking change
+ * @returns Chat input element
  */
 export function ChatInput({
   handleSend,
   isAssistantResponding,
   onStop,
-  provider,
-  model,
-  defaultThinking,
-  defaultTemperature,
-  defaultShowThoughts,
   thinking,
-  temperature,
-  showThoughts,
   onThinkingChange,
-  onTemperatureChange,
-  onShowThoughtsChange,
-  onResetToDefaults,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
 
@@ -59,33 +37,19 @@ export function ChatInput({
       e.preventDefault();
 
       if (!isAssistantResponding && input.trim()) {
-        void handleSend(input, { thinking, temperature, showThoughts });
+        void handleSend(input, { thinking });
         setInput("");
       }
     }
   };
 
   const handleSendClick = () => {
-    void handleSend(input, { thinking, temperature, showThoughts });
+    void handleSend(input, { thinking });
     setInput("");
   };
 
   return (
-    <div className="border-t border-gray-300 dark:border-gray-700">
-      <MessageSettingsToolbar
-        provider={provider}
-        model={model}
-        defaultThinking={defaultThinking}
-        defaultTemperature={defaultTemperature}
-        defaultShowThoughts={defaultShowThoughts}
-        thinking={thinking}
-        temperature={temperature}
-        showThoughts={showThoughts}
-        onThinkingChange={onThinkingChange}
-        onTemperatureChange={onTemperatureChange}
-        onShowThoughtsChange={onShowThoughtsChange}
-        onResetToDefaults={onResetToDefaults}
-      />
+    <div className="border-t border-zinc-300 dark:border-zinc-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
       <div className="p-4">
         <div className="flex gap-3">
           <textarea
@@ -93,21 +57,27 @@ export function ChatInput({
             onInput={(e) => setInput((e.target as HTMLTextAreaElement).value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message... (Shift+Enter for new line)"
-            className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded resize-none placeholder:dark:text-gray-400 placeholder:text-gray-500"
+            className="flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg shadow-inner resize-none placeholder:dark:text-zinc-400 placeholder:text-zinc-500"
             rows={2}
           />
           <div className="flex flex-col gap-2">
-            <button
-              onClick={onStop}
-              disabled={!isAssistantResponding}
-              className={`px-4 py-1 rounded text-sm ${isAssistantResponding ? "bg-orange-600 text-white hover:bg-orange-700" : "invisible"}`}
-            >
-              Stop
-            </button>
+            {isAssistantResponding ? (
+              <button
+                onClick={onStop}
+                className="px-4 py-1 rounded-lg text-sm bg-orange-600 text-white hover:bg-orange-700"
+              >
+                Stop
+              </button>
+            ) : (
+              <ThinkingToggle
+                thinking={thinking}
+                onThinkingChange={onThinkingChange}
+              />
+            )}
             <button
               onClick={handleSendClick}
               disabled={isAssistantResponding || !input.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 hover:bg-blue-700"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700"
             >
               {isAssistantResponding ? "..." : "Send"}
             </button>

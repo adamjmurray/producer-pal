@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,9 +15,49 @@ import {
   mockContext,
   setupArrangementClipPath,
   setupMockProperties,
+  setupSingleArrangementClip,
   setupUpdateClipMocks,
 } from "#src/tools/clip/update/helpers/update-clip-test-helpers.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+
+/**
+ * Set up live_set and track mock properties for arrangement clip tiling tests.
+ * @param opts - Optional extra properties for the live_set mock
+ */
+function setupLiveSetAndTrackMocks(opts: Record<string, unknown> = {}): void {
+  setupMockProperties(requireMockObject("live_set"), {
+    tracks: ["id", 0],
+    ...opts,
+  });
+  setupMockProperties(requireMockObject(livePath.track(0)), {
+    arrangement_clips: ["id", 789],
+  });
+}
+
+/**
+ * Common arrangement MIDI clip properties for tiling tests.
+ * @param trackIndex - Track index
+ * @param overrides - Properties to override or add to the defaults
+ * @returns Property object for setupMockProperties
+ */
+function arrangementMidiClipProps(
+  trackIndex: number,
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    is_arrangement_clip: 1,
+    is_midi_clip: 1,
+    start_time: 0.0,
+    end_time: 4.0,
+    loop_start: 0.0,
+    loop_end: 4.0,
+    start_marker: 0.0,
+    signature_numerator: 4,
+    signature_denominator: 4,
+    trackIndex,
+    ...overrides,
+  };
+}
 
 describe("updateClip - arrangementLength (clean tiling)", () => {
   beforeEach(() => {
@@ -37,35 +78,25 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       throw new Error("Expected arrangement clip mocks for 789 and 1000");
     }
 
-    setupMockProperties(sourceClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      is_audio_clip: 0,
-      start_time: 0.0,
-      end_time: 4.0, // 1 bar currently visible
-      loop_start: 0.0,
-      loop_end: 12.0, // clip.length = 12 beats (3 bars of content)
-      start_marker: 0.0,
-      end_marker: 12.0,
-      name: "Test",
-      color: 0,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      looping: 1,
-      trackIndex,
-    });
+    setupMockProperties(
+      sourceClip,
+      arrangementMidiClipProps(trackIndex, {
+        is_audio_clip: 0,
+        loop_end: 12.0, // clip.length = 12 beats (3 bars of content)
+        end_marker: 12.0,
+        name: "Test",
+        color: 0,
+        looping: 1,
+      }),
+    );
     setupMockProperties(duplicatedClip, {
       end_time: 12.0,
       start_marker: 0.0,
       loop_start: 0.0,
     });
-    setupMockProperties(requireMockObject("live_set"), {
-      tracks: ["id", 0],
+    setupLiveSetAndTrackMocks({
       signature_numerator: 4,
       signature_denominator: 4,
-    });
-    setupMockProperties(requireMockObject(livePath.track(0)), {
-      arrangement_clips: ["id", 789],
     });
 
     // Mock tiling flow (non-destructive duplication)
@@ -115,26 +146,14 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       throw new Error("Expected arrangement clip mock for 789");
     }
 
-    setupMockProperties(sourceClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      looping: 1, // This is a looped clip
-      start_time: 0.0,
-      end_time: 4.0,
-      loop_start: 0.0,
-      loop_end: 4.0, // clip.length = 4 beats
-      start_marker: 0.0,
-      end_marker: 4.0,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    });
-    setupMockProperties(requireMockObject("live_set"), {
-      tracks: ["id", 0],
-    });
-    setupMockProperties(requireMockObject(livePath.track(0)), {
-      arrangement_clips: ["id", 789],
-    });
+    setupMockProperties(
+      sourceClip,
+      arrangementMidiClipProps(trackIndex, {
+        looping: 1,
+        end_marker: 4.0,
+      }),
+    );
+    setupLiveSetAndTrackMocks();
 
     // Mock duplicate_clip_to_arrangement
     let nextId = 1000;
@@ -173,34 +192,10 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
   it("should work with no remainder (single tile)", async () => {
     const trackIndex = 0;
-    const clips = setupArrangementClipPath(trackIndex, ["789"]);
-    const sourceClip = clips.get("789");
-    const track = requireMockTrack(trackIndex);
+    const { sourceClip, track } = setupSingleArrangementClip(trackIndex);
 
-    expect(sourceClip).toBeDefined();
-
-    if (sourceClip == null) {
-      throw new Error("Expected arrangement clip mock for 789");
-    }
-
-    setupMockProperties(sourceClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      start_time: 0.0,
-      end_time: 4.0,
-      loop_start: 0.0,
-      loop_end: 4.0,
-      start_marker: 0.0,
-      signature_numerator: 4,
-      signature_denominator: 4,
-      trackIndex,
-    });
-    setupMockProperties(requireMockObject("live_set"), {
-      tracks: ["id", 0],
-    });
-    setupMockProperties(requireMockObject(livePath.track(0)), {
-      arrangement_clips: ["id", 789],
-    });
+    setupMockProperties(sourceClip, arrangementMidiClipProps(trackIndex));
+    setupLiveSetAndTrackMocks();
 
     const result = await updateClip({
       ids: "789",
@@ -237,27 +232,18 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       throw new Error("Expected arrangement clip mocks for 789/1000/1001/1002");
     }
 
-    setupMockProperties(sourceClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      looping: 1,
-      start_time: 0.0,
-      end_time: 3.0, // 3 beats currently visible
-      loop_start: 1.0, // start at beat 2 (1|2)
-      loop_end: 4.0, // 3 beats of loop content
-      start_marker: 0.0, // firstStart at beat 1 (1|1) - creates 1 beat pre-roll
-      end_marker: 4.0,
+    setupMockProperties(
+      sourceClip,
+      arrangementMidiClipProps(trackIndex, {
+        looping: 1,
+        end_time: 3.0, // 3 beats currently visible
+        loop_start: 1.0, // start at beat 2 (1|2)
+        end_marker: 4.0,
+      }),
+    );
+    setupLiveSetAndTrackMocks({
       signature_numerator: 4,
       signature_denominator: 4,
-      trackIndex,
-    });
-    setupMockProperties(requireMockObject("live_set"), {
-      tracks: ["id", 0],
-      signature_numerator: 4,
-      signature_denominator: 4,
-    });
-    setupMockProperties(requireMockObject(livePath.track(0)), {
-      arrangement_clips: ["id", 789],
     });
 
     // Track created clips and their start_marker values
@@ -331,20 +317,17 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       throw new Error("Expected arrangement clip mocks for 789/1000/1001");
     }
 
-    setupMockProperties(sourceClip, {
-      is_arrangement_clip: 1,
-      is_midi_clip: 1,
-      is_audio_clip: 0,
-      looping: 1, // This is a looped clip
-      start_time: 0.0,
-      end_time: 4.0, // Currently showing 4 beats
-      loop_start: 0.0,
-      loop_end: 8.0, // clip.length = 8 beats (has hidden content)
-      start_marker: 2.0, // Pre-roll: starts at beat 2 but playback from beat 0
-      end_marker: 8.0,
-      name: "Test Clip",
-      trackIndex,
-    });
+    setupMockProperties(
+      sourceClip,
+      arrangementMidiClipProps(trackIndex, {
+        is_audio_clip: 0,
+        looping: 1,
+        loop_end: 8.0, // clip.length = 8 beats (has hidden content)
+        start_marker: 2.0, // Pre-roll: starts at beat 2 but playback from beat 0
+        end_marker: 8.0,
+        name: "Test Clip",
+      }),
+    );
     setupMockProperties(tile1, {
       end_time: 8.0,
       start_marker: 2.0,
@@ -355,13 +338,9 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
       start_marker: 2.0,
       loop_start: 0.0,
     });
-    setupMockProperties(requireMockObject("live_set"), {
-      tracks: ["id", 0],
+    setupLiveSetAndTrackMocks({
       signature_numerator: 4,
       signature_denominator: 4,
-    });
-    setupMockProperties(requireMockObject(livePath.track(0)), {
-      arrangement_clips: ["id", 789],
     });
 
     // Mock duplicate_clip_to_arrangement calls for tiling

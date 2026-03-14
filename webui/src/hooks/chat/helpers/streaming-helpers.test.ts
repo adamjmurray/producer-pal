@@ -6,6 +6,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { type UIMessage } from "#webui/types/messages";
 import {
+  filterOverrides,
   handleMessageStream,
   createFormattedErrorMessage,
   validateMcpConnection,
@@ -131,6 +132,30 @@ describe("streaming-helpers", () => {
       expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
         "Error: Something failed",
       );
+    });
+  });
+
+  describe("filterOverrides", () => {
+    const defaults = {
+      thinking: "Default",
+    };
+
+    it("returns undefined when no overrides provided", () => {
+      expect(filterOverrides(undefined, defaults)).toBeUndefined();
+    });
+
+    it("returns undefined when all overrides match defaults", () => {
+      const result = filterOverrides({ thinking: "Default" }, defaults);
+
+      expect(result).toBeUndefined();
+    });
+
+    it("returns thinking when it differs from defaults", () => {
+      const result = filterOverrides({ thinking: "Max" }, defaults);
+
+      expect(result).toStrictEqual({
+        thinking: "Max",
+      });
     });
   });
 

@@ -30,7 +30,7 @@ The UI connects to two external services:
 - **Language**: TypeScript (.ts/.tsx source files)
 - **Build Tool**: Vite with plugins
 - **Styling**: Tailwind CSS
-- **State Management**: React hooks + localStorage
+- **State Management**: React hooks + localStorage + IndexedDB
 - **Testing**: Vitest + @testing-library/preact
 - **API Integration**:
   - `ai` + `@ai-sdk/*` - Vercel AI SDK for all providers (Anthropic, Google,
@@ -84,13 +84,25 @@ webui/
 - Data Flow
   ```
   App.tsx
-    ├─> useSettings()         → localStorage persistence
-    ├─> useTheme()            → dark/light mode
-    ├─> useMcpConnection()    → MCP health check
-    └─> useChat(aiSdkAdapter) → chat state machine
-          ├─> AiSdkClient     → streamText() + stream processing
-          └─> formatAiSdkMessages() → UI-friendly format
+    ├─> useSettings()              → localStorage persistence
+    ├─> useTheme()                 → dark/light mode
+    ├─> useMcpConnection()         → MCP health check
+    ├─> useChat(aiSdkAdapter)      → chat state machine
+    │     ├─> AiSdkClient          → streamText() + stream processing
+    │     └─> formatAiSdkMessages()→ UI-friendly format
+    ├─> useConversationLock()      → provider lock during chat
+    └─> useConversations()         → IndexedDB persistence + panel state
   ```
+
+**ConversationPanel.tsx** - Slide-out sidebar:
+
+- Toggled via history button in ChatHeader
+- Lists saved conversations sorted by newest first
+- Inline rename (click pencil → input field, Enter to save, Escape to cancel)
+- Delete with confirmation
+- Shows title (or formatted date/time when untitled)
+- Highlights active conversation
+- "New Conversation" button
 
 **ChatScreen.tsx** - Main chat interface:
 
@@ -122,6 +134,8 @@ The UI uses React hooks for all state management:
 2. **useTheme** - Theme switching (localStorage + system preference)
 3. **useMcpConnection** - MCP server health monitoring
 4. **useChat** - Core chat logic and message streaming (provider-agnostic)
+5. **useConversationLock** - Locks provider during active chat
+6. **useConversations** - Conversation persistence (IndexedDB)
 
 ### useChat Hook
 
@@ -130,7 +144,7 @@ the underlying provider implementation is swappable):
 
 **State:**
 
-- `messages` - UI-formatted message history
+- `messages` - UI-formatted message history (`UIMessage[]`)
 - `isAssistantResponding` - Loading state
 - `activeModel/Thinking/Temperature` - Locked settings during chat
 
@@ -139,6 +153,70 @@ the underlying provider implementation is swappable):
 - `handleSend(message)` - Send user message, stream response
 - `handleRetry(index)` - Retry from a specific message
 - `clearConversation()` - Reset chat history
+- `getChatHistory()` - Returns raw `AiSdkMessage[]` for persistence
+- `restoreChatHistory(chatHistory)` - Loads saved history into state without
+  creating an AI client (lazy — avoids MCP connection until next send)
+
+### Conversation Persistence
+
+Conversations are persisted to IndexedDB so they survive page reloads. Covers
+save, load, switch, rename, delete, and auto-titling.
+
+**Storage**: IndexedDB via `idb` library. Database:
+`producer-pal-conversations`, single `conversations` object store with
+`updatedAt` index. Max 200 conversations (`MAX_CONVERSATIONS`); oldest
+non-bookmarked conversations are auto-deleted on save when the limit is reached.
+
+**Schema** (`lib/conversation-db.ts`):
+
+```typescript
+interface ConversationRecord {
+  id: string; // crypto.randomUUID()
+  title: string | null; // null = auto-derived from first user message
+  createdAt: number; // Date.now()
+  updatedAt: number; // Date.now() at last save
+  bookmarked: boolean; // protected from auto-deletion
+  provider: string | null; // AI provider (e.g., "anthropic")
+  model: string | null; // model ID
+  modelLabel: string | null; // display name
+  thinking: string | null; // thinking level (e.g., "High", "Off")
+  temperature: number | null; // temperature setting
+  showThoughts: boolean | null; // whether thinking was displayed
+  messages: AiSdkMessage[]; // full history including toolCalls, toolResults, reasoning, responseModel
+}
+```
+
+**Files**:
+
+| File                                              | Purpose                                                                       |
+| ------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `lib/conversation-db.ts`                          | Pure async DB functions + types (`ConversationRecord`, `ConversationSummary`) |
+| `lib/conversation-db-helpers.ts`                  | DB open/upgrade, version mismatch handling, JSON export                       |
+| `hooks/chat/use-conversations.ts`                 | Orchestration hook (save/load/switch/new/delete/rename)                       |
+| `hooks/chat/helpers/use-conversations-helpers.ts` | Title derivation, URL hash, locked settings builders                          |
+| `components/chat/ConversationPanel.tsx`           | Slide-out sidebar panel with inline rename                                    |
+
+**Auto-save triggers** (wired in `App.tsx`):
+
+- After each new message (watches `messages.length` increase)
+- Before switching conversations
+- On page unload (best-effort via `beforeunload`)
+- NOT during streaming
+
+**Auto-title**: Derived from first user message's first line. If that matches a
+"connect to Ableton" pattern, uses the second user message instead. Manual
+renames are preserved.
+
+**Lazy record creation**: `activeConversationId` is null until first save, which
+creates the record with a new UUID.
+
+**Active conversation routing**: The active conversation ID is stored in the URL
+hash (`#<conversation-id>`), enabling browser back/forward navigation between
+conversations. On page load, the hash is read to restore the last conversation.
+
+**View state persistence**: UI view state (history panel open/close, settings
+open/close, active settings tab) is persisted to localStorage under a single
+`producer_pal_view_state` key via the `useViewState` hook.
 
 ## Integration Details
 
@@ -164,6 +242,36 @@ for await (const part of result.fullStream) {
 All providers (Anthropic, Google, OpenAI, Mistral, OpenRouter, Ollama) go
 through this single code path via provider-specific model factories in
 `provider-factories.ts`.
+
+**Locked Settings:**
+
+Provider, model, thinking level, temperature, and showThoughts are locked per
+conversation. When a conversation is saved, these settings are stored on the
+`ConversationRecord`. When restored, they're passed as
+`ConversationLockedSettings` to prevent settings changes from affecting the
+active conversation.
+
+Per-message overrides (`MessageOverrides`) can still override
+thinking/temperature/ showThoughts for individual messages. When used, the
+overridden values are stamped on the assistant `AiSdkMessage` as
+`thinkingOverride`, `temperatureOverride`, and `showThoughtsOverride` — only
+when they differ from the conversation defaults.
+
+**Response Model Tracking:**
+
+After each stream completes, `ai-sdk-client.ts` captures the `modelId` from the
+API response metadata and stores it on the assistant `AiSdkMessage` as
+`responseModel`. This persists to IndexedDB automatically (optional field, no
+migration needed).
+
+When the response model differs meaningfully from the requested model — after
+normalizing org prefixes and date suffixes — `MessageList.tsx` shows a
+"responded as {model}" label on the message bubble. This surfaces provider
+routing surprises (e.g., OpenRouter fallbacks, Ollama aliases).
+
+Mismatch detection logic is in `chat/helpers/model-identity.ts`. To test: use
+OpenRouter with the `openrouter/auto` model, which auto-selects a model and
+always triggers the mismatch indicator.
 
 **Formatting:**
 
@@ -193,7 +301,8 @@ npm run build     # Includes UI build
 **Development workflow:**
 
 - UI only: `npm run ui:dev` for hot reload at localhost:5173
-- Full-stack: Run `npm run dev` + `npm run ui:dev` in separate terminals
+- Full-stack: Run `npm run dev` (or `npm run build:dev`) + `npm run ui:dev` in
+  separate terminals
 - Tests colocated with source (`.test.ts` / `.test.tsx`), run with `npm test`
 - See `DEVELOPERS.md` for detailed workflow scenarios
 
@@ -202,3 +311,10 @@ npm run build     # Includes UI build
 - React components: PascalCase (`ChatHeader.tsx`)
 - Everything else: kebab-case (`use-chat.ts`)
 - Never include file extensions in relative imports (bundled by Vite)
+
+**Cursor conventions:**
+
+- `<button>` and `<a>` elements: no cursor class (browser defaults are fine)
+- Non-semantic clickable elements (`<label>`, `<div onClick>`): use
+  `cursor-pointer`
+- No `cursor-help` or other special cursors
