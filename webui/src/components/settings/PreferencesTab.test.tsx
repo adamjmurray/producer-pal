@@ -8,9 +8,9 @@
  */
 import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { AppearanceTab } from "./AppearanceTab";
+import { PreferencesTab } from "./PreferencesTab";
 
-describe("AppearanceTab", () => {
+describe("PreferencesTab", () => {
   const mockSetTheme = vi.fn();
 
   const defaultProps = {
@@ -23,14 +23,14 @@ describe("AppearanceTab", () => {
   };
 
   it("renders theme label", () => {
-    const { container } = render(<AppearanceTab {...defaultProps} />);
+    const { container } = render(<PreferencesTab {...defaultProps} />);
     const label = container.querySelector('[for="theme-select"]');
 
     expect(label?.textContent).toBe("Theme");
   });
 
   it("renders theme select with correct value", () => {
-    const { container } = render(<AppearanceTab {...defaultProps} />);
+    const { container } = render(<PreferencesTab {...defaultProps} />);
     const select = container.querySelector(
       "#theme-select",
     ) as HTMLSelectElement;
@@ -39,7 +39,7 @@ describe("AppearanceTab", () => {
   });
 
   it("renders all theme options", () => {
-    const { container } = render(<AppearanceTab {...defaultProps} />);
+    const { container } = render(<PreferencesTab {...defaultProps} />);
     const select = container.querySelector("#theme-select");
 
     expect(select?.innerHTML).toContain("System");
@@ -48,7 +48,7 @@ describe("AppearanceTab", () => {
   });
 
   it("calls setTheme when selection changes", () => {
-    const { container } = render(<AppearanceTab {...defaultProps} />);
+    const { container } = render(<PreferencesTab {...defaultProps} />);
     const select = container.querySelector("#theme-select");
 
     fireEvent.change(select!, { target: { value: "dark" } });
@@ -57,7 +57,7 @@ describe("AppearanceTab", () => {
 
   it("renders with light theme selected", () => {
     const { container } = render(
-      <AppearanceTab {...defaultProps} theme="light" />,
+      <PreferencesTab {...defaultProps} theme="light" />,
     );
     const select = container.querySelector(
       "#theme-select",
@@ -68,7 +68,7 @@ describe("AppearanceTab", () => {
 
   it("renders with dark theme selected", () => {
     const { container } = render(
-      <AppearanceTab {...defaultProps} theme="dark" />,
+      <PreferencesTab {...defaultProps} theme="dark" />,
     );
     const select = container.querySelector(
       "#theme-select",
@@ -80,7 +80,10 @@ describe("AppearanceTab", () => {
   it("calls setShowTimestamps when checkbox toggled", () => {
     const setShowTimestamps = vi.fn();
     const { container } = render(
-      <AppearanceTab {...defaultProps} setShowTimestamps={setShowTimestamps} />,
+      <PreferencesTab
+        {...defaultProps}
+        setShowTimestamps={setShowTimestamps}
+      />,
     );
     const checkbox = container.querySelector(
       'input[type="checkbox"]',
@@ -93,7 +96,7 @@ describe("AppearanceTab", () => {
   it("calls setShowHelpLinks when checkbox toggled", () => {
     const setShowHelpLinks = vi.fn();
     const { container } = render(
-      <AppearanceTab {...defaultProps} setShowHelpLinks={setShowHelpLinks} />,
+      <PreferencesTab {...defaultProps} setShowHelpLinks={setShowHelpLinks} />,
     );
     const checkboxes = container.querySelectorAll('input[type="checkbox"]');
 

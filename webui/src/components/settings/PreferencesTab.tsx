@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-interface AppearanceTabProps {
+interface PreferencesTabProps {
   theme: string;
   setTheme: (theme: string) => void;
   showTimestamps: boolean;
@@ -13,7 +13,7 @@ interface AppearanceTabProps {
 }
 
 /**
- * Display tab component for settings (theme and display options)
+ * Preferences tab component for settings (theme and display options)
  * @param {object} props - Component props
  * @param {string} props.theme - UI theme setting
  * @param {Function} props.setTheme - Function to update theme
@@ -21,16 +21,16 @@ interface AppearanceTabProps {
  * @param {Function} props.setShowTimestamps - Function to toggle timestamps
  * @param {boolean} props.showHelpLinks - Whether to show help link buttons
  * @param {Function} props.setShowHelpLinks - Function to toggle help links
- * @returns {JSX.Element} Display tab component
+ * @returns {JSX.Element} Preferences tab component
  */
-export function AppearanceTab({
+export function PreferencesTab({
   theme,
   setTheme,
   showTimestamps,
   setShowTimestamps,
   showHelpLinks,
   setShowHelpLinks,
-}: AppearanceTabProps) {
+}: PreferencesTabProps) {
   return (
     <div className="space-y-4">
       <div>

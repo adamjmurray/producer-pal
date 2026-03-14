@@ -187,11 +187,11 @@ Consult [the Features page](/features) for more info on what each tool does.
 
 <img src="/img/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>
 
-### Display
+### Preferences
 
-The Display tab controls visual preferences:
+The Preferences tab controls visual preferences:
 
-<img src="/img/producer-pal-chat-settings-display.png" alt="Display settings" width="500"/>
+<img src="/img/producer-pal-chat-settings-preferences.png" alt="Preferences settings" width="500"/>
 
 - **Theme** - Light, Dark, or System (follow your OS preference)
 - **Show message timestamps** - Display the date and time next to each message

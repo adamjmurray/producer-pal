@@ -209,11 +209,13 @@ describe("SettingsScreen", () => {
       expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#tools");
     });
 
-    it("updates help link when switching to display tab", () => {
-      render(<SettingsScreen {...defaultProps} activeTab="display" />);
+    it("updates help link when switching to preferences tab", () => {
+      render(<SettingsScreen {...defaultProps} activeTab="preferences" />);
       const link = screen.getByTitle("Documentation") as HTMLAnchorElement;
 
-      expect(link.href).toBe("https://producer-pal.org/guide/chat-ui#display");
+      expect(link.href).toBe(
+        "https://producer-pal.org/guide/chat-ui#preferences",
+      );
     });
   });
 
@@ -241,8 +243,8 @@ describe("SettingsScreen", () => {
       expect(screen.getByTestId("tool-toggles")).toBeDefined();
       unmount2();
 
-      // Display tab
-      render(<SettingsScreen {...defaultProps} activeTab="display" />);
+      // Preferences tab
+      render(<SettingsScreen {...defaultProps} activeTab="preferences" />);
       expect(screen.getByLabelText("Theme")).toBeDefined();
     });
 
@@ -253,13 +255,13 @@ describe("SettingsScreen", () => {
   });
 
   describe("theme selector", () => {
-    it("renders Display label", () => {
+    it("renders Preferences label", () => {
       render(<SettingsScreen {...defaultProps} />);
-      expect(screen.getByRole("button", { name: "Display" })).toBeDefined();
+      expect(screen.getByRole("button", { name: "Preferences" })).toBeDefined();
     });
 
     it("renders theme selector with options", () => {
-      render(<SettingsScreen {...defaultProps} activeTab="display" />);
+      render(<SettingsScreen {...defaultProps} activeTab="preferences" />);
       expect(screen.getByRole("option", { name: "System" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Light" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Dark" })).toBeDefined();
@@ -267,7 +269,11 @@ describe("SettingsScreen", () => {
 
     it("has correct initial value", () => {
       render(
-        <SettingsScreen {...defaultProps} activeTab="display" theme="dark" />,
+        <SettingsScreen
+          {...defaultProps}
+          activeTab="preferences"
+          theme="dark"
+        />,
       );
       const select = screen.getByLabelText("Theme") as HTMLSelectElement;
 
@@ -280,7 +286,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          activeTab="display"
+          activeTab="preferences"
           setTheme={setTheme}
         />,
       );

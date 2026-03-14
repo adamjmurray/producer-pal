@@ -20,9 +20,9 @@ import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
 import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import {
-  useDisplaySettings,
-  saveDisplaySettings,
-} from "#webui/hooks/use-display-settings";
+  usePreferencesSettings,
+  savePreferencesSettings,
+} from "#webui/hooks/use-preferences-settings";
 import { useViewState } from "#webui/hooks/use-view-state";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
@@ -100,7 +100,7 @@ export function App() {
         ? { settingsOpen: true, settingsTab }
         : { settingsOpen: true },
     );
-  const display = useDisplaySettings();
+  const display = usePreferencesSettings();
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
   const toolNamesMap = useMemo(
@@ -217,7 +217,7 @@ export function App() {
     closeSettings(() => {
       settings.saveSettings();
       postSmallModelMode(settings.smallModelMode);
-      saveDisplaySettings(display);
+      savePreferencesSettings(display);
     });
   };
 

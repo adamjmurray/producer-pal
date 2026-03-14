@@ -5,7 +5,7 @@
 
 import { useState } from "preact/hooks";
 
-export interface DisplaySettings {
+export interface PreferencesSettings {
   showTimestamps: boolean;
   setShowTimestamps: (show: boolean) => void;
   showHelpLinks: boolean;
@@ -29,10 +29,10 @@ function readBool(key: string, defaultValue: boolean): boolean {
 }
 
 /**
- * Hook for display/appearance settings stored in localStorage
- * @returns Display settings state and setters
+ * Hook for preferences settings stored in localStorage
+ * @returns Preferences settings state and setters
  */
-export function useDisplaySettings(): DisplaySettings {
+export function usePreferencesSettings(): PreferencesSettings {
   const [showTimestamps, setShowTimestamps] = useState(() =>
     readBool("show_timestamps", false),
   );
@@ -49,10 +49,10 @@ export function useDisplaySettings(): DisplaySettings {
 }
 
 /**
- * Saves display settings to localStorage
- * @param display - Display settings to persist
+ * Saves preferences settings to localStorage
+ * @param display - Preferences settings to persist
  */
-export function saveDisplaySettings(display: DisplaySettings): void {
+export function savePreferencesSettings(display: PreferencesSettings): void {
   const s = (key: string, value: boolean) =>
     localStorage.setItem(`${KEY_PREFIX}${key}`, String(value));
 

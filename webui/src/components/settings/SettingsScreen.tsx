@@ -8,22 +8,22 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
-import { type DisplaySettings } from "#webui/hooks/use-display-settings";
+import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { CHAT_UI_DOCS_URL } from "#webui/lib/config";
 import { type UseSettingsReturn } from "#webui/types/settings";
-import { AppearanceTab } from "./AppearanceTab";
 import { ConnectionTab } from "./ConnectionTab";
 import { ToolToggles } from "./controls/ToolToggles";
 import {
   type ConversationLock,
   LockedSettingsNotice,
 } from "./LockedSettingsNotice";
+import { PreferencesTab } from "./PreferencesTab";
 import { SettingsFooter } from "./SettingsFooter";
 import { type TabId, SettingsTabs } from "./SettingsTabs";
 
 interface SettingsScreenProps {
   settings: UseSettingsReturn;
-  display: DisplaySettings;
+  display: PreferencesSettings;
   theme: string;
   setTheme: (theme: string) => void;
   mcpTools: McpTool[] | null;
@@ -42,7 +42,7 @@ const helpLinkClass =
   "w-6 h-6 rounded-full border border-zinc-400 dark:border-zinc-500 text-zinc-500! dark:text-zinc-400! hover:border-zinc-200 hover:text-white! dark:hover:border-zinc-300 dark:hover:text-white! flex items-center justify-center text-sm font-semibold no-underline";
 
 /**
- * Settings screen component with tabs for connection, tools, and appearance
+ * Settings screen component with tabs for connection, tools, and preferences
  * @param props - SettingsScreenProps
  * @returns Settings screen element
  */
@@ -144,8 +144,8 @@ function SettingsTabContent(props: SettingsScreenProps) {
         />
       )}
 
-      {activeTab === "display" && (
-        <AppearanceTab
+      {activeTab === "preferences" && (
+        <PreferencesTab
           theme={props.theme}
           setTheme={props.setTheme}
           showTimestamps={display.showTimestamps}
