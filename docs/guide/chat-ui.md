@@ -22,7 +22,7 @@ The header is organized into two areas:
 <img src="/img/producer-pal-chat-header-left.png" alt="Header left" width="400"/>
 
 - **History panel** - Toggle the conversation history sidebar
-- **New conversation (+)** - Start a fresh conversation
+- **New conversation** - Start a fresh conversation
 - **Bookmark star** - Pin the active conversation
 - **Logo, title & version** - Shows an "update" link when a newer version is
   available
@@ -102,9 +102,12 @@ sections to see the AI's reasoning process:
 The thinking toggle next to the text area controls how much reasoning effort the
 AI uses for the next message. Click it to cycle through three levels:
 
-- <img src="/img/thinking-off.png" alt="Off" width="40" style="display:inline;vertical-align:middle;margin:0"/> **Off** - No thinking
-- <img src="/img/thinking-default.png" alt="Default" width="40" style="display:inline;vertical-align:middle;margin:0"/> **Default** - Let the AI decide
-- <img src="/img/thinking-max.png" alt="Max" width="40" style="display:inline;vertical-align:middle;margin:0"/> **Max** - Maximum thinking effort
+- <img src="/img/thinking-off.png" alt="Off" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+  **Off** - No thinking
+- <img src="/img/thinking-default.png" alt="Default" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+  **Default** - Let the AI decide
+- <img src="/img/thinking-max.png" alt="Max" width="40" style="display:inline;vertical-align:middle;margin:0"/>
+  **Max** - Maximum thinking effort
 
 The default thinking level for new conversations is set in
 [Connection settings](#connection). The toggle in the message input area
@@ -170,26 +173,6 @@ You may need to change the URL if:
   the resource-intensive language model processing while your main computer
   focuses on running Ableton Live. Replace `localhost` with the other computer's
   network address (e.g., `http://192.168.1.100:11434`)
-
-#### Other models
-
-Each AI provider supports multiple models and Producer Pal provides some
-recommended options in the model dropdown box. To use a different model, select
-"Other...". An additional text input appears where you can enter an arbitrary
-model id. Consult your AI provider for the models that are currently available.
-
-<img src="/img/producer-pal-chat-settings-connection-open-router-other-model.png" alt="OpenRouter settings" width="500"/>
-
-#### Custom providers
-
-Producer Pal can work with any AI provider that has an API compatible with
-OpenAI's chat API. Most providers support this. When setting up a custom
-provider, you also need to enter the **URL** for the provider's API. Consult the
-provider's documentation to determine the correct setting.
-
-For example, one could use [groq.com](https://groq.com/) as follows:
-
-<img src="/img/producer-pal-chat-settings-custom-provider.png" alt="Custom provider" width="500"/>
 
 ### Tools
 
