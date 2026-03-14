@@ -141,8 +141,8 @@ The Connection tab is where you choose and configure your AI provider and model:
 
 <img src="/img/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
-- **Provider** - Choose from Gemini, OpenAI, Mistral, OpenRouter, Ollama
-  (local), LM Studio (local), or Other
+- **Provider** - Choose from Google, Mistral, OpenAI, Anthropic, Ollama (local),
+  LM Studio (local), OpenRouter, or Custom
 - **API Key** - Your API key (for cloud providers)
 - **Model** - Select a model or enter a custom model name
 - **Thinking** - Default thinking level for new conversations (Off, Default, or

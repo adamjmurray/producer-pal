@@ -64,13 +64,13 @@ describe("ProviderSelector", () => {
       }));
 
       expect(optionData).toStrictEqual([
-        { value: "anthropic", text: "Anthropic" },
         { value: "gemini", text: "Google" },
-        { value: "openai", text: "OpenAI" },
         { value: "mistral", text: "Mistral" },
-        { value: "openrouter", text: "OpenRouter" },
-        { value: "lmstudio", text: "LM Studio (local)" },
+        { value: "openai", text: "OpenAI" },
+        { value: "anthropic", text: "Anthropic" },
         { value: "ollama", text: "Ollama (local)" },
+        { value: "lmstudio", text: "LM Studio (local)" },
+        { value: "openrouter", text: "OpenRouter" },
         { value: "custom", text: "Custom (OpenAI-compatible)" },
       ]);
     });
