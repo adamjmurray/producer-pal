@@ -29,8 +29,14 @@ export function setupConsoleCapture(): ConsoleLogs {
       const text = msg.text();
 
       if (type === "error") {
-        // Filter expected 405 on /mcp (stateless endpoint)
-        if (!text.includes("405")) {
+        // Filter expected network errors:
+        // - 405 on /mcp (stateless endpoint)
+        // - 403/429 from API providers (fake keys in tests)
+        if (
+          !text.includes("405") &&
+          !text.includes("403") &&
+          !text.includes("429")
+        ) {
           captured.errors.push(text);
         }
       } else if (type === "warning") {

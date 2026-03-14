@@ -28,9 +28,14 @@ test.describe("Settings", () => {
     await providerSelect.selectOption("openai");
     await expect(providerSelect).toHaveValue("openai");
 
+    // Wait for the label to update after provider change (Preact re-render)
+    await expect(
+      page.getByText("OpenAI API Key", { exact: true }),
+    ).toBeVisible();
+
     const apiKeyInput = page.getByTestId("api-key-input");
 
-    await apiKeyInput.fill("test-key-12345");
+    await apiKeyInput.pressSequentially("test-key-12345");
     await expect(apiKeyInput).toHaveValue("test-key-12345");
 
     // Model should have switched to OpenAI's default
@@ -38,19 +43,9 @@ test.describe("Settings", () => {
 
     await expect(modelSelect).toBeVisible();
 
-    // --- Behavior tab ---
-
-    await page.getByRole("button", { name: "Behavior" }).click();
-
-    const randomnessSlider = page.locator('input[type="range"]');
-
-    await expect(randomnessSlider).toBeVisible();
-    await randomnessSlider.fill("1.4");
-    await expect(randomnessSlider).toHaveValue("1.4");
-
     // --- Tools tab ---
 
-    await page.getByRole("button", { name: "Tools" }).click();
+    await page.getByRole("button", { name: "Tools", exact: true }).click();
 
     // Wait for tools to load from MCP (requires Ableton to be running)
     const disableAllButton = page.getByRole("button", { name: "Disable all" });
@@ -69,9 +64,9 @@ test.describe("Settings", () => {
     await readClipCheckbox.check();
     await expect(readClipCheckbox).toBeChecked();
 
-    // --- Appearance tab ---
+    // --- Preferences tab ---
 
-    await page.getByRole("button", { name: "Appearance" }).click();
+    await page.getByRole("button", { name: "Preferences" }).click();
 
     const themeSelect = page.locator("#theme-select");
 
@@ -94,16 +89,12 @@ test.describe("Settings", () => {
 
     // --- Verify Connection tab ---
 
+    await page.getByRole("button", { name: "Connection" }).click();
     await expect(providerSelect).toHaveValue("openai");
-
-    // --- Verify Behavior tab ---
-
-    await page.getByRole("button", { name: "Behavior" }).click();
-    await expect(randomnessSlider).toHaveValue("1.4");
 
     // --- Verify Tools tab ---
 
-    await page.getByRole("button", { name: "Tools" }).click();
+    await page.getByRole("button", { name: "Tools", exact: true }).click();
     await expect(disableAllButton).toBeVisible({ timeout: 15000 });
 
     // ppal-read-clip should still be enabled (we re-enabled it)
@@ -115,9 +106,9 @@ test.describe("Settings", () => {
 
     await expect(updateToolCheckbox).not.toBeChecked();
 
-    // --- Verify Appearance tab ---
+    // --- Verify Preferences tab ---
 
-    await page.getByRole("button", { name: "Appearance" }).click();
+    await page.getByRole("button", { name: "Preferences" }).click();
     await expect(themeSelect).toHaveValue("dark");
 
     // --- Verify no unexpected console output ---
