@@ -76,8 +76,11 @@ export function AssistantToolCall({
       </div>
       {result && (
         <details className="disclosure">
-          <summary className="px-2 my-1 truncate text-zinc-600 dark:text-zinc-400 flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
-            <DisclosureChevron />↳ {truncateString(result, 300)}
+          <summary className="px-2 my-1 overflow-hidden text-zinc-600 dark:text-zinc-400 flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+            <DisclosureChevron />
+            <span className="truncate min-w-0">
+              ↳ {truncateString(result, 300)}
+            </span>
           </summary>
           <div className="mt-1 p-1 break-all text-zinc-500 dark:text-zinc-500">
             <FullResultDetails result={result} />
