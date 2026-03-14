@@ -15,15 +15,28 @@ directly from within Producer Pal.
 
 ## Header Bar
 
-The header is organized into three areas:
+The header is organized into two areas:
 
-- **Left** - History panel toggle, New conversation (+), Bookmark star (for the
-  active conversation)
-- **Center** - Producer Pal logo, title, and version (shows an "update" link
-  when a newer version is available)
-- **Right** - Connection status indicator, Provider & Model (click to open
-  connection settings), Tools count (click to open tools settings), Small model
-  indicator, Settings gear, Help link (?)
+### Left
+
+<img src="/img/producer-pal-chat-header-left.png" alt="Header left" width="400"/>
+
+- **History panel** - Toggle the conversation history sidebar
+- **New conversation (+)** - Start a fresh conversation
+- **Bookmark star** - Pin the active conversation
+- **Logo, title & version** - Shows an "update" link when a newer version is
+  available
+- **Connection status** - Shows "Ready" when connected to Ableton
+
+### Right
+
+<img src="/img/producer-pal-chat-header-right.png" alt="Header right" width="450"/>
+
+- **Provider & Model** - Click to open connection settings
+- **Tools count** - Click to open tools settings
+- **Model size** - Shows "large model" or "small model" mode
+- **Settings gear** - Open settings dialog
+- **Help (?)** - Link to documentation
 
 ## Conversation History
 
