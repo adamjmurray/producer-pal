@@ -27,7 +27,10 @@ const ALL_MODELS = [
 ];
 
 export const getModelName = (modelId: string): string =>
-  ALL_MODELS.find((m) => m.value === modelId)?.label ?? modelId;
+  (ALL_MODELS.find((m) => m.value === modelId)?.label ?? modelId).replaceAll(
+    /^\[.*?]\s*/g,
+    "",
+  );
 
 export const getThinkingBudget = (level: string): number => {
   switch (level) {

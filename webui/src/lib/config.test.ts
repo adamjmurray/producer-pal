@@ -29,6 +29,16 @@ describe("config", () => {
       );
     });
 
+    it("strips [Paid] tag from OpenRouter model labels", () => {
+      expect(getModelName("google/gemini-3-flash-preview")).toBe(
+        "Google Gemini 3 Flash",
+      );
+    });
+
+    it("strips [Free] tag from OpenRouter model labels", () => {
+      expect(getModelName("z-ai/glm-4.5-air:free")).toBe("Z.AI GLM 4.5 Air");
+    });
+
     it("returns the modelId unchanged for unknown models", () => {
       expect(getModelName("unknown-model")).toBe("unknown-model");
       expect(getModelName("gemini-1.5-pro")).toBe("gemini-1.5-pro");
