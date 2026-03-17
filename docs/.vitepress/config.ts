@@ -159,6 +159,7 @@ export default defineConfig({
     ],
 
     socialLinks: [
+      { icon: "discord", link: "https://discord.gg/rmU3DSzgwH" },
       { icon: "github", link: "https://github.com/adamjmurray/producer-pal" },
     ],
 
