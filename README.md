@@ -29,6 +29,7 @@ Ollama, and more.
 - [Documentation](https://producer-pal.org)
 - [Video Tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
 - [Latest Releases](https://github.com/adamjmurray/producer-pal/releases)
+- [Discord Community](https://discord.gg/rmU3DSzgwH)
 - [Feedback & Support](https://forms.gle/YTrnUJQTBrrdwNiu5)
 - [Discussions](https://github.com/adamjmurray/producer-pal/discussions)
 - [Issues](https://github.com/adamjmurray/producer-pal/issues)

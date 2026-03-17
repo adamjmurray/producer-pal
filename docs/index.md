@@ -153,5 +153,6 @@ features:
 
 ## Support
 
-Need help, want to report a bug, or interested in contributing? Visit the
-[Support page](/support).
+Join the [Discord community](https://discord.gg/rmU3DSzgwH) to ask questions,
+share tips, and connect with other users. For bug reports, troubleshooting, and
+more, visit the [Support page](/support).

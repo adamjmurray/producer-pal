@@ -2,6 +2,8 @@
 
 ## Getting Help
 
+- **Discord**: [Join the Producer Pal Discord](https://discord.gg/rmU3DSzgwH) —
+  ask questions, share tips, and connect with other users
 - **Feedback Form**:
   [Submit feedback, bug reports, or feature requests](https://forms.gle/YTrnUJQTBrrdwNiu5)
 - **Email**: [adam@adammurray.link](mailto:adam@adammurray.link)
@@ -9,8 +11,7 @@
 - **Known Issues**: [Current bugs and limitations](/support/known-issues)
 - **Questions & Discussion**:
   [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
-  (requires a GitHub account — want to discuss Producer Pal on Discord instead?
-  [Let me know](mailto:adam@adammurray.link))
+  or [Discord](https://discord.gg/rmU3DSzgwH)
 
 ## Reporting Bugs
 
@@ -22,7 +23,9 @@ on GitHub.
 
 ## Contributing
 
-I maintain the core tools and roadmap, but there's room to collaborate:
+I maintain the core tools and roadmap, but there's room to collaborate. Join the
+[Discord](https://discord.gg/rmU3DSzgwH) to discuss ideas, or contribute
+directly:
 
 - **Small model optimization** — Help make Ollama/LM Studio work better by
   experimenting and sharing results
