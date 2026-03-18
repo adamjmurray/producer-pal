@@ -212,6 +212,20 @@ function BookmarkStar({
  * @param storedLabel - Label persisted at conversation save time
  * @returns Human-readable model name
  */
+const compactFormatter = new Intl.NumberFormat(undefined, {
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
+/**
+ * Format a number in compact locale-aware notation (e.g. 17,123 → "17.1K").
+ * @param n - Number to format
+ * @returns Compact string
+ */
+function compactNumber(n: number): string {
+  return compactFormatter.format(n);
+}
+
 function resolveModelLabel(
   modelId: string,
   storedLabel: string | null,
@@ -231,13 +245,22 @@ function resolveModelLabel(
  */
 function ConversationMeta({ conv }: { conv: ConversationSummary }) {
   return (
-    <div className="w-full text-left px-4 pt-0.5 pb-2 flex justify-between gap-2">
-      <div className="text-[10px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
+    <div className="@container w-full text-left px-4 pt-0.5 pb-2 flex gap-2 text-[10px] text-zinc-400 dark:text-zinc-500">
+      <div className="whitespace-nowrap">
         {formatTimestampDate(conv.updatedAt)},{" "}
         {formatTimestampTime(conv.updatedAt)}
       </div>
+      {conv.totalUsage && (
+        <div
+          className="hidden @min-[20rem]:block truncate ml-2"
+          title="token usage (input → output)"
+        >
+          {compactNumber(conv.totalUsage.inputTokens ?? 0)} →{" "}
+          {compactNumber(conv.totalUsage.outputTokens ?? 0)} tokens
+        </div>
+      )}
       {conv.model && (
-        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate text-right">
+        <div className="truncate text-right ml-auto">
           {conv.provider
             ? `${getProviderName(conv.provider as Provider)} | `
             : ""}
