@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
   type ActiveMeta,
@@ -31,7 +30,6 @@ import { type Provider } from "#webui/types/settings";
 
 interface UseConversationsProps {
   getChatHistory: () => unknown[];
-  getTotalUsage: () => TokenUsage | null;
   restoreChatHistory: (
     chatHistory: unknown[],
     lockedSettings?: ConversationLockedSettings,
@@ -64,7 +62,6 @@ export interface UseConversationsReturn {
  * Active conversation ID is stored in the URL hash for browser back/forward support.
  * @param props - Chat hook methods for reading/writing conversation state
  * @param props.getChatHistory - Returns current chat history for saving
- * @param props.getTotalUsage - Returns cumulative token usage for the conversation
  * @param props.restoreChatHistory - Loads a saved chat history into the chat hook
  * @param props.clearConversation - Clears the current conversation
  * @param props.activeModel - Active model for the current conversation
@@ -77,7 +74,6 @@ export interface UseConversationsReturn {
  */
 export function useConversations({
   getChatHistory,
-  getTotalUsage,
   restoreChatHistory,
   clearConversation,
   activeModel: activeModelProp,
@@ -220,7 +216,6 @@ export function useConversations({
         getActiveRefs(id),
         existing,
         chatHistory,
-        getTotalUsage(),
         updatedAt,
       );
 
@@ -231,7 +226,7 @@ export function useConversations({
       limit.showLimitNotification(result);
       await refreshList();
     },
-    [getChatHistory, getTotalUsage, refreshList, setActiveId, limit],
+    [getChatHistory, refreshList, setActiveId, limit],
   );
 
   const switchConversation = useCallback(

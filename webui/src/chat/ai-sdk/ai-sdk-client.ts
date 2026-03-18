@@ -17,7 +17,6 @@ import { getMcpUrl } from "#webui/utils/mcp-url";
 import {
   type AiSdkClientConfig,
   type AiSdkMessage,
-  type TokenUsage,
   toTokenUsage,
 } from "./ai-sdk-types";
 import { createAiSdkMcpTools } from "./mcp-tools";
@@ -30,7 +29,6 @@ const MAX_TOOL_STEPS = 10;
  */
 export class AiSdkClient {
   chatHistory: AiSdkMessage[];
-  totalUsage: TokenUsage | null = null;
   private tools: ToolSet = {};
   private config: AiSdkClientConfig;
 
@@ -109,13 +107,10 @@ export class AiSdkClient {
     historyLengthBefore: number,
   ): AsyncGenerator<AiSdkMessage[]> {
     try {
-      const [response, totalUsage, steps] = await Promise.all([
+      const [response, steps] = await Promise.all([
         result.response,
-        result.totalUsage,
         result.steps,
       ]);
-
-      this.totalUsage = toTokenUsage(totalUsage);
 
       // Zip steps with assistant messages from this turn (1:1 ordering)
       let stepIdx = 0;

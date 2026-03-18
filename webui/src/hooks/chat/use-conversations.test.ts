@@ -37,7 +37,6 @@ function createProps() {
       activeTemperature: null as number | null,
       activeShowThoughts: null as boolean | null,
       activeSmallModelMode: null as boolean | null,
-      getTotalUsage: vi.fn(() => null),
     },
   };
 }

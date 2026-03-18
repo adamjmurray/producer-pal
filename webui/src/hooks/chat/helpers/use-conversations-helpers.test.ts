@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { deriveTitle } from "#webui/hooks/chat/helpers/use-conversations-helpers";
+import {
+  deriveTitle,
+  sumMessageUsage,
+} from "#webui/hooks/chat/helpers/use-conversations-helpers";
 
 describe("deriveTitle", () => {
   it("uses first user message as title", () => {
@@ -31,5 +34,73 @@ describe("deriveTitle", () => {
 
   it("returns currentTitle when no user messages", () => {
     expect(deriveTitle("Old Title", [])).toBe("Old Title");
+  });
+});
+
+describe("sumMessageUsage", () => {
+  it("returns null for empty history", () => {
+    expect(sumMessageUsage([])).toBeNull();
+  });
+
+  it("returns null when no messages have usage", () => {
+    const history = [
+      { role: "user", content: "hello" },
+      { role: "assistant", content: "hi" },
+    ];
+
+    expect(sumMessageUsage(history)).toBeNull();
+  });
+
+  it("sums usage across assistant messages", () => {
+    const history = [
+      { role: "user", content: "hello" },
+      {
+        role: "assistant",
+        content: "hi",
+        usage: {
+          inputTokens: 100,
+          outputTokens: 20,
+          reasoningTokens: 5,
+          totalTokens: 120,
+        },
+      },
+      { role: "user", content: "bye" },
+      {
+        role: "assistant",
+        content: "cya",
+        usage: {
+          inputTokens: 200,
+          outputTokens: 30,
+          reasoningTokens: 10,
+          totalTokens: 230,
+        },
+      },
+    ];
+
+    expect(sumMessageUsage(history)).toStrictEqual({
+      inputTokens: 300,
+      outputTokens: 50,
+      reasoningTokens: 15,
+      totalTokens: 350,
+    });
+  });
+
+  it("skips user messages and assistant messages without usage", () => {
+    const history = [
+      { role: "user", content: "hello" },
+      { role: "assistant", content: "no usage here" },
+      {
+        role: "assistant",
+        content: "with usage",
+        usage: { inputTokens: 50, outputTokens: 10, totalTokens: 60 },
+      },
+    ];
+
+    expect(sumMessageUsage(history)).toStrictEqual({
+      inputTokens: 50,
+      outputTokens: 10,
+      reasoningTokens: 0,
+      totalTokens: 60,
+    });
   });
 });

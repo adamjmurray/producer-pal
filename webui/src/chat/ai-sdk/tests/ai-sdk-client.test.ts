@@ -410,12 +410,12 @@ describe("AiSdkClient", () => {
       });
     });
 
-    it("stores totalUsage on client", async () => {
+    it("attaches per-step usage to assistant messages", async () => {
       async function* iterate(): AsyncIterable<Record<string, unknown>> {
         yield { type: "text-delta", text: "Hi" };
       }
 
-      const totalUsage = {
+      const stepUsage = {
         inputTokens: 100,
         inputTokenDetails: {
           noCacheTokens: 100,
@@ -430,17 +430,20 @@ describe("AiSdkClient", () => {
       (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
         fullStream: iterate(),
         response: Promise.resolve({ modelId: "m" }),
-        totalUsage: Promise.resolve(totalUsage),
-        steps: Promise.resolve([{ stepNumber: 0, usage: totalUsage }]),
+        totalUsage: Promise.resolve(stepUsage),
+        steps: Promise.resolve([{ stepNumber: 0, usage: stepUsage }]),
       });
 
       const client = new AiSdkClient("key", createConfig());
+      let lastHistory: AiSdkMessage[] = [];
 
-      for await (const _ of client.sendMessage("Hello")) {
-        // consume stream
+      for await (const history of client.sendMessage("Hello")) {
+        lastHistory = history;
       }
 
-      expect(client.totalUsage).toStrictEqual({
+      const assistantMsg = lastHistory.find((m) => m.role === "assistant");
+
+      expect(assistantMsg?.usage).toStrictEqual({
         inputTokens: 100,
         outputTokens: 50,
         reasoningTokens: 10,

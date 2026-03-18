@@ -612,14 +612,6 @@ describe("useChat", () => {
     });
   });
 
-  describe("getTotalUsage", () => {
-    it("returns null when no client exists", () => {
-      const { result } = renderHook(() => useChat(defaultProps));
-
-      expect(result.current.getTotalUsage()).toBeNull();
-    });
-  });
-
   describe("restoreChatHistory", () => {
     it("sets messages from loaded history", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
