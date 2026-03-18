@@ -177,7 +177,7 @@ export function App() {
     handleDelete: handleDeleteConversation,
     handleRename: handleRenameConversation,
     handleToggleBookmark,
-  } = useConversationHandlers(conversationManager);
+  } = useConversationHandlers(conversationManager, chat.stopResponse);
 
   // Auto-save when streaming completes — covers tool results and follow-up
   // text merged into existing UIMessages

@@ -160,6 +160,9 @@ export function useChat<
       retryAbortRef.current = new AbortController();
 
       const onMessageUpdate = (msgs: UIMessage[]) => {
+        // Skip updates after abort (e.g. user switched conversations)
+        if (abortControllerRef.current?.signal.aborted) return;
+
         const isFirst = !contentState.hasReceived;
 
         contentState.hasReceived = true;

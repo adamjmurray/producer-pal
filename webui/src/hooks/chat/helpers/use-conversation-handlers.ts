@@ -9,17 +9,23 @@ import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations
 /**
  * Creates stable callback wrappers for conversation manager methods.
  * @param manager - Conversation manager from useConversations
+ * @param stopResponse - Stops the current AI response stream
  * @returns Stable callback handlers for conversation operations
  */
-export function useConversationHandlers(manager: UseConversationsReturn) {
+export function useConversationHandlers(
+  manager: UseConversationsReturn,
+  stopResponse: () => void,
+) {
   const handleNew = useCallback(() => {
+    stopResponse();
     manager.startNewConversation();
-  }, [manager]);
+  }, [manager, stopResponse]);
   const handleSelect = useCallback(
     (id: string) => {
+      stopResponse();
       manager.switchConversation(id).catch(console.error);
     },
-    [manager],
+    [manager, stopResponse],
   );
   const handleDelete = useCallback(
     (id: string) => {

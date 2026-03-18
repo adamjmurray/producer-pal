@@ -36,6 +36,8 @@ function createMockManager(
 }
 
 describe("useConversationHandlers", () => {
+  const stopResponse = vi.fn();
+
   it("logs rejected promises to console.error", async () => {
     const error = new Error("IndexedDB failure");
     const manager = createMockManager({
@@ -43,7 +45,9 @@ describe("useConversationHandlers", () => {
     });
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    const { result } = renderHook(() => useConversationHandlers(manager));
+    const { result } = renderHook(() =>
+      useConversationHandlers(manager, stopResponse),
+    );
 
     await act(() => result.current.handleDelete("conv-1"));
 
@@ -52,5 +56,29 @@ describe("useConversationHandlers", () => {
 
     expect(spy).toHaveBeenCalledWith(error);
     spy.mockRestore();
+  });
+
+  it("stops response when selecting a conversation", async () => {
+    const manager = createMockManager();
+    const stop = vi.fn();
+
+    const { result } = renderHook(() => useConversationHandlers(manager, stop));
+
+    await act(() => result.current.handleSelect("conv-1"));
+
+    expect(stop).toHaveBeenCalled();
+    expect(manager.switchConversation).toHaveBeenCalledWith("conv-1");
+  });
+
+  it("stops response when starting a new conversation", () => {
+    const manager = createMockManager();
+    const stop = vi.fn();
+
+    const { result } = renderHook(() => useConversationHandlers(manager, stop));
+
+    result.current.handleNew();
+
+    expect(stop).toHaveBeenCalled();
+    expect(manager.startNewConversation).toHaveBeenCalled();
   });
 });
