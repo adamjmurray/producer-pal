@@ -39,25 +39,21 @@ export interface AiSdkMessage {
   showThoughtsOverride?: boolean;
 }
 
-/** Flat token usage summary extracted from LanguageModelUsage */
+/** Token usage summary extracted from LanguageModelUsage */
 export interface TokenUsage {
   inputTokens?: number;
   outputTokens?: number;
-  reasoningTokens?: number;
-  totalTokens?: number;
 }
 
 /**
- * Convert AI SDK LanguageModelUsage to our flat TokenUsage type.
+ * Convert AI SDK LanguageModelUsage to our TokenUsage type.
  * @param sdkUsage - Usage data from the AI SDK
- * @returns Flat token usage summary
+ * @returns Token usage summary
  */
 export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
   return {
     inputTokens: sdkUsage.inputTokens ?? undefined,
     outputTokens: sdkUsage.outputTokens ?? undefined,
-    reasoningTokens: sdkUsage.outputTokenDetails.reasoningTokens ?? undefined,
-    totalTokens: sdkUsage.totalTokens ?? undefined,
   };
 }
 

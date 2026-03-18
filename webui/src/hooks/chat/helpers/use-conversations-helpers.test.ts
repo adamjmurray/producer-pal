@@ -57,31 +57,19 @@ describe("sumMessageUsage", () => {
       {
         role: "assistant",
         content: "hi",
-        usage: {
-          inputTokens: 100,
-          outputTokens: 20,
-          reasoningTokens: 5,
-          totalTokens: 120,
-        },
+        usage: { inputTokens: 100, outputTokens: 20 },
       },
       { role: "user", content: "bye" },
       {
         role: "assistant",
         content: "cya",
-        usage: {
-          inputTokens: 200,
-          outputTokens: 30,
-          reasoningTokens: 10,
-          totalTokens: 230,
-        },
+        usage: { inputTokens: 200, outputTokens: 30 },
       },
     ];
 
     expect(sumMessageUsage(history)).toStrictEqual({
       inputTokens: 300,
       outputTokens: 50,
-      reasoningTokens: 15,
-      totalTokens: 350,
     });
   });
 
@@ -92,15 +80,13 @@ describe("sumMessageUsage", () => {
       {
         role: "assistant",
         content: "with usage",
-        usage: { inputTokens: 50, outputTokens: 10, totalTokens: 60 },
+        usage: { inputTokens: 50, outputTokens: 10 },
       },
     ];
 
     expect(sumMessageUsage(history)).toStrictEqual({
       inputTokens: 50,
       outputTokens: 10,
-      reasoningTokens: 0,
-      totalTokens: 60,
     });
   });
 });

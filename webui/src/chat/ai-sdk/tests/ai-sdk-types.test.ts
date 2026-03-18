@@ -44,8 +44,6 @@ describe("toTokenUsage", () => {
     expect(toTokenUsage(raw)).toStrictEqual({
       inputTokens: 100,
       outputTokens: 50,
-      reasoningTokens: 20,
-      totalTokens: 150,
     });
   });
 
@@ -55,8 +53,6 @@ describe("toTokenUsage", () => {
     expect(toTokenUsage(raw)).toStrictEqual({
       inputTokens: undefined,
       outputTokens: undefined,
-      reasoningTokens: undefined,
-      totalTokens: undefined,
     });
   });
 });
