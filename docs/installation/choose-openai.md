@@ -21,4 +21,4 @@ pay-as-you-go API pricing.
 ## Model Notes
 
 - GPT-5.2 or GPT-5.3 Codex recommended
-- Also available: GPT-5, GPT-5 Mini
+- Also available: GPT-5, GPT-5.4 Mini

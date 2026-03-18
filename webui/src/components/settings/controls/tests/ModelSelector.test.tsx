@@ -84,7 +84,7 @@ describe("ModelSelector", () => {
       renderModelSelector({ provider: "openai", model: "gpt-5.4" });
       expect(screen.getByRole("option", { name: /^GPT-5\.4$/ })).toBeDefined();
       expect(
-        screen.getByRole("option", { name: /^GPT-5 Mini$/ }),
+        screen.getByRole("option", { name: /^GPT-5\.4 Mini$/ }),
       ).toBeDefined();
     });
 
@@ -94,7 +94,7 @@ describe("ModelSelector", () => {
         model: "gpt-5.4",
       });
 
-      expectModelSelected("gpt-5-mini", setModel);
+      expectModelSelected("gpt-5.4-mini", setModel);
     });
   });
 
@@ -214,7 +214,7 @@ describe("ModelSelector", () => {
         target: { value: "OTHER" },
       });
       expect(
-        screen.getByPlaceholderText(/e.g., gemini-2.0-flash/),
+        screen.getByPlaceholderText(/e.g., gemini-2.5-flash/),
       ).toBeDefined();
     });
 
@@ -224,7 +224,7 @@ describe("ModelSelector", () => {
       fireEvent.change(screen.getByRole("combobox"), {
         target: { value: "OTHER" },
       });
-      fireEvent.change(screen.getByPlaceholderText(/e.g., gemini-2.0-flash/), {
+      fireEvent.change(screen.getByPlaceholderText(/e.g., gemini-2.5-flash/), {
         target: { value: "custom-model-name" },
       });
       expect(setModel).toHaveBeenCalledWith("custom-model-name");
@@ -233,7 +233,7 @@ describe("ModelSelector", () => {
     it("shows custom input initially for non-preset models", () => {
       renderModelSelector({ model: "my-custom-model" });
       expect(
-        screen.getByPlaceholderText(/e.g., gemini-2.0-flash/),
+        screen.getByPlaceholderText(/e.g., gemini-2.5-flash/),
       ).toBeDefined();
       expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
         "OTHER",
@@ -242,7 +242,7 @@ describe("ModelSelector", () => {
 
     it("shows provider-specific placeholders for OpenAI", () => {
       renderModelSelector({ provider: "openai", model: "my-custom-openai" });
-      expect(screen.getByPlaceholderText(/e.g., gpt-5-nano/)).toBeDefined();
+      expect(screen.getByPlaceholderText(/e.g., gpt-5.4-nano/)).toBeDefined();
     });
 
     it("shows provider-specific placeholders for Mistral", () => {
