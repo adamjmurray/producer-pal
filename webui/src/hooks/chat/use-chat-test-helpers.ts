@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { vi } from "vitest";
+import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
 import { type UIMessage } from "#webui/types/messages";
 import { type ChatAdapter, type ChatClient } from "./use-chat-types";
 
@@ -23,6 +24,7 @@ export interface TestConfig {
 /** Mock chat client for testing useChat hook */
 export class MockChatClient implements ChatClient<TestMessage> {
   chatHistory: TestMessage[] = [];
+  totalUsage: TokenUsage | null = null;
 
   initialize = vi.fn(async () => {
     // Initialization logic

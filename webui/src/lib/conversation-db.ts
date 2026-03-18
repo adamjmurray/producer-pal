@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type IDBPDatabase } from "idb";
-import { type AiSdkMessage } from "#webui/chat/ai-sdk/ai-sdk-types";
+import {
+  type AiSdkMessage,
+  type TokenUsage,
+} from "#webui/chat/ai-sdk/ai-sdk-types";
 import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
 
 export const MAX_CONVERSATIONS = 200;
@@ -23,6 +26,7 @@ export interface ConversationRecord {
   temperature: number | null;
   showThoughts: boolean | null;
   smallModelMode: boolean | null;
+  totalUsage: TokenUsage | null;
   messages: AiSdkMessage[];
 }
 
@@ -84,6 +88,7 @@ export async function loadConversation(
   record.temperature ??= null;
   record.showThoughts ??= null;
   record.smallModelMode ??= null;
+  record.totalUsage ??= null;
 
   return record;
 }
@@ -161,6 +166,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         temperature,
         showThoughts,
         smallModelMode,
+        totalUsage,
       }) => ({
         id,
         title,
@@ -174,6 +180,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         temperature: temperature ?? null,
         showThoughts: showThoughts ?? null,
         smallModelMode: smallModelMode ?? null,
+        totalUsage: totalUsage ?? null,
       }),
     )
     .sort((a, b) => b.updatedAt - a.updatedAt);

@@ -99,6 +99,10 @@ export function formatAiSdkMessages(history: AiSdkMessage[]): UIMessage[] {
       if (msg.responseModel) {
         currentMessage.responseModel = msg.responseModel;
       }
+
+      if (msg.usage) {
+        currentMessage.usage = msg.usage;
+      }
     }
   }
 

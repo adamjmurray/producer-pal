@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
 import { type TransferNotificationData } from "#webui/components/chat/TransferNotification";
 import {
   type ActiveMeta,
@@ -30,6 +31,7 @@ import { type Provider } from "#webui/types/settings";
 
 interface UseConversationsProps {
   getChatHistory: () => unknown[];
+  getTotalUsage: () => TokenUsage | null;
   restoreChatHistory: (
     chatHistory: unknown[],
     lockedSettings?: ConversationLockedSettings,
@@ -62,6 +64,7 @@ export interface UseConversationsReturn {
  * Active conversation ID is stored in the URL hash for browser back/forward support.
  * @param props - Chat hook methods for reading/writing conversation state
  * @param props.getChatHistory - Returns current chat history for saving
+ * @param props.getTotalUsage - Returns cumulative token usage for the conversation
  * @param props.restoreChatHistory - Loads a saved chat history into the chat hook
  * @param props.clearConversation - Clears the current conversation
  * @param props.activeModel - Active model for the current conversation
@@ -74,6 +77,7 @@ export interface UseConversationsReturn {
  */
 export function useConversations({
   getChatHistory,
+  getTotalUsage,
   restoreChatHistory,
   clearConversation,
   activeModel: activeModelProp,
@@ -211,7 +215,12 @@ export function useConversations({
     setActiveId(id);
 
     const existing = isNew ? undefined : await loadConversation(id);
-    const record = buildSaveRecord(getActiveRefs(id), existing, chatHistory);
+    const record = buildSaveRecord(
+      getActiveRefs(id),
+      existing,
+      chatHistory,
+      getTotalUsage(),
+    );
 
     syncActiveMeta(record);
 
@@ -219,7 +228,7 @@ export function useConversations({
 
     limit.showLimitNotification(result);
     await refreshList();
-  }, [getChatHistory, refreshList, setActiveId, limit]);
+  }, [getChatHistory, getTotalUsage, refreshList, setActiveId, limit]);
 
   const switchConversation = useCallback(
     async (id: string) => {
@@ -347,14 +356,19 @@ export function useConversations({
 
       // Best-effort save — IndexedDB writes are async but usually complete
       void saveConversation(
-        buildSaveRecord(getActiveRefs(id), undefined, chatHistory),
+        buildSaveRecord(
+          getActiveRefs(id),
+          undefined,
+          chatHistory,
+          getTotalUsage(),
+        ),
       );
     };
 
     window.addEventListener("beforeunload", handler);
 
     return () => window.removeEventListener("beforeunload", handler);
-  }, [getChatHistory]);
+  }, [getChatHistory, getTotalUsage]);
 
   return {
     conversations,

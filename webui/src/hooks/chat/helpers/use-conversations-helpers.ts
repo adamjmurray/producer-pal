@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
 import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
 import { getModelName } from "#webui/lib/config";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
@@ -88,12 +89,14 @@ export function buildLockedSettings(
  * @param refs - Current active ref values
  * @param existing - Previously saved record (if updating)
  * @param chatHistory - Current chat messages
+ * @param totalUsage - Cumulative token usage for the conversation
  * @returns Record ready for saveConversation
  */
 export function buildSaveRecord(
   refs: ActiveRefs,
   existing: ConversationRecord | undefined,
   chatHistory: unknown[],
+  totalUsage?: TokenUsage | null,
 ): ConversationRecord {
   const now = Date.now();
   const existingTitle = existing?.title ?? refs.title ?? null;
@@ -112,6 +115,7 @@ export function buildSaveRecord(
     temperature: refs.temperature,
     showThoughts: refs.showThoughts,
     smallModelMode: refs.smallModelMode,
+    totalUsage: totalUsage ?? existing?.totalUsage ?? null,
     messages: chatHistory as ConversationRecord["messages"],
   };
 }

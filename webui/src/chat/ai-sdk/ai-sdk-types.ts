@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
-import { type LanguageModel } from "ai";
+import { type LanguageModel, type LanguageModelUsage } from "ai";
 
 /**
  * Intermediate message type for the AI SDK client.
@@ -31,10 +31,34 @@ export interface AiSdkMessage {
   reasoning?: string;
   /** Model ID from the API response (assistant messages only) */
   responseModel?: string;
+  /** Token usage from the API response (assistant messages only) */
+  usage?: TokenUsage;
   /** Per-message setting overrides (only present when user overrode conversation defaults) */
   thinkingOverride?: string;
   temperatureOverride?: number;
   showThoughtsOverride?: boolean;
+}
+
+/** Flat token usage summary extracted from LanguageModelUsage */
+export interface TokenUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  reasoningTokens?: number;
+  totalTokens?: number;
+}
+
+/**
+ * Convert AI SDK LanguageModelUsage to our flat TokenUsage type.
+ * @param sdkUsage - Usage data from the AI SDK
+ * @returns Flat token usage summary
+ */
+export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
+  return {
+    inputTokens: sdkUsage.inputTokens ?? undefined,
+    outputTokens: sdkUsage.outputTokens ?? undefined,
+    reasoningTokens: sdkUsage.outputTokenDetails.reasoningTokens ?? undefined,
+    totalTokens: sdkUsage.totalTokens ?? undefined,
+  };
 }
 
 /** Configuration for the AI SDK client */

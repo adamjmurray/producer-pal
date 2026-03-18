@@ -11,6 +11,8 @@
  * - Message formatter and chat client interfaces
  */
 
+import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
+
 // UI Part Types
 // These represent the different types of content that can appear in a message
 
@@ -51,6 +53,8 @@ export interface UIMessage {
   timestamp: number; // Unix timestamp in milliseconds
   /** Model ID from the API response (assistant messages only) */
   responseModel?: string;
+  /** Token usage from the API response (assistant messages only) */
+  usage?: TokenUsage;
 }
 
 // Formatter Interface

@@ -150,6 +150,7 @@ export function App() {
 
   const conversationManager = useConversations({
     getChatHistory: chat.getChatHistory,
+    getTotalUsage: chat.getTotalUsage,
     restoreChatHistory: chat.restoreChatHistory,
     clearConversation: wrappedClearConversation,
     activeModel: chat.activeModel,

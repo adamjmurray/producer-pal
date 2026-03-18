@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
 import { type UIMessage } from "#webui/types/messages";
 import { type Provider } from "#webui/types/settings";
 
@@ -14,6 +15,7 @@ export interface MessageOverrides {
 /** Chat client interface that all providers must implement */
 export interface ChatClient<TMessage> {
   chatHistory: TMessage[];
+  totalUsage: TokenUsage | null;
   initialize: () => Promise<void>;
   sendMessage: (
     message: string,
@@ -90,6 +92,7 @@ export interface UseChatReturn {
   clearConversation: () => void;
   stopResponse: () => void;
   getChatHistory: () => unknown[];
+  getTotalUsage: () => TokenUsage | null;
   restoreChatHistory: (
     chatHistory: unknown[],
     lockedSettings?: ConversationLockedSettings,

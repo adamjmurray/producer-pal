@@ -101,11 +101,25 @@ async function sendWithResponse(
     yield { type: "text-delta", text };
   }
 
+  const defaultUsage = {
+    inputTokens: 10,
+    inputTokenDetails: {
+      noCacheTokens: 10,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+    },
+    outputTokens: 5,
+    outputTokenDetails: { textTokens: 5, reasoningTokens: 0 },
+    totalTokens: 15,
+  };
+
   (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
     fullStream: iterate(),
     response: Promise.resolve(
       options.modelId != null ? { modelId: options.modelId } : {},
     ),
+    usage: Promise.resolve(defaultUsage),
+    totalUsage: Promise.resolve(defaultUsage),
   });
 
   const client = new AiSdkClient("key", createConfig());
@@ -380,6 +394,58 @@ describe("AiSdkClient", () => {
       const last = await sendWithResponse({ text: "Hi" });
 
       expect(last[1]!.responseModel).toBeUndefined();
+    });
+
+    it("captures usage on last assistant message", async () => {
+      const last = await sendWithResponse({
+        text: "Hi",
+        modelId: "test-model",
+      });
+
+      expect(last[1]!.usage).toStrictEqual({
+        inputTokens: 10,
+        outputTokens: 5,
+        reasoningTokens: 0,
+        totalTokens: 15,
+      });
+    });
+
+    it("stores totalUsage on client", async () => {
+      async function* iterate(): AsyncIterable<Record<string, unknown>> {
+        yield { type: "text-delta", text: "Hi" };
+      }
+
+      const totalUsage = {
+        inputTokens: 100,
+        inputTokenDetails: {
+          noCacheTokens: 100,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+        },
+        outputTokens: 50,
+        outputTokenDetails: { textTokens: 40, reasoningTokens: 10 },
+        totalTokens: 150,
+      };
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        fullStream: iterate(),
+        response: Promise.resolve({ modelId: "m" }),
+        usage: Promise.resolve(totalUsage),
+        totalUsage: Promise.resolve(totalUsage),
+      });
+
+      const client = new AiSdkClient("key", createConfig());
+
+      for await (const _ of client.sendMessage("Hello")) {
+        // consume stream
+      }
+
+      expect(client.totalUsage).toStrictEqual({
+        inputTokens: 100,
+        outputTokens: 50,
+        reasoningTokens: 10,
+        totalTokens: 150,
+      });
     });
 
     it("ignores unrecognized stream part types", async () => {

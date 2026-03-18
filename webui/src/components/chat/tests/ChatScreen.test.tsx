@@ -310,6 +310,7 @@ describe("ChatScreen", () => {
                 temperature: null,
                 showThoughts: null,
                 smallModelMode: null,
+                totalUsage: null,
               },
             ],
             activeConversationId: "conv-1",

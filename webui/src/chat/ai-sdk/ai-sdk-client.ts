@@ -14,7 +14,12 @@ import {
 } from "ai";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
-import { type AiSdkClientConfig, type AiSdkMessage } from "./ai-sdk-types";
+import {
+  type AiSdkClientConfig,
+  type AiSdkMessage,
+  type TokenUsage,
+  toTokenUsage,
+} from "./ai-sdk-types";
 import { createAiSdkMcpTools } from "./mcp-tools";
 
 const MAX_TOOL_STEPS = 10;
@@ -25,6 +30,7 @@ const MAX_TOOL_STEPS = 10;
  */
 export class AiSdkClient {
   chatHistory: AiSdkMessage[];
+  totalUsage: TokenUsage | null = null;
   private tools: ToolSet = {};
   private config: AiSdkClientConfig;
 
@@ -92,8 +98,8 @@ export class AiSdkClient {
   }
 
   /**
-   * Capture response metadata (model ID) and attach to all assistant messages
-   * created during the current turn.
+   * Capture response metadata (model ID, token usage) and attach to assistant
+   * messages created during the current turn.
    * @param result - The streamText result
    * @param historyLengthBefore - Chat history length before streaming started
    * @yields Updated chat history if metadata was captured
@@ -103,16 +109,34 @@ export class AiSdkClient {
     historyLengthBefore: number,
   ): AsyncGenerator<AiSdkMessage[]> {
     try {
-      const response = await result.response;
+      const [response, usage, totalUsage] = await Promise.all([
+        result.response,
+        result.usage,
+        result.totalUsage,
+      ]);
+
+      // Log raw usage data to understand what each provider returns
+      // console.log("[token usage]", { usage, totalUsage });
+      this.totalUsage = toTokenUsage(totalUsage);
+
+      const lastAssistantIdx = findLastAssistantIndex(
+        this.chatHistory,
+        historyLengthBefore,
+      );
 
       if (response.modelId) {
         for (let i = historyLengthBefore; i < this.chatHistory.length; i++) {
-          const msg = this.chatHistory[i];
+          const msg = this.chatHistory[i] as AiSdkMessage;
 
-          if (msg?.role === "assistant") {
+          if (msg.role === "assistant") {
             msg.responseModel = response.modelId;
           }
         }
+      }
+
+      if (lastAssistantIdx >= 0) {
+        (this.chatHistory[lastAssistantIdx] as AiSdkMessage).usage =
+          toTokenUsage(usage);
       }
     } catch {
       // Stream may have been aborted — response metadata not available
@@ -331,6 +355,24 @@ function buildAssistantContent(
   }
 
   return parts;
+}
+
+/**
+ * Find the index of the last assistant message in the chat history,
+ * starting from a given position.
+ * @param history - Chat history to search
+ * @param fromIndex - Start searching from this index
+ * @returns Index of last assistant message, or -1 if none found
+ */
+function findLastAssistantIndex(
+  history: AiSdkMessage[],
+  fromIndex: number,
+): number {
+  for (let i = history.length - 1; i >= fromIndex; i--) {
+    if ((history[i] as AiSdkMessage).role === "assistant") return i;
+  }
+
+  return -1;
 }
 
 /**

@@ -36,6 +36,7 @@ function createRecord(
     temperature: null,
     showThoughts: null,
     smallModelMode: null,
+    totalUsage: null,
     messages: [{ role: "user", content: "hello" }],
     ...overrides,
   };
@@ -123,6 +124,7 @@ describe("conversation-db", () => {
       temperature: null,
       showThoughts: null,
       smallModelMode: null,
+      totalUsage: null,
     });
     expect(
       (list[0] as unknown as Record<string, unknown>).messages,

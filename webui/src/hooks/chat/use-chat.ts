@@ -81,6 +81,11 @@ export function useChat<
     [],
   );
 
+  const getTotalUsage = useCallback(
+    () => clientRef.current?.totalUsage ?? null,
+    [],
+  );
+
   const restoreChatHistory = useCallback(
     (chatHistory: unknown[], lockedSettings?: ConversationLockedSettings) => {
       clientRef.current = null;
@@ -370,6 +375,7 @@ export function useChat<
     clearConversation,
     stopResponse,
     getChatHistory,
+    getTotalUsage,
     restoreChatHistory,
   };
 }
