@@ -118,8 +118,8 @@ async function sendWithResponse(
     response: Promise.resolve(
       options.modelId != null ? { modelId: options.modelId } : {},
     ),
-    usage: Promise.resolve(defaultUsage),
     totalUsage: Promise.resolve(defaultUsage),
+    steps: Promise.resolve([{ stepNumber: 0, usage: defaultUsage }]),
   });
 
   const client = new AiSdkClient("key", createConfig());
@@ -430,8 +430,8 @@ describe("AiSdkClient", () => {
       (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
         fullStream: iterate(),
         response: Promise.resolve({ modelId: "m" }),
-        usage: Promise.resolve(totalUsage),
         totalUsage: Promise.resolve(totalUsage),
+        steps: Promise.resolve([{ stepNumber: 0, usage: totalUsage }]),
       });
 
       const client = new AiSdkClient("key", createConfig());

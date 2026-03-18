@@ -109,34 +109,33 @@ export class AiSdkClient {
     historyLengthBefore: number,
   ): AsyncGenerator<AiSdkMessage[]> {
     try {
-      const [response, usage, totalUsage] = await Promise.all([
+      const [response, totalUsage, steps] = await Promise.all([
         result.response,
-        result.usage,
         result.totalUsage,
+        result.steps,
       ]);
 
-      // Log raw usage data to understand what each provider returns
-      // console.log("[token usage]", { usage, totalUsage });
       this.totalUsage = toTokenUsage(totalUsage);
 
-      const lastAssistantIdx = findLastAssistantIndex(
-        this.chatHistory,
-        historyLengthBefore,
-      );
+      // Zip steps with assistant messages from this turn (1:1 ordering)
+      let stepIdx = 0;
 
-      if (response.modelId) {
-        for (let i = historyLengthBefore; i < this.chatHistory.length; i++) {
-          const msg = this.chatHistory[i] as AiSdkMessage;
+      for (let i = historyLengthBefore; i < this.chatHistory.length; i++) {
+        const msg = this.chatHistory[i] as AiSdkMessage;
 
-          if (msg.role === "assistant") {
+        if (msg.role === "assistant") {
+          if (response.modelId) {
             msg.responseModel = response.modelId;
           }
-        }
-      }
 
-      if (lastAssistantIdx >= 0) {
-        (this.chatHistory[lastAssistantIdx] as AiSdkMessage).usage =
-          toTokenUsage(usage);
+          const step = steps[stepIdx];
+
+          if (step) {
+            msg.usage = toTokenUsage(step.usage);
+          }
+
+          stepIdx++;
+        }
       }
     } catch {
       // Stream may have been aborted — response metadata not available
@@ -355,24 +354,6 @@ function buildAssistantContent(
   }
 
   return parts;
-}
-
-/**
- * Find the index of the last assistant message in the chat history,
- * starting from a given position.
- * @param history - Chat history to search
- * @param fromIndex - Start searching from this index
- * @returns Index of last assistant message, or -1 if none found
- */
-function findLastAssistantIndex(
-  history: AiSdkMessage[],
-  fromIndex: number,
-): number {
-  for (let i = history.length - 1; i >= fromIndex; i--) {
-    if ((history[i] as AiSdkMessage).role === "assistant") return i;
-  }
-
-  return -1;
 }
 
 /**
