@@ -90,6 +90,7 @@ export function buildLockedSettings(
  * @param existing - Previously saved record (if updating)
  * @param chatHistory - Current chat messages
  * @param totalUsage - Cumulative token usage for the conversation
+ * @param updatedAt - Explicit timestamp for updatedAt (omit to preserve existing)
  * @returns Record ready for saveConversation
  */
 export function buildSaveRecord(
@@ -97,6 +98,7 @@ export function buildSaveRecord(
   existing: ConversationRecord | undefined,
   chatHistory: unknown[],
   totalUsage?: TokenUsage | null,
+  updatedAt?: number,
 ): ConversationRecord {
   const now = Date.now();
   const existingTitle = existing?.title ?? refs.title ?? null;
@@ -106,7 +108,7 @@ export function buildSaveRecord(
     id: refs.id,
     title,
     createdAt: existing?.createdAt ?? refs.createdAt ?? now,
-    updatedAt: now,
+    updatedAt: updatedAt ?? existing?.updatedAt ?? now,
     bookmarked: existing?.bookmarked ?? refs.bookmarked,
     provider: refs.provider,
     model: refs.model,

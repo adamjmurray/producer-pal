@@ -251,6 +251,19 @@ describe("useChat", () => {
       expect(mockAdapter.formatMessages).toHaveBeenCalled();
     });
 
+    it("calls autoSaveRef on first stream yield", async () => {
+      const autoSaveRef = { current: vi.fn() };
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, autoSaveRef }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      expect(autoSaveRef.current).toHaveBeenCalledTimes(1);
+    });
+
     it("sets isAssistantResponding to false after completion", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 

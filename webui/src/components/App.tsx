@@ -111,6 +111,8 @@ export function App() {
     useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
+  const autoSaveRef = useRef<(() => void) | null>(null);
+
   const aiSdkChat = useChat({
     provider: settings.provider,
     apiKey:
@@ -135,6 +137,7 @@ export function App() {
           ? settings.apiKey || LOCAL_PROVIDER_API_KEY
           : settings.apiKey,
     },
+    autoSaveRef,
   });
 
   const { chat, wrappedHandleSend, wrappedClearConversation } =
@@ -161,6 +164,12 @@ export function App() {
     activeSmallModelMode: chat.activeSmallModelMode,
   });
 
+  // Auto-save on user message sent (called from useChat on first stream yield)
+  useEffect(() => {
+    autoSaveRef.current = () =>
+      void conversationManager.saveCurrentConversation(Date.now());
+  }, [conversationManager]);
+
   const transfer = useConversationTransfer(conversationManager.refreshList);
   const {
     handleNew: handleNewConversation,
@@ -170,23 +179,13 @@ export function App() {
     handleToggleBookmark,
   } = useConversationHandlers(conversationManager);
 
-  const prevMessageCountRef = useRef(0); // Auto-save on message change
-
-  useEffect(() => {
-    if (chat.messages.length > prevMessageCountRef.current) {
-      void conversationManager.saveCurrentConversation();
-    }
-
-    prevMessageCountRef.current = chat.messages.length;
-  }, [chat.messages.length, conversationManager]);
-
-  // Auto-save when streaming completes to capture tool results and follow-up
-  // text that were merged into existing UIMessages without changing length
+  // Auto-save when streaming completes — covers tool results and follow-up
+  // text merged into existing UIMessages
   const prevRespondingRef = useRef(false);
 
   useEffect(() => {
     if (!chat.isAssistantResponding && prevRespondingRef.current) {
-      void conversationManager.saveCurrentConversation();
+      void conversationManager.saveCurrentConversation(Date.now());
     }
 
     prevRespondingRef.current = chat.isAssistantResponding;

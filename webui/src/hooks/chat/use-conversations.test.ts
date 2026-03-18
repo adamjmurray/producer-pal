@@ -115,6 +115,55 @@ describe("useConversations", () => {
     expect(getHash()).toBe(result.current.activeConversationId);
   });
 
+  it("uses explicit updatedAt timestamp when provided", async () => {
+    const { state, result } = await setupHook();
+    const explicitTimestamp = 1700000000000;
+
+    state.chatHistory = [{ role: "user", content: "hello" }];
+    await act(() => result.current.saveCurrentConversation(explicitTimestamp));
+
+    const loaded = await loadConversation(result.current.activeConversationId!);
+
+    expect(loaded?.updatedAt).toBe(explicitTimestamp);
+  });
+
+  it("preserves existing updatedAt when no timestamp provided", async () => {
+    const existingId = crypto.randomUUID();
+
+    await saveConversation({
+      id: existingId,
+      title: null,
+      createdAt: 1000,
+      updatedAt: 2000,
+      bookmarked: false,
+      provider: "gemini",
+      model: null,
+      modelLabel: null,
+      thinking: null,
+      temperature: null,
+      showThoughts: null,
+      smallModelMode: null,
+      totalUsage: null,
+      messages: [{ role: "user", content: "original" }],
+    });
+
+    const { props, state } = createProps();
+
+    const { result } = renderHook(() => useConversations(props));
+
+    await waitForEffects();
+
+    // Switch to the existing conversation, then save without timestamp
+    await act(() => result.current.switchConversation(existingId));
+
+    state.chatHistory = [{ role: "user", content: "original" }];
+    await act(() => result.current.saveCurrentConversation());
+
+    const loaded = await loadConversation(existingId);
+
+    expect(loaded?.updatedAt).toBe(2000);
+  });
+
   it("persists active model and provider in saved conversation", async () => {
     const { props, state } = createProps();
 
@@ -390,31 +439,6 @@ describe("useConversations", () => {
     const conv = result.current.conversations.find((c) => c.id === id);
 
     expect(conv?.title).toBe("My Title");
-  });
-
-  it("fires beforeunload handler to save conversation", async () => {
-    const { props, state } = createProps();
-
-    renderHook(() => useConversations(props));
-
-    await waitForEffects();
-
-    state.chatHistory = [{ role: "user", content: "save on unload" }];
-
-    // Trigger beforeunload event
-    window.dispatchEvent(new Event("beforeunload"));
-
-    // Give the async save a tick to complete
-    await waitForEffects();
-
-    // Verify a conversation was saved
-    const db = await getConversationDb();
-    const all = await db.getAll("conversations");
-
-    expect(all).toHaveLength(1);
-    expect(all[0]?.messages).toStrictEqual([
-      { role: "user", content: "save on unload" },
-    ]);
   });
 
   describe("hashchange navigation", () => {

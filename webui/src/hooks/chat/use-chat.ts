@@ -48,6 +48,7 @@ export function useChat<
   checkMcpConnection,
   adapter,
   extraParams,
+  autoSaveRef,
 }: UseChatProps<TClient, TMessage, TConfig>): UseChatReturn {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
@@ -159,8 +160,14 @@ export function useChat<
       retryAbortRef.current = new AbortController();
 
       const onMessageUpdate = (msgs: UIMessage[]) => {
+        const isFirst = !contentState.hasReceived;
+
         contentState.hasReceived = true;
         setMessages(msgs);
+
+        if (isFirst) {
+          autoSaveRef?.current?.();
+        }
       };
 
       while (shouldRetry(attempt)) {

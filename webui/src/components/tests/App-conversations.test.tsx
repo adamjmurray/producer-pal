@@ -174,33 +174,6 @@ describe("App conversation management", () => {
     expect(mockToggleBookmark).toHaveBeenCalledWith("conv-1");
   });
 
-  it("auto-saves conversation when messages are added", () => {
-    const mockSave = vi.fn();
-
-    mockConversations({ saveCurrentConversation: mockSave });
-
-    // Initial render with no messages — save should not be called yet
-    const { rerender } = render(<App />);
-
-    expect(mockSave).not.toHaveBeenCalled();
-
-    // Simulate a new message arriving by updating the chat hook
-    (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
-      ...mockChatHook,
-      messages: [
-        {
-          id: "1",
-          role: "user",
-          content: "hello",
-          parts: [{ type: "text", content: "hello" }],
-        },
-      ],
-    });
-    rerender(<App />);
-
-    expect(mockSave).toHaveBeenCalled();
-  });
-
   it("auto-saves when streaming completes (isAssistantResponding false)", () => {
     const mockSave = vi.fn();
 
@@ -233,7 +206,7 @@ describe("App conversation management", () => {
     });
     rerender(<App />);
 
-    expect(mockSave).toHaveBeenCalled();
+    expect(mockSave).toHaveBeenCalledWith(expect.any(Number));
   });
 
   it("does not auto-save when streaming starts", () => {

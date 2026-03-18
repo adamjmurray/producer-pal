@@ -50,7 +50,7 @@ export interface UseConversationsReturn {
   activeConversationId: string | null;
   limitNotification: TransferNotificationData | null;
   dismissLimitNotification: () => void;
-  saveCurrentConversation: () => Promise<void>;
+  saveCurrentConversation: (updatedAt?: number) => Promise<void>;
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => Promise<void>;
   deleteConversation: (id: string) => Promise<void>;
@@ -203,32 +203,36 @@ export function useConversations({
     void init();
   }, [refreshList, restoreChatHistory, setActiveId, clearActiveId]);
 
-  const saveCurrentConversation = useCallback(async () => {
-    const chatHistory = getChatHistory();
+  const saveCurrentConversation = useCallback(
+    async (updatedAt?: number) => {
+      const chatHistory = getChatHistory();
 
-    if (chatHistory.length === 0) return;
+      if (chatHistory.length === 0) return;
 
-    const isNew = activeIdRef.current == null;
-    const id = activeIdRef.current ?? crypto.randomUUID();
+      const isNew = activeIdRef.current == null;
+      const id = activeIdRef.current ?? crypto.randomUUID();
 
-    // Set active ID synchronously before any async operations
-    setActiveId(id);
+      // Set active ID synchronously before any async operations
+      setActiveId(id);
 
-    const existing = isNew ? undefined : await loadConversation(id);
-    const record = buildSaveRecord(
-      getActiveRefs(id),
-      existing,
-      chatHistory,
-      getTotalUsage(),
-    );
+      const existing = isNew ? undefined : await loadConversation(id);
+      const record = buildSaveRecord(
+        getActiveRefs(id),
+        existing,
+        chatHistory,
+        getTotalUsage(),
+        updatedAt,
+      );
 
-    syncActiveMeta(record);
+      syncActiveMeta(record);
 
-    const result = await saveConversation(record);
+      const result = await saveConversation(record);
 
-    limit.showLimitNotification(result);
-    await refreshList();
-  }, [getChatHistory, getTotalUsage, refreshList, setActiveId, limit]);
+      limit.showLimitNotification(result);
+      await refreshList();
+    },
+    [getChatHistory, getTotalUsage, refreshList, setActiveId, limit],
+  );
 
   const switchConversation = useCallback(
     async (id: string) => {
@@ -344,31 +348,6 @@ export function useConversations({
 
     return () => window.removeEventListener("hashchange", handler);
   }, [switchConversation, startNewConversation]);
-
-  // Save on beforeunload (best-effort)
-  useEffect(() => {
-    const handler = () => {
-      const chatHistory = getChatHistory();
-
-      if (chatHistory.length === 0) return;
-
-      const id = activeIdRef.current ?? crypto.randomUUID();
-
-      // Best-effort save — IndexedDB writes are async but usually complete
-      void saveConversation(
-        buildSaveRecord(
-          getActiveRefs(id),
-          undefined,
-          chatHistory,
-          getTotalUsage(),
-        ),
-      );
-    };
-
-    window.addEventListener("beforeunload", handler);
-
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [getChatHistory, getTotalUsage]);
 
   return {
     conversations,
