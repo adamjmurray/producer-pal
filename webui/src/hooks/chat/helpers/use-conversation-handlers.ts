@@ -13,7 +13,7 @@ import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations
  */
 export function useConversationHandlers(manager: UseConversationsReturn) {
   const handleNew = useCallback(() => {
-    manager.startNewConversation().catch(console.error);
+    manager.startNewConversation();
   }, [manager]);
   const handleSelect = useCallback(
     (id: string) => {

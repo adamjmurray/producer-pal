@@ -257,9 +257,7 @@ describe("useConversations", () => {
     // Start new
     state.chatHistory = [];
 
-    await act(async () => {
-      await result.current.startNewConversation();
-    });
+    await act(() => result.current.startNewConversation());
 
     expect(result.current.activeConversationId).toBeNull();
     expect(props.clearConversation).toHaveBeenCalled();
@@ -343,25 +341,16 @@ describe("useConversations", () => {
     );
   });
 
-  it("auto-saves current conversation when starting new with existing history", async () => {
+  it("clears active conversation when starting new", async () => {
     const { state, result } = await setupHook();
 
-    // Create a conversation with history
     await saveWithMessage(state, result);
     expect(result.current.conversations).toHaveLength(1);
+    expect(result.current.activeConversationId).not.toBeNull();
 
-    // Start new — should auto-save
-    state.chatHistory = [
-      { role: "user", content: "hello" },
-      { role: "assistant", content: "hi" },
-    ];
-
-    await act(async () => {
-      await result.current.startNewConversation();
-    });
+    await act(() => result.current.startNewConversation());
 
     expect(result.current.activeConversationId).toBeNull();
-    // The original conversation should still be saved
     expect(result.current.conversations).toHaveLength(1);
   });
 

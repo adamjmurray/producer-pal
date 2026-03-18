@@ -52,7 +52,7 @@ export interface UseConversationsReturn {
   dismissLimitNotification: () => void;
   saveCurrentConversation: (updatedAt?: number) => Promise<void>;
   switchConversation: (id: string) => Promise<void>;
-  startNewConversation: () => Promise<void>;
+  startNewConversation: () => void;
   deleteConversation: (id: string) => Promise<void>;
   renameConversation: (id: string, title: string | null) => Promise<void>;
   toggleBookmark: (id: string) => Promise<void>;
@@ -236,11 +236,6 @@ export function useConversations({
 
   const switchConversation = useCallback(
     async (id: string) => {
-      // Save current before switching
-      if (getChatHistory().length > 0) {
-        await saveCurrentConversation();
-      }
-
       const record = await loadConversation(id);
 
       if (!record) {
@@ -254,29 +249,13 @@ export function useConversations({
       setActiveId(id);
       syncActiveMeta(record);
     },
-    [
-      getChatHistory,
-      saveCurrentConversation,
-      clearConversation,
-      clearActiveId,
-      restoreChatHistory,
-      setActiveId,
-    ],
+    [clearConversation, clearActiveId, restoreChatHistory, setActiveId],
   );
 
-  const startNewConversation = useCallback(async () => {
-    if (getChatHistory().length > 0) {
-      await saveCurrentConversation();
-    }
-
+  const startNewConversation = useCallback(() => {
     clearConversation();
     clearActiveId();
-  }, [
-    getChatHistory,
-    saveCurrentConversation,
-    clearConversation,
-    clearActiveId,
-  ]);
+  }, [clearConversation, clearActiveId]);
 
   const deleteConversation = useCallback(
     async (id: string) => {

@@ -219,7 +219,7 @@ export function useChat<
         }
       }
     },
-    [adapter],
+    [adapter, autoSaveRef],
   );
 
   const runWithChat = useCallback(
