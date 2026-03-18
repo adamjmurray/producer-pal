@@ -200,4 +200,58 @@ describe("App conversation management", () => {
 
     expect(mockSave).toHaveBeenCalled();
   });
+
+  it("auto-saves when streaming completes (isAssistantResponding false)", () => {
+    const mockSave = vi.fn();
+
+    mockConversations({ saveCurrentConversation: mockSave });
+
+    const oneMessage = [
+      {
+        id: "1",
+        role: "user",
+        content: "hello",
+        parts: [{ type: "text", content: "hello" }],
+      },
+    ];
+
+    // Start with streaming active
+    (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
+      ...mockChatHook,
+      messages: oneMessage,
+      isAssistantResponding: true,
+    });
+    const { rerender } = render(<App />);
+
+    mockSave.mockClear();
+
+    // Streaming ends — same message count but content updated (merged tool results)
+    (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
+      ...mockChatHook,
+      messages: oneMessage,
+      isAssistantResponding: false,
+    });
+    rerender(<App />);
+
+    expect(mockSave).toHaveBeenCalled();
+  });
+
+  it("does not auto-save when streaming starts", () => {
+    const mockSave = vi.fn();
+
+    mockConversations({ saveCurrentConversation: mockSave });
+
+    const { rerender } = render(<App />);
+
+    mockSave.mockClear();
+
+    // Streaming starts — should not trigger a save
+    (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
+      ...mockChatHook,
+      isAssistantResponding: true,
+    });
+    rerender(<App />);
+
+    expect(mockSave).not.toHaveBeenCalled();
+  });
 });

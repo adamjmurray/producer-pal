@@ -180,6 +180,18 @@ export function App() {
     prevMessageCountRef.current = chat.messages.length;
   }, [chat.messages.length, conversationManager]);
 
+  // Auto-save when streaming completes to capture tool results and follow-up
+  // text that were merged into existing UIMessages without changing length
+  const prevRespondingRef = useRef(false);
+
+  useEffect(() => {
+    if (!chat.isAssistantResponding && prevRespondingRef.current) {
+      void conversationManager.saveCurrentConversation();
+    }
+
+    prevRespondingRef.current = chat.isAssistantResponding;
+  }, [chat.isAssistantResponding, conversationManager]);
+
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
     ? mcpTools.filter((t) => settings.enabledTools[t.id] !== false).length
