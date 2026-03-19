@@ -267,6 +267,7 @@ jobs:
       - name: Test documentation site with Playwright
         id: summary
         run: |
+          set -o pipefail
           npm run docs:test 2>&1 | tee playwright-output.txt
 
           # Extract result summary for job summary
