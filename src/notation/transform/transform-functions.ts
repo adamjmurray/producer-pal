@@ -92,7 +92,8 @@ export function evaluateFunction(
     name === "floor" ||
     name === "ceil" ||
     name === "abs" ||
-    name === "clamp"
+    name === "clamp" ||
+    name === "wrap"
   ) {
     return evaluateMathFunction(
       name,

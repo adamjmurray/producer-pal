@@ -122,6 +122,34 @@ describe("Transform Evaluator - Math Functions", () => {
     });
   });
 
+  describe("wrap", () => {
+    it.each([
+      ["wrap(64, 48, 72)", 64, "within range"],
+      ["wrap(48, 48, 72)", 48, "at lower bound"],
+      ["wrap(72, 48, 72)", 72, "at upper bound"],
+      ["wrap(73, 48, 72)", 48, "one above max wraps to min"],
+      ["wrap(47, 48, 72)", 72, "one below min wraps to max"],
+      ["wrap(98, 48, 72)", 48 + ((98 - 48) % 25), "multiple wraps forward"],
+      ["wrap(60, 72, 48)", 60, "swapped bounds"],
+      ["wrap(60, 60, 60)", 60, "equal bounds"],
+    ])("%s = %d (%s)", (expr, expected) => {
+      const result = evaluateTransform(`velocity = ${expr}`, CTX);
+
+      expect(result.velocity!.value).toBe(expected);
+    });
+
+    it("wraps pitch with variable", () => {
+      const result = evaluateTransform(
+        "pitch = wrap(note.pitch + 5, 48, 72)",
+        CTX,
+        { pitch: 70 },
+      );
+
+      // 70 + 5 = 75, range = 25, (75 - 48) % 25 = 2, 2 + 48 = 50
+      expect(result.pitch!.value).toBe(50);
+    });
+  });
+
   describe("pow", () => {
     it.each([
       ["pow(2, 3)", 8, "basic power"],
