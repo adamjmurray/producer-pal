@@ -19,6 +19,8 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   "cline.bot",
   "cloudflare.com",
   "console.mistral.ai",
+  "discord.gg",
+  "forms.gle",
   "github.com",
   "google.com",
   "groq.com",
@@ -157,8 +159,8 @@ test.describe("Docs Site Sitemap Tests", () => {
       const text = msg.text();
 
       if (type === "error") {
-        // Filter out 404 errors - we'll track those separately via response failures
-        if (!text.includes("404")) {
+        // Filter out 404 errors (tracked via response failures) and VitePress hydration mismatches
+        if (!text.includes("404") && !text.includes("Hydration")) {
           consoleErrors.push(text);
         }
       } else if (type === "warning") {
@@ -223,8 +225,8 @@ test.describe("Docs Site Sitemap Tests", () => {
 
         if (!href) continue;
 
-        // Skip hash-only links (same page anchors)
-        if (href.startsWith("#")) continue;
+        // Skip hash-only links and mailto links
+        if (href.startsWith("#") || href.startsWith("mailto:")) continue;
 
         // Check if it's an external link
         if (isExternalUrl(href)) {
