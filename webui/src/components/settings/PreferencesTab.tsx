@@ -10,6 +10,8 @@ interface PreferencesTabProps {
   setShowTimestamps: (show: boolean) => void;
   showHelpLinks: boolean;
   setShowHelpLinks: (show: boolean) => void;
+  showTokenUsage: boolean;
+  setShowTokenUsage: (show: boolean) => void;
 }
 
 /**
@@ -21,6 +23,8 @@ interface PreferencesTabProps {
  * @param {Function} props.setShowTimestamps - Function to toggle timestamps
  * @param {boolean} props.showHelpLinks - Whether to show help link buttons
  * @param {Function} props.setShowHelpLinks - Function to toggle help links
+ * @param {boolean} props.showTokenUsage - Whether to show per-message token usage
+ * @param {Function} props.setShowTokenUsage - Function to toggle token usage
  * @returns {JSX.Element} Preferences tab component
  */
 export function PreferencesTab({
@@ -30,6 +34,8 @@ export function PreferencesTab({
   setShowTimestamps,
   showHelpLinks,
   setShowHelpLinks,
+  showTokenUsage,
+  setShowTokenUsage,
 }: PreferencesTabProps) {
   return (
     <div className="space-y-4">
@@ -69,6 +75,17 @@ export function PreferencesTab({
           }
         />
         Show help links
+      </label>
+
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input
+          type="checkbox"
+          checked={showTokenUsage}
+          onChange={(e) =>
+            setShowTokenUsage((e.target as HTMLInputElement).checked)
+          }
+        />
+        Show message token usage
       </label>
     </div>
   );

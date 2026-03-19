@@ -152,6 +152,8 @@ function SettingsTabContent(props: SettingsScreenProps) {
           setShowTimestamps={display.setShowTimestamps}
           showHelpLinks={display.showHelpLinks}
           setShowHelpLinks={display.setShowHelpLinks}
+          showTokenUsage={display.showTokenUsage}
+          setShowTokenUsage={display.setShowTokenUsage}
         />
       )}
     </div>

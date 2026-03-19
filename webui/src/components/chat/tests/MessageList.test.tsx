@@ -68,6 +68,7 @@ function renderMessageList(
   handleRetry = vi.fn(),
   showTimestamps = true,
   handleEdit = vi.fn(),
+  showTokenUsage = false,
 ): RenderResult & {
   handleRetry: typeof handleRetry;
   handleEdit: typeof handleEdit;
@@ -79,6 +80,7 @@ function renderMessageList(
       handleRetry={handleRetry}
       handleEdit={handleEdit}
       showTimestamps={showTimestamps}
+      showTokenUsage={showTokenUsage}
     />,
   );
 
@@ -384,6 +386,7 @@ describe("MessageList", () => {
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
           showTimestamps={true}
+          showTokenUsage={false}
         />,
       );
 
@@ -429,6 +432,7 @@ describe("MessageList", () => {
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
           showTimestamps={true}
+          showTokenUsage={false}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -449,6 +453,7 @@ describe("MessageList", () => {
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
           showTimestamps={true}
+          showTokenUsage={false}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -468,6 +473,7 @@ describe("MessageList", () => {
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
           showTimestamps={true}
+          showTokenUsage={false}
         />,
       );
 
@@ -496,6 +502,7 @@ describe("MessageList", () => {
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
           showTimestamps={true}
+          showTokenUsage={false}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -524,11 +531,49 @@ describe("MessageList", () => {
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
           showTimestamps={false}
+          showTokenUsage={false}
           requestedModel="gpt-4o"
         />,
       );
 
       expect(screen.getByText(/responded as gpt-4o-mini/)).toBeDefined();
+    });
+  });
+
+  describe("TokenUsageLabel", () => {
+    it("shows usage when enabled and message has usage data", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          usage: { inputTokens: 9496, outputTokens: 178 },
+        },
+      ];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
+
+      expect(screen.getByText(/9.5K/)).toBeDefined();
+      expect(screen.getByText(/178/)).toBeDefined();
+    });
+
+    it("hides usage when disabled even if message has usage data", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          usage: { inputTokens: 9496, outputTokens: 178 },
+        },
+      ];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), false);
+
+      expect(screen.queryByText(/9.5K/)).toBeNull();
+    });
+
+    it("shows nothing when enabled but message has no usage", () => {
+      const messages = [createModelMessage("Hi")];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
+
+      expect(screen.queryByText(/tokens/)).toBeNull();
     });
   });
 });

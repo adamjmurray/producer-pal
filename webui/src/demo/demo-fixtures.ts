@@ -66,6 +66,10 @@ function userMsg(text: string): UIMessage {
  * @param config.tools - Optional tool call(s) with results
  * @param config.error - Optional connection-level error
  * @param config.textAfter - Optional text after tool calls
+ * @param config.responseModel - Optional model ID from API response
+ * @param config.usage - Optional token usage data
+ * @param config.usage.inputTokens - Input token count
+ * @param config.usage.outputTokens - Output token count
  * @returns UIMessage for model
  */
 function modelMsg(config: {
@@ -79,6 +83,8 @@ function modelMsg(config: {
   }>;
   error?: string;
   textAfter?: string;
+  responseModel?: string;
+  usage?: { inputTokens: number; outputTokens: number };
 }): UIMessage {
   const parts: UIMessage["parts"] = [];
 
@@ -115,6 +121,8 @@ function modelMsg(config: {
     parts,
     rawHistoryIndex: idx++,
     timestamp: Date.now() - 60000 * (20 - idx),
+    responseModel: config.responseModel,
+    usage: config.usage,
   };
 }
 
@@ -191,6 +199,7 @@ export const demoMessages: UIMessage[] = [
         result: toolResult(CONNECT_RESULT),
       },
     ],
+    usage: { inputTokens: 6078, outputTokens: 33 },
   }),
 
   // --- Scenario 2: Success (read track — larger JSON) ---
@@ -204,6 +213,8 @@ export const demoMessages: UIMessage[] = [
         result: toolResult(READ_TRACK_RESULT),
       },
     ],
+    responseModel: "gemini-2.5-flash-preview-05-20",
+    usage: { inputTokens: 9496, outputTokens: 178 },
   }),
 
   // --- Scenario 3: Hard error (isError: true) ---
@@ -373,6 +384,7 @@ export const demoMessages: UIMessage[] = [
     ],
     textAfter:
       "The **Beat** clip is a 1-bar looping MIDI pattern with kick on beats 1 and 3, and snare on beats 2 and 4. The **Bass** track has an Instrument Rack with 1 session clip.",
+    usage: { inputTokens: 12632, outputTokens: 845 },
   }),
 
   // --- Scenario 12: Connection-level error (UIErrorPart) ---

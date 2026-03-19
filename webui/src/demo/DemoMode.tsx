@@ -48,6 +48,8 @@ export function DemoMode() {
             handleRetry={NO_OP}
             handleEdit={NO_OP}
             showTimestamps={true}
+            showTokenUsage={true}
+            requestedModel="gemini-3-flash-preview"
           />
         </div>
       </div>

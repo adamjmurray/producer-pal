@@ -10,6 +10,7 @@ import {
 } from "#webui/components/chat/controls/header/HeaderIcons";
 import { getModelName } from "#webui/lib/config";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
+import { compactNumber } from "#webui/lib/utils/compact-number";
 import {
   formatTimestampDate,
   formatTimestampTime,
@@ -212,20 +213,6 @@ function BookmarkStar({
  * @param storedLabel - Label persisted at conversation save time
  * @returns Human-readable model name
  */
-const compactFormatter = new Intl.NumberFormat(undefined, {
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
-
-/**
- * Format a number in compact locale-aware notation (e.g. 17,123 → "17.1K").
- * @param n - Number to format
- * @returns Compact string
- */
-function compactNumber(n: number): string {
-  return compactFormatter.format(n);
-}
-
 function resolveModelLabel(
   modelId: string,
   storedLabel: string | null,

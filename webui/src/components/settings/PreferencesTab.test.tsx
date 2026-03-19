@@ -20,6 +20,8 @@ describe("PreferencesTab", () => {
     setShowTimestamps: vi.fn(),
     showHelpLinks: true,
     setShowHelpLinks: vi.fn(),
+    showTokenUsage: false,
+    setShowTokenUsage: vi.fn(),
   };
 
   it("renders theme label", () => {
@@ -102,5 +104,19 @@ describe("PreferencesTab", () => {
 
     fireEvent.click(checkboxes[1]!);
     expect(setShowHelpLinks).toHaveBeenCalled();
+  });
+
+  it("calls setShowTokenUsage when checkbox toggled", () => {
+    const setShowTokenUsage = vi.fn();
+    const { container } = render(
+      <PreferencesTab
+        {...defaultProps}
+        setShowTokenUsage={setShowTokenUsage}
+      />,
+    );
+    const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+
+    fireEvent.click(checkboxes[2]!);
+    expect(setShowTokenUsage).toHaveBeenCalled();
   });
 });

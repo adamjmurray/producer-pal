@@ -52,6 +52,7 @@ describe("ChatScreen", () => {
     onOpenConnectionSettings: vi.fn(),
     onStop: mockOnStop,
     showTimestamps: true,
+    showTokenUsage: false,
     conversationPanel: {
       conversations: [],
       activeConversationId: null,

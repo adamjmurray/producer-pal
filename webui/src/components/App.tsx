@@ -217,6 +217,7 @@ export function App() {
     theme,
     showTimestamps: display.showTimestamps,
     showHelpLinks: display.showHelpLinks,
+    showTokenUsage: display.showTokenUsage,
   };
   const hasUnsavedChanges = useHasUnsavedChanges(
     settings,
@@ -240,6 +241,7 @@ export function App() {
 
       display.setShowTimestamps(orig.showTimestamps);
       display.setShowHelpLinks(orig.showHelpLinks);
+      display.setShowTokenUsage(orig.showTokenUsage);
     });
   }, [closeSettings, settings, setTheme, display]);
 
@@ -289,6 +291,7 @@ export function App() {
           onOpenConnectionSettings={() => openSettings("connection")}
           onStop={chat.stopResponse}
           showTimestamps={display.showTimestamps}
+          showTokenUsage={display.showTokenUsage}
           conversationPanel={{
             conversations: conversationManager.conversations,
             activeConversationId: conversationManager.activeConversationId,

@@ -140,6 +140,8 @@ describe("SettingsScreen", () => {
     setShowTimestamps: vi.fn(),
     showHelpLinks: true,
     setShowHelpLinks: vi.fn(),
+    showTokenUsage: false,
+    setShowTokenUsage: vi.fn(),
   };
 
   const defaultProps = {

@@ -4,7 +4,9 @@
 
 import { Fragment, type VNode } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
+import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
+import { compactNumber } from "#webui/lib/utils/compact-number";
 import {
   formatTimestampDate,
   formatTimestampTime,
@@ -25,6 +27,7 @@ interface MessageListProps {
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
   showTimestamps: boolean;
+  showTokenUsage: boolean;
   requestedModel?: string | null;
 }
 
@@ -45,6 +48,7 @@ export function MessageList({
   handleRetry,
   handleEdit,
   showTimestamps,
+  showTokenUsage,
   requestedModel,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -109,6 +113,7 @@ export function MessageList({
                     parts={message.parts}
                     isResponding={isAssistantResponding}
                   />
+                  {showTokenUsage && <TokenUsageLabel usage={message.usage} />}
                 </>
               )}
               {isUser && isEditing && (
@@ -336,6 +341,23 @@ function ModelMismatchLabel({
   return (
     <div className="text-xs text-zinc-400 dark:text-zinc-500 pt-1 text-right">
       responded as {responseModel}
+    </div>
+  );
+}
+
+/**
+ * Compact token usage display for assistant messages.
+ * @param props - Component props
+ * @param props.usage - Token usage data
+ * @returns Label element or null
+ */
+function TokenUsageLabel({ usage }: { usage?: TokenUsage }) {
+  if (!usage) return null;
+
+  return (
+    <div className="text-xs text-zinc-400 dark:text-zinc-500 pb-1 text-right">
+      {compactNumber(usage.inputTokens ?? 0)} →{" "}
+      {compactNumber(usage.outputTokens ?? 0)} tokens
     </div>
   );
 }
