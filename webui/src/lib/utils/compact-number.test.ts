@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { compactNumber } from "./compact-number";
+import { calcNewContentTokens, compactNumber } from "./compact-number";
 
 describe("compactNumber", () => {
   it("formats small numbers without suffix", () => {
@@ -19,5 +19,23 @@ describe("compactNumber", () => {
 
   it("formats millions with M suffix", () => {
     expect(compactNumber(1500000)).toBe("1.5M");
+  });
+});
+
+describe("calcNewContentTokens", () => {
+  it("returns positive delta for normal case", () => {
+    expect(calcNewContentTokens(9590, 6078, 33)).toBe(3479);
+  });
+
+  it("returns null for first step (no previous)", () => {
+    expect(calcNewContentTokens(6078, undefined, undefined)).toBeNull();
+  });
+
+  it("returns null for negative delta", () => {
+    expect(calcNewContentTokens(9685, 9590, 248)).toBeNull();
+  });
+
+  it("returns null for zero delta", () => {
+    expect(calcNewContentTokens(100, 80, 20)).toBeNull();
   });
 });
