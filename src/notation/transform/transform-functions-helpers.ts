@@ -345,7 +345,7 @@ export function evaluateMinMax(
 }
 
 /**
- * Evaluate math function (round, floor, ceil, abs, clamp, wrap)
+ * Evaluate math function (round, floor, ceil, abs, clamp, wrap, reflect)
  * @param name - Function name
  * @param args - Function arguments
  * @param position - Note position in beats
@@ -366,7 +366,7 @@ export function evaluateMathFunction(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
-  if (name === "clamp" || name === "wrap") {
+  if (name === "clamp" || name === "wrap" || name === "reflect") {
     if (args.length !== 3) {
       throw new Error(
         `Function ${name}() requires exactly 3 arguments: ${name}(value, min, max)`,
@@ -394,12 +394,23 @@ export function evaluateMathFunction(
       );
     }
 
-    // wrap: closed range [lo, hi] with range size hi - lo + 1
     const lo = Math.min(bound1, bound2);
     const hi = Math.max(bound1, bound2);
-    const range = hi - lo + 1;
 
-    return range === 1 ? lo : ((((value - lo) % range) + range) % range) + lo;
+    if (lo === hi) return lo;
+
+    if (name === "wrap") {
+      // wrap: closed range [lo, hi] with range size hi - lo + 1
+      const range = hi - lo + 1;
+
+      return ((((value - lo) % range) + range) % range) + lo;
+    }
+
+    // reflect: ping-pong within [lo, hi]
+    const period = 2 * (hi - lo);
+    const wrapped = (((value - lo) % period) + period) % period;
+
+    return wrapped <= hi - lo ? wrapped + lo : period - wrapped + lo;
   }
 
   if (args.length === 0) {

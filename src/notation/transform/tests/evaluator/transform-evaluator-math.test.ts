@@ -150,6 +150,36 @@ describe("Transform Evaluator - Math Functions", () => {
     });
   });
 
+  describe("reflect", () => {
+    it.each([
+      ["reflect(60, 48, 72)", 60, "within range"],
+      ["reflect(48, 48, 72)", 48, "at lower bound"],
+      ["reflect(72, 48, 72)", 72, "at upper bound"],
+      ["reflect(73, 48, 72)", 71, "one above max reflects back"],
+      ["reflect(47, 48, 72)", 49, "one below min reflects back"],
+      ["reflect(96, 48, 72)", 48, "reflects to lower bound"],
+      ["reflect(97, 48, 72)", 49, "reflects past lower bound"],
+      ["reflect(24, 48, 72)", 72, "reflects to upper bound"],
+      ["reflect(60, 72, 48)", 60, "swapped bounds"],
+      ["reflect(60, 60, 60)", 60, "equal bounds"],
+    ])("%s = %d (%s)", (expr, expected) => {
+      const result = evaluateTransform(`velocity = ${expr}`, CTX);
+
+      expect(result.velocity!.value).toBe(expected);
+    });
+
+    it("reflects pitch with variable", () => {
+      const result = evaluateTransform(
+        "pitch = reflect(note.pitch + 5, 48, 72)",
+        CTX,
+        { pitch: 70 },
+      );
+
+      // 70 + 5 = 75, period = 48, (75 - 48) = 27, 27 > 24, 48 - 27 = 21, 21 + 48 = 69
+      expect(result.pitch!.value).toBe(69);
+    });
+  });
+
   describe("pow", () => {
     it.each([
       ["pow(2, 3)", 8, "basic power"],

@@ -93,7 +93,8 @@ export function evaluateFunction(
     name === "ceil" ||
     name === "abs" ||
     name === "clamp" ||
-    name === "wrap"
+    name === "wrap" ||
+    name === "reflect"
   ) {
     return evaluateMathFunction(
       name,

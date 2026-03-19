@@ -274,6 +274,9 @@ describe("Transform Evaluator Error Handling", () => {
       ["wrap(50)", "wrap with only one argument"],
       ["wrap(50, 0)", "wrap with only two arguments"],
       ["wrap(50, 0, 100, 200)", "wrap with four arguments"],
+      ["reflect(50)", "reflect with only one argument"],
+      ["reflect(50, 0)", "reflect with only two arguments"],
+      ["reflect(50, 0, 100, 200)", "reflect with four arguments"],
     ])("handles %s error", (expr) => {
       expectTransformError(`velocity = ${expr}`);
     });
