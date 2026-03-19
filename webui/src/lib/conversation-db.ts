@@ -104,6 +104,30 @@ export async function deleteConversation(id: string): Promise<void> {
 }
 
 /**
+ * Delete all conversations.
+ */
+export async function deleteAllConversations(): Promise<void> {
+  const db = await getConversationDb();
+
+  await db.clear(STORE_NAME);
+}
+
+/**
+ * Delete all unbookmarked conversations.
+ */
+export async function deleteUnbookmarkedConversations(): Promise<void> {
+  const db = await getConversationDb();
+  const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
+  const tx = db.transaction(STORE_NAME, "readwrite");
+
+  for (const record of all) {
+    if (!record.bookmarked) void tx.store.delete(record.id);
+  }
+
+  await tx.done;
+}
+
+/**
  * Rename a conversation.
  * @param id - Conversation ID
  * @param title - New title (null to clear)

@@ -19,7 +19,9 @@ import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-type
 import {
   type ConversationRecord,
   type ConversationSummary,
+  deleteAllConversations as dbDeleteAllConversations,
   deleteConversation as dbDeleteConversation,
+  deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
   listConversations,
   loadConversation,
   renameConversation as dbRenameConversation,
@@ -52,6 +54,8 @@ export interface UseConversationsReturn {
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
   deleteConversation: (id: string) => Promise<void>;
+  deleteAllConversations: () => Promise<void>;
+  deleteUnbookmarkedConversations: () => Promise<void>;
   renameConversation: (id: string, title: string | null) => Promise<void>;
   toggleBookmark: (id: string) => Promise<void>;
   refreshList: () => Promise<void>;
@@ -266,6 +270,25 @@ export function useConversations({
     [clearConversation, clearActiveId, refreshList],
   );
 
+  const deleteAllConversations = useCallback(async () => {
+    await dbDeleteAllConversations();
+    clearConversation();
+    clearActiveId();
+    await refreshList();
+  }, [clearConversation, clearActiveId, refreshList]);
+
+  const deleteUnbookmarkedConversations = useCallback(async () => {
+    await dbDeleteUnbookmarkedConversations();
+
+    // Clear active conversation only if it was unbookmarked
+    if (activeIdRef.current && !activeMetaRef.current?.bookmarked) {
+      clearConversation();
+      clearActiveId();
+    }
+
+    await refreshList();
+  }, [clearConversation, clearActiveId, refreshList]);
+
   const renameConversation = useCallback(
     async (id: string, title: string | null) => {
       await dbRenameConversation(id, title);
@@ -332,6 +355,8 @@ export function useConversations({
     switchConversation,
     startNewConversation,
     deleteConversation,
+    deleteAllConversations,
+    deleteUnbookmarkedConversations,
     renameConversation,
     toggleBookmark,
     refreshList,

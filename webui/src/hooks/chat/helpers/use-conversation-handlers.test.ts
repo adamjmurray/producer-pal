@@ -28,6 +28,8 @@ function createMockManager(
     switchConversation: vi.fn().mockResolvedValue(undefined),
     startNewConversation: vi.fn().mockResolvedValue(undefined),
     deleteConversation: vi.fn().mockResolvedValue(undefined),
+    deleteAllConversations: vi.fn().mockResolvedValue(undefined),
+    deleteUnbookmarkedConversations: vi.fn().mockResolvedValue(undefined),
     renameConversation: vi.fn().mockResolvedValue(undefined),
     toggleBookmark: vi.fn().mockResolvedValue(undefined),
     refreshList: vi.fn().mockResolvedValue(undefined),
@@ -80,5 +82,29 @@ describe("useConversationHandlers", () => {
 
     expect(stop).toHaveBeenCalled();
     expect(manager.startNewConversation).toHaveBeenCalled();
+  });
+
+  it("stops response and delegates to deleteAllConversations", () => {
+    const manager = createMockManager();
+    const stop = vi.fn();
+
+    const { result } = renderHook(() => useConversationHandlers(manager, stop));
+
+    result.current.handleDeleteAll();
+
+    expect(stop).toHaveBeenCalled();
+    expect(manager.deleteAllConversations).toHaveBeenCalled();
+  });
+
+  it("stops response and delegates to deleteUnbookmarkedConversations", () => {
+    const manager = createMockManager();
+    const stop = vi.fn();
+
+    const { result } = renderHook(() => useConversationHandlers(manager, stop));
+
+    result.current.handleDeleteUnbookmarked();
+
+    expect(stop).toHaveBeenCalled();
+    expect(manager.deleteUnbookmarkedConversations).toHaveBeenCalled();
   });
 });

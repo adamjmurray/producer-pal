@@ -161,6 +161,8 @@ describe("SettingsScreen", () => {
     shake: false,
     onShakeEnd: vi.fn(),
     hasUnsavedChanges: false,
+    onDeleteAllConversations: vi.fn(),
+    onDeleteUnbookmarkedConversations: vi.fn(),
     conversationLock: {
       activeModel: null,
       activeProvider: null,

@@ -176,6 +176,8 @@ export function App() {
     handleDelete: handleDeleteConversation,
     handleRename: handleRenameConversation,
     handleToggleBookmark,
+    handleDeleteAll,
+    handleDeleteUnbookmarked,
   } = useConversationHandlers(conversationManager, chat.stopResponse);
 
   // Auto-save when streaming completes — covers tool results and follow-up
@@ -341,6 +343,8 @@ export function App() {
             shake={shake}
             onShakeEnd={clearShake}
             hasUnsavedChanges={hasUnsavedChanges}
+            onDeleteAllConversations={handleDeleteAll}
+            onDeleteUnbookmarkedConversations={handleDeleteUnbookmarked}
             conversationLock={{
               activeModel: chat.activeModel,
               activeProvider: chat.activeProvider,

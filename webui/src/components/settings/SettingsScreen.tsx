@@ -35,6 +35,8 @@ interface SettingsScreenProps {
   shake: boolean;
   onShakeEnd: () => void;
   hasUnsavedChanges: boolean;
+  onDeleteAllConversations: () => void;
+  onDeleteUnbookmarkedConversations: () => void;
   conversationLock: ConversationLock;
 }
 
@@ -154,6 +156,10 @@ function SettingsTabContent(props: SettingsScreenProps) {
           setShowHelpLinks={display.setShowHelpLinks}
           showTokenUsage={display.showTokenUsage}
           setShowTokenUsage={display.setShowTokenUsage}
+          onDeleteAllConversations={props.onDeleteAllConversations}
+          onDeleteUnbookmarkedConversations={
+            props.onDeleteUnbookmarkedConversations
+          }
         />
       )}
     </div>

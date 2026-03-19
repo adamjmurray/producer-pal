@@ -740,4 +740,67 @@ describe("useConversations", () => {
       expect(result.current.conversations).toHaveLength(0);
     });
   });
+
+  describe("bulk deletion", () => {
+    it("deleteAllConversations clears all and resets active", async () => {
+      const { state, props } = createProps();
+      const { result } = renderHook(() => useConversations(props));
+
+      await waitForEffects();
+
+      state.chatHistory = [{ role: "user", content: "hi" }];
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      expect(result.current.conversations).toHaveLength(1);
+
+      await act(async () => {
+        await result.current.deleteAllConversations();
+      });
+
+      expect(result.current.conversations).toHaveLength(0);
+      expect(result.current.activeConversationId).toBeNull();
+      expect(props.clearConversation).toHaveBeenCalled();
+    });
+
+    it("deleteUnbookmarkedConversations keeps bookmarked and clears unbookmarked active", async () => {
+      const { state, props } = createProps();
+      const { result } = renderHook(() => useConversations(props));
+
+      await waitForEffects();
+
+      // Save two conversations
+      state.chatHistory = [{ role: "user", content: "first" }];
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+      const firstId = result.current.activeConversationId!;
+
+      // Start new and save second
+      void act(() => result.current.startNewConversation());
+      state.chatHistory = [{ role: "user", content: "second" }];
+      await act(async () => {
+        await result.current.saveCurrentConversation();
+      });
+
+      // Bookmark first conversation
+      await act(async () => {
+        await result.current.toggleBookmark(firstId);
+      });
+
+      // Active is the second (unbookmarked) conversation
+      expect(result.current.conversations).toHaveLength(2);
+
+      await act(async () => {
+        await result.current.deleteUnbookmarkedConversations();
+      });
+
+      expect(result.current.conversations).toHaveLength(1);
+      expect(result.current.conversations[0]?.id).toBe(firstId);
+      // Active was unbookmarked, so should be cleared
+      expect(result.current.activeConversationId).toBeNull();
+      expect(props.clearConversation).toHaveBeenCalled();
+    });
+  });
 });

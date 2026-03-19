@@ -45,6 +45,14 @@ export function useConversationHandlers(
     },
     [manager],
   );
+  const handleDeleteAll = useCallback(() => {
+    stopResponse();
+    manager.deleteAllConversations().catch(console.error);
+  }, [manager, stopResponse]);
+  const handleDeleteUnbookmarked = useCallback(() => {
+    stopResponse();
+    manager.deleteUnbookmarkedConversations().catch(console.error);
+  }, [manager, stopResponse]);
 
   return {
     handleNew,
@@ -52,5 +60,7 @@ export function useConversationHandlers(
     handleDelete,
     handleRename,
     handleToggleBookmark,
+    handleDeleteAll,
+    handleDeleteUnbookmarked,
   };
 }

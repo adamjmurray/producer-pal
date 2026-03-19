@@ -12,6 +12,8 @@ interface PreferencesTabProps {
   setShowHelpLinks: (show: boolean) => void;
   showTokenUsage: boolean;
   setShowTokenUsage: (show: boolean) => void;
+  onDeleteAllConversations: () => void;
+  onDeleteUnbookmarkedConversations: () => void;
 }
 
 /**
@@ -25,6 +27,8 @@ interface PreferencesTabProps {
  * @param {Function} props.setShowHelpLinks - Function to toggle help links
  * @param {boolean} props.showTokenUsage - Whether to show per-message token usage
  * @param {Function} props.setShowTokenUsage - Function to toggle token usage
+ * @param {Function} props.onDeleteAllConversations - Callback to delete all conversations
+ * @param {Function} props.onDeleteUnbookmarkedConversations - Callback to delete unstarred conversations
  * @returns {JSX.Element} Preferences tab component
  */
 export function PreferencesTab({
@@ -36,6 +40,8 @@ export function PreferencesTab({
   setShowHelpLinks,
   showTokenUsage,
   setShowTokenUsage,
+  onDeleteAllConversations,
+  onDeleteUnbookmarkedConversations,
 }: PreferencesTabProps) {
   return (
     <div className="space-y-4">
@@ -87,6 +93,41 @@ export function PreferencesTab({
         />
         Show message token usage
       </label>
+
+      <div className="border-t border-zinc-300 dark:border-zinc-600 pt-4 mt-4">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-2">
+          Cleanup Conversations
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                confirm(
+                  "Delete all conversations that are not bookmarked? This cannot be undone.",
+                )
+              ) {
+                onDeleteUnbookmarkedConversations();
+              }
+            }}
+            className="px-3 py-1.5 text-sm border border-red-600 text-red-600 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
+          >
+            Delete unstarred
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("Delete all conversations? This cannot be undone.")) {
+                onDeleteAllConversations();
+              }
+            }}
+            className="px-3 py-1.5 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+          >
+            Delete all
+          </button>
+        </div>
+      </div>
+      <div className="border-b border-zinc-300 dark:border-zinc-600" />
     </div>
   );
 }

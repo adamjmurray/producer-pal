@@ -10,7 +10,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   type ConversationRecord,
   MAX_CONVERSATIONS,
+  deleteAllConversations,
   deleteConversation,
+  deleteUnbookmarkedConversations,
   getConversationDb,
   listConversations,
   loadConversation,
@@ -129,6 +131,33 @@ describe("conversation-db", () => {
     expect(
       (list[0] as unknown as Record<string, unknown>).messages,
     ).toBeUndefined();
+  });
+
+  it("deletes all conversations", async () => {
+    await saveConversation(createRecord());
+    await saveConversation(createRecord());
+    await saveConversation(createRecord());
+
+    await deleteAllConversations();
+    const list = await listConversations();
+
+    expect(list).toHaveLength(0);
+  });
+
+  it("deletes only unbookmarked conversations", async () => {
+    const bookmarked = createRecord({ bookmarked: true });
+    const unbookmarked1 = createRecord();
+    const unbookmarked2 = createRecord();
+
+    await saveConversation(bookmarked);
+    await saveConversation(unbookmarked1);
+    await saveConversation(unbookmarked2);
+
+    await deleteUnbookmarkedConversations();
+    const list = await listConversations();
+
+    expect(list).toHaveLength(1);
+    expect(list[0]?.id).toBe(bookmarked.id);
   });
 
   it("deletes a conversation by ID", async () => {

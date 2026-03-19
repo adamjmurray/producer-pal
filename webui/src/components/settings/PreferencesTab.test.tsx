@@ -6,7 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render } from "@testing-library/preact";
+import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { PreferencesTab } from "./PreferencesTab";
 
@@ -22,6 +22,8 @@ describe("PreferencesTab", () => {
     setShowHelpLinks: vi.fn(),
     showTokenUsage: false,
     setShowTokenUsage: vi.fn(),
+    onDeleteAllConversations: vi.fn(),
+    onDeleteUnbookmarkedConversations: vi.fn(),
   };
 
   it("renders theme label", () => {
@@ -118,5 +120,77 @@ describe("PreferencesTab", () => {
 
     fireEvent.click(checkboxes[2]!);
     expect(setShowTokenUsage).toHaveBeenCalled();
+  });
+
+  it("renders cleanup buttons", () => {
+    render(<PreferencesTab {...defaultProps} />);
+    expect(
+      screen.getByRole("button", { name: "Delete unstarred" }),
+    ).toBeDefined();
+    expect(screen.getByRole("button", { name: "Delete all" })).toBeDefined();
+  });
+
+  it("calls onDeleteAllConversations when confirmed", () => {
+    const onDeleteAll = vi.fn();
+
+    window.confirm = vi.fn().mockReturnValue(true);
+    render(
+      <PreferencesTab
+        {...defaultProps}
+        onDeleteAllConversations={onDeleteAll}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
+
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(onDeleteAll).toHaveBeenCalledOnce();
+  });
+
+  it("does not call onDeleteAllConversations when cancelled", () => {
+    const onDeleteAll = vi.fn();
+
+    window.confirm = vi.fn().mockReturnValue(false);
+    render(
+      <PreferencesTab
+        {...defaultProps}
+        onDeleteAllConversations={onDeleteAll}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
+
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(onDeleteAll).not.toHaveBeenCalled();
+  });
+
+  it("calls onDeleteUnbookmarkedConversations when confirmed", () => {
+    const onDeleteUnbookmarked = vi.fn();
+
+    window.confirm = vi.fn().mockReturnValue(true);
+    render(
+      <PreferencesTab
+        {...defaultProps}
+        onDeleteUnbookmarkedConversations={onDeleteUnbookmarked}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete unstarred" }));
+
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(onDeleteUnbookmarked).toHaveBeenCalledOnce();
+  });
+
+  it("does not call onDeleteUnbookmarkedConversations when cancelled", () => {
+    const onDeleteUnbookmarked = vi.fn();
+
+    window.confirm = vi.fn().mockReturnValue(false);
+    render(
+      <PreferencesTab
+        {...defaultProps}
+        onDeleteUnbookmarkedConversations={onDeleteUnbookmarked}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Delete unstarred" }));
+
+    expect(window.confirm).toHaveBeenCalledOnce();
+    expect(onDeleteUnbookmarked).not.toHaveBeenCalled();
   });
 });
