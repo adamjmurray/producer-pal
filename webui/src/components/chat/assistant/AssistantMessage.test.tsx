@@ -267,5 +267,21 @@ describe("AssistantMessage", () => {
 
       expect(container.textContent).not.toContain("6.1K");
     });
+
+    it("shows reasoning tokens in step-usage when present", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t", args: {}, result: "ok" },
+        {
+          type: "step-usage",
+          usage: { inputTokens: 6078, outputTokens: 335, reasoningTokens: 225 },
+        },
+      ];
+
+      const { container } = render(
+        <AssistantMessage parts={parts} showTokenUsage={true} />,
+      );
+
+      expect(container.textContent).toContain("225 reasoning");
+    });
   });
 });

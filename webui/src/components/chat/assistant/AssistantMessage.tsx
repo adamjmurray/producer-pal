@@ -60,6 +60,8 @@ export function AssistantMessage({
             >
               {compactNumber(part.usage.inputTokens ?? 0)} →{" "}
               {compactNumber(part.usage.outputTokens ?? 0)} tokens
+              {(part.usage.reasoningTokens ?? 0) > 0 &&
+                ` (${compactNumber(part.usage.reasoningTokens ?? 0)} reasoning)`}
             </div>
           );
         } else if (part.type === "text") {

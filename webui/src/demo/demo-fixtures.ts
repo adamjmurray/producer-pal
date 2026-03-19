@@ -10,6 +10,7 @@
  * Data captured from real ppal-client calls against the e2e-test-set Live Set.
  */
 
+import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
 import { type UIMessage } from "#webui/types/messages";
 
 /** Tool name mapping for demo mode (mirrors real MCP tool display names) */
@@ -41,7 +42,6 @@ function toolResult(data: object, ...warnings: string[]): string {
 let idx = 0;
 
 /**
- * Create a user message
  * @param text - User message text
  * @returns UIMessage for user
  */
@@ -55,7 +55,6 @@ function userMsg(text: string): UIMessage {
 }
 
 /**
- * Create a model message with tool call(s) and optional text
  * @param config - Message configuration
  * @param config.text - Optional text content
  * @param config.thought - Optional thinking/reasoning content
@@ -64,11 +63,7 @@ function userMsg(text: string): UIMessage {
  * @param config.textAfter - Optional text after tool calls
  * @param config.responseModel - Optional model ID from API response
  * @param config.toolUsage - Optional usage for the tool call step
- * @param config.toolUsage.inputTokens - Tool step input token count
- * @param config.toolUsage.outputTokens - Tool step output token count
  * @param config.usage - Optional token usage for the final step
- * @param config.usage.inputTokens - Input token count
- * @param config.usage.outputTokens - Output token count
  * @returns UIMessage for model
  */
 function modelMsg(config: {
@@ -83,8 +78,8 @@ function modelMsg(config: {
   error?: string;
   textAfter?: string;
   responseModel?: string;
-  toolUsage?: { inputTokens: number; outputTokens: number };
-  usage?: { inputTokens: number; outputTokens: number };
+  toolUsage?: TokenUsage;
+  usage?: TokenUsage;
 }): UIMessage {
   const parts: UIMessage["parts"] = [];
 
@@ -173,17 +168,6 @@ const READ_CLIP_RESULT = {
   notes: "v127 t/4 C1 1|1,3 v113 D1 1|2 v99 D1 1|4",
 };
 
-const SELECT_RESULT = {
-  view: "arrangement",
-  detailView: "clip",
-  showBrowser: true,
-  selectedTrack: { trackId: "1", type: "midi", trackIndex: 0 },
-  selectedClipId: "47",
-  selectedDeviceId: null,
-  selectedScene: { sceneId: "16", sceneIndex: 0 },
-  selectedClipSlot: { trackIndex: 0, sceneIndex: 0 },
-};
-
 const UPDATE_CLIP_RESULT = { id: "44" };
 
 // Tool name constants to avoid duplicate string violations
@@ -203,7 +187,7 @@ export const demoMessages: UIMessage[] = [
         result: toolResult(CONNECT_RESULT),
       },
     ],
-    usage: { inputTokens: 6078, outputTokens: 33 },
+    usage: { inputTokens: 6078, outputTokens: 33, reasoningTokens: 22 },
   }),
 
   // --- Scenario 2: Success (read track — larger JSON) ---
@@ -302,7 +286,16 @@ export const demoMessages: UIMessage[] = [
         name: "ppal-select",
         args: { trackIndex: 0, invalidParam: "test" },
         result: toolResult(
-          SELECT_RESULT,
+          {
+            view: "arrangement",
+            detailView: "clip",
+            showBrowser: true,
+            selectedTrack: { trackId: "1", type: "midi", trackIndex: 0 },
+            selectedClipId: "47",
+            selectedDeviceId: null,
+            selectedScene: { sceneId: "16", sceneIndex: 0 },
+            selectedClipSlot: { trackIndex: 0, sceneIndex: 0 },
+          },
           "Warning: ppal-select ignored unexpected argument(s): invalidParam",
         ),
       },
@@ -386,10 +379,10 @@ export const demoMessages: UIMessage[] = [
         }),
       },
     ],
-    toolUsage: { inputTokens: 10365, outputTokens: 135 },
+    toolUsage: { inputTokens: 10365, outputTokens: 135, reasoningTokens: 94 },
     textAfter:
       "The **Beat** clip is a 1-bar looping MIDI pattern with kick on beats 1 and 3, and snare on beats 2 and 4. The **Bass** track has an Instrument Rack with 1 session clip.",
-    usage: { inputTokens: 12632, outputTokens: 845 },
+    usage: { inputTokens: 12632, outputTokens: 845, reasoningTokens: 125 },
   }),
 
   // --- Scenario 12: Connection-level error (UIErrorPart) ---

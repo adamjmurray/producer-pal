@@ -43,6 +43,7 @@ export interface AiSdkMessage {
 export interface TokenUsage {
   inputTokens?: number;
   outputTokens?: number;
+  reasoningTokens?: number;
 }
 
 /**
@@ -51,9 +52,12 @@ export interface TokenUsage {
  * @returns Token usage summary
  */
 export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
+  const reasoning = sdkUsage.outputTokenDetails.reasoningTokens;
+
   return {
     inputTokens: sdkUsage.inputTokens ?? undefined,
     outputTokens: sdkUsage.outputTokens ?? undefined,
+    ...(reasoning != null && reasoning > 0 && { reasoningTokens: reasoning }),
   };
 }
 

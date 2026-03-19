@@ -130,6 +130,7 @@ export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
   let hasUsage = false;
   let inputTokens = 0;
   let outputTokens = 0;
+  let reasoningTokens = 0;
 
   for (const msg of messages) {
     if (msg.role !== "assistant" || !msg.usage) continue;
@@ -137,11 +138,16 @@ export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
     hasUsage = true;
     inputTokens += msg.usage.inputTokens ?? 0;
     outputTokens += msg.usage.outputTokens ?? 0;
+    reasoningTokens += msg.usage.reasoningTokens ?? 0;
   }
 
   if (!hasUsage) return null;
 
-  return { inputTokens, outputTokens };
+  return {
+    inputTokens,
+    outputTokens,
+    ...(reasoningTokens > 0 && { reasoningTokens }),
+  };
 }
 
 const CONNECT_PATTERN =

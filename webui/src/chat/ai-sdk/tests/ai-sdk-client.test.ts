@@ -458,6 +458,7 @@ describe("AiSdkClient", () => {
       expect(assistantMsg?.usage).toStrictEqual({
         inputTokens: 100,
         outputTokens: 50,
+        reasoningTokens: 10,
       });
     });
 

@@ -89,4 +89,40 @@ describe("sumMessageUsage", () => {
       outputTokens: 10,
     });
   });
+
+  it("sums reasoning tokens when present", () => {
+    const history = [
+      {
+        role: "assistant",
+        content: "thinking",
+        usage: { inputTokens: 100, outputTokens: 50, reasoningTokens: 30 },
+      },
+      {
+        role: "assistant",
+        content: "more",
+        usage: { inputTokens: 200, outputTokens: 80, reasoningTokens: 60 },
+      },
+    ];
+
+    expect(sumMessageUsage(history)).toStrictEqual({
+      inputTokens: 300,
+      outputTokens: 130,
+      reasoningTokens: 90,
+    });
+  });
+
+  it("omits reasoningTokens when all are zero", () => {
+    const history = [
+      {
+        role: "assistant",
+        content: "no thinking",
+        usage: { inputTokens: 100, outputTokens: 20 },
+      },
+    ];
+
+    expect(sumMessageUsage(history)).toStrictEqual({
+      inputTokens: 100,
+      outputTokens: 20,
+    });
+  });
 });

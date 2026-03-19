@@ -575,5 +575,18 @@ describe("MessageList", () => {
 
       expect(screen.queryByText(/tokens/)).toBeNull();
     });
+
+    it("shows reasoning tokens when present", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          usage: { inputTokens: 9496, outputTokens: 178, reasoningTokens: 101 },
+        },
+      ];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
+
+      expect(screen.getByText(/101 reasoning/)).toBeDefined();
+    });
   });
 });

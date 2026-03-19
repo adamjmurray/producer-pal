@@ -44,6 +44,7 @@ describe("toTokenUsage", () => {
     expect(toTokenUsage(raw)).toStrictEqual({
       inputTokens: 100,
       outputTokens: 50,
+      reasoningTokens: 20,
     });
   });
 
@@ -53,6 +54,19 @@ describe("toTokenUsage", () => {
     expect(toTokenUsage(raw)).toStrictEqual({
       inputTokens: undefined,
       outputTokens: undefined,
+    });
+  });
+
+  it("omits zero reasoning tokens", () => {
+    const raw = makeUsage({
+      inputTokens: 100,
+      outputTokens: 15,
+      outputTokenDetails: { textTokens: 15, reasoningTokens: 0 },
+    });
+
+    expect(toTokenUsage(raw)).toStrictEqual({
+      inputTokens: 100,
+      outputTokens: 15,
     });
   });
 });
