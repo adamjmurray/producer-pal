@@ -88,6 +88,27 @@ async function sendWithParts(
  * @param options.overrides - Per-message overrides
  * @returns Final chat history
  */
+const DEFAULT_USAGE = {
+  inputTokens: 10,
+  inputTokenDetails: {
+    noCacheTokens: 10,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+  },
+  outputTokens: 5,
+  outputTokenDetails: { textTokens: 5, reasoningTokens: 0 },
+  totalTokens: 15,
+};
+
+/**
+ * Send a message with full control over stream response and per-message overrides.
+ * The mock calls onStepFinish after streaming to simulate the AI SDK behavior.
+ * @param options - Send options
+ * @param options.text - Text to yield in the stream (default: "response")
+ * @param options.modelId - Model ID for the response
+ * @param options.overrides - Per-message overrides
+ * @returns Final chat history
+ */
 async function sendWithResponse(
   options: {
     text?: string;
@@ -97,29 +118,18 @@ async function sendWithResponse(
 ): Promise<AiSdkMessage[]> {
   const text = options.text ?? "response";
 
-  async function* iterate(): AsyncIterable<Record<string, unknown>> {
-    yield { type: "text-delta", text };
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock accessing SDK internals
+  (streamText as ReturnType<typeof vi.fn>).mockImplementation((opts: any) => {
+    async function* iterate(): AsyncIterable<Record<string, unknown>> {
+      yield { type: "text-delta", text };
+      // Simulate SDK calling onStepFinish after step completes
+      opts.onStepFinish?.({
+        usage: DEFAULT_USAGE,
+        response: { modelId: options.modelId ?? "" },
+      });
+    }
 
-  const defaultUsage = {
-    inputTokens: 10,
-    inputTokenDetails: {
-      noCacheTokens: 10,
-      cacheReadTokens: 0,
-      cacheWriteTokens: 0,
-    },
-    outputTokens: 5,
-    outputTokenDetails: { textTokens: 5, reasoningTokens: 0 },
-    totalTokens: 15,
-  };
-
-  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-    fullStream: iterate(),
-    response: Promise.resolve(
-      options.modelId != null ? { modelId: options.modelId } : {},
-    ),
-    totalUsage: Promise.resolve(defaultUsage),
-    steps: Promise.resolve([{ stepNumber: 0, usage: defaultUsage }]),
+    return { fullStream: iterate() };
   });
 
   const client = new AiSdkClient("key", createConfig());
@@ -409,10 +419,6 @@ describe("AiSdkClient", () => {
     });
 
     it("attaches per-step usage to assistant messages", async () => {
-      async function* iterate(): AsyncIterable<Record<string, unknown>> {
-        yield { type: "text-delta", text: "Hi" };
-      }
-
       const stepUsage = {
         inputTokens: 100,
         inputTokenDetails: {
@@ -425,12 +431,20 @@ describe("AiSdkClient", () => {
         totalTokens: 150,
       };
 
-      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
-        fullStream: iterate(),
-        response: Promise.resolve({ modelId: "m" }),
-        totalUsage: Promise.resolve(stepUsage),
-        steps: Promise.resolve([{ stepNumber: 0, usage: stepUsage }]),
-      });
+      (streamText as ReturnType<typeof vi.fn>).mockImplementation(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock accessing SDK internals
+        (opts: any) => {
+          async function* iterate(): AsyncIterable<Record<string, unknown>> {
+            yield { type: "text-delta", text: "Hi" };
+            opts.onStepFinish?.({
+              usage: stepUsage,
+              response: { modelId: "m" },
+            });
+          }
+
+          return { fullStream: iterate() };
+        },
+      );
 
       const client = new AiSdkClient("key", createConfig());
       let lastHistory: AiSdkMessage[] = [];

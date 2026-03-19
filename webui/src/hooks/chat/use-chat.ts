@@ -150,7 +150,7 @@ export function useChat<
       originalMessage: string,
     ): Promise<void> => {
       let attempt = 0;
-      const contentState = { hasReceived: false };
+      const contentState = { hasReceived: false, savedUsageCount: 0 };
 
       retryAbortRef.current = new AbortController();
 
@@ -163,7 +163,11 @@ export function useChat<
         contentState.hasReceived = true;
         setMessages(msgs);
 
-        if (isFirst) {
+        // Save on first content or when a new step completes (usage appears)
+        const usageCount = msgs.filter((m) => m.usage).length;
+
+        if (isFirst || usageCount > contentState.savedUsageCount) {
+          contentState.savedUsageCount = usageCount;
           autoSaveRef?.current?.();
         }
       };

@@ -78,6 +78,9 @@ export class AiSdkClient {
         ? this.config.buildProviderOptions(overrides.thinking)
         : this.config.providerOptions;
 
+    const historyLengthBefore = this.chatHistory.length;
+    let stepIndex = 0;
+
     const result = streamText({
       model: this.config.model,
       system: this.config.systemInstruction,
@@ -87,55 +90,29 @@ export class AiSdkClient {
       temperature: this.config.temperature,
       providerOptions,
       abortSignal,
+      onStepFinish: (event) => {
+        let count = 0;
+
+        for (let i = historyLengthBefore; i < this.chatHistory.length; i++) {
+          const msg = this.chatHistory[i] as AiSdkMessage;
+
+          if (msg.role === "assistant" && count++ === stepIndex) {
+            msg.usage = toTokenUsage(event.usage);
+
+            if (event.response.modelId) {
+              msg.responseModel = event.response.modelId;
+            }
+
+            break;
+          }
+        }
+
+        stepIndex++;
+      },
     });
 
-    const historyLengthBefore = this.chatHistory.length;
-
     yield* this.processStream(result);
-    yield* this.captureResponseMetadata(result, historyLengthBefore);
-  }
-
-  /**
-   * Capture response metadata (model ID, token usage) and attach to assistant
-   * messages created during the current turn.
-   * @param result - The streamText result
-   * @param historyLengthBefore - Chat history length before streaming started
-   * @yields Updated chat history if metadata was captured
-   */
-  private async *captureResponseMetadata(
-    result: ReturnType<typeof streamText>,
-    historyLengthBefore: number,
-  ): AsyncGenerator<AiSdkMessage[]> {
-    try {
-      const [response, steps] = await Promise.all([
-        result.response,
-        result.steps,
-      ]);
-
-      // Zip steps with assistant messages from this turn (1:1 ordering)
-      let stepIdx = 0;
-
-      for (let i = historyLengthBefore; i < this.chatHistory.length; i++) {
-        const msg = this.chatHistory[i] as AiSdkMessage;
-
-        if (msg.role === "assistant") {
-          if (response.modelId) {
-            msg.responseModel = response.modelId;
-          }
-
-          const step = steps[stepIdx];
-
-          if (step) {
-            msg.usage = toTokenUsage(step.usage);
-          }
-
-          stepIdx++;
-        }
-      }
-    } catch {
-      // Stream may have been aborted — response metadata not available
-    }
-
+    // Final yield to ensure last step's usage (attached by onStepFinish) is emitted
     yield [...this.chatHistory];
   }
 
