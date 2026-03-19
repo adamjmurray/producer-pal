@@ -112,6 +112,7 @@ export function MessageList({
                   <AssistantMessage
                     parts={message.parts}
                     isResponding={isAssistantResponding}
+                    showTokenUsage={showTokenUsage}
                   />
                   {showTokenUsage && <TokenUsageLabel usage={message.usage} />}
                 </>

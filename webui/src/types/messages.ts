@@ -35,13 +35,23 @@ export interface UIToolPart {
   isError?: boolean;
 }
 
+export interface UIStepUsagePart {
+  type: "step-usage";
+  usage: TokenUsage;
+}
+
 export interface UIErrorPart {
   type: "error";
   content: string;
   isError: true;
 }
 
-export type UIPart = UITextPart | UIThoughtPart | UIToolPart | UIErrorPart;
+export type UIPart =
+  | UITextPart
+  | UIThoughtPart
+  | UIToolPart
+  | UIStepUsagePart
+  | UIErrorPart;
 
 // UI Message Structure
 // This is the format used throughout the UI for rendering messages

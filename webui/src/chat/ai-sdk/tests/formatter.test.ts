@@ -226,4 +226,42 @@ describe("formatAiSdkMessages", () => {
     expect(result[0]!.parts[0]!.type).toBe("thought");
     expect(result[0]!.parts[0]).toHaveProperty("content", "Part 1 Part 2");
   });
+
+  it("inserts step-usage part when merging tool step into text step", () => {
+    const toolUsage = { inputTokens: 6078, outputTokens: 33 };
+    const textUsage = { inputTokens: 9496, outputTokens: 195 };
+    const history: AiSdkMessage[] = [
+      {
+        role: "assistant",
+        content: "",
+        toolCalls: [{ id: "1", name: "ppal-connect", args: {} }],
+        toolResults: [
+          { id: "1", name: "ppal-connect", args: {}, result: "ok" },
+        ],
+        usage: toolUsage,
+      },
+      { role: "assistant", content: "Connected!", usage: textUsage },
+    ];
+    const result = formatAiSdkMessages(history);
+
+    expect(result).toHaveLength(1);
+
+    const parts = result[0]!.parts;
+    const stepUsagePart = parts.find((p) => p.type === "step-usage");
+
+    expect(stepUsagePart).toBeDefined();
+    expect(stepUsagePart).toHaveProperty("usage", toolUsage);
+    expect(result[0]!.usage).toStrictEqual(textUsage);
+  });
+
+  it("does not insert step-usage for text-only merged messages", () => {
+    const history: AiSdkMessage[] = [
+      { role: "assistant", content: "Part 1", usage: { inputTokens: 100 } },
+      { role: "assistant", content: "Part 2", usage: { inputTokens: 200 } },
+    ];
+    const result = formatAiSdkMessages(history);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.parts.every((p) => p.type !== "step-usage")).toBe(true);
+  });
 });

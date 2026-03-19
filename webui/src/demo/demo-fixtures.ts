@@ -27,19 +27,15 @@ export const DEMO_TOOL_NAMES: Record<string, string> = {
 
 /**
  * Build a tool result string matching the MCP content array format.
- * Success results are double-serialized: JSON.stringify of a content array
- * where each item's text is also JSON-stringified.
  * @param data - The tool result object
  * @param warnings - Optional warning strings to append as extra content blocks
  * @returns Serialized result string matching production format
  */
 function toolResult(data: object, ...warnings: string[]): string {
-  const content = [
+  return JSON.stringify([
     { type: "text", text: JSON.stringify(data) },
     ...warnings.map((w) => ({ type: "text", text: w })),
-  ];
-
-  return JSON.stringify(content);
+  ]);
 }
 
 let idx = 0;
@@ -67,7 +63,10 @@ function userMsg(text: string): UIMessage {
  * @param config.error - Optional connection-level error
  * @param config.textAfter - Optional text after tool calls
  * @param config.responseModel - Optional model ID from API response
- * @param config.usage - Optional token usage data
+ * @param config.toolUsage - Optional usage for the tool call step
+ * @param config.toolUsage.inputTokens - Tool step input token count
+ * @param config.toolUsage.outputTokens - Tool step output token count
+ * @param config.usage - Optional token usage for the final step
  * @param config.usage.inputTokens - Input token count
  * @param config.usage.outputTokens - Output token count
  * @returns UIMessage for model
@@ -84,6 +83,7 @@ function modelMsg(config: {
   error?: string;
   textAfter?: string;
   responseModel?: string;
+  toolUsage?: { inputTokens: number; outputTokens: number };
   usage?: { inputTokens: number; outputTokens: number };
 }): UIMessage {
   const parts: UIMessage["parts"] = [];
@@ -105,6 +105,10 @@ function modelMsg(config: {
         result: tool.result,
         isError: tool.isError,
       });
+    }
+
+    if (config.toolUsage) {
+      parts.push({ type: "step-usage", usage: config.toolUsage });
     }
   }
 
@@ -382,6 +386,7 @@ export const demoMessages: UIMessage[] = [
         }),
       },
     ],
+    toolUsage: { inputTokens: 10365, outputTokens: 135 },
     textAfter:
       "The **Beat** clip is a 1-bar looping MIDI pattern with kick on beats 1 and 3, and snare on beats 2 and 4. The **Bass** track has an Instrument Rack with 1 session clip.",
     usage: { inputTokens: 12632, outputTokens: 845 },

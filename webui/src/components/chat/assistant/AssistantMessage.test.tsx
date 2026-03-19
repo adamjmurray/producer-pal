@@ -237,4 +237,35 @@ describe("AssistantMessage", () => {
       expect(container!.children).toHaveLength(3);
     });
   });
+
+  describe("step-usage parts", () => {
+    it("renders step-usage when showTokenUsage is true", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t", args: {}, result: "ok" },
+        { type: "step-usage", usage: { inputTokens: 6078, outputTokens: 33 } },
+        { type: "text", content: "Done" },
+      ];
+
+      const { container } = render(
+        <AssistantMessage parts={parts} showTokenUsage={true} />,
+      );
+
+      expect(container.textContent).toContain("6.1K");
+      expect(container.textContent).toContain("33");
+    });
+
+    it("hides step-usage when showTokenUsage is false", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t", args: {}, result: "ok" },
+        { type: "step-usage", usage: { inputTokens: 6078, outputTokens: 33 } },
+        { type: "text", content: "Done" },
+      ];
+
+      const { container } = render(
+        <AssistantMessage parts={parts} showTokenUsage={false} />,
+      );
+
+      expect(container.textContent).not.toContain("6.1K");
+    });
+  });
 });

@@ -78,6 +78,7 @@ export function formatAiSdkMessages(history: AiSdkMessage[]): UIMessage[] {
     // Merge consecutive assistant messages
     if (lastMessage?.role === "model" && msg.role === "assistant") {
       currentMessage = lastMessage;
+      closeStepUsage(currentMessage);
     } else {
       currentMessage = {
         role: msg.role === "assistant" ? "model" : "user",
@@ -109,4 +110,17 @@ export function formatAiSdkMessages(history: AiSdkMessage[]): UIMessage[] {
   markLastThoughtAsOpen(messages);
 
   return messages;
+}
+
+/**
+ * When merging a new step into an existing message, capture the previous
+ * step's usage as a step-usage part (shown between tool calls and follow-up text).
+ * @param message - The UIMessage being merged into
+ */
+function closeStepUsage(message: UIMessage): void {
+  if (!message.usage) return;
+  if (!message.parts.some((p) => p.type === "tool")) return;
+
+  message.parts.push({ type: "step-usage", usage: message.usage });
+  message.usage = undefined;
 }
