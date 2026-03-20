@@ -22,8 +22,6 @@ import {
   printJudgeResult,
 } from "./judge-output.ts";
 
-const DEFAULT_MAX_TOKENS = 1024;
-
 /**
  * Call an LLM judge via the AI SDK with streaming output
  *
@@ -50,7 +48,6 @@ export async function callAiSdkJudge(
     model: languageModel,
     system: systemPrompt,
     messages: [{ role: "user", content: prompt }],
-    maxOutputTokens: DEFAULT_MAX_TOKENS,
   });
 
   let text = "";
