@@ -8,7 +8,7 @@ import {
   markLastThoughtAsOpen,
 } from "#webui/chat/helpers/formatter-helpers";
 import { type UIMessage, type UIPart } from "#webui/types/messages";
-import { type AiSdkMessage } from "./ai-sdk-types";
+import { type ChatMessage } from "./types";
 
 /**
  * Add reasoning content as a thought part.
@@ -32,7 +32,7 @@ function addReasoning(reasoning: string | undefined, parts: UIPart[]): void {
  * @param msg - AI SDK message containing tool calls and results
  * @param parts - Parts array to add to
  */
-function addToolParts(msg: AiSdkMessage, parts: UIPart[]): void {
+function addToolParts(msg: ChatMessage, parts: UIPart[]): void {
   if (!msg.toolCalls) return;
 
   for (const tc of msg.toolCalls) {
@@ -64,7 +64,7 @@ function addToolParts(msg: AiSdkMessage, parts: UIPart[]): void {
  * @param history - Raw AI SDK message history
  * @returns Formatted messages for UI rendering
  */
-export function formatAiSdkMessages(history: AiSdkMessage[]): UIMessage[] {
+export function formatChatMessages(history: ChatMessage[]): UIMessage[] {
   const messages: UIMessage[] = [];
 
   for (let rawIndex = 0; rawIndex < history.length; rawIndex++) {

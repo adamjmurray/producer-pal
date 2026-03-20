@@ -7,7 +7,7 @@
  * LLM-as-judge assertion - use an LLM to evaluate response quality
  */
 
-import { callAiSdkJudge } from "../helpers/judge/ai-sdk-judge.ts";
+import { callJudge } from "../helpers/judge/judge.ts";
 import { type JudgeResult } from "../helpers/judge-response-parser.ts";
 import {
   type LlmJudgeAssertion,
@@ -188,7 +188,7 @@ async function callJudgeLlm(
     );
   }
 
-  return await callAiSdkJudge(
+  return await callJudge(
     prompt,
     JUDGE_SYSTEM_PROMPT,
     provider,

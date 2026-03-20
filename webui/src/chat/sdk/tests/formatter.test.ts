@@ -8,17 +8,17 @@ import {
   expectValidTimestamps,
   stripTimestamps,
 } from "#webui/test-utils/message-test-helpers";
-import { type AiSdkMessage } from "#webui/chat/ai-sdk/ai-sdk-types";
-import { formatAiSdkMessages } from "#webui/chat/ai-sdk/formatter";
+import { type ChatMessage } from "#webui/chat/sdk/types";
+import { formatChatMessages } from "#webui/chat/sdk/formatter";
 
-describe("formatAiSdkMessages", () => {
+describe("formatChatMessages", () => {
   it("returns empty array for empty history", () => {
-    expect(formatAiSdkMessages([])).toStrictEqual([]);
+    expect(formatChatMessages([])).toStrictEqual([]);
   });
 
   it("formats a user message", () => {
-    const history: AiSdkMessage[] = [{ role: "user", content: "Hello" }];
-    const result = formatAiSdkMessages(history);
+    const history: ChatMessage[] = [{ role: "user", content: "Hello" }];
+    const result = formatChatMessages(history);
 
     expect(result).toHaveLength(1);
     expect(stripTimestamps(result)).toStrictEqual([
@@ -32,10 +32,8 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("formats an assistant text message", () => {
-    const history: AiSdkMessage[] = [
-      { role: "assistant", content: "Hi there" },
-    ];
-    const result = formatAiSdkMessages(history);
+    const history: ChatMessage[] = [{ role: "assistant", content: "Hi there" }];
+    const result = formatChatMessages(history);
 
     expect(result).toHaveLength(1);
     expect(result[0]!.role).toBe("model");
@@ -45,10 +43,10 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("formats reasoning as thought parts", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       { role: "assistant", content: "Answer", reasoning: "Thinking..." },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     expect(result[0]!.parts).toStrictEqual([
       { type: "thought", content: "Thinking..." },
@@ -57,7 +55,7 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("formats tool calls with results", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       {
         role: "assistant",
         content: "",
@@ -67,7 +65,7 @@ describe("formatAiSdkMessages", () => {
         ],
       },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     expect(result[0]!.parts).toStrictEqual([
       {
@@ -81,14 +79,14 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("formats tool calls without results", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       {
         role: "assistant",
         content: "",
         toolCalls: [{ id: "tc1", name: "ppal-connect", args: {} }],
       },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     expect(result[0]!.parts).toStrictEqual([
       {
@@ -102,7 +100,7 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("marks error results", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       {
         role: "assistant",
         content: "",
@@ -118,7 +116,7 @@ describe("formatAiSdkMessages", () => {
         ],
       },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
     const toolPart = result[0]!.parts[0]!;
 
     expect(toolPart.type).toBe("tool");
@@ -126,11 +124,11 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("merges consecutive assistant messages into one UI message", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       { role: "assistant", content: "First" },
       { role: "assistant", content: " second" },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     // Two assistant messages merge into a single UI message with combined text
     expect(result).toHaveLength(1);
@@ -140,23 +138,23 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("does not merge messages with different roles", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       { role: "user", content: "Hello" },
       { role: "assistant", content: "Hi" },
       { role: "user", content: "Bye" },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     expect(result).toHaveLength(3);
   });
 
   it("tracks rawHistoryIndex correctly", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       { role: "user", content: "Q1" },
       { role: "assistant", content: "A1" },
       { role: "user", content: "Q2" },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     expect(result[0]!.rawHistoryIndex).toBe(0);
     expect(result[1]!.rawHistoryIndex).toBe(1);
@@ -164,10 +162,10 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("marks the last thought as open", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       { role: "assistant", content: "", reasoning: "Thinking..." },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
     const thoughtPart = result[0]!.parts[0]!;
 
     expect(thoughtPart.type).toBe("thought");
@@ -175,7 +173,7 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("handles assistant with reasoning, text, and tools", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       {
         role: "assistant",
         content: "Here's the result",
@@ -186,7 +184,7 @@ describe("formatAiSdkMessages", () => {
         ],
       },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     expect(result[0]!.parts).toHaveLength(3);
     expect(result[0]!.parts[0]!.type).toBe("thought");
@@ -195,31 +193,31 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("skips empty content for assistant messages", () => {
-    const history: AiSdkMessage[] = [{ role: "assistant", content: "" }];
-    const result = formatAiSdkMessages(history);
+    const history: ChatMessage[] = [{ role: "assistant", content: "" }];
+    const result = formatChatMessages(history);
 
     expect(result[0]!.parts).toStrictEqual([]);
   });
 
   it("preserves responseModel on assistant messages", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       {
         role: "assistant",
         content: "Hello",
         responseModel: "gpt-4o-2024-08-06",
       },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     expect(result[0]!.responseModel).toBe("gpt-4o-2024-08-06");
   });
 
   it("appends reasoning to existing thought part in merged messages", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       { role: "assistant", content: "", reasoning: "Part 1" },
       { role: "assistant", content: "Answer", reasoning: " Part 2" },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     // Merged into one message; reasoning parts merge into one thought
     expect(result).toHaveLength(1);
@@ -230,7 +228,7 @@ describe("formatAiSdkMessages", () => {
   it("inserts step-usage part when merging tool step into text step", () => {
     const toolUsage = { inputTokens: 6078, outputTokens: 33 };
     const textUsage = { inputTokens: 9496, outputTokens: 195 };
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       {
         role: "assistant",
         content: "",
@@ -242,7 +240,7 @@ describe("formatAiSdkMessages", () => {
       },
       { role: "assistant", content: "Connected!", usage: textUsage },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     expect(result).toHaveLength(1);
 
@@ -255,11 +253,11 @@ describe("formatAiSdkMessages", () => {
   });
 
   it("does not insert step-usage for text-only merged messages", () => {
-    const history: AiSdkMessage[] = [
+    const history: ChatMessage[] = [
       { role: "assistant", content: "Part 1", usage: { inputTokens: 100 } },
       { role: "assistant", content: "Part 2", usage: { inputTokens: 200 } },
     ];
-    const result = formatAiSdkMessages(history);
+    const result = formatChatMessages(history);
 
     expect(result).toHaveLength(1);
     expect(result[0]!.parts.every((p) => p.type !== "step-usage")).toBe(true);

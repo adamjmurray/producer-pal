@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { inspect } from "node:util";
-import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types.ts";
+import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
   calcNewContentTokens,
   compactNumber,

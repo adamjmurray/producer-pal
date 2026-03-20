@@ -7,7 +7,7 @@
  */
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { extractToolResultText } from "#evals/chat/ai-sdk-mcp.ts";
+import { extractToolResultText } from "#evals/chat/mcp.ts";
 import { type StateAssertion, type EvalAssertionResult } from "../types.ts";
 import { partialMatch } from "./helpers.ts";
 

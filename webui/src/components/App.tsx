@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
-import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
+import { chatAdapter } from "#webui/hooks/chat/adapter";
 import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
 import { useChat } from "#webui/hooks/chat/use-chat";
@@ -127,7 +127,7 @@ export function App() {
     mcpStatus,
     mcpError,
     checkMcpConnection,
-    adapter: aiSdkAdapter,
+    adapter: chatAdapter,
     extraParams: {
       baseUrl,
       showThoughts: settings.showThoughts,

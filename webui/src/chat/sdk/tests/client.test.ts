@@ -4,10 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import {
-  type AiSdkClientConfig,
-  type AiSdkMessage,
-} from "#webui/chat/ai-sdk/ai-sdk-types";
+import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
 
 // Mock streamText from ai
 vi.mock(import("ai"), async (importOriginal) => {
@@ -20,8 +17,8 @@ vi.mock(import("ai"), async (importOriginal) => {
 });
 
 // Mock MCP tools
-vi.mock(import("#webui/chat/ai-sdk/mcp-tools"), () => ({
-  createAiSdkMcpTools: vi.fn().mockResolvedValue({ tools: {}, mcpClient: {} }),
+vi.mock(import("#webui/chat/sdk/mcp-tools"), () => ({
+  createMcpTools: vi.fn().mockResolvedValue({ tools: {}, mcpClient: {} }),
 }));
 
 // Mock getMcpUrl
@@ -30,16 +27,14 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 }));
 
 import { streamText } from "ai";
-import { AiSdkClient } from "#webui/chat/ai-sdk/ai-sdk-client";
+import { ChatSdkClient } from "#webui/chat/sdk/client";
 
 /**
  * Create a mock config.
  * @param overrides - Config overrides
- * @returns Mock AiSdkClientConfig
+ * @returns Mock ChatClientConfig
  */
-function createConfig(
-  overrides?: Partial<AiSdkClientConfig>,
-): AiSdkClientConfig {
+function createConfig(overrides?: Partial<ChatClientConfig>): ChatClientConfig {
   return {
     model: {
       modelId: "test",
@@ -61,7 +56,7 @@ function createConfig(
 async function sendWithParts(
   parts: Record<string, unknown>[],
   message = "Hello",
-): Promise<AiSdkMessage[]> {
+): Promise<ChatMessage[]> {
   async function* iterate(): AsyncIterable<Record<string, unknown>> {
     for (const p of parts) yield p;
   }
@@ -70,8 +65,8 @@ async function sendWithParts(
     fullStream: iterate(),
   });
 
-  const client = new AiSdkClient("key", createConfig());
-  let last: AiSdkMessage[] = [];
+  const client = new ChatSdkClient("key", createConfig());
+  let last: ChatMessage[] = [];
 
   for await (const history of client.sendMessage(message)) {
     last = history;
@@ -113,9 +108,9 @@ async function sendWithResponse(
   options: {
     text?: string;
     modelId?: string;
-    overrides?: Parameters<AiSdkClient["sendMessage"]>[2];
+    overrides?: Parameters<ChatSdkClient["sendMessage"]>[2];
   } = {},
-): Promise<AiSdkMessage[]> {
+): Promise<ChatMessage[]> {
   const text = options.text ?? "response";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock accessing SDK internals
@@ -132,8 +127,8 @@ async function sendWithResponse(
     return { fullStream: iterate() };
   });
 
-  const client = new AiSdkClient("key", createConfig());
-  let last: AiSdkMessage[] = [];
+  const client = new ChatSdkClient("key", createConfig());
+  let last: ChatMessage[] = [];
 
   for await (const history of client.sendMessage(
     "Hello",
@@ -151,7 +146,7 @@ async function sendWithResponse(
  * @param error - The error value to use in the tool-error part
  * @returns Final chat history
  */
-async function sendToolError(error: unknown): Promise<AiSdkMessage[]> {
+async function sendToolError(error: unknown): Promise<ChatMessage[]> {
   return await sendWithParts([
     {
       type: "tool-call",
@@ -177,7 +172,7 @@ async function sendToolError(error: unknown): Promise<AiSdkMessage[]> {
  * @returns The first call arguments passed to streamText
  */
 async function sendWithHistory(
-  chatHistory: AiSdkMessage[],
+  chatHistory: ChatMessage[],
   message: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper accessing mock internals
 ): Promise<Record<string, any>> {
@@ -187,7 +182,7 @@ async function sendWithHistory(
     fullStream: empty(),
   });
 
-  const client = new AiSdkClient("key", createConfig({ chatHistory }));
+  const client = new ChatSdkClient("key", createConfig({ chatHistory }));
 
   for await (const _ of client.sendMessage(message)) {
     /* consume */
@@ -196,21 +191,21 @@ async function sendWithHistory(
   return (streamText as ReturnType<typeof vi.fn>).mock.calls[0]![0];
 }
 
-describe("AiSdkClient", () => {
+describe("ChatSdkClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe("constructor", () => {
     it("initializes with empty chat history", () => {
-      const client = new AiSdkClient("key", createConfig());
+      const client = new ChatSdkClient("key", createConfig());
 
       expect(client.chatHistory).toStrictEqual([]);
     });
 
     it("initializes with provided chat history", () => {
       const history = [{ role: "user" as const, content: "Hello" }];
-      const client = new AiSdkClient(
+      const client = new ChatSdkClient(
         "key",
         createConfig({ chatHistory: history }),
       );
@@ -220,30 +215,28 @@ describe("AiSdkClient", () => {
   });
 
   describe("initialize", () => {
-    it("calls createAiSdkMcpTools with the MCP URL", async () => {
-      const { createAiSdkMcpTools } =
-        await import("#webui/chat/ai-sdk/mcp-tools");
-      const client = new AiSdkClient("key", createConfig());
+    it("calls createMcpTools with the MCP URL", async () => {
+      const { createMcpTools } = await import("#webui/chat/sdk/mcp-tools");
+      const client = new ChatSdkClient("key", createConfig());
 
       await client.initialize();
 
-      expect(createAiSdkMcpTools).toHaveBeenCalledWith(
+      expect(createMcpTools).toHaveBeenCalledWith(
         "http://localhost:3000/mcp",
         undefined,
       );
     });
 
     it("uses custom MCP URL from config", async () => {
-      const { createAiSdkMcpTools } =
-        await import("#webui/chat/ai-sdk/mcp-tools");
-      const client = new AiSdkClient(
+      const { createMcpTools } = await import("#webui/chat/sdk/mcp-tools");
+      const client = new ChatSdkClient(
         "key",
         createConfig({ mcpUrl: "http://custom:9000/mcp" }),
       );
 
       await client.initialize();
 
-      expect(createAiSdkMcpTools).toHaveBeenCalledWith(
+      expect(createMcpTools).toHaveBeenCalledWith(
         "http://custom:9000/mcp",
         undefined,
       );
@@ -446,8 +439,8 @@ describe("AiSdkClient", () => {
         },
       );
 
-      const client = new AiSdkClient("key", createConfig());
-      let lastHistory: AiSdkMessage[] = [];
+      const client = new ChatSdkClient("key", createConfig());
+      let lastHistory: ChatMessage[] = [];
 
       for await (const history of client.sendMessage("Hello")) {
         lastHistory = history;
@@ -472,7 +465,7 @@ describe("AiSdkClient", () => {
     });
 
     it("converts history with text-only assistant to model messages", async () => {
-      const chatHistory: AiSdkMessage[] = [
+      const chatHistory: ChatMessage[] = [
         { role: "user", content: "Hi" },
         { role: "assistant", content: "Hello!" },
       ];
@@ -486,7 +479,7 @@ describe("AiSdkClient", () => {
 
     it("converts history with tool calls to model messages", async () => {
       // Pre-seed history with assistant message containing tool calls
-      const chatHistory: AiSdkMessage[] = [
+      const chatHistory: ChatMessage[] = [
         { role: "user", content: "Connect" },
         {
           role: "assistant",

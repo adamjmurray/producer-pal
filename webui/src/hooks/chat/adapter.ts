@@ -4,13 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ProviderOptions } from "@ai-sdk/provider-utils";
-import { AiSdkClient } from "#webui/chat/ai-sdk/ai-sdk-client";
-import {
-  type AiSdkClientConfig,
-  type AiSdkMessage,
-} from "#webui/chat/ai-sdk/ai-sdk-types";
-import { formatAiSdkMessages } from "#webui/chat/ai-sdk/formatter";
-import { createProviderModel } from "#webui/chat/ai-sdk/provider-factories";
+import { ChatSdkClient } from "#webui/chat/sdk/client";
+import { formatChatMessages } from "#webui/chat/sdk/formatter";
+import { createProviderModel } from "#webui/chat/sdk/provider-factories";
+import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
 import {
   isOpenAIReasoningModel,
   mapThinkingToOllamaThink,
@@ -144,13 +141,13 @@ function buildOpenAIOptions(
  * AI SDK adapter for the generic useChat hook.
  * Routes all providers through the Vercel AI SDK's streamText function.
  */
-export const aiSdkAdapter: ChatAdapter<
-  AiSdkClient,
-  AiSdkMessage,
-  AiSdkClientConfig
+export const chatAdapter: ChatAdapter<
+  ChatSdkClient,
+  ChatMessage,
+  ChatClientConfig
 > = {
-  createClient(apiKey: string, config: AiSdkClientConfig): AiSdkClient {
-    return new AiSdkClient(apiKey, config);
+  createClient(apiKey: string, config: ChatClientConfig): ChatSdkClient {
+    return new ChatSdkClient(apiKey, config);
   },
 
   buildConfig(
@@ -158,9 +155,9 @@ export const aiSdkAdapter: ChatAdapter<
     temperature: number,
     thinking: string,
     enabledTools: Record<string, boolean>,
-    chatHistory: AiSdkMessage[] | undefined,
+    chatHistory: ChatMessage[] | undefined,
     extraParams?: Record<string, unknown>,
-  ): AiSdkClientConfig {
+  ): ChatClientConfig {
     const provider = extraParams?.provider as Provider;
     const baseUrl = extraParams?.baseUrl as string | undefined;
     const apiKey = extraParams?.apiKey as string;
@@ -194,17 +191,17 @@ export const aiSdkAdapter: ChatAdapter<
     };
   },
 
-  formatMessages: formatAiSdkMessages,
+  formatMessages: formatChatMessages,
 
-  createErrorMessage(error: unknown, chatHistory: AiSdkMessage[]) {
-    return createFormattedErrorMessage(chatHistory, formatAiSdkMessages, error);
+  createErrorMessage(error: unknown, chatHistory: ChatMessage[]) {
+    return createFormattedErrorMessage(chatHistory, formatChatMessages, error);
   },
 
-  extractUserMessage(message: AiSdkMessage): string | undefined {
+  extractUserMessage(message: ChatMessage): string | undefined {
     return message.role === "user" ? message.content.trim() : undefined;
   },
 
-  createUserMessage(text: string): AiSdkMessage {
+  createUserMessage(text: string): ChatMessage {
     return { role: "user", content: text };
   },
 };

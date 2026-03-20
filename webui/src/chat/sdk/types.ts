@@ -13,7 +13,7 @@ import { type LanguageModel, type LanguageModelUsage } from "ai";
  * build during streaming and to format for the UI. This flat structure is
  * simpler for both the stream processor and the UIMessage formatter.
  */
-export interface AiSdkMessage {
+export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   toolCalls?: Array<{
@@ -62,7 +62,7 @@ export function toTokenUsage(sdkUsage: LanguageModelUsage): TokenUsage {
 }
 
 /** Configuration for the AI SDK client */
-export interface AiSdkClientConfig {
+export interface ChatClientConfig {
   model: LanguageModel;
   temperature?: number;
   systemInstruction?: string;
@@ -72,5 +72,5 @@ export interface AiSdkClientConfig {
   providerOptions?: ProviderOptions;
   /** Recompute provider options for a given thinking level (used for mid-conversation overrides) */
   buildProviderOptions?: (thinking: string) => ProviderOptions | undefined;
-  chatHistory?: AiSdkMessage[];
+  chatHistory?: ChatMessage[];
 }

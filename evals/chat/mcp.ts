@@ -23,7 +23,7 @@ export interface McpConnection {
 }
 
 /** Result of creating AI SDK tools from MCP */
-export interface AiSdkMcpTools {
+export interface McpTools {
   tools: ToolSet;
   mcpClient: Client;
 }
@@ -56,9 +56,9 @@ export async function connectMcp(
  * @param url - MCP server URL
  * @returns AI SDK tools and the underlying MCP client
  */
-export async function createAiSdkMcpTools(
+export async function createMcpTools(
   url: string = DEFAULT_MCP_URL,
-): Promise<AiSdkMcpTools> {
+): Promise<McpTools> {
   const transport = new StreamableHTTPClientTransport(new URL(url));
   const mcpClient = new Client({
     name: MCP_CLIENT_NAME,

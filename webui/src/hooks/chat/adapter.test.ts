@@ -5,20 +5,20 @@
 
 import { type LanguageModel } from "ai";
 import { describe, expect, it, vi } from "vitest";
-import { type AiSdkMessage } from "#webui/chat/ai-sdk/ai-sdk-types";
+import { type ChatMessage } from "#webui/chat/sdk/types";
 
 // Mock provider-factories to avoid real OpenAI client creation
 const mockModel = { modelId: "test-model" } as unknown as LanguageModel;
 
-vi.mock(import("#webui/chat/ai-sdk/provider-factories"), () => ({
+vi.mock(import("#webui/chat/sdk/provider-factories"), () => ({
   createProviderModel: vi.fn(() => mockModel),
 }));
 
-import { aiSdkAdapter } from "./ai-sdk-adapter";
+import { chatAdapter } from "./adapter";
 
-describe("aiSdkAdapter", () => {
+describe("chatAdapter", () => {
   describe("createClient", () => {
-    it("creates an AiSdkClient instance", () => {
+    it("creates a ChatSdkClient instance", () => {
       const config = {
         model: {
           modelId: "test",
@@ -27,14 +27,14 @@ describe("aiSdkAdapter", () => {
         } as never,
         showThoughts: false,
       };
-      const client = aiSdkAdapter.createClient("test-key", config);
+      const client = chatAdapter.createClient("test-key", config);
 
       expect(client).toBeDefined();
       expect(client.chatHistory).toStrictEqual([]);
     });
 
     it("passes chat history from config", () => {
-      const chatHistory: AiSdkMessage[] = [{ role: "user", content: "Hello" }];
+      const chatHistory: ChatMessage[] = [{ role: "user", content: "Hello" }];
       const config = {
         model: {
           modelId: "test",
@@ -44,7 +44,7 @@ describe("aiSdkAdapter", () => {
         showThoughts: false,
         chatHistory,
       };
-      const client = aiSdkAdapter.createClient("test-key", config);
+      const client = chatAdapter.createClient("test-key", config);
 
       expect(client.chatHistory).toStrictEqual(chatHistory);
     });
@@ -59,7 +59,7 @@ describe("aiSdkAdapter", () => {
     };
 
     it("returns config with model and temperature", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "gpt-4o",
         0.7,
         "default",
@@ -75,7 +75,7 @@ describe("aiSdkAdapter", () => {
 
     it("passes enabled tools to config", () => {
       const enabledTools = { "ppal-connect": true, "ppal-read": false };
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "gpt-4o",
         1.0,
         "default",
@@ -88,8 +88,8 @@ describe("aiSdkAdapter", () => {
     });
 
     it("passes chat history to config", () => {
-      const history: AiSdkMessage[] = [{ role: "user", content: "Hello" }];
-      const config = aiSdkAdapter.buildConfig(
+      const history: ChatMessage[] = [{ role: "user", content: "Hello" }];
+      const config = chatAdapter.buildConfig(
         "gpt-4o",
         1.0,
         "default",
@@ -102,7 +102,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets reasoning effort for openai provider with Max thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "o3-mini",
         1.0,
         "Max",
@@ -117,7 +117,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("includes reasoningSummary for openai reasoning model with showThoughts", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "gpt-5.2",
         1.0,
         "Max",
@@ -132,7 +132,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets reasoningEffort and reasoningSummary for openai reasoning model with Default thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "gpt-5.2",
         1.0,
         "Default",
@@ -147,7 +147,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets reasoning for openrouter provider with Max thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "some-model",
         1.0,
         "Max",
@@ -166,7 +166,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("excludes reasoning for openrouter with showThoughts=false", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "some-model",
         1.0,
         "Max",
@@ -186,7 +186,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets Gemini thinkingConfig for Max thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
         "Max",
@@ -206,7 +206,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets Gemini thinkingConfig with includeThoughts when showThoughts is true", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
         "Max",
@@ -226,7 +226,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets Gemini thinkingConfig with -1 budget for Default thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "gemini-2.0-flash",
         1.0,
         "Default",
@@ -246,7 +246,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("returns undefined providerOptions for Gemini with Off thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "gemini-2.0-flash",
         1.0,
         "Off",
@@ -259,7 +259,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("returns undefined providerOptions for default thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "gpt-4o",
         1.0,
         "default",
@@ -272,14 +272,10 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets ollama think option for supported model", () => {
-      const config = aiSdkAdapter.buildConfig(
-        "qwq",
-        1.0,
-        "Max",
-        {},
-        undefined,
-        { ...extraParams, provider: "ollama" },
-      );
+      const config = chatAdapter.buildConfig("qwq", 1.0, "Max", {}, undefined, {
+        ...extraParams,
+        provider: "ollama",
+      });
 
       expect(config.providerOptions).toStrictEqual({
         openai: { think: true },
@@ -287,14 +283,10 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets ollama think:false for Off thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
-        "qwq",
-        1.0,
-        "Off",
-        {},
-        undefined,
-        { ...extraParams, provider: "ollama" },
-      );
+      const config = chatAdapter.buildConfig("qwq", 1.0, "Off", {}, undefined, {
+        ...extraParams,
+        provider: "ollama",
+      });
 
       expect(config.providerOptions).toStrictEqual({
         openai: { think: false },
@@ -302,7 +294,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("returns undefined providerOptions for ollama with Default thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "llama3",
         1.0,
         "Default",
@@ -315,7 +307,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets medium reasoning effort for openrouter with Default thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "some-model",
         1.0,
         "Default",
@@ -335,7 +327,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("returns undefined providerOptions for openrouter with Off thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "some-model",
         1.0,
         "Off",
@@ -348,7 +340,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets anthropic thinking options for Max thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         1.0,
         "Max",
@@ -365,7 +357,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("suppresses temperature for anthropic when thinking is enabled", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         0.7,
         "Max",
@@ -378,7 +370,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("suppresses temperature for anthropic with Default thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         0.7,
         "Default",
@@ -392,7 +384,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("sets anthropic default thinking budget for Default thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         1.0,
         "Default",
@@ -409,7 +401,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("returns undefined provider options for anthropic with Off thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         1.0,
         "Off",
@@ -422,7 +414,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("preserves temperature for anthropic with Off thinking", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         0.7,
         "Off",
@@ -435,7 +427,7 @@ describe("aiSdkAdapter", () => {
     });
 
     it("returns undefined provider options for mistral provider", () => {
-      const config = aiSdkAdapter.buildConfig(
+      const config = chatAdapter.buildConfig(
         "mistral-large",
         1.0,
         "Max",
@@ -450,11 +442,11 @@ describe("aiSdkAdapter", () => {
 
   describe("createErrorMessage", () => {
     it("creates formatted error message from chat history", () => {
-      const history: AiSdkMessage[] = [
+      const history: ChatMessage[] = [
         { role: "user", content: "Hello" },
         { role: "assistant", content: "Hi" },
       ];
-      const result = aiSdkAdapter.createErrorMessage(
+      const result = chatAdapter.createErrorMessage(
         new Error("API error"),
         history,
       );
@@ -466,33 +458,33 @@ describe("aiSdkAdapter", () => {
 
   describe("extractUserMessage", () => {
     it("returns trimmed content for user messages", () => {
-      const msg: AiSdkMessage = { role: "user", content: "  Hello  " };
+      const msg: ChatMessage = { role: "user", content: "  Hello  " };
 
-      expect(aiSdkAdapter.extractUserMessage(msg)).toBe("Hello");
+      expect(chatAdapter.extractUserMessage(msg)).toBe("Hello");
     });
 
     it("returns undefined for assistant messages", () => {
-      const msg: AiSdkMessage = { role: "assistant", content: "Hi" };
+      const msg: ChatMessage = { role: "assistant", content: "Hi" };
 
-      expect(aiSdkAdapter.extractUserMessage(msg)).toBeUndefined();
+      expect(chatAdapter.extractUserMessage(msg)).toBeUndefined();
     });
   });
 
   describe("createUserMessage", () => {
     it("creates a user message with the given text", () => {
-      const msg = aiSdkAdapter.createUserMessage("Hello");
+      const msg = chatAdapter.createUserMessage("Hello");
 
       expect(msg).toStrictEqual({ role: "user", content: "Hello" });
     });
   });
 
   describe("formatMessages", () => {
-    it("delegates to formatAiSdkMessages", () => {
-      const history: AiSdkMessage[] = [
+    it("delegates to formatChatMessages", () => {
+      const history: ChatMessage[] = [
         { role: "user", content: "Hello" },
         { role: "assistant", content: "Hi" },
       ];
-      const result = aiSdkAdapter.formatMessages(history);
+      const result = chatAdapter.formatMessages(history);
 
       expect(result).toHaveLength(2);
       expect(result[0]!.role).toBe("user");

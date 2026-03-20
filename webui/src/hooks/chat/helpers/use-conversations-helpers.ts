@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
+import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
 import { getModelName } from "#webui/lib/config";
 import { type ConversationRecord } from "#webui/lib/conversation-db";

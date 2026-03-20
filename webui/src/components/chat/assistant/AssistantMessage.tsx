@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useMemo } from "preact/hooks";
-import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
+import { type TokenUsage } from "#webui/chat/sdk/types";
 import {
   calcNewContentTokens,
   compactNumber,

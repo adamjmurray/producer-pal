@@ -4,8 +4,8 @@
 
 import { Fragment, type VNode } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
-import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
+import { type TokenUsage } from "#webui/chat/sdk/types";
 import {
   calcNewContentTokens,
   compactNumber,

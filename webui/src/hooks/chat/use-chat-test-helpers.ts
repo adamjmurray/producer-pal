@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { vi } from "vitest";
-import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
+import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type UIMessage } from "#webui/types/messages";
 import { type ChatAdapter, type ChatClient } from "./use-chat-types";
 

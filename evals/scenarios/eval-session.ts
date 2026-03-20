@@ -9,20 +9,17 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ModelMessage, stepCountIs, streamText } from "ai";
-import { createAiSdkMcpTools } from "#evals/chat/ai-sdk-mcp.ts";
-import { createProviderModel } from "#evals/chat/ai-sdk-provider.ts";
-import { processCliStream } from "#evals/chat/ai-sdk-stream.ts";
+import { createMcpTools } from "#evals/chat/mcp.ts";
+import { createProviderModel } from "#evals/chat/provider.ts";
 import { printStepUsage } from "#evals/chat/shared/formatting.ts";
+import { processCliStream } from "#evals/chat/stream.ts";
 import {
   ANTHROPIC_CONFIG,
   GEMINI_CONFIG,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
 } from "#evals/shared/provider-configs.ts";
-import {
-  type TokenUsage,
-  toTokenUsage,
-} from "#webui/chat/ai-sdk/ai-sdk-types.ts";
+import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
 import { logTurnStart } from "./helpers/eval-session-base.ts";
 import { type EvalProvider, type TurnResult } from "./types.ts";
 
@@ -90,7 +87,7 @@ export async function createEvalSession(
     options.provider,
     options.model ?? getDefaultModel(options.provider),
   );
-  const { tools, mcpClient } = await createAiSdkMcpTools();
+  const { tools, mcpClient } = await createMcpTools();
   const hasTools = Object.keys(tools).length > 0;
   const messages: ModelMessage[] = [];
   let prevUsage: TokenUsage | undefined;

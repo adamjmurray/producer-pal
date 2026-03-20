@@ -6,7 +6,7 @@
 import { type Interface } from "node:readline";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
-import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types.ts";
+import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 
 export type ReasoningSummary = "auto" | "concise" | "detailed";
 

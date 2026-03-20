@@ -8,7 +8,7 @@
  */
 
 import { streamText } from "ai";
-import { createProviderModel } from "#evals/chat/ai-sdk-provider.ts";
+import { createProviderModel } from "#evals/chat/provider.ts";
 import { getDefaultModel } from "#evals/scenarios/eval-session.ts";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import {
@@ -32,7 +32,7 @@ import {
  * @param criteria - Evaluation criteria for output display
  * @returns Judge result with scores and reasoning
  */
-export async function callAiSdkJudge(
+export async function callJudge(
   prompt: string,
   systemPrompt: string,
   provider: EvalProvider,

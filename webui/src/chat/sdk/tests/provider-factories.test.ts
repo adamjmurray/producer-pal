@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { createProviderModel } from "#webui/chat/ai-sdk/provider-factories";
+import { createProviderModel } from "#webui/chat/sdk/provider-factories";
 
 // The LanguageModel type is a union — cast to access runtime modelId property
 const getModelId = (model: unknown): string =>

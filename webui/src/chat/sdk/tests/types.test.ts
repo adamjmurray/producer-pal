@@ -5,7 +5,7 @@
 
 import { type LanguageModelUsage } from "ai";
 import { describe, expect, it } from "vitest";
-import { toTokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
+import { toTokenUsage } from "#webui/chat/sdk/types";
 
 /**
  * Create a LanguageModelUsage with sensible defaults.

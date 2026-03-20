@@ -6,7 +6,7 @@
 
 import { Command } from "commander";
 import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
-import { runAiSdkChat } from "./ai-sdk-chat.ts";
+import { runChat } from "./chat.ts";
 import { type ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
@@ -73,7 +73,7 @@ program
       );
     }
 
-    await runAiSdkChat(initialText, options);
+    await runChat(initialText, options);
   });
 
 program.parse();

@@ -15,9 +15,9 @@ import {
   createConnectedMcpClient,
   filterEnabledTools,
 } from "#webui/chat/helpers/mcp-client-helpers";
-import { createAiSdkMcpTools } from "#webui/chat/ai-sdk/mcp-tools";
+import { createMcpTools } from "#webui/chat/sdk/mcp-tools";
 
-describe("createAiSdkMcpTools", () => {
+describe("createMcpTools", () => {
   const mockTools = [
     {
       name: "ppal-connect",
@@ -50,13 +50,13 @@ describe("createAiSdkMcpTools", () => {
   });
 
   it("creates AI SDK tools from MCP server", async () => {
-    const { tools } = await createAiSdkMcpTools("http://localhost:3000/mcp");
+    const { tools } = await createMcpTools("http://localhost:3000/mcp");
 
     expect(Object.keys(tools)).toStrictEqual(["ppal-connect", "ppal-read"]);
   });
 
   it("connects to MCP server with the given URL", async () => {
-    await createAiSdkMcpTools("http://custom:9000/mcp");
+    await createMcpTools("http://custom:9000/mcp");
 
     expect(createConnectedMcpClient).toHaveBeenCalledWith(
       "http://custom:9000/mcp",
@@ -66,20 +66,20 @@ describe("createAiSdkMcpTools", () => {
   it("filters tools based on enabledTools map", async () => {
     const enabledTools = { "ppal-connect": true, "ppal-read": false };
 
-    await createAiSdkMcpTools("http://localhost:3000/mcp", enabledTools);
+    await createMcpTools("http://localhost:3000/mcp", enabledTools);
 
     expect(filterEnabledTools).toHaveBeenCalledWith(mockTools, enabledTools);
   });
 
   it("sets tool descriptions", async () => {
-    const { tools } = await createAiSdkMcpTools("http://localhost:3000/mcp");
+    const { tools } = await createMcpTools("http://localhost:3000/mcp");
 
     expect(tools["ppal-connect"]!.description).toBe("Connect to Ableton");
     expect(tools["ppal-read"]!.description).toBe("Read the Live Set");
   });
 
   it("creates executable tools that call mcpClient.callTool", async () => {
-    const { tools } = await createAiSdkMcpTools("http://localhost:3000/mcp");
+    const { tools } = await createMcpTools("http://localhost:3000/mcp");
 
     const execute = tools["ppal-connect"]!.execute!;
     const result = await execute(
@@ -104,7 +104,7 @@ describe("createAiSdkMcpTools", () => {
       isError: true,
     });
 
-    const { tools } = await createAiSdkMcpTools("http://localhost:3000/mcp");
+    const { tools } = await createMcpTools("http://localhost:3000/mcp");
     const execute = tools["ppal-connect"]!.execute!;
 
     await expect(
@@ -120,9 +120,7 @@ describe("createAiSdkMcpTools", () => {
   });
 
   it("returns the MCP client", async () => {
-    const { mcpClient } = await createAiSdkMcpTools(
-      "http://localhost:3000/mcp",
-    );
+    const { mcpClient } = await createMcpTools("http://localhost:3000/mcp");
 
     expect(mcpClient).toBeDefined();
     expect(mcpClient).toHaveProperty("listTools");

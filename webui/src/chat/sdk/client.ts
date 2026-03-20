@@ -14,29 +14,25 @@ import {
 } from "ai";
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
-import {
-  type AiSdkClientConfig,
-  type AiSdkMessage,
-  toTokenUsage,
-} from "./ai-sdk-types";
-import { createAiSdkMcpTools } from "./mcp-tools";
+import { createMcpTools } from "./mcp-tools";
+import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 const MAX_TOOL_STEPS = 10;
 
 /**
  * AI SDK client that wraps streamText for chat with MCP tool support.
- * Implements the ChatClient<AiSdkMessage> interface expected by useChat.
+ * Implements the ChatClient<ChatMessage> interface expected by useChat.
  */
-export class AiSdkClient {
-  chatHistory: AiSdkMessage[];
+export class ChatSdkClient {
+  chatHistory: ChatMessage[];
   private tools: ToolSet = {};
-  private config: AiSdkClientConfig;
+  private config: ChatClientConfig;
 
   /**
    * @param _apiKey - API key (handled by the model instance in config)
    * @param config - Client configuration
    */
-  constructor(_apiKey: string, config: AiSdkClientConfig) {
+  constructor(_apiKey: string, config: ChatClientConfig) {
     this.config = config;
     this.chatHistory = config.chatHistory ?? [];
   }
@@ -46,10 +42,7 @@ export class AiSdkClient {
    */
   async initialize(): Promise<void> {
     const mcpUrl = this.config.mcpUrl ?? getMcpUrl();
-    const { tools } = await createAiSdkMcpTools(
-      mcpUrl,
-      this.config.enabledTools,
-    );
+    const { tools } = await createMcpTools(mcpUrl, this.config.enabledTools);
 
     this.tools = tools;
   }
@@ -66,8 +59,8 @@ export class AiSdkClient {
     message: string,
     abortSignal?: AbortSignal,
     overrides?: MessageOverrides,
-  ): AsyncGenerator<AiSdkMessage[], void, unknown> {
-    const userMsg: AiSdkMessage = { role: "user", content: message };
+  ): AsyncGenerator<ChatMessage[], void, unknown> {
+    const userMsg: ChatMessage = { role: "user", content: message };
 
     stampOverrides(userMsg, overrides);
     this.chatHistory.push(userMsg);
@@ -94,7 +87,7 @@ export class AiSdkClient {
         let count = 0;
 
         for (let i = historyLengthBefore; i < this.chatHistory.length; i++) {
-          const msg = this.chatHistory[i] as AiSdkMessage;
+          const msg = this.chatHistory[i] as ChatMessage;
 
           if (msg.role === "assistant" && count++ === stepIndex) {
             msg.usage = toTokenUsage(event.usage);
@@ -123,8 +116,8 @@ export class AiSdkClient {
    */
   private async *processStream(
     result: ReturnType<typeof streamText>,
-  ): AsyncGenerator<AiSdkMessage[]> {
-    let currentMsg: AiSdkMessage = { role: "assistant", content: "" };
+  ): AsyncGenerator<ChatMessage[]> {
+    let currentMsg: ChatMessage = { role: "assistant", content: "" };
     let addedCurrentMsg = false;
 
     for await (const part of result.fullStream) {
@@ -152,7 +145,7 @@ export class AiSdkClient {
  * @param msg - User message to stamp
  * @param overrides - Per-message overrides (undefined = no overrides)
  */
-function stampOverrides(msg: AiSdkMessage, overrides?: MessageOverrides): void {
+function stampOverrides(msg: ChatMessage, overrides?: MessageOverrides): void {
   if (!overrides) return;
 
   if (overrides.thinking != null) msg.thinkingOverride = overrides.thinking;
@@ -168,7 +161,7 @@ function stampOverrides(msg: AiSdkMessage, overrides?: MessageOverrides): void {
 function handleStreamPart(
   type: string,
   part: Record<string, unknown>,
-  msg: AiSdkMessage,
+  msg: ChatMessage,
 ): boolean {
   if (type === "text-delta") {
     msg.content += part.text as string;
@@ -251,7 +244,7 @@ function handleStreamPart(
  * @param history - Chat history to convert
  * @returns Array of ModelMessage for streamText
  */
-function buildModelMessages(history: AiSdkMessage[]): ModelMessage[] {
+function buildModelMessages(history: ChatMessage[]): ModelMessage[] {
   const messages: ModelMessage[] = [];
 
   for (const msg of history) {
@@ -289,7 +282,7 @@ function buildModelMessages(history: AiSdkMessage[]): ModelMessage[] {
  * @returns Array of ToolResultPart for the tool message
  */
 function buildToolResultContent(
-  toolResults: NonNullable<AiSdkMessage["toolResults"]>,
+  toolResults: NonNullable<ChatMessage["toolResults"]>,
 ): ToolResultPart[] {
   return toolResults.map((tr) => ({
     type: "tool-result" as const,
@@ -308,7 +301,7 @@ function buildToolResultContent(
  * @returns Structured content array
  */
 function buildAssistantContent(
-  msg: AiSdkMessage,
+  msg: ChatMessage,
 ): Array<TextPart | ToolCallPart> {
   const parts: Array<TextPart | ToolCallPart> = [];
 

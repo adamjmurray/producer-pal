@@ -9,18 +9,15 @@
  */
 
 import { type ModelMessage, stepCountIs, streamText } from "ai";
-import {
-  type TokenUsage,
-  toTokenUsage,
-} from "#webui/chat/ai-sdk/ai-sdk-types.ts";
-import { createAiSdkMcpTools } from "./ai-sdk-mcp.ts";
-import { createProviderModel } from "./ai-sdk-provider.ts";
-import { processCliStream } from "./ai-sdk-stream.ts";
-import { buildProviderOptions } from "./ai-sdk-thinking.ts";
+import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
+import { createMcpTools } from "./mcp.ts";
+import { createProviderModel } from "./provider.ts";
 import { formatAssistantLabel, printStepUsage } from "./shared/formatting.ts";
 import { createMessageSource } from "./shared/message-source.ts";
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import { type ChatOptions, type TurnResult } from "./shared/types.ts";
+import { processCliStream } from "./stream.ts";
+import { buildProviderOptions } from "./thinking.ts";
 
 const MAX_TOOL_STEPS = 10;
 const DEFAULT_MAX_TOKENS = 8192;
@@ -37,12 +34,12 @@ interface ChatSession {
  * @param initialText - Optional initial text to start the conversation
  * @param options - Chat configuration options
  */
-export async function runAiSdkChat(
+export async function runChat(
   initialText: string,
   options: ChatOptions,
 ): Promise<void> {
   const model = createProviderModel(options.provider, options.model);
-  const { tools, mcpClient } = await createAiSdkMcpTools();
+  const { tools, mcpClient } = await createMcpTools();
   const providerOptions = buildProviderOptions(
     options.provider,
     options.thinking,

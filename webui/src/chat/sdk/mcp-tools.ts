@@ -11,7 +11,7 @@ import {
 } from "#webui/chat/helpers/mcp-client-helpers";
 
 /** Result of creating AI SDK tools from MCP */
-export interface AiSdkMcpTools {
+export interface McpTools {
   tools: ToolSet;
   mcpClient: Client;
 }
@@ -23,10 +23,10 @@ export interface AiSdkMcpTools {
  * @param enabledTools - Map of tool names to enabled state
  * @returns AI SDK tools and the underlying MCP client
  */
-export async function createAiSdkMcpTools(
+export async function createMcpTools(
   mcpUrl: string,
   enabledTools?: Record<string, boolean>,
-): Promise<AiSdkMcpTools> {
+): Promise<McpTools> {
   const mcpClient = await createConnectedMcpClient(mcpUrl);
   const toolsResult = await mcpClient.listTools();
   const filtered = filterEnabledTools(toolsResult.tools, enabledTools);

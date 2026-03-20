@@ -10,7 +10,7 @@
  * Data captured from real ppal-client calls against the e2e-test-set Live Set.
  */
 
-import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types";
+import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type UIMessage } from "#webui/types/messages";
 
 /** Tool name mapping for demo mode (mirrors real MCP tool display names) */
