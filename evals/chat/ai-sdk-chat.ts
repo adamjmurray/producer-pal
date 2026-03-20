@@ -9,6 +9,14 @@
  */
 
 import { type ModelMessage, stepCountIs, streamText } from "ai";
+import {
+  type TokenUsage,
+  toTokenUsage,
+} from "#webui/chat/ai-sdk/ai-sdk-types.ts";
+import {
+  calcNewContentTokens,
+  compactNumber,
+} from "#webui/lib/utils/compact-number.ts";
 import { createAiSdkMcpTools } from "./ai-sdk-mcp.ts";
 import { createProviderModel } from "./ai-sdk-provider.ts";
 import { processCliStream } from "./ai-sdk-stream.ts";
@@ -70,6 +78,9 @@ export async function runAiSdkChat(
             providerOptions?.anthropic?.thinking != null ||
             providerOptions?.openai?.reasoningEffort != null;
 
+          const stepUsages: TokenUsage[] = [];
+          let prevUsage: TokenUsage | undefined;
+
           const result = streamText({
             model,
             messages: sess.messages,
@@ -81,6 +92,17 @@ export async function runAiSdkChat(
               : sess.options.randomness,
             maxOutputTokens: sess.options.outputTokens ?? DEFAULT_MAX_TOKENS,
             system: sess.options.instructions,
+            onStepFinish: (event) => {
+              const usage = toTokenUsage(event.usage);
+
+              stepUsages.push(usage);
+
+              if (sess.options.usage) {
+                printStepUsage(usage, prevUsage);
+              }
+
+              prevUsage = usage;
+            },
           });
 
           const turnResult = await processCliStream(result);
@@ -90,7 +112,7 @@ export async function runAiSdkChat(
 
           sess.messages.push(...response.messages);
 
-          return turnResult;
+          return { ...turnResult, stepUsages };
         },
       },
     );
@@ -103,4 +125,29 @@ export async function runAiSdkChat(
     rl.close();
     await mcpClient.close();
   }
+}
+
+/**
+ * Print a single step's token usage to the console.
+ * @param usage - Token usage for this step
+ * @param prev - Previous step's usage (for new content calculation)
+ */
+function printStepUsage(usage: TokenUsage, prev: TokenUsage | undefined): void {
+  const input = usage.inputTokens ?? 0;
+  const newContent = calcNewContentTokens(
+    input,
+    prev?.inputTokens,
+    prev?.outputTokens,
+  );
+
+  const newPart =
+    newContent != null ? ` (${compactNumber(newContent)} new)` : "";
+  const reasoningPart =
+    (usage.reasoningTokens ?? 0) > 0
+      ? ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`
+      : "";
+
+  const line = `tokens: ${compactNumber(input)}${newPart} → ${compactNumber(usage.outputTokens ?? 0)}${reasoningPart}`;
+
+  console.log(`\n\x1b[90m  ${line}\x1b[0m\n`);
 }

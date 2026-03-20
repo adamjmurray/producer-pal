@@ -49,6 +49,7 @@ program
     "Multiple messages to send in sequence",
   )
   .option("-f, --file <path>", "File containing messages (one per line)")
+  .option("-u, --usage", "Show per-step token usage")
   .option(
     "-b, --base-url <url>",
     "Base URL for local provider (default: http://localhost:11434/v1)",
