@@ -471,4 +471,63 @@ describe("performSplitting", () => {
     // clips array should remain empty since stale clip was not found
     expect(clips).toHaveLength(0);
   });
+
+  it("should handle split point at EPSILON boundary (near-zero right trim)", () => {
+    const clipId = "clip_1";
+
+    // Clip of 8 beats, split at ~8 beats (within EPSILON of clip end)
+    // This means rightTrimLen <= EPSILON, skipping the right-trim step
+    const { callState } = setupClipSplittingMocks(clipId, {
+      looping: true,
+      endTime: 8.0,
+      loopEnd: 4.0,
+    });
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    // Split at 7.9999 (almost the full clip length of 8)
+    // rightTrimLen = 8 - 7.9999 = 0.0001 which is <= EPSILON (0.001)
+    performSplitting([mockClip], [7.9999], clips, HOLDING_AREA);
+
+    // Should still complete without error (right-trim skipped)
+    expectDuplicateCalled(callState.trackMock);
+  });
+
+  it("should handle split with near-zero left trim for last segment", () => {
+    const clipId = "clip_1";
+
+    // Clip of 8 beats, split very close to the start
+    const { callState } = setupClipSplittingMocks(clipId, {
+      looping: true,
+      endTime: 8.0,
+      loopEnd: 4.0,
+    });
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    // Split at 0.0005 beats (within EPSILON of 0)
+    // lastSegStart = 0.0005 which is <= EPSILON, skipping left-trim for last segment
+    performSplitting([mockClip], [0.0005], clips, HOLDING_AREA);
+
+    // Should still complete without error
+    expectDuplicateCalled(callState.trackMock);
+  });
+
+  it("should handle 3-segment split with EPSILON boundary middle trims", () => {
+    const clipId = "clip_1";
+
+    const { callState } = setupClipSplittingMocks(clipId, {
+      looping: true,
+      endTime: 12.0,
+      loopEnd: 4.0,
+    });
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    // Split at boundaries very close to 0 and clip end
+    // Middle segment: segStart=0.0005 (<=EPSILON), segEnd=11.9995
+    // This exercises: segStart <= EPSILON (skip left-trim) and
+    // rightTrim = 12 - 11.9995 = 0.0005 <= EPSILON (skip right-trim)
+    performSplitting([mockClip], [0.0005, 11.9995], clips, HOLDING_AREA);
+
+    // Should complete - middle segment extracted without edge trims
+    expectDuplicateCalled(callState.trackMock);
+  });
 });

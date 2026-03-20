@@ -217,4 +217,68 @@ describe("updateDevice - param value conversion", () => {
       expect(param.set).toHaveBeenCalledWith("value", "custom-value");
     });
   });
+
+  describe("binary search with mid-iteration unparseable label", () => {
+    let param: RegisteredMockObject;
+
+    beforeEach(() => {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children("flaky-param") },
+      });
+      param = registerMockObject("flaky-param", {
+        properties: {
+          name: "Flaky",
+          original_name: "Flaky",
+          is_quantized: 0,
+          value: 0.5,
+          min: 0,
+          max: 1,
+        },
+        methods: {
+          // Min/max labels parseable (triggers binary search),
+          // but mid-range label becomes unparseable
+          str_for_value: (v: unknown) => {
+            const n = Number(v);
+
+            if (n <= 0.01) return "0 Hz";
+            if (n >= 0.99) return "1000 Hz";
+
+            return "---";
+          },
+        },
+      });
+    });
+
+    it("should return mid value when label becomes unparseable during binary search", () => {
+      updateDevice({ ids: "dev1", params: "Flaky = 500" });
+
+      const setCall = param.set.mock.calls.find(
+        (c: unknown[]) => c[0] === "value",
+      ) as [string, number];
+
+      expect(setCall).toBeDefined();
+      // Should converge to mid since unparseable labels return early
+      expect(setCall[1]).toBeGreaterThan(0);
+      expect(setCall[1]).toBeLessThan(1);
+    });
+  });
+
+  describe("param not found warning", () => {
+    it("should warn when param name does not match any device parameter", () => {
+      registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: { parameters: children() },
+      });
+
+      updateDevice({ ids: "dev1", params: "NonExistentParam = 0.5" });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining('"NonExistentParam" not found'),
+      );
+    });
+  });
 });

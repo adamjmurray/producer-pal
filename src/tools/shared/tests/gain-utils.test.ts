@@ -159,6 +159,30 @@ describe("gain-utils", () => {
     });
   });
 
+  describe("liveGainToDb null dB edge cases", () => {
+    it("should handle gain value between first entry (null dB) and second entry", () => {
+      // Gain value between 0 (null dB) and 0.00011 (-69.7 dB)
+      // This exercises the lower.dB === null, upper.dB !== null branch
+      const dB = liveGainToDb(0.00005);
+
+      // Should return upper.dB since lower.dB is null
+      expect(dB).toBeCloseTo(-69.7, 0);
+    });
+  });
+
+  describe("dbToLiveGain upperIndex === -1 edge case", () => {
+    it("should return last valid gain when dB matches the highest table entry exactly", () => {
+      // 24 dB is the max but is clamped. Test a value just below that triggers
+      // the loop to exhaust without finding an upper bound.
+      // The last non-null entry in the table should be at gain ~1.0 with dB 24.
+      // Testing with 23.95 which is very close to max
+      const gain = dbToLiveGain(23.95);
+
+      expect(gain).toBeGreaterThan(0.999);
+      expect(gain).toBeLessThanOrEqual(1);
+    });
+  });
+
   describe("round-trip conversion", () => {
     it("should round-trip accurately across full range", () => {
       const testGains = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
