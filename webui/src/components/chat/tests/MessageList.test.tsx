@@ -417,47 +417,32 @@ describe("MessageList", () => {
       expect(screen.queryByText("Still thinking...")).toBeNull();
     });
 
-    it("disappears when assistant message gains content", async () => {
-      const { rerender } = renderMessageList([], true);
+    it.each<[string, UIMessage[], boolean]>([
+      ["assistant message gains content", [createModelMessage("Hello")], true],
+      ["responding ends", [], false],
+    ])(
+      "disappears when %s",
+      async (_label, messages, isAssistantResponding) => {
+        const { rerender } = renderMessageList([], true);
 
-      await act(() => {
-        vi.advanceTimersByTime(4000);
-      });
-      expect(screen.getByText("Still thinking...")).toBeDefined();
+        await act(() => {
+          vi.advanceTimersByTime(4000);
+        });
+        expect(screen.getByText("Still thinking...")).toBeDefined();
 
-      rerender(
-        <MessageList
-          messages={[createModelMessage("Hello")]}
-          isAssistantResponding={true}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-          showTokenUsage={false}
-        />,
-      );
-      expect(screen.queryByText("Still thinking...")).toBeNull();
-    });
-
-    it("disappears when responding ends", async () => {
-      const { rerender } = renderMessageList([], true);
-
-      await act(() => {
-        vi.advanceTimersByTime(4000);
-      });
-      expect(screen.getByText("Still thinking...")).toBeDefined();
-
-      rerender(
-        <MessageList
-          messages={[]}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-          showTokenUsage={false}
-        />,
-      );
-      expect(screen.queryByText("Still thinking...")).toBeNull();
-    });
+        rerender(
+          <MessageList
+            messages={messages}
+            isAssistantResponding={isAssistantResponding}
+            handleRetry={vi.fn()}
+            handleEdit={vi.fn()}
+            showTimestamps={true}
+            showTokenUsage={false}
+          />,
+        );
+        expect(screen.queryByText("Still thinking...")).toBeNull();
+      },
+    );
 
     it("does not appear if content arrives before delay", async () => {
       const { rerender } = renderMessageList([], true);

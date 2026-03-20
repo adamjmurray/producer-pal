@@ -6,35 +6,29 @@
 import "fake-indexeddb/auto";
 import { describe, expect, it, beforeEach } from "vitest";
 import {
+  type ConversationRecord,
   saveConversation,
   resetDbCache,
-  type ConversationRecord,
 } from "#webui/lib/conversation-db";
 import {
   exportConversation,
   exportConversations,
   importConversations,
 } from "#webui/lib/conversation-transfer";
+import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 
-const makeRecord = (
-  id: string,
-  title: string | null = null,
-): ConversationRecord => ({
-  id,
-  title,
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-  bookmarked: false,
-  provider: null,
-  model: null,
-  modelLabel: null,
-  thinking: null,
-  temperature: null,
-  showThoughts: null,
-  smallModelMode: null,
-  totalUsage: null,
-  messages: [{ role: "user", content: `hello from ${id}` }],
-});
+/**
+ * Create a test record with a specific ID and optional title.
+ * @param id - Conversation ID
+ * @param title - Optional title
+ * @returns A conversation record
+ */
+const makeRecord = (id: string, title: string | null = null) =>
+  createTestRecord({
+    id,
+    title,
+    messages: [{ role: "user", content: `hello from ${id}` }],
+  });
 
 describe("conversation-transfer", () => {
   beforeEach(async () => {

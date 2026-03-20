@@ -21,28 +21,7 @@ import {
   saveConversation,
   setBookmark,
 } from "./conversation-db";
-
-function createRecord(
-  overrides: Partial<ConversationRecord> = {},
-): ConversationRecord {
-  return {
-    id: crypto.randomUUID(),
-    title: null,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    bookmarked: false,
-    provider: null,
-    model: null,
-    modelLabel: null,
-    thinking: null,
-    temperature: null,
-    showThoughts: null,
-    smallModelMode: null,
-    totalUsage: null,
-    messages: [{ role: "user", content: "hello" }],
-    ...overrides,
-  };
-}
+import { createTestRecord as createRecord } from "#webui/test-utils/conversation-test-helpers";
 
 describe("conversation-db", () => {
   beforeEach(async () => {

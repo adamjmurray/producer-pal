@@ -24,6 +24,29 @@ function expectNoteReplaceAndAddCalls(
   clip: UpdateClipMocks["clip123"],
   expectedNotes = [DEFAULT_C3_NOTE],
 ): void {
+  expectNotesCleared(clip);
+  expect(clip.call).toHaveBeenCalledWith("add_new_notes", {
+    notes: expectedNotes,
+  });
+}
+
+/**
+ * Assert that all notes were cleared but no new notes were added.
+ * @param clip - The clip mock to check
+ */
+function expectNotesClearedOnly(clip: UpdateClipMocks["clip123"]): void {
+  expectNotesCleared(clip);
+  expect(clip.call).not.toHaveBeenCalledWith(
+    "add_new_notes",
+    expect.anything(),
+  );
+}
+
+/**
+ * Assert that remove_notes_extended was called with full range.
+ * @param clip - The clip mock to check
+ */
+function expectNotesCleared(clip: UpdateClipMocks["clip123"]): void {
   expect(clip.call).toHaveBeenCalledWith(
     "remove_notes_extended",
     0,
@@ -31,9 +54,6 @@ function expectNoteReplaceAndAddCalls(
     0,
     1000000,
   );
-  expect(clip.call).toHaveBeenCalledWith("add_new_notes", {
-    notes: expectedNotes,
-  });
 }
 
 describe("updateClip - Note update modes", () => {
@@ -85,17 +105,7 @@ describe("updateClip - Note update modes", () => {
       noteUpdateMode: "replace",
     });
 
-    expect(mocks.clip123.call).toHaveBeenCalledWith(
-      "remove_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
-      "add_new_notes",
-      expect.anything(),
-    );
+    expectNotesClearedOnly(mocks.clip123);
   });
 
   it("should replace notes when noteUpdateMode is 'replace'", async () => {
@@ -165,17 +175,7 @@ describe("updateClip - Note update modes", () => {
       noteUpdateMode: "merge",
     });
 
-    expect(mocks.clip123.call).toHaveBeenCalledWith(
-      "remove_notes_extended",
-      0,
-      128,
-      0,
-      1000000,
-    );
-    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
-      "add_new_notes",
-      expect.anything(),
-    );
+    expectNotesClearedOnly(mocks.clip123);
   });
 
   it("should apply transforms to existing notes without notes param", async () => {

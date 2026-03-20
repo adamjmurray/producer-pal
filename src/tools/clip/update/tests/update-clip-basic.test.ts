@@ -308,9 +308,10 @@ describe("updateClip - Basic operations", () => {
     ).rejects.toThrow("Time signature must be in format");
   });
 
-  it("should move session clip with toSlot", async () => {
-    setupMidiClipMock(mocks.clip123);
-
+  /**
+   * Register mock objects for toSlot tests (source clip slot + target slot + target clip).
+   */
+  async function setupToSlotMocks(): Promise<void> {
     const { registerMockObject } =
       await import("#src/test/mocks/mock-registry.ts");
 
@@ -326,6 +327,11 @@ describe("updateClip - Basic operations", () => {
     registerMockObject("live_set/tracks/1/clip_slots/2/clip", {
       path: livePath.track(1).clipSlot(2).clip(),
     });
+  }
+
+  it("should move session clip with toSlot", async () => {
+    setupMidiClipMock(mocks.clip123);
+    await setupToSlotMocks();
 
     const result = await updateClip({ ids: "123", toSlot: "1/2" });
 
@@ -337,22 +343,7 @@ describe("updateClip - Basic operations", () => {
 
   it("should warn and use first slot when toSlot has multiple values", async () => {
     setupMidiClipMock(mocks.clip123);
-
-    const { registerMockObject } =
-      await import("#src/test/mocks/mock-registry.ts");
-
-    registerMockObject("live_set/tracks/0/clip_slots/0", {
-      path: livePath.track(0).clipSlot(0),
-    });
-
-    registerMockObject("live_set/tracks/1/clip_slots/2", {
-      path: livePath.track(1).clipSlot(2),
-      properties: { has_clip: 0 },
-    });
-
-    registerMockObject("live_set/tracks/1/clip_slots/2/clip", {
-      path: livePath.track(1).clipSlot(2).clip(),
-    });
+    await setupToSlotMocks();
 
     const consoleModule = await import("#src/shared/v8-max-console.ts");
     const warnSpy = vi.spyOn(consoleModule, "warn");

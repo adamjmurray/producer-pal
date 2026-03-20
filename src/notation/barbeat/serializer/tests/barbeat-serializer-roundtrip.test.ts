@@ -6,50 +6,10 @@
 import { describe, expect, it } from "vitest";
 import { createNote } from "#src/test/test-data-builders.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
-import { drumPatternNotes, sortNotes } from "../../barbeat-test-fixtures.ts";
-import { formatNotation } from "../barbeat-serializer.ts";
+import { drumPatternNotes } from "../../barbeat-test-fixtures.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
-
-/** Tolerance for floating-point comparison (covers fraction round-trip drift) */
-const EPSILON = 1e-10;
-
-/**
- * Round-trip helper: notes → serialize → parse → interpret → compare to original.
- * Sorts both arrays for comparison since note order within a time group may vary.
- * Uses approximate comparison for floating-point values to handle fraction drift
- * (e.g., 1/3 vs 4/3-1 differ by 1 ULP in IEEE 754).
- * @param notes - Notes to round-trip
- * @param options - Time signature options
- * @param options.timeSigNumerator - Time signature numerator
- * @param options.timeSigDenominator - Time signature denominator
- */
-function expectRoundTrip(
-  notes: NoteEvent[],
-  options?: { timeSigNumerator?: number; timeSigDenominator?: number },
-): void {
-  const formatted = formatNotation(notes, options);
-  const reparsed = interpretNotation(formatted, options);
-  const sortedOriginal = sortNotes(notes);
-  const sortedReparsed = sortNotes(reparsed);
-
-  expect(sortedReparsed).toHaveLength(sortedOriginal.length);
-
-  for (let i = 0; i < sortedOriginal.length; i++) {
-    const orig = sortedOriginal[i] as NoteEvent;
-    const repr = sortedReparsed[i] as NoteEvent;
-
-    expect(repr.pitch).toBe(orig.pitch);
-    expect(repr.start_time).toBeCloseTo(orig.start_time, 8);
-    expect(repr.duration).toBeCloseTo(orig.duration, 8);
-    expect(repr.velocity).toBeCloseTo(orig.velocity, 8);
-    expect(
-      Math.abs((repr.probability ?? 1) - (orig.probability ?? 1)),
-    ).toBeLessThan(EPSILON);
-    expect(
-      Math.abs((repr.velocity_deviation ?? 0) - (orig.velocity_deviation ?? 0)),
-    ).toBeLessThan(EPSILON);
-  }
-}
+import { formatNotation } from "../barbeat-serializer.ts";
+import { expectRoundTripNotes as expectRoundTrip } from "./barbeat-serializer-test-helpers.ts";
 
 describe("round-trip: serialize → parse → interpret", () => {
   it("round-trips simple melody", () => {

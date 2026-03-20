@@ -37,7 +37,10 @@ describe("select edge cases", () => {
   });
 
   describe("readFullState device edge cases", () => {
-    it("omits selectedDevice when track view's selected_device does not exist", () => {
+    /**
+     * Set up view state with a selected track but no selected scene/clip.
+     */
+    function setupTrackOnlyViewState(): void {
       clearMockRegistry();
 
       setupViewStateMock({
@@ -53,6 +56,10 @@ describe("select edge cases", () => {
         selectedClip: { exists: false },
         highlightedClipSlot: { exists: false },
       });
+    }
+
+    it("omits selectedDevice when track view's selected_device does not exist", () => {
+      setupTrackOnlyViewState();
 
       // Track view returns a non-existent device
       setupTrackViewMock(livePath.track(0), "0");
@@ -64,21 +71,7 @@ describe("select edge cases", () => {
     });
 
     it("omits selectedDevice when track view has no selected_device", () => {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "session",
-        selectedTrack: {
-          exists: true,
-          category: "regular",
-          trackIndex: 0,
-          id: "track_1",
-          path: String(livePath.track(0)),
-        },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      setupTrackOnlyViewState();
 
       // Track view without a selected device (null device result)
       setupTrackViewMock(livePath.track(0));

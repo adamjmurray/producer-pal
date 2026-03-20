@@ -14,9 +14,9 @@ import {
   getConversationDb,
   saveConversation,
   resetDbCache,
-  type ConversationRecord,
 } from "#webui/lib/conversation-db";
 import * as transferModule from "#webui/lib/conversation-transfer";
+import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 
 const refreshList = vi.fn().mockResolvedValue(undefined);
 
@@ -37,24 +37,12 @@ async function waitForAsyncOps(): Promise<void> {
  * @param id - Conversation ID
  * @returns A minimal conversation record
  */
-function makeRecord(id: string): ConversationRecord {
-  return {
+const makeRecord = (id: string) =>
+  createTestRecord({
     id,
     title: "Test",
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    bookmarked: false,
-    provider: null,
-    model: null,
-    modelLabel: null,
-    thinking: null,
-    temperature: null,
-    showThoughts: null,
-    smallModelMode: null,
-    totalUsage: null,
     messages: [{ role: "user", content: "hi" }],
-  };
-}
+  });
 
 /**
  * Set up mocks for download-triggering DOM APIs.
