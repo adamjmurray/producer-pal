@@ -171,11 +171,10 @@ describe("gain-utils", () => {
   });
 
   describe("dbToLiveGain upperIndex === -1 edge case", () => {
-    it("should return last valid gain when dB matches the highest table entry exactly", () => {
-      // 24 dB is the max but is clamped. Test a value just below that triggers
-      // the loop to exhaust without finding an upper bound.
-      // The last non-null entry in the table should be at gain ~1.0 with dB 24.
-      // Testing with 23.95 which is very close to max
+    it("should return last entry gain when dB exceeds all but the last table entry", () => {
+      // 23.95 dB is above all table entries except the last (24 dB).
+      // The search loop finds lowerIndex but no upperIndex (stays -1),
+      // so the function returns the last entry's gain directly.
       const gain = dbToLiveGain(23.95);
 
       expect(gain).toBeGreaterThan(0.999);

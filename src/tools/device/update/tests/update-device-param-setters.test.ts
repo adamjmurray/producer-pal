@@ -251,7 +251,7 @@ describe("updateDevice - param value conversion", () => {
       });
     });
 
-    it("should return mid value when label becomes unparseable during binary search", () => {
+    it("should converge toward min when mid-range labels parse as NaN", () => {
       updateDevice({ ids: "dev1", params: "Flaky = 500" });
 
       const setCall = param.set.mock.calls.find(
@@ -259,9 +259,10 @@ describe("updateDevice - param value conversion", () => {
       ) as [string, number];
 
       expect(setCall).toBeDefined();
-      // Should converge to mid since unparseable labels return early
-      expect(setCall[1]).toBeGreaterThan(0);
-      expect(setCall[1]).toBeLessThan(1);
+      // "---" parses as NaN (leading hyphens match the number regex).
+      // NaN comparisons always false, so binary search treats it as
+      // greater-than-target and converges hi toward lo (near rawMin).
+      expect(setCall[1]).toBeCloseTo(0.01, 1);
     });
   });
 

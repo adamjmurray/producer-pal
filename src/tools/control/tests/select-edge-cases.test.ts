@@ -103,6 +103,7 @@ describe("select edge cases", () => {
         },
       });
 
+      // select() reads time signature for bar:beat formatting in clip results
       registerMockObject("live_set", {
         path: "live_set",
         type: "Song",
