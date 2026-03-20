@@ -375,65 +375,45 @@ describe("App", () => {
   };
 
   describe("baseUrl determination", () => {
-    it("uses custom baseUrl for custom provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "custom",
-        baseUrl: "https://custom.api.com/v1",
-      });
-      render(<App />);
-      expect(getExtraParams().baseUrl).toBe("https://custom.api.com/v1");
-    });
+    it.each([
+      ["custom", "https://custom.api.com/v1", "https://custom.api.com/v1"],
+      ["lmstudio", "http://localhost:1234/v1", "http://localhost:1234/v1"],
+      ["ollama", "http://localhost:11434/v1", "http://localhost:11434/v1"],
+      [
+        "lmstudio (remote)",
+        "http://192.168.1.100:1234/v1",
+        "http://192.168.1.100:1234/v1",
+      ],
+    ] as const)(
+      "uses baseUrl for %s provider",
+      (provider, baseUrl, expected) => {
+        const providerKey = provider.replace(/ .*/, "");
 
-    it("uses baseUrl for lmstudio provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "lmstudio",
-        baseUrl: "http://localhost:1234/v1",
-      });
-      render(<App />);
-      expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
-    });
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider: providerKey,
+          baseUrl,
+        });
+        render(<App />);
+        expect(getExtraParams().baseUrl).toBe(expected);
+      },
+    );
 
-    it("uses baseUrl for ollama provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "ollama",
-        baseUrl: "http://localhost:11434/v1",
-      });
-      render(<App />);
-      expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
-    });
-
-    it("uses custom baseUrl for lmstudio on remote host", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "lmstudio",
-        baseUrl: "http://192.168.1.100:1234/v1",
-      });
-      render(<App />);
-      expect(getExtraParams().baseUrl).toBe("http://192.168.1.100:1234/v1");
-    });
-
-    it("falls back to default URL for lmstudio when baseUrl is undefined", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "lmstudio",
-        baseUrl: undefined,
-      });
-      render(<App />);
-      expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
-    });
-
-    it("falls back to default URL for ollama when baseUrl is undefined", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "ollama",
-        baseUrl: undefined,
-      });
-      render(<App />);
-      expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
-    });
+    it.each([
+      ["lmstudio", "http://localhost:1234/v1"],
+      ["ollama", "http://localhost:11434/v1"],
+    ] as const)(
+      "falls back to default URL for %s when baseUrl is undefined",
+      (provider, expected) => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider,
+          baseUrl: undefined,
+        });
+        render(<App />);
+        expect(getExtraParams().baseUrl).toBe(expected);
+      },
+    );
 
     it("uses 'not-needed' apiKey for lmstudio when apiKey is empty", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -445,32 +425,21 @@ describe("App", () => {
       expect(getApiKey()).toBe("not-needed");
     });
 
-    it("uses provider-specific baseUrl for openai provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "openai",
-      });
-      render(<App />);
-      expect(getExtraParams().baseUrl).toBe("https://api.openai.com/v1");
-    });
-
-    it("uses provider-specific baseUrl for mistral provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "mistral",
-      });
-      render(<App />);
-      expect(getExtraParams().baseUrl).toBe("https://api.mistral.ai/v1");
-    });
-
-    it("uses provider-specific baseUrl for openrouter provider", () => {
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "openrouter",
-      });
-      render(<App />);
-      expect(getExtraParams().baseUrl).toBe("https://openrouter.ai/api/v1");
-    });
+    it.each([
+      ["openai", "https://api.openai.com/v1"],
+      ["mistral", "https://api.mistral.ai/v1"],
+      ["openrouter", "https://openrouter.ai/api/v1"],
+    ] as const)(
+      "uses provider-specific baseUrl for %s provider",
+      (provider, expected) => {
+        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+          ...mockSettingsHook,
+          provider,
+        });
+        render(<App />);
+        expect(getExtraParams().baseUrl).toBe(expected);
+      },
+    );
 
     it("uses undefined baseUrl for gemini provider", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -483,126 +452,52 @@ describe("App", () => {
   });
 
   describe("URL normalization for local providers", () => {
-    describe("lmstudio normalization", () => {
-      it("appends /v1 to URL without suffix", () => {
+    describe.each([
+      ["lmstudio", "1234"],
+      ["ollama", "11434"],
+    ] as const)("%s normalization", (provider, port) => {
+      /**
+       * Mock settings for a local provider with a given baseUrl and render.
+       * @param baseUrl - The base URL to set
+       */
+      function renderWithBaseUrl(baseUrl: string): void {
         (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
           ...mockSettingsHook,
-          provider: "lmstudio",
-          baseUrl: "http://localhost:1234",
+          provider,
+          baseUrl,
         });
         render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+      }
+
+      it("appends /v1 to URL without suffix", () => {
+        renderWithBaseUrl(`http://localhost:${port}`);
+        expect(getExtraParams().baseUrl).toBe(`http://localhost:${port}/v1`);
       });
 
       it("removes trailing slash and appends /v1", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "lmstudio",
-          baseUrl: "http://localhost:1234/",
-        });
-        render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+        renderWithBaseUrl(`http://localhost:${port}/`);
+        expect(getExtraParams().baseUrl).toBe(`http://localhost:${port}/v1`);
       });
 
       it("preserves URL already ending in /v1", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "lmstudio",
-          baseUrl: "http://localhost:1234/v1",
-        });
-        render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+        renderWithBaseUrl(`http://localhost:${port}/v1`);
+        expect(getExtraParams().baseUrl).toBe(`http://localhost:${port}/v1`);
       });
 
       it("removes trailing slash from URL ending in /v1/", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "lmstudio",
-          baseUrl: "http://localhost:1234/v1/",
-        });
-        render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://localhost:1234/v1");
+        renderWithBaseUrl(`http://localhost:${port}/v1/`);
+        expect(getExtraParams().baseUrl).toBe(`http://localhost:${port}/v1`);
       });
 
       it("appends /v1 to remote host URL", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "lmstudio",
-          baseUrl: "http://192.168.1.100:1234",
-        });
-        render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://192.168.1.100:1234/v1");
+        renderWithBaseUrl(`http://192.168.1.100:${port}`);
+        expect(getExtraParams().baseUrl).toBe(
+          `http://192.168.1.100:${port}/v1`,
+        );
       });
 
       it("appends /v1 to custom path", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "lmstudio",
-          baseUrl: "http://localhost:8080/api",
-        });
-        render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://localhost:8080/api/v1");
-      });
-    });
-
-    describe("ollama normalization", () => {
-      it("appends /v1 to URL without suffix", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "ollama",
-          baseUrl: "http://localhost:11434",
-        });
-        render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
-      });
-
-      it("removes trailing slash and appends /v1", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "ollama",
-          baseUrl: "http://localhost:11434/",
-        });
-        render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
-      });
-
-      it("preserves URL already ending in /v1", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "ollama",
-          baseUrl: "http://localhost:11434/v1",
-        });
-        render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
-      });
-
-      it("removes trailing slash from URL ending in /v1/", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "ollama",
-          baseUrl: "http://localhost:11434/v1/",
-        });
-        render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://localhost:11434/v1");
-      });
-
-      it("appends /v1 to remote host URL", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "ollama",
-          baseUrl: "http://192.168.1.100:11434",
-        });
-        render(<App />);
-        expect(getExtraParams().baseUrl).toBe("http://192.168.1.100:11434/v1");
-      });
-
-      it("appends /v1 to custom path", () => {
-        (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-          ...mockSettingsHook,
-          provider: "ollama",
-          baseUrl: "http://localhost:8080/api",
-        });
-        render(<App />);
+        renderWithBaseUrl("http://localhost:8080/api");
         expect(getExtraParams().baseUrl).toBe("http://localhost:8080/api/v1");
       });
     });

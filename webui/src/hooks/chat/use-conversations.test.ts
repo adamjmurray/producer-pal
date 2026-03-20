@@ -79,6 +79,46 @@ async function saveWithMessage(
 }
 
 /**
+ * Save a minimal conversation record, defaulting all nullable fields to null.
+ * @param overrides - Fields to override on the record
+ * @param overrides.id - Optional conversation ID
+ * @param overrides.messages - Optional messages with role and content
+ * @param overrides.createdAt - Optional creation timestamp
+ * @returns The generated conversation ID
+ */
+async function saveTestConversation(
+  overrides: {
+    id?: string;
+    messages?: { role: "user" | "assistant"; content: string }[];
+    createdAt?: number;
+  } = {},
+): Promise<string> {
+  const id = overrides.id ?? crypto.randomUUID();
+  const messages = overrides.messages ?? [
+    { role: "user" as const, content: "test" },
+  ];
+
+  await saveConversation({
+    id,
+    title: null,
+    createdAt: overrides.createdAt ?? 1000,
+    updatedAt: overrides.createdAt ?? 1000,
+    bookmarked: false,
+    provider: null,
+    model: null,
+    modelLabel: null,
+    thinking: null,
+    temperature: null,
+    showThoughts: null,
+    smallModelMode: null,
+    totalUsage: null,
+    messages,
+  });
+
+  return id;
+}
+
+/**
  * Read the conversation ID from the current URL hash.
  * @returns The hash value without the leading #, or empty string
  */
@@ -371,22 +411,7 @@ describe("useConversations", () => {
   });
 
   it("deletes a non-active conversation without clearing chat", async () => {
-    const otherId = crypto.randomUUID();
-
-    await saveConversation({
-      id: otherId,
-      title: null,
-      createdAt: 1000,
-      updatedAt: 1000,
-      bookmarked: false,
-      provider: null,
-      model: null,
-      modelLabel: null,
-      thinking: null,
-      temperature: null,
-      showThoughts: null,
-      smallModelMode: null,
-      totalUsage: null,
+    const otherId = await saveTestConversation({
       messages: [{ role: "user", content: "other" }],
     });
 
@@ -431,22 +456,7 @@ describe("useConversations", () => {
 
   describe("hashchange navigation", () => {
     it("switches conversation on browser back/forward to a valid hash", async () => {
-      const existingId = crypto.randomUUID();
-
-      await saveConversation({
-        id: existingId,
-        title: null,
-        createdAt: 1000,
-        updatedAt: 1000,
-        bookmarked: false,
-        provider: null,
-        model: null,
-        modelLabel: null,
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-        totalUsage: null,
+      const existingId = await saveTestConversation({
         messages: [{ role: "user", content: "from hash" }],
       });
 
@@ -492,41 +502,12 @@ describe("useConversations", () => {
     });
 
     it("does not stall programmatic guard when hash already matches", async () => {
-      const existingId = crypto.randomUUID();
-
-      await saveConversation({
-        id: existingId,
-        title: null,
-        createdAt: 1000,
-        updatedAt: 1000,
-        bookmarked: false,
-        provider: null,
-        model: null,
-        modelLabel: null,
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-        totalUsage: null,
+      const existingId = await saveTestConversation({
         messages: [{ role: "user", content: "first" }],
       });
 
-      const secondId = crypto.randomUUID();
-
-      await saveConversation({
-        id: secondId,
-        title: null,
+      const secondId = await saveTestConversation({
         createdAt: 2000,
-        updatedAt: 2000,
-        bookmarked: false,
-        provider: null,
-        model: null,
-        modelLabel: null,
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-        totalUsage: null,
         messages: [{ role: "user", content: "second" }],
       });
 
