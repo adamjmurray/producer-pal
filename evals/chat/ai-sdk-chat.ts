@@ -57,6 +57,7 @@ export async function runAiSdkChat(
 
   const session: ChatSession = { messages: [], options };
   const hasTools = Object.keys(tools).length > 0;
+  let prevUsage: TokenUsage | undefined;
 
   try {
     await runChatLoop(
@@ -76,7 +77,6 @@ export async function runAiSdkChat(
             providerOptions?.openai?.reasoningEffort != null;
 
           const stepUsages: TokenUsage[] = [];
-          let prevUsage: TokenUsage | undefined;
 
           const result = streamText({
             model,

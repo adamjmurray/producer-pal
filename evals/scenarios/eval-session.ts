@@ -93,6 +93,7 @@ export async function createEvalSession(
   const { tools, mcpClient } = await createAiSdkMcpTools();
   const hasTools = Object.keys(tools).length > 0;
   const messages: ModelMessage[] = [];
+  let prevUsage: TokenUsage | undefined;
 
   return {
     mcpClient,
@@ -105,7 +106,6 @@ export async function createEvalSession(
       messages.push({ role: "user", content: message });
 
       const stepUsages: TokenUsage[] = [];
-      let prevUsage: TokenUsage | undefined;
 
       const result = streamText({
         model,
