@@ -140,24 +140,6 @@ manually check on anything that fails. Note: Requires `.env` file with API keys.
 - [ ] **Ollama** - Enable Small Model Mode + minimal toolset, then Quick Connect
       and a simple task (not automated due to slow response times)
 
-### 3C. Portal Script Testing
-
-Test the built portal script with LM Studio or another MCP client:
-
-```json
-"producer-pal": {
-  "command": "node",
-  "args": ["/absolute/path/to/npm/producer-pal-portal.js"]
-}
-```
-
-- [ ] Connect and confirm `ppal-read-live-set` called
-
----
-
-If issues are found, see
-[Fixing Issues During Pre-Release](#fixing-issues-during-pre-release).
-
 ## Step 4: Publish to npm / test npx
 
 1. Login to NPM:
