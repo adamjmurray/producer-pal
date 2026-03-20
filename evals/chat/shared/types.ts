@@ -39,7 +39,7 @@ export interface ChatOptions {
 }
 
 export interface MessageSource {
-  nextMessage: () => Promise<string | null>;
+  nextMessage: (turnCount: number) => Promise<string | null>;
 }
 
 export interface TurnResult {

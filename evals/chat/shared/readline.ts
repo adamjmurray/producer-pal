@@ -71,15 +71,13 @@ export async function runChatLoop<TSession>(
   let turnCount = 0;
 
   while (true) {
-    const input = await messageSource.nextMessage();
+    turnCount++;
+
+    const input = await messageSource.nextMessage(turnCount);
 
     if (input == null) {
       break;
     }
-
-    turnCount++;
-    console.log(`\x1b[96m──────── Turn ${turnCount} ────────\x1b[0m`);
-    console.log(`\x1b[32m[User]\x1b[0m\n${input}`);
 
     await callbacks.sendMessage(session, input, turnCount);
 

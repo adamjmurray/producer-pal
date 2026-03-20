@@ -7,6 +7,18 @@ import { type Interface } from "node:readline";
 import { isExitCommand, question } from "./readline.ts";
 import { type ChatOptions, type MessageSource } from "./types.ts";
 
+const GRAY_PROMPT = "\x1b[90m> \x1b[0m";
+
+/**
+ * Print turn header with turn number and user label
+ * @param turnCount - Current turn number
+ */
+function printTurnHeader(turnCount: number): void {
+  if (turnCount > 1) process.stdout.write("\n");
+  console.log(`\x1b[96m──────── Turn ${turnCount} ────────\x1b[0m`);
+  process.stdout.write(`\x1b[32m[User]\x1b[0m\n`);
+}
+
 /**
  * Interactive message source that reads from readline
  */
@@ -27,22 +39,24 @@ export class InteractiveMessageSource implements MessageSource {
   /**
    * Get next message from user input
    *
+   * @param turnCount - Current turn number
    * @returns Next message or null if user exits
    */
-  async nextMessage(): Promise<string | null> {
+  async nextMessage(turnCount: number): Promise<string | null> {
     let input: string;
 
     if (this.isFirst && this.initialText.trim() !== "") {
       input = this.initialText;
       this.isFirst = false;
+      printTurnHeader(turnCount);
+      console.log(`${GRAY_PROMPT}${input}`);
     } else {
-      const prompt = this.isFirst ? "> " : "\n> ";
-
       this.isFirst = false;
+      printTurnHeader(turnCount);
 
       // Loop until non-empty input (matches original behavior)
       do {
-        input = await question(this.rl, prompt);
+        input = await question(this.rl, GRAY_PROMPT);
       } while (input.trim() === "");
     }
 
@@ -73,14 +87,22 @@ export class ArrayMessageSource implements MessageSource {
   /**
    * Get next message from array
    *
+   * @param turnCount - Current turn number
    * @returns Next message or null when exhausted
    */
-  async nextMessage(): Promise<string | null> {
+  async nextMessage(turnCount: number): Promise<string | null> {
     if (this.index >= this.messages.length) {
       return null;
     }
 
-    return this.messages[this.index++] ?? null;
+    const msg = this.messages[this.index++] ?? null;
+
+    if (msg) {
+      printTurnHeader(turnCount);
+      console.log(`${GRAY_PROMPT}${msg}`);
+    }
+
+    return msg;
   }
 }
 
@@ -102,9 +124,10 @@ export class FileMessageSource implements MessageSource {
   /**
    * Get next message from file
    *
+   * @param turnCount - Current turn number
    * @returns Next message or null when exhausted
    */
-  async nextMessage(): Promise<string | null> {
+  async nextMessage(turnCount: number): Promise<string | null> {
     if (this.messages == null) {
       const content = await readFile(this.filePath, "utf-8");
 
@@ -118,7 +141,14 @@ export class FileMessageSource implements MessageSource {
       return null;
     }
 
-    return this.messages[this.index++] ?? null;
+    const msg = this.messages[this.index++] ?? null;
+
+    if (msg) {
+      printTurnHeader(turnCount);
+      console.log(`${GRAY_PROMPT}${msg}`);
+    }
+
+    return msg;
   }
 }
 
