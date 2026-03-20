@@ -24,6 +24,9 @@ interface StreamState {
   text: string;
   inThought: boolean;
   toolCalls: TurnResult["toolCalls"];
+  hadToolCalls: boolean;
+  showUsage: boolean;
+  stepCount: number;
 }
 
 /**
@@ -33,10 +36,24 @@ interface StreamState {
  * @param result - The streamText result to process
  * @returns TurnResult with text and tool calls
  */
+/**
+ * @param result - The streamText result to process
+ * @param options - Processing options
+ * @param options.showUsage - Whether usage is shown after steps (affects spacing)
+ * @returns TurnResult with text and tool calls
+ */
 export async function processCliStream(
   result: ReturnType<typeof streamText>,
+  options?: { showUsage?: boolean },
 ): Promise<TurnResult> {
-  const state: StreamState = { text: "", inThought: false, toolCalls: [] };
+  const state: StreamState = {
+    text: "",
+    inThought: false,
+    toolCalls: [],
+    hadToolCalls: false,
+    showUsage: options?.showUsage ?? false,
+    stepCount: 0,
+  };
 
   for await (const part of result.fullStream) {
     handleStreamPart(part, state);
@@ -127,6 +144,7 @@ function handleToolCall(
   state: StreamState,
 ): void {
   state.toolCalls.push({ name: toolName, args: input });
+  state.hadToolCalls = true;
 
   if (!isQuietMode()) {
     process.stdout.write(formatToolCall(toolName, input) + "\n");
@@ -158,10 +176,18 @@ function handleToolResult(
  * @param state - Mutable stream state
  */
 function handleStartStep(state: StreamState): void {
-  if (!state.inThought) return;
+  if (state.inThought) {
+    if (!isQuietMode()) process.stdout.write(endThought());
+    state.inThought = false;
+  }
 
-  if (!isQuietMode()) process.stdout.write(endThought());
-  state.inThought = false;
+  state.stepCount++;
+
+  // Add blank line between tool call results and follow-up content
+  // (skip when usage is shown — usage line already provides the gap)
+  if (state.hadToolCalls && !state.showUsage && !isQuietMode()) {
+    process.stdout.write("\n");
+  }
 }
 
 /**
@@ -173,7 +199,9 @@ function finishStream(state: StreamState): void {
   if (isQuietMode()) return;
 
   if (state.inThought) process.stdout.write(endThought());
-  process.stdout.write("\n");
+
+  // Skip trailing newline when usage is shown — onStepFinish adds its own
+  if (!state.showUsage) process.stdout.write("\n");
 }
 
 /**

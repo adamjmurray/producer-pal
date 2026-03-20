@@ -72,7 +72,7 @@ export async function runAiSdkChat(
           input: string,
         ): Promise<TurnResult> => {
           sess.messages.push({ role: "user", content: input });
-          console.log("\n[Assistant]");
+          console.log(`\n\x1b[33m[Assistant]\x1b[0m`);
 
           const suppressTemperature =
             providerOptions?.anthropic?.thinking != null ||
@@ -94,18 +94,21 @@ export async function runAiSdkChat(
             system: sess.options.instructions,
             onStepFinish: (event) => {
               const usage = toTokenUsage(event.usage);
+              const isTextStep = event.toolCalls.length === 0;
 
               stepUsages.push(usage);
 
               if (sess.options.usage) {
-                printStepUsage(usage, prevUsage);
+                printStepUsage(usage, prevUsage, isTextStep);
               }
 
               prevUsage = usage;
             },
           });
 
-          const turnResult = await processCliStream(result);
+          const turnResult = await processCliStream(result, {
+            showUsage: sess.options.usage,
+          });
 
           // Append generated messages to history for multi-turn
           const response = await result.response;
@@ -131,8 +134,13 @@ export async function runAiSdkChat(
  * Print a single step's token usage to the console.
  * @param usage - Token usage for this step
  * @param prev - Previous step's usage (for new content calculation)
+ * @param afterText - Whether this follows a text response (needs extra newline)
  */
-function printStepUsage(usage: TokenUsage, prev: TokenUsage | undefined): void {
+function printStepUsage(
+  usage: TokenUsage,
+  prev: TokenUsage | undefined,
+  afterText: boolean,
+): void {
   const input = usage.inputTokens ?? 0;
   const newContent = calcNewContentTokens(
     input,
@@ -149,5 +157,7 @@ function printStepUsage(usage: TokenUsage, prev: TokenUsage | undefined): void {
 
   const line = `tokens: ${compactNumber(input)}${newPart} → ${compactNumber(usage.outputTokens ?? 0)}${reasoningPart}`;
 
-  console.log(`\n\x1b[90m  ${line}\x1b[0m\n`);
+  const prefix = afterText ? "\n\n" : "\n";
+
+  console.log(`${prefix}\x1b[90m  ${line}\x1b[0m\n`);
 }
