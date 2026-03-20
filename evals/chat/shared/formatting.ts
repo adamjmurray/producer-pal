@@ -17,11 +17,7 @@ export const DEBUG_SEPARATOR = "\n" + "-".repeat(80);
  * @returns Formatted thought start
  */
 export function startThought(text: string): string {
-  return (
-    "\n╔══════════════════════════════════════════════" +
-    "═<THOUGHT>══════════════════════════════════════════════\n" +
-    text
-  );
+  return `\x1b[95m<thought>\n${text}`;
 }
 
 /**
@@ -31,7 +27,9 @@ export function startThought(text: string): string {
  * @returns Formatted thought continuation
  */
 export function continueThought(text: string | object): string {
-  return typeof text === "string" ? text : JSON.stringify(text);
+  const content = typeof text === "string" ? text : JSON.stringify(text);
+
+  return `\x1b[95m${content}`;
 }
 
 /**
@@ -40,10 +38,7 @@ export function continueThought(text: string | object): string {
  * @returns Formatted thought end
  */
 export function endThought(): string {
-  return (
-    "\n╚══════════════════════════════════════════════" +
-    "═<end_thought>══════════════════════════════════════════════\n\n"
-  );
+  return "\x1b[0m\n";
 }
 
 /**

@@ -133,10 +133,10 @@ describe("formatToolResult", () => {
 
 describe("thought formatting", () => {
   describe("startThought", () => {
-    it("includes THOUGHT marker", () => {
+    it("includes thought tag", () => {
       const result = startThought("thinking...");
 
-      expect(result).toContain("<THOUGHT>");
+      expect(result).toContain("<thought>");
     });
 
     it("includes the thought text", () => {
@@ -144,26 +144,13 @@ describe("thought formatting", () => {
 
       expect(result).toContain("analyzing the problem");
     });
-
-    it("uses box drawing characters for header", () => {
-      const result = startThought("test");
-
-      expect(result).toContain("╔");
-      expect(result).toContain("═");
-    });
   });
 
   describe("continueThought", () => {
-    it("returns raw text", () => {
+    it("returns text with color code", () => {
       const result = continueThought("single line");
 
-      expect(result).toBe("single line");
-    });
-
-    it("preserves multiline text", () => {
-      const result = continueThought("line1\nline2\nline3");
-
-      expect(result).toBe("line1\nline2\nline3");
+      expect(result).toContain("single line");
     });
 
     it("handles object input by stringifying", () => {
@@ -175,26 +162,20 @@ describe("thought formatting", () => {
   });
 
   describe("endThought", () => {
-    it("includes end_thought marker", () => {
+    it("resets color", () => {
       const result = endThought();
 
-      expect(result).toContain("<end_thought>");
-    });
-
-    it("uses closing box character", () => {
-      const result = endThought();
-
-      expect(result).toContain("╚");
+      expect(result).toContain("\x1b[0m");
     });
   });
 
   describe("formatThought", () => {
-    it("combines start and end", () => {
+    it("combines start and end with thought text", () => {
       const result = formatThought("complete thought");
 
-      expect(result).toContain("<THOUGHT>");
-      expect(result).toContain("<end_thought>");
+      expect(result).toContain("<thought>");
       expect(result).toContain("complete thought");
+      expect(result).toContain("\x1b[0m");
     });
   });
 });
