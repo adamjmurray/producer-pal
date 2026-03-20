@@ -36,6 +36,7 @@ interface CliOptions {
   all?: boolean;
   skipSetup?: boolean;
   quiet?: boolean;
+  usage?: boolean;
 }
 
 /**
@@ -83,6 +84,7 @@ program
     "Skip Live Set setup (use existing MCP connection)",
   )
   .option("-q, --quiet", "Suppress detailed AI and judge responses")
+  .option("-u, --usage", "Show per-step token usage")
   .option("-a, --all", "Run all scenarios")
   .action(async (options: CliOptions) => {
     if (options.list) {
@@ -178,6 +180,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
             skipLiveSetOpen: options.skipSetup ?? liveSetOpened,
             judgeOverride,
             configProfile: profile,
+            usage: options.usage,
           });
 
           liveSetOpened = true;

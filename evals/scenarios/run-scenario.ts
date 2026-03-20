@@ -67,6 +67,7 @@ export interface RunScenarioOptions {
   skipLiveSetOpen?: boolean;
   judgeOverride?: JudgeOverride;
   configProfile?: ConfigProfile;
+  usage?: boolean;
 }
 
 /**
@@ -127,6 +128,7 @@ export async function runScenario(
       provider,
       model,
       instructions: scenario.instructions,
+      usage: options.usage,
     });
 
     // 4. Run each message turn

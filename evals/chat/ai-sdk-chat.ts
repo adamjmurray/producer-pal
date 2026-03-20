@@ -13,15 +13,11 @@ import {
   type TokenUsage,
   toTokenUsage,
 } from "#webui/chat/ai-sdk/ai-sdk-types.ts";
-import {
-  calcNewContentTokens,
-  compactNumber,
-} from "#webui/lib/utils/compact-number.ts";
 import { createAiSdkMcpTools } from "./ai-sdk-mcp.ts";
 import { createProviderModel } from "./ai-sdk-provider.ts";
 import { processCliStream } from "./ai-sdk-stream.ts";
 import { buildProviderOptions } from "./ai-sdk-thinking.ts";
-import { formatAssistantLabel } from "./shared/formatting.ts";
+import { formatAssistantLabel, printStepUsage } from "./shared/formatting.ts";
 import { createMessageSource } from "./shared/message-source.ts";
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import { type ChatOptions, type TurnResult } from "./shared/types.ts";
@@ -129,36 +125,4 @@ export async function runAiSdkChat(
     rl.close();
     await mcpClient.close();
   }
-}
-
-/**
- * Print a single step's token usage to the console.
- * @param usage - Token usage for this step
- * @param prev - Previous step's usage (for new content calculation)
- * @param afterText - Whether this follows a text response (needs extra newline)
- */
-function printStepUsage(
-  usage: TokenUsage,
-  prev: TokenUsage | undefined,
-  afterText: boolean,
-): void {
-  const input = usage.inputTokens ?? 0;
-  const newContent = calcNewContentTokens(
-    input,
-    prev?.inputTokens,
-    prev?.outputTokens,
-  );
-
-  const newPart =
-    newContent != null ? ` (${compactNumber(newContent)} new)` : "";
-  const reasoningPart =
-    (usage.reasoningTokens ?? 0) > 0
-      ? ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`
-      : "";
-
-  const line = `tokens: ${compactNumber(input)}${newPart} → ${compactNumber(usage.outputTokens ?? 0)}${reasoningPart}`;
-
-  const prefix = afterText ? "\n\n" : "\n";
-
-  console.log(`${prefix}\x1b[90m  ${line}\x1b[0m\n`);
 }

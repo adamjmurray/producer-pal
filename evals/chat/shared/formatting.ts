@@ -3,6 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { inspect } from "node:util";
+import { type TokenUsage } from "#webui/chat/ai-sdk/ai-sdk-types.ts";
+import {
+  calcNewContentTokens,
+  compactNumber,
+} from "#webui/lib/utils/compact-number.ts";
 
 export const DEBUG_SEPARATOR = "\n" + "-".repeat(80);
 
@@ -77,6 +82,41 @@ export function formatToolCall(
  */
 export function formatToolResult(result: string | undefined): string {
   return `   ↳ ${truncate(result, 160)}\n`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Token usage
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Print a single step's token usage to the console.
+ * @param usage - Token usage for this step
+ * @param prev - Previous step's usage (for new content calculation)
+ * @param afterText - Whether this follows a text response (needs extra newline)
+ */
+export function printStepUsage(
+  usage: TokenUsage,
+  prev: TokenUsage | undefined,
+  afterText: boolean,
+): void {
+  const input = usage.inputTokens ?? 0;
+  const newContent = calcNewContentTokens(
+    input,
+    prev?.inputTokens,
+    prev?.outputTokens,
+  );
+
+  const newPart =
+    newContent != null ? ` (${compactNumber(newContent)} new)` : "";
+  const reasoningPart =
+    (usage.reasoningTokens ?? 0) > 0
+      ? ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`
+      : "";
+
+  const line = `tokens: ${compactNumber(input)}${newPart} → ${compactNumber(usage.outputTokens ?? 0)}${reasoningPart}`;
+  const prefix = afterText ? "\n\n" : "\n";
+
+  console.log(`${prefix}\x1b[90m  ${line}\x1b[0m\n`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
