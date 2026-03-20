@@ -7,6 +7,7 @@
  * Console table formatter for multi-model/config eval results
  */
 
+import { BOLD, GRAY, RESET, pctColor } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type ConfigProfile, type EvalScenarioResult } from "../types.ts";
 
@@ -51,11 +52,18 @@ export function printResultsTable(
   // Build table
   const separator = buildSeparator(scenarioColWidth, colWidths);
   const labels = columns.map((c) => c.label);
-  const headerRow = buildRow("Scenario", labels, scenarioColWidth, colWidths);
+  const headerRow = buildRow(
+    "Scenario",
+    labels,
+    scenarioColWidth,
+    colWidths,
+    labels.map(() => BOLD),
+    BOLD,
+  );
 
-  console.log("\n" + separator);
+  console.log(`\n${GRAY}${separator}${RESET}`);
   console.log(headerRow);
-  console.log(separator);
+  console.log(`${GRAY}${separator}${RESET}`);
 
   // Data rows
   for (const [scenarioId, modelResults] of resultsByScenario) {
@@ -65,16 +73,26 @@ export function printResultsTable(
       if (!result) return "—";
       const pct = getScorePercentage(result);
 
-      return pct !== null ? `${pct.toFixed(0)}%` : "—";
+      if (pct == null) return "—";
+
+      return `${pct.toFixed(0)}%`;
+    });
+    const colors = columns.map((col) => {
+      const result = modelResults.get(col.modelKey)?.get(col.configId);
+      const pct = result ? getScorePercentage(result) : null;
+
+      return pct != null ? pctColor(pct) : "";
     });
 
-    console.log(buildRow(scenarioId, cells, scenarioColWidth, colWidths));
+    console.log(
+      buildRow(scenarioId, cells, scenarioColWidth, colWidths, colors),
+    );
   }
 
   // Summary rows
-  console.log(separator);
+  console.log(`${GRAY}${separator}${RESET}`);
   printSummaryRow(resultsByScenario, columns, scenarioColWidth, colWidths);
-  console.log(separator);
+  console.log(`${GRAY}${separator}${RESET}`);
 }
 
 /**
@@ -140,7 +158,28 @@ function printSummaryRow(
     return `${avg.toFixed(0)}%`;
   });
 
-  console.log(buildRow("Avg %", avgPcts, scenarioColWidth, colWidths));
+  const avgColors = columns.map((col) => {
+    const pcts2: number[] = [];
+
+    for (const modelResults of resultsByScenario.values()) {
+      const result = modelResults.get(col.modelKey)?.get(col.configId);
+
+      if (result) {
+        const p = getScorePercentage(result);
+
+        if (p !== null) pcts2.push(p);
+      }
+    }
+
+    if (pcts2.length === 0) return "";
+    const avg = pcts2.reduce((a, b) => a + b, 0) / pcts2.length;
+
+    return `${BOLD}${pctColor(avg)}`;
+  });
+
+  console.log(
+    buildRow("Avg %", avgPcts, scenarioColWidth, colWidths, avgColors, BOLD),
+  );
 }
 
 /**
@@ -170,12 +209,14 @@ function buildSeparator(scenarioColWidth: number, colWidths: number[]): string {
 }
 
 /**
- * Build a table row
+ * Build a table row with optional color for each cell
  *
  * @param scenario - Scenario cell content
  * @param cells - Data column cell contents
  * @param scenarioColWidth - Width of scenario column
  * @param colWidths - Widths of data columns
+ * @param cellColors - Optional per-cell ANSI color codes
+ * @param scenarioColor - Optional ANSI color for the scenario cell
  * @returns Formatted row string
  */
 function buildRow(
@@ -183,9 +224,22 @@ function buildRow(
   cells: string[],
   scenarioColWidth: number,
   colWidths: number[],
+  cellColors?: string[],
+  scenarioColor?: string,
 ): string {
-  const scenarioCell = scenario.padEnd(scenarioColWidth);
-  const dataCells = cells.map((cell, i) => cell.padEnd(colWidths[i] ?? 0));
+  const padded = scenario.padEnd(scenarioColWidth);
+  const scenarioCell = scenarioColor
+    ? `${scenarioColor}${padded}${RESET}`
+    : padded;
+  const dataCells = cells.map((cell, i) => {
+    const p = cell.padEnd(colWidths[i] ?? 0);
+    const color = cellColors?.[i];
 
-  return `│ ${scenarioCell} │ ${dataCells.join(" │ ")} │`;
+    return color ? `${color}${p}${RESET}` : p;
+  });
+  const g = GRAY;
+  const r = RESET;
+  const divider = ` ${g}│${r} `;
+
+  return `${g}│${r} ${scenarioCell} ${g}│${r} ${dataCells.join(divider)} ${g}│${r}`;
 }

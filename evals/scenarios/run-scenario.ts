@@ -10,6 +10,12 @@ import {
   formatScenarioHeader,
   formatSectionHeader,
   formatSubsectionHeader,
+  GRAY,
+  GREEN,
+  ORANGE,
+  RED,
+  RESET,
+  scoreColor,
 } from "#evals/chat/shared/formatting.ts";
 import {
   resetConfig,
@@ -91,7 +97,8 @@ export async function runScenario(
     if (!skipLiveSetOpen) {
       const liveSetPath = resolveLiveSetPath(scenario.liveSet);
 
-      if (!isQuietMode()) console.log(`\nOpening Live Set: ${liveSetPath}`);
+      if (!isQuietMode())
+        console.log(`\n${GRAY}Opening Live Set: ${liveSetPath}${RESET}`);
       await openLiveSet(liveSetPath);
     }
 
@@ -102,7 +109,7 @@ export async function runScenario(
     );
 
     if (mergedConfig) {
-      if (!isQuietMode()) console.log(`Applying config...`);
+      if (!isQuietMode()) console.log(`${GRAY}Applying config...${RESET}`);
       await setConfig(mergedConfig);
     }
 
@@ -121,7 +128,7 @@ export async function runScenario(
     const profileId = options.configProfile?.id;
 
     if (profileId && profileId !== "default") {
-      console.log(`| Config: ${profileId}`);
+      console.log(`${ORANGE}|${RESET} ${GRAY}Config:${RESET} ${profileId}`);
     }
 
     session = await createEvalSession({
@@ -153,28 +160,11 @@ export async function runScenario(
       (a) => a.type === "llm_judge",
     );
 
-    console.log(formatSectionHeader("EVALUATION"));
-    console.log(formatSubsectionHeader("Correctness Checks"));
-    console.log(`\nRunning ${correctnessAssertions.length} check(s)...`);
-
-    // Run correctness checks first
-    const correctnessResults = await runAssertions(
+    const correctnessResults = await runCorrectnessChecks(
       correctnessAssertions,
       turns,
       session,
     );
-
-    // Print correctness subtotal
-    const correctnessEarned = sumField(correctnessResults, "earned");
-    const correctnessMax = sumField(correctnessResults, "maxScore");
-
-    if (correctnessMax > 0) {
-      const pct = ((correctnessEarned / correctnessMax) * 100).toFixed(0);
-
-      console.log(
-        `\nCorrectness: ${correctnessEarned}/${correctnessMax} (${pct}%)`,
-      );
-    }
 
     // Run LLM judge assertions
     const judgeResults = await runJudgeAssertions(
@@ -244,10 +234,42 @@ async function runAssertions(
 
     // Show results in verbose mode
     if (!isQuietMode()) {
-      const status = result.earned === result.maxScore ? "✓" : "✗";
+      const pass = result.earned === result.maxScore;
+      const icon = pass ? `${GREEN}✓${RESET}` : `${RED}✗${RESET}`;
 
-      console.log(`  ${status} ${result.message}`);
+      console.log(`  ${icon} ${result.message}`);
     }
+  }
+
+  return results;
+}
+
+/**
+ * Run correctness checks with formatted output
+ *
+ * @param assertions - Correctness assertions to run
+ * @param turns - Completed conversation turns
+ * @param session - Active evaluation session
+ * @returns Array of assertion results
+ */
+async function runCorrectnessChecks(
+  assertions: EvalAssertion[],
+  turns: EvalTurnResult[],
+  session: EvalSession,
+): Promise<EvalAssertionResult[]> {
+  console.log(formatSectionHeader("EVALUATION"));
+  console.log(formatSubsectionHeader("Correctness Checks"));
+  console.log(`\n${GRAY}Running ${assertions.length} check(s)...${RESET}`);
+
+  const results = await runAssertions(assertions, turns, session);
+  const earned = sumField(results, "earned");
+  const max = sumField(results, "maxScore");
+
+  if (max > 0) {
+    const pct = ((earned / max) * 100).toFixed(0);
+    const color = scoreColor(earned, max);
+
+    console.log(`\nCorrectness: ${color}${earned}/${max} (${pct}%)${RESET}`);
   }
 
   return results;

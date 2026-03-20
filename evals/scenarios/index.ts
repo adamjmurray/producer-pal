@@ -10,6 +10,13 @@
 
 import { Command } from "commander";
 import {
+  BOLD,
+  ORANGE,
+  RED,
+  RESET,
+  scoreColor,
+} from "#evals/chat/shared/formatting.ts";
+import {
   parseModelArg,
   type ModelSpec,
 } from "#evals/shared/parse-model-arg.ts";
@@ -158,8 +165,8 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       scenarios.length * modelSpecs.length * configProfiles.length;
 
     console.log(
-      `Running ${scenarios.length} scenario(s) × ${modelSpecs.length} model(s)` +
-        ` × ${configProfiles.length} config(s) = ${totalRuns} run(s)...`,
+      `${BOLD}Running ${scenarios.length} scenario(s) × ${modelSpecs.length} model(s)` +
+        ` × ${configProfiles.length} config(s) = ${totalRuns} run(s)...${RESET}`,
     );
 
     // Results: scenarioId → modelKey → configId → result
@@ -228,21 +235,22 @@ function printSummary(
     [...modelMap.values()].flatMap((configMap) => [...configMap.values()]),
   );
 
-  console.log("\n" + "=".repeat(50));
-  console.log("Summary:");
+  console.log(`\n${ORANGE}${"=".repeat(50)}${RESET}`);
+  console.log(`${BOLD}Summary:${RESET}`);
 
   for (const result of allResults) {
     const pct =
       result.maxScore > 0
         ? ((result.earnedScore / result.maxScore) * 100).toFixed(0)
         : "100";
+    const color = scoreColor(result.earnedScore, result.maxScore);
 
     console.log(
-      `  ${result.scenario.id}: ${formatScore(result.earnedScore)}/${result.maxScore} (${pct}%)`,
+      `  ${result.scenario.id}: ${color}${formatScore(result.earnedScore)}/${result.maxScore} (${pct}%)${RESET}`,
     );
 
     if (result.error) {
-      console.log(`    Error: ${result.error}`);
+      console.log(`    ${RED}Error: ${result.error}${RESET}`);
     }
   }
 }

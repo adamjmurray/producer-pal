@@ -12,6 +12,50 @@ import {
 export const DEBUG_SEPARATOR = "\n" + "-".repeat(80);
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ANSI color constants
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const RESET = "\x1b[0m";
+export const BOLD = "\x1b[1m";
+export const GRAY = "\x1b[90m";
+export const RED = "\x1b[31m";
+export const GREEN = "\x1b[32m";
+export const YELLOW = "\x1b[33m";
+export const CYAN = "\x1b[36m";
+export const MAGENTA = "\x1b[35m";
+export const ORANGE = "\x1b[38;5;208m";
+export const LIGHT_BLUE = "\x1b[94m";
+
+/**
+ * Return an ANSI color code based on a score percentage.
+ * Green for perfect (100%), yellow for mid-range (50–99%), red for low (<50%).
+ *
+ * @param earned - Points earned
+ * @param max - Maximum possible points
+ * @returns ANSI color escape code
+ */
+export function scoreColor(earned: number, max: number): string {
+  if (max === 0) return "";
+  const pct = (earned / max) * 100;
+
+  return pctColor(pct);
+}
+
+/**
+ * Return an ANSI color code for a percentage value.
+ *
+ * @param pct - Percentage (0–100)
+ * @returns ANSI color escape code
+ */
+export function pctColor(pct: number): string {
+  if (pct >= 100) return GREEN;
+  if (pct >= 90) return CYAN;
+  if (pct >= 50) return YELLOW;
+
+  return RED;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Thought formatting
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -21,8 +65,16 @@ export const DEBUG_SEPARATOR = "\n" + "-".repeat(80);
  * @param text - Thought text
  * @returns Formatted thought start
  */
+const BRIGHT_MAGENTA = "\x1b[95m";
+
+/**
+ * Format the start of a thought block
+ *
+ * @param text - Thought text
+ * @returns Formatted thought start
+ */
 export function startThought(text: string): string {
-  return `\x1b[95m<thought>\n${text}`;
+  return `${BRIGHT_MAGENTA}<thought>\n${text}`;
 }
 
 /**
@@ -34,7 +86,7 @@ export function startThought(text: string): string {
 export function continueThought(text: string | object): string {
   const content = typeof text === "string" ? text : JSON.stringify(text);
 
-  return `\x1b[95m${content}`;
+  return `${BRIGHT_MAGENTA}${content}`;
 }
 
 /**
@@ -43,7 +95,7 @@ export function continueThought(text: string | object): string {
  * @returns Formatted thought end
  */
 export function endThought(): string {
-  return "\x1b[0m\n";
+  return `${RESET}\n`;
 }
 
 /**
@@ -116,7 +168,7 @@ export function printStepUsage(
   const line = `tokens: ${compactNumber(input)}${newPart} → ${compactNumber(usage.outputTokens ?? 0)}${reasoningPart}`;
   const prefix = afterText ? "\n\n" : "\n";
 
-  console.log(`${prefix}\x1b[90m  ${line}\x1b[0m\n`);
+  console.log(`${prefix}${GRAY}  ${line}${RESET}\n`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -217,11 +269,11 @@ export function formatScenarioHeader(
   model: string,
 ): string {
   return `
-${MAJOR_SEPARATOR}
-| SCENARIO: ${id}
-| Description: ${description}
-| Provider: ${provider}
-| Model: ${model}`;
+${ORANGE}${MAJOR_SEPARATOR}${RESET}
+${ORANGE}| SCENARIO: ${id}${RESET}
+${ORANGE}|${RESET} ${GRAY}Description:${RESET} ${description}
+${ORANGE}|${RESET} ${GRAY}Provider:${RESET} ${provider}
+${ORANGE}|${RESET} ${GRAY}Model:${RESET} ${model}`;
 }
 
 /**
@@ -231,7 +283,7 @@ ${MAJOR_SEPARATOR}
  * @returns Formatted turn header
  */
 export function formatTurnHeader(turnNumber: number): string {
-  return `${MINOR_SEPARATOR}\nTURN ${turnNumber}`;
+  return `\x1b[96m──────── Turn ${turnNumber} ────────${RESET}`;
 }
 
 /**
@@ -241,11 +293,11 @@ export function formatTurnHeader(turnNumber: number): string {
  * @returns Cyan colored turn header with ── glyphs
  */
 export function formatChatTurnHeader(turnNumber: number): string {
-  return `\x1b[96m──────── Turn ${turnNumber} ────────\x1b[0m`;
+  return `\x1b[96m──────── Turn ${turnNumber} ────────${RESET}`;
 }
 
 /** Gray prompt prefix for user input display */
-export const GRAY_PROMPT = "\x1b[90m> \x1b[0m";
+export const GRAY_PROMPT = `${GRAY}> ${RESET}`;
 
 /**
  * Format a colored user label for CLI output
@@ -253,7 +305,7 @@ export const GRAY_PROMPT = "\x1b[90m> \x1b[0m";
  * @returns Green [User] label with trailing newline
  */
 export function formatUserLabel(): string {
-  return "\x1b[32m[User]\x1b[0m\n";
+  return `${GREEN}[User]${RESET}\n`;
 }
 
 /**
@@ -262,7 +314,7 @@ export function formatUserLabel(): string {
  * @returns Yellow [Assistant] label
  */
 export function formatAssistantLabel(): string {
-  return "\x1b[33m[Assistant]\x1b[0m";
+  return `${YELLOW}[Assistant]${RESET}`;
 }
 
 /**
@@ -272,7 +324,7 @@ export function formatAssistantLabel(): string {
  * @returns Formatted section header
  */
 export function formatSectionHeader(title: string): string {
-  return `\n${MAJOR_SEPARATOR}\n${title}\n`;
+  return `\n${ORANGE}${MAJOR_SEPARATOR}${RESET}\n${ORANGE}${title}${RESET}\n`;
 }
 
 /**
@@ -282,5 +334,5 @@ export function formatSectionHeader(title: string): string {
  * @returns Formatted subsection header
  */
 export function formatSubsectionHeader(title: string): string {
-  return `${MINOR_SEPARATOR}\n${title}`;
+  return `${LIGHT_BLUE}${MINOR_SEPARATOR}${RESET}\n${LIGHT_BLUE}${title}${RESET}`;
 }

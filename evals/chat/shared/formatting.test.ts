@@ -266,7 +266,8 @@ describe("eval output formatting", () => {
         "claude-sonnet",
       );
 
-      expect(result).toContain("Description: Test description");
+      expect(result).toContain("Description:");
+      expect(result).toContain("Test description");
     });
 
     it("includes provider and model", () => {
@@ -277,8 +278,10 @@ describe("eval output formatting", () => {
         "claude-sonnet",
       );
 
-      expect(result).toContain("Provider: anthropic");
-      expect(result).toContain("Model: claude-sonnet");
+      expect(result).toContain("Provider:");
+      expect(result).toContain("anthropic");
+      expect(result).toContain("Model:");
+      expect(result).toContain("claude-sonnet");
     });
 
     it("uses box formatting with separators", () => {
@@ -298,19 +301,19 @@ describe("eval output formatting", () => {
     it("includes turn number", () => {
       const result = formatTurnHeader(1);
 
-      expect(result).toContain("TURN 1");
+      expect(result).toContain("Turn 1");
     });
 
-    it("includes separator line", () => {
+    it("uses line glyphs", () => {
       const result = formatTurnHeader(1);
 
-      expect(result).toContain("-".repeat(60));
+      expect(result).toContain("────");
     });
 
     it("handles multi-digit turn numbers", () => {
       const result = formatTurnHeader(10);
 
-      expect(result).toContain("TURN 10");
+      expect(result).toContain("Turn 10");
     });
   });
 
