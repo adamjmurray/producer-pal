@@ -4,10 +4,13 @@
 
 import { readFile } from "node:fs/promises";
 import { type Interface } from "node:readline";
+import {
+  GRAY_PROMPT,
+  formatChatTurnHeader,
+  formatUserLabel,
+} from "./formatting.ts";
 import { isExitCommand, question } from "./readline.ts";
 import { type ChatOptions, type MessageSource } from "./types.ts";
-
-const GRAY_PROMPT = "\x1b[90m> \x1b[0m";
 
 /**
  * Print turn header with turn number and user label
@@ -15,8 +18,8 @@ const GRAY_PROMPT = "\x1b[90m> \x1b[0m";
  */
 function printTurnHeader(turnCount: number): void {
   if (turnCount > 1) process.stdout.write("\n");
-  console.log(`\x1b[96m──────── Turn ${turnCount} ────────\x1b[0m`);
-  process.stdout.write(`\x1b[32m[User]\x1b[0m\n`);
+  console.log(formatChatTurnHeader(turnCount));
+  process.stdout.write(formatUserLabel());
 }
 
 /**

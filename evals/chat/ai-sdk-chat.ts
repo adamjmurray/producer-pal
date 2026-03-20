@@ -21,6 +21,7 @@ import { createAiSdkMcpTools } from "./ai-sdk-mcp.ts";
 import { createProviderModel } from "./ai-sdk-provider.ts";
 import { processCliStream } from "./ai-sdk-stream.ts";
 import { buildProviderOptions } from "./ai-sdk-thinking.ts";
+import { formatAssistantLabel } from "./shared/formatting.ts";
 import { createMessageSource } from "./shared/message-source.ts";
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import { type ChatOptions, type TurnResult } from "./shared/types.ts";
@@ -72,7 +73,7 @@ export async function runAiSdkChat(
           input: string,
         ): Promise<TurnResult> => {
           sess.messages.push({ role: "user", content: input });
-          console.log(`\n\x1b[33m[Assistant]\x1b[0m`);
+          console.log(`\n${formatAssistantLabel()}`);
 
           const suppressTemperature =
             providerOptions?.anthropic?.thinking != null ||

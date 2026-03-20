@@ -195,6 +195,37 @@ export function formatTurnHeader(turnNumber: number): string {
 }
 
 /**
+ * Format a colored chat-style turn header
+ *
+ * @param turnNumber - Turn number (1-indexed)
+ * @returns Cyan colored turn header with ── glyphs
+ */
+export function formatChatTurnHeader(turnNumber: number): string {
+  return `\x1b[96m──────── Turn ${turnNumber} ────────\x1b[0m`;
+}
+
+/** Gray prompt prefix for user input display */
+export const GRAY_PROMPT = "\x1b[90m> \x1b[0m";
+
+/**
+ * Format a colored user label for CLI output
+ *
+ * @returns Green [User] label with trailing newline
+ */
+export function formatUserLabel(): string {
+  return "\x1b[32m[User]\x1b[0m\n";
+}
+
+/**
+ * Format a colored assistant label for CLI output
+ *
+ * @returns Yellow [Assistant] label
+ */
+export function formatAssistantLabel(): string {
+  return "\x1b[33m[Assistant]\x1b[0m";
+}
+
+/**
  * Format a major section header (e.g., EVALUATION)
  *
  * @param title - Section title
