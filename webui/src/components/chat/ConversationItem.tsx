@@ -242,8 +242,8 @@ function ConversationMeta({ conv }: { conv: ConversationSummary }) {
           className="hidden @min-[20rem]:block truncate ml-2"
           title="token usage (input → output)"
         >
-          {compactNumber(conv.totalUsage.inputTokens ?? 0)} →{" "}
-          {compactNumber(conv.totalUsage.outputTokens ?? 0)} tokens
+          tokens: {compactNumber(conv.totalUsage.inputTokens ?? 0)} →{" "}
+          {compactNumber(conv.totalUsage.outputTokens ?? 0)}
         </div>
       )}
       {conv.model && (

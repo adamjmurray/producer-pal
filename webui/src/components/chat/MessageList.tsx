@@ -416,9 +416,9 @@ function TokenUsageLabel({
 
   return (
     <div className="text-xs text-zinc-400 dark:text-zinc-500 pb-1 text-right">
-      {compactNumber(usage.inputTokens ?? 0)}
+      tokens: {compactNumber(usage.inputTokens ?? 0)}
       {newContent != null && ` (${compactNumber(newContent)} new)`} →{" "}
-      {compactNumber(usage.outputTokens ?? 0)} tokens
+      {compactNumber(usage.outputTokens ?? 0)}
       {(usage.reasoningTokens ?? 0) > 0 &&
         ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
     </div>

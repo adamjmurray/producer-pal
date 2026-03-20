@@ -132,10 +132,10 @@ function StepUsageLabel({
 }) {
   return (
     <div className="text-xs text-zinc-400 dark:text-zinc-500 text-right -mt-1">
-      {compactNumber(usage.inputTokens ?? 0)}
+      tokens: {compactNumber(usage.inputTokens ?? 0)}
       {newContentTokens != null &&
         ` (${compactNumber(newContentTokens)} new)`}{" "}
-      → {compactNumber(usage.outputTokens ?? 0)} tokens
+      → {compactNumber(usage.outputTokens ?? 0)}
       {(usage.reasoningTokens ?? 0) > 0 &&
         ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
     </div>
