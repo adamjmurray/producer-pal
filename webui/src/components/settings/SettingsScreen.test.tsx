@@ -381,10 +381,11 @@ describe("SettingsScreen", () => {
   });
 
   describe("Save button", () => {
-    it("is enabled even when no API key", () => {
-      render(
-        <SettingsScreen {...defaultProps} settings={ss({ apiKey: "" })} />,
-      );
+    it.each([
+      ["even when no API key", ""],
+      ["when API key is provided", "test-key"],
+    ])("is enabled %s", (_label, apiKey) => {
+      render(<SettingsScreen {...defaultProps} settings={ss({ apiKey })} />);
 
       const button = screen.getByRole("button", {
         name: "Save",
@@ -393,53 +394,21 @@ describe("SettingsScreen", () => {
       expect(button.disabled).toBe(false);
     });
 
-    it("is enabled when API key is provided", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ apiKey: "test-key" })}
-        />,
-      );
-
-      const button = screen.getByRole("button", {
-        name: "Save",
-      }) as HTMLButtonElement;
-
-      expect(button.disabled).toBe(false);
-    });
-
-    it("calls saveSettings when clicked with empty API key", () => {
+    it.each([
+      ["empty API key", ""],
+      ["API key", "test-key"],
+    ])("calls saveSettings when clicked with %s", (_label, apiKey) => {
       const saveSettings = vi.fn();
 
       render(
         <SettingsScreen
           {...defaultProps}
-          settings={ss({ apiKey: "" })}
+          settings={ss({ apiKey })}
           saveSettings={saveSettings}
         />,
       );
 
-      const button = screen.getByRole("button", { name: "Save" });
-
-      fireEvent.click(button);
-
-      expect(saveSettings).toHaveBeenCalledOnce();
-    });
-
-    it("calls saveSettings when clicked with API key", () => {
-      const saveSettings = vi.fn();
-
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ apiKey: "test-key" })}
-          saveSettings={saveSettings}
-        />,
-      );
-
-      const button = screen.getByRole("button", { name: "Save" });
-
-      fireEvent.click(button);
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
       expect(saveSettings).toHaveBeenCalledOnce();
     });
@@ -468,95 +437,40 @@ describe("SettingsScreen", () => {
   });
 
   describe("API key links", () => {
-    it("shows Anthropic API key link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ provider: "anthropic" })}
-        />,
-      );
-      const link = screen.getByText("Anthropic API keys");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
-        "https://console.anthropic.com/settings/keys",
-      );
-      expect((link as HTMLAnchorElement).target).toBe("_blank");
-    });
-
-    it("shows Gemini API key link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ provider: "gemini" })}
-        />,
-      );
-      const link = screen.getByText("Gemini API keys");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
-        "https://aistudio.google.com/apikey",
-      );
-      expect((link as HTMLAnchorElement).target).toBe("_blank");
-    });
-
-    it("shows OpenAI API key link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ provider: "openai" })}
-        />,
-      );
-      const link = screen.getByText("OpenAI API keys");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
-        "https://platform.openai.com/api-keys",
-      );
-    });
-
-    it("shows Mistral API key link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ provider: "mistral" })}
-        />,
-      );
-      const link = screen.getByText("Mistral API keys");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
+    it.each([
+      ["Anthropic", "anthropic", "https://console.anthropic.com/settings/keys"],
+      ["Gemini", "gemini", "https://aistudio.google.com/apikey"],
+      ["OpenAI", "openai", "https://platform.openai.com/api-keys"],
+      [
+        "Mistral",
+        "mistral",
         "https://console.mistral.ai/home?workspace_dialog=apiKeys",
-      );
-    });
+      ],
+      ["OpenRouter", "openrouter", "https://openrouter.ai/settings/keys"],
+    ] as const)(
+      "shows %s API key link with correct URL",
+      (label, provider, url) => {
+        render(
+          <SettingsScreen {...defaultProps} settings={ss({ provider })} />,
+        );
+        const link = screen.getByText(`${label} API keys`) as HTMLAnchorElement;
 
-    it("shows OpenRouter API key link with correct URL", () => {
+        expect(link.href).toBe(url);
+        expect(link.target).toBe("_blank");
+      },
+    );
+
+    it.each([
+      ["LM Studio", lmstudioSettings],
+      ["Ollama", ollamaSettings],
+      ["custom", customSettings],
+    ])("does not show API key link for %s", (_label, settings) => {
       render(
         <SettingsScreen
           {...defaultProps}
-          settings={ss({ provider: "openrouter" })}
+          settings={settings as UseSettingsReturn}
         />,
       );
-      const link = screen.getByText("OpenRouter API keys");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
-        "https://openrouter.ai/settings/keys",
-      );
-    });
-
-    it("does not show API key link for LM Studio", () => {
-      render(<SettingsScreen {...defaultProps} settings={lmstudioSettings} />);
-      expect(screen.queryByText(/Get a.*API key/)).toBeNull();
-    });
-
-    it("does not show API key link for Ollama", () => {
-      render(<SettingsScreen {...defaultProps} settings={ollamaSettings} />);
-      expect(screen.queryByText(/Get a.*API key/)).toBeNull();
-    });
-
-    it("does not show API key link for custom provider", () => {
-      render(<SettingsScreen {...defaultProps} settings={customSettings} />);
       expect(screen.queryByText(/Get a.*API key/)).toBeNull();
     });
   });
@@ -631,102 +545,48 @@ describe("SettingsScreen", () => {
   });
 
   describe("Model documentation links", () => {
-    it("shows Anthropic models link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ provider: "anthropic" })}
-        />,
-      );
-      const link = screen.getByText("Anthropic models");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
+    it.each([
+      [
+        "Anthropic",
+        "anthropic",
+        undefined,
         "https://docs.anthropic.com/en/docs/about-claude/models",
-      );
-      expect((link as HTMLAnchorElement).target).toBe("_blank");
-    });
-
-    it("shows Gemini models link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ provider: "gemini" })}
-        />,
-      );
-      const link = screen.getByText("Gemini models");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
+      ],
+      [
+        "Gemini",
+        "gemini",
+        undefined,
         "https://ai.google.dev/gemini-api/docs/models",
-      );
-      expect((link as HTMLAnchorElement).target).toBe("_blank");
-    });
-
-    it("shows OpenAI models link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ provider: "openai" })}
-        />,
-      );
-      const link = screen.getByText("OpenAI models");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
+      ],
+      [
+        "OpenAI",
+        "openai",
+        undefined,
         "https://platform.openai.com/docs/models",
-      );
-    });
-
-    it("shows Mistral models link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ provider: "mistral" })}
-        />,
-      );
-      const link = screen.getByText("Mistral models");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
+      ],
+      [
+        "Mistral",
+        "mistral",
+        undefined,
         "https://docs.mistral.ai/getting-started/models",
-      );
-    });
+      ],
+      ["OpenRouter", "openrouter", undefined, "https://openrouter.ai/models"],
+      ["LM Studio", "lmstudio", lmstudioSettings, "https://lmstudio.ai/models"],
+      ["Ollama", "ollama", ollamaSettings, "https://ollama.com/search"],
+    ] as const)(
+      "shows %s models link with correct URL",
+      (label, provider, preset, url) => {
+        const settings =
+          (preset as UseSettingsReturn | undefined) ??
+          ss({ provider: provider as "anthropic" });
 
-    it("shows OpenRouter models link with correct URL", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          settings={ss({ provider: "openrouter" })}
-        />,
-      );
-      const link = screen.getByText("OpenRouter models");
+        render(<SettingsScreen {...defaultProps} settings={settings} />);
+        const link = screen.getByText(`${label} models`) as HTMLAnchorElement;
 
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
-        "https://openrouter.ai/models",
-      );
-    });
-
-    it("shows LM Studio models link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} settings={lmstudioSettings} />);
-      const link = screen.getByText("LM Studio models");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
-        "https://lmstudio.ai/models",
-      );
-    });
-
-    it("shows Ollama models link with correct URL", () => {
-      render(<SettingsScreen {...defaultProps} settings={ollamaSettings} />);
-      const link = screen.getByText("Ollama models");
-
-      expect(link).toBeDefined();
-      expect((link as HTMLAnchorElement).href).toBe(
-        "https://ollama.com/search",
-      );
-    });
+        expect(link.href).toBe(url);
+        expect(link.target).toBe("_blank");
+      },
+    );
 
     it("does not show models link for custom provider", () => {
       render(<SettingsScreen {...defaultProps} settings={customSettings} />);

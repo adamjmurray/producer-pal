@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   normalizeIdLike,
+  registerPathMappedObjects,
   resolveMappedObjectProperties,
 } from "#src/test/helpers/path-mapped-mock-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
@@ -55,18 +56,13 @@ export function setupTrackPathMappedMocks({
   const registeredIds = new Set([resolvedTrackId]);
   const registeredPaths = new Set([trackPath]);
 
-  for (const [path, rawId] of normalizedPathIds.entries()) {
-    if (path === trackPath) {
-      continue;
-    }
-
-    registerMockObject(rawId, {
-      path,
-      properties: resolveMappedObjectProperties(objects, rawId, path),
-    });
-    registeredIds.add(rawId);
-    registeredPaths.add(path);
-  }
+  registerPathMappedObjects(
+    normalizedPathIds,
+    objects,
+    trackPath,
+    registeredIds,
+    registeredPaths,
+  );
 
   for (const [key, properties] of Object.entries(objects)) {
     if (key === "Track") {

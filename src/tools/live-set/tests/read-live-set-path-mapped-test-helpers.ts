@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   normalizeIdLike,
+  registerPathMappedObjects,
   resolveMappedObjectProperties,
 } from "#src/test/helpers/path-mapped-mock-helpers.ts";
 import {
@@ -65,18 +66,13 @@ export function setupLiveSetPathMappedMocks({
   const registeredIds = new Set([resolvedLiveSetId]);
   const registeredPaths = new Set([liveSetPath]);
 
-  for (const [path, rawId] of normalizedPathIds.entries()) {
-    if (path === liveSetPath) {
-      continue;
-    }
-
-    registerMockObject(rawId, {
-      path,
-      properties: resolveMappedObjectProperties(objects, rawId, path),
-    });
-    registeredIds.add(rawId);
-    registeredPaths.add(path);
-  }
+  registerPathMappedObjects(
+    normalizedPathIds,
+    objects,
+    liveSetPath,
+    registeredIds,
+    registeredPaths,
+  );
 
   for (const [key, properties] of Object.entries(objects)) {
     if (key === "LiveSet") {

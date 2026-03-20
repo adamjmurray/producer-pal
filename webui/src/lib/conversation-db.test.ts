@@ -215,12 +215,15 @@ describe("conversation-db", () => {
     expect(loaded).toBeUndefined();
   });
 
-  it("defaults missing thinking/temperature/showThoughts to null on load", async () => {
+  /**
+   * Save a record then strip optional fields to simulate a legacy DB entry.
+   * @returns The saved record
+   */
+  async function saveRecordWithMissingFields(): Promise<ConversationRecord> {
     const record = createRecord();
 
     await saveConversation(record);
 
-    // Simulate an old record by removing the new fields directly in IndexedDB
     const db = await getConversationDb();
     const raw = await db.get("conversations", record.id);
 
@@ -230,6 +233,11 @@ describe("conversation-db", () => {
     delete (raw as Record<string, unknown>).smallModelMode;
     await db.put("conversations", raw);
 
+    return record;
+  }
+
+  it("defaults missing thinking/temperature/showThoughts to null on load", async () => {
+    const record = await saveRecordWithMissingFields();
     const loaded = await loadConversation(record.id);
 
     expect(loaded?.thinking).toBeNull();
@@ -239,20 +247,7 @@ describe("conversation-db", () => {
   });
 
   it("defaults missing fields to null in list summaries", async () => {
-    const record = createRecord();
-
-    await saveConversation(record);
-
-    // Simulate an old record by removing the new fields directly in IndexedDB
-    const db = await getConversationDb();
-    const raw = await db.get("conversations", record.id);
-
-    delete (raw as Record<string, unknown>).thinking;
-    delete (raw as Record<string, unknown>).temperature;
-    delete (raw as Record<string, unknown>).showThoughts;
-    delete (raw as Record<string, unknown>).smallModelMode;
-    await db.put("conversations", raw);
-
+    await saveRecordWithMissingFields();
     const list = await listConversations();
 
     expect(list[0]?.thinking).toBeNull();
