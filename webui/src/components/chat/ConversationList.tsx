@@ -8,7 +8,7 @@ import { DisclosureChevron } from "#webui/components/chat/controls/header/Header
 import { ConversationItem } from "#webui/components/chat/ConversationItem";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 
-interface ConversationListProps {
+export interface ConversationListProps {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
   onSelect: (id: string) => void;

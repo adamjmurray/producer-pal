@@ -71,6 +71,32 @@ export class InteractiveMessageSource implements MessageSource {
 }
 
 /**
+ * Emit the next message from an array, printing the turn header.
+ * @param messages - Message array
+ * @param index - Current index (will be incremented)
+ * @param turnCount - Current turn number
+ * @returns The message and updated index, or null when exhausted
+ */
+function emitNextMessage(
+  messages: string[],
+  index: number,
+  turnCount: number,
+): { msg: string | null; nextIndex: number } {
+  if (index >= messages.length) {
+    return { msg: null, nextIndex: index };
+  }
+
+  const msg = messages[index] ?? null;
+
+  if (msg) {
+    printTurnHeader(turnCount);
+    console.log(`${GRAY_PROMPT}${msg}`);
+  }
+
+  return { msg, nextIndex: index + 1 };
+}
+
+/**
  * Message source that iterates through an array of messages
  */
 export class ArrayMessageSource implements MessageSource {
@@ -91,16 +117,13 @@ export class ArrayMessageSource implements MessageSource {
    * @returns Next message or null when exhausted
    */
   async nextMessage(turnCount: number): Promise<string | null> {
-    if (this.index >= this.messages.length) {
-      return null;
-    }
+    const { msg, nextIndex } = emitNextMessage(
+      this.messages,
+      this.index,
+      turnCount,
+    );
 
-    const msg = this.messages[this.index++] ?? null;
-
-    if (msg) {
-      printTurnHeader(turnCount);
-      console.log(`${GRAY_PROMPT}${msg}`);
-    }
+    this.index = nextIndex;
 
     return msg;
   }
@@ -137,16 +160,13 @@ export class FileMessageSource implements MessageSource {
         .filter((line) => line !== "");
     }
 
-    if (this.index >= this.messages.length) {
-      return null;
-    }
+    const { msg, nextIndex } = emitNextMessage(
+      this.messages,
+      this.index,
+      turnCount,
+    );
 
-    const msg = this.messages[this.index++] ?? null;
-
-    if (msg) {
-      printTurnHeader(turnCount);
-      console.log(`${GRAY_PROMPT}${msg}`);
-    }
+    this.index = nextIndex;
 
     return msg;
   }
