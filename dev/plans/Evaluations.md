@@ -1,146 +1,181 @@
-# Producer Pal Evaluation Plan
+# Evaluation Scenario Gaps
 
-## Rating System
+## Current Coverage
 
-- **fail** - Doesn't work, errors, or completely misses the mark
-- **ok** - Sorta works but has issues (aim higher than this)
-- **good** - Works well, meets expectations
-- **great** - Exceeds expectations, excellent use of features, very musical
-  results
+Five scenarios are implemented in `evals/scenarios/defs/`:
 
-## Testing Guidelines
+| Scenario               | Tools Exercised                                                   |
+| ---------------------- | ----------------------------------------------------------------- |
+| `connect-to-ableton`   | `ppal-connect`                                                    |
+| `track-and-device`     | `ppal-create-track`, `ppal-update-track`, `ppal-create-device`    |
+| `create-and-edit-clip` | `ppal-create-clip`, `ppal-update-clip` (MIDI notes, quantization) |
+| `duplicate`            | `ppal-duplicate`                                                  |
+| `memory-workflow`      | `ppal-context` (write + read)                                     |
 
-- **Always test as a real end user** - no intimate knowledge of internals
-- **Never explicitly request bar|beat features** - users don't know what that is
-- **Use natural language** - "add fills every 4 bars", not "add notes at 4|1"
-- **Rate honestly** - we're trying to find issues and compare LLMs
+## Tool Coverage Gaps
 
-## Evaluation Scenarios
+Tools with **no** eval coverage:
 
-### Scenario 1: Connection & Project Overview
+| Tool                   | Notes                                           |
+| ---------------------- | ----------------------------------------------- |
+| `ppal-read-live-set`   | Only implicitly tested via connect              |
+| `ppal-update-live-set` | Tempo, time sig, scale changes untested         |
+| `ppal-read-track`      | Never explicitly requested in a scenario        |
+| `ppal-read-clip`       | Never explicitly requested                      |
+| `ppal-update-device`   | Device parameter changes untested               |
+| `ppal-read-device`     | Never explicitly requested                      |
+| `ppal-create-scene`    | Entire scene workflow missing                   |
+| `ppal-read-scene`      | Entire scene workflow missing                   |
+| `ppal-update-scene`    | Entire scene workflow missing                   |
+| `ppal-playback`        | Play/stop untested                              |
+| `ppal-select`          | Selection/navigation untested                   |
+| `ppal-delete`          | Deletion untested                               |
+| `ppal-create-clip`     | Audio clip creation untested (only MIDI tested) |
+| `ppal-update-clip`     | Audio clip properties untested (only MIDI)      |
 
-**Exercises:** `ppal-connect`, `ppal-read-live-set`, `ppal-update-live-set`
+## Prioritized Gaps
 
-| Turn | Prompt                                                   | Features Tested                           |
-| ---- | -------------------------------------------------------- | ----------------------------------------- |
-| 1    | "Connect to Ableton"                                     | Connection, skills retrieval, set summary |
-| 2    | "Set the tempo to 128 BPM and the time signature to 6/8" | Tempo update, time signature update       |
+### Priority 1: Arrangement Clip Workflow (new scenario)
 
----
+Not in the original plan at all, but arrangement operations are the most complex
+part of the codebase (splitting, tiling, loop extension, `end_time`
+immutability). No scenario tests arrangement clips. This is where LLMs are most
+likely to produce bad results and where regressions are most costly.
 
-### Scenario 2: Track & Device Workflow
+**Suggested turns:**
 
-**Exercises:** `ppal-create-track`, `ppal-read-track`, `ppal-update-track`,
-`ppal-create-device`, `ppal-update-device`
+1. Connect
+2. "Create an 8-bar bass line on the Bass track in the arrangement starting at
+   bar 5"
+3. "Duplicate that clip to bar 13"
+4. "Split the clip at bar 9"
 
-| Turn | Prompt                                                              | Features Tested                   |
-| ---- | ------------------------------------------------------------------- | --------------------------------- |
-| 1    | "Connect to Ableton"                                                | Setup                             |
-| 2    | "Create a MIDI track called 'Synth Lead'"                           | Track creation with name          |
-| 3    | "Add a Wavetable instrument to it and set the filter cutoff to 50%" | Device creation, parameter update |
-| 4    | "Mute that track and set its color to purple"                       | Track property updates            |
+**Tools exercised:** `ppal-create-clip` (arrangement), `ppal-duplicate`
+(arrangement clip), `ppal-update-clip` (arrangement splitting)
 
----
-
-### Scenario 3: Clip Creation & Editing
-
-**Exercises:** `ppal-create-clip`, `ppal-read-clip`, `ppal-update-clip`
-
-| Turn | Prompt                                                                  | Features Tested               |
-| ---- | ----------------------------------------------------------------------- | ----------------------------- |
-| 1    | "Connect to Ableton"                                                    | Setup                         |
-| 2    | "Create a 4-bar drum clip with kick on every beat and snare on 2 and 4" | MIDI clip creation, notes     |
-| 3    | "Add hi-hats on every 8th note"                                         | Clip note update (merge mode) |
-| 4    | "Quantize the notes to 1/16"                                            | Quantization                  |
-
----
-
-### Scenario 4: Scene & Playback Workflow
-
-**Exercises:** `ppal-create-scene`, `ppal-read-scene`, `ppal-update-scene`,
-`ppal-playback`
-
-| Turn | Prompt                                         | Features Tested           |
-| ---- | ---------------------------------------------- | ------------------------- |
-| 1    | "Connect to Ableton"                           | Setup                     |
-| 2    | "Create a scene called 'Intro' with tempo 100" | Scene creation with tempo |
-| 3    | "Play that scene"                              | Scene playback            |
-| 4    | "Stop playback"                                | Stop command              |
+**Requires:** A Live Set with arrangement content or appropriate setup.
 
 ---
 
-### Scenario 5: Duplication
+### Priority 2: Audio Sample Workflow
 
-**Exercises:** `ppal-duplicate`
+Audio clips have distinct behavior from MIDI (warping, pitch, sample browsing).
+Currently zero audio clip coverage.
 
-| Turn | Prompt                      | Features Tested   |
-| ---- | --------------------------- | ----------------- |
-| 1    | "Connect to Ableton"        | Setup             |
-| 2    | "Duplicate the Drums track" | Track duplication |
+**Suggested turns:**
 
----
+1. Connect
+2. "Show me available drum samples"
+3. "Create an audio clip using a kick sample"
+4. "Pitch shift it up 5 semitones and loop it"
 
-### Scenario 6: Audio Sample Workflow
-
-**Exercises:** `ppal-connect`, `ppal-context`, `ppal-create-clip` (audio),
-`ppal-update-clip` (audio)
-
-| Turn | Prompt                                      | Features Tested               |
-| ---- | ------------------------------------------- | ----------------------------- |
-| 1    | "Connect to Ableton"                        | Setup                         |
-| 2    | "Show me available drum samples"            | Sample folder listing, search |
-| 3    | "Create an audio clip using kick.wav"       | Audio clip from sample        |
-| 4    | "Pitch shift it up 5 semitones and loop it" | Audio properties, warping     |
+**Tools exercised:** `ppal-context` (sample listing), `ppal-create-clip`
+(audio), `ppal-update-clip` (audio properties)
 
 ---
 
-### Scenario 7: Selection & Navigation
+### Priority 3: Token Usage Thresholds (new assertion type)
 
-**Exercises:** `ppal-select`, `ppal-read-track`, `ppal-read-device`
+Evaluate token efficiency across multi-turn conversations. Assert on a maximum
+input token threshold to catch regressions in tool result verbosity, system
+prompt bloat, or unnecessary read-back loops. Critical for cost control and
+staying within context limits during real usage.
 
-| Turn | Prompt                                       | Features Tested                 |
-| ---- | -------------------------------------------- | ------------------------------- |
-| 1    | "Connect to Ableton"                         | Setup                           |
-| 2    | "Select the Bass track and show its devices" | Track selection, device reading |
-| 3    | "Switch to arrangement view"                 | View switching                  |
-| 4    | "Select the first clip in arrangement"       | Arrangement clip selection      |
+**Approach:**
 
----
+- Track cumulative input tokens across all turns of a scenario
+- Assert that total input tokens stay below a per-scenario threshold
+- Start by measuring current baselines, then set thresholds ~20% above
+- Flag scenarios where token usage spikes between runs
 
-### Scenario 8: Memory & Cleanup
-
-**Exercises:** `ppal-connect`, `ppal-context`, `ppal-delete`
-
-| Turn | Prompt                                                           | Features Tested |
-| ---- | ---------------------------------------------------------------- | --------------- |
-| 1    | "Connect to Ableton"                                             | Setup           |
-| 2    | "Save a note: 'This project uses C minor with jazzy 7th chords'" | Memory write    |
-| 3    | "What notes do I have saved about this project?"                 | Memory read     |
-| 4    | "Delete the last track"                                          | Track deletion  |
+**Best candidates:** Multi-turn scenarios like `create-and-edit-clip` (4 turns)
+and `track-and-device` (4 turns) where accumulation is most visible.
 
 ---
 
-## Tool Coverage Summary
+### Priority 4: Live Set Properties (extend existing scenario)
 
-| Tool                   | Scenarios |
-| ---------------------- | --------- |
-| `ppal-connect`         | 1-8 (all) |
-| `ppal-context`         | 6, 8      |
-| `ppal-read-live-set`   | 1         |
-| `ppal-update-live-set` | 1         |
-| `ppal-create-track`    | 2         |
-| `ppal-read-track`      | 7         |
-| `ppal-update-track`    | 2         |
-| `ppal-create-clip`     | 3, 6      |
-| `ppal-read-clip`       | 3         |
-| `ppal-update-clip`     | 3, 6      |
-| `ppal-create-device`   | 2         |
-| `ppal-read-device`     | 7         |
-| `ppal-update-device`   | 2         |
-| `ppal-create-scene`    | 4         |
-| `ppal-read-scene`      | 4         |
-| `ppal-update-scene`    | 4         |
-| `ppal-delete`          | 8         |
-| `ppal-duplicate`       | 5         |
-| `ppal-playback`        | 4         |
-| `ppal-select`          | 7         |
+The `connect-to-ableton` scenario only tests connection. Adding a second turn
+for tempo and time signature changes is easy.
+
+**Additional turn:**
+
+- "Set the tempo to 128 BPM and the time signature to 6/8"
+
+**Tools exercised:** `ppal-update-live-set`
+
+---
+
+### Priority 5: Device Parameter Updates (extend existing scenario)
+
+The `track-and-device` scenario creates a device but never adjusts its
+parameters. Easy to add a turn for this.
+
+**Additional turn in track-and-device:**
+
+- "Set the filter cutoff to 50%"
+
+**Tools exercised:** `ppal-update-device`
+
+---
+
+### Priority 6: Scene & Playback
+
+Straightforward tools, low regression risk, but entirely uncovered.
+
+**Suggested turns:**
+
+1. Connect
+2. "Create a scene called 'Intro' with tempo 100"
+3. "Play that scene"
+4. "Stop playback"
+
+**Tools exercised:** `ppal-create-scene`, `ppal-update-scene`,
+`ppal-read-scene`, `ppal-playback`
+
+---
+
+### Priority 7: Delete Operations
+
+The `memory-workflow` scenario doesn't test deletion. Easy to add.
+
+**Additional turn in memory-workflow:**
+
+- "Delete the last track"
+
+**Tools exercised:** `ppal-delete`
+
+---
+
+### Priority 8: Selection & Navigation
+
+Hardest to assert on meaningfully — selection is a UI-side concern and
+navigation results depend on visual state. Low value as an automated eval.
+
+**Suggested turns:**
+
+1. Connect
+2. "Select the Bass track and show its devices"
+3. "Switch to arrangement view"
+
+**Tools exercised:** `ppal-select`, `ppal-read-track`, `ppal-read-device`
+
+**Consider skipping** unless we find a good way to assert on selection state.
+
+## Broader Gaps Beyond Tool Coverage
+
+- **Multi-track composition** — No scenario tests building a song across
+  multiple tracks in a single conversation. This is the core end-user workflow
+  and would stress-test context management and cross-track references.
+
+- **Multi-step editing** — Current clip scenario uses simple "add notes" +
+  "quantize". No test for more complex editing like "move the snare hits 50ms
+  early for a lazy feel" or "transpose the melody up a 4th".
+
+- **Error recovery** — No scenario tests how LLMs handle invalid requests (e.g.,
+  "add a device to a return track that doesn't support it") or recover
+  gracefully from tool errors.
+
+- **Read-heavy workflows** — Scenarios are write-heavy. No scenario starts with
+  "tell me about this project" and then asks follow-up questions about existing
+  content, which is a common real-world pattern.
