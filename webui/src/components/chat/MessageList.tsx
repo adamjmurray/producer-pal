@@ -6,6 +6,7 @@ import { Fragment, type VNode } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 import { type TokenUsage } from "#webui/chat/sdk/types";
+import { ErrorBoundary } from "#webui/components/ErrorBoundary";
 import {
   calcNewContentTokens,
   compactNumber,
@@ -14,9 +15,12 @@ import {
   formatTimestampDate,
   formatTimestampTime,
 } from "#webui/lib/utils/format-timestamp";
-import { sanitizeMarkdown } from "#webui/lib/utils/sanitize-markdown";
 import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./assistant/AssistantMessage";
+import {
+  RenderErrorFallback,
+  SafeMarkdown,
+} from "./assistant/message-list-helpers";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
 import { RetryButton } from "./controls/RetryButton";
 import { EditButton } from "./EditButton";
@@ -110,13 +114,15 @@ export function MessageList({
               data-testid={isUser ? undefined : "assistant-message-bubble"}
             >
               {!isUser && (
-                <AssistantBubble
-                  message={message}
-                  isAssistantResponding={isAssistantResponding}
-                  showTokenUsage={showTokenUsage}
-                  requestedModel={requestedModel}
-                  prevModelUsage={prevModelUsage}
-                />
+                <ErrorBoundary fallback={<RenderErrorFallback />}>
+                  <AssistantBubble
+                    message={message}
+                    isAssistantResponding={isAssistantResponding}
+                    showTokenUsage={showTokenUsage}
+                    requestedModel={requestedModel}
+                    prevModelUsage={prevModelUsage}
+                  />
+                </ErrorBoundary>
               )}
               {isUser && isEditing && (
                 <UserMessageEditor
@@ -130,12 +136,9 @@ export function MessageList({
                 />
               )}
               {isUser && !isEditing && (
-                <div
-                  className="prose dark:prose-invert prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizeMarkdown(formatUserContent(message)),
-                  }}
-                />
+                <ErrorBoundary fallback={<RenderErrorFallback />}>
+                  <SafeMarkdown content={formatUserContent(message)} />
+                </ErrorBoundary>
               )}
             </div>
             {isUser ? (
