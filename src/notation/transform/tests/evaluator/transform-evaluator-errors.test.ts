@@ -10,7 +10,7 @@ import {
 import {
   evaluateExpression,
   evaluateTransformAST,
-} from "#src/notation/transform/transform-evaluator-helpers.ts";
+} from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { type TransformAssignment } from "#src/notation/transform/parser/transform-parser.ts";
 import { evaluateFunction } from "#src/notation/transform/transform-functions.ts";
 import {

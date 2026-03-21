@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { quantizePitchToScale, stepInScale } from "#src/shared/pitch.ts";
-import { type ExpressionNode } from "./parser/transform-parser.ts";
+import { type ExpressionNode } from "../parser/transform-parser.ts";
+import { type EvaluateExpressionFn } from "../transform-functions.ts";
 import {
   type TimeRange,
   type NoteProperties,
 } from "./transform-evaluator-helpers.ts";
-import { type EvaluateExpressionFn } from "./transform-functions.ts";
 
 /**
  * Evaluate quant function (quantize pitch to nearest in-scale pitch)

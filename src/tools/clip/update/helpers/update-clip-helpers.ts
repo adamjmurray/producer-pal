@@ -4,7 +4,7 @@
 
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { type ClipContext } from "#src/notation/transform/transform-evaluator-helpers.ts";
+import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";

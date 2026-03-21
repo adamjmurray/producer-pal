@@ -13,7 +13,7 @@ import {
 import {
   moveDrumChainToPath,
   updateMacroCount,
-} from "../update-device-helpers.ts";
+} from "../helpers/update-device-helpers.ts";
 import "#src/live-api-adapter/live-api-extensions.ts";
 
 describe("moveDrumChainToPath", () => {

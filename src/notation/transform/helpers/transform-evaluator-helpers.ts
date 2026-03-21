@@ -9,8 +9,8 @@ import {
   type ExpressionNode,
   type TransformAssignment,
   type PitchRange,
-} from "./parser/transform-parser.ts";
-import { evaluateFunction } from "./transform-functions.ts";
+} from "../parser/transform-parser.ts";
+import { evaluateFunction } from "../transform-functions.ts";
 
 export interface TimeRange {
   start: number;

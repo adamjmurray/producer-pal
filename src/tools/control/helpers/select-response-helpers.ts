@@ -8,8 +8,8 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-builders.ts";
 import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/path/device-path-to-live-api.ts";
 import { fromLiveApiView } from "#src/tools/shared/utils.ts";
+import { type SelectResult } from "../select.ts";
 import { type TrackCategory } from "./select-helpers.ts";
-import { type SelectResult } from "./select.ts";
 
 /**
  * Read full current view state (for no-args calls)

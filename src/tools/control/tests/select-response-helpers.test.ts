@@ -18,7 +18,7 @@ import {
   buildSceneResponseFromId,
   buildTrackResponseFromId,
   readFullState,
-} from "#src/tools/control/select-response-helpers.ts";
+} from "#src/tools/control/helpers/select-response-helpers.ts";
 import {
   resetSelectTestState,
   setupViewStateMock,

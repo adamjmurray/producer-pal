@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
-import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.ts";
+import { resolveLocatorToBeats } from "#src/tools/control/helpers/playback-helpers.ts";
 import {
   expectLiveSetProperty,
   setupCuePointMocks,

@@ -105,7 +105,7 @@ export function moveDrumChainToPath(
 // }
 
 // Parameter values are handled in update-device-param-setters.ts
-export { setParamValues } from "./update-device-param-setters.ts";
+export { setParamValues } from "../update-device-param-setters.ts";
 
 // ============================================================================
 // Macro variations

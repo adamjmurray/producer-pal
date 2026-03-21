@@ -2,8 +2,8 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyAudioTransform } from "#src/notation/transform/transform-audio-evaluator.ts";
-import { type ClipContext } from "#src/notation/transform/transform-evaluator-helpers.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
   LIVE_API_WARP_MODE_BEATS,
