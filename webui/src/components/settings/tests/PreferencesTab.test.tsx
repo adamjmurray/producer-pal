@@ -8,7 +8,7 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { PreferencesTab } from "./PreferencesTab";
+import { PreferencesTab } from "#webui/components/settings/PreferencesTab";
 
 describe("PreferencesTab", () => {
   const mockSetTheme = vi.fn();
