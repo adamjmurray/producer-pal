@@ -21,6 +21,7 @@ import {
   setupInstrumentRackOnTrack0,
 } from "../helpers/read-track-device-test-helpers.ts";
 import { setupTrackMock } from "../helpers/read-track-registry-test-helpers.ts";
+import { mockTrackProperties } from "../helpers/read-track-test-helpers.ts";
 import { readTrack } from "../read-track.ts";
 
 describe("readTrack", () => {
@@ -39,6 +40,26 @@ describe("readTrack", () => {
       expect(result.instrument).toBeUndefined();
       expect(result.midiEffects).toBeUndefined();
       expect(result.audioEffects).toBeUndefined();
+    });
+
+    it("omits devices for Producer Pal host track with no devices", () => {
+      // Make track 0 the Producer Pal host
+      registerMockObject("this_device", {
+        path: "this_device",
+        returnPath: String(livePath.track(0).device(0)),
+        type: "Device",
+      });
+      registerMockObject("track1", {
+        path: livePath.track(0),
+        type: "Track",
+        properties: mockTrackProperties({
+          devices: [],
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, include: ["devices"] });
+
+      expect(result.devices).toBeUndefined();
     });
 
     it("categorizes devices correctly", () => {
