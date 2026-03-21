@@ -78,7 +78,8 @@ export type EvalAssertion =
   | ToolCallAssertion
   | StateAssertion
   | LlmJudgeAssertion
-  | ResponseContainsAssertion;
+  | ResponseContainsAssertion
+  | CustomAssertion;
 
 /**
  * Assert that a specific tool was called with expected args
@@ -146,6 +147,20 @@ export interface ResponseContainsAssertion {
   turn?: number | "any";
   /** Should NOT contain (default: false) */
   negate?: boolean;
+  /** Max points this assertion is worth (default: 1) */
+  score?: number;
+}
+
+/**
+ * General-purpose callback assertion for flexible checks on turn data
+ * (token usage, tool call patterns, response content, timing, etc.)
+ */
+export interface CustomAssertion {
+  type: "custom";
+  /** Human-readable description of what's being checked */
+  description: string;
+  /** Callback receiving all turn results. Return true to pass, throw to fail with message. */
+  assert: (turns: EvalTurnResult[]) => boolean;
   /** Max points this assertion is worth (default: 1) */
   score?: number;
 }

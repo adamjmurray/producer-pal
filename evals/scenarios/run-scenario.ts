@@ -22,6 +22,7 @@ import {
 } from "#evals/shared/config.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
+  assertCustom,
   assertToolCalled,
   assertState,
   assertWithLlmJudge,
@@ -339,6 +340,9 @@ async function runCorrectnessAssertion(
 
     case "response_contains":
       return assertResponseContains(assertion, turns);
+
+    case "custom":
+      return assertCustom(assertion, turns);
 
     default:
       return {
