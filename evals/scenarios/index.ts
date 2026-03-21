@@ -8,14 +8,9 @@
  * CLI for running Producer Pal evaluation scenarios
  */
 
+import { styleText } from "node:util";
 import { Command } from "commander";
-import {
-  BOLD,
-  ORANGE,
-  RED,
-  RESET,
-  scoreColor,
-} from "#evals/chat/shared/formatting.ts";
+import { orange, scoreColor } from "#evals/chat/shared/formatting.ts";
 import {
   parseModelArg,
   type ModelSpec,
@@ -165,8 +160,11 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       scenarios.length * modelSpecs.length * configProfiles.length;
 
     console.log(
-      `${BOLD}Running ${scenarios.length} scenario(s) × ${modelSpecs.length} model(s)` +
-        ` × ${configProfiles.length} config(s) = ${totalRuns} run(s)...${RESET}`,
+      styleText(
+        "bold",
+        `Running ${scenarios.length} scenario(s) × ${modelSpecs.length} model(s)` +
+          ` × ${configProfiles.length} config(s) = ${totalRuns} run(s)...`,
+      ),
     );
 
     // Results: scenarioId → modelKey → configId → result
@@ -235,8 +233,8 @@ function printSummary(
     [...modelMap.values()].flatMap((configMap) => [...configMap.values()]),
   );
 
-  console.log(`\n${ORANGE}${"=".repeat(50)}${RESET}`);
-  console.log(`${BOLD}Summary:${RESET}`);
+  console.log("\n" + orange("=".repeat(50)));
+  console.log(styleText("bold", "Summary:"));
 
   for (const result of allResults) {
     const pct =
@@ -245,12 +243,18 @@ function printSummary(
         : "100";
     const color = scoreColor(result.earnedScore, result.maxScore);
 
-    console.log(
-      `  ${result.scenario.id}: ${color}${formatScore(result.earnedScore)}/${result.maxScore} (${pct}%)${RESET}`,
-    );
+    const scoreText =
+      formatScore(result.earnedScore) +
+      "/" +
+      result.maxScore +
+      " (" +
+      pct +
+      "%)";
+
+    console.log("  " + result.scenario.id + ": " + styleText(color, scoreText));
 
     if (result.error) {
-      console.log(`    ${RED}Error: ${result.error}${RESET}`);
+      console.log("    " + styleText("red", "Error: " + result.error));
     }
   }
 }

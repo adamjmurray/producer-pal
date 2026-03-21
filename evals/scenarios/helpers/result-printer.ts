@@ -7,13 +7,10 @@
  * Formatted output for individual eval results
  */
 
+import { styleText } from "node:util";
 import {
   formatSubsectionHeader,
   formatUsageLine,
-  BOLD,
-  GRAY,
-  RED,
-  RESET,
   pctColor,
   scoreColor,
 } from "#evals/chat/shared/formatting.ts";
@@ -26,6 +23,26 @@ const DIMENSION_KEYS = [
   "efficiency",
   "naturalness",
 ] as const;
+
+/**
+ * Apply gray styling to text
+ *
+ * @param text - Text to style
+ * @returns Gray styled text
+ */
+function gray(text: string): string {
+  return styleText("gray", text);
+}
+
+/**
+ * Apply bold styling to text
+ *
+ * @param text - Text to style
+ * @returns Bold styled text
+ */
+function bold(text: string): string {
+  return styleText("bold", text);
+}
 
 /**
  * Print result for a single scenario run
@@ -50,26 +67,24 @@ export function printResult(
   const color = scoreColor(result.earnedScore, result.maxScore);
 
   console.log(`\n${formatSubsectionHeader("SUMMARY")}`);
-  console.log(
-    `${BOLD}${modelKey}: ${result.scenario.id}${configLabel}${RESET}\n`,
-  );
-  console.log(`${GRAY}Duration:${RESET} ${result.totalDurationMs}ms`);
+  console.log(bold(`${modelKey}: ${result.scenario.id}${configLabel}`) + "\n");
+  console.log(`${gray("Duration:")} ${result.totalDurationMs}ms`);
 
   if (showUsage && result.totalUsage) {
     console.log(formatUsageLine(result.totalUsage));
   }
 
   if (result.error) {
-    console.log(`${RED}Error: ${result.error}${RESET}`);
+    console.log(styleText("red", "Error: " + result.error));
   }
 
   if (result.assertions.length > 0) {
     printScoreTable(result.assertions);
   }
 
-  console.log(
-    `\n${BOLD}Total: ${color}${formatScore(result.earnedScore)}/${result.maxScore} (${percentage}%)${RESET}`,
-  );
+  const scoreText = `${formatScore(result.earnedScore)}/${result.maxScore} (${percentage}%)`;
+
+  console.log("\n" + bold("Total: " + styleText(color, scoreText)));
 }
 
 /**
@@ -80,28 +95,31 @@ export function printResult(
 function printScoreTable(assertions: EvalAssertionResult[]): void {
   const typeWidth = 17;
   const scoreWidth = 10;
-  const g = GRAY;
-  const r = RESET;
+  const topBorder = gray(
+    `┌─────┬${"─".repeat(typeWidth + 2)}┬${"─".repeat(scoreWidth + 2)}┐`,
+  );
+  const midBorder = gray(
+    `├─────┼${"─".repeat(typeWidth + 2)}┼${"─".repeat(scoreWidth + 2)}┤`,
+  );
+  const botBorder = gray(
+    `└─────┴${"─".repeat(typeWidth + 2)}┴${"─".repeat(scoreWidth + 2)}┘`,
+  );
+  const d = gray("│");
 
+  console.log("\n" + topBorder);
   console.log(
-    `\n${g}┌─────┬${"─".repeat(typeWidth + 2)}┬${"─".repeat(scoreWidth + 2)}┐${r}`,
+    `${d} ${bold("  #")} ${d} ${bold("Type".padEnd(typeWidth))} ${d} ${bold("Score".padStart(scoreWidth))} ${d}`,
   );
-  console.log(
-    `${g}│${r} ${BOLD}  #${r} ${g}│${r} ${BOLD}${"Type".padEnd(typeWidth)}${r} ${g}│${r} ${BOLD}${"Score".padStart(scoreWidth)}${r} ${g}│${r}`,
-  );
-  console.log(
-    `${g}├─────┼${"─".repeat(typeWidth + 2)}┼${"─".repeat(scoreWidth + 2)}┤${r}`,
-  );
+  console.log(midBorder);
 
   for (const [i, a] of assertions.entries()) {
     const num = String(i + 1).padStart(3);
     const type = a.assertion.type.padEnd(typeWidth);
     const score = `${formatScore(a.earned)}/${a.maxScore}`;
     const color = scoreColor(a.earned, a.maxScore);
+    const styledScore = styleText(color, score.padStart(scoreWidth));
 
-    console.log(
-      `${g}│${r} ${num} ${g}│${r} ${type} ${g}│${r} ${color}${score.padStart(scoreWidth)}${r} ${g}│${r}`,
-    );
+    console.log(`${d} ${num} ${d} ${type} ${d} ${styledScore} ${d}`);
 
     // For LLM judge, show dimension breakdown
     if (a.assertion.type === "llm_judge") {
@@ -109,9 +127,7 @@ function printScoreTable(assertions: EvalAssertionResult[]): void {
     }
   }
 
-  console.log(
-    `${g}└─────┴${"─".repeat(typeWidth + 2)}┴${"─".repeat(scoreWidth + 2)}┘${r}`,
-  );
+  console.log(botBorder);
 }
 
 /**
@@ -130,17 +146,15 @@ function printJudgeDimensions(
 
   if (!details) return;
 
-  const g = GRAY;
-  const r = RESET;
+  const d = gray("│");
 
   for (const dim of DIMENSION_KEYS) {
     const dimScore = details[dim].score.toFixed(2);
     const label = `  ${dim}`.padEnd(typeWidth);
     const color = pctColor(details[dim].score * 100);
+    const styledScore = styleText(color, dimScore.padStart(scoreWidth));
 
-    console.log(
-      `${g}│${r}     ${g}│${r} ${g}${label}${r} ${g}│${r} ${color}${dimScore.padStart(scoreWidth)}${r} ${g}│${r}`,
-    );
+    console.log(`${d}     ${d} ${gray(label)} ${d} ${styledScore} ${d}`);
   }
 }
 

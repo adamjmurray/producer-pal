@@ -7,7 +7,8 @@
  * Console table formatter for multi-model/config eval results
  */
 
-import { BOLD, GRAY, RESET, pctColor } from "#evals/chat/shared/formatting.ts";
+import { type InspectColor, styleText } from "node:util";
+import { pctColor } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
 import { type ConfigProfile, type EvalScenarioResult } from "../types.ts";
 
@@ -57,13 +58,13 @@ export function printResultsTable(
     labels,
     scenarioColWidth,
     colWidths,
-    labels.map(() => BOLD),
-    BOLD,
+    labels.map(() => "bold"),
+    "bold",
   );
 
-  console.log(`\n${GRAY}${separator}${RESET}`);
+  console.log(`\n${styleText("gray", separator)}`);
   console.log(headerRow);
-  console.log(`${GRAY}${separator}${RESET}`);
+  console.log(styleText("gray", separator));
 
   // Data rows
   for (const [scenarioId, modelResults] of resultsByScenario) {
@@ -81,7 +82,7 @@ export function printResultsTable(
       const result = modelResults.get(col.modelKey)?.get(col.configId);
       const pct = result ? getScorePercentage(result) : null;
 
-      return pct != null ? pctColor(pct) : "";
+      return pct != null ? pctColor(pct) : undefined;
     });
 
     console.log(
@@ -90,9 +91,9 @@ export function printResultsTable(
   }
 
   // Summary rows
-  console.log(`${GRAY}${separator}${RESET}`);
+  console.log(styleText("gray", separator));
   printSummaryRow(resultsByScenario, columns, scenarioColWidth, colWidths);
-  console.log(`${GRAY}${separator}${RESET}`);
+  console.log(styleText("gray", separator));
 }
 
 /**
@@ -171,14 +172,14 @@ function printSummaryRow(
       }
     }
 
-    if (pcts2.length === 0) return "";
+    if (pcts2.length === 0) return;
     const avg = pcts2.reduce((a, b) => a + b, 0) / pcts2.length;
 
-    return `${BOLD}${pctColor(avg)}`;
+    return pctColor(avg);
   });
 
   console.log(
-    buildRow("Avg %", avgPcts, scenarioColWidth, colWidths, avgColors, BOLD),
+    buildRow("Avg %", avgPcts, scenarioColWidth, colWidths, avgColors, "bold"),
   );
 }
 
@@ -208,6 +209,9 @@ function buildSeparator(scenarioColWidth: number, colWidths: number[]): string {
   return `├${scenarioBar}┼${colBars.join("┼")}┤`;
 }
 
+/** styleText format type for cell coloring */
+type CellFormat = InspectColor | undefined;
+
 /**
  * Build a table row with optional color for each cell
  *
@@ -215,8 +219,8 @@ function buildSeparator(scenarioColWidth: number, colWidths: number[]): string {
  * @param cells - Data column cell contents
  * @param scenarioColWidth - Width of scenario column
  * @param colWidths - Widths of data columns
- * @param cellColors - Optional per-cell ANSI color codes
- * @param scenarioColor - Optional ANSI color for the scenario cell
+ * @param cellFormats - Optional per-cell styleText formats
+ * @param scenarioFormat - Optional styleText format for the scenario cell
  * @returns Formatted row string
  */
 function buildRow(
@@ -224,22 +228,21 @@ function buildRow(
   cells: string[],
   scenarioColWidth: number,
   colWidths: number[],
-  cellColors?: string[],
-  scenarioColor?: string,
+  cellFormats?: CellFormat[],
+  scenarioFormat?: InspectColor,
 ): string {
   const padded = scenario.padEnd(scenarioColWidth);
-  const scenarioCell = scenarioColor
-    ? `${scenarioColor}${padded}${RESET}`
+  const scenarioCell = scenarioFormat
+    ? styleText(scenarioFormat, padded)
     : padded;
   const dataCells = cells.map((cell, i) => {
     const p = cell.padEnd(colWidths[i] ?? 0);
-    const color = cellColors?.[i];
+    const format = cellFormats?.[i];
 
-    return color ? `${color}${p}${RESET}` : p;
+    return format ? styleText(format, p) : p;
   });
-  const g = GRAY;
-  const r = RESET;
-  const divider = ` ${g}│${r} `;
+  const div = styleText("gray", "│");
+  const divider = ` ${div} `;
 
-  return `${g}│${r} ${scenarioCell} ${g}│${r} ${dataCells.join(divider)} ${g}│${r}`;
+  return `${div} ${scenarioCell} ${div} ${dataCells.join(divider)} ${div}`;
 }

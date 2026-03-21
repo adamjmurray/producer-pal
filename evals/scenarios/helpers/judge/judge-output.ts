@@ -1,17 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Streaming output utilities for LLM judge
  */
 
-import {
-  formatSubsectionHeader,
-  GRAY,
-  MAGENTA,
-  RESET,
-} from "#evals/chat/shared/formatting.ts";
+import { styleText } from "node:util";
+import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
 import { type JudgeResult } from "../judge-response-parser.ts";
 import { isQuietMode } from "../output-config.ts";
 
@@ -28,12 +25,12 @@ export function printJudgeHeader(
   criteria: string,
 ): void {
   console.log(`\n${formatSubsectionHeader("LLM Judgement")}`);
-  console.log(`\n${GRAY}Model:${RESET} ${provider}/${model}`);
+  console.log(`\n${styleText("gray", "Model:")} ${provider}/${model}`);
 
   if (isQuietMode()) return;
 
-  console.log(`${GRAY}Criteria:${RESET} ${criteria}\n`);
-  process.stdout.write(`${GRAY}Response:${RESET} ${MAGENTA}`);
+  console.log(`${styleText("gray", "Criteria:")} ${criteria}\n`);
+  process.stdout.write(`${styleText("gray", "Response:")} `);
 }
 
 /**
@@ -53,7 +50,7 @@ export function printJudgeChunk(text: string): void {
 export function finishJudgeOutput(): void {
   if (isQuietMode()) return;
 
-  console.log(`${RESET}\n`);
+  console.log("\n");
 }
 
 /**

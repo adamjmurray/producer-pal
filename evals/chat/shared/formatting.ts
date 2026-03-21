@@ -1,8 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { inspect } from "node:util";
+import { inspect, styleText } from "node:util";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
   calcNewContentTokens,
@@ -12,54 +13,66 @@ import {
 export const DEBUG_SEPARATOR = "\n" + "-".repeat(80);
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ANSI color constants
+// Color helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const RESET = "\x1b[0m";
-export const BOLD = "\x1b[1m";
-export const GRAY = "\x1b[90m";
-export const RED = "\x1b[31m";
-export const GREEN = "\x1b[32m";
-export const YELLOW = "\x1b[33m";
-export const CYAN = "\x1b[36m";
-export const MAGENTA = "\x1b[35m";
-export const ORANGE = "\x1b[38;5;208m";
-export const LIGHT_BLUE = "\x1b[94m";
+// 256-color orange — no styleText equivalent, so kept as raw ANSI
+const ORANGE = "\x1b[38;5;208m";
+const RESET = "\x1b[0m";
 
 /**
- * Return an ANSI color code based on a score percentage.
- * Green for perfect (100%), yellow for mid-range (50–99%), red for low (<50%).
+ * Apply orange styling to text (256-color, not available in styleText)
+ *
+ * @param text - Text to style
+ * @returns Orange styled text
+ */
+export function orange(text: string): string {
+  return `${ORANGE}${text}${RESET}`;
+}
+
+/** Foreground format identifiers accepted by `styleText` */
+export type ForegroundFormat =
+  | "red"
+  | "green"
+  | "yellow"
+  | "cyan"
+  | "cyanBright"
+  | "gray"
+  | "blueBright"
+  | "magenta";
+
+/**
+ * Return a `styleText` format based on a score percentage.
+ * Green for perfect (100%), cyan for high (90–99%), yellow for mid (50–89%), red for low (<50%).
  *
  * @param earned - Points earned
  * @param max - Maximum possible points
- * @returns ANSI color escape code
+ * @returns styleText foreground format
  */
-export function scoreColor(earned: number, max: number): string {
-  if (max === 0) return "";
+export function scoreColor(earned: number, max: number): ForegroundFormat {
+  if (max === 0) return "gray";
   const pct = (earned / max) * 100;
 
   return pctColor(pct);
 }
 
 /**
- * Return an ANSI color code for a percentage value.
+ * Return a `styleText` format for a percentage value.
  *
  * @param pct - Percentage (0–100)
- * @returns ANSI color escape code
+ * @returns styleText foreground format
  */
-export function pctColor(pct: number): string {
-  if (pct >= 100) return GREEN;
-  if (pct >= 90) return CYAN;
-  if (pct >= 50) return YELLOW;
+export function pctColor(pct: number): ForegroundFormat {
+  if (pct >= 100) return "green";
+  if (pct >= 90) return "cyan";
+  if (pct >= 50) return "yellow";
 
-  return RED;
+  return "red";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Thought formatting
 // ─────────────────────────────────────────────────────────────────────────────
-
-const BRIGHT_MAGENTA = "\x1b[95m";
 
 /**
  * Format the start of a thought block
@@ -68,7 +81,7 @@ const BRIGHT_MAGENTA = "\x1b[95m";
  * @returns Formatted thought start
  */
 export function startThought(text: string): string {
-  return `${BRIGHT_MAGENTA}<thought>\n${text}`;
+  return styleText("magenta", `<thought>\n${text}`);
 }
 
 /**
@@ -80,7 +93,7 @@ export function startThought(text: string): string {
 export function continueThought(text: string | object): string {
   const content = typeof text === "string" ? text : JSON.stringify(text);
 
-  return `${BRIGHT_MAGENTA}${content}`;
+  return styleText("magenta", content);
 }
 
 /**
@@ -89,7 +102,7 @@ export function continueThought(text: string | object): string {
  * @returns Formatted thought end
  */
 export function endThought(): string {
-  return `${RESET}\n`;
+  return "\n";
 }
 
 /**
@@ -162,7 +175,7 @@ export function printStepUsage(
   const line = `tokens: ${compactNumber(input)}${newPart} → ${compactNumber(usage.outputTokens ?? 0)}${reasoningPart}`;
   const prefix = afterText ? "\n\n" : "\n";
 
-  console.log(`${prefix}${GRAY}  ${line}${RESET}\n`);
+  console.log(`${prefix}${styleText("gray", "  " + line)}\n`);
 }
 
 /**
@@ -179,7 +192,7 @@ export function formatUsageLine(usage: TokenUsage): string {
       ? ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`
       : "";
 
-  return `${GRAY}Tokens: ${input} → ${output}${reasoningPart}${RESET}`;
+  return styleText("gray", `Tokens: ${input} → ${output}${reasoningPart}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,11 +293,11 @@ export function formatScenarioHeader(
   model: string,
 ): string {
   return `
-${ORANGE}${MAJOR_SEPARATOR}${RESET}
-${ORANGE}| SCENARIO: ${id}${RESET}
-${ORANGE}|${RESET} ${GRAY}Description:${RESET} ${description}
-${ORANGE}|${RESET} ${GRAY}Provider:${RESET} ${provider}
-${ORANGE}|${RESET} ${GRAY}Model:${RESET} ${model}`;
+${orange(MAJOR_SEPARATOR)}
+${orange(`| SCENARIO: ${id}`)}
+${orange("|")} ${styleText("gray", "Description:")} ${description}
+${orange("|")} ${styleText("gray", "Provider:")} ${provider}
+${orange("|")} ${styleText("gray", "Model:")} ${model}`;
 }
 
 /**
@@ -294,11 +307,11 @@ ${ORANGE}|${RESET} ${GRAY}Model:${RESET} ${model}`;
  * @returns Formatted turn header
  */
 export function formatTurnHeader(turnNumber: number): string {
-  return `\x1b[96m──────── Turn ${turnNumber} ────────${RESET}`;
+  return styleText("cyanBright", `──────── Turn ${turnNumber} ────────`);
 }
 
 /** Gray prompt prefix for user input display */
-export const GRAY_PROMPT = `${GRAY}> ${RESET}`;
+export const GRAY_PROMPT = styleText("gray", "> ");
 
 /**
  * Format a colored user label for CLI output
@@ -306,7 +319,7 @@ export const GRAY_PROMPT = `${GRAY}> ${RESET}`;
  * @returns Green [User] label with trailing newline
  */
 export function formatUserLabel(): string {
-  return `${GREEN}[User]${RESET}\n`;
+  return styleText("green", "[User]") + "\n";
 }
 
 /**
@@ -315,7 +328,7 @@ export function formatUserLabel(): string {
  * @returns Yellow [Assistant] label
  */
 export function formatAssistantLabel(): string {
-  return `${YELLOW}[Assistant]${RESET}`;
+  return styleText("yellow", "[Assistant]");
 }
 
 /**
@@ -325,7 +338,7 @@ export function formatAssistantLabel(): string {
  * @returns Formatted section header
  */
 export function formatSectionHeader(title: string): string {
-  return `\n${ORANGE}${MAJOR_SEPARATOR}${RESET}\n${ORANGE}${title}${RESET}\n`;
+  return `\n${orange(MAJOR_SEPARATOR)}\n${orange(title)}\n`;
 }
 
 /**
@@ -335,5 +348,5 @@ export function formatSectionHeader(title: string): string {
  * @returns Formatted subsection header
  */
 export function formatSubsectionHeader(title: string): string {
-  return `${LIGHT_BLUE}${MINOR_SEPARATOR}${RESET}\n${LIGHT_BLUE}${title}${RESET}`;
+  return `${styleText("blueBright", MINOR_SEPARATOR)}\n${styleText("blueBright", title)}`;
 }

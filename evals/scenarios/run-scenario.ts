@@ -1,20 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Scenario runner - executes evaluation scenarios against Ableton Live
  */
 
+import { styleText } from "node:util";
 import {
   formatScenarioHeader,
   formatSectionHeader,
   formatSubsectionHeader,
-  GRAY,
-  GREEN,
-  ORANGE,
-  RED,
-  RESET,
+  orange,
   scoreColor,
 } from "#evals/chat/shared/formatting.ts";
 import {
@@ -99,7 +97,9 @@ export async function runScenario(
       const liveSetPath = resolveLiveSetPath(scenario.liveSet);
 
       if (!isQuietMode())
-        console.log(`\n${GRAY}Opening Live Set: ${liveSetPath}${RESET}`);
+        console.log(
+          "\n" + styleText("gray", "Opening Live Set: " + liveSetPath),
+        );
       await openLiveSet(liveSetPath);
     }
 
@@ -110,7 +110,7 @@ export async function runScenario(
     );
 
     if (mergedConfig) {
-      if (!isQuietMode()) console.log(`${GRAY}Applying config...${RESET}`);
+      if (!isQuietMode()) console.log(styleText("gray", "Applying config..."));
       await setConfig(mergedConfig);
     }
 
@@ -129,7 +129,9 @@ export async function runScenario(
     const profileId = options.configProfile?.id;
 
     if (profileId && profileId !== "default") {
-      console.log(`${ORANGE}|${RESET} ${GRAY}Config:${RESET} ${profileId}`);
+      console.log(
+        `${orange("|")} ${styleText("gray", "Config:")} ${profileId}`,
+      );
     }
 
     session = await createEvalSession({
@@ -238,7 +240,7 @@ async function runAssertions(
     // Show results in verbose mode
     if (!isQuietMode()) {
       const pass = result.earned === result.maxScore;
-      const icon = pass ? `${GREEN}✓${RESET}` : `${RED}✗${RESET}`;
+      const icon = pass ? styleText("green", "✓") : styleText("red", "✗");
 
       console.log(`  ${icon} ${result.message}`);
     }
@@ -262,7 +264,9 @@ async function runCorrectnessChecks(
 ): Promise<EvalAssertionResult[]> {
   console.log(formatSectionHeader("EVALUATION"));
   console.log(formatSubsectionHeader("Correctness Checks"));
-  console.log(`\n${GRAY}Running ${assertions.length} check(s)...${RESET}`);
+  console.log(
+    "\n" + styleText("gray", "Running " + assertions.length + " check(s)..."),
+  );
 
   const results = await runAssertions(assertions, turns, session);
   const earned = sumField(results, "earned");
@@ -272,7 +276,9 @@ async function runCorrectnessChecks(
     const pct = ((earned / max) * 100).toFixed(0);
     const color = scoreColor(earned, max);
 
-    console.log(`\nCorrectness: ${color}${earned}/${max} (${pct}%)${RESET}`);
+    const scoreText = earned + "/" + max + " (" + pct + "%)";
+
+    console.log("\nCorrectness: " + styleText(color, scoreText));
   }
 
   return results;

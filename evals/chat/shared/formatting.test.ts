@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -162,10 +163,10 @@ describe("thought formatting", () => {
   });
 
   describe("endThought", () => {
-    it("resets color", () => {
+    it("returns a newline", () => {
       const result = endThought();
 
-      expect(result).toContain("\x1b[0m");
+      expect(result).toBe("\n");
     });
   });
 
@@ -175,7 +176,6 @@ describe("thought formatting", () => {
 
       expect(result).toContain("<thought>");
       expect(result).toContain("complete thought");
-      expect(result).toContain("\x1b[0m");
     });
   });
 });
