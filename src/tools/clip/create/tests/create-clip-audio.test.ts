@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -12,7 +13,10 @@ import {
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
 import { createClip } from "../create-clip.ts";
 import {
+  expectNoTimingProperties,
   setupAudioArrangementClipMocks,
+  setupMultiAudioArrangementClipMocks,
+  setupMultiSessionAudioClipMocks,
   setupSessionAudioClipMocks,
 } from "./create-clip-test-helpers.ts";
 
@@ -89,16 +93,7 @@ describe("createClip - audio clips", () => {
       expect(clip.set).toHaveBeenCalledWith("name", "Kick Sample");
       expect(clip.set).toHaveBeenCalledWith("color", 16711680); // #FF0000 converted to integer
 
-      // Verify no looping/timing properties are set for audio clips
-      expect(clip.set).not.toHaveBeenCalledWith(
-        "loop_start",
-        expect.anything(),
-      );
-      expect(clip.set).not.toHaveBeenCalledWith("loop_end", expect.anything());
-      expect(clip.set).not.toHaveBeenCalledWith(
-        "start_marker",
-        expect.anything(),
-      );
+      expectNoTimingProperties(clip);
 
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
@@ -108,36 +103,9 @@ describe("createClip - audio clips", () => {
     });
 
     it("should create multiple audio clips in successive scenes", async () => {
-      registerMockObject("live-set", {
-        path: livePath.liveSet,
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          scenes: children("scene_0", "scene_1"),
-        },
-      });
-
-      registerMockObject("track-0", { path: livePath.track(0) });
-
-      const clipSlot0 = registerMockObject("clip-slot-0-0", {
-        path: livePath.track(0).clipSlot(0),
-        properties: { has_clip: 0 },
-      });
-
-      const clipSlot1 = registerMockObject("clip-slot-0-1", {
-        path: livePath.track(0).clipSlot(1),
-        properties: { has_clip: 0 },
-      });
-
-      registerMockObject("audio_clip_0_0", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { length: 4 },
-      });
-
-      registerMockObject("audio_clip_0_1", {
-        path: livePath.track(0).clipSlot(1).clip(),
-        properties: { length: 4 },
-      });
+      const { clipSlots } = setupMultiSessionAudioClipMocks([0, 1]);
+      const clipSlot0 = clipSlots[0]!;
+      const clipSlot1 = clipSlots[1]!;
 
       const result = await createClip({
         slot: "0/0,0/1",
@@ -288,33 +256,7 @@ describe("createClip - audio clips", () => {
     });
 
     it("should create multiple audio clips at specified positions in arrangement", async () => {
-      let clipCounter = 0;
-
-      registerMockObject("live-set", {
-        path: livePath.liveSet,
-        properties: { signature_numerator: 4, signature_denominator: 4 },
-      });
-      const track = registerMockObject("track-0", {
-        path: livePath.track(0),
-        methods: {
-          create_audio_clip: () => [
-            "id",
-            `arrangement_audio_clip_${clipCounter++}`,
-          ],
-        },
-      });
-
-      registerMockObject("arrangement_audio_clip_0", {
-        properties: { length: 4 },
-      });
-
-      registerMockObject("arrangement_audio_clip_1", {
-        properties: { length: 4 },
-      });
-
-      registerMockObject("arrangement_audio_clip_2", {
-        properties: { length: 4 },
-      });
+      const { track } = setupMultiAudioArrangementClipMocks(3);
 
       const result = await createClip({
         trackIndex: 0,
@@ -439,31 +381,7 @@ describe("createClip - audio clips", () => {
     });
 
     it("should report same length for multiple clips from same sample", async () => {
-      registerMockObject("live-set", {
-        path: livePath.liveSet,
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-          scenes: children("scene_0", "scene_1"),
-        },
-      });
-      registerMockObject("track-0", { path: livePath.track(0) });
-      registerMockObject("clip-slot-0-0", {
-        path: livePath.track(0).clipSlot(0),
-        properties: { has_clip: 0 },
-      });
-      registerMockObject("clip-slot-0-1", {
-        path: livePath.track(0).clipSlot(1),
-        properties: { has_clip: 0 },
-      });
-      registerMockObject("audio_clip_0_0", {
-        path: livePath.track(0).clipSlot(0).clip(),
-        properties: { length: 8 },
-      });
-      registerMockObject("audio_clip_0_1", {
-        path: livePath.track(0).clipSlot(1).clip(),
-        properties: { length: 8 },
-      });
+      setupMultiSessionAudioClipMocks([0, 1], { clipLength: 8 });
 
       const result = await createClip({
         slot: "0/0,0/1",

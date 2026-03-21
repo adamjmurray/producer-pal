@@ -105,6 +105,25 @@ function expectDuplicatedAt(
   }
 }
 
+/**
+ * Set up scene + track mocks with locators for scene duplication tests
+ * @param cuePoints - Locator configurations
+ * @returns Mock handle for track 0
+ */
+function setupSceneWithLocators(
+  cuePoints: CuePointConfig[],
+): RegisteredMockObject {
+  registerMockObject("scene1", { path: livePath.scene(0) });
+  registerClipSlot(0, 0, true, createStandardMidiClipMock());
+
+  return setupTrackWithLocators(cuePoints);
+}
+
+const standardCuePoints: CuePointConfig[] = [
+  { time: 0, name: "Start" },
+  { time: 8, name: "Drop" },
+];
+
 describe("duplicate - locator-based arrangement positioning", () => {
   describe("parameter validation", () => {
     it("should throw error when arrangementStart and locator are both provided", () => {
@@ -142,9 +161,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
   describe("scene duplication with locator", () => {
     it("should duplicate a scene to arrangement at locator ID position", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-      registerClipSlot(0, 0, true, createStandardMidiClipMock());
-      const track0 = setupTrackWithLocators([
+      const track0 = setupSceneWithLocators([
         { time: 0, name: "Intro" },
         { time: 16, name: "Verse" },
       ]);
@@ -160,9 +177,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should duplicate a scene to arrangement at locator name position", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-      registerClipSlot(0, 0, true, createStandardMidiClipMock());
-      const track0 = setupTrackWithLocators([
+      const track0 = setupSceneWithLocators([
         { time: 0, name: "Intro" },
         { time: 16, name: "Verse" },
         { time: 32, name: "Chorus" },
@@ -181,10 +196,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
 
   describe("clip duplication with locator", () => {
     it("should duplicate a clip to arrangement at locator ID position", () => {
-      const track0 = setupClipWithLocators([
-        { time: 0, name: "Start" },
-        { time: 8, name: "Drop" },
-      ]);
+      const track0 = setupClipWithLocators(standardCuePoints);
 
       const result = duplicate({
         type: "clip",
@@ -197,10 +209,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should duplicate a clip to arrangement at locator name position", () => {
-      const track0 = setupClipWithLocators([
-        { time: 0, name: "Start" },
-        { time: 8, name: "Drop" },
-      ]);
+      const track0 = setupClipWithLocators(standardCuePoints);
 
       const result = duplicate({ type: "clip", id: "clip1", locator: "Drop" });
 
@@ -253,9 +262,7 @@ describe("duplicate - locator-based arrangement positioning", () => {
     });
 
     it("should duplicate a scene to multiple locator ID positions", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-      registerClipSlot(0, 0, true, createStandardMidiClipMock());
-      const track0 = setupTrackWithLocators([
+      const track0 = setupSceneWithLocators([
         { time: 0, name: "Intro" },
         { time: 16, name: "Verse" },
         { time: 32, name: "Chorus" },

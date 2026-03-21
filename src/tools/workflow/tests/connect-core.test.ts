@@ -237,6 +237,15 @@ function isLiveApiPathKey(key: string): boolean {
   return key.startsWith("live_set ") || key === "live_set";
 }
 
+function connectWithNullHostTrack(
+  config: LiveSetConfig,
+): ReturnType<typeof connect> {
+  setupConnectScenario(config, "12.3");
+  vi.mocked(getHostTrackIndex).mockReturnValue(null);
+
+  return connect();
+}
+
 describe("connect", () => {
   it("returns basic Live Set information and connection status", () => {
     setupConnectScenario(
@@ -302,7 +311,7 @@ describe("connect", () => {
   });
 
   it("handles null host track index gracefully", () => {
-    setupConnectScenario(
+    const result = connectWithNullHostTrack(
       createLiveSetConfig({
         name: "No Host Index Project",
         tracks: children("track0"),
@@ -311,11 +320,7 @@ describe("connect", () => {
           [String(livePath.track(0))]: { has_midi_input: 1, devices: [] },
         },
       }),
-      "12.3",
     );
-    vi.mocked(getHostTrackIndex).mockReturnValue(null);
-
-    const result = connect();
 
     expect(result).toStrictEqual(
       expect.objectContaining({
@@ -330,13 +335,9 @@ describe("connect", () => {
   });
 
   it("handles empty Live Set correctly", () => {
-    setupConnectScenario(
+    const result = connectWithNullHostTrack(
       createLiveSetConfig({ name: "Empty Live Set" }),
-      "12.3",
     );
-    vi.mocked(getHostTrackIndex).mockReturnValue(null);
-
-    const result = connect();
 
     expect(result).toStrictEqual(
       expect.objectContaining({

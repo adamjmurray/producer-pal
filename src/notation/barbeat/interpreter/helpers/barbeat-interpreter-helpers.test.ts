@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -20,6 +21,24 @@ import {
   testSingleCopyFailure,
   testSingleCopyNullResult,
 } from "./barbeat-interpreter-test-helpers.ts";
+
+function makeTrackStateChangeState(pitchGroupStarted: boolean) {
+  return {
+    pitchGroupStarted,
+    currentPitches: [{ pitch: 60 }],
+    stateChangedSinceLastPitch: false,
+    stateChangedAfterEmission: false,
+    velocity: 100,
+  } as unknown as InterpreterState & { velocity: number };
+}
+
+function makeUpdateBufferedPitchesState(pitchGroupStarted: boolean) {
+  return {
+    pitchGroupStarted,
+    currentPitches: [{ velocity: 100 }, { velocity: 100 }],
+    stateChangedAfterEmission: false,
+  } as unknown as InterpreterState;
+}
 
 describe("barbeat-interpreter-helpers", () => {
   describe("clearPitchBuffer", () => {
@@ -125,13 +144,7 @@ describe("barbeat-interpreter-helpers", () => {
 
   describe("trackStateChange", () => {
     it("updates state and sets stateChangedSinceLastPitch when pitch group started", () => {
-      const state = {
-        pitchGroupStarted: true,
-        currentPitches: [{ pitch: 60 }],
-        stateChangedSinceLastPitch: false,
-        stateChangedAfterEmission: false,
-        velocity: 100,
-      } as unknown as InterpreterState & { velocity: number };
+      const state = makeTrackStateChangeState(true);
 
       trackStateChange(state, (s) => {
         (s as typeof state).velocity = 80;
@@ -159,13 +172,7 @@ describe("barbeat-interpreter-helpers", () => {
     });
 
     it("does not set flags when pitch group not started and pitches exist", () => {
-      const state = {
-        pitchGroupStarted: false,
-        currentPitches: [{ pitch: 60 }],
-        stateChangedSinceLastPitch: false,
-        stateChangedAfterEmission: false,
-        velocity: 100,
-      } as unknown as InterpreterState & { velocity: number };
+      const state = makeTrackStateChangeState(false);
 
       trackStateChange(state, (s) => {
         (s as typeof state).velocity = 90;
@@ -179,11 +186,7 @@ describe("barbeat-interpreter-helpers", () => {
 
   describe("updateBufferedPitches", () => {
     it("updates buffered pitches when not in pitch group", () => {
-      const state = {
-        pitchGroupStarted: false,
-        currentPitches: [{ velocity: 100 }, { velocity: 100 }],
-        stateChangedAfterEmission: false,
-      } as unknown as InterpreterState;
+      const state = makeUpdateBufferedPitchesState(false);
 
       updateBufferedPitches(state, (pitchState) => {
         pitchState.velocity = 80;
@@ -195,11 +198,7 @@ describe("barbeat-interpreter-helpers", () => {
     });
 
     it("does not update pitches when pitch group started", () => {
-      const state = {
-        pitchGroupStarted: true,
-        currentPitches: [{ velocity: 100 }, { velocity: 100 }],
-        stateChangedAfterEmission: false,
-      } as unknown as InterpreterState;
+      const state = makeUpdateBufferedPitchesState(true);
 
       updateBufferedPitches(state, (pitchState) => {
         pitchState.velocity = 80;

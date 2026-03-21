@@ -12,6 +12,7 @@ import {
   MockChatClient,
   createDefaultProps,
   createMockAdapter,
+  RESTORED_HISTORY,
 } from "./use-chat-test-helpers";
 
 // Mock streaming helpers
@@ -93,9 +94,24 @@ function createSendMessageFailingAdapter(
   };
 }
 
-describe("useChat", () => {
-  const defaultProps = createDefaultProps(mockAdapter);
+/**
+ * Render useChat with default props, send "Hello", and return the result.
+ * @param props - Optional props override
+ * @returns Hook result ref after sending a message
+ */
+async function renderAndSend(props = defaultProps) {
+  const { result } = renderHook(() => useChat(props));
 
+  await act(async () => {
+    await result.current.handleSend("Hello");
+  });
+
+  return result;
+}
+
+const defaultProps = createDefaultProps(mockAdapter);
+
+describe("useChat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -213,11 +229,7 @@ describe("useChat", () => {
     });
 
     it("sets active model, thinking, and temperature after initialization", async () => {
-      const { result } = renderHook(() => useChat(defaultProps));
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
-      });
+      const result = await renderAndSend();
 
       expect(result.current.activeModel).toBe("test-model");
       expect(result.current.activeThinking).toBe("Default");
@@ -417,10 +429,7 @@ describe("useChat", () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
       await act(async () => {
-        result.current.restoreChatHistory([
-          { role: "user", content: "restored msg" },
-          { role: "assistant", content: "restored reply" },
-        ]);
+        result.current.restoreChatHistory(RESTORED_HISTORY);
       });
 
       vi.clearAllMocks();

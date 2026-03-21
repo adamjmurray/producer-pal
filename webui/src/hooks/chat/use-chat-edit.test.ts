@@ -9,7 +9,11 @@
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { useChat } from "./use-chat";
-import { createMockAdapter, createDefaultProps } from "./use-chat-test-helpers";
+import {
+  createMockAdapter,
+  createDefaultProps,
+  RESTORED_HISTORY,
+} from "./use-chat-test-helpers";
 
 // Mock streaming helpers
 vi.mock(import("./helpers/streaming-helpers"), () => ({
@@ -116,10 +120,7 @@ describe("useChat handleEdit", () => {
     const { result } = renderHook(() => useChat(defaultProps));
 
     await act(async () => {
-      result.current.restoreChatHistory([
-        { role: "user", content: "restored msg" },
-        { role: "assistant", content: "restored reply" },
-      ]);
+      result.current.restoreChatHistory(RESTORED_HISTORY);
     });
 
     vi.clearAllMocks();

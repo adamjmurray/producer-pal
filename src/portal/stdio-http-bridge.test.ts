@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
@@ -182,6 +183,69 @@ async function startAndGetCallHandler(
   return getHandler("CallToolRequestSchema");
 }
 
+/**
+ * Assert that an error response's text contains common Producer Pal branding.
+ * @param response - Error response object
+ * @param response.content - Array of content items with type and text
+ */
+function expectBrandedErrorText(response: {
+  content: Array<{ type: string; text: string }>;
+}): void {
+  expect(response.content[0]?.text).toContain("producer-pal.org");
+  expect(response.content[0]?.text).toContain(`(Producer Pal ${VERSION})`);
+}
+
+/**
+ * Set up mocks for a successful tool call and invoke the handler.
+ * @param handler - The call tool handler
+ * @param request - The tool call request
+ * @param request.params - The request parameters
+ * @param request.params.name - The tool name
+ * @param request.params.arguments - The tool arguments
+ * @returns The tool result
+ */
+async function callToolSuccessfully(
+  handler: (request: unknown) => Promise<unknown>,
+  request: { params: { name: string; arguments?: Record<string, unknown> } },
+): Promise<unknown> {
+  const toolResult = { content: [{ type: "text", text: "Success" }] };
+
+  mockClient.connect.mockResolvedValue(undefined);
+  mockClient.callTool.mockResolvedValue(toolResult);
+
+  const result = await handler(request);
+
+  return { result, toolResult };
+}
+
+/**
+ * Create an MCP protocol error and set up mocks to reject with it.
+ * @param handler - The call tool handler
+ * @param message - Error message
+ * @param code - MCP error code
+ * @returns The call tool result cast with content and isError
+ */
+async function callToolWithMcpError(
+  handler: (request: unknown) => Promise<unknown>,
+  message: string,
+  code: number,
+): Promise<{
+  content: Array<{ type: string; text: string }>;
+  isError?: boolean;
+}> {
+  const mcpError = new Error(message) as Error & { code: number };
+
+  mcpError.code = code;
+
+  mockClient.connect.mockResolvedValue(undefined);
+  mockClient.callTool.mockRejectedValue(mcpError);
+
+  return (await handler(callToolRequest())) as {
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  };
+}
+
 describe("StdioHttpBridge", () => {
   let bridge: TestBridge;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
@@ -251,8 +315,7 @@ describe("StdioHttpBridge", () => {
         isError: true,
       });
 
-      expect(response.content[0]?.text).toContain("producer-pal.org");
-      expect(response.content[0]?.text).toContain(`(Producer Pal ${VERSION})`);
+      expectBrandedErrorText(response);
     });
   });
 
@@ -271,8 +334,7 @@ describe("StdioHttpBridge", () => {
       });
 
       expect(response.content[0]?.text).toContain("http://localhost:3350");
-      expect(response.content[0]?.text).toContain("producer-pal.org");
-      expect(response.content[0]?.text).toContain(`(Producer Pal ${VERSION})`);
+      expectBrandedErrorText(response);
     });
   });
 
@@ -472,14 +534,10 @@ describe("StdioHttpBridge", () => {
 
     it("sets up call tool handler that calls HTTP tool when connected", async () => {
       const callToolHandler = await startAndGetCallHandler(bridge);
-      const toolResult = { content: [{ type: "text", text: "Success" }] };
-
-      mockClient.connect.mockResolvedValue(undefined);
-      mockClient.callTool.mockResolvedValue(toolResult);
-
-      const result = await callToolHandler(
+      const { result, toolResult } = (await callToolSuccessfully(
+        callToolHandler,
         callToolRequest("test-tool", { arg1: "value1" }),
-      );
+      )) as { result: unknown; toolResult: unknown };
 
       expect(mockClient.callTool).toHaveBeenCalledWith({
         name: "test-tool",
@@ -507,19 +565,10 @@ describe("StdioHttpBridge", () => {
 
     it("sets up call tool handler that handles missing arguments", async () => {
       const callToolHandler = await startAndGetCallHandler(bridge);
-      const toolResult = { content: [{ type: "text", text: "Success" }] };
-
-      mockClient.connect.mockResolvedValue(undefined);
-      mockClient.callTool.mockResolvedValue(toolResult);
-
-      const request = {
-        params: {
-          name: "test-tool",
-          // arguments is undefined
-        },
-      };
-
-      const result = await callToolHandler(request);
+      const { result, toolResult } = (await callToolSuccessfully(
+        callToolHandler,
+        { params: { name: "test-tool" } }, // arguments is undefined
+      )) as { result: unknown; toolResult: unknown };
 
       expect(mockClient.callTool).toHaveBeenCalledWith({
         name: "test-tool",
@@ -544,21 +593,11 @@ describe("StdioHttpBridge", () => {
 
     it("returns formatted error response for MCP protocol errors", async () => {
       const callToolHandler = await startAndGetCallHandler(bridge);
-
-      // Simulate MCP protocol error (has numeric code)
-      const mcpError = new Error("Invalid tool parameters") as Error & {
-        code: number;
-      };
-
-      mcpError.code = -32602;
-
-      mockClient.connect.mockResolvedValue(undefined);
-      mockClient.callTool.mockRejectedValue(mcpError);
-
-      const result = (await callToolHandler(callToolRequest())) as {
-        content: Array<{ type: string; text: string }>;
-        isError: boolean;
-      };
+      const result = await callToolWithMcpError(
+        callToolHandler,
+        "Invalid tool parameters",
+        -32602,
+      );
 
       expect(result).toStrictEqual({
         content: [{ type: "text", text: "Invalid tool parameters" }],
@@ -571,20 +610,11 @@ describe("StdioHttpBridge", () => {
 
     it("strips redundant MCP error prefix from error message", async () => {
       const callToolHandler = await startAndGetCallHandler(bridge);
-
-      // Error with redundant prefix
-      const mcpError = new Error(
+      const result = await callToolWithMcpError(
+        callToolHandler,
         "MCP error -32602: Invalid parameters",
-      ) as Error & { code: number };
-
-      mcpError.code = -32602;
-
-      mockClient.connect.mockResolvedValue(undefined);
-      mockClient.callTool.mockRejectedValue(mcpError);
-
-      const result = (await callToolHandler(callToolRequest())) as {
-        content: Array<{ type: string; text: string }>;
-      };
+        -32602,
+      );
 
       expect(result.content[0]?.text).toBe("Invalid parameters");
     });

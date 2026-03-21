@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect } from "vitest";
@@ -62,64 +63,44 @@ function testCopyFailureWithHandler(
 }
 
 /**
- * Runs a test for handleBarCopyRangeDestination that expects a null result with an error message.
- * Returns true after all assertions pass.
- * @param options - Test options
- * @param options.element - The copy element with source and destination
- * @param options.errorContains - Substring that error message should contain
- * @param options.notesByBar - Optional notes map
- * @param options.bufferState - Optional buffer state override
- * @returns Returns true after assertions pass
+ * Creates a copy failure test function for the given handler.
+ * @param handler - The handler function to use
+ * @returns A function that tests copy failure with the given handler
  */
-export function testRangeCopyFailure({
-  element,
-  errorContains,
-  notesByBar = new Map(),
-  bufferState = defaultBufferState,
-}: {
-  element: BarCopyElement;
-  errorContains: string;
-  notesByBar?: Map<number, BarCopyNote[]>;
-  bufferState?: BufferState;
-}): true {
-  return testCopyFailureWithHandler(
-    handleBarCopyRangeDestination,
+function makeCopyFailureTester(handler: CopyHandler) {
+  return ({
     element,
     errorContains,
-    notesByBar,
-    bufferState,
-  );
+    notesByBar = new Map(),
+    bufferState = defaultBufferState,
+  }: {
+    element: BarCopyElement;
+    errorContains: string;
+    notesByBar?: Map<number, BarCopyNote[]>;
+    bufferState?: BufferState;
+  }): true =>
+    testCopyFailureWithHandler(
+      handler,
+      element,
+      errorContains,
+      notesByBar,
+      bufferState,
+    );
 }
 
 /**
- * Runs a test for handleBarCopySingleDestination that expects a null result with an error message.
- * Returns true after all assertions pass.
- * @param options - Test options
- * @param options.element - The copy element with source and destination
- * @param options.errorContains - Substring that error message should contain
- * @param options.notesByBar - Optional notes map
- * @param options.bufferState - Optional buffer state override
- * @returns Returns true after assertions pass
+ * Runs a test for handleBarCopyRangeDestination that expects a null result with an error message.
  */
-export function testSingleCopyFailure({
-  element,
-  errorContains,
-  notesByBar = new Map(),
-  bufferState = defaultBufferState,
-}: {
-  element: BarCopyElement;
-  errorContains: string;
-  notesByBar?: Map<number, BarCopyNote[]>;
-  bufferState?: BufferState;
-}): true {
-  return testCopyFailureWithHandler(
-    handleBarCopySingleDestination,
-    element,
-    errorContains,
-    notesByBar,
-    bufferState,
-  );
-}
+export const testRangeCopyFailure = makeCopyFailureTester(
+  handleBarCopyRangeDestination,
+);
+
+/**
+ * Runs a test for handleBarCopySingleDestination that expects a null result with an error message.
+ */
+export const testSingleCopyFailure = makeCopyFailureTester(
+  handleBarCopySingleDestination,
+);
 
 /**
  * Runs a test for handleBarCopySingleDestination that expects a null result without error.
