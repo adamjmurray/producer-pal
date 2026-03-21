@@ -79,18 +79,10 @@ export const connectToAbleton: EvalScenario = {
     },
 
     {
-      type: "custom",
-      description: "Efficient token usage",
-      assert: (turns) => {
-        const total = turns
-          .flatMap((t) => t.stepUsages ?? [])
-          .reduce((sum, s) => sum + (s.inputTokens ?? 0), 0);
-
-        if (total <= 20_000) return true; // full score
-        if (total >= 50_000) return false; // zero
-
-        return 1 - (total - 20_000) / 30_000; // linear 1→0
-      },
+      type: "token_usage",
+      metric: "inputTokens",
+      maxTokens: 20_000,
+      upperLimit: 50_000,
       score: 5,
     },
 

@@ -79,7 +79,8 @@ export type EvalAssertion =
   | StateAssertion
   | LlmJudgeAssertion
   | ResponseContainsAssertion
-  | CustomAssertion;
+  | CustomAssertion
+  | TokenUsageAssertion;
 
 /**
  * Assert that a specific tool was called with expected args
@@ -147,6 +148,24 @@ export interface ResponseContainsAssertion {
   turn?: number | "any";
   /** Should NOT contain (default: false) */
   negate?: boolean;
+  /** Max points this assertion is worth (default: 1) */
+  score?: number;
+}
+
+/**
+ * Assert token usage stays within a budget, with optional graduated scoring.
+ * Full score at or below maxTokens, zero at or above upperLimit, linear between.
+ */
+export interface TokenUsageAssertion {
+  type: "token_usage";
+  /** Which token metric to check */
+  metric: "inputTokens" | "outputTokens" | "reasoningTokens";
+  /** Full score at or below this value */
+  maxTokens: number;
+  /** Zero score at or above this value. If omitted, hard pass/fail at maxTokens. */
+  upperLimit?: number;
+  /** Which turn to check (0-indexed), or "all" for combined (default: "all") */
+  turn?: number | "all";
   /** Max points this assertion is worth (default: 1) */
   score?: number;
 }

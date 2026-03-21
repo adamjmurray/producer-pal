@@ -11,6 +11,7 @@
  */
 
 export { assertCustom } from "./custom.ts";
+export { assertTokenUsage } from "./token-usage.ts";
 export { assertToolCalled } from "./tool-call.ts";
 export { assertState } from "./state.ts";
 export { assertWithLlmJudge } from "./llm-judge.ts";

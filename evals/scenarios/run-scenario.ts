@@ -23,6 +23,7 @@ import {
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
   assertCustom,
+  assertTokenUsage,
   assertToolCalled,
   assertState,
   assertWithLlmJudge,
@@ -343,6 +344,9 @@ async function runCorrectnessAssertion(
 
     case "custom":
       return assertCustom(assertion, turns);
+
+    case "token_usage":
+      return assertTokenUsage(assertion, turns);
 
     default:
       return {
