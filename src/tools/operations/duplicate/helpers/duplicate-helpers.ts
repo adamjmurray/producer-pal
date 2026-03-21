@@ -10,12 +10,12 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { createShortenedClipInHolding } from "#src/tools/shared/arrangement/arrangement-tiling-holding.ts";
 import {
   clearClipAtDuplicateTarget,
-  createShortenedClipInHolding,
   moveClipFromHolding,
-  type TilingContext,
-} from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+} from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 

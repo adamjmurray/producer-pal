@@ -8,9 +8,9 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_SPLIT_POINTS } from "#src/tools/constants.ts";
 import {
   createAndDeleteTempClip,
-  moveClipFromHolding,
   type TilingContext,
-} from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+} from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { moveClipFromHolding } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 const EPSILON = 0.001;

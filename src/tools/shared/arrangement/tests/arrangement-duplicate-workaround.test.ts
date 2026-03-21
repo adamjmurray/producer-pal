@@ -13,7 +13,7 @@ import {
 import {
   clearClipAtDuplicateTarget,
   setArrangementDuplicateCrashWorkaround,
-} from "../arrangement-tiling.ts";
+} from "../arrangement-tiling-workaround.ts";
 
 beforeEach(() => {
   vi.clearAllMocks();

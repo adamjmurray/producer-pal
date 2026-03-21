@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { computeNonSurvivorClipIds } from "./update-clip-arrangement-optimizer.ts";
+import { computeNonSurvivorClipIds } from "../helpers/update-clip-arrangement-optimizer.ts";
 
 /**
  * Create a mock arrangement clip with the given start/end times.

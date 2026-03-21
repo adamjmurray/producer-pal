@@ -11,7 +11,7 @@ import {
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import {
   setupMidiClipMock,
   type UpdateClipMocks,
@@ -274,7 +274,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     // Mock createAudioClipInSession to verify it's called with correct arguments
     const mockCreateAudioClip = vi
-      .spyOn(arrangementTiling, "createAudioClipInSession")
+      .spyOn(arrangementTilingHelpers, "createAudioClipInSession")
       .mockReturnValue({
         clip: { id: tempClipId } as unknown as LiveAPI,
         slot: { call: vi.fn() } as unknown as LiveAPI,

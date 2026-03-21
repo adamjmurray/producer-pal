@@ -8,7 +8,7 @@ import {
 } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { VALID_SCALE_NAMES } from "#src/tools/constants.ts";
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 // Create lowercase versions for case-insensitive comparison

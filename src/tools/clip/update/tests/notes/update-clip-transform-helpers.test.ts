@@ -8,7 +8,7 @@ import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import {
   applyTransformsToExistingNotes,
   buildClipContext,
-} from "../helpers/update-clip-transform-helpers.ts";
+} from "../../helpers/update-clip-transform-helpers.ts";
 
 // Helper to create raw notes as returned by Live API (with extra properties)
 function rawNote(pitch: number, startTime: number, noteId: number) {

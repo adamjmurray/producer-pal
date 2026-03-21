@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { calculateBeatPositions } from "./update-clip-timing-helpers.ts";
+import { calculateBeatPositions } from "../helpers/update-clip-timing-helpers.ts";
 
 describe("update-clip-timing-helpers", () => {
   beforeEach(() => {

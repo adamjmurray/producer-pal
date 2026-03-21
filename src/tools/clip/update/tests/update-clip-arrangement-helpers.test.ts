@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.ts";
+import { handleArrangementStartOperation } from "../helpers/update-clip-arrangement-helpers.ts";
 
 const mockContext = { silenceWavPath: "/tmp/test-silence.wav" } as const;
 

@@ -12,11 +12,14 @@ import {
   parseScale,
 } from "./update-live-set-helpers.ts";
 
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.ts"), () => ({
-  createAudioClipInSession: vi.fn(),
-}));
+vi.mock(
+  import("#src/tools/shared/arrangement/arrangement-tiling-helpers.ts"),
+  () => ({
+    createAudioClipInSession: vi.fn(),
+  }),
+);
 
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 
 const g = globalThis as Record<string, unknown>;
 
