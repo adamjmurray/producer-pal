@@ -310,6 +310,40 @@ describe("useConversations", () => {
     );
   });
 
+  it("clears active ID when switching to nonexistent conversation", async () => {
+    const { result, state } = await setupHook();
+
+    // Save a conversation so we have an active ID
+    await saveWithMessage(state, result);
+    expect(result.current.activeConversationId).not.toBeNull();
+
+    // Switch to a nonexistent ID
+    await act(async () => {
+      await result.current.switchConversation("nonexistent-id");
+    });
+
+    expect(result.current.activeConversationId).toBeNull();
+  });
+
+  it("syncs activeSmallModelMode prop to conversation meta", async () => {
+    const { props, state } = createProps();
+
+    props.activeSmallModelMode = true;
+
+    const { result } = renderHook(() => useConversations(props));
+
+    await waitForEffects();
+
+    // Save a conversation with the prop active
+    state.chatHistory = [{ role: "user", content: "hello" }];
+    await act(() => result.current.saveCurrentConversation());
+
+    const id = result.current.activeConversationId!;
+    const record = await loadConversation(id);
+
+    expect(record!.smallModelMode).toBe(true);
+  });
+
   it("starts a new conversation and clears hash", async () => {
     const { props, state, result } = await setupHook();
 
