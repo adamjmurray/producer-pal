@@ -278,5 +278,49 @@ describe("AssistantMessage", () => {
 
       expect(container.textContent).toContain("225 reasoning");
     });
+
+    it("shows new content tokens when prevStepUsage is provided", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t", args: {}, result: "ok" },
+        {
+          type: "step-usage",
+          usage: { inputTokens: 10000, outputTokens: 200 },
+        },
+      ];
+      const prevStepUsage = { inputTokens: 5000, outputTokens: 100 };
+
+      const { container } = render(
+        <AssistantMessage
+          parts={parts}
+          showTokenUsage={true}
+          prevStepUsage={prevStepUsage}
+        />,
+      );
+
+      // newContent = 10000 - 5000 - 100 = 4900 → "4.9K new"
+      expect(container.textContent).toContain("4.9K new");
+    });
+
+    it("builds prev usage map across multiple step-usage parts", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t1", args: {}, result: "ok" },
+        {
+          type: "step-usage",
+          usage: { inputTokens: 5000, outputTokens: 100 },
+        },
+        { type: "tool", name: "t2", args: {}, result: "ok" },
+        {
+          type: "step-usage",
+          usage: { inputTokens: 10200, outputTokens: 200 },
+        },
+      ];
+
+      const { container } = render(
+        <AssistantMessage parts={parts} showTokenUsage={true} />,
+      );
+
+      // Second step-usage: newContent = 10200 - 5000 - 100 = 5100 → "5.1K new"
+      expect(container.textContent).toContain("5.1K new");
+    });
   });
 });
