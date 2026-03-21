@@ -10,6 +10,7 @@
 
 import { styleText } from "node:util";
 import { Command } from "commander";
+import { collapseStdoutNewlines } from "#evals/chat/shared/collapse-stdout-newlines.ts";
 import { orange, scoreColor } from "#evals/chat/shared/formatting.ts";
 import {
   parseModelArg,
@@ -26,6 +27,8 @@ import { printResult } from "./helpers/result-printer.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
 import { type ConfigProfile, type EvalScenarioResult } from "./types.ts";
+
+collapseStdoutNewlines();
 
 export type { ModelSpec, ModelSpec as JudgeOverride };
 
