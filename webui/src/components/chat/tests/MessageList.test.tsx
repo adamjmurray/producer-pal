@@ -523,6 +523,29 @@ describe("MessageList", () => {
 
       expect(screen.getByText(/responded as gpt-4o-mini/)).toBeDefined();
     });
+
+    it("hides label when response model matches requested model", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          responseModel: "gpt-4o-2024-08-06",
+        },
+      ];
+
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          showTimestamps={false}
+          showTokenUsage={false}
+          requestedModel="gpt-4o"
+        />,
+      );
+
+      expect(screen.queryByText(/responded as/)).toBeNull();
+    });
   });
 
   describe("TokenUsageLabel", () => {
@@ -572,6 +595,25 @@ describe("MessageList", () => {
       renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
 
       expect(screen.getByText(/101 reasoning/)).toBeDefined();
+    });
+
+    it("shows new content tokens when previous model message exists", () => {
+      const messages = [
+        {
+          ...createModelMessage("First", 1),
+          usage: { inputTokens: 5000, outputTokens: 100 },
+        },
+        createUserMessage("Follow up", 2),
+        {
+          ...createModelMessage("Second", 3),
+          usage: { inputTokens: 10200, outputTokens: 200 },
+        },
+      ];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
+
+      // Second model msg: newContent = 10200 - 5000 - 100 = 5100 → "5.1K new"
+      expect(screen.getByText(/5.1K new/)).toBeDefined();
     });
   });
 });
