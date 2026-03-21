@@ -159,8 +159,9 @@ export interface CustomAssertion {
   type: "custom";
   /** Human-readable description of what's being checked */
   description: string;
-  /** Callback receiving all turn results. Return true to pass, throw to fail with message. */
-  assert: (turns: EvalTurnResult[]) => boolean;
+  /** Callback receiving all turn results. Return true/false for pass/fail,
+   *  or a number 0–1 for partial scoring (fraction of max score). Throw to fail with message. */
+  assert: (turns: EvalTurnResult[]) => boolean | number;
   /** Max points this assertion is worth (default: 1) */
   score?: number;
 }

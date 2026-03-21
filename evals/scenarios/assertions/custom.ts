@@ -27,15 +27,24 @@ export function assertCustom(
   const maxScore = assertion.score ?? 1;
 
   try {
-    const passed = assertion.assert(turns);
+    const result = assertion.assert(turns);
+    const earned =
+      typeof result === "number"
+        ? Math.round(Math.max(0, Math.min(1, result)) * maxScore * 100) / 100
+        : result
+          ? maxScore
+          : 0;
 
     return {
       assertion,
-      earned: passed ? maxScore : 0,
+      earned,
       maxScore,
-      message: passed
-        ? assertion.description
-        : `Failed: ${assertion.description}`,
+      message:
+        earned === maxScore
+          ? assertion.description
+          : earned > 0
+            ? `Partial: ${assertion.description} (${((earned / maxScore) * 100).toFixed(0)}%)`
+            : `Failed: ${assertion.description}`,
     };
   } catch (error) {
     return {

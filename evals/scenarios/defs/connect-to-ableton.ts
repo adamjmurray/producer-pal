@@ -80,20 +80,16 @@ export const connectToAbleton: EvalScenario = {
 
     {
       type: "custom",
-      description: "Reasonable token usage",
+      description: "Efficient token usage",
       assert: (turns) => {
-        const connectionUsage = turns[0]?.stepUsages ?? [];
-        const totalInput = connectionUsage.reduce(
-          (sum, s) => sum + (s.inputTokens ?? 0),
-          0,
-        );
+        const total = turns
+          .flatMap((t) => t.stepUsages ?? [])
+          .reduce((sum, s) => sum + (s.inputTokens ?? 0), 0);
 
-        // TODO: try to bring this number way down without negatively impacting this or other evals
-        if (totalInput > 30_000) {
-          throw new Error(`Used ${totalInput} input tokens, expected < 30,000`);
-        }
+        if (total <= 20_000) return true; // full score
+        if (total >= 50_000) return false; // zero
 
-        return true;
+        return 1 - (total - 20_000) / 30_000; // linear 1→0
       },
       score: 5,
     },

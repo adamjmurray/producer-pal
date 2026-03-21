@@ -14,7 +14,11 @@ import {
   pctColor,
   scoreColor,
 } from "#evals/chat/shared/formatting.ts";
-import { type EvalAssertionResult, type EvalScenarioResult } from "../types.ts";
+import {
+  type EvalAssertion,
+  type EvalAssertionResult,
+  type EvalScenarioResult,
+} from "../types.ts";
 import { type JudgeResult } from "./judge-response-parser.ts";
 
 const DIMENSION_KEYS = [
@@ -93,7 +97,8 @@ export function printResult(
  * @param assertions - All assertion results
  */
 function printScoreTable(assertions: EvalAssertionResult[]): void {
-  const typeWidth = 17;
+  const labels = assertions.map((a) => assertionLabel(a.assertion));
+  const typeWidth = Math.max(17, ...labels.map((l) => l.length));
   const scoreWidth = 10;
   const topBorder = gray(
     `┌─────┬${"─".repeat(typeWidth + 2)}┬${"─".repeat(scoreWidth + 2)}┐`,
@@ -114,7 +119,7 @@ function printScoreTable(assertions: EvalAssertionResult[]): void {
 
   for (const [i, a] of assertions.entries()) {
     const num = String(i + 1).padStart(3);
-    const type = a.assertion.type.padEnd(typeWidth);
+    const type = (labels[i] as string).padEnd(typeWidth);
     const score = `${formatScore(a.earned)}/${a.maxScore}`;
     const color = scoreColor(a.earned, a.maxScore);
     const styledScore = styleText(color, score.padStart(scoreWidth));
@@ -166,4 +171,25 @@ function printJudgeDimensions(
  */
 function formatScore(score: number): string {
   return Number.isInteger(score) ? String(score) : score.toFixed(1);
+}
+
+/**
+ * Build a descriptive label for an assertion in the summary table
+ *
+ * @param assertion - The assertion to label
+ * @returns Descriptive label string
+ */
+function assertionLabel(assertion: EvalAssertion): string {
+  switch (assertion.type) {
+    case "tool_called":
+      return `tool_called: ${assertion.tool}`;
+    case "state":
+      return `state: ${assertion.tool}`;
+    case "response_contains":
+      return `response_contains: ${assertion.pattern}`;
+    case "custom":
+      return assertion.description;
+    case "llm_judge":
+      return "llm_judge";
+  }
 }
