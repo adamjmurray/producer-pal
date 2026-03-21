@@ -9,7 +9,10 @@ import { createSimpleRoutingMock } from "#src/test/mocks/routing-mock-helpers.ts
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "#src/tools/constants.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
-import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
+import {
+  returnTrackMockObjects,
+  setupLiveSetPathMappedMocks,
+} from "./read-live-set-path-mapped-test-helpers.ts";
 
 describe("readLiveSet - track types", () => {
   it("conditionally includes return tracks and master track", () => {
@@ -112,14 +115,7 @@ describe("readLiveSet - track types", () => {
           return_tracks: children("return1", "return2"),
           scenes: [],
         },
-        [String(livePath.returnTrack(0))]: {
-          has_midi_input: 0,
-          name: "Return A",
-        },
-        [String(livePath.returnTrack(1))]: {
-          has_midi_input: 0,
-          name: "Return B",
-        },
+        ...returnTrackMockObjects(),
       },
     });
 

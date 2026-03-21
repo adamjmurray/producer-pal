@@ -11,16 +11,18 @@ import {
   setupCuePointMocks,
 } from "./playback-test-helpers.ts";
 
+const VERSE_CHORUS_CUE_POINTS = [
+  { id: "cue1", time: 16, name: "Verse" },
+  { id: "cue2", time: 32, name: "Chorus" },
+] as const;
+
 describe("playback - locator support", () => {
   describe("startLocator", () => {
     let liveSet: RegisteredMockObject;
 
     beforeEach(() => {
       liveSet = setupCuePointMocks({
-        cuePoints: [
-          { id: "cue1", time: 16, name: "Verse" },
-          { id: "cue2", time: 32, name: "Chorus" },
-        ],
+        cuePoints: [...VERSE_CHORUS_CUE_POINTS],
       });
     });
 
@@ -76,10 +78,7 @@ describe("playback - locator support", () => {
 
     beforeEach(() => {
       liveSet = setupCuePointMocks({
-        cuePoints: [
-          { id: "cue1", time: 16, name: "Verse" },
-          { id: "cue2", time: 32, name: "Chorus" },
-        ],
+        cuePoints: [...VERSE_CHORUS_CUE_POINTS],
         liveSet: { loopStart: 16, loopLength: 16 },
       });
     });

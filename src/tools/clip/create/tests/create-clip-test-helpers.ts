@@ -120,14 +120,7 @@ export function setupSessionAudioClipMocks(
 ): SessionAudioClipMockHandles {
   const { sceneIds = ["scene_0"], clipLength = 8, hasClip = 0 } = options;
 
-  const liveSet = registerMockObject("live-set", {
-    path: livePath.liveSet,
-    properties: {
-      signature_numerator: 4,
-      signature_denominator: 4,
-      scenes: children(...sceneIds),
-    },
-  });
+  const liveSet = registerLiveSetWithScenes(sceneIds);
 
   registerMockObject("track-0", { path: livePath.track(0) });
 
@@ -160,10 +153,7 @@ export function setupAudioArrangementClipMocks(
 ): ArrangementClipMockHandles {
   const { clipLength = 8 } = options;
 
-  const liveSet = registerMockObject("live-set", {
-    path: livePath.liveSet,
-    properties: { signature_numerator: 4, signature_denominator: 4 },
-  });
+  const liveSet = registerLiveSetWithTimeSig();
 
   const track = registerMockObject("track-0", {
     path: livePath.track(0),
@@ -216,14 +206,7 @@ export function setupMultiSessionAudioClipMocks(
   const { sceneIds = slotIndices.map((i) => `scene_${i}`), clipLength = 4 } =
     options;
 
-  const liveSet = registerMockObject("live-set", {
-    path: livePath.liveSet,
-    properties: {
-      signature_numerator: 4,
-      signature_denominator: 4,
-      scenes: children(...sceneIds),
-    },
-  });
+  const liveSet = registerLiveSetWithScenes(sceneIds);
 
   registerMockObject("track-0", { path: livePath.track(0) });
 
@@ -268,10 +251,7 @@ export function setupMultiAudioArrangementClipMocks(
 
   let clipCounter = 0;
 
-  registerMockObject("live-set", {
-    path: livePath.liveSet,
-    properties: { signature_numerator: 4, signature_denominator: 4 },
-  });
+  registerLiveSetWithTimeSig();
 
   const track = registerMockObject("track-0", {
     path: livePath.track(0),
@@ -349,4 +329,31 @@ export function setupSessionMocks(
   });
 
   return { clipSlot, clip };
+}
+
+/**
+ * Register a LiveSet mock with 4/4 time signature and scene children.
+ * @param sceneIds - Scene IDs for the live set
+ * @returns The registered LiveSet mock object
+ */
+function registerLiveSetWithScenes(sceneIds: string[]): RegisteredMockObject {
+  return registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+      scenes: children(...sceneIds),
+    },
+  });
+}
+
+/**
+ * Register a LiveSet mock with 4/4 time signature (no scenes).
+ * @returns The registered LiveSet mock object
+ */
+function registerLiveSetWithTimeSig(): RegisteredMockObject {
+  return registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
 }

@@ -6,7 +6,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
-import { createNote } from "#src/test/test-data-builders.ts";
+import {
+  createNote,
+  expectedDrumPatternNotes,
+} from "#src/test/test-data-builders.ts";
 import {
   mockMergeNoteTracking,
   setupAudioClipMock,
@@ -243,36 +246,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
-      notes: [
-        createNote({ pitch: 36, duration: 0.25 }),
-        createNote({
-          pitch: 42,
-          duration: 0.25,
-          velocity: 80,
-          probability: 0.8,
-          velocity_deviation: 20,
-        }),
-        createNote({
-          pitch: 42,
-          start_time: 0.5,
-          duration: 0.25,
-          velocity: 80,
-          probability: 0.6,
-          velocity_deviation: 20,
-        }),
-        createNote({
-          pitch: 38,
-          start_time: 1,
-          duration: 0.25,
-          velocity: 90,
-        }),
-        createNote({
-          pitch: 42,
-          start_time: 1,
-          duration: 0.25,
-          probability: 0.9,
-        }),
-      ],
+      notes: expectedDrumPatternNotes(),
     });
 
     expect(result).toStrictEqual({ id: "123", noteCount: 5 });
