@@ -9,6 +9,7 @@
 
 import {
   formatSubsectionHeader,
+  formatUsageLine,
   BOLD,
   GRAY,
   RED,
@@ -32,11 +33,13 @@ const DIMENSION_KEYS = [
  * @param result - The scenario result
  * @param modelKey - The model identifier (provider or provider/model)
  * @param configId - Config profile ID used for this run
+ * @param showUsage - Whether to display token usage totals
  */
 export function printResult(
   result: EvalScenarioResult,
   modelKey: string,
   configId: string,
+  showUsage?: boolean,
 ): void {
   const configLabel = configId === "default" ? "" : ` [${configId}]`;
   const percentage =
@@ -51,6 +54,10 @@ export function printResult(
     `${BOLD}${modelKey}: ${result.scenario.id}${configLabel}${RESET}\n`,
   );
   console.log(`${GRAY}Duration:${RESET} ${result.totalDurationMs}ms`);
+
+  if (showUsage && result.totalUsage) {
+    console.log(formatUsageLine(result.totalUsage));
+  }
 
   if (result.error) {
     console.log(`${RED}Error: ${result.error}${RESET}`);

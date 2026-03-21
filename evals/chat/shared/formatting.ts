@@ -171,6 +171,23 @@ export function printStepUsage(
   console.log(`${prefix}${GRAY}  ${line}${RESET}\n`);
 }
 
+/**
+ * Format a total usage line for display.
+ *
+ * @param usage - Total token usage
+ * @returns Formatted gray usage string like "Tokens: 12.3K → 4.5K (890 reasoning)"
+ */
+export function formatUsageLine(usage: TokenUsage): string {
+  const input = compactNumber(usage.inputTokens ?? 0);
+  const output = compactNumber(usage.outputTokens ?? 0);
+  const reasoningPart =
+    (usage.reasoningTokens ?? 0) > 0
+      ? ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`
+      : "";
+
+  return `${GRAY}Tokens: ${input} → ${output}${reasoningPart}${RESET}`;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Debug helpers
 // ─────────────────────────────────────────────────────────────────────────────

@@ -22,6 +22,7 @@ import {
   setConfig,
   type ConfigOptions,
 } from "#evals/shared/config.ts";
+import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 import {
   assertToolCalled,
   assertState,
@@ -149,6 +150,7 @@ export async function runScenario(
         assistantResponse: turnResult.text,
         toolCalls: turnResult.toolCalls,
         durationMs: Date.now() - turnStart,
+        stepUsages: turnResult.stepUsages,
       });
     }
 
@@ -186,6 +188,7 @@ export async function runScenario(
       earnedScore,
       maxScore,
       totalDurationMs: Date.now() - startTime,
+      totalUsage: computeTotalUsage(turns),
     };
   } catch (error) {
     return {
@@ -372,4 +375,34 @@ function resolveLiveSetPath(liveSet: string): string {
 
   // Ableton stores .als files in "{name} Project/{name}.als"
   return `${LIVE_SETS_DIR}/${liveSet} Project/${liveSet}.als`;
+}
+
+/**
+ * Sum token usage across all steps of all turns.
+ *
+ * @param turns - Completed conversation turns with step usage data
+ * @returns Total usage, or undefined if no usage data
+ */
+function computeTotalUsage(turns: EvalTurnResult[]): TokenUsage | undefined {
+  let input = 0;
+  let output = 0;
+  let reasoning = 0;
+  let hasUsage = false;
+
+  for (const turn of turns) {
+    for (const step of turn.stepUsages ?? []) {
+      hasUsage = true;
+      input += step.inputTokens ?? 0;
+      output += step.outputTokens ?? 0;
+      reasoning += step.reasoningTokens ?? 0;
+    }
+  }
+
+  if (!hasUsage) return undefined;
+
+  return {
+    inputTokens: input,
+    outputTokens: output,
+    ...(reasoning > 0 && { reasoningTokens: reasoning }),
+  };
 }

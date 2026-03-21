@@ -7,6 +7,7 @@
  */
 
 import { type ConfigOptions } from "#evals/shared/config.ts";
+import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 
 // Re-export types from chat for convenience
 export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
@@ -162,6 +163,7 @@ export interface EvalTurnResult {
     result?: string;
   }>;
   durationMs: number;
+  stepUsages?: TokenUsage[];
 }
 
 /**
@@ -191,5 +193,6 @@ export interface EvalScenarioResult {
   /** Total max possible points across all assertions */
   maxScore: number;
   totalDurationMs: number;
+  totalUsage?: TokenUsage;
   error?: string;
 }

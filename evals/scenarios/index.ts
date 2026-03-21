@@ -192,7 +192,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 
           liveSetOpened = true;
           configResults.set(profile.id, result);
-          printResult(result, modelKey, profile.id);
+          printResult(result, modelKey, profile.id, options.usage);
         }
 
         modelResults.set(modelKey, configResults);
