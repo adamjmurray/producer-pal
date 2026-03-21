@@ -119,6 +119,30 @@ async function saveTestConversation(
 }
 
 /**
+ * Save a message and rename the resulting conversation.
+ * @param state - Mock state object with chatHistory
+ * @param result - Hook result ref
+ * @param title - New title to assign
+ * @returns The conversation ID
+ */
+async function saveAndRename(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper with loose typing
+  state: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test helper with loose typing
+  result: any,
+  title: string,
+): Promise<string> {
+  await saveWithMessage(state, result);
+  const id = result.current.activeConversationId!;
+
+  await act(async () => {
+    await result.current.renameConversation(id, title);
+  });
+
+  return id;
+}
+
+/**
  * Read the conversation ID from the current URL hash.
  * @returns The hash value without the leading #, or empty string
  */
@@ -441,14 +465,7 @@ describe("useConversations", () => {
 
   it("renames a conversation and refreshes list", async () => {
     const { state, result } = await setupHook();
-
-    await saveWithMessage(state, result);
-    const id = result.current.activeConversationId!;
-
-    await act(async () => {
-      await result.current.renameConversation(id, "My Title");
-    });
-
+    const id = await saveAndRename(state, result, "My Title");
     const conv = result.current.conversations.find((c) => c.id === id);
 
     expect(conv?.title).toBe("My Title");
@@ -625,12 +642,7 @@ describe("useConversations", () => {
     it("preserves manually renamed title", async () => {
       const { state, result } = await setupHook();
 
-      await saveWithMessage(state, result);
-      const id = result.current.activeConversationId!;
-
-      await act(async () => {
-        await result.current.renameConversation(id, "My Custom Name");
-      });
+      await saveAndRename(state, result, "My Custom Name");
 
       // Save again — should keep the manual name
       state.chatHistory = [

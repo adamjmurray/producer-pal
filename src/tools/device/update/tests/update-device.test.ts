@@ -4,15 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
+  children,
+  livePath,
   mockNonExistentObjects,
   registerMockObject,
-} from "#src/test/mocks/mock-registry.ts";
-import { updateDevice } from "../update-device.ts";
-import "#src/live-api-adapter/live-api-extensions.ts";
+  updateDevice,
+} from "./update-device-test-helpers.ts";
 
 describe("updateDevice", () => {
   let device123: RegisteredMockObject;

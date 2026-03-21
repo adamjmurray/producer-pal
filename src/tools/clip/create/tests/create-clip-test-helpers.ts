@@ -179,6 +179,119 @@ export function setupAudioArrangementClipMocks(
   return { liveSet, track, clip };
 }
 
+/**
+ * Assert that no timing/looping properties were set on an audio clip.
+ * Audio clips have their timing managed by the sample, not by clip properties.
+ * @param clip - Mock handle for the clip
+ */
+export function expectNoTimingProperties(clip: RegisteredMockObject): void {
+  expect(clip.set).not.toHaveBeenCalledWith("loop_start", expect.anything());
+  expect(clip.set).not.toHaveBeenCalledWith("loop_end", expect.anything());
+  expect(clip.set).not.toHaveBeenCalledWith("start_marker", expect.anything());
+}
+
+interface SetupMultiSessionAudioMocksOptions {
+  sceneIds?: string[];
+  clipLength?: number;
+}
+
+export interface MultiSessionAudioClipMockHandles {
+  liveSet: RegisteredMockObject;
+  clipSlots: RegisteredMockObject[];
+}
+
+/**
+ * Setup mocks for creating multiple session audio clips across clip slots.
+ * Registers LiveSet (time signature + scenes), Track, and multiple ClipSlots with clips.
+ * @param slotIndices - Array of scene indices (e.g., [0, 1])
+ * @param options - Configuration options
+ * @param options.sceneIds - Scene IDs for the live set (default: generated from slotIndices)
+ * @param options.clipLength - Length of each clip in beats (default: 4)
+ * @returns Handles for registered mock objects
+ */
+export function setupMultiSessionAudioClipMocks(
+  slotIndices: number[],
+  options: SetupMultiSessionAudioMocksOptions = {},
+): MultiSessionAudioClipMockHandles {
+  const { sceneIds = slotIndices.map((i) => `scene_${i}`), clipLength = 4 } =
+    options;
+
+  const liveSet = registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: {
+      signature_numerator: 4,
+      signature_denominator: 4,
+      scenes: children(...sceneIds),
+    },
+  });
+
+  registerMockObject("track-0", { path: livePath.track(0) });
+
+  const clipSlots = slotIndices.map((i) => {
+    const clipSlot = registerMockObject(`clip-slot-0-${i}`, {
+      path: livePath.track(0).clipSlot(i),
+      properties: { has_clip: 0 },
+    });
+
+    registerMockObject(`audio_clip_0_${i}`, {
+      path: livePath.track(0).clipSlot(i).clip(),
+      properties: { length: clipLength },
+    });
+
+    return clipSlot;
+  });
+
+  return { liveSet, clipSlots };
+}
+
+interface SetupMultiAudioArrangementMocksOptions {
+  clipLength?: number;
+}
+
+export interface MultiAudioArrangementMockHandles {
+  track: RegisteredMockObject;
+}
+
+/**
+ * Setup mocks for creating multiple audio clips in arrangement view.
+ * Registers LiveSet (time signature), Track (create_audio_clip with counter), and clips.
+ * @param clipCount - Number of clips to register
+ * @param options - Configuration options
+ * @param options.clipLength - Length of each clip in beats (default: 4)
+ * @returns Handles for registered mock objects
+ */
+export function setupMultiAudioArrangementClipMocks(
+  clipCount: number,
+  options: SetupMultiAudioArrangementMocksOptions = {},
+): MultiAudioArrangementMockHandles {
+  const { clipLength = 4 } = options;
+
+  let clipCounter = 0;
+
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+
+  const track = registerMockObject("track-0", {
+    path: livePath.track(0),
+    methods: {
+      create_audio_clip: () => [
+        "id",
+        `arrangement_audio_clip_${clipCounter++}`,
+      ],
+    },
+  });
+
+  for (let i = 0; i < clipCount; i++) {
+    registerMockObject(`arrangement_audio_clip_${i}`, {
+      properties: { length: clipLength },
+    });
+  }
+
+  return { track };
+}
+
 export interface DualMockHandles {
   clipSlot: RegisteredMockObject;
   sessionClip: RegisteredMockObject;

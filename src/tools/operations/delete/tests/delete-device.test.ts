@@ -20,47 +20,48 @@ import {
 import { deleteObject } from "../delete.ts";
 
 describe("deleteObject device deletion", () => {
-  it("should delete a device from a regular track", () => {
-    const id = "device_1";
-    const path = String(livePath.track(0).device(1));
-
+  function expectDeviceDeleted(
+    id: string,
+    path: string,
+    parentPath: string,
+    deviceIndex: number,
+  ): void {
     const { parents } = setupDeviceMocks(id, path);
 
     const result = deleteObject({ ids: id, type: "device" });
 
     expect(result).toStrictEqual({ id, type: "device", deleted: true });
-    expect(parents.get(String(livePath.track(0)))?.call).toHaveBeenCalledWith(
+    expect(parents.get(parentPath)?.call).toHaveBeenCalledWith(
       "delete_device",
+      deviceIndex,
+    );
+  }
+
+  it("should delete a device from a regular track", () => {
+    expectDeviceDeleted(
+      "device_1",
+      String(livePath.track(0).device(1)),
+      String(livePath.track(0)),
       1,
     );
   });
 
   it("should delete a device from a return track", () => {
-    const id = "device_2";
-    const path = String(livePath.returnTrack(0).device(1));
-
-    const { parents } = setupDeviceMocks(id, path);
-
-    const result = deleteObject({ ids: id, type: "device" });
-
-    expect(result).toStrictEqual({ id, type: "device", deleted: true });
-    expect(
-      parents.get(String(livePath.returnTrack(0)))?.call,
-    ).toHaveBeenCalledWith("delete_device", 1);
+    expectDeviceDeleted(
+      "device_2",
+      String(livePath.returnTrack(0).device(1)),
+      String(livePath.returnTrack(0)),
+      1,
+    );
   });
 
   it("should delete a device from the master track", () => {
-    const id = "device_3";
-    const path = String(livePath.masterTrack().device(0));
-
-    const { parents } = setupDeviceMocks(id, path);
-
-    const result = deleteObject({ ids: id, type: "device" });
-
-    expect(result).toStrictEqual({ id, type: "device", deleted: true });
-    expect(
-      parents.get(String(livePath.masterTrack()))?.call,
-    ).toHaveBeenCalledWith("delete_device", 0);
+    expectDeviceDeleted(
+      "device_3",
+      String(livePath.masterTrack().device(0)),
+      String(livePath.masterTrack()),
+      0,
+    );
   });
 
   it("should delete multiple devices", () => {
@@ -99,50 +100,30 @@ describe("deleteObject device deletion", () => {
 
   describe("nested device deletion", () => {
     it("should delete a device nested in a chain", () => {
-      const id = "nested_device";
-      const path = "live_set tracks 1 devices 0 chains 2 devices 1";
-
-      const { parents } = setupDeviceMocks(id, path);
-
-      const result = deleteObject({ ids: id, type: "device" });
-
-      expect(result).toStrictEqual({ id, type: "device", deleted: true });
-      // Should call delete_device on the chain, not the track
-      expect(
-        parents.get("live_set tracks 1 devices 0 chains 2")?.call,
-      ).toHaveBeenCalledWith("delete_device", 1);
+      expectDeviceDeleted(
+        "nested_device",
+        "live_set tracks 1 devices 0 chains 2 devices 1",
+        "live_set tracks 1 devices 0 chains 2",
+        1,
+      );
     });
 
     it("should delete a device nested in a return chain", () => {
-      const id = "return_chain_device";
-      const path = "live_set tracks 0 devices 0 return_chains 1 devices 0";
-
-      const { parents } = setupDeviceMocks(id, path);
-
-      const result = deleteObject({ ids: id, type: "device" });
-
-      expect(result).toStrictEqual({ id, type: "device", deleted: true });
-      expect(
-        parents.get("live_set tracks 0 devices 0 return_chains 1")?.call,
-      ).toHaveBeenCalledWith("delete_device", 0);
+      expectDeviceDeleted(
+        "return_chain_device",
+        "live_set tracks 0 devices 0 return_chains 1 devices 0",
+        "live_set tracks 0 devices 0 return_chains 1",
+        0,
+      );
     });
 
     it("should delete a deeply nested device", () => {
-      const id = "deep_device";
-      // Device inside chain inside chain (rack in a rack)
-      const path =
-        "live_set tracks 0 devices 0 chains 0 devices 1 chains 0 devices 2";
-
-      const { parents } = setupDeviceMocks(id, path);
-
-      const result = deleteObject({ ids: id, type: "device" });
-
-      expect(result).toStrictEqual({ id, type: "device", deleted: true });
-      // Should call delete_device on the innermost chain
-      expect(
-        parents.get("live_set tracks 0 devices 0 chains 0 devices 1 chains 0")
-          ?.call,
-      ).toHaveBeenCalledWith("delete_device", 2);
+      expectDeviceDeleted(
+        "deep_device",
+        "live_set tracks 0 devices 0 chains 0 devices 1 chains 0 devices 2",
+        "live_set tracks 0 devices 0 chains 0 devices 1 chains 0",
+        2,
+      );
     });
   });
 

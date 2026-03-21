@@ -233,6 +233,158 @@ export function expectDeleteDeviceCalls(
 }
 
 /**
+ * Register clip mock objects for each track at a given scene index.
+ * @param trackCount - Number of tracks
+ * @param sceneIndex - Scene index for the clip slot
+ */
+export function registerClipMocks(
+  trackCount: number,
+  sceneIndex: number,
+): void {
+  for (let i = 0; i < trackCount; i++) {
+    registerMockObject(`live_set/tracks/${i}/clip_slots/${sceneIndex}/clip`, {
+      path: livePath.track(i).clipSlot(sceneIndex).clip(),
+    });
+  }
+}
+
+/**
+ * Set up common scene duplication mocks: a source scene, a live_set with
+ * tracks, clip slots at a target scene index, clip mock objects, and
+ * optionally the newly created scene.
+ * @param opts - Options
+ * @param opts.trackCount - Number of tracks (default 2)
+ * @param opts.targetSceneIndex - Target scene index for clip slots (default 1)
+ * @param opts.registerNewScene - Whether to register the new scene mock (default true)
+ * @returns The registered live_set mock object
+ */
+export function setupSessionSceneMocks(
+  opts: {
+    trackCount?: number;
+    targetSceneIndex?: number;
+    registerNewScene?: boolean;
+  } = {},
+): RegisteredMockObject {
+  const {
+    trackCount = 2,
+    targetSceneIndex = 1,
+    registerNewScene = true,
+  } = opts;
+
+  registerMockObject("scene1", { path: livePath.scene(0) });
+
+  const trackIds = Array.from({ length: trackCount }, (_, i) => `track${i}`);
+  const liveSet = registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: { tracks: children(...trackIds) },
+  });
+
+  for (let i = 0; i < trackCount; i++) {
+    registerClipSlot(i, targetSceneIndex, true);
+  }
+
+  registerClipMocks(trackCount, targetSceneIndex);
+
+  if (registerNewScene) {
+    registerMockObject(`live_set/scenes/${targetSceneIndex}`, {
+      path: livePath.scene(targetSceneIndex),
+    });
+  }
+
+  return liveSet;
+}
+
+/**
+ * Set up common arrangement scene duplication mocks: a source scene and a
+ * live_set with the given number of tracks.
+ * @param trackCount - Number of tracks (default 3)
+ * @returns The registered live_set mock object
+ */
+export function setupArrangementSceneMocks(
+  trackCount = 3,
+): RegisteredMockObject {
+  registerMockObject("scene1", { path: livePath.scene(0) });
+
+  const trackIds = Array.from({ length: trackCount }, (_, i) => `track${i}`);
+
+  return registerMockObject("live_set", {
+    path: livePath.liveSet,
+    properties: { tracks: children(...trackIds) },
+  });
+}
+
+/**
+ * Register mocks for duplicating a session clip from one slot to another.
+ * Sets up the source clip, source clip slot (has_clip=1), and dest clip slot (has_clip=0).
+ * @param opts - Options
+ * @param opts.sourceClipId - Source clip mock ID (default: "clip1")
+ * @param opts.trackIndex - Track index (default: 0)
+ * @param opts.sourceScene - Source scene index (default: 0)
+ * @param opts.destScene - Destination scene index (default: 1)
+ * @param opts.destClipProperties - Optional properties for the destination clip mock
+ * @returns Object with source clip slot mock
+ */
+export function registerSessionClipDuplication(
+  opts: {
+    sourceClipId?: string;
+    trackIndex?: number;
+    sourceScene?: number;
+    destScene?: number;
+    destClipProperties?: Record<string, unknown>;
+  } = {},
+): { sourceClipSlot: RegisteredMockObject } {
+  const {
+    sourceClipId = "clip1",
+    trackIndex = 0,
+    sourceScene = 0,
+    destScene = 1,
+    destClipProperties,
+  } = opts;
+
+  registerMockObject(sourceClipId, {
+    path: livePath.track(trackIndex).clipSlot(sourceScene).clip(),
+  });
+
+  const sourceClipSlot = registerClipSlot(trackIndex, sourceScene, true);
+
+  registerClipSlot(trackIndex, destScene, false);
+
+  if (destClipProperties) {
+    registerMockObject(
+      `live_set/tracks/${trackIndex}/clip_slots/${destScene}/clip`,
+      {
+        path: livePath.track(trackIndex).clipSlot(destScene).clip(),
+        properties: destClipProperties,
+      },
+    );
+  }
+
+  return { sourceClipSlot };
+}
+
+/**
+ * Set up common mocks for device duplication tests: a source device on
+ * track 0, a live_set, and the expected temp device on track 1.
+ * @param deviceIndex - Device index on the source track (default: 0)
+ * @returns The registered live_set mock object
+ */
+export function setupDeviceDuplicationMocks(deviceIndex = 0): {
+  liveSet: RegisteredMockObject;
+} {
+  registerMockObject("device1", {
+    path: livePath.track(0).device(deviceIndex),
+    type: "PluginDevice",
+  });
+  const liveSet = registerMockObject("live_set", { path: livePath.liveSet });
+
+  registerMockObject(`live_set/tracks/1/devices/${deviceIndex}`, {
+    path: livePath.track(1).device(deviceIndex),
+  });
+
+  return { liveSet };
+}
+
+/**
  * Sets up mocks for Producer Pal device tests with 3 devices on track 1
  * @returns Handles for liveSet and newTrack mocks
  */

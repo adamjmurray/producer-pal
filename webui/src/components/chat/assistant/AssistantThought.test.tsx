@@ -122,22 +122,22 @@ describe("AssistantThought", () => {
   });
 
   describe("content display", () => {
+    const expectAllLinesInProse = () => {
+      const contentDiv = document.querySelector(".prose")!;
+
+      expect(contentDiv.innerHTML).toContain("First line");
+      expect(contentDiv.innerHTML).toContain("Second line");
+      expect(contentDiv.innerHTML).toContain("Third line");
+    };
+
     it("shows full content when open", () => {
       render(<AssistantThought content={MULTI_LINE} isOpen={true} />);
-      const contentDiv = document.querySelector(".prose");
-
-      expect(contentDiv!.innerHTML).toContain("First line");
-      expect(contentDiv!.innerHTML).toContain("Second line");
-      expect(contentDiv!.innerHTML).toContain("Third line");
+      expectAllLinesInProse();
     });
 
     it("body includes full content including first line", () => {
       render(<AssistantThought content={MULTI_LINE} isOpen={false} />);
-      const contentDiv = document.querySelector(".prose");
-
-      expect(contentDiv!.innerHTML).toContain("First line");
-      expect(contentDiv!.innerHTML).toContain("Second line");
-      expect(contentDiv!.innerHTML).toContain("Third line");
+      expectAllLinesInProse();
     });
 
     it("body includes full content for single-line", () => {

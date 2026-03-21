@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,6 +25,17 @@ function rawNote(pitch: number, startTime: number, noteId: number) {
   };
 }
 
+function createSessionClipMock(length = 8) {
+  return {
+    getProperty: vi.fn((prop: string) => {
+      if (prop === "length") return length;
+      if (prop === "is_arrangement_clip") return 0;
+
+      return 0;
+    }),
+  };
+}
+
 describe("update-clip-transform-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -31,14 +43,7 @@ describe("update-clip-transform-helpers", () => {
 
   describe("buildClipContext", () => {
     it("uses content length for session clips", () => {
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "length") return 8;
-          if (prop === "is_arrangement_clip") return 0;
-
-          return 0;
-        }),
-      };
+      const mockClip = createSessionClipMock();
 
       const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
 
@@ -57,14 +62,7 @@ describe("update-clip-transform-helpers", () => {
         },
       });
 
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "length") return 8;
-          if (prop === "is_arrangement_clip") return 0;
-
-          return 0;
-        }),
-      };
+      const mockClip = createSessionClipMock();
 
       const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
 
@@ -228,14 +226,7 @@ describe("update-clip-transform-helpers", () => {
         },
       });
 
-      const mockClip = {
-        getProperty: vi.fn((prop: string) => {
-          if (prop === "length") return 4;
-          if (prop === "is_arrangement_clip") return 0;
-
-          return 0;
-        }),
-      };
+      const mockClip = createSessionClipMock(4);
 
       const ctx = buildClipContext(mockClip as unknown as LiveAPI, 0, 1, 4, 4);
 

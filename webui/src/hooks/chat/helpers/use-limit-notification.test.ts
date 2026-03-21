@@ -10,6 +10,26 @@ import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/preact";
 import { useLimitNotification } from "./use-limit-notification";
 
+/**
+ * Render the hook and trigger a notification with the given params.
+ * @param params - Notification params
+ * @param params.deletedCount - Number of items deleted
+ * @param params.limitReached - Whether the limit was reached
+ * @returns Hook result ref
+ */
+async function renderAndNotify(params: {
+  deletedCount: number;
+  limitReached: boolean;
+}) {
+  const { result } = renderHook(() => useLimitNotification());
+
+  await act(() => {
+    result.current.showLimitNotification(params);
+  });
+
+  return result;
+}
+
 describe("useLimitNotification", () => {
   it("starts with null notification", () => {
     const { result } = renderHook(() => useLimitNotification());
@@ -18,13 +38,9 @@ describe("useLimitNotification", () => {
   });
 
   it("shows warning when conversations are deleted", async () => {
-    const { result } = renderHook(() => useLimitNotification());
-
-    await act(() => {
-      result.current.showLimitNotification({
-        deletedCount: 3,
-        limitReached: false,
-      });
+    const result = await renderAndNotify({
+      deletedCount: 3,
+      limitReached: false,
     });
 
     expect(result.current.limitNotification).toStrictEqual({
@@ -34,13 +50,9 @@ describe("useLimitNotification", () => {
   });
 
   it("shows singular message for one deletion", async () => {
-    const { result } = renderHook(() => useLimitNotification());
-
-    await act(() => {
-      result.current.showLimitNotification({
-        deletedCount: 1,
-        limitReached: false,
-      });
+    const result = await renderAndNotify({
+      deletedCount: 1,
+      limitReached: false,
     });
 
     expect(result.current.limitNotification?.message).toBe(
@@ -49,13 +61,9 @@ describe("useLimitNotification", () => {
   });
 
   it("shows limit-reached warning when all slots are bookmarked", async () => {
-    const { result } = renderHook(() => useLimitNotification());
-
-    await act(() => {
-      result.current.showLimitNotification({
-        deletedCount: 0,
-        limitReached: true,
-      });
+    const result = await renderAndNotify({
+      deletedCount: 0,
+      limitReached: true,
     });
 
     expect(result.current.limitNotification?.message).toContain(
@@ -65,26 +73,18 @@ describe("useLimitNotification", () => {
   });
 
   it("does nothing when no enforcement was needed", async () => {
-    const { result } = renderHook(() => useLimitNotification());
-
-    await act(() => {
-      result.current.showLimitNotification({
-        deletedCount: 0,
-        limitReached: false,
-      });
+    const result = await renderAndNotify({
+      deletedCount: 0,
+      limitReached: false,
     });
 
     expect(result.current.limitNotification).toBeNull();
   });
 
   it("dismisses notification manually", async () => {
-    const { result } = renderHook(() => useLimitNotification());
-
-    await act(() => {
-      result.current.showLimitNotification({
-        deletedCount: 2,
-        limitReached: false,
-      });
+    const result = await renderAndNotify({
+      deletedCount: 2,
+      limitReached: false,
     });
 
     expect(result.current.limitNotification).not.toBeNull();
@@ -99,13 +99,9 @@ describe("useLimitNotification", () => {
   it("auto-dismisses after timeout", async () => {
     vi.useFakeTimers();
 
-    const { result } = renderHook(() => useLimitNotification());
-
-    await act(() => {
-      result.current.showLimitNotification({
-        deletedCount: 1,
-        limitReached: false,
-      });
+    const result = await renderAndNotify({
+      deletedCount: 1,
+      limitReached: false,
     });
 
     expect(result.current.limitNotification).not.toBeNull();

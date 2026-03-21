@@ -210,33 +210,8 @@ describe("update-clip-arrangement-helpers", () => {
     });
 
     it("should delete clip and return null for non-survivors", () => {
-      const trackIndex = 0;
-
-      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
-        path: `live_set tracks ${trackIndex}`,
-      });
-
-      const mockClip = {
-        id: "200",
-        exists: () => true,
-        getProperty: vi.fn((prop) => {
-          if (prop === "is_arrangement_clip") return 1;
-
-          return null;
-        }),
-        trackIndex,
-      };
-
-      const tracksWithMovedClips = new Map<number, number>();
-
-      const result = handleArrangementStartOperation({
-        clip: mockClip as unknown as LiveAPI,
-        arrangementStartBeats: 16,
-        tracksWithMovedClips,
-        isMidiClip: true,
-        context: mockContext,
-        isNonSurvivor: true,
-      });
+      const { trackMock, result, tracksWithMovedClips } =
+        callWithNonSurvivorClip({ clipExists: true });
 
       // Should delete the clip and return null
       expect(result).toBeNull();
@@ -248,37 +223,12 @@ describe("update-clip-arrangement-helpers", () => {
         expect.anything(),
       );
       // Should still increment move count
-      expect(tracksWithMovedClips.get(trackIndex)).toBe(1);
+      expect(tracksWithMovedClips.get(0)).toBe(1);
     });
 
     it("should warn and skip deletion for already-deleted non-survivor clips", () => {
-      const trackIndex = 0;
-
-      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
-        path: `live_set tracks ${trackIndex}`,
-      });
-
-      const mockClip = {
-        id: "200",
-        exists: () => false,
-        getProperty: vi.fn((prop) => {
-          if (prop === "is_arrangement_clip") return 1;
-
-          return null;
-        }),
-        trackIndex,
-      };
-
-      const tracksWithMovedClips = new Map<number, number>();
-
-      const result = handleArrangementStartOperation({
-        clip: mockClip as unknown as LiveAPI,
-        arrangementStartBeats: 16,
-        tracksWithMovedClips,
-        isMidiClip: true,
-        context: mockContext,
-        isNonSurvivor: true,
-      });
+      const { trackMock, result, tracksWithMovedClips } =
+        callWithNonSurvivorClip({ clipExists: false });
 
       expect(result).toBeNull();
       expect(outlet).toHaveBeenCalledWith(
@@ -291,7 +241,45 @@ describe("update-clip-arrangement-helpers", () => {
         expect.anything(),
       );
       // Should still increment move count
-      expect(tracksWithMovedClips.get(trackIndex)).toBe(1);
+      expect(tracksWithMovedClips.get(0)).toBe(1);
     });
   });
 });
+
+/**
+ * Sets up a non-survivor clip scenario and calls handleArrangementStartOperation.
+ * @param root0 - Options
+ * @param root0.clipExists - Whether the clip exists
+ * @returns The result of handleArrangementStartOperation
+ */
+function callWithNonSurvivorClip({ clipExists }: { clipExists: boolean }) {
+  const trackIndex = 0;
+
+  const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
+    path: `live_set tracks ${trackIndex}`,
+  });
+
+  const mockClip = {
+    id: "200",
+    exists: () => clipExists,
+    getProperty: vi.fn((prop) => {
+      if (prop === "is_arrangement_clip") return 1;
+
+      return null;
+    }),
+    trackIndex,
+  };
+
+  const tracksWithMovedClips = new Map<number, number>();
+
+  const result = handleArrangementStartOperation({
+    clip: mockClip as unknown as LiveAPI,
+    arrangementStartBeats: 16,
+    tracksWithMovedClips,
+    isMidiClip: true,
+    context: mockContext,
+    isNonSurvivor: true,
+  });
+
+  return { trackMock, result, tracksWithMovedClips };
+}

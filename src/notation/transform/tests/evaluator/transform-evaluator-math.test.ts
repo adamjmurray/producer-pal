@@ -7,6 +7,17 @@ import { evaluateTransform } from "#src/notation/transform/transform-evaluator.t
 
 const CTX = { position: 0, timeSig: { numerator: 4, denominator: 4 } };
 
+/**
+ * Asserts that `velocity = <expr>` evaluates to the expected value.
+ * @param expr - The expression to evaluate
+ * @param expected - The expected velocity value
+ */
+function expectVelocityEquals(expr: string, expected: number) {
+  const result = evaluateTransform(`velocity = ${expr}`, CTX);
+
+  expect(result.velocity!.value).toBe(expected);
+}
+
 describe("Transform Evaluator - Math Functions", () => {
   describe("round", () => {
     it.each([
@@ -106,9 +117,7 @@ describe("Transform Evaluator - Math Functions", () => {
       ["clamp(50, 100, 0)", 50, "swapped bounds"],
       ["clamp(50, 50, 50)", 50, "equal bounds"],
     ])("%s = %d (%s)", (expr, expected) => {
-      const result = evaluateTransform(`velocity = ${expr}`, CTX);
-
-      expect(result.velocity!.value).toBe(expected);
+      expectVelocityEquals(expr, expected);
     });
 
     it("clamps variable to range", () => {
@@ -133,9 +142,7 @@ describe("Transform Evaluator - Math Functions", () => {
       ["wrap(60, 72, 48)", 60, "swapped bounds"],
       ["wrap(60, 60, 60)", 60, "equal bounds"],
     ])("%s = %d (%s)", (expr, expected) => {
-      const result = evaluateTransform(`velocity = ${expr}`, CTX);
-
-      expect(result.velocity!.value).toBe(expected);
+      expectVelocityEquals(expr, expected);
     });
 
     it("wraps pitch with variable", () => {

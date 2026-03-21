@@ -17,19 +17,7 @@ export function createTestRecord(
   overrides: Partial<ConversationRecord> = {},
 ): ConversationRecord {
   return {
-    id: crypto.randomUUID(),
-    title: null,
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    bookmarked: false,
-    provider: null,
-    model: null,
-    modelLabel: null,
-    thinking: null,
-    temperature: null,
-    showThoughts: null,
-    smallModelMode: null,
-    totalUsage: null,
+    ...sharedDefaults(),
     messages: [{ role: "user", content: "hello" }],
     ...overrides,
   };
@@ -44,6 +32,17 @@ export function createTestSummary(
   overrides: Partial<ConversationSummary> = {},
 ): ConversationSummary {
   return {
+    ...sharedDefaults(),
+    ...overrides,
+  };
+}
+
+/**
+ * Shared default fields for ConversationRecord and ConversationSummary.
+ * @returns Default ConversationSummary fields
+ */
+function sharedDefaults(): ConversationSummary {
+  return {
     id: crypto.randomUUID(),
     title: null,
     createdAt: Date.now(),
@@ -57,6 +56,5 @@ export function createTestSummary(
     showThoughts: null,
     smallModelMode: null,
     totalUsage: null,
-    ...overrides,
   };
 }
