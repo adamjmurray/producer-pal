@@ -17,11 +17,17 @@
 
 import { execSync } from "node:child_process";
 import path from "node:path";
-import { styleText } from "node:util";
+import {
+  printCliGroupTable,
+  printCliLangTable,
+  printCliSeparator,
+  printMarkdownGroupTable,
+  printMarkdownLangTable,
+} from "./loc-printers.ts";
 
 const PROJECT_ROOT = path.resolve(import.meta.dirname, "..");
 
-const GROUPS = [
+export const GROUPS = [
   "src",
   "webui",
   "scripts",
@@ -51,7 +57,7 @@ const DIR_TO_GROUP: Record<string, Group> = {
 /** Groups where test/source classification applies. */
 const CODE_GROUPS = new Set<Group>(["src", "webui", "scripts", "evals", "e2e"]);
 
-const CATEGORIES = ["source", "test"] as const;
+export const CATEGORIES = ["source", "test"] as const;
 
 type Category = (typeof CATEGORIES)[number];
 
@@ -75,27 +81,38 @@ interface ClocFileEntry {
   language: string;
 }
 
-interface GroupStats {
-  group: Group;
-  category: Category;
+export interface CountStats {
   files: number;
   blank: number;
   comment: number;
   code: number;
 }
 
+export interface GroupStats extends CountStats {
+  group: Group;
+  category: Category;
+}
+
+export interface LangStats extends CountStats {
+  language: string;
+}
+
 /**
- * Run cloc, classify files by group and test/source, and print a table.
+ * Run cloc, classify files, and print language + group tables.
  */
 function main(): void {
   const markdown = process.argv.includes("--markdown");
   const clocData = runCloc();
-  const groups = aggregate(clocData);
+  const langs = aggregateByLanguage(clocData);
+  const groups = aggregateByGroup(clocData);
 
   if (markdown) {
-    printMarkdownTable(groups);
+    printMarkdownLangTable(langs);
+    printMarkdownGroupTable(groups);
   } else {
-    printCliTable(groups);
+    printCliLangTable(langs);
+    printCliSeparator();
+    printCliGroupTable(groups);
   }
 }
 
@@ -119,11 +136,46 @@ function runCloc(): Record<string, ClocFileEntry> {
 }
 
 /**
- * Classify each file and aggregate stats by tree and category.
+ * Aggregate cloc data by programming language, sorted by code descending.
  * @param clocData - Per-file cloc results
- * @returns Aggregated stats per group, ordered by tree then category
+ * @returns Stats per language
  */
-function aggregate(clocData: Record<string, ClocFileEntry>): GroupStats[] {
+function aggregateByLanguage(
+  clocData: Record<string, ClocFileEntry>,
+): LangStats[] {
+  const map = new Map<string, LangStats>();
+
+  for (const entry of Object.values(clocData)) {
+    let stats = map.get(entry.language);
+
+    if (!stats) {
+      stats = {
+        language: entry.language,
+        files: 0,
+        blank: 0,
+        comment: 0,
+        code: 0,
+      };
+      map.set(entry.language, stats);
+    }
+
+    stats.files++;
+    stats.blank += entry.blank;
+    stats.comment += entry.comment;
+    stats.code += entry.code;
+  }
+
+  return [...map.values()].sort((a, b) => b.code - a.code);
+}
+
+/**
+ * Classify each file and aggregate stats by group and category.
+ * @param clocData - Per-file cloc results
+ * @returns Aggregated stats per group, ordered by group then category
+ */
+function aggregateByGroup(
+  clocData: Record<string, ClocFileEntry>,
+): GroupStats[] {
   /**
    * Build a map key from group and category.
    * @param group - Group name
@@ -196,188 +248,6 @@ function classifyFile(filePath: string): { group: Group; category: Category } {
  */
 function isTestFileBySuffix(filename: string): boolean {
   return TEST_FILE_SUFFIXES.some((suffix) => filename.endsWith(suffix));
-}
-
-/**
- * Compute totals across all groups.
- * @param groups - Aggregated stats per group
- * @returns Summed files, blank, comment, and code
- */
-function computeTotals(groups: GroupStats[]): {
-  files: number;
-  blank: number;
-  comment: number;
-  code: number;
-} {
-  return groups.reduce(
-    (acc, g) => ({
-      files: acc.files + g.files,
-      blank: acc.blank + g.blank,
-      comment: acc.comment + g.comment,
-      code: acc.code + g.code,
-    }),
-    { files: 0, blank: 0, comment: 0, code: 0 },
-  );
-}
-
-/**
- * Print a CLI-formatted table with aligned columns.
- * @param groups - Aggregated stats per group
- */
-function printCliTable(groups: GroupStats[]): void {
-  const totals = computeTotals(groups);
-
-  const cols = {
-    group: Math.max("Group".length, ...GROUPS.map((g) => g.length)),
-    cat: Math.max("Category".length, ...CATEGORIES.map((c) => c.length)),
-    files: Math.max("Files".length, fmt(totals.files).length),
-    blank: Math.max("Blank".length, fmt(totals.blank).length),
-    comment: Math.max("Comment".length, fmt(totals.comment).length),
-    code: Math.max("Code".length, fmt(totals.code).length),
-  };
-
-  /**
-   * Apply dim gray styling to text.
-   * @param s - Text to dim
-   * @returns Styled text
-   */
-  const dim = (s: string): string => styleText("gray", s);
-
-  /** Function that applies ANSI styling to a string. */
-  type Styler = (s: string) => string;
-  /**
-   * Identity (no styling).
-   * @param s - Text
-   * @returns Unstyled text
-   */
-  const none: Styler = (s) => s;
-  /**
-   * Yellow bold styling for summary row.
-   * @param s - Text to style
-   * @returns Styled text
-   */
-  const summary: Styler = (s) => styleText(["yellow", "bold"], s);
-
-  /**
-   * Format a CLI table row. Pads plain text first, then applies color styling.
-   * @param values - Column values: group, category, files, blank, comment, code
-   * @param color - Optional color function for group, category, files, and code columns
-   * @returns Formatted row string
-   */
-  const row = (values: string[], color: Styler = none): string =>
-    [
-      color(values[0]?.padEnd(cols.group) ?? ""),
-      color(values[1]?.padEnd(cols.cat) ?? ""),
-      color(values[2]?.padStart(cols.files) ?? ""),
-      dim(values[3]?.padStart(cols.blank) ?? ""),
-      dim(values[4]?.padStart(cols.comment) ?? ""),
-      color(values[5]?.padStart(cols.code) ?? ""),
-    ].join("  ");
-
-  const sep = [
-    "-".repeat(cols.group),
-    "-".repeat(cols.cat),
-    "-".repeat(cols.files),
-    "-".repeat(cols.blank),
-    "-".repeat(cols.comment),
-    "-".repeat(cols.code),
-  ].join("  ");
-
-  console.log("\nLines of Code\n");
-  console.log(row(["Group", "Category", "Files", "Blank", "Comment", "Code"]));
-  console.log(sep);
-
-  for (const g of groups) {
-    const color: Styler =
-      g.category === "test"
-        ? (s) => styleText("cyan", s)
-        : (s) => styleText("green", s);
-
-    console.log(
-      row(
-        [
-          g.group,
-          g.category,
-          fmt(g.files),
-          fmt(g.blank),
-          fmt(g.comment),
-          fmt(g.code),
-        ],
-        color,
-      ),
-    );
-  }
-
-  console.log(sep);
-  console.log(
-    row(
-      [
-        "Total",
-        "",
-        fmt(totals.files),
-        fmt(totals.blank),
-        fmt(totals.comment),
-        fmt(totals.code),
-      ],
-      summary,
-    ),
-  );
-
-  console.log();
-}
-
-/**
- * Print a markdown-formatted table.
- * @param groups - Aggregated stats per group
- */
-function printMarkdownTable(groups: GroupStats[]): void {
-  const totals = computeTotals(groups);
-
-  /**
-   * Format a markdown table row.
-   * @param cells - Cell values
-   * @returns Pipe-delimited markdown row
-   */
-  const row = (...cells: string[]): string => `| ${cells.join(" | ")} |`;
-
-  console.log("\n## Lines of Code\n");
-  console.log(row("Group", "Category", "Files", "Blank", "Comment", "Code"));
-  console.log("| :-- | :-- | --: | --: | --: | --: |");
-
-  for (const g of groups) {
-    console.log(
-      row(
-        g.group,
-        g.category,
-        fmt(g.files),
-        fmt(g.blank),
-        fmt(g.comment),
-        fmt(g.code),
-      ),
-    );
-  }
-
-  console.log(
-    row(
-      "**Total**",
-      "",
-      `**${fmt(totals.files)}**`,
-      `**${fmt(totals.blank)}**`,
-      `**${fmt(totals.comment)}**`,
-      `**${fmt(totals.code)}**`,
-    ),
-  );
-
-  console.log();
-}
-
-/**
- * Format a number with comma separators.
- * @param n - Number to format
- * @returns Formatted string
- */
-function fmt(n: number): string {
-  return n.toLocaleString("en-US");
 }
 
 main();
