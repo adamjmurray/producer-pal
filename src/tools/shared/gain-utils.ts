@@ -56,17 +56,19 @@ export function liveGainToDb(gain: number): number {
   const lower = LOOKUP_TABLE[lowerIndex] as LookupEntry;
   const upper = LOOKUP_TABLE[upperIndex] as LookupEntry;
 
-  // Handle edge cases with null/invalid dB values
+  // Handle edge cases with null/invalid dB values.
+  // Defensive guards: unreachable with current lookup table (only gain=0 has dB:null,
+  // and the gain <= 0 check above prevents it from being a binary search result).
   if (lower.dB === null) {
     if (upper.dB === null) {
-      return -70;
+      return -70; // unreachable: would need two adjacent null-dB entries
     }
 
     return upper.dB;
   }
 
   if (upper.dB === null) {
-    return lower.dB;
+    return lower.dB; // unreachable: only index 0 has null dB, never an upper bound
   }
 
   // Linear interpolation
@@ -123,6 +125,8 @@ export function dbToLiveGain(dB: number): number {
     return 0;
   }
 
+  // Defensive guard: unreachable with current lookup table because the last entry
+  // has dB=24 (the max), and dB >= 24 is caught by the early return above.
   if (upperIndex === -1) {
     return (LOOKUP_TABLE[lowerIndex] as LookupEntry).gain;
   }

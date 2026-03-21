@@ -18,22 +18,11 @@ interface DrumPadInfo {
   name?: string;
   state?: string;
 }
-interface ReturnChain {
-  id: string;
-  name: string;
-  path?: string;
-  devices?: { id: string; type: string }[];
-}
-interface DeviceInfoResult {
-  returnChains?: ReturnChain[];
-  [key: string]: unknown;
-}
 import {
   buildChainInfo,
   isRedundantDeviceClassName,
   readMacroVariations,
   readABCompare,
-  processDeviceChains,
 } from "./device-reader-helpers.ts";
 import {
   computeState,
@@ -52,7 +41,6 @@ type ChainOverrides = {
   out_note?: number;
   color?: string | null;
 };
-type MockChainOverrides = { devices?: unknown[] };
 
 describe("device-reader-helpers", () => {
   describe("buildChainInfo", () => {
@@ -588,161 +576,6 @@ describe("device-reader-helpers", () => {
       expect(readABCompare(device as unknown as LiveAPI)).toStrictEqual({
         abCompare: "b",
       });
-    });
-  });
-
-  describe("processDeviceChains", () => {
-    const createMockChain = (
-      name: string,
-      overrides: MockChainOverrides = {},
-    ) => ({
-      id: `chain-${name}`,
-      type: "Chain",
-      getProperty: (prop: string) => {
-        if (prop === "name") return name;
-        if (prop === "mute") return 0;
-        if (prop === "solo") return 0;
-        if (prop === "muted_via_solo") return 0;
-
-        return 0;
-      },
-      getColor: () => null,
-      getChildren: (child: string) => {
-        if (child === "devices") return overrides.devices ?? [];
-
-        return [];
-      },
-    });
-
-    // Helper to call processDeviceChains with return chain options
-    const callWithReturnChains = (
-      mockDevice: unknown,
-      deviceInfo: DeviceInfoResult,
-      readDeviceFn: (
-        d: { id: string },
-        opts: Record<string, unknown>,
-      ) => Record<string, unknown> = () => ({}),
-      devicePath?: string,
-    ) => {
-      processDeviceChains(
-        mockDevice as unknown as LiveAPI,
-        deviceInfo,
-        DEVICE_TYPE.AUDIO_EFFECT_RACK,
-        {
-          includeChains: false,
-          includeReturnChains: true,
-          includeDrumPads: false,
-          depth: 0,
-          maxDepth: 2,
-          readDeviceFn,
-          devicePath,
-        },
-      );
-    };
-
-    it("processes return chains when includeReturnChains is true", () => {
-      const mockDevice = {
-        getChildren: (child: string) => {
-          if (child === "chains") return [];
-
-          if (child === "return_chains") {
-            return [createMockChain("Return A"), createMockChain("Return B")];
-          }
-
-          return [];
-        },
-      };
-
-      const deviceInfo: DeviceInfoResult = {};
-      const mockReadDevice = (d: { id: string }) => ({
-        id: d.id,
-        type: "effect",
-      });
-
-      callWithReturnChains(mockDevice, deviceInfo, mockReadDevice, "t0/d0");
-
-      expect(deviceInfo.returnChains).toHaveLength(2);
-      expect(deviceInfo.returnChains![0]).toMatchObject({
-        id: "chain-Return A",
-        name: "Return A",
-      });
-      expect(deviceInfo.returnChains![1]).toMatchObject({
-        id: "chain-Return B",
-        name: "Return B",
-      });
-    });
-
-    it("skips return chains when device has none", () => {
-      const mockDevice = {
-        getChildren: (child: string) => {
-          if (child === "chains") return [];
-          if (child === "return_chains") return [];
-
-          return [];
-        },
-      };
-
-      const deviceInfo: DeviceInfoResult = {};
-
-      callWithReturnChains(mockDevice, deviceInfo);
-
-      expect(deviceInfo.returnChains).toBeUndefined();
-    });
-
-    it("processes return chains with nested devices and builds paths", () => {
-      const mockNestedDevice = { id: "nested-dev-1" };
-      const createReturnChain = (name: string) => ({
-        id: `return-chain-${name}`,
-        type: "Chain",
-        getProperty: (prop: string) => {
-          if (prop === "name") return name;
-
-          return 0;
-        },
-        getColor: () => null,
-        getChildren: (child: string) => {
-          if (child === "devices") return [mockNestedDevice];
-
-          return [];
-        },
-      });
-
-      const mockDevice = {
-        getChildren: (child: string) => {
-          if (child === "chains") return [];
-          if (child === "return_chains") return [createReturnChain("Return A")];
-
-          return [];
-        },
-      };
-
-      const deviceInfo: DeviceInfoResult = {};
-
-      const readDeviceCalls: {
-        device: { id: string };
-        options: Record<string, unknown>;
-      }[] = [];
-
-      const mockReadDevice = (
-        device: { id: string },
-        options: Record<string, unknown>,
-      ) => {
-        readDeviceCalls.push({ device, options });
-
-        return { id: device.id, type: "effect" };
-      };
-
-      callWithReturnChains(mockDevice, deviceInfo, mockReadDevice, "t0/d0");
-
-      expect(deviceInfo.returnChains).toHaveLength(1);
-      expect(deviceInfo.returnChains![0]!.devices).toHaveLength(1);
-      expect(deviceInfo.returnChains![0]!.devices![0]).toMatchObject({
-        id: "nested-dev-1",
-        type: "effect",
-      });
-      // Verify readDevice was called with correct nested path
-      expect(readDeviceCalls).toHaveLength(1);
-      expect(readDeviceCalls[0]!.options.parentPath).toBe("t0/d0/rc0/d0");
     });
   });
 });

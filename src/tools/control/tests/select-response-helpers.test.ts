@@ -353,5 +353,32 @@ describe("select-response-helpers", () => {
         path: "t0/d0",
       });
     });
+
+    it("omits selectedDevice when track view does not exist", () => {
+      clearMockRegistry();
+
+      setupViewStateMock({
+        view: "session",
+        selectedTrack: {
+          exists: true,
+          category: "regular",
+          trackIndex: 0,
+          id: "track_1",
+          path: String(livePath.track(0)),
+        },
+        selectedScene: { exists: false },
+        selectedClip: { exists: false },
+        highlightedClipSlot: { exists: false },
+      });
+
+      // Do NOT set up a track view mock — the view path resolves to
+      // a non-existent object so readSelectedDeviceInfo returns early.
+      mockNonExistentObjects();
+
+      const result = readFullState();
+
+      expect(result.selectedTrack).toBeDefined();
+      expect(result.selectedDevice).toBeUndefined();
+    });
   });
 });
