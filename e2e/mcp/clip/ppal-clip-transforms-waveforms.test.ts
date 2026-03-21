@@ -12,33 +12,19 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-waveforms
  */
 import { describe, expect, it } from "vitest";
-import {
-  type CreateClipResult,
-  parseToolResult,
-  type ReadClipResult,
-  setupMcpTestContext,
-  sleep,
-} from "../mcp-test-helpers.ts";
+import { setupMcpTestContext } from "../mcp-test-helpers.ts";
+import { createClipTransformHelpers } from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
-
-const emptyMidiTrack = 8; // t8 "9-MIDI" from e2e-test-set
+const { createMidiClip, applyTransform, readClipNotes } =
+  createClipTransformHelpers(ctx);
 
 /** Creates a MIDI clip with 4 notes at beats 1|1-1|4 for waveform testing. */
 async function createWaveformClip(sceneIndex: number): Promise<string> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-create-clip",
-    arguments: {
-      slot: `${emptyMidiTrack}/${sceneIndex}`,
-      notes: "v64 C3 1|1\nv64 C3 1|2\nv64 C3 1|3\nv64 C3 1|4",
-      length: "1:0.0",
-    },
-  });
-  const clip = parseToolResult<CreateClipResult>(result);
-
-  await sleep(100);
-
-  return clip.id;
+  return createMidiClip(
+    sceneIndex,
+    "v64 C3 1|1\nv64 C3 1|2\nv64 C3 1|3\nv64 C3 1|4",
+  );
 }
 
 /** Applies a transform and returns the notes string. */
@@ -46,19 +32,9 @@ async function applyAndReadNotes(
   clipId: string,
   transform: string,
 ): Promise<string> {
-  await ctx.client!.callTool({
-    name: "ppal-update-clip",
-    arguments: { ids: clipId, transforms: transform },
-  });
-  await sleep(100);
+  await applyTransform(clipId, transform);
 
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-clip",
-    arguments: { clipId, include: ["notes"] },
-  });
-  const clip = parseToolResult<ReadClipResult>(result);
-
-  return clip.notes ?? "";
+  return readClipNotes(clipId);
 }
 
 /** Extracts velocity values from notes string (only finds explicit v markers). */
