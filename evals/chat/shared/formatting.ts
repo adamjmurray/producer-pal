@@ -59,12 +59,6 @@ export function pctColor(pct: number): string {
 // Thought formatting
 // ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * Format the start of a thought block
- *
- * @param text - Thought text
- * @returns Formatted thought start
- */
 const BRIGHT_MAGENTA = "\x1b[95m";
 
 /**
@@ -300,16 +294,6 @@ ${ORANGE}|${RESET} ${GRAY}Model:${RESET} ${model}`;
  * @returns Formatted turn header
  */
 export function formatTurnHeader(turnNumber: number): string {
-  return `\x1b[96m──────── Turn ${turnNumber} ────────${RESET}`;
-}
-
-/**
- * Format a colored chat-style turn header
- *
- * @param turnNumber - Turn number (1-indexed)
- * @returns Cyan colored turn header with ── glyphs
- */
-export function formatChatTurnHeader(turnNumber: number): string {
   return `\x1b[96m──────── Turn ${turnNumber} ────────${RESET}`;
 }
 

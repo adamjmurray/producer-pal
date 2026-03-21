@@ -6,7 +6,7 @@ import { readFile } from "node:fs/promises";
 import { type Interface } from "node:readline";
 import {
   GRAY_PROMPT,
-  formatChatTurnHeader,
+  formatTurnHeader,
   formatUserLabel,
 } from "./formatting.ts";
 import { isExitCommand, question } from "./readline.ts";
@@ -18,7 +18,7 @@ import { type ChatOptions, type MessageSource } from "./types.ts";
  */
 function printTurnHeader(turnCount: number): void {
   if (turnCount > 1) process.stdout.write("\n");
-  console.log(formatChatTurnHeader(turnCount));
+  console.log(formatTurnHeader(turnCount));
   process.stdout.write(formatUserLabel());
 }
 

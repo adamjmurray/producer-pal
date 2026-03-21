@@ -34,10 +34,6 @@ interface StreamState {
  * Returns a TurnResult with the collected text and tool calls for assertions.
  *
  * @param result - The streamText result to process
- * @returns TurnResult with text and tool calls
- */
-/**
- * @param result - The streamText result to process
  * @param options - Processing options
  * @param options.showUsage - Whether usage is shown after steps (affects spacing)
  * @returns TurnResult with text and tool calls
