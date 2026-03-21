@@ -65,11 +65,12 @@ export function createProviderModel(
     case "gemini":
       return createGoogleGenerativeAI({ apiKey })(`${modelId}`);
 
+    /* v8 ignore start */
     default: {
-      // Exhaustive check — all providers should be handled
       const _exhaustive: never = provider;
 
       return _exhaustive;
     }
+    /* v8 ignore stop */
   }
 }

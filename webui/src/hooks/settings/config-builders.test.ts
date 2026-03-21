@@ -77,6 +77,12 @@ describe("config-builders", () => {
           mapThinkingToReasoningEffort("Default", "gpt-5.1-2025-01-01"),
         ).toBe("medium");
       });
+
+      it("should map Off to undefined", () => {
+        expect(
+          mapThinkingToReasoningEffort("Off", "gpt-5.1-2025-01-01"),
+        ).toBeUndefined();
+      });
     });
 
     describe("gpt-5.2+ models", () => {

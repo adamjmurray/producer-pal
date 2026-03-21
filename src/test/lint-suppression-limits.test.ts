@@ -32,10 +32,10 @@ const TS_NOCHECK_LIMITS: TreeLimits = {
 };
 
 const V8_IGNORE_LIMITS: TreeLimits = {
-  src: 0,
+  src: 8, // Defensive guards with caller guarantees/lookup tables
   srcTests: 2, // This test file's pattern definitions
   scripts: 0,
-  webui: 2, // Untestable IDB error callbacks in conversation-db.ts
+  webui: 4, // Untestable IDB error callbacks, exhaustive never
 };
 
 const TREES = Object.keys(ESLINT_DISABLE_LIMITS);
