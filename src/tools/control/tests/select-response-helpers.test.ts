@@ -215,9 +215,11 @@ describe("select-response-helpers", () => {
 
       const result = buildClipResponseFromId("id arr_clip_1");
 
-      expect(result).toBeDefined();
-      expect(result!.id).toBe("arr_clip_1");
-      expect(result!.arrangementStart).toBeDefined();
+      expect(result).toStrictEqual({
+        id: "arr_clip_1",
+        trackIndex: 0,
+        arrangementStart: "2|1",
+      });
     });
 
     it("returns undefined for non-existent clip", () => {
@@ -269,8 +271,7 @@ describe("select-response-helpers", () => {
 
       const result = buildDeviceResponseFromId("id device_1");
 
-      expect(result).toBeDefined();
-      expect(result!.id).toBe("device_1");
+      expect(result).toStrictEqual({ id: "device_1", path: "t0/d0" });
     });
 
     it("returns undefined for non-existent device", () => {
@@ -296,8 +297,7 @@ describe("select-response-helpers", () => {
 
       const result = buildDeviceResponseFromPath("t0/d1");
 
-      expect(result).toBeDefined();
-      expect(result!.path).toBe("t0/d1");
+      expect(result).toStrictEqual({ id: "device_at_path", path: "t0/d1" });
     });
 
     it("returns undefined when device does not exist at path", () => {
@@ -348,8 +348,10 @@ describe("select-response-helpers", () => {
 
       const result = readFullState();
 
-      expect(result.selectedDevice).toBeDefined();
-      expect(result.selectedDevice!.id).toBe("device_0");
+      expect(result.selectedDevice).toStrictEqual({
+        id: "device_0",
+        path: "t0/d0",
+      });
     });
   });
 });
