@@ -52,10 +52,12 @@ function computeTotals(rows: CountStats[]): CountStats {
 /**
  * Build a CLI row formatter for the given column widths.
  * @param colWidths - Widths for each column (left-pad for all except first which is right-pad)
+ * @param dimIndices - Column indices to render in dim gray (e.g., blank and comment)
  * @returns A function that formats values into an aligned row with styling
  */
 function makeCliRow(
   colWidths: number[],
+  dimIndices: Set<number>,
 ): (values: string[], color?: Styler) => string {
   /**
    * Apply dim gray styling.
@@ -64,21 +66,15 @@ function makeCliRow(
    */
   const dim: Styler = (s) => styleText("gray", s);
 
-  return (values: string[], color: Styler = (s) => s): string => {
-    const lastIdx = colWidths.length - 1;
-    // Dim the middle columns (blank + comment), color the rest
-    const dimStart = lastIdx - 2;
-
-    return colWidths
+  return (values: string[], color: Styler = (s) => s): string =>
+    colWidths
       .map((w, i) => {
         const val = values[i] ?? "";
         const padded = i === 0 ? val.padEnd(w) : val.padStart(w);
-        const isDim = i >= dimStart && i < lastIdx;
 
-        return isDim ? dim(padded) : color(padded);
+        return dimIndices.has(i) ? dim(padded) : color(padded);
       })
       .join("  ");
-  };
 }
 
 /**
@@ -96,18 +92,26 @@ function makeCliSep(colWidths: number[]): string {
  */
 export function printCliGroupTable(groups: GroupStats[]): void {
   const totals = computeTotals(groups);
+  const totalFuncs = groups.reduce((sum, g) => sum + g.functions, 0);
 
   const widths = [
     Math.max("Group".length, ...GROUPS.map((g) => g.length)),
     Math.max("Category".length, ...CATEGORIES.map((c) => c.length)),
-    ...numColWidths(totals),
+    Math.max("Files".length, fmt(totals.files).length),
+    Math.max("Funcs".length, fmt(totalFuncs).length),
+    Math.max("Blank".length, fmt(totals.blank).length),
+    Math.max("Comment".length, fmt(totals.comment).length),
+    Math.max("Code".length, fmt(totals.code).length),
   ];
 
-  const row = makeCliRow(widths);
+  // Blank=4, Comment=5 are dim
+  const row = makeCliRow(widths, new Set([4, 5]));
   const sep = makeCliSep(widths);
 
   console.log(`\n${boldPurple("Lines of Code")}\n`);
-  console.log(row(["Group", "Category", "Files", "Blank", "Comment", "Code"]));
+  console.log(
+    row(["Group", "Category", "Files", "Funcs", "Blank", "Comment", "Code"]),
+  );
   console.log(sep);
 
   for (const g of groups) {
@@ -122,6 +126,7 @@ export function printCliGroupTable(groups: GroupStats[]): void {
           g.group,
           g.category,
           fmt(g.files),
+          fmt(g.functions),
           fmt(g.blank),
           fmt(g.comment),
           fmt(g.code),
@@ -132,7 +137,15 @@ export function printCliGroupTable(groups: GroupStats[]): void {
   }
 
   console.log(sep);
-  printCliTotals(row, ["Total", "", ...fmtCounts(totals)]);
+  printCliTotals(row, [
+    "Total",
+    "",
+    fmt(totals.files),
+    fmt(totalFuncs),
+    fmt(totals.blank),
+    fmt(totals.comment),
+    fmt(totals.code),
+  ]);
 
   console.log();
 }
@@ -143,10 +156,13 @@ export function printCliGroupTable(groups: GroupStats[]): void {
  */
 export function printMarkdownGroupTable(groups: GroupStats[]): void {
   const totals = computeTotals(groups);
+  const totalFuncs = groups.reduce((sum, g) => sum + g.functions, 0);
 
-  console.log("\n## Lines of Code\n");
-  console.log(mdRow("Group", "Category", "Files", "Blank", "Comment", "Code"));
-  console.log("| :-- | :-- | --: | --: | --: | --: |");
+  console.log("\n## Lines of Code by Group\n");
+  console.log(
+    mdRow("Group", "Category", "Files", "Funcs", "Blank", "Comment", "Code"),
+  );
+  console.log("| :-- | :-- | --: | --: | --: | --: | --: |");
 
   for (const g of groups) {
     console.log(
@@ -154,6 +170,7 @@ export function printMarkdownGroupTable(groups: GroupStats[]): void {
         g.group,
         g.category,
         fmt(g.files),
+        fmt(g.functions),
         fmt(g.blank),
         fmt(g.comment),
         fmt(g.code),
@@ -161,7 +178,7 @@ export function printMarkdownGroupTable(groups: GroupStats[]): void {
     );
   }
 
-  printMdTotals(totals, "");
+  printMdTotals(totals, "", totalFuncs);
 }
 
 /**
@@ -176,7 +193,8 @@ export function printCliLangTable(langs: LangStats[]): void {
     ...numColWidths(totals),
   ];
 
-  const row = makeCliRow(widths);
+  // Blank=2, Comment=3 are dim
+  const row = makeCliRow(widths, new Set([2, 3]));
   const sep = makeCliSep(widths);
 
   console.log(`\n${boldPurple("Languages")}\n`);
@@ -208,7 +226,7 @@ export function printCliLangTable(langs: LangStats[]): void {
 export function printMarkdownLangTable(langs: LangStats[]): void {
   const totals = computeTotals(langs);
 
-  console.log("\n## Languages\n");
+  console.log("\n## Lines of Code by Language\n");
   console.log(mdRow("Language", "Files", "Blank", "Comment", "Code"));
   console.log("| :-- | --: | --: | --: | --: |");
 
@@ -265,8 +283,13 @@ function fmtCounts(totals: CountStats): string[] {
  * Print a bold markdown totals row.
  * @param totals - Aggregated count stats
  * @param extraCol - Optional extra column value (e.g., empty category column)
+ * @param funcTotal - Optional function count total to append
  */
-function printMdTotals(totals: CountStats, extraCol?: string): void {
+function printMdTotals(
+  totals: CountStats,
+  extraCol?: string,
+  funcTotal?: number,
+): void {
   /**
    * Wrap a number in markdown bold.
    * @param n - Number to format
@@ -277,6 +300,7 @@ function printMdTotals(totals: CountStats, extraCol?: string): void {
     "**Total**",
     ...(extraCol != null ? [extraCol] : []),
     bold(totals.files),
+    ...(funcTotal != null ? [bold(funcTotal)] : []),
     bold(totals.blank),
     bold(totals.comment),
     bold(totals.code),

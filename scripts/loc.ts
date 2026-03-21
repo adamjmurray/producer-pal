@@ -16,7 +16,9 @@
  */
 
 import { execSync } from "node:child_process";
+import fs from "node:fs";
 import path from "node:path";
+import ts from "typescript";
 import {
   printCliGroupTable,
   printCliLangTable,
@@ -91,6 +93,7 @@ export interface CountStats {
 export interface GroupStats extends CountStats {
   group: Group;
   category: Category;
+  functions: number;
 }
 
 export interface LangStats extends CountStats {
@@ -105,6 +108,8 @@ function main(): void {
   const clocData = runCloc();
   const langs = aggregateByLanguage(clocData);
   const groups = aggregateByGroup(clocData);
+
+  mergeFunctionCounts(groups, clocData);
 
   if (markdown) {
     printMarkdownLangTable(langs);
@@ -196,6 +201,7 @@ function aggregateByGroup(
         blank: 0,
         comment: 0,
         code: 0,
+        functions: 0,
       });
     }
   }
@@ -248,6 +254,76 @@ function classifyFile(filePath: string): { group: Group; category: Category } {
  */
 function isTestFileBySuffix(filename: string): boolean {
   return TEST_FILE_SUFFIXES.some((suffix) => filename.endsWith(suffix));
+}
+
+/** AST node kinds that count as functions (matching v8 coverage). */
+const FUNCTION_KINDS = new Set([
+  ts.SyntaxKind.FunctionDeclaration,
+  ts.SyntaxKind.ArrowFunction,
+  ts.SyntaxKind.FunctionExpression,
+  ts.SyntaxKind.MethodDeclaration,
+  ts.SyntaxKind.GetAccessor,
+  ts.SyntaxKind.SetAccessor,
+  ts.SyntaxKind.Constructor,
+]);
+
+const TS_EXTENSIONS = new Set([".ts", ".tsx"]);
+
+/**
+ * Count function AST nodes in a TypeScript file.
+ * @param filePath - Absolute path to the file
+ * @returns Number of functions found
+ */
+function countFunctionsInFile(filePath: string): number {
+  const content = fs.readFileSync(filePath, "utf8");
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    content,
+    ts.ScriptTarget.Latest,
+    false,
+  );
+
+  let count = 0;
+
+  /**
+   * Recursively walk the AST and count function nodes.
+   * @param node - Current AST node
+   */
+  const visit = (node: ts.Node): void => {
+    if (FUNCTION_KINDS.has(node.kind)) count++;
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(sourceFile);
+
+  return count;
+}
+
+/**
+ * Count functions in git-tracked TS/TSX files and merge into group stats.
+ * Uses cloc's file list to avoid scanning build output or node_modules.
+ * @param groups - Group stats to update with function counts
+ * @param clocData - Per-file cloc results (used as the canonical file list)
+ */
+function mergeFunctionCounts(
+  groups: GroupStats[],
+  clocData: Record<string, ClocFileEntry>,
+): void {
+  const map = new Map(groups.map((g) => [`${g.group}:${g.category}`, g]));
+
+  for (const filePath of Object.keys(clocData)) {
+    const clean = filePath.replace(/^\.\//, "");
+
+    if (!TS_EXTENSIONS.has(path.extname(clean))) continue;
+
+    const classified = classifyFile(filePath);
+    const stats = map.get(`${classified.group}:${classified.category}`);
+
+    if (!stats) continue;
+
+    stats.functions += countFunctionsInFile(path.join(PROJECT_ROOT, clean));
+  }
 }
 
 main();
