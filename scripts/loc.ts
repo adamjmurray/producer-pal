@@ -139,12 +139,29 @@ function main(): void {
  * @returns Map of file paths to their cloc stats
  */
 function runCloc(): Record<string, ClocFileEntry> {
-  const output = execSync(
-    "cloc --by-file --json --vcs=git --not-match-f='package-lock.json|-parser\\.js$'",
-    { cwd: PROJECT_ROOT, encoding: "utf8" },
-  );
+  let output: string;
 
-  const data = JSON.parse(output) as Record<string, ClocFileEntry>;
+  try {
+    output = execSync(
+      "cloc --by-file --json --vcs=git --not-match-f='package-lock.json|-parser\\.js$'",
+      { cwd: PROJECT_ROOT, encoding: "utf8" },
+    );
+  } catch {
+    console.error(
+      "Error: cloc is not installed or failed to run.\n" +
+        "Install it from https://github.com/AlDanial/cloc",
+    );
+    process.exit(1);
+  }
+
+  let data: Record<string, ClocFileEntry>;
+
+  try {
+    data = JSON.parse(output) as Record<string, ClocFileEntry>;
+  } catch {
+    console.error("Error: failed to parse cloc JSON output.");
+    process.exit(1);
+  }
 
   // Remove cloc metadata keys
   delete data.header;
