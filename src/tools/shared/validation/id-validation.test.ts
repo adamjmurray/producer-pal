@@ -169,20 +169,7 @@ describe("validateIdTypes", () => {
     });
 
     it("should throw on first invalid ID (wrong type)", () => {
-      const ids = ["track_1", "scene_1", "track_3"];
-
-      registerMockObject("track_1", {
-        path: "live_set tracks 0",
-        type: "Track",
-      });
-      registerMockObject("scene_1", {
-        path: "live_set scenes 0",
-        type: "Scene",
-      });
-      registerMockObject("track_3", {
-        path: "live_set tracks 2",
-        type: "Track",
-      });
+      const ids = registerMixedTrackAndSceneMocks();
 
       expect(() => validateIdTypes(ids, "track", "testTool")).toThrow(
         'testTool failed: id "scene_1" is not a track (found Scene)',
@@ -192,20 +179,7 @@ describe("validateIdTypes", () => {
 
   describe("with skipInvalid=true", () => {
     it("should return only valid IDs and log warnings for invalid", () => {
-      const ids = ["track_1", "scene_1", "track_3"];
-
-      registerMockObject("track_1", {
-        path: "live_set tracks 0",
-        type: "Track",
-      });
-      registerMockObject("scene_1", {
-        path: "live_set scenes 0",
-        type: "Scene",
-      });
-      registerMockObject("track_3", {
-        path: "live_set tracks 2",
-        type: "Track",
-      });
+      const ids = registerMixedTrackAndSceneMocks();
 
       const result = validateIdTypes(ids, "track", "testTool", {
         skipInvalid: true,
@@ -321,3 +295,26 @@ describe("validateIdTypes", () => {
     });
   });
 });
+
+/**
+ * Register a mix of track and scene mock objects for testing type validation.
+ * @returns The IDs array used for testing
+ */
+function registerMixedTrackAndSceneMocks(): string[] {
+  const ids = ["track_1", "scene_1", "track_3"];
+
+  registerMockObject("track_1", {
+    path: "live_set tracks 0",
+    type: "Track",
+  });
+  registerMockObject("scene_1", {
+    path: "live_set scenes 0",
+    type: "Scene",
+  });
+  registerMockObject("track_3", {
+    path: "live_set tracks 2",
+    type: "Track",
+  });
+
+  return ids;
+}

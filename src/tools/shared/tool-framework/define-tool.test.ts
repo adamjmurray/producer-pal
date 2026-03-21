@@ -372,16 +372,7 @@ describe("defineTool", () => {
 
   it("should apply runtime filter for valid values in smallModelMode with excludeEnumValues", async () => {
     const { mockServer, mockCallLiveApi } = registerTestTool(
-      {
-        title: "Test Tool",
-        description: "Test",
-        inputSchema: {
-          include: z.array(z.enum(["notes", "timing", "sample"])).default([]),
-        },
-        smallModelModeConfig: {
-          excludeEnumValues: { include: ["timing"] },
-        },
-      },
+      excludeEnumValuesToolConfig(),
       { smallModelMode: true, successMock: true },
     );
 
@@ -396,19 +387,10 @@ describe("defineTool", () => {
   });
 
   it("should reject excluded enum values via Zod in smallModelMode", async () => {
-    const { mockServer } = registerTestTool(
-      {
-        title: "Test Tool",
-        description: "Test",
-        inputSchema: {
-          include: z.array(z.enum(["notes", "timing", "sample"])).default([]),
-        },
-        smallModelModeConfig: {
-          excludeEnumValues: { include: ["timing"] },
-        },
-      },
-      { smallModelMode: true, successMock: true },
-    );
+    const { mockServer } = registerTestTool(excludeEnumValuesToolConfig(), {
+      smallModelMode: true,
+      successMock: true,
+    });
 
     const toolHandler = getRegisteredHandler(mockServer);
 
@@ -502,3 +484,20 @@ describe("filterExcludedEnumValues", () => {
     expect(result).not.toBe(args);
   });
 });
+
+/**
+ * Creates a tool config with excludeEnumValues for testing.
+ * @returns Tool options with enum exclusion config
+ */
+function excludeEnumValuesToolConfig(): ToolOptions {
+  return {
+    title: "Test Tool",
+    description: "Test",
+    inputSchema: {
+      include: z.array(z.enum(["notes", "timing", "sample"])).default([]),
+    },
+    smallModelModeConfig: {
+      excludeEnumValues: { include: ["timing"] },
+    },
+  };
+}

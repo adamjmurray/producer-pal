@@ -325,21 +325,7 @@ describe("select-response-helpers", () => {
     });
 
     it("includes selectedDevice when track has a selected device", () => {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "session",
-        selectedTrack: {
-          exists: true,
-          category: "regular",
-          trackIndex: 0,
-          id: "track_1",
-          path: String(livePath.track(0)),
-        },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      setupTrackOnlyViewState();
 
       const devicePath = String(livePath.track(0)) + " devices 0";
 
@@ -355,3 +341,24 @@ describe("select-response-helpers", () => {
     });
   });
 });
+
+/**
+ * Set up view state with a selected track but no selected scene/clip.
+ */
+function setupTrackOnlyViewState(): void {
+  clearMockRegistry();
+
+  setupViewStateMock({
+    view: "session",
+    selectedTrack: {
+      exists: true,
+      category: "regular",
+      trackIndex: 0,
+      id: "track_1",
+      path: String(livePath.track(0)),
+    },
+    selectedScene: { exists: false },
+    selectedClip: { exists: false },
+    highlightedClipSlot: { exists: false },
+  });
+}

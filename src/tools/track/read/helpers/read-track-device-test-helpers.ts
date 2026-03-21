@@ -145,23 +145,12 @@ export function createChainMockProperties({
  * @param chainIds - Rack chain IDs
  */
 export function setupInstrumentRackOnTrack0(chainIds: string[]): void {
-  setupTrackMock({
-    trackId: "track1",
-    properties: {
-      devices: children("rack1"),
-    },
-  });
-
-  registerMockObject("rack1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: createRackDeviceMockProperties({
-      name: "My Custom Rack",
-      className: "InstrumentGroupDevice",
-      classDisplayName: "Instrument Rack",
-      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-      chainIds,
-    }),
+  setupTrackWithSingleRack({
+    name: "My Custom Rack",
+    className: "InstrumentGroupDevice",
+    classDisplayName: "Instrument Rack",
+    type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+    chainIds,
   });
 }
 
@@ -266,23 +255,12 @@ export function setupDrumRackMocks(): void {
  * Setup mocks for an empty rack device.
  */
 export function setupEmptyRackMocks(): void {
-  setupTrackMock({
-    trackId: "track1",
-    properties: {
-      devices: children("rack1"),
-    },
-  });
-
-  registerMockObject("rack1", {
-    path: livePath.track(0).device(0),
-    type: "Device",
-    properties: createRackDeviceMockProperties({
-      name: "My Empty Rack",
-      className: "InstrumentGroupDevice",
-      classDisplayName: "Instrument Rack",
-      type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-      chainIds: ["empty_chain"],
-    }),
+  setupTrackWithSingleRack({
+    name: "My Empty Rack",
+    className: "InstrumentGroupDevice",
+    classDisplayName: "Instrument Rack",
+    type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+    chainIds: ["empty_chain"],
   });
 
   registerMockObject("empty_chain", {
@@ -327,5 +305,23 @@ export function setupDrumRackWithReverbMocks(): void {
       classDisplayName: "Reverb",
       type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
     }),
+  });
+}
+
+/**
+ * Setup track1 on track(0) with a single rack device registered as "rack1".
+ * @param options - Rack device mock properties
+ */
+function setupTrackWithSingleRack(
+  options: RackDeviceMockPropertiesOptions,
+): void {
+  setupTrackMock({
+    trackId: "track1",
+    properties: { devices: children("rack1") },
+  });
+  registerMockObject("rack1", {
+    path: livePath.track(0).device(0),
+    type: "Device",
+    properties: createRackDeviceMockProperties(options),
   });
 }
