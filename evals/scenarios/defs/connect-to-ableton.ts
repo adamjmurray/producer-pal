@@ -16,7 +16,7 @@ export const connectToAbleton: EvalScenario = {
   messages: ["Connect to Ableton Live"],
 
   assertions: [
-    // Verify ppal-connect was called
+    // Verify ppal-connect was called immediately
     {
       type: "tool_called",
       tool: "ppal-connect",
@@ -25,11 +25,77 @@ export const connectToAbleton: EvalScenario = {
       score: 5,
     },
 
+    // Verify other tool calls
+    {
+      type: "custom",
+      description: "No extraneous tool calls",
+      assert: (turns) => {
+        let ppalConnectCalledOnce = false;
+        let ppalReadLiveSetCalledOnce = false;
+
+        for (const turn of turns) {
+          for (const toolCall of turn.toolCalls) {
+            switch (toolCall.name) {
+              case "ppal-connect": {
+                if (ppalConnectCalledOnce) {
+                  throw new Error("ppal-connect called more than once");
+                }
+
+                ppalConnectCalledOnce = true;
+                break;
+              }
+
+              case "ppal-read-live-set": {
+                if (ppalReadLiveSetCalledOnce) {
+                  throw new Error("ppal-read-live-set called more than once");
+                }
+
+                ppalReadLiveSetCalledOnce = true;
+                break;
+              }
+
+              // It's ok to scan through tracks and scenes,
+              // but ideally it doesn't start reading individual clips automatically upon initial connection.
+              case "ppal-read-track":
+              case "ppal-read-scene":
+                break;
+
+              default:
+                throw new Error(`Unexpected tool call: ${toolCall.name}`);
+            }
+          }
+        }
+
+        return true;
+      },
+      score: 5,
+    },
+
     // Verify the response acknowledges the connection
     {
       type: "response_contains",
       pattern: /connected/i,
       score: 2,
+    },
+
+    {
+      type: "custom",
+      description: "Reasonable token usage",
+      assert: (turns) => {
+        const connectionUsage = turns[0]?.stepUsages ?? [];
+        const totalInput = connectionUsage.reduce(
+          (sum, s) => sum + (s.inputTokens ?? 0),
+          0,
+        );
+
+        // TODO: try to bring this number way down without negatively impacting this or other evals
+        if (totalInput > 30_000) {
+          throw new Error(`Used ${totalInput} input tokens, expected < 30,000`);
+        }
+
+        return true;
+      },
+      score: 5,
     },
 
     // LLM judges the quality of the response
