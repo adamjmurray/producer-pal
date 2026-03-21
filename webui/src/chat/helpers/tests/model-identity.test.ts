@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { isModelMismatch } from "./model-identity";
+import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 
 describe("isModelMismatch", () => {
   it("returns false for identical strings", () => {

@@ -176,9 +176,10 @@ web UI architecture.
   - Test files split using dot notation: `{feature}-{area}.test.ts` (e.g.,
     `update-clip-audio-arrangement.test.ts`, `duplicate-validation.test.ts`)
   - Test helpers use `{feature}-test-helpers.ts` for shared test utilities
-  - **Test file location**: Use colocated tests (same directory as source) for
-    1-2 test files. Create a `tests/` subdirectory when 3+ test files exist for
-    a feature to keep the main directory focused on source code
+  - **Test file location**: Create a `tests/` subdirectory when 3+ test files
+    exist for a feature to keep the main directory focused on source code. Fewer
+    than 3 test files may be colocated or in `tests/` — either is fine, but
+    `tests/` is unnecessary until there are at least 3
   - **Prefer refactoring over trimming**: When adding code would exceed file
     limits, extract cohesive groups of logic into helper files rather than
     artificially compressing code (e.g., merging tests into loops, collapsing
