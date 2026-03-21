@@ -6,7 +6,7 @@
  * Shared utilities for assertion evaluation
  */
 
-import { type EvalTurnResult } from "../types.ts";
+import { type EvalTurnResult, type ToolCall } from "../types.ts";
 
 /**
  * Get target turns based on assertion's turn specification
@@ -24,6 +24,20 @@ export function getTargetTurns(
   }
 
   return [turns[turn]].filter((t): t is EvalTurnResult => t !== undefined);
+}
+
+/**
+ * Get all tool calls from turns, optionally filtered by turn
+ *
+ * @param turns - All conversation turns
+ * @param turn - Optional turn filter (number index, "any"/undefined for all)
+ * @returns Flat array of tool calls
+ */
+export function getToolCalls(
+  turns: EvalTurnResult[],
+  turn?: number | "any",
+): ToolCall[] {
+  return getTargetTurns(turns, turn).flatMap((t) => t.toolCalls);
 }
 
 /**

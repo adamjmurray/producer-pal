@@ -17,6 +17,7 @@ export { assertState } from "./state.ts";
 export { assertWithLlmJudge } from "./llm-judge.ts";
 export { assertResponseContains } from "./response.ts";
 export {
+  getToolCalls,
   partialMatch,
   normalizeCount,
   formatExpectedCount,

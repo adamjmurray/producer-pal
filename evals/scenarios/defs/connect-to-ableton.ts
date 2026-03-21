@@ -6,6 +6,7 @@
  * Scenario: Connect to Ableton Live
  */
 
+import { getToolCalls } from "../assertions/index.ts";
 import { type EvalScenario } from "../types.ts";
 
 export const connectToAbleton: EvalScenario = {
@@ -30,39 +31,22 @@ export const connectToAbleton: EvalScenario = {
       type: "custom",
       description: "No extraneous tool calls",
       assert: (turns) => {
-        let ppalConnectCalledOnce = false;
-        let ppalReadLiveSetCalledOnce = false;
+        const calls = getToolCalls(turns);
+        // Tools that may be called at most once
+        const onceOnly = ["ppal-connect", "ppal-read-live-set"];
+        // Tools that may be called multiple times
+        const repeatable = ["ppal-read-track", "ppal-read-scene"];
+        const allowed = new Set([...onceOnly, ...repeatable]);
 
-        for (const turn of turns) {
-          for (const toolCall of turn.toolCalls) {
-            switch (toolCall.name) {
-              case "ppal-connect": {
-                if (ppalConnectCalledOnce) {
-                  throw new Error("ppal-connect called more than once");
-                }
+        for (const call of calls) {
+          if (!allowed.has(call.name)) {
+            throw new Error(`Unexpected tool call: ${call.name}`);
+          }
+        }
 
-                ppalConnectCalledOnce = true;
-                break;
-              }
-
-              case "ppal-read-live-set": {
-                if (ppalReadLiveSetCalledOnce) {
-                  throw new Error("ppal-read-live-set called more than once");
-                }
-
-                ppalReadLiveSetCalledOnce = true;
-                break;
-              }
-
-              // It's ok to scan through tracks and scenes,
-              // but ideally it doesn't start reading individual clips automatically upon initial connection.
-              case "ppal-read-track":
-              case "ppal-read-scene":
-                break;
-
-              default:
-                throw new Error(`Unexpected tool call: ${toolCall.name}`);
-            }
+        for (const name of onceOnly) {
+          if (calls.filter((c) => c.name === name).length > 1) {
+            throw new Error(`${name} called more than once`);
           }
         }
 
