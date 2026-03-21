@@ -317,11 +317,7 @@ jobs:
       - name: Generate lines of code report
         id: summary
         run: |
-          echo "## Lines of Code" > /tmp/summary.md
-          echo "" >> /tmp/summary.md
-          echo '```' >> /tmp/summary.md
-          npm run loc --silent >> /tmp/summary.md
-          echo '```' >> /tmp/summary.md
+          npm run loc --silent -- --markdown > /tmp/summary.md
 
           # Write to step summary and output (base64 encoded for multiline)
           cat /tmp/summary.md >> $GITHUB_STEP_SUMMARY
