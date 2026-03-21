@@ -16,21 +16,8 @@ import {
   GROUPS,
 } from "./loc.ts";
 
-// 256-color purple — no styleText equivalent
-const PURPLE = "\x1b[38;5;135m";
-const RESET = "\x1b[0m";
-
 /** Function that applies ANSI styling to a string. */
 type Styler = (s: string) => string;
-
-/**
- * Apply bold purple styling to text.
- * @param text - Text to style
- * @returns Styled text
- */
-function boldPurple(text: string): string {
-  return `${PURPLE}\x1b[1m${text}\x1b[22m${RESET}`;
-}
 
 /**
  * Compute totals across all stat rows.
@@ -97,18 +84,18 @@ export function printCliGroupTable(groups: GroupStats[]): void {
   const widths = [
     Math.max("Group".length, ...GROUPS.map((g) => g.length)),
     Math.max("Category".length, ...CATEGORIES.map((c) => c.length)),
-    Math.max("Files".length, fmt(totals.files).length),
-    Math.max("Funcs".length, fmt(totalFuncs).length),
-    Math.max("Blank".length, fmt(totals.blank).length),
-    Math.max("Comment".length, fmt(totals.comment).length),
-    Math.max("Code".length, fmt(totals.code).length),
+    ...numColWidths(totals, totalFuncs),
   ];
 
   // Blank=4, Comment=5 are dim
   const row = makeCliRow(widths, new Set([4, 5]));
   const sep = makeCliSep(widths);
 
-  console.log(`\n${boldPurple("Lines of Code")}\n`);
+  const title = "Lines of Code by Group";
+
+  console.log(`\n${styleText("bold", title)}`);
+  console.log("=".repeat(title.length));
+  console.log();
   console.log(
     row(["Group", "Category", "Files", "Funcs", "Blank", "Comment", "Code"]),
   );
@@ -117,7 +104,7 @@ export function printCliGroupTable(groups: GroupStats[]): void {
   for (const g of groups) {
     const color: Styler =
       g.category === "test"
-        ? (s) => styleText("cyan", s)
+        ? (s) => styleText("magenta", s)
         : (s) => styleText("green", s);
 
     console.log(
@@ -146,8 +133,6 @@ export function printCliGroupTable(groups: GroupStats[]): void {
     fmt(totals.comment),
     fmt(totals.code),
   ]);
-
-  console.log();
 }
 
 /**
@@ -185,38 +170,74 @@ export function printMarkdownGroupTable(groups: GroupStats[]): void {
  * Print a CLI-formatted language breakdown table.
  * @param langs - Stats per language
  */
+/** Programming languages — green in CLI. */
+const CODE_LANGUAGES = new Set(["TypeScript", "JavaScript", "peggy"]);
+
+/** Web languages — cyan in CLI. */
+const WEB_LANGUAGES = new Set(["HTML", "CSS"]);
+
+/**
+ * Get the CLI color styler for a language.
+ * @param language - Language name from cloc
+ * @returns Styler function for the language category
+ */
+function langColor(language: string): Styler {
+  if (CODE_LANGUAGES.has(language)) return (s) => styleText("green", s);
+  if (WEB_LANGUAGES.has(language)) return (s) => styleText("cyan", s);
+
+  return (s) => s;
+}
+
+/**
+ * Print a CLI-formatted language breakdown table.
+ * @param langs - Stats per language
+ */
 export function printCliLangTable(langs: LangStats[]): void {
   const totals = computeTotals(langs);
+  const totalFuncs = langs.reduce((sum, l) => sum + l.functions, 0);
 
   const widths = [
     Math.max("Language".length, ...langs.map((l) => l.language.length)),
-    ...numColWidths(totals),
+    ...numColWidths(totals, totalFuncs),
   ];
 
-  // Blank=2, Comment=3 are dim
-  const row = makeCliRow(widths, new Set([2, 3]));
+  // Blank=3, Comment=4 are dim
+  const row = makeCliRow(widths, new Set([3, 4]));
   const sep = makeCliSep(widths);
 
-  console.log(`\n${boldPurple("Languages")}\n`);
-  console.log(row(["Language", "Files", "Blank", "Comment", "Code"]));
+  const title = "Lines of Code by Language";
+
+  console.log(`\n${styleText("bold", title)}`);
+  console.log("=".repeat(title.length));
+  console.log();
+  console.log(row(["Language", "Files", "Funcs", "Blank", "Comment", "Code"]));
   console.log(sep);
 
   for (const l of langs) {
     console.log(
-      row([
-        l.language,
-        fmt(l.files),
-        fmt(l.blank),
-        fmt(l.comment),
-        fmt(l.code),
-      ]),
+      row(
+        [
+          l.language,
+          fmt(l.files),
+          fmt(l.functions),
+          fmt(l.blank),
+          fmt(l.comment),
+          fmt(l.code),
+        ],
+        langColor(l.language),
+      ),
     );
   }
 
   console.log(sep);
-  printCliTotals(row, ["Total", ...fmtCounts(totals)]);
-
-  console.log();
+  printCliTotals(row, [
+    "Total",
+    fmt(totals.files),
+    fmt(totalFuncs),
+    fmt(totals.blank),
+    fmt(totals.comment),
+    fmt(totals.code),
+  ]);
 }
 
 /**
@@ -225,16 +246,18 @@ export function printCliLangTable(langs: LangStats[]): void {
  */
 export function printMarkdownLangTable(langs: LangStats[]): void {
   const totals = computeTotals(langs);
+  const totalFuncs = langs.reduce((sum, l) => sum + l.functions, 0);
 
   console.log("\n## Lines of Code by Language\n");
-  console.log(mdRow("Language", "Files", "Blank", "Comment", "Code"));
-  console.log("| :-- | --: | --: | --: | --: |");
+  console.log(mdRow("Language", "Files", "Funcs", "Blank", "Comment", "Code"));
+  console.log("| :-- | --: | --: | --: | --: | --: |");
 
   for (const l of langs) {
     console.log(
       mdRow(
         l.language,
         fmt(l.files),
+        fmt(l.functions),
         fmt(l.blank),
         fmt(l.comment),
         fmt(l.code),
@@ -242,7 +265,7 @@ export function printMarkdownLangTable(langs: LangStats[]): void {
     );
   }
 
-  printMdTotals(totals);
+  printMdTotals(totals, undefined, totalFuncs);
 }
 
 /**
@@ -262,21 +285,6 @@ function printCliTotals(
   values: string[],
 ): void {
   console.log(row(values, (s) => styleText(["yellow", "bold"], s)));
-  console.log();
-}
-
-/**
- * Format the 4 numeric count fields as comma-separated strings.
- * @param totals - Count stats to format
- * @returns Array of [files, blank, comment, code] strings
- */
-function fmtCounts(totals: CountStats): string[] {
-  return [
-    fmt(totals.files),
-    fmt(totals.blank),
-    fmt(totals.comment),
-    fmt(totals.code),
-  ];
 }
 
 /**
@@ -311,13 +319,15 @@ function printMdTotals(
 }
 
 /**
- * Compute column widths for the 4 numeric columns (files, blank, comment, code).
- * @param totals - The totals row (has the widest numbers)
- * @returns Array of 4 column widths
+ * Compute column widths for Files, Funcs, Blank, Comment, Code.
+ * @param totals - Totals row (has the widest numbers for most columns)
+ * @param totalFuncs - Total function count
+ * @returns Array of 5 column widths
  */
-function numColWidths(totals: CountStats): number[] {
+function numColWidths(totals: CountStats, totalFuncs: number): number[] {
   return [
     Math.max("Files".length, fmt(totals.files).length),
+    Math.max("Funcs".length, fmt(totalFuncs).length),
     Math.max("Blank".length, fmt(totals.blank).length),
     Math.max("Comment".length, fmt(totals.comment).length),
     Math.max("Code".length, fmt(totals.code).length),

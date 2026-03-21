@@ -98,6 +98,7 @@ export interface GroupStats extends CountStats {
 
 export interface LangStats extends CountStats {
   language: string;
+  functions: number;
 }
 
 /**
@@ -106,10 +107,9 @@ export interface LangStats extends CountStats {
 function main(): void {
   const markdown = process.argv.includes("--markdown");
   const clocData = runCloc();
-  const langs = aggregateByLanguage(clocData);
-  const groups = aggregateByGroup(clocData);
-
-  mergeFunctionCounts(groups, clocData);
+  const funcCounts = countAllFunctions(clocData);
+  const langs = aggregateByLanguage(clocData, funcCounts);
+  const groups = aggregateByGroup(clocData, funcCounts);
 
   if (markdown) {
     printMarkdownLangTable(langs);
@@ -118,6 +118,7 @@ function main(): void {
     printCliLangTable(langs);
     printCliSeparator();
     printCliGroupTable(groups);
+    console.log();
   }
 }
 
@@ -145,12 +146,40 @@ function runCloc(): Record<string, ClocFileEntry> {
  * @param clocData - Per-file cloc results
  * @returns Stats per language
  */
+/**
+ * Count functions in all git-tracked TS/TSX files from the cloc file list.
+ * @param clocData - Per-file cloc results
+ * @returns Map of clean file path to function count
+ */
+function countAllFunctions(
+  clocData: Record<string, ClocFileEntry>,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+
+  for (const filePath of Object.keys(clocData)) {
+    const clean = filePath.replace(/^\.\//, "");
+
+    if (TS_EXTENSIONS.has(path.extname(clean))) {
+      counts.set(clean, countFunctionsInFile(path.join(PROJECT_ROOT, clean)));
+    }
+  }
+
+  return counts;
+}
+
+/**
+ * Aggregate cloc data by programming language, sorted by code descending.
+ * @param clocData - Per-file cloc results
+ * @param funcCounts - Pre-computed function counts per file
+ * @returns Stats per language
+ */
 function aggregateByLanguage(
   clocData: Record<string, ClocFileEntry>,
+  funcCounts: Map<string, number>,
 ): LangStats[] {
   const map = new Map<string, LangStats>();
 
-  for (const entry of Object.values(clocData)) {
+  for (const [filePath, entry] of Object.entries(clocData)) {
     let stats = map.get(entry.language);
 
     if (!stats) {
@@ -160,14 +189,12 @@ function aggregateByLanguage(
         blank: 0,
         comment: 0,
         code: 0,
+        functions: 0,
       };
       map.set(entry.language, stats);
     }
 
-    stats.files++;
-    stats.blank += entry.blank;
-    stats.comment += entry.comment;
-    stats.code += entry.code;
+    accumulateEntry(stats, entry, filePath, funcCounts);
   }
 
   return [...map.values()].sort((a, b) => b.code - a.code);
@@ -176,10 +203,12 @@ function aggregateByLanguage(
 /**
  * Classify each file and aggregate stats by group and category.
  * @param clocData - Per-file cloc results
+ * @param funcCounts - Pre-computed function counts per file
  * @returns Aggregated stats per group, ordered by group then category
  */
 function aggregateByGroup(
   clocData: Record<string, ClocFileEntry>,
+  funcCounts: Map<string, number>,
 ): GroupStats[] {
   /**
    * Build a map key from group and category.
@@ -212,13 +241,32 @@ function aggregateByGroup(
 
     if (!stats) continue;
 
-    stats.files++;
-    stats.blank += entry.blank;
-    stats.comment += entry.comment;
-    stats.code += entry.code;
+    accumulateEntry(stats, entry, filePath, funcCounts);
   }
 
   return [...map.values()].filter((g) => g.files > 0);
+}
+
+/**
+ * Accumulate a cloc file entry into a stats object.
+ * @param stats - Stats to update
+ * @param entry - Cloc file entry
+ * @param filePath - Raw file path from cloc (may start with "./")
+ * @param funcCounts - Pre-computed function counts per clean path
+ */
+function accumulateEntry(
+  stats: CountStats & { functions: number },
+  entry: ClocFileEntry,
+  filePath: string,
+  funcCounts: Map<string, number>,
+): void {
+  const clean = filePath.replace(/^\.\//, "");
+
+  stats.files++;
+  stats.blank += entry.blank;
+  stats.comment += entry.comment;
+  stats.code += entry.code;
+  stats.functions += funcCounts.get(clean) ?? 0;
 }
 
 /**
@@ -298,32 +346,6 @@ function countFunctionsInFile(filePath: string): number {
   visit(sourceFile);
 
   return count;
-}
-
-/**
- * Count functions in git-tracked TS/TSX files and merge into group stats.
- * Uses cloc's file list to avoid scanning build output or node_modules.
- * @param groups - Group stats to update with function counts
- * @param clocData - Per-file cloc results (used as the canonical file list)
- */
-function mergeFunctionCounts(
-  groups: GroupStats[],
-  clocData: Record<string, ClocFileEntry>,
-): void {
-  const map = new Map(groups.map((g) => [`${g.group}:${g.category}`, g]));
-
-  for (const filePath of Object.keys(clocData)) {
-    const clean = filePath.replace(/^\.\//, "");
-
-    if (!TS_EXTENSIONS.has(path.extname(clean))) continue;
-
-    const classified = classifyFile(filePath);
-    const stats = map.get(`${classified.group}:${classified.category}`);
-
-    if (!stats) continue;
-
-    stats.functions += countFunctionsInFile(path.join(PROJECT_ROOT, clean));
-  }
 }
 
 main();
