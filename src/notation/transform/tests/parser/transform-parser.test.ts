@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -239,43 +240,14 @@ describe("Transform Parser", () => {
       expect(result[0]!.timeRange!.startBar).toBe(1);
     });
 
-    it("parses pitch range with time range", () => {
-      const result = parser.parse("C3-C5 1|1-2|1: velocity += 10");
+    it.each([
+      ["C3-C5 1|1-2|1", 60, 84, "pitch range before time range"],
+      ["1|1-2|1 C3-C5", 60, 84, "time range before pitch range"],
+      ["1|1-2|1 E3", 64, 64, "time range before single pitch"],
+    ])("parses %s (%s)", (input, startPitch, endPitch) => {
+      const result = parser.parse(`${input}: velocity += 10`);
 
-      expect(result[0]!.pitchRange).toStrictEqual({
-        startPitch: 60,
-        endPitch: 84,
-      });
-      expect(result[0]!.timeRange).toStrictEqual({
-        startBar: 1,
-        startBeat: 1,
-        endBar: 2,
-        endBeat: 1,
-      });
-    });
-
-    it("parses time range before pitch range", () => {
-      const result = parser.parse("1|1-2|1 E3: velocity += 10");
-
-      expect(result[0]!.pitchRange).toStrictEqual({
-        startPitch: 64,
-        endPitch: 64,
-      });
-      expect(result[0]!.timeRange).toStrictEqual({
-        startBar: 1,
-        startBeat: 1,
-        endBar: 2,
-        endBeat: 1,
-      });
-    });
-
-    it("parses time range before pitch range (with range)", () => {
-      const result = parser.parse("1|1-2|1 C3-C5: velocity += 10");
-
-      expect(result[0]!.pitchRange).toStrictEqual({
-        startPitch: 60,
-        endPitch: 84,
-      });
+      expect(result[0]!.pitchRange).toStrictEqual({ startPitch, endPitch });
       expect(result[0]!.timeRange).toStrictEqual({
         startBar: 1,
         startBeat: 1,

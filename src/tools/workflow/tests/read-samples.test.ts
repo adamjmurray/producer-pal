@@ -1,13 +1,16 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  type FolderEntry,
-  mockFolderStructure,
-} from "#src/test/mocks/mock-folder.ts";
+import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
 import { readSamples } from "../read-samples.ts";
+import {
+  createWavEntries,
+  mockKickSnareFolder,
+  mockKickWithDrumsSubfolder,
+} from "./samples-test-helpers.ts";
 
 describe("readSamples", () => {
   let context: { sampleFolder: string | null };
@@ -133,16 +136,7 @@ describe("readSamples", () => {
   describe("nested directories", () => {
     it("should scan nested folders recursively", () => {
       context.sampleFolder = "/samples/";
-      mockFolderStructure({
-        "/samples/": [
-          { name: "kick.wav", type: "file", extension: ".wav" },
-          { name: "drums", type: "fold" },
-        ],
-        "/samples/drums/": [
-          { name: "snare.wav", type: "file", extension: ".wav" },
-          { name: "hihat.wav", type: "file", extension: ".wav" },
-        ],
-      });
+      mockKickWithDrumsSubfolder();
 
       const result = readSamples({}, context);
 
@@ -173,19 +167,8 @@ describe("readSamples", () => {
     it("should stop at MAX_SAMPLE_FILES limit", () => {
       context.sampleFolder = "/samples/";
 
-      // Create 1005 files (more than the 1000 limit)
-      const entries: FolderEntry[] = [];
-
-      for (let i = 0; i < 1005; i++) {
-        entries.push({
-          name: `sample${i}.wav`,
-          type: "file",
-          extension: ".wav",
-        });
-      }
-
       mockFolderStructure({
-        "/samples/": entries,
+        "/samples/": createWavEntries(1005),
       });
 
       const result = readSamples({}, context);
@@ -196,18 +179,8 @@ describe("readSamples", () => {
     it("should log warning when limit is reached", () => {
       context.sampleFolder = "/samples/";
 
-      const entries: FolderEntry[] = [];
-
-      for (let i = 0; i < 1005; i++) {
-        entries.push({
-          name: `sample${i}.wav`,
-          type: "file",
-          extension: ".wav",
-        });
-      }
-
       mockFolderStructure({
-        "/samples/": entries,
+        "/samples/": createWavEntries(1005),
       });
 
       readSamples({}, context);
@@ -221,16 +194,8 @@ describe("readSamples", () => {
     it("should stop scanning nested folders when limit is reached", () => {
       context.sampleFolder = "/samples/";
 
-      // Create 1000 files in root, plus a folder with more
-      const rootEntries: FolderEntry[] = [];
-
-      for (let i = 0; i < 999; i++) {
-        rootEntries.push({
-          name: `sample${i}.wav`,
-          type: "file",
-          extension: ".wav",
-        });
-      }
+      // Create 999 files in root, plus a folder with more
+      const rootEntries = createWavEntries(999);
 
       rootEntries.push({ name: "more", type: "fold" });
 
@@ -253,12 +218,7 @@ describe("readSamples", () => {
   describe("search filtering", () => {
     it("should return all samples when search is not provided", () => {
       context.sampleFolder = "/samples/";
-      mockFolderStructure({
-        "/samples/": [
-          { name: "kick.wav", type: "file", extension: ".wav" },
-          { name: "snare.wav", type: "file", extension: ".wav" },
-        ],
-      });
+      mockKickSnareFolder();
 
       const result = readSamples({}, context);
 
@@ -308,12 +268,7 @@ describe("readSamples", () => {
 
     it("should return empty array when no matches found", () => {
       context.sampleFolder = "/samples/";
-      mockFolderStructure({
-        "/samples/": [
-          { name: "kick.wav", type: "file", extension: ".wav" },
-          { name: "snare.wav", type: "file", extension: ".wav" },
-        ],
-      });
+      mockKickSnareFolder();
 
       const result = readSamples({ search: "cymbal" }, context);
 
@@ -339,24 +294,9 @@ describe("readSamples", () => {
       context.sampleFolder = "/samples/";
 
       // Create 1005 non-matching files and 5 matching files
-      const entries: FolderEntry[] = [];
+      const entries = createWavEntries(1005);
 
-      for (let i = 0; i < 1005; i++) {
-        entries.push({
-          name: `sample${i}.wav`,
-          type: "file",
-          extension: ".wav",
-        });
-      }
-
-      // Add 5 files that match "kick"
-      for (let i = 0; i < 5; i++) {
-        entries.push({
-          name: `kick${i}.wav`,
-          type: "file",
-          extension: ".wav",
-        });
-      }
+      entries.push(...createWavEntries(5, "kick"));
 
       mockFolderStructure({
         "/samples/": entries,

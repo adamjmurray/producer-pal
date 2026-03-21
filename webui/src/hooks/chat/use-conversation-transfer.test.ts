@@ -122,6 +122,66 @@ describe("useConversationTransfer", () => {
   }
 
   /**
+   * Save a conversation, mock download APIs, export, and verify notification is shown.
+   * Extracts the common pattern of setting up and triggering an export with notification.
+   * @returns The renderHook return value with a non-null notification
+   */
+  async function exportWithNotification() {
+    await saveConversation(makeRecord("test-1"));
+    mockDownloadApis();
+
+    const hook = await renderAndExport();
+
+    expect(hook.result.current.notification).not.toBeNull();
+
+    return hook;
+  }
+
+  /**
+   * Mock exportConversations to return a canned result, mock download APIs,
+   * export, and verify notification is shown.
+   * @returns The renderHook return value with a non-null notification
+   */
+  async function exportWithMockedConversations() {
+    vi.spyOn(transferModule, "exportConversations").mockResolvedValue({
+      json: "[]",
+      count: 1,
+    });
+    mockDownloadApis();
+
+    const hook = await renderAndExport();
+
+    expect(hook.result.current.notification).not.toBeNull();
+
+    return hook;
+  }
+
+  /**
+   * Mock importConversations with custom result counts, create a minimal file,
+   * and render the import hook.
+   * @param counts - The import result counts to mock
+   * @param counts.newCount - Number of new conversations
+   * @param counts.updatedCount - Number of updated conversations
+   * @param counts.skippedCount - Number of skipped conversations
+   * @param counts.ignoredCount - Number of ignored conversations
+   * @returns The renderHook return value (after import completes)
+   */
+  async function mockImportAndRender(counts: {
+    newCount: number;
+    updatedCount: number;
+    skippedCount: number;
+    ignoredCount: number;
+  }) {
+    vi.spyOn(transferModule, "importConversations").mockResolvedValue(counts);
+    const file = new File(
+      [JSON.stringify({ version: 1, conversations: [] })],
+      "t.json",
+    );
+
+    return await renderAndImport(file);
+  }
+
+  /**
    * Render the hook, call handleExport inside act(), and return the result.
    * @returns The renderHook return value (after export completes)
    */
@@ -179,12 +239,7 @@ describe("useConversationTransfer", () => {
   });
 
   it("dismisses notification manually", async () => {
-    await saveConversation(makeRecord("test-1"));
-    mockDownloadApis();
-
-    const { result } = await renderAndExport();
-
-    expect(result.current.notification).not.toBeNull();
+    const { result } = await exportWithNotification();
 
     void act(() => {
       result.current.dismissNotification();
@@ -302,33 +357,21 @@ describe("useConversationTransfer", () => {
   });
 
   it("import shows only skipped count when all invalid", async () => {
-    vi.spyOn(transferModule, "importConversations").mockResolvedValue({
+    const { result } = await mockImportAndRender({
       newCount: 0,
       updatedCount: 0,
       skippedCount: 3,
       ignoredCount: 0,
     });
-    const file = new File(
-      [JSON.stringify({ version: 1, conversations: [] })],
-      "t.json",
-    );
-
-    const { result } = await renderAndImport(file);
 
     expect(result.current.notification?.message).toContain("3 skipped");
   });
 
   it("dismissNotification clears auto-dismiss timer", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.spyOn(transferModule, "exportConversations").mockResolvedValue({
-      json: "[]",
-      count: 1,
-    });
-    mockDownloadApis();
 
-    const { result } = await renderAndExport();
+    const { result } = await exportWithMockedConversations();
 
-    expect(result.current.notification).not.toBeNull();
     void act(() => {
       result.current.dismissNotification();
     });
@@ -370,18 +413,12 @@ describe("useConversationTransfer", () => {
   });
 
   it("import shows ignored count for older conversations", async () => {
-    vi.spyOn(transferModule, "importConversations").mockResolvedValue({
+    const { result } = await mockImportAndRender({
       newCount: 1,
       updatedCount: 0,
       skippedCount: 0,
       ignoredCount: 2,
     });
-    const file = new File(
-      [JSON.stringify({ version: 1, conversations: [] })],
-      "t.json",
-    );
-
-    const { result } = await renderAndImport(file);
 
     expect(result.current.notification?.message).toContain("1 new");
     expect(result.current.notification?.message).toContain("2 older ignored");
@@ -415,13 +452,9 @@ describe("useConversationTransfer", () => {
     );
   });
 
+  // eslint-disable-next-line vitest/expect-expect -- smoke test: verifies unmount cleanup doesn't throw
   it("clears pending timer on unmount", async () => {
-    await saveConversation(makeRecord("test-1"));
-    mockDownloadApis();
-
-    const { result, unmount } = await renderAndExport();
-
-    expect(result.current.notification).not.toBeNull();
+    const { unmount } = await exportWithNotification();
 
     // Unmount should trigger the useEffect cleanup without errors
     unmount();
@@ -431,15 +464,7 @@ describe("useConversationTransfer", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
 
     try {
-      vi.spyOn(transferModule, "exportConversations").mockResolvedValue({
-        json: "[]",
-        count: 1,
-      });
-      mockDownloadApis();
-
-      const { result } = await renderAndExport();
-
-      expect(result.current.notification).not.toBeNull();
+      const { result } = await exportWithMockedConversations();
 
       // Advance past the 4-second auto-dismiss timeout
       await act(() => {

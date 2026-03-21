@@ -1,5 +1,5 @@
 {
-  "threshold": 1.75,
+  "threshold": 1,
   "reporters": ["console"],
   "ignorePattern": [
     "// Producer Pal",

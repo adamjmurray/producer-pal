@@ -10,6 +10,7 @@ import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import {
   registerArrangementClip,
   registerMockObject,
+  registerSessionClipDuplication,
   registerTrackWithArrangementDup,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
@@ -25,25 +26,8 @@ describe("duplicate - clip duplication", () => {
 
   describe("session destination", () => {
     it("should duplicate a single clip to the session view", () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
-
-      const sourceClipSlot = registerMockObject(
-        "live_set/tracks/0/clip_slots/0",
-        {
-          path: livePath.track(0).clipSlot(0),
-          properties: { has_clip: 1 },
-        },
-      );
-
-      registerMockObject("live_set/tracks/0/clip_slots/1", {
-        path: livePath.track(0).clipSlot(1),
-        properties: { has_clip: 0 },
-      });
-
-      registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-        path: livePath.track(0).clipSlot(1).clip(),
+      const { sourceClipSlot } = registerSessionClipDuplication({
+        destClipProperties: {},
       });
 
       const result = duplicate({
@@ -65,22 +49,7 @@ describe("duplicate - clip duplication", () => {
     });
 
     it("should duplicate multiple clips to session view with comma-separated toSceneIndex", () => {
-      registerMockObject("clip1", {
-        path: livePath.track(0).clipSlot(0).clip(),
-      });
-
-      const sourceClipSlot = registerMockObject(
-        "live_set/tracks/0/clip_slots/0",
-        {
-          path: livePath.track(0).clipSlot(0),
-          properties: { has_clip: 1 },
-        },
-      );
-
-      registerMockObject("live_set/tracks/0/clip_slots/1", {
-        path: livePath.track(0).clipSlot(1),
-        properties: { has_clip: 0 },
-      });
+      const { sourceClipSlot } = registerSessionClipDuplication();
 
       registerMockObject("live_set/tracks/0/clip_slots/2", {
         path: livePath.track(0).clipSlot(2),

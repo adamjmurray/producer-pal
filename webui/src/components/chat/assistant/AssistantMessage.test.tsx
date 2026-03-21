@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -55,6 +56,21 @@ describe("AssistantMessage", () => {
   });
 
   describe("thought parts", () => {
+    const openThoughtParts: UIPart[] = [
+      { type: "thought", content: "Thinking...", isOpen: true },
+    ];
+
+    const renderOpenThought = (isResponding?: boolean) => {
+      render(
+        <AssistantMessage
+          parts={openThoughtParts}
+          isResponding={isResponding}
+        />,
+      );
+
+      return document.querySelector("details")!;
+    };
+
     it("renders thought part using AssistantThought", () => {
       const parts: UIPart[] = [{ type: "thought", content: "Thinking..." }];
 
@@ -65,36 +81,21 @@ describe("AssistantMessage", () => {
     });
 
     it("passes isOpen prop to AssistantThought", () => {
-      const parts: UIPart[] = [
-        { type: "thought", content: "Thinking...", isOpen: true },
-      ];
+      const details = renderOpenThought();
 
-      render(<AssistantMessage parts={parts} />);
-      const details = document.querySelector("details");
-
-      expect(details!.open).toBe(true);
+      expect(details.open).toBe(true);
     });
 
     it("shows animate-pulse when responding", () => {
-      const parts: UIPart[] = [
-        { type: "thought", content: "Thinking...", isOpen: true },
-      ];
+      const details = renderOpenThought(true);
 
-      render(<AssistantMessage parts={parts} isResponding={true} />);
-      const details = document.querySelector("details");
-
-      expect(details!.className).toContain("animate-pulse");
+      expect(details.className).toContain("animate-pulse");
     });
 
     it("hides animate-pulse when not responding", () => {
-      const parts: UIPart[] = [
-        { type: "thought", content: "Thinking...", isOpen: true },
-      ];
+      const details = renderOpenThought(false);
 
-      render(<AssistantMessage parts={parts} isResponding={false} />);
-      const details = document.querySelector("details");
-
-      expect(details!.className).not.toContain("animate-pulse");
+      expect(details.className).not.toContain("animate-pulse");
     });
   });
 
@@ -239,15 +240,15 @@ describe("AssistantMessage", () => {
   });
 
   describe("step-usage parts", () => {
-    it("renders step-usage when showTokenUsage is true", () => {
-      const parts: UIPart[] = [
-        { type: "tool", name: "t", args: {}, result: "ok" },
-        { type: "step-usage", usage: { inputTokens: 6078, outputTokens: 33 } },
-        { type: "text", content: "Done" },
-      ];
+    const stepUsageParts: UIPart[] = [
+      { type: "tool", name: "t", args: {}, result: "ok" },
+      { type: "step-usage", usage: { inputTokens: 6078, outputTokens: 33 } },
+      { type: "text", content: "Done" },
+    ];
 
+    it("renders step-usage when showTokenUsage is true", () => {
       const { container } = render(
-        <AssistantMessage parts={parts} showTokenUsage={true} />,
+        <AssistantMessage parts={stepUsageParts} showTokenUsage={true} />,
       );
 
       expect(container.textContent).toContain("6.1K");
@@ -255,14 +256,8 @@ describe("AssistantMessage", () => {
     });
 
     it("hides step-usage when showTokenUsage is false", () => {
-      const parts: UIPart[] = [
-        { type: "tool", name: "t", args: {}, result: "ok" },
-        { type: "step-usage", usage: { inputTokens: 6078, outputTokens: 33 } },
-        { type: "text", content: "Done" },
-      ];
-
       const { container } = render(
-        <AssistantMessage parts={parts} showTokenUsage={false} />,
+        <AssistantMessage parts={stepUsageParts} showTokenUsage={false} />,
       );
 
       expect(container.textContent).not.toContain("6.1K");

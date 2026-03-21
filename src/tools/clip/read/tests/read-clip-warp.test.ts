@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -29,6 +30,10 @@ function setupAudioClipWithWarpMarkers(
   });
 }
 
+function readClipWithWarp(): ReturnType<typeof readClip> {
+  return readClip({ trackIndex: 0, sceneIndex: 0, include: ["warp"] });
+}
+
 describe("readClip - warp markers", () => {
   it("reads warp markers with direct array format", () => {
     setupAudioClipWithWarpMarkers(
@@ -38,13 +43,8 @@ describe("readClip - warp markers", () => {
         { sample_time: 88200, beat_time: 2.0 },
       ]),
     );
-    const result = readClip({
-      trackIndex: 0,
-      sceneIndex: 0,
-      include: ["warp"],
-    });
 
-    expect(result.warpMarkers).toStrictEqual([
+    expect(readClipWithWarp().warpMarkers).toStrictEqual([
       { sampleTime: 0, beatTime: 0 },
       { sampleTime: 44100, beatTime: 1.0 },
       { sampleTime: 88200, beatTime: 2.0 },
@@ -60,13 +60,8 @@ describe("readClip - warp markers", () => {
         ],
       }),
     );
-    const result = readClip({
-      trackIndex: 0,
-      sceneIndex: 0,
-      include: ["warp"],
-    });
 
-    expect(result.warpMarkers).toStrictEqual([
+    expect(readClipWithWarp().warpMarkers).toStrictEqual([
       { sampleTime: 0, beatTime: 0 },
       { sampleTime: 44100, beatTime: 1.0 },
     ]);
@@ -74,24 +69,14 @@ describe("readClip - warp markers", () => {
 
   it("handles empty warp markers gracefully", () => {
     setupAudioClipWithWarpMarkers("", "Audio No Markers");
-    const result = readClip({
-      trackIndex: 0,
-      sceneIndex: 0,
-      include: ["warp"],
-    });
 
-    expect(result.warpMarkers).toBeUndefined();
+    expect(readClipWithWarp().warpMarkers).toBeUndefined();
   });
 
   it("handles invalid warp markers JSON gracefully", () => {
     setupAudioClipWithWarpMarkers("invalid json{", "Audio Invalid JSON");
-    const result = readClip({
-      trackIndex: 0,
-      sceneIndex: 0,
-      include: ["warp"],
-    });
 
-    expect(result.warpMarkers).toBeUndefined();
+    expect(readClipWithWarp().warpMarkers).toBeUndefined();
   });
 
   it("does not include warp markers when not requested", () => {
@@ -115,12 +100,6 @@ describe("readClip - warp markers", () => {
         length: 4,
       },
     });
-    const result = readClip({
-      trackIndex: 0,
-      sceneIndex: 0,
-      include: ["warp"],
-    });
-
-    expect(result.warpMarkers).toBeUndefined();
+    expect(readClipWithWarp().warpMarkers).toBeUndefined();
   });
 });

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -685,34 +686,22 @@ describe("Transform Parser - Expressions", () => {
   });
 
   describe("*= and /= operator desugar", () => {
-    it("parses *= as set multiply on current note value", () => {
-      const result = parser.parse("velocity *= 2");
+    it.each([
+      ["velocity *= 2", "multiply", "note", "velocity", 2],
+      ["duration /= 2", "divide", "note", "duration", 2],
+    ])(
+      "parses %s as set %s on current value",
+      (input, opType, namespace, name, right) => {
+        const result = parser.parse(input);
 
-      expect(result[0]!.operator).toBe("set");
-      const expr = result[0]!.expression as BinaryOpNode;
+        expect(result[0]!.operator).toBe("set");
+        const expr = result[0]!.expression as BinaryOpNode;
 
-      expect(expr.type).toBe("multiply");
-      expect(expr.left).toStrictEqual({
-        type: "variable",
-        namespace: "note",
-        name: "velocity",
-      });
-      expect(expr.right).toBe(2);
-    });
-
-    it("parses /= as set divide on current note value", () => {
-      const result = parser.parse("duration /= 2");
-
-      expect(result[0]!.operator).toBe("set");
-      const expr = result[0]!.expression as BinaryOpNode;
-
-      expect(expr.type).toBe("divide");
-      expect(expr.left).toStrictEqual({
-        type: "variable",
-        namespace: "note",
-        name: "duration",
-      });
-    });
+        expect(expr.type).toBe(opType);
+        expect(expr.left).toStrictEqual({ type: "variable", namespace, name });
+        expect(expr.right).toBe(right);
+      },
+    );
 
     it("parses *= for gain using audio namespace, timing using note.start", () => {
       const gainExpr = (

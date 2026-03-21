@@ -8,12 +8,14 @@ import "./duplicate-mocks-test-helpers.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  children,
   createStandardMidiClipMock,
   registerArrangementClip,
+  registerClipMocks,
   registerClipSlot,
   registerMockObject,
   registerTrackWithArrangementDup,
+  setupArrangementSceneMocks,
+  setupSessionSceneMocks,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 interface DuplicateClipResult {
@@ -32,24 +34,7 @@ interface DuplicateSceneResult {
 
 describe("duplicate - scene duplication", () => {
   it("should duplicate a single scene to session view (default behavior)", () => {
-    registerMockObject("scene1", { path: livePath.scene(0) });
-
-    const liveSet = registerMockObject("live_set", {
-      path: livePath.liveSet,
-      properties: { tracks: children("track0", "track1") },
-    });
-
-    registerClipSlot(0, 1, true);
-    registerClipSlot(1, 1, true);
-    // Register clip objects for the duplicated scene's clip slots
-    registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-      path: livePath.track(0).clipSlot(1).clip(),
-    });
-    registerMockObject("live_set/tracks/1/clip_slots/1/clip", {
-      path: livePath.track(1).clipSlot(1).clip(),
-    });
-    // Register the new scene
-    registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
+    const liveSet = setupSessionSceneMocks();
 
     const result = duplicate({
       type: "scene",
@@ -75,31 +60,13 @@ describe("duplicate - scene duplication", () => {
   });
 
   it("should duplicate multiple scenes with same name", () => {
-    registerMockObject("scene1", { path: livePath.scene(0) });
+    const liveSet = setupSessionSceneMocks({ registerNewScene: false });
 
-    const liveSet = registerMockObject("live_set", {
-      path: livePath.liveSet,
-      properties: { tracks: children("track0", "track1") },
-    });
-
-    registerClipSlot(0, 1, true);
-    registerClipSlot(1, 1, true);
+    // Register additional clip slots and mocks for second duplicated scene
     registerClipSlot(0, 2, true);
     registerClipSlot(1, 2, true);
-    // Register clip objects for duplicated scenes
-    registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-      path: livePath.track(0).clipSlot(1).clip(),
-    });
-    registerMockObject("live_set/tracks/1/clip_slots/1/clip", {
-      path: livePath.track(1).clipSlot(1).clip(),
-    });
-    registerMockObject("live_set/tracks/0/clip_slots/2/clip", {
-      path: livePath.track(0).clipSlot(2).clip(),
-    });
-    registerMockObject("live_set/tracks/1/clip_slots/2/clip", {
-      path: livePath.track(1).clipSlot(2).clip(),
-    });
-    // Register the new scenes
+    registerClipMocks(2, 2);
+
     const scene1 = registerMockObject("live_set/scenes/1", {
       path: livePath.scene(1),
     });
@@ -153,25 +120,13 @@ describe("duplicate - scene duplication", () => {
   });
 
   it("should duplicate a scene without clips when withoutClips is true", () => {
-    registerMockObject("scene1", { path: livePath.scene(0) });
-
-    const liveSet = registerMockObject("live_set", {
-      path: livePath.liveSet,
-      properties: { tracks: children("track0", "track1", "track2") },
-    });
+    const liveSet = setupArrangementSceneMocks();
 
     const slot0 = registerClipSlot(0, 1, true);
     const slot1 = registerClipSlot(1, 1, true);
 
     registerClipSlot(2, 1, false);
-    // Register clip objects so forEachClipInScene finds them
-    registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-      path: livePath.track(0).clipSlot(1).clip(),
-    });
-    registerMockObject("live_set/tracks/1/clip_slots/1/clip", {
-      path: livePath.track(1).clipSlot(1).clip(),
-    });
-    // Register the new scene
+    registerClipMocks(2, 1);
     registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
     const result = duplicate({
@@ -204,12 +159,7 @@ describe("duplicate - scene duplication", () => {
 
   describe("arrangement destination", () => {
     it("should duplicate a scene to arrangement view", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: children("track0", "track1", "track2") },
-      });
+      setupArrangementSceneMocks();
 
       registerClipSlot(
         0,
@@ -298,12 +248,7 @@ describe("duplicate - scene duplication", () => {
     });
 
     it("should duplicate multiple scenes to arrangement view at sequential positions", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: children("track0") },
-      });
+      setupArrangementSceneMocks(1);
 
       // Mock scene with one clip of length 8 beats
       registerClipSlot(0, 0, true, createStandardMidiClipMock());
@@ -377,12 +322,7 @@ describe("duplicate - scene duplication", () => {
     });
 
     it("should handle empty scenes gracefully", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: children("track0", "track1") },
-      });
+      setupArrangementSceneMocks(2);
 
       registerClipSlot(0, 0, false);
       registerClipSlot(1, 0, false);
@@ -401,12 +341,7 @@ describe("duplicate - scene duplication", () => {
     });
 
     it("should duplicate a scene to arrangement without clips when withoutClips is true", () => {
-      registerMockObject("scene1", { path: livePath.scene(0) });
-
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: { tracks: children("track0", "track1", "track2") },
-      });
+      setupArrangementSceneMocks();
 
       registerClipSlot(0, 0, true, { length: 4 });
       registerClipSlot(1, 0, false);

@@ -313,7 +313,7 @@ describe("App", () => {
   });
 
   describe("view state integration", () => {
-    it("toggles history panel via setViewState", () => {
+    const mockViewStateWithSetter = () => {
       const mockSetViewState = vi.fn();
 
       (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -324,6 +324,12 @@ describe("App", () => {
         },
         setViewState: mockSetViewState,
       });
+
+      return mockSetViewState;
+    };
+
+    it("toggles history panel via setViewState", () => {
+      const mockSetViewState = mockViewStateWithSetter();
       const { container } = render(<App />);
       const btn = container.querySelector(
         "[aria-label='Toggle conversation history']",
@@ -334,19 +340,11 @@ describe("App", () => {
     });
 
     it("passes onTabChange to SettingsScreen", () => {
-      const mockSetViewState = vi.fn();
+      const mockSetViewState = mockViewStateWithSetter();
 
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         settingsConfigured: false,
-      });
-      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
-        viewState: {
-          historyPanelOpen: false,
-          settingsOpen: false,
-          settingsTab: "connection",
-        },
-        setViewState: mockSetViewState,
       });
       const { container } = render(<App />);
       const tab = Array.from(container.querySelectorAll("button")).find(

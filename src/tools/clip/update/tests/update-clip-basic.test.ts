@@ -8,6 +8,7 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
 import {
+  mockMergeNoteTracking,
   setupAudioClipMock,
   setupMidiClipMock,
   setupUpdateClipMocks,
@@ -37,27 +38,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     // Mock existing notes, then return added notes on subsequent calls
-    let addedNotes: unknown[] = [];
-    const existingNotes = [createNote()];
-
-    mocks.clip123.call.mockImplementation(
-      (method: string, ...args: unknown[]) => {
-        if (method === "add_new_notes") {
-          const arg = args[0] as { notes?: unknown[] } | undefined;
-
-          addedNotes = arg?.notes ?? [];
-        } else if (method === "get_notes_extended") {
-          // First call returns existing notes, subsequent calls return added notes
-          if (addedNotes.length === 0) {
-            return JSON.stringify({ notes: existingNotes });
-          }
-
-          return JSON.stringify({ notes: addedNotes });
-        }
-
-        return {};
-      },
-    );
+    mockMergeNoteTracking(mocks.clip123, [createNote()]);
 
     // Should default to merge mode when noteUpdateMode not specified
     const result = await updateClip({

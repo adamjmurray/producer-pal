@@ -140,3 +140,9 @@ export function createDefaultProps(
     adapter,
   };
 }
+
+/** Reusable chat history fixture for restored-conversation tests */
+export const RESTORED_HISTORY: TestMessage[] = [
+  { role: "user", content: "restored msg" },
+  { role: "assistant", content: "restored reply" },
+];

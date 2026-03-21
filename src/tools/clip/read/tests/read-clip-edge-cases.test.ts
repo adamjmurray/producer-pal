@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -11,6 +12,28 @@ import {
   expectGetNotesExtendedCall,
   setupMidiClipMock,
 } from "./read-clip-test-helpers.ts";
+
+function setupAndReadClipWithStateFlags(
+  flagValue: 0 | 1,
+): ReturnType<typeof readClip> {
+  setupMidiClipMock({
+    trackIndex: 0,
+    sceneIndex: 0,
+    clipProps: {
+      is_midi_clip: 1,
+      is_recording: flagValue,
+      is_overdubbing: flagValue,
+      muted: flagValue,
+      signature_numerator: 4,
+      signature_denominator: 4,
+      length: 4,
+      start_marker: 0,
+      loop_start: 0,
+    },
+  });
+
+  return readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+}
 
 describe("readClip", () => {
   // E2E test with real bar|beat notation
@@ -186,23 +209,7 @@ describe("readClip", () => {
   });
 
   it("includes recording, overdubbing, and muted when true", () => {
-    setupMidiClipMock({
-      trackIndex: 0,
-      sceneIndex: 0,
-      clipProps: {
-        is_midi_clip: 1,
-        is_recording: 1,
-        is_overdubbing: 1,
-        muted: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
-
-    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+    const result = setupAndReadClipWithStateFlags(1);
 
     expect(result.recording).toBe(true);
     expect(result.overdubbing).toBe(true);
@@ -210,23 +217,7 @@ describe("readClip", () => {
   });
 
   it("omits recording, overdubbing, and muted when false", () => {
-    setupMidiClipMock({
-      trackIndex: 0,
-      sceneIndex: 0,
-      clipProps: {
-        is_midi_clip: 1,
-        is_recording: 0,
-        is_overdubbing: 0,
-        muted: 0,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-        start_marker: 0,
-        loop_start: 0,
-      },
-    });
-
-    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+    const result = setupAndReadClipWithStateFlags(0);
 
     expect(result.recording).toBeUndefined();
     expect(result.overdubbing).toBeUndefined();
