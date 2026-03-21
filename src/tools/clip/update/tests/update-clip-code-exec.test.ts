@@ -9,7 +9,7 @@ import {
   toLiveApiNote,
   codeExecSuccess,
   codeExecFailure,
-} from "#src/tools/clip/code-exec/code-exec-test-helpers.ts";
+} from "#src/tools/clip/code-exec/tests/code-exec-test-helpers.ts";
 import {
   setupUpdateClipMocks,
   setupMidiClipMock,
