@@ -13,11 +13,12 @@ import {
   type GroupStats,
   type LangStats,
   CATEGORIES,
+  CODE_GROUPS,
   GROUPS,
 } from "./loc.ts";
 
 /** Function that applies ANSI styling to a string. */
-type Styler = (s: string) => string;
+export type Styler = (s: string) => string;
 
 /**
  * Compute totals across all stat rows.
@@ -38,13 +39,13 @@ function computeTotals(rows: CountStats[]): CountStats {
 
 /**
  * Build a CLI row formatter for the given column widths.
- * @param colWidths - Widths for each column (left-pad for all except first which is right-pad)
- * @param dimIndices - Column indices to render in dim gray (e.g., blank and comment)
+ * @param colWidths - Widths for each column (right-pad first, left-pad rest)
+ * @param dimIndices - Column indices to render in dim gray
  * @returns A function that formats values into an aligned row with styling
  */
-function makeCliRow(
+export function makeCliRow(
   colWidths: number[],
-  dimIndices: Set<number>,
+  dimIndices: Set<number> = new Set(),
 ): (values: string[], color?: Styler) => string {
   /**
    * Apply dim gray styling.
@@ -69,8 +70,35 @@ function makeCliRow(
  * @param colWidths - Widths for each column
  * @returns Dashed separator string
  */
-function makeCliSep(colWidths: number[]): string {
+export function makeCliSep(colWidths: number[]): string {
   return colWidths.map((w) => "-".repeat(w)).join("  ");
+}
+
+/**
+ * Print a CLI title with bold text and ===== underline.
+ * @param title - Title text
+ */
+export function printCliTitle(title: string): void {
+  console.log(`\n${styleText("bold", title)}`);
+  console.log("=".repeat(title.length));
+  console.log();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Group table
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Get the CLI color styler for a group row.
+ * @param group - Group name
+ * @param category - Source or test
+ * @returns Styler for the row
+ */
+function groupRowColor(group: string, category: string): Styler {
+  if (category === "test") return (s) => styleText("magenta", s);
+  if (CODE_GROUPS.has(group as never)) return (s) => styleText("green", s);
+
+  return (s) => styleText("cyan", s);
 }
 
 /**
@@ -91,22 +119,13 @@ export function printCliGroupTable(groups: GroupStats[]): void {
   const row = makeCliRow(widths, new Set([4, 5]));
   const sep = makeCliSep(widths);
 
-  const title = "Lines of Code by Group";
-
-  console.log(`\n${styleText("bold", title)}`);
-  console.log("=".repeat(title.length));
-  console.log();
+  printCliTitle("Lines of Code by Group");
   console.log(
     row(["Group", "Category", "Files", "Funcs", "Blank", "Comment", "Code"]),
   );
   console.log(sep);
 
   for (const g of groups) {
-    const color: Styler =
-      g.category === "test"
-        ? (s) => styleText("magenta", s)
-        : (s) => styleText("green", s);
-
     console.log(
       row(
         [
@@ -118,7 +137,7 @@ export function printCliGroupTable(groups: GroupStats[]): void {
           fmt(g.comment),
           fmt(g.code),
         ],
-        color,
+        groupRowColor(g.group, g.category),
       ),
     );
   }
@@ -166,10 +185,10 @@ export function printMarkdownGroupTable(groups: GroupStats[]): void {
   printMdTotals(totals, "", totalFuncs);
 }
 
-/**
- * Print a CLI-formatted language breakdown table.
- * @param langs - Stats per language
- */
+// ─────────────────────────────────────────────────────────────────────────────
+// Language table
+// ─────────────────────────────────────────────────────────────────────────────
+
 /** Programming languages — green in CLI. */
 const CODE_LANGUAGES = new Set(["TypeScript", "JavaScript", "peggy"]);
 
@@ -194,36 +213,27 @@ function langColor(language: string): Styler {
  */
 export function printCliLangTable(langs: LangStats[]): void {
   const totals = computeTotals(langs);
-  const totalFuncs = langs.reduce((sum, l) => sum + l.functions, 0);
 
   const widths = [
     Math.max("Language".length, ...langs.map((l) => l.language.length)),
-    ...numColWidths(totals, totalFuncs),
+    Math.max("Files".length, fmt(totals.files).length),
+    Math.max("Blank".length, fmt(totals.blank).length),
+    Math.max("Comment".length, fmt(totals.comment).length),
+    Math.max("Code".length, fmt(totals.code).length),
   ];
 
-  // Blank=3, Comment=4 are dim
-  const row = makeCliRow(widths, new Set([3, 4]));
+  // Blank=2, Comment=3 are dim
+  const row = makeCliRow(widths, new Set([2, 3]));
   const sep = makeCliSep(widths);
 
-  const title = "Lines of Code by Language";
-
-  console.log(`\n${styleText("bold", title)}`);
-  console.log("=".repeat(title.length));
-  console.log();
-  console.log(row(["Language", "Files", "Funcs", "Blank", "Comment", "Code"]));
+  printCliTitle("Lines of Code by Language");
+  console.log(row(["Language", "Files", "Blank", "Comment", "Code"]));
   console.log(sep);
 
   for (const l of langs) {
     console.log(
       row(
-        [
-          l.language,
-          fmt(l.files),
-          fmt(l.functions),
-          fmt(l.blank),
-          fmt(l.comment),
-          fmt(l.code),
-        ],
+        [l.language, fmt(l.files), fmt(l.blank), fmt(l.comment), fmt(l.code)],
         langColor(l.language),
       ),
     );
@@ -233,7 +243,6 @@ export function printCliLangTable(langs: LangStats[]): void {
   printCliTotals(row, [
     "Total",
     fmt(totals.files),
-    fmt(totalFuncs),
     fmt(totals.blank),
     fmt(totals.comment),
     fmt(totals.code),
@@ -246,18 +255,16 @@ export function printCliLangTable(langs: LangStats[]): void {
  */
 export function printMarkdownLangTable(langs: LangStats[]): void {
   const totals = computeTotals(langs);
-  const totalFuncs = langs.reduce((sum, l) => sum + l.functions, 0);
 
   console.log("\n## Lines of Code by Language\n");
-  console.log(mdRow("Language", "Files", "Funcs", "Blank", "Comment", "Code"));
-  console.log("| :-- | --: | --: | --: | --: | --: |");
+  console.log(mdRow("Language", "Files", "Blank", "Comment", "Code"));
+  console.log("| :-- | --: | --: | --: | --: |");
 
   for (const l of langs) {
     console.log(
       mdRow(
         l.language,
         fmt(l.files),
-        fmt(l.functions),
         fmt(l.blank),
         fmt(l.comment),
         fmt(l.code),
@@ -265,8 +272,12 @@ export function printMarkdownLangTable(langs: LangStats[]): void {
     );
   }
 
-  printMdTotals(totals, undefined, totalFuncs);
+  printMdTotals(totals);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Print a red separator line between tables (CLI only).
@@ -291,7 +302,7 @@ function printCliTotals(
  * Print a bold markdown totals row.
  * @param totals - Aggregated count stats
  * @param extraCol - Optional extra column value (e.g., empty category column)
- * @param funcTotal - Optional function count total to append
+ * @param funcTotal - Optional function count total to insert after files
  */
 function printMdTotals(
   totals: CountStats,
@@ -339,7 +350,7 @@ function numColWidths(totals: CountStats, totalFuncs: number): number[] {
  * @param cells - Cell values
  * @returns Pipe-delimited markdown row
  */
-function mdRow(...cells: string[]): string {
+export function mdRow(...cells: string[]): string {
   return `| ${cells.join(" | ")} |`;
 }
 
@@ -348,6 +359,6 @@ function mdRow(...cells: string[]): string {
  * @param n - Number to format
  * @returns Formatted string
  */
-function fmt(n: number): string {
+export function fmt(n: number): string {
   return n.toLocaleString("en-US");
 }

@@ -20,6 +20,10 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 import {
+  printCliDerivedStats,
+  printMarkdownDerivedStats,
+} from "./loc-derived-stats.ts";
+import {
   printCliGroupTable,
   printCliLangTable,
   printCliSeparator,
@@ -57,7 +61,13 @@ const DIR_TO_GROUP: Record<string, Group> = {
 };
 
 /** Groups where test/source classification applies. */
-const CODE_GROUPS = new Set<Group>(["src", "webui", "scripts", "evals", "e2e"]);
+export const CODE_GROUPS = new Set<Group>([
+  "src",
+  "webui",
+  "scripts",
+  "evals",
+  "e2e",
+]);
 
 export const CATEGORIES = ["source", "test"] as const;
 
@@ -98,7 +108,6 @@ export interface GroupStats extends CountStats {
 
 export interface LangStats extends CountStats {
   language: string;
-  functions: number;
 }
 
 /**
@@ -108,16 +117,19 @@ function main(): void {
   const markdown = process.argv.includes("--markdown");
   const clocData = runCloc();
   const funcCounts = countAllFunctions(clocData);
-  const langs = aggregateByLanguage(clocData, funcCounts);
+  const langs = aggregateByLanguage(clocData);
   const groups = aggregateByGroup(clocData, funcCounts);
 
   if (markdown) {
     printMarkdownLangTable(langs);
     printMarkdownGroupTable(groups);
+    printMarkdownDerivedStats(groups);
   } else {
     printCliLangTable(langs);
     printCliSeparator();
     printCliGroupTable(groups);
+    printCliSeparator();
+    printCliDerivedStats(groups);
     console.log();
   }
 }
@@ -142,11 +154,6 @@ function runCloc(): Record<string, ClocFileEntry> {
 }
 
 /**
- * Aggregate cloc data by programming language, sorted by code descending.
- * @param clocData - Per-file cloc results
- * @returns Stats per language
- */
-/**
  * Count functions in all git-tracked TS/TSX files from the cloc file list.
  * @param clocData - Per-file cloc results
  * @returns Map of clean file path to function count
@@ -170,16 +177,14 @@ function countAllFunctions(
 /**
  * Aggregate cloc data by programming language, sorted by code descending.
  * @param clocData - Per-file cloc results
- * @param funcCounts - Pre-computed function counts per file
  * @returns Stats per language
  */
 function aggregateByLanguage(
   clocData: Record<string, ClocFileEntry>,
-  funcCounts: Map<string, number>,
 ): LangStats[] {
   const map = new Map<string, LangStats>();
 
-  for (const [filePath, entry] of Object.entries(clocData)) {
+  for (const entry of Object.values(clocData)) {
     let stats = map.get(entry.language);
 
     if (!stats) {
@@ -189,12 +194,14 @@ function aggregateByLanguage(
         blank: 0,
         comment: 0,
         code: 0,
-        functions: 0,
       };
       map.set(entry.language, stats);
     }
 
-    accumulateEntry(stats, entry, filePath, funcCounts);
+    stats.files++;
+    stats.blank += entry.blank;
+    stats.comment += entry.comment;
+    stats.code += entry.code;
   }
 
   return [...map.values()].sort((a, b) => b.code - a.code);
