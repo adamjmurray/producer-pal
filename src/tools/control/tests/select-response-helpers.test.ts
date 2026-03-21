@@ -281,6 +281,17 @@ describe("select-response-helpers", () => {
 
       expect(result).toBeUndefined();
     });
+
+    it("returns undefined when device path cannot be extracted", () => {
+      registerMockObject("device_bad_path", {
+        path: "some/unrecognized/path",
+        type: "Device",
+      });
+
+      const result = buildDeviceResponseFromId("id device_bad_path");
+
+      expect(result).toBeUndefined();
+    });
   });
 
   describe("buildDeviceResponseFromPath", () => {
@@ -308,6 +319,12 @@ describe("select-response-helpers", () => {
       mockNonExistentObjects();
 
       const result = buildDeviceResponseFromPath("t0/d99");
+
+      expect(result).toBeUndefined();
+    });
+
+    it("returns undefined when path resolves to a non-device target", () => {
+      const result = buildDeviceResponseFromPath("t0/d0/c0");
 
       expect(result).toBeUndefined();
     });
@@ -352,6 +369,59 @@ describe("select-response-helpers", () => {
         id: "device_0",
         path: "t0/d0",
       });
+    });
+
+    it("omits selectedDevice when device path cannot be extracted", () => {
+      clearMockRegistry();
+
+      setupViewStateMock({
+        view: "session",
+        selectedTrack: {
+          exists: true,
+          category: "regular",
+          trackIndex: 0,
+          id: "track_1",
+          path: String(livePath.track(0)),
+        },
+        selectedScene: { exists: false },
+        selectedClip: { exists: false },
+        highlightedClipSlot: { exists: false },
+      });
+
+      const devicePath = "some/unrecognized/path";
+
+      setupDeviceMock("device_bad", devicePath);
+      setupTrackViewMock(livePath.track(0), "device_bad");
+
+      const result = readFullState();
+
+      expect(result.selectedDevice).toBeUndefined();
+    });
+
+    it("omits selectedDevice when track view returns no selected device", () => {
+      clearMockRegistry();
+
+      setupViewStateMock({
+        view: "session",
+        selectedTrack: {
+          exists: true,
+          category: "regular",
+          trackIndex: 0,
+          id: "track_1",
+          path: String(livePath.track(0)),
+        },
+        selectedScene: { exists: false },
+        selectedClip: { exists: false },
+        highlightedClipSlot: { exists: false },
+      });
+
+      // Track view exists but has no selected device
+      setupTrackViewMock(livePath.track(0), undefined);
+
+      const result = readFullState();
+
+      expect(result.selectedTrack).toBeDefined();
+      expect(result.selectedDevice).toBeUndefined();
     });
 
     it("omits selectedDevice when track view does not exist", () => {
