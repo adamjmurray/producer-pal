@@ -120,6 +120,26 @@ function createDefaultLiveSetProperties(): Record<string, unknown> {
   };
 }
 
+/**
+ * Returns return track mock objects for Return A and Return B.
+ * @returns Object with return track path keys and mock properties
+ */
+export function returnTrackMockObjects(): Record<
+  string,
+  Record<string, unknown>
+> {
+  return {
+    [String(livePath.returnTrack(0))]: {
+      has_midi_input: 0,
+      name: "Return A",
+    },
+    [String(livePath.returnTrack(1))]: {
+      has_midi_input: 0,
+      name: "Return B",
+    },
+  };
+}
+
 function isLiveApiPathKey(key: string): boolean {
   return (
     key.startsWith("live_set ") ||

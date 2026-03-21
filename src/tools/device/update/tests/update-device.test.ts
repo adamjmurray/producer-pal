@@ -10,6 +10,7 @@ import {
   livePath,
   mockNonExistentObjects,
   registerMockObject,
+  registerParamMock,
   updateDevice,
 } from "./update-device-test-helpers.ts";
 
@@ -29,14 +30,8 @@ describe("updateDevice", () => {
     });
 
     // Default param objects
-    registerMockObject("789", {
-      properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
-      methods: { str_for_value: (_value: unknown) => String(_value) },
-    });
-    registerMockObject("790", {
-      properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
-      methods: { str_for_value: (_value: unknown) => String(_value) },
-    });
+    registerParamMock("789");
+    registerParamMock("790");
   });
 
   it("should update a single device name", () => {
@@ -112,14 +107,8 @@ describe("updateDevice", () => {
     let param790: RegisteredMockObject;
 
     beforeEach(() => {
-      param789 = registerMockObject("789", {
-        properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
-        methods: { str_for_value: (_value: unknown) => String(_value) },
-      });
-      param790 = registerMockObject("790", {
-        properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
-        methods: { str_for_value: (_value: unknown) => String(_value) },
-      });
+      param789 = registerParamMock("789");
+      param790 = registerParamMock("790");
     });
 
     it("should set value for numeric params", () => {
@@ -213,10 +202,7 @@ describe("updateDevice", () => {
     let param789: RegisteredMockObject;
 
     beforeEach(() => {
-      param789 = registerMockObject("789", {
-        properties: { is_quantized: 0, value: 0.5, min: 0, max: 1 },
-        methods: { str_for_value: (_value: unknown) => String(_value) },
-      });
+      param789 = registerParamMock("789");
     });
 
     it("should convert note name to MIDI number (Live convention: C3=60)", () => {

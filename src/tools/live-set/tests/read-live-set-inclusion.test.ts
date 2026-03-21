@@ -7,7 +7,10 @@ import { describe, expect, it } from "vitest";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
-import { setupLiveSetPathMappedMocks } from "./read-live-set-path-mapped-test-helpers.ts";
+import {
+  returnTrackMockObjects,
+  setupLiveSetPathMappedMocks,
+} from "./read-live-set-path-mapped-test-helpers.ts";
 
 describe("readLiveSet - inclusion", () => {
   it("returns sceneCount when scenes not included", () => {
@@ -114,14 +117,7 @@ describe("readLiveSet - inclusion", () => {
           return_tracks: children("return1", "return2"),
           scenes: children(),
         },
-        [String(livePath.returnTrack(0))]: {
-          has_midi_input: 0,
-          name: "Return A",
-        },
-        [String(livePath.returnTrack(1))]: {
-          has_midi_input: 0,
-          name: "Return B",
-        },
+        ...returnTrackMockObjects(),
       },
     });
 

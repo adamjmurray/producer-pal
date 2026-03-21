@@ -184,12 +184,7 @@ describe("updateTrack - mixer properties", () => {
   });
 
   it("should update leftPan and rightPan in split mode", () => {
-    const leftSplitParam1 = registerMockObject("left_split_param_1", {
-      path: `${livePath.track(0).mixerDevice()} left_split_stereo`,
-    });
-    const rightSplitParam1 = registerMockObject("right_split_param_1", {
-      path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
-    });
+    const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
 
     mixer1.get.mockImplementation((prop: string) => {
       if (prop === "panning_mode") return [1]; // Split mode
@@ -249,12 +244,7 @@ describe("updateTrack - mixer properties", () => {
   });
 
   it("should switch mode and update panning in one call", () => {
-    const leftSplitParam1 = registerMockObject("left_split_param_1", {
-      path: `${livePath.track(0).mixerDevice()} left_split_stereo`,
-    });
-    const rightSplitParam1 = registerMockObject("right_split_param_1", {
-      path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
-    });
+    const { leftSplitParam1, rightSplitParam1 } = registerSplitPanParams();
 
     // Start in stereo mode (default)
 
@@ -273,3 +263,21 @@ describe("updateTrack - mixer properties", () => {
     expect(rightSplitParam1.set).toHaveBeenCalledWith("value", 1);
   });
 });
+
+/**
+ * Register left and right split stereo panning parameter mocks for track 0.
+ * @returns The registered split pan parameter mocks
+ */
+function registerSplitPanParams(): {
+  leftSplitParam1: RegisteredMockObject;
+  rightSplitParam1: RegisteredMockObject;
+} {
+  return {
+    leftSplitParam1: registerMockObject("left_split_param_1", {
+      path: `${livePath.track(0).mixerDevice()} left_split_stereo`,
+    }),
+    rightSplitParam1: registerMockObject("right_split_param_1", {
+      path: `${livePath.track(0).mixerDevice()} right_split_stereo`,
+    }),
+  };
+}

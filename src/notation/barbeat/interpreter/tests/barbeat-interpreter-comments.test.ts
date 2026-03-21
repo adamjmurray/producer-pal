@@ -3,7 +3,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { createNote } from "#src/test/test-data-builders.ts";
+import {
+  createNote,
+  expectedDrumPatternNotes,
+} from "#src/test/test-data-builders.ts";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 
 describe("bar|beat interpretNotation() - comment support", () => {
@@ -91,30 +94,6 @@ multi-line comment */ D3 1|1`);
         v100 p0.9 Gb1 1|2 // another hi-hat
       `);
 
-    expect(result).toStrictEqual([
-      createNote({ pitch: 36, duration: 0.25 }),
-      createNote({
-        pitch: 42,
-        duration: 0.25,
-        velocity: 80,
-        probability: 0.8,
-        velocity_deviation: 20,
-      }),
-      createNote({
-        pitch: 42,
-        start_time: 0.5,
-        duration: 0.25,
-        velocity: 80,
-        probability: 0.6,
-        velocity_deviation: 20,
-      }),
-      createNote({ pitch: 38, start_time: 1, duration: 0.25, velocity: 90 }),
-      createNote({
-        pitch: 42,
-        start_time: 1,
-        duration: 0.25,
-        probability: 0.9,
-      }),
-    ]);
+    expect(result).toStrictEqual(expectedDrumPatternNotes());
   });
 });
