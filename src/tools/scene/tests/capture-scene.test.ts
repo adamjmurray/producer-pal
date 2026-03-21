@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { captureScene } from "./capture-scene.ts";
+import { captureScene } from "../capture-scene.ts";
 
 describe("captureScene", () => {
   it("should capture the currently playing clips", () => {

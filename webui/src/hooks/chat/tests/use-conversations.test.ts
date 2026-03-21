@@ -16,7 +16,7 @@ import {
   saveConversation,
 } from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
-import { useConversations } from "./use-conversations";
+import { useConversations } from "#webui/hooks/chat/use-conversations";
 
 /**
  * Creates default props for useConversations tests.

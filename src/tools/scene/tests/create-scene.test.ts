@@ -12,7 +12,7 @@ import {
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import { createScene } from "./create-scene.ts";
+import { createScene } from "../create-scene.ts";
 
 vi.mock(import("#src/tools/control/select.ts"), () => ({
   select: vi.fn(),

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { getColorForIndex, parseCommaSeparatedColors } from "./color-utils.ts";
+import { getColorForIndex, parseCommaSeparatedColors } from "../color-utils.ts";
 
 describe("color-utils", () => {
   describe("parseCommaSeparatedColors", () => {

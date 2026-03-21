@@ -7,7 +7,7 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import { AssistantText } from "./AssistantText";
+import { AssistantText } from "#webui/components/chat/assistant/AssistantText";
 
 describe("AssistantText", () => {
   describe("basic rendering", () => {

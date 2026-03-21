@@ -8,7 +8,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { validateIdType, validateIdTypes } from "./id-validation.ts";
+import { validateIdType, validateIdTypes } from "../id-validation.ts";
 
 describe("validateIdType", () => {
   beforeEach(() => {

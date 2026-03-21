@@ -9,7 +9,7 @@ import {
   parseSceneIndexList,
   parseSlot,
   parseSlotList,
-} from "./position-parsing.ts";
+} from "../position-parsing.ts";
 
 describe("parseSceneIndexList", () => {
   it("should parse a single index", () => {

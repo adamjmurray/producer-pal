@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
-import "./live-api-extensions.ts";
+import "../live-api-extensions.ts";
 
 describe("LiveAPI extensions - path index extensions", () => {
   beforeEach(() => {

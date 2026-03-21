@@ -9,7 +9,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { readScene } from "./read-scene.ts";
+import { readScene } from "../read-scene.ts";
 
 // Helper to create default Scene mock config
 const defaultSceneConfig = (overrides: Record<string, unknown> = {}) => ({

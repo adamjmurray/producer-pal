@@ -14,7 +14,7 @@ vi.mock(import("#webui/chat/sdk/provider-factories"), () => ({
   createProviderModel: vi.fn(() => mockModel),
 }));
 
-import { chatAdapter } from "./adapter";
+import { chatAdapter } from "#webui/hooks/chat/adapter";
 
 describe("chatAdapter", () => {
   describe("createClient", () => {

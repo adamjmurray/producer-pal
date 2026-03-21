@@ -4,7 +4,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LiveAPI } from "#src/test/mocks/mock-live-api.ts";
-import "./live-api-extensions.ts";
+import "../live-api-extensions.ts";
 
 describe("LiveAPI extensions - setter methods", () => {
   let api: LiveAPI;

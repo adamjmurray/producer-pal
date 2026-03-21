@@ -11,7 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { updateScene } from "./update-scene.ts";
+import { updateScene } from "../update-scene.ts";
 
 vi.mock(import("#src/tools/control/select.ts"), () => ({
   select: vi.fn(),

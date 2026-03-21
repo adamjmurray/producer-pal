@@ -9,7 +9,7 @@
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { type UIPart } from "#webui/types/messages";
-import { AssistantMessage } from "./AssistantMessage";
+import { AssistantMessage } from "#webui/components/chat/assistant/AssistantMessage";
 
 describe("AssistantMessage", () => {
   describe("basic rendering", () => {

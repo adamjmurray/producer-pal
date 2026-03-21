@@ -8,7 +8,7 @@
  */
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import { AssistantThought } from "./AssistantThought";
+import { AssistantThought } from "#webui/components/chat/assistant/AssistantThought";
 
 const LONG_CONTENT = "A".repeat(81);
 const MULTI_LINE = "First line\nSecond line\nThird line";

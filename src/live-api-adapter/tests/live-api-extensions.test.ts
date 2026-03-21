@@ -8,7 +8,7 @@ import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import "./live-api-extensions.ts";
+import "../live-api-extensions.ts";
 
 describe("LiveAPI extensions", () => {
   beforeEach(() => {

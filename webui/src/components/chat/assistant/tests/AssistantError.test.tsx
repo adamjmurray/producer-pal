@@ -7,7 +7,7 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import { AssistantError } from "./AssistantError";
+import { AssistantError } from "#webui/components/chat/assistant/AssistantError";
 
 describe("AssistantError", () => {
   describe("basic rendering", () => {

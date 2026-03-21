@@ -8,7 +8,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { useChat } from "./use-chat";
+import { useChat } from "#webui/hooks/chat/use-chat";
 import {
   createMockAdapter,
   createDefaultProps,
@@ -16,7 +16,7 @@ import {
 } from "./use-chat-test-helpers";
 
 // Mock streaming helpers
-vi.mock(import("./helpers/streaming-helpers"), () => ({
+vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
   handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
     for await (const chatHistory of stream) {
       onUpdate(formatter(chatHistory));

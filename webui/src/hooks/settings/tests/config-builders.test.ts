@@ -9,7 +9,7 @@ import {
   mapThinkingToReasoningEffort,
   mapThinkingToOpenRouterEffort,
   mapThinkingToOllamaThink,
-} from "./config-builders";
+} from "#webui/hooks/settings/config-builders";
 
 describe("config-builders", () => {
   describe("extractGptVersion", () => {

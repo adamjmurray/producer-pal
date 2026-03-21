@@ -9,7 +9,7 @@
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
-import { AssistantToolCall } from "./AssistantToolCall";
+import { AssistantToolCall } from "#webui/components/chat/assistant/AssistantToolCall";
 
 const TEST_TOOL_NAMES: Record<string, string> = {
   "ppal-read-live-set": "Read Live Set",

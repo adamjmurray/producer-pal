@@ -11,7 +11,7 @@ import {
   checkHasApiKey,
   loadEnabledTools,
   loadProviderSettings,
-} from "./settings-helpers";
+} from "#webui/hooks/settings/settings-helpers";
 
 describe("settings-helpers", () => {
   beforeEach(() => {

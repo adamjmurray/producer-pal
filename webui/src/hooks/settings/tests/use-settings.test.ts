@@ -8,7 +8,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
-import { useSettings } from "./use-settings";
+import { useSettings } from "#webui/hooks/settings/use-settings";
 
 describe("useSettings", () => {
   beforeEach(() => {

@@ -5,8 +5,11 @@
 
 import { vi } from "vitest";
 import { type TokenUsage } from "#webui/chat/sdk/types";
+import {
+  type ChatAdapter,
+  type ChatClient,
+} from "#webui/hooks/chat/use-chat-types";
 import { type UIMessage } from "#webui/types/messages";
-import { type ChatAdapter, type ChatClient } from "./use-chat-types";
 
 /** Test message type for mock chat client */
 export interface TestMessage {

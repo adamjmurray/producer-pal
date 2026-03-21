@@ -9,7 +9,7 @@ import {
   parseCommaSeparatedNames,
   parseNames,
   warnExtraNames,
-} from "./name-utils.ts";
+} from "../name-utils.ts";
 
 vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   warn: vi.fn(),
