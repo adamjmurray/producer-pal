@@ -438,6 +438,27 @@ describe("chatAdapter", () => {
 
       expect(config.providerOptions).toBeUndefined();
     });
+
+    it("buildProviderOptions callback rebuilds options with overridden thinking", () => {
+      const config = chatAdapter.buildConfig(
+        "claude-sonnet-4-6-20250514",
+        1.0,
+        "Max",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      // Original config has Max thinking (budgetTokens: 16384)
+      expect(config.providerOptions).toStrictEqual({
+        anthropic: { thinking: { type: "enabled", budgetTokens: 16384 } },
+      });
+
+      // Callback rebuilds with overridden thinking level
+      const overridden = config.buildProviderOptions!("Off");
+
+      expect(overridden).toBeUndefined();
+    });
   });
 
   describe("createErrorMessage", () => {

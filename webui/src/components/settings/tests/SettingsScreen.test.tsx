@@ -8,12 +8,12 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type UseSettingsReturn } from "#webui/types/settings";
-import { SettingsScreen } from "./SettingsScreen";
+import { SettingsScreen } from "#webui/components/settings/SettingsScreen";
 
 // Mock child components
-vi.mock(import("./ConnectionTab"), async () => {
+vi.mock(import("#webui/components/settings/ConnectionTab"), async () => {
   const { API_KEY_URLS, MODEL_DOCS_URLS, DEFAULT_LOCAL_URLS } =
-    await import("./connection-tab-helpers");
+    await import("#webui/components/settings/connection-tab-helpers");
 
   return {
     ConnectionTab: ({
@@ -105,7 +105,7 @@ vi.mock(import("./ConnectionTab"), async () => {
   };
 });
 
-vi.mock(import("./controls/ToolToggles"), () => ({
+vi.mock(import("#webui/components/settings/controls/ToolToggles"), () => ({
   ToolToggles: () => <div data-testid="tool-toggles">Tool Toggles</div>,
 }));
 

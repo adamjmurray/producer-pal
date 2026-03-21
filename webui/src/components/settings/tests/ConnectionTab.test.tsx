@@ -7,16 +7,16 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { ConnectionTab } from "./ConnectionTab";
+import { ConnectionTab } from "#webui/components/settings/ConnectionTab";
 
 // Mock child components
-vi.mock(import("./controls/ProviderSelector"), () => ({
+vi.mock(import("#webui/components/settings/controls/ProviderSelector"), () => ({
   ProviderSelector: ({ provider }: { provider: string }) => (
     <div data-testid="provider-selector">{provider}</div>
   ),
 }));
 
-vi.mock(import("./controls/ModelSelector"), () => ({
+vi.mock(import("#webui/components/settings/controls/ModelSelector"), () => ({
   ModelSelector: ({ model }: { model: string }) => (
     <div data-testid="model-selector">{model}</div>
   ),
