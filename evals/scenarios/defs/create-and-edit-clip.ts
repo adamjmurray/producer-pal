@@ -57,5 +57,13 @@ export const createAndEditClip: EvalScenario = {
 4. Confirmed each step was completed`,
       score: 10,
     },
+
+    {
+      type: "token_usage",
+      metric: "inputTokens",
+      maxTokens: 100_000,
+      upperLimit: 150_000,
+      score: 5,
+    },
   ],
 };

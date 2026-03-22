@@ -10,8 +10,12 @@
  * scenario registration in load-scenarios.ts.
  */
 
+export { arrangementClipWorkflow } from "./arrangement-clip-workflow.ts";
+export { audioSampleWorkflow } from "./audio-sample-workflow.ts";
 export { connectToAbleton } from "./connect-to-ableton.ts";
 export { createAndEditClip } from "./create-and-edit-clip.ts";
 export { duplicate } from "./duplicate.ts";
 export { memoryWorkflow } from "./memory-workflow.ts";
+export { sceneAndPlayback } from "./scene-and-playback.ts";
 export { trackAndDeviceWorkflow } from "./track-and-device-workflow.ts";
+export { updateLiveSet } from "./update-live-set.ts";

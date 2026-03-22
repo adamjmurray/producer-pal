@@ -7,11 +7,15 @@
  */
 
 import {
+  arrangementClipWorkflow,
+  audioSampleWorkflow,
   connectToAbleton,
   createAndEditClip,
   duplicate,
   memoryWorkflow,
+  sceneAndPlayback,
   trackAndDeviceWorkflow,
+  updateLiveSet,
 } from "./defs/index.ts";
 import { type EvalScenario } from "./types.ts";
 
@@ -24,6 +28,10 @@ const allScenarios: EvalScenario[] = [
   trackAndDeviceWorkflow,
   memoryWorkflow,
   duplicate,
+  arrangementClipWorkflow,
+  audioSampleWorkflow,
+  sceneAndPlayback,
+  updateLiveSet,
 ];
 
 export interface LoadScenariosOptions {

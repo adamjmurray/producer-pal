@@ -18,6 +18,7 @@ export const trackAndDeviceWorkflow: EvalScenario = {
     "Create a MIDI track called 'Synth Lead'",
     "Add a Wavetable instrument to it",
     "Mute that track and set its color to purple",
+    "Set the filter cutoff to 50%",
   ],
 
   assertions: [
@@ -42,6 +43,15 @@ export const trackAndDeviceWorkflow: EvalScenario = {
     // Verify response mentions mute or purple
     { type: "response_contains", pattern: /mute|purple/i, turn: 3, score: 2 },
 
+    // Turn 4: Device parameter update
+    { type: "tool_called", tool: "ppal-update-device", turn: 4, score: 5 },
+    {
+      type: "response_contains",
+      pattern: /filter|cutoff/i,
+      turn: 4,
+      score: 2,
+    },
+
     // LLM quality check
     {
       type: "llm_judge",
@@ -49,8 +59,17 @@ export const trackAndDeviceWorkflow: EvalScenario = {
 1. Created a MIDI track named "Synth Lead"
 2. Added a Wavetable instrument
 3. Muted the track
-4. Changed the track color to purple`,
+4. Changed the track color to purple
+5. Adjusted the filter cutoff parameter on the device`,
       score: 10,
+    },
+
+    {
+      type: "token_usage",
+      metric: "inputTokens",
+      maxTokens: 100_000,
+      upperLimit: 150_000,
+      score: 5,
     },
   ],
 };
