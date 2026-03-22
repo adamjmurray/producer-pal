@@ -10,20 +10,11 @@ import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
 } from "./create-mcp-server.ts";
+import { type McpResponse } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 
 interface RestApiConfig {
   tools: string[];
-}
-
-interface McpResponseContent {
-  type: string;
-  text: string;
-}
-
-interface McpResponse {
-  content: McpResponseContent[];
-  isError?: boolean;
 }
 
 /**

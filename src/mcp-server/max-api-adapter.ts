@@ -15,12 +15,12 @@ import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import * as console from "./node-for-max-logger.ts";
 
-interface McpResponseContent {
+export interface McpResponseContent {
   type: string;
   text: string;
 }
 
-interface McpResponse {
+export interface McpResponse {
   content: McpResponseContent[];
   isError?: boolean;
 }

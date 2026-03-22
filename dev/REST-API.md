@@ -61,6 +61,11 @@ Error responses:
 | 400    | Input validation failed  | `{ "error": "Validation failed", "details": [...] }` |
 | 500    | Internal server error    | `{ "error": "Internal server error: ..." }`          |
 
+## Security
+
+The REST API has no authentication, consistent with the MCP endpoint. It is
+designed for use on localhost or trusted networks only.
+
 ## Architecture
 
 The REST API bypasses the MCP protocol entirely. It validates inputs using the

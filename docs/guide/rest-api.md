@@ -102,3 +102,5 @@ on the [Features](/features) page.
   validation or code generation.
 - The REST API shares the same tool configuration as MCP — tools enabled or
   disabled on the device apply to both interfaces.
+- The REST API has no authentication (same as the MCP endpoint). It is designed
+  for use on localhost or trusted networks only.
