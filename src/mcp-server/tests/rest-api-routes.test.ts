@@ -18,6 +18,26 @@ type MockMax = typeof Max & {
 };
 const mockMax = Max as MockMax;
 
+/**
+ * Stub Max.outlet to resolve MCP requests with a given response payload.
+ * @param payload - JSON-serializable MCP response body
+ */
+function stubMaxOutlet(payload: Record<string, unknown>): void {
+  Max.outlet = ((message: string, requestId: string): Promise<void> => {
+    if (message === "mcp_request") {
+      setTimeout(() => {
+        mockMax.defaultMcpResponseHandler!(
+          requestId,
+          JSON.stringify(payload),
+          MAX_ERROR_DELIMITER,
+        );
+      }, 1);
+    }
+
+    return Promise.resolve();
+  }) as typeof Max.outlet;
+}
+
 describe("REST API Routes", () => {
   let server: Server | undefined;
   let baseUrl: string;
@@ -137,21 +157,9 @@ describe("REST API Routes", () => {
     });
 
     it("should call tool and return unwrapped result", async () => {
-      Max.outlet = ((message: string, requestId: string): Promise<void> => {
-        if (message === "mcp_request") {
-          setTimeout(() => {
-            mockMax.defaultMcpResponseHandler!(
-              requestId,
-              JSON.stringify({
-                content: [{ type: "text", text: "track data here" }],
-              }),
-              MAX_ERROR_DELIMITER,
-            );
-          }, 1);
-        }
-
-        return Promise.resolve();
-      }) as typeof Max.outlet;
+      stubMaxOutlet({
+        content: [{ type: "text", text: "track data here" }],
+      });
 
       const response = await fetch(`${baseUrl}/api/tools/ppal-connect`, {
         method: "POST",
@@ -168,22 +176,10 @@ describe("REST API Routes", () => {
     });
 
     it("should return isError true when tool reports error", async () => {
-      Max.outlet = ((message: string, requestId: string): Promise<void> => {
-        if (message === "mcp_request") {
-          setTimeout(() => {
-            mockMax.defaultMcpResponseHandler!(
-              requestId,
-              JSON.stringify({
-                content: [{ type: "text", text: "something went wrong" }],
-                isError: true,
-              }),
-              MAX_ERROR_DELIMITER,
-            );
-          }, 1);
-        }
-
-        return Promise.resolve();
-      }) as typeof Max.outlet;
+      stubMaxOutlet({
+        content: [{ type: "text", text: "something went wrong" }],
+        isError: true,
+      });
 
       const response = await fetch(`${baseUrl}/api/tools/ppal-connect`, {
         method: "POST",

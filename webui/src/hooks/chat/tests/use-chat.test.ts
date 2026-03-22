@@ -12,20 +12,13 @@ import {
   MockChatClient,
   createDefaultProps,
   createMockAdapter,
+  mockStreamingHelpers,
 } from "./use-chat-test-helpers";
 
-// Mock streaming helpers
-vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
-  handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
-    for await (const chatHistory of stream) {
-      onUpdate(formatter(chatHistory));
-    }
-
-    return true;
-  }),
-  validateMcpConnection: vi.fn(),
-  filterOverrides: vi.fn((overrides) => overrides),
-}));
+vi.mock(
+  import("#webui/hooks/chat/helpers/streaming-helpers"),
+  mockStreamingHelpers,
+);
 
 const mockAdapter = createMockAdapter();
 

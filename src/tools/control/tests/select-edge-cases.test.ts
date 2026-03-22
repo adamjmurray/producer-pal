@@ -6,7 +6,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  clearMockRegistry,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -15,8 +14,8 @@ import {
   resetSelectTestState,
   setupAppViewMock,
   setupSongViewMock,
+  setupTrackOnlyViewState,
   setupTrackViewMock,
-  setupViewStateMock,
 } from "./select-test-helpers.ts";
 
 vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
@@ -37,27 +36,6 @@ describe("select edge cases", () => {
   });
 
   describe("readFullState device edge cases", () => {
-    /**
-     * Set up view state with a selected track but no selected scene/clip.
-     */
-    function setupTrackOnlyViewState(): void {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "session",
-        selectedTrack: {
-          exists: true,
-          category: "regular",
-          trackIndex: 0,
-          id: "track_1",
-          path: String(livePath.track(0)),
-        },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
-    }
-
     it("omits selectedDevice when track view's selected_device does not exist", () => {
       setupTrackOnlyViewState();
 

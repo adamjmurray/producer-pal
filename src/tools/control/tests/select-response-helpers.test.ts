@@ -21,6 +21,7 @@ import {
 } from "#src/tools/control/helpers/select-response-helpers.ts";
 import {
   resetSelectTestState,
+  setupTrackOnlyViewState,
   setupViewStateMock,
   setupTrackViewMock,
   setupDeviceMock,
@@ -438,24 +439,3 @@ describe("select-response-helpers", () => {
     });
   });
 });
-
-/**
- * Set up view state with a selected track but no selected scene/clip.
- */
-function setupTrackOnlyViewState(): void {
-  clearMockRegistry();
-
-  setupViewStateMock({
-    view: "session",
-    selectedTrack: {
-      exists: true,
-      category: "regular",
-      trackIndex: 0,
-      id: "track_1",
-      path: String(livePath.track(0)),
-    },
-    selectedScene: { exists: false },
-    selectedClip: { exists: false },
-    highlightedClipSlot: { exists: false },
-  });
-}
