@@ -56,7 +56,9 @@ export async function maybeInjectReflection(
   turns.push(reflectionTurn);
 
   // Store reflection text on the failing assertion's details
-  if (failure.details && typeof failure.details === "object") {
+  failure.details ??= {};
+
+  if (typeof failure.details === "object") {
     (failure.details as Record<string, unknown>).reflection = turnResult.text;
   }
 }

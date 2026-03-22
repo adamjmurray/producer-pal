@@ -5,7 +5,6 @@
 
 import { type Express, type Request, type Response } from "express";
 import { z } from "zod";
-import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
@@ -85,9 +84,7 @@ export function registerRestApiRoutes(
         res.json(unwrapMcpResponse(mcpResponse));
       } catch (error) {
         console.error(`REST API error calling ${toolName}: ${String(error)}`);
-        res
-          .status(500)
-          .json({ error: `Internal server error: ${errorMessage(error)}` });
+        res.status(500).json({ error: "Internal server error" });
       }
     },
   );

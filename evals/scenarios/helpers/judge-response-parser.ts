@@ -139,11 +139,20 @@ function extractJson(text: string): unknown {
     // Fall through to extraction
   }
 
-  // Extract JSON with nested braces (for dimension objects)
-  const match = /{[\S\s]*}/.exec(text);
+  // Extract first complete JSON object using balanced brace matching
+  const start = text.indexOf("{");
 
-  if (match) {
-    return JSON.parse(match[0]);
+  if (start !== -1) {
+    let depth = 0;
+
+    for (let i = start; i < text.length; i++) {
+      if (text[i] === "{") depth++;
+      else if (text[i] === "}") depth--;
+
+      if (depth === 0) {
+        return JSON.parse(text.slice(start, i + 1));
+      }
+    }
   }
 
   throw new Error(`Failed to extract JSON from: ${text}`);
