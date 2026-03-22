@@ -68,7 +68,6 @@ export const audioSampleWorkflow: EvalScenario = {
 2. Created an audio clip using the kick sample
 3. Applied pitch shift of 5 semitones and enabled looping
 4. Confirmed each step was completed`,
-      score: 10,
     },
   ],
 };

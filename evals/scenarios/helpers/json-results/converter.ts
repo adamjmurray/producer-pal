@@ -12,7 +12,7 @@ import {
   type EvalScenarioResult,
   type EvalTurnResult,
 } from "../../types.ts";
-import { type JudgeResult } from "../judge-response-parser.ts";
+import { type SimpleJudgeResult } from "../judge-response-parser.ts";
 import { assertionLabel } from "./assertion-label.ts";
 import {
   type JsonCheckResult,
@@ -24,19 +24,6 @@ import {
 
 const TOOL_RESULT_MAX_LENGTH = 500;
 const TRUNCATION_SUFFIX = "...[truncated]";
-
-/** Threshold below which a judge dimension is considered a failure */
-const REVIEW_FAIL_THRESHOLD = 0.5;
-
-/** Threshold below which a judge dimension generates an issue */
-const REVIEW_ISSUE_THRESHOLD = 0.7;
-
-const DIMENSION_KEYS = [
-  "accuracy",
-  "reasoning",
-  "efficiency",
-  "naturalness",
-] as const;
 
 /**
  * Convert an EvalScenarioResult to a JSON-serializable JsonEvalResult
@@ -109,17 +96,21 @@ function derivePassFail(
 function convertChecks(assertions: EvalAssertionResult[]): JsonCheckResult[] {
   return assertions
     .filter((a) => a.assertion.type !== "llm_judge")
-    .map((a) => ({
-      type: a.assertion.type,
-      label: assertionLabel(a.assertion),
-      pass: a.earned === a.maxScore,
-      earned: a.earned,
-      maxScore: a.maxScore,
-      message: a.message,
-      ...(a.details != null && {
-        details: a.details as Record<string, unknown>,
-      }),
-    }));
+    .map((a) => {
+      const details = a.details as Record<string, unknown> | undefined;
+      const reflection = details?.reflection as string | undefined;
+
+      return {
+        type: a.assertion.type,
+        label: assertionLabel(a.assertion),
+        pass: a.earned === a.maxScore,
+        earned: a.earned,
+        maxScore: a.maxScore,
+        message: a.message,
+        ...(details != null && { details }),
+        ...(reflection != null && { reflection }),
+      };
+    });
 }
 
 /**
@@ -135,42 +126,13 @@ function deriveReview(
 
   if (!judgeResult) return undefined;
 
-  const details = judgeResult.details as JudgeResult | undefined;
+  const details = judgeResult.details as SimpleJudgeResult | undefined;
 
   if (!details) {
-    return {
-      pass: false,
-      issues: [judgeResult.message],
-      legacyScores: emptyLegacyScores(),
-    };
+    return { pass: false, issues: [judgeResult.message] };
   }
 
-  const issues: string[] = [];
-  let hasFailure = false;
-
-  for (const dim of DIMENSION_KEYS) {
-    const { score, reasoning } = details[dim];
-
-    if (score < REVIEW_FAIL_THRESHOLD) {
-      hasFailure = true;
-    }
-
-    if (score < REVIEW_ISSUE_THRESHOLD) {
-      issues.push(`Low ${dim} (${score.toFixed(2)}): ${reasoning}`);
-    }
-  }
-
-  return {
-    pass: !hasFailure,
-    issues,
-    legacyScores: {
-      accuracy: details.accuracy,
-      reasoning: details.reasoning,
-      efficiency: details.efficiency,
-      naturalness: details.naturalness,
-      overall: details.overall,
-    },
-  };
+  return { pass: details.pass, issues: details.issues };
 }
 
 /**
@@ -231,21 +193,4 @@ export function truncateToolResult(text: string): string {
     text.slice(0, TOOL_RESULT_MAX_LENGTH - TRUNCATION_SUFFIX.length) +
     TRUNCATION_SUFFIX
   );
-}
-
-/**
- * Create empty legacy scores for judge errors
- *
- * @returns Empty JudgeDimensions
- */
-function emptyLegacyScores(): JsonReview["legacyScores"] {
-  const empty = { score: 0, reasoning: "" };
-
-  return {
-    accuracy: empty,
-    reasoning: empty,
-    efficiency: empty,
-    naturalness: empty,
-    overall: 0,
-  };
 }

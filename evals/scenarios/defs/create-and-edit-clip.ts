@@ -55,7 +55,6 @@ export const createAndEditClip: EvalScenario = {
 2. Added hi-hats as requested
 3. Applied quantization
 4. Confirmed each step was completed`,
-      score: 10,
     },
 
     {

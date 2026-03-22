@@ -11,7 +11,6 @@ import { styleText } from "node:util";
 import {
   formatSubsectionHeader,
   formatUsageLine,
-  pctColor,
   scoreColor,
 } from "#evals/chat/shared/formatting.ts";
 import {
@@ -19,13 +18,6 @@ import {
   type JsonEvalResult,
   type JsonReview,
 } from "./json-results/types.ts";
-
-const DIMENSION_KEYS = [
-  "accuracy",
-  "reasoning",
-  "efficiency",
-  "naturalness",
-] as const;
 
 /**
  * Apply gray styling to text
@@ -134,33 +126,15 @@ function printScoreTable(
     const styledScore = styleText(color, passText.padStart(scoreWidth));
 
     console.log(`${d} ${num} ${d} ${type} ${d} ${styledScore} ${d}`);
-    printJudgeDimensions(review, typeWidth, scoreWidth);
   }
 
   console.log(botBorder);
-}
 
-/**
- * Print LLM judge dimension sub-rows
- *
- * @param review - The judge review
- * @param typeWidth - Width of the type column
- * @param scoreWidth - Width of the score column
- */
-function printJudgeDimensions(
-  review: JsonReview,
-  typeWidth: number,
-  scoreWidth: number,
-): void {
-  const d = gray("│");
-
-  for (const dim of DIMENSION_KEYS) {
-    const dimScore = review.legacyScores[dim].score.toFixed(2);
-    const label = `  ${dim}`.padEnd(typeWidth);
-    const color = pctColor(review.legacyScores[dim].score * 100);
-    const styledScore = styleText(color, dimScore.padStart(scoreWidth));
-
-    console.log(`${d}     ${d} ${gray(label)} ${d} ${styledScore} ${d}`);
+  // Print issues below the table so they aren't truncated by column width
+  if (review && review.issues.length > 0) {
+    for (const issue of review.issues) {
+      console.log(gray(`  - ${issue}`));
+    }
   }
 }
 

@@ -53,7 +53,6 @@ export const sceneAndPlayback: EvalScenario = {
 2. Played that scene
 3. Stopped playback
 4. Confirmed each step was completed`,
-      score: 10,
     },
   ],
 };

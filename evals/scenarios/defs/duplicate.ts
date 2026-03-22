@@ -31,7 +31,6 @@ export const duplicate: EvalScenario = {
       prompt: `Evaluate if the assistant:
 1. Successfully duplicated the Drums track
 2. Confirmed the operation completed`,
-      score: 10,
     },
   ],
 };

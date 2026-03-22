@@ -48,7 +48,6 @@ export const updateLiveSet: EvalScenario = {
 2. Set the time signature to 6/8
 3. Deleted the last track
 4. Confirmed each step was completed`,
-      score: 10,
     },
   ],
 };

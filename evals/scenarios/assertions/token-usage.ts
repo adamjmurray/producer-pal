@@ -7,6 +7,7 @@
  * Token usage assertion - verify token consumption stays within budget
  */
 
+import { formatTokenLabel } from "../helpers/json-results/assertion-label.ts";
 import {
   type TokenUsageAssertion,
   type EvalTurnResult,
@@ -34,7 +35,7 @@ export function assertTokenUsage(
     .flatMap((t) => t.stepUsages ?? [])
     .reduce((sum, s) => sum + (s[assertion.metric] ?? 0), 0);
 
-  const label = `${assertion.metric} ${formatTokenCount(total)}`;
+  const label = `${assertion.metric} ${formatTokenLabel(total)}`;
 
   if (assertion.upperLimit == null) {
     // Hard pass/fail
@@ -45,8 +46,8 @@ export function assertTokenUsage(
       earned: passed ? maxScore : 0,
       maxScore,
       message: passed
-        ? `${label} ≤ ${formatTokenCount(assertion.maxTokens)}`
-        : `${label} exceeds ${formatTokenCount(assertion.maxTokens)}`,
+        ? `${label} ≤ ${formatTokenLabel(assertion.maxTokens)}`
+        : `${label} exceeds ${formatTokenLabel(assertion.maxTokens)}`,
     };
   }
 
@@ -56,7 +57,7 @@ export function assertTokenUsage(
       assertion,
       earned: maxScore,
       maxScore,
-      message: `${label} ≤ ${formatTokenCount(assertion.maxTokens)}`,
+      message: `${label} ≤ ${formatTokenLabel(assertion.maxTokens)}`,
     };
   }
 
@@ -65,7 +66,7 @@ export function assertTokenUsage(
       assertion,
       earned: 0,
       maxScore,
-      message: `${label} exceeds ${formatTokenCount(assertion.upperLimit)}`,
+      message: `${label} exceeds ${formatTokenLabel(assertion.upperLimit)}`,
     };
   }
 
@@ -79,22 +80,6 @@ export function assertTokenUsage(
     assertion,
     earned,
     maxScore,
-    message: `${label} (budget ${formatTokenCount(assertion.maxTokens)}–${formatTokenCount(assertion.upperLimit)})`,
+    message: `${label} (budget ${formatTokenLabel(assertion.maxTokens)}–${formatTokenLabel(assertion.upperLimit)})`,
   };
-}
-
-/**
- * Format a token count for display (e.g. 20000 → "20k", 1500 → "1.5k")
- *
- * @param count - Token count
- * @returns Formatted string
- */
-function formatTokenCount(count: number): string {
-  if (count >= 1000) {
-    const k = count / 1000;
-
-    return Number.isInteger(k) ? `${k}k` : `${k.toFixed(1)}k`;
-  }
-
-  return String(count);
 }

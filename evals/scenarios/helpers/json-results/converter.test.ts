@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Tests for json-result-converter.ts
+ * Tests for converter.ts
  */
 
 import { describe, it, expect } from "vitest";
@@ -15,20 +15,10 @@ import {
 } from "../../types.ts";
 import { toJsonResult, truncateToolResult } from "./converter.ts";
 
-const JUDGE_DETAILS = {
-  accuracy: { score: 0.9, reasoning: "Good accuracy" },
-  reasoning: { score: 0.8, reasoning: "Solid reasoning" },
-  efficiency: { score: 0.7, reasoning: "Efficient enough" },
-  naturalness: { score: 0.85, reasoning: "Natural flow" },
-  overall: 0.8125,
-};
-
-const LOW_JUDGE_DETAILS = {
-  accuracy: { score: 0.3, reasoning: "Failed accuracy" },
-  reasoning: { score: 0.6, reasoning: "Weak reasoning" },
-  efficiency: { score: 0.5, reasoning: "Inefficient" },
-  naturalness: { score: 0.8, reasoning: "Okay" },
-  overall: 0.55,
+const PASSING_JUDGE = { pass: true, issues: [] };
+const FAILING_JUDGE = {
+  pass: false,
+  issues: ["Missing confirmation", "Wrong tool used"],
 };
 
 function makeTurn(overrides?: Partial<EvalTurnResult>): EvalTurnResult {
@@ -132,19 +122,15 @@ describe("toJsonResult", () => {
         assertions: [
           makeAssertion(),
           makeAssertion({
-            assertion: {
-              type: "llm_judge",
-              prompt: "Evaluate",
-              score: 10,
-            },
-            earned: 8,
-            maxScore: 10,
-            message: "LLM judge: 8/10",
-            details: JUDGE_DETAILS,
+            assertion: { type: "llm_judge", prompt: "Evaluate" },
+            earned: 0,
+            maxScore: 0,
+            message: "LLM judge: pass",
+            details: PASSING_JUDGE,
           }),
         ],
-        earnedScore: 13,
-        maxScore: 15,
+        earnedScore: 5,
+        maxScore: 5,
       }),
       "run-1",
       "google/gemini",
@@ -155,24 +141,20 @@ describe("toJsonResult", () => {
     expect(result.checks[0]?.type).toBe("tool_called");
   });
 
-  it("derives review from llm_judge assertion", () => {
+  it("derives review from llm_judge assertion (passing)", () => {
     const result = toJsonResult(
       makeResult({
         assertions: [
           makeAssertion({
-            assertion: {
-              type: "llm_judge",
-              prompt: "Evaluate",
-              score: 10,
-            },
-            earned: 8,
-            maxScore: 10,
-            message: "LLM judge: 8/10",
-            details: JUDGE_DETAILS,
+            assertion: { type: "llm_judge", prompt: "Evaluate" },
+            earned: 0,
+            maxScore: 0,
+            message: "LLM judge: pass",
+            details: PASSING_JUDGE,
           }),
         ],
-        earnedScore: 8,
-        maxScore: 10,
+        earnedScore: 0,
+        maxScore: 0,
       }),
       "run-1",
       "google/gemini",
@@ -182,27 +164,22 @@ describe("toJsonResult", () => {
     expect(result.review).toBeDefined();
     expect(result.review?.pass).toBe(true);
     expect(result.review?.issues).toStrictEqual([]);
-    expect(result.review?.legacyScores.overall).toBe(0.8125);
   });
 
-  it("marks review as failed when a dimension is below 0.5", () => {
+  it("derives review from llm_judge assertion (failing)", () => {
     const result = toJsonResult(
       makeResult({
         assertions: [
           makeAssertion({
-            assertion: {
-              type: "llm_judge",
-              prompt: "Evaluate",
-              score: 10,
-            },
-            earned: 5.5,
-            maxScore: 10,
-            message: "LLM judge: 5.5/10",
-            details: LOW_JUDGE_DETAILS,
+            assertion: { type: "llm_judge", prompt: "Evaluate" },
+            earned: 0,
+            maxScore: 0,
+            message: "LLM judge: fail (2 issue(s))",
+            details: FAILING_JUDGE,
           }),
         ],
-        earnedScore: 5.5,
-        maxScore: 10,
+        earnedScore: 0,
+        maxScore: 0,
       }),
       "run-1",
       "google/gemini",
@@ -210,37 +187,9 @@ describe("toJsonResult", () => {
     );
 
     expect(result.review?.pass).toBe(false);
+    expect(result.review?.issues).toHaveLength(2);
+    expect(result.review?.issues[0]).toBe("Missing confirmation");
     expect(result.result).toBe("fail");
-  });
-
-  it("generates issues for dimensions below 0.7", () => {
-    const result = toJsonResult(
-      makeResult({
-        assertions: [
-          makeAssertion({
-            assertion: {
-              type: "llm_judge",
-              prompt: "Evaluate",
-              score: 10,
-            },
-            earned: 5.5,
-            maxScore: 10,
-            message: "LLM judge: 5.5/10",
-            details: LOW_JUDGE_DETAILS,
-          }),
-        ],
-        earnedScore: 5.5,
-        maxScore: 10,
-      }),
-      "run-1",
-      "google/gemini",
-      "default",
-    );
-
-    // accuracy (0.3), reasoning (0.6), efficiency (0.5) are all < 0.7
-    expect(result.review?.issues).toHaveLength(3);
-    expect(result.review?.issues[0]).toContain("accuracy");
-    expect(result.review?.issues[0]).toContain("0.30");
   });
 
   it("marks result as fail when a check fails", () => {
@@ -347,6 +296,54 @@ describe("toJsonResult", () => {
     );
 
     expect(result.turns[0]?.usage).not.toHaveProperty("reasoningTokens");
+  });
+
+  it("includes reflection on failing check when present", () => {
+    const result = toJsonResult(
+      makeResult({
+        assertions: [
+          makeAssertion({
+            earned: 0,
+            maxScore: 5,
+            details: {
+              count: 0,
+              expectedCount: { min: 1 },
+              reflection: "I chose not to call the tool because...",
+            },
+          }),
+        ],
+        earnedScore: 0,
+        maxScore: 5,
+      }),
+      "run-1",
+      "google/gemini",
+      "default",
+    );
+
+    expect(result.checks[0]?.reflection).toBe(
+      "I chose not to call the tool because...",
+    );
+  });
+
+  it("omits reflection when not present on details", () => {
+    const result = toJsonResult(
+      makeResult({
+        assertions: [
+          makeAssertion({
+            earned: 0,
+            maxScore: 5,
+            details: { count: 0, expectedCount: { min: 1 } },
+          }),
+        ],
+        earnedScore: 0,
+        maxScore: 5,
+      }),
+      "run-1",
+      "google/gemini",
+      "default",
+    );
+
+    expect(result.checks[0]?.reflection).toBeUndefined();
   });
 });
 

@@ -51,7 +51,6 @@ export const memoryWorkflow: EvalScenario = {
 1. Successfully updated the project memory
 2. Retrieved and displayed the saved note content
 3. Included the key details: C minor and jazzy 7th chords`,
-      score: 10,
     },
   ],
 };

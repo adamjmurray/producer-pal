@@ -115,26 +115,18 @@ export interface StateAssertion {
 }
 
 /**
- * Use LLM to judge response quality on 4 dimensions (0.0-1.0 each):
- * - Accuracy: Did it do exactly what was requested?
- * - Reasoning: Was its logic sound and did it pick the right tools?
- * - Efficiency: Did it use minimal steps?
- * - Naturalness: Did the interaction feel human-like?
- *
- * Earned points = average of 4 dimensions × score
+ * Use LLM to judge response quality — single-pass pass/fail evaluation.
+ * The judge sees the conversation transcript, deterministic check results,
+ * and the prompt criteria, then returns pass/fail with a list of issues.
  */
 export interface LlmJudgeAssertion {
   type: "llm_judge";
-  /** Prompt describing what to evaluate */
+  /** Criteria the judge should evaluate against */
   prompt: string;
-  /** Which turn's response to judge (default: last) */
-  turn?: number | "last";
   /** Provider for judge (default: same as scenario) */
   judgeProvider?: EvalProvider;
   /** Model for judge */
   judgeModel?: string;
-  /** Max points this assertion is worth (default: 1) */
-  score?: number;
 }
 
 /**

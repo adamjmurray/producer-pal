@@ -50,25 +50,10 @@ export interface JsonScoreSummary {
 }
 
 export interface JsonReview {
-  /** Derived pass/fail from judge scores */
+  /** Judge pass/fail verdict */
   pass: boolean;
-  /** Human-readable issue descriptions for low-scoring dimensions */
+  /** Issues flagged by the judge (empty when passing) */
   issues: string[];
-  /** Phase 1: original dimension scores from the LLM judge */
-  legacyScores: JsonJudgeDimensions;
-}
-
-export interface JsonJudgeDimensions {
-  accuracy: JsonDimensionScore;
-  reasoning: JsonDimensionScore;
-  efficiency: JsonDimensionScore;
-  naturalness: JsonDimensionScore;
-  overall: number;
-}
-
-export interface JsonDimensionScore {
-  score: number;
-  reasoning: string;
 }
 
 export interface JsonTurnRecord {
@@ -106,4 +91,6 @@ export interface JsonCheckResult {
   maxScore: number;
   message: string;
   details?: Record<string, unknown>;
+  /** Model's self-reflection on why it failed (only on actionable failures) */
+  reflection?: string;
 }

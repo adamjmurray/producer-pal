@@ -28,13 +28,16 @@ import {
   assertState,
   assertWithLlmJudge,
   assertResponseContains,
+  type CheckSummary,
 } from "./assertions/index.ts";
 import {
   createEvalSession,
   getDefaultModel,
   type EvalSession,
 } from "./eval-session.ts";
+import { assertionLabel } from "./helpers/json-results/assertion-label.ts";
 import { isQuietMode } from "./helpers/output-config.ts";
+import { maybeInjectReflection } from "./helpers/self-reflection.ts";
 import { openLiveSet } from "./open-live-set.ts";
 import {
   type ConfigProfile,
@@ -172,12 +175,19 @@ export async function runScenario(
       session,
     );
 
-    // Run LLM judge assertions
+    // Inject self-reflection on actionable failures (before judge)
+    await maybeInjectReflection(correctnessResults, turns, session);
+
+    // Build check summaries for the judge prompt
+    const checkSummaries = toCheckSummaries(correctnessResults);
+
+    // Run LLM judge assertions (with check context)
     const judgeResults = await runJudgeAssertions(
       judgeAssertions,
       turns,
       provider,
       judgeOverride,
+      checkSummaries,
     );
 
     const assertionResults = [...correctnessResults, ...judgeResults];
@@ -287,19 +297,21 @@ async function runCorrectnessChecks(
 }
 
 /**
- * Run LLM judge assertions (without printing pass/fail status)
+ * Run LLM judge assertions with check context
  *
  * @param assertions - Judge assertions to run
  * @param turns - Completed conversation turns
  * @param provider - LLM provider being used
  * @param judgeOverride - Optional judge LLM override
+ * @param checkSummaries - Deterministic check results for judge context
  * @returns Array of assertion results
  */
 async function runJudgeAssertions(
   assertions: EvalAssertion[],
   turns: EvalTurnResult[],
   provider: EvalProvider,
-  judgeOverride?: JudgeOverride,
+  judgeOverride: JudgeOverride | undefined,
+  checkSummaries: CheckSummary[],
 ): Promise<EvalAssertionResult[]> {
   const results: EvalAssertionResult[] = [];
 
@@ -310,6 +322,7 @@ async function runJudgeAssertions(
         turns,
         provider,
         judgeOverride,
+        checkSummaries,
       );
 
       results.push(result);
@@ -317,6 +330,20 @@ async function runJudgeAssertions(
   }
 
   return results;
+}
+
+/**
+ * Convert correctness assertion results to check summaries for the judge prompt
+ *
+ * @param results - Correctness assertion results
+ * @returns Array of check summaries
+ */
+function toCheckSummaries(results: EvalAssertionResult[]): CheckSummary[] {
+  return results.map((r) => ({
+    pass: r.earned === r.maxScore,
+    label: assertionLabel(r.assertion),
+    message: r.message,
+  }));
 }
 
 /**

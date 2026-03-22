@@ -38,7 +38,7 @@ export function assertionLabel(assertion: EvalAssertion): string {
  * @param count - Token count
  * @returns Formatted string
  */
-function formatTokenLabel(count: number): string {
+export function formatTokenLabel(count: number): string {
   if (count >= 1000) {
     const k = count / 1000;
 

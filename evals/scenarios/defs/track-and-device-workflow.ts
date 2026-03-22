@@ -61,7 +61,6 @@ export const trackAndDeviceWorkflow: EvalScenario = {
 3. Muted the track
 4. Changed the track color to purple
 5. Adjusted the filter cutoff parameter on the device`,
-      score: 10,
     },
 
     {

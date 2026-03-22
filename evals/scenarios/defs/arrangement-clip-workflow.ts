@@ -73,7 +73,6 @@ export const arrangementClipWorkflow: EvalScenario = {
 2. Duplicated the clip to bar 13
 3. Split a clip at bar 9
 4. Confirmed each step was completed`,
-      score: 10,
     },
   ],
 };

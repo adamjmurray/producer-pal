@@ -84,7 +84,6 @@ export const connectToAbleton: EvalScenario = {
 8. 2 return tracks
 9. 8 scenes
 10. What next?`,
-      score: 10,
     },
   ],
 };
