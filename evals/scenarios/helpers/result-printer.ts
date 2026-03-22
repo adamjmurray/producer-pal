@@ -15,11 +15,10 @@ import {
   scoreColor,
 } from "#evals/chat/shared/formatting.ts";
 import {
-  type EvalAssertion,
-  type EvalAssertionResult,
-  type EvalScenarioResult,
-} from "../types.ts";
-import { type JudgeResult } from "./judge-response-parser.ts";
+  type JsonCheckResult,
+  type JsonEvalResult,
+  type JsonReview,
+} from "./json-results/types.ts";
 
 const DIMENSION_KEYS = [
   "accuracy",
@@ -51,27 +50,19 @@ function bold(text: string): string {
 /**
  * Print result for a single scenario run
  *
- * @param result - The scenario result
- * @param modelKey - The model identifier (provider or provider/model)
- * @param configId - Config profile ID used for this run
+ * @param result - The JSON eval result
  * @param showUsage - Whether to display token usage totals
  */
-export function printResult(
-  result: EvalScenarioResult,
-  modelKey: string,
-  configId: string,
-  showUsage?: boolean,
-): void {
-  const configLabel = configId === "default" ? "" : ` [${configId}]`;
-  const percentage =
-    result.maxScore > 0
-      ? ((result.earnedScore / result.maxScore) * 100).toFixed(0)
-      : "100";
+export function printResult(result: JsonEvalResult, showUsage?: boolean): void {
+  const configLabel =
+    result.configProfileId === "default" ? "" : ` [${result.configProfileId}]`;
 
-  const color = scoreColor(result.earnedScore, result.maxScore);
+  const color = scoreColor(result.score.earned, result.score.max);
 
   console.log(`\n${formatSubsectionHeader("SUMMARY")}`);
-  console.log(bold(`${modelKey}: ${result.scenario.id}${configLabel}`) + "\n");
+  console.log(
+    bold(`${result.model}: ${result.scenarioId}${configLabel}`) + "\n",
+  );
   console.log(`${gray("Duration:")} ${result.totalDurationMs}ms`);
 
   if (showUsage && result.totalUsage) {
@@ -82,22 +73,29 @@ export function printResult(
     console.log(styleText("red", "Error: " + result.error));
   }
 
-  if (result.assertions.length > 0) {
-    printScoreTable(result.assertions);
+  if (result.checks.length > 0 || result.review) {
+    printScoreTable(result.checks, result.review);
   }
 
-  const scoreText = `${formatScore(result.earnedScore)}/${result.maxScore} (${percentage}%)`;
+  const scoreText = `${formatScore(result.score.earned)}/${result.score.max} (${result.score.percentage}%)`;
 
   console.log("\n" + bold("Total: " + styleText(color, scoreText)));
 }
 
 /**
- * Print score table showing each assertion with earned/max
+ * Print score table showing each check with earned/max, plus judge row
  *
- * @param assertions - All assertion results
+ * @param checks - Deterministic check results
+ * @param review - Judge review (if any)
  */
-function printScoreTable(assertions: EvalAssertionResult[]): void {
-  const labels = assertions.map((a) => assertionLabel(a.assertion));
+function printScoreTable(
+  checks: JsonCheckResult[],
+  review: JsonReview | undefined,
+): void {
+  const labels = checks.map((c) => c.label);
+
+  if (review) labels.push("llm_judge");
+
   const typeWidth = Math.max(17, ...labels.map((l) => l.length));
   const scoreWidth = 10;
   const topBorder = gray(
@@ -117,19 +115,26 @@ function printScoreTable(assertions: EvalAssertionResult[]): void {
   );
   console.log(midBorder);
 
-  for (const [i, a] of assertions.entries()) {
+  for (const [i, check] of checks.entries()) {
     const num = String(i + 1).padStart(3);
-    const type = (labels[i] as string).padEnd(typeWidth);
-    const score = `${formatScore(a.earned)}/${a.maxScore}`;
-    const color = scoreColor(a.earned, a.maxScore);
+    const type = check.label.padEnd(typeWidth);
+    const score = `${formatScore(check.earned)}/${check.maxScore}`;
+    const color = scoreColor(check.earned, check.maxScore);
     const styledScore = styleText(color, score.padStart(scoreWidth));
 
     console.log(`${d} ${num} ${d} ${type} ${d} ${styledScore} ${d}`);
+  }
 
-    // For LLM judge, show dimension breakdown
-    if (a.assertion.type === "llm_judge") {
-      printJudgeDimensions(a, typeWidth, scoreWidth);
-    }
+  if (review) {
+    const idx = checks.length + 1;
+    const num = String(idx).padStart(3);
+    const type = "llm_judge".padEnd(typeWidth);
+    const passText = review.pass ? "pass" : "fail";
+    const color = review.pass ? "green" : "red";
+    const styledScore = styleText(color, passText.padStart(scoreWidth));
+
+    console.log(`${d} ${num} ${d} ${type} ${d} ${styledScore} ${d}`);
+    printJudgeDimensions(review, typeWidth, scoreWidth);
   }
 
   console.log(botBorder);
@@ -138,25 +143,21 @@ function printScoreTable(assertions: EvalAssertionResult[]): void {
 /**
  * Print LLM judge dimension sub-rows
  *
- * @param assertion - The LLM judge assertion result
+ * @param review - The judge review
  * @param typeWidth - Width of the type column
  * @param scoreWidth - Width of the score column
  */
 function printJudgeDimensions(
-  assertion: EvalAssertionResult,
+  review: JsonReview,
   typeWidth: number,
   scoreWidth: number,
 ): void {
-  const details = assertion.details as JudgeResult | undefined;
-
-  if (!details) return;
-
   const d = gray("│");
 
   for (const dim of DIMENSION_KEYS) {
-    const dimScore = details[dim].score.toFixed(2);
+    const dimScore = review.legacyScores[dim].score.toFixed(2);
     const label = `  ${dim}`.padEnd(typeWidth);
-    const color = pctColor(details[dim].score * 100);
+    const color = pctColor(review.legacyScores[dim].score * 100);
     const styledScore = styleText(color, dimScore.padStart(scoreWidth));
 
     console.log(`${d}     ${d} ${gray(label)} ${d} ${styledScore} ${d}`);
@@ -169,51 +170,6 @@ function printJudgeDimensions(
  * @param score - The score to format
  * @returns Formatted score string
  */
-function formatScore(score: number): string {
+export function formatScore(score: number): string {
   return Number.isInteger(score) ? String(score) : score.toFixed(1);
-}
-
-/**
- * Build a descriptive label for an assertion in the summary table
- *
- * @param assertion - The assertion to label
- * @returns Descriptive label string
- */
-/**
- * Format a token count for labels (e.g. 20000 → "20k")
- *
- * @param count - Token count
- * @returns Formatted string
- */
-function formatTokenLabel(count: number): string {
-  if (count >= 1000) {
-    const k = count / 1000;
-
-    return Number.isInteger(k) ? `${k}k` : `${k.toFixed(1)}k`;
-  }
-
-  return String(count);
-}
-
-/**
- * Build a descriptive label for an assertion in the summary table
- *
- * @param assertion - The assertion to label
- * @returns Descriptive label string
- */
-function assertionLabel(assertion: EvalAssertion): string {
-  switch (assertion.type) {
-    case "tool_called":
-      return `tool_called: ${assertion.tool}`;
-    case "state":
-      return `state: ${assertion.tool}`;
-    case "response_contains":
-      return `response_contains: ${assertion.pattern}`;
-    case "token_usage":
-      return `token_usage: ${assertion.metric} ≤ ${formatTokenLabel(assertion.maxTokens)}`;
-    case "custom":
-      return assertion.description;
-    case "llm_judge":
-      return "llm_judge";
-  }
 }

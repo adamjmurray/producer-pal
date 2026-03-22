@@ -39,6 +39,9 @@ docs/_generated
 docs/.vitepress/dist
 docs/.vitepress/cache
 
+# Eval results (generated JSON)
+evals/results
+
 # Playwright Test Results
 test-results
 report/

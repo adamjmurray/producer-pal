@@ -18,15 +18,19 @@ import {
 } from "#evals/shared/parse-model-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { loadConfigProfiles, listConfigProfileIds } from "./config-profiles.ts";
+import { toJsonResult } from "./helpers/json-results/converter.ts";
+import { generateRunId } from "./helpers/json-results/run-id.ts";
+import { type JsonEvalResult } from "./helpers/json-results/types.ts";
+import { writeJsonResult } from "./helpers/json-results/writer.ts";
 import { setQuietMode } from "./helpers/output-config.ts";
 import {
   printResultsTable,
   type ResultsByScenario,
 } from "./helpers/report-table.ts";
-import { printResult } from "./helpers/result-printer.ts";
+import { formatScore, printResult } from "./helpers/result-printer.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
-import { type ConfigProfile, type EvalScenarioResult } from "./types.ts";
+import { type ConfigProfile } from "./types.ts";
 
 collapseStdoutNewlines();
 
@@ -172,17 +176,18 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 
     // Results: scenarioId → modelKey → configId → result
     const resultsByScenario: ResultsByScenario = new Map();
+    const runId = generateRunId();
 
     for (const scenario of scenarios) {
-      const modelResults = new Map<string, Map<string, EvalScenarioResult>>();
+      const modelResults = new Map<string, Map<string, JsonEvalResult>>();
       let liveSetOpened = false;
 
       for (const spec of modelSpecs) {
         const modelKey = `${spec.provider}/${spec.model}`;
-        const configResults = new Map<string, EvalScenarioResult>();
+        const configResults = new Map<string, JsonEvalResult>();
 
         for (const profile of configProfiles) {
-          const result = await runScenario(scenario, {
+          const scenarioResult = await runScenario(scenario, {
             provider: spec.provider,
             model: spec.model,
             skipLiveSetOpen: options.skipSetup ?? liveSetOpened,
@@ -192,8 +197,17 @@ async function runEvaluation(options: CliOptions): Promise<void> {
           });
 
           liveSetOpened = true;
-          configResults.set(profile.id, result);
-          printResult(result, modelKey, profile.id, options.usage);
+
+          const jsonResult = toJsonResult(
+            scenarioResult,
+            runId,
+            modelKey,
+            profile.id,
+          );
+
+          await writeJsonResult(jsonResult);
+          printResult(jsonResult, options.usage);
+          configResults.set(profile.id, jsonResult);
         }
 
         modelResults.set(modelKey, configResults);
@@ -240,34 +254,20 @@ function printSummary(
   console.log(styleText("bold", "Summary:"));
 
   for (const result of allResults) {
-    const pct =
-      result.maxScore > 0
-        ? ((result.earnedScore / result.maxScore) * 100).toFixed(0)
-        : "100";
-    const color = scoreColor(result.earnedScore, result.maxScore);
+    const color = scoreColor(result.score.earned, result.score.max);
 
     const scoreText =
-      formatScore(result.earnedScore) +
+      formatScore(result.score.earned) +
       "/" +
-      result.maxScore +
+      result.score.max +
       " (" +
-      pct +
+      result.score.percentage +
       "%)";
 
-    console.log("  " + result.scenario.id + ": " + styleText(color, scoreText));
+    console.log("  " + result.scenarioId + ": " + styleText(color, scoreText));
 
     if (result.error) {
       console.log("    " + styleText("red", "Error: " + result.error));
     }
   }
-}
-
-/**
- * Format a score for display (integer if whole, 1 decimal otherwise)
- *
- * @param score - The score to format
- * @returns Formatted score string
- */
-function formatScore(score: number): string {
-  return Number.isInteger(score) ? String(score) : score.toFixed(1);
 }

@@ -54,7 +54,7 @@
     "duplication:evals": "printf 'Evals ' && jscpd -s -c config/.jscpd-evals.json",
     "duplication:e2e": "printf 'E2E ' && jscpd -s -c config/.jscpd-e2e.json",
     "duplication:verbose": "jscpd -c config/.jscpd.json && jscpd -c config/.jscpd-tests.json && jscpd -c config/.jscpd-scripts.json && jscpd -c config/.jscpd-evals.json && jscpd -c config/.jscpd-e2e.json",
-    "loc": "node scripts/loc.ts",
+    "loc": "node scripts/loc/loc.ts",
     "knowledge-base": "node scripts/build-and-release/generate-knowledge-base.ts",
     "kb": "npm run knowledge-base",
     "dxt:clean": "rm -f claude-desktop-extension/*.mcpb claude-desktop-extension/*.js claude-desktop-extension/manifest.json claude-desktop-extension/LICENSE",

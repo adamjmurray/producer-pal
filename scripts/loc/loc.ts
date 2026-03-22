@@ -11,8 +11,8 @@
  * Requires cloc to be installed: https://github.com/AlDanial/cloc
  *
  * Usage:
- *   node scripts/loc.ts              # CLI table (default)
- *   node scripts/loc.ts --markdown   # Markdown table (for CI)
+ *   node scripts/loc/loc.ts              # CLI table (default)
+ *   node scripts/loc/loc.ts --markdown   # Markdown table (for CI)
  */
 
 import { execSync } from "node:child_process";

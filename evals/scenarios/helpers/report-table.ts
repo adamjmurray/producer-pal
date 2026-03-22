@@ -10,7 +10,8 @@
 import { type InspectColor, styleText } from "node:util";
 import { pctColor } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
-import { type ConfigProfile, type EvalScenarioResult } from "../types.ts";
+import { type ConfigProfile } from "../types.ts";
+import { type JsonEvalResult } from "./json-results/types.ts";
 
 /** A composite column in the results table (model + config) */
 interface ColumnKey {
@@ -22,7 +23,7 @@ interface ColumnKey {
 /** 3D results map: scenarioId → modelKey → configId → result */
 export type ResultsByScenario = Map<
   string,
-  Map<string, Map<string, EvalScenarioResult>>
+  Map<string, Map<string, JsonEvalResult>>
 >;
 
 /**
@@ -189,10 +190,10 @@ function printSummaryRow(
  * @param result - The scenario result
  * @returns Percentage (0-100) or null if no assertions
  */
-function getScorePercentage(result: EvalScenarioResult): number | null {
-  if (result.maxScore === 0) return null;
+function getScorePercentage(result: JsonEvalResult): number | null {
+  if (result.score.max === 0) return null;
 
-  return (result.earnedScore / result.maxScore) * 100;
+  return result.score.percentage;
 }
 
 /**
