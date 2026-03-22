@@ -226,8 +226,9 @@ test.describe("Docs Site Sitemap Tests", () => {
 
         if (!href) continue;
 
-        // Skip hash-only links and mailto links
+        // Skip hash-only links, mailto links, and download links (static files)
         if (href.startsWith("#") || href.startsWith("mailto:")) continue;
+        if ((await link.getAttribute("download")) != null) continue;
 
         // Check if it's an external link
         if (isExternalUrl(href)) {

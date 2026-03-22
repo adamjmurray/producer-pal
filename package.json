@@ -81,7 +81,7 @@
     "validate:typescript-only": "node scripts/build-and-release/validate-typescript-only.ts",
     "docs:dev": "vitepress dev docs --port 5174",
     "docs:schemas": "node scripts/generate-tool-schema-docs.ts",
-    "docs:build": "npm run docs:schemas && vitepress build docs",
+    "docs:build": "npm run docs:schemas && node scripts/generate-docs-markdown.ts && vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "docs:test": "npm run docs:build && playwright test -c config/playwright.docs.config.ts",
     "docs:test:dev": "npm run docs:build && playwright test -c config/playwright.docs.config.ts --ui",

@@ -32,8 +32,9 @@ src/portal/*.js.map
 # Generated JS from Peggy grammars
 src/notation/*/parser/generated-*-parser.js
 
-# Generated tool schema docs
+# Generated docs artifacts
 docs/_generated
+docs/public/markdown
 
 # VitePress Documentation Site
 docs/.vitepress/dist
