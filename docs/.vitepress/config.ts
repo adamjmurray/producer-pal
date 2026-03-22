@@ -55,6 +55,7 @@ export default defineConfig({
           { text: "Device Interface", link: "/guide/device" },
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Usage Examples", link: "/guide/examples" },
+          { text: "REST API", link: "/guide/rest-api" },
         ],
       },
       {
