@@ -31,7 +31,7 @@ import {
   printMarkdownLangTable,
 } from "./loc-printers.ts";
 
-const PROJECT_ROOT = path.resolve(import.meta.dirname, "..");
+const PROJECT_ROOT = path.resolve(import.meta.dirname, "../..");
 
 export const GROUPS = [
   "src",
