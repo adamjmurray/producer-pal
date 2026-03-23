@@ -22,7 +22,7 @@ export const negativeCases: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     // Turn 1: Should NOT claim success for impossible request
     {
@@ -30,7 +30,6 @@ export const negativeCases: EvalScenario = {
       pattern: /set.*tempo.*-50|changed.*tempo/i,
       turn: 1,
       negate: true,
-      score: 3,
     },
 
     // Turn 1: Should explain why it can't be done
@@ -38,19 +37,16 @@ export const negativeCases: EvalScenario = {
       type: "response_contains",
       pattern: /can't|cannot|invalid|negative|not possible|must be|positive/i,
       turn: 1,
-      score: 3,
     },
 
     // Turn 2: Should ask clarifying question for ambiguous request
-    { type: "response_contains", pattern: /\?/, turn: 2, score: 3 },
+    { type: "response_contains", pattern: /\?/, turn: 2 },
 
     // Token usage
     {
       type: "token_usage",
       metric: "inputTokens",
       maxTokens: 80_000,
-      upperLimit: 120_000,
-      score: 5,
     },
 
     // LLM quality check

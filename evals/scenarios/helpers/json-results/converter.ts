@@ -42,13 +42,10 @@ export function toJsonResult(
 ): JsonEvalResult {
   const checks = convertChecks(result.assertions);
   const review = deriveReview(result.assertions);
+  const correctnessChecks = checks.filter((c) => c.type !== "token_usage");
   const score = {
-    earned: result.earnedScore,
-    max: result.maxScore,
-    percentage:
-      result.maxScore > 0
-        ? Math.round((result.earnedScore / result.maxScore) * 100)
-        : 100,
+    passed: correctnessChecks.filter((c) => c.pass).length,
+    total: correctnessChecks.length,
   };
 
   return {
@@ -99,14 +96,14 @@ function convertChecks(assertions: EvalAssertionResult[]): JsonCheckResult[] {
     .map((a) => {
       const details = a.details as Record<string, unknown> | undefined;
       const reflection = details?.reflection as string | undefined;
+      const percentage = details?.percentage as number | undefined;
 
       return {
         type: a.assertion.type,
         label: assertionLabel(a.assertion),
-        pass: a.earned === a.maxScore,
-        earned: a.earned,
-        maxScore: a.maxScore,
+        pass: a.assertion.type === "token_usage" || a.earned === a.maxScore,
         message: a.message,
+        ...(percentage != null && { percentage }),
         ...(details != null && { details }),
         ...(reflection != null && { reflection }),
       };

@@ -24,10 +24,10 @@ export const arrangementClipWorkflow: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     // Turn 1: Arrangement clip creation
-    { type: "tool_called", tool: "ppal-create-clip", turn: 1, score: 5 },
+    { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
 
     // Verify arrangement placement (not session)
     {
@@ -45,25 +45,22 @@ export const arrangementClipWorkflow: EvalScenario = {
 
         return true;
       },
-      score: 5,
     },
 
     // Turn 2: Duplicate
-    { type: "tool_called", tool: "ppal-duplicate", turn: 2, score: 5 },
+    { type: "tool_called", tool: "ppal-duplicate", turn: 2 },
 
     // Turn 3: Split
-    { type: "tool_called", tool: "ppal-update-clip", turn: 3, score: 5 },
+    { type: "tool_called", tool: "ppal-update-clip", turn: 3 },
 
-    { type: "response_contains", pattern: /bass/i, turn: 1, score: 2 },
-    { type: "response_contains", pattern: /duplicat/i, turn: 2, score: 2 },
-    { type: "response_contains", pattern: /split/i, turn: 3, score: 2 },
+    { type: "response_contains", pattern: /bass/i, turn: 1 },
+    { type: "response_contains", pattern: /duplicat/i, turn: 2 },
+    { type: "response_contains", pattern: /split/i, turn: 3 },
 
     {
       type: "token_usage",
       metric: "inputTokens",
       maxTokens: 80_000,
-      upperLimit: 120_000,
-      score: 5,
     },
 
     {

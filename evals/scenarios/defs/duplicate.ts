@@ -27,13 +27,13 @@ export const duplicate: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     // Turn 1: Clip creation
-    { type: "tool_called", tool: "ppal-create-clip", turn: 1, score: 5 },
+    { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
 
     // Turn 2: Track duplication
-    { type: "tool_called", tool: TOOL_DUPLICATE, turn: 2, score: 5 },
+    { type: "tool_called", tool: TOOL_DUPLICATE, turn: 2 },
 
     // Verify track duplication uses type: "track"
     {
@@ -53,11 +53,10 @@ export const duplicate: EvalScenario = {
 
         return true;
       },
-      score: 5,
     },
 
     // Turn 3: Clip duplication
-    { type: "tool_called", tool: TOOL_DUPLICATE, turn: 3, score: 5 },
+    { type: "tool_called", tool: TOOL_DUPLICATE, turn: 3 },
 
     // Verify clip duplication uses type: "clip" and arrangementStart
     {
@@ -81,21 +80,18 @@ export const duplicate: EvalScenario = {
 
         return true;
       },
-      score: 5,
     },
 
     // Response checks
-    { type: "response_contains", pattern: /drum/i, turn: 1, score: 2 },
-    { type: "response_contains", pattern: /duplicat/i, turn: 2, score: 2 },
-    { type: "response_contains", pattern: /duplicat/i, turn: 3, score: 2 },
+    { type: "response_contains", pattern: /drum/i, turn: 1 },
+    { type: "response_contains", pattern: /duplicat/i, turn: 2 },
+    { type: "response_contains", pattern: /duplicat/i, turn: 3 },
 
     // Token usage
     {
       type: "token_usage",
       metric: "inputTokens",
       maxTokens: 100_000,
-      upperLimit: 150_000,
-      score: 5,
     },
 
     // LLM quality check

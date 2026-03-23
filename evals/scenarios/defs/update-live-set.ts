@@ -22,23 +22,21 @@ export const updateLiveSet: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     // Turn 1: Live set property updates
-    { type: "tool_called", tool: "ppal-update-live-set", turn: 1, score: 5 },
-    { type: "response_contains", pattern: /128/, turn: 1, score: 2 },
-    { type: "response_contains", pattern: /6\/8/, turn: 1, score: 2 },
+    { type: "tool_called", tool: "ppal-update-live-set", turn: 1 },
+    { type: "response_contains", pattern: /128/, turn: 1 },
+    { type: "response_contains", pattern: /6\/8/, turn: 1 },
 
     // Turn 2: Delete track
-    { type: "tool_called", tool: "ppal-delete", turn: 2, score: 5 },
-    { type: "response_contains", pattern: /delet/i, turn: 2, score: 2 },
+    { type: "tool_called", tool: "ppal-delete", turn: 2 },
+    { type: "response_contains", pattern: /delet/i, turn: 2 },
 
     {
       type: "token_usage",
       metric: "inputTokens",
       maxTokens: 60_000,
-      upperLimit: 100_000,
-      score: 5,
     },
 
     {

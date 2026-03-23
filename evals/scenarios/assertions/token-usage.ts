@@ -4,7 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Token usage assertion - verify token consumption stays within budget
+ * Token usage assertion - informational tracking of token consumption
+ * relative to a target budget. Does not contribute to pass/fail scoring.
  */
 
 import { formatTokenLabel } from "../helpers/json-results/assertion-label.ts";
@@ -15,17 +16,17 @@ import {
 } from "../types.ts";
 
 /**
- * Assert that token usage stays within a budget
+ * Track token usage relative to a target budget.
+ * Returns earned=0, maxScore=0 so it doesn't affect correctness scoring.
  *
  * @param assertion - The token usage assertion to evaluate
  * @param turns - All conversation turns
- * @returns Assertion result with pass/fail or partial score
+ * @returns Assertion result with percentage details
  */
 export function assertTokenUsage(
   assertion: TokenUsageAssertion,
   turns: EvalTurnResult[],
 ): EvalAssertionResult {
-  const maxScore = assertion.score ?? 1;
   const targetTurns =
     assertion.turn == null || assertion.turn === "all"
       ? turns
@@ -35,51 +36,13 @@ export function assertTokenUsage(
     .flatMap((t) => t.stepUsages ?? [])
     .reduce((sum, s) => sum + (s[assertion.metric] ?? 0), 0);
 
-  const label = `${assertion.metric} ${formatTokenLabel(total)}`;
-
-  if (assertion.upperLimit == null) {
-    // Hard pass/fail
-    const passed = total <= assertion.maxTokens;
-
-    return {
-      assertion,
-      earned: passed ? maxScore : 0,
-      maxScore,
-      message: passed
-        ? `${label} ≤ ${formatTokenLabel(assertion.maxTokens)}`
-        : `${label} exceeds ${formatTokenLabel(assertion.maxTokens)}`,
-    };
-  }
-
-  // Graduated scoring
-  if (total <= assertion.maxTokens) {
-    return {
-      assertion,
-      earned: maxScore,
-      maxScore,
-      message: `${label} ≤ ${formatTokenLabel(assertion.maxTokens)}`,
-    };
-  }
-
-  if (total >= assertion.upperLimit) {
-    return {
-      assertion,
-      earned: 0,
-      maxScore,
-      message: `${label} exceeds ${formatTokenLabel(assertion.upperLimit)}`,
-    };
-  }
-
-  const fraction =
-    1 -
-    (total - assertion.maxTokens) /
-      (assertion.upperLimit - assertion.maxTokens);
-  const earned = Math.round(fraction * maxScore * 100) / 100;
+  const percentage = Math.round((total / assertion.maxTokens) * 100);
 
   return {
     assertion,
-    earned,
-    maxScore,
-    message: `${label} (budget ${formatTokenLabel(assertion.maxTokens)}–${formatTokenLabel(assertion.upperLimit)})`,
+    earned: 0,
+    maxScore: 0,
+    message: `${assertion.metric} ${formatTokenLabel(total)} / ${formatTokenLabel(assertion.maxTokens)} target (${percentage}%)`,
+    details: { total, target: assertion.maxTokens, percentage },
   };
 }

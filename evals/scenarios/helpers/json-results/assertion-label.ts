@@ -24,7 +24,7 @@ export function assertionLabel(assertion: EvalAssertion): string {
     case "response_contains":
       return `response_contains: ${assertion.pattern}`;
     case "token_usage":
-      return `token_usage: ${assertion.metric} ≤ ${formatTokenLabel(assertion.maxTokens)}`;
+      return `${assertion.metric} ≤ ${formatTokenLabel(assertion.maxTokens)}`;
     case "custom":
       return assertion.description;
     case "llm_judge":

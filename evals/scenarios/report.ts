@@ -16,7 +16,7 @@ import {
   type JsonEvalResult,
   RESULTS_DIR,
 } from "./helpers/json-results/types.ts";
-import { formatScore, printResult } from "./helpers/result-printer.ts";
+import { printResult } from "./helpers/result-printer.ts";
 
 const program = new Command();
 
@@ -254,9 +254,9 @@ function formatRunCell(
 
   const icon = result.result === "pass" ? "✓" : "✗";
   const color = result.result === "pass" ? "green" : "red";
-  const pct = `${formatScore(result.score.earned)}/${result.score.max}`;
+  const count = `${result.score.passed}/${result.score.total}`;
 
-  return styleText(color, `${icon} ${pct}`);
+  return styleText(color, `${icon} ${count}`);
 }
 
 /**

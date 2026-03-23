@@ -26,13 +26,13 @@ export const clipTransforms: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     // Turn 1: Clip creation
-    { type: "tool_called", tool: "ppal-create-clip", turn: 1, score: 5 },
+    { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
 
     // Turn 2: Velocity transform
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2, score: 5 },
+    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
 
     // Verify transforms parameter is used (not notes or code)
     {
@@ -53,7 +53,6 @@ export const clipTransforms: EvalScenario = {
 
         return true;
       },
-      score: 5,
     },
 
     // Verify transform expression references velocity
@@ -76,29 +75,25 @@ export const clipTransforms: EvalScenario = {
 
         return true;
       },
-      score: 3,
     },
 
     // Turn 3: Humanize timing
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 3, score: 5 },
+    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 3 },
 
     // Response checks
-    { type: "response_contains", pattern: /hi-?hat/i, turn: 1, score: 2 },
+    { type: "response_contains", pattern: /hi-?hat/i, turn: 1 },
     {
       type: "response_contains",
       pattern: /velocity|crescendo/i,
       turn: 2,
-      score: 2,
     },
-    { type: "response_contains", pattern: /humaniz/i, turn: 3, score: 2 },
+    { type: "response_contains", pattern: /humaniz/i, turn: 3 },
 
     // Token usage
     {
       type: "token_usage",
       metric: "inputTokens",
       maxTokens: 100_000,
-      upperLimit: 150_000,
-      score: 5,
     },
 
     // LLM quality check

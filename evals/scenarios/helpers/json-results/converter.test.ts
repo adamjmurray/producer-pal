@@ -39,9 +39,9 @@ function makeAssertion(
   overrides?: Partial<EvalAssertionResult>,
 ): EvalAssertionResult {
   return {
-    assertion: { type: "tool_called", tool: "ppal-connect", score: 5 },
-    earned: 5,
-    maxScore: 5,
+    assertion: { type: "tool_called", tool: "ppal-connect" },
+    earned: 1,
+    maxScore: 1,
     message: "tool_called: ppal-connect",
     ...overrides,
   };
@@ -60,8 +60,8 @@ function makeResult(
     },
     turns: [makeTurn()],
     assertions: [makeAssertion()],
-    earnedScore: 5,
-    maxScore: 5,
+    earnedScore: 1,
+    maxScore: 1,
     totalDurationMs: 1500,
     totalUsage: { inputTokens: 5000, outputTokens: 2000 },
     ...overrides,
@@ -85,9 +85,8 @@ describe("toJsonResult", () => {
     expect(result.configProfileId).toBe("default");
     expect(result.result).toBe("pass");
     expect(result.score).toStrictEqual({
-      earned: 5,
-      max: 5,
-      percentage: 100,
+      passed: 1,
+      total: 1,
     });
     expect(result.review).toBeUndefined();
   });
@@ -129,8 +128,8 @@ describe("toJsonResult", () => {
             details: PASSING_JUDGE,
           }),
         ],
-        earnedScore: 5,
-        maxScore: 5,
+        earnedScore: 1,
+        maxScore: 1,
       }),
       "run-1",
       "google/gemini",
@@ -195,9 +194,9 @@ describe("toJsonResult", () => {
   it("marks result as fail when a check fails", () => {
     const result = toJsonResult(
       makeResult({
-        assertions: [makeAssertion({ earned: 0, maxScore: 5 })],
+        assertions: [makeAssertion({ earned: 0, maxScore: 1 })],
         earnedScore: 0,
-        maxScore: 5,
+        maxScore: 1,
       }),
       "run-1",
       "google/gemini",
@@ -231,7 +230,7 @@ describe("toJsonResult", () => {
     expect(result.error).toBe("Connection failed");
   });
 
-  it("handles zero maxScore gracefully", () => {
+  it("handles zero checks gracefully", () => {
     const result = toJsonResult(
       makeResult({
         assertions: [],
@@ -243,7 +242,7 @@ describe("toJsonResult", () => {
       "default",
     );
 
-    expect(result.score.percentage).toBe(100);
+    expect(result.score).toStrictEqual({ passed: 0, total: 0 });
     expect(result.result).toBe("pass");
   });
 
@@ -304,7 +303,7 @@ describe("toJsonResult", () => {
         assertions: [
           makeAssertion({
             earned: 0,
-            maxScore: 5,
+            maxScore: 1,
             details: {
               count: 0,
               expectedCount: { min: 1 },
@@ -313,7 +312,7 @@ describe("toJsonResult", () => {
           }),
         ],
         earnedScore: 0,
-        maxScore: 5,
+        maxScore: 1,
       }),
       "run-1",
       "google/gemini",
@@ -331,12 +330,12 @@ describe("toJsonResult", () => {
         assertions: [
           makeAssertion({
             earned: 0,
-            maxScore: 5,
+            maxScore: 1,
             details: { count: 0, expectedCount: { min: 1 } },
           }),
         ],
         earnedScore: 0,
-        maxScore: 5,
+        maxScore: 1,
       }),
       "run-1",
       "google/gemini",

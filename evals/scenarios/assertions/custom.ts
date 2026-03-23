@@ -24,33 +24,22 @@ export function assertCustom(
   assertion: CustomAssertion,
   turns: EvalTurnResult[],
 ): EvalAssertionResult {
-  const maxScore = assertion.score ?? 1;
-
   try {
-    const result = assertion.assert(turns);
-    const earned =
-      typeof result === "number"
-        ? Math.round(Math.max(0, Math.min(1, result)) * maxScore * 100) / 100
-        : result
-          ? maxScore
-          : 0;
+    const passed = assertion.assert(turns);
 
     return {
       assertion,
-      earned,
-      maxScore,
-      message:
-        earned === maxScore
-          ? assertion.description
-          : earned > 0
-            ? `Partial: ${assertion.description} (${((earned / maxScore) * 100).toFixed(0)}%)`
-            : `Failed: ${assertion.description}`,
+      earned: passed ? 1 : 0,
+      maxScore: 1,
+      message: passed
+        ? assertion.description
+        : `Failed: ${assertion.description}`,
     };
   } catch (error) {
     return {
       assertion,
       earned: 0,
-      maxScore,
+      maxScore: 1,
       message: `Failed: ${assertion.description} — ${error instanceof Error ? error.message : String(error)}`,
     };
   }

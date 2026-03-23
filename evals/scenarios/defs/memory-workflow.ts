@@ -32,17 +32,17 @@ export const memoryWorkflow: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0, score: 5 },
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
 
     // Turn 1: Write memory
-    { type: "tool_called", tool: TOOL_CONTEXT, turn: 1, score: 5 },
+    { type: "tool_called", tool: TOOL_CONTEXT, turn: 1 },
 
     // Turn 2: Read memory
-    { type: "tool_called", tool: TOOL_CONTEXT, turn: 2, score: 5 },
+    { type: "tool_called", tool: TOOL_CONTEXT, turn: 2 },
 
     // Response should contain the saved content
-    { type: "response_contains", pattern: /c minor/i, turn: 2, score: 2 },
-    { type: "response_contains", pattern: /7th chords/i, turn: 2, score: 2 },
+    { type: "response_contains", pattern: /c minor/i, turn: 2 },
+    { type: "response_contains", pattern: /7th chords/i, turn: 2 },
 
     // LLM quality check
     {

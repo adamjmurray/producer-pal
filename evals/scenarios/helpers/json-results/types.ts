@@ -44,9 +44,10 @@ export interface JsonEvalResult {
 }
 
 export interface JsonScoreSummary {
-  earned: number;
-  max: number;
-  percentage: number;
+  /** Number of correctness checks that passed */
+  passed: number;
+  /** Total number of correctness checks */
+  total: number;
 }
 
 export interface JsonReview {
@@ -84,12 +85,11 @@ export interface JsonCheckResult {
   type: string;
   /** Human-readable label */
   label: string;
+  /** Pass/fail for correctness checks. Always true for token_usage (informational). */
   pass: boolean;
-  /** Phase 1: points earned */
-  earned: number;
-  /** Phase 1: max possible points */
-  maxScore: number;
   message: string;
+  /** Token usage percentage of target (only for token_usage checks) */
+  percentage?: number;
   details?: Record<string, unknown>;
   /** Model's self-reflection on why it failed (only on actionable failures) */
   reflection?: string;

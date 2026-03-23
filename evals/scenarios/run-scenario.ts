@@ -13,7 +13,6 @@ import {
   formatSectionHeader,
   formatSubsectionHeader,
   orange,
-  scoreColor,
 } from "#evals/chat/shared/formatting.ts";
 import {
   resetConfig,
@@ -161,36 +160,14 @@ export async function runScenario(
       });
     }
 
-    // 5. Run assertions - split into correctness checks and LLM judge
-    const correctnessAssertions = scenario.assertions.filter(
-      (a) => a.type !== "llm_judge",
-    );
-    const judgeAssertions = scenario.assertions.filter(
-      (a) => a.type === "llm_judge",
-    );
-
-    const correctnessResults = await runCorrectnessChecks(
-      correctnessAssertions,
+    // 5. Run all assertions (correctness, efficiency, judge)
+    const assertionResults = await runAllAssertions(
+      scenario,
       turns,
       session,
-    );
-
-    // Inject self-reflection on actionable failures (before judge)
-    await maybeInjectReflection(correctnessResults, turns, session);
-
-    // Build check summaries for the judge prompt
-    const checkSummaries = toCheckSummaries(correctnessResults);
-
-    // Run LLM judge assertions (with check context)
-    const judgeResults = await runJudgeAssertions(
-      judgeAssertions,
-      turns,
       provider,
       judgeOverride,
-      checkSummaries,
     );
-
-    const assertionResults = [...correctnessResults, ...judgeResults];
     const earnedScore = sumField(assertionResults, "earned");
     const maxScore = sumField(assertionResults, "maxScore");
 
@@ -262,6 +239,58 @@ async function runAssertions(
 }
 
 /**
+ * Run all assertion types: correctness checks, efficiency checks, and judge
+ *
+ * @param scenario - The scenario being evaluated
+ * @param turns - Completed conversation turns
+ * @param session - Active evaluation session
+ * @param provider - LLM provider being used
+ * @param judgeOverride - Optional judge LLM override
+ * @returns Combined assertion results
+ */
+async function runAllAssertions(
+  scenario: EvalScenario,
+  turns: EvalTurnResult[],
+  session: EvalSession,
+  provider: EvalProvider,
+  judgeOverride: JudgeOverride | undefined,
+): Promise<EvalAssertionResult[]> {
+  const correctnessAssertions = scenario.assertions.filter(
+    (a) => a.type !== "llm_judge" && a.type !== "token_usage",
+  );
+  const efficiencyAssertions = scenario.assertions.filter(
+    (a) => a.type === "token_usage",
+  );
+  const judgeAssertions = scenario.assertions.filter(
+    (a) => a.type === "llm_judge",
+  );
+
+  const correctnessResults = await runCorrectnessChecks(
+    correctnessAssertions,
+    turns,
+    session,
+  );
+
+  const efficiencyResults =
+    efficiencyAssertions.length > 0
+      ? await runAssertions(efficiencyAssertions, turns, session)
+      : [];
+
+  await maybeInjectReflection(correctnessResults, turns, session);
+
+  const checkSummaries = toCheckSummaries(correctnessResults);
+  const judgeResults = await runJudgeAssertions(
+    judgeAssertions,
+    turns,
+    provider,
+    judgeOverride,
+    checkSummaries,
+  );
+
+  return [...correctnessResults, ...efficiencyResults, ...judgeResults];
+}
+
+/**
  * Run correctness checks with formatted output
  *
  * @param assertions - Correctness assertions to run
@@ -281,17 +310,15 @@ async function runCorrectnessChecks(
   );
 
   const results = await runAssertions(assertions, turns, session);
-  const earned = sumField(results, "earned");
-  const max = sumField(results, "maxScore");
+  const passed = results.filter((r) => r.earned === r.maxScore).length;
+  const total = results.length;
+  const allPassed = passed === total;
+  const color = allPassed ? "green" : "red";
+  const icon = allPassed ? "pass" : "fail";
 
-  if (max > 0) {
-    const pct = ((earned / max) * 100).toFixed(0);
-    const color = scoreColor(earned, max);
-
-    const scoreText = earned + "/" + max + " (" + pct + "%)";
-
-    console.log("\nCorrectness: " + styleText(color, scoreText));
-  }
+  console.log(
+    "\nCorrectness: " + styleText(color, `${icon} (${passed}/${total})`),
+  );
 
   return results;
 }

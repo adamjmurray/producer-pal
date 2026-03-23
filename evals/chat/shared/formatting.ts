@@ -70,6 +70,21 @@ export function pctColor(pct: number): ForegroundFormat {
   return "red";
 }
 
+/**
+ * Return a `styleText` format for an efficiency percentage (actual / target).
+ * Lower is better: < 50% blue, ≤ 100% green, < 200% yellow, ≥ 200% red.
+ *
+ * @param pct - Percentage of target (e.g. 150 means 150% of budget)
+ * @returns styleText foreground format
+ */
+export function efficiencyColor(pct: number): ForegroundFormat {
+  if (pct < 50) return "blueBright";
+  if (pct <= 100) return "green";
+  if (pct < 200) return "yellow";
+
+  return "red";
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Thought formatting
 // ─────────────────────────────────────────────────────────────────────────────

@@ -23,7 +23,6 @@ export const connectToAbleton: EvalScenario = {
       tool: "ppal-connect",
       turn: 0,
       args: {},
-      score: 5,
     },
 
     // Verify other tool calls
@@ -52,22 +51,18 @@ export const connectToAbleton: EvalScenario = {
 
         return true;
       },
-      score: 5,
     },
 
     // Verify the response acknowledges the connection
     {
       type: "response_contains",
       pattern: /connected/i,
-      score: 2,
     },
 
     {
       type: "token_usage",
       metric: "inputTokens",
       maxTokens: 20_000,
-      upperLimit: 50_000,
-      score: 5,
     },
 
     // LLM judges the quality of the response

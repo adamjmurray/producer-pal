@@ -11,7 +11,7 @@
 import { styleText } from "node:util";
 import { Command } from "commander";
 import { collapseStdoutNewlines } from "#evals/chat/shared/collapse-stdout-newlines.ts";
-import { orange, scoreColor } from "#evals/chat/shared/formatting.ts";
+import { orange } from "#evals/chat/shared/formatting.ts";
 import {
   parseModelArg,
   type ModelSpec,
@@ -27,7 +27,7 @@ import {
   printResultsTable,
   type ResultsByScenario,
 } from "./helpers/report-table.ts";
-import { formatScore, printResult } from "./helpers/result-printer.ts";
+import { printResult } from "./helpers/result-printer.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
 import { type ConfigProfile } from "./types.ts";
@@ -254,17 +254,21 @@ function printSummary(
   console.log(styleText("bold", "Summary:"));
 
   for (const result of allResults) {
-    const color = scoreColor(result.score.earned, result.score.max);
+    const parts = [`${result.score.passed}/${result.score.total}`];
 
-    const scoreText =
-      formatScore(result.score.earned) +
-      "/" +
-      result.score.max +
-      " (" +
-      result.score.percentage +
-      "%)";
+    if (result.review) {
+      const judgeColor = result.review.pass ? "green" : "red";
+      const judgeText = result.review.pass ? "pass" : "fail";
 
-    console.log("  " + result.scenarioId + ": " + styleText(color, scoreText));
+      parts.push("judge: " + styleText(judgeColor, judgeText));
+    }
+
+    const overallPassed = result.result === "pass";
+    const color = overallPassed ? "green" : "red";
+
+    console.log(
+      "  " + result.scenarioId + ": " + styleText(color, parts.join(" | ")),
+    );
 
     if (result.error) {
       console.log("    " + styleText("red", "Error: " + result.error));

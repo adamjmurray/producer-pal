@@ -26,10 +26,10 @@ export const createAndEditClip: EvalScenario = {
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     // Turn 1: Clip creation
-    { type: "tool_called", tool: "ppal-create-clip", turn: 1, score: 5 },
+    { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
 
     // Verify notes use bar|beat notation (regression test)
     {
@@ -54,14 +54,13 @@ export const createAndEditClip: EvalScenario = {
 
         return true;
       },
-      score: 5,
     },
 
     // Turn 2: Note addition (merge mode)
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2, score: 5 },
+    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
 
     // Turn 3: Quantization
-    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 3, score: 5 },
+    { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 3 },
 
     // Verify quantize parameter is used
     {
@@ -80,7 +79,6 @@ export const createAndEditClip: EvalScenario = {
 
         return true;
       },
-      score: 5,
     },
 
     // Verify response mentions the drum creation
@@ -88,14 +86,13 @@ export const createAndEditClip: EvalScenario = {
       type: "response_contains",
       pattern: /drum|kick|snare/i,
       turn: 1,
-      score: 2,
     },
 
     // Verify response mentions hi-hats
-    { type: "response_contains", pattern: /hi-?hat/i, turn: 2, score: 2 },
+    { type: "response_contains", pattern: /hi-?hat/i, turn: 2 },
 
     // Verify response mentions quantization
-    { type: "response_contains", pattern: /quantiz/i, turn: 3, score: 2 },
+    { type: "response_contains", pattern: /quantiz/i, turn: 3 },
 
     // LLM quality check
     {
@@ -111,8 +108,6 @@ export const createAndEditClip: EvalScenario = {
       type: "token_usage",
       metric: "inputTokens",
       maxTokens: 100_000,
-      upperLimit: 150_000,
-      score: 5,
     },
   ],
 };

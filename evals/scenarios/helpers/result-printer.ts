@@ -9,9 +9,9 @@
 
 import { styleText } from "node:util";
 import {
+  efficiencyColor,
   formatSubsectionHeader,
   formatUsageLine,
-  scoreColor,
 } from "#evals/chat/shared/formatting.ts";
 import {
   type JsonCheckResult,
@@ -49,8 +49,6 @@ export function printResult(result: JsonEvalResult, showUsage?: boolean): void {
   const configLabel =
     result.configProfileId === "default" ? "" : ` [${result.configProfileId}]`;
 
-  const color = scoreColor(result.score.earned, result.score.max);
-
   console.log(`\n${formatSubsectionHeader("SUMMARY")}`);
   console.log(
     bold(`${result.model}: ${result.scenarioId}${configLabel}`) + "\n",
@@ -65,85 +63,107 @@ export function printResult(result: JsonEvalResult, showUsage?: boolean): void {
     console.log(styleText("red", "Error: " + result.error));
   }
 
-  if (result.checks.length > 0 || result.review) {
-    printScoreTable(result.checks, result.review);
+  const correctnessChecks = result.checks.filter(
+    (c) => c.type !== "token_usage",
+  );
+  const efficiencyChecks = result.checks.filter(
+    (c) => c.type === "token_usage",
+  );
+
+  if (correctnessChecks.length > 0) {
+    printCorrectnessTable(correctnessChecks);
   }
 
-  const scoreText = `${formatScore(result.score.earned)}/${result.score.max} (${result.score.percentage}%)`;
+  const passed = result.score.passed;
+  const total = result.score.total;
+  const checksAllPassed = passed === total;
+  const checksColor = checksAllPassed ? "green" : "red";
+  const checksIcon = checksAllPassed ? "pass" : "fail";
 
-  console.log("\n" + bold("Total: " + styleText(color, scoreText)));
+  console.log(
+    "\n" +
+      bold(
+        "Correctness: " +
+          styleText(checksColor, `${checksIcon} (${passed}/${total})`),
+      ),
+  );
+
+  if (result.review) {
+    printJudge(result.review);
+  }
+
+  if (efficiencyChecks.length > 0) {
+    printEfficiency(efficiencyChecks);
+  }
 }
 
 /**
- * Print score table showing each check with earned/max, plus judge row
+ * Print correctness table showing each check with pass/fail
  *
- * @param checks - Deterministic check results
- * @param review - Judge review (if any)
+ * @param checks - Correctness check results (excludes token_usage and judge)
  */
-function printScoreTable(
-  checks: JsonCheckResult[],
-  review: JsonReview | undefined,
-): void {
+function printCorrectnessTable(checks: JsonCheckResult[]): void {
   const labels = checks.map((c) => c.label);
-
-  if (review) labels.push("llm_judge");
-
   const typeWidth = Math.max(17, ...labels.map((l) => l.length));
-  const scoreWidth = 10;
+  const resultWidth = 8;
   const topBorder = gray(
-    `┌─────┬${"─".repeat(typeWidth + 2)}┬${"─".repeat(scoreWidth + 2)}┐`,
+    `┌─────┬${"─".repeat(typeWidth + 2)}┬${"─".repeat(resultWidth + 2)}┐`,
   );
   const midBorder = gray(
-    `├─────┼${"─".repeat(typeWidth + 2)}┼${"─".repeat(scoreWidth + 2)}┤`,
+    `├─────┼${"─".repeat(typeWidth + 2)}┼${"─".repeat(resultWidth + 2)}┤`,
   );
   const botBorder = gray(
-    `└─────┴${"─".repeat(typeWidth + 2)}┴${"─".repeat(scoreWidth + 2)}┘`,
+    `└─────┴${"─".repeat(typeWidth + 2)}┴${"─".repeat(resultWidth + 2)}┘`,
   );
   const d = gray("│");
 
   console.log("\n" + topBorder);
   console.log(
-    `${d} ${bold("  #")} ${d} ${bold("Type".padEnd(typeWidth))} ${d} ${bold("Score".padStart(scoreWidth))} ${d}`,
+    `${d} ${bold("  #")} ${d} ${bold("Check".padEnd(typeWidth))} ${d} ${bold("Result".padStart(resultWidth))} ${d}`,
   );
   console.log(midBorder);
 
   for (const [i, check] of checks.entries()) {
     const num = String(i + 1).padStart(3);
     const type = check.label.padEnd(typeWidth);
-    const score = `${formatScore(check.earned)}/${check.maxScore}`;
-    const color = scoreColor(check.earned, check.maxScore);
-    const styledScore = styleText(color, score.padStart(scoreWidth));
+    const passText = check.pass ? "pass" : "fail";
+    const color = check.pass ? "green" : "red";
+    const styledResult = styleText(color, passText.padStart(resultWidth));
 
-    console.log(`${d} ${num} ${d} ${type} ${d} ${styledScore} ${d}`);
-  }
-
-  if (review) {
-    const idx = checks.length + 1;
-    const num = String(idx).padStart(3);
-    const type = "llm_judge".padEnd(typeWidth);
-    const passText = review.pass ? "pass" : "fail";
-    const color = review.pass ? "green" : "red";
-    const styledScore = styleText(color, passText.padStart(scoreWidth));
-
-    console.log(`${d} ${num} ${d} ${type} ${d} ${styledScore} ${d}`);
+    console.log(`${d} ${num} ${d} ${type} ${d} ${styledResult} ${d}`);
   }
 
   console.log(botBorder);
+}
 
-  // Print issues below the table so they aren't truncated by column width
-  if (review && review.issues.length > 0) {
-    for (const issue of review.issues) {
-      console.log(gray(`  - ${issue}`));
-    }
+/**
+ * Print judge result as a separate line with issues
+ *
+ * @param review - Judge review
+ */
+function printJudge(review: JsonReview): void {
+  const passText = review.pass ? "pass" : "fail";
+  const color = review.pass ? "green" : "red";
+
+  console.log(bold("Judge: " + styleText(color, passText)));
+
+  for (const issue of review.issues) {
+    console.log(gray(`  - ${issue}`));
   }
 }
 
 /**
- * Format a score for display (integer if whole, 1 decimal otherwise)
+ * Print efficiency section showing token usage as percentage of target
  *
- * @param score - The score to format
- * @returns Formatted score string
+ * @param checks - Token usage check results
  */
-export function formatScore(score: number): string {
-  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+function printEfficiency(checks: JsonCheckResult[]): void {
+  console.log("\n" + bold("Efficiency:"));
+
+  for (const check of checks) {
+    const pct = check.percentage ?? 0;
+    const color = efficiencyColor(pct);
+
+    console.log("  " + styleText(color, check.message));
+  }
 }
