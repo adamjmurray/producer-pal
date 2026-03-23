@@ -20,9 +20,9 @@ Returns all enabled tools with their JSON Schema input definitions:
 {
   "tools": [
     {
-      "name": "ppal-connect",
-      "title": "Connect",
-      "description": "Connect to Ableton Live...",
+      "name": "ppal-read-live-set",
+      "title": "Read Live Set",
+      "description": "Read an overview of the Live Set...",
       "annotations": { "readOnlyHint": true, "destructiveHint": false },
       "inputSchema": { "type": "object", "properties": { ... } }
     }
@@ -53,10 +53,6 @@ Returns:
 ## Quick Start with curl
 
 ```bash
-# Connect to Ableton Live
-curl -X POST http://localhost:3350/api/tools/ppal-connect \
-  -H 'Content-Type: application/json' -d '{}'
-
 # Read the Live Set overview
 curl -X POST http://localhost:3350/api/tools/ppal-read-live-set \
   -H 'Content-Type: application/json' -d '{}'
@@ -95,8 +91,6 @@ on the [Features](/features) page.
 
 ## Tips
 
-- Always call `ppal-connect` first — it initializes the connection and returns
-  the current Live Set state.
 - The `inputSchema` in the tool list response is standard
   [JSON Schema](https://json-schema.org/), so you can use it for client-side
   validation or code generation.

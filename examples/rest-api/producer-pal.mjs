@@ -29,13 +29,8 @@ async function callTool(name, args = {}) {
 // --- Example usage ---
 
 async function main() {
-  // Connect to Ableton Live
-  console.log("Connecting to Ableton Live...");
-  const connectResult = await callTool("ppal-connect");
-  console.log(connectResult.result);
-
   // List available tools
-  console.log("\nAvailable tools:");
+  console.log("Available tools:");
   const tools = await listTools();
   for (const tool of tools) {
     console.log(`  ${tool.name} - ${tool.description.slice(0, 60)}...`);

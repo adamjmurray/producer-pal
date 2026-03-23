@@ -34,13 +34,8 @@ def call_tool(name, args=None):
 
 
 def main():
-    # Connect to Ableton Live
-    print("Connecting to Ableton Live...")
-    connect_result = call_tool("ppal-connect")
-    print(connect_result["result"])
-
     # List available tools
-    print("\nAvailable tools:")
+    print("Available tools:")
     tools = list_tools()
     for tool in tools:
         print(f"  {tool['name']} - {tool['description'][:60]}...")
