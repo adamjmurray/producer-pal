@@ -374,34 +374,52 @@ async function printJudgeSection(
   const results: EvalAssertionResult[] = [];
 
   for (const assertion of assertions) {
-    if (assertion.type === "llm_judge") {
-      const result = await assertWithLlmJudge(
-        assertion,
-        turns,
-        provider,
-        judgeOverride,
-        checkSummaries,
-      );
+    if (assertion.type !== "llm_judge") continue;
 
-      results.push(result);
+    console.log("\n" + formatSubsectionHeader("Judge"));
 
-      const details = result.details as
-        | { pass: boolean; issues: string[] }
-        | undefined;
-      const pass = details?.pass ?? false;
-      const label = pass ? "pass" : "fail";
+    const result = await assertWithLlmJudge(
+      assertion,
+      turns,
+      provider,
+      judgeOverride,
+      checkSummaries,
+    );
 
-      console.log("\n" + formatSubsectionHeader(`Judge (${label})`));
+    results.push(result);
 
-      if (!isQuietMode() && details) {
-        console.log("");
+    const details = result.details as
+      | { pass: boolean; issues: string[] }
+      | undefined;
 
-        for (const issue of details.issues) {
-          console.log("  " + styleText("red", `✗ ${issue}`));
-        }
-      }
-    }
+    printJudgeDetails(details);
   }
 
   return results;
+}
+
+/**
+ * Print judge issues and pass/fail result
+ *
+ * @param details - Judge result details
+ */
+function printJudgeDetails(
+  details: { pass: boolean; issues: string[] } | undefined,
+): void {
+  const pass = details?.pass ?? false;
+  const issues = details?.issues ?? [];
+
+  if (!isQuietMode() && issues.length > 0) {
+    console.log("");
+
+    for (const issue of issues) {
+      console.log("  " + styleText("red", `✗ ${issue}`));
+    }
+  }
+
+  const label = pass ? "pass" : "fail";
+  const color = pass ? "green" : "red";
+  const issueSuffix = issues.length > 0 ? ` — ${issues.length} issue(s)` : "";
+
+  console.log("\n  " + styleText(color, `${label}${issueSuffix}`));
 }

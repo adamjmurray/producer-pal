@@ -112,9 +112,7 @@ function printJudgeSection(result: JsonEvalResult): void {
 
   if (!judge) return;
 
-  const label = judge.pass ? "pass" : "fail";
-
-  console.log("\n" + formatSubsectionHeader(`Judge (${label})`));
+  console.log("\n" + formatSubsectionHeader("Judge"));
 
   if (judge.issues.length > 0) {
     console.log("");
@@ -123,6 +121,13 @@ function printJudgeSection(result: JsonEvalResult): void {
       console.log("  " + styleText("red", `✗ ${issue}`));
     }
   }
+
+  const label = judge.pass ? "pass" : "fail";
+  const color = judge.pass ? "green" : "red";
+  const issueSuffix =
+    judge.issues.length > 0 ? ` — ${judge.issues.length} issue(s)` : "";
+
+  console.log("\n  " + styleText(color, `${label}${issueSuffix}`));
 }
 
 /**
@@ -130,7 +135,7 @@ function printJudgeSection(result: JsonEvalResult): void {
  *
  * @param result - The eval result
  */
-function printResultBlock(result: JsonEvalResult): void {
+export function printResultBlock(result: JsonEvalResult): void {
   const overallColor = result.result === "pass" ? "green" : "red";
   const overallLabel = result.result.toUpperCase();
 

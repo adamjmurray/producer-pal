@@ -27,7 +27,7 @@ import {
   printResultsTable,
   type ResultsByScenario,
 } from "./helpers/report-table.ts";
-import { printResult } from "./helpers/result-printer.ts";
+import { printResultBlock } from "./helpers/result-printer.ts";
 import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
 import { type ConfigProfile } from "./types.ts";
@@ -209,7 +209,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
           );
 
           await writeJsonResult(jsonResult);
-          printResult(jsonResult);
+          printResultBlock(jsonResult);
           configResults.set(profile.id, jsonResult);
         }
 
