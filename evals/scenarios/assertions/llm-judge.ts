@@ -149,7 +149,12 @@ function formatTranscript(turns: EvalTurnResult[]): string {
       const toolCallsSummary =
         turn.toolCalls.length > 0
           ? turn.toolCalls
-              .map((tc) => `  - ${tc.name}(${JSON.stringify(tc.args)})`)
+              .map((tc) => {
+                const call = `  - ${tc.name}(${JSON.stringify(tc.args)})`;
+                const result = tc.result ? `    → ${tc.result}` : "";
+
+                return result ? `${call}\n${result}` : call;
+              })
               .join("\n")
           : "  (no tool calls)";
 
