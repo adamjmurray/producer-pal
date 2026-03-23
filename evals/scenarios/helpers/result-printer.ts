@@ -10,160 +10,176 @@
 import { styleText } from "node:util";
 import {
   efficiencyColor,
+  formatSectionHeader,
   formatSubsectionHeader,
   formatUsageLine,
 } from "#evals/chat/shared/formatting.ts";
-import {
-  type JsonCheckResult,
-  type JsonEvalResult,
-  type JsonReview,
-} from "./json-results/types.ts";
-
-/**
- * Apply gray styling to text
- *
- * @param text - Text to style
- * @returns Gray styled text
- */
-function gray(text: string): string {
-  return styleText("gray", text);
-}
-
-/**
- * Apply bold styling to text
- *
- * @param text - Text to style
- * @returns Bold styled text
- */
-function bold(text: string): string {
-  return styleText("bold", text);
-}
+import { formatTokenLabel } from "./json-results/assertion-label.ts";
+import { type JsonEvalResult } from "./json-results/types.ts";
 
 /**
  * Print result for a single scenario run
  *
  * @param result - The JSON eval result
- * @param showUsage - Whether to display token usage totals
  */
-export function printResult(result: JsonEvalResult, showUsage?: boolean): void {
+export function printResult(result: JsonEvalResult): void {
   const configLabel =
     result.configProfileId === "default" ? "" : ` [${result.configProfileId}]`;
 
-  console.log(`\n${formatSubsectionHeader("SUMMARY")}`);
   console.log(
-    bold(`${result.model}: ${result.scenarioId}${configLabel}`) + "\n",
+    formatSectionHeader(`${result.model}: ${result.scenarioId}${configLabel}`),
   );
-  console.log(`${gray("Duration:")} ${result.totalDurationMs}ms`);
-
-  if (showUsage && result.totalUsage) {
-    console.log(formatUsageLine(result.totalUsage));
-  }
 
   if (result.error) {
     console.log(styleText("red", "Error: " + result.error));
   }
 
-  const correctnessChecks = result.checks.filter(
-    (c) => c.type !== "token_usage",
-  );
-  const efficiencyChecks = result.checks.filter(
-    (c) => c.type === "token_usage",
-  );
+  // Checks section
+  printChecksSection(result);
 
-  if (correctnessChecks.length > 0) {
-    printCorrectnessTable(correctnessChecks);
+  // Efficiency section
+  if (result.efficiency) {
+    printEfficiencySection(result);
   }
 
-  const passed = result.score.passed;
-  const total = result.score.total;
-  const checksAllPassed = passed === total;
-  const checksColor = checksAllPassed ? "green" : "red";
-  const checksIcon = checksAllPassed ? "pass" : "fail";
+  // Judge section
+  if (result.judge) {
+    printJudgeSection(result);
+  }
+
+  // RESULT block
+  printResultBlock(result);
+}
+
+/**
+ * Print the Checks section with ✓/✗ lines
+ *
+ * @param result - The eval result
+ */
+function printChecksSection(result: JsonEvalResult): void {
+  const { checks } = result;
+  const passed = checks.results.filter((c) => c.pass).length;
+  const total = checks.results.length;
+  const label = checks.pass ? "pass" : "fail";
+
+  console.log(formatSubsectionHeader(`Checks (${passed}/${total} ${label})`));
+  console.log("");
+
+  for (const check of checks.results) {
+    const icon = check.pass ? styleText("green", "✓") : styleText("red", "✗");
+
+    console.log(`  ${icon} ${check.label}`);
+
+    if (check.reflection) {
+      console.log(styleText("gray", `    Reflection: "${check.reflection}"`));
+    }
+  }
+}
+
+/**
+ * Print the Efficiency section
+ *
+ * @param result - The eval result
+ */
+function printEfficiencySection(result: JsonEvalResult): void {
+  const eff = result.efficiency;
+
+  if (!eff) return;
+
+  console.log("\n" + formatSubsectionHeader("Efficiency"));
+  console.log("");
+
+  const color = efficiencyColor(eff.percentage);
+  const actual = formatTokenLabel(eff.inputTokens);
+  const target = formatTokenLabel(eff.targetTokens);
 
   console.log(
-    "\n" +
-      bold(
-        "Correctness: " +
-          styleText(checksColor, `${checksIcon} (${passed}/${total})`),
+    "  " +
+      styleText(
+        color,
+        `inputTokens ${actual} / ${target} target (${eff.percentage}%)`,
       ),
   );
+}
 
-  if (result.review) {
-    printJudge(result.review);
-  }
+/**
+ * Print the Judge section
+ *
+ * @param result - The eval result
+ */
+function printJudgeSection(result: JsonEvalResult): void {
+  const judge = result.judge;
 
-  if (efficiencyChecks.length > 0) {
-    printEfficiency(efficiencyChecks);
+  if (!judge) return;
+
+  const label = judge.pass ? "pass" : "fail";
+
+  console.log("\n" + formatSubsectionHeader(`Judge (${label})`));
+
+  if (judge.issues.length > 0) {
+    console.log("");
+
+    for (const issue of judge.issues) {
+      console.log("  " + styleText("red", `✗ ${issue}`));
+    }
   }
 }
 
 /**
- * Print correctness table showing each check with pass/fail
+ * Print the final RESULT block with summary lines
  *
- * @param checks - Correctness check results (excludes token_usage and judge)
+ * @param result - The eval result
  */
-function printCorrectnessTable(checks: JsonCheckResult[]): void {
-  const labels = checks.map((c) => c.label);
-  const typeWidth = Math.max(17, ...labels.map((l) => l.length));
-  const resultWidth = 8;
-  const topBorder = gray(
-    `┌─────┬${"─".repeat(typeWidth + 2)}┬${"─".repeat(resultWidth + 2)}┐`,
-  );
-  const midBorder = gray(
-    `├─────┼${"─".repeat(typeWidth + 2)}┼${"─".repeat(resultWidth + 2)}┤`,
-  );
-  const botBorder = gray(
-    `└─────┴${"─".repeat(typeWidth + 2)}┴${"─".repeat(resultWidth + 2)}┘`,
-  );
-  const d = gray("│");
+function printResultBlock(result: JsonEvalResult): void {
+  const overallColor = result.result === "pass" ? "green" : "red";
+  const overallLabel = result.result.toUpperCase();
 
-  console.log("\n" + topBorder);
   console.log(
-    `${d} ${bold("  #")} ${d} ${bold("Check".padEnd(typeWidth))} ${d} ${bold("Result".padStart(resultWidth))} ${d}`,
+    formatSectionHeader(`RESULT: ${styleText(overallColor, overallLabel)}`),
   );
-  console.log(midBorder);
 
-  for (const [i, check] of checks.entries()) {
-    const num = String(i + 1).padStart(3);
-    const type = check.label.padEnd(typeWidth);
-    const passText = check.pass ? "pass" : "fail";
-    const color = check.pass ? "green" : "red";
-    const styledResult = styleText(color, passText.padStart(resultWidth));
+  // Checks line
+  const { checks } = result;
+  const passed = checks.results.filter((c) => c.pass).length;
+  const total = checks.results.length;
+  const checksColor = checks.pass ? "green" : "red";
+  const checksLabel = checks.pass ? "pass" : "fail";
 
-    console.log(`${d} ${num} ${d} ${type} ${d} ${styledResult} ${d}`);
+  const checksText = `${checksLabel} (${passed}/${total})`;
+
+  console.log(`  Checks:     ${styleText(checksColor, checksText)}`);
+
+  // Efficiency line
+  if (result.efficiency) {
+    const eff = result.efficiency;
+    const effColor = efficiencyColor(eff.percentage);
+    const actual = formatTokenLabel(eff.inputTokens);
+    const target = formatTokenLabel(eff.targetTokens);
+    const effText = `${eff.percentage}% (${actual} / ${target})`;
+
+    console.log(`  Efficiency: ${styleText(effColor, effText)}`);
   }
 
-  console.log(botBorder);
-}
+  // Judge line
+  if (result.judge) {
+    const judgeColor = result.judge.pass ? "green" : "red";
+    const judgeLabel = result.judge.pass ? "pass" : "fail";
+    const issueSuffix =
+      result.judge.issues.length > 0
+        ? ` — ${result.judge.issues.length} issue(s)`
+        : "";
 
-/**
- * Print judge result as a separate line with issues
- *
- * @param review - Judge review
- */
-function printJudge(review: JsonReview): void {
-  const passText = review.pass ? "pass" : "fail";
-  const color = review.pass ? "green" : "red";
-
-  console.log(bold("Judge: " + styleText(color, passText)));
-
-  for (const issue of review.issues) {
-    console.log(gray(`  - ${issue}`));
+    console.log(
+      `  Judge:      ${styleText(judgeColor, judgeLabel + issueSuffix)}`,
+    );
   }
-}
 
-/**
- * Print efficiency section showing token usage as percentage of target
- *
- * @param checks - Token usage check results
- */
-function printEfficiency(checks: JsonCheckResult[]): void {
-  console.log("\n" + bold("Efficiency:"));
+  // Duration line
+  const durationSec = (result.totalDurationMs / 1000).toFixed(1);
 
-  for (const check of checks) {
-    const pct = check.percentage ?? 0;
-    const color = efficiencyColor(pct);
+  console.log(`  Duration:   ${durationSec}s`);
 
-    console.log("  " + styleText(color, check.message));
+  if (result.totalUsage) {
+    console.log("  " + formatUsageLine(result.totalUsage));
   }
 }

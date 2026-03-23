@@ -26,16 +26,15 @@ program
   .argument("[paths...]", "JSON result file(s) or scenario directories")
   .option("--run <runId>", "Show all scenarios from a specific run")
   .option("--compare <runIds...>", "Compare two or more runs")
-  .option("-u, --usage", "Show token usage")
   .action(async (paths: string[], options: ReportOptions) => {
     if (options.compare) {
       await compareRuns(options.compare);
     } else if (options.run) {
-      await showRun(options.run, options.usage);
+      await showRun(options.run);
     } else if (paths.length > 0) {
-      await showPaths(paths, options.usage);
+      await showPaths(paths);
     } else {
-      await showLatest(options.usage);
+      await showLatest();
     }
   });
 
@@ -44,7 +43,6 @@ program.parse();
 interface ReportOptions {
   run?: string;
   compare?: string[];
-  usage?: boolean;
 }
 
 /**
@@ -112,21 +110,20 @@ async function findResultsInDir(dir: string): Promise<string[]> {
  * Show results from explicit paths (files or directories)
  *
  * @param paths - File or directory paths
- * @param showUsage - Whether to show token usage
  */
-async function showPaths(paths: string[], showUsage?: boolean): Promise<void> {
+async function showPaths(paths: string[]): Promise<void> {
   for (const path of paths) {
     if (path.endsWith(".json")) {
       const result = await loadResult(path);
 
-      printResult(result, showUsage);
+      printResult(result);
     } else {
       const files = await findResultsInDir(path);
 
       for (const file of files) {
         const result = await loadResult(file);
 
-        printResult(result, showUsage);
+        printResult(result);
       }
     }
   }
@@ -136,9 +133,8 @@ async function showPaths(paths: string[], showUsage?: boolean): Promise<void> {
  * Show all scenarios from a specific run
  *
  * @param runId - Run identifier
- * @param showUsage - Whether to show token usage
  */
-async function showRun(runId: string, showUsage?: boolean): Promise<void> {
+async function showRun(runId: string): Promise<void> {
   const files = await findResultsByRunId(runId);
 
   if (files.length === 0) {
@@ -151,16 +147,15 @@ async function showRun(runId: string, showUsage?: boolean): Promise<void> {
   for (const file of files) {
     const result = await loadResult(file);
 
-    printResult(result, showUsage);
+    printResult(result);
   }
 }
 
 /**
  * Show the latest result for each scenario
  *
- * @param showUsage - Whether to show token usage
  */
-async function showLatest(showUsage?: boolean): Promise<void> {
+async function showLatest(): Promise<void> {
   try {
     const scenarioDirs = await readdir(RESULTS_DIR);
     let found = false;
@@ -173,7 +168,7 @@ async function showLatest(showUsage?: boolean): Promise<void> {
 
         const result = await loadResult(files[0] as string);
 
-        printResult(result, showUsage);
+        printResult(result);
       }
     }
 
@@ -254,9 +249,11 @@ function formatRunCell(
 
   const icon = result.result === "pass" ? "✓" : "✗";
   const color = result.result === "pass" ? "green" : "red";
-  const count = `${result.score.passed}/${result.score.total}`;
+  const { checks } = result;
+  const passed = checks.results.filter((c) => c.pass).length;
+  const total = checks.results.length;
 
-  return styleText(color, `${icon} ${count}`);
+  return styleText(color, `${icon} ${passed}/${total}`);
 }
 
 /**

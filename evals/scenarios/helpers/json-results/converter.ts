@@ -15,9 +15,10 @@ import {
 import { type SimpleJudgeResult } from "../judge-response-parser.ts";
 import { assertionLabel } from "./assertion-label.ts";
 import {
-  type JsonCheckResult,
+  type JsonChecks,
+  type JsonEfficiency,
   type JsonEvalResult,
-  type JsonReview,
+  type JsonJudge,
   type JsonTokenUsage,
   type JsonTurnRecord,
 } from "./types.ts";
@@ -40,13 +41,9 @@ export function toJsonResult(
   model: string,
   configProfileId: string,
 ): JsonEvalResult {
-  const checks = convertChecks(result.assertions);
-  const review = deriveReview(result.assertions);
-  const correctnessChecks = checks.filter((c) => c.type !== "token_usage");
-  const score = {
-    passed: correctnessChecks.filter((c) => c.pass).length,
-    total: correctnessChecks.length,
-  };
+  const checks = buildChecks(result.assertions);
+  const efficiency = buildEfficiency(result.assertions);
+  const judge = buildJudge(result.assertions);
 
   return {
     version: 1,
@@ -56,11 +53,11 @@ export function toJsonResult(
     scenarioDescription: result.scenario.description,
     model,
     configProfileId,
-    result: derivePassFail(checks, review),
-    score,
-    ...(review && { review }),
-    turns: result.turns.map(convertTurn),
+    result: derivePassFail(checks, judge),
     checks,
+    ...(efficiency && { efficiency }),
+    ...(judge && { judge }),
+    turns: result.turns.map(convertTurn),
     totalDurationMs: result.totalDurationMs,
     ...(result.totalUsage && { totalUsage: result.totalUsage }),
     ...(result.error && { error: result.error }),
@@ -68,57 +65,70 @@ export function toJsonResult(
 }
 
 /**
- * Derive overall pass/fail from checks and review
- *
- * @param checks - Deterministic check results
- * @param review - Judge review (if any)
- * @returns "pass" or "fail"
- */
-function derivePassFail(
-  checks: JsonCheckResult[],
-  review: JsonReview | undefined,
-): "pass" | "fail" {
-  const allChecksPassed = checks.every((c) => c.pass);
-  const reviewPassed = review == null || review.pass;
-
-  return allChecksPassed && reviewPassed ? "pass" : "fail";
-}
-
-/**
- * Convert assertion results to deterministic check results (excludes llm_judge)
+ * Build checks object from non-judge, non-token_usage assertions
  *
  * @param assertions - All assertion results
- * @returns JSON check results for non-judge assertions
+ * @returns Checks object with pass flag and individual results
  */
-function convertChecks(assertions: EvalAssertionResult[]): JsonCheckResult[] {
-  return assertions
-    .filter((a) => a.assertion.type !== "llm_judge")
+function buildChecks(assertions: EvalAssertionResult[]): JsonChecks {
+  const results = assertions
+    .filter(
+      (a) =>
+        a.assertion.type !== "llm_judge" && a.assertion.type !== "token_usage",
+    )
     .map((a) => {
       const details = a.details as Record<string, unknown> | undefined;
       const reflection = details?.reflection as string | undefined;
-      const percentage = details?.percentage as number | undefined;
 
       return {
         type: a.assertion.type,
         label: assertionLabel(a.assertion),
-        pass: a.assertion.type === "token_usage" || a.earned === a.maxScore,
+        pass: a.earned === a.maxScore,
         message: a.message,
-        ...(percentage != null && { percentage }),
         ...(details != null && { details }),
         ...(reflection != null && { reflection }),
       };
     });
+
+  return {
+    pass: results.every((c) => c.pass),
+    results,
+  };
 }
 
 /**
- * Derive review from LLM judge assertion results
+ * Build efficiency object from token_usage assertion
  *
  * @param assertions - All assertion results
- * @returns Review object, or undefined if no judge assertions
+ * @returns Efficiency object, or undefined if no token_usage assertion
  */
-function deriveReview(
+function buildEfficiency(
   assertions: EvalAssertionResult[],
-): JsonReview | undefined {
+): JsonEfficiency | undefined {
+  const tokenResult = assertions.find(
+    (a) => a.assertion.type === "token_usage",
+  );
+
+  if (!tokenResult) return undefined;
+
+  const details = tokenResult.details as
+    | { total: number; target: number; percentage: number }
+    | undefined;
+
+  return {
+    inputTokens: details?.total ?? 0,
+    targetTokens: details?.target ?? 0,
+    percentage: details?.percentage ?? 0,
+  };
+}
+
+/**
+ * Build judge object from llm_judge assertion
+ *
+ * @param assertions - All assertion results
+ * @returns Judge object, or undefined if no judge assertion
+ */
+function buildJudge(assertions: EvalAssertionResult[]): JsonJudge | undefined {
   const judgeResult = assertions.find((a) => a.assertion.type === "llm_judge");
 
   if (!judgeResult) return undefined;
@@ -130,6 +140,22 @@ function deriveReview(
   }
 
   return { pass: details.pass, issues: details.issues };
+}
+
+/**
+ * Derive overall pass/fail from checks and judge
+ *
+ * @param checks - Checks result
+ * @param judge - Judge result (if any)
+ * @returns "pass" or "fail"
+ */
+function derivePassFail(
+  checks: JsonChecks,
+  judge: JsonJudge | undefined,
+): "pass" | "fail" {
+  const judgePassed = judge == null || judge.pass;
+
+  return checks.pass && judgePassed ? "pass" : "fail";
 }
 
 /**

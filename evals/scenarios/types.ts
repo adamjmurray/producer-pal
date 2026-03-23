@@ -203,10 +203,6 @@ export interface EvalScenarioResult {
   configProfileId?: string;
   turns: EvalTurnResult[];
   assertions: EvalAssertionResult[];
-  /** Total points earned across all assertions */
-  earnedScore: number;
-  /** Total max possible points across all assertions */
-  maxScore: number;
   totalDurationMs: number;
   totalUsage?: TokenUsage;
   error?: string;

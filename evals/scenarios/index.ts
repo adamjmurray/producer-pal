@@ -11,7 +11,7 @@
 import { styleText } from "node:util";
 import { Command } from "commander";
 import { collapseStdoutNewlines } from "#evals/chat/shared/collapse-stdout-newlines.ts";
-import { orange } from "#evals/chat/shared/formatting.ts";
+import { efficiencyColor, orange } from "#evals/chat/shared/formatting.ts";
 import {
   parseModelArg,
   type ModelSpec,
@@ -206,7 +206,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
           );
 
           await writeJsonResult(jsonResult);
-          printResult(jsonResult, options.usage);
+          printResult(jsonResult);
           configResults.set(profile.id, jsonResult);
         }
 
@@ -250,28 +250,71 @@ function printSummary(
     [...modelMap.values()].flatMap((configMap) => [...configMap.values()]),
   );
 
+  const modelLabel = modelSpecs[0]
+    ? modelSpecs[0].model
+      ? `${modelSpecs[0].provider}/${modelSpecs[0].model}`
+      : modelSpecs[0].provider
+    : "";
+
   console.log("\n" + orange("=".repeat(50)));
-  console.log(styleText("bold", "Summary:"));
+  console.log(styleText("bold", `Summary: ${modelLabel}`) + "\n");
+
+  let passCount = 0;
+  let failCount = 0;
 
   for (const result of allResults) {
-    const parts = [`${result.score.passed}/${result.score.total}`];
+    if (result.result === "pass") passCount++;
+    else failCount++;
 
-    if (result.review) {
-      const judgeColor = result.review.pass ? "green" : "red";
-      const judgeText = result.review.pass ? "pass" : "fail";
-
-      parts.push("judge: " + styleText(judgeColor, judgeText));
-    }
-
-    const overallPassed = result.result === "pass";
-    const color = overallPassed ? "green" : "red";
-
-    console.log(
-      "  " + result.scenarioId + ": " + styleText(color, parts.join(" | ")),
-    );
+    console.log("  " + formatSummaryLine(result));
 
     if (result.error) {
       console.log("    " + styleText("red", "Error: " + result.error));
     }
   }
+
+  const totalScenarios = allResults.length;
+
+  console.log(
+    `\n  ${totalScenarios} scenarios: ${passCount} pass, ${failCount} fail`,
+  );
+}
+
+/**
+ * Format a single scenario line for the multi-scenario summary
+ *
+ * @param result - Scenario result
+ * @returns Formatted summary line
+ */
+function formatSummaryLine(result: JsonEvalResult): string {
+  const { checks } = result;
+  const passed = checks.results.filter((c) => c.pass).length;
+  const total = checks.results.length;
+  const checksColor = checks.pass ? "green" : "red";
+
+  const parts = ["checks " + styleText(checksColor, `${passed}/${total}`)];
+
+  if (result.efficiency) {
+    const effColor = efficiencyColor(result.efficiency.percentage);
+
+    parts.push(
+      "efficiency " + styleText(effColor, `${result.efficiency.percentage}%`),
+    );
+  }
+
+  if (result.judge) {
+    const judgeColor = result.judge.pass ? "green" : "red";
+    const judgeText = result.judge.pass ? "pass" : "fail";
+    const issueSuffix =
+      result.judge.issues.length > 0
+        ? ` (${result.judge.issues.length} issue(s))`
+        : "";
+
+    parts.push("judge " + styleText(judgeColor, judgeText + issueSuffix));
+  }
+
+  const overallColor = result.result === "pass" ? "green" : "red";
+  const id = styleText(overallColor, result.scenarioId + ":");
+
+  return `${id} ${parts.join(" | ")}`;
 }

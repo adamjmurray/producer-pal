@@ -9,35 +9,29 @@
 
 import { styleText } from "node:util";
 import {
+  efficiencyColor,
   formatScenarioHeader,
   formatSectionHeader,
   formatSubsectionHeader,
   orange,
 } from "#evals/chat/shared/formatting.ts";
-import {
-  resetConfig,
-  setConfig,
-  type ConfigOptions,
-} from "#evals/shared/config.ts";
-import { type TokenUsage } from "#webui/chat/sdk/types.ts";
-import {
-  assertCustom,
-  assertTokenUsage,
-  assertToolCalled,
-  assertState,
-  assertWithLlmJudge,
-  assertResponseContains,
-  type CheckSummary,
-} from "./assertions/index.ts";
+import { resetConfig, setConfig } from "#evals/shared/config.ts";
+import { assertWithLlmJudge, type CheckSummary } from "./assertions/index.ts";
 import {
   createEvalSession,
   getDefaultModel,
   type EvalSession,
 } from "./eval-session.ts";
-import { assertionLabel } from "./helpers/json-results/assertion-label.ts";
 import { isQuietMode } from "./helpers/output-config.ts";
 import { maybeInjectReflection } from "./helpers/self-reflection.ts";
 import { openLiveSet } from "./open-live-set.ts";
+import {
+  computeTotalUsage,
+  mergeConfigs,
+  resolveLiveSetPath,
+  runCorrectnessAssertion,
+  toCheckSummaries,
+} from "./run-scenario-helpers.ts";
 import {
   type ConfigProfile,
   type EvalScenario,
@@ -46,24 +40,7 @@ import {
   type EvalAssertion,
   type EvalAssertionResult,
   type EvalProvider,
-  type MatrixConfigValues,
 } from "./types.ts";
-
-/**
- * Sum a numeric field across assertion results
- *
- * @param results - Assertion results to sum
- * @param field - Field name to sum
- * @returns Sum of the field values
- */
-function sumField(
-  results: EvalAssertionResult[],
-  field: "earned" | "maxScore",
-): number {
-  return results.reduce((sum, r) => sum + r[field], 0);
-}
-
-const LIVE_SETS_DIR = "evals/live-sets";
 
 export interface JudgeOverride {
   provider: EvalProvider;
@@ -168,16 +145,12 @@ export async function runScenario(
       provider,
       judgeOverride,
     );
-    const earnedScore = sumField(assertionResults, "earned");
-    const maxScore = sumField(assertionResults, "maxScore");
 
     return {
       scenario,
       configProfileId: profileId,
       turns,
       assertions: assertionResults,
-      earnedScore,
-      maxScore,
       totalDurationMs: Date.now() - startTime,
       totalUsage: computeTotalUsage(turns),
     };
@@ -187,8 +160,6 @@ export async function runScenario(
       configProfileId: options.configProfile?.id,
       turns,
       assertions: [],
-      earnedScore: 0,
-      maxScore: 0,
       totalDurationMs: Date.now() - startTime,
       error: error instanceof Error ? error.message : String(error),
     };
@@ -222,7 +193,11 @@ async function runAssertions(
   const results: EvalAssertionResult[] = [];
 
   for (const assertion of assertions) {
-    const result = await runCorrectnessAssertion(assertion, turns, session);
+    const result = await runCorrectnessAssertion(
+      assertion,
+      turns,
+      session.mcpClient,
+    );
 
     results.push(result);
 
@@ -239,7 +214,7 @@ async function runAssertions(
 }
 
 /**
- * Run all assertion types: correctness checks, efficiency checks, and judge
+ * Run all assertion types: checks, efficiency, judge — with formatted output
  *
  * @param scenario - The scenario being evaluated
  * @param turns - Completed conversation turns
@@ -255,7 +230,7 @@ async function runAllAssertions(
   provider: EvalProvider,
   judgeOverride: JudgeOverride | undefined,
 ): Promise<EvalAssertionResult[]> {
-  const correctnessAssertions = scenario.assertions.filter(
+  const checkAssertions = scenario.assertions.filter(
     (a) => a.type !== "llm_judge" && a.type !== "token_usage",
   );
   const efficiencyAssertions = scenario.assertions.filter(
@@ -265,81 +240,114 @@ async function runAllAssertions(
     (a) => a.type === "llm_judge",
   );
 
-  const correctnessResults = await runCorrectnessChecks(
-    correctnessAssertions,
+  console.log(formatSectionHeader("EVALUATION"));
+
+  // Checks
+  const checkResults = await printChecksSection(
+    checkAssertions,
     turns,
     session,
   );
 
-  const efficiencyResults =
-    efficiencyAssertions.length > 0
-      ? await runAssertions(efficiencyAssertions, turns, session)
-      : [];
+  // Efficiency
+  const efficiencyResults = await printEfficiencySection(
+    efficiencyAssertions,
+    turns,
+    session,
+  );
 
-  await maybeInjectReflection(correctnessResults, turns, session);
+  // Self-reflection (before judge)
+  await maybeInjectReflection(checkResults, turns, session);
 
-  const checkSummaries = toCheckSummaries(correctnessResults);
-  const judgeResults = await runJudgeAssertions(
+  // Judge
+  const judgeResults = await printJudgeSection(
     judgeAssertions,
     turns,
     provider,
     judgeOverride,
-    checkSummaries,
+    toCheckSummaries(checkResults),
   );
 
-  return [...correctnessResults, ...efficiencyResults, ...judgeResults];
+  return [...checkResults, ...efficiencyResults, ...judgeResults];
 }
 
 /**
- * Run correctness checks with formatted output
+ * Run and print the Checks section
  *
- * @param assertions - Correctness assertions to run
- * @param turns - Completed conversation turns
- * @param session - Active evaluation session
- * @returns Array of assertion results
+ * @param assertions - Check assertions
+ * @param turns - Conversation turns
+ * @param session - Eval session
+ * @returns Check assertion results
  */
-async function runCorrectnessChecks(
+async function printChecksSection(
   assertions: EvalAssertion[],
   turns: EvalTurnResult[],
   session: EvalSession,
 ): Promise<EvalAssertionResult[]> {
-  console.log(formatSectionHeader("EVALUATION"));
-  console.log(formatSubsectionHeader("Correctness Checks"));
-  console.log(
-    "\n" + styleText("gray", "Running " + assertions.length + " check(s)..."),
-  );
+  console.log(formatSubsectionHeader("Checks") + "\n");
 
-  const results = await runAssertions(assertions, turns, session);
-  const passed = results.filter((r) => r.earned === r.maxScore).length;
-  const total = results.length;
-  const allPassed = passed === total;
-  const color = allPassed ? "green" : "red";
-  const icon = allPassed ? "pass" : "fail";
+  return await runAssertions(assertions, turns, session);
+}
 
-  console.log(
-    "\nCorrectness: " + styleText(color, `${icon} (${passed}/${total})`),
-  );
+/**
+ * Run and print the Efficiency section
+ *
+ * @param assertions - Token usage assertions
+ * @param turns - Conversation turns
+ * @param session - Eval session
+ * @returns Efficiency assertion results
+ */
+async function printEfficiencySection(
+  assertions: EvalAssertion[],
+  turns: EvalTurnResult[],
+  session: EvalSession,
+): Promise<EvalAssertionResult[]> {
+  if (assertions.length === 0) return [];
+
+  console.log("\n" + formatSubsectionHeader("Efficiency") + "\n");
+
+  const results: EvalAssertionResult[] = [];
+
+  for (const assertion of assertions) {
+    const result = await runCorrectnessAssertion(
+      assertion,
+      turns,
+      session.mcpClient,
+    );
+
+    results.push(result);
+
+    if (!isQuietMode()) {
+      const details = result.details as { percentage: number } | undefined;
+      const pct = details?.percentage ?? 0;
+      const color = efficiencyColor(pct);
+
+      console.log("  " + styleText(color, result.message));
+    }
+  }
 
   return results;
 }
 
 /**
- * Run LLM judge assertions with check context
+ * Run and print the Judge section
  *
- * @param assertions - Judge assertions to run
- * @param turns - Completed conversation turns
- * @param provider - LLM provider being used
- * @param judgeOverride - Optional judge LLM override
- * @param checkSummaries - Deterministic check results for judge context
- * @returns Array of assertion results
+ * @param assertions - Judge assertions
+ * @param turns - Conversation turns
+ * @param provider - LLM provider
+ * @param judgeOverride - Optional judge override
+ * @param checkSummaries - Check results for judge context
+ * @returns Judge assertion results
  */
-async function runJudgeAssertions(
+async function printJudgeSection(
   assertions: EvalAssertion[],
   turns: EvalTurnResult[],
   provider: EvalProvider,
   judgeOverride: JudgeOverride | undefined,
   checkSummaries: CheckSummary[],
 ): Promise<EvalAssertionResult[]> {
+  if (assertions.length === 0) return [];
+
   const results: EvalAssertionResult[] = [];
 
   for (const assertion of assertions) {
@@ -353,124 +361,24 @@ async function runJudgeAssertions(
       );
 
       results.push(result);
+
+      const details = result.details as
+        | { pass: boolean; issues: string[] }
+        | undefined;
+      const pass = details?.pass ?? false;
+      const label = pass ? "pass" : "fail";
+
+      console.log("\n" + formatSubsectionHeader(`Judge (${label})`));
+
+      if (!isQuietMode() && details) {
+        console.log("");
+
+        for (const issue of details.issues) {
+          console.log("  " + styleText("red", `✗ ${issue}`));
+        }
+      }
     }
   }
 
   return results;
-}
-
-/**
- * Convert correctness assertion results to check summaries for the judge prompt
- *
- * @param results - Correctness assertion results
- * @returns Array of check summaries
- */
-function toCheckSummaries(results: EvalAssertionResult[]): CheckSummary[] {
-  return results.map((r) => ({
-    pass: r.earned === r.maxScore,
-    label: assertionLabel(r.assertion),
-    message: r.message,
-  }));
-}
-
-/**
- * Run a single correctness assertion (non-LLM judge)
- *
- * @param assertion - The assertion to evaluate
- * @param turns - Completed conversation turns
- * @param session - Active evaluation session
- * @returns Assertion result
- */
-async function runCorrectnessAssertion(
-  assertion: EvalAssertion,
-  turns: EvalTurnResult[],
-  session: EvalSession,
-): Promise<EvalAssertionResult> {
-  switch (assertion.type) {
-    case "tool_called":
-      return assertToolCalled(assertion, turns);
-
-    case "state":
-      return await assertState(assertion, session.mcpClient);
-
-    case "response_contains":
-      return assertResponseContains(assertion, turns);
-
-    case "custom":
-      return assertCustom(assertion, turns);
-
-    case "token_usage":
-      return assertTokenUsage(assertion, turns);
-
-    default:
-      return {
-        assertion,
-        earned: 0,
-        maxScore: 0,
-        message: `Unknown assertion type: ${(assertion as EvalAssertion).type}`,
-      };
-  }
-}
-
-/**
- * Merge scenario-bound config with matrix profile config.
- * Profile values override scenario values for any overlapping keys.
- *
- * @param scenarioConfig - Scenario-bound config (memory, sampleFolder)
- * @param profileConfig - Matrix profile config (smallModelMode, jsonOutput, tools)
- * @returns Merged config, or undefined if both inputs are empty
- */
-function mergeConfigs(
-  scenarioConfig?: ConfigOptions,
-  profileConfig?: MatrixConfigValues,
-): ConfigOptions | undefined {
-  if (!scenarioConfig && !profileConfig) return undefined;
-
-  return { ...scenarioConfig, ...profileConfig };
-}
-
-/**
- * Resolve a liveSet value to a full path.
- * If it's a short name (no `/`), resolves to the Ableton project structure.
- *
- * @param liveSet - Short name or full path
- * @returns Full path to the .als file
- */
-function resolveLiveSetPath(liveSet: string): string {
-  if (liveSet.includes("/")) {
-    return liveSet;
-  }
-
-  // Ableton stores .als files in "{name} Project/{name}.als"
-  return `${LIVE_SETS_DIR}/${liveSet} Project/${liveSet}.als`;
-}
-
-/**
- * Sum token usage across all steps of all turns.
- *
- * @param turns - Completed conversation turns with step usage data
- * @returns Total usage, or undefined if no usage data
- */
-function computeTotalUsage(turns: EvalTurnResult[]): TokenUsage | undefined {
-  let input = 0;
-  let output = 0;
-  let reasoning = 0;
-  let hasUsage = false;
-
-  for (const turn of turns) {
-    for (const step of turn.stepUsages ?? []) {
-      hasUsage = true;
-      input += step.inputTokens ?? 0;
-      output += step.outputTokens ?? 0;
-      reasoning += step.reasoningTokens ?? 0;
-    }
-  }
-
-  if (!hasUsage) return undefined;
-
-  return {
-    inputTokens: input,
-    outputTokens: output,
-    ...(reasoning > 0 && { reasoningTokens: reasoning }),
-  };
 }

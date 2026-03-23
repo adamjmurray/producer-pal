@@ -60,8 +60,6 @@ function makeResult(
     },
     turns: [makeTurn()],
     assertions: [makeAssertion()],
-    earnedScore: 1,
-    maxScore: 1,
     totalDurationMs: 1500,
     totalUsage: { inputTokens: 5000, outputTokens: 2000 },
     ...overrides,
@@ -84,11 +82,11 @@ describe("toJsonResult", () => {
     expect(result.model).toBe("google/gemini");
     expect(result.configProfileId).toBe("default");
     expect(result.result).toBe("pass");
-    expect(result.score).toStrictEqual({
-      passed: 1,
-      total: 1,
+    expect(result.checks).toStrictEqual({
+      pass: true,
+      results: [expect.objectContaining({ type: "tool_called", pass: true })],
     });
-    expect(result.review).toBeUndefined();
+    expect(result.judge).toBeUndefined();
   });
 
   it("includes turns with aggregated step usage", () => {
@@ -115,7 +113,7 @@ describe("toJsonResult", () => {
     });
   });
 
-  it("maps checks from non-judge assertions only", () => {
+  it("excludes judge and token_usage from checks", () => {
     const result = toJsonResult(
       makeResult({
         assertions: [
@@ -128,19 +126,17 @@ describe("toJsonResult", () => {
             details: PASSING_JUDGE,
           }),
         ],
-        earnedScore: 1,
-        maxScore: 1,
       }),
       "run-1",
       "google/gemini",
       "default",
     );
 
-    expect(result.checks).toHaveLength(1);
-    expect(result.checks[0]?.type).toBe("tool_called");
+    expect(result.checks.results).toHaveLength(1);
+    expect(result.checks.results[0]?.type).toBe("tool_called");
   });
 
-  it("derives review from llm_judge assertion (passing)", () => {
+  it("derives judge from llm_judge assertion (passing)", () => {
     const result = toJsonResult(
       makeResult({
         assertions: [
@@ -152,20 +148,18 @@ describe("toJsonResult", () => {
             details: PASSING_JUDGE,
           }),
         ],
-        earnedScore: 0,
-        maxScore: 0,
       }),
       "run-1",
       "google/gemini",
       "default",
     );
 
-    expect(result.review).toBeDefined();
-    expect(result.review?.pass).toBe(true);
-    expect(result.review?.issues).toStrictEqual([]);
+    expect(result.judge).toBeDefined();
+    expect(result.judge?.pass).toBe(true);
+    expect(result.judge?.issues).toStrictEqual([]);
   });
 
-  it("derives review from llm_judge assertion (failing)", () => {
+  it("derives judge from llm_judge assertion (failing)", () => {
     const result = toJsonResult(
       makeResult({
         assertions: [
@@ -177,17 +171,15 @@ describe("toJsonResult", () => {
             details: FAILING_JUDGE,
           }),
         ],
-        earnedScore: 0,
-        maxScore: 0,
       }),
       "run-1",
       "google/gemini",
       "default",
     );
 
-    expect(result.review?.pass).toBe(false);
-    expect(result.review?.issues).toHaveLength(2);
-    expect(result.review?.issues[0]).toBe("Missing confirmation");
+    expect(result.judge?.pass).toBe(false);
+    expect(result.judge?.issues).toHaveLength(2);
+    expect(result.judge?.issues[0]).toBe("Missing confirmation");
     expect(result.result).toBe("fail");
   });
 
@@ -195,8 +187,6 @@ describe("toJsonResult", () => {
     const result = toJsonResult(
       makeResult({
         assertions: [makeAssertion({ earned: 0, maxScore: 1 })],
-        earnedScore: 0,
-        maxScore: 1,
       }),
       "run-1",
       "google/gemini",
@@ -204,7 +194,8 @@ describe("toJsonResult", () => {
     );
 
     expect(result.result).toBe("fail");
-    expect(result.checks[0]?.pass).toBe(false);
+    expect(result.checks.pass).toBe(false);
+    expect(result.checks.results[0]?.pass).toBe(false);
   });
 
   it("passes with no judge and all checks passing", () => {
@@ -216,7 +207,7 @@ describe("toJsonResult", () => {
     );
 
     expect(result.result).toBe("pass");
-    expect(result.review).toBeUndefined();
+    expect(result.judge).toBeUndefined();
   });
 
   it("includes error field when present", () => {
@@ -234,15 +225,13 @@ describe("toJsonResult", () => {
     const result = toJsonResult(
       makeResult({
         assertions: [],
-        earnedScore: 0,
-        maxScore: 0,
       }),
       "run-1",
       "google/gemini",
       "default",
     );
 
-    expect(result.score).toStrictEqual({ passed: 0, total: 0 });
+    expect(result.checks).toStrictEqual({ pass: true, results: [] });
     expect(result.result).toBe("pass");
   });
 
@@ -311,15 +300,13 @@ describe("toJsonResult", () => {
             },
           }),
         ],
-        earnedScore: 0,
-        maxScore: 1,
       }),
       "run-1",
       "google/gemini",
       "default",
     );
 
-    expect(result.checks[0]?.reflection).toBe(
+    expect(result.checks.results[0]?.reflection).toBe(
       "I chose not to call the tool because...",
     );
   });
@@ -334,15 +321,43 @@ describe("toJsonResult", () => {
             details: { count: 0, expectedCount: { min: 1 } },
           }),
         ],
-        earnedScore: 0,
-        maxScore: 1,
       }),
       "run-1",
       "google/gemini",
       "default",
     );
 
-    expect(result.checks[0]?.reflection).toBeUndefined();
+    expect(result.checks.results[0]?.reflection).toBeUndefined();
+  });
+
+  it("builds efficiency from token_usage assertion", () => {
+    const result = toJsonResult(
+      makeResult({
+        assertions: [
+          makeAssertion(),
+          makeAssertion({
+            assertion: {
+              type: "token_usage",
+              metric: "inputTokens",
+              maxTokens: 20_000,
+            },
+            earned: 0,
+            maxScore: 0,
+            message: "inputTokens 15.5k / 20k target (77%)",
+            details: { total: 15500, target: 20000, percentage: 77 },
+          }),
+        ],
+      }),
+      "run-1",
+      "google/gemini",
+      "default",
+    );
+
+    expect(result.efficiency).toStrictEqual({
+      inputTokens: 15500,
+      targetTokens: 20000,
+      percentage: 77,
+    });
   });
 });
 

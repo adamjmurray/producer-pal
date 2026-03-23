@@ -25,16 +25,16 @@ export interface JsonEvalResult {
   model: string;
   /** Config profile ID */
   configProfileId: string;
-  /** Overall pass/fail */
+  /** Overall pass/fail (checks + judge; efficiency is informational) */
   result: "pass" | "fail";
-  /** Score summary */
-  score: JsonScoreSummary;
+  /** Deterministic check results */
+  checks: JsonChecks;
+  /** Token usage efficiency (present when token_usage assertion exists) */
+  efficiency?: JsonEfficiency;
   /** LLM judge review (present when llm_judge assertion exists) */
-  review?: JsonReview;
+  judge?: JsonJudge;
   /** Conversation turns */
   turns: JsonTurnRecord[];
-  /** Deterministic check results */
-  checks: JsonCheckResult[];
   /** Total wall-clock duration in ms */
   totalDurationMs: number;
   /** Aggregate token usage */
@@ -43,14 +43,26 @@ export interface JsonEvalResult {
   error?: string;
 }
 
-export interface JsonScoreSummary {
-  /** Number of correctness checks that passed */
-  passed: number;
-  /** Total number of correctness checks */
-  total: number;
+/** Aggregated deterministic check results */
+export interface JsonChecks {
+  /** Whether all checks passed */
+  pass: boolean;
+  /** Individual check results */
+  results: JsonCheckResult[];
 }
 
-export interface JsonReview {
+/** Token usage efficiency relative to target */
+export interface JsonEfficiency {
+  /** Actual input tokens used */
+  inputTokens: number;
+  /** Target token budget */
+  targetTokens: number;
+  /** inputTokens / targetTokens as percentage */
+  percentage: number;
+}
+
+/** LLM judge verdict */
+export interface JsonJudge {
   /** Judge pass/fail verdict */
   pass: boolean;
   /** Issues flagged by the judge (empty when passing) */
@@ -79,17 +91,14 @@ export interface JsonTokenUsage {
   reasoningTokens?: number;
 }
 
-/** Deterministic check result (non-judge assertions) */
+/** Individual deterministic check result */
 export interface JsonCheckResult {
   /** Assertion type identifier */
   type: string;
   /** Human-readable label */
   label: string;
-  /** Pass/fail for correctness checks. Always true for token_usage (informational). */
   pass: boolean;
   message: string;
-  /** Token usage percentage of target (only for token_usage checks) */
-  percentage?: number;
   details?: Record<string, unknown>;
   /** Model's self-reflection on why it failed (only on actionable failures) */
   reflection?: string;

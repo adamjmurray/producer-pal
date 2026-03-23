@@ -8,7 +8,6 @@
  */
 
 import { styleText } from "node:util";
-import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
 import { isQuietMode } from "../output-config.ts";
 
 /**
@@ -23,13 +22,11 @@ export function printJudgeHeader(
   model: string,
   criteria: string,
 ): void {
-  console.log(`\n${formatSubsectionHeader("LLM Judgement")}`);
-  console.log(`\n${styleText("gray", "Model:")} ${provider}/${model}`);
-
   if (isQuietMode()) return;
 
-  console.log(`${styleText("gray", "Criteria:")} ${criteria}\n`);
-  process.stdout.write(`${styleText("gray", "Response:")} `);
+  console.log(styleText("gray", `\n  Judging with ${provider}/${model}...`));
+  console.log(styleText("gray", `  Criteria: ${criteria}`));
+  process.stdout.write(styleText("gray", "  Response: "));
 }
 
 /**

@@ -191,9 +191,12 @@ function printSummaryRow(
  * @returns Percentage (0-100) or null if no assertions
  */
 function getScorePercentage(result: JsonEvalResult): number | null {
-  if (result.score.total === 0) return null;
+  const { results } = result.checks;
 
-  return Math.round((result.score.passed / result.score.total) * 100);
+  if (results.length === 0) return null;
+  const passed = results.filter((c) => c.pass).length;
+
+  return Math.round((passed / results.length) * 100);
 }
 
 /**
