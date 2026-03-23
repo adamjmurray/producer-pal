@@ -348,3 +348,24 @@ export const viewMockToLive = (view: string): string =>
  */
 export const viewMockFromLive = (liveApiView: string): string =>
   ({ Session: "session", Arranger: "arrangement" })[liveApiView] ?? "session";
+
+/**
+ * Set up view state with a selected track but no selected scene/clip.
+ */
+export function setupTrackOnlyViewState(): void {
+  clearMockRegistry();
+
+  setupViewStateMock({
+    view: "session",
+    selectedTrack: {
+      exists: true,
+      category: "regular",
+      trackIndex: 0,
+      id: "track_1",
+      path: String(livePath.track(0)),
+    },
+    selectedScene: { exists: false },
+    selectedClip: { exists: false },
+    highlightedClipSlot: { exists: false },
+  });
+}

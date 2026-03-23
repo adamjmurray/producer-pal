@@ -6,7 +6,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  clearMockRegistry,
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
@@ -21,7 +20,7 @@ import {
 } from "#src/tools/control/helpers/select-response-helpers.ts";
 import {
   resetSelectTestState,
-  setupViewStateMock,
+  setupTrackOnlyViewState,
   setupTrackViewMock,
   setupDeviceMock,
 } from "./select-test-helpers.ts";
@@ -358,21 +357,7 @@ describe("select-response-helpers", () => {
     });
 
     it("omits selectedDevice when device path cannot be extracted", () => {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "session",
-        selectedTrack: {
-          exists: true,
-          category: "regular",
-          trackIndex: 0,
-          id: "track_1",
-          path: String(livePath.track(0)),
-        },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      setupTrackOnlyViewState();
 
       const devicePath = "some/unrecognized/path";
 
@@ -385,21 +370,7 @@ describe("select-response-helpers", () => {
     });
 
     it("omits selectedDevice when track view returns no selected device", () => {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "session",
-        selectedTrack: {
-          exists: true,
-          category: "regular",
-          trackIndex: 0,
-          id: "track_1",
-          path: String(livePath.track(0)),
-        },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      setupTrackOnlyViewState();
 
       // Track view exists but has no selected device
       setupTrackViewMock(livePath.track(0), undefined);
@@ -411,21 +382,7 @@ describe("select-response-helpers", () => {
     });
 
     it("omits selectedDevice when track view does not exist", () => {
-      clearMockRegistry();
-
-      setupViewStateMock({
-        view: "session",
-        selectedTrack: {
-          exists: true,
-          category: "regular",
-          trackIndex: 0,
-          id: "track_1",
-          path: String(livePath.track(0)),
-        },
-        selectedScene: { exists: false },
-        selectedClip: { exists: false },
-        highlightedClipSlot: { exists: false },
-      });
+      setupTrackOnlyViewState();
 
       // Do NOT set up a track view mock — the view path resolves to
       // a non-existent object so readSelectedDeviceInfo returns early.
@@ -438,24 +395,3 @@ describe("select-response-helpers", () => {
     });
   });
 });
-
-/**
- * Set up view state with a selected track but no selected scene/clip.
- */
-function setupTrackOnlyViewState(): void {
-  clearMockRegistry();
-
-  setupViewStateMock({
-    view: "session",
-    selectedTrack: {
-      exists: true,
-      category: "regular",
-      trackIndex: 0,
-      id: "track_1",
-      path: String(livePath.track(0)),
-    },
-    selectedScene: { exists: false },
-    selectedClip: { exists: false },
-    highlightedClipSlot: { exists: false },
-  });
-}
