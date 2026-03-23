@@ -40,16 +40,21 @@ def main():
     for tool in tools:
         print(f"  {tool['name']} - {tool['description'][:60]}...")
 
+    # Inspect a tool's input schema
+    read_track = next(t for t in tools if t["name"] == "ppal-read-track")
+    print(f"\nSchema for {read_track['name']}:")
+    print(json.dumps(read_track["inputSchema"], indent=2))
+
     # Read tracks in the Live Set
     print("\nReading tracks...")
     tracks = call_tool("ppal-read-live-set")
     print(tracks["result"])
 
-    # Read a specific track with session clips
-    print("\nReading track 0 with session clips...")
+    # Read a specific track with all clips
+    print("\nReading track 0 with clips...")
     track = call_tool("ppal-read-track", {
         "trackIndex": 0,
-        "include": ["session-clips"],
+        "include": ["session-clips", "arrangement-clips"],
     })
     print(track["result"])
 

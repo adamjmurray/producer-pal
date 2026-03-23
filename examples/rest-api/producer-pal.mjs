@@ -36,16 +36,21 @@ async function main() {
     console.log(`  ${tool.name} - ${tool.description.slice(0, 60)}...`);
   }
 
+  // Inspect a tool's input schema
+  const readTrack = tools.find((t) => t.name === "ppal-read-track");
+  console.log(`\nSchema for ${readTrack.name}:`);
+  console.log(JSON.stringify(readTrack.inputSchema, null, 2));
+
   // Read tracks in the Live Set
   console.log("\nReading tracks...");
   const tracks = await callTool("ppal-read-live-set");
   console.log(tracks.result);
 
-  // Read a specific track with clip details
-  console.log("\nReading track 0 with session clips...");
+  // Read a specific track with all clips
+  console.log("\nReading track 0 with clips...");
   const track = await callTool("ppal-read-track", {
     trackIndex: 0,
-    include: ["session-clips"],
+    include: ["session-clips", "arrangement-clips"],
   });
   console.log(track.result);
 }

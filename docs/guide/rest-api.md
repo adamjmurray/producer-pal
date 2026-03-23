@@ -57,10 +57,10 @@ Returns:
 curl -X POST http://localhost:3350/api/tools/ppal-read-live-set \
   -H 'Content-Type: application/json' -d '{}'
 
-# Read track 0 with session clips
+# Read track 0 with all clips
 curl -X POST http://localhost:3350/api/tools/ppal-read-track \
   -H 'Content-Type: application/json' \
-  -d '{"trackIndex": 0, "include": ["session-clips"]}'
+  -d '{"trackIndex": 0, "include": ["session-clips", "arrangement-clips"]}'
 
 # List available tools
 curl http://localhost:3350/api/tools
