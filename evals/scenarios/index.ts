@@ -46,6 +46,7 @@ interface CliOptions {
   skipSetup?: boolean;
   quiet?: boolean;
   usage?: boolean;
+  defaultInstructions?: boolean;
 }
 
 /**
@@ -94,6 +95,7 @@ program
   )
   .option("-q, --quiet", "Suppress detailed AI and judge responses")
   .option("-u, --usage", "Show per-step token usage")
+  .option("-I, --default-instructions", "Use default system instructions")
   .option("-a, --all", "Run all scenarios")
   .action(async (options: CliOptions) => {
     if (options.list) {
@@ -194,6 +196,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
             judgeOverride,
             configProfile: profile,
             usage: options.usage,
+            defaultInstructions: options.defaultInstructions,
           });
 
           liveSetOpened = true;

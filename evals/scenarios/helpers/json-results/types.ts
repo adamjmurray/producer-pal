@@ -25,6 +25,8 @@ export interface JsonEvalResult {
   model: string;
   /** Config profile ID */
   configProfileId: string;
+  /** System instructions used (undefined = none) */
+  instructions?: string;
   /** Overall pass/fail (checks + judge; efficiency is informational) */
   result: "pass" | "fail";
   /** Deterministic check results */

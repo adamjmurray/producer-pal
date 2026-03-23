@@ -6,6 +6,7 @@
 
 import { Command } from "commander";
 import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
+import { SYSTEM_INSTRUCTION } from "#webui/lib/system-instruction.ts";
 import { runChat } from "./chat.ts";
 import { collapseStdoutNewlines } from "./shared/collapse-stdout-newlines.ts";
 import { type ChatOptions } from "./shared/types.ts";
@@ -17,6 +18,7 @@ const program = new Command();
 interface RawChatOptions extends Omit<ChatOptions, "provider" | "model"> {
   model: string;
   baseUrl?: string;
+  defaultInstructions?: boolean;
 }
 
 program
@@ -46,6 +48,7 @@ program
   )
   .option("-o, --output-tokens <number>", "Max output tokens", Number.parseInt)
   .option("-i, --instructions <text>", "System instructions")
+  .option("-I, --default-instructions", "Use default system instructions")
   .option("-1, --once", "Exit after generating one response")
   .option(
     "-s, --sequence <messages...>",
@@ -63,7 +66,15 @@ program
 
     // Parse model argument to get provider and model
     const { provider, model } = parseModelArg(rawOptions.model);
-    const options: ChatOptions = { ...rawOptions, provider, model };
+    const instructions =
+      rawOptions.instructions ??
+      (rawOptions.defaultInstructions ? SYSTEM_INSTRUCTION : undefined);
+    const options: ChatOptions = {
+      ...rawOptions,
+      provider,
+      model,
+      instructions,
+    };
 
     // Apply --base-url to env so local provider picks it up
     if (rawOptions.baseUrl) {

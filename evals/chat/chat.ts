@@ -50,6 +50,11 @@ export async function runChat(
 
   console.log(`Model: ${options.model}`);
   console.log(`Provider: ${options.provider}`);
+
+  if (options.instructions) {
+    console.log("Instructions: (active)");
+  }
+
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
   const session: ChatSession = { messages: [], options };

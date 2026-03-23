@@ -201,6 +201,8 @@ export interface EvalScenarioResult {
   scenario: EvalScenario;
   /** Config profile used for this run (undefined means default) */
   configProfileId?: string;
+  /** Resolved system instructions used for this run */
+  instructions?: string;
   turns: EvalTurnResult[];
   assertions: EvalAssertionResult[];
   totalDurationMs: number;

@@ -53,6 +53,7 @@ export function toJsonResult(
     scenarioDescription: result.scenario.description,
     model,
     configProfileId,
+    ...(result.instructions && { instructions: result.instructions }),
     result: derivePassFail(checks, judge),
     checks,
     ...(efficiency && { efficiency }),

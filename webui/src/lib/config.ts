@@ -10,13 +10,9 @@ import {
   OPENROUTER_MODELS,
 } from "#webui/lib/constants/models";
 
-export const CHAT_UI_DOCS_URL = "https://producer-pal.org/guide/chat-ui";
+export { SYSTEM_INSTRUCTION } from "#webui/lib/system-instruction";
 
-export const SYSTEM_INSTRUCTION = `You are an AI music composition assistant using Producer Pal, a toolset for Ableton Live.
-Help users create, edit, and arrange music — tracks, clips, devices, MIDI, audio, and arrangement.
-Always follow the user's direction. Do not create or modify musical content unless asked.
-If the user hasn't connected to Ableton Live, suggest connecting. Call ppal-connect to connect.
-Be creative and focus on the user's musical goals.`;
+export const CHAT_UI_DOCS_URL = "https://producer-pal.org/guide/chat-ui";
 
 const ALL_MODELS = [
   ...GEMINI_MODELS,

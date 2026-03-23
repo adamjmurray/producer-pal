@@ -16,6 +16,7 @@ import {
   orange,
 } from "#evals/chat/shared/formatting.ts";
 import { resetConfig, setConfig } from "#evals/shared/config.ts";
+import { SYSTEM_INSTRUCTION } from "#webui/lib/system-instruction.ts";
 import { assertWithLlmJudge, type CheckSummary } from "./assertions/index.ts";
 import {
   createEvalSession,
@@ -54,6 +55,7 @@ export interface RunScenarioOptions {
   judgeOverride?: JudgeOverride;
   configProfile?: ConfigProfile;
   usage?: boolean;
+  defaultInstructions?: boolean;
 }
 
 /**
@@ -67,10 +69,19 @@ export async function runScenario(
   scenario: EvalScenario,
   options: RunScenarioOptions,
 ): Promise<EvalScenarioResult> {
-  const { provider, model, skipLiveSetOpen, judgeOverride } = options;
+  const {
+    provider,
+    model,
+    skipLiveSetOpen,
+    judgeOverride,
+    defaultInstructions,
+  } = options;
   const startTime = Date.now();
   const turns: EvalTurnResult[] = [];
   let session: EvalSession | null = null;
+  const instructions =
+    scenario.instructions ??
+    (defaultInstructions ? SYSTEM_INSTRUCTION : undefined);
 
   try {
     // 1. Open Live Set and wait for MCP
@@ -115,10 +126,20 @@ export async function runScenario(
       );
     }
 
+    const instructionsLabel = scenario.instructions
+      ? "custom"
+      : defaultInstructions
+        ? "default"
+        : "none";
+
+    console.log(
+      `${orange("|")} ${styleText("gray", "Instructions:")} ${instructionsLabel}`,
+    );
+
     session = await createEvalSession({
       provider,
       model,
-      instructions: scenario.instructions,
+      instructions,
       usage: options.usage,
     });
 
@@ -149,6 +170,7 @@ export async function runScenario(
     return {
       scenario,
       configProfileId: profileId,
+      instructions,
       turns,
       assertions: assertionResults,
       totalDurationMs: Date.now() - startTime,
@@ -158,6 +180,7 @@ export async function runScenario(
     return {
       scenario,
       configProfileId: options.configProfile?.id,
+      instructions,
       turns,
       assertions: [],
       totalDurationMs: Date.now() - startTime,
