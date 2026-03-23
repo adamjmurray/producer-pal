@@ -113,18 +113,24 @@ export function printCliDerivedStats(groups: GroupStats[]): void {
 
   const widths = [
     Math.max("Tree".length, ...rows.map((r) => r.tree.length)),
-    Math.max("Lines/Func".length, 6),
-    Math.max("Lines/File".length, 6),
+    Math.max("Avg Lines/Func".length, 6),
+    Math.max("Avg Lines/File".length, 6),
     Math.max("Comment%".length, 6),
-    Math.max("Test:Source".length, 6),
+    Math.max("Test:Source Ratio".length, 6),
   ];
 
   const row = makeCliRow(widths);
   const sep = makeCliSep(widths);
 
-  printCliTitle("Derived Stats (source only)");
+  printCliTitle("General Stats");
   console.log(
-    row(["Tree", "Lines/Func", "Lines/File", "Comment%", "Test:Source"]),
+    row([
+      "Tree",
+      "Avg Lines/Func",
+      "Avg Lines/File",
+      "Comment%",
+      "Test:Source Ratio",
+    ]),
   );
   console.log(sep);
 
@@ -150,9 +156,15 @@ export function printCliDerivedStats(groups: GroupStats[]): void {
 export function printMarkdownDerivedStats(groups: GroupStats[]): void {
   const rows = computeDerivedStats(groups);
 
-  console.log("\n## Derived Stats (source only)\n");
+  console.log("\n## General Stats\n");
   console.log(
-    mdRow("Tree", "Lines/Func", "Lines/File", "Comment%", "Test:Source"),
+    mdRow(
+      "Tree",
+      "Avg Lines/Func",
+      "Avg Lines/File",
+      "Comment %",
+      "Test:Source Ratio",
+    ),
   );
   console.log("| :-- | --: | --: | --: | --: |");
 
