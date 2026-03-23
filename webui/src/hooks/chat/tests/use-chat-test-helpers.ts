@@ -149,27 +149,3 @@ export const RESTORED_HISTORY: TestMessage[] = [
   { role: "user", content: "restored msg" },
   { role: "assistant", content: "restored reply" },
 ];
-
-/**
- * Mock factory for streaming-helpers module, shared across useChat test files.
- * Use with vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), mockStreamingHelpers).
- * @returns Mock streaming helpers module
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- vi.mock factory needs loose typing to match module signature
-export function mockStreamingHelpers(): any {
-  return {
-    handleMessageStream: vi.fn(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matching generic module mock signature
-      async (stream: any, formatter: any, onUpdate: any) => {
-        for await (const chatHistory of stream) {
-          onUpdate(formatter(chatHistory));
-        }
-
-        return true;
-      },
-    ),
-    validateMcpConnection: vi.fn(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- matching generic module mock signature
-    filterOverrides: vi.fn((overrides: any) => overrides),
-  };
-}
