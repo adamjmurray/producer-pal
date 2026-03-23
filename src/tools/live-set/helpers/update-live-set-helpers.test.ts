@@ -394,7 +394,7 @@ describe("update-live-set-helpers", () => {
     });
 
     it("should warn and return when pitchClassToNumber returns null", () => {
-      // Lines 225-227: defensive branch when pitchClassToNumber returns null
+      // Defensive branch when pitchClassToNumber returns null
       // for a scale root that parseScale accepted. Mock pitchClassToNumber
       // to return null to trigger this branch.
       const mock = vi.mocked(pitchClassToNumber);

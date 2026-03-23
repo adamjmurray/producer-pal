@@ -320,39 +320,6 @@ describe("updateDevice - wrapInRack", () => {
       ).toThrow("target container does not exist");
     });
 
-    it("should throw when toPath resolves to non-existent container", () => {
-      // Don't register track 99 — mockNonExistentObjects makes it non-existent
-      mockNonExistentObjects();
-
-      // Re-register objects needed for instrument detection
-      registerMockObject("device-3", {
-        path: livePath.track(0).device(3),
-        type: "RackDevice",
-        properties: { type: 1 },
-      });
-      registerMockObject("track-0", {
-        path: livePath.track(0),
-      });
-      liveSet = registerMockObject("live-set", {
-        path: "live_set",
-        methods: {
-          create_midi_track: () => ["id", "temp-track"],
-          delete_track: () => null,
-        },
-      });
-      registerMockObject("temp-track", {
-        path: livePath.track(1),
-      });
-
-      expect(() =>
-        updateDevice({
-          path: "t0/d3",
-          wrapInRack: true,
-          toPath: "t99",
-        }),
-      ).toThrow("target container does not exist");
-    });
-
     it("should cleanup temp track when instrument wrap throws and cleanup succeeds", () => {
       // Make insert_device throw to trigger the catch block
       track0 = registerMockObject("track-0", {

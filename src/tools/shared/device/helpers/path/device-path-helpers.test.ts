@@ -669,7 +669,7 @@ describe("device-path-helpers", () => {
 
     describe("drum pad edge cases", () => {
       it("returns LiveAPI.from when resolvePathToLiveApi returns non-drum-pad type", () => {
-        // Line 62: resolveDrumPadContainer returns LiveAPI.from(resolved.liveApiPath)
+        // resolveDrumPadContainer returns LiveAPI.from(resolved.liveApiPath)
         // when resolvePathToLiveApi returns a non-drum-pad targetType.
         // This is a defensive branch since paths with 'p' always resolve to drum-pad.
         // We mock resolvePathToLiveApi to return a chain type for a path with 'p'.
@@ -691,7 +691,7 @@ describe("device-path-helpers", () => {
       });
 
       it("returns null when device does not exist during drum pad auto-creation", () => {
-        // Line 86: device.exists() returns false inside the chain auto-creation block
+        // device.exists() returns false inside the chain auto-creation block
         // Register device with id "0" so exists() returns false
         registerMockObject("0", {
           path: "live_set tracks 0 devices 0",
@@ -703,7 +703,7 @@ describe("device-path-helpers", () => {
       });
 
       it("returns null when drum pad navigation returns non-chain target type", () => {
-        // Line 138: resolveDrumPadFromPath returns {target: null, targetType: "device"}
+        // resolveDrumPadFromPath returns {target: null, targetType: "device"}
         // which is not "chain" so auto-creation is skipped → falls through to return null.
         // Path "t0/d0/pC1/c0/c1": remainingSegments=["c0","c1"].
         // "c0" is consumed as chain index, "c1" doesn't start with "d" →
