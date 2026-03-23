@@ -9,6 +9,7 @@ import { afterAll, beforeAll } from "vitest";
 
 interface ExpressAppTestState {
   server: Server | undefined;
+  baseUrl: string;
   serverUrl: string;
 }
 
@@ -23,7 +24,11 @@ interface ExpressAppTestState {
 export function setupExpressAppServer(
   options: { beforeStart?: () => void } = {},
 ): ExpressAppTestState {
-  const state: ExpressAppTestState = { server: undefined, serverUrl: "" };
+  const state: ExpressAppTestState = {
+    server: undefined,
+    baseUrl: "",
+    serverUrl: "",
+  };
 
   beforeAll(async () => {
     options.beforeStart?.();
@@ -37,7 +42,8 @@ export function setupExpressAppServer(
       });
     });
 
-    state.serverUrl = `http://localhost:${port}/mcp`;
+    state.baseUrl = `http://localhost:${port}`;
+    state.serverUrl = `${state.baseUrl}/mcp`;
   });
 
   afterAll(async () => {
