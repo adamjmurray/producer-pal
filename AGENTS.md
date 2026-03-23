@@ -257,7 +257,10 @@ functions for clarity.
 - **Diagnosing coverage gaps**: If coverage thresholds fail, check
   `coverage/coverage-summary.txt` for per-file breakdown (console only shows
   totals). Look for files with low coverage percentages to identify what needs
-  tests.
+  tests. Function coverage is enforced at 100% — if a function is genuinely
+  untestable, use `/* v8 ignore start -- reason */` (see
+  `dev/Coding-Standards.md` Coverage section for rules). Increasing v8 ignore
+  limits requires user approval.
 
 ## MCP E2E Testing
 
@@ -296,8 +299,8 @@ with explicit user approval. **Do not modify these values without asking
 first:**
 
 - `src/test/lint-suppression-limits.test.ts` - Per-tree limits for
-  eslint-disable and @ts-expect-error comments. Increasing these limits weakens
-  code quality enforcement.
+  eslint-disable, @ts-expect-error, and v8 ignore comments. Increasing these
+  limits weakens code quality enforcement.
 
 - `vitest.config.ts` (thresholds section) - Test coverage thresholds. Lowering
   these allows coverage to drop.

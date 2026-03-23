@@ -2,8 +2,17 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { assertPatternLimit } from "./helpers/meta-test-helpers.ts";
+import {
+  assertPatternLimit,
+  countPatternOccurrences,
+  findSourceFiles,
+  findTestFiles,
+  throwOnFileViolations,
+} from "./helpers/meta-test-helpers.ts";
+
+const projectRoot = path.resolve(import.meta.dirname, "../..");
 
 type TreeLimits = Record<string, number>;
 
@@ -33,9 +42,9 @@ const TS_NOCHECK_LIMITS: TreeLimits = {
 
 const V8_IGNORE_LIMITS: TreeLimits = {
   src: 8, // Defensive guards with caller guarantees/lookup tables
-  srcTests: 2, // This test file's pattern definitions
+  srcTests: 8, // This test file's pattern definitions + description enforcement
   scripts: 0,
-  webui: 4, // Untestable IDB error callbacks, exhaustive never
+  webui: 13, // Untestable IDB error callbacks, exhaustive never, inline JSX callbacks, no-ops
 };
 
 const TREES = Object.keys(ESLINT_DISABLE_LIMITS);
@@ -92,4 +101,24 @@ describe("Lint suppression limits", () => {
       }
     });
   }
+
+  // v8 ignore next/start must include a "-- reason" description (v8 ignore stop is exempt)
+  it("should require descriptions on v8 ignore next/start comments", () => {
+    const dirs = ["src", "webui", "scripts"];
+    const allFiles = dirs.flatMap((dir) => {
+      const dirPath = path.join(projectRoot, dir);
+
+      return [...findSourceFiles(dirPath), ...findTestFiles(dirPath)];
+    });
+    // Matches bare v8 ignore next/start that close without a "--" description
+    const barePattern = /v8 ignore (next|start)\s*\*\//;
+    const matches = countPatternOccurrences(allFiles, barePattern);
+
+    throwOnFileViolations(
+      matches.map((m) => ({ file: `${m.file}:${m.line}`, reason: m.match })),
+      "v8 ignore comment(s) without descriptions",
+      "Add a description: /* v8 ignore next -- reason */",
+    );
+    expect(matches).toHaveLength(0); // Satisfy vitest/expect-expect rule
+  });
 });

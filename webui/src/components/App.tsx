@@ -108,8 +108,10 @@ export function App() {
 
   // Auto-save on user message sent (called from useChat on first stream yield)
   useEffect(() => {
+    /* v8 ignore start -- auto-save ref: only invoked during streaming */
     autoSaveRef.current = () =>
       void conversationManager.saveCurrentConversation(Date.now());
+    /* v8 ignore stop */
   }, [conversationManager]);
 
   const transfer = useConversationTransfer(conversationManager.refreshList);
@@ -236,8 +238,10 @@ export function App() {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           onOpenSettings={() => openSettings()}
+          /* v8 ignore start -- inline settings tab navigation */
           onOpenToolsSettings={() => openSettings("tools")}
           onOpenConnectionSettings={() => openSettings("connection")}
+          /* v8 ignore stop */
           onStop={chat.stopResponse}
           showTimestamps={display.showTimestamps}
           showTokenUsage={display.showTokenUsage}

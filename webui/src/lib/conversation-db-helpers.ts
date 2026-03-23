@@ -22,7 +22,7 @@ export async function tryOpenDb(): Promise<IDBPDatabase> {
       return await handleVersionMismatch();
     }
 
-    /* v8 ignore next */
+    /* v8 ignore next -- non-VersionError rethrow: untestable with fake-indexeddb */
     throw err;
   }
 }
@@ -127,8 +127,9 @@ async function deleteDb(name: string): Promise<void> {
 function wrapIdbRequest<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
-    /* v8 ignore next */
+    /* v8 ignore start -- IDB onerror callback: untestable with fake-indexeddb */
     request.onerror = () => reject(request.error);
+    /* v8 ignore stop */
   });
 }
 

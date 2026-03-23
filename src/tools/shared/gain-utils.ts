@@ -58,7 +58,7 @@ export function liveGainToDb(gain: number): number {
 
   // Defensive guards: unreachable with current lookup table (only gain=0 has dB:null,
   // and the gain <= 0 check above prevents it from being a binary search result).
-  /* v8 ignore start */
+  /* v8 ignore start -- unreachable: null dB only at gain=0, excluded by early return */
   if (lower.dB === null) {
     if (upper.dB === null) {
       return -70;
@@ -128,7 +128,7 @@ export function dbToLiveGain(dB: number): number {
 
   // Defensive guard: unreachable with current lookup table because the last entry
   // has dB=24 (the max), and dB >= 24 is caught by the early return above.
-  /* v8 ignore start */
+  /* v8 ignore start -- unreachable: max dB entry caught by early return */
   if (upperIndex === -1) {
     return (LOOKUP_TABLE[lowerIndex] as LookupEntry).gain;
   }

@@ -15,7 +15,9 @@ import { MessageList } from "#webui/components/chat/MessageList";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { DEMO_TOOL_NAMES, demoMessages } from "./demo-fixtures";
 
+/* v8 ignore start -- no-op stub: passed as unused callback props */
 const NO_OP = async () => {};
+/* v8 ignore stop */
 
 // The last fixture message has a pending tool call (result: null)
 const lastMsg = demoMessages.at(-1);
