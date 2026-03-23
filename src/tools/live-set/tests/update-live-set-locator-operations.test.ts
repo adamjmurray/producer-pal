@@ -322,6 +322,20 @@ describe("updateLiveSet - locator operations", () => {
         id: "locator-99",
       });
     });
+
+    it("should skip if no locator found at specified time for rename", async () => {
+      const result = await updateLiveSet({
+        locatorOperation: "rename",
+        locatorTime: "100|1",
+        locatorName: "New Name",
+      });
+
+      expect(result.locator).toStrictEqual({
+        operation: "skipped",
+        reason: "locator_not_found",
+        time: "100|1",
+      });
+    });
   });
 
   describe("combined with other operations", () => {

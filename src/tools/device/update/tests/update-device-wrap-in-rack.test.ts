@@ -287,6 +287,111 @@ describe("updateDevice - wrapInRack", () => {
       expect(r.id).toBe("new-rack");
       expect(r.type).toBe("instrument-rack");
     });
+
+    it("should throw when toPath container does not exist for instrument wrap", () => {
+      mockNonExistentObjects();
+
+      // Re-register the instrument device so it can be resolved
+      registerMockObject("device-3", {
+        path: livePath.track(0).device(3),
+        type: "RackDevice",
+        properties: { type: 1 },
+      });
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+      });
+      registerMockObject("live-set", {
+        path: "live_set",
+        methods: {
+          create_midi_track: () => ["id", "temp-track"],
+          delete_track: () => null,
+        },
+      });
+      registerMockObject("temp-track", {
+        path: livePath.track(1),
+      });
+
+      expect(() =>
+        updateDevice({
+          path: "t0/d3",
+          wrapInRack: true,
+          toPath: "t99",
+        }),
+      ).toThrow("target container does not exist");
+    });
+
+    it("should cleanup temp track when instrument wrap throws and cleanup succeeds", () => {
+      // Make insert_device throw to trigger the catch block
+      track0 = registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: {
+          insert_device: () => {
+            throw new Error("insert_device failed");
+          },
+        },
+      });
+
+      // Cleanup (delete_track) succeeds
+      liveSet = registerMockObject("live-set", {
+        path: "live_set",
+        methods: {
+          create_midi_track: () => ["id", "temp-track"],
+          delete_track: () => null,
+        },
+      });
+
+      registerMockObject("temp-track", {
+        path: livePath.track(1),
+      });
+
+      expect(() =>
+        updateDevice({
+          path: "t0/d3",
+          wrapInRack: true,
+        }),
+      ).toThrow("insert_device failed");
+
+      // Verify cleanup was attempted
+      expect(liveSet.call).toHaveBeenCalledWith(
+        "delete_track",
+        expect.any(Number),
+      );
+    });
+
+    it("should cleanup temp track when instrument wrap throws and cleanup also fails", () => {
+      // Make insert_device throw to trigger the catch block
+      track0 = registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: {
+          insert_device: () => {
+            throw new Error("insert_device failed");
+          },
+        },
+      });
+
+      // Make delete_track throw during cleanup
+      liveSet = registerMockObject("live-set", {
+        path: "live_set",
+        methods: {
+          create_midi_track: () => ["id", "temp-track"],
+          delete_track: () => {
+            throw new Error("delete_track cleanup failed");
+          },
+        },
+      });
+
+      registerMockObject("temp-track", {
+        path: livePath.track(1),
+      });
+
+      // The original error should propagate, not the cleanup error
+      expect(() =>
+        updateDevice({
+          path: "t0/d3",
+          wrapInRack: true,
+        }),
+      ).toThrow("insert_device failed");
+    });
   });
 
   it("should warn and return null when mixing MIDI and Audio effects", () => {

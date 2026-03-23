@@ -169,7 +169,7 @@ describe("gain-utils", () => {
       expect(dB).toBeCloseTo(-69.7, 0);
     });
 
-    // Lines 62, 69: Unreachable with the real lookup table.
+    // Unreachable with the real lookup table.
     // Only index 0 has dB:null, and the gain <= 0 early return prevents it
     // from ever being an upper bound in binary search. So upper.dB is never null,
     // and both-null is also impossible. These are defensive guards only.
