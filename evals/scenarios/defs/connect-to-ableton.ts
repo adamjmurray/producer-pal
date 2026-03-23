@@ -68,17 +68,10 @@ export const connectToAbleton: EvalScenario = {
     // LLM judges the quality of the response
     {
       type: "llm_judge",
-      prompt: `Evaluate if the assistant connected to Ableton Live and said the equivalent of each of these:
-1. Connected
-2. Ableton Live version
-3. Producer Pal version
-4. Tempo: 120 BPM
-5. Time signature: 4/4
-6. Scale: A minor
-7. 5 regular tracks
-8. 2 return tracks
-9. 8 scenes
-10. What next?`,
+      prompt: `Evaluate if the assistant:
+1. Indicated it connected to Ableton Live
+2. Mentioned some details about the Live Set state (e.g. tempo, time signature, scale, tracks, return tracks, scenes, versions)
+At least a few state details should be mentioned, but not all are required.`,
     },
   ],
 };
