@@ -8,13 +8,8 @@
  */
 import "fake-indexeddb/auto";
 import { renderHook, act } from "@testing-library/preact";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  getConversationDb,
-  loadConversation,
-  resetDbCache,
-  saveConversation,
-} from "#webui/lib/conversation-db";
+import { beforeEach, describe, expect, it } from "vitest";
+import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import {
   createConversationsProps as createProps,
@@ -22,6 +17,7 @@ import {
   setupConversationsHook as setupHook,
   saveWithMessage,
   saveAndRename,
+  resetConversationsTestState,
 } from "./use-conversations-test-helpers";
 
 /**
@@ -73,15 +69,7 @@ function getHash(): string {
 }
 
 describe("useConversations", () => {
-  beforeEach(async () => {
-    await resetDbCache();
-    const db = await getConversationDb();
-
-    await db.clear("conversations");
-    window.location.hash = "";
-    localStorage.clear();
-    vi.clearAllMocks();
-  });
+  beforeEach(resetConversationsTestState);
 
   it("initializes with empty conversations list", async () => {
     const { result } = await setupHook();

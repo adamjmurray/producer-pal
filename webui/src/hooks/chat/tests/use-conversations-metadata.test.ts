@@ -8,12 +8,8 @@
  */
 import "fake-indexeddb/auto";
 import { renderHook, act } from "@testing-library/preact";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  getConversationDb,
-  loadConversation,
-  resetDbCache,
-} from "#webui/lib/conversation-db";
+import { beforeEach, describe, expect, it } from "vitest";
+import { loadConversation } from "#webui/lib/conversation-db";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import {
   createConversationsProps as createProps,
@@ -21,18 +17,11 @@ import {
   setupConversationsHook as setupHook,
   saveWithMessage,
   saveAndRename,
+  resetConversationsTestState,
 } from "./use-conversations-test-helpers";
 
 describe("useConversations", () => {
-  beforeEach(async () => {
-    await resetDbCache();
-    const db = await getConversationDb();
-
-    await db.clear("conversations");
-    window.location.hash = "";
-    localStorage.clear();
-    vi.clearAllMocks();
-  });
+  beforeEach(resetConversationsTestState);
 
   describe("auto-title derivation", () => {
     it("sets title from first user message", async () => {

@@ -6,6 +6,7 @@
 import { renderHook, act } from "@testing-library/preact";
 import { vi } from "vitest";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
+import { getConversationDb, resetDbCache } from "#webui/lib/conversation-db";
 import { type Provider } from "#webui/types/settings";
 
 /**
@@ -91,4 +92,17 @@ export async function saveAndRename(
   });
 
   return id;
+}
+
+/**
+ * Common beforeEach for useConversations tests: reset DB, clear hash/storage/mocks.
+ */
+export async function resetConversationsTestState(): Promise<void> {
+  await resetDbCache();
+  const db = await getConversationDb();
+
+  await db.clear("conversations");
+  window.location.hash = "";
+  localStorage.clear();
+  vi.clearAllMocks();
 }

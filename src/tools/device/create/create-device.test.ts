@@ -12,6 +12,7 @@ import {
   mockNonExistentObjects,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import { VALID_DEVICES } from "#src/tools/constants.ts";
 import { createDevice } from "./create-device.ts";
 
 vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
@@ -102,25 +103,7 @@ describe("createDevice", () => {
     });
 
     it("should accept all valid instruments", () => {
-      const instruments = [
-        "Analog",
-        "Collision",
-        "Drift",
-        "Drum Rack",
-        "DrumSampler",
-        "Electric",
-        "External Instrument",
-        "Impulse",
-        "Instrument Rack",
-        "Meld",
-        "Operator",
-        "Sampler",
-        "Simpler",
-        "Tension",
-        "Wavetable",
-      ];
-
-      for (const device of instruments) {
+      for (const device of VALID_DEVICES.instruments) {
         expect(() =>
           createDevice({ path: "t0", deviceName: device }),
         ).not.toThrow();
@@ -128,19 +111,7 @@ describe("createDevice", () => {
     });
 
     it("should accept all valid MIDI effects", () => {
-      const midiEffects = [
-        "Arpeggiator",
-        "CC Control",
-        "Chord",
-        "MIDI Effect Rack",
-        "Note Length",
-        "Pitch",
-        "Random",
-        "Scale",
-        "Velocity",
-      ];
-
-      for (const device of midiEffects) {
+      for (const device of VALID_DEVICES.midiEffects) {
         expect(() =>
           createDevice({ path: "t0", deviceName: device }),
         ).not.toThrow();
@@ -148,53 +119,7 @@ describe("createDevice", () => {
     });
 
     it("should accept all valid audio effects", () => {
-      const audioEffects = [
-        "Amp",
-        "Audio Effect Rack",
-        "Auto Filter",
-        "Auto Pan-Tremolo",
-        "Auto Shift",
-        "Beat Repeat",
-        "Cabinet",
-        "Channel EQ",
-        "Chorus-Ensemble",
-        "Compressor",
-        "Corpus",
-        "Delay",
-        "Drum Buss",
-        "Dynamic Tube",
-        "Echo",
-        "EQ Eight",
-        "EQ Three",
-        "Erosion",
-        "External Audio Effect",
-        "Filter Delay",
-        "Gate",
-        "Glue Compressor",
-        "Grain Delay",
-        "Hybrid Reverb",
-        "Limiter",
-        "Looper",
-        "Multiband Dynamics",
-        "Overdrive",
-        "Pedal",
-        "Phaser-Flanger",
-        "Redux",
-        "Resonators",
-        "Reverb",
-        "Roar",
-        "Saturator",
-        "Shifter",
-        "Spectral Resonator",
-        "Spectral Time",
-        "Spectrum",
-        "Tuner",
-        "Utility",
-        "Vinyl Distortion",
-        "Vocoder",
-      ];
-
-      for (const device of audioEffects) {
+      for (const device of VALID_DEVICES.audioEffects) {
         expect(() =>
           createDevice({ path: "t0", deviceName: device }),
         ).not.toThrow();
