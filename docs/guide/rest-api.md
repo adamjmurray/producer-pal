@@ -1,5 +1,12 @@
 # REST API
 
+::: info This is for developers Most users don't need the REST API. The normal
+way to use Producer Pal is through an AI chat client like Claude Desktop — see
+the [Installation guide](/installation) to get started.
+
+The REST API is for developers who want to build custom scripts, automation, or
+integrations that talk to Ableton Live directly over HTTP. :::
+
 Producer Pal includes a REST API that lets you build custom clients, scripts,
 and integrations using plain HTTP requests — no MCP SDK needed.
 
