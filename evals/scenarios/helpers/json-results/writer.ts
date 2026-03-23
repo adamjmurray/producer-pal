@@ -19,13 +19,27 @@ import { type JsonEvalResult, RESULTS_DIR } from "./types.ts";
  * @returns Path to the written file
  */
 export async function writeJsonResult(result: JsonEvalResult): Promise<string> {
-  const dir = join(RESULTS_DIR, result.scenarioId);
+  const dir = join(RESULTS_DIR, result.runId);
 
   await mkdir(dir, { recursive: true });
 
-  const filePath = join(dir, `${result.runId}.json`);
+  const filename = buildResultFilename(result);
+  const filePath = join(dir, filename);
 
   await writeFile(filePath, JSON.stringify(result, null, 2) + "\n");
 
   return filePath;
+}
+
+/**
+ * Build a descriptive filename encoding scenario, model, and config.
+ * Format: {scenarioId}--{model}--{configProfileId}.json
+ *
+ * @param result - The eval result
+ * @returns Filename string
+ */
+function buildResultFilename(result: JsonEvalResult): string {
+  const model = result.model.replace("/", "_");
+
+  return `${result.scenarioId}--${model}--${result.configProfileId}.json`;
 }

@@ -58,32 +58,15 @@ async function loadResult(filePath: string): Promise<JsonEvalResult> {
 }
 
 /**
- * Find all result files matching a run ID across all scenarios
+ * Find all result files in a run directory
  *
- * @param runId - Run identifier to match
+ * @param runId - Run identifier (directory name)
  * @returns Array of file paths
  */
 async function findResultsByRunId(runId: string): Promise<string[]> {
-  const paths: string[] = [];
+  const runDir = join(RESULTS_DIR, runId);
 
-  try {
-    const scenarioDirs = await readdir(RESULTS_DIR);
-
-    for (const dir of scenarioDirs) {
-      const filePath = join(RESULTS_DIR, dir, `${runId}.json`);
-
-      try {
-        await readFile(filePath);
-        paths.push(filePath);
-      } catch {
-        // File doesn't exist for this scenario
-      }
-    }
-  } catch {
-    // Results directory doesn't exist
-  }
-
-  return paths;
+  return await findResultsInDir(runDir);
 }
 
 /**
@@ -152,29 +135,31 @@ async function showRun(runId: string): Promise<void> {
 }
 
 /**
- * Show the latest result for each scenario
+ * Show all results from the latest run
  *
  */
 async function showLatest(): Promise<void> {
   try {
-    const scenarioDirs = await readdir(RESULTS_DIR);
-    let found = false;
+    const runDirs = await readdir(RESULTS_DIR);
+    const sorted = runDirs.sort().reverse();
 
-    for (const dir of scenarioDirs.sort()) {
+    for (const dir of sorted) {
       const files = await findResultsInDir(join(RESULTS_DIR, dir));
 
       if (files.length > 0) {
-        found = true;
+        console.log(styleText("bold", `Latest run: ${dir}\n`));
 
-        const result = await loadResult(files[0] as string);
+        for (const file of files) {
+          const result = await loadResult(file);
 
-        printResult(result);
+          printResult(result);
+        }
+
+        return;
       }
     }
 
-    if (!found) {
-      console.log("No eval results found. Run evaluations first.");
-    }
+    console.log("No eval results found. Run evaluations first.");
   } catch {
     console.log("No eval results found. Run evaluations first.");
   }
