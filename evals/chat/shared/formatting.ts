@@ -292,6 +292,11 @@ const SECTION_WIDTH = 60;
 const MAJOR_SEPARATOR = "=".repeat(SECTION_WIDTH);
 const MINOR_SEPARATOR = "-".repeat(SECTION_WIDTH);
 
+export const WAVEFORM_UNIT = "⎺⎻⎼⎽⎼⎻";
+const WAVEFORM_SEPARATOR = WAVEFORM_UNIT.repeat(
+  Math.ceil((SECTION_WIDTH + 12) / WAVEFORM_UNIT.length),
+);
+
 /**
  * Format a scenario header box
  *
@@ -309,7 +314,7 @@ export function formatScenarioHeader(
 ): string {
   return `
 
-${styleText("gray", "_".repeat(SECTION_WIDTH + 12))}
+${styleText("gray", WAVEFORM_SEPARATOR)}
 
 ${orange(MAJOR_SEPARATOR)}
 ${orange(`| SCENARIO: ${id}`)}

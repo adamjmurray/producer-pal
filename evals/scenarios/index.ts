@@ -11,7 +11,10 @@
 import { styleText } from "node:util";
 import { Command } from "commander";
 import { collapseStdoutNewlines } from "#evals/chat/shared/collapse-stdout-newlines.ts";
-import { efficiencyColor, orange } from "#evals/chat/shared/formatting.ts";
+import {
+  WAVEFORM_UNIT,
+  efficiencyColor,
+} from "#evals/chat/shared/formatting.ts";
 import {
   parseModelArg,
   type ModelSpec,
@@ -363,7 +366,9 @@ function printSummary(
       : modelSpecs[0].provider
     : "";
 
-  console.log("\n" + orange("=".repeat(50)));
+  const waveform = WAVEFORM_UNIT.repeat(Math.ceil(72 / WAVEFORM_UNIT.length));
+
+  console.log("\n" + styleText("gray", waveform) + "\n");
   console.log(styleText("bold", `Summary: ${modelLabel}`) + "\n");
 
   let passCount = 0;
