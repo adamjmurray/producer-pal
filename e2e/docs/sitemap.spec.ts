@@ -36,6 +36,7 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   "openai.com",
   "openrouter.ai",
   "pinggy.io",
+  "en.wikipedia.org",
   "www.ableton.com",
   "www.youtube.com",
 ];
