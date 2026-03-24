@@ -279,6 +279,7 @@ describe("connect", () => {
         isPlaying: true,
       },
       skills: expect.stringContaining("Producer Pal Skills"),
+      nextStep: expect.stringMatching(/wait for.* instructions/),
     });
   });
 
