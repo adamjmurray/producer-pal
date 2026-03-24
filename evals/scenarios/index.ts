@@ -56,6 +56,7 @@ interface CliOptions {
   skipSetup?: boolean;
   quiet?: boolean;
   usage?: boolean;
+  json?: boolean;
 }
 
 /**
@@ -108,6 +109,7 @@ program
   )
   .option("-q, --quiet", "Suppress detailed AI and judge responses")
   .option("-u, --usage", "Show per-step token usage")
+  .option("--no-json", "Skip writing JSON result files to disk")
   .option("-a, --all", "Run all scenarios")
   .action(async (options: CliOptions) => {
     if (options.list) {
@@ -319,7 +321,7 @@ async function runTrials(
       trialInfo,
     );
 
-    await writeJsonResult(jsonResult);
+    if (ctx.options.json !== false) await writeJsonResult(jsonResult);
     printResultBlock(jsonResult);
     results.push(jsonResult);
   }

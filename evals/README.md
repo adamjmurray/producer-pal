@@ -29,6 +29,7 @@ scripts/eval [options]
 | `-q, --quiet`                | Suppress detailed AI and judge responses        |
 | `-r, --repeat <N>`           | Run each scenario N times (for flakiness)       |
 | `-u, --usage`                | Show token usage per turn                       |
+| `--no-json`                  | Skip writing JSON result files to disk          |
 | `-I, --default-instructions` | Use default system instructions                 |
 | `-l, --list`                 | List available scenarios and config profiles    |
 
