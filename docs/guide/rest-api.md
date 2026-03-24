@@ -1,21 +1,20 @@
 # REST API
 
-::: info
-
-This is for developers Most users don't need the REST API. The normal way to use
-Producer Pal is through an AI chat client like Claude Desktop — see the
-[Installation guide](/installation) to get started.
-
-The REST API is for developers who want to build custom scripts, automation, or
-integrations that talk to Ableton Live directly over HTTP.
-
-:::
-
-Producer Pal includes a REST API that lets you build custom clients, scripts,
-and integrations using plain HTTP requests — no MCP SDK needed.
+Producer Pal includes a REST API for building custom scripts, automation, and
+integrations using plain HTTP requests — no MCP SDK needed. It also works as an
+alternative interface for coding agents: download this page as Markdown (button
+at the top) and give it to your agent for a complete reference.
 
 The REST API runs on the same server as the MCP endpoint (default port 3350) and
 is available whenever the Producer Pal Max for Live device is running.
+
+::: info This is for developers
+
+Most users don't need the REST API. The normal way to use Producer Pal is
+through an AI chat client like Claude Desktop — see the
+[Installation guide](/installation) to get started.
+
+:::
 
 ## Endpoints
 
@@ -57,9 +56,15 @@ Returns:
 ```
 
 - **200** with `isError: false` — tool ran successfully
-- **200** with `isError: true` — tool ran but reported an error (e.g. timeout)
+- **200** with `isError: true` — tool ran but reported an error (e.g. invalid
+  path, execution error)
 - **404** — unknown or disabled tool
 - **400** — invalid input (includes validation details)
+
+Warnings from the Live API appear inline in the `result` text, prefixed with
+`WARNING:`. The `ppal-update-*` tools use this when updating multiple objects —
+if any individual operation fails or is inapplicable (e.g. setting quantize on
+an audio clip), it emits a warning and continues with the rest.
 
 ## Quick Start with curl
 
