@@ -18,16 +18,19 @@ scripts/eval [options]
 
 ### Options
 
-| Flag                     | Description                                     |
-| ------------------------ | ----------------------------------------------- |
-| `-m, --model <model>`    | Model to test (required)                        |
-| `-t, --test <id>`        | Run specific scenario by ID (repeatable)        |
-| `-a, --all`              | Run all scenarios                               |
-| `-c, --config <profile>` | Config profile (repeatable, default: `default`) |
-| `-j, --judge <model>`    | Judge model (default: `gemini-3-flash-preview`) |
-| `-s, --skip-setup`       | Skip Live Set setup (reuse existing connection) |
-| `-q, --quiet`            | Suppress detailed AI and judge responses        |
-| `-l, --list`             | List available scenarios and config profiles    |
+| Flag                         | Description                                     |
+| ---------------------------- | ----------------------------------------------- |
+| `-m, --model <model>`        | Model to test (required)                        |
+| `-t, --test <id>`            | Run specific scenario by ID (repeatable)        |
+| `-a, --all`                  | Run all scenarios                               |
+| `-c, --config <profile>`     | Config profile (repeatable, default: `default`) |
+| `-j, --judge <model>`        | Judge model (default: `gemini-3-flash-preview`) |
+| `-s, --skip-setup`           | Skip Live Set setup (reuse existing connection) |
+| `-q, --quiet`                | Suppress detailed AI and judge responses        |
+| `-r, --repeat <N>`           | Run each scenario N times (for flakiness)       |
+| `-u, --usage`                | Show token usage per turn                       |
+| `-I, --default-instructions` | Use default system instructions                 |
+| `-l, --list`                 | List available scenarios and config profiles    |
 
 ### Model format
 
@@ -101,28 +104,29 @@ List available scenarios:
 scripts/eval -l
 ```
 
-Current scenarios:
-
-| ID                          | Description                                 | Turns |
-| --------------------------- | ------------------------------------------- | ----- |
-| `connect-to-ableton`        | Connect and retrieve Producer Pal skills    | 1     |
-| `create-and-edit-clip`      | Create drum clip, add notes, quantize       | 4     |
-| `track-and-device-workflow` | Create track, add device, update properties | 4     |
-| `memory-workflow`           | Write and read project memory               | 3     |
-| `duplicate`                 | Duplicate a track                           | 2     |
+Run `scripts/eval -l` for the current list. Scenarios are tagged as
+**regression** (should always pass) or **capability** (improvement targets, may
+have low pass rates).
 
 ### Scoring
 
-Each scenario has assertions worth points:
+Each scenario has assertions that contribute to pass/fail:
 
 - **`tool_called`** - Verifies the right tool was called (with optional arg
   matching)
 - **`response_contains`** - Checks for text/regex patterns in responses
 - **`state`** - Verifies Live Set state via MCP tool calls
-- **`llm_judge`** - LLM rates the response on accuracy, reasoning, efficiency,
-  and naturalness (0.0-1.0 each, averaged)
+- **`custom`** - Arbitrary callback assertions on turn data
+
+Plus informational-only assertions (don't affect pass/fail):
+
+- **`llm_judge`** - LLM evaluates response quality with pass/fail + issues
+- **`token_usage`** - Tracks token efficiency against a target budget
 
 The judge defaults to Gemini 3 Flash. Override with `-j`.
+
+When using `-r N`, the summary aggregates across trials: checks are totaled,
+efficiency is averaged, and judge shows a pass rate.
 
 ### Eval matrix
 
@@ -207,15 +211,44 @@ Scenarios are defined in `evals/scenarios/defs/`. Each file exports an
 export const myScenario: EvalScenario = {
   id: "my-scenario",
   description: "What this tests",
+  kind: "regression",
   liveSet: "basic-midi-4-track", // from evals/live-sets/
   messages: ["Connect to Ableton Live", "Do something specific"],
   assertions: [
-    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
-    { type: "response_contains", pattern: /expected/i, score: 2 },
-    { type: "llm_judge", prompt: "Evaluate if...", score: 10 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0 },
+    { type: "response_contains", pattern: /expected/i },
+    {
+      type: "state",
+      tool: "ppal-read-track",
+      args: { trackIndex: 0 },
+      expect: { name: "Drums" },
+    },
+    { type: "llm_judge", prompt: "Evaluate if..." },
   ],
 };
 ```
 
 Register new scenarios in `evals/scenarios/defs/index.ts` and
 `evals/scenarios/load-scenarios.ts`.
+
+### Design guidelines
+
+- **Target ~20 scenarios total.** Each eval run requires Ableton Live and takes
+  real time, so keep the suite focused. Don't add scenarios for the sake of
+  coverage — add them when you find a bug, add a tool, or want to validate a
+  specific model's behavior.
+- **Prefer deterministic assertions.** `tool_called`, `state`, and
+  `response_contains` are fast, cheap, and reproducible. Use `llm_judge` only
+  when you need to evaluate something subjective (tone, reasoning quality).
+- **Grade outcomes, not paths.** Assert on the final state (e.g., "clip has
+  these notes") rather than the exact sequence of tool calls. This avoids
+  penalizing models that find valid alternative approaches.
+- **Keep messages unambiguous.** Vague prompts create flaky evals. If a scenario
+  fails at 0%, suspect the prompt before the model.
+- **Regression vs capability:** Tag scenarios as `kind: "regression"` when they
+  should always pass (use these to catch regressions). Tag as
+  `kind: "capability"` for aspirational tests that target difficult tasks —
+  these start with low pass rates and graduate to regression once stable.
+- **Use `-r N` to diagnose flakiness.** If a regression eval fails
+  intermittently, run it 3 times to confirm whether it's flaky or broken before
+  investigating.
