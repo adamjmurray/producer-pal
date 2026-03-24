@@ -59,6 +59,10 @@ Run `npm run build && npm run e2e:mcp` with Ableton Live open. It takes a few
 minutes Don't use Live while this runs because the tests manipulate it directly.
 Requires macOS.
 
+Note: All the tests for code execution functionality are expected to fail unless
+you build with `build:debug`, which is not recommended here because it's not a
+release build.
+
 ## Step 1: Build Release Files
 
 1. Build release versions of desktop extensions and the portal script:
