@@ -5,12 +5,15 @@
 
 import { type Express, type Request, type Response } from "express";
 import { z } from "zod";
+import { toolDefRawLiveApi } from "#src/tools/control/raw-live-api.def.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
 } from "./create-mcp-server.ts";
 import { type McpResponse } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
+
+const REST_TOOL_DEFS = [...STANDARD_TOOL_DEFS, toolDefRawLiveApi];
 
 interface RestApiConfig {
   tools: string[];
@@ -31,8 +34,8 @@ export function registerRestApiRoutes(
   app.get("/api/tools", (_req: Request, res: Response): void => {
     const enabledSet = new Set(getConfig().tools);
 
-    const tools = STANDARD_TOOL_DEFS.filter((td) =>
-      enabledSet.has(td.toolName),
+    const tools = REST_TOOL_DEFS.filter(
+      (td) => enabledSet.has(td.toolName) || td === toolDefRawLiveApi,
     ).map((td) => ({
       name: td.toolName,
       title: td.toolOptions.title,
@@ -53,9 +56,10 @@ export function registerRestApiRoutes(
       const { toolName } = req.params;
       const enabledSet = new Set(getConfig().tools);
 
-      const toolDef = STANDARD_TOOL_DEFS.find((td) => td.toolName === toolName);
+      const toolDef = REST_TOOL_DEFS.find((td) => td.toolName === toolName);
+      const isRawTool = toolDef === toolDefRawLiveApi;
 
-      if (!toolDef || !enabledSet.has(toolName)) {
+      if (!toolDef || (!isRawTool && !enabledSet.has(toolName))) {
         res
           .status(404)
           .json({ error: `Unknown or disabled tool: ${toolName}` });

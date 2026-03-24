@@ -49,7 +49,8 @@ describe("REST API Routes", () => {
       const body = await response.json();
 
       expect(body.tools).toBeInstanceOf(Array);
-      expect(body.tools).toHaveLength(TOOL_NAMES.length);
+      // +1 for ppal-raw-live-api which is always included in REST
+      expect(body.tools).toHaveLength(TOOL_NAMES.length + 1);
 
       const tool = body.tools[0];
 
@@ -70,8 +71,50 @@ describe("REST API Routes", () => {
       const response = await fetch(`${appState.baseUrl}/api/tools`);
       const body = await response.json();
 
-      expect(body.tools).toHaveLength(1);
-      expect(body.tools[0].name).toBe("ppal-connect");
+      // ppal-connect + ppal-raw-live-api (always included)
+      expect(body.tools).toHaveLength(2);
+
+      const names = body.tools.map((t: { name: string }) => t.name);
+
+      expect(names).toContain("ppal-connect");
+      expect(names).toContain("ppal-raw-live-api");
+
+      // Restore all tools
+      await fetch(`${appState.baseUrl}/config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tools: [...TOOL_NAMES] }),
+      });
+    });
+  });
+
+  describe("ppal-raw-live-api (always available)", () => {
+    it("should always include raw tool in tool list", async () => {
+      const response = await fetch(`${appState.baseUrl}/api/tools`);
+      const body = await response.json();
+      const names = body.tools.map((t: { name: string }) => t.name);
+
+      expect(names).toContain("ppal-raw-live-api");
+    });
+
+    it("should allow calling raw tool even when not in enabled config", async () => {
+      await fetch(`${appState.baseUrl}/config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tools: ["ppal-connect"] }),
+      });
+
+      // Raw tool should still be callable (returns 400 for missing input, not 404)
+      const response = await fetch(
+        `${appState.baseUrl}/api/tools/ppal-raw-live-api`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+      );
+
+      expect(response.status).toBe(400);
 
       // Restore all tools
       await fetch(`${appState.baseUrl}/config`, {

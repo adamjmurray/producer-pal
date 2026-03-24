@@ -18,6 +18,7 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   "claude.ai",
   "cline.bot",
   "cloudflare.com",
+  "docs.cycling74.com",
   "console.mistral.ai",
   "discord.gg",
   "forms.gle",

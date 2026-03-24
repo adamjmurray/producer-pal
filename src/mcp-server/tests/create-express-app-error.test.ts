@@ -7,12 +7,17 @@ import { describe, expect, it, vi } from "vitest";
 import { setupExpressAppServer } from "./express-app-test-helpers.ts";
 
 // Mock createMcpServer to throw, triggering the catch block in create-express-app
-vi.mock(import("../create-mcp-server.ts"), () => ({
-  TOOL_NAMES: ["ppal-connect"],
-  createMcpServer: vi.fn(() => {
-    throw new Error("Simulated server creation failure");
-  }),
-}));
+vi.mock(import("../create-mcp-server.ts"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return {
+    ...actual,
+    TOOL_NAMES: ["ppal-connect"],
+    createMcpServer: vi.fn(() => {
+      throw new Error("Simulated server creation failure");
+    }),
+  };
+});
 
 describe("MCP Express App error handling", () => {
   const appState = setupExpressAppServer();

@@ -100,6 +100,91 @@ Use the [list tools endpoint](#list-tools) to discover all available tools and
 their input schemas at runtime. You can also browse the full tool documentation
 on the [Features](/features) page.
 
+## Raw Live API
+
+The `ppal-raw-live-api` tool provides direct access to the
+[Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
+development, scripting, and debugging. It is always available via the REST API
+regardless of tool configuration.
+
+::: warning
+
+This is a development tool for scripting and debugging. It can read and modify
+any Live Set property — use it with care.
+
+:::
+
+### Request structure
+
+The `path` parameter sets the initial Live Object Model object to operate on
+(e.g., `"live_set"`, `"live_set tracks 0"`,
+`"live_set tracks 0 clip_slots 1 clip"`). The `operations` array is then
+executed sequentially on that object. Use `goto` to navigate to a different
+object mid-sequence.
+
+Available operation types:
+
+| Type                   | Properties used             | Description                    |
+| ---------------------- | --------------------------- | ------------------------------ |
+| `get_property` / `get` | `property`                  | Read a property value          |
+| `set_property` / `set` | `property`, `value`         | Write a property value         |
+| `call_method` / `call` | `method`, `args` (optional) | Call a method                  |
+| `goto`                 | `value` (path)              | Navigate to a different object |
+| `info`                 | —                           | Get object info                |
+| `getProperty`          | `property`                  | Alias for `get_property`       |
+| `getChildIds`          | `property` (child type)     | Get child object IDs           |
+| `exists`               | —                           | Check if the object exists     |
+| `getColor`             | —                           | Read object color              |
+| `setColor`             | `value` (hex string)        | Write object color             |
+
+### Examples
+
+```bash
+# Get the tempo
+curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "path": "live_set",
+    "operations": [{"type": "get_property", "property": "tempo"}]
+  }'
+
+# Set the tempo to 140 BPM
+curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "path": "live_set",
+    "operations": [{"type": "set_property", "property": "tempo", "value": 140}]
+  }'
+
+# Fire scene 0
+curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "path": "live_set",
+    "operations": [{"type": "call", "method": "fire_scene_at_index", "args": [0]}]
+  }'
+
+# Chain multiple operations on one object
+curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "path": "live_set tracks 0",
+    "operations": [
+      {"type": "get", "property": "name"},
+      {"type": "get", "property": "color_index"},
+      {"type": "get", "property": "has_midi_input"}
+    ]
+  }'
+```
+
+::: info
+
+This tool is always available via the REST API. It is only available via MCP
+when the `ENABLE_RAW_LIVE_API` environment variable is set at build time
+(`npm run build:debug`).
+
+:::
+
 ## Tips
 
 - The `inputSchema` in the tool list response is standard
