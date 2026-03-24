@@ -2,7 +2,7 @@
 
 ## Upcoming
 
-### 1.5 - Personalization and Customization
+### 1.5 - Personalization and Extensibility
 
 - Global context: add your own reference material and custom instructions across
   all Live projects
@@ -11,6 +11,11 @@
 - Custom skills, system prompts, tool sets, and tool descriptions
 - Task-focused personas and better optimized "small model mode" via
   customization presets
+- Workflows: pre-defined tool call sequences for reliable, repeatable operations
+- Companion MCP server template for building new capabilities as separate
+  servers
+
+See [Extending Producer Pal](/extending) for more on the extension model.
 
 ## Changelog
 
@@ -66,10 +71,17 @@ Expanded features and support for multiple AI platforms.
 Initial public release with Claude Desktop support and a focus on MIDI clip
 manipulation and basic Live Set management.
 
-## Future Features
+## Beyond 1.5
 
-- Support new Live API features as they become available
-- Take lane support
+After 1.5, the core stabilizes — future core changes focus on bug fixes and
+supporting new Live API features as they become available. New capabilities will
+come through [extensions](/extending): community skills, workflows, and
+companion MCP servers.
+
+**Core features under consideration:**
+
+- Take lane support (pending Live API improvements)
 - Chord notation and pitches as scale/chord degrees
-- Voice interface
-- Custom algorithm execution for MIDI generation and transformation
+- Bar|beat and MIDI transform notation refinements (including alternate
+  notations that may work better with smaller models)
+- Device-specific features (EQ 8, Wavetable, etc.)

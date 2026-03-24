@@ -62,6 +62,7 @@ export default defineConfig({
         text: "Features",
         items: [
           { text: "Feature List", link: "/features" },
+          { text: "Extending", link: "/extending" },
           { text: "Roadmap", link: "/roadmap" },
         ],
       },

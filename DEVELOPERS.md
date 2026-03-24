@@ -31,6 +31,42 @@ Also feel free to:
 - Learn from the implementation
 - Fork and modify for your own needs. Please attribute me.
 
+## Extending Producer Pal
+
+The core is focused on Ableton Live control via MCP — each tool directly wraps
+Live API calls, optimized for doing the most with the fewest tools and tokens.
+The core is stabilizing, and large PRs that add new tool domains or require
+external dependencies will not be accepted.
+
+This is by design. A stable core means extensions don't break, and the
+interesting innovation happens through extensions rather than a PR queue.
+
+**There are better ways to add capabilities:**
+
+- **Context customization** — Custom skills, system instructions, tool
+  description overrides, and tool presets let you shape LLM behavior without any
+  code. If you can describe a workflow in plain language, you can create a
+  skill.
+
+- **Workflows** — Pre-defined sequences of tool calls for reliable, repeatable
+  operations. The LLM picks the right workflow and fills in parameters, but
+  doesn't improvise the steps.
+
+- **Companion MCP servers** — For entirely new capabilities (audio analysis,
+  generative algorithms, hardware integration), build a separate MCP server. The
+  LLM combines tools from all connected servers naturally. The upcoming
+  `max-mcp-template` starter project and shared libraries should make this
+  straightforward.
+
+**What IS welcome as a core PR:** Bug fixes, improvements to default skill text
+and tool/argument descriptions, evaluations, documentation, and targeted
+optimizations to reduce cost and improve efficiency across all model types. If
+you find a tweak that makes the LLM behave better, that can go straight into
+core.
+
+See the [Extending Producer Pal](https://producer-pal.org/extending)
+documentation for details on extension types and how to choose between them.
+
 ## Branching Strategy
 
 - **`main`** — latest stable release
