@@ -17,6 +17,7 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
+import { registerRestApiRoutes } from "./rest-api-routes.ts";
 
 interface ProducerPalConfig {
   memoryEnabled: boolean;
@@ -198,79 +199,89 @@ export function createExpressApp(): Express {
     res.json(config);
   });
 
-  app.post("/config", async (req: Request, res: Response): Promise<void> => {
-    const incoming = req.body as Partial<ProducerPalConfig>;
-    const outlets: Array<() => Promise<void>> = [];
+  app.post("/config", handleConfigUpdate);
 
-    if (incoming.memoryEnabled !== undefined) {
-      config.memoryEnabled = Boolean(incoming.memoryEnabled);
-      outlets.push(() =>
-        Max.outlet("config", "memoryEnabled", config.memoryEnabled),
-      );
-    }
-
-    if (incoming.memoryContent !== undefined) {
-      config.memoryContent = incoming.memoryContent ?? "";
-      outlets.push(() =>
-        Max.outlet("config", "memoryContent", config.memoryContent),
-      );
-    }
-
-    if (incoming.memoryWritable !== undefined) {
-      config.memoryWritable = Boolean(incoming.memoryWritable);
-      outlets.push(() =>
-        Max.outlet("config", "memoryWritable", config.memoryWritable),
-      );
-    }
-
-    if (incoming.smallModelMode !== undefined) {
-      config.smallModelMode = Boolean(incoming.smallModelMode);
-      outlets.push(() =>
-        Max.outlet("config", "smallModelMode", config.smallModelMode),
-      );
-    }
-
-    if (incoming.jsonOutput !== undefined) {
-      config.jsonOutput = Boolean(incoming.jsonOutput);
-      outlets.push(() =>
-        Max.outlet("config", "compactOutput", !config.jsonOutput),
-      );
-    }
-
-    if (incoming.sampleFolder !== undefined) {
-      config.sampleFolder = incoming.sampleFolder ?? "";
-      outlets.push(() =>
-        Max.outlet("config", "sampleFolder", config.sampleFolder),
-      );
-    }
-
-    if (incoming.tools !== undefined) {
-      const validationError = validateTools(incoming.tools);
-
-      if (validationError) {
-        res.status(400).json(validationError);
-
-        return;
-      }
-
-      config.tools = incoming.tools.map(String);
-      outlets.push(() =>
-        Max.outlet("config", "tools", JSON.stringify(config.tools)),
-      );
-    }
-
-    // Emit all config updates to V8 (after synchronously updating config)
-    for (const emit of outlets) {
-      await emit();
-    }
-
-    res.json(config);
-  });
+  registerRestApiRoutes(app, () => config, callLiveApi);
 
   return app;
 }
 
 const VALID_TOOL_SET = new Set<string>(TOOL_NAMES);
+
+/**
+ * Handle POST /config requests to update device UI settings
+ *
+ * @param req - Express request
+ * @param res - Express response
+ */
+async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
+  const incoming = req.body as Partial<ProducerPalConfig>;
+  const outlets: Array<() => Promise<void>> = [];
+
+  if (incoming.memoryEnabled !== undefined) {
+    config.memoryEnabled = Boolean(incoming.memoryEnabled);
+    outlets.push(() =>
+      Max.outlet("config", "memoryEnabled", config.memoryEnabled),
+    );
+  }
+
+  if (incoming.memoryContent !== undefined) {
+    config.memoryContent = incoming.memoryContent ?? "";
+    outlets.push(() =>
+      Max.outlet("config", "memoryContent", config.memoryContent),
+    );
+  }
+
+  if (incoming.memoryWritable !== undefined) {
+    config.memoryWritable = Boolean(incoming.memoryWritable);
+    outlets.push(() =>
+      Max.outlet("config", "memoryWritable", config.memoryWritable),
+    );
+  }
+
+  if (incoming.smallModelMode !== undefined) {
+    config.smallModelMode = Boolean(incoming.smallModelMode);
+    outlets.push(() =>
+      Max.outlet("config", "smallModelMode", config.smallModelMode),
+    );
+  }
+
+  if (incoming.jsonOutput !== undefined) {
+    config.jsonOutput = Boolean(incoming.jsonOutput);
+    outlets.push(() =>
+      Max.outlet("config", "compactOutput", !config.jsonOutput),
+    );
+  }
+
+  if (incoming.sampleFolder !== undefined) {
+    config.sampleFolder = incoming.sampleFolder ?? "";
+    outlets.push(() =>
+      Max.outlet("config", "sampleFolder", config.sampleFolder),
+    );
+  }
+
+  if (incoming.tools !== undefined) {
+    const validationError = validateTools(incoming.tools);
+
+    if (validationError) {
+      res.status(400).json(validationError);
+
+      return;
+    }
+
+    config.tools = incoming.tools.map(String);
+    outlets.push(() =>
+      Max.outlet("config", "tools", JSON.stringify(config.tools)),
+    );
+  }
+
+  // Emit all config updates to V8 (after synchronously updating config)
+  for (const emit of outlets) {
+    await emit();
+  }
+
+  res.json(config);
+}
 
 /**
  * Validate the tools array from a config update request.

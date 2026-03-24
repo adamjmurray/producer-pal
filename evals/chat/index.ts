@@ -6,8 +6,12 @@
 
 import { Command } from "commander";
 import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
-import { runAiSdkChat } from "./ai-sdk-chat.ts";
+import { SYSTEM_INSTRUCTION } from "#webui/lib/system-instruction.ts";
+import { runChat } from "./chat.ts";
+import { collapseStdoutNewlines } from "./shared/collapse-stdout-newlines.ts";
 import { type ChatOptions } from "./shared/types.ts";
+
+collapseStdoutNewlines();
 
 const program = new Command();
 
@@ -42,13 +46,17 @@ program
     Number.parseFloat,
   )
   .option("-o, --output-tokens <number>", "Max output tokens", Number.parseInt)
-  .option("-i, --instructions <text>", "System instructions")
+  .option(
+    "-i, --instructions <text>",
+    'System instructions (default: built-in, "" to disable)',
+  )
   .option("-1, --once", "Exit after generating one response")
   .option(
     "-s, --sequence <messages...>",
     "Multiple messages to send in sequence",
   )
   .option("-f, --file <path>", "File containing messages (one per line)")
+  .option("-u, --usage", "Show per-step token usage")
   .option(
     "-b, --base-url <url>",
     "Base URL for local provider (default: http://localhost:11434/v1)",
@@ -59,7 +67,13 @@ program
 
     // Parse model argument to get provider and model
     const { provider, model } = parseModelArg(rawOptions.model);
-    const options: ChatOptions = { ...rawOptions, provider, model };
+    const instructions = rawOptions.instructions ?? SYSTEM_INSTRUCTION;
+    const options: ChatOptions = {
+      ...rawOptions,
+      provider,
+      model,
+      instructions,
+    };
 
     // Apply --base-url to env so local provider picks it up
     if (rawOptions.baseUrl) {
@@ -72,7 +86,7 @@ program
       );
     }
 
-    await runAiSdkChat(initialText, options);
+    await runChat(initialText, options);
   });
 
 program.parse();

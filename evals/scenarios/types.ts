@@ -7,6 +7,7 @@
  */
 
 import { type ConfigOptions } from "#evals/shared/config.ts";
+import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 
 // Re-export types from chat for convenience
 export type { TurnResult, ToolCall } from "#evals/chat/shared/types.ts";
@@ -53,6 +54,10 @@ export interface EvalScenario {
   /** Human-readable description */
   description: string;
 
+  /** Whether this is a regression test (should always pass) or capability test
+   * (improvement target, may have low pass rates). Default: "regression" */
+  kind?: "regression" | "capability";
+
   /** Live Set name or path. Short names (no `/`) resolve to
    * `evals/live-sets/{name} Project/{name}.als` */
   liveSet: string;
@@ -63,8 +68,9 @@ export interface EvalScenario {
   /** Assertions to run after conversation completes */
   assertions: EvalAssertion[];
 
-  /** Optional system instructions */
-  instructions?: string;
+  /** System instructions override. Default: SYSTEM_INSTRUCTION from webui.
+   *  Set to null for no instructions. */
+  instructions?: string | null;
 
   /** Optional config to apply before running scenario */
   config?: ConfigOptions;
@@ -77,7 +83,9 @@ export type EvalAssertion =
   | ToolCallAssertion
   | StateAssertion
   | LlmJudgeAssertion
-  | ResponseContainsAssertion;
+  | ResponseContainsAssertion
+  | CustomAssertion
+  | TokenUsageAssertion;
 
 /**
  * Assert that a specific tool was called with expected args
@@ -92,8 +100,6 @@ export interface ToolCallAssertion {
   turn?: number | "any";
   /** How many times tool should be called */
   count?: number | { min?: number; max?: number };
-  /** Max points this assertion is worth (default: 1) */
-  score?: number;
 }
 
 /**
@@ -107,31 +113,21 @@ export interface StateAssertion {
   args: Record<string, unknown>;
   /** Expected partial result or matcher function */
   expect: Record<string, unknown> | ((result: unknown) => boolean);
-  /** Max points this assertion is worth (default: 1) */
-  score?: number;
 }
 
 /**
- * Use LLM to judge response quality on 4 dimensions (0.0-1.0 each):
- * - Accuracy: Did it do exactly what was requested?
- * - Reasoning: Was its logic sound and did it pick the right tools?
- * - Efficiency: Did it use minimal steps?
- * - Naturalness: Did the interaction feel human-like?
- *
- * Earned points = average of 4 dimensions × score
+ * Use LLM to judge response quality — single-pass pass/fail evaluation.
+ * The judge sees the conversation transcript, deterministic check results,
+ * and the prompt criteria, then returns pass/fail with a list of issues.
  */
 export interface LlmJudgeAssertion {
   type: "llm_judge";
-  /** Prompt describing what to evaluate */
+  /** Criteria the judge should evaluate against */
   prompt: string;
-  /** Which turn's response to judge (default: last) */
-  turn?: number | "last";
   /** Provider for judge (default: same as scenario) */
   judgeProvider?: EvalProvider;
   /** Model for judge */
   judgeModel?: string;
-  /** Max points this assertion is worth (default: 1) */
-  score?: number;
 }
 
 /**
@@ -145,8 +141,33 @@ export interface ResponseContainsAssertion {
   turn?: number | "any";
   /** Should NOT contain (default: false) */
   negate?: boolean;
-  /** Max points this assertion is worth (default: 1) */
-  score?: number;
+}
+
+/**
+ * Track token usage relative to a target budget. Informational only — does not
+ * contribute to pass/fail. Displayed as a percentage of target in the efficiency section.
+ */
+export interface TokenUsageAssertion {
+  type: "token_usage";
+  /** Which token metric to check */
+  metric: "inputTokens" | "outputTokens" | "reasoningTokens";
+  /** Target token budget */
+  maxTokens: number;
+  /** Which turn to check (0-indexed), or "all" for combined (default: "all") */
+  turn?: number | "all";
+}
+
+/**
+ * General-purpose callback assertion for flexible checks on turn data
+ * (token usage, tool call patterns, response content, timing, etc.)
+ */
+export interface CustomAssertion {
+  type: "custom";
+  /** Human-readable description of what's being checked */
+  description: string;
+  /** Callback receiving all turn results. Return true for pass, false for fail.
+   *  Throw to fail with message. */
+  assert: (turns: EvalTurnResult[]) => boolean;
 }
 
 /**
@@ -162,6 +183,7 @@ export interface EvalTurnResult {
     result?: string;
   }>;
   durationMs: number;
+  stepUsages?: TokenUsage[];
 }
 
 /**
@@ -184,12 +206,11 @@ export interface EvalScenarioResult {
   scenario: EvalScenario;
   /** Config profile used for this run (undefined means default) */
   configProfileId?: string;
+  /** Resolved system instructions used for this run */
+  instructions?: string;
   turns: EvalTurnResult[];
   assertions: EvalAssertionResult[];
-  /** Total points earned across all assertions */
-  earnedScore: number;
-  /** Total max possible points across all assertions */
-  maxScore: number;
   totalDurationMs: number;
+  totalUsage?: TokenUsage;
   error?: string;
 }

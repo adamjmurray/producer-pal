@@ -137,24 +137,28 @@ describe("updateClip - Properties and ID handling", () => {
   });
 
   describe("color quantization verification", () => {
-    it("should emit warning when color is quantized by Live", async () => {
-      const consoleModule = await import("#src/shared/v8-max-console.ts");
-      const consoleSpy = vi.spyOn(consoleModule, "warn");
-
+    /**
+     * Set up clip mock to return a specific color value from get("color").
+     * @param colorValue - The numeric color value to return
+     */
+    function setupColorMock(colorValue: number): void {
       setupMidiClipMock(mocks.clip123);
 
-      // Mock getProperty to return quantized color (different from input)
       mocks.clip123.get.mockImplementation((prop: string) => {
-        if (prop === "color") {
-          return [16725558]; // #FF3636 (quantized from #FF0000)
-        }
-
+        if (prop === "color") return [colorValue];
         if (prop === "is_arrangement_clip") return [0];
         if (prop === "is_midi_clip") return [1];
         if (prop === "is_audio_clip") return [0];
 
         return [0];
       });
+    }
+
+    it("should emit warning when color is quantized by Live", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.ts");
+      const consoleSpy = vi.spyOn(consoleModule, "warn");
+
+      setupColorMock(16725558); // #FF3636 (quantized from #FF0000)
 
       await updateClip({
         ids: "123",
@@ -172,20 +176,7 @@ describe("updateClip - Properties and ID handling", () => {
       const consoleModule = await import("#src/shared/v8-max-console.ts");
       const consoleSpy = vi.spyOn(consoleModule, "warn");
 
-      setupMidiClipMock(mocks.clip123);
-
-      // Mock getProperty to return exact color (same as input)
-      mocks.clip123.get.mockImplementation((prop: string) => {
-        if (prop === "color") {
-          return [16711680]; // #FF0000 (exact match)
-        }
-
-        if (prop === "is_arrangement_clip") return [0];
-        if (prop === "is_midi_clip") return [1];
-        if (prop === "is_audio_clip") return [0];
-
-        return [0];
-      });
+      setupColorMock(16711680); // #FF0000 (exact match)
 
       await updateClip({
         ids: "123",

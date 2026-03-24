@@ -6,13 +6,19 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
-import { registerMockObject } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
+import {
+  registerMockObject,
+  setupDeviceDuplicationMocks,
+} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 // Mock moveDeviceToPath to track calls
-vi.mock(import("#src/tools/device/update/update-device-helpers.ts"), () => ({
-  moveDeviceToPath: vi.fn(),
-}));
+vi.mock(
+  import("#src/tools/device/update/helpers/update-device-helpers.ts"),
+  () => ({
+    moveDeviceToPath: vi.fn(),
+  }),
+);
 
 // Mock console.error to capture warnings
 vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
@@ -22,7 +28,7 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
 }));
 
 // Import the mocks after vi.mock
-import { moveDeviceToPath as moveDeviceToPathMock } from "#src/tools/device/update/update-device-helpers.ts";
+import { moveDeviceToPath as moveDeviceToPathMock } from "#src/tools/device/update/helpers/update-device-helpers.ts";
 import * as consoleMock from "#src/shared/v8-max-console.ts";
 
 describe("duplicate - device duplication", () => {
@@ -66,14 +72,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should duplicate a device with toPath to different track", () => {
-    registerMockObject("device1", {
-      path: livePath.track(0).device(1),
-      type: "PluginDevice",
-    });
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/1/devices/1", {
-      path: livePath.track(1).device(1),
-    });
+    setupDeviceDuplicationMocks(1);
 
     const result = duplicate({
       type: "device",
@@ -130,14 +129,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should emit warning when count > 1", () => {
-    registerMockObject("device1", {
-      path: livePath.track(0).device(0),
-      type: "PluginDevice",
-    });
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/1/devices/0", {
-      path: livePath.track(1).device(0),
-    });
+    setupDeviceDuplicationMocks();
 
     duplicate({ type: "device", id: "device1", count: 3 });
 
@@ -225,14 +217,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should not adjust non-track destination path (return/master)", () => {
-    registerMockObject("device1", {
-      path: livePath.track(0).device(0),
-      type: "PluginDevice",
-    });
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/1/devices/0", {
-      path: livePath.track(1).device(0),
-    });
+    setupDeviceDuplicationMocks();
 
     // Using a path that doesn't start with "t" should not be adjusted
     duplicate({ type: "device", id: "device1", toPath: "r0/d0" });
@@ -257,14 +242,7 @@ describe("duplicate - device duplication", () => {
   });
 
   it("should duplicate a device to multiple toPath destinations", () => {
-    registerMockObject("device1", {
-      path: livePath.track(0).device(1),
-      type: "PluginDevice",
-    });
-    registerMockObject("live_set", { path: livePath.liveSet });
-    registerMockObject("live_set/tracks/1/devices/1", {
-      path: livePath.track(1).device(1),
-    });
+    setupDeviceDuplicationMocks(1);
 
     const result = duplicate({
       type: "device",

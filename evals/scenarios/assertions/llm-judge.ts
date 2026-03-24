@@ -4,11 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * LLM-as-judge assertion - use an LLM to evaluate response quality
+ * LLM-as-judge assertion — single-pass pass/fail evaluation
  */
 
-import { callAiSdkJudge } from "../helpers/judge/ai-sdk-judge.ts";
-import { type JudgeResult } from "../helpers/judge-response-parser.ts";
+import { callJudge } from "../helpers/judge/judge.ts";
+import {
+  parseSimpleJudgeResponse,
+  type SimpleJudgeResult,
+} from "../helpers/judge-response-parser.ts";
 import {
   type LlmJudgeAssertion,
   type EvalTurnResult,
@@ -16,37 +19,20 @@ import {
   type EvalProvider,
 } from "../types.ts";
 
-export const JUDGE_SYSTEM_PROMPT = `You are evaluating an AI assistant's response for a music production task.
+export const JUDGE_SYSTEM_PROMPT = `You are reviewing an AI assistant's performance in a music production task.
 
-Rate the response on 4 dimensions using a 0.0 to 1.0 scale:
+Review the conversation transcript, deterministic check results, and scenario expectations below. Then decide whether the assistant's performance is acceptable.
 
-**Accuracy** (Did it do exactly what was requested in Ableton?)
-0.0 = Completely wrong or failed to accomplish the task
-0.5 = Acceptable with some issues
-1.0 = Excellent, accomplished exactly what was requested
-
-**Reasoning** (Was its logic sound and did it pick the right tools?)
-0.0 = Nonsensical logic, wrong tools used
-0.5 = Acceptable reasoning with some gaps
-1.0 = Excellent reasoning, optimal tool selection
-
-**Efficiency** (Did it use minimal steps?)
-0.0 = Extremely inefficient, many unnecessary steps
-0.5 = Acceptable, minor inefficiencies
-1.0 = Optimal, no wasted steps
-
-**Naturalness** (Did the interaction feel human-like?)
-0.0 = Robotic, inappropriate responses
-0.5 = Acceptable, some awkwardness
-1.0 = Seamless, asks clarifications when needed, adapts to complexity
+Your job is NOT to re-evaluate what the deterministic checks already cover. Instead:
+- For any FAILED checks: note them but don't repeat what's already captured
+- Flag anything ELSE wrong that the checks didn't catch: hallucinations, misleading statements, unnecessary steps, missing information, confusing responses
+- Be specific and concise
 
 You MUST respond with ONLY a JSON object in this exact format:
-{
-  "accuracy": {"score": <0.0-1.0>, "reasoning": "<brief explanation>"},
-  "reasoning": {"score": <0.0-1.0>, "reasoning": "<brief explanation>"},
-  "efficiency": {"score": <0.0-1.0>, "reasoning": "<brief explanation>"},
-  "naturalness": {"score": <0.0-1.0>, "reasoning": "<brief explanation>"}
-}
+{"pass": true, "issues": ["issue 1", "issue 2"]}
+
+If everything looks good and all checks passed, respond with:
+{"pass": true, "issues": []}
 
 Do not include any other text before or after the JSON.`;
 
@@ -55,38 +41,42 @@ interface JudgeOverride {
   model?: string;
 }
 
+/** Lightweight check summary passed to the judge prompt */
+export interface CheckSummary {
+  pass: boolean;
+  label: string;
+  message: string;
+}
+
 /**
- * Call an LLM to judge the response quality
+ * Call an LLM to judge the response quality (pass/fail)
  *
  * @param assertion - The LLM judge assertion
  * @param turns - All conversation turns
  * @param defaultProvider - Default provider from scenario
  * @param cliOverride - Optional CLI override for judge provider/model
- * @returns Assertion result with earned/maxScore
+ * @param checkSummaries - Deterministic check results for the judge to see
+ * @returns Assertion result with pass/fail
  */
 export async function assertWithLlmJudge(
   assertion: LlmJudgeAssertion,
   turns: EvalTurnResult[],
   defaultProvider: EvalProvider,
   cliOverride?: JudgeOverride,
+  checkSummaries?: CheckSummary[],
 ): Promise<EvalAssertionResult> {
-  const maxScore = assertion.score ?? 1;
-
   if (turns.length === 0) {
-    return {
+    return noScoreResult(
       assertion,
-      earned: 0,
-      maxScore,
-      message: "No turns available for LLM judge evaluation",
-      details: { error: "No turns found" },
-    };
+      "No turns available for LLM judge evaluation",
+      {
+        pass: false,
+        issues: ["No turns found"],
+      },
+    );
   }
 
-  // Determine which turn to highlight (null means evaluate full conversation)
-  const targetTurnIndex =
-    assertion.turn === "last" || assertion.turn == null ? null : assertion.turn;
-
-  const judgePrompt = buildJudgePrompt(assertion, turns, targetTurnIndex);
+  const judgePrompt = buildJudgePrompt(assertion, turns, checkSummaries ?? []);
 
   // CLI override > assertion-level > scenario default
   const provider =
@@ -94,54 +84,77 @@ export async function assertWithLlmJudge(
   const model = cliOverride?.model ?? assertion.judgeModel;
 
   try {
-    const judgeResult = await callJudgeLlm(
+    const result = await callSimpleJudge(
       judgePrompt,
       provider,
       model,
       assertion.prompt,
     );
-    const earned = judgeResult.overall * maxScore;
 
-    return {
+    return noScoreResult(
       assertion,
-      earned,
-      maxScore,
-      message: `LLM judge: ${earned.toFixed(1)}/${maxScore}`,
-      details: judgeResult,
-    };
+      result.pass
+        ? "LLM judge: pass"
+        : `LLM judge: fail (${result.issues.length} issue(s))`,
+      result,
+    );
   } catch (error) {
-    return {
-      assertion,
-      earned: 0,
-      maxScore,
-      message: `LLM judge error: ${error instanceof Error ? error.message : String(error)}`,
-      details: { error: String(error) },
-    };
+    const msg = error instanceof Error ? error.message : String(error);
+
+    return noScoreResult(assertion, `LLM judge error: ${msg}`, {
+      pass: false,
+      issues: [msg],
+    });
   }
 }
 
 /**
  * Build the prompt for the judge LLM
  *
- * Includes full conversation history so the judge can evaluate multi-turn workflows.
- *
  * @param assertion - The LLM judge assertion config
  * @param turns - All conversation turns
- * @param targetTurnIndex - Specific turn to evaluate, or null for full conversation
+ * @param checkSummaries - Deterministic check results
  * @returns Formatted prompt string
  */
 function buildJudgePrompt(
   assertion: LlmJudgeAssertion,
   turns: EvalTurnResult[],
-  targetTurnIndex: number | null,
+  checkSummaries: CheckSummary[],
 ): string {
-  // Build full conversation transcript
-  const conversationTranscript = turns
+  const transcript = formatTranscript(turns);
+  const checks = formatCheckResults(checkSummaries);
+
+  return `## Conversation transcript
+
+${transcript}
+
+## Deterministic check results
+
+${checks || "(no deterministic checks)"}
+
+## Scenario expectations
+
+${assertion.prompt}`;
+}
+
+/**
+ * Format conversation turns as a transcript
+ *
+ * @param turns - All conversation turns
+ * @returns Formatted transcript string
+ */
+function formatTranscript(turns: EvalTurnResult[]): string {
+  return turns
     .map((turn, i) => {
       const toolCallsSummary =
         turn.toolCalls.length > 0
           ? turn.toolCalls
-              .map((tc) => `  - ${tc.name}(${JSON.stringify(tc.args)})`)
+              .map((tc) => {
+                const call = `  - ${tc.name}(${JSON.stringify(tc.args)})`;
+                const result = tc.result ? `    → ${tc.result}` : "";
+
+                return result ? `${call}\n${result}` : call;
+              })
               .join("\n")
           : "  (no tool calls)";
 
@@ -152,47 +165,70 @@ Tool calls:
 ${toolCallsSummary}`;
     })
     .join("\n\n");
-
-  // If evaluating a specific turn, note it
-  const turnNote =
-    targetTurnIndex != null
-      ? `\n\nNote: Evaluating Turn ${targetTurnIndex + 1} specifically.`
-      : "";
-
-  return `Full conversation:
-
-${conversationTranscript}
-${turnNote}
-
-Evaluation criteria: ${assertion.prompt}`;
 }
 
 /**
- * Call the judge LLM
+ * Format deterministic check results for the judge prompt
+ *
+ * @param summaries - Check summaries
+ * @returns Formatted check results string
+ */
+function formatCheckResults(summaries: CheckSummary[]): string {
+  return summaries
+    .map((s) => {
+      const icon = s.pass ? "✓" : "✗";
+      const detail = s.pass ? "" : ` — ${s.message}`;
+
+      return `  ${icon} ${s.label}${detail}`;
+    })
+    .join("\n");
+}
+
+/**
+ * Build an EvalAssertionResult with no score contribution.
+ * The judge is pass/fail only — it doesn't contribute to the numeric score total.
+ *
+ * @param assertion - The judge assertion
+ * @param message - Human-readable status
+ * @param details - SimpleJudgeResult with pass/issues
+ * @returns Assertion result with earned=0, maxScore=0
+ */
+function noScoreResult(
+  assertion: LlmJudgeAssertion,
+  message: string,
+  details: SimpleJudgeResult,
+): EvalAssertionResult {
+  return { assertion, earned: 0, maxScore: 0, message, details };
+}
+
+/**
+ * Call the judge LLM with the simplified prompt
  *
  * @param prompt - The evaluation prompt
  * @param provider - LLM provider to use
  * @param model - Optional model override
- * @param criteria - Evaluation criteria for output
- * @returns Judge result with score and reasoning
+ * @param criteria - Evaluation criteria for output display
+ * @returns Simple judge result with pass/fail and issues
  */
-async function callJudgeLlm(
+async function callSimpleJudge(
   prompt: string,
   provider: EvalProvider,
   model: string | undefined,
   criteria: string,
-): Promise<JudgeResult> {
+): Promise<SimpleJudgeResult> {
   if (provider === "local") {
     throw new Error(
       "Local provider cannot be used as LLM judge. Set judgeProvider to a cloud provider.",
     );
   }
 
-  return await callAiSdkJudge(
+  const text = await callJudge(
     prompt,
     JUDGE_SYSTEM_PROMPT,
     provider,
     model,
     criteria,
   );
+
+  return parseSimpleJudgeResponse(text);
 }

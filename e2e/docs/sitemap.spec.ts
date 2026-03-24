@@ -18,10 +18,14 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   "claude.ai",
   "cline.bot",
   "cloudflare.com",
+  "docs.cycling74.com",
   "console.mistral.ai",
+  "discord.gg",
+  "forms.gle",
   "github.com",
   "google.com",
   "groq.com",
+  "json-schema.org",
   "lmstudio.ai",
   "mistral.ai",
   "modelcontextprotocol.io",
@@ -32,6 +36,7 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   "openai.com",
   "openrouter.ai",
   "pinggy.io",
+  "en.wikipedia.org",
   "www.ableton.com",
   "www.youtube.com",
 ];
@@ -157,8 +162,8 @@ test.describe("Docs Site Sitemap Tests", () => {
       const text = msg.text();
 
       if (type === "error") {
-        // Filter out 404 errors - we'll track those separately via response failures
-        if (!text.includes("404")) {
+        // Filter out 404 errors (tracked via response failures) and VitePress hydration mismatches
+        if (!text.includes("404") && !text.includes("Hydration")) {
           consoleErrors.push(text);
         }
       } else if (type === "warning") {
@@ -223,8 +228,9 @@ test.describe("Docs Site Sitemap Tests", () => {
 
         if (!href) continue;
 
-        // Skip hash-only links (same page anchors)
-        if (href.startsWith("#")) continue;
+        // Skip hash-only links, mailto links, and download links (static files)
+        if (href.startsWith("#") || href.startsWith("mailto:")) continue;
+        if ((await link.getAttribute("download")) != null) continue;
 
         // Check if it's an external link
         if (isExternalUrl(href)) {

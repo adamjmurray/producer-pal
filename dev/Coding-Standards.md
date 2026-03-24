@@ -157,6 +157,26 @@ ChainPath.device(i)                   → DevicePath (chainable, enables nesting
 ClipSlotPath.clip()                   → string
 ```
 
+## Coverage
+
+Function coverage is enforced at **100%** via `vitest.config.ts` thresholds.
+
+When a function is genuinely untestable (e.g., IDB error callbacks, exhaustive
+`never` branches, no-op stubs, inline JSX callbacks in root components), exclude
+it with `/* v8 ignore start -- reason */` ... `/* v8 ignore stop */`. Use
+`start`/`stop` pairs (not `next`) because `v8 ignore next` only excludes
+line/branch coverage, not function coverage.
+
+**Rules:**
+
+- Every `v8 ignore start` and `v8 ignore next` must include a `-- reason`
+  description (enforced by test)
+- `v8 ignore stop` does not need a description
+- Per-tree counts are ratcheted in `src/test/lint-suppression-limits.test.ts` —
+  increasing limits requires user approval
+- Some functions are excluded from coverage as unreasonable to test (agreed upon
+  by human and AI review)
+
 ## Testing
 
 Use the mock registry (`src/test/mocks/mock-registry.ts`) for LiveAPI tests:

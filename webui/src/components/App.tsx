@@ -4,9 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
-import { aiSdkAdapter } from "#webui/hooks/chat/ai-sdk-adapter";
+import { chatAdapter } from "#webui/hooks/chat/adapter";
 import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
 import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
+import { useConversationPanelState } from "#webui/hooks/chat/helpers/use-conversation-panel-state";
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
@@ -24,68 +25,10 @@ import {
   savePreferencesSettings,
 } from "#webui/hooks/use-preferences-settings";
 import { useViewState } from "#webui/hooks/use-view-state";
+import { getBaseUrl, LOCAL_PROVIDER_API_KEY } from "#webui/utils/provider-url";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
-
-// Placeholder API key for local providers that don't require authentication
-const LOCAL_PROVIDER_API_KEY = "not-needed";
-
-/**
- * Check if viewport is below Tailwind's md breakpoint (768px)
- * @returns true on mobile-width screens
- */
-export function isMobile(): boolean {
-  return window.matchMedia("(max-width: 767px)").matches;
-}
-
-// Base URLs for each provider
-const PROVIDER_BASE_URLS = {
-  openai: "https://api.openai.com/v1",
-  mistral: "https://api.mistral.ai/v1",
-  openrouter: "https://openrouter.ai/api/v1",
-} as const;
-
-/**
- * Normalize URL for local providers by ensuring /v1 suffix
- * @param {string} url - URL to normalize
- * @returns {string} - Normalized URL with /v1 suffix
- */
-export function normalizeLocalProviderUrl(url: string): string {
-  // Remove trailing slashes
-  const trimmed = url.replace(/\/+$/, "");
-
-  // Check if already ends with /v1
-  if (trimmed.endsWith("/v1")) {
-    return trimmed;
-  }
-
-  return `${trimmed}/v1`;
-}
-
-/**
- * Get API base URL for the current provider
- * @param {string} provider - Provider identifier
- * @param {string | undefined} baseUrl - Base URL for custom/local providers
- * @returns {string | undefined} - Base URL or undefined for Gemini
- */
-export function getBaseUrl(
-  provider: string,
-  baseUrl: string | undefined,
-): string | undefined {
-  if (provider === "custom") return baseUrl;
-  if (provider === "gemini") return undefined;
-
-  if (provider === "lmstudio") {
-    return normalizeLocalProviderUrl(baseUrl ?? "http://localhost:1234");
-  }
-
-  if (provider === "ollama") {
-    return normalizeLocalProviderUrl(baseUrl ?? "http://localhost:11434");
-  }
-
-  return PROVIDER_BASE_URLS[provider as keyof typeof PROVIDER_BASE_URLS];
-}
 
 /**
  * @returns {JSX.Element} - React component
@@ -111,6 +54,8 @@ export function App() {
     useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
+  const autoSaveRef = useRef<(() => void) | null>(null);
+
   const aiSdkChat = useChat({
     provider: settings.provider,
     apiKey:
@@ -125,7 +70,7 @@ export function App() {
     mcpStatus,
     mcpError,
     checkMcpConnection,
-    adapter: aiSdkAdapter,
+    adapter: chatAdapter,
     extraParams: {
       baseUrl,
       showThoughts: settings.showThoughts,
@@ -135,6 +80,7 @@ export function App() {
           ? settings.apiKey || LOCAL_PROVIDER_API_KEY
           : settings.apiKey,
     },
+    autoSaveRef,
   });
 
   const { chat, wrappedHandleSend, wrappedClearConversation } =
@@ -160,24 +106,40 @@ export function App() {
     activeSmallModelMode: chat.activeSmallModelMode,
   });
 
-  const transfer = useConversationTransfer(conversationManager.refreshList);
-  const {
-    handleNew: handleNewConversation,
-    handleSelect: handleSelectConversation,
-    handleDelete: handleDeleteConversation,
-    handleRename: handleRenameConversation,
-    handleToggleBookmark,
-  } = useConversationHandlers(conversationManager);
+  // Auto-save on user message sent (called from useChat on first stream yield)
+  useEffect(() => {
+    /* v8 ignore start -- auto-save ref: only invoked during streaming */
+    autoSaveRef.current = () =>
+      void conversationManager.saveCurrentConversation(Date.now());
+    /* v8 ignore stop */
+  }, [conversationManager]);
 
-  const prevMessageCountRef = useRef(0); // Auto-save on message change
+  const transfer = useConversationTransfer(conversationManager.refreshList);
+  const conversationHandlers = useConversationHandlers(
+    conversationManager,
+    chat.stopResponse,
+  );
+  const { handleDeleteAll, handleDeleteUnbookmarked } = conversationHandlers;
+
+  const conversationPanelState = useConversationPanelState({
+    conversationManager,
+    transfer,
+    viewState,
+    setViewState,
+    handlers: conversationHandlers,
+  });
+
+  // Auto-save when streaming completes — covers tool results and follow-up
+  // text merged into existing UIMessages
+  const prevRespondingRef = useRef(false);
 
   useEffect(() => {
-    if (chat.messages.length > prevMessageCountRef.current) {
-      void conversationManager.saveCurrentConversation();
+    if (!chat.isAssistantResponding && prevRespondingRef.current) {
+      void conversationManager.saveCurrentConversation(Date.now());
     }
 
-    prevMessageCountRef.current = chat.messages.length;
-  }, [chat.messages.length, conversationManager]);
+    prevRespondingRef.current = chat.isAssistantResponding;
+  }, [chat.isAssistantResponding, conversationManager]);
 
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
@@ -206,6 +168,7 @@ export function App() {
     theme,
     showTimestamps: display.showTimestamps,
     showHelpLinks: display.showHelpLinks,
+    showTokenUsage: display.showTokenUsage,
   };
   const hasUnsavedChanges = useHasUnsavedChanges(
     settings,
@@ -229,6 +192,7 @@ export function App() {
 
       display.setShowTimestamps(orig.showTimestamps);
       display.setShowHelpLinks(orig.showHelpLinks);
+      display.setShowTokenUsage(orig.showTokenUsage);
     });
   }, [closeSettings, settings, setTheme, display]);
 
@@ -274,38 +238,14 @@ export function App() {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           onOpenSettings={() => openSettings()}
+          /* v8 ignore start -- inline settings tab navigation */
           onOpenToolsSettings={() => openSettings("tools")}
           onOpenConnectionSettings={() => openSettings("connection")}
+          /* v8 ignore stop */
           onStop={chat.stopResponse}
           showTimestamps={display.showTimestamps}
-          conversationPanel={{
-            conversations: conversationManager.conversations,
-            activeConversationId: conversationManager.activeConversationId,
-            isOpen: viewState.historyPanelOpen,
-            onToggle: () =>
-              setViewState({
-                historyPanelOpen: !viewState.historyPanelOpen,
-              }),
-            onSelect: (id: string) => {
-              handleSelectConversation(id);
-              if (isMobile()) setViewState({ historyPanelOpen: false });
-            },
-            onNew: () => {
-              handleNewConversation();
-              if (isMobile()) setViewState({ historyPanelOpen: false });
-            },
-            onDelete: handleDeleteConversation,
-            onExportItem: transfer.handleExportOne,
-            onRename: handleRenameConversation,
-            onToggleBookmark: handleToggleBookmark,
-            onExport: () => void transfer.handleExport(),
-            onImport: () => void transfer.handleImport(),
-            notification:
-              transfer.notification ?? conversationManager.limitNotification,
-            onDismissNotification: transfer.notification
-              ? transfer.dismissNotification
-              : conversationManager.dismissLimitNotification,
-          }}
+          showTokenUsage={display.showTokenUsage}
+          conversationPanel={conversationPanelState}
         />
       </div>
       {showSettings && (
@@ -327,6 +267,8 @@ export function App() {
             shake={shake}
             onShakeEnd={clearShake}
             hasUnsavedChanges={hasUnsavedChanges}
+            onDeleteAllConversations={handleDeleteAll}
+            onDeleteUnbookmarkedConversations={handleDeleteUnbookmarked}
             conversationLock={{
               activeModel: chat.activeModel,
               activeProvider: chat.activeProvider,

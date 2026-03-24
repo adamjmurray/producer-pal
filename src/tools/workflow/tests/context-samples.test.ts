@@ -7,6 +7,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
 import { type SamplesResult } from "../context-helpers.ts";
 import { context } from "../context.ts";
+import {
+  mockKickSnareFolder,
+  mockKickSnareKick808Folder,
+  mockKickWithDrumsSubfolder,
+} from "./samples-test-helpers.ts";
 
 describe("context - search action", () => {
   let toolContext: { sampleFolder: string | null };
@@ -87,12 +92,7 @@ describe("context - search action", () => {
   describe("search filtering", () => {
     it("returns all samples when search is not provided", () => {
       toolContext.sampleFolder = "/samples/";
-      mockFolderStructure({
-        "/samples/": [
-          { name: "kick.wav", type: "file", extension: ".wav" },
-          { name: "snare.wav", type: "file", extension: ".wav" },
-        ],
-      });
+      mockKickSnareFolder();
 
       const result = context(
         { action: "search" },
@@ -104,13 +104,7 @@ describe("context - search action", () => {
 
     it("filters samples by case-insensitive substring match", () => {
       toolContext.sampleFolder = "/samples/";
-      mockFolderStructure({
-        "/samples/": [
-          { name: "kick.wav", type: "file", extension: ".wav" },
-          { name: "snare.wav", type: "file", extension: ".wav" },
-          { name: "Kick_808.wav", type: "file", extension: ".wav" },
-        ],
-      });
+      mockKickSnareKick808Folder();
 
       const result = context(
         { action: "search", search: "kick" },
@@ -122,16 +116,7 @@ describe("context - search action", () => {
 
     it("filters by folder path when searching", () => {
       toolContext.sampleFolder = "/samples/";
-      mockFolderStructure({
-        "/samples/": [
-          { name: "kick.wav", type: "file", extension: ".wav" },
-          { name: "drums", type: "fold" },
-        ],
-        "/samples/drums/": [
-          { name: "snare.wav", type: "file", extension: ".wav" },
-          { name: "hihat.wav", type: "file", extension: ".wav" },
-        ],
-      });
+      mockKickWithDrumsSubfolder();
 
       const result = context(
         { action: "search", search: "drums" },
@@ -146,12 +131,7 @@ describe("context - search action", () => {
 
     it("returns empty array when no matches found", () => {
       toolContext.sampleFolder = "/samples/";
-      mockFolderStructure({
-        "/samples/": [
-          { name: "kick.wav", type: "file", extension: ".wav" },
-          { name: "snare.wav", type: "file", extension: ".wav" },
-        ],
-      });
+      mockKickSnareFolder();
 
       const result = context(
         { action: "search", search: "cymbal" },

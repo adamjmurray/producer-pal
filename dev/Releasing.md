@@ -59,6 +59,10 @@ Run `npm run build && npm run e2e:mcp` with Ableton Live open. It takes a few
 minutes Don't use Live while this runs because the tests manipulate it directly.
 Requires macOS.
 
+Note: All the tests for code execution functionality are expected to fail unless
+you build with `build:debug`, which is not recommended here because it's not a
+release build.
+
 ## Step 1: Build Release Files
 
 1. Build release versions of desktop extensions and the portal script:
@@ -139,24 +143,6 @@ manually check on anything that fails. Note: Requires `.env` file with API keys.
       Quick Connect (free models are excluded from E2E tests due to rate limits)
 - [ ] **Ollama** - Enable Small Model Mode + minimal toolset, then Quick Connect
       and a simple task (not automated due to slow response times)
-
-### 3C. Portal Script Testing
-
-Test the built portal script with LM Studio or another MCP client:
-
-```json
-"producer-pal": {
-  "command": "node",
-  "args": ["/absolute/path/to/npm/producer-pal-portal.js"]
-}
-```
-
-- [ ] Connect and confirm `ppal-read-live-set` called
-
----
-
-If issues are found, see
-[Fixing Issues During Pre-Release](#fixing-issues-during-pre-release).
 
 ## Step 4: Publish to npm / test npx
 

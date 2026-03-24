@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type IDBPDatabase } from "idb";
-import { type AiSdkMessage } from "#webui/chat/ai-sdk/ai-sdk-types";
+import { type ChatMessage, type TokenUsage } from "#webui/chat/sdk/types";
 import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
 
 export const MAX_CONVERSATIONS = 200;
@@ -23,7 +23,8 @@ export interface ConversationRecord {
   temperature: number | null;
   showThoughts: boolean | null;
   smallModelMode: boolean | null;
-  messages: AiSdkMessage[];
+  totalUsage: TokenUsage | null;
+  messages: ChatMessage[];
 }
 
 /** Lightweight summary for list display (no messages) */
@@ -84,6 +85,7 @@ export async function loadConversation(
   record.temperature ??= null;
   record.showThoughts ??= null;
   record.smallModelMode ??= null;
+  record.totalUsage ??= null;
 
   return record;
 }
@@ -96,6 +98,30 @@ export async function deleteConversation(id: string): Promise<void> {
   const db = await getConversationDb();
 
   await db.delete(STORE_NAME, id);
+}
+
+/**
+ * Delete all conversations.
+ */
+export async function deleteAllConversations(): Promise<void> {
+  const db = await getConversationDb();
+
+  await db.clear(STORE_NAME);
+}
+
+/**
+ * Delete all unbookmarked conversations.
+ */
+export async function deleteUnbookmarkedConversations(): Promise<void> {
+  const db = await getConversationDb();
+  const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
+  const tx = db.transaction(STORE_NAME, "readwrite");
+
+  for (const record of all) {
+    if (!record.bookmarked) void tx.store.delete(record.id);
+  }
+
+  await tx.done;
 }
 
 /**
@@ -161,6 +187,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         temperature,
         showThoughts,
         smallModelMode,
+        totalUsage,
       }) => ({
         id,
         title,
@@ -174,6 +201,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         temperature: temperature ?? null,
         showThoughts: showThoughts ?? null,
         smallModelMode: smallModelMode ?? null,
+        totalUsage: totalUsage ?? null,
       }),
     )
     .sort((a, b) => b.updatedAt - a.updatedAt);

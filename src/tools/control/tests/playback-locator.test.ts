@@ -5,11 +5,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { type RegisteredMockObject } from "#src/test/mocks/mock-registry.ts";
 import { playback } from "#src/tools/control/playback.ts";
-import { resolveLocatorToBeats } from "#src/tools/control/playback-helpers.ts";
+import { resolveLocatorToBeats } from "#src/tools/control/helpers/playback-helpers.ts";
 import {
   expectLiveSetProperty,
   setupCuePointMocks,
 } from "./playback-test-helpers.ts";
+
+const VERSE_CHORUS_CUE_POINTS = [
+  { id: "cue1", time: 16, name: "Verse" },
+  { id: "cue2", time: 32, name: "Chorus" },
+] as const;
 
 describe("playback - locator support", () => {
   describe("startLocator", () => {
@@ -17,10 +22,7 @@ describe("playback - locator support", () => {
 
     beforeEach(() => {
       liveSet = setupCuePointMocks({
-        cuePoints: [
-          { id: "cue1", time: 16, name: "Verse" },
-          { id: "cue2", time: 32, name: "Chorus" },
-        ],
+        cuePoints: [...VERSE_CHORUS_CUE_POINTS],
       });
     });
 
@@ -76,10 +78,7 @@ describe("playback - locator support", () => {
 
     beforeEach(() => {
       liveSet = setupCuePointMocks({
-        cuePoints: [
-          { id: "cue1", time: 16, name: "Verse" },
-          { id: "cue2", time: 32, name: "Chorus" },
-        ],
+        cuePoints: [...VERSE_CHORUS_CUE_POINTS],
         liveSet: { loopStart: 16, loopLength: 16 },
       });
     });

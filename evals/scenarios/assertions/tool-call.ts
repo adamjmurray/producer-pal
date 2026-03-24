@@ -48,16 +48,14 @@ export function assertToolCalled(
     count >= expectedCount.min &&
     (expectedCount.max == null || count <= expectedCount.max);
 
-  const maxScore = assertion.score ?? 1;
-
   const argsDesc = assertion.args
     ? ` with args matching ${JSON.stringify(assertion.args)}`
     : "";
 
   return {
     assertion,
-    earned: passed ? maxScore : 0,
-    maxScore,
+    earned: passed ? 1 : 0,
+    maxScore: 1,
     message: passed
       ? `Tool ${assertion.tool} called ${count} time(s)${argsDesc}`
       : `Expected ${assertion.tool} to be called ${formatExpectedCount(expectedCount)}${argsDesc}, got ${count}`,

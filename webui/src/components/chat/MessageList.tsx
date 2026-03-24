@@ -5,13 +5,22 @@
 import { Fragment, type VNode } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
+import { type TokenUsage } from "#webui/chat/sdk/types";
+import { ErrorBoundary } from "#webui/components/ErrorBoundary";
+import {
+  calcNewContentTokens,
+  compactNumber,
+} from "#webui/lib/utils/compact-number";
 import {
   formatTimestampDate,
   formatTimestampTime,
 } from "#webui/lib/utils/format-timestamp";
-import { sanitizeMarkdown } from "#webui/lib/utils/sanitize-markdown";
 import { type UIMessage } from "#webui/types/messages";
 import { AssistantMessage } from "./assistant/AssistantMessage";
+import {
+  RenderErrorFallback,
+  SafeMarkdown,
+} from "./assistant/message-list-helpers";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
 import { RetryButton } from "./controls/RetryButton";
 import { EditButton } from "./EditButton";
@@ -25,6 +34,7 @@ interface MessageListProps {
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
   showTimestamps: boolean;
+  showTokenUsage: boolean;
   requestedModel?: string | null;
 }
 
@@ -45,6 +55,7 @@ export function MessageList({
   handleRetry,
   handleEdit,
   showTimestamps,
+  showTokenUsage,
   requestedModel,
 }: MessageListProps) {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -87,6 +98,9 @@ export function MessageList({
         const canEdit = isUser && !isAssistantResponding;
         const isEditing = editingIndex === originalIdx;
         const timestamp = renderTimestamp(message.timestamp, showTimestamps);
+        const prevModelUsage = !isUser
+          ? getPrevModelUsage(messages, originalIdx)
+          : undefined;
 
         return (
           <Fragment key={originalIdx}>
@@ -100,16 +114,15 @@ export function MessageList({
               data-testid={isUser ? undefined : "assistant-message-bubble"}
             >
               {!isUser && (
-                <>
-                  <ModelMismatchLabel
+                <ErrorBoundary fallback={<RenderErrorFallback />}>
+                  <AssistantBubble
+                    message={message}
+                    isAssistantResponding={isAssistantResponding}
+                    showTokenUsage={showTokenUsage}
                     requestedModel={requestedModel}
-                    responseModel={message.responseModel}
+                    prevModelUsage={prevModelUsage}
                   />
-                  <AssistantMessage
-                    parts={message.parts}
-                    isResponding={isAssistantResponding}
-                  />
-                </>
+                </ErrorBoundary>
               )}
               {isUser && isEditing && (
                 <UserMessageEditor
@@ -123,12 +136,9 @@ export function MessageList({
                 />
               )}
               {isUser && !isEditing && (
-                <div
-                  className="prose dark:prose-invert prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{
-                    __html: sanitizeMarkdown(formatUserContent(message)),
-                  }}
-                />
+                <ErrorBoundary fallback={<RenderErrorFallback />}>
+                  <SafeMarkdown content={formatUserContent(message)} />
+                </ErrorBoundary>
               )}
             </div>
             {isUser ? (
@@ -201,6 +211,51 @@ function useScrollOnUserMessage(
  * @param {UIMessage} message - Message to check
  * @returns {boolean} Whether the message has displayable parts
  */
+/**
+ * Renders assistant message content with model mismatch label and usage.
+ * @param props - Component props
+ * @param props.message - The model message
+ * @param props.isAssistantResponding - Whether assistant is responding
+ * @param props.showTokenUsage - Whether to show token usage
+ * @param props.requestedModel - Requested model for mismatch detection
+ * @param props.prevModelUsage - Previous model message's last usage
+ * @returns Assistant bubble content
+ */
+function AssistantBubble({
+  message,
+  isAssistantResponding,
+  showTokenUsage,
+  requestedModel,
+  prevModelUsage,
+}: {
+  message: UIMessage;
+  isAssistantResponding: boolean;
+  showTokenUsage: boolean;
+  requestedModel?: string | null;
+  prevModelUsage?: TokenUsage;
+}) {
+  return (
+    <>
+      <ModelMismatchLabel
+        requestedModel={requestedModel}
+        responseModel={message.responseModel}
+      />
+      <AssistantMessage
+        parts={message.parts}
+        isResponding={isAssistantResponding}
+        showTokenUsage={showTokenUsage}
+        prevStepUsage={prevModelUsage}
+      />
+      {showTokenUsage && (
+        <TokenUsageLabel
+          usage={message.usage}
+          prevUsage={getLastStepUsage(message) ?? prevModelUsage}
+        />
+      )}
+    </>
+  );
+}
+
 function hasContent(message: UIMessage): boolean {
   return message.parts.length > 0;
 }
@@ -338,4 +393,71 @@ function ModelMismatchLabel({
       responded as {responseModel}
     </div>
   );
+}
+
+/**
+ * Compact token usage display for assistant messages.
+ * @param props - Component props
+ * @param props.usage - Token usage data
+ * @param props.prevUsage - Previous step's usage for new content calculation
+ * @returns Label element or null
+ */
+function TokenUsageLabel({
+  usage,
+  prevUsage,
+}: {
+  usage?: TokenUsage;
+  prevUsage?: TokenUsage;
+}) {
+  if (!usage) return null;
+
+  const newContent = calcNewContentTokens(
+    usage.inputTokens ?? 0,
+    prevUsage?.inputTokens,
+    prevUsage?.outputTokens,
+  );
+
+  return (
+    <div className="text-xs text-zinc-400 dark:text-zinc-500 pb-1 text-right">
+      tokens: {compactNumber(usage.inputTokens ?? 0)}
+      {newContent != null && ` (${compactNumber(newContent)} new)`} →{" "}
+      {compactNumber(usage.outputTokens ?? 0)}
+      {(usage.reasoningTokens ?? 0) > 0 &&
+        ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
+    </div>
+  );
+}
+
+/**
+ * Get the last usage from the previous model message.
+ * @param messages - All messages
+ * @param currentIdx - Current message index
+ * @returns Previous model message's last usage
+ */
+function getPrevModelUsage(
+  messages: UIMessage[],
+  currentIdx: number,
+): TokenUsage | undefined {
+  for (let i = currentIdx - 1; i >= 0; i--) {
+    const msg = messages[i];
+
+    if (msg?.role !== "model") continue;
+
+    return getLastStepUsage(msg) ?? msg.usage;
+  }
+
+  return undefined;
+}
+
+/**
+ * Get the last step-usage part's usage within a message.
+ * @param message - Message to search
+ * @returns Last step-usage part's usage, or undefined
+ */
+function getLastStepUsage(message: UIMessage): TokenUsage | undefined {
+  const part = message.parts.findLast((p) => p.type === "step-usage");
+
+  if (part?.type === "step-usage") return part.usage;
+
+  return undefined;
 }

@@ -29,6 +29,7 @@ interface ConnectResult {
   liveSet: LiveSetInfo;
   skills?: string;
   memoryContent?: string;
+  nextStep: string;
 }
 
 /**
@@ -92,6 +93,8 @@ export function connect(
     abletonLiveVersion,
     liveSet: liveSetInfo,
     skills: context.smallModelMode ? basicSkills : skills,
+    nextStep:
+      "Report the connection status and Live Set overview to the user, then wait for their instructions.",
   };
 
   // Include memory content if enabled

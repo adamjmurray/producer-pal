@@ -12,11 +12,24 @@ import {
   parseScale,
 } from "./update-live-set-helpers.ts";
 
-vi.mock(import("#src/tools/shared/arrangement/arrangement-tiling.ts"), () => ({
-  createAudioClipInSession: vi.fn(),
-}));
+vi.mock(
+  import("#src/tools/shared/arrangement/arrangement-tiling-helpers.ts"),
+  () => ({
+    createAudioClipInSession: vi.fn(),
+  }),
+);
 
-import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+vi.mock(import("#src/shared/pitch.ts"), async (importOriginal) => {
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    pitchClassToNumber: vi.fn(original.pitchClassToNumber),
+  };
+});
+
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { pitchClassToNumber } from "#src/shared/pitch.ts";
 
 const g = globalThis as Record<string, unknown>;
 
@@ -378,6 +391,24 @@ describe("update-live-set-helpers", () => {
       expect(mockLiveSet.set).toHaveBeenCalledWith("root_note", 10);
       expect(mockLiveSet.set).toHaveBeenCalledWith("scale_name", "Dorian");
       expect(result.scale).toBe("Bb Dorian");
+    });
+
+    it("should warn and return when pitchClassToNumber returns null", () => {
+      // Defensive branch when pitchClassToNumber returns null
+      // for a scale root that parseScale accepted. Mock pitchClassToNumber
+      // to return null to trigger this branch.
+      const mock = vi.mocked(pitchClassToNumber);
+
+      mock.mockReturnValueOnce(null);
+
+      const mockLiveSet = { set: vi.fn() } as unknown as LiveAPI;
+      const result: { scale?: string } = {};
+
+      applyScale(mockLiveSet, "C Major", result);
+
+      expect(mockLiveSet.set).not.toHaveBeenCalled();
+      expect(result.scale).toBeUndefined();
+      expect(outlet).toHaveBeenCalledWith(1, "invalid scale root: C");
     });
   });
 });

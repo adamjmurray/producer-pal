@@ -84,6 +84,47 @@ export function parseJudgeResponse(text: string): JudgeResult {
   return { ...raw, overall };
 }
 
+/** Simplified judge result — pass/fail with issue list */
+export interface SimpleJudgeResult {
+  pass: boolean;
+  issues: string[];
+}
+
+/**
+ * Parse a simplified judge response (pass/fail + issues)
+ *
+ * @param text - Raw text response from the LLM
+ * @returns Parsed simple judge result
+ */
+export function parseSimpleJudgeResponse(text: string): SimpleJudgeResult {
+  const raw = extractJson(text);
+
+  if (!isValidSimpleResponse(raw)) {
+    throw new Error(`Invalid simple judge response format: ${text}`);
+  }
+
+  return { pass: raw.pass, issues: raw.issues };
+}
+
+/**
+ * Validate that a raw response matches the simple judge format
+ *
+ * @param raw - The raw parsed JSON
+ * @returns True if valid
+ */
+function isValidSimpleResponse(
+  raw: unknown,
+): raw is { pass: boolean; issues: string[] } {
+  if (typeof raw !== "object" || raw === null) return false;
+  const obj = raw as Record<string, unknown>;
+
+  return (
+    typeof obj.pass === "boolean" &&
+    Array.isArray(obj.issues) &&
+    obj.issues.every((item: unknown) => typeof item === "string")
+  );
+}
+
 /**
  * Extract JSON object from text, handling extra surrounding text
  *
@@ -98,11 +139,20 @@ function extractJson(text: string): unknown {
     // Fall through to extraction
   }
 
-  // Extract JSON with nested braces (for dimension objects)
-  const match = /{[\S\s]*}/.exec(text);
+  // Extract first complete JSON object using balanced brace matching
+  const start = text.indexOf("{");
 
-  if (match) {
-    return JSON.parse(match[0]);
+  if (start !== -1) {
+    let depth = 0;
+
+    for (let i = start; i < text.length; i++) {
+      if (text[i] === "{") depth++;
+      else if (text[i] === "}") depth--;
+
+      if (depth === 0) {
+        return JSON.parse(text.slice(start, i + 1));
+      }
+    }
   }
 
   throw new Error(`Failed to extract JSON from: ${text}`);

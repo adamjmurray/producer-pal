@@ -35,7 +35,7 @@ export function findOversizedFolders(
   const results: OversizedFolder[] = [];
   const items = fs
     .readdirSync(dirPath)
-    .filter((item) => !ignoreItems.has(item));
+    .filter((item) => !ignoreItems.has(item) && !isGitIgnored(dirPath, item));
 
   if (items.length > maxItems) {
     results.push({
@@ -57,6 +57,30 @@ export function findOversizedFolders(
   }
 
   return results;
+}
+
+/** Gitignored directory names parsed from .gitignore (simple name-only entries) */
+const GITIGNORED_DIRS: Set<string> = new Set(
+  fs
+    .readFileSync(path.join(projectRoot, ".gitignore"), "utf8")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"))
+    .map((line) => line.replace(/^\//, "").replace(/\/$/, ""))
+    .filter((line) => !line.includes("*") && !line.includes("!")),
+);
+
+/**
+ * Check if an item is gitignored (simple name match against .gitignore entries)
+ *
+ * @param dirPath - Parent directory
+ * @param item - File or directory name
+ * @returns True if the item is gitignored
+ */
+function isGitIgnored(dirPath: string, item: string): boolean {
+  const relativePath = path.relative(projectRoot, path.join(dirPath, item));
+
+  return GITIGNORED_DIRS.has(item) || GITIGNORED_DIRS.has(relativePath);
 }
 
 /**

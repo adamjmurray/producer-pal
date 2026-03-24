@@ -11,7 +11,7 @@
  */
 import { describe, expect, it, afterAll, beforeAll } from "vitest";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { connectMcp, type McpConnection } from "#evals/chat/ai-sdk-mcp.ts";
+import { connectMcp, type McpConnection } from "#evals/chat/mcp.ts";
 import { resetConfig, setConfig } from "#evals/shared/config.ts";
 import { MCP_URL } from "../mcp-test-helpers";
 

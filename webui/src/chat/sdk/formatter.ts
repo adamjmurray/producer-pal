@@ -1,0 +1,126 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import {
+  addTextContent,
+  markLastThoughtAsOpen,
+} from "#webui/chat/helpers/formatter-helpers";
+import { type UIMessage, type UIPart } from "#webui/types/messages";
+import { type ChatMessage } from "./types";
+
+/**
+ * Add reasoning content as a thought part.
+ * @param reasoning - Reasoning text from the AI SDK
+ * @param parts - Parts array to add to
+ */
+function addReasoning(reasoning: string | undefined, parts: UIPart[]): void {
+  if (!reasoning) return;
+
+  const lastPart = parts.at(-1);
+
+  if (lastPart?.type === "thought") {
+    lastPart.content += reasoning;
+  } else {
+    parts.push({ type: "thought", content: reasoning });
+  }
+}
+
+/**
+ * Add tool calls matched with their results to parts.
+ * @param msg - AI SDK message containing tool calls and results
+ * @param parts - Parts array to add to
+ */
+function addToolParts(msg: ChatMessage, parts: UIPart[]): void {
+  if (!msg.toolCalls) return;
+
+  for (const tc of msg.toolCalls) {
+    // Find matching result
+    const result = msg.toolResults?.find((tr) => tr.id === tc.id);
+    const resultStr = result ? JSON.stringify(result.result) : null;
+
+    parts.push({
+      type: "tool",
+      name: tc.name,
+      args: tc.args,
+      result: resultStr,
+      isError: result?.isError ?? undefined,
+    });
+  }
+}
+
+/**
+ * Formats AI SDK messages into UI-friendly structure.
+ *
+ * Transformations applied:
+ * 1. Maps user messages to UI format
+ * 2. Maps assistant messages: reasoning → thought parts, text → text parts,
+ *    tool calls + results → tool parts
+ * 3. Merges consecutive assistant messages into single UI messages
+ * 4. Tracks rawHistoryIndex for retry support
+ * 5. Marks last thought as open for activity indicator
+ *
+ * @param history - Raw AI SDK message history
+ * @returns Formatted messages for UI rendering
+ */
+export function formatChatMessages(history: ChatMessage[]): UIMessage[] {
+  const messages: UIMessage[] = [];
+
+  for (let rawIndex = 0; rawIndex < history.length; rawIndex++) {
+    const msg = history[rawIndex];
+
+    if (!msg) continue;
+
+    const lastMessage = messages.at(-1);
+    let currentMessage: UIMessage;
+
+    // Merge consecutive assistant messages
+    if (lastMessage?.role === "model" && msg.role === "assistant") {
+      currentMessage = lastMessage;
+      closeStepUsage(currentMessage);
+    } else {
+      currentMessage = {
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [],
+        rawHistoryIndex: rawIndex,
+        timestamp: Date.now(),
+      };
+      messages.push(currentMessage);
+    }
+
+    if (msg.role === "user") {
+      addTextContent(currentMessage.parts, msg.content);
+    } else {
+      // Assistant: reasoning first, then text, then tools
+      addReasoning(msg.reasoning, currentMessage.parts);
+      addTextContent(currentMessage.parts, msg.content);
+      addToolParts(msg, currentMessage.parts);
+
+      if (msg.responseModel) {
+        currentMessage.responseModel = msg.responseModel;
+      }
+
+      if (msg.usage) {
+        currentMessage.usage = msg.usage;
+      }
+    }
+  }
+
+  markLastThoughtAsOpen(messages);
+
+  return messages;
+}
+
+/**
+ * When merging a new step into an existing message, capture the previous
+ * step's usage as a step-usage part (shown between tool calls and follow-up text).
+ * @param message - The UIMessage being merged into
+ */
+function closeStepUsage(message: UIMessage): void {
+  if (!message.usage) return;
+  if (!message.parts.some((p) => p.type === "tool")) return;
+
+  message.parts.push({ type: "step-usage", usage: message.usage });
+  message.usage = undefined;
+}

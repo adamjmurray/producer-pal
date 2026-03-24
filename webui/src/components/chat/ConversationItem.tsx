@@ -10,6 +10,7 @@ import {
 } from "#webui/components/chat/controls/header/HeaderIcons";
 import { getModelName } from "#webui/lib/config";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
+import { compactNumber } from "#webui/lib/utils/compact-number";
 import {
   formatTimestampDate,
   formatTimestampTime,
@@ -231,13 +232,22 @@ function resolveModelLabel(
  */
 function ConversationMeta({ conv }: { conv: ConversationSummary }) {
   return (
-    <div className="w-full text-left px-4 pt-0.5 pb-2 flex justify-between gap-2">
-      <div className="text-[10px] text-zinc-400 dark:text-zinc-500 whitespace-nowrap">
+    <div className="@container w-full text-left px-4 pt-0.5 pb-2 flex gap-2 text-[10px] text-zinc-400 dark:text-zinc-500">
+      <div className="whitespace-nowrap">
         {formatTimestampDate(conv.updatedAt)},{" "}
         {formatTimestampTime(conv.updatedAt)}
       </div>
+      {conv.totalUsage && (
+        <div
+          className="hidden @min-[20rem]:block truncate ml-2"
+          title="token usage (input → output)"
+        >
+          tokens: {compactNumber(conv.totalUsage.inputTokens ?? 0)} →{" "}
+          {compactNumber(conv.totalUsage.outputTokens ?? 0)}
+        </div>
+      )}
       {conv.model && (
-        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate text-right">
+        <div className="truncate text-right ml-auto">
           {conv.provider
             ? `${getProviderName(conv.provider as Provider)} | `
             : ""}

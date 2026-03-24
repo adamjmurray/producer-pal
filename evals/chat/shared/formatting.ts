@@ -1,10 +1,89 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { inspect } from "node:util";
+import { inspect, styleText } from "node:util";
+import { type TokenUsage } from "#webui/chat/sdk/types.ts";
+import {
+  calcNewContentTokens,
+  compactNumber,
+} from "#webui/lib/utils/compact-number.ts";
 
 export const DEBUG_SEPARATOR = "\n" + "-".repeat(80);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Color helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 256-color orange — no styleText equivalent, so kept as raw ANSI
+const ORANGE = "\x1b[38;5;208m";
+const RESET = "\x1b[0m";
+
+/**
+ * Apply orange styling to text (256-color, not available in styleText)
+ *
+ * @param text - Text to style
+ * @returns Orange styled text
+ */
+export function orange(text: string): string {
+  return `${ORANGE}${text}${RESET}`;
+}
+
+/** Foreground format identifiers accepted by `styleText` */
+export type ForegroundFormat =
+  | "red"
+  | "green"
+  | "yellow"
+  | "cyan"
+  | "cyanBright"
+  | "gray"
+  | "blueBright"
+  | "magenta";
+
+/**
+ * Return a `styleText` format based on a score percentage.
+ * Green for perfect (100%), cyan for high (90–99%), yellow for mid (50–89%), red for low (<50%).
+ *
+ * @param earned - Points earned
+ * @param max - Maximum possible points
+ * @returns styleText foreground format
+ */
+export function scoreColor(earned: number, max: number): ForegroundFormat {
+  if (max === 0) return "gray";
+  const pct = (earned / max) * 100;
+
+  return pctColor(pct);
+}
+
+/**
+ * Return a `styleText` format for a percentage value.
+ *
+ * @param pct - Percentage (0–100)
+ * @returns styleText foreground format
+ */
+export function pctColor(pct: number): ForegroundFormat {
+  if (pct >= 100) return "green";
+  if (pct >= 90) return "cyan";
+  if (pct >= 50) return "yellow";
+
+  return "red";
+}
+
+/**
+ * Return a `styleText` format for an efficiency percentage (actual / target).
+ * Lower is better: < 50% blue, ≤ 100% green, < 200% yellow, ≥ 200% red.
+ *
+ * @param pct - Percentage of target (e.g. 150 means 150% of budget)
+ * @returns styleText foreground format
+ */
+export function efficiencyColor(pct: number): ForegroundFormat {
+  if (pct < 50) return "blueBright";
+  if (pct <= 100) return "green";
+  if (pct < 200) return "yellow";
+
+  return "red";
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Thought formatting
@@ -17,11 +96,7 @@ export const DEBUG_SEPARATOR = "\n" + "-".repeat(80);
  * @returns Formatted thought start
  */
 export function startThought(text: string): string {
-  return (
-    "\n╔══════════════════════════════════════════════" +
-    "═<THOUGHT>══════════════════════════════════════════════\n" +
-    text
-  );
+  return styleText("magenta", `<thought>\n${text}`);
 }
 
 /**
@@ -31,7 +106,9 @@ export function startThought(text: string): string {
  * @returns Formatted thought continuation
  */
 export function continueThought(text: string | object): string {
-  return typeof text === "string" ? text : JSON.stringify(text);
+  const content = typeof text === "string" ? text : JSON.stringify(text);
+
+  return styleText("magenta", content);
 }
 
 /**
@@ -40,10 +117,7 @@ export function continueThought(text: string | object): string {
  * @returns Formatted thought end
  */
 export function endThought(): string {
-  return (
-    "\n╚══════════════════════════════════════════════" +
-    "═<end_thought>══════════════════════════════════════════════\n\n"
-  );
+  return "\n";
 }
 
 /**
@@ -82,6 +156,58 @@ export function formatToolCall(
  */
 export function formatToolResult(result: string | undefined): string {
   return `   ↳ ${truncate(result, 160)}\n`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Token usage
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Print a single step's token usage to the console.
+ * @param usage - Token usage for this step
+ * @param prev - Previous step's usage (for new content calculation)
+ * @param afterText - Whether this follows a text response (needs extra newline)
+ */
+export function printStepUsage(
+  usage: TokenUsage,
+  prev: TokenUsage | undefined,
+  afterText: boolean,
+): void {
+  const input = usage.inputTokens ?? 0;
+  const newContent = calcNewContentTokens(
+    input,
+    prev?.inputTokens,
+    prev?.outputTokens,
+  );
+
+  const newPart =
+    newContent != null ? ` (${compactNumber(newContent)} new)` : "";
+  const reasoningPart =
+    (usage.reasoningTokens ?? 0) > 0
+      ? ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`
+      : "";
+
+  const line = `tokens: ${compactNumber(input)}${newPart} → ${compactNumber(usage.outputTokens ?? 0)}${reasoningPart}`;
+  const prefix = afterText ? "\n\n" : "\n";
+
+  console.log(`${prefix}${styleText("gray", "  " + line)}\n`);
+}
+
+/**
+ * Format a total usage line for display.
+ *
+ * @param usage - Total token usage
+ * @returns Formatted gray usage string like "Tokens: 12.3K → 4.5K (890 reasoning)"
+ */
+export function formatUsageLine(usage: TokenUsage): string {
+  const input = compactNumber(usage.inputTokens ?? 0);
+  const output = compactNumber(usage.outputTokens ?? 0);
+  const reasoningPart =
+    (usage.reasoningTokens ?? 0) > 0
+      ? ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`
+      : "";
+
+  return styleText("gray", `Tokens: ${input} → ${output}${reasoningPart}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -166,6 +292,11 @@ const SECTION_WIDTH = 60;
 const MAJOR_SEPARATOR = "=".repeat(SECTION_WIDTH);
 const MINOR_SEPARATOR = "-".repeat(SECTION_WIDTH);
 
+export const WAVEFORM_UNIT = "⎺⎻⎼⎽⎼⎻";
+const WAVEFORM_SEPARATOR = WAVEFORM_UNIT.repeat(
+  Math.ceil((SECTION_WIDTH + 12) / WAVEFORM_UNIT.length),
+);
+
 /**
  * Format a scenario header box
  *
@@ -182,11 +313,14 @@ export function formatScenarioHeader(
   model: string,
 ): string {
   return `
-${MAJOR_SEPARATOR}
-| SCENARIO: ${id}
-| Description: ${description}
-| Provider: ${provider}
-| Model: ${model}`;
+
+${styleText("gray", WAVEFORM_SEPARATOR)}
+
+${orange(MAJOR_SEPARATOR)}
+${orange(`| SCENARIO: ${id}`)}
+${orange("|")} ${styleText("gray", "Description:")} ${description}
+${orange("|")} ${styleText("gray", "Provider:")} ${provider}
+${orange("|")} ${styleText("gray", "Model:")} ${model}`;
 }
 
 /**
@@ -196,7 +330,28 @@ ${MAJOR_SEPARATOR}
  * @returns Formatted turn header
  */
 export function formatTurnHeader(turnNumber: number): string {
-  return `${MINOR_SEPARATOR}\nTURN ${turnNumber}`;
+  return styleText("cyanBright", `──────── Turn ${turnNumber} ────────`);
+}
+
+/** Gray prompt prefix for user input display */
+export const GRAY_PROMPT = styleText("gray", "> ");
+
+/**
+ * Format a colored user label for CLI output
+ *
+ * @returns Green [User] label with trailing newline
+ */
+export function formatUserLabel(): string {
+  return styleText("green", "[User]") + "\n";
+}
+
+/**
+ * Format a colored assistant label for CLI output
+ *
+ * @returns Yellow [Assistant] label
+ */
+export function formatAssistantLabel(): string {
+  return styleText("yellow", "[Assistant]");
 }
 
 /**
@@ -206,7 +361,7 @@ export function formatTurnHeader(turnNumber: number): string {
  * @returns Formatted section header
  */
 export function formatSectionHeader(title: string): string {
-  return `\n${MAJOR_SEPARATOR}\n${title}\n`;
+  return `\n${orange(MAJOR_SEPARATOR)}\n${orange(title)}\n`;
 }
 
 /**
@@ -216,5 +371,5 @@ export function formatSectionHeader(title: string): string {
  * @returns Formatted subsection header
  */
 export function formatSubsectionHeader(title: string): string {
-  return `${MINOR_SEPARATOR}\n${title}`;
+  return `${styleText("blueBright", MINOR_SEPARATOR)}\n${styleText("blueBright", title)}`;
 }

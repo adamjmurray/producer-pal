@@ -176,9 +176,10 @@ web UI architecture.
   - Test files split using dot notation: `{feature}-{area}.test.ts` (e.g.,
     `update-clip-audio-arrangement.test.ts`, `duplicate-validation.test.ts`)
   - Test helpers use `{feature}-test-helpers.ts` for shared test utilities
-  - **Test file location**: Use colocated tests (same directory as source) for
-    1-2 test files. Create a `tests/` subdirectory when 3+ test files exist for
-    a feature to keep the main directory focused on source code
+  - **Test file location**: Create a `tests/` subdirectory when 3+ test files
+    exist for a feature to keep the main directory focused on source code. Fewer
+    than 3 test files may be colocated or in `tests/` — either is fine, but
+    `tests/` is unnecessary until there are at least 3
   - **Prefer refactoring over trimming**: When adding code would exceed file
     limits, extract cohesive groups of logic into helper files rather than
     artificially compressing code (e.g., merging tests into loops, collapsing
@@ -256,7 +257,10 @@ functions for clarity.
 - **Diagnosing coverage gaps**: If coverage thresholds fail, check
   `coverage/coverage-summary.txt` for per-file breakdown (console only shows
   totals). Look for files with low coverage percentages to identify what needs
-  tests.
+  tests. Function coverage is enforced at 100% — if a function is genuinely
+  untestable, use `/* v8 ignore start -- reason */` (see
+  `dev/Coding-Standards.md` Coverage section for rules). Increasing v8 ignore
+  limits requires user approval.
 
 ## MCP E2E Testing
 
@@ -295,8 +299,8 @@ with explicit user approval. **Do not modify these values without asking
 first:**
 
 - `src/test/lint-suppression-limits.test.ts` - Per-tree limits for
-  eslint-disable and @ts-expect-error comments. Increasing these limits weakens
-  code quality enforcement.
+  eslint-disable, @ts-expect-error, and v8 ignore comments. Increasing these
+  limits weakens code quality enforcement.
 
 - `vitest.config.ts` (thresholds section) - Test coverage thresholds. Lowering
   these allows coverage to drop.

@@ -9,10 +9,8 @@ import {
   buildClipResultObject,
   type NoteUpdateResult,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
-import {
-  clearClipAtDuplicateTarget,
-  type TilingContext,
-} from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { clearClipAtDuplicateTarget } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 interface ClipResult {

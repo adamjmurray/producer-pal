@@ -17,44 +17,11 @@ import {
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers.ts";
-import {
-  applyTransform as applyTransformHelper,
-  createArrangementClip as createArrangementClipHelper,
-  createMidiClip as createMidiClipHelper,
-  readClipNotes as readClipNotesHelper,
-} from "./helpers/ppal-clip-transforms-test-helpers.ts";
+import { createClipTransformHelpers } from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
-
-/** Creates a MIDI clip with specified notes on the empty MIDI track. */
-async function createMidiClip(
-  sceneIndex: number,
-  notes: string,
-): Promise<string> {
-  return createMidiClipHelper(ctx, sceneIndex, notes);
-}
-
-/** Reads clip notes as a string. */
-async function readClipNotes(clipId: string): Promise<string> {
-  return readClipNotesHelper(ctx, clipId);
-}
-
-/** Applies a transform to a clip and returns the raw result. */
-async function applyTransform(
-  clipId: string,
-  transform: string,
-): Promise<unknown> {
-  return applyTransformHelper(ctx, clipId, transform);
-}
-
-/** Creates a MIDI arrangement clip with notes at given position. */
-async function createArrangementClip(
-  arrangementStart: string,
-  notes: string,
-  length: string,
-): Promise<string> {
-  return createArrangementClipHelper(ctx, arrangementStart, notes, length);
-}
+const { createMidiClip, createArrangementClip, readClipNotes, applyTransform } =
+  createClipTransformHelpers(ctx);
 
 /** Sets or disables the Live Set scale. */
 async function setScale(scale: string): Promise<void> {

@@ -265,36 +265,6 @@ describe("assertToolCalled", () => {
     });
   });
 
-  describe("custom score", () => {
-    it("uses assertion score value", () => {
-      const turns = [createTurn([{ name: "read-track", args: {} }])];
-      const assertion: ToolCallAssertion = {
-        type: "tool_called",
-        tool: "read-track",
-        score: 5,
-      };
-
-      const result = assertToolCalled(assertion, turns);
-
-      expect(result.earned).toBe(5);
-      expect(result.maxScore).toBe(5);
-    });
-
-    it("returns 0 earned with custom score on failure", () => {
-      const turns = [createTurn([{ name: "other-tool", args: {} }])];
-      const assertion: ToolCallAssertion = {
-        type: "tool_called",
-        tool: "read-track",
-        score: 5,
-      };
-
-      const result = assertToolCalled(assertion, turns);
-
-      expect(result.earned).toBe(0);
-      expect(result.maxScore).toBe(5);
-    });
-  });
-
   describe("result details", () => {
     it("includes matching calls in details", () => {
       const turns = [

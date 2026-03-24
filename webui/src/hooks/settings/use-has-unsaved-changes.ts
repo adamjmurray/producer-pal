@@ -10,6 +10,7 @@ export interface AppearanceSettings {
   theme: string;
   showTimestamps: boolean;
   showHelpLinks: boolean;
+  showTokenUsage: boolean;
 }
 
 /**

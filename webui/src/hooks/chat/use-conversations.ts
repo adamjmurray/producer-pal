@@ -19,7 +19,9 @@ import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-type
 import {
   type ConversationRecord,
   type ConversationSummary,
+  deleteAllConversations as dbDeleteAllConversations,
   deleteConversation as dbDeleteConversation,
+  deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
   listConversations,
   loadConversation,
   renameConversation as dbRenameConversation,
@@ -48,10 +50,12 @@ export interface UseConversationsReturn {
   activeConversationId: string | null;
   limitNotification: TransferNotificationData | null;
   dismissLimitNotification: () => void;
-  saveCurrentConversation: () => Promise<void>;
+  saveCurrentConversation: (updatedAt?: number) => Promise<void>;
   switchConversation: (id: string) => Promise<void>;
-  startNewConversation: () => Promise<void>;
+  startNewConversation: () => void;
   deleteConversation: (id: string) => Promise<void>;
+  deleteAllConversations: () => Promise<void>;
+  deleteUnbookmarkedConversations: () => Promise<void>;
   renameConversation: (id: string, title: string | null) => Promise<void>;
   toggleBookmark: (id: string) => Promise<void>;
   refreshList: () => Promise<void>;
@@ -199,35 +203,38 @@ export function useConversations({
     void init();
   }, [refreshList, restoreChatHistory, setActiveId, clearActiveId]);
 
-  const saveCurrentConversation = useCallback(async () => {
-    const chatHistory = getChatHistory();
+  const saveCurrentConversation = useCallback(
+    async (updatedAt?: number) => {
+      const chatHistory = getChatHistory();
 
-    if (chatHistory.length === 0) return;
+      if (chatHistory.length === 0) return;
 
-    const isNew = activeIdRef.current == null;
-    const id = activeIdRef.current ?? crypto.randomUUID();
+      const isNew = activeIdRef.current == null;
+      const id = activeIdRef.current ?? crypto.randomUUID();
 
-    // Set active ID synchronously before any async operations
-    setActiveId(id);
+      // Set active ID synchronously before any async operations
+      setActiveId(id);
 
-    const existing = isNew ? undefined : await loadConversation(id);
-    const record = buildSaveRecord(getActiveRefs(id), existing, chatHistory);
+      const existing = isNew ? undefined : await loadConversation(id);
+      const record = buildSaveRecord(
+        getActiveRefs(id),
+        existing,
+        chatHistory,
+        updatedAt,
+      );
 
-    syncActiveMeta(record);
+      syncActiveMeta(record);
 
-    const result = await saveConversation(record);
+      const result = await saveConversation(record);
 
-    limit.showLimitNotification(result);
-    await refreshList();
-  }, [getChatHistory, refreshList, setActiveId, limit]);
+      limit.showLimitNotification(result);
+      await refreshList();
+    },
+    [getChatHistory, refreshList, setActiveId, limit],
+  );
 
   const switchConversation = useCallback(
     async (id: string) => {
-      // Save current before switching
-      if (getChatHistory().length > 0) {
-        await saveCurrentConversation();
-      }
-
       const record = await loadConversation(id);
 
       if (!record) {
@@ -241,29 +248,13 @@ export function useConversations({
       setActiveId(id);
       syncActiveMeta(record);
     },
-    [
-      getChatHistory,
-      saveCurrentConversation,
-      clearConversation,
-      clearActiveId,
-      restoreChatHistory,
-      setActiveId,
-    ],
+    [clearConversation, clearActiveId, restoreChatHistory, setActiveId],
   );
 
-  const startNewConversation = useCallback(async () => {
-    if (getChatHistory().length > 0) {
-      await saveCurrentConversation();
-    }
-
+  const startNewConversation = useCallback(() => {
     clearConversation();
     clearActiveId();
-  }, [
-    getChatHistory,
-    saveCurrentConversation,
-    clearConversation,
-    clearActiveId,
-  ]);
+  }, [clearConversation, clearActiveId]);
 
   const deleteConversation = useCallback(
     async (id: string) => {
@@ -278,6 +269,25 @@ export function useConversations({
     },
     [clearConversation, clearActiveId, refreshList],
   );
+
+  const deleteAllConversations = useCallback(async () => {
+    await dbDeleteAllConversations();
+    clearConversation();
+    clearActiveId();
+    await refreshList();
+  }, [clearConversation, clearActiveId, refreshList]);
+
+  const deleteUnbookmarkedConversations = useCallback(async () => {
+    await dbDeleteUnbookmarkedConversations();
+
+    // Clear active conversation only if it was unbookmarked
+    if (activeIdRef.current && !activeMetaRef.current?.bookmarked) {
+      clearConversation();
+      clearActiveId();
+    }
+
+    await refreshList();
+  }, [clearConversation, clearActiveId, refreshList]);
 
   const renameConversation = useCallback(
     async (id: string, title: string | null) => {
@@ -336,26 +346,6 @@ export function useConversations({
     return () => window.removeEventListener("hashchange", handler);
   }, [switchConversation, startNewConversation]);
 
-  // Save on beforeunload (best-effort)
-  useEffect(() => {
-    const handler = () => {
-      const chatHistory = getChatHistory();
-
-      if (chatHistory.length === 0) return;
-
-      const id = activeIdRef.current ?? crypto.randomUUID();
-
-      // Best-effort save — IndexedDB writes are async but usually complete
-      void saveConversation(
-        buildSaveRecord(getActiveRefs(id), undefined, chatHistory),
-      );
-    };
-
-    window.addEventListener("beforeunload", handler);
-
-    return () => window.removeEventListener("beforeunload", handler);
-  }, [getChatHistory]);
-
   return {
     conversations,
     activeConversationId,
@@ -365,6 +355,8 @@ export function useConversations({
     switchConversation,
     startNewConversation,
     deleteConversation,
+    deleteAllConversations,
+    deleteUnbookmarkedConversations,
     renameConversation,
     toggleBookmark,
     refreshList,

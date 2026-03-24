@@ -9,17 +9,23 @@ import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations
 /**
  * Creates stable callback wrappers for conversation manager methods.
  * @param manager - Conversation manager from useConversations
+ * @param stopResponse - Stops the current AI response stream
  * @returns Stable callback handlers for conversation operations
  */
-export function useConversationHandlers(manager: UseConversationsReturn) {
+export function useConversationHandlers(
+  manager: UseConversationsReturn,
+  stopResponse: () => void,
+) {
   const handleNew = useCallback(() => {
-    manager.startNewConversation().catch(console.error);
-  }, [manager]);
+    stopResponse();
+    manager.startNewConversation();
+  }, [manager, stopResponse]);
   const handleSelect = useCallback(
     (id: string) => {
+      stopResponse();
       manager.switchConversation(id).catch(console.error);
     },
-    [manager],
+    [manager, stopResponse],
   );
   const handleDelete = useCallback(
     (id: string) => {
@@ -39,6 +45,14 @@ export function useConversationHandlers(manager: UseConversationsReturn) {
     },
     [manager],
   );
+  const handleDeleteAll = useCallback(() => {
+    stopResponse();
+    manager.deleteAllConversations().catch(console.error);
+  }, [manager, stopResponse]);
+  const handleDeleteUnbookmarked = useCallback(() => {
+    stopResponse();
+    manager.deleteUnbookmarkedConversations().catch(console.error);
+  }, [manager, stopResponse]);
 
   return {
     handleNew,
@@ -46,5 +60,7 @@ export function useConversationHandlers(manager: UseConversationsReturn) {
     handleDelete,
     handleRename,
     handleToggleBookmark,
+    handleDeleteAll,
+    handleDeleteUnbookmarked,
   };
 }

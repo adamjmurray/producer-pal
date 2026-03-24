@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type TokenUsage } from "#webui/chat/sdk/types";
 import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
 import { getModelName } from "#webui/lib/config";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
@@ -88,12 +89,14 @@ export function buildLockedSettings(
  * @param refs - Current active ref values
  * @param existing - Previously saved record (if updating)
  * @param chatHistory - Current chat messages
+ * @param updatedAt - Explicit timestamp for updatedAt (omit to preserve existing)
  * @returns Record ready for saveConversation
  */
 export function buildSaveRecord(
   refs: ActiveRefs,
   existing: ConversationRecord | undefined,
   chatHistory: unknown[],
+  updatedAt?: number,
 ): ConversationRecord {
   const now = Date.now();
   const existingTitle = existing?.title ?? refs.title ?? null;
@@ -103,7 +106,7 @@ export function buildSaveRecord(
     id: refs.id,
     title,
     createdAt: existing?.createdAt ?? refs.createdAt ?? now,
-    updatedAt: now,
+    updatedAt: updatedAt ?? existing?.updatedAt ?? now,
     bookmarked: existing?.bookmarked ?? refs.bookmarked,
     provider: refs.provider,
     model: refs.model,
@@ -112,7 +115,38 @@ export function buildSaveRecord(
     temperature: refs.temperature,
     showThoughts: refs.showThoughts,
     smallModelMode: refs.smallModelMode,
+    totalUsage: sumMessageUsage(chatHistory),
     messages: chatHistory as ConversationRecord["messages"],
+  };
+}
+
+/**
+ * Sum token usage across all assistant messages in the chat history.
+ * @param chatHistory - Chat messages (typed as unknown[] for generic compat)
+ * @returns Summed usage, or null if no usage data found
+ */
+export function sumMessageUsage(chatHistory: unknown[]): TokenUsage | null {
+  const messages = chatHistory as Array<{ role: string; usage?: TokenUsage }>;
+  let hasUsage = false;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let reasoningTokens = 0;
+
+  for (const msg of messages) {
+    if (msg.role !== "assistant" || !msg.usage) continue;
+
+    hasUsage = true;
+    inputTokens += msg.usage.inputTokens ?? 0;
+    outputTokens += msg.usage.outputTokens ?? 0;
+    reasoningTokens += msg.usage.reasoningTokens ?? 0;
+  }
+
+  if (!hasUsage) return null;
+
+  return {
+    inputTokens,
+    outputTokens,
+    ...(reasoningTokens > 0 && { reasoningTokens }),
   };
 }
 

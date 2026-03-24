@@ -68,6 +68,7 @@ function renderMessageList(
   handleRetry = vi.fn(),
   showTimestamps = true,
   handleEdit = vi.fn(),
+  showTokenUsage = false,
 ): RenderResult & {
   handleRetry: typeof handleRetry;
   handleEdit: typeof handleEdit;
@@ -79,6 +80,7 @@ function renderMessageList(
       handleRetry={handleRetry}
       handleEdit={handleEdit}
       showTimestamps={showTimestamps}
+      showTokenUsage={showTokenUsage}
     />,
   );
 
@@ -384,6 +386,7 @@ describe("MessageList", () => {
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
           showTimestamps={true}
+          showTokenUsage={false}
         />,
       );
 
@@ -414,45 +417,32 @@ describe("MessageList", () => {
       expect(screen.queryByText("Still thinking...")).toBeNull();
     });
 
-    it("disappears when assistant message gains content", async () => {
-      const { rerender } = renderMessageList([], true);
+    it.each<[string, UIMessage[], boolean]>([
+      ["assistant message gains content", [createModelMessage("Hello")], true],
+      ["responding ends", [], false],
+    ])(
+      "disappears when %s",
+      async (_label, messages, isAssistantResponding) => {
+        const { rerender } = renderMessageList([], true);
 
-      await act(() => {
-        vi.advanceTimersByTime(4000);
-      });
-      expect(screen.getByText("Still thinking...")).toBeDefined();
+        await act(() => {
+          vi.advanceTimersByTime(4000);
+        });
+        expect(screen.getByText("Still thinking...")).toBeDefined();
 
-      rerender(
-        <MessageList
-          messages={[createModelMessage("Hello")]}
-          isAssistantResponding={true}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-        />,
-      );
-      expect(screen.queryByText("Still thinking...")).toBeNull();
-    });
-
-    it("disappears when responding ends", async () => {
-      const { rerender } = renderMessageList([], true);
-
-      await act(() => {
-        vi.advanceTimersByTime(4000);
-      });
-      expect(screen.getByText("Still thinking...")).toBeDefined();
-
-      rerender(
-        <MessageList
-          messages={[]}
-          isAssistantResponding={false}
-          handleRetry={vi.fn()}
-          handleEdit={vi.fn()}
-          showTimestamps={true}
-        />,
-      );
-      expect(screen.queryByText("Still thinking...")).toBeNull();
-    });
+        rerender(
+          <MessageList
+            messages={messages}
+            isAssistantResponding={isAssistantResponding}
+            handleRetry={vi.fn()}
+            handleEdit={vi.fn()}
+            showTimestamps={true}
+            showTokenUsage={false}
+          />,
+        );
+        expect(screen.queryByText("Still thinking...")).toBeNull();
+      },
+    );
 
     it("does not appear if content arrives before delay", async () => {
       const { rerender } = renderMessageList([], true);
@@ -468,6 +458,7 @@ describe("MessageList", () => {
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
           showTimestamps={true}
+          showTokenUsage={false}
         />,
       );
 
@@ -496,6 +487,7 @@ describe("MessageList", () => {
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
           showTimestamps={true}
+          showTokenUsage={false}
         />,
       );
       expect(screen.queryByText("Still thinking...")).toBeNull();
@@ -524,11 +516,104 @@ describe("MessageList", () => {
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
           showTimestamps={false}
+          showTokenUsage={false}
           requestedModel="gpt-4o"
         />,
       );
 
       expect(screen.getByText(/responded as gpt-4o-mini/)).toBeDefined();
+    });
+
+    it("hides label when response model matches requested model", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          responseModel: "gpt-4o-2024-08-06",
+        },
+      ];
+
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={vi.fn()}
+          handleEdit={vi.fn()}
+          showTimestamps={false}
+          showTokenUsage={false}
+          requestedModel="gpt-4o"
+        />,
+      );
+
+      expect(screen.queryByText(/responded as/)).toBeNull();
+    });
+  });
+
+  describe("TokenUsageLabel", () => {
+    it("shows usage when enabled and message has usage data", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          usage: { inputTokens: 9496, outputTokens: 178 },
+        },
+      ];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
+
+      expect(screen.getByText(/9.5K/)).toBeDefined();
+      expect(screen.getByText(/178/)).toBeDefined();
+    });
+
+    it("hides usage when disabled even if message has usage data", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          usage: { inputTokens: 9496, outputTokens: 178 },
+        },
+      ];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), false);
+
+      expect(screen.queryByText(/9.5K/)).toBeNull();
+    });
+
+    it("shows nothing when enabled but message has no usage", () => {
+      const messages = [createModelMessage("Hi")];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
+
+      expect(screen.queryByText(/tokens/)).toBeNull();
+    });
+
+    it("shows reasoning tokens when present", () => {
+      const messages = [
+        {
+          ...createModelMessage("Hi"),
+          usage: { inputTokens: 9496, outputTokens: 178, reasoningTokens: 101 },
+        },
+      ];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
+
+      expect(screen.getByText(/101 reasoning/)).toBeDefined();
+    });
+
+    it("shows new content tokens when previous model message exists", () => {
+      const messages = [
+        {
+          ...createModelMessage("First", 1),
+          usage: { inputTokens: 5000, outputTokens: 100 },
+        },
+        createUserMessage("Follow up", 2),
+        {
+          ...createModelMessage("Second", 3),
+          usage: { inputTokens: 10200, outputTokens: 200 },
+        },
+      ];
+
+      renderMessageList(messages, false, vi.fn(), false, vi.fn(), true);
+
+      // Second model msg: newContent = 10200 - 5000 - 100 = 5100 → "5.1K new"
+      expect(screen.getByText(/5.1K new/)).toBeDefined();
     });
   });
 });

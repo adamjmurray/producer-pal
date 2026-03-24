@@ -4,7 +4,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { moveDeviceToPath } from "#src/tools/device/update/update-device-helpers.ts";
+import { moveDeviceToPath } from "#src/tools/device/update/helpers/update-device-helpers.ts";
 import { extractDevicePath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 
 /**

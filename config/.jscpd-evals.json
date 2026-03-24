@@ -7,6 +7,6 @@
     "// AI assistance:.*",
     "// SPDX-License-Identifier:.*"
   ],
-  "ignore": ["**/tsconfig.json", "**/*.test.ts"],
+  "ignore": ["**/tsconfig.json", "**/*.test.ts", "**/results/**"],
   "path": ["../evals"]
 }

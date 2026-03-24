@@ -41,6 +41,7 @@ interface ChatScreenProps {
   onOpenConnectionSettings: () => void;
   onStop: () => void;
   showTimestamps: boolean;
+  showTokenUsage: boolean;
   conversationPanel: ConversationPanelState;
 }
 
@@ -94,6 +95,7 @@ export function ChatScreen(props: ChatScreenProps) {
     onOpenConnectionSettings,
     onStop,
     showTimestamps,
+    showTokenUsage,
     conversationPanel,
   } = props;
   const latestVersion = useUpdateCheck();
@@ -169,6 +171,7 @@ export function ChatScreen(props: ChatScreenProps) {
                   handleRetry={handleRetry}
                   handleEdit={handleEdit}
                   showTimestamps={showTimestamps}
+                  showTokenUsage={showTokenUsage}
                   requestedModel={headerInfo.activeModel}
                 />
               )}

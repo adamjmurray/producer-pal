@@ -31,15 +31,15 @@ import {
   // updateCollapsedState, // Kept for potential future use
   updateMacroCount,
   updateMacroVariation,
-} from "./update-device-helpers.ts";
+} from "./helpers/update-device-helpers.ts";
 import {
   isChainType,
   isDeviceType,
   isRackDevice,
   isValidUpdateType,
   warnIfSet,
-} from "./update-device-type-helpers.ts";
-import { wrapDevicesInRack } from "./update-device-wrap-helpers.ts";
+} from "./helpers/update-device-type-helpers.ts";
+import { wrapDevicesInRack } from "./helpers/update-device-wrap-helpers.ts";
 
 interface UpdateProperties {
   toPath?: string;

@@ -43,10 +43,17 @@ describe("Transform Parser - whitespace and comments", () => {
     expect(result[0]!.expression).toBe(10);
   });
 
-  it("handles comments on separate lines", () => {
-    const result = parser.parse(
+  it.each([
+    [
+      "comments on separate lines",
       "// comment\nvelocity += 10\n// another comment\ntiming += 0.05",
-    );
+    ],
+    [
+      "block comment between assignments",
+      "velocity += 10\n/* block\ncomment */\ntiming += 0.05",
+    ],
+  ])("handles %s (preserves both assignments)", (_label, input) => {
+    const result = parser.parse(input);
 
     expect(result).toHaveLength(2);
     expect(result[0]!.parameter).toBe("velocity");
@@ -71,16 +78,6 @@ describe("Transform Parser - whitespace and comments", () => {
     const result = parser.parse("// just a comment\n# another comment");
 
     expect(result).toHaveLength(0);
-  });
-
-  it("handles block comment between assignments", () => {
-    const result = parser.parse(
-      "velocity += 10\n/* block\ncomment */\ntiming += 0.05",
-    );
-
-    expect(result).toHaveLength(2);
-    expect(result[0]!.parameter).toBe("velocity");
-    expect(result[1]!.parameter).toBe("timing");
   });
 
   it("handles inline comment with trailing newline", () => {

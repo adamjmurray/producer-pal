@@ -23,14 +23,14 @@ import {
   type UpdateClipResult,
 } from "../mcp-test-helpers.ts";
 import {
-  applyTransform as applyTransformHelper,
-  createMidiClip as createMidiClipHelper,
+  createClipTransformHelpers,
   emptyMidiTrack,
   parseNotationDuration,
-  readClipNotes as readClipNotesHelper,
 } from "./helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
+const { createMidiClip, readClipNotes, applyTransform } =
+  createClipTransformHelpers(ctx);
 
 /** Creates an audio track with a clip for testing. */
 async function createAudioTrackWithClip(trackName: string): Promise<{
@@ -59,35 +59,24 @@ async function createAudioTrackWithClip(trackName: string): Promise<{
   return { trackIndex: track.trackIndex!, clipId: clip.id };
 }
 
-/** Reads clip and returns gainDb value. */
-async function readClipGain(clipId: string): Promise<number> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-clip",
-    arguments: { clipId, include: ["sample"] },
-  });
-  const clip = parseToolResult<ReadClipResult>(result);
-
-  return clip.gainDb ?? 0;
-}
-
-/** Reads clip and returns pitchShift value. */
-async function readClipPitchShift(clipId: string): Promise<number> {
-  const result = await ctx.client!.callTool({
-    name: "ppal-read-clip",
-    arguments: { clipId, include: ["sample"] },
-  });
-  const clip = parseToolResult<ReadClipResult>(result);
-
-  return clip.pitchShift!;
-}
-
-/** Applies a transform to a clip. Returns the raw result for warning inspection. */
-async function applyTransform(
+/** Reads a sample property (gainDb or pitchShift) from a clip. */
+async function readClipSampleProperty(
   clipId: string,
-  transform: string,
-): Promise<unknown> {
-  return applyTransformHelper(ctx, clipId, transform);
+  prop: "gainDb" | "pitchShift",
+): Promise<number> {
+  const result = await ctx.client!.callTool({
+    name: "ppal-read-clip",
+    arguments: { clipId, include: ["sample"] },
+  });
+  const clip = parseToolResult<ReadClipResult>(result);
+
+  return clip[prop] ?? 0;
 }
+
+const readClipGain = (clipId: string): Promise<number> =>
+  readClipSampleProperty(clipId, "gainDb");
+const readClipPitchShift = (clipId: string): Promise<number> =>
+  readClipSampleProperty(clipId, "pitchShift");
 
 // =============================================================================
 // Audio Transform Tests (update-clip)
@@ -224,19 +213,6 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
 // =============================================================================
 // MIDI Transform Tests (update-clip)
 // =============================================================================
-
-/** Creates a MIDI clip with specified notes on the empty MIDI track. */
-async function createMidiClip(
-  sceneIndex: number,
-  notes: string,
-): Promise<string> {
-  return createMidiClipHelper(ctx, sceneIndex, notes);
-}
-
-/** Reads clip notes as a string. */
-async function readClipNotes(clipId: string): Promise<string> {
-  return readClipNotesHelper(ctx, clipId);
-}
 
 describe("ppal-clip-transforms (midi velocity)", () => {
   it("transforms velocity with expressions and clamping", async () => {

@@ -5,9 +5,9 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createAudioClipInSession,
-  tileClipToRange,
   type TilingContext,
-} from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+} from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
+import { tileClipToRange } from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.ts";
 
@@ -236,13 +236,6 @@ function createLoopedClipTiles({
     let newEndTime = currentStartTime + totalContentLength;
     const tempClipLength = currentEndTime - newEndTime;
 
-    // Validation
-    if (newEndTime + tempClipLength !== currentEndTime) {
-      throw new Error(
-        `Shortening validation failed: calculation error in temp clip bounds`,
-      );
-    }
-
     // Create temp clip to truncate
     truncateWithTempClip({
       track,
@@ -321,13 +314,6 @@ export function handleArrangementShortening({
 }: HandleArrangementShorteningArgs): void {
   const newEndTime = currentStartTime + arrangementLengthBeats;
   const tempClipLength = currentEndTime - newEndTime;
-
-  // Validation
-  if (newEndTime + tempClipLength !== currentEndTime) {
-    throw new Error(
-      `Internal error: temp clip boundary calculation failed for clip ${clip.id}`,
-    );
-  }
 
   // Get track
   const trackIndex = clip.trackIndex;

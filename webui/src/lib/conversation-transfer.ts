@@ -150,6 +150,9 @@ function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
     showThoughts: (record.showThoughts as boolean | null | undefined) ?? null,
     smallModelMode:
       (record.smallModelMode as boolean | null | undefined) ?? null,
+    totalUsage:
+      (record.totalUsage as ConversationRecord["totalUsage"] | undefined) ??
+      null,
     messages: record.messages as ConversationRecord["messages"],
   };
 }

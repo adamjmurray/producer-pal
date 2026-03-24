@@ -14,7 +14,7 @@ export default defineConfig({
 
   cleanUrls: true,
 
-  srcExclude: ["_generated/**"],
+  srcExclude: ["_generated/**", "public/markdown/**"],
 
   transformPageData(pageData) {
     const path = pageData.relativePath
@@ -55,12 +55,14 @@ export default defineConfig({
           { text: "Device Interface", link: "/guide/device" },
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Usage Examples", link: "/guide/examples" },
+          { text: "REST API", link: "/guide/rest-api" },
         ],
       },
       {
         text: "Features",
         items: [
           { text: "Feature List", link: "/features" },
+          { text: "Extending", link: "/extending" },
           { text: "Roadmap", link: "/roadmap" },
         ],
       },

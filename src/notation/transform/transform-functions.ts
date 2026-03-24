@@ -3,12 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type ExpressionNode } from "./parser/transform-parser.ts";
 import {
   type TimeRange,
   type NoteProperties,
-} from "./transform-evaluator-helpers.ts";
-import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
+} from "./helpers/transform-evaluator-helpers.ts";
 import {
   computePhase,
   evaluateArgs,
@@ -19,11 +17,13 @@ import {
   evaluatePow,
   evaluateRand,
   evaluateSeq,
-} from "./transform-functions-helpers.ts";
+} from "./helpers/transform-functions-helpers.ts";
 import {
   evaluateQuant,
   evaluateStep,
-} from "./transform-functions-scale-helpers.ts";
+} from "./helpers/transform-functions-scale-helpers.ts";
+import { type ExpressionNode } from "./parser/transform-parser.ts";
+import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
 import * as waveforms from "./transform-waveforms.ts";
 
 export type EvaluateExpressionFn = (
@@ -92,7 +92,9 @@ export function evaluateFunction(
     name === "floor" ||
     name === "ceil" ||
     name === "abs" ||
-    name === "clamp"
+    name === "clamp" ||
+    name === "wrap" ||
+    name === "reflect"
   ) {
     return evaluateMathFunction(
       name,

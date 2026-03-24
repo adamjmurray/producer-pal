@@ -7,11 +7,17 @@
  */
 
 import {
+  arrangementClipWorkflow,
+  audioSampleWorkflow,
+  clipTransforms,
   connectToAbleton,
   createAndEditClip,
   duplicate,
   memoryWorkflow,
+  negativeCases,
+  sceneAndPlayback,
   trackAndDeviceWorkflow,
+  updateLiveSet,
 } from "./defs/index.ts";
 import { type EvalScenario } from "./types.ts";
 
@@ -21,9 +27,15 @@ import { type EvalScenario } from "./types.ts";
 const allScenarios: EvalScenario[] = [
   connectToAbleton,
   createAndEditClip,
+  clipTransforms,
   trackAndDeviceWorkflow,
   memoryWorkflow,
   duplicate,
+  negativeCases,
+  arrangementClipWorkflow,
+  audioSampleWorkflow,
+  sceneAndPlayback,
+  updateLiveSet,
 ];
 
 export interface LoadScenariosOptions {
@@ -72,4 +84,19 @@ export function loadScenarios(options?: LoadScenariosOptions): EvalScenario[] {
  */
 export function listScenarioIds(): string[] {
   return allScenarios.map((s) => s.id);
+}
+
+/**
+ * List all scenarios with their kind for display
+ *
+ * @returns Array of {id, kind} objects
+ */
+export function listScenarioSummaries(): Array<{
+  id: string;
+  kind: "regression" | "capability";
+}> {
+  return allScenarios.map((s) => ({
+    id: s.id,
+    kind: s.kind ?? "regression",
+  }));
 }

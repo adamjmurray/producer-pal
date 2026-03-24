@@ -10,6 +10,12 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
+import {
+  codeNote,
+  toLiveApiNote,
+  codeExecSuccess,
+  codeExecFailure,
+} from "#src/tools/clip/code-exec/tests/code-exec-test-helpers.ts";
 import { createClip } from "../create-clip.ts";
 
 // Mock the code execution protocol module
@@ -119,27 +125,9 @@ describe("createClip - code execution", () => {
 
     setupNoteTrackingMock([clip]);
 
-    vi.mocked(executeNoteCode).mockResolvedValue({
-      success: true,
-      notes: [
-        {
-          pitch: 60,
-          start: 0,
-          duration: 1,
-          velocity: 100,
-          velocityDeviation: 0,
-          probability: 1,
-        },
-        {
-          pitch: 64,
-          start: 1,
-          duration: 1,
-          velocity: 90,
-          velocityDeviation: 0,
-          probability: 1,
-        },
-      ],
-    });
+    const notes = [codeNote(60, 0), codeNote(64, 1, { velocity: 90 })];
+
+    vi.mocked(executeNoteCode).mockResolvedValue(codeExecSuccess(notes));
 
     const result = await createClip({
       slot: "0/0",
@@ -165,24 +153,7 @@ describe("createClip - code execution", () => {
       1000000,
     );
     expect(clip.call).toHaveBeenCalledWith("add_new_notes", {
-      notes: [
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          velocity_deviation: 0,
-          probability: 1,
-        },
-        {
-          pitch: 64,
-          start_time: 1,
-          duration: 1,
-          velocity: 90,
-          velocity_deviation: 0,
-          probability: 1,
-        },
-      ],
+      notes: notes.map(toLiveApiNote),
     });
 
     // noteCount should be updated from getClipNoteCount
@@ -194,10 +165,9 @@ describe("createClip - code execution", () => {
   it("should warn when code execution fails for a created clip", async () => {
     setupSessionCodeExecMocks([0]);
 
-    vi.mocked(executeNoteCode).mockResolvedValue({
-      success: false,
-      error: "TypeError: notes.map is not a function",
-    });
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecFailure("TypeError: notes.map is not a function"),
+    );
 
     const result = await createClip({
       slot: "0/0",
@@ -230,19 +200,9 @@ describe("createClip - code execution", () => {
 
     setupNoteTrackingMock([firstClip, secondClip]);
 
-    vi.mocked(executeNoteCode).mockResolvedValue({
-      success: true,
-      notes: [
-        {
-          pitch: 48,
-          start: 0,
-          duration: 2,
-          velocity: 110,
-          velocityDeviation: 0,
-          probability: 1,
-        },
-      ],
-    });
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecSuccess([codeNote(48, 0, { duration: 2, velocity: 110 })]),
+    );
 
     const result = await createClip({
       slot: "0/0, 0/1",

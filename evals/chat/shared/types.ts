@@ -6,6 +6,7 @@
 import { type Interface } from "node:readline";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
+import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 
 export type ReasoningSummary = "auto" | "concise" | "detailed";
 
@@ -34,15 +35,17 @@ export interface ChatOptions {
   once?: boolean;
   sequence?: string[];
   file?: string;
+  usage?: boolean;
 }
 
 export interface MessageSource {
-  nextMessage: () => Promise<string | null>;
+  nextMessage: (turnCount: number) => Promise<string | null>;
 }
 
 export interface TurnResult {
   text: string;
   toolCalls: Array<ToolCall & { result?: string }>;
+  stepUsages?: TokenUsage[];
 }
 
 export interface ChatContext {

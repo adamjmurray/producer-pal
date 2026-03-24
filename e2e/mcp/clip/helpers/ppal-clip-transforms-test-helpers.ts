@@ -153,3 +153,32 @@ type CallToolFn = (args: {
   name: string;
   arguments: Record<string, unknown>;
 }) => Promise<unknown>;
+
+type McpTestContext = { client: { callTool: CallToolFn } | null };
+
+/**
+ * Creates bound helper functions from a test context, eliminating the need
+ * for per-file wrapper functions that just forward the ctx parameter.
+ * @param ctx - MCP test context with client
+ * @returns Object with bound helper functions
+ */
+export function createClipTransformHelpers(ctx: McpTestContext): {
+  createMidiClip: (sceneIndex: number, notes: string) => Promise<string>;
+  createArrangementClip: (
+    arrangementStart: string,
+    notes: string,
+    length: string,
+  ) => Promise<string>;
+  readClipNotes: (clipId: string) => Promise<string>;
+  applyTransform: (clipId: string, transform: string) => Promise<unknown>;
+} {
+  return {
+    createMidiClip: (sceneIndex, notes) =>
+      createMidiClip(ctx, sceneIndex, notes),
+    createArrangementClip: (arrangementStart, notes, length) =>
+      createArrangementClip(ctx, arrangementStart, notes, length),
+    readClipNotes: (clipId) => readClipNotes(ctx, clipId),
+    applyTransform: (clipId, transform) =>
+      applyTransform(ctx, clipId, transform),
+  };
+}

@@ -13,12 +13,12 @@ import {
   setupTrackWithQueuedMethods,
   setupScene,
 } from "./arrangement-tiling-test-helpers.ts";
+import { createAudioClipInSession } from "../arrangement-tiling-helpers.ts";
 import {
   adjustClipPreRoll,
-  createAudioClipInSession,
   createShortenedClipInHolding,
-  moveClipFromHolding,
-} from "../arrangement-tiling.ts";
+} from "../arrangement-tiling-holding.ts";
+import { moveClipFromHolding } from "../arrangement-tiling-workaround.ts";
 
 beforeEach(() => {
   vi.clearAllMocks();

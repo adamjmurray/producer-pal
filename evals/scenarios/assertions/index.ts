@@ -10,11 +10,14 @@
  * exports reduces import sprawl in the scenario runner.
  */
 
+export { assertCustom } from "./custom.ts";
+export { assertTokenUsage } from "./token-usage.ts";
 export { assertToolCalled } from "./tool-call.ts";
 export { assertState } from "./state.ts";
-export { assertWithLlmJudge } from "./llm-judge.ts";
+export { assertWithLlmJudge, type CheckSummary } from "./llm-judge.ts";
 export { assertResponseContains } from "./response.ts";
 export {
+  getToolCalls,
   partialMatch,
   normalizeCount,
   formatExpectedCount,

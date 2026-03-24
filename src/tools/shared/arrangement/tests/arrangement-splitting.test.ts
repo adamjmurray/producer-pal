@@ -471,4 +471,89 @@ describe("performSplitting", () => {
     // clips array should remain empty since stale clip was not found
     expect(clips).toHaveLength(0);
   });
+
+  it("should skip right-trim when split point is within EPSILON of clip end", () => {
+    const clipId = "clip_1";
+
+    // Clip of 8 beats, split at ~8 beats (within EPSILON of clip end)
+    // This means rightTrimLen <= EPSILON, skipping the right-trim step
+    const { callState } = setupClipSplittingMocks(clipId, {
+      looping: true,
+      endTime: 8.0,
+      loopEnd: 4.0,
+    });
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    // Split at 7.9999 (almost the full clip length of 8)
+    // rightTrimLen = 8 - 7.9999 = 0.0001 which is <= EPSILON (0.001)
+    performSplitting([mockClip], [7.9999], clips, HOLDING_AREA);
+
+    expectDuplicateCalled(callState.trackMock);
+
+    // Normal 2-segment split needs 2 create_midi_clip (right-trim + left-trim).
+    // Right-trim skipped (0.0001 <= EPSILON), only left-trim remains.
+    const createMidiCalls = callState.trackMock.call.mock.calls.filter(
+      (c: unknown[]) => c[0] === "create_midi_clip",
+    );
+
+    expect(createMidiCalls).toHaveLength(1);
+  });
+
+  it("should skip left-trim when last segment starts within EPSILON of clip start", () => {
+    const clipId = "clip_1";
+
+    // Clip of 8 beats, split very close to the start
+    const { callState } = setupClipSplittingMocks(clipId, {
+      looping: true,
+      endTime: 8.0,
+      loopEnd: 4.0,
+    });
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    // Split at 0.0005 beats (within EPSILON of 0)
+    // lastSegStart = 0.0005 which is <= EPSILON, skipping left-trim for last segment
+    performSplitting([mockClip], [0.0005], clips, HOLDING_AREA);
+
+    expectDuplicateCalled(callState.trackMock);
+
+    // Normal 2-segment split needs 2 create_midi_clip (right-trim + left-trim).
+    // Left-trim skipped (0.0005 <= EPSILON), only right-trim remains.
+    const createMidiCalls = callState.trackMock.call.mock.calls.filter(
+      (c: unknown[]) => c[0] === "create_midi_clip",
+    );
+
+    expect(createMidiCalls).toHaveLength(1);
+  });
+
+  it("should skip both trims for middle segment at EPSILON boundaries", () => {
+    const clipId = "clip_1";
+
+    const { callState } = setupClipSplittingMocks(clipId, {
+      looping: true,
+      endTime: 12.0,
+      loopEnd: 4.0,
+    });
+    const { mockClip, clips } = createPerformContext(clipId);
+
+    // 3-segment split at boundaries very close to 0 and clip end.
+    // Middle segment: segStart=0.0005 (<=EPSILON), segEnd=11.9995
+    // This exercises: segStart <= EPSILON (skip left-trim) and
+    // rightTrim = 12 - 11.9995 = 0.0005 <= EPSILON (skip right-trim)
+    // for the middle segment extraction.
+    performSplitting([mockClip], [0.0005, 11.9995], clips, HOLDING_AREA);
+
+    expectDuplicateCalled(callState.trackMock);
+
+    // Step 2: seg0 right-trim (11.9995 > EPSILON) → happens
+    // Step 3: middle segment left-trim (0.0005 <= EPSILON) → skipped
+    //         middle segment right-trim (0.0005 <= EPSILON) → skipped
+    // Step 4: last segment left-trim (11.9995 > EPSILON) → happens
+    // Normal 3-segment split would have 4 create_midi_clip calls;
+    // skipping both middle trims leaves 2.
+    const createMidiCalls = callState.trackMock.call.mock.calls.filter(
+      (c: unknown[]) => c[0] === "create_midi_clip",
+    );
+
+    expect(createMidiCalls).toHaveLength(2);
+  });
 });

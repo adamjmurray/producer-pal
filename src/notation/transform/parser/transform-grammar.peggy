@@ -211,6 +211,8 @@ otherFunctionName
   / "curve" { return "curve"; }
   / "quant" { return "quant"; }
   / "step" { return "step"; }
+  / "wrap" { return "wrap"; }
+  / "reflect" { return "reflect"; }
 
 syncArgumentList
   = head:argument tail:(_ "," _ argument)* _ "," _ "sync" {

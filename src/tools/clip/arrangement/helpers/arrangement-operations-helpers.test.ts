@@ -10,6 +10,7 @@ import {
   USE_CALL_FALLBACK,
 } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import * as arrangementTilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import * as arrangementTiling from "#src/tools/shared/arrangement/arrangement-tiling.ts";
 import {
   createMockClip,
@@ -84,7 +85,7 @@ describe("arrangement-operations-helpers", () => {
       const track = requireMockObject(livePath.track(0));
 
       const mockCreateAudioClip = vi
-        .spyOn(arrangementTiling, "createAudioClipInSession")
+        .spyOn(arrangementTilingHelpers, "createAudioClipInSession")
         .mockReturnValue({
           clip: { id: sessionClipId } as unknown as LiveAPI,
           slot: { call: vi.fn() } as unknown as LiveAPI,
@@ -232,7 +233,7 @@ describe("arrangement-operations-helpers", () => {
       const mockSlotCall = vi.fn();
 
       const mockCreateAudioClip = vi
-        .spyOn(arrangementTiling, "createAudioClipInSession")
+        .spyOn(arrangementTilingHelpers, "createAudioClipInSession")
         .mockReturnValue({
           clip: { id: sessionClipId } as unknown as LiveAPI,
           slot: { call: mockSlotCall } as unknown as LiveAPI,

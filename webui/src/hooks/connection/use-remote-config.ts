@@ -79,9 +79,10 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ smallModelMode: enabled }),
-    }).catch(() => {
-      // Server not available, ignore
-    });
+    })
+      /* v8 ignore start -- empty catch: server unavailable is non-actionable */
+      .catch(() => {});
+    /* v8 ignore stop */
   }, []);
 
   return { serverSmallModelMode, postSmallModelMode };

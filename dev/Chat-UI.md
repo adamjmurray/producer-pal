@@ -88,8 +88,8 @@ webui/
     ├─> useTheme()                 → dark/light mode
     ├─> useMcpConnection()         → MCP health check
     ├─> useChat(aiSdkAdapter)      → chat state machine
-    │     ├─> AiSdkClient          → streamText() + stream processing
-    │     └─> formatAiSdkMessages()→ UI-friendly format
+    │     ├─> ChatSdkClient        → streamText() + stream processing
+    │     └─> formatChatMessages() → UI-friendly format
     ├─> useConversationLock()      → provider lock during chat
     └─> useConversations()         → IndexedDB persistence + panel state
   ```
@@ -153,7 +153,7 @@ the underlying provider implementation is swappable):
 - `handleSend(message)` - Send user message, stream response
 - `handleRetry(index)` - Retry from a specific message
 - `clearConversation()` - Reset chat history
-- `getChatHistory()` - Returns raw `AiSdkMessage[]` for persistence
+- `getChatHistory()` - Returns raw `ChatMessage[]` for persistence
 - `restoreChatHistory(chatHistory)` - Loads saved history into state without
   creating an AI client (lazy — avoids MCP connection until next send)
 
@@ -182,7 +182,7 @@ interface ConversationRecord {
   thinking: string | null; // thinking level (e.g., "High", "Off")
   temperature: number | null; // temperature setting
   showThoughts: boolean | null; // whether thinking was displayed
-  messages: AiSdkMessage[]; // full history including toolCalls, toolResults, reasoning, responseModel
+  messages: ChatMessage[]; // full history including toolCalls, toolResults, reasoning, responseModel
 }
 ```
 
@@ -253,14 +253,14 @@ active conversation.
 
 Per-message overrides (`MessageOverrides`) can still override
 thinking/temperature/ showThoughts for individual messages. When used, the
-overridden values are stamped on the assistant `AiSdkMessage` as
+overridden values are stamped on the assistant `ChatMessage` as
 `thinkingOverride`, `temperatureOverride`, and `showThoughtsOverride` — only
 when they differ from the conversation defaults.
 
 **Response Model Tracking:**
 
 After each stream completes, `ai-sdk-client.ts` captures the `modelId` from the
-API response metadata and stores it on the assistant `AiSdkMessage` as
+API response metadata and stores it on the assistant `ChatMessage` as
 `responseModel`. This persists to IndexedDB automatically (optional field, no
 migration needed).
 

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -133,10 +134,10 @@ describe("formatToolResult", () => {
 
 describe("thought formatting", () => {
   describe("startThought", () => {
-    it("includes THOUGHT marker", () => {
+    it("includes thought tag", () => {
       const result = startThought("thinking...");
 
-      expect(result).toContain("<THOUGHT>");
+      expect(result).toContain("<thought>");
     });
 
     it("includes the thought text", () => {
@@ -144,26 +145,13 @@ describe("thought formatting", () => {
 
       expect(result).toContain("analyzing the problem");
     });
-
-    it("uses box drawing characters for header", () => {
-      const result = startThought("test");
-
-      expect(result).toContain("╔");
-      expect(result).toContain("═");
-    });
   });
 
   describe("continueThought", () => {
-    it("returns raw text", () => {
+    it("returns text with color code", () => {
       const result = continueThought("single line");
 
-      expect(result).toBe("single line");
-    });
-
-    it("preserves multiline text", () => {
-      const result = continueThought("line1\nline2\nline3");
-
-      expect(result).toBe("line1\nline2\nline3");
+      expect(result).toContain("single line");
     });
 
     it("handles object input by stringifying", () => {
@@ -175,25 +163,18 @@ describe("thought formatting", () => {
   });
 
   describe("endThought", () => {
-    it("includes end_thought marker", () => {
+    it("returns a newline", () => {
       const result = endThought();
 
-      expect(result).toContain("<end_thought>");
-    });
-
-    it("uses closing box character", () => {
-      const result = endThought();
-
-      expect(result).toContain("╚");
+      expect(result).toBe("\n");
     });
   });
 
   describe("formatThought", () => {
-    it("combines start and end", () => {
+    it("combines start and end with thought text", () => {
       const result = formatThought("complete thought");
 
-      expect(result).toContain("<THOUGHT>");
-      expect(result).toContain("<end_thought>");
+      expect(result).toContain("<thought>");
       expect(result).toContain("complete thought");
     });
   });
@@ -285,7 +266,8 @@ describe("eval output formatting", () => {
         "claude-sonnet",
       );
 
-      expect(result).toContain("Description: Test description");
+      expect(result).toContain("Description:");
+      expect(result).toContain("Test description");
     });
 
     it("includes provider and model", () => {
@@ -296,8 +278,10 @@ describe("eval output formatting", () => {
         "claude-sonnet",
       );
 
-      expect(result).toContain("Provider: anthropic");
-      expect(result).toContain("Model: claude-sonnet");
+      expect(result).toContain("Provider:");
+      expect(result).toContain("anthropic");
+      expect(result).toContain("Model:");
+      expect(result).toContain("claude-sonnet");
     });
 
     it("uses box formatting with separators", () => {
@@ -317,19 +301,19 @@ describe("eval output formatting", () => {
     it("includes turn number", () => {
       const result = formatTurnHeader(1);
 
-      expect(result).toContain("TURN 1");
+      expect(result).toContain("Turn 1");
     });
 
-    it("includes separator line", () => {
+    it("uses line glyphs", () => {
       const result = formatTurnHeader(1);
 
-      expect(result).toContain("-".repeat(60));
+      expect(result).toContain("────");
     });
 
     it("handles multi-digit turn numbers", () => {
       const result = formatTurnHeader(10);
 
-      expect(result).toContain("TURN 10");
+      expect(result).toContain("Turn 10");
     });
   });
 

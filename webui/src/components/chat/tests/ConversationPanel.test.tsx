@@ -10,36 +10,23 @@ import { render, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { ConversationPanel } from "#webui/components/chat/ConversationPanel";
+import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 
 const conversations: ConversationSummary[] = [
-  {
+  createTestSummary({
     id: "conv-1",
     title: "My session",
     createdAt: 1709900000000,
     updatedAt: 1709900000000,
-    bookmarked: false,
     provider: "gemini",
     model: "gemini-2.5-pro",
     modelLabel: "Gemini 2.5 Pro",
-    thinking: null,
-    temperature: null,
-    showThoughts: null,
-    smallModelMode: null,
-  },
-  {
+  }),
+  createTestSummary({
     id: "conv-2",
-    title: null,
     createdAt: 1709800000000,
     updatedAt: 1709850000000,
-    bookmarked: false,
-    provider: null,
-    model: null,
-    modelLabel: null,
-    thinking: null,
-    temperature: null,
-    showThoughts: null,
-    smallModelMode: null,
-  },
+  }),
 ];
 
 const defaultProps = {
@@ -85,14 +72,14 @@ describe("ConversationPanel", () => {
       <ConversationPanel {...defaultProps} conversations={conversations} />,
     );
 
-    // Each conversation has a timestamp row below its title
+    // Each conversation has a metadata row with timestamp (and optionally model)
     const listArea = container.querySelector(".overflow-y-auto")!;
-    const timestampRows = listArea.querySelectorAll(
-      "button.w-full > .flex .text-\\[10px\\]",
+    const metaRows = listArea.querySelectorAll(
+      "button.text-left > .text-\\[10px\\]",
     );
 
-    // conv-1 has model (2 divs: timestamp + model), conv-2 has no model (1 div: timestamp)
-    expect(timestampRows).toHaveLength(3);
+    // One metadata row per conversation
+    expect(metaRows).toHaveLength(2);
   });
 
   it("highlights active conversation", () => {
@@ -282,20 +269,15 @@ describe("ConversationPanel", () => {
 
   it("shows stored model label when model ID is not in presets", () => {
     const oldConv: ConversationSummary[] = [
-      {
+      createTestSummary({
         id: "conv-old",
         title: "Old session",
         createdAt: 1709900000000,
         updatedAt: 1709900000000,
-        bookmarked: false,
         provider: "gemini",
         model: "gemini-1.5-pro-removed",
         modelLabel: "Gemini 1.5 Pro",
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-      },
+      }),
     ];
 
     const { container } = render(
@@ -309,20 +291,13 @@ describe("ConversationPanel", () => {
 
   it("shows model ID when no stored label and model not in presets", () => {
     const unknownModelConv: ConversationSummary[] = [
-      {
+      createTestSummary({
         id: "conv-unknown",
         title: "Unknown model session",
         createdAt: 1709900000000,
         updatedAt: 1709900000000,
-        bookmarked: false,
-        provider: null,
         model: "custom-model-xyz",
-        modelLabel: null,
-        thinking: null,
-        temperature: null,
-        showThoughts: null,
-        smallModelMode: null,
-      },
+      }),
     ];
 
     const { container } = render(
@@ -332,6 +307,24 @@ describe("ConversationPanel", () => {
     const modelEl = container.querySelector(".text-right");
 
     expect(modelEl?.textContent).toContain("custom-model-xyz");
+  });
+
+  it("shows token usage when totalUsage is set", () => {
+    const withUsage: ConversationSummary[] = [
+      {
+        ...conversations[0]!,
+        totalUsage: { inputTokens: 17123, outputTokens: 456 },
+      },
+    ];
+
+    const { container } = render(
+      <ConversationPanel {...defaultProps} conversations={withUsage} />,
+    );
+
+    const usageEl = container.querySelector("[title*='token usage']");
+
+    expect(usageEl?.textContent).toContain("17.1K");
+    expect(usageEl?.textContent).toContain("456");
   });
 
   it("does not show model when model is null", () => {

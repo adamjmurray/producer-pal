@@ -15,12 +15,12 @@ import {
   updateSceneSelection,
   updateTrackSelection,
   validateParameters,
-} from "./select-helpers.ts";
+} from "./helpers/select-helpers.ts";
 import {
   determineAutoDetailView,
   parseClipSlot,
   resolveIdParam,
-} from "./select-id-helpers.ts";
+} from "./helpers/select-id-helpers.ts";
 import {
   buildClipResponseFromId,
   buildClipResponseFromSlot,
@@ -29,7 +29,7 @@ import {
   buildSceneResponseFromId,
   buildTrackResponseFromId,
   readFullState,
-} from "./select-response-helpers.ts";
+} from "./helpers/select-response-helpers.ts";
 
 interface SelectArgs {
   // External params (from schema)

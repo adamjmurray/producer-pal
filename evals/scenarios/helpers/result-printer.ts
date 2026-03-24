@@ -7,119 +7,187 @@
  * Formatted output for individual eval results
  */
 
-import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
-import { type EvalAssertionResult, type EvalScenarioResult } from "../types.ts";
-import { type JudgeResult } from "./judge-response-parser.ts";
-
-const DIMENSION_KEYS = [
-  "accuracy",
-  "reasoning",
-  "efficiency",
-  "naturalness",
-] as const;
+import { styleText } from "node:util";
+import {
+  efficiencyColor,
+  formatSectionHeader,
+  formatSubsectionHeader,
+  formatUsageLine,
+} from "#evals/chat/shared/formatting.ts";
+import { formatTokenLabel } from "./json-results/assertion-label.ts";
+import { type JsonEvalResult } from "./json-results/types.ts";
 
 /**
  * Print result for a single scenario run
  *
- * @param result - The scenario result
- * @param modelKey - The model identifier (provider or provider/model)
- * @param configId - Config profile ID used for this run
+ * @param result - The JSON eval result
  */
-export function printResult(
-  result: EvalScenarioResult,
-  modelKey: string,
-  configId: string,
-): void {
-  const configLabel = configId === "default" ? "" : ` [${configId}]`;
-  const percentage =
-    result.maxScore > 0
-      ? ((result.earnedScore / result.maxScore) * 100).toFixed(0)
-      : "100";
-
-  console.log(`\n${formatSubsectionHeader("SUMMARY")}`);
-  console.log(`${modelKey}: ${result.scenario.id}${configLabel}\n`);
-  console.log(`Duration: ${result.totalDurationMs}ms`);
-
-  if (result.error) {
-    console.log(`Error: ${result.error}`);
-  }
-
-  if (result.assertions.length > 0) {
-    printScoreTable(result.assertions);
-  }
+export function printResult(result: JsonEvalResult): void {
+  const configLabel =
+    result.configProfileId === "default" ? "" : ` [${result.configProfileId}]`;
+  const kindLabel = result.kind ? ` (${result.kind})` : "";
 
   console.log(
-    `\nTotal: ${formatScore(result.earnedScore)}/${result.maxScore} (${percentage}%)`,
+    formatSectionHeader(
+      `${result.model}: ${result.scenarioId}${configLabel}${kindLabel}`,
+    ),
+  );
+
+  if (result.error) {
+    console.log(styleText("red", "Error: " + result.error));
+  }
+
+  // Checks section
+  printChecksSection(result);
+
+  // Efficiency section
+  if (result.efficiency) {
+    printEfficiencySection(result);
+  }
+
+  // Judge section
+  if (result.judge) {
+    printJudgeSection(result);
+  }
+
+  // RESULT block
+  printResultBlock(result);
+}
+
+/**
+ * Print the Checks section with ✓/✗ lines
+ *
+ * @param result - The eval result
+ */
+function printChecksSection(result: JsonEvalResult): void {
+  const { checks } = result;
+  const passed = checks.results.filter((c) => c.pass).length;
+  const total = checks.results.length;
+  const label = checks.pass ? "pass" : "fail";
+
+  console.log(formatSubsectionHeader(`Checks (${passed}/${total} ${label})`));
+  console.log("");
+
+  for (const check of checks.results) {
+    const icon = check.pass ? styleText("green", "✓") : styleText("red", "✗");
+
+    console.log(`  ${icon} ${check.label}`);
+
+    if (check.reflection) {
+      console.log(styleText("gray", `    Reflection: "${check.reflection}"`));
+    }
+  }
+}
+
+/**
+ * Print the Efficiency section
+ *
+ * @param result - The eval result
+ */
+function printEfficiencySection(result: JsonEvalResult): void {
+  const eff = result.efficiency;
+
+  if (!eff) return;
+
+  console.log("\n" + formatSubsectionHeader("Efficiency"));
+  console.log("");
+
+  const color = efficiencyColor(eff.percentage);
+  const actual = formatTokenLabel(eff.inputTokens);
+  const target = formatTokenLabel(eff.targetTokens);
+
+  console.log(
+    "  " +
+      styleText(
+        color,
+        `inputTokens ${actual} / ${target} target (${eff.percentage}%)`,
+      ),
   );
 }
 
 /**
- * Print score table showing each assertion with earned/max
+ * Print the Judge section
  *
- * @param assertions - All assertion results
+ * @param result - The eval result
  */
-function printScoreTable(assertions: EvalAssertionResult[]): void {
-  const typeWidth = 17;
-  const scoreWidth = 10;
+function printJudgeSection(result: JsonEvalResult): void {
+  const judge = result.judge;
 
-  console.log(
-    `\n┌─────┬${"─".repeat(typeWidth + 2)}┬${"─".repeat(scoreWidth + 2)}┐`,
-  );
-  console.log(
-    `│   # │ ${"Type".padEnd(typeWidth)} │ ${"Score".padStart(scoreWidth)} │`,
-  );
-  console.log(
-    `├─────┼${"─".repeat(typeWidth + 2)}┼${"─".repeat(scoreWidth + 2)}┤`,
-  );
+  if (!judge) return;
 
-  for (const [i, a] of assertions.entries()) {
-    const num = String(i + 1).padStart(3);
-    const type = a.assertion.type.padEnd(typeWidth);
-    const score = `${formatScore(a.earned)}/${a.maxScore}`;
+  console.log("\n" + formatSubsectionHeader("Judge"));
 
-    console.log(`│ ${num} │ ${type} │ ${score.padStart(scoreWidth)} │`);
+  if (judge.issues.length > 0) {
+    console.log("");
 
-    // For LLM judge, show dimension breakdown
-    if (a.assertion.type === "llm_judge") {
-      printJudgeDimensions(a, typeWidth, scoreWidth);
+    for (const issue of judge.issues) {
+      console.log("  " + styleText("red", `✗ ${issue}`));
     }
   }
 
+  const label = judge.pass ? "pass" : "fail";
+  const color = judge.pass ? "green" : "red";
+  const issueSuffix =
+    judge.issues.length > 0 ? ` — ${judge.issues.length} issue(s)` : "";
+
+  console.log("\n  " + styleText(color, `${label}${issueSuffix}`));
+}
+
+/**
+ * Print the final RESULT block with summary lines
+ *
+ * @param result - The eval result
+ */
+export function printResultBlock(result: JsonEvalResult): void {
+  const overallColor = result.result === "pass" ? "green" : "red";
+  const overallLabel = result.result.toUpperCase();
+
   console.log(
-    `└─────┴${"─".repeat(typeWidth + 2)}┴${"─".repeat(scoreWidth + 2)}┘`,
+    formatSectionHeader(`RESULT: ${styleText(overallColor, overallLabel)}`),
   );
-}
 
-/**
- * Print LLM judge dimension sub-rows
- *
- * @param assertion - The LLM judge assertion result
- * @param typeWidth - Width of the type column
- * @param scoreWidth - Width of the score column
- */
-function printJudgeDimensions(
-  assertion: EvalAssertionResult,
-  typeWidth: number,
-  scoreWidth: number,
-): void {
-  const details = assertion.details as JudgeResult | undefined;
+  // Checks line
+  const { checks } = result;
+  const passed = checks.results.filter((c) => c.pass).length;
+  const total = checks.results.length;
+  const checksColor = checks.pass ? "green" : "red";
+  const checksLabel = checks.pass ? "pass" : "fail";
 
-  if (!details) return;
+  const checksText = `${checksLabel} (${passed}/${total})`;
 
-  for (const dim of DIMENSION_KEYS) {
-    const dimScore = details[dim].score.toFixed(2);
-    const label = `  ${dim}`.padEnd(typeWidth);
+  console.log(`  Checks:     ${styleText(checksColor, checksText)}`);
 
-    console.log(`│     │ ${label} │ ${dimScore.padStart(scoreWidth)} │`);
+  // Efficiency line
+  if (result.efficiency) {
+    const eff = result.efficiency;
+    const effColor = efficiencyColor(eff.percentage);
+    const actual = formatTokenLabel(eff.inputTokens);
+    const target = formatTokenLabel(eff.targetTokens);
+    const effText = `${eff.percentage}% (${actual} / ${target})`;
+
+    console.log(`  Efficiency: ${styleText(effColor, effText)}`);
   }
-}
 
-/**
- * Format a score for display (integer if whole, 1 decimal otherwise)
- *
- * @param score - The score to format
- * @returns Formatted score string
- */
-function formatScore(score: number): string {
-  return Number.isInteger(score) ? String(score) : score.toFixed(1);
+  // Judge line
+  if (result.judge) {
+    const judgeColor = result.judge.pass ? "green" : "red";
+    const judgeLabel = result.judge.pass ? "pass" : "fail";
+    const issueSuffix =
+      result.judge.issues.length > 0
+        ? ` — ${result.judge.issues.length} issue(s)`
+        : "";
+
+    console.log(
+      `  Judge:      ${styleText(judgeColor, judgeLabel + issueSuffix)}`,
+    );
+  }
+
+  // Duration line
+  const durationSec = (result.totalDurationMs / 1000).toFixed(1);
+
+  console.log(`  Duration:   ${durationSec}s`);
+
+  if (result.totalUsage) {
+    console.log("  " + formatUsageLine(result.totalUsage));
+  }
 }

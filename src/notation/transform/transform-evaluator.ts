@@ -9,11 +9,6 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteEvent } from "../types.ts";
 import {
-  type PitchRange,
-  type TransformAssignment,
-  parse as parseTransform,
-} from "./parser/transform-parser.ts";
-import {
   calculateActiveTimeRange,
   type ClipContext,
   evaluateExpression,
@@ -23,7 +18,12 @@ import {
   resolveEffectivePitchRanges,
   type TimeRange,
   type TransformResult,
-} from "./transform-evaluator-helpers.ts";
+} from "./helpers/transform-evaluator-helpers.ts";
+import {
+  type PitchRange,
+  type TransformAssignment,
+  parse as parseTransform,
+} from "./parser/transform-parser.ts";
 
 // Audio-only parameters that should be skipped for MIDI clips
 const AUDIO_PARAMETERS = new Set(["gain", "pitchShift"]);

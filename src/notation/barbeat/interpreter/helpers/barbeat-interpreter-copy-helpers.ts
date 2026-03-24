@@ -113,9 +113,11 @@ function copyBarToBar(
  */
 function determineSourceBarsForCopy(element: BarCopyElement): number[] | null {
   if (element.source === "previous") {
+    /* v8 ignore start -- caller guarantees destination.bar is defined */
     if (element.destination.bar === undefined) {
       return null;
     }
+    /* v8 ignore stop */
 
     const previousBar = element.destination.bar - 1;
 
@@ -129,11 +131,13 @@ function determineSourceBarsForCopy(element: BarCopyElement): number[] | null {
   }
 
   if (element.source.bar !== undefined) {
+    /* v8 ignore start -- parser guarantees bar > 0 */
     if (element.source.bar <= 0) {
       console.warn(`Cannot copy from bar ${element.source.bar} (no such bar)`);
 
       return null;
     }
+    /* v8 ignore stop */
 
     return [element.source.bar];
   }

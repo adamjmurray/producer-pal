@@ -10,6 +10,8 @@ export interface PreferencesSettings {
   setShowTimestamps: (show: boolean) => void;
   showHelpLinks: boolean;
   setShowHelpLinks: (show: boolean) => void;
+  showTokenUsage: boolean;
+  setShowTokenUsage: (show: boolean) => void;
 }
 
 const KEY_PREFIX = "producer_pal_";
@@ -39,12 +41,17 @@ export function usePreferencesSettings(): PreferencesSettings {
   const [showHelpLinks, setShowHelpLinks] = useState(() =>
     readBool("show_help_links", true),
   );
+  const [showTokenUsage, setShowTokenUsage] = useState(() =>
+    readBool("show_token_usage", false),
+  );
 
   return {
     showTimestamps,
     setShowTimestamps,
     showHelpLinks,
     setShowHelpLinks,
+    showTokenUsage,
+    setShowTokenUsage,
   };
 }
 
@@ -58,4 +65,5 @@ export function savePreferencesSettings(display: PreferencesSettings): void {
 
   s("show_timestamps", display.showTimestamps);
   s("show_help_links", display.showHelpLinks);
+  s("show_token_usage", display.showTokenUsage);
 }

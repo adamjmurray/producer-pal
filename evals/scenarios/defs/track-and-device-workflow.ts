@@ -11,6 +11,7 @@ import { type EvalScenario } from "../types.ts";
 export const trackAndDeviceWorkflow: EvalScenario = {
   id: "track-and-device-workflow",
   description: "Create track, add device, update properties",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   messages: [
@@ -18,29 +19,38 @@ export const trackAndDeviceWorkflow: EvalScenario = {
     "Create a MIDI track called 'Synth Lead'",
     "Add a Wavetable instrument to it",
     "Mute that track and set its color to purple",
+    "Set the filter cutoff to 50%",
   ],
 
   assertions: [
     // Turn 0: Connection
-    { type: "tool_called", tool: "ppal-connect", turn: 0, score: 5 },
+    { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     // Turn 1: Track creation
-    { type: "tool_called", tool: "ppal-create-track", turn: 1, score: 5 },
+    { type: "tool_called", tool: "ppal-create-track", turn: 1 },
 
     // Turn 2: Device creation
-    { type: "tool_called", tool: "ppal-create-device", turn: 2, score: 5 },
+    { type: "tool_called", tool: "ppal-create-device", turn: 2 },
 
     // Turn 3: Track property updates
-    { type: "tool_called", tool: "ppal-update-track", turn: 3, score: 5 },
+    { type: "tool_called", tool: "ppal-update-track", turn: 3 },
 
     // Verify response mentions the track
-    { type: "response_contains", pattern: /synth lead/i, turn: 1, score: 2 },
+    { type: "response_contains", pattern: /synth lead/i, turn: 1 },
 
     // Verify response mentions Wavetable
-    { type: "response_contains", pattern: /wavetable/i, turn: 2, score: 2 },
+    { type: "response_contains", pattern: /wavetable/i, turn: 2 },
 
     // Verify response mentions mute or purple
-    { type: "response_contains", pattern: /mute|purple/i, turn: 3, score: 2 },
+    { type: "response_contains", pattern: /mute|purple/i, turn: 3 },
+
+    // Turn 4: Device parameter update
+    { type: "tool_called", tool: "ppal-update-device", turn: 4 },
+    {
+      type: "response_contains",
+      pattern: /filter|cutoff/i,
+      turn: 4,
+    },
 
     // LLM quality check
     {
@@ -49,8 +59,14 @@ export const trackAndDeviceWorkflow: EvalScenario = {
 1. Created a MIDI track named "Synth Lead"
 2. Added a Wavetable instrument
 3. Muted the track
-4. Changed the track color to purple`,
-      score: 10,
+4. Changed the track color to purple
+5. Adjusted the filter cutoff parameter on the device`,
+    },
+
+    {
+      type: "token_usage",
+      metric: "inputTokens",
+      maxTokens: 100_000,
     },
   ],
 };

@@ -8,23 +8,18 @@ import {
   ImportIcon,
   NewConversationIcon,
 } from "#webui/components/chat/controls/header/HeaderIcons";
-import { ConversationList } from "#webui/components/chat/ConversationList";
+import {
+  ConversationList,
+  type ConversationListProps,
+} from "#webui/components/chat/ConversationList";
 import {
   TransferNotification,
   type TransferNotificationData,
 } from "#webui/components/chat/TransferNotification";
-import { type ConversationSummary } from "#webui/lib/conversation-db";
 
-export interface ConversationPanelProps {
+export interface ConversationPanelProps extends ConversationListProps {
   isOpen: boolean;
-  conversations: ConversationSummary[];
-  activeConversationId: string | null;
-  onSelect: (id: string) => void;
   onNewConversation: () => void;
-  onDelete: (id: string) => void;
-  onExportItem: (id: string) => void | Promise<void>;
-  onRename: (id: string, title: string | null) => void;
-  onToggleBookmark: (id: string) => void;
   onExport: () => void;
   onImport: () => void;
   notification: TransferNotificationData | null;

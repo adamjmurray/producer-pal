@@ -46,7 +46,7 @@ async function processDirectory(
     excludePaths: item.exclude,
     filter: item.filter,
   });
-  const dirName = path.basename(item.src);
+  const dirName = item.flatName ?? path.basename(item.src);
 
   for (const filePath of files) {
     const relativePath = path.relative(sourcePath, filePath);

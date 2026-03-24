@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Shared vi.mock setup for all duplicate tests.
@@ -14,13 +15,23 @@ vi.mock(import("#src/tools/clip/update/update-clip.ts"), async () => {
 });
 // @ts-expect-error: Mock returns simplified types that don't match full signature
 vi.mock(
-  import("#src/tools/shared/arrangement/arrangement-tiling.ts"),
+  import("#src/tools/shared/arrangement/arrangement-tiling-holding.ts"),
+  async () => {
+    const s = await import("./setup.ts");
+
+    return {
+      createShortenedClipInHolding: s.createShortenedClipInHoldingMock,
+    };
+  },
+);
+// @ts-expect-error: Mock returns simplified types that don't match full signature
+vi.mock(
+  import("#src/tools/shared/arrangement/arrangement-tiling-workaround.ts"),
   async () => {
     const s = await import("./setup.ts");
 
     return {
       clearClipAtDuplicateTarget: vi.fn(),
-      createShortenedClipInHolding: s.createShortenedClipInHoldingMock,
       moveClipFromHolding: s.moveClipFromHoldingMock,
     };
   },

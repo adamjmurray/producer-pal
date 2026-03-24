@@ -11,6 +11,7 @@ import {
   registerArrangementClip,
   type RegisteredMockObject,
   registerMockObject,
+  registerSessionClipDuplication,
   registerTrackWithArrangementDup,
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -142,23 +143,8 @@ describe("duplicate - focus functionality", () => {
   });
 
   it("should select clip and show clip detail when duplicating to session", () => {
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-    });
-
-    registerMockObject("live_set/tracks/0/clip_slots/0", {
-      path: livePath.track(0).clipSlot(0),
-      properties: { has_clip: 1 },
-    });
-
-    registerMockObject("live_set/tracks/0/clip_slots/1", {
-      path: livePath.track(0).clipSlot(1),
-      properties: { has_clip: 0 },
-    });
-
-    registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-      path: livePath.track(0).clipSlot(1).clip(),
-      properties: { is_arrangement_clip: 0 },
+    registerSessionClipDuplication({
+      destClipProperties: { is_arrangement_clip: 0 },
     });
 
     duplicate({

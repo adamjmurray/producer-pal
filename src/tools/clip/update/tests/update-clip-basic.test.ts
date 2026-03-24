@@ -6,8 +6,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
-import { createNote } from "#src/test/test-data-builders.ts";
 import {
+  createNote,
+  expectedDrumPatternNotes,
+} from "#src/test/test-data-builders.ts";
+import {
+  mockMergeNoteTracking,
   setupAudioClipMock,
   setupMidiClipMock,
   setupUpdateClipMocks,
@@ -37,27 +41,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     // Mock existing notes, then return added notes on subsequent calls
-    let addedNotes: unknown[] = [];
-    const existingNotes = [createNote()];
-
-    mocks.clip123.call.mockImplementation(
-      (method: string, ...args: unknown[]) => {
-        if (method === "add_new_notes") {
-          const arg = args[0] as { notes?: unknown[] } | undefined;
-
-          addedNotes = arg?.notes ?? [];
-        } else if (method === "get_notes_extended") {
-          // First call returns existing notes, subsequent calls return added notes
-          if (addedNotes.length === 0) {
-            return JSON.stringify({ notes: existingNotes });
-          }
-
-          return JSON.stringify({ notes: addedNotes });
-        }
-
-        return {};
-      },
-    );
+    mockMergeNoteTracking(mocks.clip123, [createNote()]);
 
     // Should default to merge mode when noteUpdateMode not specified
     const result = await updateClip({
@@ -262,36 +246,7 @@ describe("updateClip - Basic operations", () => {
     });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
-      notes: [
-        createNote({ pitch: 36, duration: 0.25 }),
-        createNote({
-          pitch: 42,
-          duration: 0.25,
-          velocity: 80,
-          probability: 0.8,
-          velocity_deviation: 20,
-        }),
-        createNote({
-          pitch: 42,
-          start_time: 0.5,
-          duration: 0.25,
-          velocity: 80,
-          probability: 0.6,
-          velocity_deviation: 20,
-        }),
-        createNote({
-          pitch: 38,
-          start_time: 1,
-          duration: 0.25,
-          velocity: 90,
-        }),
-        createNote({
-          pitch: 42,
-          start_time: 1,
-          duration: 0.25,
-          probability: 0.9,
-        }),
-      ],
+      notes: expectedDrumPatternNotes(),
     });
 
     expect(result).toStrictEqual({ id: "123", noteCount: 5 });
@@ -308,9 +263,10 @@ describe("updateClip - Basic operations", () => {
     ).rejects.toThrow("Time signature must be in format");
   });
 
-  it("should move session clip with toSlot", async () => {
-    setupMidiClipMock(mocks.clip123);
-
+  /**
+   * Register mock objects for toSlot tests (source clip slot + target slot + target clip).
+   */
+  async function setupToSlotMocks(): Promise<void> {
     const { registerMockObject } =
       await import("#src/test/mocks/mock-registry.ts");
 
@@ -326,6 +282,11 @@ describe("updateClip - Basic operations", () => {
     registerMockObject("live_set/tracks/1/clip_slots/2/clip", {
       path: livePath.track(1).clipSlot(2).clip(),
     });
+  }
+
+  it("should move session clip with toSlot", async () => {
+    setupMidiClipMock(mocks.clip123);
+    await setupToSlotMocks();
 
     const result = await updateClip({ ids: "123", toSlot: "1/2" });
 
@@ -337,22 +298,7 @@ describe("updateClip - Basic operations", () => {
 
   it("should warn and use first slot when toSlot has multiple values", async () => {
     setupMidiClipMock(mocks.clip123);
-
-    const { registerMockObject } =
-      await import("#src/test/mocks/mock-registry.ts");
-
-    registerMockObject("live_set/tracks/0/clip_slots/0", {
-      path: livePath.track(0).clipSlot(0),
-    });
-
-    registerMockObject("live_set/tracks/1/clip_slots/2", {
-      path: livePath.track(1).clipSlot(2),
-      properties: { has_clip: 0 },
-    });
-
-    registerMockObject("live_set/tracks/1/clip_slots/2/clip", {
-      path: livePath.track(1).clipSlot(2).clip(),
-    });
+    await setupToSlotMocks();
 
     const consoleModule = await import("#src/shared/v8-max-console.ts");
     const warnSpy = vi.spyOn(consoleModule, "warn");

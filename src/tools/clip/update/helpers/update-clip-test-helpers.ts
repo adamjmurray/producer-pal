@@ -11,7 +11,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import * as tilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling.ts";
+import * as tilingHelpers from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 
 interface NoteOptions {
   /** Note duration in beats */
@@ -92,6 +92,38 @@ function createNoteTrackingMethods(): Record<
     },
     get_notes_extended: () => JSON.stringify({ notes }),
   };
+}
+
+/**
+ * Set up a clip mock's call method to track merge-mode note operations.
+ * get_notes_extended returns existing notes initially, then added notes after add_new_notes is called.
+ * @param clip - Registered mock clip
+ * @param existingNotes - Notes to return on first get_notes_extended call (default: empty)
+ * @returns Object with getter for the added notes array
+ */
+export function mockMergeNoteTracking(
+  clip: RegisteredMockObject,
+  existingNotes: unknown[] = [],
+): { getAddedNotes: () => unknown[] } {
+  let addedNotes: unknown[] = [];
+
+  clip.call.mockImplementation((method: string, ...args: unknown[]) => {
+    if (method === "add_new_notes") {
+      const arg = args[0] as { notes?: unknown[] } | undefined;
+
+      addedNotes = arg?.notes ?? [];
+    } else if (method === "get_notes_extended") {
+      if (addedNotes.length === 0) {
+        return JSON.stringify({ notes: existingNotes });
+      }
+
+      return JSON.stringify({ notes: addedNotes });
+    }
+
+    return {};
+  });
+
+  return { getAddedNotes: () => addedNotes };
 }
 
 /**

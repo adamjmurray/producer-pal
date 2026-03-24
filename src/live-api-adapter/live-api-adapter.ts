@@ -102,11 +102,8 @@ const tools: Record<string, (args: unknown) => unknown> = {
     return duplicate(args as any, context);
   },
   "ppal-context": (args) => contextTool(args as any, context),
+  "ppal-raw-live-api": (args) => rawLiveApi(args as any, context),
 };
-
-if (process.env.ENABLE_RAW_LIVE_API === "true") {
-  tools["ppal-raw-live-api"] = (args) => rawLiveApi(args as any, context);
-}
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */
 
 /**

@@ -31,6 +31,42 @@ Also feel free to:
 - Learn from the implementation
 - Fork and modify for your own needs. Please attribute me.
 
+## Extending Producer Pal
+
+The core is focused on Ableton Live control via MCP — each tool directly wraps
+Live API calls, optimized for doing the most with the fewest tools and tokens.
+The core is stabilizing, and large PRs that add new tool domains or require
+external dependencies will not be accepted.
+
+This is by design. A stable core means extensions don't break, and the
+interesting innovation happens through extensions rather than a PR queue.
+
+**There are better ways to add capabilities:**
+
+- **Context customization** — Custom skills, system instructions, tool
+  description overrides, and tool presets let you shape LLM behavior without any
+  code. If you can describe a workflow in plain language, you can create a
+  skill.
+
+- **Workflows** — Pre-defined sequences of tool calls for reliable, repeatable
+  operations. The LLM picks the right workflow and fills in parameters, but
+  doesn't improvise the steps.
+
+- **Companion MCP servers** — For entirely new capabilities (audio analysis,
+  generative algorithms, hardware integration), build a separate MCP server. The
+  LLM combines tools from all connected servers naturally. The upcoming
+  `max-mcp-template` starter project and shared libraries should make this
+  straightforward.
+
+**What IS welcome as a core PR:** Bug fixes, improvements to default skill text
+and tool/argument descriptions, evaluations, documentation, and targeted
+optimizations to reduce cost and improve efficiency across all model types. If
+you find a tweak that makes the LLM behave better, that can go straight into
+core.
+
+See the [Extending Producer Pal](https://producer-pal.org/extending)
+documentation for details on extension types and how to choose between them.
+
 ## Branching Strategy
 
 - **`main`** — latest stable release
@@ -94,6 +130,73 @@ npm test
 npm run format:check
 npm run duplication
 ```
+
+## Code Quality Checks
+
+Producer Pal is primarily developed with AI coding agents. Without strict
+automated enforcement, agents tend to accumulate tech debt: long files,
+duplicated logic, suppressed warnings, and low test coverage. Regressions kept
+creeping in given the wide feature surface area and open-ended nature of testing
+with AI. Files grew so large agents couldn't read them in one pass. Instructions
+in CLAUDE.md/AGENTS.md weren't reliably followed, so strict automated checks
+were imposed.
+
+It's expected that on some tasks, agents spend ~80% of their time making checks
+pass. That's intentional — that time is spent writing better-structured, better-
+tested code, not just shipping faster.
+
+All checks run via `npm run check` and must pass before merging:
+
+| Check               | Tool          | What it enforces                                                                                                             |
+| ------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Linting**         | ESLint        | 60+ rules including complexity limits, import ordering, TypeScript strictness, code quality (SonarJS), and style consistency |
+| **Type checking**   | TypeScript    | Strict mode across all source trees (`src/`, `webui/`, `scripts/`, `evals/`, `e2e/`)                                         |
+| **Formatting**      | Prettier      | Consistent code formatting                                                                                                   |
+| **TypeScript-only** | Custom script | No `.js` files in `src/`, `webui/`, or `scripts/` (with narrow exceptions for generated parsers)                             |
+| **Duplication**     | JSCPD         | Low duplication thresholds per source tree (see `config/.jscpd*.json`)                                                       |
+| **Test coverage**   | Vitest        | High thresholds for statements, branches, and lines; 100% function coverage (see `vitest.config.ts`)                         |
+
+Additional checks enforced within tests:
+
+| Check                       | What it enforces                                                                                                                                                                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Lint suppression limits** | Per-directory caps on `eslint-disable`, `@ts-expect-error`, `@ts-nocheck`, and `v8 ignore` comments. For example: 0 `@ts-expect-error` in `src/`, 0 `eslint-disable` in `scripts/`. Prevents suppression sprawl. |
+| **v8 ignore descriptions**  | All coverage exclusion comments must include a `-- reason` explanation                                                                                                                                           |
+
+And `npm run check:build` additionally validates:
+
+| Check                   | What it enforces                                                                 |
+| ----------------------- | -------------------------------------------------------------------------------- |
+| **Production build**    | Rollup bundles (MCP server, V8, portal) and Vite UI build compile without errors |
+| **Documentation build** | VitePress site compiles successfully                                             |
+
+### Key ESLint limits
+
+- **325 lines** max per source file (650 for test files), ignoring blanks and
+  comments — prevents files from growing too large for agents to work with
+  effectively
+- **115 lines** max per function — forces decomposition into smaller, testable
+  units
+- **Depth 4** max nesting — keeps control flow readable
+- **Complexity 20** — caps cyclomatic complexity
+
+### Why so strict?
+
+- **100% function coverage** means every function has at least one test. This
+  caught regressions that slipped through with lower thresholds. A handful of
+  genuinely untestable functions are excluded with `v8 ignore` comments (which
+  require a reason and count against the suppression limits). Adding a new
+  exception requires discussion — the AI agent is guided to raise it rather than
+  silently excluding coverage.
+- **Lint suppression limits** are ratcheted to current counts. Adding a new
+  `eslint-disable` or `@ts-expect-error` requires fixing an existing one first
+  (or getting approval to raise the limit).
+- **File size limits** force agents to split code into focused modules rather
+  than growing monolithic files.
+- **Duplication limits** prevent copy-paste patterns that diverge over time.
+
+The result is a codebase that's easier for both humans and AI agents to
+navigate, understand, and modify safely.
 
 ## Web UI Development
 

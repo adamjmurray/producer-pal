@@ -174,30 +174,57 @@ describe("App conversation management", () => {
     expect(mockToggleBookmark).toHaveBeenCalledWith("conv-1");
   });
 
-  it("auto-saves conversation when messages are added", () => {
+  it("auto-saves when streaming completes (isAssistantResponding false)", () => {
     const mockSave = vi.fn();
 
     mockConversations({ saveCurrentConversation: mockSave });
 
-    // Initial render with no messages — save should not be called yet
-    const { rerender } = render(<App />);
+    const oneMessage = [
+      {
+        id: "1",
+        role: "user",
+        content: "hello",
+        parts: [{ type: "text", content: "hello" }],
+      },
+    ];
 
-    expect(mockSave).not.toHaveBeenCalled();
-
-    // Simulate a new message arriving by updating the chat hook
+    // Start with streaming active
     (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
       ...mockChatHook,
-      messages: [
-        {
-          id: "1",
-          role: "user",
-          content: "hello",
-          parts: [{ type: "text", content: "hello" }],
-        },
-      ],
+      messages: oneMessage,
+      isAssistantResponding: true,
+    });
+    const { rerender } = render(<App />);
+
+    mockSave.mockClear();
+
+    // Streaming ends — same message count but content updated (merged tool results)
+    (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
+      ...mockChatHook,
+      messages: oneMessage,
+      isAssistantResponding: false,
     });
     rerender(<App />);
 
-    expect(mockSave).toHaveBeenCalled();
+    expect(mockSave).toHaveBeenCalledWith(expect.any(Number));
+  });
+
+  it("does not auto-save when streaming starts", () => {
+    const mockSave = vi.fn();
+
+    mockConversations({ saveCurrentConversation: mockSave });
+
+    const { rerender } = render(<App />);
+
+    mockSave.mockClear();
+
+    // Streaming starts — should not trigger a save
+    (useChat as ReturnType<typeof vi.fn>).mockReturnValue({
+      ...mockChatHook,
+      isAssistantResponding: true,
+    });
+    rerender(<App />);
+
+    expect(mockSave).not.toHaveBeenCalled();
   });
 });

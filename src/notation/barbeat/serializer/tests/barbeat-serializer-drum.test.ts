@@ -6,12 +6,12 @@
 import { describe, expect, it } from "vitest";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { createNote } from "#src/test/test-data-builders.ts";
-import { drumPatternNotes, sortNotes } from "../../barbeat-test-fixtures.ts";
-import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
+import { drumPatternNotes } from "../../barbeat-test-fixtures.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
+import { expectRoundTripNotes } from "./barbeat-serializer-test-helpers.ts";
 
 /**
- * Round-trip helper: serialize with drumMode → parse → interpret → compare.
+ * Round-trip helper for drum mode (skips probability/velocity_deviation checks).
  * @param notes - Notes to round-trip
  * @param options - Time signature options
  * @param options.timeSigNumerator - Time signature numerator
@@ -21,22 +21,11 @@ function expectDrumRoundTrip(
   notes: NoteEvent[],
   options?: { timeSigNumerator?: number; timeSigDenominator?: number },
 ): void {
-  const formatted = formatNotation(notes, { ...options, drumMode: true });
-  const reparsed = interpretNotation(formatted, options);
-  const sortedOriginal = sortNotes(notes);
-  const sortedReparsed = sortNotes(reparsed);
-
-  expect(sortedReparsed).toHaveLength(sortedOriginal.length);
-
-  for (let i = 0; i < sortedOriginal.length; i++) {
-    const orig = sortedOriginal[i] as NoteEvent;
-    const repr = sortedReparsed[i] as NoteEvent;
-
-    expect(repr.pitch).toBe(orig.pitch);
-    expect(repr.start_time).toBeCloseTo(orig.start_time, 8);
-    expect(repr.duration).toBeCloseTo(orig.duration, 8);
-    expect(repr.velocity).toBeCloseTo(orig.velocity, 8);
-  }
+  expectRoundTripNotes(notes, {
+    ...options,
+    drumMode: true,
+    checkExpressiveFields: false,
+  });
 }
 
 describe("drum mode serializer", () => {

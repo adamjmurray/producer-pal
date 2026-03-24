@@ -113,4 +113,5 @@ export interface UseChatProps<
   smallModelMode: boolean;
   adapter: ChatAdapter<TClient, TMessage, TConfig>;
   extraParams?: Record<string, unknown>;
+  autoSaveRef?: { current: (() => void) | null };
 }

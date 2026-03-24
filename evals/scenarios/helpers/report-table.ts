@@ -7,8 +7,11 @@
  * Console table formatter for multi-model/config eval results
  */
 
+import { type InspectColor, styleText } from "node:util";
+import { pctColor } from "#evals/chat/shared/formatting.ts";
 import { type ModelSpec } from "#evals/shared/parse-model-arg.ts";
-import { type ConfigProfile, type EvalScenarioResult } from "../types.ts";
+import { type ConfigProfile } from "../types.ts";
+import { type JsonEvalResult } from "./json-results/types.ts";
 
 /** A composite column in the results table (model + config) */
 interface ColumnKey {
@@ -17,10 +20,10 @@ interface ColumnKey {
   label: string;
 }
 
-/** 3D results map: scenarioId → modelKey → configId → result */
+/** 3D results map: scenarioId → modelKey → configId → result(s) */
 export type ResultsByScenario = Map<
   string,
-  Map<string, Map<string, EvalScenarioResult>>
+  Map<string, Map<string, JsonEvalResult[]>>
 >;
 
 /**
@@ -51,30 +54,47 @@ export function printResultsTable(
   // Build table
   const separator = buildSeparator(scenarioColWidth, colWidths);
   const labels = columns.map((c) => c.label);
-  const headerRow = buildRow("Scenario", labels, scenarioColWidth, colWidths);
+  const headerRow = buildRow(
+    "Scenario",
+    labels,
+    scenarioColWidth,
+    colWidths,
+    labels.map(() => "bold"),
+    "bold",
+  );
 
-  console.log("\n" + separator);
+  console.log(`\n${styleText("gray", separator)}`);
   console.log(headerRow);
-  console.log(separator);
+  console.log(styleText("gray", separator));
 
   // Data rows
   for (const [scenarioId, modelResults] of resultsByScenario) {
     const cells = columns.map((col) => {
-      const result = modelResults.get(col.modelKey)?.get(col.configId);
+      const results = modelResults.get(col.modelKey)?.get(col.configId);
 
-      if (!result) return "—";
-      const pct = getScorePercentage(result);
+      if (!results || results.length === 0) return "—";
+      const pct = getCellPercentage(results);
 
-      return pct !== null ? `${pct.toFixed(0)}%` : "—";
+      if (pct == null) return "—";
+
+      return `${pct.toFixed(0)}%`;
+    });
+    const colors = columns.map((col) => {
+      const results = modelResults.get(col.modelKey)?.get(col.configId);
+      const pct = results ? getCellPercentage(results) : null;
+
+      return pct != null ? pctColor(pct) : undefined;
     });
 
-    console.log(buildRow(scenarioId, cells, scenarioColWidth, colWidths));
+    console.log(
+      buildRow(scenarioId, cells, scenarioColWidth, colWidths, colors),
+    );
   }
 
   // Summary rows
-  console.log(separator);
+  console.log(styleText("gray", separator));
   printSummaryRow(resultsByScenario, columns, scenarioColWidth, colWidths);
-  console.log(separator);
+  console.log(styleText("gray", separator));
 }
 
 /**
@@ -125,10 +145,10 @@ function printSummaryRow(
     const pcts: number[] = [];
 
     for (const modelResults of resultsByScenario.values()) {
-      const result = modelResults.get(col.modelKey)?.get(col.configId);
+      const results = modelResults.get(col.modelKey)?.get(col.configId);
 
-      if (result) {
-        const pct = getScorePercentage(result);
+      if (results) {
+        const pct = getCellPercentage(results);
 
         if (pct !== null) pcts.push(pct);
       }
@@ -140,19 +160,54 @@ function printSummaryRow(
     return `${avg.toFixed(0)}%`;
   });
 
-  console.log(buildRow("Avg %", avgPcts, scenarioColWidth, colWidths));
+  const avgColors = columns.map((col) => {
+    const pcts2: number[] = [];
+
+    for (const modelResults of resultsByScenario.values()) {
+      const results = modelResults.get(col.modelKey)?.get(col.configId);
+
+      if (results) {
+        const p = getCellPercentage(results);
+
+        if (p !== null) pcts2.push(p);
+      }
+    }
+
+    if (pcts2.length === 0) return;
+    const avg = pcts2.reduce((a, b) => a + b, 0) / pcts2.length;
+
+    return pctColor(avg);
+  });
+
+  console.log(
+    buildRow("Avg %", avgPcts, scenarioColWidth, colWidths, avgColors, "bold"),
+  );
 }
 
 /**
- * Get the score percentage for a scenario result
+ * Get the display percentage for a table cell.
+ * Single trial: check pass percentage. Multiple trials: trial pass rate.
  *
- * @param result - The scenario result
- * @returns Percentage (0-100) or null if no assertions
+ * @param results - Array of results (1 for single run, N for repeated trials)
+ * @returns Percentage (0-100) or null if no results
  */
-function getScorePercentage(result: EvalScenarioResult): number | null {
-  if (result.maxScore === 0) return null;
+function getCellPercentage(results: JsonEvalResult[]): number | null {
+  if (results.length === 0) return null;
 
-  return (result.earnedScore / result.maxScore) * 100;
+  // Multiple trials: show trial pass rate
+  if (results.length > 1) {
+    const passed = results.filter((r) => r.result === "pass").length;
+
+    return Math.round((passed / results.length) * 100);
+  }
+
+  // Single trial: show check pass percentage
+  const { results: checks } = (results[0] as JsonEvalResult).checks;
+
+  if (checks.length === 0) return null;
+  const passed = checks.filter((c) => c.pass).length;
+
+  return Math.round((passed / checks.length) * 100);
 }
 
 /**
@@ -169,13 +224,18 @@ function buildSeparator(scenarioColWidth: number, colWidths: number[]): string {
   return `├${scenarioBar}┼${colBars.join("┼")}┤`;
 }
 
+/** styleText format type for cell coloring */
+type CellFormat = InspectColor | undefined;
+
 /**
- * Build a table row
+ * Build a table row with optional color for each cell
  *
  * @param scenario - Scenario cell content
  * @param cells - Data column cell contents
  * @param scenarioColWidth - Width of scenario column
  * @param colWidths - Widths of data columns
+ * @param cellFormats - Optional per-cell styleText formats
+ * @param scenarioFormat - Optional styleText format for the scenario cell
  * @returns Formatted row string
  */
 function buildRow(
@@ -183,9 +243,21 @@ function buildRow(
   cells: string[],
   scenarioColWidth: number,
   colWidths: number[],
+  cellFormats?: CellFormat[],
+  scenarioFormat?: InspectColor,
 ): string {
-  const scenarioCell = scenario.padEnd(scenarioColWidth);
-  const dataCells = cells.map((cell, i) => cell.padEnd(colWidths[i] ?? 0));
+  const padded = scenario.padEnd(scenarioColWidth);
+  const scenarioCell = scenarioFormat
+    ? styleText(scenarioFormat, padded)
+    : padded;
+  const dataCells = cells.map((cell, i) => {
+    const p = cell.padEnd(colWidths[i] ?? 0);
+    const format = cellFormats?.[i];
 
-  return `│ ${scenarioCell} │ ${dataCells.join(" │ ")} │`;
+    return format ? styleText(format, p) : p;
+  });
+  const div = styleText("gray", "│");
+  const divider = ` ${div} `;
+
+  return `${div} ${scenarioCell} ${div} ${dataCells.join(divider)} ${div}`;
 }

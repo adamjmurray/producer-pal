@@ -3,10 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type Server } from "node:http";
-import { type AddressInfo } from "node:net";
 import Max from "max-api";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+import { setupExpressAppServer } from "./express-app-test-helpers.ts";
 
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {
@@ -15,28 +14,7 @@ type MockMax = typeof Max & {
 const mockMax = Max as MockMax;
 
 describe("Handler Registration", () => {
-  let serverUrl: string;
-  let server: Server | undefined;
-  let configUrl: string;
-
-  beforeAll(async () => {
-    const { createExpressApp } = await import("../create-express-app.ts");
-    const app = createExpressApp();
-    const port = await new Promise<number>((resolve) => {
-      server = app.listen(0, () => {
-        resolve((server!.address() as AddressInfo).port);
-      });
-    });
-
-    serverUrl = `http://localhost:${port}/mcp`;
-    configUrl = serverUrl.replace("/mcp", "/config");
-  });
-
-  afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server!.close(() => resolve()));
-    }
-  });
+  const appState = setupExpressAppServer();
 
   /**
    * Read a config field from the running server.
@@ -44,7 +22,7 @@ describe("Handler Registration", () => {
    * @returns The field value
    */
   async function getConfigField(field: string) {
-    const response = await fetch(configUrl);
+    const response = await fetch(`${appState.baseUrl}/config`);
     const config = await response.json();
 
     return config[field];

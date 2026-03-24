@@ -9,15 +9,17 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ModelMessage, stepCountIs, streamText } from "ai";
-import { createAiSdkMcpTools } from "#evals/chat/ai-sdk-mcp.ts";
-import { createProviderModel } from "#evals/chat/ai-sdk-provider.ts";
-import { processCliStream } from "#evals/chat/ai-sdk-stream.ts";
+import { createMcpTools } from "#evals/chat/mcp.ts";
+import { createProviderModel } from "#evals/chat/provider.ts";
+import { printStepUsage } from "#evals/chat/shared/formatting.ts";
+import { processCliStream } from "#evals/chat/stream.ts";
 import {
   ANTHROPIC_CONFIG,
   GEMINI_CONFIG,
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
 } from "#evals/shared/provider-configs.ts";
+import { type TokenUsage, toTokenUsage } from "#webui/chat/sdk/types.ts";
 import { logTurnStart } from "./helpers/eval-session-base.ts";
 import { type EvalProvider, type TurnResult } from "./types.ts";
 
@@ -69,6 +71,7 @@ interface EvalSessionOptions {
   provider: EvalProvider;
   model?: string;
   instructions?: string;
+  usage?: boolean;
 }
 
 /**
@@ -84,9 +87,10 @@ export async function createEvalSession(
     options.provider,
     options.model ?? getDefaultModel(options.provider),
   );
-  const { tools, mcpClient } = await createAiSdkMcpTools();
+  const { tools, mcpClient } = await createMcpTools();
   const hasTools = Object.keys(tools).length > 0;
   const messages: ModelMessage[] = [];
+  let prevUsage: TokenUsage | undefined;
 
   return {
     mcpClient,
@@ -98,6 +102,8 @@ export async function createEvalSession(
       logTurnStart(turnNumber, message);
       messages.push({ role: "user", content: message });
 
+      const stepUsages: TokenUsage[] = [];
+
       const result = streamText({
         model,
         messages,
@@ -105,16 +111,29 @@ export async function createEvalSession(
         stopWhen: stepCountIs(MAX_TOOL_STEPS),
         maxOutputTokens: DEFAULT_MAX_TOKENS,
         system: options.instructions,
+        onStepFinish: (event) => {
+          const usage = toTokenUsage(event.usage);
+
+          stepUsages.push(usage);
+
+          if (options.usage) {
+            printStepUsage(usage, prevUsage, event.toolCalls.length === 0);
+          }
+
+          prevUsage = usage;
+        },
       });
 
-      const turnResult = await processCliStream(result);
+      const turnResult = await processCliStream(result, {
+        showUsage: options.usage,
+      });
 
       // Append generated messages to history for multi-turn
       const response = await result.response;
 
       messages.push(...response.messages);
 
-      return turnResult;
+      return { ...turnResult, stepUsages };
     },
 
     close: async () => {

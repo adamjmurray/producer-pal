@@ -159,6 +159,36 @@ describe("gain-utils", () => {
     });
   });
 
+  describe("liveGainToDb null dB edge cases", () => {
+    it("should handle gain value between first entry (null dB) and second entry", () => {
+      // Gain value between 0 (null dB) and 0.00011 (-69.7 dB)
+      // This exercises the lower.dB === null, upper.dB !== null branch (line 65)
+      const dB = liveGainToDb(0.00005);
+
+      // Should return upper.dB since lower.dB is null
+      expect(dB).toBeCloseTo(-69.7, 0);
+    });
+
+    // Unreachable with the real lookup table.
+    // Only index 0 has dB:null, and the gain <= 0 early return prevents it
+    // from ever being an upper bound in binary search. So upper.dB is never null,
+    // and both-null is also impossible. These are defensive guards only.
+  });
+
+  describe("dbToLiveGain upperIndex === -1 edge case", () => {
+    it("should interpolate between last two entries for dB just under 24", () => {
+      // 23.95 dB falls between the second-to-last entry (dB=23.9) and the
+      // last entry (dB=24), so upperIndex IS found and interpolation occurs.
+      // The upperIndex === -1 branch (line 127) is unreachable because:
+      // - dB >= 24 is caught by the early return (line 98)
+      // - For any dB < 24, the last entry (dB=24) provides an upper bound
+      const gain = dbToLiveGain(23.95);
+
+      expect(gain).toBeGreaterThan(0.999);
+      expect(gain).toBeLessThanOrEqual(1);
+    });
+  });
+
   describe("round-trip conversion", () => {
     it("should round-trip accurately across full range", () => {
       const testGains = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];

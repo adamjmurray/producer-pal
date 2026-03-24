@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Eval Report CLI - view and compare eval results
+# Usage: ./scripts/eval-report [paths...] [options]
+#
+# Examples:
+#   ./scripts/eval-report                                    # Show latest results
+#   ./scripts/eval-report evals/results/connect-to-ableton/  # Show scenario results
+#   ./scripts/eval-report --run 2026-03-22T10-30-00Z         # Show specific run
+#   ./scripts/eval-report --compare run1 run2                # Compare runs
+
+exec npx tsx --env-file=.env evals/scenarios/report.ts "$@"

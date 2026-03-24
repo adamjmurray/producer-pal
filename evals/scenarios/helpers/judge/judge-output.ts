@@ -1,13 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Streaming output utilities for LLM judge
  */
 
-import { formatSubsectionHeader } from "#evals/chat/shared/formatting.ts";
-import { type JudgeResult } from "../judge-response-parser.ts";
+import { styleText } from "node:util";
 import { isQuietMode } from "../output-config.ts";
 
 /**
@@ -22,13 +22,11 @@ export function printJudgeHeader(
   model: string,
   criteria: string,
 ): void {
-  console.log(`\n${formatSubsectionHeader("LLM Judgement")}`);
-  console.log(`\nModel: ${provider}/${model}`);
-
   if (isQuietMode()) return;
 
-  console.log(`Criteria: ${criteria}\n`);
-  process.stdout.write(`Response: `);
+  console.log(styleText("gray", `\n  Judging with ${provider}/${model}...`));
+  console.log(styleText("gray", `  Criteria: ${criteria}`));
+  process.stdout.write(styleText("gray", "  Response: "));
 }
 
 /**
@@ -49,13 +47,4 @@ export function finishJudgeOutput(): void {
   if (isQuietMode()) return;
 
   console.log("\n");
-}
-
-/**
- * Print the overall score after parsing (no-op, scores shown in dimension table)
- *
- * @param _result - The parsed judge result (unused)
- */
-export function printJudgeResult(_result: JudgeResult): void {
-  // Scores are now shown in the dimension table in the summary
 }

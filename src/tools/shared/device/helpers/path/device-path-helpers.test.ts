@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,6 +17,17 @@ import {
   resolvePathToLiveApi,
   resolveInsertionPath,
 } from "./device-path-helpers.ts";
+
+vi.mock(import("./device-path-to-live-api.ts"), async (importOriginal) => {
+  const original = await importOriginal();
+
+  return {
+    ...original,
+    resolvePathToLiveApi: vi.fn(original.resolvePathToLiveApi),
+  };
+});
+
+import { resolvePathToLiveApi as resolvePathToLiveApiMock } from "./device-path-to-live-api.ts";
 
 interface MockLiveApiContext {
   _path?: string;
@@ -652,6 +664,70 @@ describe("device-path-helpers", () => {
         expect(() => resolveInsertionPath("t0/d0/c0")).toThrow(
           'Device in path "t0/d0/c0" does not exist',
         );
+      });
+    });
+
+    describe("drum pad edge cases", () => {
+      it("returns LiveAPI.from when resolvePathToLiveApi returns non-drum-pad type", () => {
+        // resolveDrumPadContainer returns LiveAPI.from(resolved.liveApiPath)
+        // when resolvePathToLiveApi returns a non-drum-pad targetType.
+        // This is a defensive branch since paths with 'p' always resolve to drum-pad.
+        // We mock resolvePathToLiveApi to return a chain type for a path with 'p'.
+        const mock = vi.mocked(resolvePathToLiveApiMock);
+
+        mock.mockReturnValueOnce({
+          liveApiPath: "live_set tracks 0 devices 0 chains 0",
+          targetType: "chain",
+          remainingSegments: [],
+        });
+
+        // Path has 'p' so resolveContainer calls resolveDrumPadContainer
+        const result = resolveInsertionPath("t0/d0/pC1");
+
+        expect((result.container as MockLiveApiContext)._path).toBe(
+          "live_set tracks 0 devices 0 chains 0",
+        );
+        expect(result.position).toBeNull();
+      });
+
+      it("returns null when device does not exist during drum pad auto-creation", () => {
+        // device.exists() returns false inside the chain auto-creation block
+        // Register device with id "0" so exists() returns false
+        registerMockObject("0", {
+          path: "live_set tracks 0 devices 0",
+        });
+
+        const result = resolveInsertionPath("t0/d0/pC1");
+
+        expect(result.container).toBeNull();
+      });
+
+      it("returns null when drum pad navigation returns non-chain target type", () => {
+        // resolveDrumPadFromPath returns {target: null, targetType: "device"}
+        // which is not "chain" so auto-creation is skipped → falls through to return null.
+        // Path "t0/d0/pC1/c0/c1": remainingSegments=["c0","c1"].
+        // "c0" is consumed as chain index, "c1" doesn't start with "d" →
+        // resolveDrumPadFromPath returns {target: null, targetType: "device"}.
+        const drumChainId = "drum-chain-36";
+
+        registerMockObject("drum-rack", {
+          path: "live_set tracks 0 devices 0",
+          type: "RackDevice",
+          properties: {
+            chains: ["id", drumChainId],
+          },
+        });
+        registerMockObject(drumChainId, {
+          type: "DrumChain",
+          properties: {
+            in_note: 36,
+          },
+        });
+
+        const result = resolveInsertionPath("t0/d0/pC1/c0/c1");
+
+        expect(result.container).toBeNull();
+        expect(result.position).toBeNull();
       });
     });
   });

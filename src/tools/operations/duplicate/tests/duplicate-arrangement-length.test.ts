@@ -147,100 +147,55 @@ describe("duplicate - arrangementLength functionality", () => {
     expect(result).toHaveProperty("id", livePath.track(0).arrangementClip(0));
   });
 
-  it("should correctly handle 6/8 time signature duration conversion", () => {
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: {
-        length: 12,
-        looping: 0,
-        name: "Test Clip 6/8",
-        color: 4047616,
-        signature_numerator: 6,
-        signature_denominator: 8,
-        loop_start: 0,
-        loop_end: 12,
-        is_midi_clip: 1,
-      },
-    });
+  it.each([
+    ["6/8", 6, 8, 12],
+    ["2/2", 2, 2, 8],
+  ] as const)(
+    "should correctly handle %s time signature duration conversion",
+    (label, numerator, denominator, clipLength) => {
+      registerMockObject("clip1", {
+        path: livePath.track(0).clipSlot(0).clip(),
+        properties: {
+          length: clipLength,
+          looping: 0,
+          name: `Test Clip ${label}`,
+          color: 4047616,
+          signature_numerator: numerator,
+          signature_denominator: denominator,
+          loop_start: 0,
+          loop_end: clipLength,
+          is_midi_clip: 1,
+        },
+      });
 
-    registerMockObject("live_set/tracks/0", {
-      path: livePath.track(0),
-    });
+      registerMockObject("live_set/tracks/0", {
+        path: livePath.track(0),
+      });
 
-    registerMockObject("live_set", {
-      path: livePath.liveSet,
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
+      registerMockObject("live_set", {
+        path: livePath.liveSet,
+        properties: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
 
-    registerArrangementClip(0, 0, 0);
+      registerArrangementClip(0, 0, 0);
 
-    // This test verifies correct duration conversion: "1|0" duration should be 3 Ableton beats in 6/8 time
-    // The implementation now correctly uses the CLIP time signature (6/8) for parsing
-    const result = duplicate({
-      type: "clip",
-      id: "clip1",
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
 
-      arrangementStart: "1|1",
-      arrangementLength: "1:0", // This should be 3 Ableton beats in 6/8 time
-    });
+        arrangementStart: "1|1",
+        arrangementLength: "1:0",
+      });
 
-    // Verify the result - new implementation uses holding area for shortening
-    // The holding area operations correctly handle time signature conversion
-    expect(result).toStrictEqual({
-      id: livePath.track(0).arrangementClip(0),
-      arrangementStart: "1|1",
-    });
-  });
-
-  it("should correctly handle 2/2 time signature duration conversion", () => {
-    registerMockObject("clip1", {
-      path: livePath.track(0).clipSlot(0).clip(),
-      properties: {
-        length: 8,
-        looping: 0,
-        name: "Test Clip 2/2",
-        color: 4047616,
-        signature_numerator: 2,
-        signature_denominator: 2,
-        loop_start: 0,
-        loop_end: 8,
-        is_midi_clip: 1,
-      },
-    });
-
-    registerMockObject("live_set/tracks/0", {
-      path: livePath.track(0),
-    });
-
-    registerMockObject("live_set", {
-      path: livePath.liveSet,
-      properties: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
-
-    registerArrangementClip(0, 0, 0);
-
-    // In 2/2 time, "1|0" duration should be 4 Ableton beats (1 bar = 2 half notes = 4 quarter notes)
-    const result = duplicate({
-      type: "clip",
-      id: "clip1",
-
-      arrangementStart: "1|1",
-      arrangementLength: "1:0", // This should be 4 Ableton beats in 2/2 time
-    });
-
-    // Verify the result - new implementation uses holding area for shortening
-    // The holding area operations correctly handle time signature conversion
-    expect(result).toStrictEqual({
-      id: livePath.track(0).arrangementClip(0),
-      arrangementStart: "1|1",
-    });
-  });
+      expect(result).toStrictEqual({
+        id: livePath.track(0).arrangementClip(0),
+        arrangementStart: "1|1",
+      });
+    },
+  );
 
   it("should error when arrangementLength is zero or negative", () => {
     registerMockObject("clip1", {

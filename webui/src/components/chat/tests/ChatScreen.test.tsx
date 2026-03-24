@@ -52,6 +52,7 @@ describe("ChatScreen", () => {
     onOpenConnectionSettings: vi.fn(),
     onStop: mockOnStop,
     showTimestamps: true,
+    showTokenUsage: false,
     conversationPanel: {
       conversations: [],
       activeConversationId: null,
@@ -310,6 +311,7 @@ describe("ChatScreen", () => {
                 temperature: null,
                 showThoughts: null,
                 smallModelMode: null,
+                totalUsage: null,
               },
             ],
             activeConversationId: "conv-1",

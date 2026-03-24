@@ -5,6 +5,12 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  codeNote,
+  toLiveApiNote,
+  codeExecSuccess,
+  codeExecFailure,
+} from "#src/tools/clip/code-exec/tests/code-exec-test-helpers.ts";
+import {
   setupUpdateClipMocks,
   setupMidiClipMock,
   type UpdateClipMocks,
@@ -32,27 +38,9 @@ describe("updateClip - code execution", () => {
   it("should execute code on a single session clip and apply resulting notes", async () => {
     setupMidiClipMock(mocks.clip123, { length: 4 });
 
-    vi.mocked(executeNoteCode).mockResolvedValue({
-      success: true,
-      notes: [
-        {
-          pitch: 60,
-          start: 0,
-          duration: 1,
-          velocity: 100,
-          velocityDeviation: 0,
-          probability: 1,
-        },
-        {
-          pitch: 64,
-          start: 1,
-          duration: 1,
-          velocity: 80,
-          velocityDeviation: 0,
-          probability: 1,
-        },
-      ],
-    });
+    const notes = [codeNote(60, 0), codeNote(64, 1, { velocity: 80 })];
+
+    vi.mocked(executeNoteCode).mockResolvedValue(codeExecSuccess(notes));
 
     const result = await updateClip({
       ids: "123",
@@ -76,24 +64,7 @@ describe("updateClip - code execution", () => {
       1000000,
     );
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
-      notes: [
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          velocity_deviation: 0,
-          probability: 1,
-        },
-        {
-          pitch: 64,
-          start_time: 1,
-          duration: 1,
-          velocity: 80,
-          velocity_deviation: 0,
-          probability: 1,
-        },
-      ],
+      notes: notes.map(toLiveApiNote),
     });
 
     expect(result).toStrictEqual({ id: "123", noteCount: 2 });
@@ -103,19 +74,9 @@ describe("updateClip - code execution", () => {
     setupMidiClipMock(mocks.clip123, { length: 4 });
     setupMidiClipMock(mocks.clip456, { length: 4 });
 
-    vi.mocked(executeNoteCode).mockResolvedValue({
-      success: true,
-      notes: [
-        {
-          pitch: 72,
-          start: 0,
-          duration: 1,
-          velocity: 100,
-          velocityDeviation: 0,
-          probability: 1,
-        },
-      ],
-    });
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecSuccess([codeNote(72, 0)]),
+    );
 
     const result = await updateClip({
       ids: "123, 456",
@@ -132,10 +93,9 @@ describe("updateClip - code execution", () => {
   it("should warn and continue when code execution fails for a clip", async () => {
     setupMidiClipMock(mocks.clip123, { length: 4 });
 
-    vi.mocked(executeNoteCode).mockResolvedValue({
-      success: false,
-      error: "SyntaxError: Unexpected token",
-    });
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecFailure("SyntaxError: Unexpected token"),
+    );
 
     const result = await updateClip({
       ids: "123",
@@ -163,23 +123,8 @@ describe("updateClip - code execution", () => {
     setupMidiClipMock(mocks.clip456, { length: 4 });
 
     vi.mocked(executeNoteCode)
-      .mockResolvedValueOnce({
-        success: true,
-        notes: [
-          {
-            pitch: 60,
-            start: 0,
-            duration: 1,
-            velocity: 100,
-            velocityDeviation: 0,
-            probability: 1,
-          },
-        ],
-      })
-      .mockResolvedValueOnce({
-        success: false,
-        error: "Runtime error",
-      });
+      .mockResolvedValueOnce(codeExecSuccess([codeNote(60, 0)]))
+      .mockResolvedValueOnce(codeExecFailure("Runtime error"));
 
     const result = await updateClip({
       ids: "123, 456",
@@ -205,10 +150,7 @@ describe("updateClip - code execution", () => {
       length: 4,
     });
 
-    vi.mocked(executeNoteCode).mockResolvedValue({
-      success: true,
-      notes: [],
-    });
+    vi.mocked(executeNoteCode).mockResolvedValue(codeExecSuccess([]));
 
     await updateClip({
       ids: "789",
