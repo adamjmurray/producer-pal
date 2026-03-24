@@ -20,10 +20,10 @@ interface ColumnKey {
   label: string;
 }
 
-/** 3D results map: scenarioId → modelKey → configId → result */
+/** 3D results map: scenarioId → modelKey → configId → result(s) */
 export type ResultsByScenario = Map<
   string,
-  Map<string, Map<string, JsonEvalResult>>
+  Map<string, Map<string, JsonEvalResult[]>>
 >;
 
 /**
@@ -70,18 +70,18 @@ export function printResultsTable(
   // Data rows
   for (const [scenarioId, modelResults] of resultsByScenario) {
     const cells = columns.map((col) => {
-      const result = modelResults.get(col.modelKey)?.get(col.configId);
+      const results = modelResults.get(col.modelKey)?.get(col.configId);
 
-      if (!result) return "—";
-      const pct = getScorePercentage(result);
+      if (!results || results.length === 0) return "—";
+      const pct = getCellPercentage(results);
 
       if (pct == null) return "—";
 
       return `${pct.toFixed(0)}%`;
     });
     const colors = columns.map((col) => {
-      const result = modelResults.get(col.modelKey)?.get(col.configId);
-      const pct = result ? getScorePercentage(result) : null;
+      const results = modelResults.get(col.modelKey)?.get(col.configId);
+      const pct = results ? getCellPercentage(results) : null;
 
       return pct != null ? pctColor(pct) : undefined;
     });
@@ -145,10 +145,10 @@ function printSummaryRow(
     const pcts: number[] = [];
 
     for (const modelResults of resultsByScenario.values()) {
-      const result = modelResults.get(col.modelKey)?.get(col.configId);
+      const results = modelResults.get(col.modelKey)?.get(col.configId);
 
-      if (result) {
-        const pct = getScorePercentage(result);
+      if (results) {
+        const pct = getCellPercentage(results);
 
         if (pct !== null) pcts.push(pct);
       }
@@ -164,10 +164,10 @@ function printSummaryRow(
     const pcts2: number[] = [];
 
     for (const modelResults of resultsByScenario.values()) {
-      const result = modelResults.get(col.modelKey)?.get(col.configId);
+      const results = modelResults.get(col.modelKey)?.get(col.configId);
 
-      if (result) {
-        const p = getScorePercentage(result);
+      if (results) {
+        const p = getCellPercentage(results);
 
         if (p !== null) pcts2.push(p);
       }
@@ -185,18 +185,29 @@ function printSummaryRow(
 }
 
 /**
- * Get the score percentage for a scenario result
+ * Get the display percentage for a table cell.
+ * Single trial: check pass percentage. Multiple trials: trial pass rate.
  *
- * @param result - The scenario result
- * @returns Percentage (0-100) or null if no assertions
+ * @param results - Array of results (1 for single run, N for repeated trials)
+ * @returns Percentage (0-100) or null if no results
  */
-function getScorePercentage(result: JsonEvalResult): number | null {
-  const { results } = result.checks;
-
+function getCellPercentage(results: JsonEvalResult[]): number | null {
   if (results.length === 0) return null;
-  const passed = results.filter((c) => c.pass).length;
 
-  return Math.round((passed / results.length) * 100);
+  // Multiple trials: show trial pass rate
+  if (results.length > 1) {
+    const passed = results.filter((r) => r.result === "pass").length;
+
+    return Math.round((passed / results.length) * 100);
+  }
+
+  // Single trial: show check pass percentage
+  const { results: checks } = (results[0] as JsonEvalResult).checks;
+
+  if (checks.length === 0) return null;
+  const passed = checks.filter((c) => c.pass).length;
+
+  return Math.round((passed / checks.length) * 100);
 }
 
 /**

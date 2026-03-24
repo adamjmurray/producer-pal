@@ -18,7 +18,10 @@ import {
 } from "#evals/shared/parse-model-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
 import { loadConfigProfiles, listConfigProfileIds } from "./config-profiles.ts";
-import { toJsonResult } from "./helpers/json-results/converter.ts";
+import {
+  toJsonResult,
+  type TrialInfo,
+} from "./helpers/json-results/converter.ts";
 import { generateRunId } from "./helpers/json-results/run-id.ts";
 import { type JsonEvalResult } from "./helpers/json-results/types.ts";
 import { writeJsonResult } from "./helpers/json-results/writer.ts";
@@ -28,6 +31,12 @@ import {
   type ResultsByScenario,
 } from "./helpers/report-table.ts";
 import { printResultBlock } from "./helpers/result-printer.ts";
+import {
+  buildMultiTrialParts,
+  formatParts,
+  parseRepeatCount,
+  printTrialSummary,
+} from "./helpers/trial-helpers.ts";
 import { loadScenarios, listScenarioSummaries } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
 import { type ConfigProfile } from "./types.ts";
@@ -41,6 +50,7 @@ interface CliOptions {
   model: string[];
   config: string[];
   judge?: string;
+  repeat?: string;
   list?: boolean;
   all?: boolean;
   skipSetup?: boolean;
@@ -87,6 +97,10 @@ program
   .option(
     "-j, --judge <provider/model>",
     `Override judge LLM (default: google/${GEMINI_CONFIG.defaultModel})`,
+  )
+  .option(
+    "-r, --repeat <N>",
+    "Run each scenario N times to detect flaky results",
   )
   .option("-l, --list", "List available scenarios and config profiles")
   .option(
@@ -167,59 +181,36 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       options.judge ?? GEMINI_CONFIG.defaultModel,
     );
 
+    const repeatCount = parseRepeatCount(options.repeat);
     const totalRuns =
-      scenarios.length * modelSpecs.length * configProfiles.length;
+      scenarios.length *
+      modelSpecs.length *
+      configProfiles.length *
+      repeatCount;
+    const repeatLabel = repeatCount > 1 ? ` × ${repeatCount} trial(s)` : "";
 
     console.log(
       styleText(
         "bold",
         `Running ${scenarios.length} scenario(s) × ${modelSpecs.length} model(s)` +
-          ` × ${configProfiles.length} config(s) = ${totalRuns} run(s)...`,
+          ` × ${configProfiles.length} config(s)${repeatLabel} = ${totalRuns} run(s)...`,
       ),
     );
 
-    // Results: scenarioId → modelKey → configId → result
-    const resultsByScenario: ResultsByScenario = new Map();
     const runId = generateRunId();
+    const runCtx: RunContext = {
+      runId,
+      judgeOverride,
+      repeatCount,
+      options,
+    };
 
-    for (const scenario of scenarios) {
-      const modelResults = new Map<string, Map<string, JsonEvalResult>>();
-      let liveSetOpened = false;
-
-      for (const spec of modelSpecs) {
-        const modelKey = `${spec.provider}/${spec.model}`;
-        const configResults = new Map<string, JsonEvalResult>();
-
-        for (const profile of configProfiles) {
-          const scenarioResult = await runScenario(scenario, {
-            provider: spec.provider,
-            model: spec.model,
-            skipLiveSetOpen: options.skipSetup ?? liveSetOpened,
-            judgeOverride,
-            configProfile: profile,
-            usage: options.usage,
-            defaultInstructions: options.defaultInstructions,
-          });
-
-          liveSetOpened = true;
-
-          const jsonResult = toJsonResult(
-            scenarioResult,
-            runId,
-            modelKey,
-            profile.id,
-          );
-
-          await writeJsonResult(jsonResult);
-          printResultBlock(jsonResult);
-          configResults.set(profile.id, jsonResult);
-        }
-
-        modelResults.set(modelKey, configResults);
-      }
-
-      resultsByScenario.set(scenario.id, modelResults);
-    }
+    const resultsByScenario = await runAllScenarios(
+      scenarios,
+      modelSpecs,
+      configProfiles,
+      runCtx,
+    );
 
     printSummary(resultsByScenario, modelSpecs, configProfiles);
   } catch (error) {
@@ -229,6 +220,118 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     );
     process.exit(1);
   }
+}
+
+/** Shared context for a single eval run */
+interface RunContext {
+  runId: string;
+  judgeOverride: ModelSpec;
+  repeatCount: number;
+  options: CliOptions;
+}
+
+/**
+ * Run all scenarios across models and configs, collecting results
+ *
+ * @param scenarios - Scenarios to run
+ * @param modelSpecs - Models to test
+ * @param configProfiles - Config profiles to test
+ * @param ctx - Shared run context
+ * @returns 3D results map
+ */
+async function runAllScenarios(
+  scenarios: ReturnType<typeof loadScenarios>,
+  modelSpecs: ModelSpec[],
+  configProfiles: ConfigProfile[],
+  ctx: RunContext,
+): Promise<ResultsByScenario> {
+  const resultsByScenario: ResultsByScenario = new Map();
+
+  for (const scenario of scenarios) {
+    const modelResults = new Map<string, Map<string, JsonEvalResult[]>>();
+    let liveSetOpened = false;
+
+    for (const spec of modelSpecs) {
+      const modelKey = `${spec.provider}/${spec.model}`;
+      const configResults = new Map<string, JsonEvalResult[]>();
+
+      for (const profile of configProfiles) {
+        const trialResults = await runTrials(
+          scenario,
+          spec,
+          profile,
+          ctx,
+          liveSetOpened,
+        );
+
+        liveSetOpened = true;
+        configResults.set(profile.id, trialResults);
+      }
+
+      modelResults.set(modelKey, configResults);
+    }
+
+    resultsByScenario.set(scenario.id, modelResults);
+  }
+
+  return resultsByScenario;
+}
+
+/**
+ * Run N trials for a single (scenario, model, config) combination
+ *
+ * @param scenario - Scenario to run
+ * @param spec - Model spec
+ * @param profile - Config profile
+ * @param ctx - Shared run context
+ * @param liveSetAlreadyOpened - Whether the Live Set is already open
+ * @returns Array of JSON results (one per trial)
+ */
+async function runTrials(
+  scenario: ReturnType<typeof loadScenarios>[number],
+  spec: ModelSpec,
+  profile: ConfigProfile,
+  ctx: RunContext,
+  liveSetAlreadyOpened: boolean,
+): Promise<JsonEvalResult[]> {
+  const { runId, judgeOverride, repeatCount, options } = ctx;
+  const modelKey = `${spec.provider}/${spec.model}`;
+  const results: JsonEvalResult[] = [];
+
+  for (let trial = 1; trial <= repeatCount; trial++) {
+    const skipOpen = options.skipSetup ?? (liveSetAlreadyOpened || trial > 1);
+
+    const scenarioResult = await runScenario(scenario, {
+      provider: spec.provider,
+      model: spec.model,
+      skipLiveSetOpen: skipOpen,
+      judgeOverride,
+      configProfile: profile,
+      usage: options.usage,
+      defaultInstructions: options.defaultInstructions,
+    });
+
+    const trialInfo: TrialInfo | undefined =
+      repeatCount > 1 ? { trial, totalTrials: repeatCount } : undefined;
+
+    const jsonResult = toJsonResult(
+      scenarioResult,
+      runId,
+      modelKey,
+      profile.id,
+      trialInfo,
+    );
+
+    await writeJsonResult(jsonResult);
+    printResultBlock(jsonResult);
+    results.push(jsonResult);
+  }
+
+  if (repeatCount > 1) {
+    printTrialSummary(results);
+  }
+
+  return results;
 }
 
 /**
@@ -251,7 +354,7 @@ function printSummary(
   }
 
   // Single model + single config - use simple summary
-  const allResults = [...resultsByScenario.values()].flatMap((modelMap) =>
+  const allResultGroups = [...resultsByScenario.values()].flatMap((modelMap) =>
     [...modelMap.values()].flatMap((configMap) => [...configMap.values()]),
   );
 
@@ -267,36 +370,62 @@ function printSummary(
   let passCount = 0;
   let failCount = 0;
 
-  for (const result of allResults) {
-    if (result.result === "pass") passCount++;
-    else failCount++;
+  for (const results of allResultGroups) {
+    const passed = results.filter((r) => r.result === "pass").length;
 
-    console.log("  " + formatSummaryLine(result));
+    passCount += passed;
+    failCount += results.length - passed;
 
-    if (result.error) {
-      console.log("    " + styleText("red", "Error: " + result.error));
+    // Show summary for the last trial (or only trial)
+    const lastResult = results.at(-1) as JsonEvalResult;
+
+    console.log("  " + formatSummaryLine(lastResult, results));
+
+    if (lastResult.error) {
+      console.log("    " + styleText("red", "Error: " + lastResult.error));
     }
   }
 
-  const totalScenarios = allResults.length;
+  const totalRuns = passCount + failCount;
 
-  console.log(
-    `\n  ${totalScenarios} scenarios: ${passCount} pass, ${failCount} fail`,
-  );
+  console.log(`\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail`);
 }
 
 /**
- * Format a single scenario line for the multi-scenario summary
+ * Format a single scenario line for the multi-scenario summary.
+ * When multiple trial results are provided, shows trial pass rate.
  *
- * @param result - Scenario result
+ * @param result - Scenario result (last trial when repeating)
+ * @param allTrials - All trial results for this scenario/model/config
  * @returns Formatted summary line
  */
-function formatSummaryLine(result: JsonEvalResult): string {
+function formatSummaryLine(
+  result: JsonEvalResult,
+  allTrials: JsonEvalResult[],
+): string {
+  // Multi-trial: aggregate stats across all trials
+  if (allTrials.length > 1) {
+    const statsText = formatParts(buildMultiTrialParts(allTrials));
+    const overallColor = result.result === "pass" ? "green" : "red";
+
+    return `${styleText(overallColor, result.scenarioId + ":")} ${statsText}`;
+  }
+
+  // Single trial: show individual check/efficiency/judge details
+  return formatSingleTrialLine(result);
+}
+
+/**
+ * Format a single-trial summary line with detailed check/efficiency/judge info
+ *
+ * @param result - Single trial result
+ * @returns Formatted summary line
+ */
+function formatSingleTrialLine(result: JsonEvalResult): string {
   const { checks } = result;
   const passed = checks.results.filter((c) => c.pass).length;
   const total = checks.results.length;
   const checksColor = checks.pass ? "green" : "red";
-
   const parts = ["checks " + styleText(checksColor, `${passed}/${total}`)];
 
   if (result.efficiency) {

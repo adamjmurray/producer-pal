@@ -32,14 +32,18 @@ export async function writeJsonResult(result: JsonEvalResult): Promise<string> {
 }
 
 /**
- * Build a descriptive filename encoding scenario, model, and config.
- * Format: {scenarioId}--{model}--{configProfileId}.json
+ * Build a descriptive filename encoding scenario, model, config, and trial.
+ * Format: {scenarioId}--{model}--{configProfileId}[--trial-{N}].json
  *
  * @param result - The eval result
  * @returns Filename string
  */
 function buildResultFilename(result: JsonEvalResult): string {
   const model = result.model.replace("/", "_");
+  const trialSuffix =
+    result.totalTrials != null && result.totalTrials > 1
+      ? `--trial-${result.trial}`
+      : "";
 
-  return `${result.scenarioId}--${model}--${result.configProfileId}.json`;
+  return `${result.scenarioId}--${model}--${result.configProfileId}${trialSuffix}.json`;
 }

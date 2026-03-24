@@ -26,6 +26,12 @@ import {
 const TOOL_RESULT_MAX_LENGTH = 500;
 const TRUNCATION_SUFFIX = "...[truncated]";
 
+/** Optional trial metadata for repeat runs */
+export interface TrialInfo {
+  trial: number;
+  totalTrials: number;
+}
+
 /**
  * Convert an EvalScenarioResult to a JSON-serializable JsonEvalResult
  *
@@ -33,6 +39,7 @@ const TRUNCATION_SUFFIX = "...[truncated]";
  * @param runId - Unique run identifier
  * @param model - Model key (e.g. "google/gemini-3-flash-preview")
  * @param configProfileId - Config profile ID
+ * @param trialInfo - Optional trial metadata for repeat runs
  * @returns JSON-serializable result
  */
 export function toJsonResult(
@@ -40,6 +47,7 @@ export function toJsonResult(
   runId: string,
   model: string,
   configProfileId: string,
+  trialInfo?: TrialInfo,
 ): JsonEvalResult {
   const checks = buildChecks(result.assertions);
   const efficiency = buildEfficiency(result.assertions);
@@ -52,6 +60,10 @@ export function toJsonResult(
     scenarioId: result.scenario.id,
     scenarioDescription: result.scenario.description,
     ...(result.scenario.kind && { kind: result.scenario.kind }),
+    ...(trialInfo && {
+      trial: trialInfo.trial,
+      totalTrials: trialInfo.totalTrials,
+    }),
     model,
     configProfileId,
     ...(result.instructions && { instructions: result.instructions }),

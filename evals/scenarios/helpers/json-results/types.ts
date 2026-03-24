@@ -29,6 +29,10 @@ export interface JsonEvalResult {
   configProfileId: string;
   /** System instructions used (undefined = none) */
   instructions?: string;
+  /** Trial number (1-indexed, present when using -r flag) */
+  trial?: number;
+  /** Total number of trials (present when using -r flag) */
+  totalTrials?: number;
   /** Overall pass/fail (checks + judge; efficiency is informational) */
   result: "pass" | "fail";
   /** Deterministic check results */
