@@ -18,6 +18,7 @@ const SAMPLE_FOLDER = resolve(
 export const audioSampleWorkflow: EvalScenario = {
   id: "audio-sample-workflow",
   description: "Browse samples, create audio clip, modify audio properties",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   config: {

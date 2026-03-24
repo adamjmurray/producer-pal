@@ -85,3 +85,18 @@ export function loadScenarios(options?: LoadScenariosOptions): EvalScenario[] {
 export function listScenarioIds(): string[] {
   return allScenarios.map((s) => s.id);
 }
+
+/**
+ * List all scenarios with their kind for display
+ *
+ * @returns Array of {id, kind} objects
+ */
+export function listScenarioSummaries(): Array<{
+  id: string;
+  kind: "regression" | "capability";
+}> {
+  return allScenarios.map((s) => ({
+    id: s.id,
+    kind: s.kind ?? "regression",
+  }));
+}

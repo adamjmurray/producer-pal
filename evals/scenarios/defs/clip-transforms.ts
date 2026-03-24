@@ -15,6 +15,7 @@ const TOOL_UPDATE_CLIP = "ppal-update-clip";
 export const clipTransforms: EvalScenario = {
   id: "clip-transforms",
   description: "Create a clip and apply velocity transforms",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   messages: [

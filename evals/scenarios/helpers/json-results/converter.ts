@@ -51,6 +51,7 @@ export function toJsonResult(
     timestamp: new Date().toISOString(),
     scenarioId: result.scenario.id,
     scenarioDescription: result.scenario.description,
+    ...(result.scenario.kind && { kind: result.scenario.kind }),
     model,
     configProfileId,
     ...(result.instructions && { instructions: result.instructions }),

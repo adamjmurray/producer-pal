@@ -15,6 +15,7 @@ const TOOL_CONTEXT = "ppal-context";
 export const memoryWorkflow: EvalScenario = {
   id: "memory-workflow",
   description: "Write and read project memory",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   // Enable memory feature for this scenario

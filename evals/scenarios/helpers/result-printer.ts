@@ -25,9 +25,12 @@ import { type JsonEvalResult } from "./json-results/types.ts";
 export function printResult(result: JsonEvalResult): void {
   const configLabel =
     result.configProfileId === "default" ? "" : ` [${result.configProfileId}]`;
+  const kindLabel = result.kind ? ` (${result.kind})` : "";
 
   console.log(
-    formatSectionHeader(`${result.model}: ${result.scenarioId}${configLabel}`),
+    formatSectionHeader(
+      `${result.model}: ${result.scenarioId}${configLabel}${kindLabel}`,
+    ),
   );
 
   if (result.error) {

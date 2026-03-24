@@ -12,6 +12,7 @@ import { type EvalScenario } from "../types.ts";
 export const updateLiveSet: EvalScenario = {
   id: "update-live-set",
   description: "Update Live Set global properties and delete a track",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   messages: [

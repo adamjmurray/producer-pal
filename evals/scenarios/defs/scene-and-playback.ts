@@ -12,6 +12,7 @@ import { type EvalScenario } from "../types.ts";
 export const sceneAndPlayback: EvalScenario = {
   id: "scene-and-playback",
   description: "Create scene with tempo, play and stop",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   messages: [

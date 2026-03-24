@@ -16,6 +16,7 @@ export const duplicate: EvalScenario = {
   id: "duplicate",
   description:
     "Create content, duplicate track, and duplicate clip to arrangement",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   messages: [

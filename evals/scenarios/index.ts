@@ -28,7 +28,7 @@ import {
   type ResultsByScenario,
 } from "./helpers/report-table.ts";
 import { printResultBlock } from "./helpers/result-printer.ts";
-import { loadScenarios, listScenarioIds } from "./load-scenarios.ts";
+import { loadScenarios, listScenarioSummaries } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
 import { type ConfigProfile } from "./types.ts";
 
@@ -115,8 +115,10 @@ program.parse();
 function printList(): void {
   console.log("Available scenarios:");
 
-  for (const id of listScenarioIds()) {
-    console.log(`  - ${id}`);
+  for (const { id, kind } of listScenarioSummaries()) {
+    const kindLabel = styleText("gray", `[${kind}]`);
+
+    console.log(`  - ${id} ${kindLabel}`);
   }
 
   console.log("\nAvailable config profiles:");

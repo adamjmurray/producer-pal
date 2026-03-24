@@ -12,6 +12,7 @@ import { type EvalScenario } from "../types.ts";
 export const negativeCases: EvalScenario = {
   id: "negative-cases",
   description: "Handle impossible and ambiguous requests",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   messages: [

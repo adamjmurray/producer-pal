@@ -13,6 +13,7 @@ import { type EvalScenario } from "../types.ts";
 export const arrangementClipWorkflow: EvalScenario = {
   id: "arrangement-clip-workflow",
   description: "Create arrangement clip, duplicate, and split",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   messages: [

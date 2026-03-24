@@ -11,6 +11,7 @@ import { type EvalScenario } from "../types.ts";
 export const trackAndDeviceWorkflow: EvalScenario = {
   id: "track-and-device-workflow",
   description: "Create track, add device, update properties",
+  kind: "regression",
   liveSet: "basic-midi-4-track",
 
   messages: [

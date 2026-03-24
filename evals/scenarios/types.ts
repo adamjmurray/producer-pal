@@ -54,6 +54,10 @@ export interface EvalScenario {
   /** Human-readable description */
   description: string;
 
+  /** Whether this is a regression test (should always pass) or capability test
+   * (improvement target, may have low pass rates). Default: "regression" */
+  kind?: "regression" | "capability";
+
   /** Live Set name or path. Short names (no `/`) resolve to
    * `evals/live-sets/{name} Project/{name}.als` */
   liveSet: string;

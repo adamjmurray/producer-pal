@@ -21,6 +21,8 @@ export interface JsonEvalResult {
   scenarioId: string;
   /** Scenario description */
   scenarioDescription: string;
+  /** Whether this is a regression or capability eval */
+  kind?: "regression" | "capability";
   /** Model used: "provider/model" */
   model: string;
   /** Config profile ID */
