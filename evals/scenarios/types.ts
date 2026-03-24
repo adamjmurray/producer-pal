@@ -68,8 +68,9 @@ export interface EvalScenario {
   /** Assertions to run after conversation completes */
   assertions: EvalAssertion[];
 
-  /** Optional system instructions */
-  instructions?: string;
+  /** System instructions override. Default: SYSTEM_INSTRUCTION from webui.
+   *  Set to null for no instructions. */
+  instructions?: string | null;
 
   /** Optional config to apply before running scenario */
   config?: ConfigOptions;

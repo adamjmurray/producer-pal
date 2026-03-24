@@ -18,7 +18,6 @@ const program = new Command();
 interface RawChatOptions extends Omit<ChatOptions, "provider" | "model"> {
   model: string;
   baseUrl?: string;
-  defaultInstructions?: boolean;
 }
 
 program
@@ -47,8 +46,10 @@ program
     Number.parseFloat,
   )
   .option("-o, --output-tokens <number>", "Max output tokens", Number.parseInt)
-  .option("-i, --instructions <text>", "System instructions")
-  .option("-I, --default-instructions", "Use default system instructions")
+  .option(
+    "-i, --instructions <text>",
+    'System instructions (default: built-in, "" to disable)',
+  )
   .option("-1, --once", "Exit after generating one response")
   .option(
     "-s, --sequence <messages...>",
@@ -66,9 +67,7 @@ program
 
     // Parse model argument to get provider and model
     const { provider, model } = parseModelArg(rawOptions.model);
-    const instructions =
-      rawOptions.instructions ??
-      (rawOptions.defaultInstructions ? SYSTEM_INSTRUCTION : undefined);
+    const instructions = rawOptions.instructions ?? SYSTEM_INSTRUCTION;
     const options: ChatOptions = {
       ...rawOptions,
       provider,

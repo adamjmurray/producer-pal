@@ -55,7 +55,6 @@ export interface RunScenarioOptions {
   judgeOverride?: JudgeOverride;
   configProfile?: ConfigProfile;
   usage?: boolean;
-  defaultInstructions?: boolean;
 }
 
 /**
@@ -69,19 +68,14 @@ export async function runScenario(
   scenario: EvalScenario,
   options: RunScenarioOptions,
 ): Promise<EvalScenarioResult> {
-  const {
-    provider,
-    model,
-    skipLiveSetOpen,
-    judgeOverride,
-    defaultInstructions,
-  } = options;
+  const { provider, model, skipLiveSetOpen, judgeOverride } = options;
   const startTime = Date.now();
   const turns: EvalTurnResult[] = [];
   let session: EvalSession | null = null;
   const instructions =
-    scenario.instructions ??
-    (defaultInstructions ? SYSTEM_INSTRUCTION : undefined);
+    scenario.instructions === null
+      ? undefined
+      : (scenario.instructions ?? SYSTEM_INSTRUCTION);
 
   try {
     // 1. Open Live Set and wait for MCP
@@ -126,11 +120,12 @@ export async function runScenario(
       );
     }
 
-    const instructionsLabel = scenario.instructions
-      ? "custom"
-      : defaultInstructions
-        ? "default"
-        : "none";
+    const instructionsLabel =
+      scenario.instructions !== undefined
+        ? scenario.instructions == null
+          ? "none"
+          : "custom"
+        : "default";
 
     console.log(
       `${orange("|")} ${styleText("gray", "Instructions:")} ${instructionsLabel}`,
