@@ -231,8 +231,8 @@ describe("toJsonResult", () => {
       "default",
     );
 
-    expect(result.checks).toStrictEqual({ pass: true, results: [] });
-    expect(result.result).toBe("pass");
+    expect(result.checks).toStrictEqual({ pass: false, results: [] });
+    expect(result.result).toBe("fail");
   });
 
   it("truncates long tool results in turns", () => {

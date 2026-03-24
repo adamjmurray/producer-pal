@@ -403,7 +403,8 @@ function formatSummaryLine(
   // Multi-trial: aggregate stats across all trials
   if (allTrials.length > 1) {
     const statsText = formatParts(buildMultiTrialParts(allTrials));
-    const overallColor = result.result === "pass" ? "green" : "red";
+    const allPassed = allTrials.every((t) => t.result === "pass");
+    const overallColor = allPassed ? "green" : "red";
 
     return `${styleText(overallColor, result.scenarioId + ":")} ${statsText}`;
   }

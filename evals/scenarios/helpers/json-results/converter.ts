@@ -105,7 +105,7 @@ function buildChecks(assertions: EvalAssertionResult[]): JsonChecks {
     });
 
   return {
-    pass: results.every((c) => c.pass),
+    pass: results.length > 0 && results.every((c) => c.pass),
     results,
   };
 }

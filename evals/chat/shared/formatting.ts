@@ -308,6 +308,9 @@ export function formatScenarioHeader(
   model: string,
 ): string {
   return `
+
+${styleText("gray", "_".repeat(SECTION_WIDTH + 12))}
+
 ${orange(MAJOR_SEPARATOR)}
 ${orange(`| SCENARIO: ${id}`)}
 ${orange("|")} ${styleText("gray", "Description:")} ${description}

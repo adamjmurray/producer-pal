@@ -96,7 +96,6 @@ export async function runScenario(
     );
 
     if (mergedConfig) {
-      if (!isQuietMode()) console.log(styleText("gray", "Applying config..."));
       await setConfig(mergedConfig);
     }
 
