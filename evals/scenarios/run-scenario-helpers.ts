@@ -7,6 +7,8 @@
  * Helper functions for the scenario runner
  */
 
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ConfigOptions } from "#evals/shared/config.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
@@ -96,6 +98,18 @@ export function mergeConfigs(
 }
 
 /**
+ * Validate config before sending to the server.
+ * Throws if sampleFolder is set but the directory doesn't exist.
+ *
+ * @param config - Config to validate
+ */
+export function validateConfig(config: ConfigOptions): void {
+  if (config.sampleFolder && !existsSync(config.sampleFolder)) {
+    throw new Error(`sampleFolder does not exist: ${config.sampleFolder}`);
+  }
+}
+
+/**
  * Resolve a liveSet value to a full path.
  * If it's a short name (no `/`), resolves to the Ableton project structure.
  *
@@ -109,6 +123,21 @@ export function resolveLiveSetPath(liveSet: string): string {
 
   // Ableton stores .als files in "{name} Project/{name}.als"
   return `${LIVE_SETS_DIR}/${liveSet} Project/${liveSet}.als`;
+}
+
+/**
+ * Resolve a samples folder path to an absolute path within the live sets dir.
+ * Short names (no `/`) resolve to `evals/live-sets/{name}`.
+ *
+ * @param folder - Short name (e.g. "samples") or absolute path
+ * @returns Absolute path to the samples folder
+ */
+export function resolveSamplesPath(folder: string): string {
+  if (folder.includes("/")) {
+    return folder;
+  }
+
+  return resolve(LIVE_SETS_DIR, folder);
 }
 
 /**

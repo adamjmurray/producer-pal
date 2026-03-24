@@ -7,13 +7,8 @@
  * Scenario: Browse samples, create audio clip, modify audio properties
  */
 
-import { resolve } from "node:path";
+import { resolveSamplesPath } from "../run-scenario-helpers.ts";
 import { type EvalScenario } from "../types.ts";
-
-const SAMPLE_FOLDER = resolve(
-  import.meta.dirname,
-  "../../../live-sets/samples",
-);
 
 export const audioSampleWorkflow: EvalScenario = {
   id: "audio-sample-workflow",
@@ -22,7 +17,7 @@ export const audioSampleWorkflow: EvalScenario = {
   liveSet: "basic-midi-4-track",
 
   config: {
-    sampleFolder: SAMPLE_FOLDER,
+    sampleFolder: resolveSamplesPath("samples"),
   },
 
   messages: [

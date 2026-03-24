@@ -32,6 +32,7 @@ import {
   resolveLiveSetPath,
   runCorrectnessAssertion,
   toCheckSummaries,
+  validateConfig,
 } from "./run-scenario-helpers.ts";
 import {
   type ConfigProfile,
@@ -96,6 +97,7 @@ export async function runScenario(
     );
 
     if (mergedConfig) {
+      validateConfig(mergedConfig);
       await setConfig(mergedConfig);
     }
 
