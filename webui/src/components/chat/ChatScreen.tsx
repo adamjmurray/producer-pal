@@ -134,7 +134,7 @@ export function ChatScreen(props: ChatScreenProps) {
         }
       />
 
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 justify-center">
         <ConversationPanel
           isOpen={conversationPanel.isOpen}
           conversations={conversationPanel.conversations}
@@ -152,7 +152,7 @@ export function ChatScreen(props: ChatScreenProps) {
         />
 
         <div
-          className={`flex flex-col flex-9999 min-w-0 max-w-5xl ${conversationPanel.isOpen ? "hidden sm:flex" : "mx-auto"}`}
+          className={`flex flex-col flex-9999 min-w-0 max-w-5xl ${conversationPanel.isOpen ? "hidden sm:flex" : ""}`}
         >
           <div className="flex flex-col flex-1 min-h-0 w-full border-x border-zinc-300 dark:border-zinc-700 shadow-lg dark:shadow-black/40 bg-white dark:bg-zinc-900">
             <div className="flex-1 overflow-y-auto">
