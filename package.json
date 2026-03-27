@@ -99,7 +99,7 @@
     "@modelcontextprotocol/sdk": "^1.28.0",
     "@openrouter/ai-sdk-provider": "^2.3.3",
     "@tailwindcss/typography": "^0.5.19",
-    "ai": "^6.0.138",
+    "ai": "^6.0.141",
     "dompurify": "^3.3.3",
     "express": "^5.2.1",
     "idb": "^8.0.3",
