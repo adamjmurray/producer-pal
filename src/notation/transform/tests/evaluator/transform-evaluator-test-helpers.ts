@@ -67,12 +67,14 @@ export const DEFAULT_CONTEXT = {
  * @param overrides.clipTimeRange.end - End of clip
  * @returns Context object for evaluateTransform
  */
-export function createContext(overrides: {
-  position?: number;
-  numerator?: number;
-  denominator?: number;
-  clipTimeRange?: { start: number; end: number };
-}) {
+export function createContext(
+  overrides: {
+    position?: number;
+    numerator?: number;
+    denominator?: number;
+    clipTimeRange?: { start: number; end: number };
+  } = {},
+) {
   return {
     position: overrides.position ?? 0,
     timeSig: {

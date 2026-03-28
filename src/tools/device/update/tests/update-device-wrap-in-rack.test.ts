@@ -58,6 +58,22 @@ describe("updateDevice - wrapInRack", () => {
     liveSet = registerMockObject("live-set", { path: "live_set" });
   });
 
+  function registerTempTrackMocks(): RegisteredMockObject {
+    const ls = registerMockObject("live-set", {
+      path: "live_set",
+      methods: {
+        create_midi_track: () => ["id", "temp-track"],
+        delete_track: () => null,
+      },
+    });
+
+    registerMockObject("temp-track", {
+      path: livePath.track(1),
+    });
+
+    return ls;
+  }
+
   it("should wrap a single audio effect in an Audio Effect Rack", () => {
     const result = updateDevice({
       path: "t0/d0",
@@ -300,16 +316,7 @@ describe("updateDevice - wrapInRack", () => {
       registerMockObject("track-0", {
         path: livePath.track(0),
       });
-      registerMockObject("live-set", {
-        path: "live_set",
-        methods: {
-          create_midi_track: () => ["id", "temp-track"],
-          delete_track: () => null,
-        },
-      });
-      registerMockObject("temp-track", {
-        path: livePath.track(1),
-      });
+      registerTempTrackMocks();
 
       expect(() =>
         updateDevice({
@@ -332,17 +339,7 @@ describe("updateDevice - wrapInRack", () => {
       });
 
       // Cleanup (delete_track) succeeds
-      liveSet = registerMockObject("live-set", {
-        path: "live_set",
-        methods: {
-          create_midi_track: () => ["id", "temp-track"],
-          delete_track: () => null,
-        },
-      });
-
-      registerMockObject("temp-track", {
-        path: livePath.track(1),
-      });
+      liveSet = registerTempTrackMocks();
 
       expect(() =>
         updateDevice({

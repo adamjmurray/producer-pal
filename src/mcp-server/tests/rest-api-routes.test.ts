@@ -40,6 +40,29 @@ function stubMaxOutlet(payload: Record<string, unknown>): void {
 describe("REST API Routes", () => {
   const appState = setupExpressAppServer();
 
+  async function setEnabledTools(tools: string[]): Promise<void> {
+    await fetch(`${appState.baseUrl}/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tools }),
+    });
+  }
+
+  async function restoreAllTools(): Promise<void> {
+    await setEnabledTools([...TOOL_NAMES]);
+  }
+
+  async function callTool(
+    name: string,
+    input: Record<string, unknown> = {},
+  ): Promise<Response> {
+    return await fetch(`${appState.baseUrl}/api/tools/${name}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  }
+
   describe("GET /api/tools", () => {
     it("should return all enabled tools with correct structure", async () => {
       const response = await fetch(`${appState.baseUrl}/api/tools`);
@@ -61,12 +84,7 @@ describe("REST API Routes", () => {
     });
 
     it("should respect tool filtering via config", async () => {
-      // Update config to only include ppal-connect
-      await fetch(`${appState.baseUrl}/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: ["ppal-connect"] }),
-      });
+      await setEnabledTools(["ppal-connect"]);
 
       const response = await fetch(`${appState.baseUrl}/api/tools`);
       const body = await response.json();
@@ -79,12 +97,7 @@ describe("REST API Routes", () => {
       expect(names).toContain("ppal-connect");
       expect(names).toContain("ppal-raw-live-api");
 
-      // Restore all tools
-      await fetch(`${appState.baseUrl}/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: [...TOOL_NAMES] }),
-      });
+      await restoreAllTools();
     });
   });
 
@@ -98,43 +111,20 @@ describe("REST API Routes", () => {
     });
 
     it("should allow calling raw tool even when not in enabled config", async () => {
-      await fetch(`${appState.baseUrl}/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: ["ppal-connect"] }),
-      });
+      await setEnabledTools(["ppal-connect"]);
 
       // Raw tool should still be callable (returns 400 for missing input, not 404)
-      const response = await fetch(
-        `${appState.baseUrl}/api/tools/ppal-raw-live-api`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        },
-      );
+      const response = await callTool("ppal-raw-live-api");
 
       expect(response.status).toBe(400);
 
-      // Restore all tools
-      await fetch(`${appState.baseUrl}/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: [...TOOL_NAMES] }),
-      });
+      await restoreAllTools();
     });
   });
 
   describe("POST /api/tools/:toolName", () => {
     it("should return 404 for unknown tool", async () => {
-      const response = await fetch(
-        `${appState.baseUrl}/api/tools/nonexistent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        },
-      );
+      const response = await callTool("nonexistent");
 
       expect(response.status).toBe(404);
 
@@ -144,41 +134,19 @@ describe("REST API Routes", () => {
     });
 
     it("should return 404 for disabled tool", async () => {
-      // Disable all tools except ppal-connect
-      await fetch(`${appState.baseUrl}/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: ["ppal-connect"] }),
-      });
+      await setEnabledTools(["ppal-connect"]);
 
-      const response = await fetch(
-        `${appState.baseUrl}/api/tools/ppal-read-track`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        },
-      );
+      const response = await callTool("ppal-read-track");
 
       expect(response.status).toBe(404);
 
-      // Restore all tools
-      await fetch(`${appState.baseUrl}/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: [...TOOL_NAMES] }),
-      });
+      await restoreAllTools();
     });
 
     it("should return 400 for invalid input", async () => {
-      const response = await fetch(
-        `${appState.baseUrl}/api/tools/ppal-read-track`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ include: "not-an-array" }),
-        },
-      );
+      const response = await callTool("ppal-read-track", {
+        include: "not-an-array",
+      });
 
       expect(response.status).toBe(400);
 
@@ -193,14 +161,7 @@ describe("REST API Routes", () => {
         content: [{ type: "text", text: "track data here" }],
       });
 
-      const response = await fetch(
-        `${appState.baseUrl}/api/tools/ppal-connect`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        },
-      );
+      const response = await callTool("ppal-connect");
 
       expect(response.status).toBe(200);
 
@@ -216,14 +177,7 @@ describe("REST API Routes", () => {
         isError: true,
       });
 
-      const response = await fetch(
-        `${appState.baseUrl}/api/tools/ppal-connect`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        },
-      );
+      const response = await callTool("ppal-connect");
 
       expect(response.status).toBe(200);
 
