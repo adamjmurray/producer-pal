@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Max from "max-api";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import { TOOL_NAMES } from "../create-mcp-server.ts";
 import { setupExpressAppServer } from "./express-app-test-helpers.ts";
@@ -48,9 +48,9 @@ describe("REST API Routes", () => {
     });
   }
 
-  async function restoreAllTools(): Promise<void> {
+  afterEach(async () => {
     await setEnabledTools([...TOOL_NAMES]);
-  }
+  });
 
   async function callTool(
     name: string,
@@ -96,8 +96,6 @@ describe("REST API Routes", () => {
 
       expect(names).toContain("ppal-connect");
       expect(names).toContain("ppal-raw-live-api");
-
-      await restoreAllTools();
     });
   });
 
@@ -117,8 +115,6 @@ describe("REST API Routes", () => {
       const response = await callTool("ppal-raw-live-api");
 
       expect(response.status).toBe(400);
-
-      await restoreAllTools();
     });
   });
 
@@ -139,8 +135,6 @@ describe("REST API Routes", () => {
       const response = await callTool("ppal-read-track");
 
       expect(response.status).toBe(404);
-
-      await restoreAllTools();
     });
 
     it("should return 400 for invalid input", async () => {
