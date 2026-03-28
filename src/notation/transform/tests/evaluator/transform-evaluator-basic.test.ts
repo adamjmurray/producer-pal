@@ -9,7 +9,7 @@ import { createContext } from "./transform-evaluator-test-helpers.ts";
 describe("Transform Evaluator", () => {
   describe("basic structure", () => {
     it("returns empty object for empty string", () => {
-      const result = evaluateTransform("", createContext({}));
+      const result = evaluateTransform("", createContext());
 
       expect(result).toStrictEqual({});
     });
@@ -17,14 +17,14 @@ describe("Transform Evaluator", () => {
     it("returns empty object for null/undefined", () => {
       const result = evaluateTransform(
         null as unknown as string,
-        createContext({}),
+        createContext(),
       );
 
       expect(result).toStrictEqual({});
     });
 
     it("evaluates single parameter", () => {
-      const result = evaluateTransform("velocity += 10", createContext({}));
+      const result = evaluateTransform("velocity += 10", createContext());
 
       expect(result).toStrictEqual({
         velocity: { operator: "add", value: 10 },
@@ -34,7 +34,7 @@ describe("Transform Evaluator", () => {
     it("evaluates multiple parameters", () => {
       const result = evaluateTransform(
         "velocity += 10\ntiming += 0.05",
-        createContext({}),
+        createContext(),
       );
 
       expect(result).toStrictEqual({
@@ -46,31 +46,31 @@ describe("Transform Evaluator", () => {
 
   describe("arithmetic operations", () => {
     it("evaluates addition", () => {
-      const result = evaluateTransform("velocity += 10 + 5", createContext({}));
+      const result = evaluateTransform("velocity += 10 + 5", createContext());
 
       expect(result.velocity!.value).toBe(15);
     });
 
     it("evaluates subtraction", () => {
-      const result = evaluateTransform("velocity += 10 - 5", createContext({}));
+      const result = evaluateTransform("velocity += 10 - 5", createContext());
 
       expect(result.velocity!.value).toBe(5);
     });
 
     it("evaluates multiplication", () => {
-      const result = evaluateTransform("velocity += 10 * 2", createContext({}));
+      const result = evaluateTransform("velocity += 10 * 2", createContext());
 
       expect(result.velocity!.value).toBe(20);
     });
 
     it("evaluates division", () => {
-      const result = evaluateTransform("velocity += 10 / 2", createContext({}));
+      const result = evaluateTransform("velocity += 10 / 2", createContext());
 
       expect(result.velocity!.value).toBe(5);
     });
 
     it("handles division by zero (returns 0)", () => {
-      const result = evaluateTransform("velocity += 10 / 0", createContext({}));
+      const result = evaluateTransform("velocity += 10 / 0", createContext());
 
       expect(result.velocity!.value).toBe(0);
     });
@@ -78,7 +78,7 @@ describe("Transform Evaluator", () => {
     it("respects operator precedence", () => {
       const result = evaluateTransform(
         "velocity += 10 + 5 * 2",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBe(20); // 10 + (5 * 2)
@@ -87,7 +87,7 @@ describe("Transform Evaluator", () => {
     it("handles parentheses", () => {
       const result = evaluateTransform(
         "velocity += (10 + 5) * 2",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBe(30);
@@ -96,10 +96,7 @@ describe("Transform Evaluator", () => {
 
   describe("cosine waveform", () => {
     it("evaluates cos at position 0 (starts at peak)", () => {
-      const result = evaluateTransform(
-        "velocity += cos(1t)",
-        createContext({}),
-      );
+      const result = evaluateTransform("velocity += cos(1t)", createContext());
 
       expect(result.velocity!.value).toBeCloseTo(1.0, 10);
     });
@@ -125,7 +122,7 @@ describe("Transform Evaluator", () => {
     it("evaluates cos with phase offset", () => {
       const result = evaluateTransform(
         "velocity += cos(1t, 0.5)",
-        createContext({}),
+        createContext(),
       );
 
       // Phase 0 + offset 0.5 = phase 0.5 → cos(0.5) = -1
@@ -145,7 +142,7 @@ describe("Transform Evaluator", () => {
     it("evaluates scaled cosine", () => {
       const result = evaluateTransform(
         "velocity += 20 * cos(1t)",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBeCloseTo(20.0, 10);
@@ -154,10 +151,7 @@ describe("Transform Evaluator", () => {
 
   describe("sine waveform", () => {
     it("evaluates sin at position 0 (starts at zero)", () => {
-      const result = evaluateTransform(
-        "velocity += sin(1t)",
-        createContext({}),
-      );
+      const result = evaluateTransform("velocity += sin(1t)", createContext());
 
       expect(result.velocity!.value).toBeCloseTo(0.0, 10);
     });
@@ -183,7 +177,7 @@ describe("Transform Evaluator", () => {
     it("evaluates sin with phase offset", () => {
       const result = evaluateTransform(
         "velocity += sin(1t, 0.25)",
-        createContext({}),
+        createContext(),
       );
 
       // Phase 0 + offset 0.25 = phase 0.25 → sin(0.25) = 1.0
@@ -193,10 +187,7 @@ describe("Transform Evaluator", () => {
 
   describe("triangle waveform", () => {
     it("evaluates tri at position 0 (starts at zero)", () => {
-      const result = evaluateTransform(
-        "velocity += tri(1t)",
-        createContext({}),
-      );
+      const result = evaluateTransform("velocity += tri(1t)", createContext());
 
       expect(result.velocity!.value).toBe(0.0);
     });
@@ -222,7 +213,7 @@ describe("Transform Evaluator", () => {
     it("evaluates tri with phase offset", () => {
       const result = evaluateTransform(
         "velocity += tri(1t, 0.5)",
-        createContext({}),
+        createContext(),
       );
 
       // Phase 0 + offset 0.5 = phase 0.5 → tri(0.5) = 0.0
@@ -232,10 +223,7 @@ describe("Transform Evaluator", () => {
 
   describe("sawtooth waveform", () => {
     it("evaluates saw at position 0 (starts at zero)", () => {
-      const result = evaluateTransform(
-        "velocity += saw(1t)",
-        createContext({}),
-      );
+      const result = evaluateTransform("velocity += saw(1t)", createContext());
 
       expect(result.velocity!.value).toBe(0.0);
     });
@@ -261,7 +249,7 @@ describe("Transform Evaluator", () => {
     it("evaluates saw with phase offset", () => {
       const result = evaluateTransform(
         "velocity += saw(1t, 0.5)",
-        createContext({}),
+        createContext(),
       );
 
       // Phase 0 + offset 0.5 = phase 0.5 → saw(0.5) = -1.0
@@ -273,7 +261,7 @@ describe("Transform Evaluator", () => {
     it("evaluates square at position 0 (starts high)", () => {
       const result = evaluateTransform(
         "velocity += square(1t)",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBe(1.0);
@@ -300,7 +288,7 @@ describe("Transform Evaluator", () => {
     it("evaluates square with phase offset", () => {
       const result = evaluateTransform(
         "velocity += square(1t, 0.5)",
-        createContext({}),
+        createContext(),
       );
 
       // Phase 0 + offset 0.5 = phase 0.5 → square switches at 0.5
@@ -348,7 +336,7 @@ describe("Transform Evaluator", () => {
     it("evaluates scaled rand", () => {
       const result = evaluateTransform(
         "velocity += 10 * rand()",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBeGreaterThanOrEqual(-10.0);
@@ -360,7 +348,7 @@ describe("Transform Evaluator", () => {
     it("evaluates choose with single value", () => {
       const result = evaluateTransform(
         "velocity += choose(42)",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBe(42);
@@ -517,7 +505,7 @@ describe("Transform Evaluator", () => {
     it("evaluates unipolar envelope (20 + 20 * cos)", () => {
       const result = evaluateTransform(
         "velocity += 20 + 20 * cos(1:0t)",
-        createContext({}), // cos at position 0 = 1.0
+        createContext(), // cos at position 0 = 1.0
       );
 
       expect(result.velocity!.value).toBeCloseTo(40.0, 10); // 20 + 20 * 1.0
@@ -526,7 +514,7 @@ describe("Transform Evaluator", () => {
     it("evaluates swing timing (0.05 * (cos(1t) - 1))", () => {
       const result = evaluateTransform(
         "timing += 0.05 * (cos(1t) - 1)",
-        createContext({}), // cos at position 0 = 1.0
+        createContext(), // cos at position 0 = 1.0
       );
 
       expect(result.timing!.value).toBeCloseTo(0.0, 10); // 0.05 * (1.0 - 1) = 0
@@ -535,7 +523,7 @@ describe("Transform Evaluator", () => {
     it("evaluates multiple functions combined", () => {
       const result = evaluateTransform(
         "velocity += 20 * cos(1t) + 10",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBeCloseTo(30.0, 10); // 20 * 1.0 + 10
@@ -544,7 +532,7 @@ describe("Transform Evaluator", () => {
     it("evaluates amplitude transform (cos * cos)", () => {
       const result = evaluateTransform(
         "velocity += 30 * cos(4:0t) * cos(1t)",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBeCloseTo(30.0, 10); // 30 * 1.0 * 1.0
@@ -579,7 +567,7 @@ describe("Transform Evaluator", () => {
 timing += 0.05 * rand()
 probability += 0.2 * cos(0:2t)`;
 
-      const result = evaluateTransform(modString, createContext({}));
+      const result = evaluateTransform(modString, createContext());
 
       expect(result).toHaveProperty("velocity");
       expect(result).toHaveProperty("timing");
@@ -594,7 +582,7 @@ probability += 0.2 * cos(0:2t)`;
   describe("error handling", () => {
     it("throws on parse error", () => {
       expect(() =>
-        evaluateTransform("invalid syntax!!!", createContext({})),
+        evaluateTransform("invalid syntax!!!", createContext()),
       ).toThrow(/transform syntax error/);
     });
 
@@ -603,7 +591,7 @@ probability += 0.2 * cos(0:2t)`;
       const modString = `velocity += cos()
 timing += 0.05`;
 
-      const result = evaluateTransform(modString, createContext({}));
+      const result = evaluateTransform(modString, createContext());
 
       // velocity should be skipped due to error, but timing should work
       expect(result).not.toHaveProperty("velocity");
@@ -615,7 +603,7 @@ timing += 0.05`;
     });
 
     it("handles missing frequency argument", () => {
-      const result = evaluateTransform("velocity += cos()", createContext({}));
+      const result = evaluateTransform("velocity += cos()", createContext());
 
       expect(result).toStrictEqual({});
       expect(outlet).toHaveBeenCalledWith(1, expect.anything());
@@ -626,7 +614,7 @@ timing += 0.05`;
     it("basic envelope: velocity += 20 * cos(1:0t)", () => {
       const result = evaluateTransform(
         "velocity += 20 * cos(1:0t)",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBeCloseTo(20.0, 10);
@@ -635,7 +623,7 @@ timing += 0.05`;
     it("phase-shifted: velocity += 20 * cos(1:0t, 0.5)", () => {
       const result = evaluateTransform(
         "velocity += 20 * cos(1:0t, 0.5)",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBeCloseTo(-20.0, 10);
@@ -644,7 +632,7 @@ timing += 0.05`;
     it("pulse width transform: velocity += 20 * square(2t, 0, 0.25)", () => {
       const result = evaluateTransform(
         "velocity += 20 * square(2t, 0, 0.25)",
-        createContext({}),
+        createContext(),
       );
 
       expect(result.velocity!.value).toBe(20.0);
@@ -653,7 +641,7 @@ timing += 0.05`;
     it("combined functions: velocity += 20 * cos(4:0t) + 10 * rand()", () => {
       const result = evaluateTransform(
         "velocity += 20 * cos(4:0t) + 10 * rand()",
-        createContext({}),
+        createContext(),
       );
 
       // cos(0) = 1, so 20 * 1 + 10 * rand() should be between 10 and 30
