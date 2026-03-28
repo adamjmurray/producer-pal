@@ -4,14 +4,14 @@
 
 import { describe, expect, it } from "vitest";
 import { evaluateTransform } from "#src/notation/transform/transform-evaluator.ts";
+import { createContext } from "./transform-evaluator-test-helpers.ts";
 
 describe("Transform Evaluator", () => {
   describe("pitch filtering", () => {
     it("applies transform to matching pitch", () => {
       const result = evaluateTransform("C3: velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 60,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result.velocity!.value).toBe(10);
@@ -19,9 +19,8 @@ describe("Transform Evaluator", () => {
 
     it("skips transform for non-matching pitch", () => {
       const result = evaluateTransform("C3: velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 61,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result).toStrictEqual({});
@@ -29,9 +28,8 @@ describe("Transform Evaluator", () => {
 
     it("applies transform when no pitch specified", () => {
       const result = evaluateTransform("velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 60,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result.velocity!.value).toBe(10);
@@ -39,9 +37,8 @@ describe("Transform Evaluator", () => {
 
     it("persists pitch across multiple lines", () => {
       const result = evaluateTransform("C3: velocity += 10\ntiming += 0.05", {
-        position: 0,
+        ...createContext(),
         pitch: 60,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result.velocity!.value).toBe(10);
@@ -52,17 +49,15 @@ describe("Transform Evaluator", () => {
       const modString = `C3: velocity += 10
 C#3: velocity += 20`;
       const result1 = evaluateTransform(modString, {
-        position: 0,
+        ...createContext(),
         pitch: 60,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result1.velocity!.value).toBe(10);
 
       const result2 = evaluateTransform(modString, {
-        position: 0,
+        ...createContext(),
         pitch: 61,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result2.velocity!.value).toBe(20);
@@ -70,9 +65,8 @@ C#3: velocity += 20`;
 
     it("applies transform to pitch within range", () => {
       const result = evaluateTransform("C3-C5: velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 72, // C4 is within C3-C5
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result.velocity!.value).toBe(10);
@@ -80,9 +74,8 @@ C#3: velocity += 20`;
 
     it("applies transform to pitch at range start", () => {
       const result = evaluateTransform("C3-C5: velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 60, // C3 is at start
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result.velocity!.value).toBe(10);
@@ -90,9 +83,8 @@ C#3: velocity += 20`;
 
     it("applies transform to pitch at range end", () => {
       const result = evaluateTransform("C3-C5: velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 84, // C5 is at end
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result.velocity!.value).toBe(10);
@@ -100,9 +92,8 @@ C#3: velocity += 20`;
 
     it("skips transform for pitch below range", () => {
       const result = evaluateTransform("C3-C5: velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 59, // B2 is below C3
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result).toStrictEqual({});
@@ -110,9 +101,8 @@ C#3: velocity += 20`;
 
     it("skips transform for pitch above range", () => {
       const result = evaluateTransform("C3-C5: velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 85, // C#5 is above C5
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result).toStrictEqual({});
@@ -122,9 +112,8 @@ C#3: velocity += 20`;
       const result = evaluateTransform(
         "C3-C5: velocity += 10\ntiming += 0.05",
         {
-          position: 0,
+          ...createContext(),
           pitch: 72, // C4 within range
-          timeSig: { numerator: 4, denominator: 4 },
         },
       );
 
@@ -137,25 +126,22 @@ C#3: velocity += 20`;
 G4-G5: velocity += 20`;
 
       const result1 = evaluateTransform(modString, {
-        position: 0,
+        ...createContext(),
         pitch: 72, // C4 in first range
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result1.velocity!.value).toBe(10);
 
       const result2 = evaluateTransform(modString, {
-        position: 0,
+        ...createContext(),
         pitch: 91, // G5 in second range
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result2.velocity!.value).toBe(20);
 
       const result3 = evaluateTransform(modString, {
-        position: 0,
+        ...createContext(),
         pitch: 76, // E4 in first range but not second
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result3.velocity!.value).toBe(10);
@@ -165,10 +151,9 @@ G4-G5: velocity += 20`;
   describe("time range filtering", () => {
     it("applies transform within time range", () => {
       const result = evaluateTransform("1|1-2|1: velocity += 10", {
-        position: 0,
+        ...createContext(),
         bar: 1,
         beat: 2,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result.velocity!.value).toBe(10);
@@ -176,10 +161,9 @@ G4-G5: velocity += 20`;
 
     it("skips transform outside time range (before)", () => {
       const result = evaluateTransform("2|1-3|1: velocity += 10", {
-        position: 0,
+        ...createContext(),
         bar: 1,
         beat: 4,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result).toStrictEqual({});
@@ -187,10 +171,9 @@ G4-G5: velocity += 20`;
 
     it("skips transform outside time range (after)", () => {
       const result = evaluateTransform("1|1-2|1: velocity += 10", {
-        position: 0,
+        ...createContext(),
         bar: 3,
         beat: 1,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result).toStrictEqual({});
@@ -200,19 +183,17 @@ G4-G5: velocity += 20`;
       const modString = "1|1-2|4: velocity += 10";
 
       const atStart = evaluateTransform(modString, {
-        position: 0,
+        ...createContext(),
         bar: 1,
         beat: 1,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(atStart.velocity!.value).toBe(10);
 
       const atEnd = evaluateTransform(modString, {
-        position: 0,
+        ...createContext(),
         bar: 2,
         beat: 4,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(atEnd.velocity!.value).toBe(10);
@@ -222,11 +203,10 @@ G4-G5: velocity += 20`;
   describe("combined pitch and time filtering", () => {
     it("applies when both pitch and time match", () => {
       const result = evaluateTransform("C3 1|1-2|1: velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 60,
         bar: 1,
         beat: 2,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result.velocity!.value).toBe(10);
@@ -234,11 +214,10 @@ G4-G5: velocity += 20`;
 
     it("skips when pitch matches but time doesn't", () => {
       const result = evaluateTransform("C3 1|1-2|1: velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 60,
         bar: 3,
         beat: 1,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result).toStrictEqual({});
@@ -246,11 +225,10 @@ G4-G5: velocity += 20`;
 
     it("skips when time matches but pitch doesn't", () => {
       const result = evaluateTransform("C3 1|1-2|1: velocity += 10", {
-        position: 0,
+        ...createContext(),
         pitch: 61,
         bar: 1,
         beat: 2,
-        timeSig: { numerator: 4, denominator: 4 },
       });
 
       expect(result).toStrictEqual({});
@@ -259,19 +237,13 @@ G4-G5: velocity += 20`;
 
   describe("operators", () => {
     it("returns add operator for += syntax", () => {
-      const result = evaluateTransform("velocity += 10", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
+      const result = evaluateTransform("velocity += 10", createContext());
 
       expect(result.velocity!.operator).toBe("add");
     });
 
     it("returns set operator for = syntax", () => {
-      const result = evaluateTransform("velocity = 64", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
+      const result = evaluateTransform("velocity = 64", createContext());
 
       expect(result.velocity!.operator).toBe("set");
     });
@@ -290,10 +262,7 @@ G4-G5: velocity += 20`;
     it("evaluates note.pitch variable", () => {
       const result = evaluateTransform(
         "velocity += note.pitch",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -303,10 +272,7 @@ G4-G5: velocity += 20`;
     it("evaluates note.start variable", () => {
       const result = evaluateTransform(
         "velocity += note.start * 10",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -316,10 +282,7 @@ G4-G5: velocity += 20`;
     it("evaluates note.velocity variable", () => {
       const result = evaluateTransform(
         "duration += note.velocity / 100",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -329,10 +292,7 @@ G4-G5: velocity += 20`;
     it("evaluates note.deviation variable", () => {
       const result = evaluateTransform(
         "velocity += note.deviation",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -342,10 +302,7 @@ G4-G5: velocity += 20`;
     it("evaluates note.duration variable", () => {
       const result = evaluateTransform(
         "probability += note.duration",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -355,10 +312,7 @@ G4-G5: velocity += 20`;
     it("evaluates note.probability variable", () => {
       const result = evaluateTransform(
         "velocity += note.probability * 20",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -368,10 +322,7 @@ G4-G5: velocity += 20`;
     it("allows self-reference: velocity based on note.velocity", () => {
       const result = evaluateTransform(
         "velocity = note.velocity / 2",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -381,10 +332,7 @@ G4-G5: velocity += 20`;
     it("combines variables in arithmetic expressions", () => {
       const result = evaluateTransform(
         "velocity += note.pitch + note.deviation",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -394,10 +342,7 @@ G4-G5: velocity += 20`;
     it("uses variables with functions", () => {
       const result = evaluateTransform(
         "velocity += note.velocity * cos(1t)",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -407,10 +352,7 @@ G4-G5: velocity += 20`;
     it("uses variables in complex expressions", () => {
       const result = evaluateTransform(
         "velocity = (note.pitch / 127) * 100",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -420,10 +362,7 @@ G4-G5: velocity += 20`;
     it("uses multiple variables in same expression", () => {
       const result = evaluateTransform(
         "duration = note.duration * note.probability",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -433,10 +372,7 @@ G4-G5: velocity += 20`;
     it("uses variables in parenthesized expressions", () => {
       const result = evaluateTransform(
         "velocity = (note.pitch + note.deviation) * 2",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -447,9 +383,8 @@ G4-G5: velocity += 20`;
       const result = evaluateTransform(
         "C3: velocity = note.velocity / 2",
         {
-          position: 0,
+          ...createContext(),
           pitch: 60,
-          timeSig: { numerator: 4, denominator: 4 },
         },
         noteProps,
       );
@@ -461,10 +396,9 @@ G4-G5: velocity += 20`;
       const result = evaluateTransform(
         "1|1-2|1: velocity = note.pitch",
         {
-          position: 0,
+          ...createContext(),
           bar: 1,
           beat: 2,
-          timeSig: { numerator: 4, denominator: 4 },
         },
         noteProps,
       );
@@ -474,25 +408,14 @@ G4-G5: velocity += 20`;
 
     it("throws error for undefined variable", () => {
       expect(() =>
-        evaluateTransform(
-          "velocity += note.invalid",
-          {
-            position: 0,
-            timeSig: { numerator: 4, denominator: 4 },
-          },
-          {},
-        ),
+        evaluateTransform("velocity += note.invalid", createContext(), {}),
       ).toThrow(/transform syntax error/);
     });
 
     it("handles variables in ramp function arguments", () => {
       const result = evaluateTransform(
         "velocity = ramp(0, note.velocity)",
-        {
-          position: 2,
-          timeSig: { numerator: 4, denominator: 4 },
-          clipTimeRange: { start: 0, end: 4 },
-        },
+        createContext({ position: 2, clipTimeRange: { start: 0, end: 4 } }),
         noteProps,
       );
 
@@ -502,10 +425,7 @@ G4-G5: velocity += 20`;
     it("handles variables in waveform phase offset", () => {
       const result = evaluateTransform(
         "velocity += cos(1t, note.probability)",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
@@ -519,10 +439,7 @@ G4-G5: velocity += 20`;
     it("uses variable as waveform period", () => {
       const result = evaluateTransform(
         "velocity += cos(note.duration)",
-        {
-          position: 0.25, // quarter way through period
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext({ position: 0.25 }), // quarter way through period
         noteProps,
       );
 
@@ -534,10 +451,7 @@ G4-G5: velocity += 20`;
     it("uses expression as waveform period", () => {
       const result = evaluateTransform(
         "velocity += cos(note.duration * 2)",
-        {
-          position: 0.5, // halfway through period
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext({ position: 0.5 }),
         noteProps,
       );
 
@@ -549,10 +463,7 @@ G4-G5: velocity += 20`;
     it("throws error when variable period is <= 0", () => {
       const result = evaluateTransform(
         "velocity += cos(note.duration - 0.5)",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         noteProps,
       );
 
