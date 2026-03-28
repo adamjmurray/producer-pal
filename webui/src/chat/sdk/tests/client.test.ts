@@ -346,6 +346,34 @@ describe("ChatSdkClient", () => {
       expect(last[2]!.content).toBe("Second");
     });
 
+    it("stops early on start-step when shouldInterrupt returns true", async () => {
+      async function* iterate(): AsyncIterable<Record<string, unknown>> {
+        yield { type: "text-delta", text: "First" };
+        yield { type: "start-step", messageId: "m2" };
+        yield { type: "text-delta", text: "Should not appear" };
+      }
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        fullStream: iterate(),
+      });
+
+      const client = new ChatSdkClient("key", createConfig());
+      let last: ChatMessage[] = [];
+
+      for await (const history of client.sendMessage(
+        "Hello",
+        undefined,
+        undefined,
+        () => true,
+      )) {
+        last = history;
+      }
+
+      // Only user + first assistant (interrupted before second step)
+      expect(last).toHaveLength(2);
+      expect(last[1]!.content).toBe("First");
+    });
+
     it("processes tool-input-start for Chat Completions streaming", async () => {
       const last = await sendWithParts([
         {

@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
+import {
+  type ChatAdapter,
+  type ChatClient,
+  type MessageOverrides,
+} from "#webui/hooks/chat/use-chat-types";
 import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type UIMessage } from "#webui/types/messages";
 
@@ -108,4 +112,29 @@ export function filterOverrides(
   }
 
   return undefined;
+}
+
+/**
+ * Show error when API key is not configured.
+ * @param adapter - Chat adapter for formatting
+ * @param userMessage - The user's message text
+ * @param setMessages - State setter for messages
+ */
+export function showMissingApiKeyError<
+  TClient extends ChatClient<TMessage>,
+  TMessage,
+  TConfig,
+>(
+  adapter: ChatAdapter<TClient, TMessage, TConfig>,
+  userMessage: string,
+  setMessages: (msgs: UIMessage[]) => void,
+): void {
+  const entry = adapter.createUserMessage(userMessage);
+
+  setMessages(
+    adapter.createErrorMessage(
+      new Error("No API key configured. Please add your API key in Settings."),
+      [entry],
+    ),
+  );
 }

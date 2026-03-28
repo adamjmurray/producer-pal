@@ -76,6 +76,8 @@ function renderMessageList(
   const result = render(
     <MessageList
       messages={messages}
+      queuedMessages={[]}
+      onRemoveQueued={vi.fn()}
       isAssistantResponding={isAssistantResponding}
       handleRetry={handleRetry}
       handleEdit={handleEdit}
@@ -382,6 +384,8 @@ describe("MessageList", () => {
       rerender(
         <MessageList
           messages={[createUserMessage("Hello", 0)]}
+          queuedMessages={[]}
+          onRemoveQueued={vi.fn()}
           isAssistantResponding={true}
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
@@ -433,6 +437,8 @@ describe("MessageList", () => {
         rerender(
           <MessageList
             messages={messages}
+            queuedMessages={[]}
+            onRemoveQueued={vi.fn()}
             isAssistantResponding={isAssistantResponding}
             handleRetry={vi.fn()}
             handleEdit={vi.fn()}
@@ -454,6 +460,8 @@ describe("MessageList", () => {
       rerender(
         <MessageList
           messages={[createModelMessage("Fast response")]}
+          queuedMessages={[]}
+          onRemoveQueued={vi.fn()}
           isAssistantResponding={true}
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
@@ -483,6 +491,8 @@ describe("MessageList", () => {
       rerender(
         <MessageList
           messages={messagesWithContent}
+          queuedMessages={[]}
+          onRemoveQueued={vi.fn()}
           isAssistantResponding={true}
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
@@ -512,6 +522,8 @@ describe("MessageList", () => {
       render(
         <MessageList
           messages={messages}
+          queuedMessages={[]}
+          onRemoveQueued={vi.fn()}
           isAssistantResponding={false}
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}
@@ -535,6 +547,8 @@ describe("MessageList", () => {
       render(
         <MessageList
           messages={messages}
+          queuedMessages={[]}
+          onRemoveQueued={vi.fn()}
           isAssistantResponding={false}
           handleRetry={vi.fn()}
           handleEdit={vi.fn()}

@@ -218,6 +218,9 @@ export function App() {
           isAssistantResponding={chat.isAssistantResponding}
           rateLimitState={chat.rateLimitState}
           handleSend={wrappedHandleSend}
+          enqueueMessage={chat.enqueueMessage}
+          queuedMessages={chat.queuedMessages}
+          onRemoveQueued={chat.removeMessage}
           handleRetry={chat.handleRetry}
           handleEdit={chat.handleEdit}
           headerInfo={{

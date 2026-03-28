@@ -11,6 +11,7 @@ import { ChatInput } from "#webui/components/chat/controls/ChatInput";
 
 const defaultProps = {
   handleSend: vi.fn(),
+  onEnqueue: vi.fn(),
   isAssistantResponding: false,
   onStop: vi.fn(),
   thinking: "Default",
@@ -29,9 +30,9 @@ describe("ChatInput", () => {
       expect(screen.getByRole("button", { name: "Send" })).toBeDefined();
     });
 
-    it("renders ... button when responding", () => {
+    it("renders Queue button when responding", () => {
       render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
-      expect(screen.getByRole("button", { name: "..." })).toBeDefined();
+      expect(screen.getByRole("button", { name: "Queue" })).toBeDefined();
     });
 
     it("shows placeholder text", () => {
@@ -89,16 +90,16 @@ describe("ChatInput", () => {
         buttonName: "Send",
       },
       {
-        name: "assistant responding",
-        inputValue: "Hello",
-        isResponding: true,
-        buttonName: "...",
-      },
-      {
         name: "whitespace only",
         inputValue: "   ",
         isResponding: false,
         buttonName: "Send",
+      },
+      {
+        name: "empty input while responding",
+        inputValue: undefined,
+        isResponding: true,
+        buttonName: "Queue",
       },
     ])("is disabled when $name", ({ inputValue, isResponding, buttonName }) => {
       render(
@@ -116,6 +117,20 @@ describe("ChatInput", () => {
       }) as HTMLButtonElement;
 
       expect(button.disabled).toBe(true);
+    });
+
+    it("is enabled with content while responding (for queuing)", () => {
+      render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
+
+      const textarea = screen.getByRole("textbox");
+
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+
+      const button = screen.getByRole("button", {
+        name: "Queue",
+      }) as HTMLButtonElement;
+
+      expect(button.disabled).toBe(false);
     });
 
     it("is enabled when input has content", () => {
@@ -179,12 +194,6 @@ describe("ChatInput", () => {
         isResponding: false,
       },
       {
-        name: "assistant responding",
-        inputValue: "Hello",
-        shiftKey: false,
-        isResponding: true,
-      },
-      {
         name: "empty input",
         inputValue: undefined,
         shiftKey: false,
@@ -220,6 +229,27 @@ describe("ChatInput", () => {
         expect(handleSend).not.toHaveBeenCalled();
       },
     );
+
+    it("enqueues on Enter when assistant is responding", () => {
+      const onEnqueue = vi.fn();
+
+      render(
+        <ChatInput
+          {...defaultProps}
+          onEnqueue={onEnqueue}
+          isAssistantResponding={true}
+        />,
+      );
+
+      const textarea = screen.getByRole("textbox");
+
+      fireEvent.input(textarea, { target: { value: "Follow up" } });
+      fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
+
+      expect(onEnqueue).toHaveBeenCalledExactlyOnceWith("Follow up", {
+        thinking: "Default",
+      });
+    });
   });
 
   describe("thinking toggle", () => {

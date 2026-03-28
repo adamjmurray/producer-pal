@@ -9,14 +9,17 @@ import { ThinkingToggle, type ThinkingToggleProps } from "./ThinkingToggle";
 
 interface ChatInputProps extends ThinkingToggleProps {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
+  onEnqueue: (text: string, overrides?: MessageOverrides) => void;
   isAssistantResponding: boolean;
   onStop: () => void;
 }
 
 /**
- * Input component for chat messages
+ * Input component for chat messages.
+ * When the AI is responding, messages are queued instead of sent directly.
  * @param props - Component props
- * @param props.handleSend - Callback to send message
+ * @param props.handleSend - Callback to send message directly
+ * @param props.onEnqueue - Callback to queue message while AI is responding
  * @param props.isAssistantResponding - Whether assistant is currently responding
  * @param props.onStop - Callback to stop assistant response
  * @param props.thinking - Current thinking mode
@@ -25,6 +28,7 @@ interface ChatInputProps extends ThinkingToggleProps {
  */
 export function ChatInput({
   handleSend,
+  onEnqueue,
   isAssistantResponding,
   onStop,
   thinking,
@@ -32,20 +36,25 @@ export function ChatInput({
 }: ChatInputProps) {
   const [input, setInput] = useState("");
 
+  const submitMessage = () => {
+    if (!input.trim()) return;
+
+    const overrides: MessageOverrides = { thinking };
+
+    if (isAssistantResponding) {
+      onEnqueue(input, overrides);
+    } else {
+      void handleSend(input, overrides);
+    }
+
+    setInput("");
+  };
+
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-
-      if (!isAssistantResponding && input.trim()) {
-        void handleSend(input, { thinking });
-        setInput("");
-      }
+      submitMessage();
     }
-  };
-
-  const handleSendClick = () => {
-    void handleSend(input, { thinking });
-    setInput("");
   };
 
   return (
@@ -75,11 +84,11 @@ export function ChatInput({
               />
             )}
             <button
-              onClick={handleSendClick}
-              disabled={isAssistantResponding || !input.trim()}
+              onClick={submitMessage}
+              disabled={!input.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700"
             >
-              {isAssistantResponding ? "..." : "Send"}
+              {isAssistantResponding ? "Queue" : "Send"}
             </button>
           </div>
         </div>
