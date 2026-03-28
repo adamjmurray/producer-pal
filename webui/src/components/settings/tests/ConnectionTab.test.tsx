@@ -22,6 +22,12 @@ vi.mock(import("#webui/components/settings/controls/ModelSelector"), () => ({
   ),
 }));
 
+vi.mock(import("#webui/components/settings/TestConnectionButton"), () => ({
+  TestConnectionButton: () => (
+    <div data-testid="test-connection-button">Test Connection</div>
+  ),
+}));
+
 describe("ConnectionTab", () => {
   const defaultProps = {
     provider: "gemini" as const,
@@ -623,6 +629,11 @@ describe("ConnectionTab", () => {
     it("renders ModelSelector with correct model", () => {
       render(<ConnectionTab {...defaultProps} model="gpt-4" />);
       expect(screen.getByTestId("model-selector").textContent).toBe("gpt-4");
+    });
+
+    it("renders TestConnectionButton", () => {
+      render(<ConnectionTab {...defaultProps} />);
+      expect(screen.getByTestId("test-connection-button")).toBeDefined();
     });
   });
 });

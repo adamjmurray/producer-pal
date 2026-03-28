@@ -12,6 +12,7 @@ import {
 } from "./connection-tab-helpers";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
+import { TestConnectionButton } from "./TestConnectionButton";
 
 interface ConnectionTabProps {
   provider: Provider;
@@ -116,6 +117,12 @@ export function ConnectionTab({
             </p>
           </div>
         )}
+
+      <TestConnectionButton
+        provider={provider}
+        apiKey={apiKey}
+        baseUrl={baseUrl}
+      />
 
       <ModelSelector provider={provider} model={model} setModel={setModel} />
       {MODEL_DOCS_URLS[provider] && (
