@@ -287,5 +287,28 @@ describe("assertToolCalled", () => {
       expect(details.matchingCalls).toHaveLength(2);
       expect(details.count).toBe(2);
     });
+
+    it("renders objectContaining matchers readably in failure message", () => {
+      const turns = [
+        createTurn([
+          { name: "update-clip", args: { ids: "17", transforms: "wrong" } },
+        ]),
+      ];
+      const assertion: ToolCallAssertion = {
+        type: "tool_called",
+        tool: "update-clip",
+        args: expect.objectContaining({
+          ids: expect.any(String),
+          transforms: expect.stringMatching(/Ab1/),
+        }) as Record<string, unknown>,
+      };
+
+      const result = assertToolCalled(assertion, turns);
+
+      expect(result.earned).toBe(0);
+      expect(result.message).toContain("ids: Any<String>");
+      expect(result.message).toContain("StringMatching</Ab1/>");
+      expect(result.message).not.toContain('"ObjectContaining"');
+    });
   });
 });

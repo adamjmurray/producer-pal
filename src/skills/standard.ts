@@ -143,8 +143,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 **Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only), \`clip.barDuration\` (all clips)
 
 \`\`\`
-timing = swing(0.05)             // 8th-note swing (medium feel)
-timing = swing(0.03, 0.5)        // 16th-note swing (subtle)
+timing = swing(0.05)             // 8th-note swing (medium feel) - see below for how to use with quant()
 timing = quant(1/2t)             // snap to 8th-note grid (half a beat)
 timing = quant(1/4t)             // snap to 16th-note grid (quarter beat)
 timing += 0.05 * rand()          // humanize timing
@@ -161,6 +160,13 @@ pitch = step(note.pitch, sin(4t) * 7) // oscillate ±7 scale steps smoothly
 pitch = wrap(note.pitch + 5, C3, C5) // transpose up 5, wrap within C3-C5
 velocity *= 0.5                  // halve all velocities
 C1-C2: duration /= 2             // halve duration of bass notes
+\`\`\`
+
+Note that to change swing or apply swing to un-quantized notes, always quantize first.
+Do this in a single transform:
+\`\`\`
+timing = quant(1/2t)  // quant() first to align to grid...
+timing = swing(0.03)  // ...then apply new swing amount
 \`\`\`
 
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.

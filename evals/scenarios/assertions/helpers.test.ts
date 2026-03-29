@@ -9,6 +9,7 @@ import {
   exactMatch,
   normalizeCount,
   formatExpectedCount,
+  stringifyArgs,
 } from "./helpers.ts";
 import { type EvalTurnResult } from "../types.ts";
 
@@ -380,5 +381,42 @@ describe("formatExpectedCount", () => {
   it("handles zero values", () => {
     expect(formatExpectedCount({ min: 0, max: 0 })).toBe("exactly 0 time(s)");
     expect(formatExpectedCount({ min: 0, max: 2 })).toBe("0-2 time(s)");
+  });
+});
+
+describe("stringifyArgs", () => {
+  it("stringifies plain objects", () => {
+    expect(stringifyArgs({ name: "Kick" })).toBe('{name: "Kick"}');
+  });
+
+  it("renders expect.any(String)", () => {
+    expect(stringifyArgs({ id: expect.any(String) })).toBe("{id: Any<String>}");
+  });
+
+  it("renders expect.stringMatching with regex", () => {
+    expect(stringifyArgs({ x: expect.stringMatching(/foo/) })).toBe(
+      "{x: StringMatching</foo/>}",
+    );
+  });
+
+  it("unwraps expect.objectContaining with nested matchers", () => {
+    const args = expect.objectContaining({
+      ids: expect.any(String),
+      transforms: expect.stringMatching(/Ab1/),
+    }) as Record<string, unknown>;
+
+    expect(stringifyArgs(args)).toBe(
+      "{ids: Any<String>, transforms: StringMatching</Ab1/>}",
+    );
+  });
+
+  it("renders mixed literal and matcher values", () => {
+    expect(
+      stringifyArgs({ name: "test", count: 5, id: expect.any(String) }),
+    ).toBe('{name: "test", count: 5, id: Any<String>}');
+  });
+
+  it("renders expect.anything()", () => {
+    expect(stringifyArgs({ x: expect.anything() })).toBe("{x: Anything}");
   });
 });
