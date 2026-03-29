@@ -125,7 +125,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
-- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), wrap(val,min,max) (wrap to inclusive range), reflect(val,min,max) (bounce within inclusive range), min(a,b,...), max(a,b,...), pow(base,exp), quant(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms)
+- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), wrap(val,min,max) (wrap to inclusive range), reflect(val,min,max) (bounce within inclusive range), min(a,b,...), max(a,b,...), pow(base,exp), snap(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms)
 - **Timing functions:** swing(amount [, period]) (returns swung position; amount=delay in beats: 0.02=subtle, 0.05=medium, 0.1=heavy; period: default 1=8th-note swing, 0.5=16th-note swing), quantize(grid) (snap to nearest grid point; grid ref: 1t=quarter, 1/2t=8th, 1/4t=16th, 1/3t=triplet). Both return absolute positions — use \`timing =\`, not \`timing +=\`. To change swing: quantize first to reset to grid, then apply new swing
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
@@ -156,7 +156,7 @@ C1-C2: velocity += 30            // accent bass notes
 velocity = seq(100, 60, 80, 60)  // cycle accents per note
 Gb1: pitch = seq(Gb1, Gb1, Gb1, Gb1, Ab1) // every 5th closed hat → open hat
 gain = audio.gain - 6            // reduce audio clip by 6 dB
-pitch = quant(note.pitch + 7)    // transpose up fifth, snap to scale
+pitch = snap(note.pitch + 7) // transpose up fifth, snap to scale
 pitch = step(note.pitch, sin(4t) * 7) // oscillate ±7 scale steps smoothly
 pitch = wrap(note.pitch + 5, C3, C5) // transpose up 5, wrap within C3-C5
 velocity *= 0.5                  // halve all velocities

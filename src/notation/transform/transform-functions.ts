@@ -19,7 +19,7 @@ import {
   evaluateSeq,
 } from "./helpers/transform-functions-helpers.ts";
 import {
-  evaluateQuant,
+  evaluateSnap,
   evaluateStep,
 } from "./helpers/transform-functions-scale-helpers.ts";
 import {
@@ -44,7 +44,7 @@ const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
   rand: evaluateRand,
   seq: evaluateSeq,
   choose: evaluateChoose,
-  quant: evaluateQuant,
+  snap: evaluateSnap,
   quantize: evaluateQuantize,
   step: evaluateStep,
   swing: evaluateSwing,

@@ -566,12 +566,12 @@ probability += -0.2`;
       expect(notes[0]!.velocity).toBe(30);
     });
 
-    it("uses scalePitchClassMask from clipContext via quant()", () => {
+    it("uses scalePitchClassMask from clipContext via snap()", () => {
       const notes = createTestNotes([
         { start_time: 0, velocity: 100, pitch: 61 },
       ]);
 
-      applyTransforms(notes, "pitch = quant(61)", 4, 4, {
+      applyTransforms(notes, "pitch = snap(61)", 4, 4, {
         clipDuration: 4,
         clipIndex: 0,
         clipCount: 1,

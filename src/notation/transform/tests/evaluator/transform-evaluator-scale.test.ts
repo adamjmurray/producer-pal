@@ -12,10 +12,10 @@ const CTX = { position: 0, timeSig: { numerator: 4, denominator: 4 } };
 // C Major: C D E F G A B → pitch classes 0,2,4,5,7,9,11
 const C_MAJOR_MASK = scaleIntervalsToPitchClassMask([0, 2, 4, 5, 7, 9, 11], 0);
 
-describe("Transform Evaluator - quant()", () => {
+describe("Transform Evaluator - snap()", () => {
   describe("basic quantization with C Major scale", () => {
     it("returns in-scale pitch unchanged", () => {
-      const result = evaluateTransform("pitch = quant(60)", CTX, {
+      const result = evaluateTransform("pitch = snap(60)", CTX, {
         "scale:mask": C_MAJOR_MASK,
       });
 
@@ -23,7 +23,7 @@ describe("Transform Evaluator - quant()", () => {
     });
 
     it("quantizes out-of-scale pitch to nearest in-scale", () => {
-      const result = evaluateTransform("pitch = quant(61)", CTX, {
+      const result = evaluateTransform("pitch = snap(61)", CTX, {
         "scale:mask": C_MAJOR_MASK,
       });
 
@@ -32,7 +32,7 @@ describe("Transform Evaluator - quant()", () => {
     });
 
     it("prefers higher pitch when equidistant", () => {
-      const result = evaluateTransform("pitch = quant(63)", CTX, {
+      const result = evaluateTransform("pitch = snap(63)", CTX, {
         "scale:mask": C_MAJOR_MASK,
       });
 
@@ -43,13 +43,13 @@ describe("Transform Evaluator - quant()", () => {
 
   describe("no-op cases", () => {
     it("returns input unchanged when no scale:mask", () => {
-      const result = evaluateTransform("pitch = quant(61)", CTX);
+      const result = evaluateTransform("pitch = snap(61)", CTX);
 
       expect(result.pitch!.value).toBe(61);
     });
 
     it("returns input unchanged when no scale:mask (explicit props)", () => {
-      const result = evaluateTransform("pitch = quant(61)", CTX, {
+      const result = evaluateTransform("pitch = snap(61)", CTX, {
         pitch: 60,
       });
 
@@ -59,7 +59,7 @@ describe("Transform Evaluator - quant()", () => {
 
   describe("with expressions", () => {
     it("quantizes expression result", () => {
-      const result = evaluateTransform("pitch = quant(note.pitch + 1)", CTX, {
+      const result = evaluateTransform("pitch = snap(note.pitch + 1)", CTX, {
         pitch: 60,
         "scale:mask": C_MAJOR_MASK,
       });
@@ -70,12 +70,12 @@ describe("Transform Evaluator - quant()", () => {
 
     it("works with += operator", () => {
       const result = evaluateTransform(
-        "pitch += quant(note.pitch + 7) - note.pitch",
+        "pitch += snap(note.pitch + 7) - note.pitch",
         CTX,
         { pitch: 60, "scale:mask": C_MAJOR_MASK },
       );
 
-      // note.pitch + 7 = 67 (G, in scale) → quant returns 67
+      // note.pitch + 7 = 67 (G, in scale) → snap returns 67
       // 67 - 60 = 7
       expect(result.pitch!.value).toBe(7);
     });
@@ -83,7 +83,7 @@ describe("Transform Evaluator - quant()", () => {
 
   describe("boundary clamping", () => {
     it("clamps high values to nearest in-scale pitch <= 127", () => {
-      const result = evaluateTransform("pitch = quant(130)", CTX, {
+      const result = evaluateTransform("pitch = snap(130)", CTX, {
         "scale:mask": C_MAJOR_MASK,
       });
 
@@ -92,7 +92,7 @@ describe("Transform Evaluator - quant()", () => {
     });
 
     it("clamps low values to nearest in-scale pitch >= 0", () => {
-      const result = evaluateTransform("pitch = quant(-3)", CTX, {
+      const result = evaluateTransform("pitch = snap(-3)", CTX, {
         "scale:mask": C_MAJOR_MASK,
       });
 
@@ -103,7 +103,7 @@ describe("Transform Evaluator - quant()", () => {
 
   describe("error handling", () => {
     it("throws for zero arguments", () => {
-      const result = evaluateTransform("pitch = quant()", CTX, {
+      const result = evaluateTransform("pitch = snap()", CTX, {
         "scale:mask": C_MAJOR_MASK,
       });
 
@@ -112,7 +112,7 @@ describe("Transform Evaluator - quant()", () => {
     });
 
     it("throws for two arguments", () => {
-      const result = evaluateTransform("pitch = quant(60, 62)", CTX, {
+      const result = evaluateTransform("pitch = snap(60, 62)", CTX, {
         "scale:mask": C_MAJOR_MASK,
       });
 
@@ -129,7 +129,7 @@ describe("Transform Evaluator - quant()", () => {
       );
 
       // F# (66) is between F (65) and G (67) — equidistant, prefer higher
-      const result = evaluateTransform("pitch = quant(66)", CTX, {
+      const result = evaluateTransform("pitch = snap(66)", CTX, {
         "scale:mask": dMinorMask,
       });
 
@@ -141,7 +141,7 @@ describe("Transform Evaluator - quant()", () => {
       const mask = scaleIntervalsToPitchClassMask([0, 3, 5, 7, 10], 0);
 
       // D (62) is between C (60) and Eb (63) → closer to Eb
-      const result = evaluateTransform("pitch = quant(62)", CTX, {
+      const result = evaluateTransform("pitch = snap(62)", CTX, {
         "scale:mask": mask,
       });
 
