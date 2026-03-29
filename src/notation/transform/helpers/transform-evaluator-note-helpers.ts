@@ -50,8 +50,15 @@ export function buildNoteProperties(
     props["next:probability"] = nextNote.probability;
   }
 
+  const noteStartBeats = note.start_time * beatScale;
+
   if (nextDistinctStart != null) {
-    props.legato = nextDistinctStart * beatScale - note.start_time * beatScale;
+    props.legato = nextDistinctStart * beatScale - noteStartBeats;
+  } else if (clipContext) {
+    const clipEnd =
+      (clipContext.arrangementStart ?? 0) + clipContext.clipDuration;
+
+    props.legato = clipEnd - noteStartBeats;
   }
 
   if (clipContext) {

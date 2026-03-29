@@ -151,8 +151,7 @@ timing = quant(1/3t)   // snap to triplet grid
 
 Sets duration to fill the gap to the next distinct start time. Skips chord tones
 (notes at the same start position) so all notes in a chord extend to the next
-rhythmic position. Unavailable for the last note in the (filtered) sequence —
-the assignment is skipped with a warning.
+rhythmic position. The last note extends to the clip end.
 
 ```javascript
 duration = legato()              // extend notes to fill gaps
