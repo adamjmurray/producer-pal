@@ -383,6 +383,7 @@ export function evaluateExpression(
       node.name,
       node.args,
       node.sync,
+      node.raw,
       position,
       timeSigNumerator,
       timeSigDenominator,

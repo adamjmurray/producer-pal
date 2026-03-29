@@ -21,11 +21,9 @@ export const swingAndQuantize: EvalScenario = {
   messages: [
     "Connect to Ableton Live",
     "Find the drum clip in the first scene and read the notes",
-    "Add swing to the hats",
+    "Add swing to the closed hats",
     "That's a little too much. Lower the amount of swing",
-    // TODO: in a separate eval
-    // "Add a crescendo to the hats in the last two beats: very quiet to max volume",
-    // duplicate loop melody, shift within scale
+    "I changed my mind. Quantize the hats to the 16th note grid",
   ],
 
   assertions: [
@@ -69,20 +67,18 @@ export const swingAndQuantize: EvalScenario = {
       turn: 2,
       args: expect.objectContaining({
         ids: expect.any(String),
-        transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+\)/),
+        transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
       }) as Record<string, unknown>,
     },
 
-    // Turn 3: Swing re-applied after quantizing first
+    // Turn 3: Swing re-applied with lower amount (auto-quantize handles grid alignment)
     {
       type: "tool_called",
       tool: TOOL_UPDATE_CLIP,
       turn: 3,
       args: expect.objectContaining({
         ids: expect.any(String),
-        transforms: expect.stringMatching(
-          /Ab1: timing = quant(.+).*Ab1: timing = swing\(0\.\d+\)/s,
-        ),
+        transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
       }) as Record<string, unknown>,
     },
 
@@ -91,7 +87,7 @@ export const swingAndQuantize: EvalScenario = {
       type: "custom",
       description: "swing amount in turn 3 is lower than turn 2",
       assert: (turns) => {
-        const swingPattern = /swing\((0\.\d+)\)/;
+        const swingPattern = /swing\((0\.\d+)/;
 
         /**
          * @param turn - Turn index to extract swing amount from
@@ -125,14 +121,28 @@ export const swingAndQuantize: EvalScenario = {
       },
     },
 
+    // Turn 4: Quantize applied to remove swing
+    {
+      type: "tool_called",
+      tool: TOOL_UPDATE_CLIP,
+      turn: 4,
+      args: expect.objectContaining({
+        ids: expect.any(String),
+        transforms: expect.stringMatching(
+          /Ab1: timing = quant\((1\/4t|0\.25)\)/,
+        ),
+      }) as Record<string, unknown>,
+    },
+
     // LLM quality check
     {
       type: "llm_judge",
       prompt: `Evaluate if the assistant:
 1. Found and read the drum clip with its notes
 2. Applied swing to the hat notes (not kick/snare)
-3. When asked to lower the swing, quantized first to reset timing, then re-applied swing with a smaller amount
-4. Confirmed each step was completed`,
+3. When asked to lower the swing, re-applied swing with a smaller amount
+4. When asked to remove swing, applied quant() to snap hats back to the grid
+5. Confirmed each step was completed`,
     },
   ],
 };

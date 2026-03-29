@@ -24,6 +24,7 @@ describe("Transform - seq function", () => {
         name: "seq",
         args: [60, 80, 100],
         sync: false,
+        raw: false,
       });
     });
 

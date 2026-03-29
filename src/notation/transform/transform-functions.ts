@@ -47,7 +47,6 @@ const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
   snap: evaluateSnap,
   quant: evaluateQuant,
   step: evaluateStep,
-  swing: evaluateSwing,
   pow: evaluatePow,
   curve: evaluateCurve,
   ramp: evaluateRamp,
@@ -58,6 +57,7 @@ const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
  * @param name - Function name
  * @param args - Function arguments
  * @param sync - Whether to sync phase to arrangement timeline
+ * @param raw - Whether to skip auto-quantize (swing only)
  * @param position - Note position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -70,6 +70,7 @@ export function evaluateFunction(
   name: string,
   args: ExpressionNode[],
   sync: boolean,
+  raw: boolean,
   position: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -77,6 +78,20 @@ export function evaluateFunction(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
+  // swing() has its own signature due to the raw flag
+  if (name === "swing") {
+    return evaluateSwing(
+      args,
+      raw,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
+  }
+
   // Functions with standard signature: (args, pos, num, den, range, props, eval)
   const standardFn = standardFnDispatch[name];
 

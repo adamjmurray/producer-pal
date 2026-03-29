@@ -182,10 +182,13 @@ clipPropertyName
 
 functionCall
   = name:cyclicalFunctionName "(" _ args:syncArgumentList? _ ")" {
-    return { type: "function", name, args: args?.args ?? [], sync: args?.sync ?? false };
+    return { type: "function", name, args: args?.args ?? [], sync: args?.sync ?? false, raw: false };
+  }
+  / "swing" "(" _ args:swingArgumentList _ ")" {
+    return { type: "function", name: "swing", args: args.args, sync: false, raw: args.raw };
   }
   / name:otherFunctionName "(" _ args:argumentList? _ ")" {
-    return { type: "function", name, args: args || [], sync: false };
+    return { type: "function", name, args: args || [], sync: false, raw: false };
   }
 
 cyclicalFunctionName
@@ -212,9 +215,22 @@ otherFunctionName
   / "quant" { return "quant"; }
   / "snap" { return "snap"; }
   / "step" { return "step"; }
-  / "swing" { return "swing"; }
   / "wrap" { return "wrap"; }
   / "reflect" { return "reflect"; }
+
+swingArgumentList
+  = head:argument _ "," _ second:argument _ "," _ "raw" {
+    return { args: [head, second], raw: true };
+  }
+  / head:argument _ "," _ "raw" {
+    return { args: [head], raw: true };
+  }
+  / head:argument _ "," _ second:argument {
+    return { args: [head, second], raw: false };
+  }
+  / head:argument {
+    return { args: [head], raw: false };
+  }
 
 syncArgumentList
   = head:argument tail:(_ "," _ argument)* _ "," _ "sync" {

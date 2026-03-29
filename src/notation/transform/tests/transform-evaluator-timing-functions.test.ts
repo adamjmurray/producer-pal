@@ -62,43 +62,109 @@ describe("Transform Evaluator - swing()", () => {
     });
   });
 
-  describe("16th-note swing (custom period)", () => {
-    it("does not offset on-beat of 0.5 period (position 0)", () => {
+  describe("16th-note swing (custom grid)", () => {
+    it("does not offset on-beat of 1/4t grid (position 0)", () => {
       const ctx = createContext({ position: 0 });
-      const result = evaluateTransform("timing = swing(0.03, 1/2t)", ctx);
+      const result = evaluateTransform("timing = swing(0.03, 1/4t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0, 10);
     });
 
-    it("offsets off-beat of 0.5 period (position 0.25)", () => {
+    it("offsets off-beat of 1/4t grid (position 0.25)", () => {
       const ctx = createContext({ position: 0.25 });
-      const result = evaluateTransform("timing = swing(0.03, 1/2t)", ctx);
+      const result = evaluateTransform("timing = swing(0.03, 1/4t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.28, 10);
     });
 
     it("does not offset next on-beat (position 0.5)", () => {
       const ctx = createContext({ position: 0.5 });
-      const result = evaluateTransform("timing = swing(0.03, 1/2t)", ctx);
+      const result = evaluateTransform("timing = swing(0.03, 1/4t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.5, 10);
     });
 
     it("offsets next off-beat (position 0.75)", () => {
       const ctx = createContext({ position: 0.75 });
-      const result = evaluateTransform("timing = swing(0.03, 1/2t)", ctx);
+      const result = evaluateTransform("timing = swing(0.03, 1/4t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.78, 10);
     });
   });
 
-  describe("error handling", () => {
-    it("throws for zero arguments", () => {
-      expectTransformError("timing = swing()");
+  describe("auto-quantize behavior", () => {
+    it("quantizes swung off-beat back to grid", () => {
+      const ctx = createContext({ position: 0.55 });
+      const result = evaluateTransform("timing = swing(0.05)", ctx);
+
+      // 0.55 → quantize to 0.125 grid → 0.5 (off-beat), offset +0.05 → 0.55
+      expect(result.timing!.value).toBeCloseTo(0.55, 10);
     });
 
-    it("throws for three arguments", () => {
-      expectTransformError("timing = swing(0.05, 1t, 0.5)");
+    it("preserves 16th notes during 8th-note swing", () => {
+      const ctx = createContext({ position: 0.25 });
+      const result = evaluateTransform("timing = swing(0.05)", ctx);
+
+      // 0.25 is on the 0.125 quantize grid, in on-beat half → no offset → 0.25
+      expect(result.timing!.value).toBeCloseTo(0.25, 10);
+    });
+
+    it("quantizes with custom grid", () => {
+      const ctx = createContext({ position: 0.3 });
+      const result = evaluateTransform("timing = swing(0.03, 1/4t)", ctx);
+
+      // grid=0.25, quantGrid=0.0625. 0.3 → snap to 0.3125 (off-beat), +0.03 → 0.3425
+      expect(result.timing!.value).toBeCloseTo(0.3125 + 0.03, 10);
+    });
+
+    it("quantizes swung position near next on-beat", () => {
+      const ctx = createContext({ position: 0.93 });
+      const result = evaluateTransform("timing = swing(0.05)", ctx);
+
+      // 0.93 → quantize to 0.125 grid → 0.875 (off-beat), offset +0.05 → 0.925
+      expect(result.timing!.value).toBeCloseTo(0.925, 10);
+    });
+  });
+
+  describe("raw keyword", () => {
+    it("skips auto-quantize for default grid", () => {
+      const ctx = createContext({ position: 0.55 });
+      const result = evaluateTransform("timing = swing(0.05, raw)", ctx);
+
+      // No quantize: phase = (0.55/1.0) % 1.0 = 0.55, off-beat → offset +0.05 → 0.6
+      expect(result.timing!.value).toBeCloseTo(0.6, 10);
+    });
+
+    it("skips auto-quantize with custom grid", () => {
+      const ctx = createContext({ position: 0.3 });
+      const result = evaluateTransform("timing = swing(0.03, 1/4t, raw)", ctx);
+
+      // No quantize: grid=0.25, period=0.5. phase = (0.3/0.5) % 1.0 = 0.6, off-beat → +0.03 → 0.33
+      expect(result.timing!.value).toBeCloseTo(0.33, 10);
+    });
+
+    it("raw on-beat note has no offset", () => {
+      const ctx = createContext({ position: 0.0 });
+      const result = evaluateTransform("timing = swing(0.05, raw)", ctx);
+
+      expect(result.timing!.value).toBeCloseTo(0.0, 10);
+    });
+  });
+
+  describe("error handling", () => {
+    it("rejects zero arguments (parse error)", () => {
+      expect(() =>
+        evaluateTransform("timing = swing()", createContext({ position: 0 })),
+      ).toThrow();
+    });
+
+    it("rejects three non-raw arguments (parse error)", () => {
+      expect(() =>
+        evaluateTransform(
+          "timing = swing(0.05, 1t, 0.5)",
+          createContext({ position: 0 }),
+        ),
+      ).toThrow();
     });
   });
 });

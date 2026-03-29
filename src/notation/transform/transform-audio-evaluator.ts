@@ -189,6 +189,7 @@ function evaluateAudioExpression(
     name: string;
     args: ExpressionNode[];
     sync: boolean;
+    raw: boolean;
   };
 
   // Use position=0 for audio context (clip-level transform)
@@ -199,6 +200,7 @@ function evaluateAudioExpression(
     funcNode.name,
     funcNode.args,
     funcNode.sync,
+    funcNode.raw,
     0, // position
     4, // timeSigNumerator
     4, // timeSigDenominator

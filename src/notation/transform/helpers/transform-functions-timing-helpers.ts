@@ -17,7 +17,8 @@ import {
 /**
  * Evaluate swing function (delay off-beat notes for swing feel).
  * Returns absolute position — use with `timing =`.
- * @param args - Function arguments (1-2: amount, optional period)
+ * @param args - Function arguments (1-2: amount, optional grid)
+ * @param raw - If true, skip auto-quantize
  * @param position - Note position in musical beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -28,6 +29,7 @@ import {
  */
 export function evaluateSwing(
   args: ExpressionNode[],
+  raw: boolean,
   position: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -37,7 +39,7 @@ export function evaluateSwing(
 ): number {
   if (args.length === 0 || args.length > 2) {
     throw new Error(
-      `Function swing() requires 1-2 arguments: swing(amount [, period])`,
+      `Function swing() requires 1-2 arguments: swing(amount [, grid])`,
     );
   }
 
@@ -50,11 +52,11 @@ export function evaluateSwing(
     noteProperties,
   );
 
-  // Default period is 1 beat (8th-note swing)
-  let period = 1.0;
+  // Default grid is 0.5 beats (8th-note swing, same as quant(1/2t))
+  let grid = 0.5;
 
   if (args.length === 2) {
-    period = parsePeriod(
+    grid = parsePeriod(
       args[1] as ExpressionNode | PeriodObject,
       position,
       timeSigNumerator,
@@ -66,13 +68,26 @@ export function evaluateSwing(
     );
   }
 
+  const period = grid * 2;
+
+  // Auto-quantize: snap to grid/4 before applying swing (unless raw).
+  // Uses grid/4 (not grid) to preserve notes at finer subdivisions
+  // (e.g. 16th notes during 8th-note swing).
+  let effectivePosition = position;
+
+  if (!raw) {
+    const quantGrid = grid / 4;
+
+    effectivePosition = Math.round(position / quantGrid) * quantGrid;
+  }
+
   // Phase within the period cycle (0-1)
-  const phase = (position / period) % 1.0;
+  const phase = (effectivePosition / period) % 1.0;
 
   // On-beat (first half): no offset. Off-beat (second half): full offset.
   const offset = phase < 0.5 ? 0 : amount;
 
-  return position + offset;
+  return effectivePosition + offset;
 }
 
 /**
