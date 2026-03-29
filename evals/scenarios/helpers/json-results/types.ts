@@ -35,14 +35,14 @@ export interface JsonEvalResult {
   totalTrials?: number;
   /** Overall pass/fail (checks + judge; efficiency is informational) */
   result: "pass" | "fail";
+  /** Conversation turns */
+  turns: JsonTurnRecord[];
   /** Deterministic check results */
   checks: JsonChecks;
   /** Token usage efficiency (present when token_usage assertion exists) */
   efficiency?: JsonEfficiency;
   /** LLM judge review (present when llm_judge assertion exists) */
   judge?: JsonJudge;
-  /** Conversation turns */
-  turns: JsonTurnRecord[];
   /** Total wall-clock duration in ms */
   totalDurationMs: number;
   /** Aggregate token usage */
@@ -89,7 +89,7 @@ export interface JsonTurnRecord {
 export interface JsonToolCall {
   name: string;
   args: Record<string, unknown>;
-  /** Tool result truncated to ~500 chars */
+  /** Tool result text */
   result?: string;
 }
 

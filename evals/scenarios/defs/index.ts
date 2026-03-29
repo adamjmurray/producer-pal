@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -10,14 +11,15 @@
  * scenario registration in load-scenarios.ts.
  */
 
-export { arrangementClipWorkflow } from "./arrangement-clip-workflow.ts";
-export { audioSampleWorkflow } from "./audio-sample-workflow.ts";
-export { clipTransforms } from "./clip-transforms.ts";
-export { connectToAbleton } from "./connect-to-ableton.ts";
-export { createAndEditClip } from "./create-and-edit-clip.ts";
-export { duplicate } from "./duplicate.ts";
-export { memoryWorkflow } from "./memory-workflow.ts";
-export { negativeCases } from "./negative-cases.ts";
-export { sceneAndPlayback } from "./scene-and-playback.ts";
-export { trackAndDeviceWorkflow } from "./track-and-device-workflow.ts";
-export { updateLiveSet } from "./update-live-set.ts";
+export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
+export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";
+export { clipTransforms } from "./clip/clip-transforms.ts";
+export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
+export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
+export { duplicate } from "./clip/duplicate.ts";
+export { swingAndQuantize } from "./clip/swing-and-quantize.ts";
+export { memoryWorkflow } from "./workflow/memory-workflow.ts";
+export { negativeCases } from "./workflow/negative-cases.ts";
+export { sceneAndPlayback } from "./workflow/scene-and-playback.ts";
+export { trackAndDeviceWorkflow } from "./workflow/track-and-device-workflow.ts";
+export { updateLiveSet } from "./workflow/update-live-set.ts";

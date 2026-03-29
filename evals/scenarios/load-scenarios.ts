@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Codex (OpenAI)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -13,6 +14,7 @@ import {
   connectToAbleton,
   createAndEditClip,
   duplicate,
+  swingAndQuantize,
   memoryWorkflow,
   negativeCases,
   sceneAndPlayback,
@@ -27,6 +29,7 @@ import { type EvalScenario } from "./types.ts";
 const allScenarios: EvalScenario[] = [
   connectToAbleton,
   createAndEditClip,
+  swingAndQuantize,
   clipTransforms,
   trackAndDeviceWorkflow,
   memoryWorkflow,

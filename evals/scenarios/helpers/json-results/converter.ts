@@ -23,9 +23,6 @@ import {
   type JsonTurnRecord,
 } from "./types.ts";
 
-const TOOL_RESULT_MAX_LENGTH = 500;
-const TRUNCATION_SUFFIX = "...[truncated]";
-
 /** Optional trial metadata for repeat runs */
 export interface TrialInfo {
   trial: number;
@@ -68,10 +65,10 @@ export function toJsonResult(
     configProfileId,
     ...(result.instructions && { instructions: result.instructions }),
     result: derivePassFail(checks, judge),
+    turns: result.turns.map(convertTurn),
     checks,
     ...(efficiency && { efficiency }),
     ...(judge && { judge }),
-    turns: result.turns.map(convertTurn),
     totalDurationMs: result.totalDurationMs,
     ...(result.totalUsage && { totalUsage: result.totalUsage }),
     ...(result.error && { error: result.error }),
@@ -99,7 +96,7 @@ function buildChecks(assertions: EvalAssertionResult[]): JsonChecks {
         label: assertionLabel(a.assertion),
         pass: a.earned === a.maxScore,
         message: a.message,
-        ...(details != null && { details }),
+        ...(details != null && { details: stripToolResults(details) }),
         ...(reflection != null && { reflection }),
       };
     });
@@ -186,7 +183,7 @@ function convertTurn(turn: EvalTurnResult): JsonTurnRecord {
     toolCalls: turn.toolCalls.map((tc) => ({
       name: tc.name,
       args: tc.args,
-      ...(tc.result != null && { result: truncateToolResult(tc.result) }),
+      ...(tc.result != null && { result: tc.result }),
     })),
     durationMs: turn.durationMs,
     ...(turn.stepUsages && { usage: sumStepUsages(turn.stepUsages) }),
@@ -218,16 +215,26 @@ function sumStepUsages(steps: JsonTokenUsage[]): JsonTokenUsage {
 }
 
 /**
- * Truncate a tool result string to keep JSON file sizes manageable
+ * Strip tool result strings from check details to avoid duplicating turn data.
+ * Removes `result` from `matchingCalls` entries (tool_called assertions).
  *
- * @param text - Tool result text
- * @returns Truncated text
+ * @param details - Assertion details object
+ * @returns Details with tool results stripped
  */
-export function truncateToolResult(text: string): string {
-  if (text.length <= TOOL_RESULT_MAX_LENGTH) return text;
+function stripToolResults(
+  details: Record<string, unknown>,
+): Record<string, unknown> {
+  const calls = details.matchingCalls;
 
-  return (
-    text.slice(0, TOOL_RESULT_MAX_LENGTH - TRUNCATION_SUFFIX.length) +
-    TRUNCATION_SUFFIX
-  );
+  if (!Array.isArray(calls)) return details;
+
+  return {
+    ...details,
+    matchingCalls: calls.map(
+      (c: { name: string; args: Record<string, unknown> }) => ({
+        name: c.name,
+        args: c.args,
+      }),
+    ),
+  };
 }

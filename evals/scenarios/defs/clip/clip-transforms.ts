@@ -7,8 +7,8 @@
  * Scenario: Create a clip and apply velocity transforms
  */
 
-import { getToolCalls } from "../assertions/index.ts";
-import { type EvalScenario } from "../types.ts";
+import { getToolCalls } from "../../assertions/index.ts";
+import { type EvalScenario } from "../../types.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 

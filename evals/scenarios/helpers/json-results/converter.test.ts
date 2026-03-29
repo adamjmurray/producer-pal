@@ -13,7 +13,7 @@ import {
   type EvalScenarioResult,
   type EvalTurnResult,
 } from "../../types.ts";
-import { toJsonResult, truncateToolResult } from "./converter.ts";
+import { toJsonResult } from "./converter.ts";
 
 const PASSING_JUDGE = { pass: true, issues: [] };
 const FAILING_JUDGE = {
@@ -235,7 +235,7 @@ describe("toJsonResult", () => {
     expect(result.result).toBe("fail");
   });
 
-  it("truncates long tool results in turns", () => {
+  it("preserves full tool results in turns", () => {
     const longResult = "x".repeat(600);
     const result = toJsonResult(
       makeResult({
@@ -250,10 +250,37 @@ describe("toJsonResult", () => {
       "default",
     );
 
-    const toolResult = result.turns[0]?.toolCalls[0]?.result;
+    expect(result.turns[0]?.toolCalls[0]?.result).toBe(longResult);
+  });
 
-    expect(toolResult?.length).toBeLessThanOrEqual(500);
-    expect(toolResult).toContain("...[truncated]");
+  it("strips tool results from check details matchingCalls", () => {
+    const result = toJsonResult(
+      makeResult({
+        assertions: [
+          makeAssertion({
+            details: {
+              matchingCalls: [
+                { name: "ppal-connect", args: {}, result: "big response" },
+              ],
+              count: 1,
+              expectedCount: { min: 1 },
+            },
+          }),
+        ],
+      }),
+      "run-1",
+      "google/gemini",
+      "default",
+    );
+
+    const details = result.checks.results[0]?.details as Record<
+      string,
+      unknown
+    >;
+    const calls = details.matchingCalls as { result?: string }[];
+
+    expect(calls[0]).toStrictEqual({ name: "ppal-connect", args: {} });
+    expect(calls[0]).not.toHaveProperty("result");
   });
 
   it("includes reasoning tokens when present", () => {
@@ -358,25 +385,5 @@ describe("toJsonResult", () => {
       targetTokens: 20000,
       percentage: 77,
     });
-  });
-});
-
-describe("truncateToolResult", () => {
-  it("returns short strings unchanged", () => {
-    expect(truncateToolResult("hello")).toBe("hello");
-  });
-
-  it("truncates strings longer than 500 chars", () => {
-    const long = "a".repeat(600);
-    const truncated = truncateToolResult(long);
-
-    expect(truncated).toHaveLength(500);
-    expect(truncated.endsWith("...[truncated]")).toBe(true);
-  });
-
-  it("returns exactly 500-char strings unchanged", () => {
-    const exact = "b".repeat(500);
-
-    expect(truncateToolResult(exact)).toBe(exact);
   });
 });

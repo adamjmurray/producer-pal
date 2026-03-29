@@ -7,7 +7,7 @@
  * Scenario: Handle impossible and ambiguous requests gracefully
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const negativeCases: EvalScenario = {
   id: "negative-cases",

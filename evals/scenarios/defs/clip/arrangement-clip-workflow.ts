@@ -7,8 +7,8 @@
  * Scenario: Create arrangement clip, duplicate, and split
  */
 
-import { getToolCalls } from "../assertions/index.ts";
-import { type EvalScenario } from "../types.ts";
+import { getToolCalls } from "../../assertions/index.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const arrangementClipWorkflow: EvalScenario = {
   id: "arrangement-clip-workflow",
