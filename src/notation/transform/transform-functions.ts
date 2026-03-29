@@ -78,6 +78,21 @@ export function evaluateFunction(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
+  // legato() — duration to next distinct start time (skips chord tones)
+  if (name === "legato") {
+    if (args.length > 0) {
+      throw new Error("legato() takes no arguments");
+    }
+
+    const legatoDuration = noteProperties.legato;
+
+    if (legatoDuration == null) {
+      throw new Error("legato(): no next note available");
+    }
+
+    return legatoDuration;
+  }
+
   // swing() has its own signature due to the raw flag
   if (name === "swing") {
     return evaluateSwing(

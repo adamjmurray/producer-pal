@@ -233,9 +233,9 @@ function resolveAudioVariable(
   audioProperties: AudioProperties,
   clipContext?: ClipContext,
 ): number {
-  if (node.namespace === "note") {
+  if (node.namespace === "note" || node.namespace === "next") {
     throw new Error(
-      `Cannot use note.${node.name} variable in audio clip context`,
+      `Cannot use ${node.namespace}.${node.name} variable in audio clip context`,
     );
   }
 

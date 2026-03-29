@@ -19,7 +19,7 @@ import type { ParseOptions } from "../../peggy-parser-types.ts";
 /** Variable reference node */
 export interface VariableNode {
   type: "variable";
-  namespace: "note" | "audio" | "clip" | "bar";
+  namespace: "note" | "audio" | "clip" | "bar" | "next";
   name: string;
 }
 

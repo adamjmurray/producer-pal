@@ -147,6 +147,18 @@ timing = quant(1t)     // snap to quarter-note grid (1 beat)
 timing = quant(1/3t)   // snap to triplet grid
 ```
 
+### legato()
+
+Sets duration to fill the gap to the next distinct start time. Skips chord tones
+(notes at the same start position) so all notes in a chord extend to the next
+rhythmic position. Unavailable for the last note in the (filtered) sequence —
+the assignment is skipped with a warning.
+
+```javascript
+duration = legato()              // extend notes to fill gaps
+C3-C5: duration = legato()       // legato for melody notes only
+```
+
 ## Waveform Behavior
 
 **Period-based waveforms** (cos, tri, saw, square) at phase 0 start at peak
@@ -271,6 +283,23 @@ Access note properties in expressions using the `note.` prefix:
 - `note.deviation` - Velocity deviation (-127 to 127)
 - `note.duration` - Duration in beats
 - `note.probability` - Probability (0.0-1.0)
+
+### Next Note Properties (MIDI clips)
+
+Access properties of the next note in the sequence using the `next.` prefix:
+
+- `next.pitch` - Pitch of the next note (0-127)
+- `next.start` - Start time of the next note in musical beats
+- `next.velocity` - Velocity of the next note (0-127)
+- `next.duration` - Duration of the next note in musical beats
+- `next.probability` - Probability of the next note (0-1)
+- `next.deviation` - Velocity deviation of the next note (-127 to 127)
+
+"Next" respects pitch-range filtering: in
+`C1-C2: duration = next.start - note.start`, `next` refers to the next C1-C2
+note. For the last note in the filtered sequence, all `next.*` variables are
+unavailable and the assignment is skipped with a warning. `next.*` reads from
+the current (possibly mutated) note state, consistent with `note.*`.
 
 ### Audio Properties (audio clips)
 

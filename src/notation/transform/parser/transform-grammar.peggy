@@ -155,9 +155,20 @@ variable
   / "clip." name:clipPropertyName {
     return { type: "variable", namespace: "clip", name };
   }
+  / "next." name:nextPropertyName {
+    return { type: "variable", namespace: "next", name };
+  }
   / "note." name:notePropertyName {
     return { type: "variable", namespace: "note", name };
   }
+
+nextPropertyName
+  = "deviation" { return "deviation"; }
+  / "velocity" { return "velocity"; }
+  / "probability" { return "probability"; }
+  / "duration" { return "duration"; }
+  / "pitch" { return "pitch"; }
+  / "start" { return "start"; }
 
 notePropertyName
   = "deviation" { return "deviation"; }
@@ -217,6 +228,7 @@ otherFunctionName
   / "step" { return "step"; }
   / "wrap" { return "wrap"; }
   / "reflect" { return "reflect"; }
+  / "legato" { return "legato"; }
 
 swingArgumentList
   = head:argument _ "," _ second:argument _ "," _ "raw" {

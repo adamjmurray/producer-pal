@@ -20,6 +20,10 @@ import {
   type TransformResult,
 } from "./helpers/transform-evaluator-helpers.ts";
 import {
+  buildNoteProperties,
+  findNextDistinctStart,
+} from "./helpers/transform-evaluator-note-helpers.ts";
+import {
   type PitchRange,
   type TransformAssignment,
   parse as parseTransform,
@@ -137,16 +141,22 @@ function applyAssignmentToNotes(
   clipContext: ClipContext | undefined,
   transformedIndices: Set<number>,
 ): void {
-  // Count matching notes for filtered index (uses current/mutated pitches)
-  const filteredCount =
-    pitchRange != null
-      ? notes.filter(
-          (n) =>
-            n.pitch >= pitchRange.startPitch && n.pitch <= pitchRange.endPitch,
-        ).length
-      : notes.length;
+  // Build array of indices matching the pitch range filter (uses current/mutated pitches)
+  const filteredIndices: number[] = [];
 
-  let filteredCounter = 0;
+  for (let idx = 0; idx < notes.length; idx++) {
+    const n = notes[idx] as NoteEvent;
+
+    if (
+      pitchRange == null ||
+      (n.pitch >= pitchRange.startPitch && n.pitch <= pitchRange.endPitch)
+    ) {
+      filteredIndices.push(idx);
+    }
+  }
+
+  const filteredCount = filteredIndices.length;
+  let filteredCursor = 0;
 
   for (let i = 0; i < notes.length; i++) {
     const note = notes[i] as NoteEvent;
@@ -178,9 +188,22 @@ function applyAssignmentToNotes(
     );
 
     // Note matches pitch range — count it regardless of time range
-    const noteIndex = pitchRange != null ? filteredCounter : i;
+    const noteIndex = pitchRange != null ? filteredCursor : i;
 
-    filteredCounter++;
+    // Find the next note in the filtered sequence for next.* variables
+    const nextNoteIdx = filteredIndices[filteredCursor + 1];
+    const nextNote =
+      nextNoteIdx != null ? (notes[nextNoteIdx] as NoteEvent) : undefined;
+
+    // Find next distinct start time for legato() (skips chord tones at same position)
+    const nextDistinctStart = findNextDistinctStart(
+      note,
+      notes,
+      filteredIndices,
+      filteredCursor,
+    );
+
+    filteredCursor++;
 
     if (activeTimeRange.skip) {
       continue; // Pitch matched but time didn't — counted for index, not applied
@@ -192,6 +215,8 @@ function applyAssignmentToNotes(
       filteredCount,
       timeSigDenominator,
       clipContext,
+      nextNote,
+      nextDistinctStart,
     );
 
     try {
@@ -264,52 +289,6 @@ function buildNoteContext(
     },
     clipTimeRange,
   };
-}
-
-/**
- * Build note properties object including note and clip context
- * @param note - Note event
- * @param noteIndex - 0-based note order in clip
- * @param noteCount - Total number of notes in the clip
- * @param timeSigDenominator - Time signature denominator
- * @param clipContext - Optional clip-level context
- * @returns Properties for variable access (note.*, clip.*)
- */
-function buildNoteProperties(
-  note: NoteEvent,
-  noteIndex: number,
-  noteCount: number,
-  timeSigDenominator: number,
-  clipContext?: ClipContext,
-): NoteProperties {
-  const props: NoteProperties = {
-    pitch: note.pitch,
-    start: note.start_time * (timeSigDenominator / 4), // Convert to musical beats
-    velocity: note.velocity,
-    deviation: note.velocity_deviation ?? 0,
-    duration: note.duration * (timeSigDenominator / 4), // Convert to musical beats
-    probability: note.probability,
-    index: noteIndex,
-    count: noteCount,
-  };
-
-  if (clipContext) {
-    props["clip:duration"] = clipContext.clipDuration;
-    props["clip:index"] = clipContext.clipIndex;
-    props["clip:count"] = clipContext.clipCount;
-
-    if (clipContext.arrangementStart != null) {
-      props["clip:position"] = clipContext.arrangementStart;
-    }
-
-    props["clip:barDuration"] = clipContext.barDuration;
-
-    if (clipContext.scalePitchClassMask != null) {
-      props["scale:mask"] = clipContext.scalePitchClassMask;
-    }
-  }
-
-  return props;
 }
 
 /**
