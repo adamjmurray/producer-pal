@@ -17,6 +17,7 @@ export { drumTransforms } from "./clip/drum-transforms.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
 export { duplicate } from "./clip/duplicate.ts";
+export { legatoTransforms } from "./clip/legato-transforms.ts";
 export { melodyTransforms } from "./clip/melody-transforms.ts";
 export { swingAndQuantize } from "./clip/swing-and-quantize.ts";
 export { memoryWorkflow } from "./workflow/memory-workflow.ts";
