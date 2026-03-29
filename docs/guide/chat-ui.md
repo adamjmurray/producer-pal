@@ -61,9 +61,14 @@ Each conversation in the list has action buttons that appear on hover:
 - **Export** - Download a single conversation as a JSON file
 - **Delete** - Remove the conversation from history
 
-Conversations are auto-saved to your browser's storage as you chat. Up to 200
-conversations are kept; when the limit is reached, the oldest non-bookmarked
-conversations are automatically removed.
+Conversations are stored in your browser's built-in database (IndexedDB), and
+settings (including API keys) are stored in local storage. This means all your
+data lives in that specific browser and user profile — it won't be available if
+you switch browsers or profiles. Use [Export & Import](#export--import) to move
+conversations between browsers.
+
+Up to 200 conversations are kept; when the limit is reached, the oldest
+non-bookmarked conversations are automatically removed.
 
 ### Export & Import
 
