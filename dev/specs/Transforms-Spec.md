@@ -13,6 +13,10 @@ choose(a, b, ...); // random pick from arguments (at least 1)
 ramp(start, end); // linear ramp over clip/time range
 curve(start, end, exponent); // exponential ramp over clip/time range
 
+// Timing functions
+swing(amount, [grid], [raw]); // swing: delay off-beat notes (grid default: 1/2t = 8th-note)
+quant(grid); // quantize: snap to nearest grid point
+
 // Math functions
 round(value); // round to nearest integer
 floor(value); // round down to integer
@@ -89,6 +93,58 @@ velocity += 20 * cos(4:0t, 0.25, sync)
 
 // square with all args and sync
 velocity += 20 * square(2t, 0, 0.75, sync)
+```
+
+## Timing Functions
+
+### swing(amount [, grid] [, raw])
+
+Delays off-beat notes to create a swing feel. Returns absolute position — use
+with `timing =`.
+
+- **amount**: Delay in beats applied to off-beat notes (0.02=subtle,
+  0.05=medium, 0.1=heavy). Negative values push off-beats early.
+- **grid**: Swing subdivision grid (default `1/2t` = 8th-note swing). Uses the
+  same grid notation as `quant()` (e.g., `1/4t` for 16th-note swing).
+  Internally, `period = grid * 2`.
+- **raw**: Keyword that skips auto-quantize (see below).
+
+**Algorithm**: Each period (2× grid) is split into two halves. Notes in the
+first half (on-beat) get no offset. Notes in the second half (off-beat) get the
+full amount as offset. This is a step function, not a wave — every off-beat note
+gets the same delay.
+
+**Auto-quantize**: Before applying swing, notes are snapped to a `grid/4`
+quantize grid. This serves two purposes:
+
+1. Makes `swing()` idempotent — re-applying with a different amount works
+   correctly because previously swung notes snap back to the grid first.
+2. Uses `grid/4` (not `grid`) to preserve notes at finer subdivisions. For
+   example, 16th notes survive 8th-note swing because the quantize grid is 32nd
+   notes.
+
+The `raw` keyword skips auto-quantize entirely, applying swing to whatever
+position the note is currently at.
+
+```javascript
+timing = swing(0.05)           // 8th-note swing (default grid 1/2t)
+timing = swing(0.03, 1/4t)    // 16th-note swing
+timing = swing(0.05, raw)     // no auto-quantize
+timing = swing(0.05, 1/4t, raw) // 16th-note swing, no auto-quantize
+```
+
+### quant(grid)
+
+Snaps note timing to the nearest grid point. Returns absolute position — use
+with `timing =`.
+
+- **grid**: Grid size using period notation or numeric beats.
+
+```javascript
+timing = quant(1/2t)   // snap to 8th-note grid (0.5 beats)
+timing = quant(1/4t)   // snap to 16th-note grid (0.25 beats)
+timing = quant(1t)     // snap to quarter-note grid (1 beat)
+timing = quant(1/3t)   // snap to triplet grid
 ```
 
 ## Waveform Behavior
@@ -275,11 +331,6 @@ velocity += 20 * square(2t, 0, cos(1:0t) * 0.25 + 0.5)
 
 // Combined functions
 velocity += 20 * cos(4:0t) + 10 * rand()
-
-// Swing timing (works consistently across all time signatures)
-timing += 0.05 * (cos(1t) - 1)
-// In 4/4: shifts by up to 0.05 quarter notes
-// In 6/8: shifts by up to 0.05 eighth notes
 
 // Unipolar envelope (adds 0 to 40)
 velocity += 20 + 20 * cos(2:0t)
