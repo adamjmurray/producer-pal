@@ -209,7 +209,7 @@ otherFunctionName
   / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }
   / "curve" { return "curve"; }
-  / "quantize" { return "quantize"; }
+  / "quant" { return "quant"; }
   / "snap" { return "snap"; }
   / "step" { return "step"; }
   / "swing" { return "swing"; }

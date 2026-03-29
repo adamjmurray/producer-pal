@@ -23,7 +23,7 @@ import {
   evaluateStep,
 } from "./helpers/transform-functions-scale-helpers.ts";
 import {
-  evaluateQuantize,
+  evaluateQuant,
   evaluateSwing,
 } from "./helpers/transform-functions-timing-helpers.ts";
 import { type ExpressionNode } from "./parser/transform-parser.ts";
@@ -45,7 +45,7 @@ const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
   seq: evaluateSeq,
   choose: evaluateChoose,
   snap: evaluateSnap,
-  quantize: evaluateQuantize,
+  quant: evaluateQuant,
   step: evaluateStep,
   swing: evaluateSwing,
   pow: evaluatePow,

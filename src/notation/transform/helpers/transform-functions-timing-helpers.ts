@@ -76,7 +76,7 @@ export function evaluateSwing(
 }
 
 /**
- * Evaluate quantize function (snap timing to nearest grid point).
+ * Evaluate quant function (snap timing to nearest grid point).
  * Returns absolute position — use with `timing =`.
  * @param args - Function arguments (exactly 1: grid size)
  * @param position - Note position in musical beats
@@ -87,7 +87,7 @@ export function evaluateSwing(
  * @param evaluateExpression - Expression evaluator function
  * @returns Position snapped to nearest grid point
  */
-export function evaluateQuantize(
+export function evaluateQuant(
   args: ExpressionNode[],
   position: number,
   timeSigNumerator: number,
@@ -98,7 +98,7 @@ export function evaluateQuantize(
 ): number {
   if (args.length !== 1) {
     throw new Error(
-      `Function quantize() requires exactly 1 argument: quantize(grid)`,
+      `Function quant() requires exactly 1 argument: quant(grid)`,
     );
   }
 
@@ -110,7 +110,7 @@ export function evaluateQuantize(
     timeRange,
     noteProperties,
     evaluateExpression,
-    "quantize",
+    "quant",
   );
 
   return Math.round(position / grid) * grid;

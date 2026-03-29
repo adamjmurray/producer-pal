@@ -103,25 +103,25 @@ describe("Transform Evaluator - swing()", () => {
   });
 });
 
-describe("Transform Evaluator - quantize()", () => {
+describe("Transform Evaluator - quant()", () => {
   describe("8th-note grid (1/2t)", () => {
     it("snaps position 0.3 to 0.5", () => {
       const ctx = createContext({ position: 0.3 });
-      const result = evaluateTransform("timing = quantize(1/2t)", ctx);
+      const result = evaluateTransform("timing = quant(1/2t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.5, 10);
     });
 
     it("snaps position 0.1 to 0.0", () => {
       const ctx = createContext({ position: 0.1 });
-      const result = evaluateTransform("timing = quantize(1/2t)", ctx);
+      const result = evaluateTransform("timing = quant(1/2t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0, 10);
     });
 
     it("leaves on-grid position unchanged", () => {
       const ctx = createContext({ position: 0.5 });
-      const result = evaluateTransform("timing = quantize(1/2t)", ctx);
+      const result = evaluateTransform("timing = quant(1/2t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.5, 10);
     });
@@ -130,14 +130,14 @@ describe("Transform Evaluator - quantize()", () => {
   describe("16th-note grid (1/4t)", () => {
     it("snaps position 0.3 to 0.25", () => {
       const ctx = createContext({ position: 0.3 });
-      const result = evaluateTransform("timing = quantize(1/4t)", ctx);
+      const result = evaluateTransform("timing = quant(1/4t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.25, 10);
     });
 
     it("snaps position 0.4 to 0.5", () => {
       const ctx = createContext({ position: 0.4 });
-      const result = evaluateTransform("timing = quantize(1/4t)", ctx);
+      const result = evaluateTransform("timing = quant(1/4t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.5, 10);
     });
@@ -146,23 +146,23 @@ describe("Transform Evaluator - quantize()", () => {
   describe("quarter-note grid (1t)", () => {
     it("snaps position 1.3 to 1.0", () => {
       const ctx = createContext({ position: 1.3 });
-      const result = evaluateTransform("timing = quantize(1t)", ctx);
+      const result = evaluateTransform("timing = quant(1t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(1.0, 10);
     });
 
     it("snaps position 1.7 to 2.0", () => {
       const ctx = createContext({ position: 1.7 });
-      const result = evaluateTransform("timing = quantize(1t)", ctx);
+      const result = evaluateTransform("timing = quant(1t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(2.0, 10);
     });
   });
 
   describe("numeric grid (no period syntax)", () => {
-    it("quantize(0.5) works same as quantize(1/2t)", () => {
+    it("quant(0.5) works same as quant(1/2t)", () => {
       const ctx = createContext({ position: 0.3 });
-      const result = evaluateTransform("timing = quantize(0.5)", ctx);
+      const result = evaluateTransform("timing = quant(0.5)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.5, 10);
     });
@@ -171,7 +171,7 @@ describe("Transform Evaluator - quantize()", () => {
   describe("position 0", () => {
     it("stays at 0 for any grid", () => {
       const ctx = createContext({ position: 0 });
-      const result = evaluateTransform("timing = quantize(1/4t)", ctx);
+      const result = evaluateTransform("timing = quant(1/4t)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0, 10);
     });
@@ -179,15 +179,15 @@ describe("Transform Evaluator - quantize()", () => {
 
   describe("error handling", () => {
     it("throws for zero arguments", () => {
-      expectTransformError("timing = quantize()");
+      expectTransformError("timing = quant()");
     });
 
     it("throws for two arguments", () => {
-      expectTransformError("timing = quantize(1/2t, 1/4t)");
+      expectTransformError("timing = quant(1/2t, 1/4t)");
     });
 
     it("throws for grid <= 0", () => {
-      expectTransformError("timing = quantize(-1)");
+      expectTransformError("timing = quant(-1)");
     });
   });
 });

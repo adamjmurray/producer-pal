@@ -126,7 +126,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
 - **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), wrap(val,min,max) (wrap to inclusive range), reflect(val,min,max) (bounce within inclusive range), min(a,b,...), max(a,b,...), pow(base,exp), snap(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms)
-- **Timing functions:** swing(amount [, period]) (returns swung position; amount=delay in beats: 0.02=subtle, 0.05=medium, 0.1=heavy; period: default 1=8th-note swing, 0.5=16th-note swing), quantize(grid) (snap to nearest grid point; grid ref: 1t=quarter, 1/2t=8th, 1/4t=16th, 1/3t=triplet). Both return absolute positions — use \`timing =\`, not \`timing +=\`. To change swing: quantize first to reset to grid, then apply new swing
+- **Timing functions:** swing(amount [, period]) (returns swung position; amount=delay in beats: 0.02=subtle, 0.05=medium, 0.1=heavy; period: default 1=8th-note swing, 0.5=16th-note swing), quant(grid) (snap to nearest grid point; grid ref: 1t=quarter, 1/2t=8th, 1/4t=16th, 1/3t=triplet). Both return absolute positions — use \`timing =\`, not \`timing +=\`. To change swing: quant first to reset to grid, then apply new swing
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
 - \`cos(period)\`, \`square(period)\` - start at peak (1.0); \`sin(period)\`, \`tri(period)\`, \`saw(period)\` - start at zero, rise to peak
@@ -145,8 +145,8 @@ Add \`transforms\` parameter to create-clip or update-clip.
 \`\`\`
 timing = swing(0.05)             // 8th-note swing (medium feel)
 timing = swing(0.03, 0.5)        // 16th-note swing (subtle)
-timing = quantize(1/2t)          // snap to 8th-note grid (half a beat)
-timing = quantize(1/4t)          // snap to 16th-note grid (quarter beat)
+timing = quant(1/2t)             // snap to 8th-note grid (half a beat)
+timing = quant(1/4t)             // snap to 16th-note grid (quarter beat)
 timing += 0.05 * rand()          // humanize timing
 velocity += 20 * cos(2t)         // cycle every 2 beats
 velocity += 20 * cos(4:0t, sync) // continuous across clips
