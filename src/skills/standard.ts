@@ -125,7 +125,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
-- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), wrap(val,min,max) (wrap to inclusive range), reflect(val,min,max) (bounce within inclusive range), min(a,b,...), max(a,b,...), pow(base,exp), snap(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms)
+- **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), wrap(val,min,max) (wrap to inclusive range), reflect(val,min,max) (bounce within inclusive range), min(a,b,...), max(a,b,...), pow(base,exp), snap(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms), legato() (set duration to reach next note's start time; no args)
 - **Timing functions:** swing(amount [, grid] [, raw]) (auto-quantizes to grid then applies swing; amount=delay in beats: 0.02=subtle, 0.05=medium, 0.1=heavy; grid: default 1/2t=8th-note swing, 1/4t=16th-note swing; raw: skip auto-quantize), quant(grid) (snap to nearest grid point). Grid ref for both: 1t=quarter, 1/2t=8th, 1/4t=16th, 1/3t=triplet. Both return absolute positions — use \`timing =\`, not \`timing +=\`
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
@@ -140,7 +140,7 @@ Add \`transforms\` parameter to create-clip or update-clip.
 - Waveform period: \`1t\` = 1 beat cycle, \`1:0t\` = 1 bar cycle, \`0:2t\` = 2 beat cycle
 - \`sync\` keyword (last arg on periodic waves) syncs phase to arrangement timeline instead of clip start
 
-**Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only), \`clip.barDuration\` (all clips)
+**Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`next.pitch\`, \`next.velocity\`, \`next.start\`, \`next.duration\` (next distinct-start note; skips chords; warns on last note), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only), \`clip.barDuration\` (all clips)
 
 \`\`\`
 timing = swing(0.05)             // swing (auto-quantizes). Use swing() alone unless asked for a specific grid
@@ -160,6 +160,7 @@ pitch = step(note.pitch, sin(4t) * 7) // oscillate ±7 scale steps smoothly
 pitch = wrap(note.pitch + 5, C3, C5) // transpose up 5, wrap within C3-C5
 velocity *= 0.5                  // halve all velocities
 C1-C2: duration /= 2             // halve duration of bass notes
+duration = legato()              // extend each note to reach the next
 \`\`\`
 
 swing() auto-quantizes to the swing grid, so changing swing amount is always safe without a separate quant() step. Use \`raw\` to skip auto-quantize: \`swing(0.05, raw)\`

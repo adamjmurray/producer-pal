@@ -10,7 +10,7 @@
 
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalScenario } from "../../types.ts";
-import { assertNotesRead } from "./clip-scenario-helpers.ts";
+import { assertNotesRead, getTransforms } from "./clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
@@ -23,8 +23,11 @@ export const melodyTransforms: EvalScenario = {
   messages: [
     "Connect to Ableton Live",
     "Find the lead melody in the first scene and read the notes",
-    "Extend the 2-bar melody into an 8-bar melody by copying the bars so each repetition can be edited independently",
+    "Extend the 2-bar melody clip in-place to 8 bars by copying the bars",
     "In the 3rd and 4th bar of the melody, raise the pitches by one scale step. In the 5th and 6th, raise by three scale steps, and raise the final repetition by four scale steps",
+    "Cut all the note durations in half",
+    "Shorten the durations further by a small random amount",
+    "I changed my mind. Make it legato.",
   ],
 
   assertions: [
@@ -125,6 +128,67 @@ export const melodyTransforms: EvalScenario = {
       },
     },
 
+    // Turn 4: Duration halving
+    {
+      type: "custom",
+      description: "durations halved using /= 2 or equivalent",
+      assert: (turns) => {
+        const transforms = getTransforms(turns, 4, TOOL_UPDATE_CLIP);
+
+        if (
+          !/duration\s*(?:\/=\s*2|\*=\s*0\.5|=\s*duration\s*\/\s*2)/.test(
+            transforms,
+          )
+        ) {
+          throw new Error(
+            `expected duration /= 2 or equivalent: ${transforms.slice(0, 120)}`,
+          );
+        }
+
+        return true;
+      },
+    },
+
+    // Turn 5: Random duration shortening
+    {
+      type: "custom",
+      description: "durations shortened by random amount using rand()",
+      assert: (turns) => {
+        const transforms = getTransforms(turns, 5, TOOL_UPDATE_CLIP);
+
+        if (!/duration/.test(transforms)) {
+          throw new Error(
+            `expected duration transform: ${transforms.slice(0, 120)}`,
+          );
+        }
+
+        if (!/rand\(/i.test(transforms)) {
+          throw new Error(
+            `expected rand() function: ${transforms.slice(0, 120)}`,
+          );
+        }
+
+        return true;
+      },
+    },
+
+    // Turn 6: Legato
+    {
+      type: "custom",
+      description: "legato applied using legato() function",
+      assert: (turns) => {
+        const transforms = getTransforms(turns, 6, TOOL_UPDATE_CLIP);
+
+        if (!/duration\s*=\s*legato\(\)/.test(transforms)) {
+          throw new Error(
+            `expected duration = legato(): ${transforms.slice(0, 120)}`,
+          );
+        }
+
+        return true;
+      },
+    },
+
     // Response checks
     { type: "response_contains", pattern: /notes|clip|melody/i, turn: 1 },
     { type: "response_contains", pattern: /duplicat|extend|8.bar/i, turn: 2 },
@@ -133,9 +197,12 @@ export const melodyTransforms: EvalScenario = {
       pattern: /scale|step|pitch|transpose/i,
       turn: 3,
     },
+    { type: "response_contains", pattern: /duration|half|shorten/i, turn: 4 },
+    { type: "response_contains", pattern: /duration|random|shorten/i, turn: 5 },
+    { type: "response_contains", pattern: /legato/i, turn: 6 },
 
     // Token usage
-    { type: "token_usage", metric: "inputTokens", maxTokens: 100_000 },
+    { type: "token_usage", metric: "inputTokens", maxTokens: 150_000 },
 
     // LLM quality check
     {
@@ -147,7 +214,10 @@ export const melodyTransforms: EvalScenario = {
    - Bars 3-4: raised by 1 scale step
    - Bars 5-6: raised by 3 scale steps
    - Bars 7-8: raised by 4 scale steps
-4. Used transforms or appropriate tools rather than manually rewriting all notes`,
+4. Cut all note durations in half using a duration transform
+5. Shortened durations further by a random amount
+6. Applied legato using the legato() transform function
+7. Used transforms or appropriate tools rather than manually rewriting all notes`,
     },
   ],
 };
