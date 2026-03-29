@@ -6,6 +6,7 @@
 import { type NoteEvent } from "#src/notation/types.ts";
 import {
   type ClipContext,
+  type LegatoContext,
   type NoteProperties,
 } from "./transform-evaluator-helpers.ts";
 
@@ -17,7 +18,7 @@ import {
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Optional clip-level context
  * @param nextNote - Next note in the filtered sequence (undefined for last note)
- * @param nextDistinctStart - Next distinct start_time in the filtered sequence (for legato)
+ * @param legatoContext - Context for legato() computation (filtered starts, cursor, clip end)
  * @returns Properties for variable access (note.*, next.*, clip.*)
  */
 export function buildNoteProperties(
@@ -27,7 +28,7 @@ export function buildNoteProperties(
   timeSigDenominator: number,
   clipContext?: ClipContext,
   nextNote?: NoteEvent,
-  nextDistinctStart?: number,
+  legatoContext?: LegatoContext,
 ): NoteProperties {
   const beatScale = timeSigDenominator / 4;
   const props: NoteProperties = {
@@ -50,15 +51,8 @@ export function buildNoteProperties(
     props["next:probability"] = nextNote.probability;
   }
 
-  const noteStartBeats = note.start_time * beatScale;
-
-  if (nextDistinctStart != null) {
-    props.legato = nextDistinctStart * beatScale - noteStartBeats;
-  } else if (clipContext) {
-    const clipEnd =
-      (clipContext.arrangementStart ?? 0) + clipContext.clipDuration;
-
-    props.legato = clipEnd - noteStartBeats;
+  if (legatoContext) {
+    props._legatoContext = legatoContext;
   }
 
   if (clipContext) {
@@ -78,31 +72,4 @@ export function buildNoteProperties(
   }
 
   return props;
-}
-
-/**
- * Find the next distinct start_time in the filtered note sequence.
- * Skips notes at the same start_time (chord tones) so legato() extends
- * to the next rhythmic position rather than producing zero-length durations.
- * @param currentNote - The current note
- * @param notes - All notes in the clip
- * @param filteredIndices - Indices of notes matching the pitch range filter
- * @param filteredCursor - Current position in filteredIndices (before increment)
- * @returns The next distinct start_time (in Ableton beats), or undefined if none
- */
-export function findNextDistinctStart(
-  currentNote: NoteEvent,
-  notes: NoteEvent[],
-  filteredIndices: number[],
-  filteredCursor: number,
-): number | undefined {
-  for (let k = filteredCursor + 1; k < filteredIndices.length; k++) {
-    const candidate = notes[filteredIndices[k] as number] as NoteEvent;
-
-    if (candidate.start_time !== currentNote.start_time) {
-      return candidate.start_time;
-    }
-  }
-
-  return undefined;
 }

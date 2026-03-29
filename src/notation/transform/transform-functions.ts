@@ -23,6 +23,7 @@ import {
   evaluateStep,
 } from "./helpers/transform-functions-scale-helpers.ts";
 import {
+  evaluateLegato,
   evaluateQuant,
   evaluateSwing,
 } from "./helpers/transform-functions-timing-helpers.ts";
@@ -78,19 +79,17 @@ export function evaluateFunction(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
-  // legato() — duration to next distinct start time (skips chord tones)
+  // legato([tolerance]) — duration to next distinct start time (skips chord tones)
   if (name === "legato") {
-    if (args.length > 0) {
-      throw new Error("legato() takes no arguments");
-    }
-
-    const legatoDuration = noteProperties.legato;
-
-    if (legatoDuration == null) {
-      throw new Error("legato(): no next note available");
-    }
-
-    return legatoDuration;
+    return evaluateLegato(
+      args,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
   }
 
   // swing() has its own signature due to the raw flag

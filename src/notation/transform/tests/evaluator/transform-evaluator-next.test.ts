@@ -209,14 +209,59 @@ describe("legato()", () => {
     expect(notes[2]!.duration).toBe(0.25);
   });
 
-  it("rejects arguments", () => {
+  it("rejects more than 1 argument", () => {
     const warn = vi.spyOn(console, "warn");
     const notes = createTestNotes([{ start_time: 0 }, { start_time: 1 }]);
 
-    applyTransforms(notes, "duration = legato(1)", 4, 4);
+    applyTransforms(notes, "duration = legato(0.1, 0.2)", 4, 4);
 
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("legato()"));
     // Notes unchanged
     expect(notes[0]!.duration).toBe(1);
+  });
+
+  it("groups humanized chord tones with tolerance", () => {
+    const notes = createTestNotes([
+      { pitch: 60, start_time: 0, duration: 0.25 },
+      { pitch: 64, start_time: 0.04, duration: 0.25 },
+      { pitch: 67, start_time: 0.08, duration: 0.25 },
+      { pitch: 60, start_time: 2, duration: 0.25 },
+    ]);
+
+    applyTransforms(notes, "duration = legato(0.1)", 4, 4);
+
+    // All three chord tones (within 0.1 of each other) extend to t=2
+    expect(notes[0]!.duration).toBeCloseTo(2);
+    expect(notes[1]!.duration).toBeCloseTo(1.96);
+    expect(notes[2]!.duration).toBeCloseTo(1.92);
+    // Last note unchanged (no clip context)
+    expect(notes[3]!.duration).toBe(0.25);
+  });
+
+  it("does not group notes beyond tolerance", () => {
+    const notes = createTestNotes([
+      { start_time: 0, duration: 0.25 },
+      { start_time: 0.5, duration: 0.25 },
+      { start_time: 2, duration: 0.25 },
+    ]);
+
+    applyTransforms(notes, "duration = legato(0.1)", 4, 4);
+
+    // 0 and 0.5 are beyond tolerance — treated as distinct
+    expect(notes[0]!.duration).toBe(0.5);
+    expect(notes[1]!.duration).toBe(1.5);
+  });
+
+  it("legato(0) behaves same as legato()", () => {
+    const notes = createTestNotes([
+      { pitch: 60, start_time: 0, duration: 0.25 },
+      { pitch: 64, start_time: 0, duration: 0.25 },
+      { pitch: 60, start_time: 2, duration: 0.25 },
+    ]);
+
+    applyTransforms(notes, "duration = legato(0)", 4, 4);
+
+    expect(notes[0]!.duration).toBe(2);
+    expect(notes[1]!.duration).toBe(2);
   });
 });

@@ -147,14 +147,18 @@ timing = quant(1t)     // snap to quarter-note grid (1 beat)
 timing = quant(1/3t)   // snap to triplet grid
 ```
 
-### legato()
+### legato([tolerance])
 
 Sets duration to fill the gap to the next distinct start time. Skips chord tones
 (notes at the same start position) so all notes in a chord extend to the next
 rhythmic position. The last note extends to the clip end.
 
+Optional tolerance in beats (default 0): notes within tolerance of the same
+start time are treated as a chord. Useful after humanizing timing.
+
 ```javascript
 duration = legato()              // extend notes to fill gaps
+duration = legato(0.1)           // group notes within 0.1 beats as chords
 C3-C5: duration = legato()       // legato for melody notes only
 ```
 

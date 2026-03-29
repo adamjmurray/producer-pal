@@ -19,10 +19,7 @@ import {
   type TimeRange,
   type TransformResult,
 } from "./helpers/transform-evaluator-helpers.ts";
-import {
-  buildNoteProperties,
-  findNextDistinctStart,
-} from "./helpers/transform-evaluator-note-helpers.ts";
+import { buildNoteProperties } from "./helpers/transform-evaluator-note-helpers.ts";
 import {
   type PitchRange,
   type TransformAssignment,
@@ -156,6 +153,16 @@ function applyAssignmentToNotes(
   }
 
   const filteredCount = filteredIndices.length;
+  const beatScale = timeSigDenominator / 4;
+
+  // Pre-compute filtered start times in musical beats for legato() tolerance scan
+  const filteredStarts = filteredIndices.map(
+    (idx) => (notes[idx] as NoteEvent).start_time * beatScale,
+  );
+  const clipEnd = clipContext
+    ? (clipContext.arrangementStart ?? 0) + clipContext.clipDuration
+    : undefined;
+
   let filteredCursor = 0;
 
   for (let i = 0; i < notes.length; i++) {
@@ -195,13 +202,11 @@ function applyAssignmentToNotes(
     const nextNote =
       nextNoteIdx != null ? (notes[nextNoteIdx] as NoteEvent) : undefined;
 
-    // Find next distinct start time for legato() (skips chord tones at same position)
-    const nextDistinctStart = findNextDistinctStart(
-      note,
-      notes,
-      filteredIndices,
-      filteredCursor,
-    );
+    const legatoContext = {
+      starts: filteredStarts,
+      cursor: filteredCursor,
+      clipEnd,
+    };
 
     filteredCursor++;
 
@@ -216,7 +221,7 @@ function applyAssignmentToNotes(
       timeSigDenominator,
       clipContext,
       nextNote,
-      nextDistinctStart,
+      legatoContext,
     );
 
     try {

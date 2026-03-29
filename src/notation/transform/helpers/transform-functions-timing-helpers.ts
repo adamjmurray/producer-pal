@@ -130,3 +130,65 @@ export function evaluateQuant(
 
   return Math.round(position / grid) * grid;
 }
+
+/**
+ * Evaluate the legato() function with optional tolerance.
+ * Scans forward through filtered start times to find the next distinct position,
+ * treating starts within tolerance as the same chord. Falls back to clip end
+ * for the last note.
+ * @param args - Function arguments (0 or 1: optional tolerance in beats)
+ * @param position - Current note position
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param timeRange - Active time range
+ * @param noteProperties - Note properties including _legatoContext
+ * @param evaluateExpression - Expression evaluator function
+ * @returns Duration to next distinct start time
+ */
+export function evaluateLegato(
+  args: ExpressionNode[],
+  position: number,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  timeRange: TimeRange,
+  noteProperties: NoteProperties,
+  evaluateExpression: EvaluateExpressionFn,
+): number {
+  if (args.length > 1) {
+    throw new Error("legato() accepts at most 1 argument (tolerance)");
+  }
+
+  const ctx = noteProperties._legatoContext;
+
+  if (!ctx) {
+    throw new Error("legato(): not available in this context");
+  }
+
+  const tolerance =
+    args.length === 1
+      ? evaluateExpression(
+          args[0] as ExpressionNode,
+          position,
+          timeSigNumerator,
+          timeSigDenominator,
+          timeRange,
+          noteProperties,
+        )
+      : 0;
+
+  const noteStart = ctx.starts[ctx.cursor] as number;
+
+  // Scan forward for next start beyond tolerance
+  for (let k = ctx.cursor + 1; k < ctx.starts.length; k++) {
+    if (Math.abs((ctx.starts[k] as number) - noteStart) > tolerance) {
+      return (ctx.starts[k] as number) - noteStart;
+    }
+  }
+
+  // Last note — extend to clip end
+  if (ctx.clipEnd != null) {
+    return ctx.clipEnd - noteStart;
+  }
+
+  throw new Error("legato(): no next note available");
+}
