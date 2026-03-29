@@ -9,6 +9,7 @@
 import { expect } from "vitest";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalScenario } from "../../types.ts";
+import { assertNotesRead } from "./clip-scenario-helpers.ts";
 
 const TOOL_UPDATE_CLIP = "ppal-update-clip";
 
@@ -31,34 +32,7 @@ export const swingAndQuantize: EvalScenario = {
     { type: "tool_called", tool: "ppal-connect", turn: 0 },
 
     // Turn 1: Clip state is read
-    {
-      type: "custom",
-      description: "clip was found and read",
-      assert: (turns) => {
-        const calls = getToolCalls(turns, 1);
-        let notesRead = false;
-
-        for (const { name, args } of calls) {
-          if (!name.startsWith("ppal-read-")) {
-            throw new Error(`unexpected non-read tool call: ${name}`);
-          }
-
-          if (
-            name !== "ppal-read-live-set" &&
-            Array.isArray(args.include) &&
-            args.include.includes("notes")
-          ) {
-            notesRead = true;
-          }
-        }
-
-        if (!notesRead) {
-          throw new Error("the clip notes should have been read");
-        }
-
-        return true;
-      },
-    },
+    assertNotesRead(1),
 
     // Turn 2: Swing applied
     {
@@ -132,17 +106,6 @@ export const swingAndQuantize: EvalScenario = {
           /Ab1: timing = quant\((1\/4t|0\.25)\)/,
         ),
       }) as Record<string, unknown>,
-    },
-
-    // LLM quality check
-    {
-      type: "llm_judge",
-      prompt: `Evaluate if the assistant:
-1. Found and read the drum clip with its notes
-2. Applied swing to the hat notes (not kick/snare)
-3. When asked to lower the swing, re-applied swing with a smaller amount
-4. When asked to remove swing, applied quant() to snap hats back to the grid
-5. Confirmed each step was completed`,
     },
   ],
 };

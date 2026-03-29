@@ -13,10 +13,11 @@
 
 export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
 export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";
-export { clipTransforms } from "./clip/clip-transforms.ts";
+export { drumTransforms } from "./clip/drum-transforms.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
 export { duplicate } from "./clip/duplicate.ts";
+export { melodyTransforms } from "./clip/melody-transforms.ts";
 export { swingAndQuantize } from "./clip/swing-and-quantize.ts";
 export { memoryWorkflow } from "./workflow/memory-workflow.ts";
 export { negativeCases } from "./workflow/negative-cases.ts";
