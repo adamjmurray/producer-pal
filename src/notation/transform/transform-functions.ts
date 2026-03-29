@@ -22,6 +22,10 @@ import {
   evaluateQuant,
   evaluateStep,
 } from "./helpers/transform-functions-scale-helpers.ts";
+import {
+  evaluateQuantize,
+  evaluateSwing,
+} from "./helpers/transform-functions-timing-helpers.ts";
 import { type ExpressionNode } from "./parser/transform-parser.ts";
 import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
 import * as waveforms from "./transform-waveforms.ts";
@@ -41,7 +45,9 @@ const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
   seq: evaluateSeq,
   choose: evaluateChoose,
   quant: evaluateQuant,
+  quantize: evaluateQuantize,
   step: evaluateStep,
+  swing: evaluateSwing,
   pow: evaluatePow,
   curve: evaluateCurve,
   ramp: evaluateRamp,
@@ -301,7 +307,7 @@ function evaluateWaveform(
  * @param name - Function name for error messages
  * @returns Period in beats
  */
-function parsePeriod(
+export function parsePeriod(
   periodArg: ExpressionNode | PeriodObject,
   position: number,
   timeSigNumerator: number,

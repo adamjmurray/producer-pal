@@ -209,8 +209,10 @@ otherFunctionName
   / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }
   / "curve" { return "curve"; }
+  / "quantize" { return "quantize"; }
   / "quant" { return "quant"; }
   / "step" { return "step"; }
+  / "swing" { return "swing"; }
   / "wrap" { return "wrap"; }
   / "reflect" { return "reflect"; }
 
