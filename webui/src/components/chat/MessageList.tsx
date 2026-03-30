@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import { isModelMismatch } from "#webui/chat/helpers/model-identity";
 import { type TokenUsage } from "#webui/chat/sdk/types";
 import { ErrorBoundary } from "#webui/components/ErrorBoundary";
+import { type QueuedMessage } from "#webui/hooks/chat/helpers/use-message-queue";
 import {
   calcNewContentTokens,
   compactNumber,
@@ -21,15 +22,51 @@ import {
   RenderErrorFallback,
   SafeMarkdown,
 } from "./assistant/message-list-helpers";
+import {
+  findPreviousUserMessageIndex,
+  formatUserContent,
+  getLastStepUsage,
+  getPrevModelUsage,
+} from "./assistant/message-list-utils";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
+import { QueuedMessages } from "./controls/QueuedMessages";
 import { RetryButton } from "./controls/RetryButton";
 import { EditButton } from "./EditButton";
 import { UserMessageEditor } from "./UserMessageEditor";
 
 const STILL_THINKING_DELAY_MS = 4000;
 
+/**
+ * Returns true after a delay when the assistant is responding with no new content.
+ * Also clears editing state when responding starts.
+ * @param isAssistantResponding - Whether the assistant is responding
+ * @param messages - Current messages (resets delay on change)
+ * @param clearEditing - Callback to clear editing state
+ * @returns Whether to show "still thinking" indicator
+ */
+function useStillThinking(
+  isAssistantResponding: boolean,
+  messages: UIMessage[],
+  clearEditing: () => void,
+): boolean {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    setShow(false);
+    if (!isAssistantResponding) return;
+    clearEditing();
+    const timer = setTimeout(() => setShow(true), STILL_THINKING_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [isAssistantResponding, messages]); // eslint-disable-line react-hooks/exhaustive-deps -- clearEditing is stable setState
+
+  return show;
+}
+
 interface MessageListProps {
   messages: UIMessage[];
+  queuedMessages: QueuedMessage[];
+  onRemoveQueued: (id: number) => void;
   isAssistantResponding: boolean;
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
@@ -40,42 +77,28 @@ interface MessageListProps {
 
 /**
  * List of chat messages with auto-scroll
- * @param {MessageListProps} root0 - Component props
- * @param {UIMessage[]} root0.messages - Chat messages
- * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
- * @param {Function} root0.handleRetry - Retry callback
- * @param {Function} root0.handleEdit - Edit and fork callback
- * @param {boolean} root0.showTimestamps - Whether to show timestamps
- * @param {string} [root0.requestedModel] - Requested model ID for mismatch detection
- * @returns {JSX.Element} Message list
+ * @param props - Component props
+ * @returns Message list element
  */
-export function MessageList({
-  messages,
-  isAssistantResponding,
-  handleRetry,
-  handleEdit,
-  showTimestamps,
-  showTokenUsage,
-  requestedModel,
-}: MessageListProps) {
+export function MessageList(props: MessageListProps) {
+  const {
+    messages,
+    isAssistantResponding,
+    handleRetry,
+    handleEdit,
+    showTimestamps,
+    showTokenUsage,
+    requestedModel,
+  } = props;
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const prevMessageCountRef = useRef(0);
-  const [showStillThinking, setShowStillThinking] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
-
-  // Show "Still thinking..." after delay; clear editing when responding starts
-  useEffect(() => {
-    setShowStillThinking(false);
-    if (!isAssistantResponding) return;
-    setEditingIndex(null);
-    const timer = setTimeout(
-      () => setShowStillThinking(true),
-      STILL_THINKING_DELAY_MS,
-    );
-
-    return () => clearTimeout(timer);
-  }, [isAssistantResponding, messages]);
+  const showStillThinking = useStillThinking(
+    isAssistantResponding,
+    messages,
+    () => setEditingIndex(null),
+  );
 
   // Auto-scroll to bottom only when a new user message is added (not during
   // AI streaming), so the user can read without being interrupted.
@@ -162,6 +185,12 @@ export function MessageList({
           </Fragment>
         );
       })}
+
+      <QueuedMessages
+        queuedMessages={props.queuedMessages}
+        onRemove={props.onRemoveQueued}
+        scrollRef={messagesEndRef}
+      />
 
       <StreamingFooter
         isResponding={isAssistantResponding}
@@ -308,40 +337,6 @@ function renderTimestamp(timestamp: number, visible: boolean) {
 }
 
 /**
- * Finds previous user message index for retry
- * @param {UIMessage[]} messages - Messages array
- * @param {number} currentIdx - Current message index
- * @returns {number} Previous user message index or -1
- */
-function findPreviousUserMessageIndex(
-  messages: UIMessage[],
-  currentIdx: number,
-): number {
-  for (let i = currentIdx - 1; i >= 0; i--) {
-    if (messages[i]?.role === "user") return i;
-  }
-
-  return -1;
-}
-
-/**
- * Formats user message content as string
- * @param {UIMessage} message - User message to format
- * @returns {string} Concatenated text content
- */
-function formatUserContent(message: UIMessage): string {
-  return message.parts
-    .map((part) => {
-      if ("content" in part) {
-        return part.content;
-      }
-
-      return "";
-    })
-    .join("");
-}
-
-/**
  * Footer shown while assistant is streaming a response.
  * @param props - Component props
  * @param props.isResponding - Whether assistant is responding
@@ -426,38 +421,4 @@ function TokenUsageLabel({
         ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
     </div>
   );
-}
-
-/**
- * Get the last usage from the previous model message.
- * @param messages - All messages
- * @param currentIdx - Current message index
- * @returns Previous model message's last usage
- */
-function getPrevModelUsage(
-  messages: UIMessage[],
-  currentIdx: number,
-): TokenUsage | undefined {
-  for (let i = currentIdx - 1; i >= 0; i--) {
-    const msg = messages[i];
-
-    if (msg?.role !== "model") continue;
-
-    return getLastStepUsage(msg) ?? msg.usage;
-  }
-
-  return undefined;
-}
-
-/**
- * Get the last step-usage part's usage within a message.
- * @param message - Message to search
- * @returns Last step-usage part's usage, or undefined
- */
-function getLastStepUsage(message: UIMessage): TokenUsage | undefined {
-  const part = message.parts.findLast((p) => p.type === "step-usage");
-
-  if (part?.type === "step-usage") return part.usage;
-
-  return undefined;
 }

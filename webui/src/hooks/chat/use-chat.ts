@@ -13,9 +13,12 @@ import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
   handleMessageStream,
+  showMissingApiKeyError,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
 import { useActiveSettings } from "./helpers/use-active-settings";
+import { useConversationActions } from "./helpers/use-conversation-actions";
+import { useMessageQueue } from "./helpers/use-message-queue";
 import {
   type ChatClient,
   type ConversationLockedSettings,
@@ -57,6 +60,14 @@ export function useChat<
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
     null,
   );
+  const {
+    queuedMessages,
+    queueRef,
+    enqueueMessage,
+    removeMessage,
+    drainQueue,
+    clearQueue,
+  } = useMessageQueue();
   const clientRef = useRef<TClient | null>(null);
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -74,7 +85,8 @@ export function useChat<
     clearSettings();
     setRateLimitState(null);
     retryAbortRef.current?.abort();
-  }, [clearSettings]);
+    clearQueue();
+  }, [clearSettings, clearQueue]);
 
   const getChatHistory = useCallback(
     (): unknown[] =>
@@ -98,7 +110,8 @@ export function useChat<
     retryAbortRef.current?.abort();
     setIsAssistantResponding(false);
     setRateLimitState(null);
-  }, []);
+    clearQueue();
+  }, [clearQueue]);
 
   const initializeChat = useCallback(
     async (chatHistory?: TMessage[], overrides?: MessageOverrides) => {
@@ -148,7 +161,7 @@ export function useChat<
       executeStream: (message: string) => AsyncIterable<TMessage[]>,
       getHistory: () => TMessage[],
       originalMessage: string,
-    ): Promise<void> => {
+    ): Promise<boolean> => {
       let attempt = 0;
       const contentState = { hasReceived: false, savedUsageCount: 0 };
 
@@ -183,9 +196,9 @@ export function useChat<
           );
           setRateLimitState(null);
 
-          return;
+          return true;
         } catch (error) {
-          if (retryAbortRef.current.signal.aborted) return;
+          if (retryAbortRef.current.signal.aborted) return false;
 
           const rateLimitInfo = detectRateLimit(error);
 
@@ -193,7 +206,7 @@ export function useChat<
             setMessages(adapter.createErrorMessage(error, getHistory()));
             setRateLimitState(null);
 
-            return;
+            return false;
           }
 
           const delayMs = calculateRetryDelay(
@@ -220,16 +233,18 @@ export function useChat<
           attempt++;
         }
       }
+
+      return false;
     },
     [adapter, autoSaveRef],
   );
 
   const runWithChat = useCallback(
-    async (fn: () => Promise<void>) => {
+    async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
       setIsAssistantResponding(true);
 
       try {
-        await fn();
+        return await fn();
       } catch (error) {
         setMessages(
           adapter.createErrorMessage(
@@ -237,6 +252,8 @@ export function useChat<
             clientRef.current?.chatHistory ?? [],
           ),
         );
+
+        return undefined;
       } finally {
         abortControllerRef.current = null;
         setIsAssistantResponding(false);
@@ -253,21 +270,12 @@ export function useChat<
       if (!userMessage) return;
 
       if (!apiKey) {
-        const userMessageEntry = adapter.createUserMessage(userMessage);
-
-        setMessages(
-          adapter.createErrorMessage(
-            new Error(
-              "No API key configured. Please add your API key in Settings.",
-            ),
-            [userMessageEntry],
-          ),
-        );
+        showMissingApiKeyError(adapter, userMessage, setMessages);
 
         return;
       }
 
-      await runWithChat(async () => {
+      const succeeded = await runWithChat(async () => {
         if (!clientRef.current) {
           const pendingHistory = pendingHistoryRef.current ?? undefined;
 
@@ -288,96 +296,63 @@ export function useChat<
         const filtered = filterOverrides(options, {
           thinking: thinkingRef.current,
         });
+        const shouldInterrupt = () => queueRef.current.length > 0;
 
-        await executeWithRetry(
-          (msg) => client.sendMessage(msg, controller.signal, filtered),
+        return await executeWithRetry(
+          (msg) =>
+            client.sendMessage(
+              msg,
+              controller.signal,
+              filtered,
+              shouldInterrupt,
+            ),
           () => client.chatHistory,
           userMessage,
         );
       });
+
+      if (succeeded) {
+        const queued = drainQueue();
+
+        if (queued.length > 0) {
+          const combined = queued.map((m) => m.text).join("\n\n");
+
+          await handleSend(combined, queued[0]?.overrides);
+        }
+      }
     },
-    [apiKey, adapter, initializeChat, runWithChat, executeWithRetry],
+    [
+      apiKey,
+      adapter,
+      initializeChat,
+      runWithChat,
+      executeWithRetry,
+      queueRef,
+      drainQueue,
+    ],
   );
 
-  const forkConversation = useCallback(
-    async (mergedMessageIndex: number, newMessage: string) => {
-      if (!apiKey) return;
-
-      const message = messages[mergedMessageIndex];
-
-      if (message?.role !== "user") return;
-
-      const rawIndex = message.rawHistoryIndex;
-      const history =
-        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
-
-      if (!history) return;
-
-      await runWithChat(async () => {
-        const slicedHistory = history.slice(0, rawIndex);
-
-        pendingHistoryRef.current = null;
-
-        await initializeChat(slicedHistory);
-
-        const client = clientRef.current as NonNullable<
-          typeof clientRef.current
-        >;
-
-        const controller = new AbortController();
-
-        abortControllerRef.current = controller;
-
-        await executeWithRetry(
-          (msg) => client.sendMessage(msg, controller.signal),
-          () => client.chatHistory,
-          newMessage,
-        );
-      });
-    },
-    [apiKey, messages, initializeChat, runWithChat, executeWithRetry],
-  );
-
-  const handleRetry = useCallback(
-    async (mergedMessageIndex: number) => {
-      const message = messages[mergedMessageIndex];
-
-      if (message?.role !== "user") return;
-
-      const history =
-        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
-
-      if (!history) return;
-
-      const rawMessage = history[message.rawHistoryIndex];
-
-      if (!rawMessage) return;
-
-      const userMessage = adapter.extractUserMessage(rawMessage);
-
-      if (!userMessage) return;
-
-      await forkConversation(mergedMessageIndex, userMessage);
-    },
-    [messages, adapter, forkConversation],
-  );
-
-  const handleEdit = useCallback(
-    async (mergedMessageIndex: number, newMessage: string) => {
-      const trimmed = newMessage.trim();
-
-      if (!trimmed) return;
-
-      await forkConversation(mergedMessageIndex, trimmed);
-    },
-    [forkConversation],
-  );
+  const { handleRetry, handleEdit } = useConversationActions({
+    apiKey,
+    messages,
+    adapter,
+    clientRef,
+    pendingHistoryRef,
+    abortControllerRef,
+    initializeChat,
+    runWithChat,
+    executeWithRetry,
+    clearQueue,
+  });
 
   return {
     messages,
     isAssistantResponding,
     ...active,
     rateLimitState,
+    queuedMessages,
+    enqueueMessage,
+    removeMessage,
     handleSend,
     handleRetry,
     handleEdit,

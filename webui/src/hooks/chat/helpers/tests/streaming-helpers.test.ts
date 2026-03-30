@@ -9,6 +9,7 @@ import {
   filterOverrides,
   handleMessageStream,
   createFormattedErrorMessage,
+  showMissingApiKeyError,
   validateMcpConnection,
 } from "#webui/hooks/chat/helpers/streaming-helpers";
 
@@ -156,6 +157,27 @@ describe("streaming-helpers", () => {
       expect(result).toStrictEqual({
         thinking: "Max",
       });
+    });
+  });
+
+  describe("showMissingApiKeyError", () => {
+    it("sets error message via adapter", () => {
+      const setMessages = vi.fn();
+      const adapter = {
+        createUserMessage: (text: string) => ({ role: "user", content: text }),
+        createErrorMessage: (error: unknown, history: unknown[]) => [
+          ...history,
+          { role: "model", error },
+        ],
+      };
+
+      showMissingApiKeyError(adapter as never, "Hello", setMessages);
+
+      expect(setMessages).toHaveBeenCalledOnce();
+      const args = setMessages.mock.calls[0]?.[0];
+
+      expect(args).toHaveLength(2);
+      expect(args[0].content).toBe("Hello");
     });
   });
 

@@ -27,6 +27,7 @@ vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
   }),
   validateMcpConnection: vi.fn(),
   filterOverrides: vi.fn((overrides) => overrides),
+  showMissingApiKeyError: vi.fn(),
 }));
 
 const mockAdapter = createMockAdapter();

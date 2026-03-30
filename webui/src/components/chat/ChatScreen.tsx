@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useState } from "preact/hooks";
+import { type QueuedMessage } from "#webui/hooks/chat/helpers/use-message-queue";
 import {
   type MessageOverrides,
   type RateLimitState,
@@ -28,6 +29,9 @@ interface ChatScreenProps {
   isAssistantResponding: boolean;
   rateLimitState: RateLimitState | null;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
+  enqueueMessage: (text: string, overrides?: MessageOverrides) => void;
+  queuedMessages: QueuedMessage[];
+  onRemoveQueued: (id: number) => void;
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
   headerInfo: HeaderInfo;
@@ -84,6 +88,9 @@ export function ChatScreen(props: ChatScreenProps) {
     isAssistantResponding,
     rateLimitState,
     handleSend,
+    enqueueMessage,
+    queuedMessages,
+    onRemoveQueued,
     handleRetry,
     handleEdit,
     headerInfo,
@@ -101,23 +108,15 @@ export function ChatScreen(props: ChatScreenProps) {
   const latestVersion = useUpdateCheck();
   const [thinking, setThinking] = useThinkingOverride(props);
 
-  const currentOverrides: MessageOverrides = {
-    thinking,
-  };
-
-  const activeConv = conversationPanel.activeConversationId
-    ? conversationPanel.conversations.find(
-        (c) => c.id === conversationPanel.activeConversationId,
-      )
-    : undefined;
-
   return (
     <div className="flex flex-col h-screen bg-zinc-100 dark:bg-zinc-950">
       <ChatHeader
         headerInfo={headerInfo}
         mcpStatus={mcpStatus}
         isHistoryOpen={conversationPanel.isOpen}
-        isActiveBookmarked={activeConv?.bookmarked}
+        isActiveBookmarked={
+          findActiveConversation(conversationPanel)?.bookmarked
+        }
         latestVersion={latestVersion}
         onOpenSettings={onOpenSettings}
         onOpenToolsSettings={onOpenToolsSettings}
@@ -162,11 +161,13 @@ export function ChatScreen(props: ChatScreenProps) {
                   mcpError={mcpError}
                   checkMcpConnection={checkMcpConnection}
                   handleSend={handleSend}
-                  overrides={currentOverrides}
+                  overrides={{ thinking }}
                 />
               ) : (
                 <MessageList
                   messages={messages}
+                  queuedMessages={queuedMessages}
+                  onRemoveQueued={onRemoveQueued}
                   isAssistantResponding={isAssistantResponding}
                   handleRetry={handleRetry}
                   handleEdit={handleEdit}
@@ -188,6 +189,7 @@ export function ChatScreen(props: ChatScreenProps) {
 
             <ChatInput
               handleSend={handleSend}
+              onEnqueue={enqueueMessage}
               isAssistantResponding={isAssistantResponding}
               onStop={onStop}
               thinking={thinking}
@@ -224,4 +226,15 @@ function useThinkingOverride(
   );
 
   return [thinking, setThinking];
+}
+
+/**
+ * Find the active conversation from the panel state.
+ * @param panel - Conversation panel state
+ * @returns Active conversation or undefined
+ */
+function findActiveConversation(panel: ConversationPanelState) {
+  if (!panel.activeConversationId) return;
+
+  return panel.conversations.find((c) => c.id === panel.activeConversationId);
 }
