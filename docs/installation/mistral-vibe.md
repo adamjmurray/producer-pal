@@ -25,7 +25,7 @@ _It should display "Producer Pal Running" or something isn't working._
 
 ### 2. Configure Mistral Vibe
 
-Add Producer Pal to your Vibe configuration file:
+Add Producer Pal to your Vibe configuration file (`~/.vibe/config.toml`):
 
 **Option A: With npx (recommended)** — Allows flexible startup order and
 auto-reconnection:

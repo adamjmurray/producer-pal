@@ -33,7 +33,9 @@ For example:
 cloudflared tunnel --url http://localhost:3350
 ```
 
-will give you a public URL such as `https://abc-xyz.trycloudflare.com`.
+will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
+
+![Cloudflare web tunnel](/img/cloudflare-tunnel.png)
 
 ### 3. Add Custom MCP Connector
 
@@ -44,16 +46,22 @@ will give you a public URL such as `https://abc-xyz.trycloudflare.com`.
    - **Connection server:** Your tunnel URL + `/mcp` (e.g.
      `https://abc-xyz.trycloudflare.com/mcp`)
    - **Authentication method:** No Authentication
-   - **Description:** (optional) `AI music composition tool for Ableton Live`
 4. Click **Connect**
 
-### 4. Start Using Producer Pal
+<img src="/img/le-chat-setup.png" alt="Le Chat custom MCP connector setup" width="450"/>
 
-Start a conversation with "connect to ableton". Allow Producer Pal tools when
-prompted.
+### 4. Enable the Connector
 
-You can manage per-tool permissions in Connectors → My Connectors → Producer Pal
-→ Functions.
+When starting a new conversation, click the **+** button and go to
+**Connectors**. Make sure **producer-pal** is checked:
+
+![Enabling the Producer Pal connector](/img/le-chat-enable-connector.png)
+
+### 5. Start Using Producer Pal
+
+Start a conversation with "connect to ableton":
+
+![Le Chat successfully connected to Producer Pal](/img/le-chat-success.png)
 
 ## Troubleshooting
 
