@@ -3,7 +3,7 @@
 Once you have [installed Producer Pal](/installation), here are some examples of
 how to use it.
 
-## Basic Examples
+## Getting Started
 
 ### Connecting to Ableton
 
@@ -61,18 +61,74 @@ Let the AI tell you what else it can do:
 
 > what are all the things you can do with your Ableton Live tools?
 
-## Session and Arrangement Views
+## Shaping the Feel
 
-Producer Pal works in both Session and Arrangement views. Use Session for
-jamming and ideas, then move to Arrangement for song structure—or start directly
-in Arrangement if you prefer.
+Once you have a pattern, you can shape its dynamics, timing, and articulation.
 
-## Layer Multiple Patterns on One Instrument
+### Velocity Dynamics
+
+Add expression and movement to your patterns:
+
+> add a crescendo to the hats in the last two beats of the last bar
+
+> apply a velocity LFO to the hats
+
+> slightly randomize the snare velocities
+
+These work on any MIDI clip — drums, melodies, chords — and can target specific
+notes by pitch or time range.
+
+### Swing & Quantize
+
+Dial in the rhythmic feel:
+
+> add swing to the closed hats
+
+> that's a little too much, lower the amount of swing
+
+> I changed my mind, quantize the hats to the 16th note grid
+
+### Note Duration
+
+Control note lengths for different articulations:
+
+> cut all the note durations in half
+
+> apply legato to the melody
+
+## Building Musical Structure
+
+### Melodic Development
+
+Build variations from a simple idea using scale-aware transposition:
+
+> extend the 2-bar melody into an 8-bar melody by copying the bars so each
+> repetition can be edited independently
+
+> in the 3rd and 4th bar, raise the pitches by one scale step. In the 5th and
+> 6th, raise by three scale steps, and raise the final repetition by four scale
+> steps
+
+This creates a melody that builds upward through the scale across repetitions —
+a common technique for creating tension and arc in a phrase.
+
+### Arrangement Workflow
+
+Build song structure in the arrangement view:
+
+> create an 8-bar bass line on the Bass track in the arrangement starting at bar
+> 5
+
+> duplicate that clip to bar 13
+
+> split the clip at bar 9
+
+### Layer Multiple Patterns on One Instrument
 
 You can route multiple MIDI tracks to control the same instrument, enabling
 complex rhythms and polyrhythmic patterns.
 
-### Layered Drum Parts
+#### Layered Drum Parts
 
 - Create a basic kick pattern
 - Say "layer another track onto the drums"
@@ -80,27 +136,51 @@ complex rhythms and polyrhythmic patterns.
 - Create another layer for hats
 - Launch different clip combinations for dynamic arrangements
 
-### Polyrhythmic Patterns
+#### Polyrhythmic Patterns
 
 - Make a 3-bar melody pattern
 - Say "layer another track onto [track name]"
-- Ask for a 4 bar clip in the new track
+- Ask for a 4-bar clip in the new track
 - The patterns phase every 12 bars, creating evolving variations
 
-## Advanced Examples
+## Track & Device Setup
 
-The basic examples above are a good starting point. For best results, be very
-specific and detailed about what you want. Instead of "generate a melody", try:
+Set up your whole signal chain conversationally:
 
-> Generate an 8-bar EDM-style synthesizer melody in the key of C major with a
-> mix of whole notes, half notes, quarter notes, and eighth notes. Use some
-> dotted rhythms and syncopation too. Keep the center of the melody around the C
-> above middle C.
+> create a MIDI track called "Synth Lead"
 
-If you don't know enough music theory to ask specifically, describe what you
-want in your own words and iterate with the AI. Or ask it to teach you music
-theory concepts. It can also perform web searches to research genres and
-techniques.
+> add a Wavetable instrument to it
+
+> set the filter cutoff to 50%
+
+> mute that track and set its color to purple
+
+## Working with Audio Samples
+
+Browse and use audio files from your sample library:
+
+> show me available drum samples
+
+> create an audio clip using the kick sample on the Drums track
+
+> pitch shift it up 5 semitones and loop it
+
+## Project Memory
+
+Save notes that persist across conversations — useful for keeping track of
+musical decisions:
+
+> save a note: "this project uses C minor with jazzy 7th chords"
+
+Later, in a new conversation:
+
+> what notes do I have saved about this project?
+
+## Session and Arrangement Views
+
+Producer Pal works in both Session and Arrangement views. Use Session for
+jamming and ideas, then move to Arrangement for song structure — or start
+directly in Arrangement if you prefer.
 
 ## Tips
 

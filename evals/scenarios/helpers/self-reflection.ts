@@ -69,16 +69,25 @@ export async function maybeInjectReflection(
  * @param failure - The failing assertion result
  * @returns Reflection prompt string
  */
-function buildReflectionPrompt(failure: EvalAssertionResult): string {
+export function buildReflectionPrompt(failure: EvalAssertionResult): string {
   if (failure.assertion.type === "tool_called") {
     const details = failure.details as Record<string, unknown> | undefined;
     const expected = failure.assertion.tool;
+    const nameMatchCount = Number(details?.nameMatchCount) || 0;
     const count = Number(details?.count) || 0;
 
-    if (count === 0) {
+    if (nameMatchCount === 0) {
       return (
         `In the previous step, you didn't call any tool, but ${expected} was ` +
         `expected. What about the request led you to respond without using a tool?`
+      );
+    }
+
+    if (count === 0 && details?.argsSpecified) {
+      return (
+        `In the previous step, you called ${expected} but the arguments ` +
+        `didn't match what was expected. ${failure.message}. What about the ` +
+        `request led you to use different arguments?`
       );
     }
 

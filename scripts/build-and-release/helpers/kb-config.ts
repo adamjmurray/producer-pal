@@ -45,7 +45,11 @@ function createItemsArray(): KbItem[] {
     },
 
     // User docs (entire directory, exclude .vitepress)
-    { src: "docs", isDir: true, exclude: [".vitepress"] },
+    {
+      src: "docs",
+      isDir: true,
+      exclude: [".vitepress", "_generated", "public"],
+    },
 
     // Tool definitions (all .def.ts files in src/tools)
     { src: "src/tools", isDir: true, filter: /\.def\.ts$/ },

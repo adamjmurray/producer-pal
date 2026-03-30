@@ -9,7 +9,10 @@ import {
   applyTransforms,
   evaluateTransform,
 } from "#src/notation/transform/transform-evaluator.ts";
-import { createTestNotes } from "./transform-evaluator-test-helpers.ts";
+import {
+  createContext,
+  createTestNotes,
+} from "./transform-evaluator-test-helpers.ts";
 
 describe("Transform - seq function", () => {
   describe("parser", () => {
@@ -21,6 +24,7 @@ describe("Transform - seq function", () => {
         name: "seq",
         args: [60, 80, 100],
         sync: false,
+        raw: false,
       });
     });
 
@@ -31,10 +35,7 @@ describe("Transform - seq function", () => {
 
   describe("evaluator", () => {
     it("evaluates seq with single value", () => {
-      const result = evaluateTransform("velocity = seq(42)", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
+      const result = evaluateTransform("velocity = seq(42)", createContext());
 
       expect(result.velocity!.value).toBe(42);
     });
@@ -45,10 +46,7 @@ describe("Transform - seq function", () => {
       for (let i = 0; i < expected.length; i++) {
         const result = evaluateTransform(
           "velocity = seq(60, 80, 100)",
-          {
-            position: i,
-            timeSig: { numerator: 4, denominator: 4 },
-          },
+          createContext({ position: i }),
           { index: i, count: 5 },
         );
 
@@ -59,10 +57,7 @@ describe("Transform - seq function", () => {
     it("wraps around with modulo", () => {
       const result = evaluateTransform(
         "velocity = seq(10, 20)",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { index: 4, count: 5 },
       );
 
@@ -73,7 +68,7 @@ describe("Transform - seq function", () => {
       // seq(seq(1,2), seq(3,4)) with index 0: outer[0] → seq(1,2)[0] → 1
       const result0 = evaluateTransform(
         "velocity = seq(seq(1, 2), seq(3, 4))",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         { index: 0, count: 4 },
       );
 
@@ -82,7 +77,7 @@ describe("Transform - seq function", () => {
       // index 1: outer[1] → seq(3,4)[1] → 4
       const result1 = evaluateTransform(
         "velocity = seq(seq(1, 2), seq(3, 4))",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         { index: 1, count: 4 },
       );
 
@@ -92,7 +87,7 @@ describe("Transform - seq function", () => {
     it("selects correct argument per index", () => {
       const result = evaluateTransform(
         "velocity = seq(42, 99)",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         { index: 0, count: 2 },
       );
 
@@ -100,7 +95,7 @@ describe("Transform - seq function", () => {
 
       const result2 = evaluateTransform(
         "velocity = seq(42, 99)",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         { index: 1, count: 2 },
       );
 
@@ -108,10 +103,10 @@ describe("Transform - seq function", () => {
     });
 
     it("defaults to index 0 when no note properties", () => {
-      const result = evaluateTransform("velocity = seq(60, 80, 100)", {
-        position: 0,
-        timeSig: { numerator: 4, denominator: 4 },
-      });
+      const result = evaluateTransform(
+        "velocity = seq(60, 80, 100)",
+        createContext(),
+      );
 
       expect(result.velocity!.value).toBe(60);
     });
@@ -119,7 +114,7 @@ describe("Transform - seq function", () => {
     it("uses clip.index when note.index is not available", () => {
       const result = evaluateTransform(
         "velocity = seq(10, 20, 30)",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         { "clip:index": 2, "clip:count": 3 },
       );
 

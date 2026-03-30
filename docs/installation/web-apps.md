@@ -1,6 +1,6 @@
 # Web Apps
 
-Use Producer Pal in your browser with claude.ai or ChatGPT.
+Use Producer Pal in your browser with claude.ai, ChatGPT, or Le Chat.
 
 ::: warning Requires Web Tunnel
 
@@ -12,10 +12,11 @@ Pal server.
 
 ## Available Options
 
-| Web App                   | Provider  | Cost         |
-| ------------------------- | --------- | ------------ |
-| [claude.ai](./claude-web) | Anthropic | Subscription |
-| [ChatGPT](./chatgpt-web)  | OpenAI    | Subscription |
+| Web App                      | Provider  | Cost         |
+| ---------------------------- | --------- | ------------ |
+| [claude.ai](./claude-web)    | Anthropic | Subscription |
+| [ChatGPT](./chatgpt-web)     | OpenAI    | Subscription |
+| [Le Chat](./mistral-le-chat) | Mistral   | Subscription |
 
 ## Why Use Web Apps?
 

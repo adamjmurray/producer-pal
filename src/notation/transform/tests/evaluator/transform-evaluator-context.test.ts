@@ -9,17 +9,17 @@ import {
   evaluateTransform,
 } from "#src/notation/transform/transform-evaluator.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
-import { createTestNotes } from "./transform-evaluator-test-helpers.ts";
+import {
+  createContext,
+  createTestNotes,
+} from "./transform-evaluator-test-helpers.ts";
 
 describe("Context Variables", () => {
   describe("note.index", () => {
     it("resolves note.index as 0 for first note", () => {
       const result = evaluateTransform(
         "velocity = note.index",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { index: 0 },
       );
 
@@ -29,10 +29,7 @@ describe("Context Variables", () => {
     it("resolves note.index for subsequent notes", () => {
       const result = evaluateTransform(
         "velocity = note.index",
-        {
-          position: 2,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext({ position: 2 }),
         { index: 3 },
       );
 
@@ -42,10 +39,7 @@ describe("Context Variables", () => {
     it("uses note.index in arithmetic expression", () => {
       const result = evaluateTransform(
         "velocity = 60 + note.index * 5",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { index: 4 },
       );
 
@@ -73,10 +67,7 @@ describe("Context Variables", () => {
     it("resolves note.count from noteProperties", () => {
       const result = evaluateTransform(
         "velocity = note.count",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { count: 8 },
       );
 
@@ -86,10 +77,7 @@ describe("Context Variables", () => {
     it("uses note.count in arithmetic expression", () => {
       const result = evaluateTransform(
         "velocity = 127 * note.index / (note.count - 1)",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { count: 4, index: 2 },
       );
 
@@ -116,10 +104,7 @@ describe("Context Variables", () => {
     it("resolves clip.duration from noteProperties", () => {
       const result = evaluateTransform(
         "velocity = clip.duration",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { "clip:duration": 16 },
       );
 
@@ -151,10 +136,7 @@ describe("Context Variables", () => {
     it("resolves clip.index from noteProperties", () => {
       const result = evaluateTransform(
         "velocity = clip.index",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { "clip:index": 2 },
       );
 
@@ -164,10 +146,7 @@ describe("Context Variables", () => {
     it("uses clip.index for stacked fifths", () => {
       const result = evaluateTransform(
         "pitch += clip.index * 7",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { "clip:index": 3 },
       );
 
@@ -179,10 +158,7 @@ describe("Context Variables", () => {
     it("resolves clip.count from noteProperties", () => {
       const result = evaluateTransform(
         "velocity = clip.count",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { "clip:count": 5 },
       );
 
@@ -192,10 +168,7 @@ describe("Context Variables", () => {
     it("uses clip.count for normalized fade across clips", () => {
       const result = evaluateTransform(
         "velocity = 127 * clip.index / (clip.count - 1)",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { "clip:index": 2, "clip:count": 5 },
       );
 
@@ -221,7 +194,7 @@ describe("Context Variables", () => {
     it("resolves clip.position when present", () => {
       const result = evaluateTransform(
         "velocity = clip.position",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         { "clip:position": 32 },
       );
 
@@ -233,7 +206,7 @@ describe("Context Variables", () => {
       // the evaluator throws and processAssignment skips with a warning
       const result = evaluateTransform(
         "velocity = clip.position",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         {},
       );
 
@@ -243,7 +216,7 @@ describe("Context Variables", () => {
     it("does not affect other assignments when clip.position is absent", () => {
       const result = evaluateTransform(
         "velocity = clip.position\npitch += 7",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         {},
       );
 
@@ -257,10 +230,7 @@ describe("Context Variables", () => {
     it("resolves clip.barDuration from noteProperties", () => {
       const result = evaluateTransform(
         "velocity = clip.barDuration",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         { "clip:barDuration": 4 },
       );
 
@@ -335,7 +305,7 @@ describe("Context Variables", () => {
       // Without sync would be: phase = (2/4) % 1 = 0.5, cos(0.5) = -1
       const result = evaluateTransform(
         "velocity += 100 * cos(4t, sync)",
-        { position: 2, timeSig: { numerator: 4, denominator: 4 } },
+        createContext({ position: 2 }),
         { "clip:position": 6 },
       );
 
@@ -347,7 +317,7 @@ describe("Context Variables", () => {
       // With phase offset 0.25, phase = 0.25, cos(0.25) ≈ 0
       const result = evaluateTransform(
         "velocity += 100 * cos(4t, 0.25, sync)",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         { "clip:position": 4 },
       );
 
@@ -357,7 +327,7 @@ describe("Context Variables", () => {
     it("skips assignment when sync used on session clip", () => {
       const result = evaluateTransform(
         "velocity += 100 * cos(4t, sync)",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         {},
       );
 
@@ -367,7 +337,7 @@ describe("Context Variables", () => {
     it("does not affect other assignments when sync fails", () => {
       const result = evaluateTransform(
         "velocity += 100 * cos(4t, sync)\npitch += 7",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         {},
       );
 
@@ -380,7 +350,7 @@ describe("Context Variables", () => {
       // clip.position is ignored when sync is not used
       const result = evaluateTransform(
         "velocity += 100 * cos(4t)",
-        { position: 2, timeSig: { numerator: 4, denominator: 4 } },
+        createContext({ position: 2 }),
         { "clip:position": 8 },
       );
 
@@ -390,12 +360,12 @@ describe("Context Variables", () => {
     it("sync at position 0 with clip.position 0 matches default", () => {
       const synced = evaluateTransform(
         "velocity += 100 * cos(4t, sync)",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         { "clip:position": 0 },
       );
       const unsynced = evaluateTransform(
         "velocity += 100 * cos(4t)",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         { "clip:position": 0 },
       );
 
@@ -407,7 +377,7 @@ describe("Context Variables", () => {
       // tri(0.5) = 0.0
       const result = evaluateTransform(
         "velocity += 100 * tri(4t, sync)",
-        { position: 0, timeSig: { numerator: 4, denominator: 4 } },
+        createContext(),
         { "clip:position": 2 },
       );
 
@@ -456,7 +426,7 @@ describe("Context Variables", () => {
         scalePitchClassMask: 2741, // C Major
       };
 
-      applyTransforms(notes, "pitch = quant(61)", 4, 4, clipContext);
+      applyTransforms(notes, "pitch = snap(61)", 4, 4, clipContext);
 
       // C# (61) quantized to D (62) in C Major
       expect(notes[0]!.pitch).toBe(62);
@@ -467,10 +437,7 @@ describe("Context Variables", () => {
     it("errors when clip variable is not available", () => {
       const result = evaluateTransform(
         "velocity = clip.duration",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         {},
       );
 
@@ -480,10 +447,7 @@ describe("Context Variables", () => {
     it("errors when clip.barDuration is not available", () => {
       const result = evaluateTransform(
         "velocity = clip.barDuration",
-        {
-          position: 0,
-          timeSig: { numerator: 4, denominator: 4 },
-        },
+        createContext(),
         {},
       );
 

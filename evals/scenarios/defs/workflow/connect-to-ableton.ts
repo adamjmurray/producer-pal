@@ -6,8 +6,8 @@
  * Scenario: Connect to Ableton Live
  */
 
-import { getToolCalls } from "../assertions/index.ts";
-import { type EvalScenario } from "../types.ts";
+import { getToolCalls } from "../../assertions/index.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const connectToAbleton: EvalScenario = {
   id: "connect-to-ableton",

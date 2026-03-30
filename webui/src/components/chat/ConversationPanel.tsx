@@ -61,7 +61,7 @@ export function ConversationPanel({
 }: ConversationPanelProps) {
   return (
     <div
-      className={`shrink-0 h-full overflow-hidden transition-[width,flex-basis,min-width] duration-200 ${isOpen ? "w-full sm:w-auto sm:grow sm:basis-64 sm:min-w-64" : "w-0 sm:w-auto sm:grow-0 sm:basis-0 sm:min-w-0"}`}
+      className={`shrink-0 h-full overflow-hidden transition-[width,flex-basis,min-width] duration-200 ${isOpen ? "w-full sm:w-auto sm:grow sm:basis-64 sm:min-w-64 sm:max-w-5xl" : "w-0 sm:w-auto sm:grow-0 sm:basis-0 sm:min-w-0"}`}
     >
       <div
         className={`w-full min-w-screen sm:min-w-64 h-full bg-zinc-200 dark:bg-zinc-900 border-r border-zinc-400 dark:border-zinc-700 shadow-[3px_0_10px_-2px_rgba(0,0,0,0.12)] dark:shadow-[3px_0_10px_-2px_rgba(0,0,0,0.4)] flex flex-col relative z-10 transition-transform duration-200 ${isOpen ? "" : "-translate-x-full"}`}

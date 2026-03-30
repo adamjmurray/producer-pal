@@ -194,3 +194,60 @@ export function formatExpectedCount(expected: {
 
   return `${expected.min}-${expected.max} time(s)`;
 }
+
+/**
+ * Stringify args object with readable asymmetric matcher descriptions
+ *
+ * @param args - The args object (may contain vitest asymmetric matchers)
+ * @returns Human-readable string
+ */
+export function stringifyArgs(args: Record<string, unknown>): string {
+  return stringifyValue(args);
+}
+
+/**
+ * @param value - Value to stringify (may be a matcher, object, array, or primitive)
+ * @returns Human-readable string
+ */
+function stringifyValue(value: unknown): string {
+  if (isAsymmetricMatcher(value)) {
+    const sample = (value as { sample?: unknown }).sample;
+
+    // Container matcher (objectContaining, arrayContaining) — recurse into sample
+    if (
+      typeof sample === "object" &&
+      sample !== null &&
+      typeof sample !== "function" &&
+      !(sample instanceof RegExp)
+    ) {
+      return stringifyValue(sample);
+    }
+
+    // Leaf matcher (any, stringMatching, etc.)
+    const name = value.toString();
+
+    if (typeof sample === "function") {
+      return `${name}<${(sample as { name: string }).name}>`;
+    }
+
+    if (sample instanceof RegExp) {
+      return `${name}<${sample.toString()}>`;
+    }
+
+    return name;
+  }
+
+  if (Array.isArray(value)) {
+    return "[" + value.map(stringifyValue).join(", ") + "]";
+  }
+
+  if (typeof value === "object" && value !== null) {
+    const entries = Object.entries(value as Record<string, unknown>).map(
+      ([k, v]) => `${k}: ${stringifyValue(v)}`,
+    );
+
+    return "{" + entries.join(", ") + "}";
+  }
+
+  return JSON.stringify(value);
+}
