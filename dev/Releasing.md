@@ -49,6 +49,7 @@ In the `dev` branch:
 - [ ] All remote changes (e.g. dependabot) are pulled
 - [ ] Dependencies are up to date (`npm i`)
 - [ ] All local changes are committed
+- [ ] `npm run check` passes locally
 - [ ] All local commits are pushed to GitHub
 - [ ] The PR to `main` has a green build
 - [ ] MCP e2e tests pass locally (see below)
