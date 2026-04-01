@@ -1,18 +1,23 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { Fragment } from "preact";
 import { useMemo } from "preact/hooks";
 import { type TokenUsage } from "#webui/chat/sdk/types";
-import {
-  calcNewContentTokens,
-  compactNumber,
-} from "#webui/lib/utils/compact-number";
-import { type UIPart } from "#webui/types/messages";
+import { type UIPart, type UIStepUsagePart } from "#webui/types/messages";
 import { AssistantError } from "./AssistantError";
 import { AssistantText } from "./AssistantText";
 import { AssistantThought } from "./AssistantThought";
 import { AssistantToolCall } from "./AssistantToolCall";
+import { AssistantToolGroup } from "./AssistantToolGroup";
+import {
+  type SingleRenderItem,
+  type ToolGroupRenderItem,
+  groupToolParts,
+} from "./helpers/group-tool-parts";
+import { StepUsageLabel, calcStepNewContent } from "./StepUsageLabel";
 
 interface AssistantMessageProps {
   parts: UIPart[];
@@ -23,12 +28,12 @@ interface AssistantMessageProps {
 
 /**
  * Renders assistant message with multiple part types
- * @param {AssistantMessageProps} root0 - Component props
- * @param {UIPart[]} root0.parts - Message parts to render
- * @param {boolean} [root0.isResponding] - Whether assistant is currently responding
- * @param {boolean} [root0.showTokenUsage] - Whether to show per-step token usage
- * @param {TokenUsage} [root0.prevStepUsage] - Previous message's last usage
- * @returns {JSX.Element} - React component
+ * @param root0 - Component props
+ * @param root0.parts - Message parts to render
+ * @param root0.isResponding - Whether assistant is currently responding
+ * @param root0.showTokenUsage - Whether to show per-step token usage
+ * @param root0.prevStepUsage - Previous message's last usage
+ * @returns React component
  */
 export function AssistantMessage({
   parts,
@@ -41,58 +46,129 @@ export function AssistantMessage({
     [parts, prevStepUsage],
   );
 
+  const renderItems = useMemo(() => groupToolParts(parts), [parts]);
+
   return (
     <div className="flex flex-col gap-3 py-2">
-      {parts.map((part, i) => {
-        if (part.type === "thought") {
-          return (
-            <AssistantThought
-              key={i}
-              content={part.content}
-              isOpen={part.isOpen}
-              isResponding={isResponding}
-            />
-          );
-        } else if (part.type === "tool") {
-          return (
-            <AssistantToolCall
-              key={i}
-              name={part.name}
-              args={part.args}
-              result={part.result}
-              isError={part.isError}
-            />
-          );
-        } else if (part.type === "step-usage") {
-          if (!showTokenUsage) return null;
-
-          const prev = stepPrevUsages.get(i);
-          const newContent = calcNewContentTokens(
-            part.usage.inputTokens ?? 0,
-            prev?.inputTokens,
-            prev?.outputTokens,
-          );
-
-          return (
-            <StepUsageLabel
-              key={i}
-              usage={part.usage}
-              newContentTokens={newContent}
-            />
-          );
-        } else if (part.type === "text") {
-          return <AssistantText key={i} content={part.content} />;
+      {renderItems.map((item) => {
+        if (item.kind === "tool-group") {
+          return renderToolGroup(item, showTokenUsage, stepPrevUsages);
         }
 
-        // TypeScript has narrowed this to UIErrorPart
-        return <AssistantError key={i} content={part.content} />;
+        return renderSinglePart(
+          item,
+          isResponding,
+          showTokenUsage,
+          stepPrevUsages,
+        );
       })}
     </div>
   );
 }
 
 /**
- * Build a map of step-usage part index → previous step's usage.
+ * Render a grouped set of 3+ tool calls with step-usage outside the group box.
+ * @param item - Tool group render item
+ * @param showTokenUsage - Whether to show per-step token usage
+ * @param stepPrevUsages - Map from part index to previous step's usage
+ * @returns Fragment with group disclosure and trailing step-usage labels
+ */
+function renderToolGroup(
+  item: ToolGroupRenderItem,
+  showTokenUsage: boolean | undefined,
+  stepPrevUsages: Map<number, TokenUsage>,
+) {
+  return (
+    <Fragment key={`group-${item.indices[0]}`}>
+      <AssistantToolGroup parts={item.parts} indices={item.indices} />
+      {showTokenUsage &&
+        item.parts.map((part, j) => {
+          if (!isStepUsagePart(part)) return null;
+
+          const idx = item.indices[j] as number;
+
+          return (
+            <StepUsageLabel
+              key={idx}
+              usage={part.usage}
+              newContentTokens={calcStepNewContent(
+                idx,
+                part.usage,
+                stepPrevUsages,
+              )}
+            />
+          );
+        })}
+    </Fragment>
+  );
+}
+
+/**
+ * Render a single (non-grouped) part.
+ * @param item - Single render item
+ * @param isResponding - Whether assistant is currently responding
+ * @param showTokenUsage - Whether to show per-step token usage
+ * @param stepPrevUsages - Map from part index to previous step's usage
+ * @returns Rendered element or null
+ */
+function renderSinglePart(
+  item: SingleRenderItem,
+  isResponding: boolean | undefined,
+  showTokenUsage: boolean | undefined,
+  stepPrevUsages: Map<number, TokenUsage>,
+) {
+  const { part, index: i } = item;
+
+  if (part.type === "thought") {
+    return (
+      <AssistantThought
+        key={i}
+        content={part.content}
+        isOpen={part.isOpen}
+        isResponding={isResponding}
+      />
+    );
+  } else if (part.type === "tool") {
+    return (
+      <AssistantToolCall
+        key={i}
+        name={part.name}
+        args={part.args}
+        result={part.result}
+        isError={part.isError}
+      />
+    );
+  } else if (isStepUsagePart(part)) {
+    if (!showTokenUsage) return null;
+
+    return (
+      <StepUsageLabel
+        key={i}
+        usage={part.usage}
+        newContentTokens={calcStepNewContent(i, part.usage, stepPrevUsages)}
+      />
+    );
+  } else if (part.type === "text") {
+    return <AssistantText key={i} content={part.content} />;
+  }
+
+  // TypeScript has narrowed this to UIErrorPart
+  return <AssistantError key={i} content={part.content} />;
+}
+
+/**
+ * Type guard for step-usage parts.
+ * @param part - Part to check
+ * @returns Whether the part is a step-usage part
+ */
+function isStepUsagePart(
+  part: UIPart | { type: string },
+): part is UIStepUsagePart {
+  return part.type === "step-usage";
+}
+
+/**
+ * Build a map of step-usage part index to previous step's usage.
  * @param parts - Message parts
  * @param prevStepUsage - Previous message's last usage
  * @returns Map from part index to previous usage
@@ -107,37 +183,11 @@ function buildStepPrevUsages(
   for (let i = 0; i < parts.length; i++) {
     const part = parts[i];
 
-    if (part?.type === "step-usage") {
+    if (part && isStepUsagePart(part)) {
       if (prev) map.set(i, prev);
       prev = part.usage;
     }
   }
 
   return map;
-}
-
-/**
- * Compact usage label shown between tool call steps and follow-up text.
- * @param props - Component props
- * @param props.usage - Token usage for this step
- * @param props.newContentTokens - New content tokens (null if not calculable)
- * @returns Label element
- */
-function StepUsageLabel({
-  usage,
-  newContentTokens,
-}: {
-  usage: TokenUsage;
-  newContentTokens: number | null;
-}) {
-  return (
-    <div className="text-xs text-zinc-400 dark:text-zinc-500 text-right -mt-1">
-      tokens: {compactNumber(usage.inputTokens ?? 0)}
-      {newContentTokens != null &&
-        ` (${compactNumber(newContentTokens)} new)`}{" "}
-      → {compactNumber(usage.outputTokens ?? 0)}
-      {(usage.reasoningTokens ?? 0) > 0 &&
-        ` (${compactNumber(usage.reasoningTokens ?? 0)} reasoning)`}
-    </div>
-  );
 }
