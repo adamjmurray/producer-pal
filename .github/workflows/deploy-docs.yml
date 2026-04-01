@@ -7,6 +7,11 @@ on:
       - main
     paths:
       - "docs/**"
+      - "src/shared/version.ts"
+      - "src/tools/**"
+      - "src/skills/**"
+      - "scripts/generate-tool-schema-docs.ts"
+      - "scripts/generate-docs-markdown.ts"
       - ".github/workflows/deploy-docs.yml"
 
   # Allow manual deployment from Actions tab
