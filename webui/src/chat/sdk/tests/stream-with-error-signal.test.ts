@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import { streamWithErrorSignal } from "#webui/chat/sdk/stream-with-error-signal";
+import { createStreamErrorSignal } from "#webui/chat/sdk/stream-with-error-signal";
 
 /**
  * Create an async iterable that yields values immediately.
@@ -60,14 +60,10 @@ async function collect<T>(stream: AsyncIterable<T>): Promise<T[]> {
   return values;
 }
 
-/** No-op error signal handler for tests that don't need it. */
-const noopSignal = () => {};
-
-describe("streamWithErrorSignal", () => {
+describe("createStreamErrorSignal", () => {
   it("yields all values from a normal stream", async () => {
-    const values = await collect(
-      streamWithErrorSignal(immediateStream([1, 2, 3]), noopSignal),
-    );
+    const signal = createStreamErrorSignal();
+    const values = await collect(signal.wrapStream(immediateStream([1, 2, 3])));
 
     expect(values).toStrictEqual([1, 2, 3]);
   });
@@ -78,35 +74,27 @@ describe("streamWithErrorSignal", () => {
       throw new Error("stream broke");
     }
 
-    await expect(
-      collect(streamWithErrorSignal(errorStream(), noopSignal)),
-    ).rejects.toThrow("stream broke");
+    const signal = createStreamErrorSignal();
+
+    await expect(collect(signal.wrapStream(errorStream()))).rejects.toThrow(
+      "stream broke",
+    );
   });
 
-  it("rejects immediately via error signal", async () => {
-    let triggerError!: (error: unknown) => void;
+  it("rejects immediately via onError()", async () => {
+    const signal = createStreamErrorSignal();
+    const promise = collect(signal.wrapStream(hangingStream<number>()));
 
-    const promise = collect(
-      streamWithErrorSignal(hangingStream<number>(), (reject) => {
-        triggerError = reject;
-      }),
-    );
-
-    triggerError(new Error("CORS network error"));
+    signal.onError({ error: new Error("CORS network error") });
 
     await expect(promise).rejects.toThrow("CORS network error");
   });
 
-  it("rejects mid-stream via error signal", async () => {
-    let triggerError!: (error: unknown) => void;
+  it("rejects mid-stream via onError()", async () => {
+    const signal = createStreamErrorSignal();
+    const promise = collect(signal.wrapStream(hangingStream([1, 2])));
 
-    const promise = collect(
-      streamWithErrorSignal(hangingStream([1, 2]), (reject) => {
-        triggerError = reject;
-      }),
-    );
-
-    triggerError(new Error("connection lost"));
+    signal.onError({ error: new Error("connection lost") });
 
     await expect(promise).rejects.toThrow("connection lost");
   });

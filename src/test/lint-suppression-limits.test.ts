@@ -44,7 +44,7 @@ const V8_IGNORE_LIMITS: TreeLimits = {
   src: 8, // Defensive guards with caller guarantees/lookup tables
   srcTests: 8, // This test file's pattern definitions + description enforcement
   scripts: 0,
-  webui: 14, // Untestable IDB error callbacks, exhaustive never, inline JSX callbacks, no-ops
+  webui: 13, // Untestable IDB error callbacks, exhaustive never, inline JSX callbacks, no-ops
 };
 
 const TREES = Object.keys(ESLINT_DISABLE_LIMITS);

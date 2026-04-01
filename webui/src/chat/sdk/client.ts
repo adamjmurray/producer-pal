@@ -15,7 +15,7 @@ import {
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 import { createMcpTools } from "./mcp-tools";
-import { streamWithErrorSignal } from "./stream-with-error-signal";
+import { createStreamErrorSignal } from "./stream-with-error-signal";
 import { type ChatClientConfig, type ChatMessage, toTokenUsage } from "./types";
 
 const MAX_TOOL_STEPS = 10;
@@ -72,12 +72,30 @@ export class ChatSdkClient {
         ? this.config.buildProviderOptions(overrides.thinking)
         : this.config.providerOptions;
 
+    yield* this.processStream(providerOptions, abortSignal);
+    // Final yield to ensure last step's usage (attached by onStepFinish) is emitted
+    yield [...this.chatHistory];
+  }
+
+  /**
+   * Call streamText, process the fullStream, and yield chat history updates.
+   * Wires the AI SDK's onError callback into the stream iterator so browser
+   * CORS/network errors (which hang fullStream) surface immediately.
+   * @param providerOptions - Provider-specific options for streamText
+   * @param abortSignal - Signal to abort the stream
+   * @yields Updated chat history after each meaningful stream event
+   */
+  private async *processStream(
+    providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
+    abortSignal?: AbortSignal,
+  ): AsyncGenerator<ChatMessage[]> {
+    let currentMsg: ChatMessage = { role: "assistant", content: "" };
+    let addedCurrentMsg = false;
+
     const historyLengthBefore = this.chatHistory.length;
     let stepIndex = 0;
 
-    // Reject function set by streamWithTimeout — allows onError to
-    // immediately unblock the hung iterator instead of waiting for timeout
-    let rejectStream: ((error: unknown) => void) | undefined;
+    const errorSignal = createStreamErrorSignal();
 
     const result = streamText({
       model: this.config.model,
@@ -88,8 +106,7 @@ export class ChatSdkClient {
       temperature: this.config.temperature,
       providerOptions,
       abortSignal,
-      /* v8 ignore next -- only fires on real provider errors (CORS, network) */
-      onError: ({ error }) => rejectStream?.(error),
+      onError: errorSignal.onError,
       onStepFinish: (event) => {
         let count = 0;
 
@@ -111,29 +128,7 @@ export class ChatSdkClient {
       },
     });
 
-    yield* this.processStream(result, (reject) => {
-      rejectStream = reject;
-    });
-    // Final yield to ensure last step's usage (attached by onStepFinish) is emitted
-    yield [...this.chatHistory];
-  }
-
-  /**
-   * Process the fullStream from streamText and yield chat history updates.
-   * Wraps the stream with an error signal so the AI SDK's onError callback
-   * can break the iterator (browser CORS/network errors can hang it forever).
-   * @param result - The streamText result
-   * @param onStreamError - Callback to wire AI SDK onError into the error signal
-   * @yields Updated chat history after each meaningful stream event
-   */
-  private async *processStream(
-    result: ReturnType<typeof streamText>,
-    onStreamError: (reject: (error: unknown) => void) => void,
-  ): AsyncGenerator<ChatMessage[]> {
-    let currentMsg: ChatMessage = { role: "assistant", content: "" };
-    let addedCurrentMsg = false;
-
-    const stream = streamWithErrorSignal(result.fullStream, onStreamError);
+    const stream = errorSignal.wrapStream(result.fullStream);
 
     for await (const part of stream) {
       const handled = handleStreamPart(part.type, part, currentMsg);
