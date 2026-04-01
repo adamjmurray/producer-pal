@@ -10,6 +10,10 @@ updates:
     open-pull-requests-limit: 10
     schedule:
       interval: "daily"
+    versioning-strategy: "increase"
+    cooldown:
+      default-days: 14
+      semver-major-days: 30
 
   - package-ecosystem: "github-actions"
     directory: "/"

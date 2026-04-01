@@ -198,6 +198,24 @@ And `npm run check:build` additionally validates:
 The result is a codebase that's easier for both humans and AI agents to
 navigate, understand, and modify safely.
 
+## Dependency Management
+
+All dependencies in package.json are pinned to exact versions (no `^`, `~`, or
+ranges) to mitigate supply chain attacks. This is enforced at multiple levels:
+
+- **`.npmrc`** sets `save-exact=true` so `npm install <pkg>` automatically pins
+- **Automated test** in `src/test/package-json-versions.test.ts` validates every
+  version matches `x.y.z` format
+- **Dependabot** handles version updates with `versioning-strategy: increase`
+  (bumps the pinned version in package.json, not just the lockfile)
+
+Dependabot cooldowns add a waiting period before PRs are created for newly
+released versions:
+
+- **14-day cooldown** for minor and patch updates
+- **30-day cooldown** for major version bumps
+- Security updates bypass cooldowns
+
 ## Web UI Development
 
 The chat interface is a Preact web application built with Vite.
