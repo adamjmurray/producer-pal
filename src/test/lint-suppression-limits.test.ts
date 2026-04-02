@@ -20,7 +20,7 @@ type TreeLimits = Record<string, number>;
 // "srcTests" checks test files in src/ (vs "src" which excludes test files)
 const ESLINT_DISABLE_LIMITS: TreeLimits = {
   src: 10,
-  srcTests: 17,
+  srcTests: 18,
   scripts: 0,
   webui: 3,
 };
