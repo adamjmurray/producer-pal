@@ -12,8 +12,51 @@ updates:
       interval: "daily"
     versioning-strategy: "increase"
     cooldown:
-      default-days: 14
+      default-days: 7
       semver-major-days: 30
+    groups:
+      ai-libraries:
+        patterns:
+          - "ai"
+          - "@ai-sdk/*"
+          - "@openrouter/ai-sdk-provider"
+      anthropic:
+        patterns:
+          - "@anthropic-ai/*"
+          - "@modelcontextprotocol/*"
+      rollup:
+        patterns:
+          - "rollup"
+          - "@rollup/*"
+          - "rollup-plugin-*"
+      eslint:
+        patterns:
+          - "eslint"
+          - "eslint-*"
+          - "@eslint-community/*"
+          - "@typescript-eslint/*"
+          - "@stylistic/eslint-plugin"
+          - "@vitest/eslint-plugin"
+      vite:
+        patterns:
+          - "vite"
+          - "vite-plugin-*"
+          - "vitepress"
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/coverage-v8"
+      preact:
+        patterns:
+          - "preact"
+          - "@preact/*"
+          - "@testing-library/preact"
+      tailwind:
+        patterns:
+          - "@tailwindcss/*"
+      types:
+        patterns:
+          - "@types/*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -21,4 +64,4 @@ updates:
     schedule:
       interval: "daily"
     cooldown:
-      default-days: 14
+      default-days: 7
