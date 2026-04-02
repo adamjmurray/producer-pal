@@ -75,13 +75,17 @@ export function formatChatMessages(history: ChatMessage[]): UIMessage[] {
     const lastMessage = messages.at(-1);
     let currentMessage: UIMessage;
 
-    // Merge consecutive assistant messages
-    if (lastMessage?.role === "model" && msg.role === "assistant") {
+    // Merge consecutive assistant messages (but not error messages)
+    if (
+      lastMessage?.role === "model" &&
+      msg.role === "assistant" &&
+      !msg.isError
+    ) {
       currentMessage = lastMessage;
       closeStepUsage(currentMessage);
     } else {
       currentMessage = {
-        role: msg.role === "assistant" ? "model" : "user",
+        role: msg.role === "user" ? "user" : "model",
         parts: [],
         rawHistoryIndex: rawIndex,
         timestamp: Date.now(),
@@ -91,6 +95,12 @@ export function formatChatMessages(history: ChatMessage[]): UIMessage[] {
 
     if (msg.role === "user") {
       addTextContent(currentMessage.parts, msg.content);
+    } else if (msg.isError) {
+      currentMessage.parts.push({
+        type: "error",
+        content: msg.content,
+        isError: true,
+      });
     } else {
       // Assistant: reasoning first, then text, then tools
       addReasoning(msg.reasoning, currentMessage.parts);

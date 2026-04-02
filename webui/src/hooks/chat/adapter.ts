@@ -15,8 +15,8 @@ import {
   mapThinkingToReasoningEffort,
 } from "#webui/hooks/settings/config-builders";
 import { SYSTEM_INSTRUCTION, getThinkingBudget } from "#webui/lib/config";
+import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type Provider } from "#webui/types/settings";
-import { createFormattedErrorMessage } from "./helpers/streaming-helpers";
 import { type ChatAdapter } from "./use-chat-types";
 
 /**
@@ -194,7 +194,13 @@ export const chatAdapter: ChatAdapter<
   formatMessages: formatChatMessages,
 
   createErrorMessage(error: unknown, chatHistory: ChatMessage[]) {
-    return createFormattedErrorMessage(chatHistory, formatChatMessages, error);
+    chatHistory.push({
+      role: "assistant",
+      content: normalizeErrorMessage(error),
+      isError: true,
+    });
+
+    return formatChatMessages(chatHistory);
   },
 
   extractUserMessage(message: ChatMessage): string | undefined {

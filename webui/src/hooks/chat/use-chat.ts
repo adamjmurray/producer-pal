@@ -192,6 +192,7 @@ export function useChat<
           if (!rateLimitInfo.isRateLimited || !shouldRetry(attempt + 1)) {
             setMessages(adapter.createErrorMessage(error, getHistory()));
             setRateLimitState(null);
+            autoSaveRef?.current?.();
 
             return;
           }
@@ -237,6 +238,8 @@ export function useChat<
             clientRef.current?.chatHistory ?? [],
           ),
         );
+
+        if (clientRef.current) autoSaveRef?.current?.();
       } finally {
         abortControllerRef.current = null;
         setIsAssistantResponding(false);
