@@ -96,7 +96,7 @@
     "@ai-sdk/google": "3.0.58",
     "@ai-sdk/mistral": "3.0.28",
     "@ai-sdk/openai": "3.0.50",
-    "@modelcontextprotocol/sdk": "1.28.0",
+    "@modelcontextprotocol/sdk": "1.29.0",
     "@openrouter/ai-sdk-provider": "2.3.3",
     "@tailwindcss/typography": "0.5.19",
     "ai": "6.0.146",
