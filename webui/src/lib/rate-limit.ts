@@ -138,6 +138,11 @@ function extractStatusCode(error: unknown): number | null {
     return errorObj.status;
   }
 
+  // AI SDK APICallError uses statusCode (not status)
+  if (typeof errorObj.statusCode === "number") {
+    return errorObj.statusCode;
+  }
+
   // Nested in error object
   if (typeof errorObj.error === "object" && errorObj.error != null) {
     const nestedError = errorObj.error as Record<string, unknown>;

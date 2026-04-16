@@ -19,6 +19,13 @@ describe("detectRateLimit", () => {
     expect(result.isRateLimited).toBe(true);
   });
 
+  it("detects statusCode property from AI SDK APICallError", () => {
+    const error = { statusCode: 429, message: "Request failed" };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+  });
+
   it("detects RESOURCE_EXHAUSTED in error message", () => {
     const error = new Error("Resource has been exhausted (e.g. check quota).");
     const result = detectRateLimit(error);

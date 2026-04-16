@@ -99,6 +99,7 @@ export class ChatSdkClient {
 
     const result = streamText({
       model: this.config.model,
+      maxRetries: 0, // Disable SDK-level retry so app-level retry (executeWithRetry) handles 429s with UI feedback
       system: this.config.systemInstruction,
       messages: buildModelMessages(this.chatHistory),
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
