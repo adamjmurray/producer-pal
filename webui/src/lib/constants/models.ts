@@ -81,12 +81,14 @@ export const OPENROUTER_MODELS = [
 ];
 
 export const OLLAMA_MODELS = [
-  { value: "qwen3.5", label: "Qwen 3.5" },
-  { value: "qwen3-coder", label: "Qwen 3 Coder" },
-  { value: "mistral", label: "Mistral" },
-  { value: "devstral-small-2", label: "Devstral Small 2" },
-  { value: "glm-4.7-flash", label: "GLM 4.7 Flash" },
-  { value: "lfm2", label: "LFM2" },
+  { value: "gemma4", label: "gemma4" },
+  { value: "qwen3.5", label: "qwen3.5" },
+  { value: "qwen3-coder", label: "qwen3-coder" },
+  { value: "mistral", label: "mistral" },
+  { value: "devstral-small-2", label: "devstral-small-2" },
+  { value: "nemotron-cascade-2", label: "nemotron-cascade-2" },
+  { value: "glm-4.7-flash", label: "glm-4.7-flash" },
+  { value: "lfm2", label: "lfm2" },
   OTHER_MODEL_OPTION,
 ];
 

@@ -192,9 +192,9 @@ describe("ModelSelector", () => {
   describe("ollama provider", () => {
     it("renders Ollama models", () => {
       renderModelSelector({ provider: "ollama", model: "ministral-3" });
-      expect(screen.getByRole("option", { name: "Mistral" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Qwen 3.5" })).toBeDefined();
-      expect(screen.getByRole("option", { name: /GLM/ })).toBeDefined();
+      expect(screen.getByRole("option", { name: "mistral" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "qwen3.5" })).toBeDefined();
+      expect(screen.getByRole("option", { name: /glm/ })).toBeDefined();
     });
 
     it("calls setModel when Ollama model changes", () => {
