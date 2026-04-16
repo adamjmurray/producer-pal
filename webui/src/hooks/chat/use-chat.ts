@@ -246,7 +246,7 @@ export function useChat<
         setRateLimitState(null);
       }
     },
-    [adapter],
+    [adapter, autoSaveRef],
   );
 
   const handleSend = useCallback(

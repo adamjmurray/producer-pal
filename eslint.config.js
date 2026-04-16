@@ -657,6 +657,7 @@ export default [
     },
     rules: {
       ...reactHooksPlugin.configs.recommended.rules,
+      "react-hooks/exhaustive-deps": "error",
     },
   },
 
