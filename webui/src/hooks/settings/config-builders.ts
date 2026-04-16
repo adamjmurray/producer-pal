@@ -5,6 +5,37 @@
 
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
+export type AnthropicEffort = "low" | "medium" | "high" | "max";
+
+/**
+ * Checks if a model requires legacy enabled thinking (budgetTokens) instead of adaptive.
+ * Haiku 4.5 does not support adaptive thinking yet.
+ * TODO: Remove when Haiku supports adaptive thinking (see Linear PP-xxx)
+ * @param {string} model - Model identifier
+ * @returns {boolean} - True if model needs legacy thinking config
+ */
+export function isLegacyThinkingModel(model: string): boolean {
+  return model.includes("haiku");
+}
+
+/**
+ * Maps thinking UI setting to Anthropic effort level for adaptive thinking.
+ * @param {string} thinking - Thinking mode setting from UI
+ * @returns {AnthropicEffort | undefined} - effort level or undefined for Off
+ */
+export function mapThinkingToAnthropicEffort(
+  thinking: string,
+): AnthropicEffort | undefined {
+  switch (thinking) {
+    case "Max":
+      return "max";
+    case "Off":
+      return undefined;
+    default:
+      return "high";
+  }
+}
+
 /**
  * Maps thinking UI setting to reasoning effort for OpenRouter.
  * Simple direct mapping without model-specific logic.
