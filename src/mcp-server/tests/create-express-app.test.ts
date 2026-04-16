@@ -198,6 +198,7 @@ describe("MCP Express App", () => {
           // Add tool name to error message for debugging
           throw new Error(
             `Tool "${tool.name}" validation failed: ${(error as Error).message}`,
+            { cause: error },
           );
         }
       }

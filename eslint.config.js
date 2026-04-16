@@ -4,7 +4,7 @@ import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
 import stylistic from "@stylistic/eslint-plugin";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
-import importPlugin from "eslint-plugin-import";
+import importPlugin from "eslint-plugin-import-x";
 import jsdoc from "eslint-plugin-jsdoc";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
@@ -17,7 +17,7 @@ const tsParserOptionsBase = {
 };
 
 const importResolverSettings = {
-  "import/resolver": {
+  "import-x/resolver": {
     typescript: { noWarnOnMultipleProjects: true },
     node: true,
   },
@@ -33,15 +33,15 @@ const baseRules = {
   "prefer-const": "error", // Use const when variable isn't reassigned
 
   // Import Quality
-  "import/first": "error", // All imports must come before other statements
-  "import/no-cycle": "error", // Prevent circular dependencies
-  "import/no-self-import": "error", // File can't import itself
-  "import/no-useless-path-segments": "error", // No unnecessary .. in imports
-  "import/no-relative-packages": "error", // Don't use relative paths to node_modules
-  "import/no-duplicates": ["error", { "prefer-inline": true }], // Merge duplicate imports
-  "import/no-extraneous-dependencies": "error", // Catch dependencies used but not declared
-  "import/consistent-type-specifier-style": ["error", "prefer-inline"], // Use `import { type X }` not `import type { X }`
-  "import/order": [
+  "import-x/first": "error", // All imports must come before other statements
+  "import-x/no-cycle": "error", // Prevent circular dependencies
+  "import-x/no-self-import": "error", // File can't import itself
+  "import-x/no-useless-path-segments": "error", // No unnecessary .. in imports
+  "import-x/no-relative-packages": "error", // Don't use relative paths to node_modules
+  "import-x/no-duplicates": ["error", { "prefer-inline": true }], // Merge duplicate imports
+  "import-x/no-extraneous-dependencies": "error", // Catch dependencies used but not declared
+  "import-x/consistent-type-specifier-style": ["error", "prefer-inline"], // Use `import { type X }` not `import type { X }`
+  "import-x/order": [
     "error",
     {
       groups: [
@@ -360,7 +360,7 @@ export default [
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
-      import: importPlugin,
+      "import-x": importPlugin,
       sonarjs,
       jsdoc,
       unicorn,
@@ -406,7 +406,7 @@ export default [
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
-      import: importPlugin,
+      "import-x": importPlugin,
       sonarjs,
       jsdoc,
       unicorn,
@@ -461,7 +461,7 @@ export default [
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
-      import: importPlugin,
+      "import-x": importPlugin,
       sonarjs,
       jsdoc,
       unicorn,
@@ -517,7 +517,7 @@ export default [
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
-      import: importPlugin,
+      "import-x": importPlugin,
       sonarjs,
       jsdoc,
       unicorn,
@@ -565,7 +565,7 @@ export default [
     plugins: {
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
-      import: importPlugin,
+      "import-x": importPlugin,
       sonarjs,
     },
     rules: {
@@ -597,7 +597,7 @@ export default [
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
-      import: importPlugin,
+      "import-x": importPlugin,
       sonarjs,
     },
     rules: {
@@ -626,7 +626,7 @@ export default [
       "@stylistic": stylistic,
       "@eslint-community/eslint-comments": eslintComments,
       "@typescript-eslint": tsPlugin,
-      import: importPlugin,
+      "import-x": importPlugin,
       sonarjs,
       vitest: vitestPlugin,
     },
@@ -686,7 +686,7 @@ export default [
       "src/notation/transform/parser/transform-parser.ts",
     ],
     rules: {
-      "import/extensions": [
+      "import-x/extensions": [
         "error",
         "always",
         {
@@ -778,8 +778,8 @@ export default [
       ],
       complexity: ["error", 28],
       "sonarjs/no-duplicate-string": "off",
-      "import/first": "off", // Test files need imports after vi.mock() calls
-      "import/order": "off",
+      "import-x/first": "off", // Test files need imports after vi.mock() calls
+      "import-x/order": "off",
       // Enforce vi.mock(import('...')) syntax for proper module mocking
       "vitest/prefer-import-in-mock": "error",
       "vitest/consistent-test-it": ["error", { fn: "it" }], // or "test" - pick one
