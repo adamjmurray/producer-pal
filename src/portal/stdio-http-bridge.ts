@@ -172,6 +172,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
       throw new Error(
         `Failed to connect to Producer Pal MCP server at ${this.httpUrl}: ${errorMessage(error)}`,
+        { cause: error },
       );
     }
   }

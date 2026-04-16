@@ -79,6 +79,7 @@ export async function navigateToChat(page: Page): Promise<void> {
         "1. Ableton Live is running with the Producer Pal device active\n" +
         "2. The device is built with `npm run build:all`\n\n" +
         `Original error: ${message}`,
+      { cause: error },
     );
   }
 }

@@ -358,7 +358,7 @@ export function interpretNotation(
         "bar|beat",
       );
 
-      throw new Error(formatted);
+      throw new Error(formatted, { cause: error });
     }
 
     throw error;

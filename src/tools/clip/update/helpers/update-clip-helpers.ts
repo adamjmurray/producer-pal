@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
-import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   applyAudioTransforms,
@@ -133,8 +132,6 @@ export function processSingleClipUpdate(
     clip,
   );
 
-  let noteResult: NoteUpdateResult | null = null;
-
   // Determine looping state
   const isLooping = looping ?? (clip.getProperty("looping") as number) > 0;
 
@@ -190,7 +187,7 @@ export function processSingleClipUpdate(
   }
 
   // Handle note updates (transforms already applied for audio clips above)
-  noteResult = handleNoteUpdates(
+  const noteResult = handleNoteUpdates(
     clip,
     notationString,
     isAudioClip ? undefined : transformString,
