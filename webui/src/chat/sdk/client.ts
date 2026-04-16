@@ -74,7 +74,7 @@ export class ChatSdkClient {
         ? this.config.buildProviderOptions(overrides.thinking)
         : this.config.providerOptions;
 
-    yield* this.processStream(providerOptions, abortSignal);
+    yield* this.processStream(providerOptions, abortSignal, shouldInterrupt);
     // Final yield to ensure last step's usage (attached by onStepFinish) is emitted
     yield [...this.chatHistory];
   }
@@ -85,11 +85,13 @@ export class ChatSdkClient {
    * CORS/network errors (which hang fullStream) surface immediately.
    * @param providerOptions - Provider-specific options for streamText
    * @param abortSignal - Signal to abort the stream
+   * @param shouldInterrupt - Callback checked between tool steps; returns true to stop early
    * @yields Updated chat history after each meaningful stream event
    */
   private async *processStream(
     providerOptions: Parameters<typeof streamText>[0]["providerOptions"],
     abortSignal?: AbortSignal,
+    shouldInterrupt?: () => boolean,
   ): AsyncGenerator<ChatMessage[]> {
     let currentMsg: ChatMessage = { role: "assistant", content: "" };
     let addedCurrentMsg = false;
