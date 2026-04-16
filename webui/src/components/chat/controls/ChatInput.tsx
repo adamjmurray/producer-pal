@@ -11,6 +11,8 @@ interface ChatInputProps extends ThinkingToggleProps {
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   onEnqueue: (text: string, overrides?: MessageOverrides) => void;
   isAssistantResponding: boolean;
+  /** Conversation ended with an error — user must retry or edit to continue */
+  hasError: boolean;
   onStop: () => void;
 }
 
@@ -21,6 +23,7 @@ interface ChatInputProps extends ThinkingToggleProps {
  * @param props.handleSend - Callback to send message directly
  * @param props.onEnqueue - Callback to queue message while AI is responding
  * @param props.isAssistantResponding - Whether assistant is currently responding
+ * @param props.hasError - Whether conversation ended with an error
  * @param props.onStop - Callback to stop assistant response
  * @param props.thinking - Current thinking mode
  * @param props.onThinkingChange - Callback for thinking change
@@ -30,6 +33,7 @@ export function ChatInput({
   handleSend,
   onEnqueue,
   isAssistantResponding,
+  hasError,
   onStop,
   thinking,
   onThinkingChange,
@@ -37,7 +41,7 @@ export function ChatInput({
   const [input, setInput] = useState("");
 
   const submitMessage = () => {
-    if (!input.trim()) return;
+    if (!input.trim() || hasError) return;
 
     const overrides: MessageOverrides = { thinking };
 
@@ -65,8 +69,13 @@ export function ChatInput({
             value={input}
             onInput={(e) => setInput((e.target as HTMLTextAreaElement).value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message... (Shift+Enter for new line)"
-            className="flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg shadow-inner resize-none placeholder:dark:text-zinc-400 placeholder:text-zinc-500"
+            placeholder={
+              hasError
+                ? "Retry or edit a message to continue..."
+                : "Type a message... (Shift+Enter for new line)"
+            }
+            disabled={hasError}
+            className="flex-1 px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-lg shadow-inner resize-none placeholder:dark:text-zinc-400 placeholder:text-zinc-500 disabled:opacity-50"
             rows={2}
           />
           <div className="flex flex-col gap-2">
@@ -85,7 +94,7 @@ export function ChatInput({
             )}
             <button
               onClick={submitMessage}
-              disabled={!input.trim()}
+              disabled={hasError || !input.trim()}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 hover:bg-blue-700"
             >
               {isAssistantResponding ? "Queue" : "Send"}

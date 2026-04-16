@@ -7,7 +7,7 @@
  * Scenario: Update Live Set global properties and delete a track
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const updateLiveSet: EvalScenario = {
   id: "update-live-set",

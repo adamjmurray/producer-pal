@@ -19,9 +19,14 @@ import {
   evaluateSeq,
 } from "./helpers/transform-functions-helpers.ts";
 import {
-  evaluateQuant,
+  evaluateSnap,
   evaluateStep,
 } from "./helpers/transform-functions-scale-helpers.ts";
+import {
+  evaluateLegato,
+  evaluateQuant,
+  evaluateSwing,
+} from "./helpers/transform-functions-timing-helpers.ts";
 import { type ExpressionNode } from "./parser/transform-parser.ts";
 import { parseFrequency, type PeriodObject } from "./transform-frequency.ts";
 import * as waveforms from "./transform-waveforms.ts";
@@ -40,6 +45,7 @@ const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
   rand: evaluateRand,
   seq: evaluateSeq,
   choose: evaluateChoose,
+  snap: evaluateSnap,
   quant: evaluateQuant,
   step: evaluateStep,
   pow: evaluatePow,
@@ -52,6 +58,7 @@ const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
  * @param name - Function name
  * @param args - Function arguments
  * @param sync - Whether to sync phase to arrangement timeline
+ * @param raw - Whether to skip auto-quantize (swing only)
  * @param position - Note position in beats
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -64,6 +71,7 @@ export function evaluateFunction(
   name: string,
   args: ExpressionNode[],
   sync: boolean,
+  raw: boolean,
   position: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -71,6 +79,33 @@ export function evaluateFunction(
   noteProperties: NoteProperties,
   evaluateExpression: EvaluateExpressionFn,
 ): number {
+  // legato([tolerance]) — duration to next distinct start time (skips chord tones)
+  if (name === "legato") {
+    return evaluateLegato(
+      args,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
+  }
+
+  // swing() has its own signature due to the raw flag
+  if (name === "swing") {
+    return evaluateSwing(
+      args,
+      raw,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+      evaluateExpression,
+    );
+  }
+
   // Functions with standard signature: (args, pos, num, den, range, props, eval)
   const standardFn = standardFnDispatch[name];
 
@@ -301,7 +336,7 @@ function evaluateWaveform(
  * @param name - Function name for error messages
  * @returns Period in beats
  */
-function parsePeriod(
+export function parsePeriod(
   periodArg: ExpressionNode | PeriodObject,
   position: number,
   timeSigNumerator: number,

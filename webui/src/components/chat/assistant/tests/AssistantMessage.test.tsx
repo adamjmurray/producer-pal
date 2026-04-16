@@ -323,4 +323,68 @@ describe("AssistantMessage", () => {
       expect(container.textContent).toContain("5.1K new");
     });
   });
+
+  describe("tool call grouping", () => {
+    it("groups 3+ consecutive tool parts into a single disclosure", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t1", args: {}, result: "ok" },
+        { type: "tool", name: "t2", args: {}, result: "ok" },
+        { type: "tool", name: "t3", args: {}, result: "ok" },
+      ];
+
+      render(<AssistantMessage parts={parts} />);
+      const container = document.querySelector(".flex.flex-col.gap-3.py-2");
+
+      // 1 group disclosure (contains 3 inner tool disclosures)
+      expect(container!.children).toHaveLength(1);
+
+      // Total: 1 outer group + 3 inner tool calls + 3 result disclosures
+      const allDetails = document.querySelectorAll("details");
+
+      expect(allDetails).toHaveLength(7);
+    });
+
+    it("does not group fewer than 3 consecutive tool parts", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t1", args: {}, result: "ok" },
+        { type: "tool", name: "t2", args: {}, result: "ok" },
+      ];
+
+      render(<AssistantMessage parts={parts} />);
+      const container = document.querySelector(".flex.flex-col.gap-3.py-2");
+
+      expect(container!.children).toHaveLength(2);
+    });
+
+    it("renders step-usage outside the group when showTokenUsage is true", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t1", args: {}, result: "ok" },
+        { type: "step-usage", usage: { inputTokens: 100, outputTokens: 50 } },
+        { type: "tool", name: "t2", args: {}, result: "ok" },
+        { type: "tool", name: "t3", args: {}, result: "ok" },
+      ];
+
+      const { container } = render(
+        <AssistantMessage parts={parts} showTokenUsage={true} />,
+      );
+
+      expect(container.textContent).toContain("tokens:");
+    });
+
+    it("text parts break tool groups", () => {
+      const parts: UIPart[] = [
+        { type: "tool", name: "t1", args: {}, result: "ok" },
+        { type: "tool", name: "t2", args: {}, result: "ok" },
+        { type: "tool", name: "t3", args: {}, result: "ok" },
+        { type: "text", content: "Done" },
+        { type: "tool", name: "t4", args: {}, result: "ok" },
+      ];
+
+      render(<AssistantMessage parts={parts} />);
+      const container = document.querySelector(".flex.flex-col.gap-3.py-2");
+
+      // 1 group + 1 text + 1 individual tool
+      expect(container!.children).toHaveLength(3);
+    });
+  });
 });

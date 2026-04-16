@@ -7,7 +7,7 @@
  * Scenario: Create scene with tempo, play and stop
  */
 
-import { type EvalScenario } from "../types.ts";
+import { type EvalScenario } from "../../types.ts";
 
 export const sceneAndPlayback: EvalScenario = {
   id: "scene-and-playback",

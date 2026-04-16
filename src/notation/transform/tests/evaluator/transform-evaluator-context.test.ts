@@ -426,7 +426,7 @@ describe("Context Variables", () => {
         scalePitchClassMask: 2741, // C Major
       };
 
-      applyTransforms(notes, "pitch = quant(61)", 4, 4, clipContext);
+      applyTransforms(notes, "pitch = snap(61)", 4, 4, clipContext);
 
       // C# (61) quantized to D (62) in C Major
       expect(notes[0]!.pitch).toBe(62);

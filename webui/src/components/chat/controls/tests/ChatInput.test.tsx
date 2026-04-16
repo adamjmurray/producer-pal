@@ -13,6 +13,7 @@ const defaultProps = {
   handleSend: vi.fn(),
   onEnqueue: vi.fn(),
   isAssistantResponding: false,
+  hasError: false,
   onStop: vi.fn(),
   thinking: "Default",
   onThinkingChange: vi.fn(),
@@ -41,6 +42,15 @@ describe("ChatInput", () => {
 
       expect(textarea.getAttribute("placeholder")).toBe(
         "Type a message... (Shift+Enter for new line)",
+      );
+    });
+
+    it("shows error placeholder when hasError", () => {
+      render(<ChatInput {...defaultProps} hasError={true} />);
+      const textarea = screen.getByRole("textbox");
+
+      expect(textarea.getAttribute("placeholder")).toBe(
+        "Retry or edit a message to continue...",
       );
     });
 
@@ -87,37 +97,54 @@ describe("ChatInput", () => {
         name: "empty input",
         inputValue: undefined,
         isResponding: false,
+        hasError: false,
         buttonName: "Send",
       },
       {
         name: "whitespace only",
         inputValue: "   ",
         isResponding: false,
+        hasError: false,
         buttonName: "Send",
       },
       {
         name: "empty input while responding",
         inputValue: undefined,
         isResponding: true,
+        hasError: false,
         buttonName: "Queue",
       },
-    ])("is disabled when $name", ({ inputValue, isResponding, buttonName }) => {
-      render(
-        <ChatInput {...defaultProps} isAssistantResponding={isResponding} />,
-      );
+      {
+        name: "conversation has error",
+        inputValue: "Hello",
+        isResponding: false,
+        hasError: true,
+        buttonName: "Send",
+      },
+    ])(
+      "is disabled when $name",
+      ({ inputValue, isResponding, hasError, buttonName }) => {
+        render(
+          <ChatInput
+            {...defaultProps}
+            isAssistantResponding={isResponding}
+            hasError={hasError}
+          />,
+        );
 
-      const textarea = screen.getByRole("textbox");
+        const textarea = screen.getByRole("textbox");
 
-      if (inputValue !== undefined) {
-        fireEvent.input(textarea, { target: { value: inputValue } });
-      }
+        if (inputValue !== undefined) {
+          fireEvent.input(textarea, { target: { value: inputValue } });
+        }
 
-      const button = screen.getByRole("button", {
-        name: buttonName,
-      }) as HTMLButtonElement;
+        const button = screen.getByRole("button", {
+          name: buttonName,
+        }) as HTMLButtonElement;
 
-      expect(button.disabled).toBe(true);
-    });
+        expect(button.disabled).toBe(true);
+      },
+    );
 
     it("is enabled with content while responding (for queuing)", () => {
       render(<ChatInput {...defaultProps} isAssistantResponding={true} />);

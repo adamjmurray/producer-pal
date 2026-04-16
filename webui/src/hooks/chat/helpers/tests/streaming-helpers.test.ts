@@ -8,7 +8,6 @@ import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
   handleMessageStream,
-  createFormattedErrorMessage,
   showMissingApiKeyError,
   validateMcpConnection,
 } from "#webui/hooks/chat/helpers/streaming-helpers";
@@ -73,66 +72,6 @@ describe("streaming-helpers", () => {
           vi.fn(),
         ),
       ).rejects.toThrow("Network failure");
-    });
-  });
-
-  describe("createFormattedErrorMessage", () => {
-    it("should create error message from history", () => {
-      const history: MockMessage[] = [];
-      const formatter = vi.fn((): UIMessage[] => []);
-
-      const result = createFormattedErrorMessage(
-        history,
-        formatter,
-        "Test error",
-      );
-
-      expect(result).toHaveLength(1);
-      expect(result[0]?.role).toBe("model");
-      const firstPart = result[0]?.parts[0];
-
-      expect(firstPart?.type).toBe("error");
-      expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
-        "Error: Test error",
-      );
-    });
-
-    it("should preserve existing history in formatted output", () => {
-      const history: MockMessage[] = [{ role: "user", content: "Hello" }];
-      const formatter = vi.fn((): UIMessage[] => [
-        {
-          role: "user",
-          parts: [{ type: "text", content: "Hello" }],
-          rawHistoryIndex: 0,
-          timestamp: Date.now(),
-        },
-      ]);
-
-      const result = createFormattedErrorMessage(
-        history,
-        formatter,
-        "Test error",
-      );
-
-      expect(result).toHaveLength(2);
-      expect(result[0]?.role).toBe("user");
-      expect(result[1]?.role).toBe("model");
-    });
-
-    it("should handle Error objects", () => {
-      const formatter = vi.fn((): UIMessage[] => []);
-
-      const result = createFormattedErrorMessage(
-        [],
-        formatter,
-        new Error("Something failed"),
-      );
-
-      const firstPart = result[0]?.parts[0];
-
-      expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
-        "Error: Something failed",
-      );
     });
   });
 

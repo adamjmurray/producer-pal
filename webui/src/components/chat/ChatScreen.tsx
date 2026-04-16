@@ -191,6 +191,7 @@ export function ChatScreen(props: ChatScreenProps) {
               handleSend={handleSend}
               onEnqueue={enqueueMessage}
               isAssistantResponding={isAssistantResponding}
+              hasError={conversationHasError(messages)}
               onStop={onStop}
               thinking={thinking}
               onThinkingChange={setThinking}
@@ -200,6 +201,18 @@ export function ChatScreen(props: ChatScreenProps) {
       </div>
     </div>
   );
+}
+
+/**
+ * Check if the conversation is in an error state (last message is an error).
+ * When true, the user must retry or edit to continue.
+ * @param messages - Current UI messages
+ * @returns True if the conversation ends in an error
+ */
+function conversationHasError(messages: UIMessage[]): boolean {
+  const lastModel = messages.findLast((m) => m.role === "model");
+
+  return lastModel?.parts.some((p) => p.type === "error") ?? false;
 }
 
 /**

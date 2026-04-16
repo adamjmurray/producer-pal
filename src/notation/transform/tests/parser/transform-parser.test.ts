@@ -550,6 +550,44 @@ describe("Transform Parser", () => {
     it("rejects invalid bar property", () => {
       expect(() => parser.parse("velocity = bar.invalid")).toThrow();
     });
+
+    it("parses next.pitch with namespace", () => {
+      const result = parser.parse("velocity = next.pitch");
+      const variable = result[0]!.expression as VariableNode;
+
+      expect(variable).toStrictEqual({
+        type: "variable",
+        namespace: "next",
+        name: "pitch",
+      });
+    });
+
+    it("parses all next properties with namespace", () => {
+      const properties = [
+        "pitch",
+        "velocity",
+        "deviation",
+        "probability",
+        "duration",
+        "start",
+      ];
+
+      for (const prop of properties) {
+        const result = parser.parse(`velocity = next.${prop}`);
+        const variable = result[0]!.expression as VariableNode;
+
+        expect(variable.namespace).toBe("next");
+        expect(variable.name).toBe(prop);
+      }
+    });
+
+    it("rejects next.index (not a valid next property)", () => {
+      expect(() => parser.parse("velocity = next.index")).toThrow();
+    });
+
+    it("rejects next.count (not a valid next property)", () => {
+      expect(() => parser.parse("velocity = next.count")).toThrow();
+    });
   });
 
   describe("pitch parameter", () => {
@@ -682,6 +720,21 @@ describe("Transform Parser", () => {
       expect(expr.type).toBe("add");
       expect(expr.left).toBe(60);
       expect((expr.right as VariableNode).name).toBe("pitch");
+    });
+  });
+
+  describe("legato function", () => {
+    it("parses legato() as a function call with no arguments", () => {
+      const result = parser.parse("duration = legato()");
+      const fn = result[0]!.expression as FunctionNode;
+
+      expect(fn).toStrictEqual({
+        type: "function",
+        name: "legato",
+        args: [],
+        sync: false,
+        raw: false,
+      });
     });
   });
 });

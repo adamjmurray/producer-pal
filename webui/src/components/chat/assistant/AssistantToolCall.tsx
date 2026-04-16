@@ -41,7 +41,7 @@ export function AssistantToolCall({
 
   return (
     <details
-      className={`disclosure text-xs p-2 font-mono bg-zinc-200/70 dark:bg-zinc-900 rounded-lg ${
+      className={`disclosure text-xs p-2 font-mono bg-zinc-200/70 dark:bg-zinc-700 rounded-lg ${
         result ? "" : "animate-pulse"
       } ${effectiveIsError ? "border-l-3 border-red-500" : hasWarnings ? "border-l-3 border-yellow-500" : ""}`}
     >

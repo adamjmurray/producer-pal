@@ -27,6 +27,8 @@ Pick your preferred AI provider:
   app, or Codex CLI
 - **[Google / Gemini](./installation/choose-gemini)** — Built-in Chat UI or
   Gemini CLI
+- **[Mistral / Mistral AI](./installation/choose-mistral)** — Le Chat or Mistral
+  Vibe
 - **[Local / Offline](./installation/choose-local)** — Ollama or LM Studio
 - **[Multiple Providers](./installation/choose-multi)** — OpenRouter,
   flexibility across providers
@@ -61,6 +63,8 @@ For users comfortable with the terminal:
   (subscription required)
 - **[Claude Code](./installation/claude-code)** - Anthropic's command line agent
   (subscription required)
+- **[Mistral Vibe](./installation/mistral-vibe)** - Mistral's command line agent
+  (API key required)
 
 ## Web Applications
 
@@ -69,6 +73,8 @@ Use Producer Pal in your browser:
 - **[claude.ai Web App](./installation/claude-web)** - Anthropic's web app
   (requires [web tunnel](./installation/web-tunnels))
 - **[ChatGPT Web App](./installation/chatgpt-web)** - OpenAI's web app (requires
+  [web tunnel](./installation/web-tunnels))
+- **[Le Chat](./installation/mistral-le-chat)** - Mistral's web app (requires
   [web tunnel](./installation/web-tunnels))
 
 ## Local & Offline Options

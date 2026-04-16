@@ -12,7 +12,7 @@ import {
 } from "./transform-evaluator-helpers.ts";
 
 /**
- * Evaluate quant function (quantize pitch to nearest in-scale pitch)
+ * Evaluate snap function (snap pitch to nearest in-scale pitch)
  * @param args - Function arguments (exactly 1: pitch value)
  * @param position - Note position in beats
  * @param timeSigNumerator - Time signature numerator
@@ -22,7 +22,7 @@ import {
  * @param evaluateExpression - Expression evaluator function
  * @returns Quantized pitch value, or input unchanged if no scale
  */
-export function evaluateQuant(
+export function evaluateSnap(
   args: ExpressionNode[],
   position: number,
   timeSigNumerator: number,
@@ -32,9 +32,7 @@ export function evaluateQuant(
   evaluateExpression: EvaluateExpressionFn,
 ): number {
   if (args.length !== 1) {
-    throw new Error(
-      `Function quant() requires exactly 1 argument: quant(pitch)`,
-    );
+    throw new Error(`Function snap() requires exactly 1 argument: snap(pitch)`);
   }
 
   const pitch = evaluateExpression(

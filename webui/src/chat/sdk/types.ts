@@ -16,6 +16,8 @@ import { type LanguageModel, type LanguageModelUsage } from "ai";
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  /** True for error messages persisted in history (not sent to LLM) */
+  isError?: boolean;
   toolCalls?: Array<{
     id: string;
     name: string;

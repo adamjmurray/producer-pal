@@ -5,7 +5,7 @@
 
 /**
  * E2E tests for transform context variables (note.*, clip.*, bar.*),
- * function arity validation, and scale-dependent functions (quant, step).
+ * function arity validation, and scale-dependent functions (snap, step).
  * Uses: e2e-test-set - t8 is empty MIDI track
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
@@ -180,17 +180,17 @@ describe("ppal-clip-transforms (arity validation)", () => {
 });
 
 // =============================================================================
-// Scale-Dependent Function Tests (quant)
+// Scale-Dependent Function Tests (snap)
 // =============================================================================
 
-describe("ppal-clip-transforms (quant)", () => {
-  it("quantizes chromatic pitches to C Major scale", async () => {
+describe("ppal-clip-transforms (snap)", () => {
+  it("snaps chromatic pitches to C Major scale", async () => {
     await setScale("C Major");
 
     // Create clip with out-of-scale notes (Db, Eb, Gb are not in C Major)
     const clipId = await createMidiClip(20, "C3 1|1 Db3 1|2 Eb3 1|3 Gb3 1|4");
 
-    await applyTransform(clipId, "pitch = quant(note.pitch)");
+    await applyTransform(clipId, "pitch = snap(note.pitch)");
 
     const notes = await readClipNotes(clipId);
 
@@ -212,11 +212,11 @@ describe("ppal-clip-transforms (quant)", () => {
 
     const clipId = await createMidiClip(21, "Db3 1|1 Eb3 1|2");
 
-    await applyTransform(clipId, "pitch = quant(note.pitch)");
+    await applyTransform(clipId, "pitch = snap(note.pitch)");
 
     const notes = await readClipNotes(clipId);
 
-    // Notes should remain unchanged — no scale means quant is a no-op
+    // Notes should remain unchanged — no scale means snap is a no-op
     expect(notes).toContain("Db3");
     expect(notes).toContain("Eb3");
   });

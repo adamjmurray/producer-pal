@@ -95,6 +95,10 @@ export default defineConfig({
                 text: "Gemini / Google",
                 link: "/installation/choose-gemini",
               },
+              {
+                text: "Mistral / Mistral AI",
+                link: "/installation/choose-mistral",
+              },
               { text: "Local / Offline", link: "/installation/choose-local" },
               {
                 text: "Multiple Providers",
@@ -137,6 +141,7 @@ export default defineConfig({
               { text: "Gemini CLI", link: "/installation/gemini-cli" },
               { text: "Codex CLI", link: "/installation/codex-cli" },
               { text: "Claude Code", link: "/installation/claude-code" },
+              { text: "Mistral Vibe", link: "/installation/mistral-vibe" },
             ],
           },
           {
@@ -146,6 +151,7 @@ export default defineConfig({
               { text: "Overview", link: "/installation/web-apps" },
               { text: "claude.ai", link: "/installation/claude-web" },
               { text: "ChatGPT", link: "/installation/chatgpt-web" },
+              { text: "Le Chat", link: "/installation/mistral-le-chat" },
             ],
           },
           {

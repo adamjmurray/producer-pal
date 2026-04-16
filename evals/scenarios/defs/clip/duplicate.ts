@@ -7,8 +7,8 @@
  * Scenario: Create content, duplicate track, and duplicate clip to arrangement
  */
 
-import { getToolCalls } from "../assertions/index.ts";
-import { type EvalScenario } from "../types.ts";
+import { getToolCalls } from "../../assertions/index.ts";
+import { type EvalScenario } from "../../types.ts";
 
 const TOOL_DUPLICATE = "ppal-duplicate";
 

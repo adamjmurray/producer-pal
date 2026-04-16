@@ -31,7 +31,16 @@ export interface NoteContext {
   clipTimeRange?: TimeRange;
 }
 
-export type NoteProperties = Record<string, number | undefined>;
+/** Internal context for legato() tolerance-aware computation */
+export interface LegatoContext {
+  starts: number[];
+  cursor: number;
+  clipEnd?: number;
+}
+
+export type NoteProperties = Record<string, number | undefined> & {
+  _legatoContext?: LegatoContext;
+};
 
 export interface ClipContext {
   clipDuration: number; // musical beats
@@ -383,6 +392,7 @@ export function evaluateExpression(
       node.name,
       node.args,
       node.sync,
+      node.raw,
       position,
       timeSigNumerator,
       timeSigDenominator,

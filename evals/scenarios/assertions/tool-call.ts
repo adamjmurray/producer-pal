@@ -16,6 +16,7 @@ import {
   formatExpectedCount,
   getTargetTurns,
   normalizeCount,
+  stringifyArgs,
 } from "./helpers.ts";
 
 /**
@@ -49,7 +50,7 @@ export function assertToolCalled(
     (expectedCount.max == null || count <= expectedCount.max);
 
   const argsDesc = assertion.args
-    ? ` with args matching ${JSON.stringify(assertion.args)}`
+    ? ` with args matching ${stringifyArgs(assertion.args)}`
     : "";
 
   return {

@@ -98,6 +98,10 @@ web UI architecture.
 - **Testing builds**: Always use `npm run build:debug` for development (includes
   debugging tools like `ppal-raw-live-api`)
 
+- **Exact dependency versions**: All versions in package.json must be exact (no
+  `^`, `~`, or ranges). `.npmrc` enforces this for `npm install`. A test in
+  `src/test/package-json-versions.test.ts` validates it.
+
 - **Zod limitations**: Use only primitive types and enums in tool input schemas.
   For list-like inputs, use comma-separated strings
 

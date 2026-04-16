@@ -155,9 +155,20 @@ variable
   / "clip." name:clipPropertyName {
     return { type: "variable", namespace: "clip", name };
   }
+  / "next." name:nextPropertyName {
+    return { type: "variable", namespace: "next", name };
+  }
   / "note." name:notePropertyName {
     return { type: "variable", namespace: "note", name };
   }
+
+nextPropertyName
+  = "deviation" { return "deviation"; }
+  / "velocity" { return "velocity"; }
+  / "probability" { return "probability"; }
+  / "duration" { return "duration"; }
+  / "pitch" { return "pitch"; }
+  / "start" { return "start"; }
 
 notePropertyName
   = "deviation" { return "deviation"; }
@@ -182,10 +193,13 @@ clipPropertyName
 
 functionCall
   = name:cyclicalFunctionName "(" _ args:syncArgumentList? _ ")" {
-    return { type: "function", name, args: args?.args ?? [], sync: args?.sync ?? false };
+    return { type: "function", name, args: args?.args ?? [], sync: args?.sync ?? false, raw: false };
+  }
+  / "swing" "(" _ args:swingArgumentList _ ")" {
+    return { type: "function", name: "swing", args: args.args, sync: false, raw: args.raw };
   }
   / name:otherFunctionName "(" _ args:argumentList? _ ")" {
-    return { type: "function", name, args: args || [], sync: false };
+    return { type: "function", name, args: args || [], sync: false, raw: false };
   }
 
 cyclicalFunctionName
@@ -210,9 +224,25 @@ otherFunctionName
   / "ramp" { return "ramp"; }
   / "curve" { return "curve"; }
   / "quant" { return "quant"; }
+  / "snap" { return "snap"; }
   / "step" { return "step"; }
   / "wrap" { return "wrap"; }
   / "reflect" { return "reflect"; }
+  / "legato" { return "legato"; }
+
+swingArgumentList
+  = head:argument _ "," _ second:argument _ "," _ "raw" {
+    return { args: [head, second], raw: true };
+  }
+  / head:argument _ "," _ "raw" {
+    return { args: [head], raw: true };
+  }
+  / head:argument _ "," _ second:argument {
+    return { args: [head, second], raw: false };
+  }
+  / head:argument {
+    return { args: [head], raw: false };
+  }
 
 syncArgumentList
   = head:argument tail:(_ "," _ argument)* _ "," _ "sync" {

@@ -86,7 +86,8 @@ async function main(): Promise<void> {
         f.endsWith(".md") &&
         !f.startsWith("_generated") &&
         !f.startsWith("node_modules") &&
-        !f.startsWith("public"),
+        !f.startsWith("public") &&
+        !f.startsWith(".vitepress"),
     )
     .map(String);
 
