@@ -14,7 +14,7 @@ import { skills as standardSkills } from "#src/skills/standard.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.join(__dirname, "..");
+const PROJECT_ROOT = path.join(__dirname, "../..");
 const OUTPUT_DIR = path.join(PROJECT_ROOT, "docs/_generated");
 
 /** Max safe integer added by Zod for .int() — not meaningful to display */

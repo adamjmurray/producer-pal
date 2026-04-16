@@ -18,7 +18,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PROJECT_ROOT = path.join(__dirname, "..");
+const PROJECT_ROOT = path.join(__dirname, "../..");
 const DOCS_DIR = path.join(PROJECT_ROOT, "docs");
 const OUTPUT_DIR = path.join(DOCS_DIR, "public/markdown");
 
