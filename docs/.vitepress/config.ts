@@ -4,8 +4,9 @@ import { VERSION } from "../../src/shared/version.ts";
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
   title: "Producer Pal",
+  titleTemplate: ":title | Producer Pal — Ableton MCP for AI music production",
   description:
-    "AI music production assistant for Ableton Live. Works with Claude, Gemini, GPT, and local models.",
+    "Producer Pal is an Ableton MCP server — AI for Ableton Live that works with Claude, Gemini, ChatGPT, and local models.",
 
   // GitHub Pages base URL
   base: "/",
@@ -30,7 +31,65 @@ export default defineConfig({
     pageData.frontmatter.version = VERSION;
   },
 
-  head: [["link", { rel: "icon", href: "/producer-pal-logo.svg" }]],
+  head: [
+    ["link", { rel: "icon", href: "/producer-pal-logo.svg" }],
+    [
+      "meta",
+      {
+        name: "keywords",
+        content:
+          "Ableton MCP, AI for Ableton, Ableton Live MCP, Ableton AI, AI music production, Max for Live MCP server, Claude Ableton, Gemini Ableton, ChatGPT Ableton",
+      },
+    ],
+    ["meta", { property: "og:type", content: "website" }],
+    ["meta", { property: "og:site_name", content: "Producer Pal" }],
+    [
+      "meta",
+      {
+        property: "og:title",
+        content: "Producer Pal — Ableton MCP for AI music production",
+      },
+    ],
+    [
+      "meta",
+      {
+        property: "og:description",
+        content:
+          "Producer Pal is an Ableton MCP server — AI for Ableton Live that works with Claude, Gemini, ChatGPT, and local models.",
+      },
+    ],
+    ["meta", { property: "og:url", content: "https://producer-pal.org" }],
+    [
+      "meta",
+      {
+        property: "og:image",
+        content: "https://producer-pal.org/producer-pal-logo.png",
+      },
+    ],
+    ["meta", { name: "twitter:card", content: "summary_large_image" }],
+    [
+      "meta",
+      {
+        name: "twitter:title",
+        content: "Producer Pal — Ableton MCP for AI music production",
+      },
+    ],
+    [
+      "meta",
+      {
+        name: "twitter:description",
+        content:
+          "Producer Pal is an Ableton MCP server — AI for Ableton Live that works with Claude, Gemini, ChatGPT, and local models.",
+      },
+    ],
+    [
+      "meta",
+      {
+        name: "twitter:image",
+        content: "https://producer-pal.org/producer-pal-logo.png",
+      },
+    ],
+  ],
 
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config

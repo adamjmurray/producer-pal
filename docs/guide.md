@@ -1,7 +1,14 @@
+---
+title: Getting Started
+description:
+  Get started with Producer Pal — the Ableton MCP server for AI-powered music
+  production in Ableton Live. Quick guide to install and connect your AI.
+---
+
 # Getting Started
 
 Welcome to Producer Pal™! This guide will help you get started with using AI for
-music production in Ableton Live.
+music production in Ableton Live via the Producer Pal Ableton MCP server.
 
 ## Installation
 

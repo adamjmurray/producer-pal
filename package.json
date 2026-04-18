@@ -1,7 +1,7 @@
 {
   "name": "producer-pal",
   "version": "1.4.7",
-  "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
+  "description": "Producer Pal — Ableton MCP server bringing AI to Ableton Live via a Max for Live device",
   "homepage": "https://producer-pal.org",
   "repository": {
     "type": "git",
@@ -22,7 +22,13 @@
     "music",
     "ai",
     "mcp",
-    "ableton"
+    "ableton",
+    "ableton-mcp",
+    "ableton-live-mcp",
+    "ai-for-ableton",
+    "ableton-ai",
+    "max-for-live",
+    "ai-music-production"
   ],
   "scripts": {
     "build": "npm run parser:build && npm run ui:build && rollup -c config/rollup.config.mjs && npm run dxt:build",
