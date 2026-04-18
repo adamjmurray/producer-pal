@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -65,7 +66,7 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] OpenAI GPT-5.3 Codex",
   },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
-  { value: "qwen/qwen3.5-397b-a17b", label: "[Paid] Qwen 3.5" },
+  { value: "qwen/qwen3.6-plus", label: "[Paid] Qwen 3.6" },
   // Free models
   { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
   { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },
@@ -82,7 +83,7 @@ export const OPENROUTER_MODELS = [
 
 export const OLLAMA_MODELS = [
   { value: "gemma4", label: "gemma4" },
-  { value: "qwen3.5", label: "qwen3.5" },
+  { value: "qwen3.6", label: "qwen3.6" },
   { value: "qwen3-coder", label: "qwen3-coder" },
   { value: "mistral", label: "mistral" },
   { value: "devstral-small-2", label: "devstral-small-2" },

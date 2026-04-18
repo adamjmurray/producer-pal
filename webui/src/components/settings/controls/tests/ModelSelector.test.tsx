@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -193,7 +194,7 @@ describe("ModelSelector", () => {
     it("renders Ollama models", () => {
       renderModelSelector({ provider: "ollama", model: "ministral-3" });
       expect(screen.getByRole("option", { name: "mistral" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "qwen3.5" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "qwen3.6" })).toBeDefined();
       expect(screen.getByRole("option", { name: /glm/ })).toBeDefined();
     });
 
@@ -203,7 +204,7 @@ describe("ModelSelector", () => {
         model: "mistral",
       });
 
-      expectModelSelected("qwen3.5", setModel);
+      expectModelSelected("qwen3.6", setModel);
     });
   });
 
