@@ -98,14 +98,14 @@
     "e2e:webui": "npm run ui:test"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "3.0.68",
-    "@ai-sdk/google": "3.0.61",
+    "@ai-sdk/anthropic": "3.0.69",
+    "@ai-sdk/google": "3.0.62",
     "@ai-sdk/mistral": "3.0.30",
     "@ai-sdk/openai": "3.0.52",
     "@modelcontextprotocol/sdk": "1.29.0",
     "@openrouter/ai-sdk-provider": "2.5.1",
     "@tailwindcss/typography": "0.5.19",
-    "ai": "6.0.154",
+    "ai": "6.0.158",
     "dompurify": "3.3.3",
     "express": "5.2.1",
     "idb": "8.0.3",
