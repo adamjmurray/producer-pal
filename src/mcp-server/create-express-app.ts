@@ -215,6 +215,18 @@ const VALID_TOOL_SET = new Set<string>(TOOL_NAMES);
  * @param res - Express response
  */
 async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
+  // Block cross-origin writes even when dev CORS is permissive. Same-origin
+  // fetches and non-browser clients (curl, scripts/ppal-client) omit Origin.
+  const origin = req.get("Origin");
+
+  if (origin && !isLocalOrigin(origin)) {
+    res
+      .status(403)
+      .json({ error: "cross-origin /config writes are not allowed" });
+
+    return;
+  }
+
   const incoming = req.body as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
@@ -319,4 +331,24 @@ function validateTools(
   }
 
   return null;
+}
+
+/**
+ * Check whether an Origin header value points to localhost.
+ *
+ * @param origin - Origin header value
+ * @returns true if origin hostname is localhost/127.0.0.1/[::1]
+ */
+function isLocalOrigin(origin: string): boolean {
+  try {
+    const { hostname } = new URL(origin);
+
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]"
+    );
+  } catch {
+    return false;
+  }
 }
