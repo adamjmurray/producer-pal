@@ -47,12 +47,10 @@ Max.addHandler(
 );
 
 Max.addHandler("smallModelMode", (enabled: unknown) => {
-  // console.log(`[node] Setting smallModelMode ${Boolean(enabled)}`);
   config.smallModelMode = Boolean(enabled);
 });
 
 Max.addHandler("memoryEnabled", (enabled: unknown) => {
-  // console.log(`[node] Setting memoryEnabled ${Boolean(enabled)}`);
   config.memoryEnabled = Boolean(enabled);
 });
 
@@ -60,17 +58,14 @@ Max.addHandler("memoryContent", (content: unknown) => {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
-  // console.log(`[node] Setting memoryContent ${value}`);
   config.memoryContent = value;
 });
 
 Max.addHandler("memoryWritable", (writable: unknown) => {
-  // console.log(`[node] Setting memoryWritable ${Boolean(writable)}`);
   config.memoryWritable = Boolean(writable);
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
-  // console.log(`[node] Setting compactOutput ${!enabled}`);
   config.jsonOutput = !enabled;
 });
 
@@ -78,7 +73,6 @@ Max.addHandler("sampleFolder", (path: unknown) => {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = path === "bang" ? "" : String(path ?? "");
 
-  // console.log(`[node] Setting sampleFolder ${value}`);
   config.sampleFolder = value;
 });
 

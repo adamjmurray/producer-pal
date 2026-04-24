@@ -131,7 +131,6 @@ let isCompactOutputEnabled = true;
  * @param enabled - Whether to enable compact output
  */
 export function compactOutput(enabled: unknown): void {
-  // console.log(`Setting isCompactOutputEnabled ${Boolean(enabled)}`);
   isCompactOutputEnabled = Boolean(enabled);
 }
 
@@ -141,7 +140,6 @@ export function compactOutput(enabled: unknown): void {
  * @param enabled - Whether to enable small model mode
  */
 export function smallModelMode(enabled: unknown): void {
-  // console.log(`[v8] Setting smallModelMode ${Boolean(enabled)}`);
   context.smallModelMode = Boolean(enabled);
 }
 
@@ -151,7 +149,6 @@ export function smallModelMode(enabled: unknown): void {
  * @param enabled - Whether to enable memory
  */
 export function memoryEnabled(enabled: unknown): void {
-  // console.log(`[v8] Setting memoryEnabled ${Boolean(enabled)}`);
   context.memory.enabled = Boolean(enabled);
 }
 
@@ -161,7 +158,6 @@ export function memoryEnabled(enabled: unknown): void {
  * @param writable - Whether memory should be writable
  */
 export function memoryWritable(writable: unknown): void {
-  // console.log(`[v8] Setting memoryWritable ${Boolean(writable)}`);
   context.memory.writable = Boolean(writable);
 }
 
@@ -174,7 +170,6 @@ export function memoryContent(content: unknown): void {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
-  // console.log(`[v8] Setting memoryContent "${value}"`);
   context.memory.content = value;
 }
 
@@ -187,7 +182,6 @@ export function sampleFolder(path: unknown): void {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = path === "bang" ? "" : String(path ?? "");
 
-  // console.log(`[v8] Setting sampleFolder "${value}"`);
   context.sampleFolder = value;
 }
 
