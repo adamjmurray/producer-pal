@@ -140,7 +140,9 @@ export function createExpressApp(): Express {
     });
   }
 
-  app.use(express.json());
+  // Tool arguments with large MIDI note arrays or bar|beat transforms can
+  // exceed Express's 100 KB default.
+  app.use(express.json({ limit: "2mb" }));
 
   app.post("/mcp", async (req: Request, res: Response): Promise<void> => {
     try {
