@@ -3,7 +3,7 @@
 coverage
 knowledge-base
 src/**/generated-*-parser.js
-src/tools/shared/clip-gain-lookup-table.json
+src/tools/shared/clip-gain-lookup/lookup-table.json
 max-for-live-device
 claude-desktop-extension
 npm/*.js

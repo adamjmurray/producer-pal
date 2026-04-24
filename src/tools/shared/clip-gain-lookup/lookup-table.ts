@@ -7,7 +7,7 @@
 // Extended 2026-02-03 with low-range samples (-69.7 to -65.7 dB)
 // Data lives in the sibling .json file so table diffs stay readable.
 
-import lookupTableData from "./clip-gain-lookup-table.json" with { type: "json" };
+import lookupTableData from "./lookup-table.json" with { type: "json" };
 
 export interface LookupEntry {
   gain: number;
