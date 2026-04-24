@@ -140,7 +140,10 @@ export function createExpressApp(): Express {
 
   app.post("/mcp", async (req: Request, res: Response): Promise<void> => {
     try {
-      console.info("New MCP connection: " + JSON.stringify(req.body));
+      const method =
+        (req.body as { method?: string } | undefined)?.method ?? "unknown";
+
+      console.info(`MCP request: ${method}`);
 
       const server = createMcpServer(callLiveApi, {
         smallModelMode: config.smallModelMode,
