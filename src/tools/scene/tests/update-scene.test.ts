@@ -130,13 +130,13 @@ describe("updateScene", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should throw error when ids is missing", () => {
-    expect(() => updateScene({})).toThrow(
-      "updateScene failed: ids is required",
-    );
-    expect(() => updateScene({ name: "Test" })).toThrow(
-      "updateScene failed: ids is required",
-    );
+  it("should warn and return empty when ids is missing", () => {
+    expect(updateScene({})).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(1, "updateScene: ids is required");
+
+    vi.mocked(outlet).mockClear();
+    expect(updateScene({ name: "Test" })).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(1, "updateScene: ids is required");
   });
 
   it("should log warning when scene ID doesn't exist", () => {

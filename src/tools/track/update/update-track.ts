@@ -372,7 +372,9 @@ export function updateTrack(
   _context: Partial<ToolContext> = {},
 ): UpdateTrackResult | UpdateTrackResult[] {
   if (!ids) {
-    throw new Error("updateTrack failed: ids is required");
+    console.warn("updateTrack: ids is required");
+
+    return [];
   }
 
   // Parse comma-separated string into array
