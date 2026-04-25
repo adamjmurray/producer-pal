@@ -28,6 +28,9 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+env:
+  NODE_VERSION: "24.x"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -40,7 +43,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
-          node-version: "24.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
