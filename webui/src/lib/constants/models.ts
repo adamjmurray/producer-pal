@@ -28,7 +28,7 @@ export const GEMINI_MODELS = [
 ];
 
 export const OPENAI_MODELS = [
-  { value: "gpt-5.4", label: "GPT-5.4" },
+  { value: "gpt-5.5", label: "GPT-5.5" },
   { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
   { value: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
   OTHER_MODEL_OPTION,
@@ -60,7 +60,7 @@ export const OPENROUTER_MODELS = [
     value: "anthropic/claude-opus-4.7",
     label: "[Paid] Anthropic Claude Opus 4.7",
   },
-  { value: "openai/gpt-5.4", label: "[Paid] OpenAI GPT-5.4" },
+  { value: "openai/gpt-5.5", label: "[Paid] OpenAI GPT-5.5" },
   {
     value: "openai/gpt-5.3-codex",
     label: "[Paid] OpenAI GPT-5.3 Codex",

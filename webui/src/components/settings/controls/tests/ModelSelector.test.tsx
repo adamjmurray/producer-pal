@@ -82,8 +82,8 @@ describe("ModelSelector", () => {
 
   describe("OpenAI provider", () => {
     it("renders OpenAI models", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-5.4" });
-      expect(screen.getByRole("option", { name: /^GPT-5\.4$/ })).toBeDefined();
+      renderModelSelector({ provider: "openai", model: "gpt-5.5" });
+      expect(screen.getByRole("option", { name: /^GPT-5\.5$/ })).toBeDefined();
       expect(
         screen.getByRole("option", { name: /^GPT-5\.4 Mini$/ }),
       ).toBeDefined();
@@ -92,7 +92,7 @@ describe("ModelSelector", () => {
     it("calls setModel when OpenAI model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openai",
-        model: "gpt-5.4",
+        model: "gpt-5.5",
       });
 
       expectModelSelected("gpt-5.4-mini", setModel);
