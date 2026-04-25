@@ -128,6 +128,12 @@ web UI architecture.
   accepts `PathLike` objects directly. See `dev/Coding-Standards.md` for the
   full API reference.
 
+- **Runtime sub-paths**: When you have a runtime `LiveAPI` and need a child
+  object, use `api.child("name")` (chainable, multi-arg supported) — never
+  concatenate `api.path + " name"` and pass it back through `LiveAPI.from()`.
+  Example: `track.child("mixer_device").child("panning")` instead of
+  `LiveAPI.from(LiveAPI.from(track.path + " mixer_device").path + " panning")`.
+
 - **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
 
 - **Update tool error handling**: Update tools (update-clip, update-track,

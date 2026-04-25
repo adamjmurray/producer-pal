@@ -158,7 +158,7 @@ function applySendProperties(
   }
 
   // Get mixer and sends
-  const mixer = LiveAPI.from(track.path + " mixer_device");
+  const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
     console.warn(`track ${track.id} has no mixer device`);
@@ -225,7 +225,7 @@ function applyStereoPan(
   rightPan: number | undefined,
 ): void {
   if (pan != null) {
-    const panning = LiveAPI.from(mixer.path + " panning");
+    const panning = mixer.child("panning");
 
     if (panning.exists()) {
       panning.set("value", pan);
@@ -254,7 +254,7 @@ function applySplitPan(
   rightPan: number | undefined,
 ): void {
   if (leftPan != null) {
-    const leftSplit = LiveAPI.from(mixer.path + " left_split_stereo");
+    const leftSplit = mixer.child("left_split_stereo");
 
     if (leftSplit.exists()) {
       leftSplit.set("value", leftPan);
@@ -262,7 +262,7 @@ function applySplitPan(
   }
 
   if (rightPan != null) {
-    const rightSplit = LiveAPI.from(mixer.path + " right_split_stereo");
+    const rightSplit = mixer.child("right_split_stereo");
 
     if (rightSplit.exists()) {
       rightSplit.set("value", rightPan);
@@ -285,7 +285,7 @@ function applySplitPan(
 function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
   const { gainDb, pan, panningMode, leftPan, rightPan } = params;
 
-  const mixer = LiveAPI.from(track.path + " mixer_device");
+  const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
     return;
@@ -293,7 +293,7 @@ function applyMixerProperties(track: LiveAPI, params: MixerParams): void {
 
   // Handle gain (independent of panning mode)
   if (gainDb != null) {
-    const volume = LiveAPI.from(mixer.path + " volume");
+    const volume = mixer.child("volume");
 
     if (volume.exists()) {
       volume.set("display_value", gainDb);
