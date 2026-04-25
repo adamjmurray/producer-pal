@@ -67,6 +67,7 @@ export const OPENROUTER_MODELS = [
   },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
   { value: "qwen/qwen3.6-plus", label: "[Paid] Qwen 3.6" },
+  { value: "moonshotai/kimi-k2.6", label: "[Paid] Moonshot AI Kimi K2.6" },
   // Free models
   { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
   { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },
