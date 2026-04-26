@@ -123,12 +123,21 @@ export function useExecuteWithRetry<
 
           // Wait before retrying
           await new Promise<void>((resolve, reject) => {
-            const timeoutId = setTimeout(resolve, delayMs);
+            const signal = retryAbortRef.current?.signal;
+            const timer: { id: ReturnType<typeof setTimeout> | null } = {
+              id: null,
+            };
 
-            retryAbortRef.current?.signal.addEventListener("abort", () => {
-              clearTimeout(timeoutId);
+            const onAbort = () => {
+              if (timer.id != null) clearTimeout(timer.id);
               reject(new Error("Retry cancelled"));
-            });
+            };
+
+            timer.id = setTimeout(() => {
+              signal?.removeEventListener("abort", onAbort);
+              resolve();
+            }, delayMs);
+            signal?.addEventListener("abort", onAbort, { once: true });
           });
           attempt++;
         }
