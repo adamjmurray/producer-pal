@@ -10,9 +10,11 @@ import {
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
-import { handleNoteUpdates } from "./update-clip-notes-helpers.ts";
+import {
+  handleNoteUpdates,
+  handleQuantization,
+} from "./update-clip-notes-helpers.ts";
 import { buildClipPropertiesToSet } from "./update-clip-properties-helpers.ts";
-import { handleQuantization } from "./update-clip-quantization-helpers.ts";
 import { handlePositionOperations } from "./update-clip-session-helpers.ts";
 import {
   calculateBeatPositions,

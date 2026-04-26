@@ -9,7 +9,6 @@ import {
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 export interface MidiNote {
@@ -60,8 +59,9 @@ export function validateAndParseArrangementParams(
     return result;
   }
 
-  const songTimeSig = parseSongTimeSignature();
-  const { numerator, denominator } = songTimeSig;
+  const liveSet = LiveAPI.from(livePath.liveSet);
+  const numerator = liveSet.getProperty("signature_numerator") as number;
+  const denominator = liveSet.getProperty("signature_denominator") as number;
 
   result.songTimeSigNumerator = numerator;
   result.songTimeSigDenominator = denominator;
