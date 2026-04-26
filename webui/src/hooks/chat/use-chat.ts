@@ -3,19 +3,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useRef, useState } from "preact/hooks";
-import {
-  detectRateLimit,
-  calculateRetryDelay,
-  shouldRetry,
-  MAX_RETRY_ATTEMPTS,
-} from "#webui/lib/rate-limit";
 import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
-  handleMessageStream,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
 import { useActiveSettings } from "./helpers/use-active-settings";
+import { useExecuteWithRetry } from "./helpers/use-execute-with-retry";
 import {
   type ChatClient,
   type ConversationLockedSettings,
@@ -60,12 +54,19 @@ export function useChat<
   const clientRef = useRef<TClient | null>(null);
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const retryAbortRef = useRef<AbortController | null>(null);
   const thinkingRef = useRef(active.activeThinking);
   const temperatureRef = useRef(active.activeTemperature);
 
   thinkingRef.current = active.activeThinking;
   temperatureRef.current = active.activeTemperature;
+
+  const { executeWithRetry, abortRetry } = useExecuteWithRetry({
+    adapter,
+    autoSaveRef,
+    abortControllerRef,
+    setMessages,
+    setRateLimitState,
+  });
 
   const clearConversation = useCallback(() => {
     setMessages([]);
@@ -73,8 +74,8 @@ export function useChat<
     pendingHistoryRef.current = null;
     clearSettings();
     setRateLimitState(null);
-    retryAbortRef.current?.abort();
-  }, [clearSettings]);
+    abortRetry();
+  }, [clearSettings, abortRetry]);
 
   const getChatHistory = useCallback(
     (): unknown[] =>
@@ -95,10 +96,10 @@ export function useChat<
 
   const stopResponse = useCallback(() => {
     abortControllerRef.current?.abort();
-    retryAbortRef.current?.abort();
+    abortRetry();
     setIsAssistantResponding(false);
     setRateLimitState(null);
-  }, []);
+  }, [abortRetry]);
 
   const initializeChat = useCallback(
     async (chatHistory?: TMessage[], overrides?: MessageOverrides) => {
@@ -141,88 +142,6 @@ export function useChat<
       extraParams,
       lockSettings,
     ],
-  );
-
-  const executeWithRetry = useCallback(
-    async (
-      executeStream: (message: string) => AsyncIterable<TMessage[]>,
-      getHistory: () => TMessage[],
-      originalMessage: string,
-    ): Promise<void> => {
-      let attempt = 0;
-      const contentState = { hasReceived: false, savedUsageCount: 0 };
-
-      retryAbortRef.current = new AbortController();
-
-      const onMessageUpdate = (msgs: UIMessage[]) => {
-        // Skip updates after abort (e.g. user switched conversations)
-        if (abortControllerRef.current?.signal.aborted) return;
-
-        const isFirst = !contentState.hasReceived;
-
-        contentState.hasReceived = true;
-        setMessages(msgs);
-
-        // Save on first content or when a new step completes (usage appears)
-        const usageCount = msgs.filter((m) => m.usage).length;
-
-        if (isFirst || usageCount > contentState.savedUsageCount) {
-          contentState.savedUsageCount = usageCount;
-          autoSaveRef?.current?.();
-        }
-      };
-
-      while (shouldRetry(attempt)) {
-        try {
-          const msg = contentState.hasReceived ? "continue" : originalMessage;
-
-          await handleMessageStream(
-            executeStream(msg),
-            adapter.formatMessages,
-            onMessageUpdate,
-          );
-          setRateLimitState(null);
-
-          return;
-        } catch (error) {
-          if (retryAbortRef.current.signal.aborted) return;
-
-          const rateLimitInfo = detectRateLimit(error);
-
-          if (!rateLimitInfo.isRateLimited || !shouldRetry(attempt + 1)) {
-            setMessages(adapter.createErrorMessage(error, getHistory()));
-            setRateLimitState(null);
-            autoSaveRef?.current?.();
-
-            return;
-          }
-
-          const delayMs = calculateRetryDelay(
-            attempt,
-            rateLimitInfo.retryAfterMs,
-          );
-
-          setRateLimitState({
-            isRetrying: true,
-            attempt,
-            maxAttempts: MAX_RETRY_ATTEMPTS,
-            delayMs,
-          });
-
-          // Wait before retrying
-          await new Promise<void>((resolve, reject) => {
-            const timeoutId = setTimeout(resolve, delayMs);
-
-            retryAbortRef.current?.signal.addEventListener("abort", () => {
-              clearTimeout(timeoutId);
-              reject(new Error("Retry cancelled"));
-            });
-          });
-          attempt++;
-        }
-      }
-    },
-    [adapter, autoSaveRef],
   );
 
   const runWithChat = useCallback(
@@ -292,11 +211,12 @@ export function useChat<
           thinking: thinkingRef.current,
         });
 
-        await executeWithRetry(
-          (msg) => client.sendMessage(msg, controller.signal, filtered),
-          () => client.chatHistory,
-          userMessage,
-        );
+        await executeWithRetry({
+          executeStream: (msg) =>
+            client.sendMessage(msg, controller.signal, filtered),
+          getHistory: () => client.chatHistory,
+          originalMessage: userMessage,
+        });
       });
     },
     [apiKey, adapter, initializeChat, runWithChat, executeWithRetry],
@@ -331,11 +251,11 @@ export function useChat<
 
         abortControllerRef.current = controller;
 
-        await executeWithRetry(
-          (msg) => client.sendMessage(msg, controller.signal),
-          () => client.chatHistory,
-          newMessage,
-        );
+        await executeWithRetry({
+          executeStream: (msg) => client.sendMessage(msg, controller.signal),
+          getHistory: () => client.chatHistory,
+          originalMessage: newMessage,
+        });
       });
     },
     [apiKey, messages, initializeChat, runWithChat, executeWithRetry],
