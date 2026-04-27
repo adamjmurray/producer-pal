@@ -106,7 +106,7 @@
     "@openrouter/ai-sdk-provider": "2.8.0",
     "@tailwindcss/typography": "0.5.19",
     "ai": "6.0.168",
-    "dompurify": "3.3.3",
+    "dompurify": "3.4.0",
     "express": "5.2.1",
     "idb": "8.0.3",
     "marked": "17.0.6",
