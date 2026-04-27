@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
@@ -104,11 +105,12 @@ describe("detectRateLimit", () => {
     expect(result.isRateLimited).toBe(true);
   });
 
-  it("extracts retryAfterMs from numeric retryAfter in milliseconds", () => {
+  it("treats numeric retryAfter as milliseconds (SDK property)", () => {
+    // AI SDK / Anthropic SDK already convert the header to ms before exposing it
     const error = {
       status: 429,
       message: "Rate limited",
-      retryAfter: 5000, // Already in milliseconds (>= 1000)
+      retryAfter: 5000,
     };
     const result = detectRateLimit(error);
 
@@ -116,35 +118,25 @@ describe("detectRateLimit", () => {
     expect(result.retryAfterMs).toBe(5000);
   });
 
-  it("extracts retryAfterMs from string retryAfter in seconds", () => {
+  it("treats small numeric retryAfter as milliseconds, not seconds", () => {
+    // No magnitude heuristic — SDK property is always ms
     const error = {
       status: 429,
       message: "Rate limited",
-      retryAfter: "30", // 30 seconds as string
+      retryAfter: 30,
     };
     const result = detectRateLimit(error);
 
     expect(result.isRateLimited).toBe(true);
-    expect(result.retryAfterMs).toBe(30000);
+    expect(result.retryAfterMs).toBe(30);
   });
 
-  it("converts retryAfter from seconds to milliseconds when < 1000", () => {
+  it("ignores non-numeric retryAfter on SDK property", () => {
+    // Strings aren't a documented shape for the SDK property
     const error = {
       status: 429,
       message: "Rate limited",
-      retryAfter: 30, // 30 seconds (< 1000, so will be multiplied by 1000)
-    };
-    const result = detectRateLimit(error);
-
-    expect(result.isRateLimited).toBe(true);
-    expect(result.retryAfterMs).toBe(30000);
-  });
-
-  it("returns null retryAfterMs for invalid string retryAfter", () => {
-    const error = {
-      status: 429,
-      message: "Rate limited",
-      retryAfter: "invalid", // Not a valid number
+      retryAfter: "30",
     };
     const result = detectRateLimit(error);
 
@@ -203,7 +195,7 @@ describe("detectRateLimit", () => {
     expect(result.isRateLimited).toBe(false);
   });
 
-  it("extracts retryAfter from headers object", () => {
+  it("extracts retryAfter from numeric HTTP header (seconds → ms)", () => {
     const error = {
       status: 429,
       message: "Rate limited",
@@ -215,6 +207,34 @@ describe("detectRateLimit", () => {
 
     expect(result.isRateLimited).toBe(true);
     expect(result.retryAfterMs).toBe(60000);
+  });
+
+  it("extracts retryAfter from string HTTP header (seconds → ms)", () => {
+    const error = {
+      status: 429,
+      message: "Rate limited",
+      headers: {
+        "retry-after": "30",
+      },
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.retryAfterMs).toBe(30000);
+  });
+
+  it("returns null for an invalid HTTP retry-after header", () => {
+    const error = {
+      status: 429,
+      message: "Rate limited",
+      headers: {
+        "retry-after": "next-tuesday",
+      },
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.retryAfterMs).toBe(null);
   });
 });
 
@@ -258,8 +278,8 @@ describe("calculateRetryDelay", () => {
   it("uses max delay for attempts beyond array length", () => {
     const delay = calculateRetryDelay(10);
 
-    expect(delay).toBeGreaterThanOrEqual(32000);
-    expect(delay).toBeLessThan(33000);
+    expect(delay).toBeGreaterThanOrEqual(60000);
+    expect(delay).toBeLessThan(61000);
   });
 });
 

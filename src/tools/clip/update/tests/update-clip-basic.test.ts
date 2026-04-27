@@ -26,13 +26,13 @@ describe("updateClip - Basic operations", () => {
     mocks = setupUpdateClipMocks();
   });
 
-  it("should throw error when ids is missing", async () => {
-    await expect(updateClip({})).rejects.toThrow(
-      "updateClip failed: ids is required",
-    );
-    await expect(updateClip({ name: "Test" })).rejects.toThrow(
-      "updateClip failed: ids is required",
-    );
+  it("should warn and return empty when ids is missing", async () => {
+    expect(await updateClip({})).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(1, "updateClip: ids is required");
+
+    vi.mocked(outlet).mockClear();
+    expect(await updateClip({ name: "Test" })).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(1, "updateClip: ids is required");
   });
 
   it("should default to merge mode when noteUpdateMode not provided", async () => {

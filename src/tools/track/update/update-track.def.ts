@@ -61,19 +61,19 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     solo: z.boolean().optional().describe("soloed?"),
     arm: z.boolean().optional().describe("record armed?"),
 
-    inputRoutingTypeId: z
+    inputRoutingTypeId: z.coerce
       .string()
       .optional()
       .describe("from availableInputRoutingTypes, set before channel"),
-    inputRoutingChannelId: z
+    inputRoutingChannelId: z.coerce
       .string()
       .optional()
       .describe("from availableInputRoutingChannels"),
-    outputRoutingTypeId: z
+    outputRoutingTypeId: z.coerce
       .string()
       .optional()
       .describe("from availableOutputRoutingTypes, set before channel"),
-    outputRoutingChannelId: z
+    outputRoutingChannelId: z.coerce
       .string()
       .optional()
       .describe("from availableOutputRoutingChannels"),

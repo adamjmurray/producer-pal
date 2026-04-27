@@ -29,6 +29,19 @@ vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
   filterOverrides: vi.fn((overrides) => overrides),
 }));
 
+// Shrink retry backoff so tests don't sit through real seconds-long delays.
+// 200 ms is small enough to keep the suite fast but large enough that the
+// "cancels retry when stopResponse is called during retry delay" test can
+// reliably abort while the timer is still pending (it waits ~50 ms first).
+vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return {
+    ...actual,
+    calculateRetryDelay: () => 200,
+  };
+});
+
 const mockAdapter = createMockAdapter();
 
 /**

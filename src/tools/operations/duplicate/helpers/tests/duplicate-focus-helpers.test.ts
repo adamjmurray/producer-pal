@@ -1,17 +1,18 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
 import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
-import { focusIfRequested } from "../duplicate-misc-helpers.ts";
+import { focusIfRequested } from "../duplicate-focus-helpers.ts";
 
 // Mock the select module to avoid Live API dependencies
 vi.mock(import("#src/tools/control/select.ts"), () => ({
   select: vi.fn(),
 }));
 
-describe("duplicate-misc-helpers", () => {
+describe("duplicate-focus-helpers", () => {
   describe("focusIfRequested", () => {
     const selectMock = setupSelectMock();
 
@@ -87,7 +88,4 @@ describe("duplicate-misc-helpers", () => {
       expect(selectMock.get()).not.toHaveBeenCalled();
     });
   });
-
-  // parseCommaSeparatedNames and getNameForIndex are re-exported from
-  // name-utils.ts and tested in name-utils.test.ts
 });

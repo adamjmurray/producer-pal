@@ -93,15 +93,19 @@ describe("updateTrack", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should throw error when ids is missing", () => {
-    expect(() =>
+  it("should warn and return empty when ids is missing", () => {
+    expect(
       updateTrack({} as unknown as Parameters<typeof updateTrack>[0]),
-    ).toThrow("updateTrack failed: ids is required");
-    expect(() =>
+    ).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(1, "updateTrack: ids is required");
+
+    vi.mocked(outlet).mockClear();
+    expect(
       updateTrack({ name: "Test" } as unknown as Parameters<
         typeof updateTrack
       >[0]),
-    ).toThrow("updateTrack failed: ids is required");
+    ).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(1, "updateTrack: ids is required");
   });
 
   it("should log warning when track ID doesn't exist", () => {

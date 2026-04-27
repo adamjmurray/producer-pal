@@ -215,20 +215,27 @@ export function useConversations({
       // Set active ID synchronously before any async operations
       setActiveId(id);
 
-      const existing = isNew ? undefined : await loadConversation(id);
-      const record = buildSaveRecord(
-        getActiveRefs(id),
-        existing,
-        chatHistory,
-        updatedAt,
-      );
+      try {
+        const existing = isNew ? undefined : await loadConversation(id);
+        const record = buildSaveRecord(
+          getActiveRefs(id),
+          existing,
+          chatHistory,
+          updatedAt,
+        );
 
-      syncActiveMeta(record);
+        syncActiveMeta(record);
 
-      const result = await saveConversation(record);
+        const result = await saveConversation(record);
 
-      limit.showLimitNotification(result);
-      await refreshList();
+        limit.showLimitNotification(result);
+        await refreshList();
+      } catch (error) {
+        // App.tsx fire-and-forgets this call, so surface the failure here
+        // instead of letting it become an unhandled rejection
+        console.error("Failed to save conversation", error);
+        limit.showSaveError(error);
+      }
     },
     [getChatHistory, refreshList, setActiveId, limit],
   );
