@@ -1,7 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildClipResultObject,
@@ -29,13 +32,6 @@ vi.mock(import("#src/notation/barbeat/time/barbeat-time.ts"), () => ({
   }),
 }));
 
-vi.mock(import("#src/tools/shared/live-set-helpers.ts"), () => ({
-  parseSongTimeSignature: vi.fn(() => ({
-    numerator: 4,
-    denominator: 4,
-  })),
-}));
-
 vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   error: vi.fn(),
   warn: vi.fn(),
@@ -47,6 +43,10 @@ import * as console from "#src/shared/v8-max-console.ts";
 describe("clip-result-helpers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    registerMockObject("live-set", {
+      path: livePath.liveSet,
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
   });
 
   describe("validateAndParseArrangementParams", () => {

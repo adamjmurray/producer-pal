@@ -26,6 +26,19 @@ if (typeof LiveAPI !== "undefined") {
   };
 
   /**
+   * Get a child object as a LiveAPI instance by appending a sub-path to this
+   * object's runtime path. Use this instead of `LiveAPI.from(api.path + " name")`.
+   * @param name - Sub-path component(s) to append (e.g., "mixer_device", "panning")
+   * @returns LiveAPI for the child object
+   */
+  LiveAPI.prototype.child = function (
+    this: LiveAPI,
+    ...name: string[]
+  ): LiveAPI {
+    return LiveAPI.from(`${this.path} ${name.join(" ")}`);
+  };
+
+  /**
    * Get a Live API property value with type-appropriate handling
    * @param property - Property name to get
    * @returns Property value

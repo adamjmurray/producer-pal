@@ -15,11 +15,11 @@ import {
   parseCommaSeparatedNames,
   warnExtraNames,
 } from "#src/tools/shared/validation/name-utils.ts";
-import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
-  convertTimingParameters,
   parseArrangementStartList,
-} from "./helpers/create-clip-helpers.ts";
+  parseSlotList,
+} from "#src/tools/shared/validation/position-parsing.ts";
+import { convertTimingParameters } from "./helpers/create-clip-helpers.ts";
 import {
   createClips,
   prepareClipData,
