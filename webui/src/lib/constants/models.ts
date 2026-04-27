@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -14,7 +15,7 @@ export const OTHER_MODEL_OPTION = {
 
 export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
-  { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
+  { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
   { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
   OTHER_MODEL_OPTION,
 ];
@@ -27,7 +28,7 @@ export const GEMINI_MODELS = [
 ];
 
 export const OPENAI_MODELS = [
-  { value: "gpt-5.4", label: "GPT-5.4" },
+  { value: "gpt-5.5", label: "GPT-5.5" },
   { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
   { value: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
   OTHER_MODEL_OPTION,
@@ -56,16 +57,17 @@ export const OPENROUTER_MODELS = [
     label: "[Paid] Anthropic Claude Sonnet 4.6",
   },
   {
-    value: "anthropic/claude-opus-4.6",
-    label: "[Paid] Anthropic Claude Opus 4.6",
+    value: "anthropic/claude-opus-4.7",
+    label: "[Paid] Anthropic Claude Opus 4.7",
   },
-  { value: "openai/gpt-5.4", label: "[Paid] OpenAI GPT-5.4" },
+  { value: "openai/gpt-5.5", label: "[Paid] OpenAI GPT-5.5" },
   {
     value: "openai/gpt-5.3-codex",
     label: "[Paid] OpenAI GPT-5.3 Codex",
   },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
-  { value: "qwen/qwen3.5-397b-a17b", label: "[Paid] Qwen 3.5" },
+  { value: "qwen/qwen3.6-plus", label: "[Paid] Qwen 3.6 Plus" },
+  { value: "moonshotai/kimi-k2.6", label: "[Paid] Moonshot AI Kimi K2.6" },
   // Free models
   { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
   { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },
@@ -81,12 +83,14 @@ export const OPENROUTER_MODELS = [
 ];
 
 export const OLLAMA_MODELS = [
-  { value: "qwen3.5", label: "Qwen 3.5" },
-  { value: "qwen3-coder", label: "Qwen 3 Coder" },
-  { value: "mistral", label: "Mistral" },
-  { value: "devstral-small-2", label: "Devstral Small 2" },
-  { value: "glm-4.7-flash", label: "GLM 4.7 Flash" },
-  { value: "lfm2", label: "LFM2" },
+  { value: "gemma4", label: "gemma4" },
+  { value: "qwen3.6", label: "qwen3.6" },
+  { value: "qwen3-coder", label: "qwen3-coder" },
+  { value: "mistral", label: "mistral" },
+  { value: "devstral-small-2", label: "devstral-small-2" },
+  { value: "nemotron-cascade-2", label: "nemotron-cascade-2" },
+  { value: "glm-4.7-flash", label: "glm-4.7-flash" },
+  { value: "lfm2", label: "lfm2" },
   OTHER_MODEL_OPTION,
 ];
 

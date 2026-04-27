@@ -1,10 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
+
+// Matches JS identifiers and integer literals — both legal as unquoted object
+// keys. Anything else (spaces, hyphens, leading dash, decimals) gets quoted.
+const UNQUOTED_KEY_RE = /^(?:[$A-Z_a-z][\w$]*|\d+)$/;
 
 /**
  * Converts object to compact JavaScript literal syntax with unquoted keys
- * - Unquoted keys (where valid JS identifiers)
+ * - Unquoted keys where valid JS identifiers; otherwise JSON-quoted
  * - No whitespace
  * - Skips undefined values in objects/arrays
  * - Top-level undefined returns empty string
@@ -40,10 +45,9 @@ export function toCompactJSLiteral(obj: unknown): string {
           continue;
         } // Skip undefined values
 
-        // assume key doesn't need to be quoted
-        // to generate valid JS we might need to be stricter here, but since we're using
-        // this to send text to an LLM, it should be fine (and all our keys should be valid unquoted anyway)
-        pairs.push(key + ":" + converted);
+        const keyStr = UNQUOTED_KEY_RE.test(key) ? key : JSON.stringify(key);
+
+        pairs.push(keyStr + ":" + converted);
       }
 
       return "{" + pairs.join(",") + "}";

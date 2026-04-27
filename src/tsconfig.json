@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "#src/*": ["./*"]
     },
@@ -13,6 +12,7 @@
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "strict": true,
     "noImplicitAny": true,
     "noUncheckedIndexedAccess": true,
@@ -22,7 +22,8 @@
     "noUnusedParameters": true,
     "allowUnreachableCode": false,
     "allowUnusedLabels": false,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
   },
   "include": ["**/*.ts", "types/**/*.d.ts"],
   "exclude": []

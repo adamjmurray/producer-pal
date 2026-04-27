@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type MessageOverrides } from "#webui/hooks/chat/use-chat-types";
-import { normalizeErrorMessage } from "#webui/lib/error-formatters";
 import { type UIMessage } from "#webui/types/messages";
 
 /**
@@ -34,37 +33,6 @@ export async function handleMessageStream<TMessage>(
 
     throw error;
   }
-}
-
-/**
- * Creates an error message by formatting chat history and appending an error entry
- * @param history - Raw chat history for any provider
- * @param formatter - Provider-specific formatter to convert raw history to UIMessages
- * @param error - Error object or message
- * @returns Formatted messages with error appended
- */
-export function createFormattedErrorMessage<T>(
-  history: T[],
-  formatter: (messages: T[]) => UIMessage[],
-  error: unknown,
-): UIMessage[] {
-  const errorMessage = normalizeErrorMessage(error);
-  const formattedHistory = formatter(history);
-
-  const errorMessage_ui: UIMessage = {
-    role: "model",
-    parts: [
-      {
-        type: "error",
-        content: errorMessage,
-        isError: true,
-      },
-    ],
-    rawHistoryIndex: history.length,
-    timestamp: Date.now(),
-  };
-
-  return [...formattedHistory, errorMessage_ui];
 }
 
 /**

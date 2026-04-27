@@ -4,7 +4,6 @@
     "lib": ["ES2023"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "baseUrl": "../..",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,

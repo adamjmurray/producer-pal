@@ -295,7 +295,7 @@ export function readMixerProperties(
   track: LiveAPI,
   returnTrackNames?: string[],
 ): MixerResult {
-  const mixer = LiveAPI.from(track.path + " mixer_device");
+  const mixer = track.child("mixer_device");
 
   if (!mixer.exists()) {
     return {};
@@ -304,7 +304,7 @@ export function readMixerProperties(
   const result: MixerResult = {};
 
   // Read gain
-  const volume = LiveAPI.from(mixer.path + " volume");
+  const volume = mixer.child("volume");
 
   if (volume.exists()) {
     result.gainDb = volume.getProperty("display_value");
@@ -321,8 +321,8 @@ export function readMixerProperties(
 
   // Read panning based on mode
   if (isSplitMode) {
-    const leftSplit = LiveAPI.from(mixer.path + " left_split_stereo");
-    const rightSplit = LiveAPI.from(mixer.path + " right_split_stereo");
+    const leftSplit = mixer.child("left_split_stereo");
+    const rightSplit = mixer.child("right_split_stereo");
 
     if (leftSplit.exists()) {
       result.leftPan = leftSplit.getProperty("value");
@@ -332,7 +332,7 @@ export function readMixerProperties(
       result.rightPan = rightSplit.getProperty("value");
     }
   } else {
-    const panning = LiveAPI.from(mixer.path + " panning");
+    const panning = mixer.child("panning");
 
     if (panning.exists()) {
       result.pan = panning.getProperty("value");

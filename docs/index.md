@@ -1,12 +1,17 @@
 ---
 layout: home
+title: Producer Pal — Ableton MCP for AI music production
+titleTemplate: false
+description:
+  The Ableton MCP server that brings AI to Ableton Live. Free, open-source, and
+  works with Claude, Gemini, ChatGPT, Ollama, and more.
 
 hero:
   name: Producer Pal™
   text: Control Ableton Live with words
   tagline:
-    Free, AI-powered assistant for music production. Works with Claude, Gemini,
-    ChatGPT, Ollama, and more.
+    The Ableton MCP server that brings AI to Ableton Live. Free and open-source.
+    Works with Claude, Gemini, ChatGPT, Ollama, and more.
   image:
     src: /producer-pal-logo.svg
     alt: Producer Pal
@@ -150,6 +155,19 @@ features:
   limits_
 - [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
   (for command line users) — _Note: free tier now has strict limits_
+
+## About Producer Pal
+
+Producer Pal is an **Ableton MCP** (Model Context Protocol) server packaged as a
+Max for Live device. It's the most flexible way to use **AI for Ableton Live** —
+connect your favorite AI assistant, describe what you want in plain language,
+and Producer Pal translates that into real edits in your Live Set: creating
+tracks, writing MIDI and audio clips, tweaking instruments and effects, and
+building arrangements.
+
+It works with any MCP-compatible AI, including Claude, Gemini, ChatGPT, Mistral,
+and local models via Ollama or LM Studio. Producer Pal is free, open-source
+(GPL-3.0), and developed in the open.
 
 ## Support
 

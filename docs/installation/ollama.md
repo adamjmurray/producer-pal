@@ -17,6 +17,7 @@ Download and install [Ollama](https://ollama.com/) for your operating system.
 Download a model that supports tools. Some good options include:
 
 - `qwen3.5`
+- `gemma4`
 - `devstral-small-2`
 - `glm-4.7-flash`
 
@@ -60,7 +61,7 @@ In the chat UI settings:
     `localhost` to run Ollama on a different computer. Consult
     [the user guide](/guide/chat-ui#local-ai-settings-ollama-lm-studio) for more
     info.
-- Model: Your model name (e.g., `qwen3.5` or `qwen3.5:9b`)
+- Model: Your model name (e.g., `gemma4` or `qwen3.5`)
 
 Click "Save".
 

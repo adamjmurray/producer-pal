@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -81,8 +82,8 @@ describe("ModelSelector", () => {
 
   describe("OpenAI provider", () => {
     it("renders OpenAI models", () => {
-      renderModelSelector({ provider: "openai", model: "gpt-5.4" });
-      expect(screen.getByRole("option", { name: /^GPT-5\.4$/ })).toBeDefined();
+      renderModelSelector({ provider: "openai", model: "gpt-5.5" });
+      expect(screen.getByRole("option", { name: /^GPT-5\.5$/ })).toBeDefined();
       expect(
         screen.getByRole("option", { name: /^GPT-5\.4 Mini$/ }),
       ).toBeDefined();
@@ -91,7 +92,7 @@ describe("ModelSelector", () => {
     it("calls setModel when OpenAI model changes", () => {
       const { setModel } = renderModelSelector({
         provider: "openai",
-        model: "gpt-5.4",
+        model: "gpt-5.5",
       });
 
       expectModelSelected("gpt-5.4-mini", setModel);
@@ -192,9 +193,9 @@ describe("ModelSelector", () => {
   describe("ollama provider", () => {
     it("renders Ollama models", () => {
       renderModelSelector({ provider: "ollama", model: "ministral-3" });
-      expect(screen.getByRole("option", { name: "Mistral" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Qwen 3.5" })).toBeDefined();
-      expect(screen.getByRole("option", { name: /GLM/ })).toBeDefined();
+      expect(screen.getByRole("option", { name: "mistral" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "qwen3.6" })).toBeDefined();
+      expect(screen.getByRole("option", { name: /glm/ })).toBeDefined();
     });
 
     it("calls setModel when Ollama model changes", () => {
@@ -203,7 +204,7 @@ describe("ModelSelector", () => {
         model: "mistral",
       });
 
-      expectModelSelected("qwen3.5", setModel);
+      expectModelSelected("qwen3.6", setModel);
     });
   });
 

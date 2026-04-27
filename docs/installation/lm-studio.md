@@ -48,6 +48,7 @@ Alternatively, you can enable it manually in Producer Pal's "Setup" tab:
 Install a compatible model in LM Studio, such as a recent version of:
 
 - Qwen
+- Gemma
 - Mistral Magistral or Devstral
 - GLM Flash
 

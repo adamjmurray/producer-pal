@@ -339,7 +339,7 @@ describe("chatAdapter", () => {
       expect(config.providerOptions).toBeUndefined();
     });
 
-    it("sets anthropic thinking options for Max thinking", () => {
+    it("sets anthropic adaptive thinking with max effort for Max thinking", () => {
       const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         1.0,
@@ -351,12 +351,31 @@ describe("chatAdapter", () => {
 
       expect(config.providerOptions).toStrictEqual({
         anthropic: {
-          thinking: { type: "enabled", budgetTokens: 16384 },
+          thinking: { type: "adaptive" },
+          effort: "max",
         },
       });
     });
 
-    it("suppresses temperature for anthropic when thinking is enabled", () => {
+    it("sets anthropic adaptive thinking with high effort for Default thinking", () => {
+      const config = chatAdapter.buildConfig(
+        "claude-sonnet-4-6-20250514",
+        1.0,
+        "Default",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        anthropic: {
+          thinking: { type: "adaptive" },
+          effort: "high",
+        },
+      });
+    });
+
+    it("suppresses temperature for anthropic when thinking is active", () => {
       const config = chatAdapter.buildConfig(
         "claude-sonnet-4-6-20250514",
         0.7,
@@ -379,25 +398,7 @@ describe("chatAdapter", () => {
         { ...extraParams, provider: "anthropic" },
       );
 
-      // Default maps to budget 10240, which enables thinking and suppresses temperature
       expect(config.temperature).toBeUndefined();
-    });
-
-    it("sets anthropic default thinking budget for Default thinking", () => {
-      const config = chatAdapter.buildConfig(
-        "claude-sonnet-4-6-20250514",
-        1.0,
-        "Default",
-        {},
-        undefined,
-        { ...extraParams, provider: "anthropic" },
-      );
-
-      expect(config.providerOptions).toStrictEqual({
-        anthropic: {
-          thinking: { type: "enabled", budgetTokens: 10240 },
-        },
-      });
     });
 
     it("returns undefined provider options for anthropic with Off thinking", () => {
@@ -426,6 +427,23 @@ describe("chatAdapter", () => {
       expect(config.temperature).toBe(0.7);
     });
 
+    it("uses legacy enabled thinking for haiku model", () => {
+      const config = chatAdapter.buildConfig(
+        "claude-haiku-4-5",
+        1.0,
+        "Max",
+        {},
+        undefined,
+        { ...extraParams, provider: "anthropic" },
+      );
+
+      expect(config.providerOptions).toStrictEqual({
+        anthropic: {
+          thinking: { type: "enabled", budgetTokens: 16384 },
+        },
+      });
+    });
+
     it("returns undefined provider options for mistral provider", () => {
       const config = chatAdapter.buildConfig(
         "mistral-large",
@@ -449,9 +467,9 @@ describe("chatAdapter", () => {
         { ...extraParams, provider: "anthropic" },
       );
 
-      // Original config has Max thinking (budgetTokens: 16384)
+      // Original config has Max thinking (adaptive with max effort)
       expect(config.providerOptions).toStrictEqual({
-        anthropic: { thinking: { type: "enabled", budgetTokens: 16384 } },
+        anthropic: { thinking: { type: "adaptive" }, effort: "max" },
       });
 
       // Callback rebuilds with overridden thinking level

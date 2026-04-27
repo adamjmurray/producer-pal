@@ -116,16 +116,16 @@ describe("config-builders", () => {
 
   describe("mapThinkingToOllamaThink", () => {
     it("should return undefined for Default", () => {
-      expect(mapThinkingToOllamaThink("Default", "qwen3.5")).toBeUndefined();
+      expect(mapThinkingToOllamaThink("Default", "qwen3.6")).toBeUndefined();
     });
 
     it("should return false for Off", () => {
-      expect(mapThinkingToOllamaThink("Off", "qwen3.5")).toBe(false);
+      expect(mapThinkingToOllamaThink("Off", "qwen3.6")).toBe(false);
       expect(mapThinkingToOllamaThink("Off", "gpt-oss")).toBe(false);
     });
 
     it("should return true for Max on non-GPT-OSS", () => {
-      expect(mapThinkingToOllamaThink("Max", "qwen3.5")).toBe(true);
+      expect(mapThinkingToOllamaThink("Max", "qwen3.6")).toBe(true);
     });
 
     it("should return high string for Max on GPT-OSS", () => {
@@ -134,7 +134,7 @@ describe("config-builders", () => {
 
     it("should return undefined for unknown thinking level", () => {
       expect(
-        mapThinkingToOllamaThink("UnknownLevel", "qwen3.5"),
+        mapThinkingToOllamaThink("UnknownLevel", "qwen3.6"),
       ).toBeUndefined();
     });
   });

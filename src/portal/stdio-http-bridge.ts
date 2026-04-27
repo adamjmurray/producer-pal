@@ -23,7 +23,6 @@ import { logger } from "./file-logger.ts";
 const SETUP_URL = "https://producer-pal.org/installation";
 
 interface BridgeOptions {
-  timeout?: number;
   smallModelMode?: boolean;
 }
 
@@ -172,6 +171,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
       throw new Error(
         `Failed to connect to Producer Pal MCP server at ${this.httpUrl}: ${errorMessage(error)}`,
+        { cause: error },
       );
     }
   }
