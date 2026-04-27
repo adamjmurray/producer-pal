@@ -1,8 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
@@ -55,10 +56,10 @@ export function useChat<
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const thinkingRef = useRef(active.activeThinking);
-  const temperatureRef = useRef(active.activeTemperature);
 
-  thinkingRef.current = active.activeThinking;
-  temperatureRef.current = active.activeTemperature;
+  useEffect(() => {
+    thinkingRef.current = active.activeThinking;
+  }, [active.activeThinking]);
 
   const { executeWithRetry, abortRetry } = useExecuteWithRetry({
     adapter,
