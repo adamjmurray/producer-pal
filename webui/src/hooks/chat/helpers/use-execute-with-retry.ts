@@ -60,7 +60,7 @@ export function useExecuteWithRetry<
       executeStream,
       getHistory,
       originalMessage,
-    }: ExecuteWithRetryArgs<TMessage>): Promise<void> => {
+    }: ExecuteWithRetryArgs<TMessage>): Promise<boolean> => {
       let attempt = 0;
       const contentState = {
         hasAssistantContent: false,
@@ -105,9 +105,9 @@ export function useExecuteWithRetry<
           );
           setRateLimitState(null);
 
-          return;
+          return true;
         } catch (error) {
-          if (retryAbortRef.current.signal.aborted) return;
+          if (retryAbortRef.current.signal.aborted) return false;
 
           const rateLimitInfo = detectRateLimit(error);
 
@@ -116,7 +116,7 @@ export function useExecuteWithRetry<
             setRateLimitState(null);
             autoSaveRef?.current?.();
 
-            return;
+            return false;
           }
 
           const delayMs = calculateRetryDelay(
@@ -152,6 +152,8 @@ export function useExecuteWithRetry<
           attempt++;
         }
       }
+
+      return false;
     },
     [adapter, autoSaveRef, abortControllerRef, setMessages, setRateLimitState],
   );

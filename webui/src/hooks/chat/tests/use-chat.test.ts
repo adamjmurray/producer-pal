@@ -25,6 +25,17 @@ vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
   }),
   validateMcpConnection: vi.fn(),
   filterOverrides: vi.fn((overrides) => overrides),
+  showMissingApiKeyError: vi.fn(
+    (adapter, msg, setMessages, pendingHistoryRef) => {
+      const entry = adapter.createUserMessage(msg);
+      const error = new Error(
+        "No API key configured. Please add your API key in Settings.",
+      );
+
+      pendingHistoryRef.current = [entry];
+      setMessages(adapter.createErrorMessage(error, [entry]));
+    },
+  ),
 }));
 
 const mockAdapter = createMockAdapter();
@@ -102,6 +113,20 @@ describe("useChat", () => {
       });
 
       expect(result.current.isAssistantResponding).toBe(false);
+    });
+
+    it("clears queued messages when stop is pressed", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(() => result.current.enqueueMessage("queued msg"));
+
+      expect(result.current.queuedMessages).toHaveLength(1);
+
+      await act(() => {
+        result.current.stopResponse();
+      });
+
+      expect(result.current.queuedMessages).toStrictEqual([]);
     });
   });
 
@@ -299,6 +324,90 @@ describe("useChat", () => {
         expect.any(Array),
       );
       expect(result.current.isAssistantResponding).toBe(false);
+    });
+
+    it("drains queued messages into a combined follow-up after response completes", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      // Enqueue messages before sending (simulates queuing during a response)
+      await act(() => result.current.enqueueMessage("follow up A"));
+      await act(() => result.current.enqueueMessage("follow up B"));
+
+      // Send initial message — after it completes, drainQueue fires and sends combined
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // The mock client receives: "Hello", then "follow up A\n\nfollow up B"
+      const userMessages = result.current.messages
+        .filter((m) => m.role === "user")
+        .map((m) => {
+          const part = m.parts[0];
+
+          return part && "content" in part ? (part.content as string) : "";
+        });
+
+      expect(userMessages).toContain("Hello");
+      expect(userMessages).toContain("follow up A\n\nfollow up B");
+      expect(result.current.queuedMessages).toStrictEqual([]);
+    });
+
+    it("does not drain queue after stream error", async () => {
+      const errorAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          // eslint-disable-next-line require-yield -- Throws before yielding
+          client.sendMessage = async function* () {
+            throw new Error("Network failure");
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: errorAdapter }),
+      );
+
+      await act(() => result.current.enqueueMessage("should not send"));
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // Queue should still have the message (not drained)
+      expect(result.current.queuedMessages).toHaveLength(1);
+      expect(result.current.queuedMessages[0]?.text).toBe("should not send");
+    });
+
+    it("does not drain queue after initialization error", async () => {
+      const errorAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.initialize = vi.fn(async () => {
+            throw new Error("Init failed");
+          });
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: errorAdapter }),
+      );
+
+      await act(() => result.current.enqueueMessage("should not send"));
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      expect(result.current.queuedMessages).toHaveLength(1);
+      expect(result.current.queuedMessages[0]?.text).toBe("should not send");
     });
   });
 });

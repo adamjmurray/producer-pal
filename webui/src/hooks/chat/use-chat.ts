@@ -7,10 +7,13 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type UIMessage } from "#webui/types/messages";
 import {
   filterOverrides,
+  showMissingApiKeyError,
   validateMcpConnection,
 } from "./helpers/streaming-helpers";
 import { useActiveSettings } from "./helpers/use-active-settings";
+import { useConversationActions } from "./helpers/use-conversation-actions";
 import { useExecuteWithRetry } from "./helpers/use-execute-with-retry";
+import { useMessageQueue } from "./helpers/use-message-queue";
 import {
   type ChatClient,
   type ConversationLockedSettings,
@@ -52,6 +55,14 @@ export function useChat<
   const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
     null,
   );
+  const {
+    queuedMessages,
+    queueRef,
+    enqueueMessage,
+    removeMessage,
+    drainQueue,
+    clearQueue,
+  } = useMessageQueue();
   const clientRef = useRef<TClient | null>(null);
   const pendingHistoryRef = useRef<TMessage[] | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -76,7 +87,8 @@ export function useChat<
     clearSettings();
     setRateLimitState(null);
     abortRetry();
-  }, [clearSettings, abortRetry]);
+    clearQueue();
+  }, [clearSettings, abortRetry, clearQueue]);
 
   const getChatHistory = useCallback(
     (): unknown[] =>
@@ -100,7 +112,8 @@ export function useChat<
     abortRetry();
     setIsAssistantResponding(false);
     setRateLimitState(null);
-  }, [abortRetry]);
+    clearQueue();
+  }, [abortRetry, clearQueue]);
 
   const initializeChat = useCallback(
     async (chatHistory?: TMessage[], overrides?: MessageOverrides) => {
@@ -150,13 +163,19 @@ export function useChat<
   const pendingUserMessageRef = useRef<TMessage | null>(null);
 
   const runWithChat = useCallback(
-    async (fn: () => Promise<void>, userMessage?: TMessage) => {
+    async <T>(
+      fn: () => Promise<T>,
+      userMessage?: TMessage,
+    ): Promise<T | undefined> => {
       setIsAssistantResponding(true);
       pendingUserMessageRef.current = userMessage ?? null;
 
       try {
-        await fn();
+        const result = await fn();
+
         pendingUserMessageRef.current = null;
+
+        return result;
       } catch (error) {
         const baseHistory = clientRef.current?.chatHistory ?? [];
         const stashed = pendingUserMessageRef.current;
@@ -175,6 +194,8 @@ export function useChat<
         setMessages(adapter.createErrorMessage(error, errorHistory));
 
         if (clientRef.current) autoSaveRef?.current?.();
+
+        return undefined;
       } finally {
         pendingUserMessageRef.current = null;
         abortControllerRef.current = null;
@@ -187,139 +208,106 @@ export function useChat<
 
   const handleSend = useCallback(
     async (message: string, options?: MessageOverrides) => {
-      const userMessage = message.trim();
+      let currentMessage = message;
+      let currentOptions = options;
 
-      if (!userMessage) return;
+      while (true) {
+        const userMessage = currentMessage.trim();
 
-      const userMessageEntry = adapter.createUserMessage(userMessage);
+        if (!userMessage) return;
 
-      if (!apiKey) {
-        // Stash so retry/edit can recover after the user fixes settings.
-        pendingHistoryRef.current = [userMessageEntry];
-        setMessages(
-          adapter.createErrorMessage(
-            new Error(
-              "No API key configured. Please add your API key in Settings.",
-            ),
-            [userMessageEntry],
-          ),
-        );
+        if (!apiKey) {
+          showMissingApiKeyError(
+            adapter,
+            userMessage,
+            setMessages,
+            pendingHistoryRef,
+          );
 
-        return;
+          return;
+        }
+
+        const userMessageEntry = adapter.createUserMessage(userMessage);
+        const sendOptions = currentOptions;
+
+        const succeeded = await runWithChat(async () => {
+          if (!clientRef.current) {
+            const pendingHistory = pendingHistoryRef.current ?? undefined;
+
+            pendingHistoryRef.current = null;
+            await initializeChat(pendingHistory, sendOptions);
+          }
+
+          const client = clientRef.current;
+
+          if (!client) {
+            throw new Error("Failed to initialize chat client");
+          }
+
+          const controller = new AbortController();
+
+          abortControllerRef.current = controller;
+
+          const filtered = filterOverrides(sendOptions, {
+            thinking: thinkingRef.current,
+          });
+          const shouldInterrupt = () => queueRef.current.length > 0;
+
+          return await executeWithRetry({
+            executeStream: (msg) =>
+              client.sendMessage(
+                msg,
+                controller.signal,
+                filtered,
+                shouldInterrupt,
+              ),
+            getHistory: () => client.chatHistory,
+            originalMessage: userMessage,
+          });
+        }, userMessageEntry);
+
+        if (!succeeded) return;
+
+        const queued = drainQueue();
+
+        if (queued.length === 0) return;
+
+        currentMessage = queued.map((m) => m.text).join("\n\n");
+        currentOptions = queued[0]?.overrides;
       }
-
-      await runWithChat(async () => {
-        if (!clientRef.current) {
-          const pendingHistory = pendingHistoryRef.current ?? undefined;
-
-          pendingHistoryRef.current = null;
-          await initializeChat(pendingHistory, options);
-        }
-
-        const client = clientRef.current;
-
-        if (!client) {
-          throw new Error("Failed to initialize chat client");
-        }
-
-        const controller = new AbortController();
-
-        abortControllerRef.current = controller;
-
-        const filtered = filterOverrides(options, {
-          thinking: thinkingRef.current,
-        });
-
-        await executeWithRetry({
-          executeStream: (msg) =>
-            client.sendMessage(msg, controller.signal, filtered),
-          getHistory: () => client.chatHistory,
-          originalMessage: userMessage,
-        });
-      }, userMessageEntry);
     },
-    [apiKey, adapter, initializeChat, runWithChat, executeWithRetry],
+    [
+      apiKey,
+      adapter,
+      initializeChat,
+      runWithChat,
+      executeWithRetry,
+      queueRef,
+      drainQueue,
+    ],
   );
 
-  const forkConversation = useCallback(
-    async (mergedMessageIndex: number, newMessage: string) => {
-      if (!apiKey) return;
-
-      const message = messages[mergedMessageIndex];
-
-      if (message?.role !== "user") return;
-
-      const rawIndex = message.rawHistoryIndex;
-      const history =
-        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
-
-      if (!history) return;
-
-      await runWithChat(async () => {
-        const slicedHistory = history.slice(0, rawIndex);
-
-        pendingHistoryRef.current = null;
-
-        await initializeChat(slicedHistory);
-
-        const client = clientRef.current as NonNullable<
-          typeof clientRef.current
-        >;
-
-        const controller = new AbortController();
-
-        abortControllerRef.current = controller;
-
-        await executeWithRetry({
-          executeStream: (msg) => client.sendMessage(msg, controller.signal),
-          getHistory: () => client.chatHistory,
-          originalMessage: newMessage,
-        });
-      });
-    },
-    [apiKey, messages, initializeChat, runWithChat, executeWithRetry],
-  );
-
-  const handleRetry = useCallback(
-    async (mergedMessageIndex: number) => {
-      const message = messages[mergedMessageIndex];
-
-      if (message?.role !== "user") return;
-
-      const history =
-        clientRef.current?.chatHistory ?? pendingHistoryRef.current;
-
-      if (!history) return;
-
-      const rawMessage = history[message.rawHistoryIndex];
-
-      if (!rawMessage) return;
-
-      const userMessage = adapter.extractUserMessage(rawMessage);
-
-      if (!userMessage) return;
-
-      await forkConversation(mergedMessageIndex, userMessage);
-    },
-    [messages, adapter, forkConversation],
-  );
-
-  const handleEdit = useCallback(
-    async (mergedMessageIndex: number, newMessage: string) => {
-      const trimmed = newMessage.trim();
-
-      if (!trimmed) return;
-
-      await forkConversation(mergedMessageIndex, trimmed);
-    },
-    [forkConversation],
-  );
+  const { handleRetry, handleEdit } = useConversationActions({
+    apiKey,
+    messages,
+    adapter,
+    clientRef,
+    pendingHistoryRef,
+    abortControllerRef,
+    initializeChat,
+    runWithChat,
+    executeWithRetry,
+    clearQueue,
+  });
 
   return {
     messages,
     isAssistantResponding,
     ...active,
     rateLimitState,
+    queuedMessages,
+    enqueueMessage,
+    removeMessage,
     handleSend,
     handleRetry,
     handleEdit,

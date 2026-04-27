@@ -27,6 +27,17 @@ vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
   }),
   validateMcpConnection: vi.fn(),
   filterOverrides: vi.fn((overrides) => overrides),
+  showMissingApiKeyError: vi.fn(
+    (adapter, msg, setMessages, pendingHistoryRef) => {
+      const entry = adapter.createUserMessage(msg);
+      const error = new Error(
+        "No API key configured. Please add your API key in Settings.",
+      );
+
+      pendingHistoryRef.current = [entry];
+      setMessages(adapter.createErrorMessage(error, [entry]));
+    },
+  ),
 }));
 
 // Shrink retry backoff so tests don't sit through real seconds-long delays.
