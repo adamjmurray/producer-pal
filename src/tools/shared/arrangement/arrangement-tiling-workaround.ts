@@ -17,6 +17,29 @@ import {
 } from "./arrangement-tiling-helpers.ts";
 
 /**
+ * Verify a duplicate_clip_to_arrangement result and return the new clip's ID.
+ * Throws if Ableton returned an invalid result (e.g. ["id", 0]) so destructive
+ * follow-up steps cannot silently destroy the source clip.
+ * @param result - Raw return value from track.call("duplicate_clip_to_arrangement", ...)
+ * @param context - Short description of the failed operation for the error message
+ * @returns The new clip's ID string
+ */
+function verifyDupResult(
+  result: [string, string | number],
+  context: string,
+): string {
+  const newClip = LiveAPI.from(result);
+
+  if (!newClip.exists()) {
+    throw new Error(
+      `duplicate_clip_to_arrangement returned no clip for ${context}`,
+    );
+  }
+
+  return newClip.id;
+}
+
+/**
  * Workaround for Ableton Live crash: duplicate_clip_to_arrangement crashes when
  * the source is an arrangement clip and any existing arrangement clip overlaps
  * the target position. Affects both MIDI and audio. Set to false to test if
@@ -115,10 +138,15 @@ export function moveClipFromHolding(
     "duplicate_clip_to_arrangement",
     toLiveApiId(holdingClipId),
     targetPosition,
-  ) as string;
-  const movedClip = LiveAPI.from(finalResult);
+  ) as [string, string | number];
+  const movedId = verifyDupResult(
+    finalResult,
+    `move from holding (id ${holdingClipId}) to ${targetPosition}`,
+  );
+  const movedClip = LiveAPI.from(toLiveApiId(movedId));
 
-  // Clean up holding area
+  // Clean up holding area only after the move succeeded — otherwise we'd
+  // delete the holding copy with no replacement and lose its content.
   track.call("delete_clip", toLiveApiId(holdingClipId));
 
   return movedClip;
@@ -182,15 +210,35 @@ function clearOverlappingClip(
 
   const holdingStart = maxEnd + 100;
 
-  // Duplicate to holding area (safe: no clips there)
+  // Step 1: Duplicate to holding area (safe: no clips there) and verify.
+  // Order matters: the original clip must remain intact until the holding
+  // copy is confirmed. Otherwise a silent dup failure (Ableton returning
+  // ["id", 0]) would let the later trim/delete destroy the only copy.
   const holdingResult = track.call(
     "duplicate_clip_to_arrangement",
     toLiveApiId(clipId),
     holdingStart,
   ) as [string, string | number];
-  const holdingClipId = LiveAPI.from(holdingResult).id;
+  const holdingClipId = verifyDupResult(
+    holdingResult,
+    `dup-to-holding for clip ${clipId} at ${holdingStart}`,
+  );
 
-  // Handle original: right-trim (keep before) or delete (no before)
+  // Step 2: Left-trim holding to keep only the "after" portion. This affects
+  // only the holding copy (far past any real clip), so the original is still
+  // safe at this point.
+  const leftTrimLen = targetEnd - clipStart;
+
+  createAndDeleteTempClip(
+    track,
+    holdingStart,
+    leftTrimLen,
+    isMidiClip,
+    context,
+  );
+
+  // Step 3: Now that the "after" portion is preserved in holding, mutate
+  // the original: right-trim (keep before) or delete (no before).
   if (hasBefore) {
     createAndDeleteTempClip(
       track,
@@ -203,17 +251,6 @@ function clearOverlappingClip(
     track.call("delete_clip", toLiveApiId(clipId));
   }
 
-  // Left-trim holding to keep only "after" portion
-  const leftTrimLen = targetEnd - clipStart;
-
-  createAndDeleteTempClip(
-    track,
-    holdingStart,
-    leftTrimLen,
-    isMidiClip,
-    context,
-  );
-
-  // Move trimmed holding clip to its final position
+  // Step 4: Move trimmed holding clip to its final position.
   moveClipFromHolding(holdingClipId, track, targetEnd, isMidiClip, context);
 }
