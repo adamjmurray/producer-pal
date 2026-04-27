@@ -264,6 +264,9 @@ function buildModelMessages(history: ChatMessage[]): ModelMessage[] {
       continue;
     }
 
+    // Persisted UI error messages are not part of the model conversation
+    if (msg.isError) continue;
+
     if (!msg.toolCalls || msg.toolCalls.length === 0) {
       messages.push({ role: "assistant", content: msg.content });
       continue;
