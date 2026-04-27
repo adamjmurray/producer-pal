@@ -70,14 +70,17 @@ const sessionState: SessionState = {
  * Build a fresh per-request ToolContext that snapshots the persistent
  * session state and merges in request-scoped fields from the caller.
  * Concurrent in-flight requests get distinct contexts so a tool that
- * mutates its context can't leak state into another request.
+ * mutates its context can't leak state into another request. The memory
+ * object is shared by reference so writes via ppal-context immediately
+ * persist to sessionState (the Max textedit also receives the update via
+ * the `update_memory` outlet round-trip).
  *
  * @param incoming - Per-request fields parsed from the contextJSON arg
  * @returns Fresh ToolContext owned by the calling request
  */
 function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
   return {
-    memory: { ...sessionState.memory },
+    memory: sessionState.memory,
     smallModelMode: sessionState.smallModelMode,
     sampleFolder: sessionState.sampleFolder,
     ...incoming,
