@@ -144,22 +144,38 @@ export function useChat<
     ],
   );
 
+  // Stash the user message for retry/edit when an early error (missing API
+  // key, MCP init failure) means it never reached client.chatHistory.
+  const pendingUserMessageRef = useRef<TMessage | null>(null);
+
   const runWithChat = useCallback(
-    async (fn: () => Promise<void>) => {
+    async (fn: () => Promise<void>, userMessage?: TMessage) => {
       setIsAssistantResponding(true);
+      pendingUserMessageRef.current = userMessage ?? null;
 
       try {
         await fn();
+        pendingUserMessageRef.current = null;
       } catch (error) {
-        setMessages(
-          adapter.createErrorMessage(
-            error,
-            clientRef.current?.chatHistory ?? [],
-          ),
-        );
+        const baseHistory = clientRef.current?.chatHistory ?? [];
+        const stashed = pendingUserMessageRef.current;
+        // When init fails before client.sendMessage, the user message never
+        // reached chatHistory. Surface it in the error UI and stash it for
+        // retry/edit so the user isn't stranded if there's no usable client.
+        const includeStashed = stashed && !baseHistory.includes(stashed);
+        const errorHistory = includeStashed
+          ? [...baseHistory, stashed]
+          : baseHistory;
+
+        if (!clientRef.current && includeStashed) {
+          pendingHistoryRef.current = [stashed] as TMessage[];
+        }
+
+        setMessages(adapter.createErrorMessage(error, errorHistory));
 
         if (clientRef.current) autoSaveRef?.current?.();
       } finally {
+        pendingUserMessageRef.current = null;
         abortControllerRef.current = null;
         setIsAssistantResponding(false);
         setRateLimitState(null);
@@ -174,9 +190,11 @@ export function useChat<
 
       if (!userMessage) return;
 
-      if (!apiKey) {
-        const userMessageEntry = adapter.createUserMessage(userMessage);
+      const userMessageEntry = adapter.createUserMessage(userMessage);
 
+      if (!apiKey) {
+        // Stash so retry/edit can recover after the user fixes settings.
+        pendingHistoryRef.current = [userMessageEntry];
         setMessages(
           adapter.createErrorMessage(
             new Error(
@@ -217,7 +235,7 @@ export function useChat<
           getHistory: () => client.chatHistory,
           originalMessage: userMessage,
         });
-      });
+      }, userMessageEntry);
     },
     [apiKey, adapter, initializeChat, runWithChat, executeWithRetry],
   );

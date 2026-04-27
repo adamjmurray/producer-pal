@@ -172,6 +172,39 @@ describe("useChat", () => {
       expect(mockAdapter.extractUserMessage).not.toHaveBeenCalled();
     });
 
+    it("recovers from missing-API-key error after key is added", async () => {
+      const props = { ...defaultProps, apiKey: "" };
+      const { result, rerender } = renderHook((p: typeof props) => useChat(p), {
+        initialProps: props,
+      });
+
+      // First send fails because no API key
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      const userIdx = result.current.messages.findIndex(
+        (m) => m.role === "user",
+      );
+
+      expect(userIdx).toBe(0);
+      expect(
+        result.current.messages.some((m) =>
+          m.parts.some((p) => p.type === "error"),
+        ),
+      ).toBe(true);
+
+      // User adds an API key in settings; retry should now succeed
+      rerender({ ...props, apiKey: "test-key" });
+
+      await act(async () => {
+        await result.current.handleRetry(userIdx);
+      });
+
+      expect(mockAdapter.createClient).toHaveBeenCalled();
+      expect(mockAdapter.extractUserMessage).toHaveBeenCalled();
+    });
+
     it("retries from restored conversation using pending history", async () => {
       const { result } = renderHook(() => useChat(defaultProps));
 
