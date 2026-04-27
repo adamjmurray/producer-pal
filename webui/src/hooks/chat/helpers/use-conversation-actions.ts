@@ -22,12 +22,15 @@ interface ConversationActionsDeps<
   pendingHistoryRef: MutableRef<TMessage[] | null>;
   abortControllerRef: MutableRef<AbortController | null>;
   initializeChat: (chatHistory?: TMessage[]) => Promise<void>;
-  runWithChat: <T>(fn: () => Promise<T>) => Promise<T | undefined>;
-  executeWithRetry: (
-    executeStream: (message: string) => AsyncIterable<TMessage[]>,
-    getHistory: () => TMessage[],
-    originalMessage: string,
-  ) => Promise<boolean>;
+  runWithChat: <T>(
+    fn: () => Promise<T>,
+    userMessage?: TMessage,
+  ) => Promise<T | undefined>;
+  executeWithRetry: (args: {
+    executeStream: (message: string) => AsyncIterable<TMessage[]>;
+    getHistory: () => TMessage[];
+    originalMessage: string;
+  }) => Promise<boolean>;
   clearQueue: () => void;
 }
 
@@ -97,11 +100,11 @@ export function useConversationActions<
 
         abortControllerRef.current = controller;
 
-        await executeWithRetry(
-          (msg) => client.sendMessage(msg, controller.signal),
-          () => client.chatHistory,
-          newMessage,
-        );
+        await executeWithRetry({
+          executeStream: (msg) => client.sendMessage(msg, controller.signal),
+          getHistory: () => client.chatHistory,
+          originalMessage: newMessage,
+        });
       });
     },
     [

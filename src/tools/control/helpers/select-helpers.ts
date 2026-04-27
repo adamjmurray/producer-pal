@@ -169,10 +169,9 @@ export function updateTrackSelection({
   trackIndex,
 }: UpdateTrackSelectionOptions): TrackSelectionResult {
   const result: TrackSelectionResult = {};
-  let trackAPI: LiveAPI | null = null;
 
   if (trackId != null) {
-    trackAPI = validateIdType(trackId, "track", "select");
+    const trackAPI = validateIdType(trackId, "track", "select");
     const liveApiTrackId = toLiveApiId(trackAPI.id);
 
     songView.setProperty("selected_track", liveApiTrackId);
@@ -190,7 +189,7 @@ export function updateTrackSelection({
     const trackPath = buildTrackPath(category, trackIndex);
 
     if (trackPath) {
-      trackAPI = LiveAPI.from(trackPath);
+      const trackAPI = LiveAPI.from(trackPath);
 
       if (trackAPI.exists()) {
         const liveApiTrackId = toLiveApiId(trackAPI.id);

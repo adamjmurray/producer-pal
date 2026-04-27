@@ -370,6 +370,65 @@ describe("clearClipAtDuplicateTarget", () => {
     // Full containment: clip [16,20] fully within target [16,20] — delete
     expect(trackMock.call).toHaveBeenCalledWith("delete_clip", "id 201");
   });
+
+  it("throws and leaves original intact when dup-to-holding silently fails (after-only)", () => {
+    // After-only overlap: existing [10,14], target [8,12].
+    // Without protection, the original would be deleted with no replacement
+    // → "after" portion [12,14] would be lost. Verify the throw fires before
+    // any mutation of the original clip.
+    const trackMock = setupSilentFailHoldingScenario({
+      sourceStart: 20,
+      sourceEnd: 24,
+      existingStart: 10,
+      existingEnd: 14,
+    });
+
+    expect(() =>
+      clearClipAtDuplicateTarget(
+        LiveAPI.from(trackMock.path),
+        "100",
+        8,
+        true,
+        mockContext,
+      ),
+    ).toThrow(/duplicate_clip_to_arrangement returned no clip/);
+
+    expect(trackMock.call).not.toHaveBeenCalledWith("delete_clip", "id 200");
+    expect(trackMock.call).not.toHaveBeenCalledWith(
+      "create_midi_clip",
+      8,
+      expect.anything(),
+    );
+  });
+
+  it("throws and leaves original intact when dup-to-holding silently fails (mid-clip)", () => {
+    // Mid-clip overlap: existing [8,20], target [12,14].
+    // Without protection, the original would be right-trimmed at 12 and lose
+    // the "after" portion [14,20]. Verify the throw fires before that trim.
+    const trackMock = setupSilentFailHoldingScenario({
+      sourceStart: 40,
+      sourceEnd: 42,
+      existingStart: 8,
+      existingEnd: 20,
+    });
+
+    expect(() =>
+      clearClipAtDuplicateTarget(
+        LiveAPI.from(trackMock.path),
+        "100",
+        12,
+        true,
+        mockContext,
+      ),
+    ).toThrow(/duplicate_clip_to_arrangement returned no clip/);
+
+    expect(trackMock.call).not.toHaveBeenCalledWith(
+      "create_midi_clip",
+      12,
+      expect.anything(),
+    );
+    expect(trackMock.call).not.toHaveBeenCalledWith("delete_clip", "id 200");
+  });
 });
 
 /**
@@ -417,4 +476,46 @@ function runClearTargetExpectingNoOp(opts: {
   );
 
   return trackMock;
+}
+
+/**
+ * Set up a scenario where the dup-to-holding call silently fails by returning
+ * ["id", 0]. Used to test that destructive follow-up steps (trim/delete of
+ * the original clip) do not run when the holding copy was not created.
+ * @param opts - Source clip and existing clip times
+ * @param opts.sourceStart - Source clip start time
+ * @param opts.sourceEnd - Source clip end time
+ * @param opts.existingStart - Existing (overlapping) clip start time
+ * @param opts.existingEnd - Existing (overlapping) clip end time
+ * @returns The track mock
+ */
+function setupSilentFailHoldingScenario(opts: {
+  sourceStart: number;
+  sourceEnd: number;
+  existingStart: number;
+  existingEnd: number;
+}): ReturnType<typeof setupTrack> {
+  setupClip("100", {
+    properties: {
+      is_arrangement_clip: 1,
+      start_time: opts.sourceStart,
+      end_time: opts.sourceEnd,
+    },
+  });
+
+  const existingClip = setupArrangementClip("200", 0, {
+    start_time: opts.existingStart,
+    end_time: opts.existingEnd,
+  });
+
+  return setupTrack(0, {
+    properties: {
+      arrangement_clips: ["id", existingClip.id],
+    },
+    methods: {
+      duplicate_clip_to_arrangement: () => ["id", 0],
+      create_midi_clip: () => ["id", "300"],
+      delete_clip: () => null,
+    },
+  });
 }

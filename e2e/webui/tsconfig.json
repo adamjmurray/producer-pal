@@ -4,9 +4,8 @@
     "lib": ["ES2023"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "baseUrl": "../..",
     "paths": {
-      "#webui/*": ["webui/src/*"]
+      "#webui/*": ["../../webui/src/*"]
     },
     "jsx": "react-jsx",
     "jsxImportSource": "preact",

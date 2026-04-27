@@ -1,12 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   handleQuantization,
   QUANTIZE_GRID,
-} from "#src/tools/clip/update/helpers/update-clip-quantization-helpers.ts";
+} from "#src/tools/clip/update/helpers/update-clip-notes-helpers.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
 type MockClip = any;

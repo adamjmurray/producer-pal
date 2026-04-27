@@ -59,7 +59,7 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("comma-separated ID(s) for clip operations"),
-    slots: z
+    slots: z.coerce
       .string()
       .optional()
       .describe(

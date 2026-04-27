@@ -27,8 +27,31 @@ vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
   }),
   validateMcpConnection: vi.fn(),
   filterOverrides: vi.fn((overrides) => overrides),
-  showMissingApiKeyError: vi.fn(),
+  showMissingApiKeyError: vi.fn(
+    (adapter, msg, setMessages, pendingHistoryRef) => {
+      const entry = adapter.createUserMessage(msg);
+      const error = new Error(
+        "No API key configured. Please add your API key in Settings.",
+      );
+
+      pendingHistoryRef.current = [entry];
+      setMessages(adapter.createErrorMessage(error, [entry]));
+    },
+  ),
 }));
+
+// Shrink retry backoff so tests don't sit through real seconds-long delays.
+// 200 ms is small enough to keep the suite fast but large enough that the
+// "cancels retry when stopResponse is called during retry delay" test can
+// reliably abort while the timer is still pending (it waits ~50 ms first).
+vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return {
+    ...actual,
+    calculateRetryDelay: () => 200,
+  };
+});
 
 const mockAdapter = createMockAdapter();
 
@@ -158,6 +181,79 @@ describe("useChat", () => {
       });
 
       expect(mockAdapter.extractUserMessage).not.toHaveBeenCalled();
+    });
+
+    it("recovers from MCP init failure by stashing the user message", async () => {
+      const { validateMcpConnection } =
+        await import("#webui/hooks/chat/helpers/streaming-helpers");
+
+      (
+        validateMcpConnection as ReturnType<typeof vi.fn>
+      ).mockImplementationOnce(() => {
+        throw new Error("MCP connection failed");
+      });
+
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // The user message should appear in the displayed messages even though
+      // the client never reached sendMessage.
+      const userIdx = result.current.messages.findIndex(
+        (m) => m.role === "user",
+      );
+
+      expect(userIdx).toBeGreaterThanOrEqual(0);
+      expect(
+        result.current.messages.some((m) =>
+          m.parts.some((p) => p.type === "error"),
+        ),
+      ).toBe(true);
+
+      // Retry should now have a usable history to fork from.
+      vi.clearAllMocks();
+
+      await act(async () => {
+        await result.current.handleRetry(userIdx);
+      });
+
+      expect(mockAdapter.extractUserMessage).toHaveBeenCalled();
+      expect(mockAdapter.createClient).toHaveBeenCalled();
+    });
+
+    it("recovers from missing-API-key error after key is added", async () => {
+      const props = { ...defaultProps, apiKey: "" };
+      const { result, rerender } = renderHook((p: typeof props) => useChat(p), {
+        initialProps: props,
+      });
+
+      // First send fails because no API key
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      const userIdx = result.current.messages.findIndex(
+        (m) => m.role === "user",
+      );
+
+      expect(userIdx).toBe(0);
+      expect(
+        result.current.messages.some((m) =>
+          m.parts.some((p) => p.type === "error"),
+        ),
+      ).toBe(true);
+
+      // User adds an API key in settings; retry should now succeed
+      rerender({ ...props, apiKey: "test-key" });
+
+      await act(async () => {
+        await result.current.handleRetry(userIdx);
+      });
+
+      expect(mockAdapter.createClient).toHaveBeenCalled();
+      expect(mockAdapter.extractUserMessage).toHaveBeenCalled();
     });
 
     it("retries from restored conversation using pending history", async () => {
@@ -485,6 +581,54 @@ describe("useChat", () => {
       });
 
       // Both calls should have received the original message
+      expect(receivedMessages).toStrictEqual(["Hello", "Hello"]);
+    });
+
+    it("sends original message on retry when only user echo was yielded", async () => {
+      // Real ChatSdkClient yields the user message before provider streaming.
+      // A 429 between that yield and any assistant content must not cause
+      // the retry to switch to "continue" — the model never produced output.
+      const receivedMessages: string[] = [];
+      let callCount = 0;
+
+      const rateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.sendMessage = async function* (
+            message: string,
+            _signal: AbortSignal,
+          ) {
+            receivedMessages.push(message);
+            callCount++;
+
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+
+            if (callCount === 1) {
+              throw new Error("Resource has been exhausted");
+            }
+
+            client.chatHistory.push({
+              role: "assistant",
+              content: `Done: ${message}`,
+            });
+            yield [...client.chatHistory];
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
       expect(receivedMessages).toStrictEqual(["Hello", "Hello"]);
     });
 

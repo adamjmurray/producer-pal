@@ -9,7 +9,9 @@ import { formatChatMessages } from "#webui/chat/sdk/formatter";
 import { createProviderModel } from "#webui/chat/sdk/provider-factories";
 import { type ChatClientConfig, type ChatMessage } from "#webui/chat/sdk/types";
 import {
+  isLegacyThinkingModel,
   isOpenAIReasoningModel,
+  mapThinkingToAnthropicEffort,
   mapThinkingToOllamaThink,
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
@@ -35,7 +37,7 @@ function buildProviderOptions(
   showThoughts: boolean,
 ): ProviderOptions | undefined {
   if (provider === "anthropic") {
-    return buildAnthropicOptions(thinking);
+    return buildAnthropicOptions(thinking, model);
   }
 
   if (provider === "ollama") {
@@ -91,20 +93,41 @@ function buildProviderOptions(
 
 /**
  * Build Anthropic-specific provider options for extended thinking.
+ * Uses adaptive thinking with effort for most models, falls back to legacy
+ * enabled+budgetTokens for Haiku 4.5 which doesn't support adaptive yet.
  * @param thinking - Thinking level from UI settings
+ * @param model - Model identifier
  * @returns Anthropic provider options or undefined
  */
-function buildAnthropicOptions(thinking: string): ProviderOptions | undefined {
-  const thinkingBudget = getThinkingBudget(thinking);
+function buildAnthropicOptions(
+  thinking: string,
+  model: string,
+): ProviderOptions | undefined {
+  // Legacy path for models that don't support adaptive thinking (Haiku 4.5)
+  if (isLegacyThinkingModel(model)) {
+    const budgetTokens = getThinkingBudget(thinking);
 
-  if (thinkingBudget === 0) return undefined;
+    if (budgetTokens === 0) return undefined;
+
+    return {
+      anthropic: {
+        thinking: {
+          type: "enabled",
+          budgetTokens: budgetTokens === -1 ? 10240 : budgetTokens,
+        },
+      },
+    };
+  }
+
+  // Adaptive thinking with effort for Sonnet 4.6+, Opus 4.6+
+  const effort = mapThinkingToAnthropicEffort(thinking);
+
+  if (effort == null) return undefined;
 
   return {
     anthropic: {
-      thinking: {
-        type: "enabled",
-        budgetTokens: thinkingBudget === -1 ? 10240 : thinkingBudget,
-      },
+      thinking: { type: "adaptive" },
+      effort,
     },
   };
 }
@@ -176,7 +199,7 @@ export const chatAdapter: ChatAdapter<
 
     const suppressTemperature =
       (provider === "openai" && isOpenAIReasoningModel(model)) ||
-      (provider === "anthropic" && getThinkingBudget(thinking) !== 0);
+      (provider === "anthropic" && thinking !== "Off");
 
     return {
       model: languageModel,

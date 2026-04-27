@@ -10,8 +10,8 @@ on:
       - "src/shared/version.ts"
       - "src/tools/**"
       - "src/skills/**"
-      - "scripts/generate-tool-schema-docs.ts"
-      - "scripts/generate-docs-markdown.ts"
+      - "scripts/build-and-release/generate-tool-schema-docs.ts"
+      - "scripts/build-and-release/generate-docs-markdown.ts"
       - ".github/workflows/deploy-docs.yml"
 
   # Allow manual deployment from Actions tab
@@ -28,6 +28,9 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+env:
+  NODE_VERSION: "24.x"
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -38,9 +41,9 @@ jobs:
           fetch-depth: 0 # Fetch all history for git-based lastUpdated
 
       - name: Setup Node
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
         with:
-          node-version: "24.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Setup Pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
@@ -52,7 +55,7 @@ jobs:
         run: npm run docs:build
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: docs/.vitepress/dist
 

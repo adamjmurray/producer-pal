@@ -33,6 +33,7 @@ export function createProviderModel(
       return createAnthropic({
         apiKey,
         headers: { "anthropic-dangerous-direct-browser-access": "true" },
+        fetch: injectThinkingDisplay,
       })(modelId);
 
     case "openai":
@@ -73,4 +74,36 @@ export function createProviderModel(
     }
     /* v8 ignore stop */
   }
+}
+
+/**
+ * Custom fetch wrapper that injects `display: "summarized"` into Anthropic API
+ * requests using adaptive thinking. Without this, Opus 4.7 defaults to
+ * `display: "omitted"` which returns empty thinking text.
+ *
+ * Workaround until @ai-sdk/anthropic adds native `display` support.
+ * Only modifies requests that already have `thinking.type === "adaptive"`.
+ *
+ * @param input - Fetch input (URL or Request)
+ * @param init - Fetch init options
+ * @returns Fetch response
+ */
+export async function injectThinkingDisplay(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  if (init?.body && typeof init.body === "string") {
+    try {
+      const body = JSON.parse(init.body);
+
+      if (body.thinking?.type === "adaptive" && !body.thinking.display) {
+        body.thinking.display = "summarized";
+        init = { ...init, body: JSON.stringify(body) };
+      }
+    } catch {
+      // Not JSON — pass through unchanged
+    }
+  }
+
+  return await fetch(input, init);
 }

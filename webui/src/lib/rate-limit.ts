@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -21,7 +22,7 @@ export interface RateLimitInfo {
 /**
  * Default retry delays for exponential backoff (in milliseconds)
  */
-export const DEFAULT_RETRY_DELAYS = [2000, 4000, 8000, 16000, 32000] as const;
+export const DEFAULT_RETRY_DELAYS = [5000, 10000, 20000, 40000, 60000] as const;
 
 /**
  * Maximum number of retry attempts
@@ -76,7 +77,7 @@ export function calculateRetryDelay(
   }
 
   // Use exponential backoff with jitter
-  const baseDelay = DEFAULT_RETRY_DELAYS[attempt] ?? 32000;
+  const baseDelay = DEFAULT_RETRY_DELAYS[attempt] ?? 60000;
   const jitter = Math.random() * 1000;
 
   return baseDelay + jitter;
@@ -138,6 +139,11 @@ function extractStatusCode(error: unknown): number | null {
     return errorObj.status;
   }
 
+  // AI SDK APICallError uses statusCode (not status)
+  if (typeof errorObj.statusCode === "number") {
+    return errorObj.statusCode;
+  }
+
   // Nested in error object
   if (typeof errorObj.error === "object" && errorObj.error != null) {
     const nestedError = errorObj.error as Record<string, unknown>;
@@ -159,7 +165,12 @@ function extractStatusCode(error: unknown): number | null {
 }
 
 /**
- * Extracts retry-after value from error response (in milliseconds)
+ * Extracts retry-after value from error response (in milliseconds).
+ * Handles two distinct sources with different units:
+ * - `errorObj.retryAfter`: SDK property exposed by AI SDK / Anthropic SDK,
+ *   already converted to milliseconds
+ * - `errorObj.headers["retry-after"]`: raw HTTP Retry-After header, in
+ *   seconds per RFC 7231 (we don't handle the HTTP-date form)
  * @param {unknown} error - Error object to extract retry-after from
  * @returns {number | null} Retry delay in milliseconds or null if not found
  */
@@ -170,18 +181,21 @@ function extractRetryAfter(error: unknown): number | null {
 
   const errorObj = error as Record<string, unknown>;
 
-  // Check for retryAfter in various locations
-  const retryAfter =
-    errorObj.retryAfter ??
-    (errorObj.headers as Record<string, unknown> | undefined)?.["retry-after"];
-
-  if (typeof retryAfter === "number") {
-    // Assume seconds if < 1000, otherwise assume milliseconds
-    return retryAfter < 1000 ? retryAfter * 1000 : retryAfter;
+  // SDK property: already in milliseconds, used as-is regardless of magnitude
+  if (typeof errorObj.retryAfter === "number") {
+    return errorObj.retryAfter;
   }
 
-  if (typeof retryAfter === "string") {
-    const seconds = Number.parseInt(retryAfter);
+  // HTTP Retry-After header: per RFC 7231 the numeric form is in seconds
+  const headers = errorObj.headers as Record<string, unknown> | undefined;
+  const headerValue = headers?.["retry-after"];
+
+  if (typeof headerValue === "number") {
+    return headerValue * 1000;
+  }
+
+  if (typeof headerValue === "string") {
+    const seconds = Number.parseInt(headerValue, 10);
 
     if (!Number.isNaN(seconds)) {
       return seconds * 1000;

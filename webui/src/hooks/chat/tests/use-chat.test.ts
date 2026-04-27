@@ -25,14 +25,17 @@ vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
   }),
   validateMcpConnection: vi.fn(),
   filterOverrides: vi.fn((overrides) => overrides),
-  showMissingApiKeyError: vi.fn((adapter, msg, setMessages) => {
-    const entry = adapter.createUserMessage(msg);
-    const error = new Error(
-      "No API key configured. Please add your API key in Settings.",
-    );
+  showMissingApiKeyError: vi.fn(
+    (adapter, msg, setMessages, pendingHistoryRef) => {
+      const entry = adapter.createUserMessage(msg);
+      const error = new Error(
+        "No API key configured. Please add your API key in Settings.",
+      );
 
-    setMessages(adapter.createErrorMessage(error, [entry]));
-  }),
+      pendingHistoryRef.current = [entry];
+      setMessages(adapter.createErrorMessage(error, [entry]));
+    },
+  ),
 }));
 
 const mockAdapter = createMockAdapter();

@@ -103,6 +103,7 @@ export class ChatSdkClient {
 
     const result = streamText({
       model: this.config.model,
+      maxRetries: 0, // Disable SDK-level retry so app-level retry (executeWithRetry) handles 429s with UI feedback
       system: this.config.systemInstruction,
       messages: buildModelMessages(this.chatHistory),
       tools: Object.keys(this.tools).length > 0 ? this.tools : undefined,
@@ -268,6 +269,9 @@ function buildModelMessages(history: ChatMessage[]): ModelMessage[] {
       messages.push({ role: "user", content: msg.content });
       continue;
     }
+
+    // Persisted UI error messages are not part of the model conversation
+    if (msg.isError) continue;
 
     if (!msg.toolCalls || msg.toolCalls.length === 0) {
       messages.push({ role: "assistant", content: msg.content });

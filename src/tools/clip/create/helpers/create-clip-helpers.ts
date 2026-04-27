@@ -13,7 +13,6 @@ import {
   type MidiNote,
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import { parseArrangementStartList } from "#src/tools/shared/validation/position-parsing.ts";
 import {
   createAudioArrangementClip,
   createAudioSessionClip,
@@ -22,9 +21,6 @@ import {
   buildClipProperties,
   buildClipResult,
 } from "./create-clip-result-helpers.ts";
-
-// Re-export for use by create-clip.js
-export { parseArrangementStartList };
 
 export interface TimingParameters {
   arrangementStartBeats: number | null;

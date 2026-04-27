@@ -505,6 +505,20 @@ describe("ChatSdkClient", () => {
       expect(callArgs.messages[1].content).toBe("Hello!");
     });
 
+    it("skips isError messages when building model messages", async () => {
+      const chatHistory: ChatMessage[] = [
+        { role: "user", content: "Hi" },
+        { role: "assistant", content: "Network error", isError: true },
+      ];
+
+      const callArgs = await sendWithHistory(chatHistory, "Try again");
+
+      // 2 messages: user, new user (error skipped)
+      expect(callArgs.messages).toHaveLength(2);
+      expect(callArgs.messages[0].content).toBe("Hi");
+      expect(callArgs.messages[1].content).toBe("Try again");
+    });
+
     it("converts history with tool calls to model messages", async () => {
       // Pre-seed history with assistant message containing tool calls
       const chatHistory: ChatMessage[] = [

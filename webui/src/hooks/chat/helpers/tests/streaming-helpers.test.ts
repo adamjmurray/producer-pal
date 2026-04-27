@@ -100,7 +100,7 @@ describe("streaming-helpers", () => {
   });
 
   describe("showMissingApiKeyError", () => {
-    it("sets error message via adapter", () => {
+    it("sets error message and stashes user message for retry/edit", () => {
       const setMessages = vi.fn();
       const adapter = {
         createUserMessage: (text: string) => ({ role: "user", content: text }),
@@ -109,14 +109,26 @@ describe("streaming-helpers", () => {
           { role: "model", error },
         ],
       };
+      const pendingHistoryRef: { current: unknown[] | null } = {
+        current: null,
+      };
 
-      showMissingApiKeyError(adapter as never, "Hello", setMessages);
+      showMissingApiKeyError(
+        adapter as never,
+        "Hello",
+        setMessages,
+        pendingHistoryRef as never,
+      );
 
       expect(setMessages).toHaveBeenCalledOnce();
       const args = setMessages.mock.calls[0]?.[0];
 
       expect(args).toHaveLength(2);
       expect(args[0].content).toBe("Hello");
+      expect(pendingHistoryRef.current).toHaveLength(1);
+      const stashed = pendingHistoryRef.current as { content: string }[];
+
+      expect(stashed[0]?.content).toBe("Hello");
     });
   });
 

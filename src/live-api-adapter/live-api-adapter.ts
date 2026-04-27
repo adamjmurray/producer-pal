@@ -45,7 +45,18 @@ outlets = 2;
 setoutletassist(0, "tool call results");
 setoutletassist(1, "tool call warnings");
 
-const context: ToolContext = {
+/**
+ * Persistent session-scoped state set by the Max patch via setter messages.
+ * This object is the single source of truth for memory/smallModelMode/
+ * sampleFolder; per-request contexts snapshot from it.
+ */
+interface SessionState {
+  memory: { enabled: boolean; writable: boolean; content: string };
+  smallModelMode: boolean;
+  sampleFolder: string | null;
+}
+
+const sessionState: SessionState = {
   memory: {
     enabled: false,
     writable: false,
@@ -56,71 +67,95 @@ const context: ToolContext = {
 };
 
 /**
- * Initialize holding area start position from current song_length.
- * Called at the start of tools that use holding area operations.
- * This ensures holding area is always just past actual content,
- * avoiding permanent song_length bloat from hardcoded positions.
+ * Build a fresh per-request ToolContext that snapshots the persistent
+ * session state and merges in request-scoped fields from the caller.
+ * Concurrent in-flight requests get distinct contexts so a tool that
+ * mutates its context can't leak state into another request. The memory
+ * object is shared by reference so writes via ppal-context immediately
+ * persist to sessionState (the Max textedit also receives the update via
+ * the `update_memory` outlet round-trip).
+ *
+ * @param incoming - Per-request fields parsed from the contextJSON arg
+ * @returns Fresh ToolContext owned by the calling request
  */
-function initHoldingArea(): void {
+function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
+  return {
+    memory: sessionState.memory,
+    smallModelMode: sessionState.smallModelMode,
+    sampleFolder: sessionState.sampleFolder,
+    ...incoming,
+  };
+}
+
+/**
+ * Initialize holding area start position from current song_length on the
+ * given per-request context. This ensures holding area is always just past
+ * actual content, avoiding permanent song_length bloat from hardcoded
+ * positions.
+ *
+ * @param ctx - Per-request context to populate
+ */
+function initHoldingArea(ctx: ToolContext): void {
   const liveSet = LiveAPI.from("live_set");
 
-  context.holdingAreaStartBeats = liveSet.get("song_length")[0] as number;
+  ctx.holdingAreaStartBeats = liveSet.get("song_length")[0] as number;
 }
 
 /*
-**IMPORTANT**: Always pass args AND context to tool functions
-Use the `(args) => toolFunction(args, context)` pattern
+**IMPORTANT**: Always pass args AND ctx to tool functions
+Use the `(args, ctx) => toolFunction(args, ctx)` pattern
 This ensures all tools have access to context (holdingAreaStartBeats, silenceWavPath, etc.)
 */
 /* eslint-disable @typescript-eslint/no-explicit-any -- tools use dynamic dispatch with any types */
-const tools: Record<string, (args: unknown) => unknown> = {
-  "ppal-connect": (args) => connect(args as any, context),
-  "ppal-read-live-set": (args) => readLiveSet(args as any, context),
-  "ppal-update-live-set": (args) => updateLiveSet(args as any, context),
-  "ppal-create-track": (args) => createTrack(args as any, context),
-  "ppal-read-track": (args) => readTrack(args as any, context),
-  "ppal-update-track": (args) => updateTrack(args as any, context),
-  "ppal-create-scene": (args) => createScene(args as any, context),
-  "ppal-read-scene": (args) => readScene(args as any, context),
-  "ppal-update-scene": (args) => updateScene(args as any, context),
-  "ppal-create-clip": (args) => createClip(args as any, context),
-  "ppal-read-clip": (args) => readClip(args as any, context),
-  "ppal-update-clip": (args) => {
-    initHoldingArea();
+const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
+  "ppal-connect": (args, ctx) => connect(args as any, ctx),
+  "ppal-read-live-set": (args, ctx) => readLiveSet(args as any, ctx),
+  "ppal-update-live-set": (args, ctx) => updateLiveSet(args as any, ctx),
+  "ppal-create-track": (args, ctx) => createTrack(args as any, ctx),
+  "ppal-read-track": (args, ctx) => readTrack(args as any, ctx),
+  "ppal-update-track": (args, ctx) => updateTrack(args as any, ctx),
+  "ppal-create-scene": (args, ctx) => createScene(args as any, ctx),
+  "ppal-read-scene": (args, ctx) => readScene(args as any, ctx),
+  "ppal-update-scene": (args, ctx) => updateScene(args as any, ctx),
+  "ppal-create-clip": (args, ctx) => createClip(args as any, ctx),
+  "ppal-read-clip": (args, ctx) => readClip(args as any, ctx),
+  "ppal-update-clip": (args, ctx) => {
+    initHoldingArea(ctx);
 
-    return updateClip(args as any, context);
+    return updateClip(args as any, ctx);
   },
-  "ppal-create-device": (args) => createDevice(args as any, context),
-  "ppal-read-device": (args) => readDevice(args as any, context),
-  "ppal-update-device": (args) => updateDevice(args as any, context),
-  "ppal-playback": (args) => playback(args as any, context),
-  "ppal-select": (args) => select(args as any, context),
-  "ppal-delete": (args) => deleteObject(args as any, context),
-  "ppal-duplicate": (args) => {
-    initHoldingArea();
+  "ppal-create-device": (args, ctx) => createDevice(args as any, ctx),
+  "ppal-read-device": (args, ctx) => readDevice(args as any, ctx),
+  "ppal-update-device": (args, ctx) => updateDevice(args as any, ctx),
+  "ppal-playback": (args, ctx) => playback(args as any, ctx),
+  "ppal-select": (args, ctx) => select(args as any, ctx),
+  "ppal-delete": (args, ctx) => deleteObject(args as any, ctx),
+  "ppal-duplicate": (args, ctx) => {
+    initHoldingArea(ctx);
 
-    return duplicate(args as any, context);
+    return duplicate(args as any, ctx);
   },
-  "ppal-context": (args) => contextTool(args as any, context),
-  "ppal-raw-live-api": (args) => rawLiveApi(args as any, context),
+  "ppal-context": (args, ctx) => contextTool(args as any, ctx),
+  "ppal-raw-live-api": (args, ctx) => rawLiveApi(args as any, ctx),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */
 
 /**
- * Call a tool by name with the given arguments
+ * Call a tool by name with the given arguments and per-request context.
  *
  * @param toolName - Name of the tool to call
  * @param args - Arguments to pass to the tool
+ * @param ctx - Per-request context for the tool
  * @returns Tool execution result
  */
-function callTool(toolName: string, args: object): unknown {
+function callTool(toolName: string, args: object, ctx: ToolContext): unknown {
   const tool = tools[toolName];
 
   if (!tool) {
     throw new Error(`Unknown tool: ${toolName}`);
   }
 
-  return tool(args);
+  return tool(args, ctx);
 }
 
 let isCompactOutputEnabled = true;
@@ -131,7 +166,6 @@ let isCompactOutputEnabled = true;
  * @param enabled - Whether to enable compact output
  */
 export function compactOutput(enabled: unknown): void {
-  // console.log(`Setting isCompactOutputEnabled ${Boolean(enabled)}`);
   isCompactOutputEnabled = Boolean(enabled);
 }
 
@@ -141,8 +175,7 @@ export function compactOutput(enabled: unknown): void {
  * @param enabled - Whether to enable small model mode
  */
 export function smallModelMode(enabled: unknown): void {
-  // console.log(`[v8] Setting smallModelMode ${Boolean(enabled)}`);
-  context.smallModelMode = Boolean(enabled);
+  sessionState.smallModelMode = Boolean(enabled);
 }
 
 /**
@@ -151,8 +184,7 @@ export function smallModelMode(enabled: unknown): void {
  * @param enabled - Whether to enable memory
  */
 export function memoryEnabled(enabled: unknown): void {
-  // console.log(`[v8] Setting memoryEnabled ${Boolean(enabled)}`);
-  context.memory.enabled = Boolean(enabled);
+  sessionState.memory.enabled = Boolean(enabled);
 }
 
 /**
@@ -161,8 +193,7 @@ export function memoryEnabled(enabled: unknown): void {
  * @param writable - Whether memory should be writable
  */
 export function memoryWritable(writable: unknown): void {
-  // console.log(`[v8] Setting memoryWritable ${Boolean(writable)}`);
-  context.memory.writable = Boolean(writable);
+  sessionState.memory.writable = Boolean(writable);
 }
 
 /**
@@ -174,8 +205,7 @@ export function memoryContent(content: unknown): void {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
-  // console.log(`[v8] Setting memoryContent "${value}"`);
-  context.memory.content = value;
+  sessionState.memory.content = value;
 }
 
 /**
@@ -187,8 +217,7 @@ export function sampleFolder(path: unknown): void {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = path === "bang" ? "" : String(path ?? "");
 
-  // console.log(`[v8] Setting sampleFolder "${value}"`);
-  context.sampleFolder = value;
+  sessionState.sampleFolder = value;
 }
 
 /**
@@ -261,12 +290,13 @@ export async function mcp_request(
   try {
     const args = JSON.parse(argsJSON) as Record<string, unknown>;
 
-    // Merge incoming context (if provided) into existing context
+    // Build a fresh per-request context so concurrent in-flight requests
+    // (possible whenever a tool awaits, e.g. code_exec) don't share state.
+    let incomingContext: Partial<ToolContext> = {};
+
     if (contextJSON != null) {
       try {
-        const incomingContext = JSON.parse(contextJSON);
-
-        Object.assign(context, incomingContext);
+        incomingContext = JSON.parse(contextJSON) as Partial<ToolContext>;
       } catch (contextError) {
         const message =
           contextError instanceof Error
@@ -277,13 +307,15 @@ export async function mcp_request(
       }
     }
 
+    const requestContext = buildRequestContext(incomingContext);
+
     try {
       // NOTE: toCompactJSLiteral() basically formats things as JS literal syntax with unquoted keys
       // Compare this to the old way of passing the JS object directly here,
       // which results in a JSON.stringify() call on the object inside formatSuccessResponse().
       // toCompactJSLiteral() doesn't save us a ton of tokens in most tools, so if we see any issues
       // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
-      const output = (await callTool(tool, args)) as object;
+      const output = (await callTool(tool, args, requestContext)) as object;
 
       result = formatSuccessResponse(
         isCompactOutputEnabled ? toCompactJSLiteral(output) : output,
