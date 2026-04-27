@@ -533,6 +533,54 @@ describe("useChat", () => {
       expect(receivedMessages).toStrictEqual(["Hello", "Hello"]);
     });
 
+    it("sends original message on retry when only user echo was yielded", async () => {
+      // Real ChatSdkClient yields the user message before provider streaming.
+      // A 429 between that yield and any assistant content must not cause
+      // the retry to switch to "continue" — the model never produced output.
+      const receivedMessages: string[] = [];
+      let callCount = 0;
+
+      const rateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.sendMessage = async function* (
+            message: string,
+            _signal: AbortSignal,
+          ) {
+            receivedMessages.push(message);
+            callCount++;
+
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+
+            if (callCount === 1) {
+              throw new Error("Resource has been exhausted");
+            }
+
+            client.chatHistory.push({
+              role: "assistant",
+              content: `Done: ${message}`,
+            });
+            yield [...client.chatHistory];
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      expect(receivedMessages).toStrictEqual(["Hello", "Hello"]);
+    });
+
     it("sends 'continue' on retry when content was already received", async () => {
       const receivedMessages: string[] = [];
       let callCount = 0;

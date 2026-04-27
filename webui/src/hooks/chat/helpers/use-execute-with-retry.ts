@@ -62,7 +62,10 @@ export function useExecuteWithRetry<
       originalMessage,
     }: ExecuteWithRetryArgs<TMessage>): Promise<void> => {
       let attempt = 0;
-      const contentState = { hasReceived: false, savedUsageCount: 0 };
+      const contentState = {
+        hasAssistantContent: false,
+        savedUsageCount: 0,
+      };
 
       retryAbortRef.current = new AbortController();
 
@@ -70,15 +73,20 @@ export function useExecuteWithRetry<
         // Skip updates after abort (e.g. user switched conversations)
         if (abortControllerRef.current?.signal.aborted) return;
 
-        const isFirst = !contentState.hasReceived;
+        const hadAssistant = contentState.hasAssistantContent;
 
-        contentState.hasReceived = true;
+        if (!hadAssistant && hasAssistantContent(msgs)) {
+          contentState.hasAssistantContent = true;
+        }
+
         setMessages(msgs);
 
-        // Save on first content or when a new step completes (usage appears)
+        // Save on first assistant content or when a new step completes
         const usageCount = msgs.filter((m) => m.usage).length;
+        const becameNonEmpty =
+          !hadAssistant && contentState.hasAssistantContent;
 
-        if (isFirst || usageCount > contentState.savedUsageCount) {
+        if (becameNonEmpty || usageCount > contentState.savedUsageCount) {
           contentState.savedUsageCount = usageCount;
           autoSaveRef?.current?.();
         }
@@ -86,7 +94,9 @@ export function useExecuteWithRetry<
 
       while (shouldRetry(attempt)) {
         try {
-          const msg = contentState.hasReceived ? "continue" : originalMessage;
+          const msg = contentState.hasAssistantContent
+            ? "continue"
+            : originalMessage;
 
           await handleMessageStream(
             executeStream(msg),
@@ -147,4 +157,22 @@ export function useExecuteWithRetry<
   );
 
   return { executeWithRetry, abortRetry };
+}
+
+/**
+ * Detect whether the formatted UI history contains real assistant output
+ * (text, reasoning, or tool activity). Used to decide whether a 429 retry
+ * should resume with "continue" or replay the original message — the user
+ * echo alone must not count as content.
+ * @param msgs - Formatted UI messages
+ * @returns True if any model message has substantive content
+ */
+function hasAssistantContent(msgs: UIMessage[]): boolean {
+  return msgs.some(
+    (m) =>
+      m.role === "model" &&
+      m.parts.some(
+        (p) => p.type === "text" || p.type === "thought" || p.type === "tool",
+      ),
+  );
 }
