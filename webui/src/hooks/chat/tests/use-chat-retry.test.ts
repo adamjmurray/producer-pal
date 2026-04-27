@@ -172,6 +172,46 @@ describe("useChat", () => {
       expect(mockAdapter.extractUserMessage).not.toHaveBeenCalled();
     });
 
+    it("recovers from MCP init failure by stashing the user message", async () => {
+      const { validateMcpConnection } =
+        await import("#webui/hooks/chat/helpers/streaming-helpers");
+
+      (
+        validateMcpConnection as ReturnType<typeof vi.fn>
+      ).mockImplementationOnce(() => {
+        throw new Error("MCP connection failed");
+      });
+
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // The user message should appear in the displayed messages even though
+      // the client never reached sendMessage.
+      const userIdx = result.current.messages.findIndex(
+        (m) => m.role === "user",
+      );
+
+      expect(userIdx).toBeGreaterThanOrEqual(0);
+      expect(
+        result.current.messages.some((m) =>
+          m.parts.some((p) => p.type === "error"),
+        ),
+      ).toBe(true);
+
+      // Retry should now have a usable history to fork from.
+      vi.clearAllMocks();
+
+      await act(async () => {
+        await result.current.handleRetry(userIdx);
+      });
+
+      expect(mockAdapter.extractUserMessage).toHaveBeenCalled();
+      expect(mockAdapter.createClient).toHaveBeenCalled();
+    });
+
     it("recovers from missing-API-key error after key is added", async () => {
       const props = { ...defaultProps, apiKey: "" };
       const { result, rerender } = renderHook((p: typeof props) => useChat(p), {
