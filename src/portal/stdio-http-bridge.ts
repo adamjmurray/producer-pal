@@ -23,7 +23,6 @@ import { logger } from "./file-logger.ts";
 const SETUP_URL = "https://producer-pal.org/installation";
 
 interface BridgeOptions {
-  timeout?: number;
   smallModelMode?: boolean;
 }
 
@@ -59,17 +58,11 @@ export class StdioHttpBridge {
   private isConnected = false;
   private fallbackTools: { tools: FallbackTool[] };
   private smallModelMode: boolean;
-  private timeout: number | undefined;
 
   constructor(httpUrl: string, options: BridgeOptions = {}) {
     this.httpUrl = httpUrl;
     this.smallModelMode = options.smallModelMode ?? false;
-    this.timeout = options.timeout;
     this.fallbackTools = this._generateFallbackTools();
-  }
-
-  private _requestOptions(): { timeout: number } | undefined {
-    return this.timeout != null ? { timeout: this.timeout } : undefined;
   }
 
   private _generateFallbackTools(): { tools: FallbackTool[] } {
@@ -226,10 +219,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
       try {
         await this._ensureHttpConnection();
         // httpClient is guaranteed non-null after successful _ensureHttpConnection()
-        const result = await (this.httpClient as Client).listTools(
-          undefined,
-          this._requestOptions(),
-        );
+        const result = await (this.httpClient as Client).listTools();
 
         logger.debug(`[Bridge] tools/list successful via HTTP`);
 
@@ -265,8 +255,6 @@ Tell the user to check ${SETUP_URL} for configuration help.
           // httpClient is guaranteed non-null after successful _ensureHttpConnection()
           const result = await (this.httpClient as Client).callTool(
             toolRequest,
-            undefined,
-            this._requestOptions(),
           );
 
           logger.debug(

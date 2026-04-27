@@ -539,48 +539,13 @@ describe("StdioHttpBridge", () => {
         callToolRequest("test-tool", { arg1: "value1" }),
       )) as { result: unknown; toolResult: unknown };
 
-      expect(mockClient.callTool).toHaveBeenCalledWith(
-        {
-          name: "test-tool",
-          arguments: { arg1: "value1" },
-        },
-        undefined,
-        undefined,
-      );
+      expect(mockClient.callTool).toHaveBeenCalledWith({
+        name: "test-tool",
+        arguments: { arg1: "value1" },
+      });
       expect(result).toStrictEqual(toolResult);
       expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Tool call successful for test-tool",
-      );
-    });
-
-    it("forwards configured timeout to listTools and callTool", async () => {
-      const timeoutBridge = new StdioHttpBridge("http://localhost:3350/mcp", {
-        timeout: 30_000,
-      }) as unknown as TestBridge;
-
-      mockServer.connect.mockResolvedValue(undefined);
-      mockClient.connect.mockResolvedValue(undefined);
-      mockClient.listTools.mockResolvedValue({ tools: [] });
-      mockClient.callTool.mockResolvedValue({ content: [] });
-
-      await timeoutBridge.start();
-
-      const listToolsHandler = getHandler("ListToolsRequestSchema");
-
-      await listToolsHandler({});
-
-      expect(mockClient.listTools).toHaveBeenCalledWith(undefined, {
-        timeout: 30_000,
-      });
-
-      const callHandler = getHandler("CallToolRequestSchema");
-
-      await callHandler(callToolRequest("test-tool", { arg1: "v" }));
-
-      expect(mockClient.callTool).toHaveBeenCalledWith(
-        { name: "test-tool", arguments: { arg1: "v" } },
-        undefined,
-        { timeout: 30_000 },
       );
     });
 
@@ -605,14 +570,10 @@ describe("StdioHttpBridge", () => {
         { params: { name: "test-tool" } }, // arguments is undefined
       )) as { result: unknown; toolResult: unknown };
 
-      expect(mockClient.callTool).toHaveBeenCalledWith(
-        {
-          name: "test-tool",
-          arguments: {},
-        },
-        undefined,
-        undefined,
-      );
+      expect(mockClient.callTool).toHaveBeenCalledWith({
+        name: "test-tool",
+        arguments: {},
+      });
       expect(result).toStrictEqual(toolResult);
     });
 

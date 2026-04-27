@@ -10,7 +10,6 @@ export type AnthropicEffort = "low" | "medium" | "high" | "max";
 /**
  * Checks if a model requires legacy enabled thinking (budgetTokens) instead of adaptive.
  * Haiku 4.5 does not support adaptive thinking yet.
- * TODO: Remove when Haiku supports adaptive thinking (see Linear PP-xxx)
  * @param {string} model - Model identifier
  * @returns {boolean} - True if model needs legacy thinking config
  */
