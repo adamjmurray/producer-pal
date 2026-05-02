@@ -36,6 +36,20 @@ for (const [index, arg] of args.entries()) {
 
 console.log(`Producer Pal ${VERSION} starting MCP server on port ${port}...`);
 
+const devFlags = [
+  ["ENABLE_RAW_LIVE_API", process.env.ENABLE_RAW_LIVE_API],
+  ["ENABLE_CODE_EXEC", process.env.ENABLE_CODE_EXEC],
+  ["ENABLE_DEV_CORS", process.env.ENABLE_DEV_CORS],
+].filter(([, value]) => value === "true");
+
+if (devFlags.length > 0) {
+  console.warn(
+    `Producer Pal: dev-only flags enabled — do not use this build in production: ${devFlags
+      .map(([name]) => name)
+      .join(", ")}`,
+  );
+}
+
 const appServer = createExpressApp();
 
 appServer
