@@ -165,7 +165,7 @@ export async function setBookmark(
 }
 
 /**
- * List all conversations. Bookmarked first, then by createdAt descending.
+ * List all conversations, sorted by updatedAt descending.
  * @returns Array of conversation summaries
  */
 export async function listConversations(): Promise<ConversationSummary[]> {
