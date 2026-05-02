@@ -38,7 +38,11 @@ function stubMaxOutlet(payload: Record<string, unknown>): void {
 }
 
 describe("REST API Routes", () => {
-  const appState = setupExpressAppServer();
+  const appState = setupExpressAppServer({
+    beforeStart: () => {
+      process.env.ENABLE_RAW_LIVE_API = "true";
+    },
+  });
 
   async function setEnabledTools(tools: string[]): Promise<void> {
     await fetch(`${appState.baseUrl}/config`, {

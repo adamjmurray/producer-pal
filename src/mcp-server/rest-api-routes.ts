@@ -13,8 +13,6 @@ import {
 import { type McpResponse } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 
-const REST_TOOL_DEFS = [...STANDARD_TOOL_DEFS, toolDefRawLiveApi];
-
 interface RestApiConfig {
   tools: string[];
 }
@@ -31,18 +29,24 @@ export function registerRestApiRoutes(
   getConfig: () => RestApiConfig,
   callLiveApi: CallLiveApiFunction,
 ): void {
+  // Dev-only tool: gated by env var, matches MCP server gating in create-mcp-server.ts
+  const rawLiveApiEnabled = process.env.ENABLE_RAW_LIVE_API === "true";
+  const restToolDefs = rawLiveApiEnabled
+    ? [...STANDARD_TOOL_DEFS, toolDefRawLiveApi]
+    : [...STANDARD_TOOL_DEFS];
+
   app.get("/api/tools", (_req: Request, res: Response): void => {
     const enabledSet = new Set(getConfig().tools);
 
-    const tools = REST_TOOL_DEFS.filter(
-      (td) => enabledSet.has(td.toolName) || td === toolDefRawLiveApi,
-    ).map((td) => ({
-      name: td.toolName,
-      title: td.toolOptions.title,
-      description: td.toolOptions.description,
-      annotations: td.toolOptions.annotations,
-      inputSchema: z.toJSONSchema(z.object(td.toolOptions.inputSchema)),
-    }));
+    const tools = restToolDefs
+      .filter((td) => enabledSet.has(td.toolName) || td === toolDefRawLiveApi)
+      .map((td) => ({
+        name: td.toolName,
+        title: td.toolOptions.title,
+        description: td.toolOptions.description,
+        annotations: td.toolOptions.annotations,
+        inputSchema: z.toJSONSchema(z.object(td.toolOptions.inputSchema)),
+      }));
 
     res.json({ tools });
   });
@@ -56,7 +60,7 @@ export function registerRestApiRoutes(
       const { toolName } = req.params;
       const enabledSet = new Set(getConfig().tools);
 
-      const toolDef = REST_TOOL_DEFS.find((td) => td.toolName === toolName);
+      const toolDef = restToolDefs.find((td) => td.toolName === toolName);
       const isRawTool = toolDef === toolDefRawLiveApi;
 
       if (!toolDef || (!isRawTool && !enabledSet.has(toolName))) {
