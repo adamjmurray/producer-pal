@@ -180,6 +180,27 @@ describe("useMcpConnection", () => {
     });
   });
 
+  it("closes the client even when listTools throws", async () => {
+    mockListTools.mockRejectedValue(new Error("listTools failed"));
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("error");
+    });
+
+    expect(mockClose).toHaveBeenCalledOnce();
+  });
+
+  it("swallows close() failures so they don't leak as the user-facing error", async () => {
+    mockClose.mockRejectedValue(new Error("close failed"));
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("connected");
+    });
+    expect(result.current.mcpError).toBe(null);
+  });
+
   it("shows CORS hint when on Vite dev server and server is reachable", async () => {
     mockConnect.mockRejectedValue(new Error("Failed to fetch"));
     mockIsViteDevServer.mockReturnValue(true);

@@ -41,14 +41,13 @@ export function useMcpConnection(): UseMcpConnectionReturn {
     setMcpTools(null);
 
     const mcpUrl = getMcpUrl();
+    const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
+    const client = new Client({
+      name: "producer-pal-chat-ui-test",
+      version: "1.0.0",
+    });
 
     try {
-      const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
-      const client = new Client({
-        name: "producer-pal-chat-ui-test",
-        version: "1.0.0",
-      });
-
       await client.connect(transport);
       const { tools } = await client.listTools();
 
@@ -59,7 +58,6 @@ export function useMcpConnection(): UseMcpConnectionReturn {
           description: tool.description,
         })),
       );
-      await client.close();
       setMcpStatus("connected");
     } catch (error: unknown) {
       setMcpStatus("error");
@@ -71,6 +69,14 @@ export function useMcpConnection(): UseMcpConnectionReturn {
         );
       } else {
         setMcpError(message);
+      }
+    } finally {
+      // Always close the client. If connect() succeeded but listTools() threw,
+      // skipping close() leaks the underlying HTTP connection.
+      try {
+        await client.close();
+      } catch {
+        // close() can throw if connect() never succeeded; we don't care here.
       }
     }
   }, []);
