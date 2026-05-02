@@ -56,6 +56,7 @@ export class StdioHttpBridge {
   private mcpServer: Server | null = null;
   private httpClient: Client | null = null;
   private isConnected = false;
+  private connectionPromise: Promise<void> | null = null;
   private fallbackTools: { tools: FallbackTool[] };
   private smallModelMode: boolean;
 
@@ -124,6 +125,23 @@ Tell the user to check ${SETUP_URL} for configuration help.
       return;
     }
 
+    // If a connection is already in flight, wait for it instead of starting
+    // a second one. Prevents duplicate Client instantiations when concurrent
+    // tools/list and tools/call requests arrive before the first connect resolves.
+    if (this.connectionPromise) {
+      return await this.connectionPromise;
+    }
+
+    this.connectionPromise = this._doConnect();
+
+    try {
+      await this.connectionPromise;
+    } finally {
+      this.connectionPromise = null;
+    }
+  }
+
+  private async _doConnect(): Promise<void> {
     // Clean up old client if it exists
     if (this.httpClient) {
       try {
