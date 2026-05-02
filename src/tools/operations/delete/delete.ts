@@ -106,8 +106,9 @@ export function deleteObject(
   }
 
   for (const { id, object } of objectsToDelete) {
-    deleteObjectByType(type, id, object);
-    deletedObjects.push({ id, type, deleted: true });
+    const deleted = deleteObjectByType(type, id, object);
+
+    deletedObjects.push({ id, type, deleted });
   }
 
   return unwrapSingleResult(deletedObjects);
@@ -117,8 +118,9 @@ export function deleteObject(
  * Deletes a track by its index
  * @param id - The object ID
  * @param object - The object to delete
+ * @returns true if deleted, false if skipped with warning
  */
-function deleteTrackObject(id: string, object: LiveAPI): void {
+function deleteTrackObject(id: string, object: LiveAPI): boolean {
   // Check for return track first
   const returnMatch = object.path.match(/live_set return_tracks (\d+)/);
 
@@ -128,83 +130,102 @@ function deleteTrackObject(id: string, object: LiveAPI): void {
 
     liveSet.call("delete_return_track", returnTrackIndex);
 
-    return;
+    return true;
   }
 
   // Regular track
   const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
 
   if (Number.isNaN(trackIndex)) {
-    throw new Error(
-      `delete failed: no track index for id "${id}" (path="${object.path}")`,
+    console.warn(
+      `delete: no track index for id "${id}" (path="${object.path}"), skipping`,
     );
+
+    return false;
   }
 
   const hostTrackIndex = getHostTrackIndex();
 
   if (trackIndex === hostTrackIndex) {
-    throw new Error(
-      "delete failed: cannot delete track hosting the Producer Pal device",
+    console.warn(
+      "delete: cannot delete track hosting the Producer Pal device, skipping",
     );
+
+    return false;
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("delete_track", trackIndex);
+
+  return true;
 }
 
 /**
  * Deletes a scene by its index
  * @param id - The object ID
  * @param object - The object to delete
+ * @returns true if deleted, false if skipped with warning
  */
-function deleteSceneObject(id: string, object: LiveAPI): void {
+function deleteSceneObject(id: string, object: LiveAPI): boolean {
   const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
 
   if (Number.isNaN(sceneIndex)) {
-    throw new Error(
-      `delete failed: no scene index for id "${id}" (path="${object.path}")`,
+    console.warn(
+      `delete: no scene index for id "${id}" (path="${object.path}"), skipping`,
     );
+
+    return false;
   }
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
   liveSet.call("delete_scene", sceneIndex);
+
+  return true;
 }
 
 /**
  * Deletes a clip by its track and clip ID
  * @param id - The object ID
  * @param object - The object to delete
+ * @returns true if deleted, false if skipped with warning
  */
-function deleteClipObject(id: string, object: LiveAPI): void {
+function deleteClipObject(id: string, object: LiveAPI): boolean {
   const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
 
   if (!trackIndex) {
-    throw new Error(
-      `delete failed: no track index for id "${id}" (path="${object.path}")`,
+    console.warn(
+      `delete: no track index for id "${id}" (path="${object.path}"), skipping`,
     );
+
+    return false;
   }
 
   const track = LiveAPI.from(livePath.track(Number(trackIndex)));
 
   track.call("delete_clip", toLiveApiId(object.id));
+
+  return true;
 }
 
 /**
  * Deletes a device by its ID via the parent (track or chain)
  * @param id - The object ID
  * @param object - The object to delete
+ * @returns true if deleted, false if skipped with warning
  */
-function deleteDeviceObject(id: string, object: LiveAPI): void {
+function deleteDeviceObject(id: string, object: LiveAPI): boolean {
   // Find the LAST "devices X" in the path to handle nested devices
   // e.g., "live_set tracks 1 devices 0 chains 0 devices 1" -> last match is "devices 1"
   const deviceMatches = [...object.path.matchAll(/devices (\d+)/g)];
 
   if (deviceMatches.length === 0) {
-    throw new Error(
-      `delete failed: could not find device index in path "${object.path}"`,
+    console.warn(
+      `delete: could not find device index in path "${object.path}", skipping`,
     );
+
+    return false;
   }
 
   // We know deviceMatches has at least one element from the check above
@@ -215,25 +236,32 @@ function deleteDeviceObject(id: string, object: LiveAPI): void {
   const parentPath = object.path.substring(0, lastMatch.index).trim();
 
   if (!parentPath) {
-    throw new Error(
-      `delete failed: could not extract parent path from device "${id}" (path="${object.path}")`,
+    console.warn(
+      `delete: could not extract parent path from device "${id}" (path="${object.path}"), skipping`,
     );
+
+    return false;
   }
 
   const parent = LiveAPI.from(parentPath);
 
   parent.call("delete_device", deviceIndex);
+
+  return true;
 }
 
 /**
  * Deletes (clears) a drum pad by removing all its chains
  * @param _id - The object ID (unused, kept for consistent signature)
  * @param object - The object to delete
+ * @returns true (drum-pad clear has no validation failure path)
  */
-function deleteDrumPadObject(_id: string, object: LiveAPI): void {
+function deleteDrumPadObject(_id: string, object: LiveAPI): boolean {
   const drumPad = LiveAPI.from(toLiveApiId(object.id));
 
   drumPad.call("delete_all_chains");
+
+  return true;
 }
 
 /**
@@ -241,19 +269,20 @@ function deleteDrumPadObject(_id: string, object: LiveAPI): void {
  * @param type - The type of object ("track", "scene", "clip", "device", or "drum-pad")
  * @param id - The object ID
  * @param object - The object to delete
+ * @returns true if deleted, false if skipped with a warning
  */
-function deleteObjectByType(type: string, id: string, object: LiveAPI): void {
-  if (type === "track") {
-    deleteTrackObject(id, object);
-  } else if (type === "scene") {
-    deleteSceneObject(id, object);
-  } else if (type === "clip") {
-    deleteClipObject(id, object);
-  } else if (type === "device") {
-    deleteDeviceObject(id, object);
-  } else if (type === "drum-pad") {
-    deleteDrumPadObject(id, object);
-  }
+function deleteObjectByType(
+  type: string,
+  id: string,
+  object: LiveAPI,
+): boolean {
+  if (type === "track") return deleteTrackObject(id, object);
+  if (type === "scene") return deleteSceneObject(id, object);
+  if (type === "clip") return deleteClipObject(id, object);
+  if (type === "device") return deleteDeviceObject(id, object);
+  if (type === "drum-pad") return deleteDrumPadObject(id, object);
+
+  return false;
 }
 
 /**
