@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { execSync } from "node:child_process";
@@ -53,7 +54,14 @@ mkdirSync(releaseDir);
 
 // Build
 console.log("Building desktop extension...");
-execSync("npm run build", { cwd: rootDir, stdio: "inherit" });
+
+try {
+  execSync("npm run build", { cwd: rootDir, stdio: "inherit" });
+} catch (error) {
+  console.error(`\n❌ Build failed: ${String(error)}`);
+  console.error("Release directory was created but contains no artifacts.");
+  process.exit(1);
+}
 
 // Copy .mcpb file
 const dxtSource = join(rootDir, "claude-desktop-extension/Producer_Pal.mcpb");
