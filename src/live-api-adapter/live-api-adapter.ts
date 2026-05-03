@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Entry point for the tool implementations with direct Live API access
@@ -98,7 +99,7 @@ function buildRequestContext(incoming: Partial<ToolContext>): ToolContext {
 function initHoldingArea(ctx: ToolContext): void {
   const liveSet = LiveAPI.from("live_set");
 
-  ctx.holdingAreaStartBeats = liveSet.get("song_length")[0] as number;
+  ctx.holdingAreaStartBeats = liveSet.getProperty("song_length") as number;
 }
 
 /*
