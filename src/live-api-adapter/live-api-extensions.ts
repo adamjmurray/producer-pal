@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
@@ -156,7 +157,7 @@ if (typeof LiveAPI !== "undefined") {
 
   LiveAPI.prototype.getColor = function (this: LiveAPI): string | null {
     const colorValue = this.getProperty("color") as number | undefined;
-    if (colorValue === undefined) {
+    if (colorValue == null) {
       return null;
     }
 

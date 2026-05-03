@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -124,7 +125,7 @@ function applyMonitoringState(
     [MONITORING_STATE.OFF]: LIVE_API_MONITORING_STATE_OFF,
   }[monitoringState];
 
-  if (monitoringValue === undefined) {
+  if (monitoringValue == null) {
     console.warn(
       `invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
     );

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
@@ -106,7 +107,7 @@ export function readClip(
     includeWarp,
   } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
 
-  if (clipId === null && (trackIndex === null || sceneIndex === null)) {
+  if (clipId == null && (trackIndex == null || sceneIndex == null)) {
     throw new Error("Either clipId or slot must be provided");
   }
 
