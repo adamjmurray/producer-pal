@@ -132,7 +132,7 @@
     "@types/node": "25.6.0",
     "@typescript-eslint/eslint-plugin": "8.59.0",
     "@typescript-eslint/parser": "8.59.0",
-    "@vitest/coverage-v8": "4.1.4",
+    "@vitest/coverage-v8": "4.1.5",
     "@vitest/eslint-plugin": "1.6.16",
     "chokidar-cli": "3.0.0",
     "commander": "14.0.3",
@@ -156,7 +156,7 @@
     "vite": "8.0.8",
     "vite-plugin-singlefile": "2.3.3",
     "vitepress": "1.6.4",
-    "vitest": "4.1.4"
+    "vitest": "4.1.5"
   },
   "overrides": {
     "eslint-plugin-react-hooks": {
