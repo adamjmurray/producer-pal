@@ -86,7 +86,7 @@ function callLiveApi(tool: string, args: object): Promise<McpResponse> {
             msg.length > 0
               ? msg
               : `Error sending message to ${tool}: ${String(error)}`,
-          ) as McpResponse,
+          ),
         );
       },
     );
@@ -100,7 +100,7 @@ function callLiveApi(tool: string, args: object): Promise<McpResponse> {
           resolve(
             formatErrorResponse(
               `Tool call '${tool}' timed out after ${timeoutMs}ms`,
-            ) as McpResponse,
+            ),
           );
         }
       }, timeoutMs),
@@ -180,7 +180,7 @@ function handleLiveApiResult(...args: unknown[]): void {
       resolve(
         formatErrorResponse(
           `Error parsing tool result from Max: ${String(error)}`,
-        ) as McpResponse,
+        ),
       );
     }
   } else {

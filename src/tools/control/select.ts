@@ -7,7 +7,6 @@ import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
 import { toLiveApiView } from "#src/tools/shared/utils.ts";
 import {
-  type TrackCategory,
   applyDetailView,
   updateClipSelection,
   updateClipSlotSelection,
@@ -79,7 +78,7 @@ export function select(
 ): SelectResult {
   const resolved = resolveArgs(args);
   const { view, trackType, trackIndex, devicePath, detailView } = args;
-  const category = (trackType ?? "regular") as TrackCategory;
+  const category = trackType ?? "regular";
   const { trackId, sceneId, clipId, deviceId, parsedClipSlot } = resolved;
 
   validateParameters({

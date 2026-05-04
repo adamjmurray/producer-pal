@@ -152,7 +152,7 @@ function buildTrackInfo(
 ): SelectResult["selectedTrack"] | undefined {
   if (!track.exists()) return undefined;
 
-  const category = track.category as TrackCategory | null;
+  const category = track.category;
 
   if (category == null) return undefined;
 
