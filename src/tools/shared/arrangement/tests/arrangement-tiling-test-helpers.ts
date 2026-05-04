@@ -170,7 +170,7 @@ export function setupTrackWithQueuedMethods(
       method,
       createQueuedMethod(values, () => null),
     ]),
-  ) as Record<string, (...args: unknown[]) => unknown>;
+  );
 
   setupTrack(trackIndex, { methods });
 

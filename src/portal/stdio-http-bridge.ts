@@ -288,7 +288,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
           // Check if error has code property (Node.js/MCP errors)
           const errorCode =
             error && typeof error === "object" && "code" in error
-              ? (error as { code: unknown }).code
+              ? error.code
               : undefined;
 
           // Check if this is an MCP protocol error (has numeric code) vs connectivity error

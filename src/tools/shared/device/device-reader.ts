@@ -18,7 +18,6 @@ import {
   readABCompare,
   readDeviceParameters,
   readMacroVariations,
-  type ProcessChainsOptions,
 } from "./helpers/device-reader-helpers.ts";
 import { extractDevicePath } from "./helpers/path/device-path-helpers.ts";
 
@@ -264,7 +263,7 @@ export function readDevice(
     maxDepth,
     readDeviceFn: readDevice,
     devicePath: path ?? undefined,
-  } as ProcessChainsOptions);
+  });
 
   if (includeParams) {
     deviceInfo.parameters = readDeviceParameters(device, {

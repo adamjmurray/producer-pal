@@ -80,7 +80,7 @@ export const log = (...args: unknown[]): void => {
  */
 export const error = (...args: unknown[]): void => {
   if (typeof globalThis.error === "function") {
-    (globalThis.error as (...a: unknown[]) => void)(...args.map(str), "\n");
+    globalThis.error(...args.map(str), "\n");
   } else {
     // Fallback for test environment
     console.error(...args.map(str));

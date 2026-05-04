@@ -52,5 +52,5 @@ export function getColorForIndex(
   if (color == null) return;
   if (parsedColors == null) return color;
 
-  return parsedColors[index % parsedColors.length] as string;
+  return parsedColors[index % parsedColors.length];
 }

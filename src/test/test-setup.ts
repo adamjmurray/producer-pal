@@ -39,10 +39,10 @@ class Max {
       Max.handlers.set(message, handler);
 
       if (message === "mcp_response") {
-        Max.mcpResponseHandler = handler as McpResponseHandler;
+        Max.mcpResponseHandler = handler;
 
         // Save the first handler registered (from createExpressApp) as the default
-        Max.defaultMcpResponseHandler ??= handler as McpResponseHandler;
+        Max.defaultMcpResponseHandler ??= handler;
       }
     },
   );
