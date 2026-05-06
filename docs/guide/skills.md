@@ -1,18 +1,30 @@
 ---
-title: Agent Skills
+title: Ableton Live Agent Skill
 description:
-  Use Producer Pal as a portable Agent Skill across Claude Code, Codex CLI, and
-  Gemini CLI — control Ableton Live from any coding agent that supports the
-  SKILL.md / Agent Skills format.
+  Producer Pal ships a portable Agent Skill for Ableton Live — works as a Claude
+  Skill, Codex Skill, Gemini Skill, or any coding agent that supports the
+  SKILL.md convention. AI music production from any agent runtime, no MCP client
+  required.
 head:
   - - meta
     - name: keywords
       content:
-        Producer Pal skill, Agent Skills, SKILL.md, Claude Code skill, Codex
-        skill, Gemini CLI skill, Ableton Live skill
+        Agent Skills, Coding Agent Skills, Claude Skills, Claude Code Skills,
+        Codex Skills, Codex CLI Skills, Gemini Skills, Gemini CLI Skills,
+        SKILL.md, Ableton Live Agent Skill, Ableton Skill, Ableton Live skill,
+        Ableton AI agent, AI music production skill, Producer Pal skill
+  - - meta
+    - property: og:title
+      content: Ableton Live Agent Skill — Producer Pal
+  - - meta
+    - property: og:description
+      content:
+        Drop-in Agent Skill for Ableton Live. Works with Claude Code, Codex CLI,
+        Gemini CLI, and any coding agent that supports the SKILL.md convention —
+        no MCP client required.
 ---
 
-# Agent Skills
+# Ableton Live Agent Skill
 
 Producer Pal ships a portable Agent Skill that lets coding agents control
 Ableton Live through Producer Pal's [REST API](/guide/rest-api) — no MCP client

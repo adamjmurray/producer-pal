@@ -166,9 +166,14 @@ tracks, writing MIDI and audio clips, tweaking instruments and effects, and
 building arrangements.
 
 It works with any MCP-compatible AI, including Claude, Gemini, ChatGPT, Mistral,
-and local models via Ollama or LM Studio. Producer Pal is free, open-source
-(GPL-3.0), and actively developed in the open with regular updates for the
-latest Ableton Live features.
+and local models via Ollama or LM Studio. For developers and coding agents,
+Producer Pal also exposes a [REST API](/guide/rest-api) and a portable
+[Agent Skill](/guide/skills) that drops into Claude Code, Codex CLI, Gemini CLI,
+and any runtime that follows the SKILL.md convention — three integration paths
+from the same Max for Live device.
+
+Producer Pal is free, open-source (GPL-3.0), and actively developed in the open
+with regular updates for the latest Ableton Live features.
 
 ## Support
 
