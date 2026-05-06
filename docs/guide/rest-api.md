@@ -66,6 +66,63 @@ Warnings from the Live API appear inline in the `result` text, prefixed with
 if any individual operation fails or is inapplicable (e.g. setting quantize on
 an audio clip), it emits a warning and continues with the rest.
 
+### Response format: `?format=json`
+
+When `?format` is omitted, the server uses the global compact-output setting
+configured on the **Setup** tab of the Producer Pal Max for Live device. By
+default that setting is on, so `result` is a string in a compact
+JavaScript-literal syntax (unquoted keys, no whitespace) optimized for LLM token
+efficiency — the same format MCP clients receive.
+
+For scripts that want structured data (no `JSON.parse` or `jq | fromjson`
+gymnastics), append `?format=json` to the request — the server parses on your
+behalf and the wrapper shape changes:
+
+```bash
+# Compact JS-literal (default) — result is a string, warnings are inline
+curl -X POST http://localhost:3350/api/tools/ppal-read-live-set \
+  -H 'Content-Type: application/json' -d '{}'
+# → {"result":"{tempo:120,timeSignature:\"4/4\",...}","isError":false}
+
+# JSON — result is the parsed value; warnings are a separate string array
+curl -X POST 'http://localhost:3350/api/tools/ppal-read-live-set?format=json' \
+  -H 'Content-Type: application/json' -d '{}'
+# → {"result":{"tempo":120,"timeSignature":"4/4",...},"isError":false}
+```
+
+When `?format=json` is set:
+
+- **`result`** is the parsed value (object, array, number, string, etc.) — not a
+  JSON-encoded string. Access fields directly: `body.result.tempo`.
+- **`warnings`** is a `string[]` (with the `WARNING: ` prefix stripped), present
+  only when the tool emitted any. In compact mode, warnings remain inline in
+  `result` for backwards compatibility.
+- On **error** (`isError: true`), `result` is still a plain error string
+  regardless of format — error messages are not JSON.
+
+Pass `?format=compact` or `?format=json` to force a specific format regardless
+of the device-level setting. Other values return **400**. Per-request format
+overrides apply to REST only and never affect MCP clients.
+
+### Per-request timeout: `?timeoutMs=N`
+
+Override the configured tool-call timeout for a single request. Useful for
+long-running operations (e.g. bulk clip generation) that need more headroom than
+the global timeout, or for short polling calls that should fail fast.
+
+```bash
+curl -X POST 'http://localhost:3350/api/tools/ppal-create-clip?timeoutMs=10000' \
+  -H 'Content-Type: application/json' \
+  -d '{"slot": "0/0", "length": "16:0", "notes": "..."}'
+```
+
+`timeoutMs` must be a positive integer up to **60000** (60 seconds). Other
+values return **400**. Combinable with `?format=`:
+
+```
+POST /api/tools/{name}?format=json&timeoutMs=10000
+```
+
 ## Quick Start with curl
 
 ```bash

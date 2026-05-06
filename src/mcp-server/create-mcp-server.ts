@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -26,10 +27,12 @@ import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
 import { toolDefConnect } from "#src/tools/workflow/connect.def.ts";
 import { toolDefContext } from "#src/tools/workflow/context.def.ts";
+import { type RequestOverrides } from "./request-overrides.ts";
 
 export type CallLiveApiFunction = (
   tool: string,
   args: object,
+  overrides?: RequestOverrides,
 ) => Promise<object>;
 
 export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [

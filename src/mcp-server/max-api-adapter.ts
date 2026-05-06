@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Adapter for communication between Node.js MCP server and Max v8 environment
@@ -14,6 +15,10 @@ import {
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import * as console from "./node-for-max-logger.ts";
+import { type RequestOverrides } from "./request-overrides.ts";
+
+// Re-export for convenience so existing consumers can keep importing from here
+export { MAX_TIMEOUT_MS, type RequestOverrides } from "./request-overrides.ts";
 
 export interface McpResponseContent {
   type: string;
@@ -55,11 +60,22 @@ Max.addHandler("timeoutMs", (input: unknown) => {
  *
  * @param tool - Tool name to call
  * @param args - Arguments for the tool
+ * @param overrides - Optional per-request context overrides (e.g. used by the
+ *   REST `?format=` and `?timeoutMs=` query params)
  * @returns Tool execution result
  */
-function callLiveApi(tool: string, args: object): Promise<McpResponse> {
+function callLiveApi(
+  tool: string,
+  args: object,
+  overrides?: RequestOverrides,
+): Promise<McpResponse> {
   const argsJSON = JSON.stringify(args);
-  const contextJSON = JSON.stringify({ silenceWavPath, timeoutMs });
+  const effectiveTimeoutMs = overrides?.timeoutMs ?? timeoutMs;
+  const contextJSON = JSON.stringify({
+    timeoutMs,
+    ...overrides,
+    silenceWavPath,
+  });
   const requestId = crypto.randomUUID();
 
   console.info(
@@ -99,11 +115,11 @@ function callLiveApi(tool: string, args: object): Promise<McpResponse> {
           // Always resolve (not reject) with the standard error format
           resolve(
             formatErrorResponse(
-              `Tool call '${tool}' timed out after ${timeoutMs}ms`,
+              `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms`,
             ),
           );
         }
-      }, timeoutMs),
+      }, effectiveTimeoutMs),
     });
   });
 }

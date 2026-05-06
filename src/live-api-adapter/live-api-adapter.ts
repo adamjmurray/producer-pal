@@ -318,8 +318,12 @@ export async function mcp_request(
       // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
       const output = (await callTool(tool, args, requestContext)) as object;
 
+      // Per-request override (REST ?format=json|compact) takes precedence
+      // over the global compactOutput config.
+      const useCompact = requestContext.compactOutput ?? isCompactOutputEnabled;
+
       result = formatSuccessResponse(
-        isCompactOutputEnabled ? toCompactJSLiteral(output) : output,
+        useCompact ? toCompactJSLiteral(output) : output,
       );
     } catch (toolError) {
       const message =
