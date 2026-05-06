@@ -141,6 +141,26 @@ Provides:
 - Tool testing interface
 - Performance metrics
 
+### CORS and the streamable-http transport
+
+The streamable-http URL above is a browser-origin fetch from the inspector UI to
+the device's MCP server, so it requires CORS headers on `localhost:3350`. Dev
+builds (`npm run build:dev`, `npm run build:debug`, and `npm run dev`) already
+set `ENABLE_DEV_CORS=true`, so this just works during normal development.
+
+Release builds (`npm run build`) intentionally omit CORS headers — production
+users run the chat UI same-origin and shouldn't expose `localhost:3350` to
+arbitrary browser tabs. To debug a release build with the inspector, point it at
+the stdio portal instead:
+
+```bash
+npx @modelcontextprotocol/inspector node /absolute/path/to/producer-pal/npm/producer-pal-portal.js
+```
+
+The portal is a Node-side stdio→HTTP bridge to `localhost:3350/mcp`, so it
+sidesteps CORS entirely (server-to-server fetch, no browser involved). Use an
+absolute path — `npx` resolves relative paths against its own cwd.
+
 ## Build Warnings
 
 ### Expected Warnings
