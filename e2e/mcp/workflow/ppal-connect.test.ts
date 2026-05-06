@@ -38,6 +38,7 @@ describe("ppal-connect", () => {
     expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
     expect(parsed.abletonLiveVersion).toBeDefined();
     expect(typeof parsed.abletonLiveVersion).toBe("string");
+    expect(parsed.abletonLiveVersion).toMatch(/^\d+\.\d+(\.\d+)?$/);
 
     // Live Set info
     expect(parsed.liveSet).toBeDefined();

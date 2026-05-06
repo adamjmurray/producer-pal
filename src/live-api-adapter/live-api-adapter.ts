@@ -356,9 +356,10 @@ outlet(0, "started");
  * Called by the Max patch after the device is fully loaded (LiveAPI is not available at top-level).
  */
 export function checkLiveVersion(): void {
-  const liveVersion = LiveAPI.from("live_app").call(
-    "get_version_string",
-  ) as string;
+  // Live 12.4 returns "12.4" which Max V8 coerces to a number; force string.
+  const liveVersion = String(
+    LiveAPI.from("live_app").call("get_version_string"),
+  );
 
   if (isNewerVersion(liveVersion, MIN_LIVE_VERSION)) {
     outlet(0, "min_live_version_not_met", liveVersion, MIN_LIVE_VERSION);

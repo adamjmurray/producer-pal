@@ -49,7 +49,8 @@ export function connect(
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
-  const abletonLiveVersion = liveApp.call("get_version_string") as string;
+  // Live 12.4 returns "12.4" which Max V8 coerces to a number; force string.
+  const abletonLiveVersion = String(liveApp.call("get_version_string"));
 
   // Build liveSet overview matching readLiveSet default response
   const liveSetName = liveSet.getProperty("name");
