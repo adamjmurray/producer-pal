@@ -3,15 +3,19 @@
 """Producer Pal REST API client (Python, no dependencies).
 
 Usage:
-  python producer_pal.py <tool-name> [json-args] [options]
-  python producer_pal.py --list-tools [options]
+  python ppal.py --list-tools [options]
+  python ppal.py <tool-name> [json-args] [options]
+
+Options:
+  --url <baseUrl>      override Producer Pal URL (default http://localhost:3350)
+  --timeout-ms <ms>    per-request timeout (1-60000)
 
 Examples:
-  python producer_pal.py --list-tools
-  python producer_pal.py ppal-read-live-set
-  python producer_pal.py ppal-read-track '{"trackIndex": 0}'
-  python producer_pal.py --list-tools | jq -r '.tools[].name'
-  python producer_pal.py ppal-read-live-set | jq .result.tempo
+  python ppal.py --list-tools
+  python ppal.py ppal-read-live-set
+  python ppal.py ppal-read-track '{"trackIndex": 0}'
+  python ppal.py --list-tools | jq -r '.tools[].name'
+  python ppal.py ppal-read-live-set | jq .result.tempo
 """
 
 import argparse
@@ -32,15 +36,13 @@ def list_tools(base_url):
         return json.loads(res.read())
 
 
-def call_tool(base_url, name, args, *, format, timeout_ms=None):
+def call_tool(base_url, name, args, *, timeout_ms=None):
     """Call a Producer Pal tool by name with the given args.
 
-    In format="json" (the default), `result` is a parsed value (dict/list/etc.)
-    and any warnings are surfaced as a separate `warnings` list. In
-    format="compact", `result` is a token-efficient JS-literal string with
-    warnings inlined as `WARNING: ...` lines.
+    Always uses `?format=json` so `result` is a parsed value (dict/list/etc.)
+    and warnings are surfaced as a separate `warnings` list.
     """
-    params = {"format": format}
+    params = {"format": "json"}
     if timeout_ms is not None:
         params["timeoutMs"] = str(timeout_ms)
 
@@ -62,9 +64,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  python producer_pal.py --list-tools\n"
-            "  python producer_pal.py ppal-read-live-set\n"
-            '  python producer_pal.py ppal-read-track \'{"trackIndex": 0}\''
+            "  python ppal.py --list-tools\n"
+            "  python ppal.py ppal-read-live-set\n"
+            '  python ppal.py ppal-read-track \'{"trackIndex": 0}\''
         ),
     )
     parser.add_argument("tool", nargs="?", help="Tool name to call")
@@ -75,7 +77,6 @@ def main():
         help="Tool arguments as a JSON object (default: {})",
     )
     parser.add_argument("--url", default="http://localhost:3350")
-    parser.add_argument("--format", choices=["json", "compact"], default="json")
     parser.add_argument("--timeout-ms", type=int, default=None, dest="timeout_ms")
     parser.add_argument("--list-tools", action="store_true", dest="list_tools")
     parsed = parser.parse_args()
@@ -99,7 +100,6 @@ def main():
         parsed.url,
         parsed.tool,
         tool_args,
-        format=parsed.format,
         timeout_ms=parsed.timeout_ms,
     )
     if response.get("isError"):

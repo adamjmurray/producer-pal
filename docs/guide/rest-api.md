@@ -173,20 +173,25 @@ curl http://localhost:3350/api/tools
 
 ## Sample Scripts
 
-These scripts have **no dependencies** — they use only built-in HTTP libraries.
-Copy and modify them for your own integrations.
+Zero-dependency client examples — they use only built-in HTTP libraries. Copy
+and modify them for your own integrations.
 
 ### Node.js
 
-Requires Node.js 18+ (for built-in `fetch`).
+The Node.js client doubles as the Producer Pal [Agent Skill](/guide/skills)
+script — see [The bundled script](/guide/skills#the-bundled-script) for the full
+source and CLI reference. It works with Claude Code, Codex CLI, Gemini CLI, and
+any other agent runtime that reads the `SKILL.md` convention.
 
-<<< ../../examples/rest-api/producer-pal.mjs{js}
+- Source:
+  [`examples/skills/producer-pal/ppal.mjs`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal/ppal.mjs)
+- Requires Node.js 18+ (for built-in `fetch`)
 
 ### Python
 
 Works with Python 3.6+ (no dependencies).
 
-<<< ../../examples/rest-api/producer_pal.py
+<<< ../../examples/rest-api/ppal.py
 
 ## Tool Reference
 

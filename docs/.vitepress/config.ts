@@ -115,6 +115,7 @@ export default defineConfig({
           { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Usage Examples", link: "/guide/examples" },
           { text: "REST API", link: "/guide/rest-api" },
+          { text: "Agent Skills", link: "/guide/skills" },
         ],
       },
       {
