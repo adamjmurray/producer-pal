@@ -149,6 +149,11 @@ export function useExecuteWithRetry<
             }, delayMs);
             signal?.addEventListener("abort", onAbort, { once: true });
           });
+          // Clear the indicator now that the wait is over. If the next attempt
+          // also rate-limits, the catch block above will re-set it. Without
+          // this, the indicator stays visible during the entire retry response
+          // (thinking, tool calls, streaming) until the stream fully completes.
+          setRateLimitState(null);
           attempt++;
         }
       }

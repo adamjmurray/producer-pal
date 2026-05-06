@@ -675,6 +675,80 @@ describe("useChat", () => {
       expect(receivedMessages).toStrictEqual(["Hello", "continue"]);
     });
 
+    it("clears rateLimitState before the retry attempt streams its response", async () => {
+      // After the retry delay ends and the next attempt begins streaming, the
+      // indicator must disappear immediately — not wait for the entire stream
+      // (which can include long thinking/tool phases) to complete.
+      // We use a gate Promise to pause the second sendMessage mid-stream,
+      // then assert the indicator is already cleared while the stream is
+      // still in flight.
+      let callCount = 0;
+      let resolveGate: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        resolveGate = resolve;
+      });
+
+      const rateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.sendMessage = async function* (
+            message: string,
+            _signal: AbortSignal,
+          ) {
+            callCount++;
+
+            if (callCount === 1) {
+              throw new Error("Resource has been exhausted");
+            }
+
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+            // Pause mid-stream — simulates a long-running response (thinking,
+            // tool calls). The rate-limit indicator must already be hidden
+            // by this point, not wait for the full stream to finish.
+            await gate;
+            client.chatHistory.push({
+              role: "assistant",
+              content: "ok",
+            });
+            yield [...client.chatHistory];
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
+      );
+
+      // Kick off send without awaiting the full completion
+      let sendDone = false;
+      const sendPromise = result.current.handleSend("Hello").then(() => {
+        sendDone = true;
+      });
+
+      // Drain timers/microtasks until the second sendMessage has yielded
+      // its first chunk and is suspended on the gate. The retry delay
+      // mock is 200 ms, plus a small margin for state to settle.
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 350));
+      });
+
+      expect(sendDone).toBe(false);
+      expect(result.current.rateLimitState).toBeNull();
+
+      // Release the gate and let send finish
+      resolveGate();
+      await act(async () => {
+        await sendPromise;
+      });
+
+      expect(result.current.rateLimitState).toBeNull();
+    });
+
     it("cancels retry when stopResponse is called during retry delay", async () => {
       // Create an adapter that always throws rate limit errors
       const alwaysRateLimitAdapter = {
