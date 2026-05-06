@@ -247,6 +247,36 @@ describe("createShortenedClipInHolding", () => {
       holdingClip: expect.any(MockLiveAPI),
     });
   });
+
+  it("throws when dup-to-holding silently fails", () => {
+    // Without protection, the partial-tile flow would silently use id 0,
+    // producing a missing tile that downstream code treats as real.
+    const sourceClip = setupArrangementClip("100", 0, {
+      loop_start: 0,
+      loop_end: 16,
+    });
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [["id", 0]],
+    });
+
+    expect(() =>
+      createShortenedClipInHolding(
+        sourceClip,
+        track,
+        8,
+        1000,
+        true,
+        mockContext,
+      ),
+    ).toThrow(/duplicate_clip_to_arrangement returned no clip/);
+
+    // Trim step should never run because the holding copy was not created.
+    expect(track.call).not.toHaveBeenCalledWith(
+      "create_midi_clip",
+      expect.anything(),
+      expect.anything(),
+    );
+  });
 });
 
 describe("moveClipFromHolding", () => {
@@ -284,6 +314,22 @@ describe("moveClipFromHolding", () => {
       1234,
     );
     expect(track.call).toHaveBeenNthCalledWith(2, "delete_clip", "id 777");
+  });
+
+  it("throws and leaves holding clip intact when final dup silently fails", () => {
+    // If the final dup returns ["id", 0], deleting the holding copy would
+    // destroy the only surviving copy of the source content. Verify the
+    // throw fires before the holding cleanup runs.
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [["id", 0]],
+      delete_clip: [null],
+    });
+
+    expect(() =>
+      moveClipFromHolding("200", track, 500, true, mockContext),
+    ).toThrow(/duplicate_clip_to_arrangement returned no clip/);
+
+    expect(track.call).not.toHaveBeenCalledWith("delete_clip", "id 200");
   });
 });
 

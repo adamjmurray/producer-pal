@@ -1,7 +1,15 @@
+---
+title: Installation Guide
+description:
+  How to install Producer Pal — the Ableton MCP server that brings AI to Ableton
+  Live. Setup guides for Claude, Gemini, ChatGPT, Ollama, and more.
+---
+
 # Installation Guide
 
-Producer Pal is free and open source. Choose your preferred AI platform to get
-started. Note that some AI services charge for usage.
+Producer Pal is a free, open-source Ableton MCP server that brings AI to Ableton
+Live. Choose your preferred AI platform to get started. Note that some AI
+services charge for usage.
 
 ::: tip Prerequisites
 

@@ -2,7 +2,8 @@
 
 **Control Ableton Live with words**
 
-AI-powered assistant for music production. Works with Claude, Gemini, ChatGPT,
+Producer Pal is an **Ableton MCP** server that brings **AI to Ableton Live**. An
+AI-powered assistant for music production — works with Claude, Gemini, ChatGPT,
 Ollama, and more.
 
 <p align="center"><b>📖 <a href="https://producer-pal.org">producer-pal.org</a></b></p>

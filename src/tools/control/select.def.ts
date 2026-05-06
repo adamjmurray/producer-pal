@@ -39,7 +39,7 @@ export const toolDefSelect = defineTool("ppal-select", {
       .optional()
       .describe("0-based scene index"),
 
-    slot: z
+    slot: z.coerce
       .string()
       .optional()
       .describe("session clip slot: trackIndex/sceneIndex (e.g., '0/3')"),

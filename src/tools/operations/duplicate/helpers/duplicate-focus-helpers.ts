@@ -5,12 +5,6 @@
 
 import { select } from "#src/tools/control/select.ts";
 
-// Re-export shared name utilities for backward compatibility
-export {
-  getNameForIndex,
-  parseCommaSeparatedNames,
-} from "#src/tools/shared/validation/name-utils.ts";
-
 /**
  * Determines the target view based on destination and type
  * @param destination - Destination for duplication

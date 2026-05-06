@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -278,5 +279,60 @@ describe("toCompactJSLiteral - Edge cases", () => {
 
   it("handles arrays that become empty after filtering undefined", () => {
     expect(toCompactJSLiteral([undefined, undefined])).toBe("[]");
+  });
+});
+
+describe("toCompactJSLiteral - Key quoting", () => {
+  it("leaves valid identifier keys unquoted", () => {
+    expect(toCompactJSLiteral({ foo: 1 })).toBe("{foo:1}");
+    expect(toCompactJSLiteral({ fooBar: 1 })).toBe("{fooBar:1}");
+    expect(toCompactJSLiteral({ _priv: 1 })).toBe("{_priv:1}");
+    expect(toCompactJSLiteral({ $dollar: 1 })).toBe("{$dollar:1}");
+    expect(toCompactJSLiteral({ a1b2: 1 })).toBe("{a1b2:1}");
+  });
+
+  it("leaves integer keys unquoted", () => {
+    expect(toCompactJSLiteral({ 123: "v" })).toBe('{123:"v"}');
+    expect(toCompactJSLiteral({ 0: "zero" })).toBe('{0:"zero"}');
+  });
+
+  it("quotes keys containing spaces", () => {
+    expect(toCompactJSLiteral({ "hello world": 1 })).toBe('{"hello world":1}');
+  });
+
+  it("quotes keys containing hyphens", () => {
+    expect(toCompactJSLiteral({ "my-key": 1 })).toBe('{"my-key":1}');
+  });
+
+  it("quotes keys starting with a digit followed by letters", () => {
+    expect(toCompactJSLiteral({ "1a": 1 })).toBe('{"1a":1}');
+  });
+
+  it("quotes empty string keys", () => {
+    expect(toCompactJSLiteral({ "": 1 })).toBe('{"":1}');
+  });
+
+  it("quotes keys with special characters", () => {
+    expect(toCompactJSLiteral({ "a.b": 1 })).toBe('{"a.b":1}');
+    expect(toCompactJSLiteral({ "a/b": 1 })).toBe('{"a/b":1}');
+    expect(toCompactJSLiteral({ 'has"quote': 1 })).toBe('{"has\\"quote":1}');
+  });
+
+  it("quotes unicode keys that are not ASCII identifiers", () => {
+    expect(toCompactJSLiteral({ héllo: 1 })).toBe('{"héllo":1}');
+  });
+
+  it("quotes negative-looking keys", () => {
+    expect(toCompactJSLiteral({ "-1": "v" })).toBe('{"-1":"v"}');
+  });
+
+  it("quotes decimal-looking keys", () => {
+    expect(toCompactJSLiteral({ "1.5": "v" })).toBe('{"1.5":"v"}');
+  });
+
+  it("mixes quoted and unquoted keys in the same object", () => {
+    expect(toCompactJSLiteral({ name: "x", "my-key": 1, 42: true })).toBe(
+      '{42:true,name:"x","my-key":1}',
+    );
   });
 });

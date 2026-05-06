@@ -124,6 +124,7 @@ export default [
         preferBuiltins: true,
         browser: false,
       }),
+      json(),
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),
       addLicenseHeader(),

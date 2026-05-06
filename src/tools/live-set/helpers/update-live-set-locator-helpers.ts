@@ -146,7 +146,7 @@ export async function deleteLocator(
   }
 
   // Delete by ID or time (single locator)
-  let timeInBeats = 0;
+  let timeInBeats: number;
 
   if (locatorId != null) {
     const found = findLocator(liveSet, { locatorId });

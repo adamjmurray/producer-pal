@@ -19,11 +19,30 @@ const mockMax = Max as MockMax;
 
 /**
  * Stub Max.outlet to resolve MCP requests with a given response payload.
+ * Returns a holder whose `.lastContext` field is populated with the parsed
+ * contextJSON of the most recent mcp_request call.
  * @param payload - JSON-serializable MCP response body
+ * @returns Holder for inspecting the most recent contextJSON
  */
-function stubMaxOutlet(payload: Record<string, unknown>): void {
-  Max.outlet = ((message: string, requestId: string): Promise<void> => {
+function stubMaxOutlet(payload: Record<string, unknown>): {
+  lastContext: Record<string, unknown> | null;
+} {
+  const holder: { lastContext: Record<string, unknown> | null } = {
+    lastContext: null,
+  };
+
+  Max.outlet = ((
+    message: string,
+    requestId: string,
+    _tool?: string,
+    _argsJSON?: string,
+    contextJSON?: string,
+  ): Promise<void> => {
     if (message === "mcp_request") {
+      if (typeof contextJSON === "string") {
+        holder.lastContext = JSON.parse(contextJSON) as Record<string, unknown>;
+      }
+
       setTimeout(() => {
         mockMax.defaultMcpResponseHandler!(
           requestId,
@@ -35,10 +54,16 @@ function stubMaxOutlet(payload: Record<string, unknown>): void {
 
     return Promise.resolve();
   }) as typeof Max.outlet;
+
+  return holder;
 }
 
 describe("REST API Routes", () => {
-  const appState = setupExpressAppServer();
+  const appState = setupExpressAppServer({
+    beforeStart: () => {
+      process.env.ENABLE_RAW_LIVE_API = "true";
+    },
+  });
 
   async function setEnabledTools(tools: string[]): Promise<void> {
     await fetch(`${appState.baseUrl}/config`, {
@@ -179,6 +204,225 @@ describe("REST API Routes", () => {
 
       expect(body.result).toBe("something went wrong");
       expect(body.isError).toBe(true);
+    });
+  });
+
+  describe("?format query param", () => {
+    async function callToolWithFormat(
+      name: string,
+      format: string,
+    ): Promise<Response> {
+      return await fetch(
+        `${appState.baseUrl}/api/tools/${name}?format=${format}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        },
+      );
+    }
+
+    it("should not set compactOutput in context when format is omitted", async () => {
+      const holder = stubMaxOutlet({
+        content: [{ type: "text", text: "ok" }],
+      });
+
+      await callTool("ppal-connect");
+
+      expect(holder.lastContext).not.toBeNull();
+      expect(holder.lastContext).not.toHaveProperty("compactOutput");
+    });
+
+    it("should pass compactOutput: false when format=json", async () => {
+      const holder = stubMaxOutlet({
+        content: [{ type: "text", text: '{"ok":true}' }],
+      });
+
+      const response = await callToolWithFormat("ppal-connect", "json");
+
+      expect(response.status).toBe(200);
+      expect(holder.lastContext).toMatchObject({ compactOutput: false });
+    });
+
+    it("should return parsed object as result when format=json", async () => {
+      stubMaxOutlet({
+        content: [{ type: "text", text: '{"tempo":120,"scale":"C Major"}' }],
+      });
+
+      const response = await callToolWithFormat("ppal-connect", "json");
+      const body = await response.json();
+
+      expect(body.result).toStrictEqual({ tempo: 120, scale: "C Major" });
+      expect(body.isError).toBe(false);
+      expect(body.warnings).toBeUndefined();
+    });
+
+    it("should expose warnings as an array when format=json", async () => {
+      stubMaxOutlet({
+        content: [
+          { type: "text", text: '{"ok":true}' },
+          { type: "text", text: "WARNING: quantize ignored" },
+          { type: "text", text: "WARNING: clip already looped" },
+        ],
+      });
+
+      const response = await callToolWithFormat("ppal-connect", "json");
+      const body = await response.json();
+
+      expect(body.result).toStrictEqual({ ok: true });
+      expect(body.warnings).toStrictEqual([
+        "quantize ignored",
+        "clip already looped",
+      ]);
+    });
+
+    it("should keep error responses as a joined string even when format=json", async () => {
+      stubMaxOutlet({
+        content: [{ type: "text", text: "Error: bad input" }],
+        isError: true,
+      });
+
+      const response = await callToolWithFormat("ppal-connect", "json");
+      const body = await response.json();
+
+      expect(body.result).toBe("Error: bad input");
+      expect(body.isError).toBe(true);
+    });
+
+    it("should fall back to raw text when format=json receives malformed JSON", async () => {
+      stubMaxOutlet({
+        content: [{ type: "text", text: "{ malformed: not-json" }],
+      });
+
+      const response = await callToolWithFormat("ppal-connect", "json");
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+
+      expect(body.result).toBe("{ malformed: not-json");
+      expect(body.isError).toBe(false);
+    });
+
+    it("should ignore non-WARNING content items past the first when format=json", async () => {
+      stubMaxOutlet({
+        content: [
+          { type: "text", text: '{"ok":true}' },
+          { type: "text", text: "WARNING: real warning" },
+          { type: "text", text: "some unexpected debug item" },
+        ],
+      });
+
+      const response = await callToolWithFormat("ppal-connect", "json");
+      const body = await response.json();
+
+      expect(body.result).toStrictEqual({ ok: true });
+      expect(body.warnings).toStrictEqual(["real warning"]);
+    });
+
+    it("should join content as a string when format=compact (default)", async () => {
+      stubMaxOutlet({
+        content: [
+          { type: "text", text: "{ok:true}" },
+          { type: "text", text: "WARNING: heads up" },
+        ],
+      });
+
+      const response = await callTool("ppal-connect");
+      const body = await response.json();
+
+      expect(body.result).toBe("{ok:true}\nWARNING: heads up");
+      expect(body.warnings).toBeUndefined();
+    });
+
+    it("should pass compactOutput: true when format=compact", async () => {
+      const holder = stubMaxOutlet({
+        content: [{ type: "text", text: "ok" }],
+      });
+
+      const response = await callToolWithFormat("ppal-connect", "compact");
+
+      expect(response.status).toBe(200);
+      expect(holder.lastContext).toMatchObject({ compactOutput: true });
+    });
+
+    it("should return 400 for invalid format value", async () => {
+      const response = await callToolWithFormat("ppal-connect", "yaml");
+
+      expect(response.status).toBe(400);
+
+      const body = await response.json();
+
+      expect(body.error).toContain("Invalid format query param");
+    });
+  });
+
+  describe("?timeoutMs query param", () => {
+    async function callToolWithQuery(
+      name: string,
+      query: string,
+    ): Promise<Response> {
+      return await fetch(`${appState.baseUrl}/api/tools/${name}?${query}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+    }
+
+    it("should pass timeoutMs into context when provided", async () => {
+      const holder = stubMaxOutlet({
+        content: [{ type: "text", text: "ok" }],
+      });
+
+      const response = await callToolWithQuery(
+        "ppal-connect",
+        "timeoutMs=5000",
+      );
+
+      expect(response.status).toBe(200);
+      expect(holder.lastContext).toMatchObject({ timeoutMs: 5000 });
+    });
+
+    it("should combine ?format and ?timeoutMs in the same call", async () => {
+      const holder = stubMaxOutlet({
+        content: [{ type: "text", text: '{"ok":true}' }],
+      });
+
+      const response = await callToolWithQuery(
+        "ppal-connect",
+        "format=json&timeoutMs=2500",
+      );
+
+      expect(response.status).toBe(200);
+      expect(holder.lastContext).toMatchObject({
+        compactOutput: false,
+        timeoutMs: 2500,
+      });
+    });
+
+    it("should return 400 for non-numeric timeoutMs", async () => {
+      const response = await callToolWithQuery("ppal-connect", "timeoutMs=abc");
+
+      expect(response.status).toBe(400);
+
+      const body = await response.json();
+
+      expect(body.error).toContain("Invalid timeoutMs query param");
+    });
+
+    it("should return 400 for zero or negative timeoutMs", async () => {
+      const response = await callToolWithQuery("ppal-connect", "timeoutMs=0");
+
+      expect(response.status).toBe(400);
+    });
+
+    it("should return 400 for timeoutMs above the cap", async () => {
+      const response = await callToolWithQuery(
+        "ppal-connect",
+        "timeoutMs=60001",
+      );
+
+      expect(response.status).toBe(400);
     });
   });
 });

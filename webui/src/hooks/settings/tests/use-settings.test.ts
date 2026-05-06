@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -99,7 +100,7 @@ describe("useSettings", () => {
       "producer_pal_provider_ollama",
       JSON.stringify({
         apiKey: "",
-        model: "qwen3.5",
+        model: "qwen3.6",
         baseUrl: "http://localhost:11434",
         thinking: "Max",
         temperature: 1.0,
@@ -265,7 +266,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gpt-5.4",
+      model: "gpt-5.5",
       thinking: "Default",
       temperature: 1.0,
       showThoughts: true,

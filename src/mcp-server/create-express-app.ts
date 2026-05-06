@@ -47,12 +47,10 @@ Max.addHandler(
 );
 
 Max.addHandler("smallModelMode", (enabled: unknown) => {
-  // console.log(`[node] Setting smallModelMode ${Boolean(enabled)}`);
   config.smallModelMode = Boolean(enabled);
 });
 
 Max.addHandler("memoryEnabled", (enabled: unknown) => {
-  // console.log(`[node] Setting memoryEnabled ${Boolean(enabled)}`);
   config.memoryEnabled = Boolean(enabled);
 });
 
@@ -60,17 +58,14 @@ Max.addHandler("memoryContent", (content: unknown) => {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
-  // console.log(`[node] Setting memoryContent ${value}`);
   config.memoryContent = value;
 });
 
 Max.addHandler("memoryWritable", (writable: unknown) => {
-  // console.log(`[node] Setting memoryWritable ${Boolean(writable)}`);
   config.memoryWritable = Boolean(writable);
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
-  // console.log(`[node] Setting compactOutput ${!enabled}`);
   config.jsonOutput = !enabled;
 });
 
@@ -78,7 +73,6 @@ Max.addHandler("sampleFolder", (path: unknown) => {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = path === "bang" ? "" : String(path ?? "");
 
-  // console.log(`[node] Setting sampleFolder ${value}`);
   config.sampleFolder = value;
 });
 
@@ -140,11 +134,16 @@ export function createExpressApp(): Express {
     });
   }
 
-  app.use(express.json());
+  // Tool arguments with large MIDI note arrays or bar|beat transforms can
+  // exceed Express's 100 KB default.
+  app.use(express.json({ limit: "2mb" }));
 
   app.post("/mcp", async (req: Request, res: Response): Promise<void> => {
     try {
-      console.info("New MCP connection: " + JSON.stringify(req.body));
+      const method =
+        (req.body as { method?: string } | undefined)?.method ?? "unknown";
+
+      console.info(`MCP request: ${method}`);
 
       const server = createMcpServer(callLiveApi, {
         smallModelMode: config.smallModelMode,
@@ -215,6 +214,18 @@ const VALID_TOOL_SET = new Set<string>(TOOL_NAMES);
  * @param res - Express response
  */
 async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
+  // Block cross-origin writes even when dev CORS is permissive. Same-origin
+  // fetches and non-browser clients (curl, scripts/ppal-client) omit Origin.
+  const origin = req.get("Origin");
+
+  if (origin && !isLocalOrigin(origin)) {
+    res
+      .status(403)
+      .json({ error: "cross-origin /config writes are not allowed" });
+
+    return;
+  }
+
   const incoming = req.body as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
@@ -319,4 +330,24 @@ function validateTools(
   }
 
   return null;
+}
+
+/**
+ * Check whether an Origin header value points to localhost.
+ *
+ * @param origin - Origin header value
+ * @returns true if origin hostname is localhost/127.0.0.1/[::1]
+ */
+function isLocalOrigin(origin: string): boolean {
+  try {
+    const { hostname } = new URL(origin);
+
+    return (
+      hostname === "localhost" ||
+      hostname === "127.0.0.1" ||
+      hostname === "[::1]"
+    );
+  } catch {
+    return false;
+  }
 }

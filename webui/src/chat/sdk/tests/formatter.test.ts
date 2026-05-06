@@ -252,6 +252,42 @@ describe("formatChatMessages", () => {
     expect(result[0]!.usage).toStrictEqual(textUsage);
   });
 
+  it("formats error messages as error parts", () => {
+    const history: ChatMessage[] = [
+      { role: "user", content: "Hello" },
+      { role: "assistant", content: "Error: Network failed", isError: true },
+    ];
+    const result = formatChatMessages(history);
+
+    expect(result).toHaveLength(2);
+    expect(result[1]!.role).toBe("model");
+    expect(result[1]!.parts).toStrictEqual([
+      { type: "error", content: "Error: Network failed", isError: true },
+    ]);
+  });
+
+  it("does not merge error messages with preceding assistant messages", () => {
+    const history: ChatMessage[] = [
+      { role: "assistant", content: "Partial response" },
+      { role: "assistant", content: "Error: Connection lost", isError: true },
+    ];
+    const result = formatChatMessages(history);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]!.parts[0]!.type).toBe("text");
+    expect(result[1]!.parts[0]!.type).toBe("error");
+  });
+
+  it("tracks rawHistoryIndex correctly for error messages", () => {
+    const history: ChatMessage[] = [
+      { role: "user", content: "Q1" },
+      { role: "assistant", content: "Error: fail", isError: true },
+    ];
+    const result = formatChatMessages(history);
+
+    expect(result[1]!.rawHistoryIndex).toBe(1);
+  });
+
   it("does not insert step-usage for text-only merged messages", () => {
     const history: ChatMessage[] = [
       { role: "assistant", content: "Part 1", usage: { inputTokens: 100 } },

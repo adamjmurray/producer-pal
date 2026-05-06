@@ -5,10 +5,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "baseUrl": "../..",
     "paths": {
-      "#src/*": ["src/*"],
-      "#evals/*": ["evals/*"]
+      "#src/*": ["../../src/*"],
+      "#evals/*": ["../../evals/*"]
     },
     "strict": true,
     "noUncheckedIndexedAccess": true,

@@ -15,6 +15,7 @@ import { type UIMessage } from "#webui/types/messages";
 export interface TestMessage {
   role: "user" | "assistant";
   content: string;
+  isError?: boolean;
 }
 
 /** Test configuration for mock adapter */
@@ -81,7 +82,15 @@ export function createMockAdapter(): ChatAdapter<
     formatMessages: vi.fn((messages: TestMessage[]): UIMessage[] => {
       return messages.map((msg, idx) => ({
         role: msg.role === "user" ? ("user" as const) : ("model" as const),
-        parts: [{ type: "text" as const, content: msg.content }],
+        parts: msg.isError
+          ? [
+              {
+                type: "error" as const,
+                content: msg.content,
+                isError: true,
+              },
+            ]
+          : [{ type: "text" as const, content: msg.content }],
         rawHistoryIndex: idx,
         timestamp: Date.now(),
       }));
@@ -89,23 +98,15 @@ export function createMockAdapter(): ChatAdapter<
 
     createErrorMessage: vi.fn(
       (error: unknown, chatHistory: TestMessage[]): UIMessage[] => {
-        const formatted = adapter.formatMessages(chatHistory);
+        // Match the real adapter's contract: mutate chatHistory by pushing
+        // the error so callers can persist it via getChatHistory.
+        chatHistory.push({
+          role: "assistant",
+          content: String(error),
+          isError: true,
+        });
 
-        return [
-          ...formatted,
-          {
-            role: "model" as const,
-            parts: [
-              {
-                type: "error" as const,
-                content: String(error),
-                isError: true,
-              },
-            ],
-            rawHistoryIndex: chatHistory.length,
-            timestamp: Date.now(),
-          },
-        ];
+        return adapter.formatMessages(chatHistory);
       },
     ),
 

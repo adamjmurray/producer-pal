@@ -9,14 +9,14 @@ import {
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.ts";
-import { warnExtraNames } from "#src/tools/shared/validation/name-utils.ts";
+import {
+  getNameForIndex,
+  parseCommaSeparatedNames,
+  warnExtraNames,
+} from "#src/tools/shared/validation/name-utils.ts";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.ts";
 import { duplicateDevice } from "./helpers/duplicate-device-helpers.ts";
-import {
-  focusIfRequested,
-  parseCommaSeparatedNames,
-  getNameForIndex,
-} from "./helpers/duplicate-misc-helpers.ts";
+import { focusIfRequested } from "./helpers/duplicate-focus-helpers.ts";
 import {
   duplicateTrack,
   duplicateScene,

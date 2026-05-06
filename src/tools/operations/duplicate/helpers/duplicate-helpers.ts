@@ -49,12 +49,13 @@ export function parseArrangementLength(
     const msg = errorMessage(error);
 
     if (msg.includes("Invalid bar:beat duration format")) {
-      throw new Error(`duplicate failed: ${msg}`);
+      throw new Error(`duplicate failed: ${msg}`, { cause: error });
     }
 
     if (msg.includes("must be 0 or greater")) {
       throw new Error(
         `duplicate failed: arrangementLength ${msg.replace("in duration ", "")}`,
+        { cause: error },
       );
     }
 

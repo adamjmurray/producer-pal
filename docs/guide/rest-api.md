@@ -1,9 +1,30 @@
-# REST API
+---
+title: Ableton Live REST API
+description:
+  Producer Pal exposes a REST API for Ableton Live — control tracks, clips,
+  devices, and arrangements over plain HTTP. No MCP SDK required.
+head:
+  - - meta
+    - name: keywords
+      content:
+        Ableton REST API, Ableton Live REST API, Ableton HTTP API, Ableton Live
+        API, Max for Live REST API, Ableton automation API
+  - - meta
+    - property: og:title
+      content: Ableton Live REST API — Producer Pal
+  - - meta
+    - property: og:description
+      content:
+        Control Ableton Live over plain HTTP. Producer Pal's REST API lets you
+        script tracks, clips, devices, and arrangements without an MCP SDK.
+---
+
+# Ableton Live REST API
 
 Producer Pal includes a REST API for building custom scripts, automation, and
-integrations using plain HTTP requests — no MCP SDK needed. It also works as an
-alternative interface for coding agents: download this page as Markdown (button
-at the top) and give it to your agent for a complete reference.
+integrations with Ableton Live using plain HTTP requests — no MCP SDK needed. It
+also works as an alternative interface for coding agents: download this page as
+Markdown (button at the top) and give it to your agent for a complete reference.
 
 The REST API runs on the same server as the MCP endpoint (default port 3350) and
 is available whenever the Producer Pal Max for Live device is running.
@@ -66,6 +87,74 @@ Warnings from the Live API appear inline in the `result` text, prefixed with
 if any individual operation fails or is inapplicable (e.g. setting quantize on
 an audio clip), it emits a warning and continues with the rest.
 
+### Response format: `?format=json`
+
+::: warning Default will change in v1.5.0
+
+The default response format will change from compact to **`json`** in v1.5.0. We
+recommend explicitly using `?format=json` for now, and removing the override
+once v1.5.0 ships. The compact JS-literal format is optimized for LLM context
+efficiency and is generally not the right fit for HTTP integrations — if you do
+specifically want it, keep `?format=compact` explicit to stay
+forward-compatible.
+
+:::
+
+When `?format` is omitted, the server uses the global compact-output setting
+configured on the **Setup** tab of the Producer Pal Max for Live device. By
+default that setting is on, so `result` is a string in a compact
+JavaScript-literal syntax (unquoted keys, no whitespace) optimized for LLM token
+efficiency — the same format MCP clients receive.
+
+For scripts that want structured data (no `JSON.parse` or `jq | fromjson`
+gymnastics), append `?format=json` to the request — the server parses on your
+behalf and the wrapper shape changes:
+
+```bash
+# Compact JS-literal (default) — result is a string, warnings are inline
+curl -X POST http://localhost:3350/api/tools/ppal-read-live-set \
+  -H 'Content-Type: application/json' -d '{}'
+# → {"result":"{tempo:120,timeSignature:\"4/4\",...}","isError":false}
+
+# JSON — result is the parsed value; warnings are a separate string array
+curl -X POST 'http://localhost:3350/api/tools/ppal-read-live-set?format=json' \
+  -H 'Content-Type: application/json' -d '{}'
+# → {"result":{"tempo":120,"timeSignature":"4/4",...},"isError":false}
+```
+
+When `?format=json` is set:
+
+- **`result`** is the parsed value (object, array, number, string, etc.) — not a
+  JSON-encoded string. Access fields directly: `body.result.tempo`.
+- **`warnings`** is a `string[]` (with the `WARNING: ` prefix stripped), present
+  only when the tool emitted any. In compact mode, warnings remain inline in
+  `result` for backwards compatibility.
+- On **error** (`isError: true`), `result` is still a plain error string
+  regardless of format — error messages are not JSON.
+
+Pass `?format=compact` or `?format=json` to force a specific format regardless
+of the device-level setting. Other values return **400**. Per-request format
+overrides apply to REST only and never affect MCP clients.
+
+### Per-request timeout: `?timeoutMs=N`
+
+Override the configured tool-call timeout for a single request. Useful for
+long-running operations (e.g. bulk clip generation) that need more headroom than
+the global timeout, or for short polling calls that should fail fast.
+
+```bash
+curl -X POST 'http://localhost:3350/api/tools/ppal-create-clip?timeoutMs=10000' \
+  -H 'Content-Type: application/json' \
+  -d '{"slot": "0/0", "length": "16:0", "notes": "..."}'
+```
+
+`timeoutMs` must be a positive integer up to **60000** (60 seconds). Other
+values return **400**. Combinable with `?format=`:
+
+```
+POST /api/tools/{name}?format=json&timeoutMs=10000
+```
+
 ## Quick Start with curl
 
 ```bash
@@ -84,20 +173,25 @@ curl http://localhost:3350/api/tools
 
 ## Sample Scripts
 
-These scripts have **no dependencies** — they use only built-in HTTP libraries.
-Copy and modify them for your own integrations.
+Zero-dependency client examples — they use only built-in HTTP libraries. Copy
+and modify them for your own integrations.
 
 ### Node.js
 
-Requires Node.js 18+ (for built-in `fetch`).
+The Node.js client doubles as the Producer Pal [Agent Skill](/guide/skills)
+script — see [The bundled script](/guide/skills#the-bundled-script) for the full
+source and CLI reference. It works with Claude Code, Codex CLI, Gemini CLI, and
+any other agent runtime that reads the `SKILL.md` convention.
 
-<<< ../../examples/rest-api/producer-pal.mjs{js}
+- Source:
+  [`examples/skills/producer-pal/ppal.mjs`](https://github.com/adamjmurray/producer-pal/tree/main/examples/skills/producer-pal/ppal.mjs)
+- Requires Node.js 18+ (for built-in `fetch`)
 
 ### Python
 
 Works with Python 3.6+ (no dependencies).
 
-<<< ../../examples/rest-api/producer_pal.py
+<<< ../../examples/rest-api/ppal.py
 
 ## Tool Reference
 

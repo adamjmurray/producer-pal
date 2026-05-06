@@ -360,6 +360,47 @@ describe("tileClipToRange", () => {
     expect(tiles[2]!.set).toHaveBeenCalledWith("start_marker", 0);
     expect(result).toHaveLength(3);
   });
+
+  it("warns and skips a tile when its dup silently fails, advancing position", () => {
+    // Middle dup returns ["id", 0] — that tile is skipped, the next tile
+    // is created at the correct downstream position, and no phantom id is
+    // pushed into the result.
+    const sourceClip = setupMidiSourceClip("100", 0);
+    const track = setupTrackWithQueuedMethods(0, {
+      duplicate_clip_to_arrangement: [
+        ["id", "200"],
+        ["id", 0],
+        ["id", "202"],
+      ],
+    });
+
+    setupTileClip("200");
+    setupTileClip("202");
+
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      12,
+      1000,
+      mockContext,
+    );
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        "Failed to duplicate source clip for tile at 104",
+      ),
+    );
+    expect(result).toStrictEqual([{ id: "200" }, { id: "202" }]);
+    // Third tile must be at position 108 (offset advanced over the skip)
+    expect(track.call).toHaveBeenNthCalledWith(
+      3,
+      "duplicate_clip_to_arrangement",
+      "id 100",
+      108,
+    );
+  });
 });
 
 /**

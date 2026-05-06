@@ -61,6 +61,12 @@ declare global {
     exists(): boolean;
 
     /**
+     * Get a child object as a LiveAPI instance by appending sub-path components
+     * to this object's runtime path. Prefer this over `LiveAPI.from(api.path + " name")`.
+     */
+    child(...name: string[]): LiveAPI;
+
+    /**
      * Get a property value, automatically unwrapping single-value arrays.
      * Handles special cases like routing properties and scale intervals.
      */

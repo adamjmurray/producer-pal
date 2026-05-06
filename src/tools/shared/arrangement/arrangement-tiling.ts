@@ -9,6 +9,7 @@
  */
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { type TilingContext } from "./arrangement-tiling-helpers.ts";
 import {
@@ -178,6 +179,18 @@ export function tileClipToRange(
     ) as [string, string | number];
 
     const tileClip = LiveAPI.from(result);
+
+    // Skip silent failures (Ableton returning ["id", 0]) so we don't push
+    // a phantom clip ID into createdClips and confuse downstream callers.
+    if (!tileClip.exists()) {
+      console.warn(
+        `Failed to duplicate source clip for tile at ${currentPosition}, skipping`,
+      );
+      currentPosition += arrangementTileLength;
+      currentContentOffset += arrangementTileLength;
+      continue;
+    }
+
     const clipId = tileClip.id;
 
     // Recreate LiveAPI object with fresh reference

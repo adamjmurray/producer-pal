@@ -13,13 +13,16 @@ import {
 const AUTO_DISMISS_MS = 4000;
 
 /**
- * Hook managing the notification banner for conversation limit enforcement.
- * @returns Notification state, dismiss handler, and a function to show based on enforcement results
+ * Hook managing the notification banner for conversation persistence events
+ * (limit enforcement and save failures).
+ * @returns Notification state, dismiss handler, and functions to show
+ *   limit-enforcement results or save errors
  */
 export function useLimitNotification(): {
   limitNotification: TransferNotificationData | null;
   dismissLimitNotification: () => void;
   showLimitNotification: (result: EnforceLimitResult) => void;
+  showSaveError: (error: unknown) => void;
 } {
   const [notification, setNotification] =
     useState<TransferNotificationData | null>(null);
@@ -43,6 +46,12 @@ export function useLimitNotification(): {
     timerRef.current = setTimeout(() => setNotification(null), AUTO_DISMISS_MS);
   }, []);
 
+  const showError = useCallback((error: unknown) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setNotification({ message: formatSaveErrorMessage(error), type: "error" });
+    timerRef.current = setTimeout(() => setNotification(null), AUTO_DISMISS_MS);
+  }, []);
+
   useEffect(() => {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
@@ -53,5 +62,26 @@ export function useLimitNotification(): {
     limitNotification: notification,
     dismissLimitNotification: dismiss,
     showLimitNotification: show,
+    showSaveError: showError,
   };
+}
+
+/**
+ * Build a user-facing message for an IndexedDB save failure, with a
+ * targeted hint when the browser's storage quota is exhausted.
+ * @param error - The thrown error
+ * @returns Display message
+ */
+function formatSaveErrorMessage(error: unknown): string {
+  const isQuota =
+    (error instanceof DOMException && error.name === "QuotaExceededError") ||
+    (error instanceof Error && /quota/i.test(error.message));
+
+  if (isQuota) {
+    return "Couldn't save conversation: browser storage is full. Delete or export old conversations to free space.";
+  }
+
+  const detail = error instanceof Error ? error.message : String(error);
+
+  return `Couldn't save conversation: ${detail}`;
 }

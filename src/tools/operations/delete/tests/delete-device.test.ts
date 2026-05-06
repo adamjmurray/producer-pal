@@ -88,14 +88,25 @@ describe("deleteObject device deletion", () => {
     );
   });
 
-  it("should throw error when device path is malformed", () => {
+  it("should warn and skip when device path is malformed", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const id = "device_0";
 
     setupDeviceMocks(id, "invalid_path_without_devices");
 
-    expect(() => deleteObject({ ids: id, type: "device" })).toThrow(
-      'delete failed: could not find device index in path "invalid_path_without_devices"',
+    const result = deleteObject({ ids: id, type: "device" });
+
+    expect(result).toStrictEqual({
+      id,
+      type: "device",
+      deleted: false,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'could not find device index in path "invalid_path_without_devices"',
+      ),
     );
+    warnSpy.mockRestore();
   });
 
   describe("nested device deletion", () => {

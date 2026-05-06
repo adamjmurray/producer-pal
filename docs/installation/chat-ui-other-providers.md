@@ -108,7 +108,8 @@ with the built-in chat UI instead of [LM Studio's native UI](./lm-studio).
      - When "Serve on Local Network" is enabled, use the network address shown
        (e.g., `http://192.168.7.172:1234`)
    - Model: A model that supports tools, such as `qwen/qwen3.5-9b`,
-     `mistralai/devstral-small-2-2512`, or `zai-org/glm-4.7-flash`
+     `google/gemma-4-e4b`, `mistralai/devstral-small-2-2512`, or
+     `zai-org/glm-4.7-flash`
 6. Save and click "Quick Connect"
 
 ::: warning Model Tool Support

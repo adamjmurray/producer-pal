@@ -104,6 +104,7 @@ vi.mock(import("./file-logger.ts"), () => ({
 }));
 
 // Import the class after mocking
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { VERSION } from "#src/shared/version.ts";
 import { logger } from "./file-logger.ts";
 import { StdioHttpBridge } from "./stdio-http-bridge.ts";
@@ -476,6 +477,34 @@ describe("StdioHttpBridge", () => {
         "Failed to push small model mode config: Network error",
       );
       fetchSpy.mockRestore();
+    });
+
+    it("dedupes concurrent connection attempts", async () => {
+      let resolveConnect: () => void = () => {};
+
+      mockClient.connect.mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveConnect = resolve;
+          }),
+      );
+
+      const ClientCtor = Client as unknown as Mock;
+      const callsBefore = ClientCtor.mock.calls.length;
+
+      const p1 = bridge._ensureHttpConnection();
+      const p2 = bridge._ensureHttpConnection();
+      const p3 = bridge._ensureHttpConnection();
+
+      // Second/third calls should reuse the in-flight promise rather than
+      // each constructing a new Client.
+      expect(ClientCtor.mock.calls.length - callsBefore).toBe(1);
+
+      resolveConnect();
+      await Promise.all([p1, p2, p3]);
+
+      expect(bridge.isConnected).toBe(true);
+      expect(ClientCtor.mock.calls.length - callsBefore).toBe(1);
     });
   });
 

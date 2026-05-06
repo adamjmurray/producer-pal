@@ -11,13 +11,13 @@ import { type ProviderOptions } from "@ai-sdk/provider-utils";
 import { type EvalProvider } from "#evals/scenarios/types.ts";
 import { type ThinkingLevel } from "./shared/types.ts";
 
-/** Anthropic thinking token budgets by level */
-const ANTHROPIC_THINKING_MAP: Record<string, number> = {
-  off: 0,
-  low: 1024,
-  medium: 4096,
-  high: 10000,
-  ultra: 32000,
+/** Anthropic effort levels for adaptive thinking */
+const ANTHROPIC_EFFORT_MAP: Record<string, string> = {
+  off: "none",
+  low: "low",
+  medium: "medium",
+  high: "high",
+  ultra: "max",
 };
 
 /** Gemini thinking token budgets by level */
@@ -82,19 +82,20 @@ export function buildProviderOptions(
 }
 
 /**
- * Build Anthropic thinking provider options
+ * Build Anthropic thinking provider options using adaptive thinking with effort.
  *
  * @param level - Thinking level string
- * @returns Provider options with anthropic thinking config
+ * @returns Provider options with anthropic thinking and effort config
  */
 function buildAnthropicThinking(level: string): ProviderOptions | undefined {
-  const budgetTokens = resolveBudget(level, ANTHROPIC_THINKING_MAP);
+  const effort = ANTHROPIC_EFFORT_MAP[level];
 
-  if (budgetTokens == null || budgetTokens === 0) return undefined;
+  if (!effort || effort === "none") return undefined;
 
   return {
     anthropic: {
-      thinking: { type: "enabled", budgetTokens },
+      thinking: { type: "adaptive" },
+      effort,
     },
   };
 }

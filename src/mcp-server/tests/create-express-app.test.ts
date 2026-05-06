@@ -198,6 +198,7 @@ describe("MCP Express App", () => {
           // Add tool name to error message for debugging
           throw new Error(
             `Tool "${tool.name}" validation failed: ${(error as Error).message}`,
+            { cause: error },
           );
         }
       }
@@ -713,6 +714,35 @@ describe("MCP Express App", () => {
 
       expect(body.error).toContain("ppal-connect");
       expect(body.validToolNames).toStrictEqual([...TOOL_NAMES]);
+    });
+
+    it("should reject POST /config from a cross-origin browser request", async () => {
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "https://evil.example.com",
+        },
+        body: JSON.stringify({ memoryEnabled: true }),
+      });
+
+      expect(response.status).toBe(403);
+      const body = await response.json();
+
+      expect(body.error).toContain("cross-origin");
+    });
+
+    it("should accept POST /config from a localhost Origin", async () => {
+      const response = await fetch(configUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Origin: "http://localhost:9999",
+        },
+        body: JSON.stringify({ memoryEnabled: false }),
+      });
+
+      expect(response.status).toBe(200);
     });
   });
 

@@ -35,6 +35,6 @@ process.on("SIGTERM", () => {
 try {
   await bridge.start();
 } catch (error) {
-  logger.error(`Failed to start enhanced bridge: ${errorMessage(error)}`);
+  logger.error(`Failed to start bridge: ${errorMessage(error)}`);
   process.exit(1);
 }

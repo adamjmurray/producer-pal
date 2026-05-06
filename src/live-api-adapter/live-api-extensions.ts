@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
@@ -23,6 +24,19 @@ if (typeof LiveAPI !== "undefined") {
     const id = this.id as string | number;
 
     return id !== "id 0" && id !== "0" && id !== 0;
+  };
+
+  /**
+   * Get a child object as a LiveAPI instance by appending a sub-path to this
+   * object's runtime path. Use this instead of `LiveAPI.from(api.path + " name")`.
+   * @param name - Sub-path component(s) to append (e.g., "mixer_device", "panning")
+   * @returns LiveAPI for the child object
+   */
+  LiveAPI.prototype.child = function (
+    this: LiveAPI,
+    ...name: string[]
+  ): LiveAPI {
+    return LiveAPI.from(`${this.path} ${name.join(" ")}`);
   };
 
   /**
@@ -143,7 +157,7 @@ if (typeof LiveAPI !== "undefined") {
 
   LiveAPI.prototype.getColor = function (this: LiveAPI): string | null {
     const colorValue = this.getProperty("color") as number | undefined;
-    if (colorValue === undefined) {
+    if (colorValue == null) {
       return null;
     }
 
@@ -198,7 +212,7 @@ if (typeof LiveAPI !== "undefined") {
         if (property === "color") {
           this.setColor(value as string);
         } else {
-          this.set(property, value as any);
+          this.set(property, value);
         }
       }
     }

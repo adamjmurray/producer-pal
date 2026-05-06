@@ -99,8 +99,8 @@ export function findRoutingOptionForDuplicateNames(
 
   // Sort by ID (creation order) - IDs are numeric strings
   tracksWithSameName.sort((a, b) => {
-    const idA = Number.parseInt(a.id);
-    const idB = Number.parseInt(b.id);
+    const idA = Number.parseInt(a.id, 10);
+    const idB = Number.parseInt(b.id, 10);
 
     return idA - idB;
   });

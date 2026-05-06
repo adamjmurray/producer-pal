@@ -8,7 +8,8 @@
  */
 import "fake-indexeddb/auto";
 import { renderHook, act } from "@testing-library/preact";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as conversationDb from "#webui/lib/conversation-db";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import {
@@ -164,6 +165,36 @@ describe("useConversations", () => {
 
     expect(result.current.activeConversationId).toBeNull();
     expect(result.current.conversations).toHaveLength(0);
+  });
+
+  it("surfaces save errors via the notification banner", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const saveSpy = vi
+      .spyOn(conversationDb, "saveConversation")
+      .mockRejectedValueOnce(
+        new DOMException("disk full", "QuotaExceededError"),
+      );
+
+    try {
+      const { state, result } = await setupHook();
+
+      await saveWithMessage(state, result);
+
+      expect(saveSpy).toHaveBeenCalled();
+      expect(result.current.limitNotification?.type).toBe("error");
+      expect(result.current.limitNotification?.message).toContain(
+        "browser storage is full",
+      );
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Failed to save conversation",
+        expect.any(DOMException),
+      );
+    } finally {
+      saveSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    }
   });
 
   it("switches between conversations", async () => {

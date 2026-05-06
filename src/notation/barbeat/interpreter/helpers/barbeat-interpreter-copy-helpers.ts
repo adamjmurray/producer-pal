@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
@@ -114,7 +115,7 @@ function copyBarToBar(
 function determineSourceBarsForCopy(element: BarCopyElement): number[] | null {
   if (element.source === "previous") {
     /* v8 ignore start -- caller guarantees destination.bar is defined */
-    if (element.destination.bar === undefined) {
+    if (element.destination.bar == null) {
       return null;
     }
     /* v8 ignore stop */
@@ -424,7 +425,7 @@ export function handleBarCopySingleDestination(
   // Determine source bar(s)
   const sourceBars = determineSourceBarsForCopy(element);
 
-  if (sourceBars === null) {
+  if (sourceBars == null) {
     return { currentTime: null };
   }
 

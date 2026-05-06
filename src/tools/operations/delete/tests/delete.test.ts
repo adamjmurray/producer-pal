@@ -221,7 +221,9 @@ describe("deleteObject", () => {
     );
   });
 
-  it("should throw error when trying to delete Producer Pal host track", () => {
+  it("should warn and skip when trying to delete Producer Pal host track", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
     registerMockObject("this_device", {
       path: livePath.track(1).device(0),
     });
@@ -230,9 +232,19 @@ describe("deleteObject", () => {
       type: "Track",
     });
 
-    expect(() => deleteObject({ ids: "track_1", type: "track" })).toThrow(
-      "cannot delete track hosting the Producer Pal device",
+    const result = deleteObject({ ids: "track_1", type: "track" });
+
+    expect(result).toStrictEqual({
+      id: "track_1",
+      type: "track",
+      deleted: false,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "cannot delete track hosting the Producer Pal device",
+      ),
     );
+    warnSpy.mockRestore();
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -271,37 +283,67 @@ describe("deleteObject", () => {
     expect(arrayResult).toHaveLength(2);
   });
 
-  it("should throw error when track path is malformed (no track index)", () => {
+  it("should warn and skip when track path is malformed (no track index)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
     registerMockObject("track_0", {
       path: "invalid_path_without_track_index",
       type: "Track",
     });
 
-    expect(() => deleteObject({ ids: "track_0", type: "track" })).toThrow(
-      'delete failed: no track index for id "track_0" (path="invalid_path_without_track_index")',
+    const result = deleteObject({ ids: "track_0", type: "track" });
+
+    expect(result).toStrictEqual({
+      id: "track_0",
+      type: "track",
+      deleted: false,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('no track index for id "track_0"'),
     );
+    warnSpy.mockRestore();
   });
 
-  it("should throw error when scene path is malformed (no scene index)", () => {
+  it("should warn and skip when scene path is malformed (no scene index)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
     registerMockObject("scene_0", {
       path: "invalid_path_without_scene_index",
       type: "Scene",
     });
 
-    expect(() => deleteObject({ ids: "scene_0", type: "scene" })).toThrow(
-      'delete failed: no scene index for id "scene_0" (path="invalid_path_without_scene_index")',
+    const result = deleteObject({ ids: "scene_0", type: "scene" });
+
+    expect(result).toStrictEqual({
+      id: "scene_0",
+      type: "scene",
+      deleted: false,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('no scene index for id "scene_0"'),
     );
+    warnSpy.mockRestore();
   });
 
-  it("should throw error when clip path is malformed (no track index)", () => {
+  it("should warn and skip when clip path is malformed (no track index)", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
     registerMockObject("clip_0", {
       path: "invalid_path_without_track_index",
       type: "Clip",
     });
 
-    expect(() => deleteObject({ ids: "clip_0", type: "clip" })).toThrow(
-      'delete failed: no track index for id "clip_0" (path="invalid_path_without_track_index")',
+    const result = deleteObject({ ids: "clip_0", type: "clip" });
+
+    expect(result).toStrictEqual({
+      id: "clip_0",
+      type: "clip",
+      deleted: false,
+    });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('no track index for id "clip_0"'),
     );
+    warnSpy.mockRestore();
   });
 
   it("should delete a single return track", () => {

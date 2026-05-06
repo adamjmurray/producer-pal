@@ -23,7 +23,6 @@ import { logger } from "./file-logger.ts";
 const SETUP_URL = "https://producer-pal.org/installation";
 
 interface BridgeOptions {
-  timeout?: number;
   smallModelMode?: boolean;
 }
 
@@ -57,6 +56,7 @@ export class StdioHttpBridge {
   private mcpServer: Server | null = null;
   private httpClient: Client | null = null;
   private isConnected = false;
+  private connectionPromise: Promise<void> | null = null;
   private fallbackTools: { tools: FallbackTool[] };
   private smallModelMode: boolean;
 
@@ -125,6 +125,23 @@ Tell the user to check ${SETUP_URL} for configuration help.
       return;
     }
 
+    // If a connection is already in flight, wait for it instead of starting
+    // a second one. Prevents duplicate Client instantiations when concurrent
+    // tools/list and tools/call requests arrive before the first connect resolves.
+    if (this.connectionPromise) {
+      return await this.connectionPromise;
+    }
+
+    this.connectionPromise = this._doConnect();
+
+    try {
+      await this.connectionPromise;
+    } finally {
+      this.connectionPromise = null;
+    }
+  }
+
+  private async _doConnect(): Promise<void> {
     // Clean up old client if it exists
     if (this.httpClient) {
       try {
@@ -172,6 +189,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
 
       throw new Error(
         `Failed to connect to Producer Pal MCP server at ${this.httpUrl}: ${errorMessage(error)}`,
+        { cause: error },
       );
     }
   }
@@ -270,7 +288,7 @@ Tell the user to check ${SETUP_URL} for configuration help.
           // Check if error has code property (Node.js/MCP errors)
           const errorCode =
             error && typeof error === "object" && "code" in error
-              ? (error as { code: unknown }).code
+              ? error.code
               : undefined;
 
           // Check if this is an MCP protocol error (has numeric code) vs connectivity error

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import * as console from "#src/shared/v8-max-console.ts";
 import { select } from "#src/tools/control/select.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
@@ -52,7 +53,9 @@ export function updateScene(
   _context: Partial<ToolContext> = {},
 ): UpdateSceneResult | UpdateSceneResult[] {
   if (!ids) {
-    throw new Error("updateScene failed: ids is required");
+    console.warn("updateScene: ids is required");
+
+    return [];
   }
 
   // Parse comma-separated string into array

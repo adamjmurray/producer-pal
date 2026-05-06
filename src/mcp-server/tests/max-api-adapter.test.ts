@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Max from "max-api";
@@ -8,11 +9,12 @@ import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import {
   callLiveApi,
   handleLiveApiResult,
+  type RequestOverrides,
   setTimeoutForTesting,
-} from "../max-api-adapter.ts"; // eslint-disable-line import/no-duplicates -- separate side-effect import below registers handler
+} from "../max-api-adapter.ts"; // eslint-disable-line import-x/no-duplicates -- separate side-effect import below registers handler
 
 // Make sure the module's handler is registered
-// eslint-disable-next-line import/no-duplicates -- intentional side-effect import
+// eslint-disable-next-line import-x/no-duplicates -- intentional side-effect import
 import "../max-api-adapter.ts";
 
 // Mock the code-exec-protocol module so we can verify the handler delegates correctly
@@ -188,6 +190,75 @@ describe("Max API Adapter", () => {
         ],
         isError: true,
       });
+    });
+
+    it("should merge compactOutput override into contextJSON", async () => {
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+
+      void callLiveApi("test-tool", {}, { compactOutput: false });
+
+      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
+      const contextJSON = callArgs[4] as string;
+      const context = JSON.parse(contextJSON) as Record<string, unknown>;
+
+      expect(context).toMatchObject({ compactOutput: false });
+      expect(context).toHaveProperty("silenceWavPath");
+      expect(context).toHaveProperty("timeoutMs");
+    });
+
+    it("should override timeoutMs in contextJSON when provided", async () => {
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+
+      void callLiveApi("test-tool", {}, { timeoutMs: 1234 });
+
+      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
+      const contextJSON = callArgs[4] as string;
+      const context = JSON.parse(contextJSON) as Record<string, unknown>;
+
+      expect(context).toMatchObject({ timeoutMs: 1234 });
+    });
+
+    it("should use timeoutMs override for the actual timeout deadline", async () => {
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+
+      const result = await callLiveApi("test-tool", {}, { timeoutMs: 2 });
+
+      expect(result).toStrictEqual({
+        content: [
+          { type: "text", text: "Tool call 'test-tool' timed out after 2ms" },
+        ],
+        isError: true,
+      });
+    });
+
+    it("should omit compactOutput from contextJSON when overrides not provided", async () => {
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+
+      void callLiveApi("test-tool", {});
+
+      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
+      const contextJSON = callArgs[4] as string;
+      const context = JSON.parse(contextJSON) as Record<string, unknown>;
+
+      expect(context).not.toHaveProperty("compactOutput");
+    });
+
+    it("should not let overrides override silenceWavPath", async () => {
+      Max.outlet = vi.fn().mockResolvedValue(undefined);
+
+      // Cast through unknown to bypass the RequestOverrides type — we want to
+      // prove the adapter ignores rogue silenceWavPath fields even if a caller
+      // somehow smuggles one in.
+      void callLiveApi("test-tool", {}, {
+        silenceWavPath: "/evil/path.wav",
+      } as unknown as RequestOverrides);
+
+      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
+      const contextJSON = callArgs[4] as string;
+      const context = JSON.parse(contextJSON) as Record<string, unknown>;
+
+      expect(context.silenceWavPath).not.toBe("/evil/path.wav");
+      expect(typeof context.silenceWavPath).toBe("string");
     });
   });
 

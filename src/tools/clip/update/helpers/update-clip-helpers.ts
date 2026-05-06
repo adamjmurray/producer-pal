@@ -4,16 +4,17 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
-import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
   applyAudioTransforms,
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.ts";
-import { handleNoteUpdates } from "./update-clip-notes-helpers.ts";
+import {
+  handleNoteUpdates,
+  handleQuantization,
+} from "./update-clip-notes-helpers.ts";
 import { buildClipPropertiesToSet } from "./update-clip-properties-helpers.ts";
-import { handleQuantization } from "./update-clip-quantization-helpers.ts";
 import { handlePositionOperations } from "./update-clip-session-helpers.ts";
 import {
   calculateBeatPositions,
@@ -133,8 +134,6 @@ export function processSingleClipUpdate(
     clip,
   );
 
-  let noteResult: NoteUpdateResult | null = null;
-
   // Determine looping state
   const isLooping = looping ?? (clip.getProperty("looping") as number) > 0;
 
@@ -190,7 +189,7 @@ export function processSingleClipUpdate(
   }
 
   // Handle note updates (transforms already applied for audio clips above)
-  noteResult = handleNoteUpdates(
+  const noteResult = handleNoteUpdates(
     clip,
     notationString,
     isAudioClip ? undefined : transformString,

@@ -4,9 +4,8 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "baseUrl": ".",
     "paths": {
-      "#webui/*": ["src/*"],
+      "#webui/*": ["./src/*"],
       "#src/*": ["../src/*"]
     },
     "jsx": "react-jsx",

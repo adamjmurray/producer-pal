@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { execSync } from "node:child_process";
@@ -20,10 +21,18 @@ if (!["major", "minor", "patch"].includes(versionType)) {
 
 // Bump root package.json
 console.log(`Bumping ${versionType} version...`);
-execSync(`npm version ${versionType} --no-git-tag-version`, {
-  cwd: rootDir,
-  stdio: "inherit",
-});
+
+try {
+  execSync(`npm version ${versionType} --no-git-tag-version`, {
+    cwd: rootDir,
+    stdio: "inherit",
+  });
+} catch (error) {
+  console.error(
+    `\n❌ Failed to bump root package.json version: ${String(error)}`,
+  );
+  process.exit(1);
+}
 
 // Read new version
 const rootPkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
@@ -39,10 +48,22 @@ console.log("✓ Updated claude-desktop-extension/package.json");
 
 // Update claude-desktop-extension/package-lock.json
 console.log("Updating claude-desktop-extension/package-lock.json...");
-execSync("npm install", {
-  cwd: join(rootDir, "claude-desktop-extension"),
-  stdio: "inherit",
-});
+
+try {
+  execSync("npm install", {
+    cwd: join(rootDir, "claude-desktop-extension"),
+    stdio: "inherit",
+  });
+} catch (error) {
+  console.error(
+    `\n❌ npm install failed in claude-desktop-extension: ${String(error)}`,
+  );
+  console.error("Already-modified files (revert if needed):");
+  console.error("  - package.json");
+  console.error("  - claude-desktop-extension/package.json");
+  process.exit(1);
+}
+
 console.log("✓ Updated claude-desktop-extension/package-lock.json");
 
 // Update version.ts (replace VERSION value, preserve all other content)

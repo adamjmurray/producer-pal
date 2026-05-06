@@ -15,6 +15,7 @@ import {
   createTestDevice,
   extractToolResultText,
   parseToolResult,
+  parseToolResultWithWarnings,
   setupMcpTestContext,
   sleep,
 } from "../mcp-test-helpers";
@@ -94,7 +95,7 @@ describe("ppal-delete", () => {
 
     expect(deletedReturn.deleted).toBe(true);
 
-    // Test 4: Error when trying to delete Producer Pal host track
+    // Test 4: Skip with deleted:false when trying to delete Producer Pal host track
     // Track index 11 hosts the Producer Pal device in e2e-test-set
     const readHostTrack = await ctx.client!.callTool({
       name: "ppal-read-track",
@@ -106,9 +107,24 @@ describe("ppal-delete", () => {
       name: "ppal-delete",
       arguments: { ids: hostTrack.id, type: "track" },
     });
-    const deleteHostText = extractToolResultText(deleteHost);
+    const { data: deletedHost, warnings: deleteHostWarnings } =
+      parseToolResultWithWarnings<DeleteResult>(deleteHost);
 
-    expect(deleteHostText.toLowerCase()).toContain("producer pal");
+    expect(String(deletedHost.id)).toBe(String(hostTrack.id));
+    expect(deletedHost.type).toBe("track");
+    expect(deletedHost.deleted).toBe(false);
+    expect(deleteHostWarnings.join(" ").toLowerCase()).toContain(
+      "producer pal",
+    );
+
+    // Verify host track still exists
+    const verifyHost = await ctx.client!.callTool({
+      name: "ppal-read-track",
+      arguments: { trackId: hostTrack.id },
+    });
+    const verifiedHost = parseToolResult<{ id: string }>(verifyHost);
+
+    expect(String(verifiedHost.id)).toBe(String(hostTrack.id));
 
     // Test 5: Delete single scene by ID
     const createScene = await ctx.client!.callTool({

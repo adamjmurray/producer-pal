@@ -61,7 +61,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "duration in bar:beat (e.g., '4:0' = 4 bars), auto-fills with loops",
       ),
-    toSlot: z
+    toSlot: z.coerce
       .string()
       .optional()
       .describe(

@@ -29,6 +29,19 @@ vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
   filterOverrides: vi.fn((overrides) => overrides),
 }));
 
+// Shrink retry backoff so tests don't sit through real seconds-long delays.
+// 200 ms is small enough to keep the suite fast but large enough that the
+// "cancels retry when stopResponse is called during retry delay" test can
+// reliably abort while the timer is still pending (it waits ~50 ms first).
+vi.mock(import("#webui/lib/rate-limit"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return {
+    ...actual,
+    calculateRetryDelay: () => 200,
+  };
+});
+
 const mockAdapter = createMockAdapter();
 
 /**
@@ -157,6 +170,79 @@ describe("useChat", () => {
       });
 
       expect(mockAdapter.extractUserMessage).not.toHaveBeenCalled();
+    });
+
+    it("recovers from MCP init failure by stashing the user message", async () => {
+      const { validateMcpConnection } =
+        await import("#webui/hooks/chat/helpers/streaming-helpers");
+
+      (
+        validateMcpConnection as ReturnType<typeof vi.fn>
+      ).mockImplementationOnce(() => {
+        throw new Error("MCP connection failed");
+      });
+
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // The user message should appear in the displayed messages even though
+      // the client never reached sendMessage.
+      const userIdx = result.current.messages.findIndex(
+        (m) => m.role === "user",
+      );
+
+      expect(userIdx).toBeGreaterThanOrEqual(0);
+      expect(
+        result.current.messages.some((m) =>
+          m.parts.some((p) => p.type === "error"),
+        ),
+      ).toBe(true);
+
+      // Retry should now have a usable history to fork from.
+      vi.clearAllMocks();
+
+      await act(async () => {
+        await result.current.handleRetry(userIdx);
+      });
+
+      expect(mockAdapter.extractUserMessage).toHaveBeenCalled();
+      expect(mockAdapter.createClient).toHaveBeenCalled();
+    });
+
+    it("recovers from missing-API-key error after key is added", async () => {
+      const props = { ...defaultProps, apiKey: "" };
+      const { result, rerender } = renderHook((p: typeof props) => useChat(p), {
+        initialProps: props,
+      });
+
+      // First send fails because no API key
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      const userIdx = result.current.messages.findIndex(
+        (m) => m.role === "user",
+      );
+
+      expect(userIdx).toBe(0);
+      expect(
+        result.current.messages.some((m) =>
+          m.parts.some((p) => p.type === "error"),
+        ),
+      ).toBe(true);
+
+      // User adds an API key in settings; retry should now succeed
+      rerender({ ...props, apiKey: "test-key" });
+
+      await act(async () => {
+        await result.current.handleRetry(userIdx);
+      });
+
+      expect(mockAdapter.createClient).toHaveBeenCalled();
+      expect(mockAdapter.extractUserMessage).toHaveBeenCalled();
     });
 
     it("retries from restored conversation using pending history", async () => {
@@ -487,6 +573,54 @@ describe("useChat", () => {
       expect(receivedMessages).toStrictEqual(["Hello", "Hello"]);
     });
 
+    it("sends original message on retry when only user echo was yielded", async () => {
+      // Real ChatSdkClient yields the user message before provider streaming.
+      // A 429 between that yield and any assistant content must not cause
+      // the retry to switch to "continue" — the model never produced output.
+      const receivedMessages: string[] = [];
+      let callCount = 0;
+
+      const rateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.sendMessage = async function* (
+            message: string,
+            _signal: AbortSignal,
+          ) {
+            receivedMessages.push(message);
+            callCount++;
+
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+
+            if (callCount === 1) {
+              throw new Error("Resource has been exhausted");
+            }
+
+            client.chatHistory.push({
+              role: "assistant",
+              content: `Done: ${message}`,
+            });
+            yield [...client.chatHistory];
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      expect(receivedMessages).toStrictEqual(["Hello", "Hello"]);
+    });
+
     it("sends 'continue' on retry when content was already received", async () => {
       const receivedMessages: string[] = [];
       let callCount = 0;
@@ -541,6 +675,80 @@ describe("useChat", () => {
       expect(receivedMessages).toStrictEqual(["Hello", "continue"]);
     });
 
+    it("clears rateLimitState before the retry attempt streams its response", async () => {
+      // After the retry delay ends and the next attempt begins streaming, the
+      // indicator must disappear immediately — not wait for the entire stream
+      // (which can include long thinking/tool phases) to complete.
+      // We use a gate Promise to pause the second sendMessage mid-stream,
+      // then assert the indicator is already cleared while the stream is
+      // still in flight.
+      let callCount = 0;
+      let resolveGate: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        resolveGate = resolve;
+      });
+
+      const rateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.sendMessage = async function* (
+            message: string,
+            _signal: AbortSignal,
+          ) {
+            callCount++;
+
+            if (callCount === 1) {
+              throw new Error("Resource has been exhausted");
+            }
+
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+            // Pause mid-stream — simulates a long-running response (thinking,
+            // tool calls). The rate-limit indicator must already be hidden
+            // by this point, not wait for the full stream to finish.
+            await gate;
+            client.chatHistory.push({
+              role: "assistant",
+              content: "ok",
+            });
+            yield [...client.chatHistory];
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
+      );
+
+      // Kick off send without awaiting the full completion
+      let sendDone = false;
+      const sendPromise = result.current.handleSend("Hello").then(() => {
+        sendDone = true;
+      });
+
+      // Drain timers/microtasks until the second sendMessage has yielded
+      // its first chunk and is suspended on the gate. The retry delay
+      // mock is 200 ms, plus a small margin for state to settle.
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 350));
+      });
+
+      expect(sendDone).toBe(false);
+      expect(result.current.rateLimitState).toBeNull();
+
+      // Release the gate and let send finish
+      resolveGate();
+      await act(async () => {
+        await sendPromise;
+      });
+
+      expect(result.current.rateLimitState).toBeNull();
+    });
+
     it("cancels retry when stopResponse is called during retry delay", async () => {
       // Create an adapter that always throws rate limit errors
       const alwaysRateLimitAdapter = {
@@ -582,6 +790,58 @@ describe("useChat", () => {
 
       expect(result.current.isAssistantResponding).toBe(false);
       expect(result.current.rateLimitState).toBeNull();
+    });
+
+    it("persists cancel-during-retry error into chatHistory for auto-save", async () => {
+      // Mimics the real ChatSdkClient: pushes a user message before
+      // throwing 429. The stashed userMessageEntry from handleSend is a
+      // different object than what sendMessage pushes, which previously
+      // caused the cancel error to land in a fresh array copy and never
+      // reach chatHistory — so auto-save persisted the user message
+      // without the error.
+      let capturedClient: MockChatClient | null = null;
+      const realisticRateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          capturedClient = client;
+
+          client.sendMessage = async function* (
+            message: string,
+            _signal: AbortSignal,
+          ) {
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+            throw new Error("Resource has been exhausted");
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: realisticRateLimitAdapter }),
+      );
+
+      const sendPromise = act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await act(async () => {
+        result.current.stopResponse();
+      });
+
+      await sendPromise;
+
+      expect(capturedClient).not.toBeNull();
+      const chatHistory = capturedClient!.chatHistory;
+      const errorEntry = chatHistory.find((m) => m.isError);
+
+      expect(errorEntry).toBeDefined();
+      expect(errorEntry?.content).toContain("Retry cancelled");
     });
   });
 });

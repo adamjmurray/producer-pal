@@ -104,6 +104,15 @@ export class LiveAPI {
     return this.id !== "id 0" && this.id !== "0";
   }
 
+  /**
+   * Get a child LiveAPI by appending sub-path components to this object's path
+   * @param name - Sub-path component(s) to append
+   * @returns LiveAPI for the child
+   */
+  child(...name: string[]): LiveAPI {
+    return LiveAPI.from(`${this.path} ${name.join(" ")}`);
+  }
+
   get id(): string {
     if (this._registered) return this._registered.id;
     if (isNonExistentByDefault()) return "0";

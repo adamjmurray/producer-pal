@@ -237,7 +237,9 @@ export function rawLiveApi(
       validateOperationParameters(operation);
       result = executeOperation(api, operation);
     } catch (error) {
-      throw new Error(`Operation failed: ${errorMessage(error)}`);
+      throw new Error(`Operation failed: ${errorMessage(error)}`, {
+        cause: error,
+      });
     }
 
     results.push({

@@ -135,7 +135,9 @@ export async function updateClip(
   const deadline = computeLoopDeadline(context.timeoutMs);
 
   if (!ids) {
-    throw new Error("updateClip failed: ids is required");
+    console.warn("updateClip: ids is required");
+
+    return [];
   }
 
   const mutableClips = applySplittingIfNeeded(

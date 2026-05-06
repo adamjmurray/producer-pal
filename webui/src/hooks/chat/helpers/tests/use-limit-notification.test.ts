@@ -152,6 +152,56 @@ describe("useLimitNotification", () => {
     vi.useRealTimers();
   });
 
+  describe("showSaveError", () => {
+    it("shows error notification with quota-specific hint", async () => {
+      const { result } = renderHook(() => useLimitNotification());
+
+      await act(() => {
+        result.current.showSaveError(
+          new DOMException("disk full", "QuotaExceededError"),
+        );
+      });
+
+      expect(result.current.limitNotification?.type).toBe("error");
+      expect(result.current.limitNotification?.message).toContain(
+        "browser storage is full",
+      );
+    });
+
+    it("shows generic error message for non-quota errors", async () => {
+      const { result } = renderHook(() => useLimitNotification());
+
+      await act(() => {
+        result.current.showSaveError(new Error("transaction aborted"));
+      });
+
+      expect(result.current.limitNotification?.type).toBe("error");
+      expect(result.current.limitNotification?.message).toBe(
+        "Couldn't save conversation: transaction aborted",
+      );
+    });
+
+    it("auto-dismisses save error after timeout", async () => {
+      vi.useFakeTimers();
+
+      const { result } = renderHook(() => useLimitNotification());
+
+      await act(() => {
+        result.current.showSaveError(new Error("boom"));
+      });
+
+      expect(result.current.limitNotification).not.toBeNull();
+
+      await act(() => {
+        vi.advanceTimersByTime(4000);
+      });
+
+      expect(result.current.limitNotification).toBeNull();
+
+      vi.useRealTimers();
+    });
+  });
+
   it("clears timer on dismiss when timer is running", async () => {
     vi.useFakeTimers();
 

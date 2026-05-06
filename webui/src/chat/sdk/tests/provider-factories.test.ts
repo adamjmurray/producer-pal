@@ -3,8 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
-import { createProviderModel } from "#webui/chat/sdk/provider-factories";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createProviderModel,
+  injectThinkingDisplay,
+} from "#webui/chat/sdk/provider-factories";
 
 // The LanguageModel type is a union — cast to access runtime modelId property
 const getModelId = (model: unknown): string =>
@@ -110,5 +113,79 @@ describe("createProviderModel", () => {
 
     expect(model).toBeDefined();
     expect(getModelId(model)).toBe("llama3");
+  });
+});
+
+describe("injectThinkingDisplay", () => {
+  const url = "https://api.anthropic.com/v1/messages";
+
+  /**
+   * Extract the body string from the first call to the mock fetch.
+   * @param mockFetch - Vitest mock function
+   * @returns The request body string
+   */
+  function getCallBody(mockFetch: ReturnType<typeof vi.fn>): string {
+    const init = mockFetch.mock.calls[0]![1] as RequestInit;
+
+    return init.body as string;
+  }
+
+  it("injects display: summarized for adaptive thinking", async () => {
+    const body = JSON.stringify({ thinking: { type: "adaptive" } });
+    const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
+
+    globalThis.fetch = mockFetch;
+    await injectThinkingDisplay(url, { method: "POST", body });
+
+    const parsedBody = JSON.parse(getCallBody(mockFetch));
+
+    expect(parsedBody.thinking.display).toBe("summarized");
+  });
+
+  it("does not modify enabled thinking (Haiku 4.5)", async () => {
+    const body = JSON.stringify({
+      thinking: { type: "enabled", budget_tokens: 10240 },
+    });
+    const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
+
+    globalThis.fetch = mockFetch;
+    await injectThinkingDisplay(url, { method: "POST", body });
+
+    const parsedBody = JSON.parse(getCallBody(mockFetch));
+
+    expect(parsedBody.thinking.display).toBeUndefined();
+  });
+
+  it("does not modify requests without thinking", async () => {
+    const original = JSON.stringify({ model: "claude-opus-4-7", messages: [] });
+    const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
+
+    globalThis.fetch = mockFetch;
+    await injectThinkingDisplay(url, { method: "POST", body: original });
+
+    expect(getCallBody(mockFetch)).toBe(original);
+  });
+
+  it("does not override existing display value", async () => {
+    const body = JSON.stringify({
+      thinking: { type: "adaptive", display: "omitted" },
+    });
+    const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
+
+    globalThis.fetch = mockFetch;
+    await injectThinkingDisplay(url, { method: "POST", body });
+
+    const parsedBody = JSON.parse(getCallBody(mockFetch));
+
+    expect(parsedBody.thinking.display).toBe("omitted");
+  });
+
+  it("passes through non-JSON bodies unchanged", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(new Response("ok"));
+
+    globalThis.fetch = mockFetch;
+    await injectThinkingDisplay(url, { method: "POST", body: "not json" });
+
+    expect(getCallBody(mockFetch)).toBe("not json");
   });
 });

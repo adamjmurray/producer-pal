@@ -399,6 +399,7 @@ function tryParseTransform(
     if (error instanceof Error && error.name === "SyntaxError") {
       throw new Error(
         formatParserError(error as PeggySyntaxError, "transform"),
+        { cause: error },
       );
     }
 

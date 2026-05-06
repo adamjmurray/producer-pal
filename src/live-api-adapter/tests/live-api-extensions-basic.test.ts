@@ -55,6 +55,40 @@ describe("LiveAPI extensions - basic methods", () => {
     });
   });
 
+  describe("child", () => {
+    it("appends a single sub-path component to the parent path", () => {
+      registerMockObject("track-id", {
+        path: "live_set tracks 0",
+        type: "Track",
+      });
+      registerMockObject("mixer-id", {
+        path: "live_set tracks 0 mixer_device",
+        type: "MixerDevice",
+      });
+
+      const track = LiveAPI.from("track-id");
+      const mixer = track.child("mixer_device");
+
+      expect(mixer.path).toBe("live_set tracks 0 mixer_device");
+    });
+
+    it("joins multiple sub-path components with spaces", () => {
+      registerMockObject("mixer-id", {
+        path: "live_set tracks 0 mixer_device",
+        type: "MixerDevice",
+      });
+      registerMockObject("send-id", {
+        path: "live_set tracks 0 mixer_device sends 0",
+        type: "DeviceParameter",
+      });
+
+      const mixer = LiveAPI.from("mixer-id");
+      const send = mixer.child("sends", "0");
+
+      expect(send.path).toBe("live_set tracks 0 mixer_device sends 0");
+    });
+  });
+
   describe("getProperty", () => {
     it("returns the first element from LiveAPI get()", () => {
       api.get = vi.fn().mockReturnValue(["test_value"]);

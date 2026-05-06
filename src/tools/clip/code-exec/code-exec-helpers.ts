@@ -165,7 +165,7 @@ export function validateCodeNotes(result: unknown): CodeExecutionResult {
 export function validateAndSanitizeNote(
   note: unknown,
 ): { valid: true; note: CodeNote } | { valid: false } {
-  if (typeof note !== "object" || note === null) {
+  if (typeof note !== "object" || note == null) {
     return { valid: false };
   }
 

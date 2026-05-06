@@ -50,7 +50,7 @@ describe("AssistantToolCall", () => {
       const details = document.querySelector("details");
 
       expect(details!.className).toContain("bg-zinc-200");
-      expect(details!.className).toContain("dark:bg-zinc-900");
+      expect(details!.className).toContain("dark:bg-zinc-700");
       expect(details!.className).toContain("font-mono");
     });
   });
