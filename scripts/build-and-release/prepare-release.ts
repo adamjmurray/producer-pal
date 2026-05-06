@@ -82,4 +82,6 @@ console.log("1. Open max-for-live-device/Producer_Pal.amxd in Max");
 console.log("2. Click the freeze button");
 console.log("3. Save as: release/Producer_Pal.amxd");
 console.log("4. Test both files work correctly");
-console.log("5. Continue with git merge and tag steps (see DEVELOPERS.md)");
+console.log(
+  "5. Create/update the GitHub release, test, and proceed per dev/Releasing.md",
+);
