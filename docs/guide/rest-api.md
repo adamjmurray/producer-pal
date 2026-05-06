@@ -89,6 +89,17 @@ an audio clip), it emits a warning and continues with the rest.
 
 ### Response format: `?format=json`
 
+::: warning Default will change in v1.5.0
+
+The default response format will change from compact to **`json`** in v1.5.0. We
+recommend explicitly using `?format=json` for now, and removing the override
+once v1.5.0 ships. The compact JS-literal format is optimized for LLM context
+efficiency and is generally not the right fit for HTTP integrations — if you do
+specifically want it, keep `?format=compact` explicit to stay
+forward-compatible.
+
+:::
+
 When `?format` is omitted, the server uses the global compact-output setting
 configured on the **Setup** tab of the Producer Pal Max for Live device. By
 default that setting is on, so `result` is a string in a compact

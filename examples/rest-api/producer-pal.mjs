@@ -1,41 +1,128 @@
 #!/usr/bin/env node
 
-// Producer Pal REST API example (Node.js, no dependencies)
+// Producer Pal REST API client (Node.js, no dependencies)
 // Requires Node.js 18+ for built-in fetch
 //
-// Usage: node producer-pal.mjs
+// Usage:
+//   node producer-pal.mjs <tool-name> [json-args] [options]
+//   node producer-pal.mjs --list-tools [options]
+//
+// Options:
+//   --url URL              REST API base URL (default: http://localhost:3350)
+//   --format json|compact  Response format (default: json)
+//   --timeout-ms N         Per-call timeout in milliseconds
+//   --help, -h             Show help
+//
+// Examples:
+//   node producer-pal.mjs --list-tools
+//   node producer-pal.mjs ppal-read-live-set
+//   node producer-pal.mjs ppal-read-track '{"trackIndex": 0}'
+//   node producer-pal.mjs --list-tools | jq -r '.tools[].name'
+//   node producer-pal.mjs ppal-read-live-set | jq .result.tempo
 
-const BASE_URL = "http://localhost:3350";
+function usage() {
+  return [
+    "Usage:",
+    "  node producer-pal.mjs <tool-name> [json-args] [options]",
+    "  node producer-pal.mjs --list-tools [options]",
+    "",
+    "Options:",
+    "  --url URL              REST API base URL (default: http://localhost:3350)",
+    "  --format json|compact  Response format (default: json)",
+    "  --timeout-ms N         Per-call timeout in milliseconds",
+    "  --help, -h             Show help",
+    "",
+    "Examples:",
+    "  node producer-pal.mjs --list-tools",
+    "  node producer-pal.mjs ppal-read-live-set",
+    "  node producer-pal.mjs ppal-read-track '{\"trackIndex\": 0}'",
+  ].join("\n");
+}
 
-/** List all available tools */
-async function listTools() {
-  const res = await fetch(`${BASE_URL}/api/tools`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
-  const body = await res.json();
-  return body.tools;
+function parseArgs(argv) {
+  const opts = {
+    url: "http://localhost:3350",
+    format: "json",
+    timeoutMs: undefined,
+    listTools: false,
+    toolName: undefined,
+    toolArgs: {},
+  };
+  const positional = [];
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    const takeValue = () => {
+      const v = argv[++i];
+      if (v === undefined) throw new Error(`Missing value for ${arg}`);
+      return v;
+    };
+
+    if (arg === "--url") opts.url = takeValue();
+    else if (arg === "--format") opts.format = takeValue();
+    else if (arg === "--timeout-ms") opts.timeoutMs = Number(takeValue());
+    else if (arg === "--list-tools") opts.listTools = true;
+    else if (arg === "--help" || arg === "-h") {
+      console.log(usage());
+      process.exit(0);
+    } else if (arg.startsWith("--")) {
+      throw new Error(`Unknown argument: ${arg}`);
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  if (opts.format !== "json" && opts.format !== "compact") {
+    throw new Error(
+      `Invalid --format: ${opts.format} (must be 'json' or 'compact')`,
+    );
+  }
+
+  if (!opts.listTools) {
+    if (positional.length === 0) {
+      throw new Error(
+        "Missing tool name. Use --list-tools to discover tools, or pass a tool name as the first argument.",
+      );
+    }
+    opts.toolName = positional[0];
+    if (positional.length > 1) {
+      try {
+        opts.toolArgs = JSON.parse(positional[1]);
+      } catch (err) {
+        throw new Error(`Invalid JSON for tool args: ${err.message}`);
+      }
+    }
+    if (positional.length > 2) {
+      throw new Error(`Unexpected positional argument: ${positional[2]}`);
+    }
+  }
+
+  return opts;
 }
 
 /**
- * Call a Producer Pal tool by name.
- *
- * Options:
- *   - format:    "json" | "compact"  Default "compact" returns `result` as a
- *                token-efficient JS-literal string. "json" returns `result`
- *                as a parsed value (object/array/etc.) and surfaces any
- *                warnings as a separate `warnings: string[]` field.
- *   - timeoutMs: 1–60000              Per-request timeout override.
+ * GET /api/tools — returns the full envelope `{tools: [...]}` as parsed JSON.
+ * The tool list endpoint always returns JSON; it has no `?format` toggle.
  */
-async function callTool(name, args = {}, options = {}) {
-  const params = new URLSearchParams();
-  if (options.format) params.set("format", options.format);
-  if (options.timeoutMs != null)
-    params.set("timeoutMs", String(options.timeoutMs));
+async function listTools(baseUrl) {
+  const res = await fetch(`${baseUrl}/api/tools`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
+  return res.json();
+}
 
-  const url = params.toString()
-    ? `${BASE_URL}/api/tools/${name}?${params}`
-    : `${BASE_URL}/api/tools/${name}`;
+/**
+ * Call a Producer Pal tool by name with the given args.
+ *
+ * In json format (the default), `result` is a parsed value (object/array/etc.)
+ * and any warnings are surfaced as a separate `warnings: string[]` field. In
+ * compact format, `result` is a token-efficient JS-literal string with
+ * warnings inlined as `WARNING: ...` lines.
+ */
+async function callTool(baseUrl, name, args, { format, timeoutMs } = {}) {
+  const params = new URLSearchParams({ format });
+  if (timeoutMs != null) params.set("timeoutMs", String(timeoutMs));
 
-  const res = await fetch(url, {
+  const res = await fetch(`${baseUrl}/api/tools/${name}?${params}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(args),
@@ -44,44 +131,23 @@ async function callTool(name, args = {}, options = {}) {
   return res.json();
 }
 
-// --- Example usage ---
-
 async function main() {
-  // List available tools
-  console.log("Available tools:");
-  const tools = await listTools();
-  for (const tool of tools) {
-    console.log(`  ${tool.name} - ${tool.description.slice(0, 60)}...`);
+  const cli = parseArgs(process.argv.slice(2));
+
+  if (cli.listTools) {
+    console.log(JSON.stringify(await listTools(cli.url), null, 2));
+    return;
   }
 
-  // Inspect a tool's input schema
-  const readTrack = tools.find((t) => t.name === "ppal-read-track");
-  console.log(`\nSchema for ${readTrack.name}:`);
-  console.log(JSON.stringify(readTrack.inputSchema, null, 2));
-
-  // Read tracks in the Live Set (default compact format)
-  console.log("\nReading tracks (compact format):");
-  const tracks = await callTool("ppal-read-live-set");
-  console.log(tracks.result);
-
-  // Same call with format=json — result is a parsed object you can index into
-  console.log("\nReading tracks (parsed JSON):");
-  const tracksJson = await callTool(
-    "ppal-read-live-set",
-    {},
-    { format: "json" },
-  );
-  console.log(`tempo: ${tracksJson.result.tempo}`);
-  console.log(`scale: ${tracksJson.result.scale}`);
-
-  // Override timeout for a potentially long call
-  console.log("\nReading track 0 with all clips (10s timeout):");
-  const track = await callTool(
-    "ppal-read-track",
-    { trackIndex: 0, include: ["session-clips", "arrangement-clips"] },
-    { timeoutMs: 10000 },
-  );
-  console.log(track.result);
+  const response = await callTool(cli.url, cli.toolName, cli.toolArgs, {
+    format: cli.format,
+    timeoutMs: cli.timeoutMs,
+  });
+  if (response.isError) {
+    console.error("API error:", response.result);
+    process.exit(1);
+  }
+  console.log(JSON.stringify(response, null, 2));
 }
 
 main().catch((err) => {
@@ -90,7 +156,7 @@ main().catch((err) => {
       "Could not connect to Producer Pal. Is Ableton Live running with the Producer Pal device?",
     );
   } else {
-    console.error(err);
+    console.error(err.message ?? err);
   }
   process.exit(1);
 });
