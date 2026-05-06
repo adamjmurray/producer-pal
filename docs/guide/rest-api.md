@@ -1,9 +1,30 @@
-# REST API
+---
+title: Ableton Live REST API
+description:
+  Producer Pal exposes a REST API for Ableton Live — control tracks, clips,
+  devices, and arrangements over plain HTTP. No MCP SDK required.
+head:
+  - - meta
+    - name: keywords
+      content:
+        Ableton REST API, Ableton Live REST API, Ableton HTTP API, Ableton Live
+        API, Max for Live REST API, Ableton automation API
+  - - meta
+    - property: og:title
+      content: Ableton Live REST API — Producer Pal
+  - - meta
+    - property: og:description
+      content:
+        Control Ableton Live over plain HTTP. Producer Pal's REST API lets you
+        script tracks, clips, devices, and arrangements without an MCP SDK.
+---
+
+# Ableton Live REST API
 
 Producer Pal includes a REST API for building custom scripts, automation, and
-integrations using plain HTTP requests — no MCP SDK needed. It also works as an
-alternative interface for coding agents: download this page as Markdown (button
-at the top) and give it to your agent for a complete reference.
+integrations with Ableton Live using plain HTTP requests — no MCP SDK needed. It
+also works as an alternative interface for coding agents: download this page as
+Markdown (button at the top) and give it to your agent for a complete reference.
 
 The REST API runs on the same server as the MCP endpoint (default port 3350) and
 is available whenever the Producer Pal Max for Live device is running.

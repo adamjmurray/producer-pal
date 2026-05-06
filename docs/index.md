@@ -167,7 +167,8 @@ building arrangements.
 
 It works with any MCP-compatible AI, including Claude, Gemini, ChatGPT, Mistral,
 and local models via Ollama or LM Studio. Producer Pal is free, open-source
-(GPL-3.0), and developed in the open.
+(GPL-3.0), and actively developed in the open with regular updates for the
+latest Ableton Live features.
 
 ## Support
 
