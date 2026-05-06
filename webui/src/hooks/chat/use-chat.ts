@@ -174,7 +174,17 @@ export function useChat<
 
         setMessages(adapter.createErrorMessage(error, errorHistory));
 
-        if (clientRef.current) autoSaveRef?.current?.();
+        if (clientRef.current) {
+          // createErrorMessage mutates errorHistory. When errorHistory is a
+          // fresh copy (includeStashed path), the error didn't reach
+          // chatHistory, so auto-save would persist the user message
+          // without it. Push the error into chatHistory directly.
+          if (errorHistory !== clientRef.current.chatHistory) {
+            clientRef.current.chatHistory.push(errorHistory.at(-1) as TMessage);
+          }
+
+          autoSaveRef?.current?.();
+        }
       } finally {
         pendingUserMessageRef.current = null;
         abortControllerRef.current = null;

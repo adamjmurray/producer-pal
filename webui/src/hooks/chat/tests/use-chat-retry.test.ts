@@ -791,5 +791,57 @@ describe("useChat", () => {
       expect(result.current.isAssistantResponding).toBe(false);
       expect(result.current.rateLimitState).toBeNull();
     });
+
+    it("persists cancel-during-retry error into chatHistory for auto-save", async () => {
+      // Mimics the real ChatSdkClient: pushes a user message before
+      // throwing 429. The stashed userMessageEntry from handleSend is a
+      // different object than what sendMessage pushes, which previously
+      // caused the cancel error to land in a fresh array copy and never
+      // reach chatHistory — so auto-save persisted the user message
+      // without the error.
+      let capturedClient: MockChatClient | null = null;
+      const realisticRateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          capturedClient = client;
+
+          client.sendMessage = async function* (
+            message: string,
+            _signal: AbortSignal,
+          ) {
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+            throw new Error("Resource has been exhausted");
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: realisticRateLimitAdapter }),
+      );
+
+      const sendPromise = act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      await act(async () => {
+        result.current.stopResponse();
+      });
+
+      await sendPromise;
+
+      expect(capturedClient).not.toBeNull();
+      const chatHistory = capturedClient!.chatHistory;
+      const errorEntry = chatHistory.find((m) => m.isError);
+
+      expect(errorEntry).toBeDefined();
+      expect(errorEntry?.content).toContain("Retry cancelled");
+    });
   });
 });
