@@ -5,6 +5,7 @@
 
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import {
   isDivisionLabel,
   isPanLabel,
@@ -13,6 +14,12 @@ import {
 import { parseParamLines } from "./update-device-param-parser.ts";
 
 const BINARY_SEARCH_ITERATIONS = 40;
+
+type PseudoParamHandler = (device: LiveAPI, value: string | number) => void;
+
+const PSEUDO_PARAM_HANDLERS: Record<string, PseudoParamHandler> = {
+  sample: setSimplerSample,
+};
 
 /**
  * Set parameter values from name=value lines
@@ -23,6 +30,13 @@ export function setParamValues(device: LiveAPI, paramsInput: string): void {
   const paramEntries = parseParamLines(paramsInput);
 
   for (const [key, inputValue] of paramEntries) {
+    const pseudoHandler = PSEUDO_PARAM_HANDLERS[key.toLowerCase()];
+
+    if (pseudoHandler) {
+      pseudoHandler(device, inputValue);
+      continue;
+    }
+
     const param =
       resolveParamByName(device, key) ??
       (/^\d+$/.test(key) ? resolveParamForDevice(device, key) : null);
@@ -34,6 +48,33 @@ export function setParamValues(device: LiveAPI, paramsInput: string): void {
 
     setParamValue(param, inputValue);
   }
+}
+
+/**
+ * Replace the sample on a Simpler device. Warns and skips for other devices.
+ * @param device - LiveAPI device object
+ * @param value - File path to load
+ */
+function setSimplerSample(device: LiveAPI, value: string | number): void {
+  const displayName = device.getProperty("class_display_name") as string;
+
+  if (displayName !== DEVICE_CLASS.SIMPLER) {
+    console.warn(
+      `updateDevice: 'sample' only applies to Simpler devices (got ${displayName})`,
+    );
+
+    return;
+  }
+
+  if ((device.getProperty("multi_sample_mode") as number) > 0) {
+    console.warn(
+      "updateDevice: 'sample' is not supported on Simpler in multi-sample mode",
+    );
+
+    return;
+  }
+
+  device.call("replace_sample", String(value));
 }
 
 /**

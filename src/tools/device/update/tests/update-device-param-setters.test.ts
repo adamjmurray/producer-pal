@@ -432,4 +432,175 @@ describe("updateDevice - param value conversion", () => {
       );
     });
   });
+
+  describe("sample pseudo-param", () => {
+    it("calls replace_sample on Simpler with the file path", () => {
+      const device = registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children(),
+        },
+      });
+
+      updateDevice({
+        ids: "dev1",
+        params: "sample=/tmp/kick.wav",
+      });
+
+      expect(device.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/kick.wav",
+      );
+    });
+
+    it("matches the pseudo-param name case-insensitively", () => {
+      const device = registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children(),
+        },
+      });
+
+      updateDevice({ ids: "dev1", params: "Sample=/tmp/kick.wav" });
+
+      expect(device.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/kick.wav",
+      );
+    });
+
+    it("preserves interior whitespace in file paths", () => {
+      const device = registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children(),
+        },
+      });
+
+      updateDevice({
+        ids: "dev1",
+        params: "sample = /tmp/My Samples/kick drum.wav  ",
+      });
+
+      expect(device.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/My Samples/kick drum.wav",
+      );
+    });
+
+    it("warns and skips on non-Simpler devices using display name", () => {
+      const device = registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "Device",
+        properties: {
+          class_display_name: "Operator",
+          parameters: children(),
+        },
+      });
+
+      updateDevice({ ids: "dev1", params: "sample=/tmp/kick.wav" });
+
+      expect(device.call).not.toHaveBeenCalledWith(
+        "replace_sample",
+        expect.anything(),
+      );
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("'sample' only applies to Simpler"),
+      );
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("(got Operator)"),
+      );
+    });
+
+    it("warns and skips on Simpler in multi-sample mode", () => {
+      const device = registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 1,
+          parameters: children(),
+        },
+      });
+
+      updateDevice({ ids: "dev1", params: "sample=/tmp/kick.wav" });
+
+      expect(device.call).not.toHaveBeenCalledWith(
+        "replace_sample",
+        expect.anything(),
+      );
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("multi-sample mode"),
+      );
+    });
+
+    it("does not look up sample as a DeviceParameter", () => {
+      const device = registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children(),
+        },
+      });
+
+      updateDevice({ ids: "dev1", params: "sample=/tmp/kick.wav" });
+
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining('"sample" not found'),
+      );
+      expect(device.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/kick.wav",
+      );
+    });
+
+    it("works alongside regular DeviceParameters in the same params block", () => {
+      const device = registerMockObject("dev1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children("vol-param"),
+        },
+      });
+      const param = registerMockObject("vol-param", {
+        properties: {
+          name: "Volume",
+          original_name: "Volume",
+          is_quantized: 0,
+          value: 0.5,
+          min: 0,
+          max: 1,
+        },
+        methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
+      });
+
+      updateDevice({
+        ids: "dev1",
+        params: "sample=/tmp/kick.wav\nVolume=0.8",
+      });
+
+      expect(device.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/kick.wav",
+      );
+      expect(param.set).toHaveBeenCalledWith("value", 0.8);
+    });
+  });
 });

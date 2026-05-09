@@ -200,6 +200,8 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 
 Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
 
+**Simpler sample:** Update via \`params\` with \`sample=<absolute file path>\` to load a sample into a Simpler device.
+
 ### Moving Clips
 
 \`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, e.g., "2/3") moves session clips. Moving clips changes their IDs - re-read to get new IDs.
