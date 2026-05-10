@@ -16,6 +16,7 @@
 
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
+import { resolveAbsolutePaths } from "./reconstruct-path.ts";
 
 export interface SampleSearchArgs {
   query?: string;
@@ -56,11 +57,6 @@ interface FileRow {
   use_count: number;
 }
 
-interface ParentRow {
-  parent_id: number;
-  name: string;
-}
-
 /**
  * Search Live's browser DB for audio samples by name substring.
  *
@@ -98,9 +94,12 @@ export async function searchSamples(
          LIMIT ?`,
       )
       .all(...buildParams(args.query, limit)) as unknown as FileRow[];
-
+    const paths = resolveAbsolutePaths(
+      db,
+      rows.map((r) => r.file_id),
+    );
     const samples = rows.map((row) => ({
-      path: reconstructPath(db, row),
+      path: paths.get(row.file_id) ?? `/${row.name}`,
       name: row.name,
       useCount: row.use_count,
     }));
@@ -137,46 +136,4 @@ function buildParams(
   limit: number,
 ): Array<string | number> {
   return query ? [`%${query}%`, limit] : [limit];
-}
-
-/**
- * Walk parent_id up to the root and concatenate names into an absolute path.
- *
- * NOTE: assumes POSIX-style paths — joins with "/" and prepends "/". On
- * Windows, Live's DB likely stores a drive root (e.g. name "C:") which
- * would produce "/C:/Users/…". Windows is currently out of scope for the
- * Live DB integration (AJM-326); this needs revisiting then.
- *
- * @param db - Open database handle
- * @param row - The starting file row
- * @returns Absolute filesystem path. If the chain breaks early, returns
- *   the partial path with components found so far.
- */
-function reconstructPath(
-  db: ReturnType<typeof openLiveDb>,
-  row: FileRow,
-): string {
-  const segments: string[] = [row.name];
-  let parentId = row.parent_id;
-  // Walk up; the root row in Live's DB has name "/" and parent_id 0.
-  // Cap the loop to defend against pathological cycles.
-  const stmt = db.prepare(
-    "SELECT parent_id, name FROM files WHERE file_id = ?",
-  );
-
-  for (let i = 0; i < 30 && parentId !== 0; i++) {
-    const parent = stmt.get(parentId) as unknown as ParentRow | undefined;
-
-    if (!parent) {
-      break;
-    }
-
-    if (parent.name !== "/") {
-      segments.unshift(parent.name);
-    }
-
-    parentId = parent.parent_id;
-  }
-
-  return `/${segments.join("/")}`;
 }

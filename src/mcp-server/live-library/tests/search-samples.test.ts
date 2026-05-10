@@ -17,15 +17,15 @@ import {
   it,
   vi,
 } from "vitest";
-import { searchSamples } from "./search-samples.ts";
+import { searchSamples } from "../search-samples.ts";
 
-vi.mock(import("./live-db-path.ts"), () => ({
+vi.mock(import("../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
   findLivePluginsDbPath: vi.fn(),
   liveDatabaseDir: vi.fn(),
 }));
 
-const dbPathMod = await import("./live-db-path.ts");
+const dbPathMod = await import("../live-db-path.ts");
 
 let scratchDir: string;
 let dbPath: string;

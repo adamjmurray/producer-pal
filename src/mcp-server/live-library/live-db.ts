@@ -39,12 +39,19 @@ export function openLiveDb(dbPath: string): DatabaseSync {
 
 /**
  * Encode a filesystem path for use as the body of an SQLite URI.
- * Encodes the `?` and `#` characters that SQLite would otherwise treat as
- * delimiters; preserves `/` since SQLite expects path separators.
+ *
+ * SQLite URI parsing reserves `?` and `#` as query/fragment delimiters,
+ * and `%` as the percent-encoding indicator (so a folder named "100%"
+ * would be misinterpreted unless we escape it). We encode each character
+ * individually to preserve `/` as the path separator (encodeURIComponent
+ * would also encode `/`).
  *
  * @param path - Raw filesystem path
  * @returns Encoded path safe to embed in `file:<path>?...`
  */
 function encodePathForSqliteUri(path: string): string {
-  return path.replaceAll("?", "%3F").replaceAll("#", "%23");
+  return path
+    .replaceAll("%", "%25")
+    .replaceAll("?", "%3F")
+    .replaceAll("#", "%23");
 }

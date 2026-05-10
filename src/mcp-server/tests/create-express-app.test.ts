@@ -130,6 +130,7 @@ describe("MCP Express App", () => {
         "ppal-duplicate",
         "ppal-select",
         "ppal-playback",
+        "ppal-library",
         "ppal-raw-live-api",
       ]);
     });

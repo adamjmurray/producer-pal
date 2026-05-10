@@ -27,6 +27,7 @@ import { select } from "#src/tools/control/select.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 import { readDevice } from "#src/tools/device/read/read-device.ts";
 import { updateDevice } from "#src/tools/device/update/update-device.ts";
+import { library } from "#src/tools/library/library.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { deleteObject } from "#src/tools/operations/delete/delete.ts";
@@ -138,6 +139,7 @@ const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
     return duplicate(args as any, ctx);
   },
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
+  "ppal-library": (args) => library(args as any),
   "ppal-raw-live-api": (args, ctx) => rawLiveApi(args as any, ctx),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */

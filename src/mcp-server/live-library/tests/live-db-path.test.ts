@@ -8,7 +8,7 @@ import {
   findLiveFilesDbPath,
   findLivePluginsDbPath,
   liveDatabaseDir,
-} from "./live-db-path.ts";
+} from "../live-db-path.ts";
 
 vi.mock(import("node:fs/promises"), () => ({
   readdir: vi.fn(),

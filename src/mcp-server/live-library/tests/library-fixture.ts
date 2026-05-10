@@ -1,0 +1,193 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * Shared fixture for Live-library DB tests.
+ *
+ * Creates a SQLite file matching the parts of Live's `Live-files-*.db`
+ * schema we actually query: files, places, keywords. Populated with a
+ * small synthetic library covering pack/user/builtin sources, audio +
+ * MIDI + plugin kinds, and tag attachments.
+ */
+
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { fourCC } from "../library-filters.ts";
+
+export interface LibraryFixture {
+  dir: string;
+  dbPath: string;
+  cleanup: () => void;
+}
+
+/**
+ * Create a temp DB pre-populated with a synthetic Live library.
+ *
+ * @returns Fixture handle with the DB path and a cleanup function.
+ */
+export function createLibraryFixture(): LibraryFixture {
+  const dir = mkdtempSync(join(tmpdir(), "ppal-lib-fixture-"));
+  const dbPath = join(dir, "Live-files-12300.db");
+  const db = new DatabaseSync(dbPath);
+
+  db.exec(`
+    CREATE TABLE files (
+      file_id INTEGER PRIMARY KEY,
+      parent_id INTEGER,
+      file_type INTEGER,
+      file_kind INTEGER,
+      name TEXT,
+      use_count INTEGER DEFAULT 0,
+      mod_date INTEGER DEFAULT 0,
+      device_type INTEGER DEFAULT 0,
+      place_id INTEGER
+    );
+    CREATE TABLE places (
+      file_id INTEGER PRIMARY KEY,
+      folder_kind INTEGER,
+      level INTEGER DEFAULT 0,
+      name TEXT
+    );
+    CREATE TABLE keywords (
+      file_id INTEGER,
+      keyw_id INTEGER,
+      is_auto INTEGER DEFAULT 0
+    );
+  `);
+
+  insertFiles(db);
+  insertPlaces(db);
+  insertKeywords(db);
+
+  db.close();
+
+  return {
+    dir,
+    dbPath,
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  };
+}
+
+const FLDR = fourCC("fldr");
+const AIFF = fourCC("aiff");
+const WAV = fourCC("wav-");
+const MIDI = fourCC("midi");
+const VST3 = fourCC("vst3");
+const KEYW = fourCC("keyw");
+
+/**
+ * Insert the synthetic file rows into the fixture DB.
+ *
+ * Folder chain: / -> Users -> test -> Music -> Ableton -> User Library  (place 100, user)
+ *                                          -> Factory Packs -> Pack One (place 200, pack)
+ *                                          -> Built-in                  (place 300, builtin)
+ *
+ * Sample files attached to each place with various kinds, tags, and use_counts.
+ *
+ * @param db - Open writable DB
+ */
+function insertFiles(db: DatabaseSync): void {
+  const insert = db.prepare(
+    `INSERT INTO files
+     (file_id, parent_id, file_type, file_kind, name, use_count, mod_date, device_type, place_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+
+  // Folder chain to root
+  insert.run(1, 0, FLDR, 512, "/", 0, 0, 0, null);
+  insert.run(2, 1, FLDR, 512, "Users", 0, 0, 0, null);
+  insert.run(3, 2, FLDR, 512, "test", 0, 0, 0, null);
+  insert.run(4, 3, FLDR, 512, "Music", 0, 0, 0, null);
+  insert.run(5, 4, FLDR, 512, "Ableton", 0, 0, 0, null);
+  insert.run(100, 5, FLDR, 512, "User Library", 0, 0, 0, null);
+  insert.run(6, 5, FLDR, 512, "Factory Packs", 0, 0, 0, null);
+  insert.run(200, 6, FLDR, 512, "Pack One", 0, 0, 0, null);
+  insert.run(300, 5, FLDR, 512, "Built-in", 0, 0, 0, null);
+
+  // User Library audio
+  insert.run(1001, 100, AIFF, 4, "user_kick.aif", 50, 1_700_000_000, 0, 100);
+  insert.run(1002, 100, WAV, 4, "user_snare.wav", 25, 1_700_000_100, 0, 100);
+
+  // Pack audio
+  insert.run(2001, 200, WAV, 4, "pack_kick.wav", 100, 1_700_000_200, 0, 200);
+  insert.run(2002, 200, AIFF, 4, "pack_clap.aif", 5, 1_700_000_300, 0, 200);
+
+  // Pack midi clip
+  insert.run(2003, 200, MIDI, 1, "pack_riff.mid", 30, 1_700_000_400, 0, 200);
+
+  // Built-in plugin (instrument)
+  insert.run(
+    3001,
+    300,
+    VST3,
+    16_384,
+    "Operator.vst3",
+    75,
+    1_700_000_500,
+    1,
+    300,
+  );
+
+  // Built-in plugin (audiofx)
+  insert.run(
+    3002,
+    300,
+    VST3,
+    16_384,
+    "EQ Eight.vst3",
+    200,
+    1_700_000_600,
+    2,
+    300,
+  );
+
+  // Keyword definitions (file_type='keyw')
+  insert.run(9001, 1, KEYW, 0, "Kick", 0, 0, 0, null);
+  insert.run(9002, 1, KEYW, 0, "Punchy", 0, 0, 0, null);
+  insert.run(9003, 1, KEYW, 0, "Snare Hit", 0, 0, 0, null);
+  insert.run(9004, 1, KEYW, 0, "One Shot", 0, 0, 0, null);
+}
+
+/**
+ * Insert the place rows declaring which folders are roots.
+ *
+ * @param db - Open writable DB
+ */
+function insertPlaces(db: DatabaseSync): void {
+  const insert = db.prepare(
+    "INSERT INTO places (file_id, folder_kind, name) VALUES (?, ?, ?)",
+  );
+
+  insert.run(100, 1, "User Library");
+  insert.run(200, 0, "Pack One");
+  insert.run(300, 8, "Built-in");
+}
+
+/**
+ * Attach tags to sample files via the keywords table.
+ *
+ * @param db - Open writable DB
+ */
+function insertKeywords(db: DatabaseSync): void {
+  const insert = db.prepare(
+    "INSERT INTO keywords (file_id, keyw_id, is_auto) VALUES (?, ?, ?)",
+  );
+
+  // user_kick.aif -> Kick + One Shot
+  insert.run(1001, 9001, 0);
+  insert.run(1001, 9004, 0);
+  // user_snare.wav -> Snare Hit
+  insert.run(1002, 9003, 0);
+  // pack_kick.wav -> Kick + Punchy + One Shot
+  insert.run(2001, 9001, 0);
+  insert.run(2001, 9002, 0);
+  insert.run(2001, 9004, 1);
+  // pack_clap.aif -> One Shot
+  insert.run(2002, 9004, 0);
+  // pack_riff.mid -> (no tags)
+  // Built-in plugins: no tags
+}

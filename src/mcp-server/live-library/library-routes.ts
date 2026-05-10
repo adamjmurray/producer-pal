@@ -11,6 +11,9 @@
  */
 
 import { registerNodeRoute } from "../rpc/node-request-protocol.ts";
+import { librarySearch } from "./library-search.ts";
+import { type LibrarySearchArgs } from "./library-types.ts";
+import { type ListTagsArgs, listTags } from "./list-tags.ts";
 import { type SampleSearchArgs, searchSamples } from "./search-samples.ts";
 
 /**
@@ -20,5 +23,13 @@ import { type SampleSearchArgs, searchSamples } from "./search-samples.ts";
 export function registerLibraryRoutes(): void {
   registerNodeRoute("library.searchSamples", async (args) => {
     return await searchSamples((args as SampleSearchArgs | null) ?? {});
+  });
+
+  registerNodeRoute("library.search", async (args) => {
+    return await librarySearch((args as LibrarySearchArgs | null) ?? {});
+  });
+
+  registerNodeRoute("library.listTags", async (args) => {
+    return await listTags((args as ListTagsArgs | null) ?? {});
   });
 }
