@@ -5,40 +5,36 @@
 
 import {
   type MemoryResult,
-  type SamplesResult,
   handleReadMemory,
-  handleSearchSamples,
   handleWriteMemory,
 } from "./context-helpers.ts";
 
 interface ContextArgs {
   action?: string;
   content?: string;
-  search?: string;
 }
 
-type ContextResult = MemoryResult | SamplesResult;
-
 /**
- * Project context tool for Producer Pal (memory + samples)
+ * Project memory tool for Producer Pal (read/write).
+ *
+ * Sample search lives in `ppal-library` now (which surfaces both Live's
+ * browser DB and the user-configured sampleFolder).
+ *
  * @param args - The parameters
- * @param args.action - Action to perform (read, write, search)
+ * @param args.action - Action to perform (read, write)
  * @param args.content - Memory content (required for write)
- * @param args.search - Search filter (for search)
  * @param toolContext - The context object
- * @returns Result varies by action
+ * @returns Memory result
  */
-export async function context(
-  { action, content, search }: ContextArgs = {},
+export function context(
+  { action, content }: ContextArgs = {},
   toolContext: Partial<ToolContext> = {},
-): Promise<ContextResult> {
+): MemoryResult {
   switch (action) {
     case "read":
       return handleReadMemory(toolContext);
     case "write":
       return handleWriteMemory(content, toolContext);
-    case "search":
-      return await handleSearchSamples(search, toolContext);
     default:
       throw new Error(`Unknown action: ${action}`);
   }

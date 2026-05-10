@@ -20,27 +20,27 @@ describe("context - memory actions", () => {
   });
 
   describe("read action", () => {
-    it("returns enabled: false when project context is disabled", async () => {
+    it("returns enabled: false when project context is disabled", () => {
       toolContext.memory!.enabled = false;
-      const result = await context({ action: "read" }, toolContext);
+      const result = context({ action: "read" }, toolContext);
 
       expect(result).toStrictEqual({ enabled: false });
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("returns enabled: false when memory is missing", async () => {
-      const result = await context({ action: "read" }, {});
+    it("returns enabled: false when memory is missing", () => {
+      const result = context({ action: "read" }, {});
 
       expect(result).toStrictEqual({ enabled: false });
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("returns full context when project context is enabled", async () => {
+    it("returns full context when project context is enabled", () => {
       toolContext.memory!.enabled = true;
       toolContext.memory!.writable = true;
       toolContext.memory!.content = "test content";
 
-      const result = await context({ action: "read" }, toolContext);
+      const result = context({ action: "read" }, toolContext);
 
       expect(result).toStrictEqual({
         enabled: true,
@@ -50,12 +50,12 @@ describe("context - memory actions", () => {
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("returns full context with writable false when not writable", async () => {
+    it("returns full context with writable false when not writable", () => {
       toolContext.memory!.enabled = true;
       toolContext.memory!.writable = false;
       toolContext.memory!.content = "test content";
 
-      const result = await context({ action: "read" }, toolContext);
+      const result = context({ action: "read" }, toolContext);
 
       expect(result).toStrictEqual({
         enabled: true,
@@ -67,59 +67,59 @@ describe("context - memory actions", () => {
   });
 
   describe("write action", () => {
-    it("throws error when project context is disabled", async () => {
+    it("throws error when project context is disabled", () => {
       toolContext.memory!.enabled = false;
-      await expect(
+      expect(() =>
         context({ action: "write", content: "test" }, toolContext),
-      ).rejects.toThrow("Project context is disabled");
+      ).toThrow("Project context is disabled");
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("throws error when memory is missing", async () => {
-      await expect(
-        context({ action: "write", content: "test" }, {}),
-      ).rejects.toThrow("Project context is disabled");
+    it("throws error when memory is missing", () => {
+      expect(() => context({ action: "write", content: "test" }, {})).toThrow(
+        "Project context is disabled",
+      );
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("throws error when project context is not writable", async () => {
+    it("throws error when project context is not writable", () => {
       toolContext.memory!.enabled = true;
       toolContext.memory!.writable = false;
-      await expect(
+      expect(() =>
         context({ action: "write", content: "test" }, toolContext),
-      ).rejects.toThrow(
+      ).toThrow(
         "AI updates are disabled - enable 'Allow AI updates' in settings to let AI modify project context",
       );
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("throws error when content is missing", async () => {
+    it("throws error when content is missing", () => {
       toolContext.memory!.enabled = true;
       toolContext.memory!.writable = true;
-      await expect(context({ action: "write" }, toolContext)).rejects.toThrow(
+      expect(() => context({ action: "write" }, toolContext)).toThrow(
         "Content required for write action",
       );
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("throws error when content is empty string", async () => {
+    it("throws error when content is empty string", () => {
       toolContext.memory!.enabled = true;
       toolContext.memory!.writable = true;
-      await expect(
+      expect(() =>
         context({ action: "write", content: "" }, toolContext),
-      ).rejects.toThrow("Content required for write action");
+      ).toThrow("Content required for write action");
       expect(outlet).not.toHaveBeenCalled();
     });
 
     it.each([
       ["updates content when all conditions are met", ""],
       ["overwrites existing content", "old content"],
-    ])("%s", async (_, initialContent) => {
+    ])("%s", (_, initialContent) => {
       toolContext.memory!.enabled = true;
       toolContext.memory!.writable = true;
       if (initialContent) toolContext.memory!.content = initialContent;
 
-      const result = await context(
+      const result = context(
         { action: "write", content: "new content" },
         toolContext,
       );
@@ -134,8 +134,8 @@ describe("context - memory actions", () => {
     });
   });
 
-  it("throws error for unknown action", async () => {
-    await expect(context({ action: "unknown-action" })).rejects.toThrow(
+  it("throws error for unknown action", () => {
+    expect(() => context({ action: "unknown-action" })).toThrow(
       "Unknown action: unknown-action",
     );
   });

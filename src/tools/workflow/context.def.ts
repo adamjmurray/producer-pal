@@ -8,8 +8,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefContext = defineTool("ppal-context", {
   title: "Context",
-  description:
-    "Read/write project memory or search configured sample folder for audio files.",
+  description: "Read or write project memory.",
 
   annotations: {
     readOnlyHint: false,
@@ -18,20 +17,13 @@ export const toolDefContext = defineTool("ppal-context", {
 
   inputSchema: {
     action: z
-      .enum(["read", "write", "search"])
-      .describe(
-        "read: view memory | write: update memory | search: find audio samples",
-      ),
+      .enum(["read", "write"])
+      .describe("read: view memory | write: update memory"),
 
     content: z
       .string()
       .max(10_000)
       .optional()
       .describe("content to write (required for write)"),
-
-    search: z
-      .string()
-      .optional()
-      .describe("case-insensitive substring filter (search only)"),
   },
 });
