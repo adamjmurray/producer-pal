@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import { readSamples } from "./read-samples.ts";
 
 export interface MemoryResult {
@@ -11,10 +13,28 @@ export interface MemoryResult {
   content?: string;
 }
 
+interface LibrarySample {
+  path: string;
+  name: string;
+  useCount: number;
+}
+
 export interface SamplesResult {
   sampleFolder: string;
   samples: string[];
+  librarySamples?: LibrarySample[];
+  libraryAvailable?: boolean;
 }
+
+interface LibrarySearchResponse {
+  source: "live-db";
+  dbAvailable: boolean;
+  samples: LibrarySample[];
+  reason?: string;
+}
+
+/** Result limit for the DB-backed library search */
+const LIBRARY_SEARCH_LIMIT = 100;
 
 /**
  * Handle read action
@@ -76,14 +96,48 @@ export function handleWriteMemory(
 }
 
 /**
- * Handle search action by delegating to existing readSamples() function
+ * Handle search action: scan the configured sample folder and additionally
+ * query Live's browser DB. DB results that duplicate folder scan results
+ * (same absolute path) are filtered out.
+ *
  * @param search - Optional search filter
  * @param context - The context object
- * @returns Samples result with sample folder and file list
+ * @returns Samples result merging folder scan + DB results
  */
-export function handleSearchSamples(
+export async function handleSearchSamples(
   search: string | undefined,
   context: Partial<ToolContext> = {},
-): SamplesResult {
-  return readSamples({ search }, context);
+): Promise<SamplesResult> {
+  const folderResult = readSamples({ search }, context);
+
+  const libraryResponse = await requestNode<LibrarySearchResponse>(
+    "library.searchSamples",
+    { query: search, limit: LIBRARY_SEARCH_LIMIT },
+  );
+
+  if (!libraryResponse.success || !libraryResponse.result) {
+    console.warn(
+      `library.searchSamples failed: ${libraryResponse.error ?? "unknown error"}`,
+    );
+
+    return {
+      ...folderResult,
+      libraryAvailable: false,
+      librarySamples: [],
+    };
+  }
+
+  const libraryResult = libraryResponse.result;
+  const folderAbsolutePaths = new Set(
+    folderResult.samples.map((rel) => `${folderResult.sampleFolder}${rel}`),
+  );
+  const dedupedLibrarySamples = libraryResult.samples.filter(
+    (s) => !folderAbsolutePaths.has(s.path),
+  );
+
+  return {
+    ...folderResult,
+    libraryAvailable: libraryResult.dbAvailable,
+    librarySamples: dedupedLibrarySamples,
+  };
 }

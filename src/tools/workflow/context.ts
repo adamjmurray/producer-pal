@@ -28,17 +28,17 @@ type ContextResult = MemoryResult | SamplesResult;
  * @param toolContext - The context object
  * @returns Result varies by action
  */
-export function context(
+export async function context(
   { action, content, search }: ContextArgs = {},
   toolContext: Partial<ToolContext> = {},
-): ContextResult {
+): Promise<ContextResult> {
   switch (action) {
     case "read":
       return handleReadMemory(toolContext);
     case "write":
       return handleWriteMemory(content, toolContext);
     case "search":
-      return handleSearchSamples(search, toolContext);
+      return await handleSearchSamples(search, toolContext);
     default:
       throw new Error(`Unknown action: ${action}`);
   }

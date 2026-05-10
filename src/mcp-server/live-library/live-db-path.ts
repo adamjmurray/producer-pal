@@ -126,11 +126,9 @@ async function findBestDb(
     }
   }
 
-  if (candidates.length === 0) {
-    return null;
-  }
-
   candidates.sort(compare);
 
-  return candidates[0]?.path ?? null;
+  const best = candidates[0];
+
+  return best ? best.path : null;
 }

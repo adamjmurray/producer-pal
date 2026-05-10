@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // the entry point / loader script for the MCP server running inside Ableton Live via Node for Max
@@ -7,7 +8,10 @@ import Max from "max-api";
 import { checkForUpdate } from "#src/shared/version-check.ts";
 import { VERSION } from "#src/shared/version.ts";
 import { createExpressApp } from "./create-express-app.ts";
+import { registerLibraryRoutes } from "./live-library/library-routes.ts";
 import * as console from "./node-for-max-logger.ts";
+
+registerLibraryRoutes();
 
 interface ServerError extends Error {
   code?: string;
