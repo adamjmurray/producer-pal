@@ -18,6 +18,11 @@ import { type ListTagsArgs, listTags } from "./list-tags.ts";
 /**
  * Register all library routes. Idempotency is the caller's responsibility;
  * the underlying registry throws on duplicate registration.
+ *
+ * TODO: each route currently opens and closes its own DB handle. Cheap
+ * with `immutable=1` (no locking) but redundant. If a single MCP request
+ * ever composes multiple routes (e.g. search + listTags), pull the open
+ * up into a per-request scope.
  */
 export function registerLibraryRoutes(): void {
   registerNodeRoute("library.search", async (args) => {

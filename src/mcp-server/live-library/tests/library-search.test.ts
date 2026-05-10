@@ -174,6 +174,23 @@ describe("librarySearch", () => {
         "user_kick.aif",
       ]);
     });
+
+    it("matches tags case-insensitively (canonical casing not required)", async () => {
+      const lower = await librarySearch({ tags: "kick" });
+      const upper = await librarySearch({ tags: "KICK" });
+      const mixed = await librarySearch({ tags: "kIcK" });
+
+      expect(lower.items.map((i) => i.name).sort()).toStrictEqual([
+        "pack_kick.wav",
+        "user_kick.aif",
+      ]);
+      expect(upper.items.map((i) => i.name).sort()).toStrictEqual(
+        lower.items.map((i) => i.name).sort(),
+      );
+      expect(mixed.items.map((i) => i.name).sort()).toStrictEqual(
+        lower.items.map((i) => i.name).sort(),
+      );
+    });
   });
 
   describe("combined filters", () => {

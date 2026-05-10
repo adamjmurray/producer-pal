@@ -66,6 +66,9 @@ export interface LibraryItem {
 }
 
 export interface LibrarySearchResult {
+  // TODO: rename `source` to `provider` (or drop it entirely) — items
+  // already carry their own per-row `source`, and "live-db" is no longer
+  // accurate now that folder-scanned items flow through this envelope.
   source: "live-db";
   dbAvailable: boolean;
   items: LibraryItem[];

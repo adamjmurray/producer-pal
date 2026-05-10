@@ -69,11 +69,10 @@ export async function librarySearch(
   try {
     const { sql, params } = buildSearchQuery(args);
     const rows = db.prepare(sql).all(...params) as unknown as SearchRow[];
-    const paths = resolveAbsolutePaths(
-      db,
-      rows.map((r) => r.file_id),
-    );
-    const items = rows.map((row) => buildLibraryItem(db, row, paths));
+    const fileIds = rows.map((r) => r.file_id);
+    const paths = resolveAbsolutePaths(db, fileIds);
+    const tagsByFile = fetchTagsBulk(db, fileIds);
+    const items = rows.map((row) => buildLibraryItem(row, paths, tagsByFile));
 
     return { source: "live-db", dbAvailable: true, items };
   } finally {
@@ -126,12 +125,18 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
   const tagNames = parseTags(args.tags);
 
   if (tagNames.length > 0) {
+    // Match tags case-insensitively (lowercase both sides) so callers
+    // can pass "kick" or "KICK" — listTags returns canonical casing
+    // but the LLM may not echo it exactly.
+    const lowerTagNames = tagNames.map((t) => t.toLowerCase());
+
     where.push(`(
-      SELECT COUNT(DISTINCT kw.name) FROM keywords k
+      SELECT COUNT(DISTINCT LOWER(kw.name)) FROM keywords k
       JOIN files kw ON kw.file_id = k.keyw_id
-      WHERE k.file_id = f.file_id AND kw.name IN (${tagNames.map(() => "?").join(",")})
+      WHERE k.file_id = f.file_id
+        AND LOWER(kw.name) IN (${lowerTagNames.map(() => "?").join(",")})
     ) = ?`);
-    params.push(...tagNames, tagNames.length);
+    params.push(...lowerTagNames, lowerTagNames.length);
   }
 
   const orderBy = orderByClause(args.sort);
@@ -202,46 +207,69 @@ function clampLimit(requested: number | undefined): number {
 }
 
 /**
- * Build a public LibraryItem from a raw SearchRow, including path
- * lookup (already resolved in bulk) and per-row tag fetch.
+ * Build a public LibraryItem from a raw SearchRow, with both path and
+ * tags pre-resolved in bulk to avoid per-row N+1 queries.
  *
- * @param db - Open database handle
  * @param row - Raw search row
  * @param paths - Map of file_id to absolute path resolved upfront
+ * @param tagsByFile - Map of file_id to tag names resolved upfront
  * @returns Public LibraryItem with resolved path/kind/source/tags
  */
 function buildLibraryItem(
-  db: DatabaseSync,
   row: SearchRow,
   paths: Map<number, string>,
+  tagsByFile: Map<number, string[]>,
 ): LibraryItem {
   return {
     name: row.name,
     path: paths.get(row.file_id) ?? `/${row.name}`,
     kind: resolveKind(row.file_type),
-    tags: fetchTags(db, row.file_id),
+    tags: tagsByFile.get(row.file_id) ?? [],
     useCount: row.use_count,
     source: row.folder_kind == null ? null : resolveSource(row.folder_kind),
   };
 }
 
 /**
- * Fetch all tag names attached to a file via the keywords table.
+ * Fetch all tag names for a batch of files in a single query, returned
+ * as a Map from file_id to its tag list. Files with no tags are absent
+ * from the map (callers should default to []).
  *
  * @param db - Open database handle
- * @param fileId - file_id to look up tags for
- * @returns Sorted unique tag names
+ * @param fileIds - file_ids to look up tags for. Empty input returns an empty map.
+ * @returns Map from file_id to sorted tag names
  */
-function fetchTags(db: DatabaseSync, fileId: number): string[] {
+function fetchTagsBulk(
+  db: DatabaseSync,
+  fileIds: number[],
+): Map<number, string[]> {
+  const result = new Map<number, string[]>();
+
+  if (fileIds.length === 0) {
+    return result;
+  }
+
+  const placeholders = fileIds.map(() => "?").join(",");
   const rows = db
     .prepare(
-      `SELECT kw.name AS name
+      `SELECT k.file_id AS file_id, kw.name AS name
        FROM keywords k
        JOIN files kw ON kw.file_id = k.keyw_id
-       WHERE k.file_id = ?
-       ORDER BY kw.name`,
+       WHERE k.file_id IN (${placeholders})
+       ORDER BY k.file_id, kw.name`,
     )
-    .all(fileId) as unknown as Array<{ name: string }>;
+    .all(...fileIds) as unknown as Array<{ file_id: number; name: string }>;
 
-  return rows.map((r) => r.name);
+  for (const row of rows) {
+    let tags = result.get(row.file_id);
+
+    if (!tags) {
+      tags = [];
+      result.set(row.file_id, tags);
+    }
+
+    tags.push(row.name);
+  }
+
+  return result;
 }
