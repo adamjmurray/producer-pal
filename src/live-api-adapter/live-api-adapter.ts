@@ -139,7 +139,7 @@ const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
     return duplicate(args as any, ctx);
   },
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
-  "ppal-library": (args) => library(args as any),
+  "ppal-library": (args, ctx) => library(args as any, ctx),
   "ppal-raw-live-api": (args, ctx) => rawLiveApi(args as any, ctx),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */

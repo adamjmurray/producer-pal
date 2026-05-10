@@ -115,8 +115,14 @@ export function deviceTypeForKind(deviceKind: LibraryDeviceKind): number {
   return DEVICE_KIND_TO_TYPE[deviceKind];
 }
 
-/** places.folder_kind values that map to each public source enum */
-const SOURCE_TO_FOLDER_KINDS: Record<LibrarySource, number[]> = {
+/**
+ * places.folder_kind values that map to each DB-side source enum.
+ * "folder" is not here — it's a V8-only synthetic source for the
+ * user-configured custom sample folder, with no DB encoding.
+ */
+type DbLibrarySource = Exclude<LibrarySource, "folder">;
+
+const SOURCE_TO_FOLDER_KINDS: Record<DbLibrarySource, number[]> = {
   user: [1, 2],
   pack: [0],
   builtin: [8],
@@ -124,10 +130,10 @@ const SOURCE_TO_FOLDER_KINDS: Record<LibrarySource, number[]> = {
   plugin: [10],
 };
 
-const FOLDER_KIND_TO_SOURCE: Map<number, LibrarySource> = new Map();
+const FOLDER_KIND_TO_SOURCE: Map<number, DbLibrarySource> = new Map();
 
 for (const [src, kinds] of Object.entries(SOURCE_TO_FOLDER_KINDS) as Array<
-  [LibrarySource, number[]]
+  [DbLibrarySource, number[]]
 >) {
   for (const k of kinds) {
     FOLDER_KIND_TO_SOURCE.set(k, src);
@@ -136,12 +142,13 @@ for (const [src, kinds] of Object.entries(SOURCE_TO_FOLDER_KINDS) as Array<
 
 /**
  * Map a public source enum to the folder_kind integers it covers.
+ * Returns [] for "folder" (no DB encoding); callers should guard.
  *
  * @param source - Public source enum
  * @returns Array of folder_kind integers to IN-match
  */
 export function folderKindsForSource(source: LibrarySource): number[] {
-  return SOURCE_TO_FOLDER_KINDS[source];
+  return source === "folder" ? [] : SOURCE_TO_FOLDER_KINDS[source];
 }
 
 /**

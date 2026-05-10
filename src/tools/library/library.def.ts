@@ -54,10 +54,10 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .describe("device classification filter (search only)"),
 
     source: z
-      .enum(["user", "pack", "builtin", "cloud", "plugin"])
+      .enum(["folder", "user", "pack", "builtin", "cloud", "plugin"])
       .optional()
       .describe(
-        "where in Live's library: user library, installed pack, built-in, cloud, or plugin (search only)",
+        "where the file lives: folder=user-configured sample folder | user/pack/builtin/cloud/plugin=Live library categories (search only)",
       ),
 
     sort: z

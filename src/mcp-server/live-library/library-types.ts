@@ -22,8 +22,19 @@ export type LibraryKind =
 /** Device classification — narrows preset/plugin/device results */
 export type LibraryDeviceKind = "instrument" | "audiofx" | "midifx";
 
-/** Where in Live's library a file lives (collapses Live's folder_kind) */
-export type LibrarySource = "user" | "pack" | "builtin" | "cloud" | "plugin";
+/**
+ * Where in Live's library a file lives. Mostly collapses Live's
+ * `folder_kind` integers; "folder" is the special case for files
+ * found via the user-configured custom sample folder (V8 filesystem
+ * scan, not in Live's DB).
+ */
+export type LibrarySource =
+  | "folder"
+  | "user"
+  | "pack"
+  | "builtin"
+  | "cloud"
+  | "plugin";
 
 /** Sort order for search results */
 export type LibrarySort = "use_count" | "mod_date" | "name";
