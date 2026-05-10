@@ -11,7 +11,7 @@
  */
 
 import Max from "max-api";
-import * as console from "./node-for-max-logger.ts";
+import * as console from "../node-for-max-logger.ts";
 
 export type NodeRouteHandler = (args: unknown) => unknown;
 

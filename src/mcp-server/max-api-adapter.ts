@@ -15,8 +15,8 @@ import {
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import * as console from "./node-for-max-logger.ts";
-import { handleNodeRequest } from "./node-request-protocol.ts";
 import { type RequestOverrides } from "./request-overrides.ts";
+import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
 
 // Re-export for convenience so existing consumers can keep importing from here
 export { MAX_TIMEOUT_MS, type RequestOverrides } from "./request-overrides.ts";

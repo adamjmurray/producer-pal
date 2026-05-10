@@ -11,7 +11,7 @@ import {
   registerNodeRoute,
 } from "./node-request-protocol.ts";
 
-vi.mock(import("./node-for-max-logger.ts"), () => ({
+vi.mock(import("../node-for-max-logger.ts"), () => ({
   log: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
@@ -150,7 +150,7 @@ describe("node-request-protocol", () => {
   });
 
   it("logs error when Max.outlet fails", async () => {
-    const consoleMock = await import("./node-for-max-logger.ts");
+    const consoleMock = await import("../node-for-max-logger.ts");
 
     registerNodeRoute("ok", () => 1);
     vi.mocked(Max.outlet).mockRejectedValueOnce(new Error("outlet failed"));

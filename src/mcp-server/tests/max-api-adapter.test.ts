@@ -22,12 +22,12 @@ vi.mock(import("../code-exec-protocol.ts"), () => ({
   handleCodeExecRequest: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock(import("../node-request-protocol.ts"), () => ({
+vi.mock(import("../rpc/node-request-protocol.ts"), () => ({
   handleNodeRequest: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { handleCodeExecRequest } from "../code-exec-protocol.ts";
-import { handleNodeRequest } from "../node-request-protocol.ts";
+import { handleNodeRequest } from "../rpc/node-request-protocol.ts";
 
 // Capture the timeoutMs handler before mocks are cleared
 let timeoutMsHandler: ((input: unknown) => void) | undefined;
