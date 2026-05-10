@@ -38,18 +38,44 @@ describe("context - search action", () => {
     };
   });
 
-  describe("error handling", () => {
-    it("throws error when sampleFolder is not configured", async () => {
-      await expect(context({ action: "search" }, toolContext)).rejects.toThrow(
-        "A sample folder must first be selected in the Setup tab of the Producer Pal Max for Live device",
-      );
+  describe("no sample folder configured", () => {
+    it("returns DB samples only (no throw) when sampleFolder is null", async () => {
+      vi.mocked(protocolMock.requestNode).mockResolvedValue({
+        success: true,
+        result: {
+          source: "live-db",
+          dbAvailable: true,
+          samples: [
+            { path: "/Library/clap.wav", name: "clap.wav", useCount: 3 },
+          ],
+        },
+      });
+
+      const result = (await context(
+        { action: "search" },
+        toolContext,
+      )) as SamplesResult;
+
+      expect(result.sampleFolder).toBe("");
+      expect(result.samples).toStrictEqual([]);
+      expect(result.libraryAvailable).toBe(true);
+      expect(result.librarySamples).toHaveLength(1);
     });
 
-    it("throws error when sampleFolder is empty string", async () => {
+    it("returns DB samples only when sampleFolder is empty string", async () => {
       toolContext.sampleFolder = "";
-      await expect(context({ action: "search" }, toolContext)).rejects.toThrow(
-        "A sample folder must first be selected",
-      );
+      vi.mocked(protocolMock.requestNode).mockResolvedValue({
+        success: true,
+        result: { source: "live-db", dbAvailable: true, samples: [] },
+      });
+
+      const result = (await context(
+        { action: "search" },
+        toolContext,
+      )) as SamplesResult;
+
+      expect(result.samples).toStrictEqual([]);
+      expect(result.librarySamples).toStrictEqual([]);
     });
   });
 

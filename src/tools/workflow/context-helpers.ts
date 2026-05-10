@@ -96,9 +96,12 @@ export function handleWriteMemory(
 }
 
 /**
- * Handle search action: scan the configured sample folder and additionally
- * query Live's browser DB. DB results that duplicate folder scan results
- * (same absolute path) are filtered out.
+ * Handle search action: scan the configured sample folder (when set) and
+ * additionally query Live's browser DB. DB results that duplicate folder
+ * scan results (same absolute path) are filtered out.
+ *
+ * The sample folder is no longer required: when it isn't configured, the
+ * folder scan is skipped and we return DB-sourced samples only.
  *
  * @param search - Optional search filter
  * @param context - The context object
@@ -108,7 +111,9 @@ export async function handleSearchSamples(
   search: string | undefined,
   context: Partial<ToolContext> = {},
 ): Promise<SamplesResult> {
-  const folderResult = readSamples({ search }, context);
+  const folderResult = context.sampleFolder
+    ? readSamples({ search }, context)
+    : { sampleFolder: "", samples: [] };
 
   const libraryResponse = await requestNode<LibrarySearchResponse>(
     "library.searchSamples",
@@ -128,8 +133,14 @@ export async function handleSearchSamples(
   }
 
   const libraryResult = libraryResponse.result;
+  // NOTE: the folder→absolute join below assumes POSIX-style paths and will
+  // mis-dedupe on Windows where the folder uses backslashes but DB rows use
+  // forward slashes. Windows is currently out of scope (AJM-326); revisit
+  // when the Live DB integration is officially Windows-supported.
   const folderAbsolutePaths = new Set(
-    folderResult.samples.map((rel) => `${folderResult.sampleFolder}${rel}`),
+    folderResult.sampleFolder
+      ? folderResult.samples.map((rel) => `${folderResult.sampleFolder}${rel}`)
+      : [],
   );
   const dedupedLibrarySamples = libraryResult.samples.filter(
     (s) => !folderAbsolutePaths.has(s.path),

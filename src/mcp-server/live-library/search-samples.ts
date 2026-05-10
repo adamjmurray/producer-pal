@@ -142,6 +142,11 @@ function buildParams(
 /**
  * Walk parent_id up to the root and concatenate names into an absolute path.
  *
+ * NOTE: assumes POSIX-style paths — joins with "/" and prepends "/". On
+ * Windows, Live's DB likely stores a drive root (e.g. name "C:") which
+ * would produce "/C:/Users/…". Windows is currently out of scope for the
+ * Live DB integration (AJM-326); this needs revisiting then.
+ *
  * @param db - Open database handle
  * @param row - The starting file row
  * @returns Absolute filesystem path. If the chain breaks early, returns

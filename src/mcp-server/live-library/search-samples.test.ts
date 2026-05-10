@@ -133,10 +133,22 @@ describe("searchSamples", () => {
     expect(counts).toStrictEqual([100, 50, 25, 5, 1]);
   });
 
-  it("filters by case-insensitive substring (SQL LIKE)", async () => {
+  it("filters by name substring", async () => {
     const result = await searchSamples({ query: "kick" });
 
     expect(result.samples.map((s) => s.name)).toStrictEqual([
+      "kick.wav",
+      "kick_other.wav",
+    ]);
+  });
+
+  it("matches case-insensitively for ASCII (SQL LIKE default)", async () => {
+    // SQLite's LIKE is ASCII-case-insensitive by default but NOT
+    // Unicode-case-insensitive — that distinction will matter for
+    // non-English filenames if we ever loosen the audio-only filter.
+    const upper = await searchSamples({ query: "KICK" });
+
+    expect(upper.samples.map((s) => s.name)).toStrictEqual([
       "kick.wav",
       "kick_other.wav",
     ]);
