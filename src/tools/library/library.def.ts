@@ -37,8 +37,10 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .enum([
         "audio",
         "midi",
+        "live-clip",
         "preset",
         "device-group",
+        "m4l-device",
         "live-set",
         "plugin",
         "image",
@@ -46,7 +48,9 @@ export const toolDefLibrary = defineTool("ppal-library", {
         "folder",
       ])
       .optional()
-      .describe("content kind filter (search only)"),
+      .describe(
+        "content kind filter (search only). midi=.mid files | live-clip=.alc Ableton clips | device-group=.adg device chains | m4l-device=.amxd Max for Live devices | plugin=VST/AU specs and presets",
+      ),
 
     deviceKind: z
       .enum(["instrument", "audiofx", "midifx"])

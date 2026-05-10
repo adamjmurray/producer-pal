@@ -47,8 +47,10 @@ describe("fourCCsForKind", () => {
     const kinds = [
       "audio",
       "midi",
+      "live-clip",
       "preset",
       "device-group",
+      "m4l-device",
       "live-set",
       "plugin",
       "image",
@@ -60,6 +62,16 @@ describe("fourCCsForKind", () => {
       expect(fourCCsForKind(kind).length).toBeGreaterThan(0);
     }
   });
+
+  it("separates midi from live-clip", () => {
+    expect(fourCCsForKind("midi")).toStrictEqual([fourCC("midi")]);
+    expect(fourCCsForKind("live-clip")).toStrictEqual([fourCC("alc-")]);
+  });
+
+  it("separates device-group from m4l-device", () => {
+    expect(fourCCsForKind("device-group")).toStrictEqual([fourCC("adg-")]);
+    expect(fourCCsForKind("m4l-device")).toStrictEqual([fourCC("amp-")]);
+  });
 });
 
 describe("resolveKind", () => {
@@ -68,9 +80,14 @@ describe("resolveKind", () => {
     expect(resolveKind(99_999_999)).toBeNull();
   });
 
-  it("resolves device-group fourCCs", () => {
+  it("resolves device-group and m4l-device distinctly", () => {
     expect(resolveKind(fourCC("adg-"))).toBe("device-group");
-    expect(resolveKind(fourCC("amp-"))).toBe("device-group");
+    expect(resolveKind(fourCC("amp-"))).toBe("m4l-device");
+  });
+
+  it("resolves midi and live-clip distinctly", () => {
+    expect(resolveKind(fourCC("midi"))).toBe("midi");
+    expect(resolveKind(fourCC("alc-"))).toBe("live-clip");
   });
 });
 

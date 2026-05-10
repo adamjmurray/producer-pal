@@ -11,8 +11,10 @@
 export type LibraryKind =
   | "audio"
   | "midi"
+  | "live-clip"
   | "preset"
   | "device-group"
+  | "m4l-device"
   | "live-set"
   | "plugin"
   | "image"

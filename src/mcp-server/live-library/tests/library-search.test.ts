@@ -77,10 +77,28 @@ describe("librarySearch", () => {
       ]);
     });
 
-    it("returns midi-clip files when kind=midi", async () => {
+    it("returns only .mid files when kind=midi (excludes Live clips)", async () => {
       const result = await librarySearch({ kind: "midi" });
 
       expect(result.items.map((i) => i.name)).toStrictEqual(["pack_riff.mid"]);
+    });
+
+    it("returns only .alc files when kind=live-clip", async () => {
+      const result = await librarySearch({ kind: "live-clip" });
+
+      expect(result.items.map((i) => i.name)).toStrictEqual(["pack_loop.alc"]);
+    });
+
+    it("returns only .adg files when kind=device-group (excludes .amxd)", async () => {
+      const result = await librarySearch({ kind: "device-group" });
+
+      expect(result.items.map((i) => i.name)).toStrictEqual(["pack_chain.adg"]);
+    });
+
+    it("returns only .amxd files when kind=m4l-device", async () => {
+      const result = await librarySearch({ kind: "m4l-device" });
+
+      expect(result.items.map((i) => i.name)).toStrictEqual(["pack_m4l.amxd"]);
     });
   });
 
@@ -113,7 +131,7 @@ describe("librarySearch", () => {
       const result = await librarySearch({ source: "pack" });
 
       expect(result.items.every((i) => i.source === "pack")).toBe(true);
-      expect(result.items).toHaveLength(3);
+      expect(result.items).toHaveLength(6);
     });
 
     it("returns only builtin files when source=builtin", async () => {

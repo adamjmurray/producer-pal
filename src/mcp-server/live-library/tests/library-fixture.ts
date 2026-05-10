@@ -76,6 +76,9 @@ const FLDR = fourCC("fldr");
 const AIFF = fourCC("aiff");
 const WAV = fourCC("wav-");
 const MIDI = fourCC("midi");
+const ALC = fourCC("alc-");
+const ADG = fourCC("adg-");
+const AMP = fourCC("amp-");
 const VST3 = fourCC("vst3");
 const KEYW = fourCC("keyw");
 
@@ -118,6 +121,15 @@ function insertFiles(db: DatabaseSync): void {
 
   // Pack midi clip
   insert.run(2003, 200, MIDI, 1, "pack_riff.mid", 30, 1_700_000_400, 0, 200);
+
+  // Pack Live clip (.alc) — distinct kind from .mid
+  insert.run(2004, 200, ALC, 2, "pack_loop.alc", 12, 1_700_000_450, 0, 200);
+
+  // Pack Ableton device group (.adg) — kind=device-group
+  insert.run(2005, 200, ADG, 32, "pack_chain.adg", 8, 1_700_000_460, 0, 200);
+
+  // Pack Max for Live device (.amxd) — kind=m4l-device
+  insert.run(2006, 200, AMP, 16, "pack_m4l.amxd", 4, 1_700_000_470, 0, 200);
 
   // Built-in plugin (instrument)
   insert.run(
