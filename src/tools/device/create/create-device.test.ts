@@ -539,14 +539,15 @@ describe("createDevice", () => {
     });
   });
 
-  describe("sample loading", () => {
-    it("loads a sample after creating a Simpler", () => {
+  describe("params after creation", () => {
+    it("loads a sample on a created Simpler via params", () => {
       const simpler = registerMockObject("simpler-new", {
         path: livePath.track(0).device(2),
         type: "SimplerDevice",
         properties: {
           class_display_name: "Simpler",
           multi_sample_mode: 0,
+          parameters: children(),
         },
       });
 
@@ -558,7 +559,7 @@ describe("createDevice", () => {
       createDevice({
         deviceName: "Simpler",
         path: "t0",
-        sample: "/tmp/kick.wav",
+        params: "sample=/tmp/kick.wav",
       });
 
       expect(simpler.call).toHaveBeenCalledWith(
@@ -567,11 +568,14 @@ describe("createDevice", () => {
       );
     });
 
-    it("warns and skips when creating a non-Simpler with sample", () => {
+    it("does not call replace_sample on a non-Simpler when sample is in params", () => {
       const eqEight = registerMockObject("eq-new", {
         path: livePath.track(0).device(2),
         type: "Device",
-        properties: { class_display_name: "EQ Eight" },
+        properties: {
+          class_display_name: "EQ Eight",
+          parameters: children(),
+        },
       });
 
       track0 = registerMockObject("track-0", {
@@ -582,7 +586,7 @@ describe("createDevice", () => {
       createDevice({
         deviceName: "EQ Eight",
         path: "t0",
-        sample: "/tmp/kick.wav",
+        params: "sample=/tmp/kick.wav",
       });
 
       expect(eqEight.call).not.toHaveBeenCalledWith(

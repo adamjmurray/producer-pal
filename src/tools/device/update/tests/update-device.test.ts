@@ -626,8 +626,8 @@ describe("updateDevice", () => {
 
   // Drum chain move tests are in update-device-drum-chain-move.test.js
 
-  describe("sample field", () => {
-    it("loads a sample on a Simpler device", () => {
+  describe("sample pseudo-param", () => {
+    it("loads a sample on a Simpler device via params", () => {
       const simpler = registerMockObject("simpler-1", {
         path: livePath.track(0).device(0),
         type: "SimplerDevice",
@@ -640,7 +640,7 @@ describe("updateDevice", () => {
 
       const result = updateDevice({
         ids: "simpler-1",
-        sample: "/tmp/kick.wav",
+        params: "sample=/tmp/kick.wav",
       });
 
       expect(simpler.call).toHaveBeenCalledWith(
@@ -650,21 +650,26 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "simpler-1" });
     });
 
-    it("warns and skips for non-device targets (chain)", () => {
-      registerMockObject("chain-1", {
-        path: livePath.track(0).device(0).chain(0),
-        type: "Chain",
+    it("does not look up sample as a DeviceParameter (no 'not found' warning)", () => {
+      registerMockObject("simpler-1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children(),
+        },
       });
 
-      updateDevice({ ids: "chain-1", sample: "/tmp/kick.wav" });
+      updateDevice({ ids: "simpler-1", params: "sample=/tmp/kick.wav" });
 
-      expect(outlet).toHaveBeenCalledWith(
+      expect(outlet).not.toHaveBeenCalledWith(
         1,
-        expect.stringContaining("'sample' not applicable to Chain"),
+        expect.stringContaining('"sample" not found'),
       );
     });
 
-    it("can be combined with params on a Simpler", () => {
+    it("loads sample alongside regular DeviceParameters in one params block", () => {
       const simpler = registerMockObject("simpler-1", {
         path: livePath.track(0).device(0),
         type: "SimplerDevice",
@@ -688,8 +693,7 @@ describe("updateDevice", () => {
 
       updateDevice({
         ids: "simpler-1",
-        sample: "/tmp/kick.wav",
-        params: "Volume=0.8",
+        params: "sample=/tmp/kick.wav\nVolume=0.8",
       });
 
       expect(simpler.call).toHaveBeenCalledWith(

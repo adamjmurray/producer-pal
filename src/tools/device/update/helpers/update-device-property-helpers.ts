@@ -5,7 +5,6 @@
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { setSimplerSample } from "#src/tools/shared/device/simpler-sample.ts";
 import {
   setParamValues,
   updateABCompare,
@@ -20,7 +19,6 @@ import {
 
 export interface UpdatePropertyOptions {
   params?: string;
-  sample?: string;
   macroVariation?: string;
   macroVariationIndex?: number;
   macroCount?: number;
@@ -45,7 +43,6 @@ export function updateDeviceProperties(
 ): void {
   const {
     params,
-    sample,
     macroVariation,
     macroVariationIndex,
     macroCount,
@@ -59,10 +56,6 @@ export function updateDeviceProperties(
 
   if (params != null) {
     setParamValues(target, params);
-  }
-
-  if (sample != null) {
-    setSimplerSample(target, sample, "updateDevice");
   }
 
   if (abCompare != null) {
@@ -102,7 +95,6 @@ export function updateNonDeviceProperties(
   options: UpdatePropertyOptions,
 ): void {
   warnIfSet("params", options.params, type);
-  warnIfSet("sample", options.sample, type);
   warnIfSet("macroVariation", options.macroVariation, type);
   warnIfSet("macroVariationIndex", options.macroVariationIndex, type);
   warnIfSet("macroCount", options.macroCount, type);

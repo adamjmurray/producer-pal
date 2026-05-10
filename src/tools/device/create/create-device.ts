@@ -6,8 +6,8 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
 import { select } from "#src/tools/control/select.ts";
+import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
-import { setSimplerSample } from "#src/tools/shared/device/simpler-sample.ts";
 import {
   parseCommaSeparatedIds,
   unwrapSingleResult,
@@ -22,7 +22,7 @@ interface CreateDeviceArgs {
   deviceName?: string;
   path?: string;
   name?: string;
-  sample?: string;
+  params?: string;
   focus?: boolean;
 }
 
@@ -56,13 +56,13 @@ function validateDeviceName(deviceName: string): void {
  * @param args.deviceName - Device name, omit to list available devices
  * @param args.path - Device path(s), comma-separated for multiple (required when deviceName provided)
  * @param args.name - Name for all, or comma-separated for each
- * @param args.sample - Simpler only: file path to load after creation
+ * @param args.params - name=value lines applied to each created device (e.g. Simpler: sample=<file path>)
  * @param args.focus - Select the device and show device detail view
  * @param _context - Internal context object (unused)
  * @returns Device list, or object(s) with deviceId and deviceIndex
  */
 export function createDevice(
-  { deviceName, path, name, sample, focus }: CreateDeviceArgs = {},
+  { deviceName, path, name, params, focus }: CreateDeviceArgs = {},
   _context: Partial<ToolContext> = {},
 ): typeof VALID_DEVICES | CreateDeviceResult | CreateDeviceResult[] {
   // List mode: return valid devices when deviceName is omitted
@@ -89,7 +89,7 @@ export function createDevice(
     paths,
     name,
     parsedNames,
-    sample,
+    params,
   );
 
   if (focus && results.length > 0) {
@@ -107,7 +107,7 @@ export function createDevice(
  * @param paths - Array of device paths
  * @param baseName - Base display name
  * @param parsedNames - Comma-separated display names, or null
- * @param sample - Simpler only: file path to load after creation
+ * @param params - name=value lines applied to each created device
  * @returns Array of results for successfully created devices
  */
 function createDevicesAtPaths(
@@ -115,7 +115,7 @@ function createDevicesAtPaths(
   paths: string[],
   baseName: string | undefined,
   parsedNames: string[] | null,
-  sample: string | undefined,
+  params: string | undefined,
 ): CreateDeviceResult[] {
   const results: CreateDeviceResult[] = [];
 
@@ -131,8 +131,8 @@ function createDevicesAtPaths(
         device.set("name", displayName);
       }
 
-      if (sample != null && device.exists()) {
-        setSimplerSample(device, sample, "createDevice");
+      if (params != null && device.exists()) {
+        setParamValues(device, params, "createDevice");
       }
 
       results.push(result);

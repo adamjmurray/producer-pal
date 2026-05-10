@@ -200,7 +200,7 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 
 Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
 
-**Simpler sample:** Pass \`sample=<absolute file path>\` to ppal-create-device or ppal-update-device to load a sample. Skipped with a warning on non-Simpler devices and on Simpler in multi-sample mode.
+**Simpler sample:** Load a sample with \`params: "sample=<absolute file path>"\` on ppal-create-device or ppal-update-device. Read-device returns the loaded path as a top-level \`sample\` field and (when params are included) as a \`{name: "sample", value: <path>}\` entry in \`parameters\`. Skipped with a warning on non-Simpler devices and on Simpler in multi-sample mode.
 
 ### Moving Clips
 

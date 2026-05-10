@@ -10,25 +10,51 @@ import {
   isPanLabel,
   parseLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { setSimplerSample } from "#src/tools/shared/device/simpler-sample.ts";
 import { parseParamLines } from "./update-device-param-parser.ts";
 
 const BINARY_SEARCH_ITERATIONS = 40;
 
+type PseudoParamHandler = (
+  device: LiveAPI,
+  value: string | number,
+  toolName: string,
+) => void;
+
+const PSEUDO_PARAM_HANDLERS: Record<string, PseudoParamHandler> = {
+  sample: (device, value, toolName) =>
+    setSimplerSample(device, String(value), toolName),
+};
+
 /**
- * Set parameter values from name=value lines
+ * Set parameter values from name=value lines. Recognized pseudo-params
+ * (e.g. `sample=<file path>` for Simpler) are dispatched to dedicated handlers
+ * before falling through to DeviceParameter resolution.
  * @param device - LiveAPI device object to update
  * @param paramsInput - Multiline name=value string
+ * @param toolName - Calling tool name for warning prefix (defaults to "updateDevice")
  */
-export function setParamValues(device: LiveAPI, paramsInput: string): void {
+export function setParamValues(
+  device: LiveAPI,
+  paramsInput: string,
+  toolName: string = "updateDevice",
+): void {
   const paramEntries = parseParamLines(paramsInput);
 
   for (const [key, inputValue] of paramEntries) {
+    const pseudoHandler = PSEUDO_PARAM_HANDLERS[key.toLowerCase()];
+
+    if (pseudoHandler) {
+      pseudoHandler(device, inputValue, toolName);
+      continue;
+    }
+
     const param =
       resolveParamByName(device, key) ??
       (/^\d+$/.test(key) ? resolveParamForDevice(device, key) : null);
 
     if (!param?.exists()) {
-      console.warn(`updateDevice: param "${key}" not found on device`);
+      console.warn(`${toolName}: param "${key}" not found on device`);
       continue;
     }
 

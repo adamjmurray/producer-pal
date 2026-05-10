@@ -67,7 +67,6 @@ interface ResolvedTarget {
  * @param args.toPath - Move device to this path (devices only)
  * @param args.name - Display name (not drum pads)
  * @param args.params - JSON: {"paramName": value} (devices only)
- * @param args.sample - Simpler only: file path to load as the sample
  * @param args.macroVariation - Rack variation action (racks only)
  * @param args.macroVariationIndex - Rack variation index (racks only)
  * @param args.macroCount - Rack visible macro count 0-16 (racks only)
@@ -89,7 +88,6 @@ export function updateDevice(
     toPath,
     name,
     params,
-    sample,
     macroVariation,
     macroVariationIndex,
     macroCount,
@@ -122,7 +120,6 @@ export function updateDevice(
       toPath,
       name,
       params,
-      sample,
       macroVariation,
       macroVariationIndex,
       macroCount,

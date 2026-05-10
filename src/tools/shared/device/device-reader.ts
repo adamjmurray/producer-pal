@@ -266,13 +266,57 @@ export function readDevice(
   });
 
   if (includeParams) {
-    deviceInfo.parameters = readDeviceParameters(device, {
+    const parameters = readDeviceParameters(device, {
       includeValues: includeParamValues,
       search: paramSearch,
     });
+    const pseudoParams = readPseudoParameters(device, className, paramSearch);
+
+    deviceInfo.parameters = [...pseudoParams, ...parameters];
   }
 
   return deviceInfo;
+}
+
+/**
+ * Read pseudo-parameters (writable values that aren't DeviceParameter objects).
+ * Currently: Simpler `sample` file path.
+ * @param device - LiveAPI device object
+ * @param className - Device class display name
+ * @param search - Optional case-insensitive name filter
+ * @returns Array of pseudo-parameter info objects
+ */
+function readPseudoParameters(
+  device: LiveAPI,
+  className: string,
+  search: string | undefined,
+): Record<string, unknown>[] {
+  const entries: Record<string, unknown>[] = [];
+
+  if (
+    className === DEVICE_CLASS.SIMPLER &&
+    (device.getProperty("multi_sample_mode") as number) === 0
+  ) {
+    const samples = device.getChildren("sample");
+    const firstSample = samples[0];
+    const samplePath = firstSample?.getProperty("file_path") as
+      | string
+      | undefined;
+
+    if (samplePath) {
+      entries.push({ name: "sample", value: samplePath });
+    }
+  }
+
+  if (search) {
+    const searchLower = search.toLowerCase().trim();
+
+    return entries.filter((entry) =>
+      String(entry.name).toLowerCase().includes(searchLower),
+    );
+  }
+
+  return entries;
 }
 
 /**
