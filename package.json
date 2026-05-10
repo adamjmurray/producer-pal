@@ -144,7 +144,7 @@
     "eslint-plugin-sonarjs": "4.0.3",
     "eslint-plugin-unicorn": "64.0.0",
     "fake-indexeddb": "6.2.5",
-    "globals": "17.5.0",
+    "globals": "17.6.0",
     "happy-dom": "20.9.0",
     "jscpd": "4.0.9",
     "peggy": "5.1.0",
