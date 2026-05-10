@@ -22,11 +22,17 @@ vi.mock(import("../code-exec-protocol.ts"), () => ({
   handleCodeExecRequest: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock(import("../node-request-protocol.ts"), () => ({
+  handleNodeRequest: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { handleCodeExecRequest } from "../code-exec-protocol.ts";
+import { handleNodeRequest } from "../node-request-protocol.ts";
 
 // Capture the timeoutMs handler before mocks are cleared
 let timeoutMsHandler: ((input: unknown) => void) | undefined;
 let codeExecRequestHandler: ((...args: unknown[]) => void) | undefined;
+let nodeRequestHandler: ((...args: unknown[]) => void) | undefined;
 
 const timeoutMsCall = (
   Max.addHandler as ReturnType<typeof vi.fn>
@@ -46,6 +52,16 @@ const codeExecCall = (
 
 if (codeExecCall) {
   codeExecRequestHandler = codeExecCall[1] as (...args: unknown[]) => void;
+}
+
+const nodeRequestCall = (
+  Max.addHandler as ReturnType<typeof vi.fn>
+).mock.calls.find((call: unknown[]) => call[0] === "node_request") as
+  | unknown[]
+  | undefined;
+
+if (nodeRequestCall) {
+  nodeRequestHandler = nodeRequestCall[1] as (...args: unknown[]) => void;
 }
 
 interface PendingRequestResult {
@@ -555,6 +571,44 @@ describe("Max API Adapter", () => {
       await vi.waitFor(() => {
         expect(Max.post).toHaveBeenCalledWith(
           expect.stringContaining("Error handling code_exec_request"),
+          "error",
+        );
+      });
+    });
+  });
+
+  describe("node_request handler", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("should register a node_request handler", () => {
+      expect(nodeRequestHandler).toBeDefined();
+    });
+
+    it("should delegate to handleNodeRequest with correct args", async () => {
+      vi.mocked(handleNodeRequest).mockResolvedValue(undefined);
+
+      nodeRequestHandler!("req-123", '{"route":"library.searchSamples"}');
+
+      await vi.waitFor(() => {
+        expect(handleNodeRequest).toHaveBeenCalledWith(
+          "req-123",
+          '{"route":"library.searchSamples"}',
+        );
+      });
+    });
+
+    it("should log error when handleNodeRequest rejects", async () => {
+      vi.mocked(handleNodeRequest).mockRejectedValue(
+        new Error("handler failed"),
+      );
+
+      nodeRequestHandler!("req-456", '{"route":"bad"}');
+
+      await vi.waitFor(() => {
+        expect(Max.post).toHaveBeenCalledWith(
+          expect.stringContaining("Error handling node_request"),
           "error",
         );
       });

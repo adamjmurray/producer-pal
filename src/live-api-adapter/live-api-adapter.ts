@@ -40,6 +40,7 @@ import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { connect } from "#src/tools/workflow/connect.ts";
 import { context as contextTool } from "#src/tools/workflow/context.ts";
 import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
+import { handleNodeResponse } from "./node-request-v8-protocol.ts";
 
 // Configure 2 outlets: MCP responses (0) and warnings (1)
 outlets = 2;
@@ -269,6 +270,16 @@ function sendResponse(requestId: string, result: object): void {
  */
 export function code_exec_result(requestId: string, resultJson: string): void {
   handleCodeExecResult(requestId, resultJson);
+}
+
+/**
+ * Handle node_response message from Node after a node_request route ran.
+ *
+ * @param requestId - Request identifier
+ * @param responseJson - JSON string of NodeResponse
+ */
+export function node_response(requestId: string, responseJson: string): void {
+  handleNodeResponse(requestId, responseJson);
 }
 
 // Handle messages from Node for Max

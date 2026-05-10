@@ -15,6 +15,7 @@ import {
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
 import * as console from "./node-for-max-logger.ts";
+import { handleNodeRequest } from "./node-request-protocol.ts";
 import { type RequestOverrides } from "./request-overrides.ts";
 
 // Re-export for convenience so existing consumers can keep importing from here
@@ -212,6 +213,15 @@ Max.addHandler("code_exec_request", (...args: unknown[]) => {
 
   handleCodeExecRequest(requestId, requestJson).catch((error) => {
     console.error(`Error handling code_exec_request: ${String(error)}`);
+  });
+});
+
+// Handler for generic node_request RPC calls from V8
+Max.addHandler("node_request", (...args: unknown[]) => {
+  const [requestId, requestJson] = args as [string, string];
+
+  handleNodeRequest(requestId, requestJson).catch((error) => {
+    console.error(`Error handling node_request: ${String(error)}`);
   });
 });
 
