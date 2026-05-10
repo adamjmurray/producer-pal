@@ -28,6 +28,12 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .string()
       .optional()
       .describe("name for all, or comma-separated for each"),
+    params: z
+      .string()
+      .optional()
+      .describe(
+        "applied after creation — name=value per line (display units: enum string, note name, number)",
+      ),
   },
 
   smallModelModeConfig: {
@@ -35,6 +41,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     descriptionOverrides: {
       path: "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0')",
       name: "display name",
+      params: "name=value per line",
     },
   },
 });

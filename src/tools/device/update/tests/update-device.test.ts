@@ -625,4 +625,82 @@ describe("updateDevice", () => {
   });
 
   // Drum chain move tests are in update-device-drum-chain-move.test.js
+
+  describe("sample pseudo-param", () => {
+    it("loads a sample on a Simpler device via params", () => {
+      const simpler = registerMockObject("simpler-1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children(),
+        },
+      });
+
+      const result = updateDevice({
+        ids: "simpler-1",
+        params: "sample=/tmp/kick.wav",
+      });
+
+      expect(simpler.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/kick.wav",
+      );
+      expect(result).toStrictEqual({ id: "simpler-1" });
+    });
+
+    it("does not look up sample as a DeviceParameter (no 'not found' warning)", () => {
+      registerMockObject("simpler-1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children(),
+        },
+      });
+
+      updateDevice({ ids: "simpler-1", params: "sample=/tmp/kick.wav" });
+
+      expect(outlet).not.toHaveBeenCalledWith(
+        1,
+        expect.stringContaining('"sample" not found'),
+      );
+    });
+
+    it("loads sample alongside regular DeviceParameters in one params block", () => {
+      const simpler = registerMockObject("simpler-1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children("vol-param"),
+        },
+      });
+      const param = registerMockObject("vol-param", {
+        properties: {
+          name: "Volume",
+          original_name: "Volume",
+          is_quantized: 0,
+          value: 0.5,
+          min: 0,
+          max: 1,
+        },
+        methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
+      });
+
+      updateDevice({
+        ids: "simpler-1",
+        params: "sample=/tmp/kick.wav\nVolume=0.8",
+      });
+
+      expect(simpler.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/kick.wav",
+      );
+      expect(param.set).toHaveBeenCalledWith("value", 0.8);
+    });
+  });
 });
