@@ -9,7 +9,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefLibrary = defineTool("ppal-library", {
   title: "Library",
   description:
-    "Search Live's browser library by name, tags, kind, or source. Includes use_count for ranking.",
+    "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples (the only kind currently loadable into clips/Simpler); other kinds are discovery-only — pass kind explicitly to query them. Includes use_count for ranking.",
 
   annotations: {
     readOnlyHint: true,
@@ -48,8 +48,9 @@ export const toolDefLibrary = defineTool("ppal-library", {
         "folder",
       ])
       .optional()
+      .default("audio")
       .describe(
-        "content kind filter (search only). midi=.mid files | live-clip=.alc Ableton clips | device-group=.adg device chains | m4l-device=.amxd Max for Live devices | plugin=VST/AU specs and presets",
+        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler today, others are discovery-only). midi=.mid files | live-clip=.alc Ableton clips | device-group=.adg device chains | m4l-device=.amxd Max for Live devices | plugin=VST/AU specs and presets",
       ),
 
     deviceKind: z
