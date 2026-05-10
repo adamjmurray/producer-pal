@@ -625,4 +625,78 @@ describe("updateDevice", () => {
   });
 
   // Drum chain move tests are in update-device-drum-chain-move.test.js
+
+  describe("sample field", () => {
+    it("loads a sample on a Simpler device", () => {
+      const simpler = registerMockObject("simpler-1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children(),
+        },
+      });
+
+      const result = updateDevice({
+        ids: "simpler-1",
+        sample: "/tmp/kick.wav",
+      });
+
+      expect(simpler.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/kick.wav",
+      );
+      expect(result).toStrictEqual({ id: "simpler-1" });
+    });
+
+    it("warns and skips for non-device targets (chain)", () => {
+      registerMockObject("chain-1", {
+        path: livePath.track(0).device(0).chain(0),
+        type: "Chain",
+      });
+
+      updateDevice({ ids: "chain-1", sample: "/tmp/kick.wav" });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("'sample' not applicable to Chain"),
+      );
+    });
+
+    it("can be combined with params on a Simpler", () => {
+      const simpler = registerMockObject("simpler-1", {
+        path: livePath.track(0).device(0),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children("vol-param"),
+        },
+      });
+      const param = registerMockObject("vol-param", {
+        properties: {
+          name: "Volume",
+          original_name: "Volume",
+          is_quantized: 0,
+          value: 0.5,
+          min: 0,
+          max: 1,
+        },
+        methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
+      });
+
+      updateDevice({
+        ids: "simpler-1",
+        sample: "/tmp/kick.wav",
+        params: "Volume=0.8",
+      });
+
+      expect(simpler.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/kick.wav",
+      );
+      expect(param.set).toHaveBeenCalledWith("value", 0.8);
+    });
+  });
 });

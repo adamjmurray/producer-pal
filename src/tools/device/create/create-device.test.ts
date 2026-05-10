@@ -538,4 +538,57 @@ describe("createDevice", () => {
       expect(selectMockRef.get()).not.toHaveBeenCalled();
     });
   });
+
+  describe("sample loading", () => {
+    it("loads a sample after creating a Simpler", () => {
+      const simpler = registerMockObject("simpler-new", {
+        path: livePath.track(0).device(2),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+        },
+      });
+
+      track0 = registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: { insert_device: () => ["id", "simpler-new"] },
+      });
+
+      createDevice({
+        deviceName: "Simpler",
+        path: "t0",
+        sample: "/tmp/kick.wav",
+      });
+
+      expect(simpler.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/kick.wav",
+      );
+    });
+
+    it("warns and skips when creating a non-Simpler with sample", () => {
+      const eqEight = registerMockObject("eq-new", {
+        path: livePath.track(0).device(2),
+        type: "Device",
+        properties: { class_display_name: "EQ Eight" },
+      });
+
+      track0 = registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: { insert_device: () => ["id", "eq-new"] },
+      });
+
+      createDevice({
+        deviceName: "EQ Eight",
+        path: "t0",
+        sample: "/tmp/kick.wav",
+      });
+
+      expect(eqEight.call).not.toHaveBeenCalledWith(
+        "replace_sample",
+        expect.anything(),
+      );
+    });
+  });
 });

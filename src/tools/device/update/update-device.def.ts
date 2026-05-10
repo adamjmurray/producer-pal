@@ -42,8 +42,12 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe(
-        "name=value per line (display units: enum string, note name, number). Simpler: sample=<file path> loads a sample.",
+        "name=value per line (display units: enum string, note name, number)",
       ),
+    sample: z
+      .string()
+      .optional()
+      .describe("Simpler only: absolute file path to load as the sample"),
     macroVariation: z
       .enum(["create", "load", "delete", "revert", "randomize"])
       .optional()
@@ -111,7 +115,8 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       path: "device path like 't0/d0' (track 0, device 0)",
       toPath: "destination path to move device to",
       name: "display name (not drum pads)",
-      params: "name=value per line, or sample=<file path> for Simpler",
+      params: "name=value per line",
+      sample: "Simpler only: file path to load",
       color: "#RRGGBB (chains only)",
     },
   },
