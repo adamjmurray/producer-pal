@@ -21,6 +21,10 @@ const TOOL_GROUPS: ToolGroup[] = [
     toolIds: ["ppal-connect", "ppal-context"],
   },
   {
+    label: "Library",
+    toolIds: ["ppal-library"],
+  },
+  {
     label: "Transport",
     toolIds: ["ppal-playback"],
   },
