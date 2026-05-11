@@ -189,7 +189,9 @@ function orderByClause(sort: LibrarySearchArgs["sort"]): string {
     return "f.mod_date DESC, f.name ASC";
   }
 
-  return "f.use_count DESC, f.name ASC";
+  // Default use_count sort: stable tiebreakers so a fresh user (where most
+  // rows have use_count=0) doesn't fall back to whatever the index returns.
+  return "f.use_count DESC, f.mod_date DESC, f.name ASC";
 }
 
 /**

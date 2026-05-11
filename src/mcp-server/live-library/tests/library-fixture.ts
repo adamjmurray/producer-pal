@@ -79,6 +79,7 @@ const MIDI = fourCC("midi");
 const ALC = fourCC("alc-");
 const ADG = fourCC("adg-");
 const AMP = fourCC("amp-");
+const ALS = fourCC("als-");
 const VST3 = fourCC("vst3");
 const KEYW = fourCC("keyw");
 
@@ -156,6 +157,12 @@ function insertFiles(db: DatabaseSync): void {
     2,
     300,
   );
+
+  // Live sets (.als) under root Ableton folder, no place_id → null source.
+  // All have use_count=0 with distinct mod_date values for tiebreaker tests.
+  insert.run(4001, 5, ALS, 8, "set_oldest.als", 0, 1_700_000_700, 0, null);
+  insert.run(4002, 5, ALS, 8, "set_newest.als", 0, 1_700_000_900, 0, null);
+  insert.run(4003, 5, ALS, 8, "set_middle.als", 0, 1_700_000_800, 0, null);
 
   // Keyword definitions (file_type='keyw')
   insert.run(9001, 1, KEYW, 0, "Kick", 0, 0, 0, null);

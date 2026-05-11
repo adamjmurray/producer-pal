@@ -252,6 +252,19 @@ describe("librarySearch", () => {
       // pack_clap mod_date 1700000300 is the latest of the 4 audio files
       expect(result.items[0]?.name).toBe("pack_clap.aif");
     });
+
+    it("breaks use_count ties by mod_date desc on the default sort", async () => {
+      // Three live-set rows all have use_count=0 with distinct mod_dates;
+      // they should come back newest-first (set_newest > set_middle > set_oldest)
+      // rather than in arbitrary index order.
+      const result = await librarySearch({ kind: "live-set" });
+
+      expect(result.items.map((i) => i.name)).toStrictEqual([
+        "set_newest.als",
+        "set_middle.als",
+        "set_oldest.als",
+      ]);
+    });
   });
 
   it("attaches tags to each item", async () => {
