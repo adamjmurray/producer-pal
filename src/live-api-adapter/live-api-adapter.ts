@@ -21,8 +21,8 @@ import { MIN_LIVE_VERSION, VERSION } from "#src/shared/version.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { liveApi } from "#src/tools/control/live-api.ts";
 import { playback } from "#src/tools/control/playback.ts";
-import { rawLiveApi } from "#src/tools/control/raw-live-api.ts";
 import { select } from "#src/tools/control/select.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 import { readDevice } from "#src/tools/device/read/read-device.ts";
@@ -140,7 +140,7 @@ const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
   },
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
   "ppal-library": (args, ctx) => library(args as any, ctx),
-  "ppal-raw-live-api": (args, ctx) => rawLiveApi(args as any, ctx),
+  "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */
 

@@ -52,6 +52,10 @@ const TOOL_GROUPS: ToolGroup[] = [
     label: "Actions",
     toolIds: ["ppal-delete", "ppal-duplicate", "ppal-select"],
   },
+  {
+    label: "Advanced",
+    toolIds: ["ppal-live-api"],
+  },
 ];
 
 /**

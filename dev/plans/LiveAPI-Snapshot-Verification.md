@@ -11,8 +11,8 @@ abstractions match reality.
 
 ## Approach
 
-1. **Snapshot script** — Queries real Ableton Live via `ppal-raw-live-api`,
-   captures actual API behavior, writes checked-in JSON snapshot files
+1. **Snapshot script** — Queries real Ableton Live via `ppal-live-api`, captures
+   actual API behavior, writes checked-in JSON snapshot files
 2. **Unit tests** — Verify our mocks and abstractions match the snapshots
 3. **Manual re-run** — User re-runs the snapshot script when Ableton updates or
    new features are added (not automated)
@@ -106,7 +106,7 @@ src/test/mocks/mock-snapshot.test.ts    # Unit tests: mocks vs snapshot
 **File:** `scripts/generate-live-api-snapshot.ts`
 
 Uses `ppal-client.ts` infrastructure to connect to MCP server and call
-`ppal-raw-live-api` for each object type.
+`ppal-live-api` for each object type.
 
 **Algorithm:**
 

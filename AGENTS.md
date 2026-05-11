@@ -95,8 +95,12 @@ web UI architecture.
 - **No barrel files**: Do not create index.ts or other files that only re-export
   from other modules. Import directly from the source file instead.
 
-- **Testing builds**: Always use `npm run build:debug` for development (includes
-  debugging tools like `ppal-raw-live-api`)
+- **Testing builds**: Always use `npm run build:debug` for development. It sets
+  `ENABLE_LIVE_API=true` (forces the runtime `liveApiEnabled` flag on so the
+  Direct Live API tool is always available — the Setup-tab toggle cannot disable
+  it in this build), `ENABLE_CODE_EXEC=true`, and `ENABLE_DEV_CORS=true`.
+  `POST /config { liveApiEnabled }` still works in either direction (used by e2e
+  tests to exercise the disabled state).
 
 - **Exact dependency versions**: All versions in package.json must be exact (no
   `^`, `~`, or ranges). `.npmrc` enforces this for `npm install`. A test in

@@ -5,13 +5,12 @@
 import { z } from "zod";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
-export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {
+export const toolDefLiveApi = defineTool("ppal-live-api", {
   title: "Live API",
   description:
-    "Direct Live API access for R&D/debugging. " +
+    "Direct access to the Ableton Live Object Model. " +
     "Execute multiple operations sequentially on a LiveAPI instance. " +
-    "Debug warnings by running operations individually. " +
-    "DEVELOPMENT ONLY.",
+    "Can read or modify any Live Set property — use with care.",
 
   annotations: {
     readOnlyHint: false,

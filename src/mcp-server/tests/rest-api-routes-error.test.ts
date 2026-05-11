@@ -22,7 +22,7 @@ describe("REST API Routes – callLiveApi error path", () => {
 
     registerRestApiRoutes(
       app,
-      () => ({ tools: ["ppal-connect"] }),
+      () => ({ tools: ["ppal-connect"], liveApiEnabled: false }),
       callLiveApi,
     );
 
