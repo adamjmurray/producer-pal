@@ -50,7 +50,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .optional()
       .default("audio")
       .describe(
-        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler today, others are discovery-only). midi=.mid files | live-clip=.alc Ableton clips | device-group=.adg device chains | m4l-device=.amxd Max for Live devices | plugin=VST/AU specs and presets",
+        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler today, others are discovery-only). audio=.wav/.aif/.mp3/etc. samples | midi=.mid files | live-clip=.alc Ableton clips | preset=instrument/effect presets | device-group=.adg device chains (racks) | m4l-device=.amxd Max for Live devices | live-set=.als project files | plugin=VST/AU specs and presets | image/video=media assets | folder=directory entries",
       ),
 
     deviceKind: z
@@ -62,7 +62,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .enum(["folder", "user", "pack", "builtin", "cloud", "plugin"])
       .optional()
       .describe(
-        "where the file lives: folder=user-configured sample folder | user/pack/builtin/cloud/plugin=Live library categories (search only)",
+        "where the file lives (search only). folder=user-configured sample folder | user=your User Library | pack=installed Packs (factory + 3rd-party) | builtin=Ableton's Core Library | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins",
       ),
 
     sort: z
