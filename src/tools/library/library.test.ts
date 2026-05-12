@@ -277,7 +277,7 @@ describe("library tool — folder scan integration", () => {
     expect(result.items).toHaveLength(2);
   });
 
-  it("default sort places DB items (by useCount desc) before folder items", async () => {
+  it("default sort places folder items before DB items, each ordered internally", async () => {
     mockFolderStructure({
       "/samples/": [
         { name: "folder_a.wav", type: "file", extension: ".wav" },
@@ -306,13 +306,13 @@ describe("library tool — folder scan integration", () => {
     const result = await library({}, { sampleFolder: "/samples/" });
 
     if (!("items" in result)) throw new Error("expected items");
-    // Folder items inherit useCount=0, so they fall to the end naturally;
-    // alphabetical tiebreak orders folder_a before folder_z.
+    // Folder partition first (alphabetical tiebreaker at useCount=0),
+    // then DB partition (useCount desc).
     expect(result.items.map((i) => i.name)).toStrictEqual([
-      "high_use.wav",
-      "low_use.wav",
       "folder_a.wav",
       "folder_z.wav",
+      "high_use.wav",
+      "low_use.wav",
     ]);
   });
 
@@ -349,11 +349,22 @@ describe("library tool — folder scan integration", () => {
     expect(result.items).toHaveLength(2);
   });
 
-  it("sort=name reorders folder + DB items together alphabetically", async () => {
+  it("sort=name keeps folder items first, each partition sorted alphabetically", async () => {
     mockFolderStructure({
-      "/samples/": [{ name: "z_kick.wav", type: "file", extension: ".wav" }],
+      "/samples/": [
+        { name: "z_kick.wav", type: "file", extension: ".wav" },
+        { name: "m_snare.wav", type: "file", extension: ".wav" },
+      ],
     });
     mockSearchRoute([
+      {
+        name: "b_hat.wav",
+        path: "/L/b_hat.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 0,
+        source: "user",
+      },
       {
         name: "a_clap.wav",
         path: "/L/a_clap.wav",
@@ -370,15 +381,21 @@ describe("library tool — folder scan integration", () => {
     );
 
     if (!("items" in result)) throw new Error("expected items");
+    // Folder partition first, each partition sorted alphabetically.
     expect(result.items.map((i) => i.name)).toStrictEqual([
-      "a_clap.wav",
+      "m_snare.wav",
       "z_kick.wav",
+      "a_clap.wav",
+      "b_hat.wav",
     ]);
   });
 
-  it("sort=mod_date keeps DB order then appends folder items", async () => {
+  it("sort=mod_date keeps folder items first then DB items in upstream order", async () => {
     mockFolderStructure({
-      "/samples/": [{ name: "f.wav", type: "file", extension: ".wav" }],
+      "/samples/": [
+        { name: "z_folder.wav", type: "file", extension: ".wav" },
+        { name: "a_folder.wav", type: "file", extension: ".wav" },
+      ],
     });
     mockSearchRoute([
       {
@@ -405,10 +422,13 @@ describe("library tool — folder scan integration", () => {
     );
 
     if (!("items" in result)) throw new Error("expected items");
+    // Folder partition sorted by name (no mod_date metadata), then DB
+    // partition in upstream mod_date order.
     expect(result.items.map((i) => i.name)).toStrictEqual([
+      "a_folder.wav",
+      "z_folder.wav",
       "newer.wav",
       "older.wav",
-      "f.wav",
     ]);
   });
 

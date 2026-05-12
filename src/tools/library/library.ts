@@ -168,13 +168,34 @@ function leafName(rel: string): string {
 }
 
 /**
- * Sort merged items per the requested sort enum.
+ * Sort merged items. Folder items are always grouped before DB items:
+ * the sampleFolder is an explicit user choice, so those samples should
+ * surface ahead of generic DB hits regardless of sort or useCount.
  *
- * @param items - Combined list of folder + DB items (folder first)
+ * @param items - Combined list of folder + DB items
  * @param sort - Sort enum (defaults to use_count)
- * @returns Sorted copy of items
+ * @returns Sorted copy of items, folder partition first
  */
 function sortItems(
+  items: LibraryItem[],
+  sort: string | undefined,
+): LibraryItem[] {
+  const folder = items.filter((i) => i.source === "folder");
+  const db = items.filter((i) => i.source !== "folder");
+
+  return [...sortPartition(folder, sort), ...sortPartition(db, sort)];
+}
+
+/**
+ * Sort a homogeneous partition (all folder or all DB items) by the
+ * requested order. The DB partition trusts upstream ordering for
+ * mod_date since LibraryItem has no mod_date field to re-sort by.
+ *
+ * @param items - Partition to sort
+ * @param sort - Sort enum
+ * @returns Sorted copy
+ */
+function sortPartition(
   items: LibraryItem[],
   sort: string | undefined,
 ): LibraryItem[] {
@@ -183,15 +204,13 @@ function sortItems(
   }
 
   if (sort === "mod_date") {
-    // LibraryItem has no mod_date field; trust the DB's pre-sorted order
-    // and append folder items at the end (no mod_date metadata for them).
-    const folder = items.filter((i) => i.source === "folder");
-    const db = items.filter((i) => i.source !== "folder");
-
-    return [...db, ...folder];
+    // Folder items have no mod_date metadata; fall back to name order.
+    // DB items keep their upstream order (already mod_date-sorted by SQL).
+    return items.every((i) => i.source === "folder")
+      ? [...items].sort((a, b) => a.name.localeCompare(b.name))
+      : [...items];
   }
 
-  // use_count (default): folder items have useCount=0 → naturally at end.
   return [...items].sort(
     (a, b) => b.useCount - a.useCount || a.name.localeCompare(b.name),
   );

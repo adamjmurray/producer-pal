@@ -9,7 +9,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefLibrary = defineTool("ppal-library", {
   title: "Library",
   description:
-    "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples (the only kind currently loadable into clips/Simpler); other kinds are discovery-only — pass kind explicitly to query them. Includes use_count for ranking.",
+    "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples (the only kind currently loadable into clips/Simpler); other kinds are discovery-only — pass kind explicitly to query them. Items from the user's configured sample folder always appear before Live's library items (folder is an explicit user choice); within each group, results sort by use_count desc by default.",
 
   annotations: {
     readOnlyHint: true,
