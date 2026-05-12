@@ -43,7 +43,6 @@ export async function listTags(
 
   if (!dbPath) {
     return {
-      source: "live-db",
       dbAvailable: false,
       tags: [],
       reason: "Live database not found",
@@ -66,7 +65,7 @@ export async function listTags(
       .all(limit) as unknown as TagRow[];
     const tags = rows.map((r) => ({ name: r.name, count: r.cnt }));
 
-    return { source: "live-db", dbAvailable: true, tags };
+    return { dbAvailable: true, tags };
   } finally {
     db.close();
   }

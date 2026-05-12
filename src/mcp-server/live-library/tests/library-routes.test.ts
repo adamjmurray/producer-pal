@@ -39,7 +39,6 @@ describe("registerLibraryRoutes", () => {
 
   it("registers library.search and dispatches with parsed args", async () => {
     vi.mocked(searchMod.librarySearch).mockResolvedValue({
-      source: "live-db",
       dbAvailable: true,
       items: [],
     });
@@ -67,7 +66,6 @@ describe("registerLibraryRoutes", () => {
 
   it("library.search defaults to empty args when null", async () => {
     vi.mocked(searchMod.librarySearch).mockResolvedValue({
-      source: "live-db",
       dbAvailable: false,
       items: [],
     });
@@ -82,7 +80,6 @@ describe("registerLibraryRoutes", () => {
 
   it("registers library.listTags and dispatches with parsed args", async () => {
     vi.mocked(tagsMod.listTags).mockResolvedValue({
-      source: "live-db",
       dbAvailable: true,
       tags: [{ name: "Kick", count: 99 }],
     });
@@ -97,7 +94,6 @@ describe("registerLibraryRoutes", () => {
 
   it("library.listTags defaults to empty args when null", async () => {
     vi.mocked(tagsMod.listTags).mockResolvedValue({
-      source: "live-db",
       dbAvailable: false,
       tags: [],
     });

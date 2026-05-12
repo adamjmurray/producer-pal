@@ -23,7 +23,7 @@ const protocolMock =
 function mockSearchRoute(items: unknown[]): void {
   vi.mocked(protocolMock.requestNode).mockResolvedValue({
     success: true,
-    result: { source: "live-db", dbAvailable: true, items },
+    result: { dbAvailable: true, items },
   });
 }
 
@@ -46,7 +46,7 @@ describe("library tool — action dispatch", () => {
   it("dispatches listTags action to library.listTags route", async () => {
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,
-      result: { source: "live-db", dbAvailable: true, tags: [] },
+      result: { dbAvailable: true, tags: [] },
     });
 
     await library({ action: "listTags", limit: 50 });
@@ -173,6 +173,21 @@ describe("library tool — folder scan integration", () => {
     expect(protocolMock.requestNode).not.toHaveBeenCalled();
     if (!("items" in result)) throw new Error("expected items");
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
+    // Folder-only requests bypass the DB; dbAvailable should be absent
+    // rather than fabricated.
+    expect("dbAvailable" in result).toBe(false);
+  });
+
+  it("merged requests propagate dbAvailable from the DB call", async () => {
+    mockFolderStructure({
+      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
+    });
+    mockSearchRoute([]);
+
+    const result = await library({}, { sampleFolder: "/samples/" });
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.dbAvailable).toBe(true);
   });
 
   it("skips folder scan when tags filter is set (folder has no tag info)", async () => {

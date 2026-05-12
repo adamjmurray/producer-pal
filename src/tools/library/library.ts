@@ -77,9 +77,11 @@ async function runSearch(
   ctx: Partial<ToolContext>,
 ): Promise<LibrarySearchResult> {
   const folderItems = scanFolderItems(args, ctx);
+  // source=folder bypasses the DB entirely; the response omits dbAvailable
+  // to signal "did not consult the DB" instead of lying with `true`.
   const dbResult =
     args.source === "folder"
-      ? { source: "live-db" as const, dbAvailable: true, items: [] }
+      ? null
       : await callRoute<LibrarySearchResult>("library.search", {
           query: args.query,
           tags: args.tags,
@@ -91,15 +93,18 @@ async function runSearch(
         });
 
   const folderPaths = new Set(folderItems.map((i) => i.path));
-  const dbItems = dbResult.items.filter((i) => !folderPaths.has(i.path));
+  const dbItems = (dbResult?.items ?? []).filter(
+    (i) => !folderPaths.has(i.path),
+  );
   const merged = sortItems([...folderItems, ...dbItems], args.sort);
   const limit = clampLimit(args.limit);
+  const items = merged.slice(0, limit);
 
-  return {
-    source: "live-db",
-    dbAvailable: dbResult.dbAvailable,
-    items: merged.slice(0, limit),
-  };
+  if (dbResult == null) {
+    return { items };
+  }
+
+  return { dbAvailable: dbResult.dbAvailable, items };
 }
 
 /**

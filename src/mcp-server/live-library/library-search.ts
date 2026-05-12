@@ -57,7 +57,6 @@ export async function librarySearch(
 
   if (!dbPath) {
     return {
-      source: "live-db",
       dbAvailable: false,
       items: [],
       reason: "Live database not found",
@@ -74,7 +73,7 @@ export async function librarySearch(
     const tagsByFile = fetchTagsBulk(db, fileIds);
     const items = rows.map((row) => buildLibraryItem(row, paths, tagsByFile));
 
-    return { source: "live-db", dbAvailable: true, items };
+    return { dbAvailable: true, items };
   } finally {
     db.close();
   }

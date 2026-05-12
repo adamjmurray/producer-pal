@@ -68,12 +68,12 @@ export interface LibraryItem {
 }
 
 export interface LibrarySearchResult {
-  // TODO: rename `source` to `provider` (or drop it entirely) — items
-  // already carry their own per-row `source`, and "live-db" is no longer
-  // accurate now that folder-scanned items flow through this envelope.
-  source: "live-db";
-  dbAvailable: boolean;
   items: LibraryItem[];
+  /** Present when the Live DB was consulted. False if the DB couldn't be
+   * found (Live not installed). Omitted when the request bypassed the DB
+   * entirely (e.g. source=folder). */
+  dbAvailable?: boolean;
+  /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
   reason?: string;
 }
 
@@ -84,8 +84,9 @@ export interface LibraryTag {
 }
 
 export interface LibraryListTagsResult {
-  source: "live-db";
-  dbAvailable: boolean;
   tags: LibraryTag[];
+  /** Present when the Live DB was consulted; false if it couldn't be found. */
+  dbAvailable?: boolean;
+  /** Set when tags is empty due to a discoverable failure (e.g. DB missing). */
   reason?: string;
 }
