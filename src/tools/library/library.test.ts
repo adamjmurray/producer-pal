@@ -277,6 +277,78 @@ describe("library tool — folder scan integration", () => {
     expect(result.items).toHaveLength(2);
   });
 
+  it("default sort places DB items (by useCount desc) before folder items", async () => {
+    mockFolderStructure({
+      "/samples/": [
+        { name: "folder_a.wav", type: "file", extension: ".wav" },
+        { name: "folder_z.wav", type: "file", extension: ".wav" },
+      ],
+    });
+    mockSearchRoute([
+      {
+        name: "high_use.wav",
+        path: "/L/high_use.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 99,
+        source: "user",
+      },
+      {
+        name: "low_use.wav",
+        path: "/L/low_use.wav",
+        kind: "audio",
+        tags: [],
+        useCount: 1,
+        source: "user",
+      },
+    ]);
+
+    const result = await library({}, { sampleFolder: "/samples/" });
+
+    if (!("items" in result)) throw new Error("expected items");
+    // Folder items inherit useCount=0, so they fall to the end naturally;
+    // alphabetical tiebreak orders folder_a before folder_z.
+    expect(result.items.map((i) => i.name)).toStrictEqual([
+      "high_use.wav",
+      "low_use.wav",
+      "folder_a.wav",
+      "folder_z.wav",
+    ]);
+  });
+
+  it("folder scan query is case-insensitive", async () => {
+    mockFolderStructure({
+      "/samples/": [
+        { name: "kick.wav", type: "file", extension: ".wav" },
+        { name: "snare.wav", type: "file", extension: ".wav" },
+      ],
+    });
+    mockSearchRoute([]);
+
+    const result = await library(
+      { query: "KICK" },
+      { sampleFolder: "/samples/" },
+    );
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
+  });
+
+  it("limit=0 falls back to the default cap rather than returning an empty list", async () => {
+    mockFolderStructure({
+      "/samples/": [
+        { name: "a.wav", type: "file", extension: ".wav" },
+        { name: "b.wav", type: "file", extension: ".wav" },
+      ],
+    });
+    mockSearchRoute([]);
+
+    const result = await library({ limit: 0 }, { sampleFolder: "/samples/" });
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.items).toHaveLength(2);
+  });
+
   it("sort=name reorders folder + DB items together alphabetically", async () => {
     mockFolderStructure({
       "/samples/": [{ name: "z_kick.wav", type: "file", extension: ".wav" }],

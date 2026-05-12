@@ -60,12 +60,18 @@ describe("librarySearch", () => {
     it("returns only audio files when kind=audio", async () => {
       const result = await librarySearch({ kind: "audio" });
 
-      expect(result.items.map((i) => i.kind)).toStrictEqual([
-        "audio",
-        "audio",
-        "audio",
-        "audio",
+      // Specific names pin down the kind→fourCC mapping so a regression
+      // that returns the wrong audio items would fail (rather than just
+      // "every item has kind audio", which holds via the reverse map).
+      // Order is default use_count desc: pack_kick (100) > user_kick (50)
+      // > user_snare (25) > pack_clap (5).
+      expect(result.items.map((i) => i.name)).toStrictEqual([
+        "pack_kick.wav",
+        "user_kick.aif",
+        "user_snare.wav",
+        "pack_clap.aif",
       ]);
+      expect(result.items.every((i) => i.kind === "audio")).toBe(true);
     });
 
     it("returns only plugins when kind=plugin", async () => {
@@ -130,8 +136,18 @@ describe("librarySearch", () => {
     it("returns only pack files when source=pack", async () => {
       const result = await librarySearch({ source: "pack" });
 
+      // Pin specific names in default use_count desc order so a regression
+      // that returns the wrong pack items (or the right count of wrong items)
+      // would fail.
+      expect(result.items.map((i) => i.name)).toStrictEqual([
+        "pack_kick.wav", // 100
+        "pack_riff.mid", // 30
+        "pack_loop.alc", // 12
+        "pack_chain.adg", // 8
+        "pack_clap.aif", // 5
+        "pack_m4l.amxd", // 4
+      ]);
       expect(result.items.every((i) => i.source === "pack")).toBe(true);
-      expect(result.items).toHaveLength(6);
     });
 
     it("returns only builtin files when source=builtin", async () => {
@@ -158,6 +174,22 @@ describe("librarySearch", () => {
       const result = await librarySearch({ query: "KICK" });
 
       expect(result.items).toHaveLength(2);
+    });
+
+    it("passes SQL LIKE wildcards (%, _) through to the query", async () => {
+      // Documented passthrough: "_" is a single-char wildcard, "%" matches any chars.
+      // `_ick` matches "kick" (k + ick) inside user_kick.aif and pack_kick.wav.
+      const underscore = await librarySearch({ query: "_ick", kind: "audio" });
+
+      expect(underscore.items.map((i) => i.name).sort()).toStrictEqual([
+        "pack_kick.wav",
+        "user_kick.aif",
+      ]);
+
+      // `%clap` matches anything ending in "clap" (before ".aif").
+      const percent = await librarySearch({ query: "%clap", kind: "audio" });
+
+      expect(percent.items.map((i) => i.name)).toStrictEqual(["pack_clap.aif"]);
     });
   });
 
