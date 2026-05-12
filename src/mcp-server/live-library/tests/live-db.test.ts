@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { openLiveDb } from "../live-db.ts";
+import { encodePathForSqliteUri, openLiveDb } from "../live-db.ts";
 
 let scratchDir: string;
 let dbPath: string;
@@ -81,5 +81,25 @@ describe("openLiveDb", () => {
 
   it("throws when the file does not exist", () => {
     expect(() => openLiveDb(join(scratchDir, "missing.db"))).toThrow();
+  });
+});
+
+describe("encodePathForSqliteUri", () => {
+  it("passes Unix absolute paths through unchanged", () => {
+    expect(encodePathForSqliteUri("/Users/me/file.db")).toBe(
+      "/Users/me/file.db",
+    );
+  });
+
+  it("converts Windows backslashes to forward slashes and roots the path", () => {
+    expect(encodePathForSqliteUri("C:\\Users\\me\\file.db")).toBe(
+      "/C:/Users/me/file.db",
+    );
+  });
+
+  it("encodes %, ?, # within a Windows path", () => {
+    expect(encodePathForSqliteUri("C:\\foo?bar#baz%qux\\file.db")).toBe(
+      "/C:/foo%3Fbar%23baz%25qux/file.db",
+    );
   });
 });

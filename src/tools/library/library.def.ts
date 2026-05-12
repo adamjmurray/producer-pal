@@ -24,7 +24,12 @@ export const toolDefLibrary = defineTool("ppal-library", {
         "search: filter library items (default) | listTags: enumerate available tags",
       ),
 
-    query: z.string().optional().describe("name substring (search only)"),
+    query: z
+      .string()
+      .optional()
+      .describe(
+        "name substring (search only); SQL LIKE wildcards % (any chars) and _ (single char) pass through",
+      ),
 
     tags: z
       .string()

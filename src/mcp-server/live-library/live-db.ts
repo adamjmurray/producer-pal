@@ -42,15 +42,26 @@ export function openLiveDb(dbPath: string): DatabaseSync {
  *
  * SQLite URI parsing reserves `?` and `#` as query/fragment delimiters,
  * and `%` as the percent-encoding indicator (so a folder named "100%"
- * would be misinterpreted unless we escape it). We encode each character
- * individually to preserve `/` as the path separator (encodeURIComponent
- * would also encode `/`).
+ * would be misinterpreted unless we escape it).
+ *
+ * Windows paths come in with backslashes (e.g. `C:\Users\Name\db.db`),
+ * but SQLite's URI parser only understands forward slashes. We convert
+ * `\` → `/` and ensure a leading "/" so the URI becomes
+ * `file:/C:/Users/Name/db.db` rather than `file:C:\...`.
+ *
+ * Exported for unit testing — the Windows case cannot be exercised
+ * end-to-end on macOS/Linux CI.
  *
  * @param path - Raw filesystem path
  * @returns Encoded path safe to embed in `file:<path>?...`
  */
-function encodePathForSqliteUri(path: string): string {
-  return path
+export function encodePathForSqliteUri(path: string): string {
+  const forwardSlashes = path.replaceAll("\\", "/");
+  const rooted = forwardSlashes.startsWith("/")
+    ? forwardSlashes
+    : `/${forwardSlashes}`;
+
+  return rooted
     .replaceAll("%", "%25")
     .replaceAll("?", "%3F")
     .replaceAll("#", "%23");
