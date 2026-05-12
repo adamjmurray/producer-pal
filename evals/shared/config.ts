@@ -22,6 +22,7 @@ export interface ConfigOptions {
   smallModelMode?: boolean;
   jsonOutput?: boolean;
   sampleFolder?: string;
+  liveApiEnabled?: boolean;
   tools?: string[];
 }
 
