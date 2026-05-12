@@ -26,11 +26,70 @@ describe("fourCC", () => {
     expect(Number.isInteger(code)).toBe(true);
   });
 
+  it("computes the big-endian uint32 explicitly", () => {
+    // 'a'=0x61, 'i'=0x69, 'f'=0x66, 'f'=0x66 → 0x61696666
+    expect(fourCC("aiff")).toBe(0x61_69_66_66);
+  });
+
+  it("encodes the full ASCII range without sign overflow", () => {
+    // 'p'=0x70 in 'plug' has bit 7 clear; 'vstp' starts with 0x76 too.
+    // Force a high-bit byte to verify the unsigned shift in fourCC().
+    // 0xFF...... would overflow signed int32; >>> 0 must keep it positive.
+    expect(fourCC("\xFF\x00\x00\x00")).toBe(0xff_00_00_00);
+    expect(fourCC("\xFF\x00\x00\x00")).toBeGreaterThan(0);
+  });
+
   it("round-trips through resolveKind for known audio types", () => {
     expect(resolveKind(fourCC("aiff"))).toBe("audio");
     expect(resolveKind(fourCC("wav-"))).toBe("audio");
     expect(resolveKind(fourCC("flac"))).toBe("audio");
     expect(resolveKind(fourCC("mp3-"))).toBe("audio");
+  });
+});
+
+/**
+ * Canonical file_type integers as observed in a Live 12.3 files DB. These
+ * are the raw numbers SQLite returns for `files.file_type`; locking them
+ * in this test catches accidental edits to fourCC() or the KIND_FOURCC
+ * table that would silently break every prod query.
+ */
+describe("fourCCsForKind — DB-verified integer mappings", () => {
+  it("matches Live 12.3 files.file_type values for every public kind", () => {
+    expect(fourCCsForKind("audio")).toStrictEqual([
+      1_634_297_446, // aiff
+      2_002_875_949, // wav-
+      1_718_378_851, // flac
+      1_836_069_677, // mp3-
+      1_869_047_670, // oggv
+    ]);
+    expect(fourCCsForKind("midi")).toStrictEqual([1_835_623_529]); // midi
+    expect(fourCCsForKind("live-clip")).toStrictEqual([1_634_493_229]); // alc-
+    expect(fourCCsForKind("preset")).toStrictEqual([1_633_973_805]); // adv-
+    expect(fourCCsForKind("device-group")).toStrictEqual([1_633_969_965]); // adg-
+    expect(fourCCsForKind("m4l-device")).toStrictEqual([1_634_562_093]); // amp-
+    expect(fourCCsForKind("live-set")).toStrictEqual([1_634_497_325]); // als-
+    expect(fourCCsForKind("plugin")).toStrictEqual([
+      1_987_277_875, // vst3
+      1_987_277_936, // vstp
+      1_635_086_450, // aupr
+      1_886_156_135, // plug
+    ]);
+    expect(fourCCsForKind("image")).toStrictEqual([
+      1_886_283_565, // png-
+      1_785_750_887, // jpeg
+      1_953_064_550, // tiff
+    ]);
+    expect(fourCCsForKind("video")).toStrictEqual([
+      1_836_069_933, // mp4-
+      1_903_455_606, // qtmv
+      1_635_150_125, // avi-
+    ]);
+    expect(fourCCsForKind("folder")).toStrictEqual([
+      1_718_379_634, // fldr
+      1_818_651_748, // lfld
+      1_885_760_612, // pfld
+      1_684_434_020, // dfld
+    ]);
   });
 });
 
@@ -93,6 +152,9 @@ describe("resolveKind", () => {
 
 describe("deviceTypeForKind", () => {
   it("maps Live's documented device_type integers", () => {
+    // Verified against `files.device_type` distinct values in a Live 12.3
+    // files DB: 1=instrument (e.g. Ultra Analog VA-3), 2=audiofx
+    // (e.g. FabFilter Volcano 3), 4=midifx (e.g. Bouncy Notes).
     expect(deviceTypeForKind("instrument")).toBe(1);
     expect(deviceTypeForKind("audiofx")).toBe(2);
     expect(deviceTypeForKind("midifx")).toBe(4);
@@ -100,6 +162,16 @@ describe("deviceTypeForKind", () => {
 });
 
 describe("folderKindsForSource", () => {
+  // Verified against `places.folder_kind` in a Live 12.3 files DB:
+  //   0  → pack folder names (e.g. "Core Library", "Drum Booth")
+  //   1  → "User Library"
+  //   2  → User Library subfolders (e.g. "Samples", "MIDI Mod")
+  //   4  → "Current Project" (intentionally unmapped — not a browse category)
+  //   5  → "Presets" (intentionally unmapped — internal)
+  //   8  → "Built-in"
+  //   9  → "Cloud"
+  //   10 → "Plugins"
+
   it("maps user to [1,2] (User Library + subfolders)", () => {
     expect(folderKindsForSource("user")).toStrictEqual([1, 2]);
   });
@@ -113,11 +185,21 @@ describe("folderKindsForSource", () => {
     expect(folderKindsForSource("cloud")).toStrictEqual([9]);
     expect(folderKindsForSource("plugin")).toStrictEqual([10]);
   });
+
+  it("returns [] for the synthetic 'folder' source (no DB encoding)", () => {
+    expect(folderKindsForSource("folder")).toStrictEqual([]);
+  });
 });
 
 describe("resolveSource", () => {
   it("returns null for unknown folder_kind", () => {
     expect(resolveSource(99)).toBeNull();
+  });
+
+  it("returns null for folder_kinds Live uses but we don't expose", () => {
+    // 4 = "Current Project", 5 = "Presets" — both intentionally unmapped
+    expect(resolveSource(4)).toBeNull();
+    expect(resolveSource(5)).toBeNull();
   });
 
   it("resolves user, pack, builtin, cloud, plugin", () => {

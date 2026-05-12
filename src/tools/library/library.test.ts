@@ -12,8 +12,21 @@ vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   handleNodeResponse: vi.fn(),
 }));
 
+// Wrap the real readSamples in a spy so existing tests keep their
+// mockFolderStructure-driven behavior, while letting new tests assert
+// the folder scan was skipped entirely (call count = 0).
+vi.mock(
+  import("#src/tools/workflow/read-samples.ts"),
+  async (importOriginal) => {
+    const actual = await importOriginal();
+
+    return { ...actual, readSamples: vi.fn(actual.readSamples) };
+  },
+);
+
 const protocolMock =
   await import("#src/live-api-adapter/node-request-v8-protocol.ts");
+const readSamplesMock = await import("#src/tools/workflow/read-samples.ts");
 
 /**
  * Stub the library.search route with the given items.
@@ -203,6 +216,9 @@ describe("library tool — folder scan integration", () => {
 
     if (!("items" in result)) throw new Error("expected items");
     expect(result.items.find((i) => i.source === "folder")).toBeUndefined();
+    // Tags only live in the DB; readSamples must not be invoked at all
+    // (skipping the scan beats filtering its results post-hoc).
+    expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
   });
 
   it("skips folder scan when kind is non-audio", async () => {
@@ -218,6 +234,8 @@ describe("library tool — folder scan integration", () => {
 
     if (!("items" in result)) throw new Error("expected items");
     expect(result.items.find((i) => i.source === "folder")).toBeUndefined();
+    // Folder scan only knows about audio; any non-audio kind must bypass it.
+    expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
   });
 
   it("skips folder scan when deviceKind is set", async () => {
@@ -233,6 +251,22 @@ describe("library tool — folder scan integration", () => {
 
     if (!("items" in result)) throw new Error("expected items");
     expect(result.items.find((i) => i.source === "folder")).toBeUndefined();
+    // deviceKind is DB-only metadata; the scan can't satisfy it.
+    expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
+  });
+
+  it("invokes the folder scan for audio-compatible filters (positive control)", async () => {
+    // Sanity check that the spy actually fires when it should — otherwise
+    // the three "not.toHaveBeenCalled" assertions above would pass trivially
+    // if the mock were broken.
+    mockFolderStructure({
+      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
+    });
+    mockSearchRoute([]);
+
+    await library({ kind: "audio" }, { sampleFolder: "/samples/" });
+
+    expect(readSamplesMock.readSamples).toHaveBeenCalledTimes(1);
   });
 
   it("works without a configured sampleFolder (DB-only)", async () => {
