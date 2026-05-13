@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   loadEnabledTools: vi.fn(),
   getMcpUrl: vi.fn(),
   useVoiceSession: vi.fn(),
+  isFirefox: vi.fn(),
 }));
 
 vi.mock(import("#webui/hooks/settings/settings-helpers"), () => ({
@@ -26,6 +27,10 @@ vi.mock(import("#webui/hooks/settings/settings-helpers"), () => ({
 
 vi.mock(import("#webui/utils/mcp-url"), () => ({
   getMcpUrl: mocks.getMcpUrl,
+}));
+
+vi.mock(import("#webui/utils/browser-detect"), () => ({
+  isFirefox: mocks.isFirefox,
 }));
 
 vi.mock(import("#webui/hooks/voice/use-voice-session"), () => ({
@@ -73,6 +78,7 @@ beforeEach(() => {
   mocks.loadProviderSettings.mockReturnValue({ apiKey: "sk-test" });
   mocks.loadEnabledTools.mockReturnValue({});
   mocks.getMcpUrl.mockReturnValue("http://localhost:3350/mcp");
+  mocks.isFirefox.mockReturnValue(false);
 });
 
 afterEach(() => {
@@ -80,6 +86,7 @@ afterEach(() => {
   mocks.loadEnabledTools.mockReset();
   mocks.getMcpUrl.mockReset();
   mocks.useVoiceSession.mockReset();
+  mocks.isFirefox.mockReset();
 });
 
 describe("VoiceApp", () => {
@@ -303,5 +310,33 @@ describe("VoiceApp", () => {
     render(<VoiceApp />);
 
     expect(screen.getByText(/muted/i)).toBeDefined();
+  });
+
+  it("shows the Firefox-unsupported banner when running in Firefox", () => {
+    mocks.isFirefox.mockReturnValue(true);
+    mocks.useVoiceSession.mockReturnValue(baseSession());
+
+    render(<VoiceApp />);
+
+    expect(screen.getByText(/firefox is not supported/i)).toBeDefined();
+  });
+
+  it("disables the Talk button when running in Firefox", () => {
+    mocks.isFirefox.mockReturnValue(true);
+    mocks.useVoiceSession.mockReturnValue(baseSession());
+
+    render(<VoiceApp />);
+
+    const btn = screen.getByRole("button", { name: "Talk" });
+
+    expect((btn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("hides the Firefox banner in Chrome (or other non-Firefox browsers)", () => {
+    mocks.useVoiceSession.mockReturnValue(baseSession());
+
+    render(<VoiceApp />);
+
+    expect(screen.queryByText(/firefox is not supported/i)).toBeNull();
   });
 });

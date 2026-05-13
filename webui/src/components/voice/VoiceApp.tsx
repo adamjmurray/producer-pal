@@ -9,6 +9,7 @@ import {
   loadProviderSettings,
 } from "#webui/hooks/settings/settings-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
+import { isFirefox } from "#webui/utils/browser-detect";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 import { HistoryPane } from "./HistoryPane";
 
@@ -26,6 +27,7 @@ export function VoiceApp() {
     () => loadProviderSettings("openai").apiKey || null,
   );
   const enabledTools = useMemo(() => loadEnabledTools(), []);
+  const firefoxDetected = useMemo(() => isFirefox(), []);
 
   const voice = useVoiceSession({
     mcpUrl,
@@ -37,6 +39,7 @@ export function VoiceApp() {
   const isBusy =
     voice.status === "connecting" || voice.status === "disconnecting";
   const isConnected = voice.status === "connected";
+  const isUnsupportedBrowser = firefoxDetected;
 
   const onToggleConnection = () => {
     if (isConnected) {
@@ -59,6 +62,18 @@ export function VoiceApp() {
       </header>
 
       <main className="w-full max-w-3xl px-6 pb-12 flex-1 flex flex-col gap-6">
+        {firefoxDetected && (
+          <div className="rounded-md border border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-700 p-4 text-sm">
+            <p className="font-medium mb-1">
+              Firefox is not supported for voice.
+            </p>
+            <p>
+              Voice currently works in Chrome (other Chromium browsers like Edge
+              are likely fine but untested). Please open this page in Chrome.
+            </p>
+          </div>
+        )}
+
         {!openAiKey && (
           <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-4 text-sm">
             <p className="font-medium mb-1">OpenAI API key required.</p>
@@ -77,6 +92,7 @@ export function VoiceApp() {
           openAiKey={openAiKey}
           isBusy={isBusy}
           isConnected={isConnected}
+          isUnsupportedBrowser={isUnsupportedBrowser}
           onToggleConnection={onToggleConnection}
         />
 
@@ -113,6 +129,7 @@ interface VoiceControlsProps {
   openAiKey: string | null;
   isBusy: boolean;
   isConnected: boolean;
+  isUnsupportedBrowser: boolean;
   onToggleConnection: () => void;
 }
 
@@ -125,6 +142,7 @@ interface VoiceControlsProps {
  * @param props.openAiKey - User's OpenAI API key (controls disabled state)
  * @param props.isBusy - True during connecting/disconnecting transitions
  * @param props.isConnected - True when the realtime session is live
+ * @param props.isUnsupportedBrowser - True when the browser is known broken (Firefox)
  * @param props.onToggleConnection - Toggle connect/disconnect
  * @returns Controls UI
  */
@@ -133,6 +151,7 @@ function VoiceControls({
   openAiKey,
   isBusy,
   isConnected,
+  isUnsupportedBrowser,
   onToggleConnection,
 }: VoiceControlsProps) {
   const assistantActive = voice.assistantSpeaking || voice.assistantThinking;
@@ -142,7 +161,7 @@ function VoiceControls({
       <button
         type="button"
         onClick={onToggleConnection}
-        disabled={isBusy || !openAiKey}
+        disabled={isBusy || !openAiKey || isUnsupportedBrowser}
         className={`
               w-32 h-32 rounded-full text-lg font-semibold transition-colors
               shadow-lg disabled:opacity-40 disabled:cursor-not-allowed
