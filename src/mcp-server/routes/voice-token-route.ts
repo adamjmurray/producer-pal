@@ -5,7 +5,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import * as console from "./node-for-max-logger.ts";
+import * as console from "../node-for-max-logger.ts";
 
 const OPENAI_CLIENT_SECRETS_URL =
   "https://api.openai.com/v1/realtime/client_secrets";
@@ -99,21 +99,27 @@ export function registerVoiceTokenRoute(app: Express): void {
 }
 
 /**
- * Read OpenAI's error body without throwing, prefer JSON. Typed against the
- * global fetch Response (not the Express one imported above).
+ * Read OpenAI's error body without throwing, prefer JSON. Reads as text first
+ * because a Response body can only be consumed once — calling `.json()`
+ * directly would consume the body and leave `.text()` empty on the fallback
+ * path.
  *
  * @param upstream - Fetch response
- * @returns Parsed JSON body or raw text
+ * @returns Parsed JSON body, raw text, or null
  */
 async function safeReadError(upstream: globalThis.Response): Promise<unknown> {
+  let text: string;
+
   try {
-    return await upstream.json();
+    text = await upstream.text();
   } catch {
-    try {
-      return await upstream.text();
-    } catch {
-      return null;
-    }
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
   }
 }
 

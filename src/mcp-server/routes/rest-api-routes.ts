@@ -9,13 +9,13 @@ import { toolDefLiveApi } from "#src/tools/control/live-api.def.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
-} from "./create-mcp-server.ts";
+} from "../create-mcp-server.ts";
 import {
   MAX_TIMEOUT_MS,
   type McpResponse,
   type RequestOverrides,
-} from "./max-api-adapter.ts";
-import * as console from "./node-for-max-logger.ts";
+} from "../max-api-adapter.ts";
+import * as console from "../node-for-max-logger.ts";
 
 interface RestApiConfig {
   tools: string[];

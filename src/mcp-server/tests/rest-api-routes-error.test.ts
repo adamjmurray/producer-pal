@@ -7,7 +7,7 @@ import { type Server } from "node:http";
 import { type AddressInfo } from "node:net";
 import express from "express";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { registerRestApiRoutes } from "../rest-api-routes.ts";
+import { registerRestApiRoutes } from "../routes/rest-api-routes.ts";
 
 describe("REST API Routes – callLiveApi error path", () => {
   let server: Server | undefined;

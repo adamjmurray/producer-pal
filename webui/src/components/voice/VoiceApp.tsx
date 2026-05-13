@@ -98,8 +98,8 @@ export function VoiceApp() {
         <HistoryPane history={voice.history} />
 
         <p className="text-xs text-zinc-500">
-          Transport events are logged to the browser console
-          (filter: <code>[voice]</code>).
+          Transport events are logged to the browser console (filter:{" "}
+          <code>[voice]</code>).
         </p>
       </main>
     </div>

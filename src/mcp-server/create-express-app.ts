@@ -18,8 +18,8 @@ import { toolDefLiveApi } from "#src/tools/control/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
-import { registerRestApiRoutes } from "./rest-api-routes.ts";
-import { registerVoiceTokenRoute } from "./voice-token-route.ts";
+import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
+import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 
 const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 

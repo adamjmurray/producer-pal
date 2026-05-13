@@ -48,7 +48,7 @@ export async function createRealtimeMcpTools(
         try {
           const result = await mcpClient.callTool({
             name: t.name,
-            arguments: (args ?? {}) as Record<string, unknown>,
+            arguments: args as Record<string, unknown>,
           });
 
           const content = result.content as Array<{

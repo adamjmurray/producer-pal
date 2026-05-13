@@ -12,12 +12,9 @@ import {
   type TransportEvent,
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { createRealtimeMcpTools } from "#webui/voice/realtime-mcp-tools";
+import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 
 const REALTIME_MODEL = "gpt-realtime-2";
-// Bump this string when changing the hook so you can verify the right build
-// loaded — look for "[voice] hook version: ..." in the browser console.
-const VOICE_HOOK_VERSION = "2026-05-12-canonical";
 
 const AGENT_INSTRUCTIONS = [
   "You are Producer Pal, an AI music production assistant working with the user in Ableton Live.",
@@ -89,25 +86,28 @@ export function useVoiceSession(
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
 
   const cleanup = useCallback(async () => {
-    if (sessionRef.current) {
+    // Capture and null refs synchronously so any subsequent await can't race
+    // a concurrent caller into double-closing.
+    const session = sessionRef.current;
+    const mcpClient = mcpClientRef.current;
+
+    sessionRef.current = null;
+    mcpClientRef.current = null;
+
+    if (session) {
       try {
-        sessionRef.current.close();
+        session.close();
       } catch {
         // swallow — best-effort teardown
       }
-
-      sessionRef.current = null;
     }
 
-    if (mcpClientRef.current) {
+    if (mcpClient) {
       try {
-        await mcpClientRef.current.close();
+        await mcpClient.close();
       } catch {
         // swallow
       }
-
-      // eslint-disable-next-line require-atomic-updates -- ref is not subject to React batching
-      mcpClientRef.current = null;
     }
 
     setAssistantSpeaking(false);
@@ -124,7 +124,6 @@ export function useVoiceSession(
       return;
     }
 
-    console.info("[voice] hook version:", VOICE_HOOK_VERSION);
     setStatus("connecting");
     setError(null);
     setHistory([]);

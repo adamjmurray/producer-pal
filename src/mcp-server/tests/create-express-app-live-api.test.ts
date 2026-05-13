@@ -9,7 +9,7 @@ import express from "express";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { TOOL_NAMES } from "../create-mcp-server.ts";
-import { registerRestApiRoutes } from "../rest-api-routes.ts";
+import { registerRestApiRoutes } from "../routes/rest-api-routes.ts";
 import { setupExpressAppServer } from "./express-app-test-helpers.ts";
 
 type MockMax = typeof Max & {
