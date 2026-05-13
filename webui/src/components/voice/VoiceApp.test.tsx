@@ -120,16 +120,16 @@ describe("VoiceApp", () => {
     expect(session.connect).toHaveBeenCalledOnce();
   });
 
-  it("renders Stop and Listening indicator when connected, click calls disconnect()", () => {
+  it("renders Restart and Listening indicator when connected, click calls disconnect()", () => {
     const session = baseSession({ status: "connected" });
 
     mocks.useVoiceSession.mockReturnValue(session);
 
     render(<VoiceApp />);
 
-    const stop = screen.getByRole("button", { name: "Stop" });
+    const restart = screen.getByRole("button", { name: "Restart" });
 
-    fireEvent.click(stop);
+    fireEvent.click(restart);
     expect(session.disconnect).toHaveBeenCalledOnce();
     expect(screen.getByText(/listening/i)).toBeDefined();
   });

@@ -172,7 +172,7 @@ function VoiceControls({
               }
             `}
       >
-        {isBusy ? "..." : isConnected ? "Stop" : "Talk"}
+        {isBusy ? "..." : isConnected ? "Restart" : "Talk"}
       </button>
       <StatusBadge
         status={voice.status}
