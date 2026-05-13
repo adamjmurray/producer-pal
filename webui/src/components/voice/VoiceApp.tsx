@@ -36,6 +36,13 @@ export function VoiceApp() {
     enabledTools,
   });
 
+  useEffect(() => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: "smooth",
+    });
+  }, [voice.history]);
+
   const isBusy =
     voice.status === "connecting" || voice.status === "disconnecting";
   const isConnected = voice.status === "connected";
