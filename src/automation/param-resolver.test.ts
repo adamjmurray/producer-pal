@@ -31,4 +31,7 @@ describe("resolveParam", () => {
   it("wirft wenn Index out of range", async () => {
     await expect(resolveParam("t0/d0", 9, lookup)).rejects.toThrow(/Index 9/);
   });
+  it("wirft bei nicht-ganzzahligem Index", async () => {
+    await expect(resolveParam("t0/d0", 1.5, lookup)).rejects.toThrow(/ganzzahlig|integer/i);
+  });
 });

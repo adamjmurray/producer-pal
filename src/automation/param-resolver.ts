@@ -33,6 +33,10 @@ export async function resolveParam(
   let index: number;
 
   if (typeof parameter === "number") {
+    if (!Number.isInteger(parameter)) {
+      throw new Error(`Parameter-Index muss ganzzahlig sein (war ${parameter})`);
+    }
+
     if (parameter < 0 || parameter >= params.length) {
       throw new Error(`Parameter-Index ${parameter} ausserhalb 0..${params.length - 1}`);
     }
