@@ -3,14 +3,15 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { validateBreakpoints, type Breakpoint } from "../../automation/breakpoint-validator.ts";
-import { resolveParam } from "../../automation/param-resolver.ts";
+import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
+import { validateBreakpoints, type Breakpoint } from "#src/automation/breakpoint-validator.ts";
+import { resolveParam } from "#src/automation/param-resolver.ts";
 
 export interface WriteAutomationArgs {
   clipPath: string;
   devicePath: string;
   parameter: string | number;
-  breakpoints: Breakpoint[];
+  breakpoints: string;
   clear?: boolean;
 }
 
@@ -35,7 +36,8 @@ export async function handleWriteAutomation(
   bridge: AutomationBridge,
 ): Promise<{ param: string; written: number; verified: boolean }> {
   const param = await resolveParam(args.devicePath, args.parameter, bridge.resolveDevice);
-  const bp = validateBreakpoints(args.breakpoints, { min: param.min, max: param.max });
+  const parsed = parseBreakpoints(args.breakpoints);
+  const bp = validateBreakpoints(parsed, { min: param.min, max: param.max });
   const clear = args.clear ?? true;
 
   for (let i = 0; i < bp.length; i += BATCH) {
@@ -50,7 +52,11 @@ export async function handleWriteAutomation(
   const actual = await bridge.readClipEnvelope({ clipPath: args.clipPath, paramIndex: param.index });
   const verified =
     actual.length === bp.length &&
-    bp.every((p, idx) => actual[idx]?.time === p.time && actual[idx].value === p.value);
+    bp.every((p, idx) => {
+      const a = actual[idx];
+
+      return a?.time === p.time && a.value === p.value;
+    });
 
   return { param: param.name, written: bp.length, verified };
 }
