@@ -28,12 +28,20 @@ export function validateBreakpoints(bp: Breakpoint[], range: ParamRange): Breakp
   let prev = -Infinity;
 
   for (const p of bp) {
+    if (!Number.isFinite(p.time)) {
+      throw new Error(`Breakpoint time muss endlich sein (war ${p.time})`);
+    }
+
+    if (!Number.isFinite(p.value)) {
+      throw new Error(`Breakpoint value muss endlich sein (war ${p.value})`);
+    }
+
     if (p.time < 0) {
       throw new Error(`Breakpoint time muss >= 0 sein (war ${p.time})`);
     }
 
-    if (p.time < prev) {
-      throw new Error(`Breakpoints muessen nach time aufsteigend sortiert sein`);
+    if (p.time <= prev) {
+      throw new Error(`Breakpoints muessen nach time strikt aufsteigend sortiert sein`);
     }
 
     if (p.value < range.min || p.value > range.max) {

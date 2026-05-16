@@ -29,4 +29,21 @@ describe("validateBreakpoints", () => {
   it("wirft bei leerer Liste", () => {
     expect(() => validateBreakpoints([], range)).toThrow(/mindestens 1/);
   });
+  it("wirft bei NaN time", () => {
+    expect(() => validateBreakpoints([{ time: Number.NaN, value: 200 }], range)).toThrow(/endlich|finite/i);
+  });
+  it("wirft bei NaN value", () => {
+    expect(() => validateBreakpoints([{ time: 0, value: Number.NaN }], range)).toThrow(/endlich|finite/i);
+  });
+  it("wirft bei doppelter (gleicher) time", () => {
+    expect(() =>
+      validateBreakpoints(
+        [
+          { time: 2, value: 200 },
+          { time: 2, value: 300 },
+        ],
+        range,
+      ),
+    ).toThrow(/aufsteigend/);
+  });
 });
