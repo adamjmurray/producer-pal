@@ -61,6 +61,35 @@ export function buildEnvelopeXml(
 const EMPTY_ENVELOPES_RE = /<Envelopes>\s*<Envelopes\s*\/>\s*<\/Envelopes>/;
 
 /**
+ * Locate the `<MidiClip ...>...</MidiClip>` block whose nested
+ * `<Name Value="clipName" />` matches, and return its absolute byte range.
+ *
+ * @param xml - Raw (decompressed) `.als` XML string.
+ * @param clipName - Exact value of the clip's `<Name Value="..." />` attribute.
+ * @returns `{ start, end, block }` where `start`/`end` are absolute indices into
+ *   `xml` (end exclusive) and `block` is `xml.slice(start, end)`.
+ * @throws {Error} If no clip with the given name is found.
+ */
+export function locateClipBlock(
+  xml: string,
+  clipName: string,
+): { start: number; end: number; block: string } {
+  // Fresh regex per call — no module-level /g state (lastIndex side-effects)
+  const midiClipRe = /<MidiClip\b(?:(?!<\/MidiClip>).)*?<\/MidiClip>/gs;
+
+  const namePattern = `<Name Value="${clipName}" />`;
+  let m: RegExpExecArray | null;
+
+  while ((m = midiClipRe.exec(xml)) !== null) {
+    if (m[0].includes(namePattern)) {
+      return { start: m.index, end: m.index + m[0].length, block: m[0] };
+    }
+  }
+
+  throw new Error(`clip "${clipName}" nicht gefunden`);
+}
+
+/**
  * Inject an automation envelope into a named `<MidiClip>` block inside raw `.als` XML.
  *
  * Finds the clip whose `<Name Value="clipName" />` matches, then replaces its
@@ -82,26 +111,7 @@ export function injectClipEnvelope(
   automationTargetId: string | number,
   breakpoints: Breakpoint[],
 ): string {
-  // Fresh regex per call — no module-level /g state (lastIndex side-effects)
-  const midiClipRe = /<MidiClip\b(?:(?!<\/MidiClip>).)*?<\/MidiClip>/gs;
-
-  const namePattern = `<Name Value="${clipName}" />`;
-  let matchedClip: RegExpExecArray | null = null;
-
-  let m: RegExpExecArray | null;
-
-  while ((m = midiClipRe.exec(xml)) !== null) {
-    if (m[0].includes(namePattern)) {
-      matchedClip = m;
-      break;
-    }
-  }
-
-  if (matchedClip == null) {
-    throw new Error(`clip "${clipName}" nicht gefunden`);
-  }
-
-  const clipBlock = matchedClip[0];
+  const { start, end, block: clipBlock } = locateClipBlock(xml, clipName);
   const emptyEnvMatch = EMPTY_ENVELOPES_RE.exec(clipBlock);
 
   if (emptyEnvMatch == null) {
@@ -111,7 +121,10 @@ export function injectClipEnvelope(
   }
 
   const replacement = `<Envelopes>${buildEnvelopeXml(automationTargetId, breakpoints)}</Envelopes>`;
-  const updatedClip = clipBlock.slice(0, emptyEnvMatch.index) + replacement + clipBlock.slice(emptyEnvMatch.index + emptyEnvMatch[0].length);
+  const updatedClip =
+    clipBlock.slice(0, emptyEnvMatch.index) +
+    replacement +
+    clipBlock.slice(emptyEnvMatch.index + emptyEnvMatch[0].length);
 
-  return xml.slice(0, matchedClip.index) + updatedClip + xml.slice(matchedClip.index + clipBlock.length);
+  return xml.slice(0, start) + updatedClip + xml.slice(end);
 }

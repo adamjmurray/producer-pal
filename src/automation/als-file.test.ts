@@ -45,6 +45,24 @@ describe("readAls / writeAls round-trip", () => {
       fs.unlinkSync(tmpPath);
     }
   });
+
+  it("hinterlaesst keine .tmp-* Datei nach writeAls", () => {
+    const tmpPath = writeTempAls(SAMPLE_XML);
+    const dir = path.dirname(tmpPath);
+    const base = path.basename(tmpPath);
+
+    try {
+      writeAls(tmpPath, SAMPLE_XML);
+
+      const tmpFiles = fs.readdirSync(dir).filter(
+        (f) => f.startsWith(base) && f.includes(".tmp-"),
+      );
+
+      expect(tmpFiles).toHaveLength(0);
+    } finally {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+    }
+  });
 });
 
 describe("backupAls", () => {
@@ -85,13 +103,39 @@ describe("assertOnlyEnvelopeChanged", () => {
     expect(() => assertOnlyEnvelopeChanged(BEFORE, AFTER_ENV, CLIP_NAME)).not.toThrow();
   });
 
-  it("wirft bei Aenderung ausserhalb des Clip-Envelopes", () => {
-    const badAfter = AFTER_ENV.replace("Ableton", "Ableton2");
+  it("wirft bei Aenderung im prefix (ausserhalb des Clips)", () => {
+    const badAfter = AFTER_ENV.replace("<Ableton>", "<Ableton2>");
 
-    expect(() => assertOnlyEnvelopeChanged(BEFORE, badAfter, CLIP_NAME)).toThrow(/Unerwartete/);
+    expect(() => assertOnlyEnvelopeChanged(BEFORE, badAfter, CLIP_NAME)).toThrow(/prefix/);
+  });
+
+  it("wirft bei Aenderung im suffix (ausserhalb des Clips)", () => {
+    const badAfter = AFTER_ENV.replace("</Ableton>", "</Ableton2>");
+
+    expect(() => assertOnlyEnvelopeChanged(BEFORE, badAfter, CLIP_NAME)).toThrow(/suffix/);
   });
 
   it("passt wenn beide identisch sind (keine Aenderung)", () => {
     expect(() => assertOnlyEnvelopeChanged(BEFORE, BEFORE, CLIP_NAME)).not.toThrow();
+  });
+
+  it("duplikat-Clips: nur Ziel-Clip aendert sich → kein Fehler", () => {
+    const OTHER_CLIP = `<MidiClip Id="0"><Name Value="Other" /><Envelopes><Envelopes /></Envelopes></MidiClip>`;
+    const TARGET_BEFORE = `<MidiClip Id="1"><Name Value="${CLIP_NAME}" /><Envelopes><Envelopes /></Envelopes></MidiClip>`;
+    const TARGET_AFTER = `<MidiClip Id="1"><Name Value="${CLIP_NAME}" /><Envelopes><AutomationEnvelope /></Envelopes></MidiClip>`;
+    const beforeXml = `<Root>${OTHER_CLIP}${TARGET_BEFORE}</Root>`;
+    const afterXml = `<Root>${OTHER_CLIP}${TARGET_AFTER}</Root>`;
+
+    expect(() => assertOnlyEnvelopeChanged(beforeXml, afterXml, CLIP_NAME)).not.toThrow();
+  });
+
+  it("duplikat-Clips: Aenderung im anderen Clip → wirft", () => {
+    const OTHER_BEFORE = `<MidiClip Id="0"><Name Value="Other" /><Envelopes><Envelopes /></Envelopes></MidiClip>`;
+    const OTHER_AFTER = `<MidiClip Id="0"><Name Value="Other" /><Envelopes><AutomationEnvelope /></Envelopes></MidiClip>`;
+    const TARGET_CLIP = `<MidiClip Id="1"><Name Value="${CLIP_NAME}" /><Envelopes><Envelopes /></Envelopes></MidiClip>`;
+    const beforeXml = `<Root>${OTHER_BEFORE}${TARGET_CLIP}</Root>`;
+    const afterXml = `<Root>${OTHER_AFTER}${TARGET_CLIP}</Root>`;
+
+    expect(() => assertOnlyEnvelopeChanged(beforeXml, afterXml, CLIP_NAME)).toThrow(/Unerwartete/);
   });
 });

@@ -6,6 +6,7 @@
 import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as zlib from "node:zlib";
+import { locateClipBlock } from "#src/automation/als-envelope-writer.ts";
 
 /**
  * Read and decompress a gzip-compressed .als file to a UTF-8 XML string.
@@ -19,14 +20,16 @@ export function readAls(filePath: string): string {
 }
 
 /**
- * Gzip-compress an XML string and write it to disk as a .als file.
+ * Gzip-compress an XML string and atomically write it to disk as a .als file.
+ * Uses a temp file + rename so a crash mid-write never leaves a corrupt file.
  * @param filePath - Destination path for the .als file
  * @param xml - XML string to compress and write
  */
 export function writeAls(filePath: string, xml: string): void {
-  const compressed = zlib.gzipSync(Buffer.from(xml, "utf8"));
+  const tmp = `${filePath}.tmp-${process.pid}`;
 
-  fs.writeFileSync(filePath, compressed);
+  fs.writeFileSync(tmp, zlib.gzipSync(Buffer.from(xml, "utf8")));
+  fs.renameSync(tmp, filePath);
 }
 
 /**
@@ -45,6 +48,10 @@ export function backupAls(filePath: string): string {
 /**
  * Check whether Ableton Live (or Producer Pal) has a set open by testing
  * whether TCP port 3350 is in LISTEN state locally.
+ *
+ * Fail-open: if `lsof` is unavailable the catch returns false (treats set as
+ * not open). The `.bak` backup written before every write is the real safety net.
+ *
  * @returns True if port 3350 is listening, false otherwise
  */
 export function isSetLikelyOpen(): boolean {
@@ -58,49 +65,23 @@ export function isSetLikelyOpen(): boolean {
 }
 
 /**
- * Extract the Envelopes block from the named MidiClip within an XML string.
- * Returns the XML with the clip's Envelopes section replaced by a placeholder.
- * @param xml - Full .als XML string
- * @param clipName - Name of the target clip
- * @returns XML with envelopes replaced by placeholder, or original if clip not found
- */
-function redactClipEnvelopes(xml: string, clipName: string): string {
-  const midiClipRe = /<MidiClip\b(?:(?!<\/MidiClip>).)*?<\/MidiClip>/gs;
-  const namePattern = `<Name Value="${clipName}" />`;
-
-  let m: RegExpExecArray | null;
-
-  while ((m = midiClipRe.exec(xml)) !== null) {
-    if (!m[0].includes(namePattern)) continue;
-
-    const clipBlock = m[0];
-    const envMatch = /<Envelopes>[\S\s]*?<\/Envelopes>/.exec(clipBlock);
-
-    if (envMatch == null) return xml;
-
-    const redactedClip =
-      clipBlock.slice(0, envMatch.index) +
-      "__ENV__" +
-      clipBlock.slice(envMatch.index + envMatch[0].length);
-
-    return xml.slice(0, m.index) + redactedClip + xml.slice(m.index + clipBlock.length);
-  }
-
-  return xml;
-}
-
-/**
- * Assert that `after` differs from `before` only inside the named clip's Envelopes block.
- * Throws if any content outside the target clip's envelopes changed.
+ * Assert that `after` differs from `before` only inside the named clip's block.
+ * Uses `locateClipBlock` (the same locator as `injectClipEnvelope`) for exact,
+ * byte-level comparison of everything outside the target clip.
+ * Throws if any byte outside the clip changed, naming which region (prefix/suffix).
  * @param before - Original XML string before the write operation
  * @param after - Modified XML string after the write operation
  * @param clipName - Name of the clip whose envelopes were changed
  */
 export function assertOnlyEnvelopeChanged(before: string, after: string, clipName: string): void {
-  const redactedBefore = redactClipEnvelopes(before, clipName);
-  const redactedAfter = redactClipEnvelopes(after, clipName);
+  const b = locateClipBlock(before, clipName);
+  const a = locateClipBlock(after, clipName);
 
-  if (redactedBefore !== redactedAfter) {
-    throw new Error("Unerwartete Aenderung ausserhalb des Ziel-Clip-Envelopes");
+  if (before.slice(0, b.start) !== after.slice(0, a.start)) {
+    throw new Error("Unerwartete Aenderung ausserhalb des Ziel-Clips: prefix weicht ab");
+  }
+
+  if (before.slice(b.end) !== after.slice(a.end)) {
+    throw new Error("Unerwartete Aenderung ausserhalb des Ziel-Clips: suffix weicht ab");
   }
 }

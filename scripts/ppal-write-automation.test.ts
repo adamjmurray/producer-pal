@@ -123,6 +123,34 @@ describe("ppal-write-automation CLI", () => {
     }
   });
 
+  it("write: Verifizierung prueft FloatEvents nur im Ziel-Clip (scoped)", () => {
+    const tmpPath = createTmpAls();
+
+    try {
+      const code = runCli([
+        "write",
+        "--als", tmpPath,
+        "--track", "T",
+        "--clip", "C",
+        "--param", "Filter Freq",
+        "--breakpoints", "0=100,2=200,4=300",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+
+      const written = zlib.gunzipSync(fs.readFileSync(tmpPath)).toString("utf8");
+
+      // 3 breakpoints → 3 FloatEvents, all inside the clip
+      const floatEvents = [...written.matchAll(/<FloatEvent /g)];
+
+      expect(floatEvents).toHaveLength(3);
+    } finally {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
+  });
+
   it("write: --force umgeht open-set-Guard, Envelope korrekt injiziert", () => {
     const tmpPath = createTmpAls();
 

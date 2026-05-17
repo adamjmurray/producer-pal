@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
-import { buildEnvelopeXml, injectClipEnvelope } from "./als-envelope-writer.ts";
+import { buildEnvelopeXml, injectClipEnvelope, locateClipBlock } from "./als-envelope-writer.ts";
 
 const FIX = `<Ableton><Tracks><MidiTrack Id="18"><Name><UserName Value="Spike Instr" /></Name><DeviceChain><Devices><Operator Id="0"><Frequency><Manual Value="12000" /><AutomationTarget Id="23005"><LockEnvelope Value="0" /></AutomationTarget></Frequency></Operator></Devices></DeviceChain><ClipSlotList><ClipSlot><ClipSlot Id="0"><Value><MidiClip Id="0" Time="0"><CurrentStart Value="0" /><Name Value="Spike Test" /><Envelopes><Envelopes /></Envelopes><Disabled Value="false" /></MidiClip></Value></ClipSlot></ClipSlot></ClipSlotList></MidiTrack></Tracks></Ableton>`;
 
@@ -12,6 +12,39 @@ const TWO = `<Ableton><Tracks><MidiTrack Id="1"><ClipSlotList>`+
   `<MidiClip Id="0"><Name Value="Other" /><Envelopes><Envelopes /></Envelopes></MidiClip>`+
   `<MidiClip Id="1"><Name Value="Target" /><Envelopes><Envelopes /></Envelopes></MidiClip>`+
   `</ClipSlotList></MidiTrack></Tracks></Ableton>`;
+
+describe("locateClipBlock", () => {
+  it("gibt korrekte start/end-Indizes zurueck", () => {
+    const loc = locateClipBlock(FIX, "Spike Test");
+    const clipTag = '<MidiClip Id="0"';
+
+    expect(FIX.indexOf(clipTag)).toBe(loc.start);
+    expect(FIX.slice(loc.start, loc.end)).toBe(loc.block);
+    expect(loc.block).toContain('<Name Value="Spike Test" />');
+  });
+
+  it("block ist exakt xml.slice(start, end)", () => {
+    const loc = locateClipBlock(TWO, "Target");
+
+    expect(TWO.slice(loc.start, loc.end)).toBe(loc.block);
+    expect(loc.block).toContain('<Name Value="Target" />');
+    expect(loc.block).not.toContain('<Name Value="Other" />');
+  });
+
+  it("wirft bei unbekanntem Clip", () => {
+    expect(() => locateClipBlock(FIX, "NichtVorhanden")).toThrow(/nicht gefunden/);
+  });
+
+  it("trifft den ersten Clip wenn beide denselben Namen haetten", () => {
+    const dup = `<Ableton>`+
+      `<MidiClip Id="0"><Name Value="Dup" /><Envelopes><Envelopes /></Envelopes></MidiClip>`+
+      `<MidiClip Id="1"><Name Value="Dup" /><Envelopes><Envelopes /></Envelopes></MidiClip>`+
+      `</Ableton>`;
+    const loc = locateClipBlock(dup, "Dup");
+
+    expect(loc.block).toContain('Id="0"');
+  });
+});
 
 describe("buildEnvelopeXml", () => {
   it("baut AutomationEnvelope mit PointeeId und FloatEvents", () => {

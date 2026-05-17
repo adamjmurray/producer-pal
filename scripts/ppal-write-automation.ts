@@ -4,7 +4,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { injectClipEnvelope } from "#src/automation/als-envelope-writer.ts";
+import { injectClipEnvelope, locateClipBlock } from "#src/automation/als-envelope-writer.ts";
 import { readAls, writeAls, backupAls, isSetLikelyOpen, assertOnlyEnvelopeChanged } from "#src/automation/als-file.ts";
 import { listDeviceParams, resolveAutomationTargetId } from "#src/automation/als-param-resolver.ts";
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
@@ -178,17 +178,27 @@ function runWrite(flags: Record<string, string>): number {
   assertOnlyEnvelopeChanged(before, after, args.clip);
   writeAls(args.als, after);
 
-  // Verify the written file
-  const readBack = readAls(args.als);
-  const pointeeCheck = `<PointeeId Value="${targetId}"`;
+  // Verify the written file — scoped to the injected clip block
+  const readBackXml = readAls(args.als);
+  const clipLoc = locateClipBlock(readBackXml, args.clip);
+  const clipBlock = clipLoc.block;
+  const pointeeCheck = `<PointeeId Value="${targetId}" />`;
 
-  if (!readBack.includes(pointeeCheck)) {
-    process.stderr.write(`FEHLER: Verifizierung fehlgeschlagen — PointeeId ${targetId} nicht gefunden\n`);
+  if (!clipBlock.includes(pointeeCheck)) {
+    process.stderr.write(`FEHLER: Verifizierung fehlgeschlagen — PointeeId ${targetId} nicht im Clip gefunden\n`);
 
     return 1;
   }
 
-  const floatEventCount = [...readBack.matchAll(/<FloatEvent /g)].length;
+  const floatEventCount = [...clipBlock.matchAll(/<FloatEvent /g)].length;
+
+  if (floatEventCount !== validated.length) {
+    process.stderr.write(
+      `FEHLER: Verifizierung fehlgeschlagen — erwartet ${validated.length} FloatEvents, gefunden ${floatEventCount}\n`,
+    );
+
+    return 1;
+  }
 
   process.stdout.write(
     `OK: param=${args.param}, id=${targetId}, breakpoints=${validated.length}, backup=${bakPath}, FloatEvents=${floatEventCount}\n`,
