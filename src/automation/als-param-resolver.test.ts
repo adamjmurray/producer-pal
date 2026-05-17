@@ -7,7 +7,14 @@ import { describe, it, expect } from "vitest";
 import {
   listDeviceParams,
   resolveAutomationTargetId,
+  resolveMixerTarget,
+  locateTrackBlock,
 } from "./als-param-resolver.ts";
+import { readAls } from "./als-file.ts";
+
+const MULTISEND_ALS =
+  "/Users/macuser/Desktop/AIbleton/producer-pal/evals/live-sets/basic-midi-4-track Project/basic-midi-4-track.als";
+const TRACK = "Drums";
 
 // Fixture with UserName set to a non-empty string — exercises the UserName branch.
 const FIXTURE_USERNAME = [
@@ -371,5 +378,55 @@ describe("resolveAutomationTargetId", () => {
         5,
       ),
     ).toThrow(/occurrence 5 ausserhalb/);
+  });
+});
+
+describe("locateTrackBlock", () => {
+  const xml = readAls(MULTISEND_ALS);
+
+  it("liefert Track-Block + alle Namen, eine einzige Quelle", () => {
+    const r = locateTrackBlock(xml, TRACK);
+
+    expect(r.block).toContain("<Mixer");
+    expect(r.names).toContain(TRACK);
+    expect(typeof r.index).toBe("number");
+  });
+  it("wirft bei unbekanntem Track mit verfügbaren Namen", () => {
+    expect(() => locateTrackBlock(xml, "NICHT-DA")).toThrow(
+      /nicht-da|verfügbar/i,
+    );
+  });
+});
+
+describe("resolveMixerTarget", () => {
+  const xml = readAls(MULTISEND_ALS);
+
+  it("löst Mixer-Volume zu AutomationTarget Id + Range auf", () => {
+    const r = resolveMixerTarget(xml, TRACK, "volume");
+
+    expect(r.element).toBe("Volume");
+    expect(r.automationTargetId).toMatch(/^\d+$/);
+  });
+  it("löst Mixer-Pan auf", () => {
+    const r = resolveMixerTarget(xml, TRACK, "pan");
+
+    expect(r.element).toBe("Pan");
+    expect(r.automationTargetId).toMatch(/^\d+$/);
+  });
+  it("löst Send mit Index auf (send:0)", () => {
+    const r = resolveMixerTarget(xml, TRACK, "send:0");
+
+    expect(r.element).toBe("Send");
+    expect(r.automationTargetId).toMatch(/^\d+$/);
+  });
+  it("wirft bei unbekanntem Target", () => {
+    expect(() => resolveMixerTarget(xml, TRACK, "bogus")).toThrow(
+      /volume|pan|send/i,
+    );
+  });
+  it("wirft bei Send-Index außerhalb", () => {
+    expect(() => resolveMixerTarget(xml, TRACK, "send:99")).toThrow(
+      /99|außerhalb|range/i,
+    );
   });
 });

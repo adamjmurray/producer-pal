@@ -262,3 +262,119 @@ export function resolveAutomationTargetId(
 
   return result;
 }
+
+/**
+ * Liefert den XML-Block eines Tracks per EffectiveName + alle Track-Namen.
+ * Einzige Track-Lokalisierungs-Quelle (gegen Resolver-Drift).
+ * @param xml - Dekomprimierter .als XML-String
+ * @param trackName - EffectiveName des Ziel-Tracks
+ * @returns Track-Block, dessen Start-Index und alle gefundenen Track-Namen
+ */
+export function locateTrackBlock(
+  xml: string,
+  trackName: string,
+): { block: string; index: number; names: string[] } {
+  const trackRe =
+    /<(?:MidiTrack|AudioTrack|GroupTrack)\b(?:(?!<\/(?:MidiTrack|AudioTrack|GroupTrack)>).)*?<\/(?:MidiTrack|AudioTrack|GroupTrack)>/gs;
+  const names: string[] = [];
+  let found: { block: string; index: number } | null = null;
+
+  for (const m of xml.matchAll(trackRe)) {
+    const nameM = m[0].match(/<Name>\s*<EffectiveName Value="([^"]*)"/);
+
+    if (nameM) {
+      names.push(nameM[1]);
+      if (nameM[1] === trackName && found === null)
+        found = { block: m[0], index: m.index };
+    }
+  }
+
+  if (found === null)
+    throw new Error(
+      `Track "${trackName}" nicht gefunden. Verfügbar: ${names.join(", ")}`,
+    );
+
+  return { ...found, names };
+}
+
+/**
+ * Löst ein Mixer-Automations-Target eines Tracks zu AlsParam auf.
+ * @param xml - Dekomprimierter .als XML-String
+ * @param trackName - EffectiveName des Ziel-Tracks
+ * @param target - "volume" | "pan" | `send:<index>`
+ * @returns Aufgelöster AlsParam mit AutomationTarget Id und Range
+ */
+export function resolveMixerTarget(
+  xml: string,
+  trackName: string,
+  target: string,
+): AlsParam {
+  const { block: trackBlock } = locateTrackBlock(xml, trackName);
+  const mixerM = trackBlock.match(/<Mixer\b[^]*?<\/Mixer>/);
+
+  if (mixerM === null) throw new Error(`Kein <Mixer> im Track "${trackName}"`);
+  const mixer = mixerM[0];
+
+  if (target === "volume") {
+    const vM = mixer.match(/<Volume>[^]*?<\/Volume>/);
+
+    if (vM === null) throw new Error("Kein <Volume> im Mixer");
+
+    return extractMixerParam(vM[0], "Volume");
+  }
+
+  if (target === "pan") {
+    const pM = mixer.match(/<Pan>[^]*?<\/Pan>/);
+
+    if (pM === null) throw new Error("Kein <Pan> im Mixer");
+
+    return extractMixerParam(pM[0], "Pan");
+  }
+
+  const sendMatch = target.match(/^send:(\d+)$/);
+
+  if (sendMatch) {
+    const idx = Number(sendMatch[1]);
+    const holders = [
+      ...mixer.matchAll(/<TrackSendHolder Id="(\d+)">[^]*?<\/TrackSendHolder>/g),
+    ];
+    const holder = holders.find((h) => Number(h[1]) === idx);
+
+    if (holder === undefined)
+      throw new Error(
+        `Send-Index ${idx} außerhalb (${holders.length} Sends vorhanden)`,
+      );
+    const sM = holder[0].match(/<Send>[^]*?<\/Send>/);
+
+    if (sM === null) throw new Error(`Kein <Send> in TrackSendHolder ${idx}`);
+
+    return extractMixerParam(sM[0], "Send");
+  }
+
+  throw new Error(
+    `Unbekanntes Mixer-Target "${target}" (erwartet: volume|pan|send:<n>)`,
+  );
+}
+
+/**
+ * Extrahiert AutomationTarget Id + Range aus einem Mixer-Param-Element.
+ * @param elementXml - XML eines einzelnen Mixer-Param-Elements
+ * @param element - Element-Tag-Name (z.B. "Volume", "Pan", "Send")
+ * @returns AlsParam mit Id und optionalem min/max/manual
+ */
+function extractMixerParam(elementXml: string, element: string): AlsParam {
+  const idM = elementXml.match(/<AutomationTarget Id="(\d+)"/);
+
+  if (idM === null) throw new Error(`Kein AutomationTarget in <${element}>`);
+  const minM = elementXml.match(/<Min Value="(-?[\d+.Ee]+)"/);
+  const maxM = elementXml.match(/<Max Value="(-?[\d+.Ee]+)"/);
+  const manM = elementXml.match(/<Manual Value="(-?[\d+.Ee]+)"/);
+
+  return {
+    element,
+    automationTargetId: idM[1],
+    min: minM ? Number(minM[1]) : null,
+    max: maxM ? Number(maxM[1]) : null,
+    manual: manM ? Number(manM[1]) : null,
+  };
+}
