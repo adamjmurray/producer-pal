@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Write Automation CLI - delegates to TypeScript implementation in scripts/
+# Offline .als automation-envelope writer (set must be CLOSED in Ableton).
+# Usage:
+#   ./scripts/ppal-write-automation list  --als <set.als> --track <name> [--device <n>]
+#   ./scripts/ppal-write-automation write --als <set.als> --track <name> --clip <name> \
+#       --device <n> --param <name> --breakpoints "0=200,2=8000,4=400" [--target-id <id>] [--force]
+#
+# Workflow: save & CLOSE the set in Ableton -> run this -> reopen the set.
+# Uses npx tsx so it runs regardless of the system Node version
+# (a bare `node scripts/ppal-write-automation.ts` fails on Node <22 with
+#  ERR_UNKNOWN_FILE_EXTENSION).
+
+exec npx tsx "$(dirname "$0")/ppal-write-automation.ts" "$@"
