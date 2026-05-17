@@ -135,12 +135,91 @@ function collectLeafParams(deviceSubtree: string): AlsParam[] {
 }
 
 /**
+ * Track-open tag finder (MidiTrack or AudioTrack). A fresh RegExp instance is
+ * created per scan from this source so concurrent scans never share lastIndex.
+ * Ableton's .als never nests MidiTrack/AudioTrack inside another track (group
+ * tracks are flat siblings with a TrackGroupId), so the first matching close
+ * tag after the open tag is the correct one. GroupTrack is intentionally NOT
+ * matched — it is not an automation-bearing track block.
+ */
+const TRACK_OPEN_RE = /<(MidiTrack|AudioTrack)\b[^>]*>/g;
+
+/**
+ * Canonical, non-buffering track-element scanner — the SINGLE source of
+ * track-block localization (Mitigation A: no second/third regex copy).
+ *
+ * Iterates track open tags and resolves each element's absolute byte range via
+ * `indexOf` on the matching close tag (no non-greedy lookahead — that
+ * backtracks catastrophically on the multi-MB tracks real .als files contain,
+ * verified on a ~6 MB <Chords> track). The per-iteration `xml.slice` for name
+ * extraction is transient (GC'd immediately); only the MATCHED track's block
+ * is retained — the old `matchAll` approach buffered every block at once.
+ *
+ * The full track scan is always completed so the returned name list is
+ * exhaustive (callers surface it in "not found" diagnostics and tests assert
+ * the complete document-order list).
+ *
+ * Handles MidiTrack and AudioTrack. Uses `extractTrackName` (UserName preferred
+ * over EffectiveName) so every caller sees identical naming (resolver-drift
+ * free).
+ *
+ * @param xml - Decompressed .als XML string
+ * @param predicate - Returns true for the desired track given its display name
+ *   (note: empty-name tracks ARE passed through, the predicate decides)
+ * @returns Matched track's absolute start/end indices, its block string, and
+ *   the list of ALL non-empty track names encountered (document order)
+ * @throws {Error} If no track satisfies the predicate
+ */
+function scanTrackBlock(
+  xml: string,
+  predicate: (name: string) => boolean,
+): { block: string; start: number; end: number; names: string[] } {
+  const openRe = new RegExp(TRACK_OPEN_RE.source, "g");
+  const names: string[] = [];
+  let found: { block: string; start: number; end: number } | null = null;
+  let m: RegExpExecArray | null;
+
+  while ((m = openRe.exec(xml)) !== null) {
+    const tag = m[1] as "MidiTrack" | "AudioTrack";
+    const start = m.index;
+    const closeTag = `</${tag}>`;
+    const closeIdx = xml.indexOf(closeTag, start);
+
+    if (closeIdx === -1) {
+      throw new Error(`unerwartetes .als-Format: <${tag}> nicht geschlossen`);
+    }
+
+    const end = closeIdx + closeTag.length;
+
+    // Advance the scanner past this track so the next iteration finds siblings,
+    // never a nested-looking inner match.
+    openRe.lastIndex = end;
+
+    const block = xml.slice(start, end);
+    const name = extractTrackName(block);
+
+    if (name !== "") names.push(name);
+    // Capture the first match but keep scanning to complete the name list.
+    if (found === null && predicate(name)) found = { block, start, end };
+  }
+
+  if (found === null) {
+    throw new Error(`Track nicht gefunden. Verfuegbar: ${names.join(", ")}`);
+  }
+
+  return { ...found, names };
+}
+
+/**
  * List all automation-capable parameters for a given device in a track.
  *
- * Locates the MidiTrack by display name (UserName if non-empty, else EffectiveName),
+ * Locates the track by display name (UserName if non-empty, else EffectiveName),
  * navigates to the deviceIndex-th device element under Devices, and returns
  * every element in the device subtree that directly contains an AutomationTarget.
  * The search is recursive — nested elements like <Filter><Frequency> are found.
+ *
+ * Works for both MidiTrack and AudioTrack (an AudioTrack with devices in its
+ * chain resolves identically to a MidiTrack).
  *
  * @param xml - Decompressed .als XML string
  * @param trackName - Display name of the target track
@@ -152,21 +231,15 @@ export function listDeviceParams(
   trackName: string,
   deviceIndex: number,
 ): AlsParam[] {
-  // Find the MidiTrack block for this track name
-  const midiTrackRe = /<MidiTrack\b[^>]*>[\S\s]*?<\/MidiTrack>/g;
-  let trackBlock: string | null = null;
-  let m: RegExpExecArray | null;
+  let trackBlock: string;
 
-  while ((m = midiTrackRe.exec(xml)) !== null) {
-    if (extractTrackName(m[0]) === trackName) {
-      trackBlock = m[0];
-      break;
-    }
-  }
-
-  if (trackBlock == null) {
+  try {
+    trackBlock = scanTrackBlock(xml, (name) => name === trackName).block;
+  } catch {
     throw new Error(`track "${trackName}" nicht gefunden`);
   }
+
+  let m: RegExpExecArray | null;
 
   // Navigate to DeviceChain > DeviceChain > Devices
   const devicesMatch = /<Devices>([\S\s]*?)<\/Devices>/.exec(trackBlock);
@@ -264,39 +337,51 @@ export function resolveAutomationTargetId(
 }
 
 /**
- * Liefert den XML-Block eines Tracks per EffectiveName + alle Track-Namen.
- * Einzige Track-Lokalisierungs-Quelle (gegen Resolver-Drift).
+ * Liefert den XML-Block eines Tracks per Anzeigenamen (UserName bevorzugt,
+ * sonst EffectiveName) + alle Track-Namen + absolute Byte-Offsets.
+ *
+ * Einzige Track-Lokalisierungs-Quelle (Mitigation A, gegen Resolver-Drift):
+ * delegiert an den kanonischen, nicht-buffernden `scanTrackBlock`. `index` ist
+ * der Start-Offset (Feldname stabil gehalten — bestehende API), `end` ist der
+ * exklusive End-Offset (additiv ergänzt, von `als-arrangement-writer` für den
+ * Byte-Slice genutzt). Nur der gefundene Track-Block wird materialisiert.
+ *
  * @param xml - Dekomprimierter .als XML-String
- * @param trackName - EffectiveName des Ziel-Tracks
- * @returns Track-Block, dessen Start-Index und alle gefundenen Track-Namen
+ * @param trackName - Anzeigename des Ziel-Tracks
+ * @returns Track-Block, Start-Index, exklusiver End-Index, alle Track-Namen
+ * @throws {Error} Wenn kein Track mit dem Namen gefunden wird
  */
 export function locateTrackBlock(
   xml: string,
   trackName: string,
-): { block: string; index: number; names: string[] } {
-  const trackRe =
-    /<(?:MidiTrack|AudioTrack)\b(?:(?!<\/(?:MidiTrack|AudioTrack)>).)*?<\/(?:MidiTrack|AudioTrack)>/gs;
-  const names: string[] = [];
-  let found: { block: string; index: number } | null = null;
+): { block: string; index: number; end: number; names: string[] } {
+  try {
+    // Nur non-empty Namen sind über locateTrackBlock adressierbar (öffentliche
+    // Resolver-/Writer-Semantik); die kanonische Namens-Logik
+    // (extractTrackName, UserName bevorzugt) liegt in scanTrackBlock.
+    const r = scanTrackBlock(xml, (name) => name !== "" && name === trackName);
 
-  for (const m of xml.matchAll(trackRe)) {
-    // Gleiche Namens-Logik wie listDeviceParams (UserName bevorzugt) gegen
-    // Resolver-Drift zwischen resolveMixerTarget und resolveAutomationTargetId.
-    const name = extractTrackName(m[0]);
+    return { block: r.block, index: r.start, end: r.end, names: r.names };
+  } catch {
+    // scanTrackBlock hat den vollständigen Scan beendet; Namensliste über ein
+    // nie-erfüllbares Prädikat aus derselben Kern-Logik holen (kein zweiter
+    // Locator) und in die domänenspezifische Meldung kleiden.
+    const names: string[] = [];
 
-    if (name !== "") {
-      names.push(name);
-      if (name === trackName && found === null)
-        found = { block: m[0], index: m.index };
+    try {
+      scanTrackBlock(xml, (name) => {
+        if (name !== "") names.push(name);
+
+        return false;
+      });
+    } catch {
+      // erwartet: Prädikat trifft nie zu, names ist nun vollständig befüllt
     }
-  }
 
-  if (found === null)
     throw new Error(
       `Track "${trackName}" nicht gefunden. Verfügbar: ${names.join(", ")}`,
     );
-
-  return { ...found, names };
+  }
 }
 
 /**

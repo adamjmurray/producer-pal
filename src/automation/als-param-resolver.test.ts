@@ -358,6 +358,48 @@ describe("listDeviceParams", () => {
     expect(params[0]?.element).toBe("Volume");
     expect(params[0]?.automationTargetId).toBe("7001");
   });
+
+  // Slice-2 Bug-Fix: vor der Konsolidierung matchte listDeviceParams nur
+  // <MidiTrack> — ein AudioTrack mit Device scheiterte still ("nicht
+  // gefunden"). Der kanonische Locator deckt MidiTrack|AudioTrack ab.
+  it("findet Device-Params auch in einem AudioTrack (Slice-2 AudioTrack-Fix)", () => {
+    const fixtureAudioDevice = [
+      `<Ableton><Tracks>`,
+      `<AudioTrack Id="70">`,
+      `<Name><EffectiveName Value="Gtr Bus" /><UserName Value="" /></Name>`,
+      `<DeviceChain><DeviceChain><Devices>`,
+      `<Eq8 Id="0">`,
+      `<Gain>`,
+      `<LomId Value="0" />`,
+      `<Manual Value="3.5" />`,
+      `<MidiControllerRange><Min Value="-15" /><Max Value="15" /></MidiControllerRange>`,
+      `<AutomationTarget Id="42042" />`,
+      `</Gain>`,
+      `</Eq8>`,
+      `</Devices></DeviceChain></DeviceChain>`,
+      `</AudioTrack>`,
+      `</Tracks></Ableton>`,
+    ].join("");
+
+    const params = listDeviceParams(fixtureAudioDevice, "Gtr Bus", 0);
+
+    expect(params).toHaveLength(1);
+    expect(params[0]?.element).toBe("Gain");
+    expect(params[0]?.automationTargetId).toBe("42042");
+    expect(params[0]?.min).toBe(-15);
+    expect(params[0]?.max).toBe(15);
+    expect(params[0]?.manual).toBe(3.5);
+
+    // resolveAutomationTargetId muss denselben AudioTrack-Param auflösen.
+    const resolved = resolveAutomationTargetId(
+      fixtureAudioDevice,
+      "Gtr Bus",
+      0,
+      "Gain",
+    );
+
+    expect(resolved.automationTargetId).toBe("42042");
+  });
 });
 
 describe("resolveAutomationTargetId", () => {

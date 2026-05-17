@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { locateTrackBlock } from "#src/automation/als-param-resolver.ts";
 import { type Breakpoint } from "#src/automation/breakpoint-validator.ts";
 
 // TAB-Indentation byte-verifiziert gegen
@@ -107,76 +108,6 @@ export function buildArrangementEnvelopeXml(
 const EMPTY_TRACK_ENV_RE =
   /(<AutomationEnvelopes>\s*)<Envelopes\s*\/>(\s*<\/AutomationEnvelopes>)/;
 
-/** Track-open tag finder (MidiTrack or AudioTrack). Fresh regex per call. */
-const TRACK_OPEN_RE = /<(MidiTrack|AudioTrack)\b[^>]*>/g;
-
-/**
- * Display name for a track block: UserName if non-empty, else EffectiveName.
- * Mirrors `extractTrackName` in als-param-resolver (single naming convention
- * against resolver drift) without importing the fragile backtracking
- * `locateTrackBlock` regex (catastrophic on multi-MB tracks under esbuild).
- * @param trackBlock - Raw XML block for a single track element
- * @returns Display name string, or empty string if not found
- */
-function trackDisplayName(trackBlock: string): string {
-  const userName = /<UserName Value="([^"]*)"/.exec(trackBlock);
-
-  if (userName?.[1] != null && userName[1] !== "") return userName[1];
-
-  const effectiveName = /<EffectiveName Value="([^"]*)"/.exec(trackBlock);
-
-  return effectiveName?.[1] ?? "";
-}
-
-/**
- * Find the absolute byte range of the named track's element.
- *
- * Ableton's `.als` format never nests `<MidiTrack>`/`<AudioTrack>` inside
- * another track (group tracks are flat siblings with a `TrackGroupId`), so the
- * first matching close tag after the open tag is the correct one. A plain
- * `indexOf` is used deliberately instead of a non-greedy lookahead regex —
- * the latter backtracks catastrophically on the multi-MB tracks real `.als`
- * files contain (verified: ~6 MB `<Chords>` track).
- *
- * @param xml - Raw (decompressed) `.als` XML string
- * @param trackName - EffectiveName/UserName of the target track
- * @returns Absolute start/end indices of the full track element
- * @throws {Error} If no track with the given name is found
- */
-function locateTrackRange(
-  xml: string,
-  trackName: string,
-): { start: number; end: number } {
-  const openRe = new RegExp(TRACK_OPEN_RE.source, "g");
-  const names: string[] = [];
-  let m: RegExpExecArray | null;
-
-  while ((m = openRe.exec(xml)) !== null) {
-    const tag = m[1] as "MidiTrack" | "AudioTrack";
-    const start = m.index;
-    const closeTag = `</${tag}>`;
-    const closeIdx = xml.indexOf(closeTag, start);
-
-    if (closeIdx === -1) {
-      throw new Error(`unerwartetes .als-Format: <${tag}> nicht geschlossen`);
-    }
-
-    const end = closeIdx + closeTag.length;
-
-    // Advance scanner past this track so the next iteration finds siblings.
-    openRe.lastIndex = end;
-
-    const name = trackDisplayName(xml.slice(start, end));
-
-    if (name !== "") names.push(name);
-    if (name === trackName) return { start, end };
-  }
-
-  throw new Error(
-    `Track "${trackName}" nicht gefunden. Verfuegbar: ${names.join(", ")}`,
-  );
-}
-
 /**
  * Locate the empty `<AutomationEnvelopes><Envelopes /></AutomationEnvelopes>`
  * placeholder inside the named track (matched by EffectiveName/UserName, same
@@ -195,11 +126,12 @@ export function locateTrackAutomationBlock(
   xml: string,
   trackName: string,
 ): { start: number; end: number; block: string } {
-  const { start: trackStart, end: trackEnd } = locateTrackRange(
+  // Kanonischer Locator (Mitigation A) — index = Start-Offset, block bereits
+  // materialisiert (kein zweiter xml.slice nötig).
+  const { index: trackStart, block: trackBlock } = locateTrackBlock(
     xml,
     trackName,
   );
-  const trackBlock = xml.slice(trackStart, trackEnd);
   const m = EMPTY_TRACK_ENV_RE.exec(trackBlock);
 
   if (m == null) {
@@ -253,7 +185,9 @@ export function injectArrangementEnvelope(
     breakpoints,
   );
   const replacement =
-    m[1] + `<Envelopes>\n${envelopeBlock}\n${"\t".repeat(5)}</Envelopes>` + m[2];
+    m[1] +
+    `<Envelopes>\n${envelopeBlock}\n${"\t".repeat(5)}</Envelopes>` +
+    m[2];
 
   return xml.slice(0, start) + replacement + xml.slice(end);
 }
