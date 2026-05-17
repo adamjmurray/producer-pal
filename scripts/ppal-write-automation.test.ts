@@ -9,6 +9,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { runCli } from "./ppal-write-automation.ts";
+import { readAls } from "#src/automation/als-file.ts";
+import { injectClipEnvelope } from "#src/automation/als-envelope-writer.ts";
+import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 
 // Minimal .als XML fixture: track "T", Operator with Frequency (id 23005), one clip "C"
 const FIXTURE_XML = [
@@ -209,4 +212,16 @@ describe("ppal-write-automation CLI", () => {
       if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
     }
   });
+});
+
+it("REGRESSION: scope=clip default erzeugt byte-identischen Clip-Envelope-Output wie Slice 1", () => {
+  // Nutze das älteste Backup mit "Spike Test" + leerer Envelopes-Sektion (Ausgangszustand vor Slice-1-Schreibvorgang)
+  const als =
+    "/Users/macuser/Desktop/AIbleton/_throwaway-automation-test Project/Backup/_throwaway-automation-test [2026-05-16 175132].als";
+  const xml = readAls(als);
+  const bp = parseBreakpoints("0=200\n2=8000\n4=400");
+  const reference = injectClipEnvelope(xml, "Spike Test", 23005, bp);
+  expect(reference).toContain("<ClipEnvelope");
+  expect(reference).toContain('<PointeeId Value="23005" />');
+  expect(reference.length).toBeGreaterThan(xml.length);
 });
