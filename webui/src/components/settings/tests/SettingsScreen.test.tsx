@@ -133,6 +133,8 @@ describe("SettingsScreen", () => {
     isToolEnabled: () => true,
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
+    liveApiEnabled: false,
+    setLiveApiEnabled: vi.fn(),
   };
 
   const defaultDisplay = {

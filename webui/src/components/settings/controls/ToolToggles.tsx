@@ -7,7 +7,12 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
-import { type GroupedTools, groupTools } from "./tool-toggles-helpers";
+import {
+  ensureLiveApiTool,
+  LIVE_API_TOOL_ID,
+  type GroupedTools,
+  groupTools,
+} from "./tool-toggles-helpers";
 import { Tooltip } from "./Tooltip";
 
 interface ToolTogglesProps {
@@ -15,6 +20,12 @@ interface ToolTogglesProps {
   mcpStatus: McpStatus;
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
+  // Server-mirrored Live API state. The MCP /tools response only includes
+  // ppal-live-api when the server flag is on, but we want the checkbox always
+  // visible in the Core group — so its checked state binds here, not to
+  // enabledTools (which is the localStorage map for ordinary tools).
+  liveApiEnabled: boolean;
+  setLiveApiEnabled: (enabled: boolean) => void;
 }
 
 /**
@@ -31,6 +42,8 @@ export function ToolToggles({
   mcpStatus,
   enabledTools,
   setEnabledTools,
+  liveApiEnabled,
+  setLiveApiEnabled,
 }: ToolTogglesProps) {
   if (!tools) {
     return (
@@ -51,33 +64,51 @@ export function ToolToggles({
 
   const handleToggle = (toolId: string) => {
     if (isAlwaysEnabled(toolId)) return;
+
+    if (toolId === LIVE_API_TOOL_ID) {
+      setLiveApiEnabled(!liveApiEnabled);
+
+      return;
+    }
+
     setEnabledTools({
       ...enabledTools,
       [toolId]: !enabledTools[toolId],
     });
   };
 
+  const isToolChecked = (toolId: string) => {
+    if (isAlwaysEnabled(toolId)) return true;
+    if (toolId === LIVE_API_TOOL_ID) return liveApiEnabled;
+
+    return enabledTools[toolId] ?? true;
+  };
+
   const enableAllTools = () => {
     const allEnabled: Record<string, boolean> = {};
 
     for (const tool of tools) {
+      if (tool.id === LIVE_API_TOOL_ID) continue;
       allEnabled[tool.id] = true;
     }
 
     setEnabledTools(allEnabled);
+    setLiveApiEnabled(true);
   };
 
   const disableAllTools = () => {
     const allDisabled: Record<string, boolean> = {};
 
     for (const tool of tools) {
+      if (tool.id === LIVE_API_TOOL_ID) continue;
       allDisabled[tool.id] = isAlwaysEnabled(tool.id);
     }
 
     setEnabledTools(allDisabled);
+    setLiveApiEnabled(false);
   };
 
-  const groups = groupTools(tools);
+  const groups = groupTools(ensureLiveApiTool(tools));
 
   return (
     <div>
@@ -107,7 +138,7 @@ export function ToolToggles({
           <ToolGroupSection
             key={group.label}
             group={group}
-            enabledTools={enabledTools}
+            isToolChecked={isToolChecked}
             isAlwaysEnabled={isAlwaysEnabled}
             onToggle={handleToggle}
           />
@@ -121,14 +152,14 @@ export function ToolToggles({
 
 interface ToolGroupSectionProps {
   group: GroupedTools;
-  enabledTools: Record<string, boolean>;
+  isToolChecked: (toolId: string) => boolean;
   isAlwaysEnabled: (toolId: string) => boolean;
   onToggle: (toolId: string) => void;
 }
 
 function ToolGroupSection({
   group,
-  enabledTools,
+  isToolChecked,
   isAlwaysEnabled,
   onToggle,
 }: ToolGroupSectionProps) {
@@ -146,9 +177,7 @@ function ToolGroupSection({
             <input
               type="checkbox"
               id={`tool-${tool.id}`}
-              checked={
-                isAlwaysEnabled(tool.id) || (enabledTools[tool.id] ?? true)
-              }
+              checked={isToolChecked(tool.id)}
               disabled={isAlwaysEnabled(tool.id)}
               onChange={() => onToggle(tool.id)}
             />

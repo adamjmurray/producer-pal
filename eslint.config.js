@@ -338,6 +338,7 @@ export default [
       "node_modules/**",
       "npm/**",
       "release/**",
+      "scratchpad/**",
       "test-results/**",
       "**/generated-*-parser.js", // Generated parsers
       "**/*.d.ts", // TypeScript declaration files

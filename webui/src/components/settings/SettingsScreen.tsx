@@ -143,6 +143,8 @@ function SettingsTabContent(props: SettingsScreenProps) {
           mcpStatus={props.mcpStatus}
           enabledTools={settings.enabledTools}
           setEnabledTools={settings.setEnabledTools}
+          liveApiEnabled={settings.liveApiEnabled}
+          setLiveApiEnabled={settings.setLiveApiEnabled}
         />
       )}
 

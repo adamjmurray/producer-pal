@@ -9,27 +9,36 @@ import { getConfigUrl } from "#webui/utils/mcp-url";
 
 export interface UseRemoteConfigReturn {
   serverSmallModelMode: boolean;
+  serverLiveApiEnabled: boolean;
   postSmallModelMode: (enabled: boolean) => void;
+  postLiveApiEnabled: (enabled: boolean) => Promise<void>;
 }
 
 /**
  * Hook for reading remote config from the MCP server and posting updates.
- * Fetches the server's smallModelMode on mount, MCP reconnection, and window focus.
- * Provides a POST function for syncing local changes to the server on settings save.
+ * Fetches the server's smallModelMode and liveApiEnabled on mount, MCP
+ * reconnection, and window focus (the focus refetch picks up device-side
+ * Setup-tab toggle changes when the user returns to the chat UI window).
+ * Provides POST functions for syncing local changes to the server on save.
  * @param {McpStatus} mcpStatus - Current MCP connection status
- * @returns {UseRemoteConfigReturn} Server config value and POST function
+ * @returns {UseRemoteConfigReturn} Server config values and POST functions
  */
 export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const [serverSmallModelMode, setServerSmallModelMode] = useState(false);
+  const [serverLiveApiEnabled, setServerLiveApiEnabled] = useState(false);
 
   const fetchConfig = useCallback(async (signal?: AbortSignal) => {
     try {
       const response = await fetch(getConfigUrl(), { signal });
 
       if (response.ok) {
-        const config = (await response.json()) as { smallModelMode?: boolean };
+        const config = (await response.json()) as {
+          smallModelMode?: boolean;
+          liveApiEnabled?: boolean;
+        };
 
         setServerSmallModelMode(Boolean(config.smallModelMode));
+        setServerLiveApiEnabled(Boolean(config.liveApiEnabled));
       }
     } catch {
       // Server not available or request aborted, keep current state
@@ -85,5 +94,24 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
     /* v8 ignore stop */
   }, []);
 
-  return { serverSmallModelMode, postSmallModelMode };
+  const postLiveApiEnabled = useCallback(async (enabled: boolean) => {
+    setServerLiveApiEnabled(enabled);
+
+    try {
+      await fetch(getConfigUrl(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ liveApiEnabled: enabled }),
+      });
+    } catch {
+      // Server unavailable — optimistic state already set; nothing to do.
+    }
+  }, []);
+
+  return {
+    serverSmallModelMode,
+    serverLiveApiEnabled,
+    postSmallModelMode,
+    postLiveApiEnabled,
+  };
 }

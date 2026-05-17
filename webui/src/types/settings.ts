@@ -89,4 +89,9 @@ export interface UseSettingsReturn {
   isToolEnabled: (toolId: string) => boolean;
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
+  // Mirrors server-side ProducerPalConfig.liveApiEnabled, kept in modal-local
+  // state. Source of truth is the server (which mirrors the device Setup-tab
+  // toggle) — not localStorage.
+  liveApiEnabled: boolean;
+  setLiveApiEnabled: (enabled: boolean) => void;
 }

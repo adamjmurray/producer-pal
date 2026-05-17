@@ -57,6 +57,10 @@ export function useSettings(): UseSettingsReturn {
     useState<Record<string, boolean>>(loadEnabledTools);
   const [smallModelMode, setSmallModelModeState] =
     useState<boolean>(loadSmallModelMode);
+  // Modal-local mirror of server config.liveApiEnabled. Synced from
+  // useRemoteConfig in App.tsx; not persisted to localStorage because the
+  // device Setup-tab toggle can change the value out from under us.
+  const [liveApiEnabled, setLiveApiEnabledState] = useState<boolean>(false);
   const [anthropicSettings, setAnthropicSettings] = useState<ProviderSettings>(
     () => loadProviderSettings("anthropic"),
   );
@@ -229,5 +233,7 @@ export function useSettings(): UseSettingsReturn {
     isToolEnabled,
     smallModelMode,
     setSmallModelMode: setSmallModelModeState,
+    liveApiEnabled,
+    setLiveApiEnabled: setLiveApiEnabledState,
   };
 }

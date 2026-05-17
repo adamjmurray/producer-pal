@@ -15,9 +15,13 @@ import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
  * Creates a mock Response with the given config
  * @param config - Config object to return as JSON
  * @param config.smallModelMode - Whether small model mode is enabled
+ * @param config.liveApiEnabled - Whether Live API tool is enabled
  * @returns Mock Response
  */
-function mockConfigResponse(config: { smallModelMode: boolean }): Response {
+function mockConfigResponse(config: {
+  smallModelMode: boolean;
+  liveApiEnabled?: boolean;
+}): Response {
   return {
     ok: true,
     json: () => Promise.resolve(config),
@@ -149,6 +153,83 @@ describe("useRemoteConfig", () => {
     // Should stay at default, not throw
     await waitFor(() => {
       expect(result.current.serverSmallModelMode).toBe(false);
+    });
+  });
+
+  it("defaults serverLiveApiEnabled to false", () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false }),
+    );
+    const { result } = renderHook(() => useRemoteConfig("connecting"));
+
+    expect(result.current.serverLiveApiEnabled).toBe(false);
+  });
+
+  it("fetches serverLiveApiEnabled on mount", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false, liveApiEnabled: true }),
+    );
+
+    const { result } = renderHook(() => useRemoteConfig("connecting"));
+
+    await waitFor(() => {
+      expect(result.current.serverLiveApiEnabled).toBe(true);
+    });
+  });
+
+  it("postLiveApiEnabled POSTs the new value, then focus refetch updates serverLiveApiEnabled", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false, liveApiEnabled: false }),
+    );
+
+    const { result } = renderHook(() => useRemoteConfig("connected"));
+
+    await waitFor(() => {
+      expect(result.current.serverLiveApiEnabled).toBe(false);
+    });
+
+    const mockFetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        mockConfigResponse({ smallModelMode: false, liveApiEnabled: true }),
+      );
+
+    await act(async () => {
+      await result.current.postLiveApiEnabled(true);
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("/config"),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ liveApiEnabled: true }),
+      }),
+    );
+    expect(result.current.serverLiveApiEnabled).toBe(true);
+
+    // Focus refetch picks up a device-side change (server now reports false again)
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false, liveApiEnabled: false }),
+    );
+
+    await act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    await waitFor(() => {
+      expect(result.current.serverLiveApiEnabled).toBe(false);
+    });
+  });
+
+  it("postLiveApiEnabled resolves even when fetch rejects", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
+
+    const { result } = renderHook(() => useRemoteConfig("connected"));
+
+    await act(async () => {
+      await expect(
+        result.current.postLiveApiEnabled(true),
+      ).resolves.toBeUndefined();
     });
   });
 

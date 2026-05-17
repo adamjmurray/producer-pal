@@ -14,16 +14,15 @@ import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
+import { useSyncLiveApiEnabled } from "#webui/hooks/connection/use-sync-live-api-enabled";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
+import { useSaveSettingsHandler } from "#webui/hooks/settings/use-save-settings-handler";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
 import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
-import {
-  usePreferencesSettings,
-  savePreferencesSettings,
-} from "#webui/hooks/use-preferences-settings";
+import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useViewState } from "#webui/hooks/use-view-state";
 import { getBaseUrl, LOCAL_PROVIDER_API_KEY } from "#webui/utils/provider-url";
 import { ChatScreen } from "./chat/ChatScreen";
@@ -50,8 +49,7 @@ export function App() {
     () => Object.fromEntries(mcpTools?.map((t) => [t.id, t.name]) ?? []),
     [mcpTools],
   );
-  const { serverSmallModelMode, postSmallModelMode } =
-    useRemoteConfig(mcpStatus);
+  const remoteConfig = useRemoteConfig(mcpStatus);
   const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
 
   const autoSaveRef = useRef<(() => void) | null>(null);
@@ -88,10 +86,10 @@ export function App() {
 
   // Sync smallModelMode: seed from server when no active lock, post to server when lock changes
   useSyncSmallModelMode(
-    serverSmallModelMode,
+    remoteConfig.serverSmallModelMode,
     chat.activeSmallModelMode,
     settings.setSmallModelMode,
-    postSmallModelMode,
+    remoteConfig.postSmallModelMode,
   );
 
   const conversationManager = useConversations({
@@ -149,6 +147,12 @@ export function App() {
   const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
   const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
 
+  useSyncLiveApiEnabled(
+    remoteConfig.serverLiveApiEnabled,
+    settings.setLiveApiEnabled,
+    showSettings,
+  );
+
   // Track original appearance settings when settings opened (for cancel)
   const originalThemeRef = useRef(theme);
   const originalDisplayRef = useRef(display);
@@ -176,13 +180,13 @@ export function App() {
     showSettings,
   );
 
-  const handleSaveSettings = () => {
-    closeSettings(() => {
-      settings.saveSettings();
-      postSmallModelMode(settings.smallModelMode);
-      savePreferencesSettings(display);
-    });
-  };
+  const handleSaveSettings = useSaveSettingsHandler({
+    settings,
+    display,
+    remoteConfig,
+    checkMcpConnection,
+    closeSettings,
+  });
 
   const handleCancelSettings = useCallback(() => {
     closeSettings(() => {

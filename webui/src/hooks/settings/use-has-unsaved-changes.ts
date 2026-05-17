@@ -30,6 +30,7 @@ function serialize(s: UseSettingsReturn, a: AppearanceSettings): string {
     showThoughts: s.showThoughts,
     enabledTools: s.enabledTools,
     smallModelMode: s.smallModelMode,
+    liveApiEnabled: s.liveApiEnabled,
     ...a,
   });
 }

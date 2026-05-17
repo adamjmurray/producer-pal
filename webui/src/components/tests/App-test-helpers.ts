@@ -48,6 +48,8 @@ export const mockSettingsHook = {
   settingsConfigured: true,
   smallModelMode: false,
   setSmallModelMode: vi.fn(),
+  liveApiEnabled: false,
+  setLiveApiEnabled: vi.fn(),
 };
 
 /**
@@ -90,6 +92,8 @@ export function setupDefaultMocks(): void {
   });
   (useRemoteConfig as ReturnType<typeof vi.fn>).mockReturnValue({
     serverSmallModelMode: false,
+    serverLiveApiEnabled: false,
     postSmallModelMode: vi.fn(),
+    postLiveApiEnabled: vi.fn().mockResolvedValue(undefined),
   });
 }
