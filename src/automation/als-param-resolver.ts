@@ -366,8 +366,10 @@ export function resolveMixerTarget(
  */
 function extractMixerParam(elementXml: string, element: string): AlsParam {
   const idM = elementXml.match(/<AutomationTarget Id="(\d+)"/);
+  const idCap = idM?.[1];
 
-  if (idM === null) throw new Error(`Kein AutomationTarget in <${element}>`);
+  if (idCap === undefined)
+    throw new Error(`Kein AutomationTarget in <${element}>`);
 
   const NUM = /-?\d+(?:\.\d+)?(?:[Ee][+-]?\d+)?/;
   const minM = elementXml.match(new RegExp(`<Min Value="(${NUM.source})"`));
@@ -392,7 +394,7 @@ function extractMixerParam(elementXml: string, element: string): AlsParam {
 
   return {
     element,
-    automationTargetId: idM[1],
+    automationTargetId: idCap,
     min: parse(minM, "Min"),
     max: parse(maxM, "Max"),
     manual: parse(manM, "Manual"),
