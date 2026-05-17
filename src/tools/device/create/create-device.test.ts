@@ -568,6 +568,38 @@ describe("createDevice", () => {
       );
     });
 
+    it("prefixes param warnings with createDevice, not updateDevice", async () => {
+      const mockConsole = await import("#src/shared/v8-max-console.ts");
+
+      vi.mocked(mockConsole.warn).mockClear();
+
+      registerMockObject("simpler-new", {
+        path: livePath.track(0).device(2),
+        type: "SimplerDevice",
+        properties: {
+          class_display_name: "Simpler",
+          multi_sample_mode: 0,
+          parameters: children(),
+        },
+      });
+
+      track0 = registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: { insert_device: () => ["id", "simpler-new"] },
+      });
+
+      createDevice({
+        deviceName: "Simpler",
+        path: "t0",
+        params: "nonexistent=42",
+      });
+
+      const calls = vi.mocked(mockConsole.warn).mock.calls.flat().join("\n");
+
+      expect(calls).toMatch(/createDevice: param "nonexistent" not found/);
+      expect(calls).not.toMatch(/updateDevice:/);
+    });
+
     it("does not call replace_sample on a non-Simpler when sample is in params", () => {
       const eqEight = registerMockObject("eq-new", {
         path: livePath.track(0).device(2),

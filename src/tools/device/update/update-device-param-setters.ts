@@ -58,7 +58,7 @@ export function setParamValues(
       continue;
     }
 
-    setParamValue(param, inputValue);
+    setParamValue(param, inputValue, toolName);
   }
 }
 
@@ -120,8 +120,13 @@ function resolveParamByName(device: LiveAPI, name: string): LiveAPI | null {
  * Set a parameter value with type-appropriate handling
  * @param param - Parameter to set
  * @param inputValue - Value to set
+ * @param toolName - Calling tool name for warning prefix
  */
-function setParamValue(param: LiveAPI, inputValue: string | number): void {
+function setParamValue(
+  param: LiveAPI,
+  inputValue: string | number,
+  toolName: string,
+): void {
   const isQuantized = (param.getProperty("is_quantized") as number) > 0;
 
   // 1. Enum - string input with quantized param
@@ -131,7 +136,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
 
     if (index === -1) {
       console.warn(
-        `updateDevice: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
+        `${toolName}: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
       );
 
       return;
@@ -147,7 +152,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
     const midi = noteNameToMidi(inputValue);
 
     if (midi == null) {
-      console.warn(`updateDevice: invalid note name "${inputValue}"`);
+      console.warn(`${toolName}: invalid note name "${inputValue}"`);
 
       return;
     }
@@ -184,7 +189,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
       param.set("value", rawValue);
     } else {
       console.warn(
-        `updateDevice: "${inputValue}" is not a valid division option`,
+        `${toolName}: "${inputValue}" is not a valid division option`,
       );
     }
 
