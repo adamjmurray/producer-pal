@@ -114,6 +114,11 @@ function followActionBlock(
 /**
  * Liest die 14 Clip-Settings aus einem Clip-XML-Block.
  *
+ * WARNUNG: Fehlende Tags sind nicht von echten Default-Werten
+ * unterscheidbar (beides liefert `def.def`). Daher NICHT als alleinige
+ * Verify-Quelle nach einem `patchClipSetting`-Aufruf nutzen — der Aufrufer
+ * muss den gepatchten Roh-Wert im XML direkt prüfen.
+ *
  * @param clipXml - Der `<MidiClip>`/`<AudioClip>`-Block als String.
  * @returns Map Key -> Wert; fehlende Tags liefern den Spec-Default.
  */
@@ -186,20 +191,36 @@ function replaceScalarInWindow(
   const windowEnd = windowStart + em.index;
   const win = clipXml.slice(windowStart, windowEnd);
 
+  // Genau EIN non-global Regex sowohl für Count-Guard als auch für Replace,
+  // damit Guard und Ersetzung nicht über zwei separate Patterns gekoppelt
+  // sind (defensive Konsistenz Guard <-> Replace).
   const tagRe = new RegExp(`<${tag} Value="[^"]*" />`, "g");
   const hits = win.match(tagRe);
 
   if (hits === null)
     throw new Error(`Tag <${tag}> im Clip nicht gefunden (Fenster leer)`);
-  if (hits.length > 1)
+  if (hits.length !== 1)
     throw new Error(
       `Tag <${tag}> ${hits.length}-mal im Positions-Fenster — mehrdeutig`,
     );
 
+  let replaced = 0;
   const patchedWin = win.replace(
     new RegExp(`(<${tag} Value=")[^"]*(" />)`),
-    `$1${value}$2`,
+    (_m, pre: string, post: string) => {
+      replaced += 1;
+
+      return `${pre}${value}${post}`;
+    },
   );
+
+  // Konsistenz-Assertion: Guard sagte exakt 1 Treffer — der Replace muss
+  // exakt 1 Ersetzung durchführen, sonst sind Guard und Replace divergiert.
+  if (replaced !== 1)
+    throw new Error(
+      `Replace-Konsistenzfehler für <${tag}>: Guard erwartete 1 Treffer, ` +
+        `Replace ersetzte ${replaced} — Marker/Regex inkonsistent`,
+    );
 
   return clipXml.slice(0, windowStart) + patchedWin + clipXml.slice(windowEnd);
 }
@@ -258,11 +279,14 @@ export function patchClipSetting(
         /<Ram /,
       );
     case "VelocityAmount":
+      // VelocityAmount steht in der Recon-Reihenfolge IMMER zwischen
+      // <Ram .../> (in jedem Clip byte-belegt) und <FollowAction>
+      // (unmittelbar davor). <Disabled/> ist optional/fehlt im Test-Clip.
       return replaceScalarInWindow(
         clipXml,
         def.tag,
         value,
-        /<Disabled [^>]*\/>|<\/GrooveSettings>/,
+        /<Ram [^>]*\/>/,
         /<FollowAction>/,
       );
     default:

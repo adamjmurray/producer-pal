@@ -10,11 +10,16 @@ import {
   patchClipSetting,
 } from "../als-clip-settings.ts";
 
+// Vollständige Recon-Reihenfolge des echten Clips:
+// Color, LaunchMode, LaunchQuantisation, TimeSignature, TimeSelection,
+// Legato, Ram, GrooveSettings, Disabled, VelocityAmount, FollowAction.
 const CLIP =
   '<MidiClip Time="0"><Name Value="C" /><Color Value="58" />' +
   '<LaunchMode Value="0" /><LaunchQuantisation Value="0" />' +
   "<TimeSignature><Foo /></TimeSignature><TimeSelection><Bar /></TimeSelection>" +
   '<Legato Value="false" /><Ram Value="false" />' +
+  '<GrooveSettings><GrooveId Value="-1" /></GrooveSettings>' +
+  '<Disabled Value="false" />' +
   '<VelocityAmount Value="0" />' +
   "<FollowAction>" +
   '<FollowTime Value="4" /><IsLinked Value="true" /><LoopIterations Value="1" />' +
@@ -166,6 +171,71 @@ describe("patchClipSetting Positions-Anker (Plan-Anpassung A)", () => {
         '<Color Value="58" /><LaunchMode Value="0" />',
       ),
     ).toBe(clip);
+  });
+
+  it("VelocityAmount: patcht im Ram->FollowAction-Fenster, Rest byte-identisch", () => {
+    const out = patchClipSetting(CLIP, "VelocityAmount", "5");
+
+    expect(out).toContain('<VelocityAmount Value="5" />');
+    expect(
+      out.replace(
+        '<VelocityAmount Value="5" />',
+        '<VelocityAmount Value="0" />',
+      ),
+    ).toBe(CLIP);
+  });
+
+  it("VelocityAmount: gleichnamiges Tag außerhalb des Fensters bleibt unverändert", () => {
+    const clip =
+      '<MidiClip Time="0"><Name Value="C" /><Color Value="58" />' +
+      '<LaunchMode Value="0" /><LaunchQuantisation Value="0" />' +
+      "<TimeSignature><Foo /></TimeSignature>" +
+      "<TimeSelection><Bar /></TimeSelection>" +
+      '<Legato Value="false" /><Ram Value="false" />' +
+      '<GrooveSettings><GrooveId Value="-1" /></GrooveSettings>' +
+      '<Disabled Value="false" />' +
+      '<VelocityAmount Value="0" />' +
+      "<FollowAction>" +
+      '<FollowTime Value="4" /><IsLinked Value="true" /><LoopIterations Value="1" />' +
+      '<FollowActionA Value="4" /><FollowActionB Value="0" />' +
+      '<FollowChanceA Value="100" /><FollowChanceB Value="0" />' +
+      '<JumpIndexA Value="1" /><JumpIndexB Value="1" />' +
+      '<FollowActionEnabled Value="false" />' +
+      "</FollowAction>" +
+      '<Extra><VelocityAmount Value="9" /></Extra></MidiClip>';
+    const out = patchClipSetting(clip, "VelocityAmount", "5");
+
+    expect(out).toContain(
+      '<Disabled Value="false" /><VelocityAmount Value="5" /><FollowAction>',
+    );
+    // Off-Window-Tag bleibt byte-identisch
+    expect(out).toContain('<Extra><VelocityAmount Value="9" /></Extra>');
+    expect(
+      out.replace(
+        '<Disabled Value="false" /><VelocityAmount Value="5" />',
+        '<Disabled Value="false" /><VelocityAmount Value="0" />',
+      ),
+    ).toBe(clip);
+  });
+
+  it("VelocityAmount: Clip OHNE <Ram >-Startmarker wirft mit Fenster/Marker-Meldung", () => {
+    const clip =
+      '<MidiClip Time="0"><Name Value="C" />' +
+      '<VelocityAmount Value="0" /><FollowAction></FollowAction></MidiClip>';
+
+    expect(() => patchClipSetting(clip, "VelocityAmount", "5")).toThrow(
+      /anker.*startmarke fehlt/i,
+    );
+  });
+
+  it("VelocityAmount: Fenster vorhanden aber kein <VelocityAmount> darin wirft Tag-nicht-gefunden", () => {
+    const clip =
+      '<MidiClip Time="0"><Name Value="C" /><Ram Value="false" />' +
+      "<FollowAction></FollowAction></MidiClip>";
+
+    expect(() => patchClipSetting(clip, "VelocityAmount", "5")).toThrow(
+      /tag <velocityamount> im clip nicht gefunden/i,
+    );
   });
 
   it("Top-Level-Scalar mehrfach im Fenster -> wirft (kein Off-Target)", () => {
