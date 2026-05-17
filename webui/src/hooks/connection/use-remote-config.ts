@@ -10,6 +10,7 @@ import { getConfigUrl } from "#webui/utils/mcp-url";
 export interface UseRemoteConfigReturn {
   serverSmallModelMode: boolean;
   serverLiveApiEnabled: boolean;
+  serverLiveApiForcedOn: boolean;
   postSmallModelMode: (enabled: boolean) => void;
   postLiveApiEnabled: (enabled: boolean) => Promise<void>;
 }
@@ -26,6 +27,7 @@ export interface UseRemoteConfigReturn {
 export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const [serverSmallModelMode, setServerSmallModelMode] = useState(false);
   const [serverLiveApiEnabled, setServerLiveApiEnabled] = useState(false);
+  const [serverLiveApiForcedOn, setServerLiveApiForcedOn] = useState(false);
 
   const fetchConfig = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -35,10 +37,12 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
         const config = (await response.json()) as {
           smallModelMode?: boolean;
           liveApiEnabled?: boolean;
+          liveApiForcedOn?: boolean;
         };
 
         setServerSmallModelMode(Boolean(config.smallModelMode));
         setServerLiveApiEnabled(Boolean(config.liveApiEnabled));
+        setServerLiveApiForcedOn(Boolean(config.liveApiForcedOn));
       }
     } catch {
       // Server not available or request aborted, keep current state
@@ -111,6 +115,7 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   return {
     serverSmallModelMode,
     serverLiveApiEnabled,
+    serverLiveApiForcedOn,
     postSmallModelMode,
     postLiveApiEnabled,
   };

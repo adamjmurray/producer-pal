@@ -26,6 +26,10 @@ interface ToolTogglesProps {
   // enabledTools (which is the localStorage map for ordinary tools).
   liveApiEnabled: boolean;
   setLiveApiEnabled: (enabled: boolean) => void;
+  // ENABLE_LIVE_API=true (dev/build:debug) forces the server flag on and
+  // makes the device-side toggle a no-op. We disable the checkbox here so
+  // the UI doesn't silently snap back after a click.
+  liveApiForcedOn: boolean;
 }
 
 /**
@@ -44,6 +48,7 @@ export function ToolToggles({
   setEnabledTools,
   liveApiEnabled,
   setLiveApiEnabled,
+  liveApiForcedOn,
 }: ToolTogglesProps) {
   if (!tools) {
     return (
@@ -62,8 +67,15 @@ export function ToolToggles({
 
   const isAlwaysEnabled = (toolId: string) => toolId === "ppal-connect";
 
+  const isToolDisabled = (toolId: string) => {
+    if (isAlwaysEnabled(toolId)) return true;
+    if (toolId === LIVE_API_TOOL_ID && liveApiForcedOn) return true;
+
+    return false;
+  };
+
   const handleToggle = (toolId: string) => {
-    if (isAlwaysEnabled(toolId)) return;
+    if (isToolDisabled(toolId)) return;
 
     if (toolId === LIVE_API_TOOL_ID) {
       setLiveApiEnabled(!liveApiEnabled);
@@ -105,7 +117,8 @@ export function ToolToggles({
     }
 
     setEnabledTools(allDisabled);
-    setLiveApiEnabled(false);
+    // Respect the forced-on flag: "disable all" shouldn't fight the env var.
+    if (!liveApiForcedOn) setLiveApiEnabled(false);
   };
 
   const groups = groupTools(ensureLiveApiTool(tools));
@@ -139,7 +152,7 @@ export function ToolToggles({
             key={group.label}
             group={group}
             isToolChecked={isToolChecked}
-            isAlwaysEnabled={isAlwaysEnabled}
+            isToolDisabled={isToolDisabled}
             onToggle={handleToggle}
           />
         ))}
@@ -153,14 +166,14 @@ export function ToolToggles({
 interface ToolGroupSectionProps {
   group: GroupedTools;
   isToolChecked: (toolId: string) => boolean;
-  isAlwaysEnabled: (toolId: string) => boolean;
+  isToolDisabled: (toolId: string) => boolean;
   onToggle: (toolId: string) => void;
 }
 
 function ToolGroupSection({
   group,
   isToolChecked,
-  isAlwaysEnabled,
+  isToolDisabled,
   onToggle,
 }: ToolGroupSectionProps) {
   return (
@@ -178,7 +191,7 @@ function ToolGroupSection({
               type="checkbox"
               id={`tool-${tool.id}`}
               checked={isToolChecked(tool.id)}
-              disabled={isAlwaysEnabled(tool.id)}
+              disabled={isToolDisabled(tool.id)}
               onChange={() => onToggle(tool.id)}
             />
             <label htmlFor={`tool-${tool.id}`} className="text-sm">

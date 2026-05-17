@@ -100,6 +100,7 @@ export function setupDefaultMocks(): void {
   (useRemoteConfig as ReturnType<typeof vi.fn>).mockReturnValue({
     serverSmallModelMode: false,
     serverLiveApiEnabled: false,
+    serverLiveApiForcedOn: false,
     postSmallModelMode: vi.fn(),
     postLiveApiEnabled: vi.fn().mockResolvedValue(undefined),
   });

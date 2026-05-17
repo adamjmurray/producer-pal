@@ -30,6 +30,7 @@ interface ProducerPalConfig {
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
   liveApiEnabled: boolean;
+  liveApiForcedOn: boolean;
   tools: string[];
 }
 
@@ -48,6 +49,7 @@ const config: ProducerPalConfig = {
   jsonOutput: false,
   sampleFolder: "",
   liveApiEnabled: liveApiForcedOn,
+  liveApiForcedOn,
   tools: liveApiForcedOn
     ? [...TOOL_NAMES, toolDefLiveApi.toolName]
     : [...TOOL_NAMES],

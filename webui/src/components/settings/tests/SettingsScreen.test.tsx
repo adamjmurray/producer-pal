@@ -172,6 +172,7 @@ describe("SettingsScreen", () => {
       activeProvider: null,
       activeSmallModelMode: null,
     },
+    liveApiForcedOn: false,
   };
 
   /**

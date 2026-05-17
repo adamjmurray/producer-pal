@@ -37,6 +37,7 @@ describe("ToolToggles", () => {
     setEnabledTools: vi.fn(),
     liveApiEnabled: false,
     setLiveApiEnabled: vi.fn(),
+    liveApiForcedOn: false,
   };
 
   describe("basic rendering", () => {
@@ -313,6 +314,55 @@ describe("ToolToggles", () => {
       // Server entry preferred over the fallback injection
       expect(screen.getByLabelText("Live API From Server")).toBeDefined();
       expect(screen.queryByLabelText("Live API")).toBeNull();
+    });
+
+    it("disables the Live API checkbox when liveApiForcedOn is true", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={true}
+          liveApiForcedOn={true}
+        />,
+      );
+
+      const checkbox = screen.getByLabelText("Live API") as HTMLInputElement;
+
+      expect(checkbox.disabled).toBe(true);
+      expect(checkbox.checked).toBe(true);
+    });
+
+    it("does not call setLiveApiEnabled when clicking a forced-on checkbox", () => {
+      const setLiveApiEnabled = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={true}
+          liveApiForcedOn={true}
+          setLiveApiEnabled={setLiveApiEnabled}
+        />,
+      );
+
+      // disabled inputs don't fire change events on click, but exercise the
+      // handler defensively to pin the guard
+      fireEvent.click(screen.getByLabelText("Live API"));
+      expect(setLiveApiEnabled).not.toHaveBeenCalled();
+    });
+
+    it("Disable all preserves Live API when forced on", () => {
+      const setLiveApiEnabled = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={true}
+          liveApiForcedOn={true}
+          setLiveApiEnabled={setLiveApiEnabled}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Disable all" }));
+      expect(setLiveApiEnabled).not.toHaveBeenCalled();
     });
   });
 });

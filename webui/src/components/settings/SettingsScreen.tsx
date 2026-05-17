@@ -38,6 +38,10 @@ interface SettingsScreenProps {
   onDeleteAllConversations: () => void;
   onDeleteUnbookmarkedConversations: () => void;
   conversationLock: ConversationLock;
+  /** ENABLE_LIVE_API=true forces the server-side Live API flag on; the
+   * device toggle is ignored, so the chat UI must mirror that and disable
+   * the checkbox. Mirrors the server-side liveApiForcedOn flag. */
+  liveApiForcedOn: boolean;
 }
 
 const helpLinkClass =
@@ -145,6 +149,7 @@ function SettingsTabContent(props: SettingsScreenProps) {
           setEnabledTools={settings.setEnabledTools}
           liveApiEnabled={settings.liveApiEnabled}
           setLiveApiEnabled={settings.setLiveApiEnabled}
+          liveApiForcedOn={props.liveApiForcedOn}
         />
       )}
 

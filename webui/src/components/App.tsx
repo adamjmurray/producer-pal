@@ -278,6 +278,7 @@ export function App() {
               activeProvider: chat.activeProvider,
               activeSmallModelMode: chat.activeSmallModelMode,
             }}
+            liveApiForcedOn={remoteConfig.serverLiveApiForcedOn}
           />
         </div>
       )}
