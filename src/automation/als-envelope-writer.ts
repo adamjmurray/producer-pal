@@ -57,8 +57,12 @@ export function buildEnvelopeXml(
   );
 }
 
-/** Regex matching the empty envelopes placeholder Ableton writes for clips with no automation. */
-const EMPTY_ENVELOPES_RE = /<Envelopes>\s*<Envelopes\s*\/>\s*<\/Envelopes>/;
+/**
+ * Matches the inner self-closing `<Envelopes />` within the outer wrapper,
+ * capturing surrounding whitespace for round-trip preservation.
+ * Group 1: whitespace after outer `<Envelopes>`, group 2: whitespace before outer `</Envelopes>`.
+ */
+const EMPTY_ENVELOPES_RE = /(<Envelopes>\s*)<Envelopes\s*\/>(\s*<\/Envelopes>)/;
 
 /**
  * Locate the `<MidiClip ...>...</MidiClip>` block whose nested
@@ -92,9 +96,11 @@ export function locateClipBlock(
 /**
  * Inject an automation envelope into a named `<MidiClip>` block inside raw `.als` XML.
  *
- * Finds the clip whose `<Name Value="clipName" />` matches, then replaces its
- * empty `<Envelopes><Envelopes /></Envelopes>` placeholder with a fully populated
- * `<Envelopes><AutomationEnvelope ...>...</AutomationEnvelope></Envelopes>` block.
+ * Finds the clip whose `<Name Value="clipName" />` matches, then replaces the
+ * inner self-closing `<Envelopes />` within the empty placeholder
+ * `<Envelopes><Envelopes /></Envelopes>` with a populated inner list
+ * `<Envelopes><AutomationEnvelope ...>...</AutomationEnvelope></Envelopes>`,
+ * preserving the outer `<Envelopes>` wrapper Ableton requires.
  * Everything outside that replacement is byte-identical.
  *
  * @param xml - Raw (decompressed) `.als` XML string.
@@ -120,7 +126,13 @@ export function injectClipEnvelope(
     );
   }
 
-  const replacement = `<Envelopes>${buildEnvelopeXml(automationTargetId, breakpoints)}</Envelopes>`;
+  // emptyEnvMatch[1] = outer "<Envelopes>" + leading whitespace
+  // emptyEnvMatch[2] = trailing whitespace + outer "</Envelopes>"
+  // Result: <Envelopes>{ws}<Envelopes>{AutomationEnvelope}</Envelopes>{ws}</Envelopes>
+  const replacement =
+    emptyEnvMatch[1] +
+    `<Envelopes>${buildEnvelopeXml(automationTargetId, breakpoints)}</Envelopes>` +
+    emptyEnvMatch[2];
   const updatedClip =
     clipBlock.slice(0, emptyEnvMatch.index) +
     replacement +

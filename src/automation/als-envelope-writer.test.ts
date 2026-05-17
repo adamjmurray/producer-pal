@@ -67,27 +67,50 @@ describe("buildEnvelopeXml", () => {
 });
 
 describe("injectClipEnvelope", () => {
-  it("ersetzt leeres Envelopes im Ziel-Clip", () => {
+  it("ersetzt leeres Envelopes im Ziel-Clip (Doppel-Nesting)", () => {
     const breakpoints = [ { time: 0, value: 200 }, { time: 4, value: 400 } ];
     const out = injectClipEnvelope(FIX, "Spike Test", 23005, breakpoints);
 
     expect(out).toContain('<PointeeId Value="23005" />');
     expect(out).toContain('<FloatEvent Id="1" Time="4" Value="400" />');
+    // Korrekte Doppel-Nesting: <Envelopes><Envelopes><AutomationEnvelope...
+    expect(out).toMatch(/(?:<Envelopes>\s*){2}<AutomationEnvelope\b/);
+    // ...und korrekter Abschluss: </AutomationEnvelope></Envelopes></Envelopes>
+    expect(out).toMatch(/<\/AutomationEnvelope(?:>\s*<\/Envelopes){2}>/);
     // Literal proof: nur die exakte empty-envelopes-Stelle wurde ersetzt, alles andere byte-identisch
     const producedEnvelopes = `<Envelopes>${buildEnvelopeXml(23005, breakpoints)}</Envelopes>`;
-    const expected = FIX.replace("<Envelopes><Envelopes /></Envelopes>", producedEnvelopes);
+    const expected = FIX.replace("<Envelopes />", producedEnvelopes);
 
     expect(out).toBe(expected);
+  });
+
+  it("behaelt aeussere Envelopes-Huelle (Ableton-Nesting Regression)", () => {
+    const breakpoints = [ { time: 0, value: 100 } ];
+    const out = injectClipEnvelope(FIX, "Spike Test", 23005, breakpoints);
+    // Clip-Block isolieren
+    const clipLoc = locateClipBlock(out, "Spike Test");
+    const clipBlock = clipLoc.block;
+
+    // Genau 2 oeffnende <Envelopes>-Tags im Clip
+    const openCount = (clipBlock.match(/<Envelopes>/g) ?? []).length;
+
+    expect(openCount).toBe(2);
+    // Genau eine <AutomationEnvelope
+    expect((clipBlock.match(/<AutomationEnvelope/g) ?? [])).toHaveLength(1);
+    // Kein verbleibender self-closing <Envelopes />
+    expect(clipBlock).not.toMatch(/<Envelopes\s*\/>/);
+    // Doppelter Abschluss
+    expect(clipBlock).toMatch(/<\/Envelopes>\s*<\/Envelopes>/);
   });
 
   it("modifiziert nur den Ziel-Clip, andere Clips byte-identisch", () => {
     const out = injectClipEnvelope(TWO, "Target", 42, [{ time: 0, value: 1 }]);
 
-    // 'Other'-Clip unveraendert
+    // 'Other'-Clip unveraendert (enthaelt noch <Envelopes><Envelopes />)
     expect(out).toContain('<MidiClip Id="0"><Name Value="Other" /><Envelopes><Envelopes /></Envelopes></MidiClip>');
-    // 'Target'-Clip hat jetzt Envelope
-    expect(out).toMatch(/<MidiClip Id="1"><Name Value="Target" \/><Envelopes><AutomationEnvelope/);
-    // exakt eine empty-envelopes-Stelle wurde ersetzt
+    // 'Target'-Clip hat jetzt Doppel-Nesting mit Envelope
+    expect(out).toMatch(/<MidiClip Id="1"><Name Value="Target" \/(?:><Envelopes){2}><AutomationEnvelope/);
+    // exakt eine verbleibende empty-envelopes-Stelle (im Other-Clip)
     expect((out.match(/<Envelopes \/>/g) ?? [])).toHaveLength(1);
   });
 
