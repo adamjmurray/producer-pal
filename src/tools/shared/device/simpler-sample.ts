@@ -18,6 +18,22 @@ export function setSimplerSample(
   filePath: string,
   toolName: string,
 ): void {
+  const trimmed = filePath.trim();
+
+  if (trimmed.length === 0) {
+    console.warn(`${toolName}: 'sample' requires a non-empty file path`);
+
+    return;
+  }
+
+  if (!isAbsolutePath(trimmed)) {
+    console.warn(
+      `${toolName}: 'sample' must be an absolute file path (got "${trimmed}")`,
+    );
+
+    return;
+  }
+
   const displayName = device.getProperty("class_display_name") as string;
 
   if (displayName !== DEVICE_CLASS.SIMPLER) {
@@ -36,5 +52,18 @@ export function setSimplerSample(
     return;
   }
 
-  device.call("replace_sample", filePath);
+  device.call("replace_sample", trimmed);
+}
+
+/**
+ * Test whether a path looks absolute. Accepts POSIX paths (leading `/`)
+ * and Windows-style paths with a drive letter (e.g. `C:\` or `C:/`).
+ * Used to reject obviously-invalid input before handing it to Live, which
+ * silently fails on relative paths.
+ *
+ * @param p - Path to check
+ * @returns True when the path appears absolute
+ */
+function isAbsolutePath(p: string): boolean {
+  return p.startsWith("/") || /^[A-Za-z]:[/\\]/.test(p);
 }
