@@ -23,20 +23,15 @@ import {
   resolveSource,
 } from "./library-filters.ts";
 import {
+  DEFAULT_LIBRARY_LIMIT,
   type LibraryItem,
   type LibrarySearchArgs,
   type LibrarySearchResult,
+  MAX_LIBRARY_LIMIT,
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
 import { resolveAbsolutePaths, type ResolvedPath } from "./reconstruct-path.ts";
-
-// Intentionally lower than the prior ppal-context.search-samples default (100):
-// the modern tool returns richer per-item payloads (tags, source, kind), so
-// 50 keeps the typical response token-budget-friendly. Callers that want more
-// can pass an explicit `limit` up to MAX_LIMIT.
-const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 1_000;
 
 interface SearchRow {
   file_id: number;
@@ -71,6 +66,10 @@ export async function librarySearch(
 
   try {
     const { sql, params } = buildSearchQuery(args);
+    // node:sqlite returns `unknown[]`. We trust the SELECT column list to
+    // match SearchRow — the SQL is hand-written and pinned by tests, so a
+    // per-row runtime validator would be dead weight at the cost of
+    // measurable overhead at limit=1000.
     const rows = db.prepare(sql).all(...params) as unknown as SearchRow[];
     const fileIds = rows.map((r) => r.file_id);
     const paths = resolveAbsolutePaths(db, fileIds);
@@ -209,7 +208,16 @@ function parseTags(tags: string | undefined): string[] {
 }
 
 /**
- * Map the public sort enum to a SQL ORDER BY clause.
+ * Map the public LibrarySort enum to a SQL ORDER BY clause.
+ *
+ * Mirrors the JS comparator side in `sortPartition` (library.ts). When
+ * adding a new LibrarySort variant, update BOTH sites — there is no
+ * shared mapping table because one returns SQL and the other a Comparator.
+ *
+ * Sort variants:
+ *   - "name":      f.name ASC                                ↔ a.name.localeCompare(b.name)
+ *   - "mod_date":  f.mod_date DESC, f.name ASC               ↔ (DB items trust upstream order)
+ *   - "use_count": f.use_count DESC, f.mod_date DESC, name   ↔ b.useCount - a.useCount || name
  *
  * @param sort - Sort enum (defaults to use_count)
  * @returns SQL fragment safe to inline (no params)
@@ -236,10 +244,10 @@ function orderByClause(sort: LibrarySearchArgs["sort"]): string {
  */
 function clampLimit(requested: number | undefined): number {
   if (requested == null || !Number.isFinite(requested) || requested <= 0) {
-    return DEFAULT_LIMIT;
+    return DEFAULT_LIBRARY_LIMIT;
   }
 
-  return Math.min(Math.floor(requested), MAX_LIMIT);
+  return Math.min(Math.floor(requested), MAX_LIBRARY_LIMIT);
 }
 
 /**
@@ -293,6 +301,7 @@ function fetchTagsBulk(
   }
 
   const placeholders = fileIds.map(() => "?").join(",");
+  // Same SELECT-column trust as the main query — see comment in librarySearch.
   const rows = db
     .prepare(
       `SELECT k.file_id AS file_id, kw.name AS name

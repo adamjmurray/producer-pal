@@ -77,7 +77,7 @@ function resolveParamForDevice(
   const match = paramId.match(/parameters (\d+)$/);
 
   if (match) {
-    return LiveAPI.from(`${device.path} parameters ${match[1]}`);
+    return device.child("parameters", match[1] as string);
   }
 
   // Default: use absolute ID resolution (backward compatible for single-device updates)

@@ -7,6 +7,60 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 
 /**
+ * Result of probing a device for its Simpler sample state. Callers
+ * branch on `kind` to render the appropriate response shape (a
+ * `parameters` entry, a top-level `sample`/`multisample` field, etc.).
+ */
+export type SimplerSampleProbe =
+  | { kind: "not-simpler" }
+  | { kind: "multisample" }
+  | { kind: "empty" }
+  | { kind: "single"; path: string; gain: number | undefined };
+
+/**
+ * Inspect a device's Simpler sample state. Single source of truth for
+ * the Simpler + multi_sample_mode + getChildren("sample") + file_path
+ * probe — read-side callers should branch on the returned `kind`
+ * rather than re-implementing the property reads.
+ *
+ * @param device - LiveAPI device object
+ * @param className - Device's class_display_name (passed in to avoid a
+ *   redundant property fetch when the caller already has it)
+ * @returns Probe result; `kind: "single"` carries path + gain when
+ *   the first child sample exposes a file_path; `kind: "empty"` when
+ *   Simpler is in single-sample mode but no sample is loaded.
+ */
+export function probeSimplerSample(
+  device: LiveAPI,
+  className: string,
+): SimplerSampleProbe {
+  if (className !== DEVICE_CLASS.SIMPLER) {
+    return { kind: "not-simpler" };
+  }
+
+  if ((device.getProperty("multi_sample_mode") as number) > 0) {
+    return { kind: "multisample" };
+  }
+
+  const samples = device.getChildren("sample");
+  const firstSample = samples[0];
+
+  if (!firstSample) {
+    return { kind: "empty" };
+  }
+
+  const path = firstSample.getProperty("file_path") as string | undefined;
+
+  if (!path) {
+    return { kind: "empty" };
+  }
+
+  const gain = firstSample.getProperty("gain") as number | undefined;
+
+  return { kind: "single", path, gain };
+}
+
+/**
  * Replace the sample on a Simpler device. Warns and skips for non-Simpler
  * devices and for Simpler in multi-sample mode.
  * @param device - LiveAPI device object

@@ -7,6 +7,17 @@
  * Shared types for Live library queries (ppal-library tool routes).
  */
 
+/**
+ * Default item cap for library.search and the tool layer. Lower than
+ * the prior ppal-context.search-samples default (100): the modern tool
+ * returns richer per-item payloads (tags, source, kind), so 50 keeps
+ * the typical response token-budget-friendly.
+ */
+export const DEFAULT_LIBRARY_LIMIT = 50;
+
+/** Upper bound on `limit` for library queries. */
+export const MAX_LIBRARY_LIMIT = 1_000;
+
 /** Content kinds supported by `library.search` and the ppal-library tool */
 export type LibraryKind =
   | "audio"

@@ -5,6 +5,7 @@
 
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import {
+  DEFAULT_LIBRARY_LIMIT,
   type LibraryDeviceKind,
   type LibraryItem,
   type LibraryKind,
@@ -12,24 +13,25 @@ import {
   type LibrarySearchResult,
   type LibrarySort,
   type LibrarySource,
+  MAX_LIBRARY_LIMIT,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { readSamples } from "#src/tools/workflow/read-samples.ts";
 
 interface LibraryArgs {
+  // Typed as plain string (not the enum) so the runtime "Unknown action"
+  // guard below — defense against the V8 adapter forwarding unvalidated
+  // input — remains reachable.
   action?: string;
   query?: string;
   tags?: string;
-  kind?: string;
-  deviceKind?: string;
-  source?: string;
-  sort?: string;
+  kind?: LibraryKind;
+  deviceKind?: LibraryDeviceKind;
+  source?: LibrarySource;
+  sort?: LibrarySort;
   limit?: number;
 }
 
 type LibraryResult = LibrarySearchResult | LibraryListTagsResult;
-
-/** Default item cap (mirrors the DB-side default) */
-const DEFAULT_LIMIT = 50;
 
 /**
  * Search Live's browser library or enumerate available tags.
@@ -85,10 +87,10 @@ async function runSearch(
       : await callRoute<LibrarySearchResult>("library.search", {
           query: args.query,
           tags: args.tags,
-          kind: args.kind as LibraryKind | undefined,
-          deviceKind: args.deviceKind as LibraryDeviceKind | undefined,
-          source: args.source as LibrarySource | undefined,
-          sort: args.sort as LibrarySort | undefined,
+          kind: args.kind,
+          deviceKind: args.deviceKind,
+          source: args.source,
+          sort: args.sort,
           limit: args.limit,
         });
 
@@ -211,7 +213,7 @@ function leafName(rel: string): string {
  */
 function sortItems(
   items: LibraryItem[],
-  sort: string | undefined,
+  sort: LibrarySort | undefined,
 ): LibraryItem[] {
   const folder = items.filter((i) => i.source === "sampleFolder");
   const db = items.filter((i) => i.source !== "sampleFolder");
@@ -224,13 +226,17 @@ function sortItems(
  * requested order. The DB partition trusts upstream ordering for
  * mod_date since LibraryItem has no mod_date field to re-sort by.
  *
+ * Mirrors the SQL side in `orderByClause` (library-search.ts). When
+ * adding a new LibrarySort variant, update BOTH sites — there is no
+ * shared mapping table because one returns SQL and the other a Comparator.
+ *
  * @param items - Partition to sort
  * @param sort - Sort enum
  * @returns Sorted copy
  */
 function sortPartition(
   items: LibraryItem[],
-  sort: string | undefined,
+  sort: LibrarySort | undefined,
 ): LibraryItem[] {
   if (sort === "name") {
     return [...items].sort((a, b) => a.name.localeCompare(b.name));
@@ -253,14 +259,14 @@ function sortPartition(
  * Clamp a requested limit to a safe positive integer.
  *
  * @param requested - User-supplied limit
- * @returns Limit between 1 and 1000
+ * @returns Limit between 1 and MAX_LIBRARY_LIMIT
  */
 function clampLimit(requested: number | undefined): number {
   if (requested == null || !Number.isFinite(requested) || requested <= 0) {
-    return DEFAULT_LIMIT;
+    return DEFAULT_LIBRARY_LIMIT;
   }
 
-  return Math.min(Math.floor(requested), 1_000);
+  return Math.min(Math.floor(requested), MAX_LIBRARY_LIMIT);
 }
 
 /**
