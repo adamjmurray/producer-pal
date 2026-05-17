@@ -271,6 +271,7 @@ function checkScope(flags: Record<string, string>): number | null {
   if (scope === "arrangement") {
     const target = flags.target;
 
+    // "true" = Boolean-Flag ohne Folgewert (parseFlags-Konvention)
     if (target === undefined || target === "true") {
       process.stderr.write(
         "FEHLER: --scope arrangement erfordert --target (mixer:volume|mixer:pan|mixer:send:<n>|device)\n",

@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import * as zlib from "node:zlib";
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -215,28 +215,81 @@ describe("ppal-write-automation CLI", () => {
 });
 
 describe("scope routing", () => {
-  it("scope=clip bleibt Default (fehlende Flags -> Exit 1, kein scope-Fehler)", () => {
-    expect(runCli(["write"])).toBe(1);
+  it('unbekanntes --scope -> Fehlermeldung + Exit 1', () => {
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    const code = runCli([
+      "write",
+      "--scope",
+      "bogus",
+      "--als",
+      "/x.als",
+      "--track",
+      "X",
+    ]);
+
+    expect(code).toBe(1);
+    expect(spy.mock.calls.map((c) => String(c[0])).join("")).toContain(
+      'unbekanntes --scope "bogus"',
+    );
+    spy.mockRestore();
   });
-  it("scope=arrangement ohne --target -> Exit 1", () => {
-    expect(
-      runCli([
-        "write",
-        "--scope",
-        "arrangement",
-        "--als",
-        "/nonexistent.als",
-        "--track",
-        "X",
-        "--breakpoints",
-        "0=0.5,4=1.0",
-      ]),
-    ).toBe(1);
+  it("scope=arrangement ohne --target -> Fehlermeldung + Exit 1", () => {
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    const code = runCli([
+      "write",
+      "--scope",
+      "arrangement",
+      "--als",
+      "/x.als",
+      "--track",
+      "X",
+      "--breakpoints",
+      "0=0.5,4=1.0",
+    ]);
+
+    expect(code).toBe(1);
+    expect(spy.mock.calls.map((c) => String(c[0])).join("")).toContain(
+      "erfordert --target",
+    );
+    spy.mockRestore();
   });
-  it("unbekanntes --scope -> Exit 1", () => {
-    expect(
-      runCli(["write", "--scope", "bogus", "--als", "/x.als", "--track", "X"]),
-    ).toBe(1);
+  it("scope=arrangement mit --target -> Stub-Pfad (noch nicht verdrahtet) + Exit 1", () => {
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    const code = runCli([
+      "write",
+      "--scope",
+      "arrangement",
+      "--target",
+      "mixer:volume",
+      "--als",
+      "/x.als",
+      "--track",
+      "X",
+    ]);
+
+    expect(code).toBe(1);
+    expect(spy.mock.calls.map((c) => String(c[0])).join("")).toContain(
+      "noch nicht verdrahtet",
+    );
+    spy.mockRestore();
+  });
+  it("scope=clip Default unberührt (kein scope-Fehler bei fehlenden Flags)", () => {
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    const code = runCli(["write"]);
+
+    expect(code).toBe(1);
+    const out = spy.mock.calls.map((c) => String(c[0])).join("");
+
+    expect(out).not.toContain("unbekanntes --scope");
+    spy.mockRestore();
   });
 });
 
