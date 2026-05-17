@@ -43,9 +43,7 @@ describe("buildArrangementEnvelopeXml", () => {
     expect(s).toContain('<AutomationEnvelope Id="0">');
     expect(s).not.toContain("ClipEnvelope");
     expect(s).toContain('<PointeeId Value="15838" />');
-    expect(s).toContain(
-      '<FloatEvent Id="0" Time="-63072000" Value="0.5" />',
-    );
+    expect(s).toContain('<FloatEvent Id="0" Time="-63072000" Value="0.5" />');
     expect(s).toContain('<FloatEvent Id="1" Time="10" Value="0.5" />');
     expect(s).toContain('<FloatEvent Id="2" Time="22" Value="0.7" />');
     expect(s).toContain("<AutomationTransformViewState>");
@@ -141,7 +139,7 @@ describe("injectArrangementEnvelope", () => {
     expect(out).toContain("<AutomationEnvelope");
     expect(out).toContain('<PointeeId Value="15838" />');
     // Genau ein <Envelopes /> uebrig (Drums-Track, unberuehrt).
-    expect((out.match(/<Envelopes \/>/g) ?? [])).toHaveLength(1);
+    expect(out.match(/<Envelopes \/>/g) ?? []).toHaveLength(1);
   });
 
   it("aeusserer AutomationEnvelopes-Wrapper bleibt pro Track genau einmal", () => {
@@ -152,8 +150,8 @@ describe("injectArrangementEnvelope", () => {
     const le = out.indexOf("</MidiTrack>") + "</MidiTrack>".length;
     const leadBlock = out.slice(ls, le);
 
-    expect((leadBlock.match(/<AutomationEnvelopes>/g) ?? [])).toHaveLength(1);
-    expect((leadBlock.match(/<\/AutomationEnvelopes>/g) ?? [])).toHaveLength(1);
+    expect(leadBlock.match(/<AutomationEnvelopes>/g) ?? []).toHaveLength(1);
+    expect(leadBlock.match(/<\/AutomationEnvelopes>/g) ?? []).toHaveLength(1);
     expect(leadBlock).toContain('<AutomationEnvelope Id="0">');
     expect(leadBlock).not.toContain("<Envelopes />");
   });
