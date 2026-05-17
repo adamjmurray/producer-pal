@@ -54,6 +54,48 @@ describe("getFades", () => {
   });
 });
 
+describe("getFades Default-Fallbacks", () => {
+  it("kein <Fades>-Block -> fades-scope Tags fallen auf Spec-Default / '0' (line 97/100)", () => {
+    // Kein <Fades> -> fadesBlockOrNull == null -> fb?.block ?? "" greift (hay="")
+    // -> kein Match -> FADE_SPEC[tag]?.def fuer Spec-Keys, "0" fuer Skew/Slope
+    const clipOhneFades =
+      '<MidiClip Id="9"><Name Value="MC" />' +
+      '<Fade Value="false" /></MidiClip>';
+    const f = getFades(clipOhneFades);
+
+    expect(f.Fade).toBe("false"); // sibling-scope, im clipXml gefunden
+    expect(f.FadeInLength).toBe("0"); // FADE_SPEC.FadeInLength.def
+    expect(f.FadeOutLength).toBe("0");
+    expect(f.ClipFadesAreInitialized).toBe("true"); // Spec-Default
+    expect(f.CrossfadeInState).toBe("0");
+    expect(f.IsDefaultFadeIn).toBe("true");
+    expect(f.IsDefaultFadeOut).toBe("true");
+    // Skew/Slope sind NICHT in FADE_SPEC -> letzter Fallback "0"
+    expect(f.FadeInCurveSkew).toBe("0");
+    expect(f.FadeInCurveSlope).toBe("0");
+    expect(f.FadeOutCurveSkew).toBe("0");
+    expect(f.FadeOutCurveSlope).toBe("0");
+  });
+  it("<Fades>-Block vorhanden aber Skew/Slope-Tag fehlt -> '0'-Fallback (line 100 letzter ??)", () => {
+    // <Fades> da, FadeInCurveSkew fehlt -> kein Match, FADE_SPEC hat keinen
+    // Skew-Eintrag -> finaler "0"-Fallback
+    const clipOhneSkew =
+      '<AudioClip Id="10"><Name Value="NS" />' +
+      '<WarpMode Value="0" />' +
+      '<Fade Value="true" />' +
+      "<Fades>" +
+      '<FadeInLength Value="3" /><FadeOutLength Value="0" />' +
+      '<ClipFadesAreInitialized Value="true" /><CrossfadeInState Value="0" />' +
+      '<IsDefaultFadeIn Value="true" /><IsDefaultFadeOut Value="true" />' +
+      "</Fades></AudioClip>";
+    const f = getFades(clipOhneSkew);
+
+    expect(f.FadeInLength).toBe("3");
+    expect(f.FadeInCurveSkew).toBe("0");
+    expect(f.FadeOutCurveSlope).toBe("0");
+  });
+});
+
 describe("patchFade", () => {
   it("patcht FadeOutLength im <Fades>-Scope, Rest byte-identisch", () => {
     const out = patchFade(AUDIO, "FadeOutLength", "1.5");
@@ -180,5 +222,55 @@ describe("patchFade", () => {
     expect(() =>
       patchFade(clipOhneFadesAberMitWarpMode, "Fade", "false"),
     ).toThrow(/fades|positions-anker/i);
+  });
+  it("<Fades>-Kind-Tag fehlt im vorhandenen <Fades>-Block wirft (line 133/134)", () => {
+    // <Fades> ist da, aber FadeOutLength-Tag fehlt darin -> Replace-Regex
+    // findet nichts -> "Tag <FadeOutLength> in <Fades> nicht gefunden"
+    const clipOhneFadeOutLength =
+      '<AudioClip Id="4"><Name Value="OF" />' +
+      '<WarpMode Value="0" />' +
+      '<Fade Value="true" />' +
+      "<Fades>" +
+      '<FadeInLength Value="0" />' +
+      '<ClipFadesAreInitialized Value="true" /><CrossfadeInState Value="0" />' +
+      '<IsDefaultFadeIn Value="true" /><IsDefaultFadeOut Value="true" />' +
+      "</Fades></AudioClip>";
+
+    expect(() =>
+      patchFade(clipOhneFadeOutLength, "FadeOutLength", "1.0"),
+    ).toThrow(/<fadeoutlength>.*<fades>.*nicht gefunden/i);
+  });
+  it("<Fade>-Tag fehlt im Positions-Fenster wirft (line 243/244)", () => {
+    // <WarpMode> und <Fades> vorhanden, aber kein <Fade Value=...> im Fenster
+    // dazwischen -> win.match(tagRe) === null
+    const clipOhneFadeImFenster =
+      '<AudioClip Id="5"><Name Value="NFW" />' +
+      '<WarpMode Value="0" />' +
+      "<Fades>" +
+      '<FadeInLength Value="0" /><FadeOutLength Value="0" />' +
+      '<ClipFadesAreInitialized Value="true" /><CrossfadeInState Value="0" />' +
+      '<IsDefaultFadeIn Value="true" /><IsDefaultFadeOut Value="true" />' +
+      "</Fades></AudioClip>";
+
+    expect(() => patchFade(clipOhneFadeImFenster, "Fade", "false")).toThrow(
+      /<fade>.*positions-fenster.*nicht gefunden/i,
+    );
+  });
+  it("<Fade>-Tag mehrfach im Positions-Fenster wirft mehrdeutig (line 245/246)", () => {
+    // Zwei <Fade Value=...> zwischen <WarpMode> und <Fades> -> hits.length !== 1
+    const clipMitZweiFades =
+      '<AudioClip Id="6"><Name Value="DF" />' +
+      '<WarpMode Value="0" />' +
+      '<Fade Value="true" />' +
+      '<Fade Value="false" />' +
+      "<Fades>" +
+      '<FadeInLength Value="0" /><FadeOutLength Value="0" />' +
+      '<ClipFadesAreInitialized Value="true" /><CrossfadeInState Value="0" />' +
+      '<IsDefaultFadeIn Value="true" /><IsDefaultFadeOut Value="true" />' +
+      "</Fades></AudioClip>";
+
+    expect(() => patchFade(clipMitZweiFades, "Fade", "false")).toThrow(
+      /<fade>.*2-mal.*mehrdeutig/i,
+    );
   });
 });
