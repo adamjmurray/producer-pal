@@ -246,3 +246,159 @@ describe("setClipGrooveId (Konsistenz)", () => {
     ).toThrow(/GrooveId/);
   });
 });
+
+// Slice-5 Branch-Coverage: gezielte Error-/Edge-Branches in als-groove.ts,
+// die von den ursprünglichen 27 Tests nicht erreicht wurden. Additiv —
+// bestehende Tests unverändert. Jeder Test deckt genau einen Zweig ab.
+describe("als-groove Error-/Edge-Branches (Slice 5)", () => {
+  // b2[0] L116-119: locateGrooveEntry — Open-Tag vorhanden, aber kein
+  // </Groove> dahinter.
+  it("locateGrooveEntry: <Groove> ohne </Groove> wirft (nicht geschlossen)", () => {
+    const broken = '<Grooves><Groove Id="4"><LomId Value="0" />';
+
+    expect(() => locateGrooveEntry(broken, "4")).toThrow(
+      /nicht geschlossen|unerwartetes \.als-Format/,
+    );
+  });
+
+  // b5[0] L165-168: patchGrooveTune — Ziel-Eintrag existiert, aber kein
+  // eingebetteter <Clip> (kein </Clip>). Key/Value valide, Id valide.
+  it("patchGrooveTune: kein <Clip> im Groove-Eintrag wirft", () => {
+    const noClip =
+      '<GroovePool><LomId Value="0" /><Grooves>' +
+      '<Groove Id="4"><LomId Value="0" /><Name Value="X" />' +
+      '<Grid Value="3" /><QuantizationAmount Value="0" /><TimingAmount Value="100" />' +
+      '<RandomAmount Value="0" /><VelocityAmount Value="0" />' +
+      "</Groove></Grooves></GroovePool>";
+
+    expect(() => patchGrooveTune(noClip, "4", "Grid", "1")).toThrow(
+      /kein <Clip>|unerwartetes \.als-Format/,
+    );
+  });
+
+  // b7[0] L182-185: patchGrooveTune — Tag nach </Clip> mehrfach -> mehrdeutig.
+  it("patchGrooveTune: Tag mehrfach nach <Clip> wirft (mehrdeutig)", () => {
+    const dup =
+      '<GroovePool><LomId Value="0" /><Grooves>' +
+      '<Groove Id="4"><LomId Value="0" /><Name Value="X" />' +
+      '<Clip><Value><MidiClip Id="0" Time="0"><GrooveSettings><GrooveId Value="-1" /></GrooveSettings></MidiClip></Value></Clip>' +
+      '<Grid Value="3" /><Grid Value="4" /><QuantizationAmount Value="0" />' +
+      '<TimingAmount Value="100" /><RandomAmount Value="0" /><VelocityAmount Value="0" />' +
+      "</Groove></Grooves></GroovePool>";
+
+    expect(() => patchGrooveTune(dup, "4", "Grid", "1")).toThrow(
+      /mehrdeutig|2-mal/,
+    );
+  });
+
+  // b13[0] L242-245: setClipGrooveId — <GrooveId> mehrfach im
+  // GrooveSettings-Scope -> mehrdeutig.
+  it("setClipGrooveId: <GrooveId> mehrfach im Scope wirft (mehrdeutig)", () => {
+    const dup =
+      '<MidiClip><GrooveSettings><GrooveId Value="-1" /><GrooveId Value="2" /></GrooveSettings></MidiClip>';
+
+    expect(() => setClipGrooveId(dup, "4")).toThrow(/mehrdeutig|2-mal/);
+  });
+
+  // b15[1] L278: grooveEntriesRaw — kein <GroovePool>-Wrapper, fällt auf
+  // gesamtes xml als Pool zurück (poolM falsy-Branch). Via listGrooves.
+  it("listGrooves: ohne <GroovePool>-Wrapper nutzt gesamtes XML als Pool", () => {
+    const noPool =
+      '<Grooves><Groove Id="11"><LomId Value="0" /><Name Value="NP" />' +
+      '<Clip><Value><MidiClip Id="0" Time="0" /></Value></Clip>' +
+      '<Grid Value="2" /><QuantizationAmount Value="0" /><TimingAmount Value="50" />' +
+      '<RandomAmount Value="0" /><VelocityAmount Value="0" />' +
+      "</Groove></Grooves>";
+    const g = listGrooves(noPool);
+
+    expect(g).toHaveLength(1);
+    expect(g[0]).toMatchObject({ id: "11", name: "NP", TimingAmount: "50" });
+  });
+
+  // b17[0] L287: grooveEntriesRaw — <Grooves> ohne </Grooves>, scope geht
+  // bis Pool-Ende (groovesClose === -1 Branch).
+  it("listGrooves: <Grooves> ohne </Grooves> -> scope bis Ende", () => {
+    const noClose =
+      '<GroovePool><LomId Value="0" /><Grooves>' +
+      '<Groove Id="12"><LomId Value="0" /><Name Value="NC" />' +
+      '<Clip><Value><MidiClip Id="0" Time="0" /></Value></Clip>' +
+      '<Grid Value="1" /><QuantizationAmount Value="0" /><TimingAmount Value="33" />' +
+      '<RandomAmount Value="0" /><VelocityAmount Value="0" />' +
+      "</Groove>";
+    const g = listGrooves(noClose);
+
+    expect(g).toHaveLength(1);
+    expect(g[0]).toMatchObject({ id: "12", name: "NC", TimingAmount: "33" });
+  });
+
+  // b19[0] L303-306: grooveEntriesRaw — Open-Tag im scope, aber kein
+  // </Groove> dahinter -> wirft "nicht geschlossen". <Grooves> geschlossen
+  // damit b17 NICHT betroffen ist, der Block selbst aber offen bleibt.
+  it("listGrooves: Groove-Open ohne </Groove> im scope wirft", () => {
+    const broken =
+      '<GroovePool><LomId Value="0" /><Grooves>' +
+      '<Groove Id="13"><LomId Value="0" /><Name Value="B" />' +
+      "</Grooves></GroovePool>";
+
+    expect(() => listGrooves(broken)).toThrow(
+      /nicht geschlossen|unerwartetes \.als-Format/,
+    );
+  });
+
+  // b20[0] L334: extractEntryName — Block ohne <LomId -> Name "". Via
+  // listGrooves: Eintrag ohne <LomId, Amounts werden trotzdem gelesen.
+  it("listGrooves: Eintrag ohne <LomId -> name leer", () => {
+    const noLom =
+      '<GroovePool><LomId Value="0" /><Grooves>' +
+      '<Groove Id="14"><Name Value="Ignored" />' +
+      '<Clip><Value><MidiClip Id="0" Time="0" /></Value></Clip>' +
+      '<Grid Value="3" /><QuantizationAmount Value="0" /><TimingAmount Value="77" />' +
+      '<RandomAmount Value="0" /><VelocityAmount Value="0" />' +
+      "</Groove></Grooves></GroovePool>";
+    const g = listGrooves(noLom);
+
+    expect(g).toHaveLength(1);
+    expect(g[0]?.name).toBe("");
+    expect(g[0]?.TimingAmount).toBe("77");
+  });
+
+  // b23[1] L340: extractEntryName — <LomId vorhanden, aber kein <Name Value>
+  // im Fenster -> nameM null -> "".
+  it("listGrooves: Eintrag mit <LomId aber ohne <Name> -> name leer", () => {
+    const noName =
+      '<GroovePool><LomId Value="0" /><Grooves>' +
+      '<Groove Id="15"><LomId Value="0" />' +
+      '<Clip><Value><MidiClip Id="0" Time="0" /></Value></Clip>' +
+      '<Grid Value="3" /><QuantizationAmount Value="0" /><TimingAmount Value="88" />' +
+      '<RandomAmount Value="0" /><VelocityAmount Value="0" />' +
+      "</Groove></Grooves></GroovePool>";
+    const g = listGrooves(noName);
+
+    expect(g).toHaveLength(1);
+    expect(g[0]?.name).toBe("");
+    expect(g[0]?.TimingAmount).toBe("88");
+  });
+
+  // b24[1] L352: scalarOrEmpty — Amount-Tag fehlt -> "" (m null Branch).
+  // listGrooves liest Amounts nach </Clip>; fehlt ein Tag -> "".
+  it("listGrooves: fehlende Amount-Tags -> leere Strings", () => {
+    const partial =
+      '<GroovePool><LomId Value="0" /><Grooves>' +
+      '<Groove Id="16"><LomId Value="0" /><Name Value="P" />' +
+      '<Clip><Value><MidiClip Id="0" Time="0" /></Value></Clip>' +
+      '<TimingAmount Value="100" />' +
+      "</Groove></Grooves></GroovePool>";
+    const g = listGrooves(partial);
+
+    expect(g).toHaveLength(1);
+    expect(g[0]).toMatchObject({
+      id: "16",
+      name: "P",
+      Grid: "",
+      QuantizationAmount: "",
+      TimingAmount: "100",
+      RandomAmount: "",
+      VelocityAmount: "",
+    });
+  });
+});
