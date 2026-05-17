@@ -214,6 +214,32 @@ describe("ppal-write-automation CLI", () => {
   });
 });
 
+describe("scope routing", () => {
+  it("scope=clip bleibt Default (fehlende Flags -> Exit 1, kein scope-Fehler)", () => {
+    expect(runCli(["write"])).toBe(1);
+  });
+  it("scope=arrangement ohne --target -> Exit 1", () => {
+    expect(
+      runCli([
+        "write",
+        "--scope",
+        "arrangement",
+        "--als",
+        "/nonexistent.als",
+        "--track",
+        "X",
+        "--breakpoints",
+        "0=0.5,4=1.0",
+      ]),
+    ).toBe(1);
+  });
+  it("unbekanntes --scope -> Exit 1", () => {
+    expect(
+      runCli(["write", "--scope", "bogus", "--als", "/x.als", "--track", "X"]),
+    ).toBe(1);
+  });
+});
+
 it("REGRESSION: scope=clip default erzeugt byte-identischen Clip-Envelope-Output wie Slice 1", () => {
   // Nutze das älteste Backup mit "Spike Test" + leerer Envelopes-Sektion (Ausgangszustand vor Slice-1-Schreibvorgang)
   const als =
@@ -221,6 +247,7 @@ it("REGRESSION: scope=clip default erzeugt byte-identischen Clip-Envelope-Output
   const xml = readAls(als);
   const bp = parseBreakpoints("0=200\n2=8000\n4=400");
   const reference = injectClipEnvelope(xml, "Spike Test", 23005, bp);
+
   expect(reference).toContain("<ClipEnvelope");
   expect(reference).toContain('<PointeeId Value="23005" />');
   expect(reference.length).toBeGreaterThan(xml.length);

@@ -134,6 +134,14 @@ function parseWriteArgs(flags: Record<string, string>): WriteArgs | null {
  * @returns Exit code (0 on success, 1 on error, 2 on open-set guard)
  */
 function runWrite(flags: Record<string, string>): number {
+  const scopeError = checkScope(flags);
+
+  if (scopeError != null) return scopeError;
+
+  if ((flags.scope ?? "clip") === "arrangement") {
+    return runWriteArrangement(flags);
+  }
+
   const args = parseWriteArgs(flags);
 
   if (args == null) {
@@ -242,6 +250,50 @@ function runWrite(flags: Record<string, string>): number {
   );
 
   return 0;
+}
+
+/**
+ * Validate the --scope/--target flags for the `write` subcommand.
+ * @param flags - Parsed flag map
+ * @returns Exit code 1 if scope/target invalid, otherwise null
+ */
+function checkScope(flags: Record<string, string>): number | null {
+  const scope = flags.scope ?? "clip";
+
+  if (scope !== "clip" && scope !== "arrangement") {
+    process.stderr.write(
+      `FEHLER: unbekanntes --scope "${scope}" (clip|arrangement)\n`,
+    );
+
+    return 1;
+  }
+
+  if (scope === "arrangement") {
+    const target = flags.target;
+
+    if (target === undefined || target === "true") {
+      process.stderr.write(
+        "FEHLER: --scope arrangement erfordert --target (mixer:volume|mixer:pan|mixer:send:<n>|device)\n",
+      );
+
+      return 1;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Temporary stub for the arrangement-scope writer (wired up in Task 5).
+ * @param _flags - Parsed flag map (unused until Task 5)
+ * @returns Exit code 1 (not yet implemented)
+ */
+function runWriteArrangement(_flags: Record<string, string>): number {
+  process.stderr.write(
+    "FEHLER: arrangement-writer noch nicht verdrahtet (Task 5, blockiert durch Fixture-Gate T0)\n",
+  );
+
+  return 1;
 }
 
 /**
