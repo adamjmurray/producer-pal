@@ -14,7 +14,7 @@ import {
   backupAls,
   isSetLikelyOpen,
   assertOnlyEnvelopeChanged,
-} from "./als-file.ts";
+} from "../als-file.ts";
 
 const SAMPLE_XML = `<Ableton><Tracks><MidiTrack Id="1"><MidiClip Id="0"><Name Value="TestClip" /><Envelopes><Envelopes /></Envelopes></MidiClip></MidiTrack></Tracks></Ableton>`;
 

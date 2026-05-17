@@ -8,7 +8,7 @@ import {
   buildEnvelopeXml,
   injectClipEnvelope,
   locateClipBlock,
-} from "./als-envelope-writer.ts";
+} from "../als-envelope-writer.ts";
 
 const FIX = `<Ableton><Tracks><MidiTrack Id="18"><Name><UserName Value="Spike Instr" /></Name><DeviceChain><Devices><Operator Id="0"><Frequency><Manual Value="12000" /><AutomationTarget Id="23005"><LockEnvelope Value="0" /></AutomationTarget></Frequency></Operator></Devices></DeviceChain><ClipSlotList><ClipSlot><ClipSlot Id="0"><Value><MidiClip Id="0" Time="0"><CurrentStart Value="0" /><Name Value="Spike Test" /><Envelopes><Envelopes /></Envelopes><Disabled Value="false" /></MidiClip></Value></ClipSlot></ClipSlot></ClipSlotList></MidiTrack></Tracks></Ableton>`;
 

@@ -8,7 +8,7 @@ import * as zlib from "node:zlib";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { runCli } from "./ppal-write-automation.ts";
+import { runCli } from "../ppal-write-automation.ts";
 import { readAls } from "#src/automation/als-file.ts";
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 import * as arrangementWriter from "#src/automation/als-arrangement-writer.ts";

@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
-import { parseBreakpoints } from "./breakpoint-parser.ts";
+import { parseBreakpoints } from "../breakpoint-parser.ts";
 
 describe("parseBreakpoints", () => {
   it("parst time=value Zeilen", () => {

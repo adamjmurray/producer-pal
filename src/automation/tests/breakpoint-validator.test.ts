@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
-import { validateBreakpoints } from "./breakpoint-validator.ts";
+import { validateBreakpoints } from "../breakpoint-validator.ts";
 
 const range = { min: 20, max: 20000 };
 

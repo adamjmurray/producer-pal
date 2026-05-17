@@ -9,8 +9,8 @@ import {
   resolveAutomationTargetId,
   resolveMixerTarget,
   locateTrackBlock,
-} from "./als-param-resolver.ts";
-import { readAls } from "./als-file.ts";
+} from "../als-param-resolver.ts";
+import { readAls } from "../als-file.ts";
 
 const MULTISEND_ALS =
   "/Users/macuser/Desktop/AIbleton/producer-pal/evals/live-sets/basic-midi-4-track Project/basic-midi-4-track.als";
@@ -554,6 +554,44 @@ describe("locateTrackBlock", () => {
     expect(r.block).toContain(`AutomationTarget Id="801"`);
     expect(r.names).toContain("Renamed Bus");
     expect(r.names).not.toContain("Audio 1");
+  });
+
+  // scanTrackBlock: ungeschlossenes <MidiTrack> löst den closeIdx === -1
+  // Zweig aus. locateTrackBlock fängt den scanTrackBlock-Fehler ab und
+  // meldet ihn als "nicht gefunden" (kein Track wird materialisiert).
+  it("behandelt ein nicht geschlossenes Track-Tag (closeIdx === -1)", () => {
+    const broken =
+      `<Ableton><Tracks>` +
+      `<MidiTrack Id="3"><Name><EffectiveName Value="X" /></Name>` +
+      `<DeviceChain /></Tracks></Ableton>`; // kein </MidiTrack>
+
+    expect(() => locateTrackBlock(broken, "X")).toThrow(/nicht gefunden/);
+  });
+
+  // Not-found-Pfad mit einem namenlosen Track: die Namens-Rebuild-Schleife
+  // überspringt den Leer-Namen (false-Zweig von `name !== ""`).
+  it("ignoriert namenlose Tracks beim Aufbau der Verfügbar-Liste", () => {
+    const withEmpty = [
+      `<Ableton><Tracks>`,
+      `<MidiTrack Id="1"><Name><EffectiveName Value="" /></Name>`,
+      `<DeviceChain /></MidiTrack>`,
+      `<AudioTrack Id="2"><Name><EffectiveName Value="Real" /></Name>`,
+      `<DeviceChain /></AudioTrack>`,
+      `</Tracks></Ableton>`,
+    ].join("");
+
+    let err: Error | undefined;
+
+    try {
+      locateTrackBlock(withEmpty, "Fehlt");
+    } catch (e) {
+      err = e as Error;
+    }
+
+    expect(err?.message).toMatch(/nicht gefunden/);
+    expect(err?.message).toContain("Real");
+    // Kein Leereintrag (kein ", ," / kein führendes ", ") aus dem Leer-Track.
+    expect(err?.message).not.toMatch(/Verfügbar: ,|, ,/);
   });
 });
 

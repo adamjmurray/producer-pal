@@ -9,7 +9,7 @@ import {
   buildArrangementEnvelopeXml,
   injectArrangementEnvelope,
   locateTrackAutomationBlock,
-} from "./als-arrangement-writer.ts";
+} from "../als-arrangement-writer.ts";
 import { readAls } from "#src/automation/als-file.ts";
 
 const FIXTURE_PATH =
@@ -62,6 +62,26 @@ describe("buildArrangementEnvelopeXml", () => {
     expect(() => buildArrangementEnvelopeXml(1, [])).toThrow(
       /mindestens 1 Breakpoint/,
     );
+  });
+
+  it("rendert NaN-Werte ohne Dezimalpunkt-Trim (kein '.'-Zweig in fmt)", () => {
+    // NaN ist keine Ganzzahl -> toFixed(12) = "NaN" (kein "."), der
+    // includes(".")-Trim-Zweig wird mit false durchlaufen.
+    const s = buildArrangementEnvelopeXml(1, [
+      { time: Number.NaN, value: Number.NaN },
+    ]);
+
+    expect(s).toContain('Time="NaN"');
+    expect(s).toContain('Value="NaN"');
+  });
+
+  it("rendert grosse ganzzahlige Werte ohne Exponent (BigInt-Pfad in fmt)", () => {
+    // 1e21 ist eine Ganzzahl, deren String(...) "1e+21" liefert -> BigInt-Zweig.
+    const s = buildArrangementEnvelopeXml(1, [{ time: 1e21, value: 1e21 }]);
+
+    expect(s).toContain('Value="1000000000000000000000"');
+    expect(s).toContain('Time="1000000000000000000000"');
+    expect(s).not.toMatch(/[Ee][+-]?\d/);
   });
 
   it("Scaffold ist byte-gleich zur Ground-Truth-Fixture (FloatEvents entfernt)", () => {
