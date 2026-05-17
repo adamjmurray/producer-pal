@@ -112,13 +112,21 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
   if (args.source) {
     const kinds = folderKindsForSource(args.source);
 
-    where.push(`p.folder_kind IN (${kinds.map(() => "?").join(",")})`);
-    params.push(...kinds);
+    // Defensive: source=folder has no DB encoding and yields an empty
+    // kinds list. The tool caller filters this out, but the route is
+    // publicly reachable — emit an impossible predicate to keep the
+    // SQL valid (no rows match) rather than producing `IN ()`.
+    if (kinds.length === 0) {
+      where.push("1 = 0");
+    } else {
+      where.push(`p.folder_kind IN (${kinds.map(() => "?").join(",")})`);
+      params.push(...kinds);
+    }
   }
 
   if (args.query) {
-    where.push("f.name LIKE ?");
-    params.push(`%${args.query}%`);
+    where.push("f.name LIKE ? ESCAPE '\\'");
+    params.push(buildLikePattern(args.query));
   }
 
   const tagNames = parseTags(args.tags);
@@ -152,6 +160,23 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
                LIMIT ?`;
 
   return { sql, params };
+}
+
+/**
+ * Build a SQL LIKE pattern from a user query. Escapes LIKE metacharacters
+ * (`%`, `_`, `\`) so filenames containing them match literally, then
+ * translates `*` to `%` as the user-facing wildcard. The result is wrapped
+ * with implicit `%...%` for substring matching, and the caller must use
+ * `ESCAPE '\'` in the LIKE clause.
+ *
+ * @param query - User-supplied query string
+ * @returns LIKE pattern ready to bind as a parameter
+ */
+function buildLikePattern(query: string): string {
+  const escaped = query.replaceAll(/[%\\_]/g, "\\$&");
+  const withWildcards = escaped.replaceAll("*", "%");
+
+  return `%${withWildcards}%`;
 }
 
 /**

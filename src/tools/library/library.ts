@@ -76,7 +76,7 @@ async function runSearch(
   args: LibraryArgs,
   ctx: Partial<ToolContext>,
 ): Promise<LibrarySearchResult> {
-  const folderItems = scanFolderItems(args, ctx);
+  const folderScan = scanFolderItems(args, ctx);
   // source=folder bypasses the DB entirely; the response omits dbAvailable
   // to signal "did not consult the DB" instead of lying with `true`.
   const dbResult =
@@ -92,60 +92,91 @@ async function runSearch(
           limit: args.limit,
         });
 
-  const folderPaths = new Set(folderItems.map((i) => i.path));
+  const folderPaths = new Set(folderScan.items.map((i) => i.path));
   const dbItems = (dbResult?.items ?? []).filter(
     (i) => !folderPaths.has(i.path),
   );
-  const merged = sortItems([...folderItems, ...dbItems], args.sort);
+  const merged = sortItems([...folderScan.items, ...dbItems], args.sort);
   const limit = clampLimit(args.limit);
   const items = merged.slice(0, limit);
+  const reason = folderScan.reason ?? dbResult?.reason;
 
   if (dbResult == null) {
-    return { items };
+    return reason == null ? { items } : { items, reason };
   }
 
-  return { dbAvailable: dbResult.dbAvailable, items };
+  const base: LibrarySearchResult = {
+    dbAvailable: dbResult.dbAvailable,
+    items,
+  };
+
+  return reason == null ? base : { ...base, reason };
+}
+
+interface FolderScan {
+  items: LibraryItem[];
+  /** Set when items is empty due to a discoverable cause */
+  reason?: string;
 }
 
 /**
  * Scan the configured sample folder when filters allow it and
- * convert results to LibraryItem shape.
+ * convert results to LibraryItem shape. Returns a reason string when
+ * the scan is skipped or fails for a user-actionable cause so callers
+ * can surface diagnostics rather than reporting silent empty results.
  *
  * @param args - Tool arguments
  * @param ctx - Per-request context
- * @returns Folder-sourced library items, or empty if scan is skipped
+ * @returns Folder scan result with items and optional reason
  */
 function scanFolderItems(
   args: LibraryArgs,
   ctx: Partial<ToolContext>,
-): LibraryItem[] {
+): FolderScan {
   const sampleFolder = ctx.sampleFolder;
 
   if (!sampleFolder) {
-    return [];
+    if (args.source === "folder") {
+      return {
+        items: [],
+        reason:
+          "sample folder not configured (set one in the Producer Pal Setup tab)",
+      };
+    }
+
+    return { items: [] };
   }
 
   // The folder scan can only satisfy: name substring + (implicit) audio kind.
   // Any DB-only filter means the user is not asking for folder content.
   if (args.source && args.source !== "folder") {
-    return [];
+    return { items: [] };
   }
 
   if (args.tags) {
-    return [];
+    return { items: [] };
   }
 
   if (args.kind && args.kind !== "audio") {
-    return [];
+    return { items: [] };
   }
 
   if (args.deviceKind) {
-    return [];
+    return { items: [] };
   }
 
-  const result = readSamples({ search: args.query }, ctx);
+  let result;
 
-  return result.samples.map((rel) => ({
+  try {
+    result = readSamples({ search: args.query }, ctx);
+  } catch (err) {
+    return {
+      items: [],
+      reason: `sample folder scan failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
+  const items: LibraryItem[] = result.samples.map((rel) => ({
     name: leafName(rel),
     path: `${result.sampleFolder}${rel}`,
     kind: "audio",
@@ -153,6 +184,8 @@ function scanFolderItems(
     useCount: 0,
     source: "folder",
   }));
+
+  return { items };
 }
 
 /**

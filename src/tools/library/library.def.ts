@@ -28,7 +28,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .string()
       .optional()
       .describe(
-        "name substring (search only); SQL LIKE wildcards % (any chars) and _ (single char) pass through",
+        "name substring (search only); use * as a multi-character wildcard",
       ),
 
     tags: z

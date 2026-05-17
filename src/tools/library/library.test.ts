@@ -484,6 +484,54 @@ describe("library tool — folder scan integration", () => {
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
   });
 
+  it("surfaces a reason when source=folder is requested with no sampleFolder", async () => {
+    // Regression vs the old ppal-context search: silently returning [] makes
+    // the LLM tell the user "no samples found"; the reason field lets it say
+    // "you need to configure a sample folder".
+    const result = await library({ source: "folder" }, {});
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.items).toHaveLength(0);
+    expect(result.reason).toMatch(/sample folder not configured/i);
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
+
+  it("preserves the DB-side reason when the merged DB call returns one", async () => {
+    mockFolderStructure({
+      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
+    });
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: {
+        dbAvailable: false,
+        items: [],
+        reason: "Live database not found",
+      },
+    });
+
+    const result = await library({}, { sampleFolder: "/samples/" });
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.dbAvailable).toBe(false);
+    expect(result.reason).toBe("Live database not found");
+    // Folder items should still come through alongside the diagnostic.
+    expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
+  });
+
+  it("surfaces a reason when the folder scan throws", async () => {
+    vi.mocked(readSamplesMock.readSamples).mockImplementationOnce(() => {
+      throw new Error("EACCES: permission denied");
+    });
+    mockSearchRoute([]);
+
+    const result = await library({}, { sampleFolder: "/samples/" });
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.reason).toMatch(/sample folder scan failed.*EACCES/);
+    // DB results should still flow through.
+    expect(result.dbAvailable).toBe(true);
+  });
+
   it("extracts the leaf filename from nested folder paths", async () => {
     mockFolderStructure({
       "/samples/": [{ name: "drums", type: "fold" }],

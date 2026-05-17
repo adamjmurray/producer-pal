@@ -158,6 +158,17 @@ describe("librarySearch", () => {
         "Operator.vst3",
       ]);
     });
+
+    it("returns no items (no SQL error) when source=folder reaches the route", async () => {
+      // source=folder has no DB encoding; the tool layer normally filters
+      // this out, but the route is publicly callable. The guard converts
+      // the empty folder_kind list into an impossible predicate so the
+      // query parses cleanly instead of producing `IN ()`.
+      const result = await librarySearch({ source: "folder" });
+
+      expect(result.items).toHaveLength(0);
+      expect(result.dbAvailable).toBe(true);
+    });
   });
 
   describe("query filter", () => {
@@ -176,20 +187,36 @@ describe("librarySearch", () => {
       expect(result.items).toHaveLength(2);
     });
 
-    it("passes SQL LIKE wildcards (%, _) through to the query", async () => {
-      // Documented passthrough: "_" is a single-char wildcard, "%" matches any chars.
-      // `_ick` matches "kick" (k + ick) inside user_kick.aif and pack_kick.wav.
+    it("treats * as a multi-character wildcard", async () => {
+      // `user*kick` matches user_kick.aif (the * spans "_")
+      const star = await librarySearch({
+        query: "user*kick",
+        kind: "audio",
+      });
+
+      expect(star.items.map((i) => i.name)).toStrictEqual(["user_kick.aif"]);
+    });
+
+    it("matches SQL LIKE metacharacters literally (no longer pass through)", async () => {
+      // `_` is escaped on the SQL side, so `_ick` matches only a literal
+      // underscore-then-ick — which doesn't exist in the fixture. Previously
+      // this returned both kicks because `_` was a single-char wildcard.
       const underscore = await librarySearch({ query: "_ick", kind: "audio" });
 
-      expect(underscore.items.map((i) => i.name).sort()).toStrictEqual([
+      expect(underscore.items).toHaveLength(0);
+
+      // `_kick` does occur literally inside user_kick.aif and pack_kick.wav.
+      const literal = await librarySearch({ query: "_kick", kind: "audio" });
+
+      expect(literal.items.map((i) => i.name).sort()).toStrictEqual([
         "pack_kick.wav",
         "user_kick.aif",
       ]);
 
-      // `%clap` matches anything ending in "clap" (before ".aif").
+      // `%` is also escaped — no fixture file contains a literal '%'.
       const percent = await librarySearch({ query: "%clap", kind: "audio" });
 
-      expect(percent.items.map((i) => i.name)).toStrictEqual(["pack_clap.aif"]);
+      expect(percent.items).toHaveLength(0);
     });
   });
 
