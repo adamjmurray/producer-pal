@@ -14,7 +14,11 @@ export interface AppearanceSettings {
 }
 
 /**
- * Build a serializable snapshot string from settings and appearance values
+ * Build a serializable snapshot string from settings and appearance values.
+ * liveApiEnabled is intentionally omitted — it can change out from under
+ * the modal (device Setup-tab toggle, focus refetch), so comparing against
+ * a snapshot taken at open time gives false positives. The dirty flag
+ * tracks user intent for that field instead.
  * @param {UseSettingsReturn} s - Settings hook return value
  * @param {AppearanceSettings} a - Appearance settings
  * @returns {string} JSON snapshot for comparison
@@ -30,7 +34,6 @@ function serialize(s: UseSettingsReturn, a: AppearanceSettings): string {
     showThoughts: s.showThoughts,
     enabledTools: s.enabledTools,
     smallModelMode: s.smallModelMode,
-    liveApiEnabled: s.liveApiEnabled,
     ...a,
   });
 }
@@ -62,5 +65,7 @@ export function useHasUnsavedChanges(
 
   if (!settingsOpen || snapshot === "") return false;
 
-  return serialize(settings, appearance) !== snapshot;
+  return (
+    serialize(settings, appearance) !== snapshot || settings.liveApiEnabledDirty
+  );
 }

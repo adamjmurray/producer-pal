@@ -91,7 +91,13 @@ export interface UseSettingsReturn {
   setSmallModelMode: (enabled: boolean) => void;
   // Mirrors server-side ProducerPalConfig.liveApiEnabled, kept in modal-local
   // state. Source of truth is the server (which mirrors the device Setup-tab
-  // toggle) — not localStorage.
+  // toggle) — not localStorage. The dirty flag distinguishes "user toggled
+  // this in the modal" from "server seeded this value", so the save handler
+  // only POSTs when the user expressed intent (avoids clobbering device-side
+  // changes that arrive mid-modal and avoids posting the default `false` on
+  // first open if the server fetch hasn't resolved yet).
   liveApiEnabled: boolean;
+  liveApiEnabledDirty: boolean;
   setLiveApiEnabled: (enabled: boolean) => void;
+  seedLiveApiEnabled: (enabled: boolean) => void;
 }

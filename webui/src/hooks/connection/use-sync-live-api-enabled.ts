@@ -3,32 +3,32 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect } from "preact/hooks";
 
 /**
- * Seeds modal-local liveApiEnabled from the server value when the Settings
- * modal is closed. The /config focus-refetch in useRemoteConfig picks up
+ * Seeds modal-local liveApiEnabled from the server value. Skipped when
+ * the user has touched the toggle (dirty=true) so their intent isn't
+ * overwritten. The /config focus-refetch in useRemoteConfig picks up
  * device Setup-tab toggle changes; this effect propagates them into the
- * modal-local state so the Tools tab reflects reality next time the modal
- * opens. Skipped while the modal is open so in-progress edits aren't trashed.
+ * modal-local state, even while the modal is open, as long as the user
+ * hasn't explicitly toggled.
+ *
+ * The save handler uses the dirty flag to decide whether to POST, so a
+ * device-side change that arrives while the modal is open will not be
+ * silently overwritten on save (the user-edit case still wins).
+ *
  * @param serverValue - Server-fetched liveApiEnabled value
- * @param setLocal - Setter for modal-local state
- * @param modalOpen - Whether the Settings modal is currently open
+ * @param dirty - Whether the user has toggled the modal-local value
+ * @param seed - Setter that updates local state without marking dirty
  */
 export function useSyncLiveApiEnabled(
   serverValue: boolean,
-  setLocal: (enabled: boolean) => void,
-  modalOpen: boolean,
+  dirty: boolean,
+  seed: (enabled: boolean) => void,
 ): void {
-  const setLocalRef = useRef(setLocal);
-
   useEffect(() => {
-    setLocalRef.current = setLocal;
-  });
-
-  useEffect(() => {
-    if (!modalOpen) {
-      setLocalRef.current(serverValue);
+    if (!dirty) {
+      seed(serverValue);
     }
-  }, [serverValue, modalOpen]);
+  }, [serverValue, dirty, seed]);
 }

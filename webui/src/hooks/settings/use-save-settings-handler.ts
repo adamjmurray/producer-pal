@@ -34,8 +34,11 @@ export function useSaveSettingsHandler(
     args;
 
   return useCallback(() => {
-    const liveApiChanged =
-      settings.liveApiEnabled !== remoteConfig.serverLiveApiEnabled;
+    // Only POST liveApiEnabled when the user actually toggled it in the
+    // modal. Comparing local vs server value here would clobber device-side
+    // changes that arrived mid-modal, or post the default `false` if the
+    // server fetch hadn't resolved by the time the user opened settings.
+    const liveApiChanged = settings.liveApiEnabledDirty;
 
     closeSettings(() => {
       settings.saveSettings();

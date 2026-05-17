@@ -149,8 +149,8 @@ export function App() {
 
   useSyncLiveApiEnabled(
     remoteConfig.serverLiveApiEnabled,
-    settings.setLiveApiEnabled,
-    showSettings,
+    settings.liveApiEnabledDirty,
+    settings.seedLiveApiEnabled,
   );
 
   // Track original appearance settings when settings opened (for cancel)

@@ -134,7 +134,9 @@ describe("SettingsScreen", () => {
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
     liveApiEnabled: false,
+    liveApiEnabledDirty: false,
     setLiveApiEnabled: vi.fn(),
+    seedLiveApiEnabled: vi.fn(),
   };
 
   const defaultDisplay = {

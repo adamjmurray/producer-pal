@@ -60,7 +60,21 @@ export function useSettings(): UseSettingsReturn {
   // Modal-local mirror of server config.liveApiEnabled. Synced from
   // useRemoteConfig in App.tsx; not persisted to localStorage because the
   // device Setup-tab toggle can change the value out from under us.
+  // The dirty flag is set only by user-driven toggles (setLiveApiEnabled);
+  // sync-from-server uses seedLiveApiEnabled and leaves it false.
   const [liveApiEnabled, setLiveApiEnabledState] = useState<boolean>(false);
+  const [liveApiEnabledDirty, setLiveApiEnabledDirty] =
+    useState<boolean>(false);
+
+  const setLiveApiEnabled = useCallback((enabled: boolean) => {
+    setLiveApiEnabledState(enabled);
+    setLiveApiEnabledDirty(true);
+  }, []);
+
+  const seedLiveApiEnabled = useCallback((enabled: boolean) => {
+    setLiveApiEnabledState(enabled);
+    setLiveApiEnabledDirty(false);
+  }, []);
   const [anthropicSettings, setAnthropicSettings] = useState<ProviderSettings>(
     () => loadProviderSettings("anthropic"),
   );
@@ -144,6 +158,7 @@ export function useSettings(): UseSettingsReturn {
     saveCurrentSettings(provider, enabledTools, allSettings);
     saveSmallModelMode(smallModelMode);
     setSettingsConfigured(true);
+    setLiveApiEnabledDirty(false);
   }, [
     provider,
     enabledTools,
@@ -163,6 +178,9 @@ export function useSettings(): UseSettingsReturn {
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
     applyLoadedSettings(loadAllProviderSettings());
+    // Clear dirty so the next sync from server re-seeds local state
+    // (the user-toggle-then-cancel case otherwise leaves a stale value).
+    setLiveApiEnabledDirty(false);
   }, [applyLoadedSettings]);
 
   // Individual setters that update the current provider's settings
@@ -234,6 +252,8 @@ export function useSettings(): UseSettingsReturn {
     smallModelMode,
     setSmallModelMode: setSmallModelModeState,
     liveApiEnabled,
-    setLiveApiEnabled: setLiveApiEnabledState,
+    liveApiEnabledDirty,
+    setLiveApiEnabled,
+    seedLiveApiEnabled,
   };
 }
