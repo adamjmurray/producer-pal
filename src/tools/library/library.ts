@@ -5,6 +5,7 @@
 
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import {
+  clampLibraryLimit,
   DEFAULT_LIBRARY_LIMIT,
   type LibraryDeviceKind,
   type LibraryItem,
@@ -13,7 +14,6 @@ import {
   type LibrarySearchResult,
   type LibrarySort,
   type LibrarySource,
-  MAX_LIBRARY_LIMIT,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { readSamples } from "#src/tools/workflow/read-samples.ts";
 
@@ -99,7 +99,7 @@ async function runSearch(
     (i) => !folderPaths.has(i.path),
   );
   const merged = sortItems([...folderScan.items, ...dbItems], args.sort);
-  const limit = clampLimit(args.limit);
+  const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
   const items = merged.slice(0, limit);
   const reason = folderScan.reason ?? dbResult?.reason;
 
@@ -253,20 +253,6 @@ function sortPartition(
   return [...items].sort(
     (a, b) => b.useCount - a.useCount || a.name.localeCompare(b.name),
   );
-}
-
-/**
- * Clamp a requested limit to a safe positive integer.
- *
- * @param requested - User-supplied limit
- * @returns Limit between 1 and MAX_LIBRARY_LIMIT
- */
-function clampLimit(requested: number | undefined): number {
-  if (requested == null || !Number.isFinite(requested) || requested <= 0) {
-    return DEFAULT_LIBRARY_LIMIT;
-  }
-
-  return Math.min(Math.floor(requested), MAX_LIBRARY_LIMIT);
 }
 
 /**

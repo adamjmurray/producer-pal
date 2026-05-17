@@ -15,8 +15,33 @@
  */
 export const DEFAULT_LIBRARY_LIMIT = 50;
 
+/** Default item cap for library.listTags (tag names are short, so we can
+ * afford a wider window than for full search rows). */
+export const DEFAULT_LIST_TAGS_LIMIT = 200;
+
 /** Upper bound on `limit` for library queries. */
 export const MAX_LIBRARY_LIMIT = 1_000;
+
+/**
+ * Clamp a requested limit to safe positive-integer bounds. Shared by
+ * library.search, library.listTags, and the tool layer so all three
+ * apply the same coercion semantics (non-finite/non-positive → default,
+ * cap at MAX_LIBRARY_LIMIT, floor fractional values).
+ *
+ * @param requested - User-supplied limit
+ * @param defaultLimit - Fallback when requested is missing/invalid
+ * @returns Integer between 1 and MAX_LIBRARY_LIMIT
+ */
+export function clampLibraryLimit(
+  requested: number | undefined,
+  defaultLimit: number,
+): number {
+  if (requested == null || !Number.isFinite(requested) || requested <= 0) {
+    return defaultLimit;
+  }
+
+  return Math.min(Math.floor(requested), MAX_LIBRARY_LIMIT);
+}
 
 /** Content kinds supported by `library.search` and the ppal-library tool */
 export type LibraryKind =

@@ -23,11 +23,11 @@ import {
   resolveSource,
 } from "./library-filters.ts";
 import {
+  clampLibraryLimit,
   DEFAULT_LIBRARY_LIMIT,
   type LibraryItem,
   type LibrarySearchArgs,
   type LibrarySearchResult,
-  MAX_LIBRARY_LIMIT,
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
@@ -156,7 +156,7 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
   }
 
   const orderBy = orderByClause(args.sort);
-  const limit = clampLimit(args.limit);
+  const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
 
   params.push(limit);
 
@@ -234,20 +234,6 @@ function orderByClause(sort: LibrarySearchArgs["sort"]): string {
   // Default use_count sort: stable tiebreakers so a fresh user (where most
   // rows have use_count=0) doesn't fall back to whatever the index returns.
   return "f.use_count DESC, f.mod_date DESC, f.name ASC";
-}
-
-/**
- * Clamp a requested limit to safe bounds.
- *
- * @param requested - User-supplied limit
- * @returns Limit between 1 and MAX_LIMIT
- */
-function clampLimit(requested: number | undefined): number {
-  if (requested == null || !Number.isFinite(requested) || requested <= 0) {
-    return DEFAULT_LIBRARY_LIMIT;
-  }
-
-  return Math.min(Math.floor(requested), MAX_LIBRARY_LIMIT);
 }
 
 /**

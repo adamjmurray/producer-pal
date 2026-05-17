@@ -14,12 +14,13 @@
  * Read-only: SELECT statements only.
  */
 
-import { type LibraryListTagsResult } from "./library-types.ts";
+import {
+  clampLibraryLimit,
+  DEFAULT_LIST_TAGS_LIMIT,
+  type LibraryListTagsResult,
+} from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
-
-const DEFAULT_LIMIT = 200;
-const MAX_LIMIT = 1_000;
 
 export interface ListTagsArgs {
   limit?: number;
@@ -49,7 +50,7 @@ export async function listTags(
     };
   }
 
-  const limit = clampLimit(args.limit);
+  const limit = clampLibraryLimit(args.limit, DEFAULT_LIST_TAGS_LIMIT);
   const db = openLiveDb(dbPath);
 
   try {
@@ -69,18 +70,4 @@ export async function listTags(
   } finally {
     db.close();
   }
-}
-
-/**
- * Clamp a requested limit to safe bounds.
- *
- * @param requested - User-supplied limit
- * @returns Limit between 1 and MAX_LIMIT
- */
-function clampLimit(requested: number | undefined): number {
-  if (requested == null || !Number.isFinite(requested) || requested <= 0) {
-    return DEFAULT_LIMIT;
-  }
-
-  return Math.min(Math.floor(requested), MAX_LIMIT);
 }
