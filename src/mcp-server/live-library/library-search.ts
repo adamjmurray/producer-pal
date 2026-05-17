@@ -31,6 +31,10 @@ import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
 import { resolveAbsolutePaths } from "./reconstruct-path.ts";
 
+// Intentionally lower than the prior ppal-context.search-samples default (100):
+// the modern tool returns richer per-item payloads (tags, source, kind), so
+// 50 keeps the typical response token-budget-friendly. Callers that want more
+// can pass an explicit `limit` up to MAX_LIMIT.
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 1_000;
 
@@ -135,6 +139,12 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
     // Match tags case-insensitively (lowercase both sides) so callers
     // can pass "kick" or "KICK" — listTags returns canonical casing
     // but the LLM may not echo it exactly.
+    //
+    // Unicode caveat: JS `.toLowerCase()` is Unicode-aware, but SQLite's
+    // built-in `LOWER()` is ASCII-only (no ICU). A tag like "Café" stored
+    // with mixed casing won't match user input that differs only in the
+    // accented byte's case. Factory tags are ASCII so this is uncommon;
+    // bringing in SQLite's ICU extension would be overkill.
     const lowerTagNames = tagNames.map((t) => t.toLowerCase());
 
     where.push(`(

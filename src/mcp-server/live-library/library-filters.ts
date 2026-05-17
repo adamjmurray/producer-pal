@@ -36,7 +36,18 @@ export function fourCC(code: string): number {
   return n >>> 0;
 }
 
-/** file_type fourCC sets per public LibraryKind enum */
+/**
+ * file_type fourCC sets per public LibraryKind enum.
+ *
+ * Coverage note: the audio list is spike-confirmed against a Live 12.3 install
+ * but may be incomplete. The prior ppal-context.search-samples implementation
+ * filtered by Live's `file_kind` bitmask (4 = uncompressed, 2048 = compressed),
+ * which covers *every* audio format Live indexes. Switching to an explicit
+ * fourCC allow-list means any format the spike didn't observe (caf, m4a/aac,
+ * wma, opus, etc.) silently drops out of audio queries. Add new fourCCs here
+ * as they're verified — do not guess, since unverified codes are harmless but
+ * create false confidence in the lock-down test below.
+ */
 const KIND_FOURCC: Record<LibraryKind, number[]> = {
   audio: [
     fourCC("aiff"),
