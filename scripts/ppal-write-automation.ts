@@ -191,11 +191,19 @@ function runWrite(flags: Record<string, string>): number {
   }
 
   const floatEventCount = [...clipBlock.matchAll(/<FloatEvent /g)].length;
+  // Expected: user breakpoints + 1 anchor event at Time=-63072000
+  const expectedFloatEvents = validated.length + 1;
 
-  if (floatEventCount !== validated.length) {
+  if (floatEventCount !== expectedFloatEvents) {
     process.stderr.write(
-      `FEHLER: Verifizierung fehlgeschlagen — erwartet ${validated.length} FloatEvents, gefunden ${floatEventCount}\n`,
+      `FEHLER: Verifizierung fehlgeschlagen — erwartet ${expectedFloatEvents} FloatEvents, gefunden ${floatEventCount}\n`,
     );
+
+    return 1;
+  }
+
+  if (!clipBlock.includes("<ClipEnvelope ")) {
+    process.stderr.write("FEHLER: Verifizierung fehlgeschlagen — <ClipEnvelope nicht im Clip gefunden\n");
 
     return 1;
   }

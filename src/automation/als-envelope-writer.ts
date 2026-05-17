@@ -28,32 +28,48 @@ function fmt(n: number): string {
 }
 
 /**
- * Build an `<AutomationEnvelope>` XML string for a single automation parameter.
+ * Build a `<ClipEnvelope>` XML string for a single automation parameter.
  * Does NOT include the wrapping `<Envelopes>` element — caller adds that.
+ *
+ * Produces the exact Ableton 12 factory structure:
+ * - Anchor event at Time="-63072000" (Ableton's "value before first point" sentinel)
+ *   with Value = first breakpoint value, followed by user breakpoints at Id=1..n.
+ * - LoopSlot and ScrollerTimePreserver after </Automation>.
  *
  * @param automationTargetId - The `AutomationTarget Id` of the parameter (PointeeId).
  * @param breakpoints - Clip-relative breakpoints; `time` = beats, `value` = raw param units.
- * @returns The `<AutomationEnvelope Id="0">...</AutomationEnvelope>` string.
+ * @returns The `<ClipEnvelope Id="0">...</ClipEnvelope>` string.
+ * @throws {Error} If breakpoints is empty.
  */
 export function buildEnvelopeXml(
   automationTargetId: string | number,
   breakpoints: Breakpoint[],
 ): string {
-  const floatEvents = breakpoints
-    .map((bp, i) => `<FloatEvent Id="${i}" Time="${fmt(bp.time)}" Value="${fmt(bp.value)}" />`)
+  if (breakpoints.length === 0) {
+    throw new Error("mindestens 1 Breakpoint erforderlich");
+  }
+
+  // Anchor event: Ableton's "value before first point" sentinel at -63072000
+  const anchorEvent = `<FloatEvent Id="0" Time="-63072000" Value="${fmt(breakpoints[0].value)}" />`;
+
+  // User breakpoints follow at Id=1..n
+  const userEvents = breakpoints
+    .map((bp, i) => `<FloatEvent Id="${i + 1}" Time="${fmt(bp.time)}" Value="${fmt(bp.value)}" />`)
     .join("");
 
   return (
-    `<AutomationEnvelope Id="0">` +
+    `<ClipEnvelope Id="0">` +
     `<EnvelopeTarget><PointeeId Value="${automationTargetId}" /></EnvelopeTarget>` +
     `<Automation>` +
-    `<Events>${floatEvents}</Events>` +
+    `<Events>${anchorEvent}${userEvents}</Events>` +
     `<AutomationTransformViewState>` +
     `<IsTransformPending Value="false" />` +
     `<TimeAndValueTransforms />` +
     `</AutomationTransformViewState>` +
     `</Automation>` +
-    `</AutomationEnvelope>`
+    `<LoopSlot><Value /></LoopSlot>` +
+    `<ScrollerTimePreserver><LeftTime Value="0" /><RightTime Value="0" /></ScrollerTimePreserver>` +
+    `</ClipEnvelope>`
   );
 }
 
@@ -99,7 +115,7 @@ export function locateClipBlock(
  * Finds the clip whose `<Name Value="clipName" />` matches, then replaces the
  * inner self-closing `<Envelopes />` within the empty placeholder
  * `<Envelopes><Envelopes /></Envelopes>` with a populated inner list
- * `<Envelopes><AutomationEnvelope ...>...</AutomationEnvelope></Envelopes>`,
+ * `<Envelopes><ClipEnvelope ...>...</ClipEnvelope></Envelopes>`,
  * preserving the outer `<Envelopes>` wrapper Ableton requires.
  * Everything outside that replacement is byte-identical.
  *
@@ -128,7 +144,7 @@ export function injectClipEnvelope(
 
   // emptyEnvMatch[1] = outer "<Envelopes>" + leading whitespace
   // emptyEnvMatch[2] = trailing whitespace + outer "</Envelopes>"
-  // Result: <Envelopes>{ws}<Envelopes>{AutomationEnvelope}</Envelopes>{ws}</Envelopes>
+  // Result: <Envelopes>{ws}<Envelopes>{ClipEnvelope}</Envelopes>{ws}</Envelopes>
   const replacement =
     emptyEnvMatch[1] +
     `<Envelopes>${buildEnvelopeXml(automationTargetId, breakpoints)}</Envelopes>` +

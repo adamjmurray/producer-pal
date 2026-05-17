@@ -72,10 +72,14 @@ describe("ppal-write-automation CLI", () => {
       const written = zlib.gunzipSync(fs.readFileSync(tmpPath)).toString("utf8");
 
       expect(written).toContain('<PointeeId Value="23005"');
+      // Member must be ClipEnvelope (Ableton 12 factory schema)
+      expect(written).toContain('<ClipEnvelope ');
+      expect(written).not.toContain('AutomationEnvelope');
 
       const floatEvents = [...written.matchAll(/<FloatEvent /g)];
 
-      expect(floatEvents).toHaveLength(2);
+      // 2 user breakpoints + 1 anchor event = 3 total
+      expect(floatEvents).toHaveLength(3);
 
       // Verify backup exists
       expect(fs.existsSync(`${tmpPath}.bak`)).toBe(true);
@@ -141,10 +145,10 @@ describe("ppal-write-automation CLI", () => {
 
       const written = zlib.gunzipSync(fs.readFileSync(tmpPath)).toString("utf8");
 
-      // 3 breakpoints → 3 FloatEvents, all inside the clip
+      // 3 user breakpoints + 1 anchor event = 4 FloatEvents total, all inside the clip
       const floatEvents = [...written.matchAll(/<FloatEvent /g)];
 
-      expect(floatEvents).toHaveLength(3);
+      expect(floatEvents).toHaveLength(4);
     } finally {
       if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
       if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);

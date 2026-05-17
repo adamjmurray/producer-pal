@@ -47,37 +47,54 @@ describe("locateClipBlock", () => {
 });
 
 describe("buildEnvelopeXml", () => {
-  it("baut AutomationEnvelope mit PointeeId und FloatEvents", () => {
+  it("baut ClipEnvelope mit PointeeId, Anchor-Event und FloatEvents", () => {
     const s = buildEnvelopeXml(23005, [ { time: 0, value: 200 }, { time: 2, value: 8000 } ]);
 
+    // Must start with ClipEnvelope, NOT AutomationEnvelope
+    expect(s.startsWith('<ClipEnvelope Id="0">')).toBe(true);
+    expect(s).not.toContain("AutomationEnvelope");
     expect(s).toContain('<PointeeId Value="23005" />');
-    expect(s).toContain('<FloatEvent Id="0" Time="0" Value="200" />');
-    expect(s).toContain('<FloatEvent Id="1" Time="2" Value="8000" />');
-    expect(s.startsWith("<AutomationEnvelope")).toBe(true);
-    expect(s).toContain("<IsTransformPending Value=\"false\" />");
+    // Anchor event: Id=0, Time=-63072000, Value = first breakpoint value
+    expect(s).toContain('<FloatEvent Id="0" Time="-63072000" Value="200" />');
+    // User breakpoints start at Id=1
+    expect(s).toContain('<FloatEvent Id="1" Time="0" Value="200" />');
+    expect(s).toContain('<FloatEvent Id="2" Time="2" Value="8000" />');
+    expect(s).toContain('<IsTransformPending Value="false" />');
+    // Must have LoopSlot and ScrollerTimePreserver
+    expect(s).toContain('<LoopSlot><Value /></LoopSlot>');
+    expect(s).toContain('<ScrollerTimePreserver><LeftTime Value="0" /><RightTime Value="0" /></ScrollerTimePreserver>');
   });
 
   it("rendert kleine/grosse Floats ohne Sci-Notation", () => {
     const s = buildEnvelopeXml(1, [ { time: 0.0000001, value: 1e21 }, { time: 0.30000001, value: 745.5 } ]);
 
     expect(s).not.toMatch(/[Ee][+-]?\d/);
+    // Anchor at -63072000 with Value = first bp value (1e21, large int)
+    expect(s).toContain('Time="-63072000"');
+    // Real breakpoints
     expect(s).toContain('Time="0.0000001"');
     expect(s).toContain('Value="745.5"');
+  });
+
+  it("wirft bei leeren Breakpoints", () => {
+    expect(() => buildEnvelopeXml(1, [])).toThrow(/mindestens 1 Breakpoint/);
   });
 });
 
 describe("injectClipEnvelope", () => {
-  it("ersetzt leeres Envelopes im Ziel-Clip (Doppel-Nesting)", () => {
+  it("ersetzt leeres Envelopes im Ziel-Clip (Doppel-Nesting mit ClipEnvelope)", () => {
     const breakpoints = [ { time: 0, value: 200 }, { time: 4, value: 400 } ];
     const out = injectClipEnvelope(FIX, "Spike Test", 23005, breakpoints);
 
     expect(out).toContain('<PointeeId Value="23005" />');
-    expect(out).toContain('<FloatEvent Id="1" Time="4" Value="400" />');
-    // Korrekte Doppel-Nesting: <Envelopes><Envelopes><AutomationEnvelope...
-    expect(out).toMatch(/(?:<Envelopes>\s*){2}<AutomationEnvelope\b/);
-    // ...und korrekter Abschluss: </AutomationEnvelope></Envelopes></Envelopes>
-    expect(out).toMatch(/<\/AutomationEnvelope(?:>\s*<\/Envelopes){2}>/);
-    // Literal proof: nur die exakte empty-envelopes-Stelle wurde ersetzt, alles andere byte-identisch
+    // Anchor at Id=0, user bps at Id=1+
+    expect(out).toContain('<FloatEvent Id="0" Time="-63072000" Value="200" />');
+    expect(out).toContain('<FloatEvent Id="2" Time="4" Value="400" />');
+    // Correct double-nesting: <Envelopes><Envelopes><ClipEnvelope...
+    expect(out).toMatch(/(?:<Envelopes>\s*){2}<ClipEnvelope\b/);
+    // Correct closing: </ClipEnvelope></Envelopes></Envelopes>
+    expect(out).toMatch(/<\/ClipEnvelope(?:>\s*<\/Envelopes){2}>/);
+    // Literal proof: only the exact empty-envelopes place was replaced, rest byte-identical
     const producedEnvelopes = `<Envelopes>${buildEnvelopeXml(23005, breakpoints)}</Envelopes>`;
     const expected = FIX.replace("<Envelopes />", producedEnvelopes);
 
@@ -87,39 +104,92 @@ describe("injectClipEnvelope", () => {
   it("behaelt aeussere Envelopes-Huelle (Ableton-Nesting Regression)", () => {
     const breakpoints = [ { time: 0, value: 100 } ];
     const out = injectClipEnvelope(FIX, "Spike Test", 23005, breakpoints);
-    // Clip-Block isolieren
+    // Isolate clip block
     const clipLoc = locateClipBlock(out, "Spike Test");
     const clipBlock = clipLoc.block;
 
-    // Genau 2 oeffnende <Envelopes>-Tags im Clip
+    // Exactly 2 opening <Envelopes> tags in the clip
     const openCount = (clipBlock.match(/<Envelopes>/g) ?? []).length;
 
     expect(openCount).toBe(2);
-    // Genau eine <AutomationEnvelope
-    expect((clipBlock.match(/<AutomationEnvelope/g) ?? [])).toHaveLength(1);
-    // Kein verbleibender self-closing <Envelopes />
+    // Exactly one <ClipEnvelope (not AutomationEnvelope)
+    expect((clipBlock.match(/<ClipEnvelope/g) ?? [])).toHaveLength(1);
+    expect(clipBlock).not.toContain("AutomationEnvelope");
+    // No remaining self-closing <Envelopes />
     expect(clipBlock).not.toMatch(/<Envelopes\s*\/>/);
-    // Doppelter Abschluss
+    // Double closing
     expect(clipBlock).toMatch(/<\/Envelopes>\s*<\/Envelopes>/);
   });
 
   it("modifiziert nur den Ziel-Clip, andere Clips byte-identisch", () => {
     const out = injectClipEnvelope(TWO, "Target", 42, [{ time: 0, value: 1 }]);
 
-    // 'Other'-Clip unveraendert (enthaelt noch <Envelopes><Envelopes />)
+    // 'Other' clip unchanged (still has <Envelopes><Envelopes />)
     expect(out).toContain('<MidiClip Id="0"><Name Value="Other" /><Envelopes><Envelopes /></Envelopes></MidiClip>');
-    // 'Target'-Clip hat jetzt Doppel-Nesting mit Envelope
-    expect(out).toMatch(/<MidiClip Id="1"><Name Value="Target" \/(?:><Envelopes){2}><AutomationEnvelope/);
-    // exakt eine verbleibende empty-envelopes-Stelle (im Other-Clip)
+    // 'Target' clip now has double-nesting with ClipEnvelope
+    expect(out).toMatch(/<MidiClip Id="1"><Name Value="Target" \/(?:><Envelopes){2}><ClipEnvelope/);
+    // exactly one remaining empty-envelopes place (in Other clip)
     expect((out.match(/<Envelopes \/>/g) ?? [])).toHaveLength(1);
   });
 
   it("wirft bei unbekanntem Clip", () => {
     expect(() => injectClipEnvelope(FIX, "Nope", 1, [{ time: 0, value: 1 }])).toThrow(/nicht gefunden/);
   });
+
   it("wirft wenn Clip keine leere Envelopes-Sektion hat", () => {
-    const filled = FIX.replace("<Envelopes><Envelopes /></Envelopes>", "<Envelopes><AutomationEnvelope/></Envelopes>");
+    const filled = FIX.replace("<Envelopes><Envelopes /></Envelopes>", "<Envelopes><ClipEnvelope/></Envelopes>");
 
     expect(() => injectClipEnvelope(filled, "Spike Test", 1, [{ time: 0, value: 1 }])).toThrow(/bereits|keine/);
+  });
+
+  it("strukturelle Treue: Tag-Reihenfolge entspricht Ableton-Ground-Truth", () => {
+    // Build a small inject and normalize all numeric attribute values to "N"
+    const breakpoints = [ { time: 1, value: 127 }, { time: 2, value: 64 } ];
+    const out = injectClipEnvelope(FIX, "Spike Test", 23005, breakpoints);
+    const clipLoc = locateClipBlock(out, "Spike Test");
+    const clipBlock = clipLoc.block;
+
+    // Extract the Envelopes section
+    const envStart = clipBlock.indexOf("<Envelopes>");
+    const envEnd = clipBlock.lastIndexOf("</Envelopes>") + "</Envelopes>".length;
+    const envSection = clipBlock.slice(envStart, envEnd);
+
+    // Normalize all Id="N", Value="N", Time="N" (including negative) to "N"
+    const normalized = envSection
+      .replaceAll(/Id="-?[\d.]+"/g, 'Id="N"')
+      .replaceAll(/Value="-?[\d.]+"/g, 'Value="N"')
+      .replaceAll(/Time="-?[\d.]+"/g, 'Time="N"');
+
+    // Expected skeleton derived from ground-truth tag structure (3 FloatEvents: anchor + 2 bps)
+    const expected =
+      `<Envelopes>` +
+        `<Envelopes>` +
+          `<ClipEnvelope Id="N">` +
+            `<EnvelopeTarget>` +
+              `<PointeeId Value="N" />` +
+            `</EnvelopeTarget>` +
+            `<Automation>` +
+              `<Events>` +
+                `<FloatEvent Id="N" Time="N" Value="N" />` +
+                `<FloatEvent Id="N" Time="N" Value="N" />` +
+                `<FloatEvent Id="N" Time="N" Value="N" />` +
+              `</Events>` +
+              `<AutomationTransformViewState>` +
+                `<IsTransformPending Value="false" />` +
+                `<TimeAndValueTransforms />` +
+              `</AutomationTransformViewState>` +
+            `</Automation>` +
+            `<LoopSlot>` +
+              `<Value />` +
+            `</LoopSlot>` +
+            `<ScrollerTimePreserver>` +
+              `<LeftTime Value="N" />` +
+              `<RightTime Value="N" />` +
+            `</ScrollerTimePreserver>` +
+          `</ClipEnvelope>` +
+        `</Envelopes>` +
+      `</Envelopes>`;
+
+    expect(normalized).toBe(expected);
   });
 });
