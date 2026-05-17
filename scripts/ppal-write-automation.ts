@@ -25,6 +25,7 @@ import {
 } from "#src/automation/als-param-resolver.ts";
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
+import { runClipSettings } from "./ppal-clip-settings-helpers.ts";
 
 /** Parsed arguments for the `write` subcommand. */
 interface WriteArgs {
@@ -465,6 +466,8 @@ export function runCli(argv: string[]): number {
   try {
     if (subcommand === "list") return runList(flags);
     if (subcommand === "write") return runWrite(flags);
+    if (subcommand === "clip-settings")
+      return runClipSettings(rest, parseFlags);
 
     process.stderr.write(
       `FEHLER: Unbekanntes Subcommand "${subcommand}". Nutze list oder write.\n`,
