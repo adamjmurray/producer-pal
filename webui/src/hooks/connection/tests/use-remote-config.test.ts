@@ -233,6 +233,43 @@ describe("useRemoteConfig", () => {
     });
   });
 
+  it("postLiveApiEnabled reverts optimistic state when POST returns non-OK", async () => {
+    // Initial fetch resolves with liveApiEnabled=false so the hook seeds.
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false, liveApiEnabled: false }),
+    );
+
+    const { result } = renderHook(() => useRemoteConfig("connected"));
+
+    await waitFor(() => {
+      expect(result.current.serverLiveApiEnabled).toBe(false);
+    });
+
+    // POST returns 400; refetch revert returns the authoritative server
+    // state (still false). The optimistic update flips to true then snaps
+    // back when the refetch resolves.
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
+      if ((init as RequestInit | undefined)?.method === "POST") {
+        return Promise.resolve({ ok: false, status: 400 } as Response);
+      }
+
+      return Promise.resolve(
+        mockConfigResponse({ smallModelMode: false, liveApiEnabled: false }),
+      );
+    });
+
+    await act(async () => {
+      await result.current.postLiveApiEnabled(true);
+    });
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("returned 400"),
+    );
+    expect(result.current.serverLiveApiEnabled).toBe(false);
+  });
+
   it("cleans up focus listener on unmount", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       mockConfigResponse({ smallModelMode: false }),

@@ -86,31 +86,21 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
     };
   }, [fetchConfig]);
 
-  const postSmallModelMode = useCallback((enabled: boolean) => {
-    setServerSmallModelMode(enabled);
-    void fetch(getConfigUrl(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ smallModelMode: enabled }),
-    })
-      /* v8 ignore start -- empty catch: server unavailable is non-actionable */
-      .catch(() => {});
-    /* v8 ignore stop */
-  }, []);
+  const postSmallModelMode = useCallback(
+    (enabled: boolean) => {
+      setServerSmallModelMode(enabled);
+      void postConfigField("smallModelMode", enabled, fetchConfig);
+    },
+    [fetchConfig],
+  );
 
-  const postLiveApiEnabled = useCallback(async (enabled: boolean) => {
-    setServerLiveApiEnabled(enabled);
-
-    try {
-      await fetch(getConfigUrl(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ liveApiEnabled: enabled }),
-      });
-    } catch {
-      // Server unavailable — optimistic state already set; nothing to do.
-    }
-  }, []);
+  const postLiveApiEnabled = useCallback(
+    async (enabled: boolean) => {
+      setServerLiveApiEnabled(enabled);
+      await postConfigField("liveApiEnabled", enabled, fetchConfig);
+    },
+    [fetchConfig],
+  );
 
   return {
     serverSmallModelMode,
@@ -119,4 +109,39 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
     postSmallModelMode,
     postLiveApiEnabled,
   };
+}
+
+/**
+ * POST a single config field and, on failure, refetch /config to revert
+ * the caller's optimistic update. Failures are logged so they show up in
+ * the devtools console — the chat UI has no toast surface yet, so this is
+ * the most we can do without adding one. A non-OK HTTP response (e.g. 400
+ * validation) is treated the same as a network error.
+ *
+ * @param field - Config field name
+ * @param value - New value
+ * @param refetch - Function to re-read authoritative server state
+ */
+async function postConfigField(
+  field: string,
+  value: boolean,
+  refetch: (signal?: AbortSignal) => Promise<void>,
+): Promise<void> {
+  try {
+    const response = await fetch(getConfigUrl(), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value }),
+    });
+
+    if (!response.ok) {
+      console.error(
+        `POST /config (${field}) returned ${response.status}; reverting`,
+      );
+      await refetch();
+    }
+  } catch (err) {
+    console.error(`POST /config (${field}) failed:`, err);
+    await refetch();
+  }
 }
