@@ -56,7 +56,9 @@ export function backupAls(filePath: string): string {
  */
 export function isSetLikelyOpen(): boolean {
   try {
-    const out = execSync("lsof -nP -iTCP:3350 -sTCP:LISTEN -t", { encoding: "utf8" });
+    const out = execSync("lsof -nP -iTCP:3350 -sTCP:LISTEN -t", {
+      encoding: "utf8",
+    });
 
     return out.trim().length > 0;
   } catch {
@@ -73,15 +75,23 @@ export function isSetLikelyOpen(): boolean {
  * @param after - Modified XML string after the write operation
  * @param clipName - Name of the clip whose envelopes were changed
  */
-export function assertOnlyEnvelopeChanged(before: string, after: string, clipName: string): void {
+export function assertOnlyEnvelopeChanged(
+  before: string,
+  after: string,
+  clipName: string,
+): void {
   const b = locateClipBlock(before, clipName);
   const a = locateClipBlock(after, clipName);
 
   if (before.slice(0, b.start) !== after.slice(0, a.start)) {
-    throw new Error("Unerwartete Aenderung ausserhalb des Ziel-Clips: prefix weicht ab");
+    throw new Error(
+      "Unerwartete Aenderung ausserhalb des Ziel-Clips: prefix weicht ab",
+    );
   }
 
   if (before.slice(b.end) !== after.slice(a.end)) {
-    throw new Error("Unerwartete Aenderung ausserhalb des Ziel-Clips: suffix weicht ab");
+    throw new Error(
+      "Unerwartete Aenderung ausserhalb des Ziel-Clips: suffix weicht ab",
+    );
   }
 }

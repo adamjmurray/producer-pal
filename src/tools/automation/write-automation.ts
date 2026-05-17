@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
-import { validateBreakpoints, type Breakpoint } from "#src/automation/breakpoint-validator.ts";
+import {
+  validateBreakpoints,
+  type Breakpoint,
+} from "#src/automation/breakpoint-validator.ts";
 import { resolveParam } from "#src/automation/param-resolver.ts";
 
 export interface WriteAutomationArgs {
@@ -16,9 +19,19 @@ export interface WriteAutomationArgs {
 }
 
 export interface AutomationBridge {
-  resolveDevice: (devicePath: string) => Promise<{ parameters: { name: string; min: number; max: number }[] }>;
-  writeClipEnvelope: (args: { clipPath: string; paramIndex: number; breakpoints: Breakpoint[]; clear: boolean }) => Promise<void>;
-  readClipEnvelope: (args: { clipPath: string; paramIndex: number }) => Promise<Breakpoint[]>;
+  resolveDevice: (
+    devicePath: string,
+  ) => Promise<{ parameters: { name: string; min: number; max: number }[] }>;
+  writeClipEnvelope: (args: {
+    clipPath: string;
+    paramIndex: number;
+    breakpoints: Breakpoint[];
+    clear: boolean;
+  }) => Promise<void>;
+  readClipEnvelope: (args: {
+    clipPath: string;
+    paramIndex: number;
+  }) => Promise<Breakpoint[]>;
 }
 
 /** Maximum breakpoints per write call — prevents 30s bridge timeout (Producer Pal Lesson #4). */
@@ -35,7 +48,11 @@ export async function handleWriteAutomation(
   args: WriteAutomationArgs,
   bridge: AutomationBridge,
 ): Promise<{ param: string; written: number; verified: boolean }> {
-  const param = await resolveParam(args.devicePath, args.parameter, bridge.resolveDevice);
+  const param = await resolveParam(
+    args.devicePath,
+    args.parameter,
+    bridge.resolveDevice,
+  );
   const parsed = parseBreakpoints(args.breakpoints);
   const bp = validateBreakpoints(parsed, { min: param.min, max: param.max });
   const clear = args.clear ?? true;
@@ -49,7 +66,10 @@ export async function handleWriteAutomation(
     });
   }
 
-  const actual = await bridge.readClipEnvelope({ clipPath: args.clipPath, paramIndex: param.index });
+  const actual = await bridge.readClipEnvelope({
+    clipPath: args.clipPath,
+    paramIndex: param.index,
+  });
   const verified =
     actual.length === bp.length &&
     bp.every((p, idx) => {

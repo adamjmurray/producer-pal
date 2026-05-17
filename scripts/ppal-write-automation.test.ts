@@ -58,23 +58,30 @@ describe("ppal-write-automation CLI", () => {
     try {
       const code = runCli([
         "write",
-        "--als", tmpPath,
-        "--track", "T",
-        "--clip", "C",
-        "--param", "Filter Freq",
-        "--breakpoints", "0=200,4=8000",
+        "--als",
+        tmpPath,
+        "--track",
+        "T",
+        "--clip",
+        "C",
+        "--param",
+        "Filter Freq",
+        "--breakpoints",
+        "0=200,4=8000",
         "--force",
       ]);
 
       expect(code).toBe(0);
 
       // Verify file contents
-      const written = zlib.gunzipSync(fs.readFileSync(tmpPath)).toString("utf8");
+      const written = zlib
+        .gunzipSync(fs.readFileSync(tmpPath))
+        .toString("utf8");
 
       expect(written).toContain('<PointeeId Value="23005"');
       // Member must be ClipEnvelope (Ableton 12 factory schema)
-      expect(written).toContain('<ClipEnvelope ');
-      expect(written).not.toContain('AutomationEnvelope');
+      expect(written).toContain("<ClipEnvelope ");
+      expect(written).not.toContain("AutomationEnvelope");
 
       const floatEvents = [...written.matchAll(/<FloatEvent /g)];
 
@@ -95,9 +102,12 @@ describe("ppal-write-automation CLI", () => {
     try {
       const code = runCli([
         "list",
-        "--als", tmpPath,
-        "--track", "T",
-        "--device", "0",
+        "--als",
+        tmpPath,
+        "--track",
+        "T",
+        "--device",
+        "0",
       ]);
 
       expect(code).toBe(0);
@@ -112,11 +122,16 @@ describe("ppal-write-automation CLI", () => {
     try {
       const code = runCli([
         "write",
-        "--als", tmpPath,
-        "--track", "T",
-        "--clip", "NonExistent",
-        "--param", "Frequency",
-        "--breakpoints", "0=200",
+        "--als",
+        tmpPath,
+        "--track",
+        "T",
+        "--clip",
+        "NonExistent",
+        "--param",
+        "Frequency",
+        "--breakpoints",
+        "0=200",
         "--force",
       ]);
 
@@ -133,17 +148,24 @@ describe("ppal-write-automation CLI", () => {
     try {
       const code = runCli([
         "write",
-        "--als", tmpPath,
-        "--track", "T",
-        "--clip", "C",
-        "--param", "Filter Freq",
-        "--breakpoints", "0=100,2=200,4=300",
+        "--als",
+        tmpPath,
+        "--track",
+        "T",
+        "--clip",
+        "C",
+        "--param",
+        "Filter Freq",
+        "--breakpoints",
+        "0=100,2=200,4=300",
         "--force",
       ]);
 
       expect(code).toBe(0);
 
-      const written = zlib.gunzipSync(fs.readFileSync(tmpPath)).toString("utf8");
+      const written = zlib
+        .gunzipSync(fs.readFileSync(tmpPath))
+        .toString("utf8");
 
       // 3 user breakpoints + 1 anchor event = 4 FloatEvents total, all inside the clip
       const floatEvents = [...written.matchAll(/<FloatEvent /g)];
@@ -161,18 +183,25 @@ describe("ppal-write-automation CLI", () => {
     try {
       const code = runCli([
         "write",
-        "--als", tmpPath,
-        "--track", "T",
-        "--clip", "C",
-        "--param", "Frequency",
-        "--breakpoints", "0=200,4=8000",
+        "--als",
+        tmpPath,
+        "--track",
+        "T",
+        "--clip",
+        "C",
+        "--param",
+        "Frequency",
+        "--breakpoints",
+        "0=200,4=8000",
         "--force",
       ]);
 
       // --force bypasses the port guard; the write should succeed
       expect(code).toBe(0);
 
-      const written = zlib.gunzipSync(fs.readFileSync(tmpPath)).toString("utf8");
+      const written = zlib
+        .gunzipSync(fs.readFileSync(tmpPath))
+        .toString("utf8");
 
       expect(written).toContain('<PointeeId Value="23005"');
     } finally {

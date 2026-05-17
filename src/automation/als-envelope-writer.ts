@@ -58,7 +58,10 @@ export function buildEnvelopeXml(
 
   // User breakpoints follow at Id=1..n
   const userEvents = breakpoints
-    .map((bp, i) => `<FloatEvent Id="${i + 1}" Time="${fmt(bp.time)}" Value="${fmt(bp.value)}" />`)
+    .map(
+      (bp, i) =>
+        `<FloatEvent Id="${i + 1}" Time="${fmt(bp.time)}" Value="${fmt(bp.value)}" />`,
+    )
     .join("");
 
   return (

@@ -8,7 +8,13 @@ import * as zlib from "node:zlib";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { readAls, writeAls, backupAls, isSetLikelyOpen, assertOnlyEnvelopeChanged } from "./als-file.ts";
+import {
+  readAls,
+  writeAls,
+  backupAls,
+  isSetLikelyOpen,
+  assertOnlyEnvelopeChanged,
+} from "./als-file.ts";
 
 const SAMPLE_XML = `<Ableton><Tracks><MidiTrack Id="1"><MidiClip Id="0"><Name Value="TestClip" /><Envelopes><Envelopes /></Envelopes></MidiClip></MidiTrack></Tracks></Ableton>`;
 
@@ -18,7 +24,10 @@ const SAMPLE_XML = `<Ableton><Tracks><MidiTrack Id="1"><MidiClip Id="0"><Name Va
  * @returns Path to the temp file
  */
 function writeTempAls(xml: string): string {
-  const tmpPath = path.join(os.tmpdir(), `als-file-test-${Date.now()}-${Math.random().toString(36).slice(2)}.als`);
+  const tmpPath = path.join(
+    os.tmpdir(),
+    `als-file-test-${Date.now()}-${Math.random().toString(36).slice(2)}.als`,
+  );
 
   fs.writeFileSync(tmpPath, zlib.gzipSync(Buffer.from(xml, "utf8")));
 
@@ -54,9 +63,9 @@ describe("readAls / writeAls round-trip", () => {
     try {
       writeAls(tmpPath, SAMPLE_XML);
 
-      const tmpFiles = fs.readdirSync(dir).filter(
-        (f) => f.startsWith(base) && f.includes(".tmp-"),
-      );
+      const tmpFiles = fs
+        .readdirSync(dir)
+        .filter((f) => f.startsWith(base) && f.includes(".tmp-"));
 
       expect(tmpFiles).toHaveLength(0);
     } finally {
@@ -100,23 +109,31 @@ describe("assertOnlyEnvelopeChanged", () => {
   const AFTER_ENV = `<Ableton><MidiClip Id="0"><Name Value="${CLIP_NAME}" /><Envelopes><AutomationEnvelope Id="0"><EnvelopeTarget><PointeeId Value="23005" /></EnvelopeTarget></AutomationEnvelope></Envelopes></MidiClip></Ableton>`;
 
   it("passt bei reiner Envelope-Aenderung im Ziel-Clip", () => {
-    expect(() => assertOnlyEnvelopeChanged(BEFORE, AFTER_ENV, CLIP_NAME)).not.toThrow();
+    expect(() =>
+      assertOnlyEnvelopeChanged(BEFORE, AFTER_ENV, CLIP_NAME),
+    ).not.toThrow();
   });
 
   it("wirft bei Aenderung im prefix (ausserhalb des Clips)", () => {
     const badAfter = AFTER_ENV.replace("<Ableton>", "<Ableton2>");
 
-    expect(() => assertOnlyEnvelopeChanged(BEFORE, badAfter, CLIP_NAME)).toThrow(/prefix/);
+    expect(() =>
+      assertOnlyEnvelopeChanged(BEFORE, badAfter, CLIP_NAME),
+    ).toThrow(/prefix/);
   });
 
   it("wirft bei Aenderung im suffix (ausserhalb des Clips)", () => {
     const badAfter = AFTER_ENV.replace("</Ableton>", "</Ableton2>");
 
-    expect(() => assertOnlyEnvelopeChanged(BEFORE, badAfter, CLIP_NAME)).toThrow(/suffix/);
+    expect(() =>
+      assertOnlyEnvelopeChanged(BEFORE, badAfter, CLIP_NAME),
+    ).toThrow(/suffix/);
   });
 
   it("passt wenn beide identisch sind (keine Aenderung)", () => {
-    expect(() => assertOnlyEnvelopeChanged(BEFORE, BEFORE, CLIP_NAME)).not.toThrow();
+    expect(() =>
+      assertOnlyEnvelopeChanged(BEFORE, BEFORE, CLIP_NAME),
+    ).not.toThrow();
   });
 
   it("duplikat-Clips: nur Ziel-Clip aendert sich → kein Fehler", () => {
@@ -126,7 +143,9 @@ describe("assertOnlyEnvelopeChanged", () => {
     const beforeXml = `<Root>${OTHER_CLIP}${TARGET_BEFORE}</Root>`;
     const afterXml = `<Root>${OTHER_CLIP}${TARGET_AFTER}</Root>`;
 
-    expect(() => assertOnlyEnvelopeChanged(beforeXml, afterXml, CLIP_NAME)).not.toThrow();
+    expect(() =>
+      assertOnlyEnvelopeChanged(beforeXml, afterXml, CLIP_NAME),
+    ).not.toThrow();
   });
 
   it("duplikat-Clips: Aenderung im anderen Clip → wirft", () => {
@@ -136,6 +155,8 @@ describe("assertOnlyEnvelopeChanged", () => {
     const beforeXml = `<Root>${OTHER_BEFORE}${TARGET_CLIP}</Root>`;
     const afterXml = `<Root>${OTHER_AFTER}${TARGET_CLIP}</Root>`;
 
-    expect(() => assertOnlyEnvelopeChanged(beforeXml, afterXml, CLIP_NAME)).toThrow(/Unerwartete/);
+    expect(() =>
+      assertOnlyEnvelopeChanged(beforeXml, afterXml, CLIP_NAME),
+    ).toThrow(/Unerwartete/);
   });
 });

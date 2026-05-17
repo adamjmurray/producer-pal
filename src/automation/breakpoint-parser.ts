@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import  { type Breakpoint } from "#src/automation/breakpoint-validator.ts";
+import { type Breakpoint } from "#src/automation/breakpoint-validator.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 /**
@@ -42,12 +42,16 @@ export function parseBreakpoints(input: string): Breakpoint[] {
     const value = Number(rawValue);
 
     if (!Number.isFinite(time)) {
-      console.warn(`parseBreakpoints: skipping line with non-numeric time: ${trimmed}`);
+      console.warn(
+        `parseBreakpoints: skipping line with non-numeric time: ${trimmed}`,
+      );
       continue;
     }
 
     if (!Number.isFinite(value)) {
-      console.warn(`parseBreakpoints: skipping line with non-numeric value: ${trimmed}`);
+      console.warn(
+        `parseBreakpoints: skipping line with non-numeric value: ${trimmed}`,
+      );
       continue;
     }
 

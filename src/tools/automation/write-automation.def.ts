@@ -21,7 +21,12 @@ export const toolDefWriteAutomation = defineTool("ppal-write-automation", {
     parameter: z.coerce.string().describe("parameter name or index"),
     breakpoints: z
       .string()
-      .describe("one 'time=value' per line, time in beats from clip start, value in raw parameter units"),
-    clear: z.coerce.boolean().optional().describe("clear existing envelope first (default true)"),
+      .describe(
+        "one 'time=value' per line, time in beats from clip start, value in raw parameter units",
+      ),
+    clear: z.coerce
+      .boolean()
+      .optional()
+      .describe("clear existing envelope first (default true)"),
   },
 });

@@ -4,13 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
-import { buildEnvelopeXml, injectClipEnvelope, locateClipBlock } from "./als-envelope-writer.ts";
+import {
+  buildEnvelopeXml,
+  injectClipEnvelope,
+  locateClipBlock,
+} from "./als-envelope-writer.ts";
 
 const FIX = `<Ableton><Tracks><MidiTrack Id="18"><Name><UserName Value="Spike Instr" /></Name><DeviceChain><Devices><Operator Id="0"><Frequency><Manual Value="12000" /><AutomationTarget Id="23005"><LockEnvelope Value="0" /></AutomationTarget></Frequency></Operator></Devices></DeviceChain><ClipSlotList><ClipSlot><ClipSlot Id="0"><Value><MidiClip Id="0" Time="0"><CurrentStart Value="0" /><Name Value="Spike Test" /><Envelopes><Envelopes /></Envelopes><Disabled Value="false" /></MidiClip></Value></ClipSlot></ClipSlot></ClipSlotList></MidiTrack></Tracks></Ableton>`;
 
-const TWO = `<Ableton><Tracks><MidiTrack Id="1"><ClipSlotList>`+
-  `<MidiClip Id="0"><Name Value="Other" /><Envelopes><Envelopes /></Envelopes></MidiClip>`+
-  `<MidiClip Id="1"><Name Value="Target" /><Envelopes><Envelopes /></Envelopes></MidiClip>`+
+const TWO =
+  `<Ableton><Tracks><MidiTrack Id="1"><ClipSlotList>` +
+  `<MidiClip Id="0"><Name Value="Other" /><Envelopes><Envelopes /></Envelopes></MidiClip>` +
+  `<MidiClip Id="1"><Name Value="Target" /><Envelopes><Envelopes /></Envelopes></MidiClip>` +
   `</ClipSlotList></MidiTrack></Tracks></Ableton>`;
 
 describe("locateClipBlock", () => {
@@ -32,13 +37,16 @@ describe("locateClipBlock", () => {
   });
 
   it("wirft bei unbekanntem Clip", () => {
-    expect(() => locateClipBlock(FIX, "NichtVorhanden")).toThrow(/nicht gefunden/);
+    expect(() => locateClipBlock(FIX, "NichtVorhanden")).toThrow(
+      /nicht gefunden/,
+    );
   });
 
   it("trifft den ersten Clip wenn beide denselben Namen haetten", () => {
-    const dup = `<Ableton>`+
-      `<MidiClip Id="0"><Name Value="Dup" /><Envelopes><Envelopes /></Envelopes></MidiClip>`+
-      `<MidiClip Id="1"><Name Value="Dup" /><Envelopes><Envelopes /></Envelopes></MidiClip>`+
+    const dup =
+      `<Ableton>` +
+      `<MidiClip Id="0"><Name Value="Dup" /><Envelopes><Envelopes /></Envelopes></MidiClip>` +
+      `<MidiClip Id="1"><Name Value="Dup" /><Envelopes><Envelopes /></Envelopes></MidiClip>` +
       `</Ableton>`;
     const loc = locateClipBlock(dup, "Dup");
 
@@ -48,7 +56,10 @@ describe("locateClipBlock", () => {
 
 describe("buildEnvelopeXml", () => {
   it("baut ClipEnvelope mit PointeeId, Anchor-Event und FloatEvents", () => {
-    const s = buildEnvelopeXml(23005, [ { time: 0, value: 200 }, { time: 2, value: 8000 } ]);
+    const s = buildEnvelopeXml(23005, [
+      { time: 0, value: 200 },
+      { time: 2, value: 8000 },
+    ]);
 
     // Must start with ClipEnvelope, NOT AutomationEnvelope
     expect(s.startsWith('<ClipEnvelope Id="0">')).toBe(true);
@@ -61,12 +72,17 @@ describe("buildEnvelopeXml", () => {
     expect(s).toContain('<FloatEvent Id="2" Time="2" Value="8000" />');
     expect(s).toContain('<IsTransformPending Value="false" />');
     // Must have LoopSlot and ScrollerTimePreserver
-    expect(s).toContain('<LoopSlot><Value /></LoopSlot>');
-    expect(s).toContain('<ScrollerTimePreserver><LeftTime Value="0" /><RightTime Value="0" /></ScrollerTimePreserver>');
+    expect(s).toContain("<LoopSlot><Value /></LoopSlot>");
+    expect(s).toContain(
+      '<ScrollerTimePreserver><LeftTime Value="0" /><RightTime Value="0" /></ScrollerTimePreserver>',
+    );
   });
 
   it("rendert kleine/grosse Floats ohne Sci-Notation", () => {
-    const s = buildEnvelopeXml(1, [ { time: 0.0000001, value: 1e21 }, { time: 0.30000001, value: 745.5 } ]);
+    const s = buildEnvelopeXml(1, [
+      { time: 0.0000001, value: 1e21 },
+      { time: 0.30000001, value: 745.5 },
+    ]);
 
     expect(s).not.toMatch(/[Ee][+-]?\d/);
     // Anchor at -63072000 with Value = first bp value (1e21, large int)
@@ -83,7 +99,10 @@ describe("buildEnvelopeXml", () => {
 
 describe("injectClipEnvelope", () => {
   it("ersetzt leeres Envelopes im Ziel-Clip (Doppel-Nesting mit ClipEnvelope)", () => {
-    const breakpoints = [ { time: 0, value: 200 }, { time: 4, value: 400 } ];
+    const breakpoints = [
+      { time: 0, value: 200 },
+      { time: 4, value: 400 },
+    ];
     const out = injectClipEnvelope(FIX, "Spike Test", 23005, breakpoints);
 
     expect(out).toContain('<PointeeId Value="23005" />');
@@ -102,7 +121,7 @@ describe("injectClipEnvelope", () => {
   });
 
   it("behaelt aeussere Envelopes-Huelle (Ableton-Nesting Regression)", () => {
-    const breakpoints = [ { time: 0, value: 100 } ];
+    const breakpoints = [{ time: 0, value: 100 }];
     const out = injectClipEnvelope(FIX, "Spike Test", 23005, breakpoints);
     // Isolate clip block
     const clipLoc = locateClipBlock(out, "Spike Test");
@@ -113,7 +132,7 @@ describe("injectClipEnvelope", () => {
 
     expect(openCount).toBe(2);
     // Exactly one <ClipEnvelope (not AutomationEnvelope)
-    expect((clipBlock.match(/<ClipEnvelope/g) ?? [])).toHaveLength(1);
+    expect(clipBlock.match(/<ClipEnvelope/g) ?? []).toHaveLength(1);
     expect(clipBlock).not.toContain("AutomationEnvelope");
     // No remaining self-closing <Envelopes />
     expect(clipBlock).not.toMatch(/<Envelopes\s*\/>/);
@@ -125,33 +144,48 @@ describe("injectClipEnvelope", () => {
     const out = injectClipEnvelope(TWO, "Target", 42, [{ time: 0, value: 1 }]);
 
     // 'Other' clip unchanged (still has <Envelopes><Envelopes />)
-    expect(out).toContain('<MidiClip Id="0"><Name Value="Other" /><Envelopes><Envelopes /></Envelopes></MidiClip>');
+    expect(out).toContain(
+      '<MidiClip Id="0"><Name Value="Other" /><Envelopes><Envelopes /></Envelopes></MidiClip>',
+    );
     // 'Target' clip now has double-nesting with ClipEnvelope
-    expect(out).toMatch(/<MidiClip Id="1"><Name Value="Target" \/(?:><Envelopes){2}><ClipEnvelope/);
+    expect(out).toMatch(
+      /<MidiClip Id="1"><Name Value="Target" \/(?:><Envelopes){2}><ClipEnvelope/,
+    );
     // exactly one remaining empty-envelopes place (in Other clip)
-    expect((out.match(/<Envelopes \/>/g) ?? [])).toHaveLength(1);
+    expect(out.match(/<Envelopes \/>/g) ?? []).toHaveLength(1);
   });
 
   it("wirft bei unbekanntem Clip", () => {
-    expect(() => injectClipEnvelope(FIX, "Nope", 1, [{ time: 0, value: 1 }])).toThrow(/nicht gefunden/);
+    expect(() =>
+      injectClipEnvelope(FIX, "Nope", 1, [{ time: 0, value: 1 }]),
+    ).toThrow(/nicht gefunden/);
   });
 
   it("wirft wenn Clip keine leere Envelopes-Sektion hat", () => {
-    const filled = FIX.replace("<Envelopes><Envelopes /></Envelopes>", "<Envelopes><ClipEnvelope/></Envelopes>");
+    const filled = FIX.replace(
+      "<Envelopes><Envelopes /></Envelopes>",
+      "<Envelopes><ClipEnvelope/></Envelopes>",
+    );
 
-    expect(() => injectClipEnvelope(filled, "Spike Test", 1, [{ time: 0, value: 1 }])).toThrow(/bereits|keine/);
+    expect(() =>
+      injectClipEnvelope(filled, "Spike Test", 1, [{ time: 0, value: 1 }]),
+    ).toThrow(/bereits|keine/);
   });
 
   it("strukturelle Treue: Tag-Reihenfolge entspricht Ableton-Ground-Truth", () => {
     // Build a small inject and normalize all numeric attribute values to "N"
-    const breakpoints = [ { time: 1, value: 127 }, { time: 2, value: 64 } ];
+    const breakpoints = [
+      { time: 1, value: 127 },
+      { time: 2, value: 64 },
+    ];
     const out = injectClipEnvelope(FIX, "Spike Test", 23005, breakpoints);
     const clipLoc = locateClipBlock(out, "Spike Test");
     const clipBlock = clipLoc.block;
 
     // Extract the Envelopes section
     const envStart = clipBlock.indexOf("<Envelopes>");
-    const envEnd = clipBlock.lastIndexOf("</Envelopes>") + "</Envelopes>".length;
+    const envEnd =
+      clipBlock.lastIndexOf("</Envelopes>") + "</Envelopes>".length;
     const envSection = clipBlock.slice(envStart, envEnd);
 
     // Normalize all Id="N", Value="N", Time="N" (including negative) to "N"
@@ -163,31 +197,31 @@ describe("injectClipEnvelope", () => {
     // Expected skeleton derived from ground-truth tag structure (3 FloatEvents: anchor + 2 bps)
     const expected =
       `<Envelopes>` +
-        `<Envelopes>` +
-          `<ClipEnvelope Id="N">` +
-            `<EnvelopeTarget>` +
-              `<PointeeId Value="N" />` +
-            `</EnvelopeTarget>` +
-            `<Automation>` +
-              `<Events>` +
-                `<FloatEvent Id="N" Time="N" Value="N" />` +
-                `<FloatEvent Id="N" Time="N" Value="N" />` +
-                `<FloatEvent Id="N" Time="N" Value="N" />` +
-              `</Events>` +
-              `<AutomationTransformViewState>` +
-                `<IsTransformPending Value="false" />` +
-                `<TimeAndValueTransforms />` +
-              `</AutomationTransformViewState>` +
-            `</Automation>` +
-            `<LoopSlot>` +
-              `<Value />` +
-            `</LoopSlot>` +
-            `<ScrollerTimePreserver>` +
-              `<LeftTime Value="N" />` +
-              `<RightTime Value="N" />` +
-            `</ScrollerTimePreserver>` +
-          `</ClipEnvelope>` +
-        `</Envelopes>` +
+      `<Envelopes>` +
+      `<ClipEnvelope Id="N">` +
+      `<EnvelopeTarget>` +
+      `<PointeeId Value="N" />` +
+      `</EnvelopeTarget>` +
+      `<Automation>` +
+      `<Events>` +
+      `<FloatEvent Id="N" Time="N" Value="N" />` +
+      `<FloatEvent Id="N" Time="N" Value="N" />` +
+      `<FloatEvent Id="N" Time="N" Value="N" />` +
+      `</Events>` +
+      `<AutomationTransformViewState>` +
+      `<IsTransformPending Value="false" />` +
+      `<TimeAndValueTransforms />` +
+      `</AutomationTransformViewState>` +
+      `</Automation>` +
+      `<LoopSlot>` +
+      `<Value />` +
+      `</LoopSlot>` +
+      `<ScrollerTimePreserver>` +
+      `<LeftTime Value="N" />` +
+      `<RightTime Value="N" />` +
+      `</ScrollerTimePreserver>` +
+      `</ClipEnvelope>` +
+      `</Envelopes>` +
       `</Envelopes>`;
 
     expect(normalized).toBe(expected);

@@ -20,7 +20,10 @@ export interface ParamRange {
  * @param range - Allowed min/max value range for the parameter
  * @returns The validated breakpoints array (unchanged)
  */
-export function validateBreakpoints(bp: Breakpoint[], range: ParamRange): Breakpoint[] {
+export function validateBreakpoints(
+  bp: Breakpoint[],
+  range: ParamRange,
+): Breakpoint[] {
   if (bp.length === 0) {
     throw new Error("Breakpoint-Liste braucht mindestens 1 Punkt");
   }
@@ -41,11 +44,15 @@ export function validateBreakpoints(bp: Breakpoint[], range: ParamRange): Breakp
     }
 
     if (p.time <= prev) {
-      throw new Error(`Breakpoints muessen nach time strikt aufsteigend sortiert sein`);
+      throw new Error(
+        `Breakpoints muessen nach time strikt aufsteigend sortiert sein`,
+      );
     }
 
     if (p.value < range.min || p.value > range.max) {
-      throw new Error(`value ${p.value} ausserhalb Param-Range ${range.min}..${range.max}`);
+      throw new Error(
+        `value ${p.value} ausserhalb Param-Range ${range.min}..${range.max}`,
+      );
     }
 
     prev = p.time;

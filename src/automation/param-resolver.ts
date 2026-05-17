@@ -34,11 +34,15 @@ export async function resolveParam(
 
   if (typeof parameter === "number") {
     if (!Number.isInteger(parameter)) {
-      throw new Error(`Parameter-Index muss ganzzahlig sein (war ${parameter})`);
+      throw new Error(
+        `Parameter-Index muss ganzzahlig sein (war ${parameter})`,
+      );
     }
 
     if (parameter < 0 || parameter >= params.length) {
-      throw new Error(`Parameter-Index ${parameter} ausserhalb 0..${params.length - 1}`);
+      throw new Error(
+        `Parameter-Index ${parameter} ausserhalb 0..${params.length - 1}`,
+      );
     }
 
     index = parameter;
@@ -55,7 +59,9 @@ export async function resolveParam(
   const p = params[index];
 
   if (p == null) {
-    throw new Error(`unerwartetes .als-Format: kein Parameter an Index ${index}`);
+    throw new Error(
+      `unerwartetes .als-Format: kein Parameter an Index ${index}`,
+    );
   }
 
   return { index, name: p.name, min: p.min, max: p.max };

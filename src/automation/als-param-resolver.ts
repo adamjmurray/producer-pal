@@ -64,8 +64,12 @@ function extractTrackName(trackBlock: string): string {
  * @param window - XML substring to search within
  * @returns min and max as numbers, or null if absent
  */
-function extractMinMax(window: string): { min: number | null; max: number | null } {
-  const rangeMatch = /<MidiControllerRange>([\S\s]*?)<\/MidiControllerRange>/.exec(window);
+function extractMinMax(window: string): {
+  min: number | null;
+  max: number | null;
+} {
+  const rangeMatch =
+    /<MidiControllerRange>([\S\s]*?)<\/MidiControllerRange>/.exec(window);
 
   if (rangeMatch == null) return { min: null, max: null };
 
@@ -113,7 +117,9 @@ function collectLeafParams(deviceSubtree: string): AlsParam[] {
     const automationTargetId = m[2];
 
     if (elementName == null || automationTargetId == null) {
-      throw new Error("unerwartetes .als-Format: Pflicht-Capture-Gruppen fehlen");
+      throw new Error(
+        "unerwartetes .als-Format: Pflicht-Capture-Gruppen fehlen",
+      );
     }
 
     // The full match spans from the open tag to just past <AutomationTarget Id="N"
@@ -141,7 +147,11 @@ function collectLeafParams(deviceSubtree: string): AlsParam[] {
  * @param deviceIndex - Zero-based index of the device within the track's Devices block
  * @returns Array of AlsParam for all automation-capable elements
  */
-export function listDeviceParams(xml: string, trackName: string, deviceIndex: number): AlsParam[] {
+export function listDeviceParams(
+  xml: string,
+  trackName: string,
+  deviceIndex: number,
+): AlsParam[] {
   // Find the MidiTrack block for this track name
   const midiTrackRe = /<MidiTrack\b[^>]*>[\S\s]*?<\/MidiTrack>/g;
   let trackBlock: string | null = null;
@@ -220,11 +230,15 @@ export function resolveAutomationTargetId(
   if (matches.length === 0) {
     const available = params.map((p) => p.element).join(", ");
 
-    throw new Error(`Param "${paramSelector}" nicht gefunden. verfuegbar: ${available}`);
+    throw new Error(
+      `Param "${paramSelector}" nicht gefunden. verfuegbar: ${available}`,
+    );
   }
 
   if (matches.length > 1 && occurrence == null) {
-    const ids = matches.map((p) => `${p.element}(id=${p.automationTargetId})`).join(", ");
+    const ids = matches
+      .map((p) => `${p.element}(id=${p.automationTargetId})`)
+      .join(", ");
 
     throw new Error(
       `Param "${paramSelector}" mehrdeutig — ${matches.length} Treffer: ${ids}. ` +

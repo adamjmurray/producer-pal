@@ -1,6 +1,3 @@
-// ENTRYPOINT: run via ./scripts/ppal-write-automation (bash wrapper, npx tsx).
-// Do NOT call `node scripts/ppal-write-automation.ts` directly: Node <22 fails
-// with ERR_UNKNOWN_FILE_EXTENSION. The wrapper is Node-version-proof.
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray

@@ -18,22 +18,38 @@ describe("validateBreakpoints", () => {
     expect(validateBreakpoints(bp, range)).toStrictEqual(bp);
   });
   it("wirft bei negativer time", () => {
-    expect(() => validateBreakpoints([{ time: -1, value: 200 }], range)).toThrow(/time .* >= 0/);
+    expect(() =>
+      validateBreakpoints([{ time: -1, value: 200 }], range),
+    ).toThrow(/time .* >= 0/);
   });
   it("wirft bei value ausserhalb range", () => {
-    expect(() => validateBreakpoints([{ time: 0, value: 99999 }], range)).toThrow(/20\.\.20000/);
+    expect(() =>
+      validateBreakpoints([{ time: 0, value: 99999 }], range),
+    ).toThrow(/20\.\.20000/);
   });
   it("wirft bei unsortierter time", () => {
-    expect(() => validateBreakpoints([{ time: 4, value: 200 }, { time: 1, value: 300 }], range)).toThrow(/aufsteigend/);
+    expect(() =>
+      validateBreakpoints(
+        [
+          { time: 4, value: 200 },
+          { time: 1, value: 300 },
+        ],
+        range,
+      ),
+    ).toThrow(/aufsteigend/);
   });
   it("wirft bei leerer Liste", () => {
     expect(() => validateBreakpoints([], range)).toThrow(/mindestens 1/);
   });
   it("wirft bei NaN time", () => {
-    expect(() => validateBreakpoints([{ time: Number.NaN, value: 200 }], range)).toThrow(/endlich|finite/i);
+    expect(() =>
+      validateBreakpoints([{ time: Number.NaN, value: 200 }], range),
+    ).toThrow(/endlich|finite/i);
   });
   it("wirft bei NaN value", () => {
-    expect(() => validateBreakpoints([{ time: 0, value: Number.NaN }], range)).toThrow(/endlich|finite/i);
+    expect(() =>
+      validateBreakpoints([{ time: 0, value: Number.NaN }], range),
+    ).toThrow(/endlich|finite/i);
   });
   it("wirft bei doppelter (gleicher) time", () => {
     expect(() =>
