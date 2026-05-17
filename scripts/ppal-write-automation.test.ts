@@ -259,10 +259,13 @@ describe("scope routing", () => {
     );
     spy.mockRestore();
   });
-  it("scope=arrangement mit --target -> Stub-Pfad (noch nicht verdrahtet) + Exit 1", () => {
+  it("scope=arrangement mit --target -> verdrahteter Pfad (Lesefehler nicht-existente .als) + Exit 1", () => {
     const spy = vi
       .spyOn(process.stderr, "write")
       .mockImplementation(() => true);
+    // --force ueberspringt open-set-guard -> readAls("/x.als") wirft ->
+    // catch in runCli -> Exit 1. Beweist: arrangement-Pfad ist verdrahtet
+    // (kein Stub mehr, kein "noch nicht verdrahtet").
     const code = runCli([
       "write",
       "--scope",
@@ -273,12 +276,14 @@ describe("scope routing", () => {
       "/x.als",
       "--track",
       "X",
+      "--force",
     ]);
 
     expect(code).toBe(1);
-    expect(spy.mock.calls.map((c) => String(c[0])).join("")).toContain(
-      "noch nicht verdrahtet",
-    );
+    const stderr = spy.mock.calls.map((c) => String(c[0])).join("");
+
+    expect(stderr).not.toContain("noch nicht verdrahtet");
+    expect(stderr).toContain("FEHLER:");
     spy.mockRestore();
   });
   it("scope=clip Default unberührt (kein scope-Fehler bei fehlenden Flags)", () => {
@@ -597,4 +602,75 @@ it("REGRESSION: scope=clip default erzeugt byte-identischen Clip-Envelope-Output
   expect(reference).toContain("<ClipEnvelope");
   expect(reference).toContain('<PointeeId Value="23005" />');
   expect(reference.length).toBeGreaterThan(xml.length);
+});
+
+describe("e2e scope=arrangement", () => {
+  const SRC =
+    "/Users/macuser/Desktop/AIbleton/_throwaway-automation-test Project/_throwaway-automation-test.als";
+
+  it("schreibt Mixer-Volume-Arrangement-Automation in Wegwerf-.als + verifiziert", () => {
+    const tmp = SRC.replace(/\.als$/, ".s2e2e.als");
+
+    fs.copyFileSync(SRC, tmp);
+
+    try {
+      const code = runCli([
+        "write",
+        "--scope",
+        "arrangement",
+        "--als",
+        tmp,
+        "--track",
+        "Spike Instr",
+        "--target",
+        "mixer:volume",
+        "--breakpoints",
+        "0=0.5,4=1.0,8=0.25",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+      const out = readAls(tmp);
+
+      // Writer bewahrt Original-Einrueckung (Mitigation A) -> ws-tolerant
+      expect(out).toMatch(/<AutomationEnvelopes>\s*<Envelopes>/);
+      expect(out).toContain("<AutomationEnvelope ");
+    } finally {
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
+
+  it("ändert NUR den AutomationEnvelopes-Block (Mitigation B)", () => {
+    const tmp = SRC.replace(/\.als$/, ".s2assert.als");
+
+    fs.copyFileSync(SRC, tmp);
+
+    try {
+      const before = readAls(tmp);
+      const code = runCli([
+        "write",
+        "--scope",
+        "arrangement",
+        "--als",
+        tmp,
+        "--track",
+        "Spike Instr",
+        "--target",
+        "mixer:volume",
+        "--breakpoints",
+        "0=0.5,8=1.0",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+      const after = readAls(tmp);
+      const STRIP = /<AutomationEnvelopes>[^]*?<\/AutomationEnvelopes>/g;
+
+      expect(before.replaceAll(STRIP, "")).toBe(after.replaceAll(STRIP, ""));
+    } finally {
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
 });

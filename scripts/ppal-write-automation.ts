@@ -4,6 +4,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { injectArrangementEnvelope } from "#src/automation/als-arrangement-writer.ts";
 import {
   injectClipEnvelope,
   locateClipBlock,
@@ -18,6 +19,8 @@ import {
 import {
   listDeviceParams,
   resolveAutomationTargetId,
+  resolveMixerTarget,
+  type AlsParam,
 } from "#src/automation/als-param-resolver.ts";
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
@@ -285,16 +288,115 @@ function checkScope(flags: Record<string, string>): number | null {
 }
 
 /**
- * Temporary stub for the arrangement-scope writer (wired up in Task 5).
- * @param _flags - Parsed flag map (unused until Task 5)
- * @returns Exit code 1 (not yet implemented)
+ * Resolve the arrangement automation target into an AlsParam.
+ * @param xml - The .als XML content
+ * @param flags - Parsed flag map
+ * @param track - Track name
+ * @param target - Value of --target
+ * @returns Resolved AlsParam, or null if --target is invalid
  */
-function runWriteArrangement(_flags: Record<string, string>): number {
-  process.stderr.write(
-    "FEHLER: arrangement-writer noch nicht verdrahtet (Task 5, blockiert durch Fixture-Gate T0)\n",
+function resolveArrangementTarget(
+  xml: string,
+  flags: Record<string, string>,
+  track: string,
+  target: string,
+): AlsParam | null {
+  if (target === "device") {
+    return resolveAutomationTargetId(
+      xml,
+      track,
+      Number(flags.device ?? 0),
+      flags.param ?? "",
+    );
+  }
+
+  if (/^mixer:(volume|pan|send:\d+)$/.test(target)) {
+    return resolveMixerTarget(xml, track, target.slice("mixer:".length));
+  }
+
+  return null;
+}
+
+/**
+ * Run the `write` subcommand for scope=arrangement: inject an arrangement
+ * automation envelope into a track's AutomationEnvelopes block.
+ * @param flags - Parsed flag map
+ * @returns Exit code (0 success, 1 error, 2 open-set guard)
+ */
+function runWriteArrangement(flags: Record<string, string>): number {
+  const alsPath = flags.als;
+  const track = flags.track;
+  const target = flags.target;
+  const force = flags.force === "true";
+
+  if (alsPath == null || track == null) {
+    process.stderr.write("FEHLER: --als und --track sind erforderlich\n");
+
+    return 1;
+  }
+
+  if (isSetLikelyOpen() && !force) {
+    process.stderr.write(
+      "Set scheint offen (Port 3350). Schliesse es in Ableton oder nutze --force.\n",
+    );
+
+    return 2;
+  }
+
+  const xml = readAls(alsPath);
+  const resolved = resolveArrangementTarget(xml, flags, track, target ?? "");
+
+  if (resolved == null) {
+    process.stderr.write(
+      `FEHLER: ungültiges --target "${target ?? ""}" (mixer:volume|mixer:pan|mixer:send:<n>|device)\n`,
+    );
+
+    return 1;
+  }
+
+  const bps = parseBreakpoints((flags.breakpoints ?? "").replaceAll(",", "\n"));
+  const range =
+    resolved.min != null && resolved.max != null
+      ? { min: resolved.min, max: resolved.max }
+      : null;
+  const validated = range != null ? validateBreakpoints(bps, range) : bps;
+
+  backupAls(alsPath);
+  const updated = injectArrangementEnvelope(
+    xml,
+    track,
+    resolved.automationTargetId,
+    validated,
   );
 
-  return 1;
+  const STRIP = /<AutomationEnvelopes>[^]*?<\/AutomationEnvelopes>/g;
+
+  if (xml.replaceAll(STRIP, "") !== updated.replaceAll(STRIP, "")) {
+    process.stderr.write(
+      "FEHLER: unerwartete Änderung außerhalb des AutomationEnvelopes-Blocks\n",
+    );
+
+    return 1;
+  }
+
+  writeAls(alsPath, updated);
+
+  const reparsed = readAls(alsPath);
+  // Der Arrangement-Writer bewahrt die Original-Einrueckung (Mitigation A),
+  // daher whitespace-toleranter Verify-Match statt exaktem Tag-Vergleich.
+  const ok = /<AutomationEnvelopes>\s*<Envelopes>/.test(reparsed);
+
+  process.stdout.write(
+    `${JSON.stringify({
+      scope: "arrangement",
+      target,
+      track,
+      written: validated.length,
+      verified: ok,
+    })}\n`,
+  );
+
+  return ok ? 0 : 1;
 }
 
 /**
