@@ -113,6 +113,12 @@ describe("locateClipBlock", () => {
       /nicht gefunden/,
     );
   });
+
+  it("wirft bei nicht geschlossenem <MidiClip> (fehlendes End-Tag)", () => {
+    const xml = '<Ableton><MidiClip Time="0"><Name Value="Offen" /></Ableton>';
+
+    expect(() => locateClipBlock(xml, "Offen")).toThrow(/nicht geschlossen/i);
+  });
 });
 
 describe("buildEnvelopeXml", () => {

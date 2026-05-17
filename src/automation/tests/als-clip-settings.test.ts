@@ -238,6 +238,34 @@ describe("patchClipSetting Positions-Anker (Plan-Anpassung A)", () => {
     );
   });
 
+  it("LaunchMode: Startmarke vorhanden aber Endmarke fehlt wirft mit Endmarke-Meldung", () => {
+    const clip =
+      '<MidiClip Time="0"><Name Value="C" /><Color Value="58" />' +
+      '<LaunchMode Value="0" /></MidiClip>';
+
+    expect(() => patchClipSetting(clip, "LaunchMode", "2")).toThrow(
+      /anker.*endmarke fehlt/i,
+    );
+  });
+
+  it("FollowAction-Key ohne <FollowAction>-Block wirft", () => {
+    const clip = '<MidiClip Time="0"><Name Value="C" /></MidiClip>';
+
+    expect(() => patchClipSetting(clip, "FollowTime", "8")).toThrow(
+      /<followaction> im clip nicht gefunden/i,
+    );
+  });
+
+  it("FollowAction-Block vorhanden aber Ziel-Tag darin fehlt wirft", () => {
+    const clip =
+      '<MidiClip Time="0"><Name Value="C" />' +
+      '<FollowAction><IsLinked Value="true" /></FollowAction></MidiClip>';
+
+    expect(() => patchClipSetting(clip, "FollowTime", "8")).toThrow(
+      /<followtime> in <followaction> nicht gefunden/i,
+    );
+  });
+
   it("Top-Level-Scalar mehrfach im Fenster -> wirft (kein Off-Target)", () => {
     const clip =
       '<MidiClip Time="0"><Name Value="C" /><Color Value="58" />' +
