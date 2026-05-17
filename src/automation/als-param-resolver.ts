@@ -338,7 +338,9 @@ export function resolveMixerTarget(
   if (sendMatch) {
     const idx = Number(sendMatch[1]);
     const holders = [
-      ...mixer.matchAll(/<TrackSendHolder Id="(\d+)">[^]*?<\/TrackSendHolder>/g),
+      ...mixer.matchAll(
+        /<TrackSendHolder Id="(\d+)">[^]*?<\/TrackSendHolder>/g,
+      ),
     ];
     const holder = holders.find((h) => Number(h[1]) === idx);
 

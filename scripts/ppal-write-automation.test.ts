@@ -9,7 +9,9 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { runCli } from "./ppal-write-automation.ts";
+import * as alsFile from "#src/automation/als-file.ts";
 import { readAls } from "#src/automation/als-file.ts";
+import * as envelopeWriter from "#src/automation/als-envelope-writer.ts";
 import { injectClipEnvelope } from "#src/automation/als-envelope-writer.ts";
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 
@@ -215,7 +217,7 @@ describe("ppal-write-automation CLI", () => {
 });
 
 describe("scope routing", () => {
-  it('unbekanntes --scope -> Fehlermeldung + Exit 1', () => {
+  it("unbekanntes --scope -> Fehlermeldung + Exit 1", () => {
     const spy = vi
       .spyOn(process.stderr, "write")
       .mockImplementation(() => true);
@@ -290,6 +292,297 @@ describe("scope routing", () => {
 
     expect(out).not.toContain("unbekanntes --scope");
     spy.mockRestore();
+  });
+});
+
+describe("CLI Error- und Args-Branches (Slice 2)", () => {
+  /**
+   * Sammelt stderr-Ausgaben waehrend des Callbacks und gibt sie zurueck.
+   * @param fn - Auszufuehrender Code, dessen stderr abgefangen wird
+   * @returns Gesammelte stderr-Ausgabe als String
+   */
+  function captureStderr(fn: () => void): string {
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      fn();
+
+      return spy.mock.calls.map((c) => String(c[0])).join("");
+    } finally {
+      spy.mockRestore();
+    }
+  }
+
+  it("unbekanntes Subcommand -> Fehlermeldung + Exit 1", () => {
+    let code = 0;
+    const out = captureStderr(() => {
+      code = runCli(["frobnicate"]);
+    });
+
+    expect(code).toBe(1);
+    expect(out).toContain('Unbekanntes Subcommand "frobnicate"');
+  });
+
+  it("list ohne --als/--track -> Fehlermeldung + Exit 1", () => {
+    let code = 0;
+    const out = captureStderr(() => {
+      code = runCli(["list"]);
+    });
+
+    expect(code).toBe(1);
+    expect(out).toContain("--als und --track sind erforderlich");
+  });
+
+  it("parseFlags ignoriert Positional-Argumente ohne -- (else-Zweig)", () => {
+    const tmpPath = createTmpAls();
+
+    try {
+      let code = 1;
+
+      captureStderr(() => {
+        code = runCli([
+          "list",
+          "POSITIONAL",
+          "--als",
+          tmpPath,
+          "extra",
+          "--track",
+          "T",
+        ]);
+      });
+
+      expect(code).toBe(0);
+    } finally {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+    }
+  });
+
+  it("write mit --target-id loest Range via listDeviceParams auf (matched)", () => {
+    const tmpPath = createTmpAls();
+
+    try {
+      const code = runCli([
+        "write",
+        "--als",
+        tmpPath,
+        "--track",
+        "T",
+        "--clip",
+        "C",
+        "--param",
+        "ignored",
+        "--target-id",
+        "23005",
+        "--breakpoints",
+        "0=200,4=8000",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+
+      const written = zlib
+        .gunzipSync(fs.readFileSync(tmpPath))
+        .toString("utf8");
+
+      expect(written).toContain('<PointeeId Value="23005"');
+    } finally {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
+  });
+
+  it("write mit --device-Flag setzt device-Index (parseWriteArgs Ternary)", () => {
+    const tmpPath = createTmpAls();
+
+    try {
+      const code = runCli([
+        "write",
+        "--als",
+        tmpPath,
+        "--track",
+        "T",
+        "--clip",
+        "C",
+        "--param",
+        "Filter Freq",
+        "--device",
+        "0",
+        "--breakpoints",
+        "0=200,4=8000",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+    } finally {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
+  });
+
+  it("write mit --target-id ohne Treffer -> resolvedParam=null (matched ?? null)", () => {
+    const tmpPath = createTmpAls();
+
+    try {
+      const code = runCli([
+        "write",
+        "--als",
+        tmpPath,
+        "--track",
+        "T",
+        "--clip",
+        "C",
+        "--param",
+        "ignored",
+        "--target-id",
+        "99999",
+        "--breakpoints",
+        "0=200,4=8000",
+        "--force",
+      ]);
+
+      // Track gefunden, aber keine Param mit id 99999 -> matched=undefined
+      // -> resolvedParam=null -> Validierung ohne Range, Write trotzdem ok.
+      expect(code).toBe(0);
+
+      const written = zlib
+        .gunzipSync(fs.readFileSync(tmpPath))
+        .toString("utf8");
+
+      expect(written).toContain('<PointeeId Value="99999"');
+    } finally {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
+  });
+
+  it("open-set-Guard ohne --force -> Exit 2 wenn Set offen scheint", () => {
+    const tmpPath = createTmpAls();
+    const guardSpy = vi.spyOn(alsFile, "isSetLikelyOpen").mockReturnValue(true);
+
+    try {
+      let code = 0;
+      const out = captureStderr(() => {
+        code = runCli([
+          "write",
+          "--als",
+          tmpPath,
+          "--track",
+          "T",
+          "--clip",
+          "C",
+          "--param",
+          "Filter Freq",
+          "--breakpoints",
+          "0=200,4=8000",
+        ]);
+      });
+
+      expect(code).toBe(2);
+      expect(out).toContain("Set scheint offen (Port 3350)");
+      // Guard greift VOR dem Backup: keine .bak-Datei geschrieben.
+      expect(fs.existsSync(`${tmpPath}.bak`)).toBe(false);
+    } finally {
+      guardSpy.mockRestore();
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
+  });
+
+  it("Verifizierung schlaegt fehl wenn PointeeId nach Write fehlt -> Exit 1", () => {
+    const tmpPath = createTmpAls();
+    // injectClipEnvelope liefert das XML unveraendert zurueck: dadurch fehlt
+    // die PointeeId im readBack -> Verifizierungs-Guard muss Exit 1 liefern.
+    const injSpy = vi
+      .spyOn(envelopeWriter, "injectClipEnvelope")
+      .mockImplementation((xml: string) => xml);
+
+    try {
+      let code = 0;
+      const out = captureStderr(() => {
+        code = runCli([
+          "write",
+          "--als",
+          tmpPath,
+          "--track",
+          "T",
+          "--clip",
+          "C",
+          "--param",
+          "Filter Freq",
+          "--breakpoints",
+          "0=200,4=8000",
+          "--force",
+        ]);
+      });
+
+      expect(code).toBe(1);
+      expect(out).toContain("Verifizierung fehlgeschlagen");
+    } finally {
+      injSpy.mockRestore();
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
+  });
+
+  it("runCli faengt geworfene Fehler ab -> Exit 1 (catch-Zweig)", () => {
+    let code = 0;
+    const out = captureStderr(() => {
+      code = runCli([
+        "write",
+        "--als",
+        "/nicht/vorhanden/datei-xyz.als",
+        "--track",
+        "T",
+        "--clip",
+        "C",
+        "--param",
+        "Filter Freq",
+        "--breakpoints",
+        "0=200",
+        "--force",
+      ]);
+    });
+
+    expect(code).toBe(1);
+    expect(out).toMatch(/FEHLER:/);
+  });
+
+  it("write mit --target-id faellt bei unbekanntem Track auf null-Range zurueck (catch-Zweig)", () => {
+    const tmpPath = createTmpAls();
+
+    try {
+      const code = runCli([
+        "write",
+        "--als",
+        tmpPath,
+        "--track",
+        "GIBT-ES-NICHT",
+        "--clip",
+        "C",
+        "--param",
+        "ignored",
+        "--target-id",
+        "23005",
+        "--breakpoints",
+        "0=200,4=8000",
+        "--force",
+      ]);
+
+      // listDeviceParams wirft (Track unbekannt) -> catch -> resolvedParam=null
+      // -> Validierung ohne Range -> Write gegen Clip "C" erfolgreich.
+      expect(code).toBe(0);
+
+      const written = zlib
+        .gunzipSync(fs.readFileSync(tmpPath))
+        .toString("utf8");
+
+      expect(written).toContain('<PointeeId Value="23005"');
+    } finally {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
   });
 });
 

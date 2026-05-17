@@ -448,6 +448,20 @@ describe("resolveAutomationTargetId", () => {
       ),
     ).toThrow(/occurrence 5 ausserhalb/);
   });
+
+  // Negativer occurrence umgeht den ">= length"-Bound-Check (-1 >= 2 == false),
+  // matches[-1] ist undefined -> defensiver result==null-Guard muss greifen.
+  it("wirft defensiven Format-Guard bei negativem occurrence (-1)", () => {
+    expect(() =>
+      resolveAutomationTargetId(
+        FIXTURE_DUPLICATE,
+        "Dup Track",
+        0,
+        "Frequency",
+        -1,
+      ),
+    ).toThrow(/unerwartetes \.als-Format: kein Param an Index -1/);
+  });
 });
 
 describe("locateTrackBlock", () => {
@@ -573,9 +587,9 @@ describe("resolveMixerTarget", () => {
 
     expect(r7.automationTargetId).toBe("7700");
     // Position-basiert wäre send:1 der zweite Holder — muss hier fehlschlagen
-    expect(() => resolveMixerTarget(fixtureSendIds, "SendIds", "send:1")).toThrow(
-      /außerhalb|1/,
-    );
+    expect(() =>
+      resolveMixerTarget(fixtureSendIds, "SendIds", "send:1"),
+    ).toThrow(/außerhalb|1/);
   });
 
   // W3(c): Track ohne Sends — send:0 wirft mit aussagekräftigem Fehler.
@@ -597,5 +611,68 @@ describe("resolveMixerTarget", () => {
     expect(Number.isNaN(r.min)).toBe(false);
     expect(Number.isNaN(r.max)).toBe(false);
     expect(Number.isNaN(r.manual)).toBe(false);
+  });
+});
+
+// Slice-2 defensive Error-Branches (resolveMixerTarget/extractMixerParam):
+// jeweils gezielt per Inline-XML provoziert, echtes Throw-Verhalten geprueft.
+describe("resolveMixerTarget defensive Guards", () => {
+  /**
+   * Baut eine minimale .als-XML mit AudioTrack "G" und beliebigem DeviceChain-Inhalt.
+   * @param chain - XML-Inhalt der DeviceChain (Mixer-Block o.ae.)
+   * @returns Vollstaendige .als-XML als String
+   */
+  const trackXml = (chain: string): string =>
+    [
+      `<Ableton><Tracks><AudioTrack Id="9">`,
+      `<Name><EffectiveName Value="G" /><UserName Value="" /></Name>`,
+      `<DeviceChain>${chain}</DeviceChain>`,
+      `</AudioTrack></Tracks></Ableton>`,
+    ].join("");
+
+  it("wirft 'Kein <Mixer>' wenn Track keinen Mixer-Block hat", () => {
+    expect(() => resolveMixerTarget(trackXml(""), "G", "volume")).toThrow(
+      /Kein <Mixer> im Track "G"/,
+    );
+  });
+
+  it("wirft 'Kein <Volume>' wenn Mixer kein Volume-Element hat", () => {
+    const xml = trackXml(
+      `<Mixer><Pan><AutomationTarget Id="1" /></Pan></Mixer>`,
+    );
+
+    expect(() => resolveMixerTarget(xml, "G", "volume")).toThrow(
+      /Kein <Volume> im Mixer/,
+    );
+  });
+
+  it("wirft 'Kein <Pan>' wenn Mixer kein Pan-Element hat", () => {
+    const xml = trackXml(
+      `<Mixer><Volume><AutomationTarget Id="1" /></Volume></Mixer>`,
+    );
+
+    expect(() => resolveMixerTarget(xml, "G", "pan")).toThrow(
+      /Kein <Pan> im Mixer/,
+    );
+  });
+
+  it("wirft 'Kein <Send>' wenn TrackSendHolder keinen Send-Block hat", () => {
+    const xml = trackXml(
+      `<Mixer><TrackSendHolder Id="0"><Active Value="true" /></TrackSendHolder></Mixer>`,
+    );
+
+    expect(() => resolveMixerTarget(xml, "G", "send:0")).toThrow(
+      /Kein <Send> in TrackSendHolder 0/,
+    );
+  });
+
+  it("wirft 'Kein AutomationTarget' wenn Volume-Element keines enthaelt", () => {
+    const xml = trackXml(
+      `<Mixer><Volume><Manual Value="0.5" /></Volume></Mixer>`,
+    );
+
+    expect(() => resolveMixerTarget(xml, "G", "volume")).toThrow(
+      /Kein AutomationTarget in <Volume>/,
+    );
   });
 });
