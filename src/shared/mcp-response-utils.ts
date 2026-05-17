@@ -45,6 +45,13 @@ export function planChunks(jsonString: string): ChunkPlan {
  * MAX_ERROR_DELIMITER. Args without a delimiter are joined as-is, so a
  * single-chunk payload is handled correctly.
  *
+ * Chunk-order assumption: Max delivers the arguments of a single message
+ * (the array passed to outlet/Max.outlet) in the order they were emitted,
+ * and `planChunks` slices `jsonString` left-to-right. Reassembly is a
+ * plain `.join("")` and relies on that ordering — if a future transport
+ * layer reorders or batches arguments, the receiver must sort or tag
+ * chunks before joining.
+ *
  * @param rest - All args after the leading requestId
  * @returns The reassembled JSON string
  */
