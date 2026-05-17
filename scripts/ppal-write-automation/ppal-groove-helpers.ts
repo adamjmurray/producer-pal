@@ -20,6 +20,7 @@ import {
   collectKeyValuePairs,
   isOnlyWindowChanged,
   locateClipWithinTrack,
+  parseFlags,
   warnDuplicateKeys,
 } from "./clip-patch-cli.ts";
 
@@ -56,45 +57,13 @@ export function runGroove(rest: string[]): number {
 }
 
 /**
- * Parse argv flags into a key→value map (same convention as the CLI module:
- * boolean flags get "true", others the next token).
- * @param argv - Argument array (without the subcommand token)
- * @returns Record of flag names (without --) to string values
- */
-function parseGrooveFlags(argv: string[]): Record<string, string> {
-  const result: Record<string, string> = {};
-  let i = 0;
-
-  while (i < argv.length) {
-    const arg = argv[i];
-
-    if (arg?.startsWith("--") === true) {
-      const key = arg.slice(2);
-      const next = argv[i + 1];
-
-      if (next === undefined || next.startsWith("--")) {
-        result[key] = "true";
-        i++;
-      } else {
-        result[key] = next;
-        i += 2;
-      }
-    } else {
-      i++;
-    }
-  }
-
-  return result;
-}
-
-/**
  * Run `groove list`: parse the GroovePool of the given `.als` and print the
  * entries as a JSON line. Read-only — no Open-Set guard, no write.
  * @param rest - Argument array (without the `groove` token)
  * @returns Exit code: 0 success, 1 error
  */
 function runGrooveList(rest: string[]): number {
-  const flags = parseGrooveFlags(rest);
+  const flags = parseFlags(rest);
   const alsPath = flags.als;
 
   if (alsPath == null) {
@@ -122,7 +91,7 @@ function runGrooveList(rest: string[]): number {
  * @returns Exit code: 0 success, 1 error, 2 open-set guard
  */
 function runGrooveAssign(rest: string[]): number {
-  const flags = parseGrooveFlags(rest);
+  const flags = parseFlags(rest);
   const alsPath = flags.als;
   const track = flags.track;
   const clip = flags.clip;
@@ -146,11 +115,12 @@ function runGrooveAssign(rest: string[]): number {
   }
 
   const xml = readAls(alsPath);
+  const ids = poolGrooveIds(xml);
 
-  if (grooveId !== "-1" && !poolGrooveIds(xml).includes(grooveId)) {
+  if (grooveId !== "-1" && !ids.includes(grooveId)) {
     process.stderr.write(
       `FEHLER: GrooveId ${grooveId} nicht im Pool, verfügbar: ` +
-        `${poolGrooveIds(xml).join(", ")}\n`,
+        `${ids.join(", ")}\n`,
     );
 
     return 1;
@@ -200,7 +170,7 @@ function runGrooveAssign(rest: string[]): number {
  * @returns Exit code: 0 success, 1 error, 2 open-set guard
  */
 function runGrooveTune(rest: string[]): number {
-  const flags = parseGrooveFlags(rest);
+  const flags = parseFlags(rest);
   const alsPath = flags.als;
   const grooveId = flags["groove-id"];
   const force = flags.force === "true";

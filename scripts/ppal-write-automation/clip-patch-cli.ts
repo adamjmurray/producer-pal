@@ -78,16 +78,16 @@ export interface ClipPatchConfig {
  * backup + write, then re-parse + raw-tag verify.
  *
  * @param rest - Argument array (without the subcommand token)
- * @param parseFlags - Shared flag parser from the CLI module
+ * @param parseFlagsFn - Shared flag parser from the CLI module
  * @param cfg - Subcommand-specific configuration
  * @returns Exit code: 0 success, 1 error, 2 open-set guard
  */
 export function runClipPatchCli(
   rest: string[],
-  parseFlags: (argv: string[]) => Record<string, string>,
+  parseFlagsFn: (argv: string[]) => Record<string, string>,
   cfg: ClipPatchConfig,
 ): number {
-  const flags = parseFlags(rest);
+  const flags = parseFlagsFn(rest);
   const sub = rest[0];
   const alsPath = flags.als;
   const track = flags.track;
@@ -136,6 +136,44 @@ export function runClipPatchCli(
   }
 
   return runSet(rest, { alsPath, track, clip, xml, loc }, cfg);
+}
+
+/**
+ * Parse argv flags into a key→value map (shared CLI convention: boolean flags
+ * without a following token get the value "true", all others the next token).
+ *
+ * This is the single source of truth for the flag-parsing skeleton used by all
+ * `ppal-write-automation` subcommands — passed into `runClipPatchCli` and
+ * imported directly by the `groove` and top-level `write` entry points so the
+ * parsing convention is not re-implemented per module.
+ *
+ * @param argv - Argument array (without the subcommand token)
+ * @returns Record of flag names (without --) to string values
+ */
+export function parseFlags(argv: string[]): Record<string, string> {
+  const result: Record<string, string> = {};
+  let i = 0;
+
+  while (i < argv.length) {
+    const arg = argv[i];
+
+    if (arg?.startsWith("--") === true) {
+      const key = arg.slice(2);
+      const next = argv[i + 1];
+
+      if (next === undefined || next.startsWith("--")) {
+        result[key] = "true";
+        i++;
+      } else {
+        result[key] = next;
+        i += 2;
+      }
+    } else {
+      i++;
+    }
+  }
+
+  return result;
 }
 
 /**

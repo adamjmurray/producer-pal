@@ -25,6 +25,7 @@ import {
 } from "#src/automation/als-param-resolver.ts";
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
+import { parseFlags } from "./clip-patch-cli.ts";
 import { runClipSettings } from "./ppal-clip-settings-helpers.ts";
 import { runFades } from "./ppal-fades-helpers.ts";
 import { runGroove } from "./ppal-groove-helpers.ts";
@@ -39,38 +40,6 @@ interface WriteArgs {
   breakpoints: string;
   targetId: string | null;
   force: boolean;
-}
-
-/**
- * Parse argv flags into a key→value map.
- * Boolean flags (--force) get value "true"; others get the next token.
- * @param argv - Argument array (without the subcommand token)
- * @returns Record of flag names (without --) to string values
- */
-function parseFlags(argv: string[]): Record<string, string> {
-  const result: Record<string, string> = {};
-  let i = 0;
-
-  while (i < argv.length) {
-    const arg = argv[i];
-
-    if (arg?.startsWith("--") === true) {
-      const key = arg.slice(2);
-      const next = argv[i + 1];
-
-      if (next === undefined || next.startsWith("--")) {
-        result[key] = "true";
-        i++;
-      } else {
-        result[key] = next;
-        i += 2;
-      }
-    } else {
-      i++;
-    }
-  }
-
-  return result;
 }
 
 /**
