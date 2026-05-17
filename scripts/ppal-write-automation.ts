@@ -1,12 +1,27 @@
+// ENTRYPOINT: run via ./scripts/ppal-write-automation (bash wrapper, npx tsx).
+// Do NOT call `node scripts/ppal-write-automation.ts` directly: Node <22 fails
+// with ERR_UNKNOWN_FILE_EXTENSION. The wrapper is Node-version-proof.
 #!/usr/bin/env node
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { injectClipEnvelope, locateClipBlock } from "#src/automation/als-envelope-writer.ts";
-import { readAls, writeAls, backupAls, isSetLikelyOpen, assertOnlyEnvelopeChanged } from "#src/automation/als-file.ts";
-import { listDeviceParams, resolveAutomationTargetId } from "#src/automation/als-param-resolver.ts";
+import {
+  injectClipEnvelope,
+  locateClipBlock,
+} from "#src/automation/als-envelope-writer.ts";
+import {
+  readAls,
+  writeAls,
+  backupAls,
+  isSetLikelyOpen,
+  assertOnlyEnvelopeChanged,
+} from "#src/automation/als-file.ts";
+import {
+  listDeviceParams,
+  resolveAutomationTargetId,
+} from "#src/automation/als-param-resolver.ts";
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
 
@@ -94,7 +109,13 @@ function parseWriteArgs(flags: Record<string, string>): WriteArgs | null {
   const param = flags.param;
   const breakpoints = flags.breakpoints;
 
-  if (als == null || track == null || clip == null || param == null || breakpoints == null) {
+  if (
+    als == null ||
+    track == null ||
+    clip == null ||
+    param == null ||
+    breakpoints == null
+  ) {
     return null;
   }
 
@@ -138,14 +159,21 @@ function runWrite(flags: Record<string, string>): number {
     // Try to get min/max for range validation
     try {
       const params = listDeviceParams(xml, args.track, args.device);
-      const matched = params.find((p) => p.automationTargetId === args.targetId);
+      const matched = params.find(
+        (p) => p.automationTargetId === args.targetId,
+      );
 
       resolvedParam = matched ?? null;
     } catch {
       resolvedParam = null;
     }
   } else {
-    resolvedParam = resolveAutomationTargetId(xml, args.track, args.device, args.param);
+    resolvedParam = resolveAutomationTargetId(
+      xml,
+      args.track,
+      args.device,
+      args.param,
+    );
     targetId = resolvedParam.automationTargetId;
   }
 
@@ -185,7 +213,9 @@ function runWrite(flags: Record<string, string>): number {
   const pointeeCheck = `<PointeeId Value="${targetId}" />`;
 
   if (!clipBlock.includes(pointeeCheck)) {
-    process.stderr.write(`FEHLER: Verifizierung fehlgeschlagen — PointeeId ${targetId} nicht im Clip gefunden\n`);
+    process.stderr.write(
+      `FEHLER: Verifizierung fehlgeschlagen — PointeeId ${targetId} nicht im Clip gefunden\n`,
+    );
 
     return 1;
   }
@@ -203,7 +233,9 @@ function runWrite(flags: Record<string, string>): number {
   }
 
   if (!clipBlock.includes("<ClipEnvelope ")) {
-    process.stderr.write("FEHLER: Verifizierung fehlgeschlagen — <ClipEnvelope nicht im Clip gefunden\n");
+    process.stderr.write(
+      "FEHLER: Verifizierung fehlgeschlagen — <ClipEnvelope nicht im Clip gefunden\n",
+    );
 
     return 1;
   }
@@ -229,7 +261,9 @@ export function runCli(argv: string[]): number {
     if (subcommand === "list") return runList(flags);
     if (subcommand === "write") return runWrite(flags);
 
-    process.stderr.write(`FEHLER: Unbekanntes Subcommand "${subcommand}". Nutze list oder write.\n`);
+    process.stderr.write(
+      `FEHLER: Unbekanntes Subcommand "${subcommand}". Nutze list oder write.\n`,
+    );
 
     return 1;
   } catch (err) {
