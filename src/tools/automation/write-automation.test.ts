@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect, vi } from "vitest";
-import { handleWriteAutomation } from "./write-automation.ts";
+import { handleWriteAutomation, type AutomationBridge } from "./write-automation.ts";
 
 function makeBridge(actualReadback: { time: number; value: number }[]) {
   return {
@@ -57,9 +57,14 @@ describe("handleWriteAutomation", () => {
       bridge,
     );
     expect(bridge.writeClipEnvelope).toHaveBeenCalledTimes(2);
-    expect(bridge.writeClipEnvelope.mock.calls[0][0].clear).toBe(true);
-    expect(bridge.writeClipEnvelope.mock.calls[1][0].clear).toBe(false);
-    expect(bridge.writeClipEnvelope.mock.calls[1][0].breakpoints).toStrictEqual([
+    type WriteArgs = Parameters<AutomationBridge["writeClipEnvelope"]>;
+    const calls = bridge.writeClipEnvelope.mock.calls as unknown as WriteArgs[];
+    const call0 = calls[0]!;
+    const call1 = calls[1]!;
+
+    expect(call0[0].clear).toBe(true);
+    expect(call1[0].clear).toBe(false);
+    expect(call1[0].breakpoints).toStrictEqual([
       { time: 10, value: 110 },
       { time: 11, value: 111 },
     ]);

@@ -50,13 +50,13 @@ const LEAF_PARAM_RE =
 function extractTrackName(trackBlock: string): string {
   const userNameMatch = /<UserName Value="([^"]*)"/.exec(trackBlock);
 
-  if (userNameMatch != null && userNameMatch[1] !== "") {
+  if (userNameMatch?.[1] != null && userNameMatch[1] !== "") {
     return userNameMatch[1];
   }
 
   const effectiveNameMatch = /<EffectiveName Value="([^"]*)"/.exec(trackBlock);
 
-  return effectiveNameMatch != null ? effectiveNameMatch[1] : "";
+  return effectiveNameMatch?.[1] ?? "";
 }
 
 /**
@@ -69,7 +69,7 @@ function extractMinMax(window: string): { min: number | null; max: number | null
 
   if (rangeMatch == null) return { min: null, max: null };
 
-  const rangeBlock = rangeMatch[1];
+  const rangeBlock = rangeMatch[1] ?? "";
   const minMatch = /<Min Value="([^"]+)"/.exec(rangeBlock);
   const maxMatch = /<Max Value="([^"]+)"/.exec(rangeBlock);
 
@@ -111,6 +111,10 @@ function collectLeafParams(deviceSubtree: string): AlsParam[] {
   while ((m = re.exec(deviceSubtree)) !== null) {
     const elementName = m[1];
     const automationTargetId = m[2];
+
+    if (elementName == null || automationTargetId == null) {
+      throw new Error("unerwartetes .als-Format: Pflicht-Capture-Gruppen fehlen");
+    }
 
     // The full match spans from the open tag to just past <AutomationTarget Id="N"
     // — extract min/max/manual from that window
@@ -159,7 +163,7 @@ export function listDeviceParams(xml: string, trackName: string, deviceIndex: nu
 
   if (devicesMatch == null) return [];
 
-  const devicesContent = devicesMatch[1];
+  const devicesContent = devicesMatch[1] ?? "";
 
   // Find the deviceIndex-th top-level element in Devices
   const deviceRe = /<(\w+)\b[^>]*Id="\d+"[^>]*>([\S\s]*?)<\/\1>/g;
@@ -236,5 +240,11 @@ export function resolveAutomationTargetId(
     );
   }
 
-  return matches[idx];
+  const result = matches[idx];
+
+  if (result == null) {
+    throw new Error(`unerwartetes .als-Format: kein Param an Index ${idx}`);
+  }
+
+  return result;
 }

@@ -50,7 +50,11 @@ export function buildEnvelopeXml(
   }
 
   // Anchor event: Ableton's "value before first point" sentinel at -63072000
-  const anchorEvent = `<FloatEvent Id="0" Time="-63072000" Value="${fmt(breakpoints[0].value)}" />`;
+  const first = breakpoints[0];
+
+  if (!first) throw new Error("mindestens 1 Breakpoint erforderlich");
+
+  const anchorEvent = `<FloatEvent Id="0" Time="-63072000" Value="${fmt(first.value)}" />`;
 
   // User breakpoints follow at Id=1..n
   const userEvents = breakpoints

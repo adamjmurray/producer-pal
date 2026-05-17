@@ -54,5 +54,9 @@ export async function resolveParam(
 
   const p = params[index];
 
+  if (p == null) {
+    throw new Error(`unerwartetes .als-Format: kein Parameter an Index ${index}`);
+  }
+
   return { index, name: p.name, min: p.min, max: p.max };
 }
