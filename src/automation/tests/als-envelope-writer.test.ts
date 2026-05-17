@@ -52,6 +52,15 @@ describe("locateClipBlock", () => {
 
     expect(loc.block).toContain('Id="0"');
   });
+
+  it("REGRESSION: locateClipBlock findet Session-MidiClip per Name byte-stabil", () => {
+    const xml =
+      '<MidiClip Time="0"><Name Value="C1" /><Color Value="1" /></MidiClip>' +
+      '<MidiClip Time="0"><Name Value="ZielClip" /><Color Value="2" /></MidiClip>';
+    const loc = locateClipBlock(xml, "ZielClip");
+    expect(loc.block).toContain('<Name Value="ZielClip" />');
+    expect(xml.slice(loc.start, loc.end)).toBe(loc.block);
+  });
 });
 
 describe("buildEnvelopeXml", () => {
