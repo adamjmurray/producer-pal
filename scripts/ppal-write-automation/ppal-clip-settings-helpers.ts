@@ -235,6 +235,21 @@ function runClipSettingsSet(rest: string[], ctx: SetContext): number {
     seen.add(key);
   }
 
+  // G3'-Enum-Warnung: solange keine ENUM_TABLES/benannte Validierung existiert,
+  // wird ein Roh-Integer-Wert bei enum-Keys still akzeptiert — Spec verlangt
+  // aber eine stderr-Warnung. Bei späterer T5-Implementierung: nur warnen wenn
+  // kein benanntes Mapping greift (d.h. Wert rein numerisch und kein Table).
+  for (const { key, value } of pairs) {
+    const def = CLIP_SETTING_SPEC[key];
+
+    if (def?.type === "enum" && /^-?\d+$/.test(value)) {
+      process.stderr.write(
+        `WARNUNG: Enum-Namens-Validierung für "${key}" ausstehend ` +
+          `(G3'-Ground-Truth-Fixture fehlt) — Roh-Integer-Wert "${value}" ungeprüft akzeptiert\n`,
+      );
+    }
+  }
+
   const before = getClipSettings(loc.block);
   // Indirection via a mutable holder so vi.spyOn(...) is honored by the
   // Mitigation-B foreign-block proof (spy seam, mirrors the

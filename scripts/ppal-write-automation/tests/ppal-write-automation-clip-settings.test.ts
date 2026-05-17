@@ -320,6 +320,100 @@ describe("clip-settings", () => {
     }
   });
 
+  // G3'-Enum-Warnung: Roh-Int bei enum-Key -> stderr-Warnung, kein Blockieren.
+  it("enum-Key mit numerischem Wert -> stderr-Warnung, Exit 0, Patch erfolgt", () => {
+    const tmp = tmpAls(dupClipXml("ZielClip", "FremdClip"));
+    const errSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const code = runCli(
+        csArgs(
+          "set",
+          tmp,
+          "T",
+          "ZielClip",
+          "--key",
+          "LaunchMode",
+          "--value",
+          "2",
+          "--force",
+        ),
+      );
+
+      expect(code).toBe(0);
+      const stderrOut = errSpy.mock.calls.map((c) => String(c[0])).join("");
+
+      expect(stderrOut).toMatch(
+        /enum.*validierung.*ausstehend|roh-integer.*ungeprüft/i,
+      );
+      expect(stderrOut).toMatch(/LaunchMode/);
+      // Patch muss trotzdem erfolgt sein
+      const out = readAls(tmp);
+
+      expect(out).toContain('<LaunchMode Value="2" />');
+    } finally {
+      errSpy.mockRestore();
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
+
+  it("int-Key (VelocityAmount) mit numerischem Wert -> KEINE Enum-Warnung", () => {
+    // Vollständiger Clip mit allen für VelocityAmount nötigen Positions-Ankern
+    const fullClipXml = [
+      `<Ableton><Tracks><MidiTrack Id="1">`,
+      `<Name><EffectiveName Value="T" /><UserName Value="T" /></Name>`,
+      `<DeviceChain><MainSequencer><ClipSlotList><ClipSlot>`,
+      `<MidiClip Time="0"><Name Value="ZielClip" /><Color Value="1" />`,
+      `<LaunchMode Value="0" /><LaunchQuantisation Value="0" />`,
+      `<TimeSignature><Foo /></TimeSignature><TimeSelection><Bar /></TimeSelection>`,
+      `<Legato Value="false" /><Ram Value="false" />`,
+      `<VelocityAmount Value="0" />`,
+      `<FollowAction>`,
+      `<FollowTime Value="4" /><IsLinked Value="true" /><LoopIterations Value="1" />`,
+      `<FollowActionA Value="4" /><FollowActionB Value="0" />`,
+      `<FollowChanceA Value="100" /><FollowChanceB Value="0" />`,
+      `<JumpIndexA Value="1" /><JumpIndexB Value="1" />`,
+      `<FollowActionEnabled Value="false" />`,
+      `</FollowAction></MidiClip>`,
+      `</ClipSlot></ClipSlotList></MainSequencer></DeviceChain>`,
+      `</MidiTrack></Tracks></Ableton>`,
+    ].join("");
+    const tmp = tmpAls(fullClipXml);
+    const errSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const code = runCli(
+        csArgs(
+          "set",
+          tmp,
+          "T",
+          "ZielClip",
+          "--key",
+          "VelocityAmount",
+          "--value",
+          "5",
+          "--force",
+        ),
+      );
+
+      expect(code).toBe(0);
+      const stderrOut = errSpy.mock.calls.map((c) => String(c[0])).join("");
+
+      expect(stderrOut).not.toMatch(
+        /enum.*validierung.*ausstehend|roh-integer.*ungeprüft/i,
+      );
+    } finally {
+      errSpy.mockRestore();
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
+
   // FIX C: zwei gleichnamige TRACKS -> keine stille Erstauswahl, Klartext.
   it("zwei gleichnamige Tracks -> Klartext-Fehler (keine stille Auswahl)", () => {
     const xml = [
