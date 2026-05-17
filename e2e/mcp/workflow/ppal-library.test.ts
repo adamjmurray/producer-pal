@@ -40,7 +40,7 @@ interface LibraryItem {
 
 interface LibrarySearchResult {
   items: LibraryItem[];
-  /** Present when DB was consulted; omitted when bypassed (source=folder). */
+  /** Present when DB was consulted; omitted when bypassed (source=sampleFolder). */
   dbAvailable?: boolean;
   reason?: string;
 }
@@ -71,15 +71,15 @@ async function listTags(
 
 describe("ppal-library", () => {
   describe("folder source (deterministic)", () => {
-    it("returns folder-only items when source=folder", async () => {
+    it("returns folder-only items when source=sampleFolder", async () => {
       await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
-      const result = await search({ source: "folder" });
+      const result = await search({ source: "sampleFolder" });
 
       expect(result.items).toHaveLength(2);
 
       for (const item of result.items) {
-        expect(item.source).toBe("folder");
+        expect(item.source).toBe("sampleFolder");
         expect(item.kind).toBe("audio");
         expect(item.useCount).toBe(0);
         expect(item.tags).toStrictEqual([]);
@@ -94,7 +94,7 @@ describe("ppal-library", () => {
     it("filters folder items by query substring", async () => {
       await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
-      const result = await search({ source: "folder", query: "kick" });
+      const result = await search({ source: "sampleFolder", query: "kick" });
 
       expect(result.items).toHaveLength(1);
       expect(result.items[0]?.name).toBe("kick.aiff");
@@ -103,7 +103,7 @@ describe("ppal-library", () => {
     it("returns empty folder results when no sampleFolder is configured", async () => {
       await setConfig({ sampleFolder: "" });
 
-      const result = await search({ source: "folder" });
+      const result = await search({ source: "sampleFolder" });
 
       expect(result.items).toStrictEqual([]);
     });
@@ -117,7 +117,7 @@ describe("ppal-library", () => {
       // of the DB's use_count ranking. Even with the default limit of 50,
       // the user's configured sample folder should always surface first.
       expect(result.items.length).toBeGreaterThanOrEqual(1);
-      expect(result.items[0]?.source).toBe("folder");
+      expect(result.items[0]?.source).toBe("sampleFolder");
       expect(result.items[0]?.name).toBe("kick.aiff");
     });
 
@@ -126,7 +126,7 @@ describe("ppal-library", () => {
 
       const result = await search({ kind: "midi" });
 
-      expect(result.items.every((i) => i.source !== "folder")).toBe(true);
+      expect(result.items.every((i) => i.source !== "sampleFolder")).toBe(true);
     });
 
     it("suppresses folder scan when tags are present", async () => {
@@ -134,7 +134,7 @@ describe("ppal-library", () => {
 
       const result = await search({ tags: "Kick" });
 
-      expect(result.items.every((i) => i.source !== "folder")).toBe(true);
+      expect(result.items.every((i) => i.source !== "sampleFolder")).toBe(true);
     });
 
     it("suppresses folder scan when deviceKind is present", async () => {
@@ -145,15 +145,15 @@ describe("ppal-library", () => {
         deviceKind: "instrument",
       });
 
-      expect(result.items.every((i) => i.source !== "folder")).toBe(true);
+      expect(result.items.every((i) => i.source !== "sampleFolder")).toBe(true);
     });
 
-    it("suppresses folder scan when source is non-folder", async () => {
+    it("suppresses folder scan when source is non-sampleFolder", async () => {
       await setConfig({ sampleFolder: SAMPLE_FOLDER });
 
       const result = await search({ source: "user" });
 
-      expect(result.items.every((i) => i.source !== "folder")).toBe(true);
+      expect(result.items.every((i) => i.source !== "sampleFolder")).toBe(true);
     });
   });
 

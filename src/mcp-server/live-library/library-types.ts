@@ -26,12 +26,12 @@ export type LibraryDeviceKind = "instrument" | "audiofx" | "midifx";
 
 /**
  * Where in Live's library a file lives. Mostly collapses Live's
- * `folder_kind` integers; "folder" is the special case for files
+ * `folder_kind` integers; "sampleFolder" is the special case for files
  * found via the user-configured custom sample folder (V8 filesystem
  * scan, not in Live's DB).
  */
 export type LibrarySource =
-  | "folder"
+  | "sampleFolder"
   | "user"
   | "pack"
   | "builtin"
@@ -71,7 +71,7 @@ export interface LibrarySearchResult {
   items: LibraryItem[];
   /** Present when the Live DB was consulted. False if the DB couldn't be
    * found (Live not installed). Omitted when the request bypassed the DB
-   * entirely (e.g. source=folder). */
+   * entirely (e.g. source=sampleFolder). */
   dbAvailable?: boolean;
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
   reason?: string;

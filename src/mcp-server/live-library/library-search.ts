@@ -112,7 +112,7 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
   if (args.source) {
     const kinds = folderKindsForSource(args.source);
 
-    // Defensive: source=folder has no DB encoding and yields an empty
+    // Defensive: source=sampleFolder has no DB encoding and yields an empty
     // kinds list. The tool caller filters this out, but the route is
     // publicly reachable — emit an impossible predicate to keep the
     // SQL valid (no rows match) rather than producing `IN ()`.

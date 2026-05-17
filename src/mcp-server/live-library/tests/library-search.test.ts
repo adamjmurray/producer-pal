@@ -159,12 +159,12 @@ describe("librarySearch", () => {
       ]);
     });
 
-    it("returns no items (no SQL error) when source=folder reaches the route", async () => {
-      // source=folder has no DB encoding; the tool layer normally filters
+    it("returns no items (no SQL error) when source=sampleFolder reaches the route", async () => {
+      // source=sampleFolder has no DB encoding; the tool layer normally filters
       // this out, but the route is publicly callable. The guard converts
       // the empty folder_kind list into an impossible predicate so the
       // query parses cleanly instead of producing `IN ()`.
-      const result = await librarySearch({ source: "folder" });
+      const result = await librarySearch({ source: "sampleFolder" });
 
       expect(result.items).toHaveLength(0);
       expect(result.dbAvailable).toBe(true);

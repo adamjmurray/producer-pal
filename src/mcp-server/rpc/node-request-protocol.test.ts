@@ -23,34 +23,29 @@ vi.mock(import("../node-for-max-logger.ts"), () => ({
   error: vi.fn(),
 }));
 
+type ParsedNodeResponse = {
+  success: boolean;
+  result?: unknown;
+  error?: string;
+};
+
 /**
  * Reassemble and parse the response JSON sent via the chunked Max.outlet call.
  *
  * @returns Parsed response object
  */
-function parseSentResponse(): {
-  success: boolean;
-  result?: unknown;
-  error?: string;
-} {
-  const call = vi.mocked(Max.outlet).mock.calls[0];
+function parseSentResponse(): ParsedNodeResponse {
+  const [name, , ...rest] = vi.mocked(Max.outlet).mock.calls[0] ?? [];
 
-  expect(call).toBeDefined();
-  expect(call?.[0]).toBe("node_response");
+  expect(name).toBe("node_response");
 
-  const args = (call ?? []).slice(2);
-  const delimiterIndex = args.indexOf(MAX_ERROR_DELIMITER);
+  const delimiterIndex = rest.indexOf(MAX_ERROR_DELIMITER);
 
   expect(delimiterIndex).toBeGreaterThanOrEqual(0);
 
-  const chunks = args.slice(0, delimiterIndex) as string[];
-  const json = chunks.join("");
+  const chunks = rest.slice(0, delimiterIndex) as string[];
 
-  return JSON.parse(json) as {
-    success: boolean;
-    result?: unknown;
-    error?: string;
-  };
+  return JSON.parse(chunks.join("")) as ParsedNodeResponse;
 }
 
 describe("node-request-protocol", () => {

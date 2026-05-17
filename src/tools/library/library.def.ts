@@ -9,7 +9,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefLibrary = defineTool("ppal-library", {
   title: "Library",
   description:
-    "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples (the only kind currently loadable into clips/Simpler); other kinds are discovery-only — pass kind explicitly to query them. Items from the user's configured sample folder always appear before Live's library items (folder is an explicit user choice); within each group, results sort by use_count desc by default.",
+    "Search Live's browser library by name, tags, kind, or source. Defaults to audio samples (the only kind currently loadable into clips/Simpler); other kinds are discovery-only — pass kind explicitly to query them. Items from the user's configured sample folder always appear before Live's library items (sampleFolder is an explicit user choice); within each group, results sort by use_count desc by default.",
 
   annotations: {
     readOnlyHint: true,
@@ -55,7 +55,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .optional()
       .default("audio")
       .describe(
-        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler today, others are discovery-only). audio=.wav/.aif/.mp3/etc. samples | midi=.mid files | live-clip=.alc Ableton clips | preset=instrument/effect presets | device-group=.adg device chains (racks) | m4l-device=.amxd Max for Live devices | live-set=.als project files | plugin=VST/AU specs and presets | image/video=media assets | folder=directory entries",
+        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler today, others are discovery-only). audio=.wav/.aif/.mp3/etc. samples | midi=.mid files | live-clip=.alc Ableton clips | preset=instrument/effect presets | device-group=.adg device chains (racks) | m4l-device=.amxd Max for Live devices | live-set=.als project files | plugin=VST/AU specs and presets | image/video=media assets | folder=directory entries (a DB row type, distinct from source:sampleFolder)",
       ),
 
     deviceKind: z
@@ -64,10 +64,10 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .describe("device classification filter (search only)"),
 
     source: z
-      .enum(["folder", "user", "pack", "builtin", "cloud", "plugin"])
+      .enum(["sampleFolder", "user", "pack", "builtin", "cloud", "plugin"])
       .optional()
       .describe(
-        "where the file lives (search only). folder=user-configured sample folder | user=your User Library | pack=installed Packs (factory + 3rd-party) | builtin=Ableton's Core Library | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins",
+        "where the file lives (search only). sampleFolder=user-configured sample folder on disk (bypasses Live's DB) | user=your User Library | pack=installed Packs (factory + 3rd-party) | builtin=Ableton's Core Library | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins",
       ),
 
     sort: z
@@ -79,5 +79,31 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .number()
       .optional()
       .describe("max results; defaults to 50 (search) or 200 (listTags)"),
+  },
+
+  smallModelModeConfig: {
+    toolDescription:
+      "Search Live's library by name/tags. Defaults to audio samples. Items from the user's sample folder appear before Live's library items.",
+    excludeParams: ["deviceKind", "sort"],
+    excludeEnumValues: {
+      kind: [
+        "live-clip",
+        "m4l-device",
+        "live-set",
+        "plugin",
+        "image",
+        "video",
+        "folder",
+      ],
+    },
+    descriptionOverrides: {
+      action: "search (default) | listTags",
+      query: "name substring; use * as wildcard",
+      tags: "comma-separated tag names; results must match ALL",
+      kind: "content kind (default: audio). audio | midi | preset | device-group",
+      source:
+        "where the file lives. sampleFolder | user | pack | builtin | cloud | plugin",
+      limit: "max results; defaults to 50 (search) or 200 (listTags)",
+    },
   },
 });

@@ -35,10 +35,10 @@ const DEFAULT_LIMIT = 50;
  * Search Live's browser library or enumerate available tags.
  *
  * The search action runs two sources in parallel:
- *  - Folder scan (V8): the user-configured sampleFolder, when set
+ *  - sampleFolder scan (V8): the user-configured sampleFolder, when set
  *    AND filters don't require DB-only data (tags, non-audio kind, deviceKind).
  *  - DB query (Node): library.search route via requestNode RPC.
- * Results are merged and de-duplicated by absolute path. The folder
+ * Results are merged and de-duplicated by absolute path. The sampleFolder
  * scan wins ties because the folder is explicitly user-configured.
  *
  * @param args - Tool arguments (action + filters)
@@ -77,10 +77,10 @@ async function runSearch(
   ctx: Partial<ToolContext>,
 ): Promise<LibrarySearchResult> {
   const folderScan = scanFolderItems(args, ctx);
-  // source=folder bypasses the DB entirely; the response omits dbAvailable
+  // source=sampleFolder bypasses the DB entirely; the response omits dbAvailable
   // to signal "did not consult the DB" instead of lying with `true`.
   const dbResult =
-    args.source === "folder"
+    args.source === "sampleFolder"
       ? null
       : await callRoute<LibrarySearchResult>("library.search", {
           query: args.query,
@@ -136,7 +136,7 @@ function scanFolderItems(
   const sampleFolder = ctx.sampleFolder;
 
   if (!sampleFolder) {
-    if (args.source === "folder") {
+    if (args.source === "sampleFolder") {
       return {
         items: [],
         reason:
@@ -148,8 +148,8 @@ function scanFolderItems(
   }
 
   // The folder scan can only satisfy: name substring + (implicit) audio kind.
-  // Any DB-only filter means the user is not asking for folder content.
-  if (args.source && args.source !== "folder") {
+  // Any DB-only filter means the user is not asking for sampleFolder content.
+  if (args.source && args.source !== "sampleFolder") {
     return { items: [] };
   }
 
@@ -182,7 +182,7 @@ function scanFolderItems(
     kind: "audio",
     tags: [],
     useCount: 0,
-    source: "folder",
+    source: "sampleFolder",
   }));
 
   return { items };
@@ -201,20 +201,20 @@ function leafName(rel: string): string {
 }
 
 /**
- * Sort merged items. Folder items are always grouped before DB items:
+ * Sort merged items. sampleFolder items are always grouped before DB items:
  * the sampleFolder is an explicit user choice, so those samples should
  * surface ahead of generic DB hits regardless of sort or useCount.
  *
- * @param items - Combined list of folder + DB items
+ * @param items - Combined list of sampleFolder + DB items
  * @param sort - Sort enum (defaults to use_count)
- * @returns Sorted copy of items, folder partition first
+ * @returns Sorted copy of items, sampleFolder partition first
  */
 function sortItems(
   items: LibraryItem[],
   sort: string | undefined,
 ): LibraryItem[] {
-  const folder = items.filter((i) => i.source === "folder");
-  const db = items.filter((i) => i.source !== "folder");
+  const folder = items.filter((i) => i.source === "sampleFolder");
+  const db = items.filter((i) => i.source !== "sampleFolder");
 
   return [...sortPartition(folder, sort), ...sortPartition(db, sort)];
 }
@@ -237,9 +237,9 @@ function sortPartition(
   }
 
   if (sort === "mod_date") {
-    // Folder items have no mod_date metadata; fall back to name order.
+    // sampleFolder items have no mod_date metadata; fall back to name order.
     // DB items keep their upstream order (already mod_date-sorted by SQL).
-    return items.every((i) => i.source === "folder")
+    return items.every((i) => i.source === "sampleFolder")
       ? [...items].sort((a, b) => a.name.localeCompare(b.name))
       : [...items];
   }
