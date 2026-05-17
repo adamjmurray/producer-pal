@@ -219,6 +219,40 @@ export function collectKeyValuePairs(
   return pairs;
 }
 
+/**
+ * Generic, locator-agnostic Mitigation-B guard (Slice-2-FIX-1 Längendelta).
+ *
+ * Asserts that the patch transform changed ONLY bytes inside the half-open
+ * window `[start, end)` of the original `xml`: the prefix `[0, start)` is
+ * byte-identical AND the suffix from the original `end` is byte-identical
+ * (in the possibly-longer `updated` that suffix begins at `end + delta`).
+ *
+ * This is the exact formula used by the clip-scoped `set` path; extracted
+ * here so the groove `tune` path (Pool-entry offsets via `locateGrooveEntry`)
+ * can reuse it WITHOUT re-implementing the formula. Behavior of the existing
+ * clip-scoped guard in `runSet` is byte-for-byte equivalent — Slice-3/4 tests
+ * remain the net (unchanged).
+ *
+ * @param xml - Original raw `.als` XML before patching
+ * @param updated - Whole XML after patching
+ * @param start - Window start offset (absolute, into `xml`)
+ * @param end - Window end offset (absolute, into `xml`)
+ * @returns True iff only bytes within `[start, end)` changed
+ */
+export function isOnlyWindowChanged(
+  xml: string,
+  updated: string,
+  start: number,
+  end: number,
+): boolean {
+  const delta = updated.length - xml.length;
+
+  return (
+    xml.slice(0, start) === updated.slice(0, start) &&
+    xml.slice(end) === updated.slice(end + delta)
+  );
+}
+
 /** Resolved set-context shared between dispatch and the set worker. */
 interface SetContext {
   alsPath: string;
@@ -274,15 +308,10 @@ function runSet(rest: string[], ctx: SetContext, cfg: ClipPatchConfig): number {
   }
 
   // Mitigation B (Slice-2-FIX-1-Längendelta-Formel): nur Bytes innerhalb
-  // [loc.start, loc.end) dürfen sich ändern. Prefix [0, loc.start) identisch
-  // UND der Suffix ab loc.end identisch — im (ggf. längeren) updated beginnt
-  // dieser Suffix bei loc.end + Längendelta.
-  const delta = updated.length - xml.length;
-
-  if (
-    xml.slice(0, loc.start) !== updated.slice(0, loc.start) ||
-    xml.slice(loc.end) !== updated.slice(loc.end + delta)
-  ) {
+  // [loc.start, loc.end) dürfen sich ändern. Geteilte locator-agnostische
+  // Implementierung (auch vom groove `tune`-Pfad genutzt) — Verhalten
+  // byte-identisch zur vorherigen Inline-Formel.
+  if (!isOnlyWindowChanged(xml, updated, loc.start, loc.end)) {
     process.stderr.write(
       "FEHLER: unerwartete Änderung außerhalb des Ziel-Clip-Blocks\n",
     );
@@ -302,7 +331,9 @@ function runSet(rest: string[], ctx: SetContext, cfg: ClipPatchConfig): number {
  * @param pairs - Ordered key/value pairs
  * @returns Nothing
  */
-function warnDuplicateKeys(pairs: Array<{ key: string; value: string }>): void {
+export function warnDuplicateKeys(
+  pairs: Array<{ key: string; value: string }>,
+): void {
   const seen = new Set<string>();
   const warned = new Set<string>();
 
