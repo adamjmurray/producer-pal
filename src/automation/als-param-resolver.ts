@@ -275,16 +275,18 @@ export function locateTrackBlock(
   trackName: string,
 ): { block: string; index: number; names: string[] } {
   const trackRe =
-    /<(?:MidiTrack|AudioTrack|GroupTrack)\b(?:(?!<\/(?:MidiTrack|AudioTrack|GroupTrack)>).)*?<\/(?:MidiTrack|AudioTrack|GroupTrack)>/gs;
+    /<(?:MidiTrack|AudioTrack)\b(?:(?!<\/(?:MidiTrack|AudioTrack)>).)*?<\/(?:MidiTrack|AudioTrack)>/gs;
   const names: string[] = [];
   let found: { block: string; index: number } | null = null;
 
   for (const m of xml.matchAll(trackRe)) {
-    const nameM = m[0].match(/<Name>\s*<EffectiveName Value="([^"]*)"/);
+    // Gleiche Namens-Logik wie listDeviceParams (UserName bevorzugt) gegen
+    // Resolver-Drift zwischen resolveMixerTarget und resolveAutomationTargetId.
+    const name = extractTrackName(m[0]);
 
-    if (nameM) {
-      names.push(nameM[1]);
-      if (nameM[1] === trackName && found === null)
+    if (name !== "") {
+      names.push(name);
+      if (name === trackName && found === null)
         found = { block: m[0], index: m.index };
     }
   }
@@ -366,15 +368,33 @@ function extractMixerParam(elementXml: string, element: string): AlsParam {
   const idM = elementXml.match(/<AutomationTarget Id="(\d+)"/);
 
   if (idM === null) throw new Error(`Kein AutomationTarget in <${element}>`);
-  const minM = elementXml.match(/<Min Value="(-?[\d+.Ee]+)"/);
-  const maxM = elementXml.match(/<Max Value="(-?[\d+.Ee]+)"/);
-  const manM = elementXml.match(/<Manual Value="(-?[\d+.Ee]+)"/);
+
+  const NUM = /-?\d+(?:\.\d+)?(?:[Ee][+-]?\d+)?/;
+  const minM = elementXml.match(new RegExp(`<Min Value="(${NUM.source})"`));
+  const maxM = elementXml.match(new RegExp(`<Max Value="(${NUM.source})"`));
+  const manM = elementXml.match(new RegExp(`<Manual Value="(${NUM.source})"`));
+
+  /**
+   * Parst einen Zahl-Capture und wirft bei NaN statt still null/NaN zu liefern.
+   * @param m - RegExp-Match (oder null, wenn Attribut fehlt)
+   * @param attr - Attribut-/Element-Name fuer die Fehlermeldung
+   * @returns Geparster Zahlwert oder null wenn nicht vorhanden
+   */
+  const parse = (m: RegExpMatchArray | null, attr: string): number | null => {
+    if (m == null) return null;
+    const n = Number(m[1]);
+
+    if (Number.isNaN(n))
+      throw new Error(`Ungültiger Zahlwert in <${element}> ${attr}`);
+
+    return n;
+  };
 
   return {
     element,
     automationTargetId: idM[1],
-    min: minM ? Number(minM[1]) : null,
-    max: maxM ? Number(maxM[1]) : null,
-    manual: manM ? Number(manM[1]) : null,
+    min: parse(minM, "Min"),
+    max: parse(maxM, "Max"),
+    manual: parse(manM, "Manual"),
   };
 }

@@ -187,6 +187,75 @@ const FIXTURE_DUPLICATE = [
   `</Tracks></Ableton>`,
 ].join("");
 
+// GroupTrack containing two AudioTracks — K1: GroupTrack must NOT be matched
+// as a track block by locateTrackBlock; the inner AudioTrack must resolve to
+// its own complete block, not a truncated/over-greedy match.
+const FIXTURE_GROUP = [
+  `<Ableton><Tracks>`,
+  `<GroupTrack Id="5">`,
+  `<Name><EffectiveName Value="My Group" /><UserName Value="" /></Name>`,
+  `<DeviceChain><Mixer><Volume>`,
+  `<AutomationTarget Id="500" /></Volume></Mixer></DeviceChain>`,
+  `</GroupTrack>`,
+  `<AudioTrack Id="6">`,
+  `<Name><EffectiveName Value="Inner A" /><UserName Value="" /></Name>`,
+  `<DeviceChain><Mixer>`,
+  `<Volume><AutomationTarget Id="601" /></Volume>`,
+  `<Pan><AutomationTarget Id="602" /></Pan>`,
+  `</Mixer></DeviceChain>`,
+  `</AudioTrack>`,
+  `<AudioTrack Id="7">`,
+  `<Name><EffectiveName Value="Inner B" /><UserName Value="" /></Name>`,
+  `<DeviceChain><Mixer>`,
+  `<Volume><AutomationTarget Id="701" /></Volume>`,
+  `</Mixer></DeviceChain>`,
+  `</AudioTrack>`,
+  `</Tracks></Ableton>`,
+].join("");
+
+// AudioTrack with UserName != EffectiveName — W1: locateTrackBlock must use
+// the same extractTrackName() logic as listDeviceParams (UserName preferred).
+const FIXTURE_MIXER_USERNAME = [
+  `<Ableton><Tracks>`,
+  `<AudioTrack Id="8">`,
+  `<Name><EffectiveName Value="Audio 1" /><UserName Value="Renamed Bus" /></Name>`,
+  `<DeviceChain><Mixer>`,
+  `<Volume><AutomationTarget Id="801" /></Volume>`,
+  `</Mixer></DeviceChain>`,
+  `</AudioTrack>`,
+  `</Tracks></Ableton>`,
+].join("");
+
+// Mixer values in scientific / E-notation — K2: number regex must parse these
+// without producing NaN.
+const FIXTURE_ENOTATION = [
+  `<Ableton><Tracks>`,
+  `<AudioTrack Id="9">`,
+  `<Name><EffectiveName Value="ENot" /><UserName Value="" /></Name>`,
+  `<DeviceChain><Mixer>`,
+  `<Volume>`,
+  `<Manual Value="1.5E-3" />`,
+  `<MidiControllerRange><Min Value="0.0003162277571" /><Max Value="1.99526238E0" /></MidiControllerRange>`,
+  `<AutomationTarget Id="901" />`,
+  `</Volume>`,
+  `</Mixer></DeviceChain>`,
+  `</AudioTrack>`,
+  `</Tracks></Ableton>`,
+].join("");
+
+// Track with a Mixer but no TrackSendHolder — W3(c): send:0 must throw a
+// descriptive error stating zero sends are present.
+const FIXTURE_NO_SENDS = [
+  `<Ableton><Tracks>`,
+  `<AudioTrack Id="11">`,
+  `<Name><EffectiveName Value="No Sends" /><UserName Value="" /></Name>`,
+  `<DeviceChain><Mixer>`,
+  `<Volume><AutomationTarget Id="1101" /></Volume>`,
+  `</Mixer></DeviceChain>`,
+  `</AudioTrack>`,
+  `</Tracks></Ableton>`,
+].join("");
+
 describe("listDeviceParams", () => {
   it("findet alle Parameter rekursiv: zaehlt Volume, Frequency, LegacyQ", () => {
     const params = listDeviceParams(FIXTURE, "Spike Instr", 0);
@@ -396,28 +465,75 @@ describe("locateTrackBlock", () => {
       /nicht-da|verfügbar/i,
     );
   });
+
+  // K1: GroupTrack darf nicht als Track-Block gematcht werden; ein innerer
+  // AudioTrack muss seinen eigenen vollständigen Block liefern (nicht durch
+  // GroupTrack-Greedy abgeschnitten/überschrieben).
+  it("matcht GroupTrack NICHT und liefert inneren AudioTrack-Block vollständig", () => {
+    const r = locateTrackBlock(FIXTURE_GROUP, "Inner A");
+
+    expect(r.block).toContain(`AutomationTarget Id="601"`);
+    expect(r.block).toContain(`AutomationTarget Id="602"`);
+    expect(r.block).toContain("</AudioTrack>");
+    // Block darf nicht in GroupTrack-Markup oder den Nachbar-Track lecken
+    expect(r.block).not.toContain("GroupTrack");
+    expect(r.block).not.toContain(`AutomationTarget Id="701"`);
+    // GroupTrack-Name darf nicht in der Namensliste auftauchen
+    expect(r.names).not.toContain("My Group");
+    expect(r.names).toStrictEqual(["Inner A", "Inner B"]);
+  });
+
+  it("findet auch den zweiten inneren AudioTrack korrekt", () => {
+    const r = locateTrackBlock(FIXTURE_GROUP, "Inner B");
+
+    expect(r.block).toContain(`AutomationTarget Id="701"`);
+    expect(r.block).not.toContain(`AutomationTarget Id="601"`);
+  });
+
+  // W1: gleiche extractTrackName()-Logik wie listDeviceParams — UserName
+  // bevorzugt vor EffectiveName.
+  it("löst Track-Namen via UserName auf (Konsistenz mit listDeviceParams)", () => {
+    const r = locateTrackBlock(FIXTURE_MIXER_USERNAME, "Renamed Bus");
+
+    expect(r.block).toContain(`AutomationTarget Id="801"`);
+    expect(r.names).toContain("Renamed Bus");
+    expect(r.names).not.toContain("Audio 1");
+  });
 });
 
 describe("resolveMixerTarget", () => {
   const xml = readAls(MULTISEND_ALS);
 
-  it("löst Mixer-Volume zu AutomationTarget Id + Range auf", () => {
+  // W2: gegen die konkrete Fixture-Id gehärtet (aus der echten .als ermittelt).
+  it("löst Mixer-Volume zu konkreter AutomationTarget Id + Range auf", () => {
     const r = resolveMixerTarget(xml, TRACK, "volume");
 
     expect(r.element).toBe("Volume");
-    expect(r.automationTargetId).toMatch(/^\d+$/);
+    expect(r.automationTargetId).toBe("22230");
+    expect(r.min).toBe(0.0003162277571);
+    expect(r.max).toBe(1.99526238);
+    expect(r.manual).toBe(0.5011872053);
   });
-  it("löst Mixer-Pan auf", () => {
+  it("löst Mixer-Pan zu konkreter Id + Range auf", () => {
     const r = resolveMixerTarget(xml, TRACK, "pan");
 
     expect(r.element).toBe("Pan");
-    expect(r.automationTargetId).toMatch(/^\d+$/);
+    expect(r.automationTargetId).toBe("22224");
+    expect(r.min).toBe(-1);
+    expect(r.max).toBe(1);
   });
-  it("löst Send mit Index auf (send:0)", () => {
+  it("löst Send mit Index auf (send:0) zu konkreter Id", () => {
     const r = resolveMixerTarget(xml, TRACK, "send:0");
 
     expect(r.element).toBe("Send");
-    expect(r.automationTargetId).toMatch(/^\d+$/);
+    expect(r.automationTargetId).toBe("22219");
+  });
+  // W3(a): zweiter Send.
+  it("löst Send mit Index auf (send:1) zu konkreter Id", () => {
+    const r = resolveMixerTarget(xml, TRACK, "send:1");
+
+    expect(r.element).toBe("Send");
+    expect(r.automationTargetId).toBe("22221");
   });
   it("wirft bei unbekanntem Target", () => {
     expect(() => resolveMixerTarget(xml, TRACK, "bogus")).toThrow(
@@ -428,5 +544,58 @@ describe("resolveMixerTarget", () => {
     expect(() => resolveMixerTarget(xml, TRACK, "send:99")).toThrow(
       /99|außerhalb|range/i,
     );
+  });
+
+  // W3(b): Sends werden per Id-Attribut gematcht, NICHT per Array-Position.
+  // Festgeschrieben mit einer Fixture, deren TrackSendHolder-Ids nicht
+  // 0,1,2… in Dokumentreihenfolge sind: send:7 muss den Holder mit Id="7"
+  // treffen (zweites Element im Dokument), nicht den an Position 7.
+  it("matcht Sends per Id-Attribut, nicht per Array-Position", () => {
+    const fixtureSendIds = [
+      `<Ableton><Tracks>`,
+      `<AudioTrack Id="12">`,
+      `<Name><EffectiveName Value="SendIds" /><UserName Value="" /></Name>`,
+      `<DeviceChain><Mixer>`,
+      `<TrackSendHolder Id="3"><Send>`,
+      `<AutomationTarget Id="3300" /></Send></TrackSendHolder>`,
+      `<TrackSendHolder Id="7"><Send>`,
+      `<AutomationTarget Id="7700" /></Send></TrackSendHolder>`,
+      `</Mixer></DeviceChain>`,
+      `</AudioTrack>`,
+      `</Tracks></Ableton>`,
+    ].join("");
+
+    const r3 = resolveMixerTarget(fixtureSendIds, "SendIds", "send:3");
+
+    expect(r3.automationTargetId).toBe("3300");
+
+    const r7 = resolveMixerTarget(fixtureSendIds, "SendIds", "send:7");
+
+    expect(r7.automationTargetId).toBe("7700");
+    // Position-basiert wäre send:1 der zweite Holder — muss hier fehlschlagen
+    expect(() => resolveMixerTarget(fixtureSendIds, "SendIds", "send:1")).toThrow(
+      /außerhalb|1/,
+    );
+  });
+
+  // W3(c): Track ohne Sends — send:0 wirft mit aussagekräftigem Fehler.
+  it("wirft aussagekräftig bei send:0 auf Track ohne Sends", () => {
+    expect(() =>
+      resolveMixerTarget(FIXTURE_NO_SENDS, "No Sends", "send:0"),
+    ).toThrow(/0 Sends vorhanden|außerhalb/);
+  });
+
+  // K2: Mixer-Werte in E-Notation müssen korrekt geparst werden (kein NaN).
+  it("parst Mixer-Werte in E-Notation ohne NaN", () => {
+    const r = resolveMixerTarget(FIXTURE_ENOTATION, "ENot", "volume");
+
+    expect(r.element).toBe("Volume");
+    expect(r.automationTargetId).toBe("901");
+    expect(r.min).toBe(0.0003162277571);
+    expect(r.max).toBe(1.99526238);
+    expect(r.manual).toBe(0.0015);
+    expect(Number.isNaN(r.min)).toBe(false);
+    expect(Number.isNaN(r.max)).toBe(false);
+    expect(Number.isNaN(r.manual)).toBe(false);
   });
 });
