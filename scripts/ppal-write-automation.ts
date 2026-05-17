@@ -18,6 +18,7 @@ import {
 } from "#src/automation/als-file.ts";
 import {
   listDeviceParams,
+  locateTrackBlock,
   resolveAutomationTargetId,
   resolveMixerTarget,
   type AlsParam,
@@ -289,11 +290,21 @@ function checkScope(flags: Record<string, string>): number | null {
 
 /**
  * Resolve the arrangement automation target into an AlsParam.
+ *
+ * Returns `null` ONLY when the `--target` *format* is unrecognized
+ * (neither `device` nor `mixer:volume|mixer:pan|mixer:send:<n>`); the caller
+ * maps this to a "ungültiges --target" exit-1 message. A syntactically valid
+ * target whose track/param does not exist does NOT yield `null` — the
+ * underlying resolver (`resolveAutomationTargetId`/`resolveMixerTarget`)
+ * throws, and that exception propagates up to the `runCli` catch block which
+ * converts it into exit 1. This split keeps "bad format" (handled here) and
+ * "valid format, not found" (resolver-thrown) on distinct, well-defined paths.
+ *
  * @param xml - The .als XML content
  * @param flags - Parsed flag map
  * @param track - Track name
  * @param target - Value of --target
- * @returns Resolved AlsParam, or null if --target is invalid
+ * @returns Resolved AlsParam, or null if the --target format is invalid
  */
 function resolveArrangementTarget(
   xml: string,
@@ -329,8 +340,10 @@ function runWriteArrangement(flags: Record<string, string>): number {
   const target = flags.target;
   const force = flags.force === "true";
 
-  if (alsPath == null || track == null) {
-    process.stderr.write("FEHLER: --als und --track sind erforderlich\n");
+  if (alsPath == null || track == null || flags.breakpoints == null) {
+    process.stderr.write(
+      "FEHLER: --als, --track und --breakpoints erforderlich\n",
+    );
 
     return 1;
   }
@@ -354,12 +367,15 @@ function runWriteArrangement(flags: Record<string, string>): number {
     return 1;
   }
 
-  const bps = parseBreakpoints((flags.breakpoints ?? "").replaceAll(",", "\n"));
+  // flags.breakpoints ist durch den Guard oben garantiert non-null.
+  const bps = parseBreakpoints(flags.breakpoints.replaceAll(",", "\n"));
   const range =
     resolved.min != null && resolved.max != null
       ? { min: resolved.min, max: resolved.max }
-      : null;
-  const validated = range != null ? validateBreakpoints(bps, range) : bps;
+      : { min: -Infinity, max: Infinity };
+  // Wie der Clip-Pfad: IMMER validieren (unbeschränkter Range als Fallback),
+  // nie ungeprüft durchreichen.
+  const validated = validateBreakpoints(bps, range);
 
   backupAls(alsPath);
   const updated = injectArrangementEnvelope(
@@ -369,11 +385,24 @@ function runWriteArrangement(flags: Record<string, string>): number {
     validated,
   );
 
-  const STRIP = /<AutomationEnvelopes>[^]*?<\/AutomationEnvelopes>/g;
+  // Mitigation B (Ziel-Track-genau): injectArrangementEnvelope ändert NUR
+  // innerhalb des Ziel-Track-Blocks. Wir vergleichen daher exakt das Byte-
+  // Komplement (alles VOR tStart + alles AB tEnd) von xml und updated. Ein
+  // versehentlicher Edit in einem ANDEREN Track-Block würde so erkannt — der
+  // alte globale AutomationEnvelopes-STRIP hätte ihn maskiert.
+  const { index: tStart, end: tEnd } = locateTrackBlock(xml, track);
+  // injectArrangementEnvelope ändert ausschließlich Bytes INNERHALB
+  // [tStart, tEnd) — der Block wird nur länger. Die Invariante: Prefix
+  // [0, tStart) identisch UND der Suffix AB dem Track-Block-Ende identisch.
+  // Im (längeren) updated beginnt dieser Suffix bei tEnd + Längendelta.
+  const delta = updated.length - xml.length;
 
-  if (xml.replaceAll(STRIP, "") !== updated.replaceAll(STRIP, "")) {
+  if (
+    xml.slice(0, tStart) !== updated.slice(0, tStart) ||
+    xml.slice(tEnd) !== updated.slice(tEnd + delta)
+  ) {
     process.stderr.write(
-      "FEHLER: unerwartete Änderung außerhalb des AutomationEnvelopes-Blocks\n",
+      "FEHLER: unerwartete Änderung außerhalb des Ziel-Track-Blocks\n",
     );
 
     return 1;
@@ -381,10 +410,34 @@ function runWriteArrangement(flags: Record<string, string>): number {
 
   writeAls(alsPath, updated);
 
+  // Verify auf Clip-Pfad-Niveau: reparsen, Ziel-Track-Block lokalisieren und
+  // (a) PointeeId == resolved.automationTargetId UND (b) FloatEvent-Count ==
+  // validated.length + 1 (Anchor) im neu erzeugten Track-Envelope prüfen.
   const reparsed = readAls(alsPath);
-  // Der Arrangement-Writer bewahrt die Original-Einrueckung (Mitigation A),
-  // daher whitespace-toleranter Verify-Match statt exaktem Tag-Vergleich.
-  const ok = /<AutomationEnvelopes>\s*<Envelopes>/.test(reparsed);
+  const { block: reparsedTrackBlock } = locateTrackBlock(reparsed, track);
+  const pointeeCheck = `<PointeeId Value="${resolved.automationTargetId}" />`;
+  // Scope auf GENAU den neu erzeugten <AutomationEnvelope>-Block (der mit
+  // unserer PointeeId) — analog zum Clip-Pfad, der auf den Clip-Block scoped.
+  // Ein roher FloatEvent-Count über den ganzen Track-Block würde fremde
+  // (bereits vorhandene) Envelopes mitzählen.
+  const envBlocks = [
+    ...reparsedTrackBlock.matchAll(
+      /<AutomationEnvelope\b[^]*?<\/AutomationEnvelope>/g,
+    ),
+  ];
+  const targetEnv = envBlocks.find((b) => b[0].includes(pointeeCheck))?.[0];
+  const hasPointee = targetEnv != null;
+  const floatEventCount =
+    targetEnv != null ? [...targetEnv.matchAll(/<FloatEvent /g)].length : 0;
+  const expectedFloatEvents = validated.length + 1;
+  const ok = hasPointee && floatEventCount === expectedFloatEvents;
+
+  if (!ok) {
+    process.stderr.write(
+      `FEHLER: Verifizierung fehlgeschlagen — PointeeId ${resolved.automationTargetId} ` +
+        `${hasPointee ? "gefunden" : "fehlt"}, FloatEvents ${floatEventCount}/${expectedFloatEvents}\n`,
+    );
+  }
 
   process.stdout.write(
     `${JSON.stringify({
