@@ -24,14 +24,14 @@ export const toolDefLibrary = defineTool("ppal-library", {
         "search: filter library items (default) | listTags: enumerate available tags",
       ),
 
-    query: z
+    query: z.coerce
       .string()
       .optional()
       .describe(
         "name substring (search only); use * as a multi-character wildcard",
       ),
 
-    tags: z
+    tags: z.coerce
       .string()
       .optional()
       .describe(
