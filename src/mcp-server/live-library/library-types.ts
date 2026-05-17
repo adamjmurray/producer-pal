@@ -55,7 +55,7 @@ export interface LibrarySearchArgs {
 export interface LibraryItem {
   /** Filename only */
   name: string;
-  /** Absolute filesystem path (POSIX-style) */
+  /** Absolute filesystem path (forward-slash style on both POSIX and Windows) */
   path: string;
   /** Resolved content kind, or null if file_type didn't map to a known kind */
   kind: LibraryKind | null;
@@ -65,6 +65,11 @@ export interface LibraryItem {
   useCount: number;
   /** Resolved source category, or null if folder_kind was unrecognized */
   source: LibrarySource | null;
+  /**
+   * Present when `path` is missing leading segments because the parent
+   * chain exceeded the reconstruction depth cap. Omitted otherwise.
+   */
+  pathTruncated?: true;
 }
 
 export interface LibrarySearchResult {

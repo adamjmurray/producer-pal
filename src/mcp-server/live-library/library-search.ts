@@ -29,7 +29,7 @@ import {
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
-import { resolveAbsolutePaths } from "./reconstruct-path.ts";
+import { resolveAbsolutePaths, type ResolvedPath } from "./reconstruct-path.ts";
 
 // Intentionally lower than the prior ppal-context.search-samples default (100):
 // the modern tool returns richer per-item payloads (tags, source, kind), so
@@ -247,23 +247,30 @@ function clampLimit(requested: number | undefined): number {
  * tags pre-resolved in bulk to avoid per-row N+1 queries.
  *
  * @param row - Raw search row
- * @param paths - Map of file_id to absolute path resolved upfront
+ * @param paths - Map of file_id to resolved path resolved upfront
  * @param tagsByFile - Map of file_id to tag names resolved upfront
  * @returns Public LibraryItem with resolved path/kind/source/tags
  */
 function buildLibraryItem(
   row: SearchRow,
-  paths: Map<number, string>,
+  paths: Map<number, ResolvedPath>,
   tagsByFile: Map<number, string[]>,
 ): LibraryItem {
-  return {
+  const resolved = paths.get(row.file_id);
+  const item: LibraryItem = {
     name: row.name,
-    path: paths.get(row.file_id) ?? `/${row.name}`,
+    path: resolved?.path ?? `/${row.name}`,
     kind: resolveKind(row.file_type),
     tags: tagsByFile.get(row.file_id) ?? [],
     useCount: row.use_count,
     source: row.folder_kind == null ? null : resolveSource(row.folder_kind),
   };
+
+  if (resolved?.truncated) {
+    item.pathTruncated = true;
+  }
+
+  return item;
 }
 
 /**
