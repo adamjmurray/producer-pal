@@ -14,10 +14,19 @@ describe("parseBreakpoints", () => {
     ]);
   });
   it("ignoriert Leerzeilen und // Kommentare", () => {
-    expect(parseBreakpoints("\n// header\n2=300 // mid\n")).toStrictEqual([{ time: 2, value: 300 }]);
+    expect(parseBreakpoints("\n// header\n2=300 // mid\n")).toStrictEqual([
+      { time: 2, value: 300 },
+    ]);
   });
   it("ueberspringt Zeilen ohne = oder mit nicht-numerischen Werten", () => {
-    expect(parseBreakpoints("bogus\n1=abc\n3=400")).toStrictEqual([{ time: 3, value: 400 }]);
+    expect(parseBreakpoints("bogus\n1=abc\n3=400")).toStrictEqual([
+      { time: 3, value: 400 },
+    ]);
+  });
+  it("ueberspringt Zeilen mit nicht-numerischer Zeit (abc=100)", () => {
+    expect(parseBreakpoints("abc=100\n2=300")).toStrictEqual([
+      { time: 2, value: 300 },
+    ]);
   });
   it("leerer Input -> leeres Array", () => {
     expect(parseBreakpoints("")).toStrictEqual([]);

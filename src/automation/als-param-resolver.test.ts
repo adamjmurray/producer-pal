@@ -4,7 +4,63 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, it, expect } from "vitest";
-import { listDeviceParams, resolveAutomationTargetId } from "./als-param-resolver.ts";
+import {
+  listDeviceParams,
+  resolveAutomationTargetId,
+} from "./als-param-resolver.ts";
+
+// Fixture with UserName set to a non-empty string — exercises the UserName branch.
+const FIXTURE_USERNAME = [
+  `<Ableton><Tracks>`,
+  `<MidiTrack Id="10">`,
+  `<Name><EffectiveName Value="Effective" /><UserName Value="My Track" /></Name>`,
+  `<DeviceChain><DeviceChain><Devices>`,
+  `<Synth Id="0">`,
+  `<Volume>`,
+  `<LomId Value="0" />`,
+  `<Manual Value="0.8" />`,
+  `<AutomationTarget Id="9001" />`,
+  `</Volume>`,
+  `</Synth>`,
+  `</Devices></DeviceChain></DeviceChain>`,
+  `</MidiTrack>`,
+  `</Tracks></Ableton>`,
+].join("");
+
+// Fixture with two devices under one track — exercises deviceIndex > 0 path.
+const FIXTURE_TWO_DEVICES = [
+  `<Ableton><Tracks>`,
+  `<MidiTrack Id="20">`,
+  `<Name><EffectiveName Value="Two Devs" /><UserName Value="" /></Name>`,
+  `<DeviceChain><DeviceChain><Devices>`,
+  `<DeviceA Id="0">`,
+  `<Gain>`,
+  `<LomId Value="0" />`,
+  `<Manual Value="1" />`,
+  `<AutomationTarget Id="100" />`,
+  `</Gain>`,
+  `</DeviceA>`,
+  `<DeviceB Id="1">`,
+  `<Pan>`,
+  `<LomId Value="0" />`,
+  `<Manual Value="0" />`,
+  `<AutomationTarget Id="200" />`,
+  `</Pan>`,
+  `</DeviceB>`,
+  `</Devices></DeviceChain></DeviceChain>`,
+  `</MidiTrack>`,
+  `</Tracks></Ableton>`,
+].join("");
+
+// Fixture with no <Devices> block — exercises the devicesMatch == null path.
+const FIXTURE_NO_DEVICES = [
+  `<Ableton><Tracks>`,
+  `<MidiTrack Id="30">`,
+  `<Name><EffectiveName Value="No Devices" /><UserName Value="" /></Name>`,
+  `<DeviceChain><DeviceChain></DeviceChain></DeviceChain>`,
+  `</MidiTrack>`,
+  `</Tracks></Ableton>`,
+].join("");
 
 // Real Operator nesting: Filter > Frequency (nested param), flat Globals > Volume,
 // and Filter > LegacyQ. Track name resolved via EffectiveName (UserName is empty).
@@ -34,6 +90,63 @@ const FIXTURE = [
   `</LegacyQ>`,
   `</Filter>`,
   `</Operator>`,
+  `</Devices></DeviceChain></DeviceChain>`,
+  `</MidiTrack>`,
+  `</Tracks></Ableton>`,
+].join("");
+
+// Fixture with a param having partial MidiControllerRange (Max only, no Min) and no Manual —
+// exercises extractMinMax min=null branch (line 81) and extractManual null branch (line 94).
+const FIXTURE_PARTIAL_RANGE = [
+  `<Ableton><Tracks>`,
+  `<MidiTrack Id="40">`,
+  `<Name><EffectiveName Value="Partial Range" /><UserName Value="" /></Name>`,
+  `<DeviceChain><DeviceChain><Devices>`,
+  `<Synth Id="0">`,
+  `<Cutoff>`,
+  `<LomId Value="0" />`,
+  `<MidiControllerRange><Max Value="200" /></MidiControllerRange>`,
+  `<AutomationTarget Id="5001" />`,
+  `</Cutoff>`,
+  `</Synth>`,
+  `</Devices></DeviceChain></DeviceChain>`,
+  `</MidiTrack>`,
+  `</Tracks></Ableton>`,
+].join("");
+
+// Fixture with a param having partial MidiControllerRange (Min only, no Max) —
+// exercises extractMinMax max=null branch (line 82).
+const FIXTURE_MIN_ONLY = [
+  `<Ableton><Tracks>`,
+  `<MidiTrack Id="50">`,
+  `<Name><EffectiveName Value="Min Only" /><UserName Value="" /></Name>`,
+  `<DeviceChain><DeviceChain><Devices>`,
+  `<Synth Id="0">`,
+  `<Resonance>`,
+  `<LomId Value="0" />`,
+  `<MidiControllerRange><Min Value="0" /></MidiControllerRange>`,
+  `<AutomationTarget Id="6001" />`,
+  `</Resonance>`,
+  `</Synth>`,
+  `</Devices></DeviceChain></DeviceChain>`,
+  `</MidiTrack>`,
+  `</Tracks></Ableton>`,
+].join("");
+
+// Fixture with a track that has no <EffectiveName> tag and empty UserName —
+// exercises the effectiveNameMatch == null fallback (line 59), track name resolves to "".
+const FIXTURE_NO_EFFECTIVE_NAME = [
+  `<Ableton><Tracks>`,
+  `<MidiTrack Id="60">`,
+  `<Name><UserName Value="" /></Name>`,
+  `<DeviceChain><DeviceChain><Devices>`,
+  `<Synth Id="0">`,
+  `<Volume>`,
+  `<LomId Value="0" />`,
+  `<Manual Value="1" />`,
+  `<AutomationTarget Id="7001" />`,
+  `</Volume>`,
+  `</Synth>`,
   `</Devices></DeviceChain></DeviceChain>`,
   `</MidiTrack>`,
   `</Tracks></Ableton>`,
@@ -107,14 +220,78 @@ describe("listDeviceParams", () => {
   });
 
   it("wirft bei unbekanntem Track", () => {
-    expect(() => listDeviceParams(FIXTURE, "Ghost Track", 0)).toThrow(/nicht gefunden/);
-    expect(() => listDeviceParams(FIXTURE, "Ghost Track", 0)).toThrow(/Ghost Track/);
+    expect(() => listDeviceParams(FIXTURE, "Ghost Track", 0)).toThrow(
+      /nicht gefunden/,
+    );
+    expect(() => listDeviceParams(FIXTURE, "Ghost Track", 0)).toThrow(
+      /Ghost Track/,
+    );
+  });
+
+  it("loest Track-Namen via UserName auf wenn UserName nicht leer", () => {
+    const params = listDeviceParams(FIXTURE_USERNAME, "My Track", 0);
+
+    expect(params).toHaveLength(1);
+    expect(params[0]?.element).toBe("Volume");
+    expect(params[0]?.automationTargetId).toBe("9001");
+  });
+
+  it("gibt leeres Array zurueck wenn keine Devices-Sektion vorhanden", () => {
+    const params = listDeviceParams(FIXTURE_NO_DEVICES, "No Devices", 0);
+
+    expect(params).toStrictEqual([]);
+  });
+
+  it("gibt leeres Array zurueck wenn deviceIndex ausserhalb der Geraete-Liste liegt", () => {
+    const params = listDeviceParams(FIXTURE, "Spike Instr", 99);
+
+    expect(params).toStrictEqual([]);
+  });
+
+  it("waehlt deviceIndex=1 (zweites Geraet) korrekt aus", () => {
+    const params = listDeviceParams(FIXTURE_TWO_DEVICES, "Two Devs", 1);
+
+    expect(params).toHaveLength(1);
+    expect(params[0]?.element).toBe("Pan");
+    expect(params[0]?.automationTargetId).toBe("200");
+  });
+
+  it("setzt min=null wenn MidiControllerRange kein <Min> enthaelt", () => {
+    const params = listDeviceParams(FIXTURE_PARTIAL_RANGE, "Partial Range", 0);
+
+    expect(params).toHaveLength(1);
+    expect(params[0]?.element).toBe("Cutoff");
+    expect(params[0]?.min).toBeNull();
+    expect(params[0]?.max).toBe(200);
+    expect(params[0]?.manual).toBeNull();
+  });
+
+  it("setzt max=null wenn MidiControllerRange kein <Max> enthaelt", () => {
+    const params = listDeviceParams(FIXTURE_MIN_ONLY, "Min Only", 0);
+
+    expect(params).toHaveLength(1);
+    expect(params[0]?.element).toBe("Resonance");
+    expect(params[0]?.min).toBe(0);
+    expect(params[0]?.max).toBeNull();
+  });
+
+  it("gibt leeres Array zurueck wenn kein <EffectiveName>-Tag vorhanden (Track-Name '')", () => {
+    const params = listDeviceParams(FIXTURE_NO_EFFECTIVE_NAME, "", 0);
+
+    expect(params).toHaveLength(1);
+    expect(params[0]?.element).toBe("Volume");
+    expect(params[0]?.automationTargetId).toBe("7001");
   });
 });
 
 describe("resolveAutomationTargetId", () => {
   it("loest Frequency per exaktem Element-Namen auf (nested unter Filter)", () => {
-    const param = resolveAutomationTargetId(FIXTURE, "Spike Instr", 0, "Frequency");
+    const param = resolveAutomationTargetId(
+      FIXTURE,
+      "Spike Instr",
+      0,
+      "Frequency",
+    );
 
     expect(param.automationTargetId).toBe("23005");
     expect(param.element).toBe("Frequency");
@@ -123,13 +300,23 @@ describe("resolveAutomationTargetId", () => {
   });
 
   it("loest per Alias 'Filter Freq' auf (23005)", () => {
-    const param = resolveAutomationTargetId(FIXTURE, "Spike Instr", 0, "Filter Freq");
+    const param = resolveAutomationTargetId(
+      FIXTURE,
+      "Spike Instr",
+      0,
+      "Filter Freq",
+    );
 
     expect(param.automationTargetId).toBe("23005");
   });
 
   it("loest per Alias 'Filter Frequency' auf (23005)", () => {
-    const param = resolveAutomationTargetId(FIXTURE, "Spike Instr", 0, "Filter Frequency");
+    const param = resolveAutomationTargetId(
+      FIXTURE,
+      "Spike Instr",
+      0,
+      "Filter Frequency",
+    );
 
     expect(param.automationTargetId).toBe("23005");
   });
@@ -163,8 +350,26 @@ describe("resolveAutomationTargetId", () => {
   });
 
   it("waehlt per occurrence=1 den zweiten Treffer bei Duplikaten", () => {
-    const param = resolveAutomationTargetId(FIXTURE_DUPLICATE, "Dup Track", 0, "Frequency", 1);
+    const param = resolveAutomationTargetId(
+      FIXTURE_DUPLICATE,
+      "Dup Track",
+      0,
+      "Frequency",
+      1,
+    );
 
     expect(param.automationTargetId).toBe("23100");
+  });
+
+  it("wirft wenn occurrence ausserhalb des Bereichs liegt", () => {
+    expect(() =>
+      resolveAutomationTargetId(
+        FIXTURE_DUPLICATE,
+        "Dup Track",
+        0,
+        "Frequency",
+        5,
+      ),
+    ).toThrow(/occurrence 5 ausserhalb/);
   });
 });
