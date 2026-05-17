@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  CLIP_SETTING_SPEC,
   getClipSettings,
   patchClipSetting,
 } from "#src/automation/als-clip-settings.ts";
@@ -116,8 +117,11 @@ export function applyClipSettingPatches(
  * Resolves the track via the canonical `locateTrackBlock`, then the clip via
  * `locateClipBlock` INSIDE that track block, translating the track-relative
  * clip offsets back to absolute `xml` offsets. Rejects a duplicate clip name
- * within the track with a clear error instead of silently picking the first
- * match (no stille Erst-Auswahl).
+ * within the track AND a duplicate TRACK name with a clear error instead of
+ * silently picking the first match (no stille Erst-Auswahl) — symmetric to the
+ * clip-duplicate guard. Track-name counting uses `locateTrackBlock`'s `names`
+ * list, which is built from the canonical `extractTrackName` logic (UserName
+ * preferred over EffectiveName) — no second name-matching copy.
  *
  * @param xml - Raw (decompressed) `.als` XML string
  * @param track - Display name of the target track
@@ -131,6 +135,15 @@ export function locateClipWithinTrack(
   clip: string,
 ): ClipLocation {
   const t = locateTrackBlock(xml, track);
+  const trackOccurrences = t.names.filter((n) => n === track).length;
+
+  if (trackOccurrences > 1) {
+    throw new Error(
+      `Track "${track}" mehrfach (${trackOccurrences}x) — ` +
+        `mehrdeutig, keine stille Auswahl`,
+    );
+  }
+
   const namePattern = `<Name Value="${clip}" />`;
   const occurrences = t.block.split(namePattern).length - 1;
 
@@ -206,6 +219,22 @@ function runClipSettingsSet(rest: string[], ctx: SetContext): number {
     return 1;
   }
 
+  // Doppelte Keys: last-write-wins (kein Fehler), aber explizit warnen statt
+  // still den ersten Wert zu verschlucken.
+  const seen = new Set<string>();
+  const warned = new Set<string>();
+
+  for (const { key } of pairs) {
+    if (seen.has(key) && !warned.has(key)) {
+      process.stderr.write(
+        `WARNUNG: Key "${key}" mehrfach angegeben — letzter Wert gewinnt\n`,
+      );
+      warned.add(key);
+    }
+
+    seen.add(key);
+  }
+
   const before = getClipSettings(loc.block);
   // Indirection via a mutable holder so vi.spyOn(...) is honored by the
   // Mitigation-B foreign-block proof (spy seam, mirrors the
@@ -240,12 +269,34 @@ function runClipSettingsSet(rest: string[], ctx: SetContext): number {
   // Re-parse-Verify: gepatchte Roh-Werte zurückgelesen == Soll.
   const reLoc = locateClipWithinTrack(readAls(alsPath), track, clip);
   const after = getClipSettings(reLoc.block);
-  const patched = pairs.map((p) => ({
+  // Last-write-wins-Auflösung: bei doppeltem Key gilt nur der letzte Wert
+  // (so wie applyClipSettingPatches sequentiell patcht) — sonst würde der
+  // Verify den verworfenen Erstwert prüfen und fälschlich fehlschlagen.
+  const effective = new Map<string, string>();
+
+  for (const p of pairs) effective.set(p.key, p.value);
+  const effectivePairs = [...effective].map(([key, value]) => ({
+    key,
+    value,
+  }));
+  const patched = effectivePairs.map((p) => ({
     key: p.key,
     old: before[p.key],
     new: after[p.key],
   }));
-  const ok = pairs.every((p) => after[p.key] === p.value);
+  // Re-Parse-Verify allein maskiert: liefert patchClipSetting den Tag nicht
+  // und ist Soll == SPEC-Default, gibt getClipSettings faelschlich den Default
+  // zurueck -> ok waere true. Daher zusaetzlich den ROH-Tag-String im neu
+  // geladenen Clip-Block pruefen.
+  const ok = effectivePairs.every((p) => {
+    const def = CLIP_SETTING_SPEC[p.key];
+
+    return (
+      def != null &&
+      reLoc.block.includes(`<${def.tag} Value="${p.value}" />`) &&
+      after[p.key] === p.value
+    );
+  });
 
   if (!ok) {
     process.stderr.write(

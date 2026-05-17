@@ -222,4 +222,142 @@ describe("clip-settings", () => {
       fs.rmSync(`${tmp}.bak`, { force: true });
     }
   });
+
+  // FIX A: Verify-Maskierung. patchClipSetting schreibt den Tag NICHT (Spy gibt
+  // einen Block OHNE LaunchMode-Tag zurueck), Soll == SPEC-Default "0".
+  // Alter Verify (after[key] === value) liest den Default zurueck -> faelsch
+  // true. Der zusaetzliche Roh-Tag-Check muss false (Exit 1) erzwingen.
+  it("BEWEIS: nicht geschriebener Tag bei Soll==Default -> Verify Exit 1 (sonst maskiert)", () => {
+    // Block ohne <LaunchMode .../> -> getClipSettings liefert Default "0".
+    const xml = [
+      `<Ableton><Tracks><MidiTrack Id="1">`,
+      `<Name><EffectiveName Value="T" /><UserName Value="T" /></Name>`,
+      `<DeviceChain><MainSequencer><ClipSlotList><ClipSlot>`,
+      `<MidiClip Time="0"><Name Value="ZielClip" /><Color Value="1" />`,
+      `<LaunchQuantisation Value="0" />`,
+      `<TimeSignature><Foo /></TimeSignature></MidiClip>`,
+      `</ClipSlot></ClipSlotList></MainSequencer></DeviceChain>`,
+      `</MidiTrack></Tracks></Ableton>`,
+    ].join("");
+    const tmp = tmpAls(xml);
+    // Spy: Ziel-Patch NICHT anwenden (Original-XML unveraendert zurueck) ->
+    // LaunchMode-Tag fehlt weiterhin, Mitigation-B-Guard bleibt gruen
+    // (Prefix/Suffix identisch), nur der Verify muss greifen.
+    const applySpy = vi
+      .spyOn(clipSettingsInternals, "applyClipSettingPatches")
+      .mockImplementation((x) => x);
+    const errSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const code = runCli(
+        csArgs(
+          "set",
+          tmp,
+          "T",
+          "ZielClip",
+          "--key",
+          "LaunchMode",
+          "--value",
+          "0",
+          "--force",
+        ),
+      );
+
+      expect(code).toBe(1);
+      expect(errSpy.mock.calls.map((c) => String(c[0])).join("")).toContain(
+        "Verifizierung fehlgeschlagen",
+      );
+    } finally {
+      applySpy.mockRestore();
+      errSpy.mockRestore();
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
+
+  // FIX B: doppelter --key. Last-write-wins bleibt, aber stderr-Warnung muss
+  // erscheinen, Exit 0, Endwert = letzter (2).
+  it("doppelter --key -> stderr-Warnung, Exit 0, last-write-wins", () => {
+    const tmp = tmpAls(dupClipXml("ZielClip", "FremdClip"));
+    const errSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const code = runCli(
+        csArgs(
+          "set",
+          tmp,
+          "T",
+          "ZielClip",
+          "--key",
+          "LaunchMode",
+          "--value",
+          "1",
+          "--key",
+          "LaunchMode",
+          "--value",
+          "2",
+          "--force",
+        ),
+      );
+
+      expect(code).toBe(0);
+      expect(errSpy.mock.calls.map((c) => String(c[0])).join("")).toMatch(
+        /mehrfach angegeben|letzter wert gewinnt/i,
+      );
+
+      const out = readAls(tmp);
+
+      expect(out).toContain('<LaunchMode Value="2" />');
+      expect(out).not.toContain('<LaunchMode Value="1" />');
+    } finally {
+      errSpy.mockRestore();
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
+
+  // FIX C: zwei gleichnamige TRACKS -> keine stille Erstauswahl, Klartext.
+  it("zwei gleichnamige Tracks -> Klartext-Fehler (keine stille Auswahl)", () => {
+    const xml = [
+      `<Ableton><Tracks>`,
+      `<MidiTrack Id="1">`,
+      `<Name><EffectiveName Value="DupTrack" /><UserName Value="DupTrack" /></Name>`,
+      `<DeviceChain><MainSequencer><ClipSlotList><ClipSlot>`,
+      `<MidiClip Time="0"><Name Value="C" /><Color Value="1" />`,
+      `<LaunchMode Value="0" /><LaunchQuantisation Value="0" />`,
+      `<TimeSignature><Foo /></TimeSignature></MidiClip>`,
+      `</ClipSlot></ClipSlotList></MainSequencer></DeviceChain>`,
+      `</MidiTrack>`,
+      `<MidiTrack Id="2">`,
+      `<Name><EffectiveName Value="DupTrack" /><UserName Value="DupTrack" /></Name>`,
+      `<DeviceChain><MainSequencer><ClipSlotList><ClipSlot>`,
+      `<MidiClip Time="0"><Name Value="C" /><Color Value="2" />`,
+      `<LaunchMode Value="0" /><LaunchQuantisation Value="0" />`,
+      `<TimeSignature><Foo /></TimeSignature></MidiClip>`,
+      `</ClipSlot></ClipSlotList></MainSequencer></DeviceChain>`,
+      `</MidiTrack>`,
+      `</Tracks></Ableton>`,
+    ].join("");
+    const tmp = tmpAls(xml);
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const code = runCli(csArgs("get", tmp, "DupTrack", "C"));
+
+      expect(code).toBe(1);
+      expect(spy.mock.calls.map((c) => String(c[0])).join("")).toMatch(
+        /track "duptrack" mehrfach|mehrdeutig/i,
+      );
+    } finally {
+      spy.mockRestore();
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
 });
