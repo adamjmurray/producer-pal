@@ -58,8 +58,60 @@ describe("locateClipBlock", () => {
       '<MidiClip Time="0"><Name Value="C1" /><Color Value="1" /></MidiClip>' +
       '<MidiClip Time="0"><Name Value="ZielClip" /><Color Value="2" /></MidiClip>';
     const loc = locateClipBlock(xml, "ZielClip");
+
     expect(loc.block).toContain('<Name Value="ZielClip" />');
     expect(xml.slice(loc.start, loc.end)).toBe(loc.block);
+  });
+
+  it("locateClipBlock findet AudioClip per Name", () => {
+    const xml = '<AudioClip Time="8"><Name Value="AC" /><X /></AudioClip>';
+
+    expect(locateClipBlock(xml, "AC").block).toContain('<Name Value="AC" />');
+  });
+
+  it("locateClipBlock findet Arrangement-MidiClip mit Time-Attribut", () => {
+    const xml =
+      '<MidiClip Time="0"><Name Value="S" /></MidiClip>' +
+      '<MidiClip Time="16"><Name Value="ArrClip" /></MidiClip>';
+    const loc = locateClipBlock(xml, "ArrClip");
+
+    expect(loc.block).toContain('Time="16"');
+    expect(loc.block).toContain('<Name Value="ArrClip" />');
+  });
+
+  it("lokalisiert gemischte MidiClips + AudioClip jeweils per Name vollstaendig", () => {
+    const m1 =
+      '<MidiClip Time="0"><Name Value="M1" /><Color Value="1" /></MidiClip>';
+    const ac =
+      '<AudioClip Time="4"><Name Value="A1" /><Sample Value="x" /></AudioClip>';
+    const m2 =
+      '<MidiClip Time="32"><Name Value="M2" /><Color Value="2" /></MidiClip>';
+    const xml = `<Outer>${m1}${ac}${m2}</Outer>`;
+
+    const l1 = locateClipBlock(xml, "M1");
+
+    expect(l1.block).toBe(m1);
+    expect(xml.slice(l1.start, l1.end)).toBe(l1.block);
+
+    const la = locateClipBlock(xml, "A1");
+
+    expect(la.block).toBe(ac);
+    expect(xml.slice(la.start, la.end)).toBe(la.block);
+
+    const l2 = locateClipBlock(xml, "M2");
+
+    expect(l2.block).toBe(m2);
+    expect(xml.slice(l2.start, l2.end)).toBe(l2.block);
+  });
+
+  it("wirft bei unbekanntem Clip-Namen (Negativfall, additiv)", () => {
+    const xml =
+      '<MidiClip Time="0"><Name Value="M1" /></MidiClip>' +
+      '<AudioClip Time="8"><Name Value="A1" /></AudioClip>';
+
+    expect(() => locateClipBlock(xml, "FehltGarantiert")).toThrow(
+      /nicht gefunden/,
+    );
   });
 });
 

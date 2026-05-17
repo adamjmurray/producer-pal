@@ -88,8 +88,15 @@ export function buildEnvelopeXml(
 const EMPTY_ENVELOPES_RE = /(<Envelopes>\s*)<Envelopes\s*\/>(\s*<\/Envelopes>)/;
 
 /**
- * Locate the `<MidiClip ...>...</MidiClip>` block whose nested
- * `<Name Value="clipName" />` matches, and return its absolute byte range.
+ * Locate the clip block whose nested `<Name Value="clipName" />` matches, and
+ * return its absolute byte range. Matches both Session and Arrangement
+ * `<MidiClip ...>` and `<AudioClip ...>` blocks (Arrangement clips carry a
+ * `Time="..."` attribute on the open tag, tolerated via `[^>]*`).
+ *
+ * Non-backtracking scan (open-tag regex + `indexOf` of the matching close tag,
+ * analogous to `scanTrackBlock`) — no tempered-greedy / catastrophic
+ * backtracking. The Session-`<MidiClip>` path returns a byte-identical block to
+ * the previous implementation (covered by the regression characterization).
  *
  * @param xml - Raw (decompressed) `.als` XML string.
  * @param clipName - Exact value of the clip's `<Name Value="..." />` attribute.
@@ -102,14 +109,30 @@ export function locateClipBlock(
   clipName: string,
 ): { start: number; end: number; block: string } {
   // Fresh regex per call — no module-level /g state (lastIndex side-effects)
-  const midiClipRe = /<MidiClip\b(?:(?!<\/MidiClip>).)*?<\/MidiClip>/gs;
-
+  const openRe = /<(MidiClip|AudioClip)\b[^>]*>/g;
   const namePattern = `<Name Value="${clipName}" />`;
   let m: RegExpExecArray | null;
 
-  while ((m = midiClipRe.exec(xml)) !== null) {
-    if (m[0].includes(namePattern)) {
-      return { start: m.index, end: m.index + m[0].length, block: m[0] };
+  while ((m = openRe.exec(xml)) !== null) {
+    const tag = m[1] as "MidiClip" | "AudioClip";
+    const start = m.index;
+    const closeTag = `</${tag}>`;
+    const closeIdx = xml.indexOf(closeTag, start);
+
+    if (closeIdx === -1) {
+      throw new Error(`unerwartetes .als-Format: <${tag}> nicht geschlossen`);
+    }
+
+    const end = closeIdx + closeTag.length;
+
+    // Advance the scanner past this clip so the next iteration finds siblings,
+    // never a nested-looking inner match.
+    openRe.lastIndex = end;
+
+    const block = xml.slice(start, end);
+
+    if (block.includes(namePattern)) {
+      return { start, end, block };
     }
   }
 
