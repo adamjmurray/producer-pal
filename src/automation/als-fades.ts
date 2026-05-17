@@ -191,6 +191,8 @@ function validate(key: string, def: FadeDef, value: string): void {
     );
 
   if (def.type === "float") {
+    if (value.trim() === "")
+      throw new Error(`Key "${key}" erwartet finite Zahl >= 0, nicht leer`);
     const n = Number(value);
 
     if (!Number.isFinite(n) || n < 0)
@@ -230,7 +232,12 @@ function replaceFadeBoolInWindow(clipXml: string, value: string): string {
   const windowEnd = windowStart + em.index;
   const win = clipXml.slice(windowStart, windowEnd);
 
-  const tagRe = /<Fade Value="[^"]*" \/>/g;
+  // Genau EINE Regex-Quelle (mit /g + Capture-Gruppen) sowohl für den
+  // Treffer-Count-Guard als auch für den Replace — kein Divergenzrisiko
+  // zwischen zwei separaten Literals. Pattern analog zu
+  // als-clip-settings.ts replaceScalarInWindow (lokal nachgebildet, NICHT
+  // importiert: keine fades→clip-settings-Kopplung, Slice-3 unangetastet).
+  const tagRe = /(<Fade Value=")[^"]*(" \/>)/g;
   const hits = win.match(tagRe);
 
   if (hits === null)
@@ -241,14 +248,11 @@ function replaceFadeBoolInWindow(clipXml: string, value: string): string {
     );
 
   let replaced = 0;
-  const patchedWin = win.replace(
-    /(<Fade Value=")[^"]*(" \/>)/,
-    (_m, pre: string, post: string) => {
-      replaced += 1;
+  const patchedWin = win.replaceAll(tagRe, (_m, pre: string, post: string) => {
+    replaced += 1;
 
-      return `${pre}${value}${post}`;
-    },
-  );
+    return `${pre}${value}${post}`;
+  });
 
   if (replaced !== 1)
     throw new Error(

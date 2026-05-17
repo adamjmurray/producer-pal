@@ -144,4 +144,41 @@ describe("patchFade", () => {
       patchFade('<MidiClip><Name Value="M" /></MidiClip>', "FadeInLength", "1"),
     ).toThrow(/fades|audioclip/i);
   });
+  it('float-Key Leerstring wirft (kein Value="" schreiben)', () => {
+    expect(() => patchFade(AUDIO, "FadeInLength", "")).toThrow(
+      /finite|zahl|leer/i,
+    );
+  });
+  it('float-Key Whitespace-only wirft (kein Value="  " schreiben)', () => {
+    expect(() => patchFade(AUDIO, "FadeOutLength", "  ")).toThrow(
+      /finite|zahl|leer/i,
+    );
+  });
+  it("<Fade>-Patch ohne <WarpMode> wirft (Window-Startmarke fehlt)", () => {
+    const clipOhneWarpMode =
+      '<AudioClip Id="2"><Name Value="NW" />' +
+      '<Fade Value="true" />' +
+      "<Fades>" +
+      '<FadeInLength Value="0" /><FadeOutLength Value="0" />' +
+      '<ClipFadesAreInitialized Value="true" /><CrossfadeInState Value="0" />' +
+      '<FadeInCurveSkew Value="0" /><FadeInCurveSlope Value="0" />' +
+      '<FadeOutCurveSkew Value="0" /><FadeOutCurveSlope Value="0" />' +
+      '<IsDefaultFadeIn Value="true" /><IsDefaultFadeOut Value="true" />' +
+      "</Fades></AudioClip>";
+
+    expect(() => patchFade(clipOhneWarpMode, "Fade", "false")).toThrow(
+      /warpmode|positions-anker/i,
+    );
+  });
+  it("<Fade>-Patch ohne <Fades> nach <WarpMode> wirft (Window-Endmarke fehlt)", () => {
+    const clipOhneFadesAberMitWarpMode =
+      '<AudioClip Id="3"><Name Value="NF" />' +
+      '<WarpMode Value="0" />' +
+      '<Fade Value="true" />' +
+      '<PitchCoarse Value="0" /></AudioClip>';
+
+    expect(() =>
+      patchFade(clipOhneFadesAberMitWarpMode, "Fade", "false"),
+    ).toThrow(/fades|positions-anker/i);
+  });
 });
