@@ -167,4 +167,49 @@ describe("node-request-v8-protocol", () => {
       expect.stringContaining("unknown-id"),
     );
   });
+
+  it("cancels the timeout task after a successful response", async () => {
+    // Swap in a non-auto-firing Task so we can observe cancel separately
+    // from the schedule() call that arms the timeout.
+    type ScheduleSpy = (ms: number) => void;
+    const scheduleCalls: number[] = [];
+
+    class TrackingTask {
+      schedule: ScheduleSpy;
+
+      constructor(_callback: () => void) {
+        this.schedule = (ms: number): void => {
+          scheduleCalls.push(ms);
+        };
+      }
+    }
+
+    const g = globalThis as Record<string, unknown>;
+    const originalTask = g.Task;
+
+    g.Task = TrackingTask;
+
+    try {
+      const promise = requestNode("test.cancel");
+      const requestId = latestRequestId();
+
+      // First schedule() call arms the timeout with a positive ms value.
+      expect(scheduleCalls).toStrictEqual([10_000]);
+
+      handleNodeResponse(
+        requestId,
+        JSON.stringify({ success: true, result: "ok" }),
+      );
+
+      // cancel() is implemented as schedule(-1), so a successful response
+      // must produce a second schedule call with a negative value.
+      expect(scheduleCalls).toStrictEqual([10_000, -1]);
+
+      const response = await promise;
+
+      expect(response.success).toBe(true);
+    } finally {
+      g.Task = originalTask;
+    }
+  });
 });
