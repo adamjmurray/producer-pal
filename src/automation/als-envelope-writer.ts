@@ -7,11 +7,24 @@ import { type Breakpoint } from "#src/automation/breakpoint-validator.ts";
 
 /**
  * Render a number without scientific notation: integers as integers, floats as floats.
+ * Trims trailing zeros after the decimal point.
  * @param n - Number to format
- * @returns Plain decimal string
+ * @returns Plain decimal string, never in exponent form
  */
 function fmt(n: number): string {
-  return String(n);
+  if (Number.isInteger(n)) {
+    // String(n) uses sci-notation for |n| >= 1e21; use BigInt for those
+    const s = String(n);
+
+    return /[Ee]/.test(s) ? BigInt(n).toString() : s;
+  }
+
+  // plain decimal float, no exponent, trim trailing zeros
+  let s = n.toFixed(12);
+
+  if (s.includes(".")) s = s.replace(/0+$/, "").replace(/\.$/, "");
+
+  return s;
 }
 
 /**
@@ -44,9 +57,6 @@ export function buildEnvelopeXml(
   );
 }
 
-/** Regex matching a complete `<MidiClip>...</MidiClip>` block (non-overlapping, dotall). */
-const MIDI_CLIP_RE = /<MidiClip\b(?:(?!<\/MidiClip>).)*?<\/MidiClip>/gs;
-
 /** Regex matching the empty envelopes placeholder Ableton writes for clips with no automation. */
 const EMPTY_ENVELOPES_RE = /<Envelopes>\s*<Envelopes\s*\/>\s*<\/Envelopes>/;
 
@@ -72,15 +82,15 @@ export function injectClipEnvelope(
   automationTargetId: string | number,
   breakpoints: Breakpoint[],
 ): string {
-  // Reset lastIndex since the regex is /g
-  MIDI_CLIP_RE.lastIndex = 0;
+  // Fresh regex per call — no module-level /g state (lastIndex side-effects)
+  const midiClipRe = /<MidiClip\b(?:(?!<\/MidiClip>).)*?<\/MidiClip>/gs;
 
   const namePattern = `<Name Value="${clipName}" />`;
   let matchedClip: RegExpExecArray | null = null;
 
   let m: RegExpExecArray | null;
 
-  while ((m = MIDI_CLIP_RE.exec(xml)) !== null) {
+  while ((m = midiClipRe.exec(xml)) !== null) {
     if (m[0].includes(namePattern)) {
       matchedClip = m;
       break;
