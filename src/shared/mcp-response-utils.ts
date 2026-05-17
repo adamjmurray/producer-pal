@@ -1,11 +1,59 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Message chunking constants
 export const MAX_ERROR_DELIMITER = "$$___MAX_ERRORS___$$";
 export const MAX_CHUNK_SIZE = 30000; // ~30KB per chunk, well below the 32,767 limit
 export const MAX_CHUNKS = 100; // Allows for ~3MB responses
+
+export interface ChunkPlan {
+  chunks: string[];
+  tooLargeError: string | null;
+}
+
+/**
+ * Split a JSON string into chunks small enough for the Max IPC boundary.
+ * Returns a tooLargeError instead of chunks if the payload would exceed
+ * MAX_CHUNKS — callers should replace the payload with an error response.
+ *
+ * @param jsonString - Stringified payload to split
+ * @returns Either the chunks or a tooLargeError describing the overflow
+ */
+export function planChunks(jsonString: string): ChunkPlan {
+  const totalChunks = Math.ceil(jsonString.length / MAX_CHUNK_SIZE);
+
+  if (totalChunks > MAX_CHUNKS) {
+    return {
+      chunks: [],
+      tooLargeError: `Response too large: ${jsonString.length} bytes would require ${totalChunks} chunks (max ${MAX_CHUNKS})`,
+    };
+  }
+
+  const chunks: string[] = [];
+
+  for (let i = 0; i < jsonString.length; i += MAX_CHUNK_SIZE) {
+    chunks.push(jsonString.slice(i, i + MAX_CHUNK_SIZE));
+  }
+
+  return { chunks, tooLargeError: null };
+}
+
+/**
+ * Reassemble a chunked Max IPC payload by joining chunks before the
+ * MAX_ERROR_DELIMITER. Args without a delimiter are joined as-is, so a
+ * single-chunk payload is handled correctly.
+ *
+ * @param rest - All args after the leading requestId
+ * @returns The reassembled JSON string
+ */
+export function reassembleChunks(rest: unknown[]): string {
+  const delimiterIndex = rest.indexOf(MAX_ERROR_DELIMITER);
+  const chunks = delimiterIndex === -1 ? rest : rest.slice(0, delimiterIndex);
+
+  return chunks.map(String).join("");
+}
 
 interface McpTextContent {
   type: "text";

@@ -6,6 +6,11 @@
 import Max from "max-api";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  MAX_CHUNK_SIZE,
+  MAX_CHUNKS,
+  MAX_ERROR_DELIMITER,
+} from "#src/shared/mcp-response-utils.ts";
+import {
   clearNodeRoutes,
   handleNodeRequest,
   registerNodeRoute,
@@ -19,7 +24,7 @@ vi.mock(import("../node-for-max-logger.ts"), () => ({
 }));
 
 /**
- * Parse the response JSON sent via Max.outlet
+ * Reassemble and parse the response JSON sent via the chunked Max.outlet call.
  *
  * @returns Parsed response object
  */
@@ -33,7 +38,13 @@ function parseSentResponse(): {
   expect(call).toBeDefined();
   expect(call?.[0]).toBe("node_response");
 
-  const json = call?.[2] as string;
+  const args = (call ?? []).slice(2);
+  const delimiterIndex = args.indexOf(MAX_ERROR_DELIMITER);
+
+  expect(delimiterIndex).toBeGreaterThanOrEqual(0);
+
+  const chunks = args.slice(0, delimiterIndex) as string[];
+  const json = chunks.join("");
 
   return JSON.parse(json) as {
     success: boolean;
@@ -65,6 +76,7 @@ describe("node-request-protocol", () => {
       "node_response",
       "req-1",
       expect.any(String),
+      MAX_ERROR_DELIMITER,
     );
 
     const response = parseSentResponse();
@@ -147,6 +159,50 @@ describe("node-request-protocol", () => {
     expect(() => registerNodeRoute("dupe", () => 2)).toThrow(
       /already registered/,
     );
+  });
+
+  it("chunks oversized payloads across multiple outlet args", async () => {
+    // Result that, once stringified, will exceed a single chunk
+    const oversized = "x".repeat(MAX_CHUNK_SIZE * 2 + 50);
+
+    registerNodeRoute("big", () => oversized);
+
+    await handleNodeRequest(
+      "req-big",
+      JSON.stringify({ route: "big", args: {} }),
+    );
+
+    const call = vi.mocked(Max.outlet).mock.calls[0]!;
+
+    expect(call[0]).toBe("node_response");
+    expect(call[1]).toBe("req-big");
+
+    const args = call.slice(2);
+    const delimiterIndex = args.indexOf(MAX_ERROR_DELIMITER);
+
+    expect(delimiterIndex).toBeGreaterThan(1);
+
+    const response = parseSentResponse();
+
+    expect(response.success).toBe(true);
+    expect(response.result).toBe(oversized);
+  });
+
+  it("replaces too-large payloads with a single-chunk error response", async () => {
+    // Construct a payload that exceeds MAX_CHUNKS * MAX_CHUNK_SIZE
+    const overflow = "y".repeat(MAX_CHUNKS * MAX_CHUNK_SIZE + 1);
+
+    registerNodeRoute("overflow", () => overflow);
+
+    await handleNodeRequest(
+      "req-overflow",
+      JSON.stringify({ route: "overflow", args: {} }),
+    );
+
+    const response = parseSentResponse();
+
+    expect(response.success).toBe(false);
+    expect(response.error).toMatch(/Response too large/);
   });
 
   it("logs error when Max.outlet fails", async () => {

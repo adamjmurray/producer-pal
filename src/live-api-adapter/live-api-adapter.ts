@@ -11,9 +11,9 @@ import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
 import {
   formatErrorResponse,
   formatSuccessResponse,
-  MAX_CHUNK_SIZE,
-  MAX_CHUNKS,
   MAX_ERROR_DELIMITER,
+  planChunks,
+  reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
@@ -232,15 +232,10 @@ export function sampleFolder(path: unknown): void {
  */
 function sendResponse(requestId: string, result: object): void {
   const jsonString = JSON.stringify(result);
+  const { chunks, tooLargeError } = planChunks(jsonString);
 
-  // Calculate required chunks
-  const totalChunks = Math.ceil(jsonString.length / MAX_CHUNK_SIZE);
-
-  if (totalChunks > MAX_CHUNKS) {
-    // Response too large - send error instead
-    const errorResult = formatErrorResponse(
-      `Response too large: ${jsonString.length} bytes would require ${totalChunks} chunks (max ${MAX_CHUNKS})`,
-    );
+  if (tooLargeError != null) {
+    const errorResult = formatErrorResponse(tooLargeError);
 
     outlet(
       0,
@@ -251,13 +246,6 @@ function sendResponse(requestId: string, result: object): void {
     );
 
     return;
-  }
-
-  // Chunk the JSON string
-  const chunks = [];
-
-  for (let i = 0; i < jsonString.length; i += MAX_CHUNK_SIZE) {
-    chunks.push(jsonString.slice(i, i + MAX_CHUNK_SIZE));
   }
 
   // Send as: ["mcp_response", requestId, chunk1, chunk2, ..., delimiter]
@@ -276,12 +264,14 @@ export function code_exec_result(requestId: string, resultJson: string): void {
 
 /**
  * Handle node_response message from Node after a node_request route ran.
+ * Payload is chunked across the Max IPC boundary the same way mcp_response
+ * is — args are: requestId, chunk1, ..., chunkN, MAX_ERROR_DELIMITER.
  *
  * @param requestId - Request identifier
- * @param responseJson - JSON string of NodeResponse
+ * @param rest - Payload chunks followed by MAX_ERROR_DELIMITER
  */
-export function node_response(requestId: string, responseJson: string): void {
-  handleNodeResponse(requestId, responseJson);
+export function node_response(requestId: string, ...rest: unknown[]): void {
+  handleNodeResponse(requestId, reassembleChunks(rest));
 }
 
 // Handle messages from Node for Max

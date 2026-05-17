@@ -5,6 +5,11 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  MAX_CHUNK_SIZE,
+  MAX_ERROR_DELIMITER,
+  reassembleChunks,
+} from "#src/shared/mcp-response-utils.ts";
+import {
   handleNodeResponse,
   requestNode,
 } from "../node-request-v8-protocol.ts";
@@ -116,6 +121,38 @@ describe("node-request-v8-protocol", () => {
 
     expect(response.success).toBe(false);
     expect(response.error).toContain("Failed to parse node_response");
+  });
+
+  it("reassembles chunked responses produced by the Node sender", async () => {
+    const promise = requestNode<{ payload: string }>("test.big");
+    const requestId = latestRequestId();
+
+    // Build a response larger than a single chunk to verify reassembly
+    const payload = "z".repeat(MAX_CHUNK_SIZE * 2 + 5);
+    const responseJson = JSON.stringify({
+      success: true,
+      result: { payload },
+    });
+
+    // Simulate Max IPC: receive chunks + delimiter + run them through the
+    // reassembler before handleNodeResponse, the way the live-api-adapter
+    // node_response() entry point does.
+    const chunks: string[] = [];
+
+    for (let i = 0; i < responseJson.length; i += MAX_CHUNK_SIZE) {
+      chunks.push(responseJson.slice(i, i + MAX_CHUNK_SIZE));
+    }
+
+    expect(chunks.length).toBeGreaterThan(1);
+
+    const reassembled = reassembleChunks([...chunks, MAX_ERROR_DELIMITER]);
+
+    handleNodeResponse(requestId, reassembled);
+
+    const response = await promise;
+
+    expect(response.success).toBe(true);
+    expect(response.result?.payload).toBe(payload);
   });
 
   it("logs error and ignores response for unknown requestId", async () => {

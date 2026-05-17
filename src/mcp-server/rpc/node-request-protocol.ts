@@ -11,6 +11,10 @@
  */
 
 import Max from "max-api";
+import {
+  MAX_ERROR_DELIMITER,
+  planChunks,
+} from "#src/shared/mcp-response-utils.ts";
 import * as console from "../node-for-max-logger.ts";
 
 export type NodeRouteHandler = (args: unknown) => unknown;
@@ -115,8 +119,20 @@ async function sendNodeResponse(
   requestId: string,
   response: { success: boolean; result?: unknown; error?: string },
 ): Promise<void> {
+  const jsonString = JSON.stringify(response);
+  const plan = planChunks(jsonString);
+  const chunks =
+    plan.tooLargeError == null
+      ? plan.chunks
+      : [JSON.stringify({ success: false, error: plan.tooLargeError })];
+
   try {
-    await Max.outlet("node_response", requestId, JSON.stringify(response));
+    await Max.outlet(
+      "node_response",
+      requestId,
+      ...chunks,
+      MAX_ERROR_DELIMITER,
+    );
   } catch (error) {
     console.error(
       `Failed to send node_response: ${String(error)} [requestId=${requestId}]`,
