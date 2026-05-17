@@ -82,6 +82,28 @@ describe("listGrooves", () => {
     expect(g[0]?.name).toBe("Real Groove Name");
     expect(g[0]?.name).not.toBe("EMBED");
   });
+  // FIX 2: Inline-Groove-Eintrag OHNE eingebetteten <Clip>. Vorher führte
+  // block.indexOf("</Clip>") === -1 zu block.slice(-1) -> alle Amounts "".
+  it("FIX 2: Eintrag OHNE <Clip> -> korrekte Amounts und Name", () => {
+    const noClip =
+      '<GroovePool><LomId Value="0" /><Grooves>' +
+      '<Groove Id="9"><LomId Value="0" /><Name Value="No Clip Groove" />' +
+      '<Grid Value="3" /><QuantizationAmount Value="0" /><TimingAmount Value="100" />' +
+      '<RandomAmount Value="0" /><VelocityAmount Value="0" />' +
+      "</Groove></Grooves></GroovePool>";
+    const g = listGrooves(noClip);
+
+    expect(g).toHaveLength(1);
+    expect(g[0]).toMatchObject({
+      id: "9",
+      name: "No Clip Groove",
+      Grid: "3",
+      QuantizationAmount: "0",
+      TimingAmount: "100",
+      RandomAmount: "0",
+      VelocityAmount: "0",
+    });
+  });
 });
 
 describe("poolGrooveIds", () => {
@@ -141,6 +163,31 @@ describe("patchGrooveTune", () => {
       /ganzzahl|integer|finite/i,
     );
   });
+  // FIX 3: negative Werte für Amount-Keys müssen abgelehnt werden.
+  it("FIX 3: negativer Amount-Wert wirft (-1)", () => {
+    expect(() => patchGrooveTune(POOL_FILLED, "4", "Grid", "-1")).toThrow(
+      /ganzzahl|integer/i,
+    );
+  });
+  it("FIX 3: leer / Float werfen ebenfalls", () => {
+    expect(() => patchGrooveTune(POOL_FILLED, "4", "Grid", "")).toThrow(
+      /ganzzahl|integer/i,
+    );
+    expect(() => patchGrooveTune(POOL_FILLED, "4", "Grid", "1.5")).toThrow(
+      /ganzzahl|integer/i,
+    );
+  });
+  it("FIX 3: nicht-negative Werte (0/3/100) weiter ok", () => {
+    expect(patchGrooveTune(POOL_FILLED, "4", "Grid", "0")).toContain(
+      '<Grid Value="0" />',
+    );
+    expect(patchGrooveTune(POOL_FILLED, "4", "Grid", "3")).toContain(
+      '<Grid Value="3" />',
+    );
+    expect(patchGrooveTune(POOL_FILLED, "4", "Grid", "100")).toContain(
+      '<Grid Value="100" />',
+    );
+  });
   it("Id nicht im Pool wirft", () => {
     expect(() => patchGrooveTune(POOL_FILLED, "9", "Grid", "1")).toThrow(
       /9|verfügbar/,
@@ -174,6 +221,16 @@ describe("setClipGrooveId (Konsistenz)", () => {
   });
   it("nicht-Integer GrooveId wirft", () => {
     expect(() => setClipGrooveId(CLIP, "x")).toThrow(/integer|ganzzahl/i);
+  });
+  // FIX 1: astronomisch große Id (kein safe integer) muss werfen.
+  it("FIX 1: nicht-safe-integer GrooveId wirft", () => {
+    expect(() => setClipGrooveId(CLIP, "99999999999999999999")).toThrow(
+      /integer|ganzzahl|sicher|safe/i,
+    );
+  });
+  it("FIX 1: -1 und normale positive Ids weiter ok", () => {
+    expect(setClipGrooveId(CLIP, "-1")).toContain('<GrooveId Value="-1" />');
+    expect(setClipGrooveId(CLIP, "4")).toContain('<GrooveId Value="4" />');
   });
   it("kein <GrooveSettings> wirft (Error-Branch)", () => {
     expect(() => setClipGrooveId("<MidiClip></MidiClip>", "4")).toThrow(

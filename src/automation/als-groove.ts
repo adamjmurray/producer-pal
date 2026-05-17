@@ -33,8 +33,13 @@ export const GROOVE_TUNE_SPEC: Record<string, GrooveTuneDef> = {
   VelocityAmount: { tag: "VelocityAmount", type: "int" },
 };
 
-/** Open-Tag-Finder für Pool-Einträge. Frische Instanz je Scan (kein lastIndex-Sharing). */
-const GROOVE_OPEN_RE = /<Groove Id="(\d+)">/g;
+/**
+ * Open-Tag-Pattern für Pool-Einträge (Pattern-String, KEIN /g-RegExp).
+ * `grooveEntriesRaw` baут je Scan eine frische `new RegExp(..., "g")` aus
+ * diesem String — so existiert kein geteilter `lastIndex`-State und keine
+ * Dead-Complexity einer nie direkt genutzten /g-Modul-Konstante.
+ */
+const GROOVE_OPEN_PATTERN = String.raw`<Groove Id="(\d+)">`;
 
 /**
  * Listet alle Groove-Pool-Einträge mit Id, Name und den 5 Amount-Werten.
@@ -46,13 +51,20 @@ const GROOVE_OPEN_RE = /<Groove Id="(\d+)">/g;
  * eingebetteten Clip und werden im Substring NACH dem ERSTEN `</Clip>`
  * gelesen.
  *
+ * Robustheit (FIX 2): Fehlt der eingebettete `<Clip>` (kein `</Clip>` im
+ * Block), wird der gesamte Eintrags-Block (nach dem Namen) als Amount-Such-
+ * bereich genutzt — NICHT `block.slice(-1)` (stilles Fehlverhalten, alle
+ * Amounts ""). Der Name wird dann aus dem Bereich nach `<LomId` bis zum
+ * ersten Amount-Tag bzw. Block-Ende gelesen.
+ *
  * @param xml - .als-XML (oder GroovePool-Substring).
  * @returns Liste der Pool-Einträge in Dokumentreihenfolge ([] bei leerem Pool).
  */
 export function listGrooves(xml: string): GrooveEntry[] {
   return grooveEntriesRaw(xml).map(({ id, block }) => {
     const name = extractEntryName(block);
-    const afterClip = block.slice(block.indexOf("</Clip>"));
+    const clipEndIdx = block.indexOf("</Clip>");
+    const afterClip = clipEndIdx === -1 ? block : block.slice(clipEndIdx);
 
     return {
       id,
@@ -139,9 +151,11 @@ export function patchGrooveTune(
     );
   }
 
-  if (!/^-?\d+$/.test(value)) {
+  // Recon: alle Amounts/Grid sind nicht-negativ (0/3/100), Grid enum-artig.
+  // Negative Werte, Floats, leer und nicht-numerisches werden abgelehnt.
+  if (!/^\d+$/.test(value)) {
     throw new Error(
-      `Key "${key}" erwartet Integer (ganzzahl), nicht "${value}"`,
+      `Key "${key}" erwartet nicht-negativen Integer (ganzzahl), nicht "${value}"`,
     );
   }
 
@@ -196,14 +210,17 @@ export function patchGrooveTune(
  * (`-1` oder ∈ poolIds) wird im CLI-Handler (T2) geprüft.
  *
  * @param clipXml - Der Clip-XML-Block.
- * @param grooveId - `-1` (lösen) oder eine ganzzahlige Pool-Id.
+ * @param grooveId - `-1` (lösen) oder eine ganzzahlige Pool-Id. Muss ein
+ *   sicherer Integer sein (`Number.isSafeInteger`) — astronomisch große Ids
+ *   (Precision-Loss) werden abgelehnt.
  * @returns Der Clip-Block mit genau einem ersetzten `<GrooveId>`-Wert.
- * @throws {Error} Bei nicht-ganzzahliger Id oder fehlendem GrooveSettings/GrooveId.
+ * @throws {Error} Bei nicht-ganzzahliger / nicht-safe-integer Id oder
+ *   fehlendem GrooveSettings/GrooveId.
  */
 export function setClipGrooveId(clipXml: string, grooveId: string): string {
-  if (!/^-?\d+$/.test(grooveId)) {
+  if (!/^-?\d+$/.test(grooveId) || !Number.isSafeInteger(Number(grooveId))) {
     throw new Error(
-      `GrooveId erwartet Integer (ganzzahl), nicht "${grooveId}"`,
+      `GrooveId erwartet sicheren Integer (ganzzahl), nicht "${grooveId}"`,
     );
   }
 
@@ -269,7 +286,7 @@ function grooveEntriesRaw(xml: string): { id: string; block: string }[] {
     groovesClose === -1
       ? pool.slice(groovesOpen)
       : pool.slice(groovesOpen, groovesClose);
-  const openRe = new RegExp(GROOVE_OPEN_RE.source, "g");
+  const openRe = new RegExp(GROOVE_OPEN_PATTERN, "g");
   const out: { id: string; block: string }[] = [];
   let m: RegExpExecArray | null;
 
@@ -303,15 +320,21 @@ function grooveEntriesRaw(xml: string): { id: string; block: string }[] {
  * zwischen Eintrags-`<LomId` und dem ERSTEN `<Clip>` (vor dem eingebetteten
  * MidiClip).
  *
+ * FIX 2: Fehlt der eingebettete `<Clip>`, wird die obere Fenstergrenze auf
+ * das Block-Ende gesetzt (statt "" zurückzugeben). Da der Groove-`<Name>`
+ * direkt nach `<LomId>` und vor den Amount-Tags steht, liefert der erste
+ * `<Name Value>`-Treffer weiterhin korrekt den Eintrags-Namen.
+ *
  * @param block - Der `<Groove …>…</Groove>`-Block.
  * @returns Der Groove-Name (leerer String, wenn nicht vorhanden).
  */
 function extractEntryName(block: string): string {
   const lomIdx = block.indexOf("<LomId");
-  const clipIdx = block.indexOf("<Clip>");
 
-  if (lomIdx === -1 || clipIdx === -1 || clipIdx <= lomIdx) return "";
-  const window = block.slice(lomIdx, clipIdx);
+  if (lomIdx === -1) return "";
+  const clipIdx = block.indexOf("<Clip>");
+  const upper = clipIdx === -1 || clipIdx <= lomIdx ? block.length : clipIdx;
+  const window = block.slice(lomIdx, upper);
   const nameM = window.match(/<Name Value="([^"]*)" \/>/);
 
   return nameM?.[1] ?? "";
