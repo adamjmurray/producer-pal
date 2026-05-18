@@ -91,6 +91,35 @@ describe("Slice-6b Time-Signature-Marker", () => {
       resolveTimeSigTargetId('<MainTrack X="1"></MainTrack>'),
     ).toThrow(/TimeSignature/);
   });
+
+  it("locateTimeSigEnvelopeEvents wirft bei Target-Id ohne passende PointeeId-Envelope", () => {
+    const xml =
+      '<MainTrack X="1"><TimeSignature><AutomationTarget Id="10" />' +
+      "</TimeSignature></MainTrack>";
+
+    expect(() => locateTimeSigEnvelopeEvents(xml)).toThrow(/PointeeId 10/);
+  });
+
+  it("locateTimeSigEnvelopeEvents wirft bei PointeeId-Envelope ohne <Events>", () => {
+    const xml =
+      '<MainTrack X="1"><TimeSignature><AutomationTarget Id="10" />' +
+      '</TimeSignature><PointeeId Value="10" /></MainTrack>';
+
+    expect(() => locateTimeSigEnvelopeEvents(xml)).toThrow(/ohne <Events>/);
+  });
+
+  it("injectTimeSigEnvelope: fmtTime Float- und Exponent-Pfad byte-korrekt", () => {
+    const out = injectTimeSigEnvelope(readXml(), [
+      { time: 1e21, value: 201 },
+      { time: 4.5, value: 193 },
+    ]);
+
+    // Exponent-Pfad: 1e21 → BigInt-String; Float-Pfad: 4.5 (Value bleibt Int).
+    expect(out).toContain(
+      '<EnumEvent Id="1" Time="1000000000000000000000" Value="201" />',
+    );
+    expect(out).toContain('<EnumEvent Id="2" Time="4.5" Value="193" />');
+  });
 });
 
 describe("G6b'-gated: Enum-Namen-Mapping (Roh-Int funktioniert ohne)", () => {
