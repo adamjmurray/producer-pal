@@ -110,6 +110,25 @@ describe("parseParamLines", () => {
     );
   });
 
+  it("should use the provided toolName in warnings", () => {
+    parseParamLines("no equals here", "createDevice");
+    parseParamLines("= value", "createDevice");
+    parseParamLines("Name =", "createDevice");
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      'createDevice: skipping line without "=": no equals here',
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "createDevice: skipping line with empty name: = value",
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      "createDevice: skipping line with empty value: Name =",
+    );
+  });
+
   it("should handle numeric param IDs as names", () => {
     expect(parseParamLines("789 = 1000")).toStrictEqual([["789", 1000]]);
   });

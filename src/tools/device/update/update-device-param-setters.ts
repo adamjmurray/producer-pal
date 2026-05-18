@@ -39,7 +39,7 @@ export function setParamValues(
   paramsInput: string,
   toolName: string = "updateDevice",
 ): void {
-  const paramEntries = parseParamLines(paramsInput);
+  const paramEntries = parseParamLines(paramsInput, toolName);
 
   for (const [key, inputValue] of paramEntries) {
     const pseudoHandler = PSEUDO_PARAM_HANDLERS[key.toLowerCase()];

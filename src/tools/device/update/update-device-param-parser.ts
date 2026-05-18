@@ -9,10 +9,12 @@ import { parseLabel } from "#src/tools/shared/device/helpers/device-display-help
 /**
  * Parse name=value lines into param entries with value coercion
  * @param input - Multiline string of name=value pairs
+ * @param toolName - Calling tool name for warning prefix (defaults to "updateDevice")
  * @returns Array of [name, coerced value] tuples
  */
 export function parseParamLines(
   input: string,
+  toolName: string = "updateDevice",
 ): Array<[string, string | number]> {
   const results: Array<[string, string | number]> = [];
 
@@ -30,7 +32,7 @@ export function parseParamLines(
     const eqIndex = line.indexOf("=");
 
     if (eqIndex < 0) {
-      console.warn(`updateDevice: skipping line without "=": ${trimmed}`);
+      console.warn(`${toolName}: skipping line without "=": ${trimmed}`);
       continue;
     }
 
@@ -38,12 +40,12 @@ export function parseParamLines(
     const rawValue = line.slice(eqIndex + 1).trim();
 
     if (name === "") {
-      console.warn(`updateDevice: skipping line with empty name: ${trimmed}`);
+      console.warn(`${toolName}: skipping line with empty name: ${trimmed}`);
       continue;
     }
 
     if (rawValue === "") {
-      console.warn(`updateDevice: skipping line with empty value: ${trimmed}`);
+      console.warn(`${toolName}: skipping line with empty value: ${trimmed}`);
       continue;
     }
 
