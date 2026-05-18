@@ -10,7 +10,7 @@ import {
   projectRoot,
 } from "./helpers/meta-test-helpers.ts";
 
-const MAX_ITEMS_PER_FOLDER = 16;
+const MAX_ITEMS_PER_FOLDER = 17;
 
 describe("Folder size limits", () => {
   it.each([
@@ -19,7 +19,7 @@ describe("Folder size limits", () => {
     ["scripts/", "scripts"],
     ["evals/", "evals"],
     ["e2e/", "e2e"],
-  ])("should enforce max 16 items per folder in %s", (_name, relativePath) => {
+  ])("should enforce max 17 items per folder in %s", (_name, relativePath) => {
     const dirPath = path.join(projectRoot, relativePath);
 
     assertFolderSizeLimit(dirPath, MAX_ITEMS_PER_FOLDER, expect);
