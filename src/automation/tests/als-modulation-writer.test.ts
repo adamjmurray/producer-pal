@@ -71,6 +71,21 @@ describe("injectModulationEnvelope", () => {
     ]);
   });
 
+  it("liest fraktionale Time-Breakpoints zurueck (Stage-2-Minor: Time-Regex symmetrisch)", () => {
+    const xml = readAls(BEFORE);
+    const out = injectModulationEnvelope(xml, "ModClip", "22678", [
+      { time: 1.5, value: 0.25 },
+      { time: 2, value: -0.5 },
+    ]);
+    const env = getModulationEnvelopes(out, "ModClip");
+
+    expect(env[0]?.points).toStrictEqual([
+      { time: -63072000, value: 0.25 },
+      { time: 1.5, value: 0.25 },
+      { time: 2, value: -0.5 },
+    ]);
+  });
+
   it("wirft wenn Clip bereits Envelopes hat (AFTER-Fixture)", () => {
     const xml = readAls(AFTER);
 

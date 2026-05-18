@@ -126,7 +126,7 @@ export function getModulationEnvelopes(
     const points: Breakpoint[] = [];
     // Value exponent-tolerant (fmt() kann wiss. Notation erzeugen) — R1.
     const evRe =
-      /<FloatEvent Id="\d+" Time="(-?\d+)" Value="(-?\d+(?:\.\d+)?(?:[Ee]-?\d+)?)" \/>/g;
+      /<FloatEvent Id="\d+" Time="(-?\d+(?:\.\d+)?)" Value="(-?\d+(?:\.\d+)?(?:[Ee]-?\d+)?)" \/>/g;
     let e: RegExpExecArray | null;
 
     while ((e = evRe.exec(env)) != null) {
