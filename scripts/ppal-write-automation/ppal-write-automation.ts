@@ -32,6 +32,7 @@ import { runFades } from "./ppal-fades-helpers.ts";
 import { runGroove } from "./ppal-groove-helpers.ts";
 import { runTempo } from "./ppal-tempo-helpers.ts";
 import { runTimesig } from "./ppal-timesig-helpers.ts";
+import { runTrackGroup } from "./ppal-track-group-helpers.ts";
 
 /** Parsed arguments for the `write` subcommand. */
 interface WriteArgs {
@@ -447,6 +448,7 @@ export function runCli(argv: string[]): number {
     if (subcommand === "tempo") return runTempo(rest);
     if (subcommand === "timesig") return runTimesig(rest);
     if (subcommand === "clip-flags") return runClipFlags(rest);
+    if (subcommand === "track-group") return runTrackGroup(rest);
 
     process.stderr.write(
       `FEHLER: Unbekanntes Subcommand "${subcommand}". Nutze list oder write.\n`,
