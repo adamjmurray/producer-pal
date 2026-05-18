@@ -1,4 +1,8 @@
-// src/automation/tests/als-tempo-automation.test.ts
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import { gunzipSync } from "node:zlib";
 import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
@@ -102,5 +106,47 @@ describe("G6-gated: byte-belegte Master-Tempo-Automation", () => {
     expect(() =>
       injectTempoEnvelope(xml, [{ time: 0, value: 120, curve: true }]),
     ).toThrow(/Slice 6b/);
+  });
+
+  it("injectTempoEnvelope wirft bei leerer Breakpoint-Liste", () => {
+    expect(() => injectTempoEnvelope(readBeforeXml(), [])).toThrow(
+      /mindestens 1 Breakpoint/,
+    );
+  });
+
+  it("resolveMasterTempoTargetId wirft bei MainTrack ohne Tempo-AutomationTarget", () => {
+    expect(() =>
+      resolveMasterTempoTargetId('<MainTrack X="1"></MainTrack>'),
+    ).toThrow(/Tempo/);
+  });
+
+  it("resolveMasterTempoTargetId wirft bei fehlendem MainTrack", () => {
+    expect(() => resolveMasterTempoTargetId("<Ableton/>")).toThrow(/MainTrack/);
+  });
+
+  it("locateTempoEnvelopeEvents wirft bei Tempo-Id ohne passende PointeeId-Envelope", () => {
+    const xml =
+      '<MainTrack X="1"><Tempo><AutomationTarget Id="8" /></Tempo></MainTrack>';
+
+    expect(() => locateTempoEnvelopeEvents(xml)).toThrow(/PointeeId 8/);
+  });
+
+  it("locateTempoEnvelopeEvents wirft bei PointeeId-Envelope ohne <Events>", () => {
+    const xml =
+      '<MainTrack X="1"><Tempo><AutomationTarget Id="8" /></Tempo>' +
+      '<PointeeId Value="8" /></MainTrack>';
+
+    expect(() => locateTempoEnvelopeEvents(xml)).toThrow(/ohne <Events>/);
+  });
+
+  it("injectTempoEnvelope: fmt Float- und Exponent-Pfad byte-korrekt", () => {
+    const out = injectTempoEnvelope(readBeforeXml(), [
+      { time: 1e21, value: 140.25 },
+    ]);
+
+    // Float-Pfad: 140.25 (Trailing-Zero-Trim), Exponent-Pfad: 1e21 → BigInt.
+    expect(out).toContain(
+      '<FloatEvent Id="1" Time="1000000000000000000000" Value="140.25" />',
+    );
   });
 });

@@ -1,4 +1,3 @@
-// src/automation/als-tempo-automation.ts
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
 // AI assistance: Claude (Anthropic)
