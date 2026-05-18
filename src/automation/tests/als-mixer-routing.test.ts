@@ -27,22 +27,35 @@ const TRACK_BLOCK = `<MidiTrack Id="9">
 describe("patchCrossFadeAssign", () => {
   it("setzt CrossFadeState-Manual auf B (2) ohne Volume-Manual zu treffen", () => {
     const out = patchCrossFadeAssign(TRACK_BLOCK, 2);
-    expect(out).toContain('<Volume><LomId Value="0" /><Manual Value="0.5" /></Volume>');
+
+    expect(out).toContain(
+      '<Volume><LomId Value="0" /><Manual Value="0.5" /></Volume>',
+    );
     expect(out).toContain('<Pan><Manual Value="0" /></Pan>');
-    expect(/<CrossFadeState>[\s\S]*?<Manual Value="2" \/>/.test(out)).toBe(true);
+    expect(/<CrossFadeState>[\S\s]*?<Manual Value="2" \/>/.test(out)).toBe(
+      true,
+    );
   });
 
   it("akzeptiert 0 und 1", () => {
-    expect(patchCrossFadeAssign(TRACK_BLOCK, 0)).toMatch(/<CrossFadeState>[\s\S]*?<Manual Value="0" \/>/);
-    expect(patchCrossFadeAssign(TRACK_BLOCK, 1)).toMatch(/<CrossFadeState>[\s\S]*?<Manual Value="1" \/>/);
+    expect(patchCrossFadeAssign(TRACK_BLOCK, 0)).toMatch(
+      /<CrossFadeState>[\S\s]*?<Manual Value="0" \/>/,
+    );
+    expect(patchCrossFadeAssign(TRACK_BLOCK, 1)).toMatch(
+      /<CrossFadeState>[\S\s]*?<Manual Value="1" \/>/,
+    );
   });
 
   it("wirft bei Wert ausserhalb {0,1,2}", () => {
-    expect(() => patchCrossFadeAssign(TRACK_BLOCK, 3)).toThrow(/0\|1\|2|A\|center\|B/);
+    expect(() => patchCrossFadeAssign(TRACK_BLOCK, 3)).toThrow(
+      /0\|1\|2|A\|center\|B/,
+    );
   });
 
   it("wirft wenn CrossFadeState fehlt", () => {
-    expect(() => patchCrossFadeAssign("<MidiTrack></MidiTrack>", 1)).toThrow(/CrossFadeState/);
+    expect(() => patchCrossFadeAssign("<MidiTrack></MidiTrack>", 1)).toThrow(
+      /CrossFadeState/,
+    );
   });
 });
 
@@ -52,7 +65,9 @@ describe("getCrossFadeAssign", () => {
   });
 
   it("wirft wenn CrossFadeState fehlt", () => {
-    expect(() => getCrossFadeAssign("<MidiTrack></MidiTrack>")).toThrow(/CrossFadeState/);
+    expect(() => getCrossFadeAssign("<MidiTrack></MidiTrack>")).toThrow(
+      /CrossFadeState/,
+    );
   });
 });
 
@@ -66,6 +81,7 @@ const SENDS_PRE = `<LiveSet>
 describe("patchSendPreBool", () => {
   it("setzt nur die Ziel-Id auf true, andere unveraendert", () => {
     const out = patchSendPreBool(SENDS_PRE, 3, true);
+
     expect(out).toContain('<SendPreBool Id="3" Value="true" />');
     expect(out).toContain('<SendPreBool Id="1" Value="false" />');
   });
@@ -76,6 +92,7 @@ describe("patchSendPreBool", () => {
       1,
       false,
     );
+
     expect(out).toContain('<SendPreBool Id="1" Value="false" />');
   });
 
@@ -84,16 +101,43 @@ describe("patchSendPreBool", () => {
   });
 
   it("wirft wenn SendsPre fehlt", () => {
-    expect(() => patchSendPreBool("<LiveSet></LiveSet>", 1, true)).toThrow(/SendsPre/);
+    expect(() => patchSendPreBool("<LiveSet></LiveSet>", 1, true)).toThrow(
+      /SendsPre/,
+    );
   });
 });
 
 describe("getSendPreBools", () => {
   it("liest alle Ids", () => {
-    expect(getSendPreBools(SENDS_PRE)).toEqual({ 3: false, 1: false });
+    expect(getSendPreBools(SENDS_PRE)).toStrictEqual({ 3: false, 1: false });
   });
 
   it("wirft wenn SendsPre fehlt", () => {
     expect(() => getSendPreBools("<LiveSet></LiveSet>")).toThrow(/SendsPre/);
+  });
+});
+
+describe("Anker-Rand-Branches", () => {
+  const CROSS_NO_MANUAL =
+    '<CrossFadeState><LomId Value="0" /></CrossFadeState>';
+
+  it("patchCrossFadeAssign wirft wenn Block ohne <Manual>", () => {
+    expect(() => patchCrossFadeAssign(CROSS_NO_MANUAL, 1)).toThrow(/Manual/);
+  });
+
+  it("getCrossFadeAssign wirft wenn Block ohne <Manual>", () => {
+    expect(() => getCrossFadeAssign(CROSS_NO_MANUAL)).toThrow(/Manual/);
+  });
+
+  it("extractCrossFadeBlock wirft bei offenem Tag ohne Close", () => {
+    expect(() =>
+      getCrossFadeAssign('<CrossFadeState><Manual Value="1" />'),
+    ).toThrow(/CrossFadeState/);
+  });
+
+  it("extractSendsPreBlock wirft bei offenem Tag ohne Close", () => {
+    expect(() =>
+      getSendPreBools('<SendsPre><SendPreBool Id="1" Value="false" />'),
+    ).toThrow(/SendsPre/);
   });
 });

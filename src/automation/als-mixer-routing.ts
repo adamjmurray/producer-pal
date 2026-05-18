@@ -38,9 +38,7 @@ export function patchCrossFadeAssign(
   );
 
   return (
-    trackBlock.slice(0, sub.start) +
-    patchedBlock +
-    trackBlock.slice(sub.end)
+    trackBlock.slice(0, sub.start) + patchedBlock + trackBlock.slice(sub.end)
   );
 }
 
@@ -108,12 +106,11 @@ export function getSendPreBools(xml: string): Record<number, boolean> {
   const sub = extractSendsPreBlock(xml);
   const out: Record<number, boolean> = {};
   const re = /<SendPreBool Id="(\d+)" Value="(true|false)" \/>/g;
-  let m: RegExpExecArray | null;
 
-  while ((m = re.exec(sub.block)) != null) {
-    if (m[1] != null && m[2] != null) {
-      out[Number(m[1])] = m[2] === "true";
-    }
+  for (const m of sub.block.matchAll(re)) {
+    // Beide Capture-Gruppen sind durch das Regex bei jedem Match garantiert;
+    // noUncheckedIndexedAccess macht den Typ optional, der Wert nicht.
+    out[Number(m[1])] = m[2] === "true";
   }
 
   return out;
@@ -152,8 +149,7 @@ function extractCrossFadeBlock(trackBlock: string): {
   end: number;
 } {
   const start = trackBlock.indexOf(CROSSFADE_OPEN);
-  const closeAt =
-    start < 0 ? -1 : trackBlock.indexOf(CROSSFADE_CLOSE, start);
+  const closeAt = start < 0 ? -1 : trackBlock.indexOf(CROSSFADE_CLOSE, start);
 
   if (start < 0 || closeAt < 0) {
     throw new Error("Kein <CrossFadeState>-Block im Track");
