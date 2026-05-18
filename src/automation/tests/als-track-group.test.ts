@@ -10,6 +10,7 @@ import {
   TRACK_GROUP_SPEC,
   patchTrackField,
   assertGroupExists,
+  locateGroupTrackBlock,
 } from "#src/automation/als-track-group.ts";
 
 const SET = "e2e/live-sets/e2e-test-set Project/e2e-test-set.als";
@@ -30,9 +31,10 @@ const MEMBER_NAME = "Child"; // recon-verifiziert (GroupTrack="Parent" Id=39)
  * @returns Der Member-Track-Substring.
  */
 function memberBlock(xml: string): string {
-  // Track-Namen liegen als <EffectiveName Value="…" /> (NICHT self-closing
-  // <Name Value=/>) — recon-verifiziert e2e-test-set: Member="Child"
-  // (MidiTrack, EffectiveName 1× eindeutig), GroupTrack="Parent" Id=39.
+  // Track-Namen werden kanonisch via extractTrackName aufgelöst (UserName
+  // bevorzugt, sonst EffectiveName) — recon-verifiziert e2e-test-set:
+  // Member="Child" (MidiTrack, EffectiveName 1× eindeutig),
+  // GroupTrack="Parent" Id=39.
   const nameIdx = xml.indexOf('<EffectiveName Value="' + MEMBER_NAME + '" />');
   const mi = xml.lastIndexOf("<MidiTrack ", nameIdx);
   const ai = xml.lastIndexOf("<AudioTrack ", nameIdx);
@@ -109,5 +111,20 @@ describe("Slice-8 als-track-group", () => {
     expect(() => assertGroupExists(xml, "-1")).not.toThrow();
     expect(() => assertGroupExists(xml, "39")).not.toThrow();
     expect(() => assertGroupExists(xml, "999")).toThrow(/999|slice 8b|engine/i);
+  });
+
+  it('locateGroupTrackBlock("Parent") liefert GroupTrack Id=39', () => {
+    const xml = readXml();
+    const loc = locateGroupTrackBlock(xml, "Parent");
+
+    expect(loc.block).toContain('<GroupTrack Id="39"');
+    expect(loc.block.endsWith("</GroupTrack>")).toBe(true);
+    expect(xml.slice(loc.index, loc.end)).toBe(loc.block);
+  });
+
+  it("locateGroupTrackBlock wirft bei Nichtexistent", () => {
+    expect(() => locateGroupTrackBlock(readXml(), "Nichtexistent")).toThrow(
+      /Nichtexistent/,
+    );
   });
 });

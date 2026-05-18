@@ -12,6 +12,7 @@ import {
 import { locateTrackBlock } from "#src/automation/als-param-resolver.ts";
 import {
   assertGroupExists,
+  locateGroupTrackBlock,
   patchTrackField,
 } from "#src/automation/als-track-group.ts";
 import { parseFlags } from "./clip-patch-cli.ts";
@@ -22,9 +23,12 @@ import { parseFlags } from "./clip-patch-cli.ts";
  *
  * No clip-scoped orchestrator (`runClipPatchCli`) fits here — that locator is
  * clip-scoped. This is the lean track-scoped path mandated by the plan:
- * `locateTrackBlock` → `patchTrackField` → Offset-Splice
+ * locate → `patchTrackField` → Offset-Splice
  * (`xml.slice(0,start)+block+xml.slice(end)`, NOT String.replace —
- * Premortem-R1) → backup → write → re-parse verify. The Open-Set guard
+ * Premortem-R1) → backup → write → re-parse verify. `set` targets a group
+ * MEMBER track (`locateTrackBlock`, Midi/AudioTrack); `fold` targets the
+ * GROUP itself (`locateGroupTrackBlock`, since `locateTrackBlock`'s
+ * `TRACK_OPEN_RE` intentionally excludes GroupTrack). The Open-Set guard
  * (exit 2 without `--force`) mirrors `clip-patch-cli`/`ppal-timesig-helpers`.
  *
  * set: `--als`/`--track`/`--group` required; `assertGroupExists` BEFORE any
@@ -113,14 +117,14 @@ function applyTrackGroup(
 
     if (field === "TrackGroupId") assertGroupExists(xml, value);
 
-    const loc = locateTrackBlock(xml, track);
+    const loc = locateBlockForField(xml, track, field);
     const patched = patchTrackField(loc.block, field, value);
     const updated = xml.slice(0, loc.index) + patched + xml.slice(loc.end);
 
     backupAls(alsPath);
     writeAls(alsPath, updated);
 
-    const verifyLoc = locateTrackBlock(readAls(alsPath), track);
+    const verifyLoc = locateBlockForField(readAls(alsPath), track, field);
 
     if (!verifyLoc.block.includes("<" + field + ' Value="' + value + '"')) {
       process.stderr.write(
@@ -138,4 +142,27 @@ function applyTrackGroup(
 
     return 1;
   }
+}
+
+/**
+ * Den passenden Block-Locator je Feld waehlen: `TrackGroupId` (set) adressiert
+ * einen Gruppen-MEMBER (`locateTrackBlock`, Midi/AudioTrack); `TrackUnfolded`
+ * (fold) adressiert die GRUPPE selbst (`locateGroupTrackBlock`, da
+ * `locateTrackBlock`/`TRACK_OPEN_RE` GroupTrack bewusst ausschliesst). Beide
+ * liefern denselben Offset-Splice-Vertrag (`index`/`end`/`block`).
+ * @param xml - Dekomprimierter .als-XML-String.
+ * @param track - Anzeigename des Ziel-Tracks bzw. der Ziel-Gruppe.
+ * @param field - `TRACK_GROUP_SPEC`-Feld (`TrackGroupId`/`TrackUnfolded`).
+ * @returns Block-Substring sowie Start-Index und exklusiver End-Index.
+ */
+function locateBlockForField(
+  xml: string,
+  track: string,
+  field: string,
+): { index: number; end: number; block: string } {
+  if (field === "TrackUnfolded") {
+    return locateGroupTrackBlock(xml, track);
+  }
+
+  return locateTrackBlock(xml, track);
 }
