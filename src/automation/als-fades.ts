@@ -120,19 +120,22 @@ const READ_KEYS: { tag: string; scope: "sibling" | "fades" }[] = [
 export function getFades(clipXml: string): Record<string, string> {
   const res: Record<string, string> = {};
   const fb = fadesBlockOrNull(clipXml);
+  let skew = "0";
 
   for (const { tag, scope } of READ_KEYS) {
     const hay = scope === "fades" ? (fb?.block ?? "") : clipXml;
     const m = hay.match(new RegExp(`<${tag} Value="([^"]*)" />`));
+    const val = m?.[1] ?? FADE_SPEC[tag]?.def ?? "0";
 
-    res[tag] = m?.[1] ?? FADE_SPEC[tag]?.def ?? "0";
+    res[tag] = val;
+    if (tag === "FadeInCurveSkew") skew = val;
   }
 
   // Composite-Witness: FadeInCurve == das FadeInCurveSkew-Literal. Der
   // geteilte clip-patch-cli-Verify prüft `after.FadeInCurve === want` UND
   // den Roh-Tag `<FadeInCurveSkew Value="want" />`; mit want = Skew-Literal
   // (via expectedValue-Hook) deckt sich beides ohne clip-patch-cli-Änderung.
-  res.FadeInCurve = res.FadeInCurveSkew;
+  res.FadeInCurve = skew;
 
   return res;
 }

@@ -373,9 +373,18 @@ describe("Slice4b FadeInCurve Composite-Key (G4b-byte-belegt)", () => {
   it("FadeInCurve atomar: NUR die 3 Ziel-Tags ändern sich, Rest byte-identisch", () => {
     const out = patchFade(AUDIO, "FadeInCurve", "up");
     const restored = out
-      .replace(`<FadeInCurveSkew Value="${SKEW_UP}" />`, '<FadeInCurveSkew Value="0" />')
-      .replace(`<FadeInCurveSlope Value="${SLOPE_UP}" />`, '<FadeInCurveSlope Value="0" />')
-      .replace('<IsDefaultFadeIn Value="false" />', '<IsDefaultFadeIn Value="true" />');
+      .replace(
+        `<FadeInCurveSkew Value="${SKEW_UP}" />`,
+        '<FadeInCurveSkew Value="0" />',
+      )
+      .replace(
+        `<FadeInCurveSlope Value="${SLOPE_UP}" />`,
+        '<FadeInCurveSlope Value="0" />',
+      )
+      .replace(
+        '<IsDefaultFadeIn Value="false" />',
+        '<IsDefaultFadeIn Value="true" />',
+      );
 
     expect(restored).toBe(AUDIO);
   });
@@ -403,6 +412,29 @@ describe("Slice4b FadeInCurve Composite-Key (G4b-byte-belegt)", () => {
     expect(() => patchFade(AUDIO, "FadeInCurve", "0.5")).toThrow(/up|down/i);
   });
 
+  it("FadeInCurve wirft wenn ein Ziel-Tag im <Fades> fehlt (kein Partial-Patch)", () => {
+    // <Fades> vorhanden, aber FadeInCurveSlope-Tag fehlt -> patchFadeInCurve
+    // wirft vor jeder Mutation (atomar, kein halb-gepatchter Block).
+    const clipOhneSlope =
+      '<AudioClip Id="30"><Name Value="NSL" />' +
+      '<WarpMode Value="0" />' +
+      '<Fade Value="true" />' +
+      "<Fades>" +
+      '<FadeInLength Value="0" /><FadeOutLength Value="0" />' +
+      '<ClipFadesAreInitialized Value="true" /><CrossfadeInState Value="0" />' +
+      '<FadeInCurveSkew Value="0" />' +
+      '<IsDefaultFadeIn Value="true" /><IsDefaultFadeOut Value="true" />' +
+      "</Fades></AudioClip>";
+
+    expect(() => patchFade(clipOhneSlope, "FadeInCurve", "up")).toThrow(
+      /<fadeincurveslope>.*<fades>.*nicht gefunden/i,
+    );
+  });
+  it("FadeInCurve wirft bei fehlendem <Fades> (MidiClip-artig)", () => {
+    expect(() =>
+      patchFade('<MidiClip><Name Value="M" /></MidiClip>', "FadeInCurve", "up"),
+    ).toThrow(/fades|audioclip/i);
+  });
   it("getFades leitet FadeInCurve aus Skew-Literal ab (Verify-Witness)", () => {
     expect(getFades(AUDIO).FadeInCurve).toBe("0");
     expect(getFades(patchFade(AUDIO, "FadeInCurve", "up")).FadeInCurve).toBe(
@@ -434,7 +466,7 @@ describe("Slice4b byte-Konformität gegen G4b-Fixture <After> (T4)", () => {
   // + Längen-Float exakt enthalten. Werte AUSSCHLIESSLICH aus der Fixture.
   it("clipIndex=0: FadeInCurve=up + FadeInLength == Fixture <After>", () => {
     const after = fixtureAfter(0);
-    const len = after.match(/<FadeInLength Value="([^"]*)" \/>/)![1];
+    const len = after.match(/<FadeInLength Value="([^"]*)" \/>/)![1]!;
     let out = patchFade(AUDIO, "FadeInCurve", "up");
 
     out = patchFade(out, "FadeInLength", len);
@@ -459,7 +491,7 @@ describe("Slice4b byte-Konformität gegen G4b-Fixture <After> (T4)", () => {
 
   it("clipIndex=2: große FadeOutLength == Fixture <After>", () => {
     const after = fixtureAfter(2);
-    const len = after.match(/<FadeOutLength Value="([^"]*)" \/>/)![1];
+    const len = after.match(/<FadeOutLength Value="([^"]*)" \/>/)![1]!;
     const out = patchFade(AUDIO, "FadeOutLength", len);
 
     expect(out).toContain(`<FadeOutLength Value="${len}" />`);
