@@ -286,3 +286,29 @@ describe("patchClipSetting Positions-Anker (Plan-Anpassung A)", () => {
     expect(() => patchClipSetting(clip, "LaunchMode", "2")).toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Plan-Task 5 (docs/superpowers/plans/2026-05-17-ppal-clip-settings.md):
+// resolveEnumValue(key, v) + ENUM_TABLES in src/automation/als-clip-settings.ts.
+// BLOCKIERT: G3'-Ground-Truth-Fixture
+// (docs/superpowers/fixtures/ableton12-clip-settings-groundtruth.xml) fehlt
+// noch. Konkrete Integer<->Name-Paare duerfen NICHT spekuliert werden
+// (Recon-Gate-Disziplin) -- erst nach Fixture-Lieferung byte-belegen.
+// resolveEnumValue/ENUM_TABLES existieren noch nicht und werden hier bewusst
+// NICHT importiert (Import wuerde typecheck/Gate brechen). Muster analog
+// 4b-T2 (commit fe1a23c7): benannte TODOs + it.todo, keine spekulativen Werte.
+// ---------------------------------------------------------------------------
+describe("Slice-3 T5 Enum-Namens-Validierung (fixture-frei, BLOCKIERT durch G3')", () => {
+  it.todo(
+    "resolveEnumValue: FollowActionA Name -> Int byte-belegt aus G3'-Ground-Truth (Paare nach Fixture-Lieferung)",
+  );
+  it.todo("resolveEnumValue: FollowActionB analog G3'");
+  it.todo("resolveEnumValue: LaunchMode 0-3 Name<->Int aus G3'");
+  it.todo("resolveEnumValue: LaunchQuantisation-Stufen aus G3'");
+  it.todo(
+    "resolveEnumValue: unbekannter Enum-Name wirft mit Liste erlaubter Namen",
+  );
+  it.todo(
+    "resolveEnumValue: Roh-Integer wird weiterhin durchgereicht (T2-Regression bleibt grün)",
+  );
+});
