@@ -13,7 +13,7 @@ import {
   injectTempoEnvelope,
   locateTempoEnvelopeEvents,
   resolveMasterTempoTargetId,
-} from "#src/automation/als-tempo-automation.ts";
+} from "#src/automation/master-timeline/als-tempo-automation.ts";
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
 import { parseFlags } from "./clip-patch-cli.ts";

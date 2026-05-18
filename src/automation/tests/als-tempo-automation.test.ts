@@ -11,7 +11,7 @@ import {
   resolveMasterTempoTargetId,
   locateTempoEnvelopeEvents,
   injectTempoEnvelope,
-} from "#src/automation/als-tempo-automation.ts";
+} from "#src/automation/master-timeline/als-tempo-automation.ts";
 
 const BEFORE_ALS =
   "evals/live-sets/basic-midi-4-track Project/basic-midi-4-track.als";
