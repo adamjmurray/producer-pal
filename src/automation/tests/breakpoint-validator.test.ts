@@ -94,13 +94,13 @@ describe("validateBreakpoints — Slice-2b curve-Flag (T3)", () => {
         ],
         range,
       ),
-    ).toThrow(/letzte[rn]? Breakpoint.*Folgesegment|kein Folgesegment/i);
+    ).toThrow(/letzte[nr]? breakpoint.*folgesegment|kein folgesegment/i);
   });
 
   it("einzelner Breakpoint mit `curve:true` -> Fehler (kein Folgesegment)", () => {
     expect(() =>
       validateBreakpoints([{ time: 0, value: 200, curve: true }], range),
-    ).toThrow(/Folgesegment/i);
+    ).toThrow(/folgesegment/i);
   });
 
   it("`curve:true` an nicht-letztem Breakpoint ist gueltig", () => {

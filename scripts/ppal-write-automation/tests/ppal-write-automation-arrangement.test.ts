@@ -351,7 +351,13 @@ describe("scope=arrangement Slice-2b ~curve e2e + Mitigation-B (T5)", () => {
 
       expect(code).toBe(0);
       const after = readAls(tmpPath);
-      // Ziel-Track-Block (TrackA) ausstanzen — Rest muss byte-identisch sein.
+
+      /**
+       * Schneidet den Ziel-Track-Block (TrackA) heraus, damit der Rest
+       * byte-identisch verglichen werden kann.
+       * @param s - Roh-XML-String
+       * @returns XML ohne den TrackA-MidiTrack-Block
+       */
       const cut = (s: string): string => {
         const a = s.indexOf('<MidiTrack Id="1">');
         const b = s.indexOf("</MidiTrack>") + "</MidiTrack>".length;
@@ -409,6 +415,11 @@ describe("scope=arrangement Slice-2b ~curve e2e + Mitigation-B (T5)", () => {
     const refPath = createTmpAlsFrom(MULTI_TRACK_XML);
 
     try {
+      /**
+       * Baut die runCli-Argumentliste fuer einen gegebenen .als-Pfad.
+       * @param p - Pfad zur Wegwerf-.als
+       * @returns Argument-Array fuer runCli
+       */
       const args = (p: string): string[] => [
         "write",
         "--scope",

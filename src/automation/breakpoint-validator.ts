@@ -69,12 +69,10 @@ export function validateBreakpoints(
     prev = p.time;
   }
 
-  const last = bp[bp.length - 1];
+  const last = bp.at(-1);
 
   if (last?.curve === true) {
-    throw new Error(
-      "curve-Flag am letzten Breakpoint hat kein Folgesegment",
-    );
+    throw new Error("curve-Flag am letzten Breakpoint hat kein Folgesegment");
   }
 
   return bp;

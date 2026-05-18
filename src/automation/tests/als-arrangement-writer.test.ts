@@ -292,9 +292,7 @@ describe("buildArrangementEnvelopeXml — Slice-2b Kurven-Kodierung (T4)", () =>
       `<FloatEvent Id="1" Time="0" Value="200" ${CURVE_TUPLE} />`,
     );
     // Anchor-Event (Id=0, Pre-Roll) bleibt linear — kein User-Segment-Start.
-    expect(out).toContain(
-      '<FloatEvent Id="0" Time="-63072000" Value="200" />',
-    );
+    expect(out).toContain('<FloatEvent Id="0" Time="-63072000" Value="200" />');
     // Lineare Folge-Events unveraendert (keine CurveControl-Attribute).
     expect(out).toContain('<FloatEvent Id="2" Time="4" Value="8000" />');
     expect(out).toContain('<FloatEvent Id="3" Time="8" Value="400" />');
