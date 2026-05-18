@@ -47,7 +47,7 @@ export function filterSchemaForSmallModel(
       excludeEnumValues,
     )) {
       if (!(paramName in filtered)) continue;
-      filtered[paramName] = filterArrayEnumValues(
+      filtered[paramName] = filterEnumValues(
         filtered[paramName] as ZodType,
         valuesToExclude,
       );
@@ -58,30 +58,49 @@ export function filterSchemaForSmallModel(
 }
 
 /**
- * Removes enum values from a z.array(z.enum([...])).default([]) schema
- * and preserves the description and default.
+ * Removes enum values from a schema and preserves its description, default,
+ * and wrapper structure. Supports two shapes:
+ *   - z.array(z.enum([...])).default([])          — array of enums
+ *   - z.enum([...]).optional().default(value)     — single optional enum
  *
- * @param schema - Zod schema wrapping an array of enums (with optional default)
+ * @param schema - Zod schema wrapping an enum (must have .default at the top)
  * @param valuesToExclude - Enum values to remove
  * @returns Rebuilt schema with excluded values removed
  */
-function filterArrayEnumValues(
-  schema: ZodType,
-  valuesToExclude: string[],
-): ZodType {
-  // Unwrap ZodDefault<ZodArray<ZodEnum>> using runtime .def access.
-  // Zod v4 changed the ZodEnum generic from tuple to Record, making static
-  // typing of .exclude() impractical — use runtime unwrap + z.enum() rebuild.
+function filterEnumValues(schema: ZodType, valuesToExclude: string[]): ZodType {
+  // Unwrap using runtime .def access. Zod v4 changed the ZodEnum generic from
+  // tuple to Record, making static typing of .exclude() impractical — use
+  // runtime unwrap + z.enum() rebuild.
   if (schema.type !== "default") {
     throw new Error(
-      "excludeEnumValues requires z.array(z.enum([...])).default([]) schema",
+      "excludeEnumValues requires a schema with .default(...) at the top level (z.array(z.enum([...])).default([]) or z.enum([...]).optional().default(value))",
     );
   }
 
   const description = schema.description;
   const defaultWrapper = schema as z.ZodDefault<z.ZodType>;
-  const element = (defaultWrapper.def.innerType as z.ZodArray).def.element;
-  const allValues = (element as z.ZodEnum).options as string[];
+  const defaultValue = defaultWrapper.def.defaultValue;
+  const inner = defaultWrapper.def.innerType;
+
+  let enumSchema: z.ZodEnum;
+  let isArray = false;
+  let isOptional = false;
+
+  if (inner.type === "array") {
+    enumSchema = (inner as z.ZodArray).def.element as z.ZodEnum;
+    isArray = true;
+  } else if (inner.type === "optional") {
+    enumSchema = (inner as z.ZodOptional<z.ZodEnum>).def.innerType;
+    isOptional = true;
+  } else if (inner.type === "enum") {
+    enumSchema = inner as z.ZodEnum;
+  } else {
+    throw new Error(
+      `excludeEnumValues: unsupported schema shape (innerType: ${inner.type})`,
+    );
+  }
+
+  const allValues = enumSchema.options as string[];
   const kept = allValues.filter((v) => !valuesToExclude.includes(v));
 
   if (kept.length === 0) {
@@ -90,9 +109,16 @@ function filterArrayEnumValues(
     );
   }
 
-  let rebuilt: ZodType = z
-    .array(z.enum(kept as [string, ...string[]]))
-    .default(defaultWrapper.def.defaultValue as string[]);
+  const rebuiltEnum = z.enum(kept as [string, ...string[]]);
+  let rebuilt: ZodType;
+
+  if (isArray) {
+    rebuilt = z.array(rebuiltEnum).default(defaultValue as string[]);
+  } else if (isOptional) {
+    rebuilt = rebuiltEnum.optional().default(defaultValue as string);
+  } else {
+    rebuilt = rebuiltEnum.default(defaultValue as string);
+  }
 
   if (description) {
     rebuilt = rebuilt.describe(description);
