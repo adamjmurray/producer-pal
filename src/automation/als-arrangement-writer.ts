@@ -11,6 +11,13 @@ import { type Breakpoint } from "#src/automation/breakpoint-validator.ts";
 // <AutomationEnvelope Id="0"> = 6 TABs, <EnvelopeTarget> = 7, <PointeeId> = 8,
 // <Automation> = 7, <Events> = 8, <FloatEvent> = 9,
 // <AutomationTransformViewState> = 8, <IsTransformPending>/<TimeAndValueTransforms> = 9.
+// Slice-2b: byte-belegtes G2b-Kurven-Tupel. Reihenfolge/Werte WOERTLICH aus
+// docs/superpowers/fixtures/ableton12-arrangement-curve-groundtruth.xml
+// (<EnvelopeAfter>): am START-<FloatEvent> des gebogenen Segments, direkt
+// nach Value="...". Max-Bend, richtungs-unabhaengig (0/1/0/1).
+const CURVE_CONTROL_TUPLE =
+  'CurveControl1X="0" CurveControl1Y="1" CurveControl2X="0" CurveControl2Y="1"';
+
 const T = "\t";
 const I6 = T.repeat(6);
 const I7 = T.repeat(7);
@@ -52,6 +59,12 @@ function fmt(n: number): string {
  * - User breakpoints follow at sequential `Id="1..n"` (Slice-1 convention,
  *   accepted by Ableton; we reproduce the structural schema, not Ableton's
  *   non-sequential Id list).
+ * - Slice-2b: a breakpoint flagged `curve: true` describes the segment
+ *   STARTING at it; its (start) `<FloatEvent>` carries the byte-supported
+ *   G2b curve tuple appended after `Value` (Ableton 12 max-bend encoding).
+ *   The anchor event never carries it (synthetic pre-roll, not a segment
+ *   start). Without the flag the output is byte-identical to the Slice-2
+ *   baseline (no CurveControl attributes).
  *
  * @param automationTargetId - The parameter's `AutomationTarget Id` (PointeeId).
  * @param breakpoints - Arrangement breakpoints; `time` = global beats,
@@ -74,10 +87,11 @@ export function buildArrangementEnvelopeXml(
 
   const anchorEvent = `${I9}<FloatEvent Id="0" Time="-63072000" Value="${fmt(first.value)}" />`;
   const userEvents = breakpoints
-    .map(
-      (bp, i) =>
-        `${I9}<FloatEvent Id="${i + 1}" Time="${fmt(bp.time)}" Value="${fmt(bp.value)}" />`,
-    )
+    .map((bp, i) => {
+      const curveAttrs = bp.curve === true ? ` ${CURVE_CONTROL_TUPLE}` : "";
+
+      return `${I9}<FloatEvent Id="${i + 1}" Time="${fmt(bp.time)}" Value="${fmt(bp.value)}"${curveAttrs} />`;
+    })
     .join("\n");
 
   return (

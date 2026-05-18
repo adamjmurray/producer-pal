@@ -260,23 +260,132 @@ describe("buildArrangementEnvelopeXml — Slice-2b lineare Lane eingefroren", ()
     expect(out).toBe(EXPECTED_LINEAR);
   });
 
-  it("Ist: curve-Feld am Breakpoint wird vom Writer aktuell IGNORIERT", () => {
-    // Der Writer liest nur time/value. Ein vorhandenes curve-Feld erzeugt
-    // KEINE zusaetzlichen Bytes -> Output identisch zur linearen Lane.
-    // T4 aendert das bewusst (byte-belegte Kurven-Kodierung aus G2b).
-    const withCurve = buildArrangementEnvelopeXml(15838, [
-      { time: 0, value: 200, curve: 0.5 },
+  it("ohne curve-Flag byte-identisch zum Slice-2-Bestand (T1-Netz gruen)", () => {
+    // Der `~`-lose Pfad MUSS byte-identisch zum eingefrorenen Bestand sein.
+    const out = buildArrangementEnvelopeXml(15838, [
+      { time: 0, value: 200 },
       { time: 2, value: 8000 },
       { time: 4, value: 400 },
     ]);
 
-    expect(withCurve).toBe(EXPECTED_LINEAR);
+    expect(out).toBe(EXPECTED_LINEAR);
   });
 });
 
-describe("als-arrangement-writer — Slice-2b kuenftige Kurven-Kodierung (it.todo)", () => {
-  // Kodierungsform (Attribut/Element/Range) UNBEKANNT bis G2b.
-  it.todo("Default linear: Output ohne curve byte-gleich zum Slice-2-Bestand");
-  it.todo("gekruemmtes Segment erzeugt die byte-belegte G2b-Kodierung");
-  it.todo("lineare Segmente in gemischter Lane bleiben unveraendert");
+// Slice-2b T4/T6: byte-belegte Kurven-Kodierung aus G2b-Fixture.
+// Die 4 CurveControl-Attribute haengen am START-FloatEvent des gebogenen
+// Segments, in EXAKT der Fixture-Reihenfolge nach Value="...".
+const CURVE_TUPLE =
+  'CurveControl1X="0" CurveControl1Y="1" CurveControl2X="0" CurveControl2Y="1"';
+
+describe("buildArrangementEnvelopeXml — Slice-2b Kurven-Kodierung (T4)", () => {
+  it("curve:true haengt die 4 CurveControl-Attribute an sein Start-FloatEvent", () => {
+    const out = buildArrangementEnvelopeXml(15838, [
+      { time: 0, value: 200, curve: true },
+      { time: 4, value: 8000 },
+      { time: 8, value: 400 },
+    ]);
+
+    // Start-FloatEvent des gebogenen Segments (Breakpoint 0, Id=1) traegt
+    // die Tupel EXAKT in Fixture-Reihenfolge nach Value.
+    expect(out).toContain(
+      `<FloatEvent Id="1" Time="0" Value="200" ${CURVE_TUPLE} />`,
+    );
+    // Anchor-Event (Id=0, Pre-Roll) bleibt linear — kein User-Segment-Start.
+    expect(out).toContain(
+      '<FloatEvent Id="0" Time="-63072000" Value="200" />',
+    );
+    // Lineare Folge-Events unveraendert (keine CurveControl-Attribute).
+    expect(out).toContain('<FloatEvent Id="2" Time="4" Value="8000" />');
+    expect(out).toContain('<FloatEvent Id="3" Time="8" Value="400" />');
+  });
+
+  it("nur die gebogenen Segment-Start-Events tragen die Tupel (gemischte Lane)", () => {
+    const out = buildArrangementEnvelopeXml(15838, [
+      { time: 0, value: 200 },
+      { time: 4, value: 8000, curve: true },
+      { time: 8, value: 400 },
+    ]);
+
+    expect(out).toContain('<FloatEvent Id="1" Time="0" Value="200" />');
+    expect(out).toContain(
+      `<FloatEvent Id="2" Time="4" Value="8000" ${CURVE_TUPLE} />`,
+    );
+    expect(out).toContain('<FloatEvent Id="3" Time="8" Value="400" />');
+    // Genau ein CurveControl1X im ganzen Block.
+    expect(out.match(/CurveControl1X/g) ?? []).toHaveLength(1);
+  });
+
+  it("mehrere curve:true-Breakpoints -> je Tupel am eigenen Start-Event", () => {
+    const out = buildArrangementEnvelopeXml(15838, [
+      { time: 0, value: 200, curve: true },
+      { time: 4, value: 8000 },
+      { time: 8, value: 400, curve: true },
+      { time: 12, value: 100 },
+    ]);
+
+    expect(out).toContain(
+      `<FloatEvent Id="1" Time="0" Value="200" ${CURVE_TUPLE} />`,
+    );
+    expect(out).toContain(
+      `<FloatEvent Id="3" Time="8" Value="400" ${CURVE_TUPLE} />`,
+    );
+    expect(out.match(/CurveControl1X/g) ?? []).toHaveLength(2);
+  });
+
+  it("Linear-Pfad unveraendert: ohne curve KEIN CurveControl-Attribut", () => {
+    const out = buildArrangementEnvelopeXml(15838, [
+      { time: 0, value: 200 },
+      { time: 4, value: 8000 },
+    ]);
+
+    expect(out).not.toContain("CurveControl");
+  });
+});
+
+describe("buildArrangementEnvelopeXml — Slice-2b Struktur-Konformitaet gegen G2b (T6)", () => {
+  const FIXTURE = fs.readFileSync(
+    "/Users/macuser/Desktop/AIbleton/docs/superpowers/fixtures/ableton12-arrangement-curve-groundtruth.xml",
+    "utf8",
+  );
+
+  /**
+   * Extrahiert das exakte CurveControl-Attribut-Tupel aus dem ersten
+   * gebogenen FloatEvent eines CDATA-Blocks der G2b-Fixture.
+   * @param tag - "EnvelopeBefore" oder "EnvelopeAfter"
+   * @returns Das Attribut-Tupel als String, oder null wenn keines vorhanden
+   */
+  function fixtureCurveTuple(tag: string): string | null {
+    const cdata = FIXTURE.split(`<${tag}>`)[1]?.split(`</${tag}>`)[0] ?? "";
+    const m = cdata.match(
+      /(CurveControl1X="[^"]*" CurveControl1Y="[^"]*" CurveControl2X="[^"]*" CurveControl2Y="[^"]*")/,
+    );
+
+    return m?.[1] ?? null;
+  }
+
+  it("erzeugtes gebogenes Event == EnvelopeAfter-Tupel modulo Id/Value", () => {
+    // Ground-Truth: EnvelopeAfter traegt das Tupel, EnvelopeBefore nicht.
+    expect(fixtureCurveTuple("EnvelopeBefore")).toBeNull();
+    const after = fixtureCurveTuple("EnvelopeAfter");
+
+    expect(after).toBe(CURVE_TUPLE);
+
+    const out = buildArrangementEnvelopeXml(8638, [
+      { time: 0, value: 1, curve: true },
+      { time: 4, value: 1.7 },
+    ]);
+    const ev = out.match(/<FloatEvent Id="1"[^/]*\/>/)?.[0] ?? "";
+
+    expect(ev).toContain(after as string);
+  });
+
+  it("lineare Events == EnvelopeBefore-Form (keine CurveControl)", () => {
+    const out = buildArrangementEnvelopeXml(8638, [
+      { time: 0, value: 1 },
+      { time: 4, value: 1.7 },
+    ]);
+
+    expect(out).not.toContain("CurveControl");
+  });
 });
