@@ -30,6 +30,7 @@ import { runClipFlags } from "./ppal-clip-flags-helpers.ts";
 import { runClipSettings } from "./ppal-clip-settings-helpers.ts";
 import { runFades } from "./ppal-fades-helpers.ts";
 import { runGroove } from "./ppal-groove-helpers.ts";
+import { runMixerRouting } from "./ppal-mixer-routing-helpers.ts";
 import { runTempo } from "./ppal-tempo-helpers.ts";
 import { runTimesig } from "./ppal-timesig-helpers.ts";
 import { runTrackGroup } from "./ppal-track-group-helpers.ts";
@@ -449,6 +450,7 @@ export function runCli(argv: string[]): number {
     if (subcommand === "timesig") return runTimesig(rest);
     if (subcommand === "clip-flags") return runClipFlags(rest);
     if (subcommand === "track-group") return runTrackGroup(rest);
+    if (subcommand === "mixer-routing") return runMixerRouting(rest);
 
     process.stderr.write(
       `FEHLER: Unbekanntes Subcommand "${subcommand}". Nutze list oder write.\n`,
