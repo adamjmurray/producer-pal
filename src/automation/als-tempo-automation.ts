@@ -78,7 +78,9 @@ export function locateTempoEnvelopeEvents(xml: string): {
   const mainEnd = xml.indexOf("</MainTrack>");
 
   if (mainStart === -1 || mainEnd === -1) {
-    throw new Error("Kein <MainTrack> im .als — Master-Tempo-Locator gescheitert");
+    throw new Error(
+      "Kein <MainTrack> im .als — Master-Tempo-Locator gescheitert",
+    );
   }
 
   const tempoId = resolveMasterTempoTargetId(xml);
@@ -160,7 +162,9 @@ function isolateMainTrack(xml: string): string {
   const end = xml.indexOf("</MainTrack>");
 
   if (start === -1 || end === -1) {
-    throw new Error("Kein <MainTrack> im .als — Master-Tempo-Locator gescheitert");
+    throw new Error(
+      "Kein <MainTrack> im .als — Master-Tempo-Locator gescheitert",
+    );
   }
 
   return xml.slice(start, end);

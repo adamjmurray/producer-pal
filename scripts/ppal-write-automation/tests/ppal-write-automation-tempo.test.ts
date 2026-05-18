@@ -140,8 +140,7 @@ describe("CLI tempo write", () => {
       // Explicit foreign-track proof: the first regular MidiTrack block is
       // byte-identical before/after the write.
       const ms = before.indexOf("<MidiTrack ");
-      const me =
-        before.indexOf("</MidiTrack>", ms) + "</MidiTrack>".length;
+      const me = before.indexOf("</MidiTrack>", ms) + "</MidiTrack>".length;
 
       expect(ms).toBeGreaterThan(-1);
       expect(after.indexOf("<MidiTrack ")).toBe(ms);
