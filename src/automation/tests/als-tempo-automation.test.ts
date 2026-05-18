@@ -32,6 +32,9 @@ const EXPECTED_BEFORE_EVENTS =
   '\t\t\t\t\t\t\t\t<FloatEvent Id="0" Time="-63072000" Value="120" />\n' +
   "\t\t\t\t\t\t\t</Events>";
 
+const CURVE_TUPLE =
+  'CurveControl1X="0" CurveControl1Y="1" CurveControl2X="0" CurveControl2Y="1"';
+
 describe("Slice-6b-Hartsperre", () => {
   it("wirft bei Time-Signature-Eingabe mit 'Slice 6b' im Text", () => {
     expect(() => assertNoSlice6bInput({ timeSignature: "3/4" })).toThrow(
@@ -100,12 +103,23 @@ describe("G6-gated: byte-belegte Master-Tempo-Automation", () => {
     expect(out.slice(start + newEventsLen)).toBe(xml.slice(end));
   });
 
-  it("injectTempoEnvelope ruft assertNoSlice6bInput (curve → Slice-6b-Throw)", () => {
+  it("injectTempoEnvelope: curve:true erzeugt Tupel und wirft NICHT (Slice 6c)", () => {
     const xml = readBeforeXml();
 
     expect(() =>
-      injectTempoEnvelope(xml, [{ time: 0, value: 120, curve: true }]),
-    ).toThrow(/Slice 6b/);
+      injectTempoEnvelope(xml, [
+        { time: 0, value: 120, curve: true },
+        { time: 8, value: 130 },
+      ]),
+    ).not.toThrow();
+    const out = injectTempoEnvelope(xml, [
+      { time: 0, value: 120, curve: true },
+      { time: 8, value: 130 },
+    ]);
+
+    expect(out).toContain(
+      `<FloatEvent Id="1" Time="0" Value="120" ${CURVE_TUPLE} />`,
+    );
   });
 
   it("injectTempoEnvelope wirft bei leerer Breakpoint-Liste", () => {
@@ -148,5 +162,82 @@ describe("G6-gated: byte-belegte Master-Tempo-Automation", () => {
     expect(out).toContain(
       '<FloatEvent Id="1" Time="1000000000000000000000" Value="140.25" />',
     );
+  });
+});
+
+describe("Slice-6c: gekrümmte Tempo-Segmente", () => {
+  it("curve-Flag hängt das Slice-2b-Tupel an genau das Segment-Start-FloatEvent", () => {
+    const out = injectTempoEnvelope(readBeforeXml(), [
+      { time: 0, value: 120 },
+      { time: 16, value: 140, curve: true },
+      { time: 32, value: 100 },
+    ]);
+    const expected =
+      "\t\t\t\t\t\t\t<Events>\n" +
+      '\t\t\t\t\t\t\t\t<FloatEvent Id="0" Time="-63072000" Value="120" />\n' +
+      '\t\t\t\t\t\t\t\t<FloatEvent Id="1" Time="0" Value="120" />\n' +
+      `\t\t\t\t\t\t\t\t<FloatEvent Id="2" Time="16" Value="140" ${CURVE_TUPLE} />\n` +
+      '\t\t\t\t\t\t\t\t<FloatEvent Id="3" Time="32" Value="100" />\n' +
+      "\t\t\t\t\t\t\t</Events>";
+
+    expect(out).toContain(expected);
+  });
+
+  it("Anker-FloatEvent (Id=0) trägt NIE das Tupel, auch wenn bp[0].curve", () => {
+    const out = injectTempoEnvelope(readBeforeXml(), [
+      { time: 0, value: 120, curve: true },
+      { time: 16, value: 140 },
+    ]);
+
+    expect(out).toContain('<FloatEvent Id="0" Time="-63072000" Value="120" />');
+    expect(out).toContain(
+      `<FloatEvent Id="1" Time="0" Value="120" ${CURVE_TUPLE} />`,
+    );
+  });
+
+  it("mehrere ~-Segmente: jedes geflaggte FloatEvent trägt das Tupel", () => {
+    const out = injectTempoEnvelope(readBeforeXml(), [
+      { time: 0, value: 120, curve: true },
+      { time: 8, value: 130, curve: true },
+      { time: 16, value: 140 },
+    ]);
+
+    expect([
+      ...out.matchAll(
+        new RegExp(CURVE_TUPLE.replaceAll(/[$()*+.?[\\\]^{|}]/g, "\\$&"), "g"),
+      ),
+    ]).toHaveLength(2);
+  });
+
+  it("ohne curve byte-identisch zum Slice-6-Linearpfad (Regressionsbeweis)", () => {
+    const bps = [
+      { time: 0, value: 120 },
+      { time: 16, value: 140 },
+      { time: 32, value: 100 },
+    ];
+    const out = injectTempoEnvelope(readBeforeXml(), bps);
+
+    expect(out).not.toContain("CurveControl");
+    expect(out).toContain(
+      "\t\t\t\t\t\t\t<Events>\n" +
+        '\t\t\t\t\t\t\t\t<FloatEvent Id="0" Time="-63072000" Value="120" />\n' +
+        '\t\t\t\t\t\t\t\t<FloatEvent Id="1" Time="0" Value="120" />\n' +
+        '\t\t\t\t\t\t\t\t<FloatEvent Id="2" Time="16" Value="140" />\n' +
+        '\t\t\t\t\t\t\t\t<FloatEvent Id="3" Time="32" Value="100" />\n' +
+        "\t\t\t\t\t\t\t</Events>",
+    );
+  });
+
+  it("curve-Pfad ändert nur den Events-Block (Mitigation-B)", () => {
+    const xml = readBeforeXml();
+    const { start, end } = locateTempoEnvelopeEvents(xml);
+    const out = injectTempoEnvelope(xml, [
+      { time: 0, value: 120 },
+      { time: 16, value: 140, curve: true },
+    ]);
+    const newLen = out.length - (xml.length - (end - start));
+
+    expect(out.slice(0, start)).toBe(xml.slice(0, start));
+    expect(out.slice(start + newLen)).toBe(xml.slice(end));
   });
 });

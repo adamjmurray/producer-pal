@@ -12,6 +12,14 @@ const T = "\t";
 const I7 = T.repeat(7);
 const I8 = T.repeat(8);
 
+// Byte-Spiegelung des bereits byte-belegten Slice-2b-Max-Bend-Tupels —
+// autoritative In-Repo-Quelle: src/automation/als-arrangement-writer.ts:18
+// (dort NICHT exportiert; lokale Spiegelung hält den Kern git-diff-leer).
+// Ground-Truth-Fixture liegt im AIbleton-Repo (docs/superpowers/fixtures/
+// ableton12-arrangement-curve-groundtruth.xml), nicht in diesem Repo.
+const CURVE_CONTROL_TUPLE =
+  'CurveControl1X="0" CurveControl1Y="1" CurveControl2X="0" CurveControl2Y="1"';
+
 /** Eingabe-Flags, die in Slice 6 (nur lineare Tempo-Automation) gesperrt sind. */
 export interface Slice6bGuardInput {
   timeSignature?: string;
@@ -116,20 +124,18 @@ export function locateTempoEnvelopeEvents(xml: string): {
  * Value, Slice-2-Konvention) + User-Breakpoints (Id="1..n"). Alles ausserhalb
  * byte-identisch (`xml.slice`).
  * @param xml - Roher (dekomprimierter) `.als`-XML-String.
- * @param breakpoints - Lineare Tempo-Breakpoints (`time` = globale Beats,
- *   `value` = roher BPM); `curve`/`timeSignature` → Slice-6b-Throw.
+ * @param breakpoints - Tempo-Breakpoints (`time` = globale Beats, `value` =
+ *   roher BPM); `curve:true` hängt das Slice-2b-CurveControl-Max-Bend-Tupel
+ *   an das Segment-Start-FloatEvent (Slice 6c, gebogenes Segment). Der
+ *   Anker (Id=0) trägt das Tupel nie.
  * @returns Modifizierter XML-String.
- * @throws {Error} Bei Slice-6b-Eingabe, fehlendem MainTrack/Envelope oder
- *   leerer Breakpoint-Liste.
+ * @throws {Error} Bei fehlendem MainTrack/Envelope oder leerer
+ *   Breakpoint-Liste.
  */
 export function injectTempoEnvelope(
   xml: string,
   breakpoints: Breakpoint[],
 ): string {
-  for (const bp of breakpoints) {
-    assertNoSlice6bInput({ curve: bp.curve });
-  }
-
   const first = breakpoints[0];
 
   if (first == null) {
@@ -139,10 +145,11 @@ export function injectTempoEnvelope(
   const { start, end } = locateTempoEnvelopeEvents(xml);
   const anchor = `${I8}<FloatEvent Id="0" Time="-63072000" Value="${fmt(first.value)}" />`;
   const userEvents = breakpoints
-    .map(
-      (bp, i) =>
-        `${I8}<FloatEvent Id="${i + 1}" Time="${fmt(bp.time)}" Value="${fmt(bp.value)}" />`,
-    )
+    .map((bp, i) => {
+      const curveAttrs = bp.curve === true ? ` ${CURVE_CONTROL_TUPLE}` : "";
+
+      return `${I8}<FloatEvent Id="${i + 1}" Time="${fmt(bp.time)}" Value="${fmt(bp.value)}"${curveAttrs} />`;
+    })
     .join("\n");
   const eventsBlock = `${I7}<Events>\n${anchor}\n${userEvents}\n${I7}</Events>`;
 

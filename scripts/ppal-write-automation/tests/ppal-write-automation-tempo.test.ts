@@ -149,4 +149,29 @@ describe("CLI tempo write", () => {
       rmSync(tmp, { recursive: true, force: true });
     }
   });
+
+  it("write mit ~-Flag biegt das markierte Segment (CurveControl im .als)", () => {
+    const tmp = tmpCopy();
+
+    try {
+      const code = runTempo([
+        "write",
+        "--als",
+        tmp,
+        "--breakpoints",
+        "1=120,5=140~,9=100",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+      const after = readAls(tmp);
+      const { block } = locateTempoEnvelopeEvents(after);
+
+      expect(block).toContain('CurveControl1X="0" CurveControl1Y="1"');
+      // genau ein gebogenes Segment
+      expect([...block.matchAll(/CurveControl1X=/g)]).toHaveLength(1);
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
 });
