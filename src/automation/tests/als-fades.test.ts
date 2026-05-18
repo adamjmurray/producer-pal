@@ -6,6 +6,14 @@
 import { describe, it, expect } from "vitest";
 import { FADE_SPEC, getFades, patchFade } from "../als-fades.ts";
 
+// Platzhalter-Sonden für den künftigen Skew/Slope/Crossfade-Schreibpfad
+// (Slice 4b / Task 3). KEINE Range-, Vorzeichen- oder Enum-Annahme — der
+// reale Wertebereich wird erst durch die G4b-Ground-Truth (Ableton-Roundtrip)
+// festgelegt. Diese Konstanten dienen ausschließlich der Patch-Mechanik-Probe.
+const SKEW_PROBE = "0.5"; // TODO(T3): durch G4b-Ground-Truth-Wert ersetzen
+const SLOPE_PROBE = "0.5"; // TODO(T3): durch G4b-Ground-Truth-Wert ersetzen
+const CROSSFADE_PROBE = "1"; // TODO(T3): durch G4b-Ground-Truth-Wert ersetzen
+
 const AUDIO =
   '<AudioClip Id="1" Time="0"><Name Value="AC" />' +
   "<SampleRef><X /></SampleRef><Onsets><Y /></Onsets>" +
@@ -312,4 +320,41 @@ describe("patchFade", () => {
       /<fade>.*2-mal.*mehrdeutig/i,
     );
   });
+});
+
+describe("Slice4b Schreibpfad-Vertrag (fixture-frei, Mechanik-Probe)", () => {
+  // Diese Suite dokumentiert den KÜNFTIGEN Skew/Slope/Crossfade-Schreibpfad.
+  // Solange die SKEW_SLOPE_KEYS-Sperre in als-fades.ts aktiv ist, ist der
+  // Vertrag = "wirft". Das wird hier als grüner Test ausgedrückt (der Throw
+  // IST aktuell das korrekte Verhalten). Sobald T3 die Sperre entfernt, wird
+  // dieser Test bewusst rot und zwingt zur Umstellung auf die it.todo-Asserts.
+  it("RED-Vertrag: Skew-Patch wirft noch (Sperre aktiv, wird in T3 grün)", () => {
+    expect(() => patchFade(AUDIO, "FadeInCurveSkew", SKEW_PROBE)).toThrow(
+      /Slice 4b/,
+    );
+  });
+  it("RED-Vertrag: Slope-Patch wirft noch (Sperre aktiv, wird in T3 grün)", () => {
+    expect(() => patchFade(AUDIO, "FadeOutCurveSlope", SLOPE_PROBE)).toThrow(
+      /Slice 4b/,
+    );
+  });
+
+  // Künftiger Vertrag — KEINE Range-/Vorzeichen-/Enum-Annahme. Erst aktivieren,
+  // wenn der Schreibpfad existiert und die G4b-Ground-Truth die Probe-Werte
+  // gesetzt hat. Reine Patch-Mechanik (genau-1-Tag ersetzt, Rest byte-identisch).
+  it.todo(
+    "T3: patchFade(audioClip,'FadeInCurveSkew',SKEW_PROBE) ersetzt NUR den Skew-Tag, Rest byte-identisch",
+  );
+  it.todo(
+    "T3: patchFade(audioClip,'FadeOutCurveSlope',SLOPE_PROBE) ersetzt NUR den Slope-Tag, Rest byte-identisch",
+  );
+  it.todo(
+    "T3: Multi-Patch Skew+Slope+CrossfadeInState atomar (alle drei gesetzt, kein anderer Tag verändert)",
+  );
+  it.todo(
+    "T3: Off-Window-Schutz — Skew/Slope-Patch verändert <Fade>-bool außerhalb <Fades> NICHT (R1-Analogon)",
+  );
+  it.todo(
+    `T3: CrossfadeInState-Schreibpfad akzeptiert G4b-Ground-Truth (Probe ${CROSSFADE_PROBE}), Wertebereich erst durch Ableton-Roundtrip fixiert`,
+  );
 });
