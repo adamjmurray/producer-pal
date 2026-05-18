@@ -32,7 +32,16 @@ describe("runMixerRouting", () => {
     const f = tmpCopy();
 
     expect(
-      runMixerRouting(["crossfade", "--als", f, "--track", "Drums", "--value", "B", "--force"]),
+      runMixerRouting([
+        "crossfade",
+        "--als",
+        f,
+        "--track",
+        "Drums",
+        "--value",
+        "B",
+        "--force",
+      ]),
     ).toBe(0);
     // Drums-Block muss CrossFadeState-Manual=2 haben. Track-Block ueber den
     // kanonischen Locator extrahieren statt Index-Fenster (Track-Block ist im
@@ -48,7 +57,16 @@ describe("runMixerRouting", () => {
     const f = tmpCopy();
 
     expect(
-      runMixerRouting(["send-pre", "--als", f, "--return-id", "3", "--value", "pre", "--force"]),
+      runMixerRouting([
+        "send-pre",
+        "--als",
+        f,
+        "--return-id",
+        "3",
+        "--value",
+        "pre",
+        "--force",
+      ]),
     ).toBe(0);
     expect(readAls(f)).toContain('<SendPreBool Id="3" Value="true" />');
   });
