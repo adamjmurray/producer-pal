@@ -3,16 +3,38 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
 import { FADE_SPEC, getFades, patchFade } from "../als-fades.ts";
 
-// Platzhalter-Sonden für den künftigen Skew/Slope/Crossfade-Schreibpfad
-// (Slice 4b / Task 3). KEINE Range-, Vorzeichen- oder Enum-Annahme — der
-// reale Wertebereich wird erst durch die G4b-Ground-Truth (Ableton-Roundtrip)
-// festgelegt. Diese Konstanten dienen ausschließlich der Patch-Mechanik-Probe.
-const SKEW_PROBE = "0.5"; // TODO(T3): durch G4b-Ground-Truth-Wert ersetzen
-const SLOPE_PROBE = "0.5"; // TODO(T3): durch G4b-Ground-Truth-Wert ersetzen
-const CROSSFADE_PROBE = "1"; // TODO(T3): durch G4b-Ground-Truth-Wert ersetzen
+// Byte-belegte G4b-Ground-Truth (Fixture-CDATA, Commit e266c15). FadeInCurve
+// schreibt diese Tupel WÖRTLICH (keine Float-Neuformatierung):
+//   up   -> FadeInCurveSkew="-1" + FadeInCurveSlope="0.8999999762"
+//   down -> FadeInCurveSkew="1"  + FadeInCurveSlope="-0.8999999762"
+// PLUS IsDefaultFadeIn="false". Tag-Position/Reihenfolge aus Fixture <After>.
+const SKEW_UP = "-1";
+const SLOPE_UP = "0.8999999762";
+const SKEW_DOWN = "1";
+const SLOPE_DOWN = "-0.8999999762";
+
+const FIXTURE_PATH =
+  "/Users/macuser/Desktop/AIbleton/producer-pal/" +
+  "../docs/superpowers/fixtures/ableton12-fades-curve-groundtruth.xml";
+
+/**
+ * Liest den `<After>`-CDATA-`<Fades>`-Block eines Clips aus der G4b-Fixture.
+ * @param clipIndex - clipIndex-Attribut im Fixture (0|1|2)
+ * @returns Der wörtliche `<Fades>…</Fades>`-String aus dem `<After>`-CDATA
+ */
+function fixtureAfter(clipIndex: number): string {
+  const xml = readFileSync(FIXTURE_PATH, "utf8");
+  const block = xml
+    .split(`<Fades clipIndex="${clipIndex}">`)[1]
+    ?.split("</Fades>\n  </Fades>")[0];
+  const after = block?.split("<After><![CDATA[")[1]?.split("]]></After>")[0];
+
+  return after?.trim() ?? "";
+}
 
 const AUDIO =
   '<AudioClip Id="1" Time="0"><Name Value="AC" />' +
@@ -28,19 +50,26 @@ const AUDIO =
   '</Fades><PitchCoarse Value="0" /></AudioClip>';
 
 describe("FADE_SPEC", () => {
-  it("hat genau 7 setbare Keys mit tag/type/def/scope", () => {
+  it("hat genau 8 setbare Keys mit tag/type/def/scope", () => {
     expect(Object.keys(FADE_SPEC).sort()).toStrictEqual(
       [
         "ClipFadesAreInitialized",
         "CrossfadeInState",
         "Fade",
+        "FadeInCurve",
         "FadeInLength",
         "FadeOutLength",
         "IsDefaultFadeIn",
         "IsDefaultFadeOut",
       ].sort(),
     );
-    // Skew/Slope sind LESBAR (getFades) aber NICHT in FADE_SPEC-set-Keys
+    // FadeInCurve = Composite-Key (up|down -> Skew+Slope+IsDefaultFadeIn).
+    // FadeOut-Skew/Slope + direkte FadeIn-Skew/Slope sind set-gesperrt (4c).
+  });
+
+  it("FadeInCurve-Witness-Tag ist FadeInCurveSkew (Composite)", () => {
+    expect(FADE_SPEC.FadeInCurve?.tag).toBe("FadeInCurveSkew");
+    expect(FADE_SPEC.FadeInCurve?.scope).toBe("fades");
   });
 });
 
@@ -176,18 +205,21 @@ describe("patchFade", () => {
 
     expect(out).toContain('<ClipFadesAreInitialized Value="false" />');
   });
-  it("Skew/Slope-set ist gesperrt (Slice 4b) — alle 4", () => {
+  it("FadeOut-Skew/Slope + direkte FadeIn-Skew/Slope set-gesperrt (Slice 4c)", () => {
+    // FadeOut-Kurve NICHT byte-belegt -> 4c. Direkte FadeInCurveSkew/Slope
+    // ebenfalls gesperrt: nur die up/down-Tupel sind byte-belegt, freigeschaltet
+    // ausschließlich über den Composite-Key FadeInCurve.
     expect(() => patchFade(AUDIO, "FadeInCurveSkew", "0.5")).toThrow(
-      /4b|gekrümmt|nicht unterstützt/i,
+      /4c|nicht unterstützt/i,
     );
     expect(() => patchFade(AUDIO, "FadeInCurveSlope", "0.5")).toThrow(
-      /4b|gekrümmt|nicht unterstützt/i,
+      /4c|nicht unterstützt/i,
     );
     expect(() => patchFade(AUDIO, "FadeOutCurveSkew", "0.5")).toThrow(
-      /4b|gekrümmt|nicht unterstützt/i,
+      /4c|nicht unterstützt/i,
     );
     expect(() => patchFade(AUDIO, "FadeOutCurveSlope", "0.5")).toThrow(
-      /4b|gekrümmt|nicht unterstützt/i,
+      /4c|nicht unterstützt/i,
     );
   });
   it("bool-Key nur true/false", () => {
@@ -290,17 +322,16 @@ describe("patchFade", () => {
       /<fade>.*positions-fenster.*nicht gefunden/i,
     );
   });
-  it("Slice4b-Sperrmeldung enthält exakt 'Slice 4b' (Wortlaut eingefroren)", () => {
-    // Bestehender Test oben matcht /4b|gekrümmt|nicht unterstützt/ (tolerant).
-    // Hier wird der exakte Token 'Slice 4b' je Key festgenagelt, damit eine
-    // spätere Umformulierung der Meldung bewusst rot wird (Charakterisierung).
+  it("Skew/Slope-Sperrmeldung enthält exakt 'Slice 4c' (Wortlaut eingefroren)", () => {
+    // Wortlaut der set-Sperre für die 4 rohen Skew/Slope-Keys festgenagelt:
+    // jetzt 4c (FadeOut-Kurve + direkte FadeIn-Skew/Slope nicht byte-belegt).
     for (const key of [
       "FadeInCurveSkew",
       "FadeInCurveSlope",
       "FadeOutCurveSkew",
       "FadeOutCurveSlope",
     ]) {
-      expect(() => patchFade(AUDIO, key, "0.5")).toThrow(/Slice 4b/);
+      expect(() => patchFade(AUDIO, key, "0.5")).toThrow(/Slice 4c/);
     }
   });
   it("<Fade>-Tag mehrfach im Positions-Fenster wirft mehrdeutig (line 245/246)", () => {
@@ -322,39 +353,116 @@ describe("patchFade", () => {
   });
 });
 
-describe("Slice4b Schreibpfad-Vertrag (fixture-frei, Mechanik-Probe)", () => {
-  // Diese Suite dokumentiert den KÜNFTIGEN Skew/Slope/Crossfade-Schreibpfad.
-  // Solange die SKEW_SLOPE_KEYS-Sperre in als-fades.ts aktiv ist, ist der
-  // Vertrag = "wirft". Das wird hier als grüner Test ausgedrückt (der Throw
-  // IST aktuell das korrekte Verhalten). Sobald T3 die Sperre entfernt, wird
-  // dieser Test bewusst rot und zwingt zur Umstellung auf die it.todo-Asserts.
-  it("RED-Vertrag: Skew-Patch wirft noch (Sperre aktiv, wird in T3 grün)", () => {
-    expect(() => patchFade(AUDIO, "FadeInCurveSkew", SKEW_PROBE)).toThrow(
-      /Slice 4b/,
-    );
+describe("Slice4b FadeInCurve Composite-Key (G4b-byte-belegt)", () => {
+  it("FadeInCurve=up schreibt byte-belegte up-Tupel + IsDefaultFadeIn=false", () => {
+    const out = patchFade(AUDIO, "FadeInCurve", "up");
+
+    expect(out).toContain(`<FadeInCurveSkew Value="${SKEW_UP}" />`);
+    expect(out).toContain(`<FadeInCurveSlope Value="${SLOPE_UP}" />`);
+    expect(out).toContain('<IsDefaultFadeIn Value="false" />');
   });
-  it("RED-Vertrag: Slope-Patch wirft noch (Sperre aktiv, wird in T3 grün)", () => {
-    expect(() => patchFade(AUDIO, "FadeOutCurveSlope", SLOPE_PROBE)).toThrow(
-      /Slice 4b/,
+
+  it("FadeInCurve=down schreibt byte-belegte down-Tupel + IsDefaultFadeIn=false", () => {
+    const out = patchFade(AUDIO, "FadeInCurve", "down");
+
+    expect(out).toContain(`<FadeInCurveSkew Value="${SKEW_DOWN}" />`);
+    expect(out).toContain(`<FadeInCurveSlope Value="${SLOPE_DOWN}" />`);
+    expect(out).toContain('<IsDefaultFadeIn Value="false" />');
+  });
+
+  it("FadeInCurve atomar: NUR die 3 Ziel-Tags ändern sich, Rest byte-identisch", () => {
+    const out = patchFade(AUDIO, "FadeInCurve", "up");
+    const restored = out
+      .replace(`<FadeInCurveSkew Value="${SKEW_UP}" />`, '<FadeInCurveSkew Value="0" />')
+      .replace(`<FadeInCurveSlope Value="${SLOPE_UP}" />`, '<FadeInCurveSlope Value="0" />')
+      .replace('<IsDefaultFadeIn Value="false" />', '<IsDefaultFadeIn Value="true" />');
+
+    expect(restored).toBe(AUDIO);
+  });
+
+  it("FadeInCurve berührt FadeOut-Skew/Slope NICHT (nur FadeIn)", () => {
+    const out = patchFade(AUDIO, "FadeInCurve", "down");
+
+    expect(out).toContain('<FadeOutCurveSkew Value="0" />');
+    expect(out).toContain('<FadeOutCurveSlope Value="0" />');
+    expect(out).toContain('<IsDefaultFadeOut Value="true" />');
+  });
+
+  it("FadeInCurve lässt <Fade>-bool (sibling, off-window) byte-identisch", () => {
+    const out = patchFade(AUDIO, "FadeInCurve", "up");
+
+    expect(out.match(/<Fade Value="[^"]*" \/>/)![0]).toBe(
+      '<Fade Value="true" />',
     );
   });
 
-  // Künftiger Vertrag — KEINE Range-/Vorzeichen-/Enum-Annahme. Erst aktivieren,
-  // wenn der Schreibpfad existiert und die G4b-Ground-Truth die Probe-Werte
-  // gesetzt hat. Reine Patch-Mechanik (genau-1-Tag ersetzt, Rest byte-identisch).
-  it.todo(
-    "T3: patchFade(audioClip,'FadeInCurveSkew',SKEW_PROBE) ersetzt NUR den Skew-Tag, Rest byte-identisch",
-  );
-  it.todo(
-    "T3: patchFade(audioClip,'FadeOutCurveSlope',SLOPE_PROBE) ersetzt NUR den Slope-Tag, Rest byte-identisch",
-  );
-  it.todo(
-    "T3: Multi-Patch Skew+Slope+CrossfadeInState atomar (alle drei gesetzt, kein anderer Tag verändert)",
-  );
-  it.todo(
-    "T3: Off-Window-Schutz — Skew/Slope-Patch verändert <Fade>-bool außerhalb <Fades> NICHT (R1-Analogon)",
-  );
-  it.todo(
-    `T3: CrossfadeInState-Schreibpfad akzeptiert G4b-Ground-Truth (Probe ${CROSSFADE_PROBE}), Wertebereich erst durch Ableton-Roundtrip fixiert`,
-  );
+  it("FadeInCurve nur up|down (ungültiger Wert wirft)", () => {
+    expect(() => patchFade(AUDIO, "FadeInCurve", "sideways")).toThrow(
+      /up|down/i,
+    );
+    expect(() => patchFade(AUDIO, "FadeInCurve", "0.5")).toThrow(/up|down/i);
+  });
+
+  it("getFades leitet FadeInCurve aus Skew-Literal ab (Verify-Witness)", () => {
+    expect(getFades(AUDIO).FadeInCurve).toBe("0");
+    expect(getFades(patchFade(AUDIO, "FadeInCurve", "up")).FadeInCurve).toBe(
+      SKEW_UP,
+    );
+    expect(getFades(patchFade(AUDIO, "FadeInCurve", "down")).FadeInCurve).toBe(
+      SKEW_DOWN,
+    );
+  });
+});
+
+describe("Slice4b FadeInLength/FadeOutLength große Werte (G4b: keine Obergrenze)", () => {
+  it("große FadeInLength (1.9004591762404262) geht durch (byte-belegt)", () => {
+    const out = patchFade(AUDIO, "FadeInLength", "1.9004591762404262");
+
+    expect(out).toContain('<FadeInLength Value="1.9004591762404262" />');
+  });
+
+  it("große FadeOutLength (2.2789080710955711) geht durch (byte-belegt)", () => {
+    const out = patchFade(AUDIO, "FadeOutLength", "2.2789080710955711");
+
+    expect(out).toContain('<FadeOutLength Value="2.2789080710955711" />');
+  });
+});
+
+describe("Slice4b byte-Konformität gegen G4b-Fixture <After> (T4)", () => {
+  // Struktureller Soll-Vergleich: das von patchFade erzeugte <Fades> muss
+  // die im Fixture <After> dokumentierten Skew/Slope-Literale + IsDefault-Flip
+  // + Längen-Float exakt enthalten. Werte AUSSCHLIESSLICH aus der Fixture.
+  it("clipIndex=0: FadeInCurve=up + FadeInLength == Fixture <After>", () => {
+    const after = fixtureAfter(0);
+    const len = after.match(/<FadeInLength Value="([^"]*)" \/>/)![1];
+    let out = patchFade(AUDIO, "FadeInCurve", "up");
+
+    out = patchFade(out, "FadeInLength", len);
+    expect(out).toContain(`<FadeInLength Value="${len}" />`);
+    expect(out).toContain('<FadeInCurveSkew Value="-1" />');
+    expect(out).toContain('<FadeInCurveSlope Value="0.8999999762" />');
+    expect(out).toContain('<IsDefaultFadeIn Value="false" />');
+  });
+
+  it("clipIndex=1: FadeInCurve=down == Fixture <After> (Skew/Slope/IsDefault)", () => {
+    const after = fixtureAfter(1);
+
+    expect(after).toContain('<FadeInCurveSkew Value="1" />');
+    expect(after).toContain('<FadeInCurveSlope Value="-0.8999999762" />');
+    expect(after).toContain('<IsDefaultFadeIn Value="false" />');
+    const out = patchFade(AUDIO, "FadeInCurve", "down");
+
+    expect(out).toContain('<FadeInCurveSkew Value="1" />');
+    expect(out).toContain('<FadeInCurveSlope Value="-0.8999999762" />');
+    expect(out).toContain('<IsDefaultFadeIn Value="false" />');
+  });
+
+  it("clipIndex=2: große FadeOutLength == Fixture <After>", () => {
+    const after = fixtureAfter(2);
+    const len = after.match(/<FadeOutLength Value="([^"]*)" \/>/)![1];
+    const out = patchFade(AUDIO, "FadeOutLength", len);
+
+    expect(out).toContain(`<FadeOutLength Value="${len}" />`);
+    expect(len).toBe("2.2789080710955711");
+  });
 });

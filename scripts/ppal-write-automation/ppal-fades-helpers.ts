@@ -42,7 +42,31 @@ export function runFades(
     resolveApply: () => fadesInternals.applyFadePatches,
     catchApplyErrors: true,
     clipKindGuard: audioClipGuard,
+    expectedValue: expectedFadeValue,
   });
+}
+
+/**
+ * Normalisiert die Verify-Erwartung für den geteilten clip-patch-cli-Verify.
+ *
+ * `FadeInCurve` ist ein Composite-Key: `patchFade` schreibt KEINEN
+ * `<FadeInCurve>`-Tag, sondern die byte-belegten `FadeInCurveSkew`-Literale
+ * (`up`->`-1`, `down`->`1`). Witness-Tag ist `FadeInCurveSkew`; der Verify
+ * prüft `<FadeInCurveSkew Value="<skew>" />` UND `after.FadeInCurve` (von
+ * `getFades` = Skew-Literal). Daher wird der Roh-Wert `up|down` hier auf das
+ * effektiv geschriebene Skew-Literal abgebildet. Alle anderen Fade-Keys sind
+ * value-erhaltend -> Identität (byte-/verhaltensgleich zum Slice-4-Stand).
+ * Spiegelt exakt das clip-settings-`expectedValue`-Muster — KEINE
+ * clip-patch-cli.ts-Änderung nötig.
+ *
+ * @param key - Patch-Key
+ * @param value - Roh-`--value`
+ * @returns Der effektiv in die `.als` geschriebene Witness-Wert
+ */
+function expectedFadeValue(key: string, value: string): string {
+  if (key !== "FadeInCurve") return value;
+
+  return value === "up" ? "-1" : value === "down" ? "1" : value;
 }
 
 /**
@@ -52,9 +76,11 @@ export function runFades(
  * Patches are applied sequentially on one block string (one logical write);
  * the patched block is spliced back into `xml` at `[loc.start, loc.end)`.
  * Exported so the Mitigation-B foreign-block proof test can spy/corrupt the
- * transform's output. patchFade wirft bei Skew/Slope/ungültigem Wert; das
- * Throw wird vom Orchestrator (catchApplyErrors) als FEHLER + Exit 1
- * behandelt, KEIN Partial-Write.
+ * transform's output. patchFade wirft bei rohen FadeOut/FadeIn-Skew/Slope-
+ * Keys (= Slice 4c), ungültigem FadeInCurve-Wert (≠ up|down) oder ungültigem
+ * Längen-/int-Wert; das Throw wird vom Orchestrator (catchApplyErrors) als
+ * FEHLER + Exit 1 behandelt, KEIN Partial-Write. Der Composite-Key
+ * FadeInCurve schreibt Skew+Slope+IsDefaultFadeIn atomar in einem Block.
  *
  * @param xml - Raw (decompressed) `.als` XML string
  * @param loc - Absolute clip location within `xml`

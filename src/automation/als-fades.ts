@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-type FadeType = "int" | "bool" | "float";
+type FadeType = "int" | "bool" | "float" | "curve";
 
 interface FadeDef {
   tag: string;
@@ -14,8 +14,13 @@ interface FadeDef {
 }
 
 /**
- * Setbare Fade-Keys (genau 7). Skew/Slope-Kinder sind über `getFades`
- * LESBAR, aber bewusst NICHT in FADE_SPEC — gekrümmte Kurven = Slice 4b.
+ * Setbare Fade-Keys (genau 8). Der Composite-Key `FadeInCurve` (Werte
+ * `up`|`down`) schreibt atomar die byte-belegten G4b-Tupel
+ * `FadeInCurveSkew`/`FadeInCurveSlope` + `IsDefaultFadeIn="false"`; sein
+ * Witness-Tag (für den geteilten Verify im clip-patch-cli) ist
+ * `FadeInCurveSkew`. Die rohen `FadeInCurveSkew/Slope`- und
+ * `FadeOutCurveSkew/Slope`-Keys sind über `getFades` LESBAR, aber
+ * set-gesperrt (nicht byte-belegt = Slice 4c).
  */
 export const FADE_SPEC: Record<string, FadeDef> = {
   Fade: { tag: "Fade", type: "bool", def: "true", scope: "sibling" },
@@ -55,15 +60,38 @@ export const FADE_SPEC: Record<string, FadeDef> = {
     def: "true",
     scope: "fades",
   },
+  FadeInCurve: {
+    // Composite-Key: Witness-Tag = FadeInCurveSkew (dessen Literal -1/1/0
+    // diskriminiert up/down/neutral); patchFade schreibt zusätzlich
+    // FadeInCurveSlope + IsDefaultFadeIn atomar im selben <Fades>-Scope.
+    tag: "FadeInCurveSkew",
+    type: "curve",
+    def: "0",
+    scope: "fades",
+  },
 };
 
-/** Skew/Slope-Keys: lesbar, aber set-gesperrt (Slice 4b). */
+/**
+ * Rohe Skew/Slope-Keys: lesbar via `getFades`, aber set-gesperrt. FadeOut-
+ * Kurve und direkte FadeIn-Skew/Slope sind NICHT byte-belegt (nur die
+ * up/down-Tupel des Composite-Keys `FadeInCurve` sind es) = Slice 4c.
+ */
 const SKEW_SLOPE_KEYS = new Set([
   "FadeInCurveSkew",
   "FadeInCurveSlope",
   "FadeOutCurveSkew",
   "FadeOutCurveSlope",
 ]);
+
+/**
+ * Byte-belegte G4b-Tupel (Fixture-CDATA, Commit `e266c15`) — WÖRTLICH,
+ * keine Float-Neuformatierung. `FadeInCurve` schreibt diese Literale plus
+ * `IsDefaultFadeIn="false"` atomar.
+ */
+const FADE_IN_CURVE_TUPLES: Record<string, { skew: string; slope: string }> = {
+  up: { skew: "-1", slope: "0.8999999762" },
+  down: { skew: "1", slope: "-0.8999999762" },
+};
 
 /** Alle 11 lesbaren Tags: Fade (sibling) + 10 <Fades>-Kinder. */
 const READ_KEYS: { tag: string; scope: "sibling" | "fades" }[] = [
@@ -100,6 +128,12 @@ export function getFades(clipXml: string): Record<string, string> {
     res[tag] = m?.[1] ?? FADE_SPEC[tag]?.def ?? "0";
   }
 
+  // Composite-Witness: FadeInCurve == das FadeInCurveSkew-Literal. Der
+  // geteilte clip-patch-cli-Verify prüft `after.FadeInCurve === want` UND
+  // den Roh-Tag `<FadeInCurveSkew Value="want" />`; mit want = Skew-Literal
+  // (via expectedValue-Hook) deckt sich beides ohne clip-patch-cli-Änderung.
+  res.FadeInCurve = res.FadeInCurveSkew;
+
   return res;
 }
 
@@ -116,7 +150,10 @@ export function getFades(clipXml: string): Record<string, string> {
  */
 export function patchFade(clipXml: string, key: string, value: string): string {
   if (SKEW_SLOPE_KEYS.has(key))
-    throw new Error("Gekrümmte Fade-Kurve = Slice 4b, nicht unterstützt");
+    throw new Error(
+      "Direkte Fade-Kurven-Skew/Slope (FadeOut bzw. roh FadeIn) = Slice 4c, " +
+        "nicht unterstützt — FadeIn-Kurve nur über Composite-Key FadeInCurve",
+    );
 
   const def = FADE_SPEC[key];
 
@@ -124,6 +161,8 @@ export function patchFade(clipXml: string, key: string, value: string): string {
     throw new Error(
       `Unbekannter Key "${key}". Gültig: ${Object.keys(FADE_SPEC).join(", ")}`,
     );
+
+  if (def.type === "curve") return patchFadeInCurve(clipXml, value);
   validate(key, def, value);
 
   if (def.scope === "fades") {
@@ -140,6 +179,43 @@ export function patchFade(clipXml: string, key: string, value: string): string {
   // scope "sibling" (Key Fade): R1 — Positions-Fenster zwischen <WarpMode
   // und <Fades>, Tag-Match zwingend mit ` Value="` (schließt <Fades> aus).
   return replaceFadeBoolInWindow(clipXml, value);
+}
+
+/**
+ * Schreibt den Composite-Key `FadeInCurve` (`up`|`down`) atomar: ersetzt
+ * `FadeInCurveSkew`, `FadeInCurveSlope` und `IsDefaultFadeIn` innerhalb des
+ * `<Fades>…</Fades>`-Scopes mit den byte-belegten G4b-Literalen (wörtlich,
+ * keine Float-Neuformatierung). Wirft bei ungültigem Wert oder fehlendem
+ * Tag, bevor irgendetwas am Block geändert wird (kein Partial-Patch).
+ *
+ * @param clipXml - Der Clip-XML-Block.
+ * @param value - `up` oder `down` (einzige byte-belegte Tupel).
+ * @returns Der Clip-XML-Block mit den 3 atomar ersetzten Tag-Werten.
+ */
+function patchFadeInCurve(clipXml: string, value: string): string {
+  const tuple = FADE_IN_CURVE_TUPLES[value];
+
+  if (tuple === undefined)
+    throw new Error(
+      `Key "FadeInCurve" erwartet up|down (byte-belegt), nicht "${value}"`,
+    );
+  const fb = fadesBlock(clipXml);
+  const writes: Array<[string, string]> = [
+    ["FadeInCurveSkew", tuple.skew],
+    ["FadeInCurveSlope", tuple.slope],
+    ["IsDefaultFadeIn", "false"],
+  ];
+  let block = fb.block;
+
+  for (const [tag, v] of writes) {
+    const tagRe = new RegExp(`(<${tag} Value=")[^"]*(" />)`);
+
+    if (!tagRe.test(block))
+      throw new Error(`Tag <${tag}> in <Fades> nicht gefunden`);
+    block = block.replace(tagRe, `$1${v}$2`);
+  }
+
+  return clipXml.slice(0, fb.start) + block + clipXml.slice(fb.end);
 }
 
 /**
