@@ -346,6 +346,44 @@ describe("ToolToggles", () => {
       expect(checkbox.checked).toBe(true);
     });
 
+    it("announces why the Live API checkbox is disabled when forced on", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={true}
+          liveApiForcedOn={true}
+        />,
+      );
+
+      const checkbox = screen.getByLabelText("Live API") as HTMLInputElement;
+      const reason = "Forced on by ENABLE_LIVE_API build flag";
+
+      expect(checkbox.title).toBe(reason);
+      expect(checkbox.getAttribute("aria-describedby")).toBe(
+        "tool-ppal-live-api-reason",
+      );
+
+      const describer = document.getElementById("tool-ppal-live-api-reason");
+
+      expect(describer?.textContent).toBe(reason);
+    });
+
+    it("omits the disabled-reason hint when Live API is not forced on", () => {
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={false}
+          liveApiForcedOn={false}
+        />,
+      );
+
+      const checkbox = screen.getByLabelText("Live API") as HTMLInputElement;
+
+      expect(checkbox.title).toBe("");
+      expect(checkbox.hasAttribute("aria-describedby")).toBe(false);
+      expect(document.getElementById("tool-ppal-live-api-reason")).toBeNull();
+    });
+
     it("does not call setLiveApiEnabled when clicking a forced-on checkbox", () => {
       const setLiveApiEnabled = vi.fn();
 

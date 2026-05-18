@@ -74,6 +74,14 @@ export function ToolToggles({
     return false;
   };
 
+  const getDisabledReason = (toolId: string): string | undefined => {
+    if (toolId === LIVE_API_TOOL_ID && liveApiForcedOn) {
+      return "Forced on by ENABLE_LIVE_API build flag";
+    }
+
+    return undefined;
+  };
+
   const handleToggle = (toolId: string) => {
     if (isToolDisabled(toolId)) return;
 
@@ -155,6 +163,7 @@ export function ToolToggles({
             group={group}
             isToolChecked={isToolChecked}
             isToolDisabled={isToolDisabled}
+            getDisabledReason={getDisabledReason}
             onToggle={handleToggle}
           />
         ))}
@@ -169,6 +178,7 @@ interface ToolGroupSectionProps {
   group: GroupedTools;
   isToolChecked: (toolId: string) => boolean;
   isToolDisabled: (toolId: string) => boolean;
+  getDisabledReason: (toolId: string) => string | undefined;
   onToggle: (toolId: string) => void;
 }
 
@@ -176,6 +186,7 @@ function ToolGroupSection({
   group,
   isToolChecked,
   isToolDisabled,
+  getDisabledReason,
   onToggle,
 }: ToolGroupSectionProps) {
   return (
@@ -184,24 +195,39 @@ function ToolGroupSection({
         {group.label}
       </h4>
       <div className="space-y-1">
-        {group.tools.map((tool) => (
-          <div
-            key={tool.id}
-            className="flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <input
-              type="checkbox"
-              id={`tool-${tool.id}`}
-              checked={isToolChecked(tool.id)}
-              disabled={isToolDisabled(tool.id)}
-              onChange={() => onToggle(tool.id)}
-            />
-            <label htmlFor={`tool-${tool.id}`} className="text-sm">
-              {tool.name}
-            </label>
-            {tool.description && <Tooltip text={tool.description} />}
-          </div>
-        ))}
+        {group.tools.map((tool) => {
+          const reason = getDisabledReason(tool.id);
+
+          return (
+            <div
+              key={tool.id}
+              className="flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <input
+                type="checkbox"
+                id={`tool-${tool.id}`}
+                checked={isToolChecked(tool.id)}
+                disabled={isToolDisabled(tool.id)}
+                title={reason}
+                aria-describedby={reason ? `tool-${tool.id}-reason` : undefined}
+                onChange={() => onToggle(tool.id)}
+              />
+              <label
+                htmlFor={`tool-${tool.id}`}
+                className="text-sm"
+                title={reason}
+              >
+                {tool.name}
+              </label>
+              {reason && (
+                <span id={`tool-${tool.id}-reason`} className="sr-only">
+                  {reason}
+                </span>
+              )}
+              {tool.description && <Tooltip text={tool.description} />}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
