@@ -92,6 +92,10 @@ describe("Slice-6b Time-Signature-Marker", () => {
     ).toThrow(/TimeSignature/);
   });
 
+  it("resolveTimeSigTargetId wirft bei fehlendem MainTrack", () => {
+    expect(() => resolveTimeSigTargetId("<Ableton/>")).toThrow(/MainTrack/);
+  });
+
   it("locateTimeSigEnvelopeEvents wirft bei Target-Id ohne passende PointeeId-Envelope", () => {
     const xml =
       '<MainTrack X="1"><TimeSignature><AutomationTarget Id="10" />' +
