@@ -30,6 +30,7 @@ import { runClipSettings } from "./ppal-clip-settings-helpers.ts";
 import { runFades } from "./ppal-fades-helpers.ts";
 import { runGroove } from "./ppal-groove-helpers.ts";
 import { runTempo } from "./ppal-tempo-helpers.ts";
+import { runTimesig } from "./ppal-timesig-helpers.ts";
 
 /** Parsed arguments for the `write` subcommand. */
 interface WriteArgs {
@@ -443,6 +444,7 @@ export function runCli(argv: string[]): number {
     if (subcommand === "fades") return runFades(rest, parseFlags);
     if (subcommand === "groove") return runGroove(rest);
     if (subcommand === "tempo") return runTempo(rest);
+    if (subcommand === "timesig") return runTimesig(rest);
 
     process.stderr.write(
       `FEHLER: Unbekanntes Subcommand "${subcommand}". Nutze list oder write.\n`,
