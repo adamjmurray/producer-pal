@@ -54,6 +54,32 @@ describe("getFades", () => {
   });
 });
 
+describe("getFades Skew/Slope Default-Charakterisierung", () => {
+  it("Default-AudioClip-Block: alle 4 Skew/Slope-Tags == '0' (eingefroren)", () => {
+    // Charakterisierung des Ist-Lesepfads: ein frischer Default-AudioClip
+    // (Skew/Slope explizit '0' wie Live sie schreibt) liefert über getFades
+    // exakt "0" für alle 4 Kurven-Tags. Friert das Ableton-Default-Verhalten
+    // ein, unabhängig vom AUDIO-Konstrukt oben.
+    const defaultClip =
+      '<AudioClip Id="20"><Name Value="DEF" />' +
+      '<WarpMode Value="0" />' +
+      '<Fade Value="true" />' +
+      "<Fades>" +
+      '<FadeInLength Value="0" /><FadeOutLength Value="0" />' +
+      '<ClipFadesAreInitialized Value="true" /><CrossfadeInState Value="0" />' +
+      '<FadeInCurveSkew Value="0" /><FadeInCurveSlope Value="0" />' +
+      '<FadeOutCurveSkew Value="0" /><FadeOutCurveSlope Value="0" />' +
+      '<IsDefaultFadeIn Value="true" /><IsDefaultFadeOut Value="true" />' +
+      "</Fades></AudioClip>";
+    const f = getFades(defaultClip);
+
+    expect(f.FadeInCurveSkew).toBe("0");
+    expect(f.FadeInCurveSlope).toBe("0");
+    expect(f.FadeOutCurveSkew).toBe("0");
+    expect(f.FadeOutCurveSlope).toBe("0");
+  });
+});
+
 describe("getFades Default-Fallbacks", () => {
   it("kein <Fades>-Block -> fades-scope Tags fallen auf Spec-Default / '0' (line 97/100)", () => {
     // Kein <Fades> -> fadesBlockOrNull == null -> fb?.block ?? "" greift (hay="")
@@ -255,6 +281,19 @@ describe("patchFade", () => {
     expect(() => patchFade(clipOhneFadeImFenster, "Fade", "false")).toThrow(
       /<fade>.*positions-fenster.*nicht gefunden/i,
     );
+  });
+  it("Slice4b-Sperrmeldung enthält exakt 'Slice 4b' (Wortlaut eingefroren)", () => {
+    // Bestehender Test oben matcht /4b|gekrümmt|nicht unterstützt/ (tolerant).
+    // Hier wird der exakte Token 'Slice 4b' je Key festgenagelt, damit eine
+    // spätere Umformulierung der Meldung bewusst rot wird (Charakterisierung).
+    for (const key of [
+      "FadeInCurveSkew",
+      "FadeInCurveSlope",
+      "FadeOutCurveSkew",
+      "FadeOutCurveSlope",
+    ]) {
+      expect(() => patchFade(AUDIO, key, "0.5")).toThrow(/Slice 4b/);
+    }
   });
   it("<Fade>-Tag mehrfach im Positions-Fenster wirft mehrdeutig (line 245/246)", () => {
     // Zwei <Fade Value=...> zwischen <WarpMode> und <Fades> -> hits.length !== 1
