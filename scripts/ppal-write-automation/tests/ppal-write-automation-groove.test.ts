@@ -107,6 +107,25 @@ describe("groove subcommand", () => {
     }
   });
 
+  // Slice-5b Regressions-Charakterisierung (Task 1, fixture-frei): friert
+  // das Ist-Verhalten des CLI-Dispatch-Skeletts ein, BEVOR 5b den
+  // import-Writer baut. KEINE Produktivcode-Aenderung — reine
+  // Charakterisierung des aktuellen Verhaltens.
+
+  // Der Dispatcher kennt list|assign|tune. 'import' faellt in den
+  // Unbekannt-Zweig: klarer Fehler (kein I/O, kein Writer) -> Exit 1.
+  // Friert die Voraussetzung ein, gegen die T6 spaeter den echten
+  // import-Pfad TDD-getrieben einbaut.
+  it("5b-Charakterisierung: 'groove import' noch nicht implementiert -> Exit 1 (kein I/O)", () => {
+    expect(runCli(["groove", "import"])).toBe(1);
+  });
+
+  it("5b-Charakterisierung: 'groove import' mit Flags weiter Exit 1 (Dispatch vor Flag-Parse)", () => {
+    expect(
+      runCli(["groove", "import", "--als", "/nicht/existent.als", "--agr", "x"]),
+    ).toBe(1);
+  });
+
   it("R-C: GroovePool-Block byte-identisch nach assign (nur Track-Clip-GrooveId geändert)", () => {
     const tmp = THROW.replace(/\.als$/, ".g5rc.als");
 

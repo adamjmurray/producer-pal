@@ -402,3 +402,97 @@ describe("als-groove Error-/Edge-Branches (Slice 5)", () => {
     });
   });
 });
+
+// Slice-5b Regressions-Sicherheitsnetz (Task 1, fixture-frei). Friert das
+// Ist-Verhalten von poolGrooveIds/listGrooves UND eine Byte-Invariante ein,
+// BEVOR 5b (neuer GroovePool-Eintrag via .agr-Import) gebaut wird. Keine
+// Annahmen ueber das kuenftige .agr-Format — reine Charakterisierung des
+// aktuellen Verhaltens + it.todo-Skizzen fuer den 5b-Vertrag.
+describe("Slice-5b Regressions-Charakterisierung (Bestand eingefroren)", () => {
+  // Repraesentativer Mehr-Eintrag-Pool wie er in einem Bestands-Set vorkommt
+  // (zwei <Groove>-Eintraege, eingebetteter MidiClip, Pool-Rahmen-Tags).
+  const POOL_MULTI =
+    '<GroovePool><LomId Value="0" /><Grooves>' +
+    '<Groove Id="4"><LomId Value="0" /><Name Value="Swing 16ths 66" />' +
+    '<Clip><Value><MidiClip Id="0" Time="0"><GrooveSettings><GrooveId Value="-1" /></GrooveSettings></MidiClip></Value></Clip>' +
+    '<Grid Value="3" /><QuantizationAmount Value="0" /><TimingAmount Value="100" />' +
+    '<RandomAmount Value="0" /><VelocityAmount Value="0" />' +
+    '<Annotation Value="" /><Selection Value="true" /><SourceContext />' +
+    "</Groove>" +
+    '<Groove Id="9"><LomId Value="0" /><Name Value="MPC 8-Swing" />' +
+    '<Clip><Value><MidiClip Id="0" Time="0"><GrooveSettings><GrooveId Value="-1" /></GrooveSettings></MidiClip></Value></Clip>' +
+    '<Grid Value="2" /><QuantizationAmount Value="0" /><TimingAmount Value="62" />' +
+    '<RandomAmount Value="0" /><VelocityAmount Value="0" />' +
+    '<Annotation Value="" /><Selection Value="false" /><SourceContext />' +
+    "</Groove>" +
+    '</Grooves><DefaultGrooveId Value="-1" /><GroovesListWrapper LomId="0" /></GroovePool>';
+
+  // (a) Ist-Verhalten von poolGrooveIds/listGrooves gegen einen Bestands-
+  // Pool-Block einfrieren. Reihenfolge, Ids und alle gelesenen Felder sind
+  // EXAKT festgeschrieben — eine 5b-Aenderung, die Bestands-Eintraege
+  // anders parst oder umordnet, bricht hier sofort.
+  it("(a) poolGrooveIds liefert unveraenderte Ids in Dokumentreihenfolge", () => {
+    expect(poolGrooveIds(POOL_MULTI)).toStrictEqual(["4", "9"]);
+  });
+
+  it("(a) listGrooves liefert unveraenderte Eintraege (vollstaendig eingefroren)", () => {
+    expect(listGrooves(POOL_MULTI)).toStrictEqual([
+      {
+        id: "4",
+        name: "Swing 16ths 66",
+        Grid: "3",
+        QuantizationAmount: "0",
+        TimingAmount: "100",
+        RandomAmount: "0",
+        VelocityAmount: "0",
+      },
+      {
+        id: "9",
+        name: "MPC 8-Swing",
+        Grid: "2",
+        QuantizationAmount: "0",
+        TimingAmount: "62",
+        RandomAmount: "0",
+        VelocityAmount: "0",
+      },
+    ]);
+  });
+
+  // (b) Kontroll-Invariante fuer spaetere Mitigation-B-Beweise: ein
+  // Set-XML, das KEINEN Import durchlaeuft, bleibt durch einen No-Op-Pfad
+  // byte-identisch. listGrooves/poolGrooveIds sind reine Leser und duerfen
+  // den Eingabe-String niemals mutieren — das friert die Voraussetzung
+  // ein, gegen die 5b spaeter "alles ausser <GroovePool> byte-identisch"
+  // beweist.
+  it("(b) No-Op-Pfad: Lesen mutiert das Set-XML nicht (byte-identisch)", () => {
+    const SET =
+      '<?xml version="1.0" encoding="UTF-8"?><Ableton><LiveSet>' +
+      POOL_MULTI +
+      '<Tracks><MidiTrack Id="1"><Name Value="T" /></MidiTrack></Tracks>' +
+      "</LiveSet></Ableton>";
+    const before = SET;
+
+    // Read-only Pfad (= No-Op bzgl. Set-Bytes).
+    poolGrooveIds(SET);
+    listGrooves(SET);
+
+    expect(SET).toBe(before);
+    // Bytes ausserhalb des GroovePool unveraendert (Kontroll-Invariante).
+    const poolRe = /<GroovePool>[^]*?<\/GroovePool>/;
+
+    expect(SET.replace(poolRe, "")).toBe(before.replace(poolRe, ""));
+  });
+
+  // (c) Kuenftiger 5b-Vertrag — als it.todo skizziert. Knoten-Form und
+  // Id-Regel sind bis zur G5b-Fixture (Task 0, User-gated) UNBEKANNT,
+  // daher KEINE konkreten Asserts/Annahmen, nur die Vertragspunkte.
+  it.todo(
+    "(c) 5b: 'groove import' legt einen neuen <Groove>-Pool-Eintrag an (Knoten-Form aus G5b-Fixture)",
+  );
+  it.todo(
+    "(c) 5b: vergebene Groove-Id ist kollisionsfrei ggü. poolGrooveIds (Id-Regel aus G5b-Fixture)",
+  );
+  it.todo(
+    "(c) 5b: GroovePool-fremde Bytes nach Import byte-identisch (Mitigation-B gegen G5b-.als-Nachher)",
+  );
+});
