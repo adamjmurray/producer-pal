@@ -12,9 +12,11 @@ const T = "\t";
 const I7 = T.repeat(7);
 const I8 = T.repeat(8);
 
-// Byte-Spiegelung des Slice-2b-Max-Bend-Tupels (als-arrangement-writer.ts:18,
-// NICHT exportiert; Kern bleibt git-diff-leer). Byte-belegt:
-// docs/superpowers/fixtures/ableton12-arrangement-curve-groundtruth.xml.
+// Byte-Spiegelung des bereits byte-belegten Slice-2b-Max-Bend-Tupels —
+// autoritative In-Repo-Quelle: src/automation/als-arrangement-writer.ts:18
+// (dort NICHT exportiert; lokale Spiegelung hält den Kern git-diff-leer).
+// Ground-Truth-Fixture liegt im AIbleton-Repo (docs/superpowers/fixtures/
+// ableton12-arrangement-curve-groundtruth.xml), nicht in diesem Repo.
 const CURVE_CONTROL_TUPLE =
   'CurveControl1X="0" CurveControl1Y="1" CurveControl2X="0" CurveControl2Y="1"';
 
