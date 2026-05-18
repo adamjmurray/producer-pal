@@ -6,7 +6,13 @@
 export interface Breakpoint {
   time: number;
   value: number;
-  curve?: number;
+  /**
+   * Curve FLAG (Slice-2b, v2). `true` = the segment STARTING at this
+   * breakpoint is curved (max-bend). Byte-belegt via G2b-Fixture as a
+   * pure boolean — Ableton stores no intermediate bend strength. Absent =
+   * linear segment (byte-identical to the Slice-2 baseline).
+   */
+  curve?: boolean;
 }
 
 export interface ParamRange {

@@ -56,25 +56,60 @@ describe("parseBreakpoints — Slice-2b Abwaertskompat (ohne ~)", () => {
   });
 });
 
-describe("parseBreakpoints — Slice-2b ~curve Ist-Verhalten", () => {
-  it("Ist: `~curve`-Suffix macht value nicht-numerisch -> Zeile verworfen", () => {
-    // "0=200~0.5" -> Number("200~0.5")=NaN -> Zeile uebersprungen (mit warn).
-    // Der `~`-Breakpoint geht aktuell VERLOREN. T2 aendert das bewusst.
-    expect(parseBreakpoints("0=200~0.5\n2=8000\n4=400")).toStrictEqual([
+// Slice-2b T2: `~`-Suffix am Wert = bool curve-FLAG (v2-Spec, byte-belegt
+// via G2b-Fixture: KEINE Kruemmungs-Staerke/Float nach `~`, reines Flag).
+describe("parseBreakpoints — Slice-2b ~curve-Flag (T2)", () => {
+  it("ohne `~` byte-gleicher Output zum Bestand (kein curve-Feld)", () => {
+    // T1-Netz-Invariante: der `~`-lose Pfad bleibt exakt der Slice-2-Bestand.
+    expect(parseBreakpoints("0=200\n2=8000\n4=400")).toStrictEqual([
+      { time: 0, value: 200 },
       { time: 2, value: 8000 },
       { time: 4, value: 400 },
     ]);
   });
 
-  it("Ist: einzelner `~curve`-Breakpoint -> leeres Array", () => {
-    expect(parseBreakpoints("0=200~0.5")).toStrictEqual([]);
+  it("`~`-Suffix am Wert setzt curve:true, Wert bleibt numerisch", () => {
+    expect(parseBreakpoints("0=200~\n4=8000\n8=400")).toStrictEqual([
+      { time: 0, value: 200, curve: true },
+      { time: 4, value: 8000 },
+      { time: 8, value: 400 },
+    ]);
   });
-});
 
-describe("parseBreakpoints — Slice-2b kuenftiger ~-Vertrag (it.todo)", () => {
-  // Konkrete Range-/Kodierungs-Annahmen UNBEKANNT bis Recon-Gate G2b.
-  // Nur Vertrags-Skizzen, keine festgenagelten Werte.
-  it.todo("ohne `~` byte-gleicher Output zum Bestand (T1-Netz bleibt gruen)");
-  it.todo("`~<kurve>`-Suffix am Start-Breakpoint wird als curve geparst");
-  it.todo("Mehrpunkt-Eingabe mit gemischt linearen und `~`-Segmenten");
+  it("`~` mit Whitespace zwischen Wert und Suffix wird toleriert", () => {
+    expect(parseBreakpoints("0=200 ~\n4=8000")).toStrictEqual([
+      { time: 0, value: 200, curve: true },
+      { time: 4, value: 8000 },
+    ]);
+  });
+
+  it("mehrere `~`-Breakpoints in gemischter Lane", () => {
+    expect(parseBreakpoints("0=200~\n4=8000\n8=400~\n12=100")).toStrictEqual([
+      { time: 0, value: 200, curve: true },
+      { time: 4, value: 8000 },
+      { time: 8, value: 400, curve: true },
+      { time: 12, value: 100 },
+    ]);
+  });
+
+  it("einzelner `~`-Breakpoint wird geparst (Validator faengt Letzten ab)", () => {
+    expect(parseBreakpoints("0=200~")).toStrictEqual([
+      { time: 0, value: 200, curve: true },
+    ]);
+  });
+
+  it("`~` mit nachfolgendem Text (kein Float byte-belegt) -> Flag, Rest ignoriert", () => {
+    // Scope A: KEINE Kruemmungs-Staerke. Alles nach `~` ist nicht byte-belegt
+    // und wird verworfen; nur das Flag zaehlt.
+    expect(parseBreakpoints("0=200~0.5\n4=8000")).toStrictEqual([
+      { time: 0, value: 200, curve: true },
+      { time: 4, value: 8000 },
+    ]);
+  });
+
+  it("`~` mit nicht-numerischem Wert -> Zeile weiterhin verworfen", () => {
+    expect(parseBreakpoints("0=abc~\n4=8000")).toStrictEqual([
+      { time: 4, value: 8000 },
+    ]);
+  });
 });
