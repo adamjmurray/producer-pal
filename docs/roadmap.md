@@ -12,6 +12,8 @@
 - Task-focused personas and better optimized "small model mode" via
   customization presets
 - Workflows: pre-defined tool call sequences for reliable, repeatable operations
+- A new context management section in the built-in chat UI for working with all
+  the above
 - Companion MCP server template for building new capabilities as separate
   servers
 
@@ -98,3 +100,5 @@ companion MCP servers.
 - Bar|beat and MIDI transform notation refinements (including alternate
   notations that may work better with smaller models)
 - Device-specific features (EQ 8, Wavetable, etc.)
+- Hands-free voice control
+- Audio analysis
