@@ -66,6 +66,18 @@ export interface ClipPatchConfig {
    * once per collected pair before patching; emits to stderr itself.
    */
   perKeyWarn?: (key: string, value: string) => void;
+  /**
+   * Optional verify-expectation normalizer: maps a raw `--value` to the value
+   * actually written to the `.als` for that key, so the re-parse + raw-tag
+   * verify compares against the EFFECTIVE written value, not the raw input.
+   *
+   * clip-settings injects `resolveEnumValue` here because `patchClipSetting`
+   * resolves enum NAMES to integers before writing (e.g. "Gate" -> "1"); a
+   * raw-name comparison would be a false negative. fades/groove pass nothing
+   * (identity default) — their write path is value-preserving, so behavior is
+   * byte-/verify-identical to before this hook existed.
+   */
+  expectedValue?: (key: string, value: string) => string;
 }
 
 /**
@@ -431,13 +443,19 @@ function verifyAndReport(
   // Re-Parse-Verify allein maskiert: liefert der Patch den Tag nicht und ist
   // Soll == SPEC-Default, gibt getFn fälschlich den Default zurück -> ok wäre
   // true. Daher zusätzlich den ROH-Tag-String im neu geladenen Block prüfen.
+  // Gegen den EFFEKTIV geschriebenen Wert prüfen: clip-settings löst Enum-
+  // Namen vor dem Schreiben in Int auf (z. B. "Gate"->"1"); ein Vergleich
+  // gegen den Roh-Namen wäre ein False-Negative. Default = Identität, daher
+  // für fades/groove byte-/verhaltensgleich zu vorher.
+  const expect = cfg.expectedValue ?? ((_k: string, v: string) => v);
   const ok = effectivePairs.every((p) => {
     const def = cfg.spec[p.key];
+    const want = expect(p.key, p.value);
 
     return (
       def != null &&
-      reLoc.block.includes(`<${def.tag} Value="${p.value}" />`) &&
-      after[p.key] === p.value
+      reLoc.block.includes(`<${def.tag} Value="${want}" />`) &&
+      after[p.key] === want
     );
   });
 

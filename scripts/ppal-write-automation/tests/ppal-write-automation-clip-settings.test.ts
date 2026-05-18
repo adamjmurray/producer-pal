@@ -43,6 +43,34 @@ function dupClipXml(name1: string, name2: string): string {
 }
 
 /**
+ * Vollständiges Clip-XML mit allen Positions-Ankern und FollowAction-Block,
+ * damit Name-basierte Enum-Patches (LaunchMode/FollowActionA/
+ * FollowActionEnabled) byte-verifizierbar sind.
+ * @returns Roh-XML-String mit Track "T" und Clip "ZielClip"
+ */
+function fullEnumClipXml(): string {
+  return [
+    `<Ableton><Tracks><MidiTrack Id="1">`,
+    `<Name><EffectiveName Value="T" /><UserName Value="T" /></Name>`,
+    `<DeviceChain><MainSequencer><ClipSlotList><ClipSlot>`,
+    `<MidiClip Time="0"><Name Value="ZielClip" /><Color Value="1" />`,
+    `<LaunchMode Value="0" /><LaunchQuantisation Value="0" />`,
+    `<TimeSignature><Foo /></TimeSignature><TimeSelection><Bar /></TimeSelection>`,
+    `<Legato Value="false" /><Ram Value="false" />`,
+    `<VelocityAmount Value="0" />`,
+    `<FollowAction>`,
+    `<FollowTime Value="4" /><IsLinked Value="true" /><LoopIterations Value="1" />`,
+    `<FollowActionA Value="4" /><FollowActionB Value="0" />`,
+    `<FollowChanceA Value="100" /><FollowChanceB Value="0" />`,
+    `<JumpIndexA Value="1" /><JumpIndexB Value="1" />`,
+    `<FollowActionEnabled Value="false" />`,
+    `</FollowAction></MidiClip>`,
+    `</ClipSlot></ClipSlotList></MainSequencer></DeviceChain>`,
+    `</MidiTrack></Tracks></Ableton>`,
+  ].join("");
+}
+
+/**
  * Schreibt eine gzip-komprimierte Temp-.als aus Roh-XML.
  * @param xml - Roh-XML-Inhalt
  * @returns Pfad zur Temp-Datei
@@ -414,6 +442,149 @@ describe("clip-settings", () => {
         /hinweis.*enum-key|stufengültigkeit ungeprüft|ausstehend/i,
       );
     } finally {
+      errSpy.mockRestore();
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
+
+  // T6-FIX: Name-basierter Enum-Set. patchClipSetting löst Namen vor dem
+  // Schreiben in Int auf; der Verify verglich vorher gegen den ROH-Namen
+  // ("Gate" !== "1") -> False-Negative verified:false/Exit 1. Erwartung
+  // muss über dieselbe Auflösung normalisiert werden.
+  it("Name-basierter Enum-Set (LaunchMode=Gate, FollowActionA=Next) -> verified:true, Exit 0, .als byte korrekt", () => {
+    const tmp = tmpAls(fullEnumClipXml());
+    const outSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    const errSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const code = runCli(
+        csArgs(
+          "set",
+          tmp,
+          "T",
+          "ZielClip",
+          "--key",
+          "LaunchMode",
+          "--value",
+          "Gate",
+          "--key",
+          "FollowActionA",
+          "--value",
+          "Next",
+          "--key",
+          "FollowActionEnabled",
+          "--value",
+          "true",
+          "--force",
+        ),
+      );
+
+      expect(code).toBe(0);
+      const stdoutText = outSpy.mock.calls.map((c) => String(c[0])).join("");
+
+      expect(stdoutText).toMatch(/"verified":true/);
+      const out = readAls(tmp);
+
+      // Byte: Name->Int aufgelöst geschrieben.
+      expect(out).toContain('<LaunchMode Value="1" />');
+      expect(out).toContain('<FollowActionA Value="4" />');
+      expect(out).toContain('<FollowActionEnabled Value="true" />');
+    } finally {
+      outSpy.mockRestore();
+      errSpy.mockRestore();
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
+
+  // Regression (a): Roh-Int-Pfad bleibt verified:true (Identitäts-Auflösung
+  // /^-?\d+$/ -> unverändert), unverändert zum Vor-Fix-Verhalten.
+  it("Roh-Int-Enum-Set (LaunchMode=1) -> weiterhin verified:true, Exit 0", () => {
+    const tmp = tmpAls(fullEnumClipXml());
+    const outSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    const errSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const code = runCli(
+        csArgs(
+          "set",
+          tmp,
+          "T",
+          "ZielClip",
+          "--key",
+          "LaunchMode",
+          "--value",
+          "1",
+          "--force",
+        ),
+      );
+
+      expect(code).toBe(0);
+      expect(outSpy.mock.calls.map((c) => String(c[0])).join("")).toMatch(
+        /"verified":true/,
+      );
+    } finally {
+      outSpy.mockRestore();
+      errSpy.mockRestore();
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
+
+  // Regression (b): ECHTER Mismatch darf NICHT verschleiert werden. Spy
+  // patcht LaunchMode auf einen falschen Wert (2) statt des Soll (Gate->1)
+  // -> Verify muss weiterhin false/Exit 1 liefern (keine Maskierung).
+  it("echter Mismatch bei Name-Set -> weiterhin verified:false, Exit 1 (keine Maskierung)", () => {
+    const tmp = tmpAls(fullEnumClipXml());
+    const applySpy = vi
+      .spyOn(clipSettingsInternals, "applyClipSettingPatches")
+      .mockImplementation((x, loc, pairs) =>
+        applyClipSettingPatches(x, loc, pairs).replace(
+          '<LaunchMode Value="1" />',
+          '<LaunchMode Value="2" />',
+        ),
+      );
+    const outSpy = vi
+      .spyOn(process.stdout, "write")
+      .mockImplementation(() => true);
+    const errSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const code = runCli(
+        csArgs(
+          "set",
+          tmp,
+          "T",
+          "ZielClip",
+          "--key",
+          "LaunchMode",
+          "--value",
+          "Gate",
+          "--force",
+        ),
+      );
+
+      expect(code).toBe(1);
+      expect(outSpy.mock.calls.map((c) => String(c[0])).join("")).toMatch(
+        /"verified":false/,
+      );
+      expect(errSpy.mock.calls.map((c) => String(c[0])).join("")).toContain(
+        "Verifizierung fehlgeschlagen",
+      );
+    } finally {
+      applySpy.mockRestore();
+      outSpy.mockRestore();
       errSpy.mockRestore();
       fs.rmSync(tmp, { force: true });
       fs.rmSync(`${tmp}.bak`, { force: true });

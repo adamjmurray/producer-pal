@@ -8,6 +8,7 @@ import {
   ENUM_TABLES,
   getClipSettings,
   patchClipSetting,
+  resolveEnumValue,
 } from "#src/automation/als-clip-settings.ts";
 import { type ClipLocation, runClipPatchCli } from "./clip-patch-cli.ts";
 
@@ -44,7 +45,25 @@ export function runClipSettings(
     resolveApply: () => clipSettingsInternals.applyClipSettingPatches,
     catchApplyErrors: false,
     perKeyWarn: warnEnumRawInteger,
+    expectedValue: expectedClipSettingValue,
   });
+}
+
+/**
+ * Normalisiert die Verify-Erwartung: `patchClipSetting` löst bei enum-Keys
+ * den Namen VOR dem Schreiben in den Roh-Integer auf (z. B. "Gate" -> "1"),
+ * exakt dieselbe `resolveEnumValue`-Auflösung wie der Write-Pfad. Non-enum-
+ * Keys (bool/int) sind value-erhaltend -> Identität. So vergleicht der
+ * geteilte Verify gegen den EFFEKTIV geschriebenen Wert, nicht den Roh-Input
+ * (behebt das Name-basierte False-Negative).
+ * @param key - Patch key
+ * @param value - Roh-`--value` (Name oder Roh-Integer)
+ * @returns Der effektiv in die `.als` geschriebene Wert
+ */
+function expectedClipSettingValue(key: string, value: string): string {
+  return CLIP_SETTING_SPEC[key]?.type === "enum"
+    ? resolveEnumValue(key, value)
+    : value;
 }
 
 /**
