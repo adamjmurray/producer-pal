@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Note: pitch utilities have been centralized in #src/shared/pitch.js
@@ -74,8 +75,11 @@ export function parseLabel(label: string): ParsedLabel {
     return { value: null, unit: null };
   }
 
+  // VST plugins like Serum right-pad numeric values (e.g. "    8 Hz")
+  const trimmed = label.trim();
+
   for (const pattern of LABEL_PATTERNS) {
-    const match = label.match(pattern.regex);
+    const match = trimmed.match(pattern.regex);
 
     if (!match) continue;
 
@@ -102,7 +106,7 @@ export function parseLabel(label: string): ParsedLabel {
   }
 
   // No unit detected - try to extract just a number
-  const numMatch = label.match(/^([\d.-]+)/);
+  const numMatch = trimmed.match(/^([\d.-]+)/);
 
   if (numMatch) {
     return {
