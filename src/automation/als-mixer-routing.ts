@@ -55,7 +55,15 @@ export function getCrossFadeAssign(trackBlock: string): number {
     throw new Error("Kein <Manual> im <CrossFadeState>-Block");
   }
 
-  return Number(m[1]);
+  const n = Number(m[1]);
+
+  if (n !== 0 && n !== 1 && n !== 2) {
+    throw new Error(
+      `CrossFadeState-Manual "${m[1]}" ungueltig — erwartet 0|1|2`,
+    );
+  }
+
+  return n;
 }
 
 const SENDSPRE_OPEN = "<SendsPre>";

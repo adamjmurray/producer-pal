@@ -4,12 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
+import { readAls } from "#src/automation/als-file.ts";
 import {
   getCrossFadeAssign,
   getSendPreBools,
   patchCrossFadeAssign,
   patchSendPreBool,
 } from "#src/automation/als-mixer-routing.ts";
+import { locateTrackBlock } from "#src/automation/als-param-resolver.ts";
 
 // Mixer-Block mit kollidierendem Volume-<Manual> VOR CrossFadeState.
 const TRACK_BLOCK = `<MidiTrack Id="9">
@@ -140,4 +142,43 @@ describe("Anker-Rand-Branches", () => {
       getSendPreBools('<SendsPre><SendPreBool Id="1" Value="false" />'),
     ).toThrow(/SendsPre/);
   });
+
+  it("getCrossFadeAssign wirft bei nicht-numerischem Manual", () => {
+    expect(() =>
+      getCrossFadeAssign(
+        '<CrossFadeState><Manual Value="x" /></CrossFadeState>',
+      ),
+    ).toThrow(/ungueltig/);
+  });
+});
+
+// Spec §5: Modul-Roundtrip gegen >=2 ECHTE Sets (nicht nur synthetisch).
+describe("echte Sets (Spec §5 Roundtrip)", () => {
+  const SETS: ReadonlyArray<[string, string, Record<number, boolean>]> = [
+    [
+      "e2e/live-sets/e2e-test-set Project/e2e-test-set.als",
+      "Drums",
+      { 3: false, 1: false },
+    ],
+    [
+      "e2e/live-sets/arrangement-clip-tests Project/arrangement-clip-tests.als",
+      "1. MIDI - Looped",
+      { 0: false, 1: false },
+    ],
+  ];
+
+  it.each(SETS)(
+    "%s: CrossFade Center→B Roundtrip + SendPreBools",
+    (path, track, sendPre) => {
+      const xml = readAls(path);
+      const loc = locateTrackBlock(xml, track);
+
+      expect(getCrossFadeAssign(loc.block)).toBe(1);
+
+      const patched = patchCrossFadeAssign(loc.block, 2);
+
+      expect(getCrossFadeAssign(patched)).toBe(2);
+      expect(getSendPreBools(xml)).toStrictEqual(sendPre);
+    },
+  );
 });
