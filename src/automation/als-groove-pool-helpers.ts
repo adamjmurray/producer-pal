@@ -172,11 +172,25 @@ export function injectGrooveIntoPool(xml: string, node: string): string {
     throw new Error("kein <Grooves> im <GroovePool> — Pool ist strukturlos");
   }
 
-  // The new node sits after the last existing </Groove>, before </Grooves>,
-  // at the byte-belegt 4-tab entry indentation.
-  const before = pool.slice(0, groovesClose);
-  const after = pool.slice(groovesClose);
-  const newPool = `${before}\t\t\t\t${node}\n\t\t\t${after}`;
+  // Byte-belegt aus G5b-after.als: der neue Knoten wird DIREKT nach dem
+  // letzten bestehenden `</Groove>` eingefuegt, getrennt durch exakt
+  // "\n\t\t\t\t" (4-Tab-Eintrags-Einrueckung). Der vorhandene Whitespace
+  // vor `</Grooves>` (z. B. "\n\t\t\t") bleibt unveraendert — so ist die
+  // Trennung Bestands-</Groove> -> neuer <Groove> ("\n\t\t\t\t") und
+  // neuer </Groove> -> </Grooves> ("\n\t\t\t") byte-identisch zum echten
+  // Ableton-Import.
+  const lastEntryClose = pool.lastIndexOf("</Groove>", groovesClose);
+
+  if (lastEntryClose === -1) {
+    throw new Error(
+      "kein bestehender <Groove>-Eintrag im Pool — leerer Pool nicht unterstuetzt",
+    );
+  }
+
+  const insertAt = lastEntryClose + "</Groove>".length;
+  const before = pool.slice(0, insertAt);
+  const after = pool.slice(insertAt);
+  const newPool = `${before}\n\t\t\t\t${node}${after}`;
 
   return xml.slice(0, poolStart) + newPool + xml.slice(poolEnd);
 }

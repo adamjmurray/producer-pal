@@ -9,9 +9,11 @@ import { describe, expect, it } from "vitest";
 import {
   allocateGrooveId,
   extractGrooveFromAgr,
+  injectGrooveIntoPool,
   parseAgr,
   transformToPoolGroove,
 } from "../als-groove-pool.ts";
+import { readAls } from "../als-file.ts";
 
 const AGR_PATH =
   "/Users/macuser/Desktop/AIbleton/g5b-fixture/G5b-RockFatback.agr";
@@ -179,6 +181,114 @@ describe("transformToPoolGroove (T4) — byte gegen Fixture-CDATA", () => {
 
     expect(node).toContain('<Name Value="My Custom Groove" />');
     expect(node).not.toContain("Rock Fatback - 4 bars 16ths");
+  });
+});
+
+const BEFORE_ALS =
+  "/Users/macuser/Desktop/AIbleton/g5b-fixture/" +
+  "G5b-before Project/G5b-before.als";
+
+const POOL_RE = /<GroovePool>[\S\s]*?<\/GroovePool>/;
+
+describe("injectGrooveIntoPool + Mitigation-B (T5) — gegen echte G5b-.als", () => {
+  it("injiziert neuen <Groove Id> am Pool-Ende; Mitigation-B: alles ausser Pool byte-identisch", () => {
+    const before = readAls(BEFORE_ALS);
+    const g = extractGrooveFromAgr(parseAgr(AGR_BUF));
+    const node = transformToPoolGroove(
+      g,
+      allocateGrooveId(before),
+      "Rock Fatback Accent 16ths",
+    );
+    const after = injectGrooveIntoPool(before, node);
+
+    // (b) Mitigation-B: ausserhalb <GroovePool> byte-identisch.
+    expect(after.replace(POOL_RE, "")).toBe(before.replace(POOL_RE, ""));
+    // Datei als Ganzes hat sich geaendert (Pool wuchs).
+    expect(after).not.toBe(before);
+
+    const afterPool = after.match(POOL_RE)?.[0] ?? "";
+    const beforePool = before.match(POOL_RE)?.[0] ?? "";
+
+    // Neuer Eintrag Id=5 (max(4)+1), am Pool-Ende vor </Grooves>.
+    expect([...beforePool.matchAll(/<Groove Id="\d+">/g)]).toHaveLength(1);
+    expect([...afterPool.matchAll(/<Groove Id="\d+">/g)]).toHaveLength(2);
+    expect(afterPool).toContain('<Groove Id="5">');
+    expect(
+      afterPool.indexOf('<Groove Id="5">'),
+    ).toBeGreaterThan(afterPool.indexOf('<Groove Id="4">'));
+    expect(afterPool.indexOf("</Grooves>")).toBeGreaterThan(
+      afterPool.indexOf('<Groove Id="5">'),
+    );
+  });
+
+  it("(c) Bestands-Groove nur Selection-Flip true->false; <DefaultGrooveId> unveraendert; sonst byte-identisch", () => {
+    const before = readAls(BEFORE_ALS);
+    const g = extractGrooveFromAgr(parseAgr(AGR_BUF));
+    const node = transformToPoolGroove(g, "5", "Rock Fatback Accent 16ths");
+    const after = injectGrooveIntoPool(before, node);
+
+    const groove4Before = before.slice(
+      before.indexOf('<Groove Id="4">'),
+      before.indexOf("</Groove>") + "</Groove>".length,
+    );
+    const groove4After = after.slice(
+      after.indexOf('<Groove Id="4">'),
+      after.indexOf("</Groove>") + "</Groove>".length,
+    );
+
+    // Genau EINE Aenderung im Bestands-Groove: Selection true -> false.
+    expect(groove4Before).toContain('<Selection Value="true" />');
+    expect(groove4After).toContain('<Selection Value="false" />');
+    expect(
+      groove4After.replace(
+        '<Selection Value="false" />',
+        '<Selection Value="true" />',
+      ),
+    ).toBe(groove4Before);
+
+    // <DefaultGrooveId> unveraendert.
+    const dg = /<DefaultGrooveId Value="(-?\d+)" \/>/;
+
+    expect(after.match(dg)?.[1]).toBe(before.match(dg)?.[1]);
+  });
+
+  it("(byte) Pool-Position des neuen Knotens == echtes G5b-after (Separator-Bytes)", () => {
+    const before = readAls(BEFORE_ALS);
+    const g = extractGrooveFromAgr(parseAgr(AGR_BUF));
+    const node = transformToPoolGroove(g, "5", "Rock Fatback Accent 16ths");
+    const after = injectGrooveIntoPool(before, node);
+
+    // Byte-belegt aus G5b-after.als: zwischen Bestands-</Groove> und dem
+    // neuen <Groove Id="5"> steht exakt "\n\t\t\t\t"; nach dem letzten
+    // </Groove> vor </Grooves> exakt "\n\t\t\t".
+    expect(after).toContain('</Groove>\n\t\t\t\t<Groove Id="5">');
+    expect(after).toContain("</Groove>\n\t\t\t</Grooves>");
+  });
+
+  it("kein <GroovePool> -> Klartextfehler (kein I/O)", () => {
+    expect(() =>
+      injectGrooveIntoPool("<Ableton><LiveSet /></Ableton>", "<Groove Id=\"5\" />"),
+    ).toThrow(/groovepool/i);
+  });
+
+  it("kein <Grooves> im Pool -> Klartextfehler", () => {
+    expect(() =>
+      injectGrooveIntoPool(
+        "<GroovePool><LomId Value=\"0\" /></GroovePool>",
+        '<Groove Id="5" />',
+      ),
+    ).toThrow(/grooves/i);
+  });
+
+  it("Pool ohne selektierten Eintrag -> kein Flip, kein Fehler", () => {
+    const pool =
+      '<Ableton><GroovePool><Grooves>' +
+      '<Groove Id="4"><Selection Value="false" /></Groove>' +
+      "</Grooves><DefaultGrooveId Value=\"-1\" /></GroovePool></Ableton>";
+    const out = injectGrooveIntoPool(pool, '<Groove Id="5" />');
+
+    expect(out).toContain('<Groove Id="5" />');
+    expect([...out.matchAll(/<Selection Value="false" \/>/g)]).toHaveLength(1);
   });
 });
 
