@@ -1,6 +1,32 @@
 // src/automation/tests/als-tempo-automation.test.ts
+import { gunzipSync } from "node:zlib";
+import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
-import { assertNoSlice6bInput } from "#src/automation/als-tempo-automation.ts";
+import {
+  assertNoSlice6bInput,
+  resolveMasterTempoTargetId,
+  locateTempoEnvelopeEvents,
+  injectTempoEnvelope,
+} from "#src/automation/als-tempo-automation.ts";
+
+const BEFORE_ALS =
+  "evals/live-sets/basic-midi-4-track Project/basic-midi-4-track.als";
+
+/**
+ * Liest das echte Before-Set roh ein (gzip → XML), Single-Source der
+ * Test-Literale (keine erfundenen Werte).
+ * @returns Dekomprimierter `.als`-XML-String.
+ */
+function readBeforeXml(): string {
+  return gunzipSync(readFileSync(BEFORE_ALS)).toString("utf8");
+}
+
+// Woertlich aus dem echten Set extrahiert (8 TABs <FloatEvent>, 7 TABs
+// <Events>/</Events>; Manual-BPM dieses Sets = 120):
+const EXPECTED_BEFORE_EVENTS =
+  "\t\t\t\t\t\t\t<Events>\n" +
+  '\t\t\t\t\t\t\t\t<FloatEvent Id="0" Time="-63072000" Value="120" />\n' +
+  "\t\t\t\t\t\t\t</Events>";
 
 describe("Slice-6b-Hartsperre", () => {
   it("wirft bei Time-Signature-Eingabe mit 'Slice 6b' im Text", () => {
@@ -17,11 +43,64 @@ describe("Slice-6b-Hartsperre", () => {
 });
 
 describe("G6-gated: byte-belegte Master-Tempo-Automation", () => {
-  // Recon-Gate G6 offen: Ground-Truth aus User-Before/After-.als ableiten,
-  // dann docs/superpowers/fixtures/ableton12-tempo-automation-groundtruth.xml.
-  it.todo("locateMasterTrackAutomationBlock findet Master-Platzhalter");
-  it.todo("locateMasterTrackAutomationBlock wirft bei gefülltem Platzhalter");
-  it.todo("resolveMasterTempoTargetId liefert die Tempo-PointeeId");
-  it.todo("injectTempoEnvelope erzeugt byte-treues Envelope vs. G6-Fixture");
-  it.todo("injectTempoEnvelope ändert nur den Master-Block (Mitigation-B)");
+  it("resolveMasterTempoTargetId liefert die Tempo-PointeeId 8", () => {
+    expect(resolveMasterTempoTargetId(readBeforeXml())).toBe("8");
+  });
+
+  it("locateTempoEnvelopeEvents findet den Events-Block der PointeeId-8-Envelope", () => {
+    const xml = readBeforeXml();
+    const { start, end, block } = locateTempoEnvelopeEvents(xml);
+
+    expect(block).toBe(EXPECTED_BEFORE_EVENTS);
+    expect(xml.slice(start, end)).toBe(EXPECTED_BEFORE_EVENTS);
+    expect(block).toContain(
+      '<FloatEvent Id="0" Time="-63072000" Value="120" />',
+    );
+  });
+
+  it("locateTempoEnvelopeEvents wirft deskriptiv bei XML ohne MainTrack", () => {
+    expect(() => locateTempoEnvelopeEvents("<Ableton></Ableton>")).toThrow(
+      /MainTrack/,
+    );
+  });
+
+  it("injectTempoEnvelope erzeugt byte-treuen AFTER-Events-Block", () => {
+    const xml = readBeforeXml();
+    const out = injectTempoEnvelope(xml, [
+      { time: 0, value: 120 },
+      { time: 16, value: 140 },
+      { time: 32, value: 100 },
+    ]);
+    const expectedAfter =
+      "\t\t\t\t\t\t\t<Events>\n" +
+      '\t\t\t\t\t\t\t\t<FloatEvent Id="0" Time="-63072000" Value="120" />\n' +
+      '\t\t\t\t\t\t\t\t<FloatEvent Id="1" Time="0" Value="120" />\n' +
+      '\t\t\t\t\t\t\t\t<FloatEvent Id="2" Time="16" Value="140" />\n' +
+      '\t\t\t\t\t\t\t\t<FloatEvent Id="3" Time="32" Value="100" />\n' +
+      "\t\t\t\t\t\t\t</Events>";
+
+    expect(out).toContain(expectedAfter);
+  });
+
+  it("injectTempoEnvelope ändert nur den Events-Block (Mitigation-B)", () => {
+    const xml = readBeforeXml();
+    const { start, end } = locateTempoEnvelopeEvents(xml);
+    const out = injectTempoEnvelope(xml, [
+      { time: 0, value: 120 },
+      { time: 16, value: 140 },
+      { time: 32, value: 100 },
+    ]);
+    const newEventsLen = out.length - (xml.length - (end - start));
+
+    expect(out.slice(0, start)).toBe(xml.slice(0, start));
+    expect(out.slice(start + newEventsLen)).toBe(xml.slice(end));
+  });
+
+  it("injectTempoEnvelope ruft assertNoSlice6bInput (curve → Slice-6b-Throw)", () => {
+    const xml = readBeforeXml();
+
+    expect(() =>
+      injectTempoEnvelope(xml, [{ time: 0, value: 120, curve: true }]),
+    ).toThrow(/Slice 6b/);
+  });
 });
