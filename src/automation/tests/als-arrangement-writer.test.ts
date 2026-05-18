@@ -223,3 +223,62 @@ describe("injectArrangementEnvelope", () => {
     expect(xml.slice(before.end)).toBe(out.slice(out.length - tail));
   });
 });
+
+// Slice-2b Abwaertskompat-Regressionsnetz (fixture-frei).
+// Friert den LINEAREN Writer-Output ein, BEVOR die Kurven-Kodierung (Plan
+// T4) gebaut wird. Kontroll-/Charakterisierungstests; KEIN Produktivcode.
+describe("buildArrangementEnvelopeXml — Slice-2b lineare Lane eingefroren", () => {
+  // Erwarteter Bestands-Output fuer eine repraesentative lineare Lane.
+  // Snapshot inline (kein zusaetzliches Fixture-File) — muss nach T4 fuer
+  // den Pfad OHNE curve byte-identisch bleiben.
+  const EXPECTED_LINEAR =
+    '\t\t\t\t\t\t<AutomationEnvelope Id="0">\n' +
+    "\t\t\t\t\t\t\t<EnvelopeTarget>\n" +
+    '\t\t\t\t\t\t\t\t<PointeeId Value="15838" />\n' +
+    "\t\t\t\t\t\t\t</EnvelopeTarget>\n" +
+    "\t\t\t\t\t\t\t<Automation>\n" +
+    "\t\t\t\t\t\t\t\t<Events>\n" +
+    '\t\t\t\t\t\t\t\t\t<FloatEvent Id="0" Time="-63072000" Value="200" />\n' +
+    '\t\t\t\t\t\t\t\t\t<FloatEvent Id="1" Time="0" Value="200" />\n' +
+    '\t\t\t\t\t\t\t\t\t<FloatEvent Id="2" Time="2" Value="8000" />\n' +
+    '\t\t\t\t\t\t\t\t\t<FloatEvent Id="3" Time="4" Value="400" />\n' +
+    "\t\t\t\t\t\t\t\t</Events>\n" +
+    "\t\t\t\t\t\t\t\t<AutomationTransformViewState>\n" +
+    '\t\t\t\t\t\t\t\t\t<IsTransformPending Value="false" />\n' +
+    "\t\t\t\t\t\t\t\t\t<TimeAndValueTransforms />\n" +
+    "\t\t\t\t\t\t\t\t</AutomationTransformViewState>\n" +
+    "\t\t\t\t\t\t\t</Automation>\n" +
+    "\t\t\t\t\t\t</AutomationEnvelope>";
+
+  it("lineare Lane erzeugt byte-identischen Bestands-Output", () => {
+    const out = buildArrangementEnvelopeXml(15838, [
+      { time: 0, value: 200 },
+      { time: 2, value: 8000 },
+      { time: 4, value: 400 },
+    ]);
+
+    expect(out).toBe(EXPECTED_LINEAR);
+  });
+
+  it("Ist: curve-Feld am Breakpoint wird vom Writer aktuell IGNORIERT", () => {
+    // Der Writer liest nur time/value. Ein vorhandenes curve-Feld erzeugt
+    // KEINE zusaetzlichen Bytes -> Output identisch zur linearen Lane.
+    // T4 aendert das bewusst (byte-belegte Kurven-Kodierung aus G2b).
+    const withCurve = buildArrangementEnvelopeXml(15838, [
+      { time: 0, value: 200, curve: 0.5 },
+      { time: 2, value: 8000 },
+      { time: 4, value: 400 },
+    ]);
+
+    expect(withCurve).toBe(EXPECTED_LINEAR);
+  });
+});
+
+describe("als-arrangement-writer — Slice-2b kuenftige Kurven-Kodierung (it.todo)", () => {
+  // Kodierungsform (Attribut/Element/Range) UNBEKANNT bis G2b.
+  it.todo(
+    "Default linear: Output ohne curve byte-gleich zum Slice-2-Bestand",
+  );
+  it.todo("gekruemmtes Segment erzeugt die byte-belegte G2b-Kodierung");
+  it.todo("lineare Segmente in gemischter Lane bleiben unveraendert");
+});
