@@ -46,10 +46,10 @@ describe("ToolToggles", () => {
       expect(screen.getByText("Available Tools")).toBeDefined();
     });
 
-    it("renders Enable all button", () => {
+    it("renders Enable default toolset button", () => {
       render(<ToolToggles {...defaultProps} />);
       expect(
-        screen.getByRole("button", { name: "Enable all (default)" }),
+        screen.getByRole("button", { name: "Enable default toolset" }),
       ).toBeDefined();
     });
 
@@ -94,17 +94,16 @@ describe("ToolToggles", () => {
   });
 
   describe("button interactions", () => {
-    // Live API is server-mirrored — must not appear in the enabledTools record
-    // regardless of which bulk button is clicked.
+    // Live API is opt-in — never set true by either bulk action — and is
+    // server-mirrored, so it never appears in the enabledTools record.
     it.each([
       {
-        button: "Enable all (default)",
+        button: "Enable default toolset",
         expectedTools: {
           "ppal-connect": true,
           "ppal-read-live-set": true,
           "ppal-create-track": true,
         },
-        expectedLiveApi: true,
       },
       {
         button: "Disable all",
@@ -113,17 +112,17 @@ describe("ToolToggles", () => {
           "ppal-read-live-set": false,
           "ppal-create-track": false,
         },
-        expectedLiveApi: false,
       },
     ])(
-      "$button updates tool map and Live API",
-      ({ button, expectedTools, expectedLiveApi }) => {
+      "$button updates tool map and disables Live API",
+      ({ button, expectedTools }) => {
         const setEnabledTools = vi.fn();
         const setLiveApiEnabled = vi.fn();
 
         render(
           <ToolToggles
             {...defaultProps}
+            liveApiEnabled={true}
             setEnabledTools={setEnabledTools}
             setLiveApiEnabled={setLiveApiEnabled}
           />,
@@ -132,11 +131,27 @@ describe("ToolToggles", () => {
         fireEvent.click(screen.getByRole("button", { name: button }));
 
         expect(setEnabledTools).toHaveBeenCalledExactlyOnceWith(expectedTools);
-        expect(setLiveApiEnabled).toHaveBeenCalledExactlyOnceWith(
-          expectedLiveApi,
-        );
+        expect(setLiveApiEnabled).toHaveBeenCalledExactlyOnceWith(false);
       },
     );
+
+    it("Enable default toolset preserves Live API when forced on", () => {
+      const setLiveApiEnabled = vi.fn();
+
+      render(
+        <ToolToggles
+          {...defaultProps}
+          liveApiEnabled={true}
+          liveApiForcedOn={true}
+          setLiveApiEnabled={setLiveApiEnabled}
+        />,
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Enable default toolset" }),
+      );
+      expect(setLiveApiEnabled).not.toHaveBeenCalled();
+    });
   });
 
   describe("tool descriptions", () => {

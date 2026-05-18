@@ -46,7 +46,7 @@ export function ensureLiveApiTool(tools: McpTool[]): McpTool[] {
 const TOOL_GROUPS: ToolGroup[] = [
   {
     label: "Core",
-    toolIds: ["ppal-connect", "ppal-context", "ppal-live-api"],
+    toolIds: ["ppal-connect", "ppal-context"],
   },
   {
     label: "Session",
@@ -75,6 +75,10 @@ const TOOL_GROUPS: ToolGroup[] = [
   {
     label: "Device",
     toolIds: ["ppal-create-device", "ppal-read-device", "ppal-update-device"],
+  },
+  {
+    label: "Advanced",
+    toolIds: ["ppal-live-api"],
   },
 ];
 

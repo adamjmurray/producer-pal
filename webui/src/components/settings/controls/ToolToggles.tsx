@@ -96,16 +96,18 @@ export function ToolToggles({
     return enabledTools[toolId] ?? true;
   };
 
-  const enableAllTools = () => {
-    const allEnabled: Record<string, boolean> = {};
+  const enableDefaultTools = () => {
+    const defaults: Record<string, boolean> = {};
 
     for (const tool of tools) {
       if (tool.id === LIVE_API_TOOL_ID) continue;
-      allEnabled[tool.id] = true;
+      defaults[tool.id] = true;
     }
 
-    setEnabledTools(allEnabled);
-    setLiveApiEnabled(true);
+    setEnabledTools(defaults);
+    // Live API is opt-in — not part of the default toolset. Respect the
+    // forced-on flag: don't fight ENABLE_LIVE_API.
+    if (!liveApiForcedOn) setLiveApiEnabled(false);
   };
 
   const disableAllTools = () => {
@@ -130,10 +132,10 @@ export function ToolToggles({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={enableAllTools}
+            onClick={enableDefaultTools}
             className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
           >
-            Enable all (default)
+            Enable default toolset
           </button>
           <button
             type="button"
