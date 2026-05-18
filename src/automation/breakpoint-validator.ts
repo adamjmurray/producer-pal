@@ -22,6 +22,11 @@ export interface ParamRange {
 
 /**
  * Validate a list of automation breakpoints against a param range and time ordering.
+ *
+ * Slice-2b (v2): `curve` is a bool flag (no range/enum — not byte-supported).
+ * A breakpoint flagged `curve: true` describes the segment STARTING at it, so
+ * the LAST breakpoint must not carry the flag (it has no following segment).
+ *
  * @param bp - Breakpoints to validate
  * @param range - Allowed min/max value range for the parameter
  * @returns The validated breakpoints array (unchanged)
@@ -62,6 +67,14 @@ export function validateBreakpoints(
     }
 
     prev = p.time;
+  }
+
+  const last = bp[bp.length - 1];
+
+  if (last?.curve === true) {
+    throw new Error(
+      "curve-Flag am letzten Breakpoint hat kein Folgesegment",
+    );
   }
 
   return bp;

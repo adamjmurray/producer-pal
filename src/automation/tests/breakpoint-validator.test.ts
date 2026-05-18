@@ -81,26 +81,58 @@ describe("validateBreakpoints — Slice-2b Abwaertskompat (ohne curve)", () => {
   });
 });
 
-describe("validateBreakpoints — Slice-2b curve-Feld Ist-Verhalten", () => {
-  it("Ist: vorhandenes curve-Feld wird IGNORIERT (kein Range-/Enum-Check)", () => {
-    // Der Validator prueft aktuell nur time/value. curve faellt nicht durch
-    // die Validierungsschleife -> beliebiger Wert passiert unveraendert.
-    // T3 fuehrt bewusst den Range/Enum-Check ein.
+// Slice-2b T3: curve ist ein bool-FLAG (v2). KEIN Range/Enum (nicht
+// byte-belegt). Einzige neue Regel: ein curve-Flag am LETZTEN Breakpoint
+// hat kein Folgesegment -> Fehler.
+describe("validateBreakpoints — Slice-2b curve-Flag (T3)", () => {
+  it("`curve:true` am letzten Breakpoint (kein Folgesegment) -> Fehler", () => {
+    expect(() =>
+      validateBreakpoints(
+        [
+          { time: 0, value: 200 },
+          { time: 4, value: 8000, curve: true },
+        ],
+        range,
+      ),
+    ).toThrow(/letzte[rn]? Breakpoint.*Folgesegment|kein Folgesegment/i);
+  });
+
+  it("einzelner Breakpoint mit `curve:true` -> Fehler (kein Folgesegment)", () => {
+    expect(() =>
+      validateBreakpoints([{ time: 0, value: 200, curve: true }], range),
+    ).toThrow(/Folgesegment/i);
+  });
+
+  it("`curve:true` an nicht-letztem Breakpoint ist gueltig", () => {
     const bp = [
-      { time: 0, value: 200, curve: 9999 },
-      { time: 2, value: 8000 },
+      { time: 0, value: 200, curve: true },
+      { time: 4, value: 8000 },
     ];
 
     const out = validateBreakpoints(bp, range);
 
     expect(out).toStrictEqual(bp);
-    expect(out[0]?.curve).toBe(9999);
+    expect(out).toBe(bp);
+    expect(out[0]?.curve).toBe(true);
   });
-});
 
-describe("validateBreakpoints — Slice-2b kuenftiger curve-Vertrag (it.todo)", () => {
-  // Range/Enum + Vorzeichen UNBEKANNT bis G2b — keine konkreten Werte.
-  it.todo("curve-Wert ausserhalb der G2b-Range/Enum -> Fehler");
-  it.todo("`~` am letzten Breakpoint (kein Folgesegment) -> Fehler");
-  it.todo("lineares Segment (kein curve) bleibt nach G2b unveraendert valide");
+  it("kein Range/Enum-Check auf curve (Flag, nicht byte-belegt)", () => {
+    // curve ist ein bool-Flag — es gibt keine Wert-Range zu pruefen. Der
+    // value-Range-Check bleibt unveraendert (Slice-2-Bestand).
+    const bp = [
+      { time: 0, value: 200, curve: true },
+      { time: 4, value: 8000 },
+    ];
+
+    expect(validateBreakpoints(bp, range)).toStrictEqual(bp);
+  });
+
+  it("lineares Segment (kein curve) bleibt unveraendert valide", () => {
+    const bp = [
+      { time: 0, value: 200 },
+      { time: 4, value: 8000 },
+    ];
+
+    expect(validateBreakpoints(bp, range)).toStrictEqual(bp);
+  });
 });
