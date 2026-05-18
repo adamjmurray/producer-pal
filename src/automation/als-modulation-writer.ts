@@ -58,14 +58,15 @@ export function resolveModulationTargetIdFromAuto(
   xml: string,
   automationTargetId: string,
 ): string {
-  // Vom passenden <AutomationTarget Id="a"> bis zu seinem </AutomationTarget>,
-  // dann unmittelbar das Geschwister <ModulationTarget Id="m">. Lazy +
-  // an genau diesen AutomationTarget-Close gebunden ⇒ kein Ueberspringen
-  // in einen anderen Param.
+  // Vom passenden <AutomationTarget Id="a"> bis zu SEINEM eigenen
+  // </AutomationTarget> (tempered: der Zwischenraum darf den Close NICHT
+  // ueberspringen ⇒ kein Verrutschen in einen spaeteren Param), dann
+  // unmittelbar das Geschwister <ModulationTarget Id="m">. Nicht-modulierbare
+  // Params (kein direkt folgendes ModulationTarget) ⇒ kein Match ⇒ Throw.
   const re = new RegExp(
     '<AutomationTarget Id="' +
       automationTargetId +
-      '">[\\S\\s]*?</AutomationTarget>\\s*<ModulationTarget Id="(\\d+)"',
+      '">(?:(?!</AutomationTarget>)[\\S\\s])*?</AutomationTarget>\\s*<ModulationTarget Id="(\\d+)"',
   );
   const m = re.exec(xml);
 
@@ -125,7 +126,7 @@ export function getModulationEnvelopes(
     const points: Breakpoint[] = [];
     // Value exponent-tolerant (fmt() kann wiss. Notation erzeugen) — R1.
     const evRe =
-      /<FloatEvent Id="\d+" Time="(-?\d+)" Value="(-?[\d+.Ee-]+)" \/>/g;
+      /<FloatEvent Id="\d+" Time="(-?\d+)" Value="(-?\d+(?:\.\d+)?(?:[Ee]-?\d+)?)" \/>/g;
     let e: RegExpExecArray | null;
 
     while ((e = evRe.exec(env)) != null) {

@@ -37,6 +37,19 @@ describe("resolveModulationTargetId", () => {
       /ModulationTarget/,
     );
   });
+
+  it("wirft fuer realen nicht-modulierbaren Param statt fremdes ModulationTarget zu liefern (Stage-1-CRITICAL: tempered Quantifier)", () => {
+    // 22676 = Slope (AutomationTarget, KEIN direkt folgendes
+    // ModulationTarget). Der ungebundene Lazy-Quantifier lieferte vorher
+    // faelschlich 22678 (Frequency) — Silent-Mis-Target. Muss werfen.
+    const xml = readAls(BEFORE);
+
+    expect(() => resolveModulationTargetIdFromAuto(xml, "22676")).toThrow(
+      /nicht modulierbar/,
+    );
+    // Positivfall bleibt korrekt.
+    expect(resolveModulationTargetIdFromAuto(xml, "22677")).toBe("22678");
+  });
 });
 
 describe("injectModulationEnvelope", () => {

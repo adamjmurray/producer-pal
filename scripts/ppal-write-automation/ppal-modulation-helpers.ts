@@ -120,7 +120,7 @@ function applyModulationWrite(
 
   const env = getModulationEnvelopes(readAls(alsPath), clip);
 
-  if (env[0]?.pointeeId !== modId) {
+  if (!env.some((e) => e.pointeeId === modId)) {
     process.stderr.write("FEHLER: Re-Parse-Verify fehlgeschlagen\n");
 
     return 1;
