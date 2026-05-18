@@ -274,6 +274,172 @@ describe("scope=arrangement Guards & Mitigation-B (Slice 2 T5)", () => {
   });
 });
 
+// Slice-2b T5: CLI e2e mit `~`-Curve-Flag (newline-separiert), Re-Parse +
+// Mitigation-B-Fremd-Track-Beweis. Wegwerf-.als aus Inline-XML.
+describe("scope=arrangement Slice-2b ~curve e2e + Mitigation-B (T5)", () => {
+  const CURVE_TUPLE =
+    'CurveControl1X="0" CurveControl1Y="1" CurveControl2X="0" CurveControl2Y="1"';
+
+  it("`~` an einem Breakpoint -> Start-Event traegt Tupel, lineare nicht; Fremd-Track byte-identisch", () => {
+    const tmpPath = createTmpAlsFrom(MULTI_TRACK_XML);
+
+    try {
+      // newline-separiert (Parser-Format), `~` an Breakpoint 0. KEIN Komma
+      // (CLI macht replaceAll(",", "\n"); `~` ueberlebt unveraendert).
+      const code = runCli([
+        "write",
+        "--scope",
+        "arrangement",
+        "--als",
+        tmpPath,
+        "--track",
+        "TrackA",
+        "--target",
+        "mixer:volume",
+        "--breakpoints",
+        "0=0.5~\n4=1.0\n8=0.25",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+
+      const written = readAls(tmpPath);
+
+      // Re-Parse: Start-Event des gebogenen Segments (Id=1) traegt das Tupel.
+      expect(written).toContain(
+        `<FloatEvent Id="1" Time="0" Value="0.5" ${CURVE_TUPLE} />`,
+      );
+      // Lineare Folge-Events ohne CurveControl.
+      expect(written).toContain('<FloatEvent Id="2" Time="4" Value="1" />');
+      expect(written).toContain('<FloatEvent Id="3" Time="8" Value="0.25" />');
+      // Anchor (Id=0) bleibt linear.
+      expect(written).toContain(
+        '<FloatEvent Id="0" Time="-63072000" Value="0.5" />',
+      );
+      // Genau ein CurveControl-Tupel im ganzen Set.
+      expect(written.match(/CurveControl1X/g) ?? []).toHaveLength(1);
+
+      // Mitigation-B: TrackB (Fremd-Track) byte-identisch zum Platzhalter.
+      expect(written).toContain(
+        `<Name><EffectiveName Value="TrackB" /><UserName Value="TrackB" /></Name><DeviceChain><Mixer><Volume><AutomationTarget Id="40002"><LockEnvelope Value="0" /></AutomationTarget><Manual Value="0.70" /></Volume></Mixer><AutomationEnvelopes><Envelopes /></AutomationEnvelopes>`,
+      );
+    } finally {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
+  });
+
+  it("Mitigation-B-Komplement: alles ausser Ziel-Track byte-identisch (mit Kurve)", () => {
+    const tmpPath = createTmpAlsFrom(MULTI_TRACK_XML);
+
+    try {
+      const before = readAls(tmpPath);
+      const code = runCli([
+        "write",
+        "--scope",
+        "arrangement",
+        "--als",
+        tmpPath,
+        "--track",
+        "TrackA",
+        "--target",
+        "mixer:volume",
+        "--breakpoints",
+        "0=0.5~\n8=1.0",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+      const after = readAls(tmpPath);
+      // Ziel-Track-Block (TrackA) ausstanzen — Rest muss byte-identisch sein.
+      const cut = (s: string): string => {
+        const a = s.indexOf('<MidiTrack Id="1">');
+        const b = s.indexOf("</MidiTrack>") + "</MidiTrack>".length;
+
+        return s.slice(0, a) + s.slice(b);
+      };
+
+      expect(cut(before)).toBe(cut(after));
+      // Und die Kurve ist wirklich drin (Kontrolle: nicht versehentlich linear).
+      expect(after).toContain(CURVE_TUPLE);
+    } finally {
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
+  });
+
+  it("`~` am letzten Breakpoint -> Validatorfehler, Exit 1, keine Datei-Aenderung", () => {
+    const tmpPath = createTmpAlsFrom(MULTI_TRACK_XML);
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const before = readAls(tmpPath);
+      const code = runCli([
+        "write",
+        "--scope",
+        "arrangement",
+        "--als",
+        tmpPath,
+        "--track",
+        "TrackA",
+        "--target",
+        "mixer:volume",
+        "--breakpoints",
+        "0=0.5\n8=1.0~",
+        "--force",
+      ]);
+
+      expect(code).toBe(1);
+      expect(spy.mock.calls.map((c) => String(c[0])).join("")).toContain(
+        "Folgesegment",
+      );
+      // Validator wirft VOR injectArrangementEnvelope -> Datei unveraendert.
+      expect(readAls(tmpPath)).toBe(before);
+    } finally {
+      spy.mockRestore();
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
+  });
+
+  it("ohne `~` byte-identisch zum Slice-2-Linear-Pfad (Regression)", () => {
+    const linPath = createTmpAlsFrom(MULTI_TRACK_XML);
+    const refPath = createTmpAlsFrom(MULTI_TRACK_XML);
+
+    try {
+      const args = (p: string): string[] => [
+        "write",
+        "--scope",
+        "arrangement",
+        "--als",
+        p,
+        "--track",
+        "TrackA",
+        "--target",
+        "mixer:volume",
+        "--breakpoints",
+        "0=0.5\n4=1.0\n8=0.25",
+        "--force",
+      ];
+
+      expect(runCli(args(linPath))).toBe(0);
+      expect(runCli(args(refPath))).toBe(0);
+      // Slice-2-Linear-Pfad: kein CurveControl, identischer Output.
+      const out = readAls(linPath);
+
+      expect(out).not.toContain("CurveControl");
+      expect(out).toBe(readAls(refPath));
+    } finally {
+      for (const p of [linPath, refPath]) {
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+        if (fs.existsSync(`${p}.bak`)) fs.unlinkSync(`${p}.bak`);
+      }
+    }
+  });
+});
+
 describe("e2e scope=arrangement", () => {
   const SRC =
     "/Users/macuser/Desktop/AIbleton/_throwaway-automation-test Project/_throwaway-automation-test.als";
