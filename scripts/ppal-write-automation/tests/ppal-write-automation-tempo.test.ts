@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAls } from "#src/automation/als-file.ts";
-import { locateTempoEnvelopeEvents } from "#src/automation/als-tempo-automation.ts";
+import { locateTempoEnvelopeEvents } from "#src/automation/master-timeline/als-tempo-automation.ts";
 import { runTempo } from "../ppal-tempo-helpers.ts";
 
 const BEFORE_ALS =
