@@ -187,8 +187,83 @@ describe("transformToPoolGroove (T4) — byte gegen Fixture-CDATA", () => {
 const BEFORE_ALS =
   "/Users/macuser/Desktop/AIbleton/g5b-fixture/" +
   "G5b-before Project/G5b-before.als";
+const AFTER_ALS =
+  "/Users/macuser/Desktop/AIbleton/g5b-fixture/" +
+  "G5b-after Project/G5b-after.als";
 
 const POOL_RE = /<GroovePool>[\S\s]*?<\/GroovePool>/;
+
+/**
+ * Strips the non-derivable `<SourceContext>` block and rewrites the two
+ * groove-name lines to a sentinel so the comparison is MODULO the
+ * documented non-derivable fields (`<Name>` catalog value + SourceContext).
+ * @param node - A `<Groove Id="N">...</Groove>` node.
+ * @returns Indent-normalized lines, name-neutralized, SourceContext removed.
+ */
+function structuralLines(node: string): string[] {
+  const scTags = [
+    "<SourceContext",
+    "<OriginalFileRef",
+    "<FileRef",
+    "<RelativePathType",
+    "<RelativePath ",
+    "<Path ",
+    "<Type ",
+    "<LivePackName",
+    "<LivePackId",
+    "<OriginalFileSize",
+    "<OriginalCrc",
+    "<SourceHint",
+    "<BrowserContentPath",
+    "<LocalFiltersJson",
+  ];
+
+  return node
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(
+      (l) =>
+        l.length > 0 &&
+        !scTags.some((t) => l.startsWith(t)) &&
+        l !== "</SourceContext>" &&
+        l !== "</OriginalFileRef>" &&
+        l !== "</FileRef>",
+    )
+    .map((l) =>
+      /^<Name Value=".*" \/>$/.test(l) ? '<Name Value="@NAME@" />' : l,
+    );
+}
+
+describe("T7 — Struktur-Konformitaet gegen echtes G5b-after.als", () => {
+  it("injizierter <Groove Id=5> == G5b-after Pool-Knoten MODULO Name + SourceContext (alle musikalischen + Schema-Bytes exakt)", () => {
+    // Soll-Knoten = der reale, von Ableton erzeugte <Groove Id="5"> aus
+    // G5b-after.als (NICHT die Fixture-CDATA — unabhaengige zweite Quelle).
+    const afterReal = readAls(AFTER_ALS);
+    const afterPool = afterReal.match(POOL_RE)?.[0] ?? "";
+    const realStart = afterPool.indexOf('<Groove Id="5">');
+    const realNode = afterPool.slice(
+      realStart,
+      afterPool.indexOf("</Groove>", realStart) + "</Groove>".length,
+    );
+
+    // Ist-Knoten = unser offline injizierter <Groove Id="5">.
+    const before = readAls(BEFORE_ALS);
+    const g = extractGrooveFromAgr(parseAgr(AGR_BUF));
+    const node = transformToPoolGroove(g, "5", "Rock Fatback Accent 16ths");
+    const ours = injectGrooveIntoPool(before, node)
+      .match(POOL_RE)?.[0]
+      ?.match(/<Groove Id="5">[\S\s]*?<\/Groove>/)?.[0];
+
+    expect(ours).toBeTruthy();
+
+    // Alle musikalischen + Schema-Bytes (Notes nach Stripping, Live-12-
+    // Defaults, Id, Selection) exakt gleich; nur <Name>-Katalogwert +
+    // <SourceContext> weichen dokumentiert ab.
+    expect(structuralLines(ours as string)).toStrictEqual(
+      structuralLines(realNode),
+    );
+  });
+});
 
 describe("injectGrooveIntoPool + Mitigation-B (T5) — gegen echte G5b-.als", () => {
   it("injiziert neuen <Groove Id> am Pool-Ende; Mitigation-B: alles ausser Pool byte-identisch", () => {
