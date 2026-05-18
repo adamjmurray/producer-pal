@@ -9,13 +9,13 @@ import {
   readAls,
   writeAls,
 } from "#src/automation/als-file.ts";
+import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
+import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
 import {
   injectTempoEnvelope,
   locateTempoEnvelopeEvents,
   resolveMasterTempoTargetId,
 } from "#src/automation/master-timeline/als-tempo-automation.ts";
-import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
-import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
 import { parseFlags } from "./clip-patch-cli.ts";
 
 /** Shared Open-Set (Port 3350) guard message for the writing subcommands. */
