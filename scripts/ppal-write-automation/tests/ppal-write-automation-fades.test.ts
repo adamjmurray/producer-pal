@@ -105,7 +105,7 @@ describe("fades subcommand", () => {
     }
   });
 
-  it("Skew/Slope-Key -> Exit 1 (Slice 4b gesperrt), kein Write", () => {
+  it("rohe Skew/Slope-Key -> Exit 1 (Slice 4c gesperrt), kein Write", () => {
     const tmp = ARR.replace(/\.als$/, ".s4skew.als");
 
     copyFileSync(ARR, tmp);
@@ -128,6 +128,152 @@ describe("fades subcommand", () => {
       ]);
 
       expect(code).toBe(1);
+    } finally {
+      rmSync(tmp, { force: true });
+      rmSync(tmp + ".bak", { force: true });
+    }
+  });
+
+  it("e2e: FadeInCurve=up + große FadeInLength Multi-Patch, verified:true", () => {
+    const tmp = ARR.replace(/\.als$/, ".s4bcurve.als");
+
+    copyFileSync(ARR, tmp);
+
+    try {
+      const code = runCli([
+        "fades",
+        "set",
+        "--als",
+        tmp,
+        "--track",
+        AUDIO_TRACK,
+        "--clip",
+        AUDIO_CLIP,
+        "--key",
+        "FadeInCurve",
+        "--value",
+        "up",
+        "--key",
+        "FadeInLength",
+        "--value",
+        "1.9004591762404262",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+      const out = readAls(tmp);
+
+      // Byte-belegte up-Tupel + IsDefault-Flip + große Länge ungekappt.
+      expect(out).toContain('<FadeInCurveSkew Value="-1" />');
+      expect(out).toContain('<FadeInCurveSlope Value="0.8999999762" />');
+      expect(out).toContain('<IsDefaultFadeIn Value="false" />');
+      expect(out).toContain('<FadeInLength Value="1.9004591762404262" />');
+    } finally {
+      rmSync(tmp, { force: true });
+      rmSync(tmp + ".bak", { force: true });
+    }
+  });
+
+  it("e2e: FadeInCurve=down setzt down-Tupel, verified:true", () => {
+    const tmp = ARR.replace(/\.als$/, ".s4bdown.als");
+
+    copyFileSync(ARR, tmp);
+
+    try {
+      const code = runCli([
+        "fades",
+        "set",
+        "--als",
+        tmp,
+        "--track",
+        AUDIO_TRACK,
+        "--clip",
+        AUDIO_CLIP,
+        "--key",
+        "FadeInCurve",
+        "--value",
+        "down",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+      const out = readAls(tmp);
+
+      expect(out).toContain('<FadeInCurveSkew Value="1" />');
+      expect(out).toContain('<FadeInCurveSlope Value="-0.8999999762" />');
+      expect(out).toContain('<IsDefaultFadeIn Value="false" />');
+    } finally {
+      rmSync(tmp, { force: true });
+      rmSync(tmp + ".bak", { force: true });
+    }
+  });
+
+  it("e2e: FadeOutCurveSlope-set -> Exit 1 (Slice 4c), kein Write", () => {
+    const tmp = ARR.replace(/\.als$/, ".s4bfo.als");
+
+    copyFileSync(ARR, tmp);
+
+    try {
+      const code = runCli([
+        "fades",
+        "set",
+        "--als",
+        tmp,
+        "--track",
+        AUDIO_TRACK,
+        "--clip",
+        AUDIO_CLIP,
+        "--key",
+        "FadeOutCurveSlope",
+        "--value",
+        "0.5",
+        "--force",
+      ]);
+
+      expect(code).toBe(1);
+    } finally {
+      rmSync(tmp, { force: true });
+      rmSync(tmp + ".bak", { force: true });
+    }
+  });
+
+  it("Mitigation-B: FadeInCurve-Patch lässt Fremd-Clip im selben Track byte-identisch", () => {
+    const tmp = ARR.replace(/\.als$/, ".s4bmitb.als");
+    const FOREIGN_CLIP =
+      "audio, looped, clip length < arrangement length, start == first Start";
+
+    copyFileSync(ARR, tmp);
+
+    try {
+      // Fremd-Clip-Block VOR dem Patch (gleicher Track, anderer Clip).
+      const beforeXml = readAls(tmp);
+      const fStart = beforeXml.indexOf(`<Name Value="${FOREIGN_CLIP}"`);
+      const foreignBefore = beforeXml.slice(fStart - 200, fStart + 4000);
+
+      const code = runCli([
+        "fades",
+        "set",
+        "--als",
+        tmp,
+        "--track",
+        AUDIO_TRACK,
+        "--clip",
+        AUDIO_CLIP,
+        "--key",
+        "FadeInCurve",
+        "--value",
+        "up",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+      const afterXml = readAls(tmp);
+      const fStart2 = afterXml.indexOf(`<Name Value="${FOREIGN_CLIP}"`);
+      const foreignAfter = afterXml.slice(fStart2 - 200, fStart2 + 4000);
+
+      expect(foreignAfter).toBe(foreignBefore);
+      // Ziel-Clip hat sich tatsächlich geändert (Patch war wirksam).
+      expect(afterXml).toContain('<FadeInCurveSkew Value="-1" />');
     } finally {
       rmSync(tmp, { force: true });
       rmSync(tmp + ".bak", { force: true });
