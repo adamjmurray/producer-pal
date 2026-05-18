@@ -22,6 +22,7 @@ export function assertNoSlice6bInput(input: Slice6bGuardInput): void {
       "Time-Signature-Marker sind nicht in Slice 6 — siehe Slice 6b",
     );
   }
+
   if (input.curve === true) {
     throw new Error(
       "Gekrümmte Tempo-Segmente sind nicht in Slice 6 — siehe Slice 6b",
