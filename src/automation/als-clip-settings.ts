@@ -96,6 +96,70 @@ export const CLIP_SETTING_SPEC: Record<string, SettingDef> = {
 };
 
 /**
+ * Byte-belegte Enum-Tabellen (Name -> Integer-String) aus der G3'-Ground-
+ * Truth-Fixture `docs/superpowers/fixtures/ableton12-clip-settings-
+ * groundtruth.xml` (Ableton 12.3.8). Werte sind Strings, da Patch-Werte
+ * Strings sind. KEINE Spekulation: nur byte-belegte Stufen.
+ * `LaunchQuantisation` hat absichtlich nur die beiden im Set vorhandenen
+ * Stufen — weitere Stufen bleiben Roh-Int-Passthrough (Design).
+ */
+export const ENUM_TABLES: Record<string, Record<string, string>> = {
+  // FollowActionA und FollowActionB teilen dieselbe Action-Enum.
+  FollowActionA: {
+    "No Action": "0",
+    Stop: "1",
+    "Play Again": "2",
+    Previous: "3",
+    Next: "4",
+    First: "5",
+    Last: "6",
+    Any: "7",
+    Other: "8",
+    Jump: "9",
+  },
+  FollowActionB: {
+    "No Action": "0",
+    Stop: "1",
+    "Play Again": "2",
+    Previous: "3",
+    Next: "4",
+    First: "5",
+    Last: "6",
+    Any: "7",
+    Other: "8",
+    Jump: "9",
+  },
+  LaunchMode: { Trigger: "0", Gate: "1", Toggle: "2", Repeat: "3" },
+  LaunchQuantisation: { Global: "0", "1 Bar": "5" },
+};
+
+/**
+ * Löst einen Enum-Wert auf: Roh-Integer (`/^-?\d+$/`) wird unverändert
+ * durchgereicht (auch `0`/negativ); ein Name wird über `ENUM_TABLES[key]`
+ * aufgelöst. Unbekannter Name -> Error mit der Liste erlaubter Namen.
+ *
+ * @param key - Enum-Setting-Key (z. B. `FollowActionA`, `LaunchMode`).
+ * @param v - Roh-Integer-String oder Enum-Name.
+ * @returns Der aufgelöste Integer-String.
+ */
+export function resolveEnumValue(key: string, v: string): string {
+  if (/^-?\d+$/.test(v)) return v;
+
+  const table = ENUM_TABLES[key];
+  const resolved = table?.[v];
+
+  if (resolved !== undefined) return resolved;
+
+  const allowed =
+    table === undefined ? "(keine)" : Object.keys(table).join(", ");
+
+  throw new Error(
+    `Ungültiger Enum-Name "${v}" für Key "${key}". ` +
+      `Erlaubt: ${allowed} (oder Roh-Integer)`,
+  );
+}
+
+/**
  * Lokalisiert den `<FollowAction>…</FollowAction>`-Block.
  *
  * @param clipXml - Der Clip-XML-Block.
@@ -244,6 +308,9 @@ export function patchClipSetting(
     throw new Error(
       `Unbekannter Key "${key}". Gültig: ${Object.keys(CLIP_SETTING_SPEC).join(", ")}`,
     );
+  // Enum-Keys: Namen vor dem Schreiben in Roh-Integer auflösen
+  // (Roh-Int-Pfad bleibt unverändert -> keine T2-Regression).
+  if (def.type === "enum") value = resolveEnumValue(key, value);
   validate(key, def, value);
 
   if (def.inFollowAction) {

@@ -6,8 +6,10 @@
 import { describe, it, expect } from "vitest";
 import {
   CLIP_SETTING_SPEC,
+  ENUM_TABLES,
   getClipSettings,
   patchClipSetting,
+  resolveEnumValue,
 } from "../als-clip-settings.ts";
 
 // Vollständige Recon-Reihenfolge des echten Clips:
@@ -289,26 +291,114 @@ describe("patchClipSetting Positions-Anker (Plan-Anpassung A)", () => {
 
 // ---------------------------------------------------------------------------
 // Plan-Task 5 (docs/superpowers/plans/2026-05-17-ppal-clip-settings.md):
-// resolveEnumValue(key, v) + ENUM_TABLES in src/automation/als-clip-settings.ts.
-// BLOCKIERT: G3'-Ground-Truth-Fixture
-// (docs/superpowers/fixtures/ableton12-clip-settings-groundtruth.xml) fehlt
-// noch. Konkrete Integer<->Name-Paare duerfen NICHT spekuliert werden
-// (Recon-Gate-Disziplin) -- erst nach Fixture-Lieferung byte-belegen.
-// resolveEnumValue/ENUM_TABLES existieren noch nicht und werden hier bewusst
-// NICHT importiert (Import wuerde typecheck/Gate brechen). Muster analog
-// 4b-T2 (commit fe1a23c7): benannte TODOs + it.todo, keine spekulativen Werte.
+// resolveEnumValue(key, v) + ENUM_TABLES — Enum-Namens-Validierung.
+// Konkrete Integer<->Name-Paare byte-belegt aus G3'-Ground-Truth-Fixture
+// docs/superpowers/fixtures/ableton12-clip-settings-groundtruth.xml
+// (Recon-Gate G3' GESCHLOSSEN). Keine Spekulation: exakt diese Paare.
+//   FollowActionA/B (gemeinsame Action-Enum):
+//     No Action=0 Stop=1 Play Again=2 Previous=3 Next=4
+//     First=5 Last=6 Any=7 Other=8 Jump=9
+//   LaunchMode: Trigger=0 Gate=1 Toggle=2 Repeat=3
+//   LaunchQuantisation byte-belegt NUR: Global=0, 1 Bar=5
+//     (weitere Stufen bleiben Roh-Int-Passthrough — Design, kein Mangel)
 // ---------------------------------------------------------------------------
-describe("Slice-3 T5 Enum-Namens-Validierung (fixture-frei, BLOCKIERT durch G3')", () => {
-  it.todo(
-    "resolveEnumValue: FollowActionA Name -> Int byte-belegt aus G3'-Ground-Truth (Paare nach Fixture-Lieferung)",
-  );
-  it.todo("resolveEnumValue: FollowActionB analog G3'");
-  it.todo("resolveEnumValue: LaunchMode 0-3 Name<->Int aus G3'");
-  it.todo("resolveEnumValue: LaunchQuantisation-Stufen aus G3'");
-  it.todo(
-    "resolveEnumValue: unbekannter Enum-Name wirft mit Liste erlaubter Namen",
-  );
-  it.todo(
-    "resolveEnumValue: Roh-Integer wird weiterhin durchgereicht (T2-Regression bleibt grün)",
-  );
+describe("Slice-3 T5 Enum-Namens-Validierung (G3'-Ground-Truth)", () => {
+  it("ENUM_TABLES deckt genau die 4 Enum-Keys ab", () => {
+    expect(Object.keys(ENUM_TABLES).sort()).toStrictEqual([
+      "FollowActionA",
+      "FollowActionB",
+      "LaunchMode",
+      "LaunchQuantisation",
+    ]);
+  });
+
+  it("FollowActionA Name->Int exakt aus byte-Ground-Truth", () => {
+    expect(resolveEnumValue("FollowActionA", "No Action")).toBe("0");
+    expect(resolveEnumValue("FollowActionA", "Stop")).toBe("1");
+    expect(resolveEnumValue("FollowActionA", "Play Again")).toBe("2");
+    expect(resolveEnumValue("FollowActionA", "Previous")).toBe("3");
+    expect(resolveEnumValue("FollowActionA", "Next")).toBe("4");
+    expect(resolveEnumValue("FollowActionA", "First")).toBe("5");
+    expect(resolveEnumValue("FollowActionA", "Last")).toBe("6");
+    expect(resolveEnumValue("FollowActionA", "Any")).toBe("7");
+    expect(resolveEnumValue("FollowActionA", "Other")).toBe("8");
+    expect(resolveEnumValue("FollowActionA", "Jump")).toBe("9");
+  });
+
+  it("FollowActionB teilt die Action-Enum (gleiche Paare)", () => {
+    expect(resolveEnumValue("FollowActionB", "No Action")).toBe("0");
+    expect(resolveEnumValue("FollowActionB", "Next")).toBe("4");
+    expect(resolveEnumValue("FollowActionB", "Jump")).toBe("9");
+  });
+
+  it("LaunchMode 0-3 Name<->Int aus G3'", () => {
+    expect(resolveEnumValue("LaunchMode", "Trigger")).toBe("0");
+    expect(resolveEnumValue("LaunchMode", "Gate")).toBe("1");
+    expect(resolveEnumValue("LaunchMode", "Toggle")).toBe("2");
+    expect(resolveEnumValue("LaunchMode", "Repeat")).toBe("3");
+  });
+
+  it("LaunchQuantisation NUR byte-belegte Stufen Global=0 / 1 Bar=5", () => {
+    expect(resolveEnumValue("LaunchQuantisation", "Global")).toBe("0");
+    expect(resolveEnumValue("LaunchQuantisation", "1 Bar")).toBe("5");
+  });
+
+  it("unbekannter Enum-Name wirft mit Liste erlaubter Namen", () => {
+    expect(() => resolveEnumValue("FollowActionA", "Quatsch")).toThrow(
+      /No Action.*Stop.*Play Again|Play Again.*Jump/,
+    );
+    expect(() => resolveEnumValue("LaunchMode", "Foo")).toThrow(
+      /Trigger.*Gate.*Toggle.*Repeat/,
+    );
+  });
+
+  it("Roh-Integer wird unverändert durchgereicht (auch 0 und negativ)", () => {
+    expect(resolveEnumValue("FollowActionA", "7")).toBe("7");
+    expect(resolveEnumValue("FollowActionA", "0")).toBe("0");
+    expect(resolveEnumValue("LaunchMode", "2")).toBe("2");
+    expect(resolveEnumValue("LaunchQuantisation", "13")).toBe("13");
+    expect(resolveEnumValue("FollowActionB", "-1")).toBe("-1");
+  });
+
+  it("resolveEnumValue für Key ohne Enum-Tabelle reicht Roh-Int durch, wirft bei Namen", () => {
+    expect(resolveEnumValue("FollowChanceA", "42")).toBe("42");
+    expect(() => resolveEnumValue("FollowChanceA", "Foo")).toThrow(
+      /FollowChanceA/,
+    );
+  });
+
+  it("patchClipSetting löst Enum-Namen vor dem Schreiben auf (FollowActionA)", () => {
+    // CLIP-Default FollowActionA=4; "Jump"->9 ist ein distinkter Wert,
+    // damit die Byte-Differenz-Assertion echt greift.
+    const out = patchClipSetting(CLIP, "FollowActionA", "Jump");
+
+    expect(out).toContain('<FollowActionA Value="9" />');
+    expect(
+      out.replace('<FollowActionA Value="9" />', '<FollowActionA Value="4" />'),
+    ).toBe(CLIP);
+  });
+
+  it("patchClipSetting löst LaunchMode-Namen auf (Top-Level positions-verankert)", () => {
+    const out = patchClipSetting(CLIP, "LaunchMode", "Gate");
+
+    expect(out).toContain('<LaunchMode Value="1" />');
+    expect(
+      out.replace('<LaunchMode Value="1" />', '<LaunchMode Value="0" />'),
+    ).toBe(CLIP);
+  });
+
+  it("patchClipSetting Roh-Int-Pfad für Enum unverändert (T2-Regression)", () => {
+    const out = patchClipSetting(CLIP, "LaunchMode", "2");
+
+    expect(out).toContain('<LaunchMode Value="2" />');
+    expect(
+      out.replace('<LaunchMode Value="2" />', '<LaunchMode Value="0" />'),
+    ).toBe(CLIP);
+  });
+
+  it("patchClipSetting wirft bei unbekanntem Enum-Namen", () => {
+    expect(() => patchClipSetting(CLIP, "FollowActionA", "Nonsense")).toThrow(
+      /No Action|Jump/,
+    );
+  });
 });
