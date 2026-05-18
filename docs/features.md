@@ -2,7 +2,7 @@
 title: Features
 description:
   Full feature list for Producer Pal, the Ableton MCP server that brings AI to
-  Ableton Live — 21 tools for tracks, MIDI/audio clips, devices, and
+  Ableton Live — 22 tools for tracks, MIDI/audio clips, devices, and
   arrangements.
 ---
 
@@ -10,7 +10,7 @@ description:
 
 Producer Pal is an AI-powered music production assistant for Ableton Live — an
 Ableton MCP server that lets any AI read, create, and modify your Live Set. Tell
-the AI what you want and it uses 21 specialized tools to read, create, and
+the AI what you want and it uses 22 specialized tools to read, create, and
 modify tracks, clips, devices, and more in your Live Set.
 
 It works with virtually any AI, including its
@@ -249,6 +249,22 @@ limitation).
     detail on device selection
 
 <!--@include: ./_generated/ppal-select-schema.md-->
+
+## Advanced Tools
+
+### 🔧 Live API (`ppal-live-api`) {#ppal-live-api}
+
+Direct access to the
+[Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
+scripting and debugging. Can read or modify any Live Set property — use with
+care.
+
+**Off by default.** Enable on the **Setup** tab of the Producer Pal Max for Live
+device. When disabled, MCP clients and the [REST API](/guide/rest-api) both stop
+seeing the tool. See the [REST API Live API section](/guide/rest-api#live-api)
+for the full operation reference and examples.
+
+<!--@include: ./_generated/ppal-live-api-schema.md-->
 
 ## Custom Music Notation {#custom-music-notation}
 
