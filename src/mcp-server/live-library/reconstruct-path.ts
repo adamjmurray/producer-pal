@@ -42,7 +42,9 @@ export interface ResolvedPath {
 interface WalkRow {
   root_id: number;
   name: string;
-  parent_id: number;
+  // The schema allows NULL on root rows. node:sqlite renders SQL NULL as
+  // JS `null`, so callers must accept both `0` and `null` as "no parent".
+  parent_id: number | null;
   depth: number;
 }
 
@@ -97,8 +99,9 @@ export function resolveAbsolutePaths(
       segs = [];
       segmentsByRoot.set(row.root_id, segs);
       // First row per root_id is the highest-depth (chain head) thanks
-      // to ORDER BY depth DESC.
-      headParentByRoot.set(row.root_id, row.parent_id);
+      // to ORDER BY depth DESC. Normalize NULL → 0 so the truncation
+      // check below treats both as "reached root".
+      headParentByRoot.set(row.root_id, row.parent_id ?? 0);
     }
 
     segs.push(row.name);

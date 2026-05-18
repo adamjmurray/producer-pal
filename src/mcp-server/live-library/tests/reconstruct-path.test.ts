@@ -38,10 +38,15 @@ function openScratchDb(): DatabaseSync {
  * Insert a row representing a single file or folder.
  *
  * @param fileId - Primary key
- * @param parentId - Parent file_id (0 means no parent)
+ * @param parentId - Parent file_id (0 or null means no parent — the
+ *   schema allows NULL even though real Live DBs observed so far use 0)
  * @param name - Segment name
  */
-function insertRow(fileId: number, parentId: number, name: string): void {
+function insertRow(
+  fileId: number,
+  parentId: number | null,
+  name: string,
+): void {
   db.prepare("INSERT INTO files VALUES (?, ?, ?)").run(fileId, parentId, name);
 }
 
@@ -128,6 +133,19 @@ describe("resolveAbsolutePaths", () => {
     // levels, but the segments it does have are contiguous and
     // leaf-anchored — verify the deep.wav tail is intact.
     expect(resolved?.path.endsWith("/deep.wav")).toBe(true);
+  });
+
+  it("treats parent_id=NULL on the chain head as reaching the root", () => {
+    // The schema declares `parent_id INTEGER` (nullable). Real Live DBs
+    // observed so far use 0 for root rows, but a NULL parent must NOT
+    // be misread as truncation.
+    insertRow(1, null, "/");
+    insertRow(2, 1, "loop.wav");
+
+    expect(resolveAbsolutePaths(db, [2]).get(2)).toStrictEqual({
+      path: "/loop.wav",
+      truncated: false,
+    });
   });
 
   it("resolves multiple files in a single query", () => {
