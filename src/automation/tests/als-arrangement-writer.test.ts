@@ -276,9 +276,7 @@ describe("buildArrangementEnvelopeXml — Slice-2b lineare Lane eingefroren", ()
 
 describe("als-arrangement-writer — Slice-2b kuenftige Kurven-Kodierung (it.todo)", () => {
   // Kodierungsform (Attribut/Element/Range) UNBEKANNT bis G2b.
-  it.todo(
-    "Default linear: Output ohne curve byte-gleich zum Slice-2-Bestand",
-  );
+  it.todo("Default linear: Output ohne curve byte-gleich zum Slice-2-Bestand");
   it.todo("gekruemmtes Segment erzeugt die byte-belegte G2b-Kodierung");
   it.todo("lineare Segmente in gemischter Lane bleiben unveraendert");
 });

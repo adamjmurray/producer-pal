@@ -74,9 +74,7 @@ describe("parseBreakpoints — Slice-2b ~curve Ist-Verhalten", () => {
 describe("parseBreakpoints — Slice-2b kuenftiger ~-Vertrag (it.todo)", () => {
   // Konkrete Range-/Kodierungs-Annahmen UNBEKANNT bis Recon-Gate G2b.
   // Nur Vertrags-Skizzen, keine festgenagelten Werte.
-  it.todo(
-    "ohne `~` byte-gleicher Output zum Bestand (T1-Netz bleibt gruen)",
-  );
+  it.todo("ohne `~` byte-gleicher Output zum Bestand (T1-Netz bleibt gruen)");
   it.todo("`~<kurve>`-Suffix am Start-Breakpoint wird als curve geparst");
   it.todo("Mehrpunkt-Eingabe mit gemischt linearen und `~`-Segmenten");
 });

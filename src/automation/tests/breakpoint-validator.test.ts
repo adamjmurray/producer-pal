@@ -101,8 +101,6 @@ describe("validateBreakpoints — Slice-2b curve-Feld Ist-Verhalten", () => {
 describe("validateBreakpoints — Slice-2b kuenftiger curve-Vertrag (it.todo)", () => {
   // Range/Enum + Vorzeichen UNBEKANNT bis G2b — keine konkreten Werte.
   it.todo("curve-Wert ausserhalb der G2b-Range/Enum -> Fehler");
-  it.todo(
-    "`~` am letzten Breakpoint (kein Folgesegment) -> Fehler",
-  );
+  it.todo("`~` am letzten Breakpoint (kein Folgesegment) -> Fehler");
   it.todo("lineares Segment (kein curve) bleibt nach G2b unveraendert valide");
 });

@@ -122,7 +122,14 @@ describe("groove subcommand", () => {
 
   it("5b-Charakterisierung: 'groove import' mit Flags weiter Exit 1 (Dispatch vor Flag-Parse)", () => {
     expect(
-      runCli(["groove", "import", "--als", "/nicht/existent.als", "--agr", "x"]),
+      runCli([
+        "groove",
+        "import",
+        "--als",
+        "/nicht/existent.als",
+        "--agr",
+        "x",
+      ]),
     ).toBe(1);
   });
 
