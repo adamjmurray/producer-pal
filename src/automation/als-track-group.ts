@@ -49,16 +49,13 @@ export function patchTrackField(
     throw new Error(`Feld ${field} (bool) erwartet true|false`);
   }
 
-  const re = new RegExp('<' + def.tag + ' Value="[^"]*" />');
+  const re = new RegExp("<" + def.tag + ' Value="[^"]*" />');
 
   if (!re.test(trackBlock)) {
     throw new Error(`Tag <${def.tag}> nicht im Track-Block`);
   }
 
-  return trackBlock.replace(
-    re,
-    '<' + def.tag + ' Value="' + value + '" />',
-  );
+  return trackBlock.replace(re, "<" + def.tag + ' Value="' + value + '" />');
 }
 
 /**

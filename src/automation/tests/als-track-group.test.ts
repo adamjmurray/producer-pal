@@ -33,9 +33,7 @@ function memberBlock(xml: string): string {
   // Track-Namen liegen als <EffectiveName Value="…" /> (NICHT self-closing
   // <Name Value=/>) — recon-verifiziert e2e-test-set: Member="Child"
   // (MidiTrack, EffectiveName 1× eindeutig), GroupTrack="Parent" Id=39.
-  const nameIdx = xml.indexOf(
-    '<EffectiveName Value="' + MEMBER_NAME + '" />',
-  );
+  const nameIdx = xml.indexOf('<EffectiveName Value="' + MEMBER_NAME + '" />');
   const mi = xml.lastIndexOf("<MidiTrack ", nameIdx);
   const ai = xml.lastIndexOf("<AudioTrack ", nameIdx);
   const open = Math.max(mi, ai); // nächstliegender Open-Tag vor dem Namen
@@ -88,9 +86,9 @@ describe("Slice-8 als-track-group", () => {
   });
 
   it("patchTrackField wirft bei unbekanntem Feld", () => {
-    expect(() =>
-      patchTrackField(memberBlock(readXml()), "Bogus", "1"),
-    ).toThrow(/bogus|unbekannt/i);
+    expect(() => patchTrackField(memberBlock(readXml()), "Bogus", "1")).toThrow(
+      /bogus|unbekannt/i,
+    );
   });
 
   it("patchTrackField wirft bei ungültigem int", () => {

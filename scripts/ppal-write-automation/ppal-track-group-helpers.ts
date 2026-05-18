@@ -122,7 +122,7 @@ function applyTrackGroup(
 
     const verifyLoc = locateTrackBlock(readAls(alsPath), track);
 
-    if (!verifyLoc.block.includes('<' + field + ' Value="' + value + '"')) {
+    if (!verifyLoc.block.includes("<" + field + ' Value="' + value + '"')) {
       process.stderr.write(
         `FEHLER: Re-Parse-Verify fehlgeschlagen fuer ${field}=${value}\n`,
       );

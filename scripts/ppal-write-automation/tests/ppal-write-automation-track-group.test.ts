@@ -31,9 +31,7 @@ const FOREIGN_NAME = "Parent";
  * @returns Der GroupTrack-Block "Parent" als Substring.
  */
 function foreignBlock(xml: string): string {
-  const nameIdx = xml.indexOf(
-    '<EffectiveName Value="' + FOREIGN_NAME + '" />',
-  );
+  const nameIdx = xml.indexOf('<EffectiveName Value="' + FOREIGN_NAME + '" />');
   const open = xml.lastIndexOf("<GroupTrack ", nameIdx);
   const closeTag = "</GroupTrack>";
   const close = xml.indexOf(closeTag, nameIdx) + closeTag.length;
