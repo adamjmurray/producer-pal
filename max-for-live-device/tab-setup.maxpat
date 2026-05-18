@@ -14,7 +14,7 @@
         "boxes": [
             {
                 "box": {
-                    "annotation": "Direct access to the Ableton Live Object Model. Lets the AI read or modify any Live Set property — only enable if you trust your AI to use it carefully.",
+                    "annotation": "Direct access to the Ableton Live Object Model. Lets the AI read or modify any Live Set property. Can be used to workaround bugs and limitations in Producer Pal's tools. \n\nIt is disabled by default to avoid \"distracting the AI\". The AI may struggle to complete tasks using the Live API directly. It's better to use the other tools when possible.",
                     "annotation_name": "Direct Live API",
                     "id": "obj-84",
                     "maxclass": "live.toggle",
@@ -53,7 +53,7 @@
                     "parameter_enable": 1,
                     "patching_rect": [ 220.0, 83.0, 15.0, 15.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 9.000000268220901, 99.00000295042992, 15.0, 15.0 ],
+                    "presentation_rect": [ 9.0, 102.0, 15.0, 15.0 ],
                     "saved_attribute_attributes": {
                         "valueof": {
                             "parameter_enum": [ "off", "on" ],
@@ -156,7 +156,7 @@
             {
                 "box": {
                     "angle": 270.0,
-                    "annotation": "Direct access to the Ableton Live Object Model. Lets the AI read or modify any Live Set property — only enable if you trust your AI to use it carefully.",
+                    "annotation": "Direct access to the Ableton Live Object Model. Lets the AI read or modify any Live Set property. Can be used to workaround bugs and limitations in Producer Pal's tools. \n\nIt is disabled by default to avoid \"distracting the AI\". The AI may struggle to complete tasks using the Live API directly. It's better to use the other tools when possible.",
                     "bgcolor": [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
                     "hint": "",
                     "id": "obj-83",
@@ -169,7 +169,7 @@
                     "presentation": 1,
                     "presentation_rect": [ 4.0, 119.0, 114.00000339746475, 26.999996453523636 ],
                     "proportion": 0.39,
-                    "varname": "Small Model Mode[1]"
+                    "varname": "Direct Live API"
                 }
             },
             {
@@ -715,7 +715,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 188.0, 555.0, 5.0, 100.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 4.0000001192092896, 94.0000028014183, 114.0, 13.0 ]
+                    "presentation_rect": [ 4.0, 94.0, 114.0, 13.0 ]
                 }
             },
             {
@@ -1113,7 +1113,7 @@
                     "numoutlets": 0,
                     "patching_rect": [ 239.0, 83.0, 49.0, 41.0 ],
                     "presentation": 1,
-                    "presentation_rect": [ 26.000000774860382, 97.00000289082527, 87.0, 18.0 ],
+                    "presentation_rect": [ 26.0, 100.0, 87.0, 18.0 ],
                     "text": "Small Model Mode",
                     "textjustification": 0
                 }
