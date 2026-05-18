@@ -270,6 +270,73 @@ describe("useRemoteConfig", () => {
     expect(result.current.serverLiveApiEnabled).toBe(false);
   });
 
+  it("skips failure revert when a newer POST has been initiated", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      mockConfigResponse({ smallModelMode: false, liveApiEnabled: false }),
+    );
+
+    const { result } = renderHook(() => useRemoteConfig("connected"));
+
+    await waitFor(() => {
+      expect(result.current.serverLiveApiEnabled).toBe(false);
+    });
+
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // POST #1 is held pending so we can fail it AFTER POST #2 has run.
+    // The refetch mock simulates stale server state (still reflecting
+    // POST #1's intent of true) — if the guard fails, the revert would
+    // write `true` back over POST #2's optimistic `false`.
+    let resolvePost1: (() => void) | null = null;
+    const post1Pending = new Promise<Response>((resolve) => {
+      resolvePost1 = () => resolve({ ok: false, status: 500 } as Response);
+    });
+
+    let postCount = 0;
+    let refetchCount = 0;
+
+    vi.spyOn(globalThis, "fetch").mockImplementation((_url, init) => {
+      const method = (init as RequestInit | undefined)?.method;
+
+      if (method === "POST") {
+        postCount++;
+
+        if (postCount === 1) return post1Pending;
+
+        return Promise.resolve({ ok: true } as Response);
+      }
+
+      refetchCount++;
+
+      return Promise.resolve(
+        mockConfigResponse({ smallModelMode: false, liveApiEnabled: true }),
+      );
+    });
+
+    let post1Promise!: Promise<void>;
+
+    await act(() => {
+      post1Promise = result.current.postLiveApiEnabled(true);
+    });
+    expect(result.current.serverLiveApiEnabled).toBe(true);
+
+    await act(async () => {
+      await result.current.postLiveApiEnabled(false);
+    });
+    expect(result.current.serverLiveApiEnabled).toBe(false);
+
+    await act(async () => {
+      resolvePost1!();
+      await post1Promise;
+    });
+
+    expect(refetchCount).toBe(0);
+    expect(result.current.serverLiveApiEnabled).toBe(false);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining("skipping revert"),
+    );
+  });
+
   it("cleans up focus listener on unmount", () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       mockConfigResponse({ smallModelMode: false }),

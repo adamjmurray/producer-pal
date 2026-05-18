@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { getConfigUrl } from "#webui/utils/mcp-url";
 
@@ -28,6 +28,12 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const [serverSmallModelMode, setServerSmallModelMode] = useState(false);
   const [serverLiveApiEnabled, setServerLiveApiEnabled] = useState(false);
   const [serverLiveApiForcedOn, setServerLiveApiForcedOn] = useState(false);
+  // Monotonic counter to detect when a POST's failure-revert refetch is
+  // stale (i.e. a newer POST has been initiated since). Without this an
+  // older failed POST's refetch can clobber the newer POST's optimistic
+  // state — or read server state mid-flight before the newer POST has
+  // been processed.
+  const latestPostSeqRef = useRef(0);
 
   const fetchConfig = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -89,7 +95,15 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const postSmallModelMode = useCallback(
     (enabled: boolean) => {
       setServerSmallModelMode(enabled);
-      void postConfigField("smallModelMode", enabled, fetchConfig);
+      const seq = ++latestPostSeqRef.current;
+
+      void postConfigField(
+        "smallModelMode",
+        enabled,
+        fetchConfig,
+        seq,
+        latestPostSeqRef,
+      );
     },
     [fetchConfig],
   );
@@ -97,7 +111,15 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
   const postLiveApiEnabled = useCallback(
     async (enabled: boolean) => {
       setServerLiveApiEnabled(enabled);
-      await postConfigField("liveApiEnabled", enabled, fetchConfig);
+      const seq = ++latestPostSeqRef.current;
+
+      await postConfigField(
+        "liveApiEnabled",
+        enabled,
+        fetchConfig,
+        seq,
+        latestPostSeqRef,
+      );
     },
     [fetchConfig],
   );
@@ -118,14 +140,24 @@ export function useRemoteConfig(mcpStatus: McpStatus): UseRemoteConfigReturn {
  * the most we can do without adding one. A non-OK HTTP response (e.g. 400
  * validation) is treated the same as a network error.
  *
+ * The revert is skipped when a newer POST has bumped `latestSeqRef.current`
+ * past `seq`. The newer POST owns the authoritative state from here on;
+ * the older POST's refetch would otherwise race the newer POST's request
+ * and could overwrite its optimistic value with stale server state.
+ *
  * @param field - Config field name
  * @param value - New value
  * @param refetch - Function to re-read authoritative server state
+ * @param seq - This POST's sequence number, captured at initiation
+ * @param latestSeqRef - Ref holding the hook's latest sequence number
+ * @param latestSeqRef.current - Most recently issued POST sequence number
  */
 async function postConfigField(
   field: string,
   value: boolean,
   refetch: (signal?: AbortSignal) => Promise<void>,
+  seq: number,
+  latestSeqRef: { current: number },
 ): Promise<void> {
   try {
     const response = await fetch(getConfigUrl(), {
@@ -135,13 +167,20 @@ async function postConfigField(
     });
 
     if (!response.ok) {
+      const latest = seq === latestSeqRef.current;
+
       console.error(
-        `POST /config (${field}) returned ${response.status}; reverting`,
+        `POST /config (${field}) returned ${response.status}${latest ? "; reverting" : "; skipping revert (newer POST in flight)"}`,
       );
-      await refetch();
+      if (latest) await refetch();
     }
   } catch (err) {
-    console.error(`POST /config (${field}) failed:`, err);
-    await refetch();
+    const latest = seq === latestSeqRef.current;
+
+    console.error(
+      `POST /config (${field}) failed${latest ? "" : " (skipping revert; newer POST in flight)"}:`,
+      err,
+    );
+    if (latest) await refetch();
   }
 }
