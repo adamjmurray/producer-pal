@@ -34,17 +34,18 @@ interface LabelPattern {
  * Order matters - more specific patterns should come before general ones.
  */
 const LABEL_PATTERNS: LabelPattern[] = [
-  { regex: /^([\d.]+)\s*kHz$/, unit: "Hz", multiplier: 1000 },
-  { regex: /^([\d.]+)\s*Hz$/, unit: "Hz", multiplier: 1 },
-  { regex: /^([\d.]+)\s*s$/, unit: "ms", multiplier: 1000 },
-  { regex: /^([\d.]+)\s*ms$/, unit: "ms", multiplier: 1 },
-  { regex: /^([\d.-]+)\s*dB$/, unit: "dB", multiplier: 1 },
-  { regex: /^(-?inf)\s*dB$/, unit: "dB", fixedValue: -70 },
+  // ms must precede s so "100ms" doesn't match the s-only pattern
+  { regex: /^([\d.]+)\s*khz$/i, unit: "Hz", multiplier: 1000 },
+  { regex: /^([\d.]+)\s*hz$/i, unit: "Hz", multiplier: 1 },
+  { regex: /^([\d.]+)\s*ms$/i, unit: "ms", multiplier: 1 },
+  { regex: /^([\d.]+)\s*s$/i, unit: "ms", multiplier: 1000 },
+  { regex: /^([\d.-]+)\s*db$/i, unit: "dB", multiplier: 1 },
+  { regex: /^(-?inf)\s*db$/i, unit: "dB", fixedValue: -70 },
   { regex: /^([\d.-]+)\s*%$/, unit: "%", multiplier: 1 },
-  { regex: /^([+-]?\d+)\s*st$/, unit: "semitones", multiplier: 1 },
-  { regex: /^([A-G][#b]?-?\d+)$/, unit: "note", isNoteName: true },
-  { regex: /^(\d+)([LR])$/, unit: "pan", isPan: true },
-  { regex: /^(C)$/, unit: "pan", fixedValue: 0 },
+  { regex: /^([+-]?\d+)\s*st$/i, unit: "semitones", multiplier: 1 },
+  { regex: /^([a-g][#b]?-?\d+)$/i, unit: "note", isNoteName: true },
+  { regex: /^(\d+)([lr])$/i, unit: "pan", isPan: true },
+  { regex: /^(c)$/i, unit: "pan", fixedValue: 0 },
 ];
 
 export interface ParsedLabel {

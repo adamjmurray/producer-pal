@@ -212,8 +212,14 @@ function setParamValue(
     return;
   }
 
-  // 6. String fallback
-  param.set("value", inputValue);
+  // 6. Uninterpretable string — Live silently rejects string writes to numeric
+  // params, so warn rather than pretending the update succeeded.
+  const paramName = param.getProperty("name") as string;
+  const inputStr = String(inputValue);
+
+  console.warn(
+    `${toolName}: could not interpret "${inputStr}" as a value for param "${paramName}" — expected a number (a unit suffix like Hz/kHz/ms/s/dB/% is optional)`,
+  );
 }
 
 /**

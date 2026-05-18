@@ -122,4 +122,20 @@ describe("parseParamLines", () => {
   it("should handle division-style string values", () => {
     expect(parseParamLines("Rate = 1/16")).toStrictEqual([["Rate", "1/16"]]);
   });
+
+  it("should strip unit suffixes and convert to canonical units", () => {
+    expect(parseParamLines("Freq = 72 Hz")).toStrictEqual([["Freq", 72]]);
+    expect(parseParamLines("Freq = 72Hz")).toStrictEqual([["Freq", 72]]);
+    expect(parseParamLines("Freq = 1.5 kHz")).toStrictEqual([["Freq", 1500]]);
+    expect(parseParamLines("Gain = -6 dB")).toStrictEqual([["Gain", -6]]);
+    expect(parseParamLines("Time = 100 ms")).toStrictEqual([["Time", 100]]);
+    expect(parseParamLines("Time = 0.5 s")).toStrictEqual([["Time", 500]]);
+  });
+
+  it("should accept unit suffixes case-insensitively", () => {
+    expect(parseParamLines("Freq = 72hz")).toStrictEqual([["Freq", 72]]);
+    expect(parseParamLines("Freq = 72 HZ")).toStrictEqual([["Freq", 72]]);
+    expect(parseParamLines("Freq = 1.5 KHZ")).toStrictEqual([["Freq", 1500]]);
+    expect(parseParamLines("Gain = -6 db")).toStrictEqual([["Gain", -6]]);
+  });
 });

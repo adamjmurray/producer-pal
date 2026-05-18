@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
+import { parseLabel } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 
 /**
  * Parse name=value lines into param entries with value coercion
@@ -47,7 +48,22 @@ export function parseParamLines(
     }
 
     const num = Number(rawValue);
-    const value = Number.isFinite(num) ? num : rawValue;
+    let value: string | number;
+
+    if (Number.isFinite(num)) {
+      value = num;
+    } else {
+      // Strip unit suffixes ("72 Hz", "1.5 kHz", "-6 dB") via parseLabel,
+      // which handles unit conversion (kHz→Hz, s→ms) and is case-insensitive.
+      // Require a recognized unit so strings like "1/16" (division params) or
+      // "On"/"Off" (enums) keep their string form for downstream handling.
+      const parsed = parseLabel(rawValue);
+
+      value =
+        typeof parsed.value === "number" && parsed.unit != null
+          ? parsed.value
+          : rawValue;
+    }
 
     results.push([name, value]);
   }
