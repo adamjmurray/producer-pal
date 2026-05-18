@@ -65,21 +65,21 @@ describe("Slice-7 als-clip-flags", () => {
   });
 
   it("patchClipFlag wirft bei fehlendem Tag (MidiClip-Block)", () => {
-    expect(() => patchClipFlag("<MidiClip></MidiClip>", "HiQ", "false")).toThrow(
-      /HiQ/,
-    );
+    expect(() =>
+      patchClipFlag("<MidiClip></MidiClip>", "HiQ", "false"),
+    ).toThrow(/HiQ/);
   });
 
   it("patchClipFlag wirft bei unbekanntem Flag", () => {
-    expect(() => patchClipFlag(firstAudioClip(readXml()), "Bogus", "1")).toThrow(
-      /bogus|unbekannt/i,
-    );
+    expect(() =>
+      patchClipFlag(firstAudioClip(readXml()), "Bogus", "1"),
+    ).toThrow(/bogus|unbekannt/i);
   });
 
   it("patchClipFlag wirft bei ungültigem bool-Wert", () => {
-    expect(() => patchClipFlag(firstAudioClip(readXml()), "HiQ", "yes")).toThrow(
-      /true|false|bool/i,
-    );
+    expect(() =>
+      patchClipFlag(firstAudioClip(readXml()), "HiQ", "yes"),
+    ).toThrow(/true|false|bool/i);
   });
 
   it("patchClipFlag wirft bei nicht-ganzzahligem int (WarpMode)", () => {
