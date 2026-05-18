@@ -3,6 +3,7 @@
 // AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { vi } from "vitest";
 import { type PathLike, livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   type RegisteredMockObject,
@@ -10,6 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { type SelectResult } from "#src/tools/control/select.ts";
+import type * as SharedUtils from "#src/tools/shared/utils.ts";
 
 /**
  * Reset all mocks and set up default "nothing selected" state for select() tests.
@@ -348,6 +350,23 @@ export const viewMockToLive = (view: string): string =>
  */
 export const viewMockFromLive = (liveApiView: string): string =>
   ({ Session: "session", Arranger: "arrangement" })[liveApiView] ?? "session";
+
+/**
+ * Body for `vi.mock("#src/tools/shared/utils.ts", ...)` in select tests.
+ * Replaces `toLiveApiView`/`fromLiveApiView` with predictable test implementations.
+ *
+ * @param actual - The original module passed by vitest's `importOriginal`
+ * @returns The patched module exports
+ */
+export function selectSharedUtilsMockBody(
+  actual: typeof SharedUtils,
+): typeof SharedUtils {
+  return {
+    ...actual,
+    toLiveApiView: vi.fn(viewMockToLive),
+    fromLiveApiView: vi.fn(viewMockFromLive),
+  };
+}
 
 /**
  * Set up view state with a selected track but no selected scene/clip.

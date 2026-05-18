@@ -91,6 +91,25 @@ function setupPendingRequest(
   return { promise, requestId };
 }
 
+/**
+ * Fire a `callLiveApi` call and return the parsed contextJSON Max received.
+ * Re-installs `Max.outlet` as a fresh mock for each call.
+ *
+ * @param overrides - RequestOverrides passed through to callLiveApi
+ * @returns Parsed contextJSON as a record
+ */
+function captureContextJSON(
+  overrides?: RequestOverrides,
+): Record<string, unknown> {
+  Max.outlet = vi.fn().mockResolvedValue(undefined);
+  void callLiveApi("test-tool", {}, overrides);
+
+  const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
+  const contextJSON = callArgs[4] as string;
+
+  return JSON.parse(contextJSON) as Record<string, unknown>;
+}
+
 describe("Max API Adapter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -209,13 +228,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should merge compactOutput override into contextJSON", async () => {
-      Max.outlet = vi.fn().mockResolvedValue(undefined);
-
-      void callLiveApi("test-tool", {}, { compactOutput: false });
-
-      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
-      const contextJSON = callArgs[4] as string;
-      const context = JSON.parse(contextJSON) as Record<string, unknown>;
+      const context = captureContextJSON({ compactOutput: false });
 
       expect(context).toMatchObject({ compactOutput: false });
       expect(context).toHaveProperty("silenceWavPath");
@@ -223,13 +236,7 @@ describe("Max API Adapter", () => {
     });
 
     it("should override timeoutMs in contextJSON when provided", async () => {
-      Max.outlet = vi.fn().mockResolvedValue(undefined);
-
-      void callLiveApi("test-tool", {}, { timeoutMs: 1234 });
-
-      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
-      const contextJSON = callArgs[4] as string;
-      const context = JSON.parse(contextJSON) as Record<string, unknown>;
+      const context = captureContextJSON({ timeoutMs: 1234 });
 
       expect(context).toMatchObject({ timeoutMs: 1234 });
     });
@@ -248,30 +255,18 @@ describe("Max API Adapter", () => {
     });
 
     it("should omit compactOutput from contextJSON when overrides not provided", async () => {
-      Max.outlet = vi.fn().mockResolvedValue(undefined);
-
-      void callLiveApi("test-tool", {});
-
-      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
-      const contextJSON = callArgs[4] as string;
-      const context = JSON.parse(contextJSON) as Record<string, unknown>;
+      const context = captureContextJSON();
 
       expect(context).not.toHaveProperty("compactOutput");
     });
 
     it("should not let overrides override silenceWavPath", async () => {
-      Max.outlet = vi.fn().mockResolvedValue(undefined);
-
       // Cast through unknown to bypass the RequestOverrides type — we want to
       // prove the adapter ignores rogue silenceWavPath fields even if a caller
       // somehow smuggles one in.
-      void callLiveApi("test-tool", {}, {
+      const context = captureContextJSON({
         silenceWavPath: "/evil/path.wav",
       } as unknown as RequestOverrides);
-
-      const callArgs = (Max.outlet as ReturnType<typeof vi.fn>).mock.calls[0]!;
-      const contextJSON = callArgs[4] as string;
-      const context = JSON.parse(contextJSON) as Record<string, unknown>;
 
       expect(context.silenceWavPath).not.toBe("/evil/path.wav");
       expect(typeof context.silenceWavPath).toBe("string");

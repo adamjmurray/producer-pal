@@ -3,13 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { type Server } from "node:http";
-import { type AddressInfo } from "node:net";
-import express from "express";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { TOOL_NAMES } from "../create-mcp-server.ts";
-import { registerRestApiRoutes } from "../rest-api-routes.ts";
-import { mockMax, setupExpressAppServer } from "./express-app-test-helpers.ts";
+import {
+  mockMax,
+  setupExpressAppServer,
+  setupRestRoutesServer,
+} from "./express-app-test-helpers.ts";
 
 describe("MCP Express App – Live API runtime gating", () => {
   const appState = setupExpressAppServer();
@@ -136,39 +136,12 @@ describe("MCP Express App – Live API forced on via env", () => {
 });
 
 describe("REST API Routes – ppal-live-api gating", () => {
-  let server: Server | undefined;
-  let baseUrl: string;
-
-  const callLiveApi = vi.fn();
-
-  beforeAll(async () => {
-    const app = express();
-
-    app.use(express.json());
-
-    registerRestApiRoutes(
-      app,
-      () => ({ tools: ["ppal-connect"], liveApiEnabled: false }),
-      callLiveApi,
-    );
-
-    const port = await new Promise<number>((resolve) => {
-      server = app.listen(0, () => {
-        resolve((server!.address() as AddressInfo).port);
-      });
-    });
-
-    baseUrl = `http://localhost:${port}`;
-  });
-
-  afterAll(async () => {
-    if (server) {
-      await new Promise<void>((resolve) => server?.close(() => resolve()));
-    }
+  const routesState = setupRestRoutesServer({
+    getConfig: () => ({ tools: ["ppal-connect"], liveApiEnabled: false }),
   });
 
   it("omits ppal-live-api from /api/tools when liveApiEnabled is false", async () => {
-    const response = await fetch(`${baseUrl}/api/tools`);
+    const response = await fetch(`${routesState.baseUrl}/api/tools`);
     const body = await response.json();
     const names = body.tools.map((t: { name: string }) => t.name);
 
@@ -176,11 +149,14 @@ describe("REST API Routes – ppal-live-api gating", () => {
   });
 
   it("returns 404 for ppal-live-api when liveApiEnabled is false", async () => {
-    const response = await fetch(`${baseUrl}/api/tools/ppal-live-api`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
+    const response = await fetch(
+      `${routesState.baseUrl}/api/tools/ppal-live-api`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      },
+    );
 
     expect(response.status).toBe(404);
 

@@ -10,23 +10,10 @@ import { act, renderHook, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
-
-/**
- * Creates a mock Response with the given config
- * @param config - Config object to return as JSON
- * @param config.smallModelMode - Whether small model mode is enabled
- * @param config.liveApiEnabled - Whether Live API tool is enabled
- * @returns Mock Response
- */
-function mockConfigResponse(config: {
-  smallModelMode: boolean;
-  liveApiEnabled?: boolean;
-}): Response {
-  return {
-    ok: true,
-    json: () => Promise.resolve(config),
-  } as Response;
-}
+import {
+  mockConfigResponse,
+  setupRemoteConfigHook,
+} from "./use-remote-config-test-helpers";
 
 describe("useRemoteConfig", () => {
   beforeEach(() => {
@@ -81,15 +68,7 @@ describe("useRemoteConfig", () => {
   });
 
   it("re-fetches on window focus", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      mockConfigResponse({ smallModelMode: false }),
-    );
-
-    const { result } = renderHook(() => useRemoteConfig("connected"));
-
-    await waitFor(() => {
-      expect(result.current.serverSmallModelMode).toBe(false);
-    });
+    const { result } = await setupRemoteConfigHook({ smallModelMode: false });
 
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       mockConfigResponse({ smallModelMode: true }),
@@ -105,15 +84,7 @@ describe("useRemoteConfig", () => {
   });
 
   it("POSTs to config endpoint when postSmallModelMode called", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      mockConfigResponse({ smallModelMode: false }),
-    );
-
-    const { result } = renderHook(() => useRemoteConfig("connected"));
-
-    await waitFor(() => {
-      expect(result.current.serverSmallModelMode).toBe(false);
-    });
+    const { result } = await setupRemoteConfigHook({ smallModelMode: false });
 
     const mockFetch = vi
       .spyOn(globalThis, "fetch")
@@ -178,14 +149,9 @@ describe("useRemoteConfig", () => {
   });
 
   it("postLiveApiEnabled POSTs the new value, then focus refetch updates serverLiveApiEnabled", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      mockConfigResponse({ smallModelMode: false, liveApiEnabled: false }),
-    );
-
-    const { result } = renderHook(() => useRemoteConfig("connected"));
-
-    await waitFor(() => {
-      expect(result.current.serverLiveApiEnabled).toBe(false);
+    const { result } = await setupRemoteConfigHook({
+      smallModelMode: false,
+      liveApiEnabled: false,
     });
 
     const mockFetch = vi
@@ -235,14 +201,9 @@ describe("useRemoteConfig", () => {
 
   it("postLiveApiEnabled reverts optimistic state when POST returns non-OK", async () => {
     // Initial fetch resolves with liveApiEnabled=false so the hook seeds.
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      mockConfigResponse({ smallModelMode: false, liveApiEnabled: false }),
-    );
-
-    const { result } = renderHook(() => useRemoteConfig("connected"));
-
-    await waitFor(() => {
-      expect(result.current.serverLiveApiEnabled).toBe(false);
+    const { result } = await setupRemoteConfigHook({
+      smallModelMode: false,
+      liveApiEnabled: false,
     });
 
     // POST returns 400; refetch revert returns the authoritative server
@@ -271,14 +232,9 @@ describe("useRemoteConfig", () => {
   });
 
   it("skips failure revert when a newer POST has been initiated", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      mockConfigResponse({ smallModelMode: false, liveApiEnabled: false }),
-    );
-
-    const { result } = renderHook(() => useRemoteConfig("connected"));
-
-    await waitFor(() => {
-      expect(result.current.serverLiveApiEnabled).toBe(false);
+    const { result } = await setupRemoteConfigHook({
+      smallModelMode: false,
+      liveApiEnabled: false,
     });
 
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});

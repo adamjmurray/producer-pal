@@ -448,18 +448,7 @@ function runClearTargetExpectingNoOp(opts: {
   existingEnd: number;
   targetPosition: number;
 }): ReturnType<typeof setupTrack> {
-  setupClip("100", {
-    properties: {
-      is_arrangement_clip: 1,
-      start_time: opts.sourceStart,
-      end_time: opts.sourceEnd,
-    },
-  });
-
-  const existingClip = setupArrangementClip("200", 0, {
-    start_time: opts.existingStart,
-    end_time: opts.existingEnd,
-  });
+  const { existingClip } = setupSourceAndExistingClips(opts);
 
   const trackMock = setupTrack(0, {
     properties: {
@@ -479,6 +468,39 @@ function runClearTargetExpectingNoOp(opts: {
 }
 
 /**
+ * Register the source clip "100" and the overlapping existing clip "200" used
+ * by the clearClipAtDuplicateTarget scenarios.
+ *
+ * @param opts - Source and existing clip times
+ * @param opts.sourceStart - Source clip start time
+ * @param opts.sourceEnd - Source clip end time
+ * @param opts.existingStart - Existing (overlapping) clip start time
+ * @param opts.existingEnd - Existing (overlapping) clip end time
+ * @returns The existing arrangement clip mock (the source is in the registry)
+ */
+function setupSourceAndExistingClips(opts: {
+  sourceStart: number;
+  sourceEnd: number;
+  existingStart: number;
+  existingEnd: number;
+}): { existingClip: ReturnType<typeof setupArrangementClip> } {
+  setupClip("100", {
+    properties: {
+      is_arrangement_clip: 1,
+      start_time: opts.sourceStart,
+      end_time: opts.sourceEnd,
+    },
+  });
+
+  const existingClip = setupArrangementClip("200", 0, {
+    start_time: opts.existingStart,
+    end_time: opts.existingEnd,
+  });
+
+  return { existingClip };
+}
+
+/**
  * Set up a scenario where the dup-to-holding call silently fails by returning
  * ["id", 0]. Used to test that destructive follow-up steps (trim/delete of
  * the original clip) do not run when the holding copy was not created.
@@ -495,18 +517,7 @@ function setupSilentFailHoldingScenario(opts: {
   existingStart: number;
   existingEnd: number;
 }): ReturnType<typeof setupTrack> {
-  setupClip("100", {
-    properties: {
-      is_arrangement_clip: 1,
-      start_time: opts.sourceStart,
-      end_time: opts.sourceEnd,
-    },
-  });
-
-  const existingClip = setupArrangementClip("200", 0, {
-    start_time: opts.existingStart,
-    end_time: opts.existingEnd,
-  });
+  const { existingClip } = setupSourceAndExistingClips(opts);
 
   return setupTrack(0, {
     properties: {

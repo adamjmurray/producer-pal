@@ -5,8 +5,11 @@
 
 import { type Server } from "node:http";
 import { type AddressInfo } from "node:net";
+import express from "express";
 import Max from "max-api";
-import { afterAll, beforeAll } from "vitest";
+import { afterAll, beforeAll, type Mock, vi } from "vitest";
+import { type CallLiveApiFunction } from "../create-mcp-server.ts";
+import { registerRestApiRoutes } from "../rest-api-routes.ts";
 
 export type MockMax = typeof Max & {
   handlers: Map<string, (input: unknown) => void>;
@@ -83,6 +86,51 @@ export function setupExpressAppServer(
       await new Promise<void>((resolve) =>
         state.server?.close(() => resolve()),
       );
+    }
+  });
+
+  return state;
+}
+
+interface RestRoutesTestState {
+  baseUrl: string;
+  callLiveApi: Mock<CallLiveApiFunction>;
+}
+
+/**
+ * Set up an Express server that only registers the REST API routes.
+ * Registers beforeAll/afterAll hooks to start and stop the server.
+ *
+ * @param options - Setup options
+ * @param options.getConfig - Function returning the runtime config (tools + liveApiEnabled)
+ * @returns Test state with base URL and the shared callLiveApi mock
+ */
+export function setupRestRoutesServer(options: {
+  getConfig: () => { tools: string[]; liveApiEnabled: boolean };
+}): RestRoutesTestState {
+  const callLiveApi = vi.fn<CallLiveApiFunction>();
+  const state: RestRoutesTestState = {
+    baseUrl: "",
+    callLiveApi,
+  };
+  let server: Server | undefined;
+
+  beforeAll(async () => {
+    const app = express();
+
+    app.use(express.json());
+    registerRestApiRoutes(app, options.getConfig, callLiveApi);
+
+    server = app.listen(0);
+    await new Promise<void>((resolve) => server?.once("listening", resolve));
+    const port = (server.address() as AddressInfo).port;
+
+    state.baseUrl = `http://localhost:${port}`;
+  });
+
+  afterAll(async () => {
+    if (server) {
+      await new Promise<void>((resolve) => server?.close(() => resolve()));
     }
   });
 

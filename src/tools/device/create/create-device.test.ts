@@ -39,6 +39,34 @@ function registerTrack0WithDevice123(): void {
   registerMockObject("device123", { path: livePath.track(0).device(2) });
 }
 
+/**
+ * Register a freshly-created Simpler at track 0 / device 2, plus track 0
+ * itself with an `insert_device` method returning that Simpler's id.
+ *
+ * @returns The simpler and track 0 mocks
+ */
+function registerSimplerCreationFixture(): {
+  simpler: RegisteredMockObject;
+  track0: RegisteredMockObject;
+} {
+  const simpler = registerMockObject("simpler-new", {
+    path: livePath.track(0).device(2),
+    type: "SimplerDevice",
+    properties: {
+      class_display_name: "Simpler",
+      multi_sample_mode: 0,
+      parameters: children(),
+    },
+  });
+
+  const track0 = registerMockObject("track-0", {
+    path: livePath.track(0),
+    methods: { insert_device: () => ["id", "simpler-new"] },
+  });
+
+  return { simpler, track0 };
+}
+
 describe("createDevice", () => {
   let track0: RegisteredMockObject;
   let chain0: RegisteredMockObject;
@@ -541,20 +569,9 @@ describe("createDevice", () => {
 
   describe("params after creation", () => {
     it("loads a sample on a created Simpler via params", () => {
-      const simpler = registerMockObject("simpler-new", {
-        path: livePath.track(0).device(2),
-        type: "SimplerDevice",
-        properties: {
-          class_display_name: "Simpler",
-          multi_sample_mode: 0,
-          parameters: children(),
-        },
-      });
+      const fixture = registerSimplerCreationFixture();
 
-      track0 = registerMockObject("track-0", {
-        path: livePath.track(0),
-        methods: { insert_device: () => ["id", "simpler-new"] },
-      });
+      track0 = fixture.track0;
 
       createDevice({
         deviceName: "Simpler",
@@ -562,7 +579,7 @@ describe("createDevice", () => {
         params: "sample=/tmp/kick.wav",
       });
 
-      expect(simpler.call).toHaveBeenCalledWith(
+      expect(fixture.simpler.call).toHaveBeenCalledWith(
         "replace_sample",
         "/tmp/kick.wav",
       );
@@ -573,20 +590,7 @@ describe("createDevice", () => {
 
       vi.mocked(mockConsole.warn).mockClear();
 
-      registerMockObject("simpler-new", {
-        path: livePath.track(0).device(2),
-        type: "SimplerDevice",
-        properties: {
-          class_display_name: "Simpler",
-          multi_sample_mode: 0,
-          parameters: children(),
-        },
-      });
-
-      track0 = registerMockObject("track-0", {
-        path: livePath.track(0),
-        methods: { insert_device: () => ["id", "simpler-new"] },
-      });
+      track0 = registerSimplerCreationFixture().track0;
 
       createDevice({
         deviceName: "Simpler",
