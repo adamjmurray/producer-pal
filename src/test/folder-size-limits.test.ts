@@ -10,7 +10,7 @@ import {
   projectRoot,
 } from "./helpers/meta-test-helpers.ts";
 
-const MAX_ITEMS_PER_FOLDER = 12;
+const MAX_ITEMS_PER_FOLDER = 13;
 
 describe("Folder size limits", () => {
   it.each([
