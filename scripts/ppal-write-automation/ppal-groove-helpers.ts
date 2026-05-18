@@ -3,12 +3,20 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { readFileSync } from "node:fs";
 import {
   backupAls,
   isSetLikelyOpen,
   readAls,
   writeAls,
 } from "#src/automation/als-file.ts";
+import {
+  allocateGrooveId,
+  extractGrooveFromAgr,
+  injectGrooveIntoPool,
+  parseAgr,
+  transformToPoolGroove,
+} from "#src/automation/als-groove-pool.ts";
 import {
   listGrooves,
   locateGrooveEntry,
@@ -23,6 +31,10 @@ import {
   parseFlags,
   warnDuplicateKeys,
 } from "./clip-patch-cli.ts";
+
+/** Shared Open-Set (Port 3350) guard message for the writing subcommands. */
+const OPEN_SET_MSG =
+  "Set scheint offen (Port 3350). Schliesse es in Ableton oder nutze --force.\n";
 
 /**
  * Run the `groove list|assign|tune` subcommand.
@@ -50,10 +62,100 @@ export function runGroove(rest: string[]): number {
   if (sub === "list") return runGrooveList(rest);
   if (sub === "assign") return runGrooveAssign(rest);
   if (sub === "tune") return runGrooveTune(rest);
+  if (sub === "import") return runGrooveImport(rest);
 
-  process.stderr.write("FEHLER: groove list|assign|tune\n");
+  process.stderr.write("FEHLER: groove list|assign|tune|import\n");
 
   return 1;
+}
+
+/**
+ * Run `groove import`: read a `.agr`, transform it into a functionally
+ * correct new pool `<Groove Id="N">` (Scope A) and inject it into the
+ * `.als` GroovePool.
+ *
+ * Pipeline: parseAgr -> extractGrooveFromAgr -> allocateGrooveId ->
+ * transformToPoolGroove -> injectGrooveIntoPool -> Mitigation-B
+ * (everything outside `<GroovePool>` byte-identical) -> backup + write ->
+ * re-parse verify. `verified` = structural + Mitigation-B re-check; NOT
+ * byte-equality to a Live GUI import (not offline reproducible — `<Name>`
+ * catalog value + `<SourceContext>` are Live-environment state).
+ *
+ * @param rest - Argument array (without the `groove` token)
+ * @returns Exit code: 0 success, 1 error, 2 open-set guard
+ */
+function runGrooveImport(rest: string[]): number {
+  const flags = parseFlags(rest);
+  const alsPath = flags.als;
+  const agrPath = flags.agr;
+  const force = flags.force === "true";
+  const nameOverride =
+    flags.name != null && flags.name !== "true" ? flags.name : null;
+
+  if (alsPath == null || agrPath == null) {
+    process.stderr.write("FEHLER: --als und --agr erforderlich\n");
+
+    return 1;
+  }
+
+  if (isSetLikelyOpen() && !force) {
+    process.stderr.write(OPEN_SET_MSG);
+
+    return 2;
+  }
+
+  const before = readAls(alsPath);
+  const agrGroove = parseAgr(readFileSync(agrPath));
+  const extracted = extractGrooveFromAgr(agrGroove);
+  const newId = allocateGrooveId(before);
+  const name = nameOverride ?? extracted.name;
+  const node = transformToPoolGroove(extracted, newId, name);
+  const after = injectGrooveIntoPool(before, node);
+
+  // Mitigation-B: alles AUSSERHALB <GroovePool> byte-identisch.
+  const poolRe = /<GroovePool>[\S\s]*?<\/GroovePool>/;
+  const mitigationB =
+    after.replace(poolRe, "") === before.replace(poolRe, "");
+
+  if (!mitigationB) {
+    process.stderr.write(
+      "FEHLER: Mitigation-B verletzt — Aenderung ausserhalb des <GroovePool>\n",
+    );
+
+    return 1;
+  }
+
+  backupAls(alsPath);
+  writeAls(alsPath, after);
+
+  // Re-Parse-Verify: neuer <Groove Id=newId> existiert + struktureller
+  // Knoten-Vergleich + Mitigation-B nach Round-Trip.
+  const reread = readAls(alsPath);
+  const rePool = reread.match(poolRe)?.[0] ?? "";
+  const structural =
+    rePool.includes(`<Groove Id="${newId}">`) &&
+    rePool.includes(`<Name Value="${name}" />`) &&
+    poolGrooveIds(reread).includes(newId);
+  const verified =
+    structural && reread.replace(poolRe, "") === before.replace(poolRe, "");
+
+  if (!verified) {
+    process.stderr.write(
+      "FEHLER: Verifizierung fehlgeschlagen — neuer Groove nicht zurueckgelesen\n",
+    );
+  }
+
+  process.stdout.write(
+    `${JSON.stringify({
+      als: alsPath,
+      agr: agrPath,
+      newGrooveId: newId,
+      name,
+      verified,
+    })}\n`,
+  );
+
+  return verified ? 0 : 1;
 }
 
 /**
@@ -107,9 +209,7 @@ function runGrooveAssign(rest: string[]): number {
   }
 
   if (isSetLikelyOpen() && !force) {
-    process.stderr.write(
-      "Set scheint offen (Port 3350). Schliesse es in Ableton oder nutze --force.\n",
-    );
+    process.stderr.write(OPEN_SET_MSG);
 
     return 2;
   }
@@ -182,9 +282,7 @@ function runGrooveTune(rest: string[]): number {
   }
 
   if (isSetLikelyOpen() && !force) {
-    process.stderr.write(
-      "Set scheint offen (Port 3350). Schliesse es in Ableton oder nutze --force.\n",
-    );
+    process.stderr.write(OPEN_SET_MSG);
 
     return 2;
   }

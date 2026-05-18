@@ -3,10 +3,19 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { copyFileSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readAls } from "#src/automation/als-file.ts";
 import { runCli } from "../ppal-write-automation.ts";
+
+const AGR =
+  "/Users/macuser/Desktop/AIbleton/g5b-fixture/G5b-RockFatback.agr";
+const BEFORE_ALS =
+  "/Users/macuser/Desktop/AIbleton/g5b-fixture/" +
+  "G5b-before Project/G5b-before.als";
+const POOL_RE = /<GroovePool>[\S\s]*?<\/GroovePool>/;
 
 const THROW =
   "/Users/macuser/Desktop/AIbleton/_throwaway-automation-test Project/_throwaway-automation-test.als";
@@ -107,20 +116,16 @@ describe("groove subcommand", () => {
     }
   });
 
-  // Slice-5b Regressions-Charakterisierung (Task 1, fixture-frei): friert
-  // das Ist-Verhalten des CLI-Dispatch-Skeletts ein, BEVOR 5b den
-  // import-Writer baut. KEINE Produktivcode-Aenderung — reine
-  // Charakterisierung des aktuellen Verhaltens.
-
-  // Der Dispatcher kennt list|assign|tune. 'import' faellt in den
-  // Unbekannt-Zweig: klarer Fehler (kein I/O, kein Writer) -> Exit 1.
-  // Friert die Voraussetzung ein, gegen die T6 spaeter den echten
-  // import-Pfad TDD-getrieben einbaut.
-  it("5b-Charakterisierung: 'groove import' noch nicht implementiert -> Exit 1 (kein I/O)", () => {
+  // Slice-5b T6: 'groove import' ist jetzt implementiert. Die
+  // urspruenglichen Charakterisierungs-Invarianten bleiben gueltig
+  // (fehlende Flags -> Exit 1; nicht existente Dateien -> Exit 1, kein
+  // Crash) — der Fehlerpfad ist nur jetzt der Flag-/IO-Pfad statt des
+  // Unbekannt-Dispatch-Zweigs.
+  it("'groove import' ohne Flags -> Exit 1 (Pflicht-Flags fehlen)", () => {
     expect(runCli(["groove", "import"])).toBe(1);
   });
 
-  it("5b-Charakterisierung: 'groove import' mit Flags weiter Exit 1 (Dispatch vor Flag-Parse)", () => {
+  it("'groove import' mit nicht existenten Dateien -> Exit 1 (kein Crash)", () => {
     expect(
       runCli([
         "groove",
@@ -128,9 +133,96 @@ describe("groove subcommand", () => {
         "--als",
         "/nicht/existent.als",
         "--agr",
-        "x",
+        "/nicht/existent.agr",
+        "--force",
       ]),
     ).toBe(1);
+  });
+
+  it("T6 e2e: groove import legt neuen <Groove Id> an; verified:true; Mitigation-B", () => {
+    const dir = mkdtempSync(join(tmpdir(), "g5b-import-"));
+    const als = join(dir, "G5b-before.als");
+
+    copyFileSync(BEFORE_ALS, als);
+
+    try {
+      const before = readAls(als);
+      const code = runCli([
+        "groove",
+        "import",
+        "--als",
+        als,
+        "--agr",
+        AGR,
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+
+      const after = readAls(als);
+
+      // Mitigation-B: alles ausserhalb <GroovePool> byte-identisch.
+      expect(after.replace(POOL_RE, "")).toBe(before.replace(POOL_RE, ""));
+
+      const afterPool = after.match(POOL_RE)?.[0] ?? "";
+
+      expect([...afterPool.matchAll(/<Groove Id="\d+">/g)]).toHaveLength(2);
+      expect(afterPool).toContain('<Groove Id="5">');
+      // .agr-interner Name als Default.
+      expect(afterPool).toContain('<Name Value="Rock Fatback - 4 bars 16ths" />');
+      // Note-Attribute gestrippt im neuen Eintrag.
+      expect(afterPool).not.toContain("VelocityDeviation=");
+      // Bestands-Groove 4: Selection true -> false.
+      const g4 = afterPool.slice(
+        afterPool.indexOf('<Groove Id="4">'),
+        afterPool.indexOf("</Groove>") + "</Groove>".length,
+      );
+
+      expect(g4).toContain('<Selection Value="false" />');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("T6 e2e: --name override schreibt den Pool-Namen", () => {
+    const dir = mkdtempSync(join(tmpdir(), "g5b-import-n-"));
+    const als = join(dir, "G5b-before.als");
+
+    copyFileSync(BEFORE_ALS, als);
+
+    try {
+      const code = runCli([
+        "groove",
+        "import",
+        "--als",
+        als,
+        "--agr",
+        AGR,
+        "--name",
+        "Custom Name",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+      expect(readAls(als)).toContain('<Name Value="Custom Name" />');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("T6: --agr fehlt -> Exit 1", () => {
+    const dir = mkdtempSync(join(tmpdir(), "g5b-import-e-"));
+    const als = join(dir, "G5b-before.als");
+
+    copyFileSync(BEFORE_ALS, als);
+
+    try {
+      expect(
+        runCli(["groove", "import", "--als", als, "--force"]),
+      ).toBe(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("R-C: GroovePool-Block byte-identisch nach assign (nur Track-Clip-GrooveId geändert)", () => {
