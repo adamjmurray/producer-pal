@@ -5,6 +5,7 @@
 
 import {
   CLIP_SETTING_SPEC,
+  ENUM_TABLES,
   getClipSettings,
   patchClipSetting,
 } from "#src/automation/als-clip-settings.ts";
@@ -75,10 +76,14 @@ export function applyClipSettingPatches(
 }
 
 /**
- * G3'-Enum-Warnung: solange keine ENUM_TABLES/benannte Validierung existiert,
- * wird ein Roh-Integer-Wert bei enum-Keys still akzeptiert — Spec verlangt
- * aber eine stderr-Warnung. Bei späterer T5-Implementierung: nur warnen wenn
- * kein benanntes Mapping greift (d.h. Wert rein numerisch und kein Table).
+ * G3'-Enum-Hinweis (T5 implementiert): Enum-Namens-Validierung ist aktiv,
+ * `ENUM_TABLES` byte-belegt aus der Ground-Truth-Fixture. Ein Roh-Integer
+ * bei einem enum-Key ist ein bewusst unterstützter Passthrough (auch für
+ * Stufen ohne byte-belegten Namen, z. B. weitere LaunchQuantisation-Werte) —
+ * daher KEINE Warnung mehr über eine fehlende Fixture. Stattdessen ein
+ * informierender stderr-Hinweis, dass für diesen Key benannte Werte
+ * verfügbar sind (Roh-Integer wurde ungeprüft auf Stufengültigkeit
+ * übernommen, da nur eine Teilmenge byte-belegt ist).
  * @param key - Patch key
  * @param value - Patch value
  * @returns Nothing
@@ -87,9 +92,15 @@ function warnEnumRawInteger(key: string, value: string): void {
   const def = CLIP_SETTING_SPEC[key];
 
   if (def?.type === "enum" && /^-?\d+$/.test(value)) {
+    const names = ENUM_TABLES[key];
+    const hint =
+      names === undefined
+        ? ""
+        : ` Benannte Werte verfügbar: ${Object.keys(names).join(", ")}.`;
+
     process.stderr.write(
-      `WARNUNG: Enum-Namens-Validierung für "${key}" ausstehend ` +
-        `(G3'-Ground-Truth-Fixture fehlt) — Roh-Integer-Wert "${value}" ungeprüft akzeptiert\n`,
+      `HINWEIS: Enum-Key "${key}" Roh-Integer-Wert "${value}" ` +
+        `als Passthrough übernommen (Stufengültigkeit ungeprüft).${hint}\n`,
     );
   }
 }

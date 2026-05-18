@@ -320,8 +320,10 @@ describe("clip-settings", () => {
     }
   });
 
-  // G3'-Enum-Warnung: Roh-Int bei enum-Key -> stderr-Warnung, kein Blockieren.
-  it("enum-Key mit numerischem Wert -> stderr-Warnung, Exit 0, Patch erfolgt", () => {
+  // G3'-Enum-Hinweis (T5 implementiert): Roh-Int bei enum-Key ist bewusst
+  // unterstützter Passthrough -> informierender stderr-Hinweis (keine
+  // "ausstehend/fehlt"-Falschaussage mehr), kein Blockieren.
+  it("enum-Key mit numerischem Wert -> stderr-Hinweis, Exit 0, Patch erfolgt", () => {
     const tmp = tmpAls(dupClipXml("ZielClip", "FremdClip"));
     const errSpy = vi
       .spyOn(process.stderr, "write")
@@ -346,9 +348,13 @@ describe("clip-settings", () => {
       const stderrOut = errSpy.mock.calls.map((c) => String(c[0])).join("");
 
       expect(stderrOut).toMatch(
-        /enum.*validierung.*ausstehend|roh-integer.*ungeprüft/i,
+        /hinweis.*enum-key.*passthrough|stufengültigkeit ungeprüft/i,
       );
+      // Die obsolete Falschaussage darf NICHT mehr erscheinen
+      expect(stderrOut).not.toMatch(/ausstehend|fixture fehlt/i);
       expect(stderrOut).toMatch(/LaunchMode/);
+      // T5: benannte Werte werden im Hinweis aufgelistet
+      expect(stderrOut).toMatch(/Trigger.*Gate.*Toggle.*Repeat/);
       // Patch muss trotzdem erfolgt sein
       const out = readAls(tmp);
 
@@ -360,7 +366,7 @@ describe("clip-settings", () => {
     }
   });
 
-  it("int-Key (VelocityAmount) mit numerischem Wert -> KEINE Enum-Warnung", () => {
+  it("int-Key (VelocityAmount) mit numerischem Wert -> KEIN Enum-Hinweis", () => {
     // Vollständiger Clip mit allen für VelocityAmount nötigen Positions-Ankern
     const fullClipXml = [
       `<Ableton><Tracks><MidiTrack Id="1">`,
@@ -405,7 +411,7 @@ describe("clip-settings", () => {
       const stderrOut = errSpy.mock.calls.map((c) => String(c[0])).join("");
 
       expect(stderrOut).not.toMatch(
-        /enum.*validierung.*ausstehend|roh-integer.*ungeprüft/i,
+        /hinweis.*enum-key|stufengültigkeit ungeprüft|ausstehend/i,
       );
     } finally {
       errSpy.mockRestore();
