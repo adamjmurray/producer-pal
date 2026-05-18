@@ -127,4 +127,29 @@ describe("Slice-8 als-track-group", () => {
       /Nichtexistent/,
     );
   });
+
+  it("locateGroupTrackBlock: Open-Tag ohne Close → nicht gefunden", () => {
+    expect(() => locateGroupTrackBlock('<GroupTrack Id="1" >', "X")).toThrow(
+      /nicht gefunden/,
+    );
+  });
+
+  it("locateGroupTrackBlock: leerer UserName → EffectiveName-Fallback", () => {
+    const xml =
+      '<GroupTrack Id="7"><UserName Value="" />' +
+      '<EffectiveName Value="Bus" /></GroupTrack>';
+
+    expect(locateGroupTrackBlock(xml, "Bus").block).toContain(
+      '<GroupTrack Id="7"',
+    );
+  });
+
+  it("locateGroupTrackBlock: weder UserName noch EffectiveName → kein Match", () => {
+    expect(() =>
+      locateGroupTrackBlock(
+        '<GroupTrack Id="8"><UserName Value="" /></GroupTrack>',
+        "Bus",
+      ),
+    ).toThrow(/nicht gefunden/);
+  });
 });
