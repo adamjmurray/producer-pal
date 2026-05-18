@@ -589,12 +589,12 @@ describe("Max API Adapter", () => {
     it("should delegate to handleNodeRequest with correct args", async () => {
       vi.mocked(handleNodeRequest).mockResolvedValue(undefined);
 
-      nodeRequestHandler!("req-123", '{"route":"library.searchSamples"}');
+      nodeRequestHandler!("req-123", '{"route":"library.search"}');
 
       await vi.waitFor(() => {
         expect(handleNodeRequest).toHaveBeenCalledWith(
           "req-123",
-          '{"route":"library.searchSamples"}',
+          '{"route":"library.search"}',
         );
       });
     });
