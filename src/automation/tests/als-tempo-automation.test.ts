@@ -15,3 +15,13 @@ describe("Slice-6b-Hartsperre", () => {
     expect(() => assertNoSlice6bInput({})).not.toThrow();
   });
 });
+
+describe("G6-gated: byte-belegte Master-Tempo-Automation", () => {
+  // Recon-Gate G6 offen: Ground-Truth aus User-Before/After-.als ableiten,
+  // dann docs/superpowers/fixtures/ableton12-tempo-automation-groundtruth.xml.
+  it.todo("locateMasterTrackAutomationBlock findet Master-Platzhalter");
+  it.todo("locateMasterTrackAutomationBlock wirft bei gefülltem Platzhalter");
+  it.todo("resolveMasterTempoTargetId liefert die Tempo-PointeeId");
+  it.todo("injectTempoEnvelope erzeugt byte-treues Envelope vs. G6-Fixture");
+  it.todo("injectTempoEnvelope ändert nur den Master-Block (Mitigation-B)");
+});
