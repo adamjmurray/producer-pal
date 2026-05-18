@@ -42,10 +42,24 @@ export function runClipFlags(rest: string[]): number {
   }
 
   const flags = parseFlags(rest);
-  const normalized =
-    sub === "set"
-      ? [sub, ...keyValueArgs(rest), "--key", flags.flag, "--value", flags.value]
-      : rest;
+  let normalized: string[];
+
+  if (sub === "set") {
+    const flag = flags.flag;
+    const value = flags.value;
+
+    if (flag == null || value == null) {
+      process.stderr.write(
+        "FEHLER: clip-flags set erfordert --flag und --value\n",
+      );
+
+      return 1;
+    }
+
+    normalized = [sub, ...keyValueArgs(rest), "--key", flag, "--value", value];
+  } else {
+    normalized = rest;
+  }
 
   return runClipPatchCli(normalized, parseFlags, {
     subcommandLabel: "clip-flags",
@@ -74,7 +88,9 @@ function keyValueArgs(rest: string[]): string[] {
       continue;
     }
 
-    out.push(rest[i]);
+    const tok = rest[i];
+
+    if (tok != null) out.push(tok);
   }
 
   return out;

@@ -80,7 +80,7 @@ export function getClipFlags(clipBlock: string): Record<string, string> {
       new RegExp("<" + def.tag + ' Value="([^"]*)" />'),
     );
 
-    if (m != null) {
+    if (m?.[1] != null) {
       flags[key] = m[1];
     }
   }
