@@ -95,3 +95,9 @@ describe("Slice-7 als-clip-flags", () => {
     expect(f.WarpMode).toMatch(/^-?\d+$/);
   });
 });
+
+describe("G7'-gated: WarpMode-Enum-Namen (Roh-Int funktioniert ohne)", () => {
+  // Beats/Tones/Texture/Re-Pitch/Complex/Complex Pro ↔ Int byte-ableiten
+  // aus User-Fixture (Slice-3-T5/G3'-Muster).
+  it.todo("WarpMode-Name 'Complex' → byte-belegten Enum-Int");
+});

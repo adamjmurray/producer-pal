@@ -26,6 +26,7 @@ import {
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
 import { parseFlags } from "./clip-patch-cli.ts";
+import { runClipFlags } from "./ppal-clip-flags-helpers.ts";
 import { runClipSettings } from "./ppal-clip-settings-helpers.ts";
 import { runFades } from "./ppal-fades-helpers.ts";
 import { runGroove } from "./ppal-groove-helpers.ts";
@@ -445,6 +446,7 @@ export function runCli(argv: string[]): number {
     if (subcommand === "groove") return runGroove(rest);
     if (subcommand === "tempo") return runTempo(rest);
     if (subcommand === "timesig") return runTimesig(rest);
+    if (subcommand === "clip-flags") return runClipFlags(rest);
 
     process.stderr.write(
       `FEHLER: Unbekanntes Subcommand "${subcommand}". Nutze list oder write.\n`,
