@@ -95,3 +95,10 @@ describe("Slice-6b Time-Signature-Marker", () => {
     ).toThrow(/TimeSignature/);
   });
 });
+
+describe("G6b'-gated: Enum-Namen-Mapping (Roh-Int funktioniert ohne)", () => {
+  // Recon-Gate G6b' offen: Numerator/Denominator↔Enum-Int byte-ableiten
+  // aus User-Fixture (mehrere Taktarten), Slice-3-T5/G3'-Muster.
+  it.todo("resolveTimeSigName mappt '3/4' → byte-belegten Enum-Int");
+  it.todo("injectTimeSigEnvelope akzeptiert '4/4'-Namens-Notation");
+});
