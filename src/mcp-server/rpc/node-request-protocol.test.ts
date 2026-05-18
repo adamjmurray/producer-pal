@@ -55,6 +55,7 @@ describe("node-request-protocol", () => {
 
   afterEach(() => {
     clearNodeRoutes();
+    vi.useRealTimers();
   });
 
   it("dispatches to a registered route and returns the result", async () => {
@@ -198,6 +199,36 @@ describe("node-request-protocol", () => {
 
     expect(response.success).toBe(false);
     expect(response.error).toMatch(/Response too large/);
+  });
+
+  it("synthesizes a timeout failure when a handler hangs", async () => {
+    vi.useFakeTimers();
+
+    registerNodeRoute(
+      "hang",
+      () => new Promise(() => {}), // never resolves
+    );
+
+    const promise = handleNodeRequest(
+      "req-hang",
+      JSON.stringify({ route: "hang", args: {} }),
+    );
+
+    // Advance past the 15s handler timeout and let microtasks drain so the
+    // rejection from Promise.race propagates into the catch + sendNodeResponse.
+    await vi.advanceTimersByTimeAsync(15_000);
+    await promise;
+
+    const response = parseSentResponse();
+
+    expect(response.success).toBe(false);
+    expect(response.error).toMatch(/Route 'hang' timed out after 15000ms/);
+
+    const consoleMock = await import("../node-for-max-logger.ts");
+
+    expect(consoleMock.error).toHaveBeenCalledWith(
+      expect.stringContaining("Route 'hang' timed out"),
+    );
   });
 
   it("logs error when Max.outlet fails", async () => {

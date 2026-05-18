@@ -42,8 +42,11 @@ export function planChunks(jsonString: string): ChunkPlan {
 
 /**
  * Reassemble a chunked Max IPC payload by joining chunks before the
- * MAX_ERROR_DELIMITER. Args without a delimiter are joined as-is, so a
- * single-chunk payload is handled correctly.
+ * MAX_ERROR_DELIMITER. Both production senders (V8 and Node) always
+ * terminate their chunk list with the delimiter, so its absence means the
+ * payload is malformed — throw so the receiver fails loudly instead of
+ * trying to parse a corrupt blob. This matches the explicit delimiter check
+ * on the Node-side receive path in `max-api-adapter.ts`.
  *
  * Chunk-order assumption: Max delivers the arguments of a single message
  * (the array passed to outlet/Max.outlet) in the order they were emitted,
@@ -57,7 +60,12 @@ export function planChunks(jsonString: string): ChunkPlan {
  */
 export function reassembleChunks(rest: unknown[]): string {
   const delimiterIndex = rest.indexOf(MAX_ERROR_DELIMITER);
-  const chunks = delimiterIndex === -1 ? rest : rest.slice(0, delimiterIndex);
+
+  if (delimiterIndex === -1) {
+    throw new Error("Missing MAX_ERROR_DELIMITER in response");
+  }
+
+  const chunks = rest.slice(0, delimiterIndex);
 
   return chunks.map(String).join("");
 }

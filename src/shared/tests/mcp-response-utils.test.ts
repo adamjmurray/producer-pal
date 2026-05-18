@@ -171,8 +171,10 @@ describe("mcp-response-utils", () => {
   });
 
   describe("reassembleChunks", () => {
-    it("joins all args when no delimiter is present", () => {
-      expect(reassembleChunks(["foo", "bar"])).toBe("foobar");
+    it("throws when no delimiter is present", () => {
+      expect(() => reassembleChunks(["foo", "bar"])).toThrow(
+        /Missing MAX_ERROR_DELIMITER/,
+      );
     });
 
     it("ignores everything after the delimiter", () => {
@@ -181,8 +183,25 @@ describe("mcp-response-utils", () => {
       ).toBe("foobar");
     });
 
+    it("returns empty string when delimiter is the only arg", () => {
+      expect(reassembleChunks([MAX_ERROR_DELIMITER])).toBe("");
+    });
+
     it("coerces non-string chunks via String()", () => {
-      expect(reassembleChunks([1, "x"])).toBe("1x");
+      expect(reassembleChunks([1, "x", MAX_ERROR_DELIMITER])).toBe("1x");
+    });
+
+    it("rejoins MAX_CHUNKS-sized payloads losslessly", () => {
+      // Boundary case: a payload that uses every available chunk slot.
+      const totalLength = MAX_CHUNKS * MAX_CHUNK_SIZE;
+      const original = "a".repeat(totalLength - 1) + "b";
+      const plan = planChunks(original);
+
+      expect(plan.tooLargeError).toBeNull();
+      expect(plan.chunks).toHaveLength(MAX_CHUNKS);
+      expect(reassembleChunks([...plan.chunks, MAX_ERROR_DELIMITER])).toBe(
+        original,
+      );
     });
   });
 });

@@ -271,7 +271,23 @@ export function code_exec_result(requestId: string, resultJson: string): void {
  * @param rest - Payload chunks followed by MAX_ERROR_DELIMITER
  */
 export function node_response(requestId: string, ...rest: unknown[]): void {
-  handleNodeResponse(requestId, reassembleChunks(rest));
+  let json: string;
+
+  try {
+    json = reassembleChunks(rest);
+  } catch (error) {
+    // Wire-format error (missing delimiter, etc.). Surface as a failure
+    // response so the pending Promise resolves rather than hanging until
+    // the 10s timeout — and log loudly so it shows in the Max console.
+    const message = error instanceof Error ? error.message : String(error);
+
+    console.error(
+      `node_response wire-format error [requestId=${requestId}]: ${message}`,
+    );
+    json = JSON.stringify({ success: false, error: message });
+  }
+
+  handleNodeResponse(requestId, json);
 }
 
 // Handle messages from Node for Max

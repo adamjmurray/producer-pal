@@ -79,7 +79,23 @@ export function requestNode<T = unknown>(
 
     const request = JSON.stringify({ route, args });
 
-    outlet(0, "node_request", requestId, request);
+    // If outlet throws synchronously (Max IPC failure), cancel the timeout
+    // and resolve immediately so the caller doesn't wait 10s for nothing —
+    // mirrors max-api-adapter.ts which handles the Node→V8 direction the
+    // same way.
+    try {
+      outlet(0, "node_request", requestId, request);
+    } catch (error) {
+      pendingNodeRequests.delete(requestId);
+      task.schedule(-1);
+
+      const message = error instanceof Error ? error.message : String(error);
+
+      resolve({
+        success: false,
+        error: `Failed to send node_request '${route}': ${message}`,
+      });
+    }
   });
 }
 
