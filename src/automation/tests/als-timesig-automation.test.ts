@@ -15,8 +15,7 @@ import {
 
 const BEFORE =
   "evals/live-sets/basic-midi-4-track Project/basic-midi-4-track.als";
-const readXml = (): string =>
-  gunzipSync(readFileSync(BEFORE)).toString("utf8");
+const readXml = (): string => gunzipSync(readFileSync(BEFORE)).toString("utf8");
 
 const EXPECTED_BEFORE_EVENTS =
   "\t\t\t\t\t\t\t<Events>\n" +
@@ -76,9 +75,7 @@ describe("Slice-6b Time-Signature-Marker", () => {
   });
 
   it("injectTimeSigEnvelope wirft bei leerer Liste", () => {
-    expect(() => injectTimeSigEnvelope(readXml(), [])).toThrow(
-      /mindestens 1/,
-    );
+    expect(() => injectTimeSigEnvelope(readXml(), [])).toThrow(/mindestens 1/);
   });
 
   it("assertNoTimeSigCurve wirft bei curve mit 'Slice 6c'", () => {

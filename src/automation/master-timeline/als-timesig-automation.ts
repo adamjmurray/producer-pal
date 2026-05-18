@@ -25,9 +25,7 @@ export interface TimeSigCurveGuardInput {
  */
 export function assertNoTimeSigCurve(input: TimeSigCurveGuardInput): void {
   if (input.curve === true) {
-    throw new Error(
-      "Gekrümmte Segmente = Slice 6c, nicht in Slice 6b",
-    );
+    throw new Error("Gekrümmte Segmente = Slice 6c, nicht in Slice 6b");
   }
 }
 
@@ -131,9 +129,7 @@ export function injectTimeSigEnvelope(
     assertNoTimeSigCurve({ curve: bp.curve });
 
     if (!Number.isInteger(bp.value)) {
-      throw new Error(
-        "EnumEvent-Value muss Integer/ganzzahlig sein",
-      );
+      throw new Error("EnumEvent-Value muss Integer/ganzzahlig sein");
     }
   }
 
