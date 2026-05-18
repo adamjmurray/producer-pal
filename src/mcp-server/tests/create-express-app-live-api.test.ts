@@ -6,43 +6,28 @@
 import { type Server } from "node:http";
 import { type AddressInfo } from "node:net";
 import express from "express";
-import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { TOOL_NAMES } from "../create-mcp-server.ts";
 import { registerRestApiRoutes } from "../rest-api-routes.ts";
-import { setupExpressAppServer } from "./express-app-test-helpers.ts";
-
-type MockMax = typeof Max & {
-  handlers: Map<string, (input: unknown) => void>;
-};
-const mockMax = Max as MockMax;
+import { mockMax, setupExpressAppServer } from "./express-app-test-helpers.ts";
 
 describe("MCP Express App – Live API runtime gating", () => {
   const appState = setupExpressAppServer();
-  let configUrl: string;
-
-  beforeAll(() => {
-    configUrl = appState.serverUrl.replace("/mcp", "/config");
-  });
-
-  const postConfig = (body: object) =>
-    fetch(configUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
 
   it("auto-adds ppal-live-api to tools when liveApiEnabled flips on via REST", async () => {
-    await postConfig({ liveApiEnabled: false, tools: [...TOOL_NAMES] });
+    await appState.postConfig({
+      liveApiEnabled: false,
+      tools: [...TOOL_NAMES],
+    });
 
-    const enabledRes = await postConfig({ liveApiEnabled: true });
+    const enabledRes = await appState.postConfig({ liveApiEnabled: true });
     const enabled = await enabledRes.json();
 
     expect(enabled.liveApiEnabled).toBe(true);
     expect(enabled.tools).toContain("ppal-live-api");
 
     // Flipping on again is a no-op for the whitelist.
-    const againRes = await postConfig({ liveApiEnabled: true });
+    const againRes = await appState.postConfig({ liveApiEnabled: true });
     const again = await againRes.json();
     const occurrences = again.tools.filter(
       (t: string) => t === "ppal-live-api",
@@ -52,9 +37,9 @@ describe("MCP Express App – Live API runtime gating", () => {
   });
 
   it("strips ppal-live-api from tools when liveApiEnabled flips off via REST", async () => {
-    await postConfig({ liveApiEnabled: true });
+    await appState.postConfig({ liveApiEnabled: true });
 
-    const disabledRes = await postConfig({ liveApiEnabled: false });
+    const disabledRes = await appState.postConfig({ liveApiEnabled: false });
     const disabled = await disabledRes.json();
 
     expect(disabled.liveApiEnabled).toBe(false);
@@ -62,7 +47,10 @@ describe("MCP Express App – Live API runtime gating", () => {
   });
 
   it("Max liveApiEnabled handler updates the runtime flag and whitelist", async () => {
-    await postConfig({ liveApiEnabled: false, tools: [...TOOL_NAMES] });
+    await appState.postConfig({
+      liveApiEnabled: false,
+      tools: [...TOOL_NAMES],
+    });
 
     const handler = mockMax.handlers.get("liveApiEnabled") as (
       input: unknown,
@@ -70,7 +58,7 @@ describe("MCP Express App – Live API runtime gating", () => {
 
     handler(1);
 
-    const enabledRes = await fetch(configUrl);
+    const enabledRes = await fetch(appState.configUrl);
     const enabled = await enabledRes.json();
 
     expect(enabled.liveApiEnabled).toBe(true);
@@ -78,16 +66,19 @@ describe("MCP Express App – Live API runtime gating", () => {
 
     handler(0);
 
-    const disabledRes = await fetch(configUrl);
+    const disabledRes = await fetch(appState.configUrl);
     const disabled = await disabledRes.json();
 
     expect(disabled.liveApiEnabled).toBe(false);
   });
 
   it("rejects ppal-live-api in tools when liveApiEnabled is false", async () => {
-    await postConfig({ liveApiEnabled: false, tools: [...TOOL_NAMES] });
+    await appState.postConfig({
+      liveApiEnabled: false,
+      tools: [...TOOL_NAMES],
+    });
 
-    const response = await postConfig({
+    const response = await appState.postConfig({
       tools: [...TOOL_NAMES, "ppal-live-api"],
     });
 
@@ -96,6 +87,51 @@ describe("MCP Express App – Live API runtime gating", () => {
 
     expect(body.error).toContain("ppal-live-api");
     expect(body.validToolNames).toStrictEqual([...TOOL_NAMES]);
+  });
+});
+
+describe("MCP Express App – Live API forced on via env", () => {
+  const originalEnv = process.env.ENABLE_LIVE_API;
+
+  const appState = setupExpressAppServer({
+    beforeStart: () => {
+      // Force a fresh module load so the new ENABLE_LIVE_API value is read.
+      vi.resetModules();
+      process.env.ENABLE_LIVE_API = "true";
+    },
+  });
+
+  afterAll(() => {
+    process.env.ENABLE_LIVE_API = originalEnv;
+  });
+
+  it("Max handler swallows liveApiEnabled=false when env forces on", async () => {
+    const initialRes = await fetch(appState.configUrl);
+    const initial = await initialRes.json();
+
+    expect(initial.liveApiEnabled).toBe(true);
+    expect(initial.tools).toContain("ppal-live-api");
+
+    const handler = mockMax.handlers.get("liveApiEnabled") as (
+      input: unknown,
+    ) => void;
+
+    handler(0);
+
+    const afterRes = await fetch(appState.configUrl);
+    const after = await afterRes.json();
+
+    expect(after.liveApiEnabled).toBe(true);
+    expect(after.tools).toContain("ppal-live-api");
+  });
+
+  it("POST /config liveApiEnabled=false still disables (documented asymmetry for e2e)", async () => {
+    // Prior test left Live API on (the Max handler swallowed the false update).
+    const response = await appState.postConfig({ liveApiEnabled: false });
+    const result = await response.json();
+
+    expect(result.liveApiEnabled).toBe(false);
+    expect(result.tools).not.toContain("ppal-live-api");
   });
 });
 

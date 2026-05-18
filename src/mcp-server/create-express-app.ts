@@ -36,9 +36,13 @@ interface ProducerPalConfig {
 
 // ENABLE_LIVE_API=true forces the Live API tool on for dev builds
 // (npm run dev:debug / build:debug). When set, the device Setup-tab toggle
-// cannot disable it — the Max handler ignores device-side `false` updates.
-// POST /config remains authoritative so e2e tests can still toggle the flag
-// in either direction.
+// cannot disable it — the Max handler at "liveApiEnabled" ignores
+// device-side `false` updates and re-emits the forced value.
+//
+// Asymmetry: POST /config remains authoritative in both directions even
+// when the env var is set. This is intentional so e2e tests can exercise
+// the disabled-state code paths without rebuilding. Production deployments
+// don't set ENABLE_LIVE_API, so the asymmetry is dev-only.
 const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
 const config: ProducerPalConfig = {

@@ -5,12 +5,38 @@
 
 import { type Server } from "node:http";
 import { type AddressInfo } from "node:net";
+import Max from "max-api";
 import { afterAll, beforeAll } from "vitest";
+
+export type MockMax = typeof Max & {
+  handlers: Map<string, (input: unknown) => void>;
+};
+
+export const mockMax = Max as MockMax;
+
+/**
+ * Build a helper that POSTs JSON to a config URL.
+ *
+ * @param configUrl - The fully-qualified /config endpoint
+ * @returns Fetch helper that posts a JSON body
+ */
+export function makePostConfig(
+  configUrl: string,
+): (body: object) => Promise<Response> {
+  return (body: object) =>
+    fetch(configUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+}
 
 interface ExpressAppTestState {
   server: Server | undefined;
   baseUrl: string;
   serverUrl: string;
+  configUrl: string;
+  postConfig: (body: object) => Promise<Response>;
 }
 
 /**
@@ -28,6 +54,10 @@ export function setupExpressAppServer(
     server: undefined,
     baseUrl: "",
     serverUrl: "",
+    configUrl: "",
+    postConfig: () => {
+      throw new Error("postConfig used before server started");
+    },
   };
 
   beforeAll(async () => {
@@ -44,6 +74,8 @@ export function setupExpressAppServer(
 
     state.baseUrl = `http://localhost:${port}`;
     state.serverUrl = `${state.baseUrl}/mcp`;
+    state.configUrl = `${state.baseUrl}/config`;
+    state.postConfig = makePostConfig(state.configUrl);
   });
 
   afterAll(async () => {
