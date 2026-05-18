@@ -27,41 +27,6 @@ export type Provider =
   | "ollama"
   | "custom";
 
-// Gemini-specific settings
-export interface GeminiSettings {
-  apiKey: string;
-  model: string;
-  thinking: string; // "Auto" | "Off" | specific thinking budget (e.g., "5000")
-  temperature: number;
-  showThoughts: boolean;
-}
-
-// Provider settings interface
-export interface ProviderSettings {
-  // Active provider
-  provider: Provider;
-
-  // Per-provider API keys
-  geminiApiKey: string;
-  openaiApiKey: string;
-  mistralApiKey: string;
-  openrouterApiKey: string;
-  lmstudioApiKey: string;
-  ollamaApiKey: string;
-  customApiKey: string;
-
-  // Base URLs for local and custom providers
-  lmstudioBaseUrl: string;
-  ollamaBaseUrl: string;
-  customBaseUrl: string;
-
-  // Common settings
-  model: string;
-  temperature: number;
-  thinking: string;
-  showThoughts: boolean;
-}
-
 // Hook return type for useSettings
 export interface UseSettingsReturn {
   provider: Provider;
