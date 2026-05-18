@@ -22,11 +22,11 @@ export const AGR_NAME_RE = /<Name Value="([^"]*)" \/>/;
  * base indentation matches the pool node's MidiClip-child depth.
  */
 const POST_ISWARPED =
-  "\n\t\t\t\t\t\t<TakeId Value=\"0\" />" +
-  "\n\t\t\t\t\t\t<IsInKey Value=\"false\" />" +
+  '\n\t\t\t\t\t\t<TakeId Value="0" />' +
+  '\n\t\t\t\t\t\t<IsInKey Value="false" />' +
   "\n\t\t\t\t\t\t<ScaleInformation>" +
-  "\n\t\t\t\t\t\t\t<Root Value=\"0\" />" +
-  "\n\t\t\t\t\t\t\t<Name Value=\"0\" />" +
+  '\n\t\t\t\t\t\t\t<Root Value="0" />' +
+  '\n\t\t\t\t\t\t\t<Name Value="0" />' +
   "\n\t\t\t\t\t\t</ScaleInformation>";
 
 /**
@@ -36,7 +36,7 @@ const POST_ISWARPED =
 const POST_PERNOTE =
   "\n\t\t\t\t\t\t\t<NoteProbabilityGroups />" +
   "\n\t\t\t\t\t\t\t<ProbabilityGroupIdGenerator>" +
-  "\n\t\t\t\t\t\t\t\t<NextId Value=\"1\" />" +
+  '\n\t\t\t\t\t\t\t\t<NextId Value="1" />' +
   "\n\t\t\t\t\t\t\t</ProbabilityGroupIdGenerator>";
 
 /**
@@ -47,14 +47,14 @@ const POST_PERNOTE =
  */
 const TAIL_OLD =
   "<ScaleInformation>" +
-  "\n\t\t\t\t\t\t<RootNote Value=\"0\" />" +
-  "\n\t\t\t\t\t\t<Name Value=\"Major\" />" +
+  '\n\t\t\t\t\t\t<RootNote Value="0" />' +
+  '\n\t\t\t\t\t\t<Name Value="Major" />' +
   "\n\t\t\t\t\t</ScaleInformation>" +
-  "\n\t\t\t\t\t<IsInKey Value=\"false\" />" +
-  "\n\t\t\t\t\t<NoteSpellingPreference Value=\"3\" />";
+  '\n\t\t\t\t\t<IsInKey Value="false" />' +
+  '\n\t\t\t\t\t<NoteSpellingPreference Value="3" />';
 const TAIL_NEW =
-  "<NoteSpellingPreference Value=\"0\" />" +
-  "\n\t\t\t\t\t<AccidentalSpellingPreference Value=\"3\" />";
+  '<NoteSpellingPreference Value="0" />' +
+  '\n\t\t\t\t\t<AccidentalSpellingPreference Value="3" />';
 
 /**
  * The Live-12 `<ExpressionGrid>` block injected directly after
@@ -62,12 +62,12 @@ const TAIL_NEW =
  */
 const POST_PREFERFLAT =
   "\n\t\t\t\t\t<ExpressionGrid>" +
-  "\n\t\t\t\t\t\t<FixedNumerator Value=\"1\" />" +
-  "\n\t\t\t\t\t\t<FixedDenominator Value=\"16\" />" +
-  "\n\t\t\t\t\t\t<GridIntervalPixel Value=\"20\" />" +
-  "\n\t\t\t\t\t\t<Ntoles Value=\"2\" />" +
-  "\n\t\t\t\t\t\t<SnapToGrid Value=\"false\" />" +
-  "\n\t\t\t\t\t\t<Fixed Value=\"false\" />" +
+  '\n\t\t\t\t\t\t<FixedNumerator Value="1" />' +
+  '\n\t\t\t\t\t\t<FixedDenominator Value="16" />' +
+  '\n\t\t\t\t\t\t<GridIntervalPixel Value="20" />' +
+  '\n\t\t\t\t\t\t<Ntoles Value="2" />' +
+  '\n\t\t\t\t\t\t<SnapToGrid Value="false" />' +
+  '\n\t\t\t\t\t\t<Fixed Value="false" />' +
   "\n\t\t\t\t\t</ExpressionGrid>";
 
 /** Matches the trailing groove-level `<SourceContext>...</SourceContext>`. */
@@ -257,9 +257,7 @@ export function extractMidiClip(grooveXml: string): string {
   const open = grooveXml.search(/<MidiClip\b/);
 
   if (open === -1) {
-    throw new Error(
-      "unerwartetes .agr-Format: kein eingebetteter <MidiClip>",
-    );
+    throw new Error("unerwartetes .agr-Format: kein eingebetteter <MidiClip>");
   }
 
   const close = grooveXml.indexOf("</MidiClip>", open);

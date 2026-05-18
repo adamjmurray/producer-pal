@@ -10,8 +10,7 @@ import { describe, expect, it } from "vitest";
 import { readAls } from "#src/automation/als-file.ts";
 import { runCli } from "../ppal-write-automation.ts";
 
-const AGR =
-  "/Users/macuser/Desktop/AIbleton/g5b-fixture/G5b-RockFatback.agr";
+const AGR = "/Users/macuser/Desktop/AIbleton/g5b-fixture/G5b-RockFatback.agr";
 const BEFORE_ALS =
   "/Users/macuser/Desktop/AIbleton/g5b-fixture/" +
   "G5b-before Project/G5b-before.als";
@@ -169,7 +168,9 @@ describe("groove subcommand", () => {
       expect([...afterPool.matchAll(/<Groove Id="\d+">/g)]).toHaveLength(2);
       expect(afterPool).toContain('<Groove Id="5">');
       // .agr-interner Name als Default.
-      expect(afterPool).toContain('<Name Value="Rock Fatback - 4 bars 16ths" />');
+      expect(afterPool).toContain(
+        '<Name Value="Rock Fatback - 4 bars 16ths" />',
+      );
       // Note-Attribute gestrippt im neuen Eintrag.
       expect(afterPool).not.toContain("VelocityDeviation=");
       // Bestands-Groove 4: Selection true -> false.
@@ -217,9 +218,7 @@ describe("groove subcommand", () => {
     copyFileSync(BEFORE_ALS, als);
 
     try {
-      expect(
-        runCli(["groove", "import", "--als", als, "--force"]),
-      ).toBe(1);
+      expect(runCli(["groove", "import", "--als", als, "--force"])).toBe(1);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

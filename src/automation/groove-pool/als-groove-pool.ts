@@ -49,7 +49,9 @@ export function parseAgr(buf: Buffer): string {
   }
 
   if (!/<Ableton\b/.test(text)) {
-    throw new Error("unerwartetes .agr-Format: Root-Element ist nicht <Ableton>");
+    throw new Error(
+      "unerwartetes .agr-Format: Root-Element ist nicht <Ableton>",
+    );
   }
 
   const open = text.indexOf("<Groove");

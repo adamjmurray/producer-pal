@@ -12,7 +12,7 @@ import {
   injectGrooveIntoPool,
   parseAgr,
   transformToPoolGroove,
-} from "../als-groove-pool.ts";
+} from "../groove-pool/als-groove-pool.ts";
 import { readAls } from "../als-file.ts";
 
 const AGR_PATH =
@@ -93,7 +93,9 @@ describe("parseAgr (T2)", () => {
 
   it("<Groove> mit Id (kein bare .agr-Groove) -> Klartextfehler", () => {
     expect(() =>
-      parseAgr(Buffer.from('<Ableton><Groove Id="3"></Groove></Ableton>', "utf8")),
+      parseAgr(
+        Buffer.from('<Ableton><Groove Id="3"></Groove></Ableton>', "utf8"),
+      ),
     ).toThrow(/ohne id|bare|id/i);
   });
 });
@@ -110,7 +112,7 @@ describe("extractGrooveFromAgr (T3)", () => {
 
   it("kein <Name> -> Klartextfehler", () => {
     expect(() =>
-      extractGrooveFromAgr("<Groove><LomId Value=\"0\" /></Groove>"),
+      extractGrooveFromAgr('<Groove><LomId Value="0" /></Groove>'),
     ).toThrow(/name/i);
   });
 
@@ -288,9 +290,9 @@ describe("injectGrooveIntoPool + Mitigation-B (T5) — gegen echte G5b-.als", ()
     expect([...beforePool.matchAll(/<Groove Id="\d+">/g)]).toHaveLength(1);
     expect([...afterPool.matchAll(/<Groove Id="\d+">/g)]).toHaveLength(2);
     expect(afterPool).toContain('<Groove Id="5">');
-    expect(
-      afterPool.indexOf('<Groove Id="5">'),
-    ).toBeGreaterThan(afterPool.indexOf('<Groove Id="4">'));
+    expect(afterPool.indexOf('<Groove Id="5">')).toBeGreaterThan(
+      afterPool.indexOf('<Groove Id="4">'),
+    );
     expect(afterPool.indexOf("</Grooves>")).toBeGreaterThan(
       afterPool.indexOf('<Groove Id="5">'),
     );
@@ -342,14 +344,17 @@ describe("injectGrooveIntoPool + Mitigation-B (T5) — gegen echte G5b-.als", ()
 
   it("kein <GroovePool> -> Klartextfehler (kein I/O)", () => {
     expect(() =>
-      injectGrooveIntoPool("<Ableton><LiveSet /></Ableton>", "<Groove Id=\"5\" />"),
+      injectGrooveIntoPool(
+        "<Ableton><LiveSet /></Ableton>",
+        '<Groove Id="5" />',
+      ),
     ).toThrow(/groovepool/i);
   });
 
   it("kein <Grooves> im Pool -> Klartextfehler", () => {
     expect(() =>
       injectGrooveIntoPool(
-        "<GroovePool><LomId Value=\"0\" /></GroovePool>",
+        '<GroovePool><LomId Value="0" /></GroovePool>',
         '<Groove Id="5" />',
       ),
     ).toThrow(/grooves/i);
@@ -357,13 +362,77 @@ describe("injectGrooveIntoPool + Mitigation-B (T5) — gegen echte G5b-.als", ()
 
   it("Pool ohne selektierten Eintrag -> kein Flip, kein Fehler", () => {
     const pool =
-      '<Ableton><GroovePool><Grooves>' +
+      "<Ableton><GroovePool><Grooves>" +
       '<Groove Id="4"><Selection Value="false" /></Groove>' +
-      "</Grooves><DefaultGrooveId Value=\"-1\" /></GroovePool></Ableton>";
+      '</Grooves><DefaultGrooveId Value="-1" /></GroovePool></Ableton>';
     const out = injectGrooveIntoPool(pool, '<Groove Id="5" />');
 
     expect(out).toContain('<Groove Id="5" />');
     expect([...out.matchAll(/<Selection Value="false" \/>/g)]).toHaveLength(1);
+  });
+});
+
+// Defensive-Branch-Abdeckung der byte-belegten Transform-Anker
+// (replaceOnce 0-/Mehrfach-Treffer, extractMidiClip-Fehler, shorten-
+// Lang-Needle). Diese Zweige sind Recon-Disziplin-Wachen: schlaegt die
+// .agr von der G5b-Ground-Truth ab, MUSS laut werden statt still falsch.
+describe("Transform-Anker Defensiv-Zweige (Branch-Coverage)", () => {
+  const realRaw = parseAgr(AGR_BUF);
+
+  it("fehlender Anker (kein <IsWarped>) -> Klartextfehler (replaceOnce not-found)", () => {
+    const broken = realRaw.replace('<IsWarped Value="true" />', "");
+
+    expect(() =>
+      transformToPoolGroove({ name: "X", midiClip: "", raw: broken }, "5", "X"),
+    ).toThrow(/Transform-Anker fehlt/);
+  });
+
+  it("mehrdeutiger Anker (doppeltes </PerNoteEventStore>) -> Klartextfehler", () => {
+    const dup = realRaw.replace(
+      "</PerNoteEventStore>",
+      "</PerNoteEventStore></PerNoteEventStore>",
+    );
+
+    expect(() =>
+      transformToPoolGroove({ name: "X", midiClip: "", raw: dup }, "5", "X"),
+    ).toThrow(/Transform-Anker mehrdeutig/);
+  });
+
+  it("langer fehlender Anker -> Fehlermeldung gekuerzt (shorten >40)", () => {
+    // TAIL_OLD (>40 Zeichen) byte-exakt entfernen: erst ist <IsWarped>
+    // + </PerNoteEventStore> noch da (Schritt 3/5 ok), Schritt 6 (TAIL_OLD)
+    // wirft mit '...'-gekuerztem Needle (shorten-Lang-Zweig).
+    const tailOld =
+      "<ScaleInformation>" +
+      '\n\t\t\t\t\t\t<RootNote Value="0" />' +
+      '\n\t\t\t\t\t\t<Name Value="Major" />' +
+      "\n\t\t\t\t\t</ScaleInformation>" +
+      '\n\t\t\t\t\t<IsInKey Value="false" />' +
+      '\n\t\t\t\t\t<NoteSpellingPreference Value="3" />';
+    const noTail = realRaw.replace(tailOld, "");
+
+    expect(noTail).not.toContain(tailOld);
+    expect(() =>
+      transformToPoolGroove({ name: "X", midiClip: "", raw: noTail }, "5", "X"),
+    ).toThrow(/Transform-Anker fehlt[\S\s]*\.{3}/);
+  });
+
+  it("extractMidiClip: <MidiClip> ohne </MidiClip> -> Klartextfehler", () => {
+    expect(() =>
+      extractGrooveFromAgr(
+        '<Groove><Name Value="X" /><MidiClip Id="0"></Groove>',
+      ),
+    ).toThrow(/midiclip nicht geschlossen|unerwartetes \.agr/i);
+  });
+
+  it("buildPoolGrooveNode: .raw ohne <Name> -> Klartextfehler (Guard)", () => {
+    expect(() =>
+      transformToPoolGroove(
+        { name: "X", midiClip: "", raw: "<Groove></Groove>" },
+        "5",
+        "X",
+      ),
+    ).toThrow(/kein <name>/i);
   });
 });
 
@@ -377,9 +446,7 @@ describe("allocateGrooveId (T5)", () => {
   });
 
   it("leerer Pool -> 0", () => {
-    expect(
-      allocateGrooveId("<GroovePool><Grooves /></GroovePool>"),
-    ).toBe("0");
+    expect(allocateGrooveId("<GroovePool><Grooves /></GroovePool>")).toBe("0");
   });
 
   it("mehrere Ids -> max+1 (4,9 -> 10)", () => {

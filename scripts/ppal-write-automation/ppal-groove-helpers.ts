@@ -11,19 +11,19 @@ import {
   writeAls,
 } from "#src/automation/als-file.ts";
 import {
-  allocateGrooveId,
-  extractGrooveFromAgr,
-  injectGrooveIntoPool,
-  parseAgr,
-  transformToPoolGroove,
-} from "#src/automation/als-groove-pool.ts";
-import {
   listGrooves,
   locateGrooveEntry,
   patchGrooveTune,
   poolGrooveIds,
   setClipGrooveId,
 } from "#src/automation/als-groove.ts";
+import {
+  allocateGrooveId,
+  extractGrooveFromAgr,
+  injectGrooveIntoPool,
+  parseAgr,
+  transformToPoolGroove,
+} from "#src/automation/groove-pool/als-groove-pool.ts";
 import {
   collectKeyValuePairs,
   isOnlyWindowChanged,
@@ -114,8 +114,7 @@ function runGrooveImport(rest: string[]): number {
 
   // Mitigation-B: alles AUSSERHALB <GroovePool> byte-identisch.
   const poolRe = /<GroovePool>[\S\s]*?<\/GroovePool>/;
-  const mitigationB =
-    after.replace(poolRe, "") === before.replace(poolRe, "");
+  const mitigationB = after.replace(poolRe, "") === before.replace(poolRe, "");
 
   if (!mitigationB) {
     process.stderr.write(
