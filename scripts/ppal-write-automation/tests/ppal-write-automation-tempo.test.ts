@@ -53,6 +53,53 @@ describe("CLI tempo list", () => {
   });
 });
 
+describe("CLI tempo error paths", () => {
+  /**
+   * Capture stderr while running a thunk, restoring the original writer.
+   * @param fn - Thunk to execute with stderr captured.
+   * @returns The exit code and the captured stderr string.
+   */
+  function withStderr(fn: () => number): { code: number; err: string } {
+    const buf: string[] = [];
+    const orig = process.stderr.write.bind(process.stderr);
+
+    process.stderr.write = ((s: string) => {
+      buf.push(String(s));
+
+      return true;
+    }) as typeof process.stderr.write;
+
+    try {
+      return { code: fn(), err: buf.join("") };
+    } finally {
+      process.stderr.write = orig;
+    }
+  }
+
+  it("returns 1 + usage on an unknown subcommand", () => {
+    const { code, err } = withStderr(() => runTempo(["bogus"]));
+
+    expect(code).toBe(1);
+    expect(err).toContain("tempo list|write");
+  });
+
+  it("returns 1 when `list` is missing --als", () => {
+    const { code, err } = withStderr(() => runTempo(["list"]));
+
+    expect(code).toBe(1);
+    expect(err).toContain("--als");
+  });
+
+  it("returns 1 when `write` is missing --breakpoints", () => {
+    const { code, err } = withStderr(() =>
+      runTempo(["write", "--als", BEFORE_ALS]),
+    );
+
+    expect(code).toBe(1);
+    expect(err).toContain("--breakpoints");
+  });
+});
+
 describe("CLI tempo write", () => {
   it("writes linear tempo breakpoints into a copy and re-parse-verifies", () => {
     const tmp = tmpCopy();
