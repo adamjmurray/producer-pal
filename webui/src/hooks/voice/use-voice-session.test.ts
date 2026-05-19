@@ -282,18 +282,38 @@ describe("useVoiceSession.connect", () => {
     expect(result.current.error).toMatch(/value/i);
   });
 
-  it("primes message items via session.updateHistory when initialHistory is provided", async () => {
+  it("seeds initialHistory: rewrites audio→text, passes text through, drops untranscribed audio and function_calls", async () => {
     stubFetchOk({ value: "ek_x" });
 
     const initialHistory = [
+      // user audio with transcript → input_text
       {
-        itemId: "u1",
+        itemId: "u-audio",
         type: "message",
         role: "user",
         status: "completed",
         content: [{ type: "input_audio", transcript: "earlier" }],
       },
-      // Function-call items must be filtered out — the SDK can't re-add them.
+      // user mixed: untranscribed audio is dropped, typed text survives
+      {
+        itemId: "u-mixed",
+        type: "message",
+        role: "user",
+        status: "completed",
+        content: [
+          { type: "input_audio", transcript: null },
+          { type: "input_text", text: "typed too" },
+        ],
+      },
+      // user with only untranscribed audio → whole item dropped
+      {
+        itemId: "u-pending",
+        type: "message",
+        role: "user",
+        status: "in_progress",
+        content: [{ type: "input_audio", transcript: null }],
+      },
+      // function_call: dropped (SDK refuses to re-add)
       {
         itemId: "fc1",
         type: "function_call",
@@ -302,12 +322,28 @@ describe("useVoiceSession.connect", () => {
         arguments: "{}",
         output: '{"ok":true}',
       },
+      // assistant audio with transcript → output_text
       {
-        itemId: "a1",
+        itemId: "a-audio",
         type: "message",
         role: "assistant",
         status: "completed",
         content: [{ type: "output_audio", transcript: "ok" }],
+      },
+      // assistant pre-existing text → passes through
+      {
+        itemId: "a-text",
+        type: "message",
+        role: "assistant",
+        status: "completed",
+        content: [{ type: "output_text", text: "reply" }],
+      },
+      // system message → passes through
+      {
+        itemId: "sys",
+        type: "message",
+        role: "system",
+        content: [{ type: "input_text", text: "system note" }],
       },
     ];
     const { result } = renderHook(() => useVoiceSession(defaultParams()));
@@ -322,12 +358,26 @@ describe("useVoiceSession.connect", () => {
 
     const session = mocks.FakeSession.instances[0]!;
     const args = session.updateHistory.mock.calls[0]?.[0] as
-      | { itemId: string; type: string }[]
+      | { itemId: string; content: { type: string; text: string }[] }[]
       | undefined;
 
     expect(args).toBeDefined();
-    expect(args!.map((i) => i.itemId)).toStrictEqual(["u1", "a1"]);
-    expect(args!.every((i) => i.type === "message")).toBe(true);
+    expect(args!.map((i) => i.itemId)).toStrictEqual([
+      "u-audio",
+      "u-mixed",
+      "a-audio",
+      "a-text",
+      "sys",
+    ]);
+    expect(args![0]!.content).toStrictEqual([
+      { type: "input_text", text: "earlier" },
+    ]);
+    expect(args![1]!.content).toStrictEqual([
+      { type: "input_text", text: "typed too" },
+    ]);
+    expect(args![2]!.content).toStrictEqual([
+      { type: "output_text", text: "ok" },
+    ]);
   });
 
   it("does not call updateHistory when initialHistory is empty or omitted", async () => {
@@ -496,7 +546,7 @@ describe("useVoiceSession transport event handling", () => {
     expect(result.current.history).toHaveLength(1);
   });
 
-  it("session.error sets the error state with a string message", async () => {
+  it("session.error sets the error state with a string message for Errors, strings, and object payloads", async () => {
     const { result, session } = await connectAndGetSession();
 
     await act(() => {
@@ -508,6 +558,52 @@ describe("useVoiceSession transport event handling", () => {
       session.emit("error", { type: "error", error: "plain string" });
     });
     expect(result.current.error).toBe("plain string");
+
+    // Server-side errors come through as plain objects — extract .message
+    // rather than letting String(obj) produce "[object Object]".
+    await act(() => {
+      session.emit("error", {
+        type: "error",
+        error: { type: "invalid_request_error", message: "bad item" },
+      });
+    });
+    expect(result.current.error).toBe("bad item");
+
+    // Nested { error: { message } } shape, also stringified safely otherwise
+    await act(() => {
+      session.emit("error", {
+        type: "error",
+        error: { error: { code: "x", message: "nested message" } },
+      });
+    });
+    expect(result.current.error).toBe("nested message");
+
+    // Opaque object: must JSON-stringify (not "[object Object]")
+    await act(() => {
+      session.emit("error", {
+        type: "error",
+        error: { weird: "shape" },
+      });
+    });
+    expect(result.current.error).toBe('{"weird":"shape"}');
+
+    // Non-string, non-object: falls back to String()
+    await act(() => {
+      session.emit("error", { type: "error", error: 42 });
+    });
+    expect(result.current.error).toBe("42");
+  });
+
+  it("session.error stringifies an object with a circular reference safely", async () => {
+    const { result, session } = await connectAndGetSession();
+    const circular: Record<string, unknown> = { kind: "loop" };
+
+    circular.self = circular;
+
+    await act(() => {
+      session.emit("error", { type: "error", error: circular });
+    });
+    expect(result.current.error).toMatch(/loop|object/i);
   });
 });
 

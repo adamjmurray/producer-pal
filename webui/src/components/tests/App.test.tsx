@@ -112,7 +112,7 @@ describe("App", () => {
       });
       render(<App />);
       // VoiceApp shows the Talk button; ChatScreen does not
-      expect(document.body.textContent).toMatch(/Talk|Restart/);
+      expect(document.body.textContent).toMatch(/Talk|Stop/);
     });
 
     it("does NOT mount VoiceApp when only the in-modal model is realtime", () => {
@@ -126,7 +126,7 @@ describe("App", () => {
         savedModel: "gemini-1.5-flash",
       });
       render(<App />);
-      expect(document.body.textContent).not.toMatch(/Talk|Restart/);
+      expect(document.body.textContent).not.toMatch(/Talk|Stop/);
     });
   });
 

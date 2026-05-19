@@ -17,7 +17,7 @@ interface VoiceControlsProps {
 }
 
 /**
- * Composer-area voice controls: Talk/Restart button, status badge, and the
+ * Composer-area voice controls: Talk/Stop button, status badge, and the
  * contextual secondary action (Interrupt while the assistant is working, Mute
  * otherwise). Rendered in the composer slot of AppShell so it sits where the
  * chat ChatInput would.
@@ -57,7 +57,7 @@ export function VoiceControls({
               }
             `}
       >
-        {isBusy ? "..." : isConnected ? "Restart" : "Talk"}
+        {isBusy ? "..." : isConnected ? "Stop" : "Talk"}
       </button>
       <StatusBadge
         status={voice.status}

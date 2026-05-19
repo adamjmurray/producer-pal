@@ -9,6 +9,7 @@ import {
   RealtimeAgent,
   RealtimeSession,
   type RealtimeItem,
+  type RealtimeMessageItem,
   type TransportEvent,
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
@@ -50,9 +51,12 @@ interface UseVoiceSessionReturn {
   /**
    * Open the realtime connection. If `initialHistory` is provided, message
    * items from it are seeded onto the server's conversation after connect so
-   * the model has prior context. function_call items are silently dropped —
-   * the Realtime SDK refuses to re-add them ("Function calls cannot be
-   * manually added or updated at the moment.").
+   * the model has prior context. Audio content (`input_audio` / `output_audio`)
+   * is converted to text content (`input_text` / `output_text`) using the
+   * stored transcript — the Realtime server rejects audio items with no audio
+   * bytes. function_call items are silently dropped because the SDK refuses to
+   * re-add them ("Function calls cannot be manually added or updated at the
+   * moment.").
    */
   connect: (initialHistory?: RealtimeItem[]) => Promise<void>;
   disconnect: () => Promise<void>;
@@ -205,9 +209,7 @@ export function useVoiceSession(
 
         session.on("error", (err: { type: "error"; error: unknown }) => {
           console.error("RealtimeSession error", err.error);
-          const inner = err.error;
-
-          setError(inner instanceof Error ? inner.message : String(inner));
+          setError(extractErrorMessage(err.error));
         });
 
         // eslint-disable-next-line require-atomic-updates -- ref is not subject to React batching
@@ -219,19 +221,18 @@ export function useVoiceSession(
 
         if (initialHistory && initialHistory.length > 0) {
           // The SDK's resetHistory only echoes "message" items back to the
-          // server — function_call/mcp_call items are dropped. Filter to avoid
-          // SDK warnings and rely on the saved record for tool-call review.
-          const primable = initialHistory.filter((i) => i.type === "message");
+          // server — function_call/mcp_call items are dropped. Audio items are
+          // also rejected server-side without real audio bytes, so we replace
+          // them with text content carrying the saved transcript.
+          const primable = toSeedableHistory(initialHistory);
 
           if (primable.length > 0) session.updateHistory(primable);
         }
 
         setStatus("connected");
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-
         setStatus("error");
-        setError(message);
+        setError(extractErrorMessage(err));
         await cleanup();
       }
     },
@@ -255,7 +256,7 @@ export function useVoiceSession(
       session.mute(next);
       setIsMuted(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(extractErrorMessage(err));
     }
   }, [isMuted]);
 
@@ -272,7 +273,7 @@ export function useVoiceSession(
     try {
       session.interrupt();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(extractErrorMessage(err));
     }
   }, []);
 
@@ -291,7 +292,7 @@ export function useVoiceSession(
       setError(null);
       setRateLimitedUntil(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(extractErrorMessage(err));
     }
   }, []);
 
@@ -414,4 +415,103 @@ async function safeJson(response: Response): Promise<unknown> {
   } catch {
     return null;
   }
+}
+
+/**
+ * Convert a saved voice history into items the Realtime server will accept via
+ * `conversation.item.create`. Drops non-message items (function/MCP calls are
+ * not re-seedable) and rewrites audio content to text content carrying the
+ * saved transcript. Items left with no usable content are dropped.
+ *
+ * @param history - Saved voice history items
+ * @returns Text-only message items in original order
+ */
+function toSeedableHistory(history: RealtimeItem[]): RealtimeMessageItem[] {
+  const out: RealtimeMessageItem[] = [];
+
+  for (const item of history) {
+    if (item.type !== "message") continue;
+    const seeded = messageToTextOnly(item);
+
+    if (seeded) out.push(seeded);
+  }
+
+  return out;
+}
+
+/**
+ * Rewrite a single message item so its content is text-only. Returns null when
+ * nothing useful remains (e.g. an audio item whose transcript is still null).
+ *
+ * @param item - The message item to rewrite
+ * @returns The text-only message, or null if empty after filtering
+ */
+function messageToTextOnly(
+  item: RealtimeMessageItem,
+): RealtimeMessageItem | null {
+  if (item.role === "system") return item;
+
+  if (item.role === "user") {
+    const content = item.content.flatMap((c) => {
+      if (c.type === "input_text") return [c];
+
+      if (c.transcript) {
+        return [{ type: "input_text" as const, text: c.transcript }];
+      }
+
+      return [];
+    });
+
+    if (content.length === 0) return null;
+
+    return { ...item, content };
+  }
+
+  const content = item.content.flatMap((c) => {
+    if (c.type === "output_text") return [c];
+
+    if (c.transcript) {
+      return [{ type: "output_text" as const, text: c.transcript }];
+    }
+
+    return [];
+  });
+
+  if (content.length === 0) return null;
+
+  return { ...item, content };
+}
+
+/**
+ * Extract a human-readable message from an unknown error value. Handles Error
+ * instances, plain strings, and the common `{ message: ... }` /
+ * `{ error: { message: ... } }` server-error shapes. Falls back to
+ * `JSON.stringify` so an opaque object doesn't surface as "[object Object]".
+ *
+ * @param value - The error value
+ * @returns A non-empty string suitable for display
+ */
+function extractErrorMessage(value: unknown): string {
+  if (value instanceof Error) return value.message;
+  if (typeof value === "string") return value;
+
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+
+    if (typeof obj.message === "string" && obj.message) return obj.message;
+
+    if (obj.error && typeof obj.error === "object") {
+      const nested = (obj.error as Record<string, unknown>).message;
+
+      if (typeof nested === "string" && nested) return nested;
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  return String(value);
 }
