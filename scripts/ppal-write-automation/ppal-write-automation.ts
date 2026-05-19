@@ -26,6 +26,7 @@ import {
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
 import { parseFlags } from "./clip-patch-cli.ts";
+import { runArrangementLoop } from "./ppal-arrangement-loop-helpers.ts";
 import { runClipFlags } from "./ppal-clip-flags-helpers.ts";
 import { runClipScale } from "./ppal-clip-scale-helpers.ts";
 import { runClipSettings } from "./ppal-clip-settings-helpers.ts";
@@ -433,6 +434,7 @@ type DispatchHandler = (
 const DISPATCH: Record<string, DispatchHandler> = {
   list: (_rest, flags) => runList(flags),
   write: (_rest, flags) => runWrite(flags),
+  "arrangement-loop": (rest) => runArrangementLoop(rest, parseFlags),
   "clip-settings": (rest) => runClipSettings(rest, parseFlags),
   fades: (rest) => runFades(rest, parseFlags),
   "fadeout-curve": (rest) => runFadeoutCurve(rest, parseFlags),
