@@ -34,6 +34,7 @@ import { runGroove } from "./ppal-groove-helpers.ts";
 import { runMidiExport } from "./ppal-midi-export-helpers.ts";
 import { runMixerRouting } from "./ppal-mixer-routing-helpers.ts";
 import { runModulation } from "./ppal-modulation-helpers.ts";
+import { runRouting } from "./ppal-routing-helpers.ts";
 import { runShiftTime } from "./ppal-shift-time-helpers.ts";
 import { runTempo } from "./ppal-tempo-helpers.ts";
 import { runTimesig } from "./ppal-timesig-helpers.ts";
@@ -53,18 +54,28 @@ interface WriteArgs {
 }
 
 /**
+ * Write an error message to stderr and return exit code 1. Centralizes the
+ * repeated `stderr.write(msg); return 1` pattern; behavior is identical to
+ * the inline form (same bytes written, same exit code).
+ * @param msg - The full error line (caller includes any trailing newline)
+ * @returns Always 1
+ */
+function fail(msg: string): 1 {
+  process.stderr.write(msg);
+
+  return 1;
+}
+
+/**
  * Run the `list` subcommand: print automation params for a track device.
  * @param flags - Parsed flag map
  * @returns Exit code (0 on success, 1 on error)
  */
 function runList(flags: Record<string, string>): number {
-  const alsPath = flags.als;
-  const trackName = flags.track;
+  const { als: alsPath, track: trackName } = flags;
 
   if (alsPath == null || trackName == null) {
-    process.stderr.write("FEHLER: --als und --track sind erforderlich\n");
-
-    return 1;
+    return fail("FEHLER: --als und --track sind erforderlich\n");
   }
 
   const deviceIndex = flags.device != null ? Number(flags.device) : 0;
@@ -86,11 +97,7 @@ function runList(flags: Record<string, string>): number {
  * @returns Parsed WriteArgs or null if required flags are missing
  */
 function parseWriteArgs(flags: Record<string, string>): WriteArgs | null {
-  const als = flags.als;
-  const track = flags.track;
-  const clip = flags.clip;
-  const param = flags.param;
-  const breakpoints = flags.breakpoints;
+  const { als, track, clip, param, breakpoints } = flags;
 
   if (
     als == null ||
@@ -131,11 +138,9 @@ function runWrite(flags: Record<string, string>): number {
   const args = parseWriteArgs(flags);
 
   if (args == null) {
-    process.stderr.write(
+    return fail(
       "FEHLER: --als, --track, --clip, --param und --breakpoints sind erforderlich\n",
     );
-
-    return 1;
   }
 
   const xml = readAls(args.als);
@@ -204,11 +209,9 @@ function runWrite(flags: Record<string, string>): number {
   const pointeeCheck = `<PointeeId Value="${targetId}" />`;
 
   if (!clipBlock.includes(pointeeCheck)) {
-    process.stderr.write(
+    return fail(
       `FEHLER: Verifizierung fehlgeschlagen — PointeeId ${targetId} nicht im Clip gefunden\n`,
     );
-
-    return 1;
   }
 
   const floatEventCount = [...clipBlock.matchAll(/<FloatEvent /g)].length;
@@ -216,19 +219,15 @@ function runWrite(flags: Record<string, string>): number {
   const expectedFloatEvents = validated.length + 1;
 
   if (floatEventCount !== expectedFloatEvents) {
-    process.stderr.write(
+    return fail(
       `FEHLER: Verifizierung fehlgeschlagen — erwartet ${expectedFloatEvents} FloatEvents, gefunden ${floatEventCount}\n`,
     );
-
-    return 1;
   }
 
   if (!clipBlock.includes("<ClipEnvelope ")) {
-    process.stderr.write(
+    return fail(
       "FEHLER: Verifizierung fehlgeschlagen — <ClipEnvelope nicht im Clip gefunden\n",
     );
-
-    return 1;
   }
 
   process.stdout.write(
@@ -247,11 +246,7 @@ function checkScope(flags: Record<string, string>): number | null {
   const scope = flags.scope ?? "clip";
 
   if (scope !== "clip" && scope !== "arrangement") {
-    process.stderr.write(
-      `FEHLER: unbekanntes --scope "${scope}" (clip|arrangement)\n`,
-    );
-
-    return 1;
+    return fail(`FEHLER: unbekanntes --scope "${scope}" (clip|arrangement)\n`);
   }
 
   if (scope === "arrangement") {
@@ -259,11 +254,9 @@ function checkScope(flags: Record<string, string>): number | null {
 
     // "true" = Boolean-Flag ohne Folgewert (parseFlags-Konvention)
     if (target === undefined || target === "true") {
-      process.stderr.write(
+      return fail(
         "FEHLER: --scope arrangement erfordert --target (mixer:volume|mixer:pan|mixer:send:<n>|device)\n",
       );
-
-      return 1;
     }
   }
 
@@ -317,17 +310,11 @@ function resolveArrangementTarget(
  * @returns Exit code (0 success, 1 error, 2 open-set guard)
  */
 function runWriteArrangement(flags: Record<string, string>): number {
-  const alsPath = flags.als;
-  const track = flags.track;
-  const target = flags.target;
+  const { als: alsPath, track, target } = flags;
   const force = flags.force === "true";
 
   if (alsPath == null || track == null || flags.breakpoints == null) {
-    process.stderr.write(
-      "FEHLER: --als, --track und --breakpoints erforderlich\n",
-    );
-
-    return 1;
+    return fail("FEHLER: --als, --track und --breakpoints erforderlich\n");
   }
 
   if (isSetLikelyOpen() && !force) {
@@ -342,11 +329,9 @@ function runWriteArrangement(flags: Record<string, string>): number {
   const resolved = resolveArrangementTarget(xml, flags, track, target ?? "");
 
   if (resolved == null) {
-    process.stderr.write(
+    return fail(
       `FEHLER: ungültiges --target "${target ?? ""}" (mixer:volume|mixer:pan|mixer:send:<n>|device)\n`,
     );
-
-    return 1;
   }
 
   // flags.breakpoints ist durch den Guard oben garantiert non-null.
@@ -383,11 +368,9 @@ function runWriteArrangement(flags: Record<string, string>): number {
     xml.slice(0, tStart) !== updated.slice(0, tStart) ||
     xml.slice(tEnd) !== updated.slice(tEnd + delta)
   ) {
-    process.stderr.write(
+    return fail(
       "FEHLER: unerwartete Änderung außerhalb des Ziel-Track-Blocks\n",
     );
-
-    return 1;
   }
 
   writeAls(alsPath, updated);
@@ -435,6 +418,37 @@ function runWriteArrangement(flags: Record<string, string>): number {
 }
 
 /**
+ * Subcommand dispatch table. Each handler receives the raw `rest` args and the
+ * pre-parsed `flags` map; key order mirrors the original if-chain. Behavior is
+ * identical to the prior inline dispatch: `list`/`write` consume `flags`, the
+ * `(rest, parseFlags)` handlers consume `rest` plus the module `parseFlags`,
+ * and the `(rest)`-only handlers consume `rest` alone.
+ */
+type DispatchHandler = (
+  rest: string[],
+  flags: Record<string, string>,
+) => number;
+
+const DISPATCH: Record<string, DispatchHandler> = {
+  list: (_rest, flags) => runList(flags),
+  write: (_rest, flags) => runWrite(flags),
+  "clip-settings": (rest) => runClipSettings(rest, parseFlags),
+  fades: (rest) => runFades(rest, parseFlags),
+  "fadeout-curve": (rest) => runFadeoutCurve(rest, parseFlags),
+  groove: (rest) => runGroove(rest),
+  tempo: (rest) => runTempo(rest),
+  timesig: (rest) => runTimesig(rest),
+  "clip-flags": (rest) => runClipFlags(rest),
+  "track-group": (rest) => runTrackGroup(rest),
+  "mixer-routing": (rest) => runMixerRouting(rest),
+  modulation: (rest) => runModulation(rest),
+  "warp-marker": (rest) => runWarpMarker(rest, parseFlags),
+  routing: (rest) => runRouting(rest, parseFlags),
+  "shift-time": (rest) => runShiftTime(rest, parseFlags),
+  "midi-export": (rest) => runMidiExport(rest, parseFlags),
+};
+
+/**
  * Run the CLI with the given argument array and return an exit code.
  * Never throws — all errors are caught and returned as exit codes.
  * @param argv - Argument array (without node and script path)
@@ -445,23 +459,9 @@ export function runCli(argv: string[]): number {
   const flags = parseFlags(rest);
 
   try {
-    if (subcommand === "list") return runList(flags);
-    if (subcommand === "write") return runWrite(flags);
-    if (subcommand === "clip-settings")
-      return runClipSettings(rest, parseFlags);
-    if (subcommand === "fades") return runFades(rest, parseFlags);
-    if (subcommand === "fadeout-curve")
-      return runFadeoutCurve(rest, parseFlags);
-    if (subcommand === "groove") return runGroove(rest);
-    if (subcommand === "tempo") return runTempo(rest);
-    if (subcommand === "timesig") return runTimesig(rest);
-    if (subcommand === "clip-flags") return runClipFlags(rest);
-    if (subcommand === "track-group") return runTrackGroup(rest);
-    if (subcommand === "mixer-routing") return runMixerRouting(rest);
-    if (subcommand === "modulation") return runModulation(rest);
-    if (subcommand === "warp-marker") return runWarpMarker(rest, parseFlags);
-    if (subcommand === "shift-time") return runShiftTime(rest, parseFlags);
-    if (subcommand === "midi-export") return runMidiExport(rest, parseFlags);
+    const handler = DISPATCH[subcommand ?? ""];
+
+    if (handler != null) return handler(rest, flags);
 
     process.stderr.write(
       `FEHLER: Unbekanntes Subcommand "${subcommand}". Nutze list oder write.\n`,
