@@ -4,14 +4,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useMemo, useState } from "preact/hooks";
+import { MessageList } from "#webui/components/chat/MessageList";
 import {
   loadEnabledTools,
   loadProviderSettings,
 } from "#webui/hooks/settings/settings-helpers";
+import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 import { isFirefox } from "#webui/utils/browser-detect";
 import { getMcpUrl } from "#webui/utils/mcp-url";
-import { HistoryPane } from "./HistoryPane";
+
+// Voice transcripts are read-only — the user can't edit past turns or retry
+// individual responses (the underlying audio is gone). MessageList still
+// requires these handlers; provide no-ops.
+const noopRetry = async (): Promise<void> => undefined;
+const noopEdit = async (): Promise<void> => undefined;
 
 /**
  * Standalone Producer Pal voice page. Reuses the chat UI's localStorage
@@ -35,6 +42,11 @@ export function VoiceApp() {
     openAiKey,
     enabledTools,
   });
+
+  const messages = useMemo(
+    () => realtimeItemsToUIMessages(voice.history),
+    [voice.history],
+  );
 
   useEffect(() => {
     window.scrollTo({
@@ -118,7 +130,20 @@ export function VoiceApp() {
           </div>
         )}
 
-        <HistoryPane history={voice.history} />
+        {messages.length === 0 ? (
+          <div className="text-sm text-zinc-500 text-center py-8">
+            Conversation will appear here once you start talking.
+          </div>
+        ) : (
+          <MessageList
+            messages={messages}
+            isAssistantResponding={voice.assistantThinking}
+            handleRetry={noopRetry}
+            handleEdit={noopEdit}
+            showTimestamps={false}
+            showTokenUsage={false}
+          />
+        )}
 
         <p className="text-xs text-zinc-500">
           Transport events are logged to the browser console (filter:{" "}

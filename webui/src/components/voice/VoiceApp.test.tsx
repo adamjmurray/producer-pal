@@ -339,4 +339,117 @@ describe("VoiceApp", () => {
 
     expect(screen.queryByText(/firefox is not supported/i)).toBeNull();
   });
+
+  describe("transcript rendering", () => {
+    it("shows the empty-state placeholder when history is empty", () => {
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+
+      render(<VoiceApp />);
+
+      expect(
+        screen.getByText(
+          /conversation will appear here once you start talking/i,
+        ),
+      ).toBeDefined();
+      expect(screen.queryByTestId("message-list")).toBeNull();
+    });
+
+    it("renders the chat MessageList when history has items", () => {
+      const history: RealtimeItem[] = [
+        {
+          itemId: "u1",
+          type: "message",
+          role: "user",
+          status: "completed",
+          content: [{ type: "input_audio", transcript: "hello pal" }],
+        },
+        {
+          itemId: "a1",
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_audio", transcript: "hi there" }],
+        },
+      ];
+
+      mocks.useVoiceSession.mockReturnValue(
+        baseSession({ status: "connected", history }),
+      );
+
+      render(<VoiceApp />);
+
+      expect(screen.getByTestId("message-list")).toBeDefined();
+      expect(screen.getByText("hello pal")).toBeDefined();
+      expect(screen.getByText("hi there")).toBeDefined();
+      expect(screen.queryByText(/conversation will appear here/i)).toBeNull();
+    });
+
+    it("clicking Edit and Save on a transcribed user message resolves the voice no-op handler", async () => {
+      const history: RealtimeItem[] = [
+        {
+          itemId: "u1",
+          type: "message",
+          role: "user",
+          status: "completed",
+          content: [{ type: "input_audio", transcript: "rename track 1" }],
+        },
+        {
+          itemId: "a1",
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_audio", transcript: "done" }],
+        },
+      ];
+
+      mocks.useVoiceSession.mockReturnValue(
+        baseSession({ status: "connected", history }),
+      );
+
+      render(<VoiceApp />);
+
+      fireEvent.click(screen.getByLabelText(/edit message/i));
+      // Save & Send commits via the voice no-op edit handler (returns void Promise)
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /save & send/i }));
+      });
+
+      // Editor closes after save — original message text re-appears in display mode
+      expect(screen.getByText("rename track 1")).toBeDefined();
+    });
+
+    it("clicking Retry on an assistant bubble invokes the voice no-op retry handler", async () => {
+      const history: RealtimeItem[] = [
+        {
+          itemId: "u1",
+          type: "message",
+          role: "user",
+          status: "completed",
+          content: [{ type: "input_audio", transcript: "do it" }],
+        },
+        {
+          itemId: "a1",
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_audio", transcript: "ok" }],
+        },
+      ];
+
+      mocks.useVoiceSession.mockReturnValue(
+        baseSession({ status: "connected", history }),
+      );
+
+      render(<VoiceApp />);
+
+      const retryBtn = screen.getByRole("button", { name: /retry/i });
+
+      await act(async () => {
+        fireEvent.click(retryBtn);
+      });
+
+      // No throw — handler resolves silently. Bubble still rendered.
+      expect(screen.getByText("ok")).toBeDefined();
+    });
+  });
 });

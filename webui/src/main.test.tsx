@@ -24,6 +24,12 @@ vi.mock(import("./demo/DemoMode"), () => ({
   DemoMode: () => <div>DemoMode</div>,
 }));
 
+// Mock VoiceApp component (its transitive imports include preact's Component
+// via ErrorBoundary, which conflicts with the partial "preact" mock above)
+vi.mock(import("./components/voice/VoiceApp"), () => ({
+  VoiceApp: () => <div>VoiceApp</div>,
+}));
+
 // Mock CSS import
 vi.mock(import("./main.css"), () => ({}));
 
