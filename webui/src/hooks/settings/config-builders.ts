@@ -5,7 +5,34 @@
 
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
+export type RealtimeReasoningEffort =
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh";
+
 export type AnthropicEffort = "low" | "medium" | "high" | "max";
+
+/**
+ * Maps thinking UI setting to OpenAI Realtime API reasoning.effort. The
+ * Realtime API supports an additional "minimal" tier below "low" for the
+ * Off case. Default returns undefined so the server picks its own default.
+ * @param thinking - Thinking mode setting from UI
+ * @returns A reasoning effort tier, or undefined to omit the field
+ */
+export function mapThinkingToRealtimeEffort(
+  thinking: string,
+): RealtimeReasoningEffort | undefined {
+  switch (thinking) {
+    case "Off":
+      return "minimal";
+    case "Max":
+      return "high";
+    default:
+      return undefined;
+  }
+}
 
 /**
  * Checks if a model requires legacy enabled thinking (budgetTokens) instead of adaptive.

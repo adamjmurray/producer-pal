@@ -12,13 +12,12 @@ import {
   loadCurrentProvider,
   loadEnabledTools,
   loadProviderSettings,
-  loadRealtimeVoice,
   loadSmallModelMode,
   type ProviderSettings,
   saveCurrentSettings,
-  saveRealtimeVoice,
   saveSmallModelMode,
 } from "./settings-helpers";
+import { useVoiceModeSettings } from "./use-voice-mode-settings";
 
 type ProviderStateSetters = Record<
   Provider,
@@ -75,14 +74,11 @@ export function useSettings(): UseSettingsReturn {
   const [liveApiEnabled, setLiveApiEnabledState] = useState<boolean>(false);
   const [liveApiEnabledDirty, setLiveApiEnabledDirty] =
     useState<boolean>(false);
-  // In-modal voice value vs. persisted/applied value. Same split as
+  // In-modal voice settings vs. persisted/applied values. Same split as
   // `model`/`savedModel` — saveSettings/cancelSettings synchronize them, but
-  // the live voice session reads `savedRealtimeVoice` so mid-edit changes
+  // the live voice session reads the `saved*` snapshots so mid-edit changes
   // don't leak into the active RealtimeAgent.
-  const [realtimeVoice, setRealtimeVoiceState] =
-    useState<string>(loadRealtimeVoice);
-  const [savedRealtimeVoice, setSavedRealtimeVoice] =
-    useState<string>(loadRealtimeVoice);
+  const voiceModeSettings = useVoiceModeSettings();
 
   const setLiveApiEnabled = useCallback((enabled: boolean) => {
     setLiveApiEnabledState(enabled);
@@ -175,16 +171,15 @@ export function useSettings(): UseSettingsReturn {
 
     saveCurrentSettings(provider, enabledTools, allSettings);
     saveSmallModelMode(smallModelMode);
-    saveRealtimeVoice(realtimeVoice);
+    voiceModeSettings.commit();
     setSavedModel(allSettings[provider].model);
-    setSavedRealtimeVoice(realtimeVoice);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
   }, [
     provider,
     enabledTools,
     smallModelMode,
-    realtimeVoice,
+    voiceModeSettings,
     anthropicSettings,
     geminiSettings,
     openaiSettings,
@@ -199,12 +194,12 @@ export function useSettings(): UseSettingsReturn {
     setProviderState(loadCurrentProvider());
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
-    setRealtimeVoiceState(loadRealtimeVoice());
+    voiceModeSettings.revert();
     applyLoadedSettings(loadAllProviderSettings());
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);
-  }, [applyLoadedSettings]);
+  }, [applyLoadedSettings, voiceModeSettings]);
 
   // Individual setters that update the current provider's settings
   const setters = useMemo(() => {
@@ -298,8 +293,11 @@ export function useSettings(): UseSettingsReturn {
     liveApiEnabledDirty,
     setLiveApiEnabled,
     seedLiveApiEnabled,
-    realtimeVoice,
-    setRealtimeVoice: setRealtimeVoiceState,
-    savedRealtimeVoice,
+    realtimeVoice: voiceModeSettings.realtimeVoice,
+    setRealtimeVoice: voiceModeSettings.setRealtimeVoice,
+    savedRealtimeVoice: voiceModeSettings.savedRealtimeVoice,
+    voiceSpeed: voiceModeSettings.voiceSpeed,
+    setVoiceSpeed: voiceModeSettings.setVoiceSpeed,
+    savedVoiceSpeed: voiceModeSettings.savedVoiceSpeed,
   };
 }

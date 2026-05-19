@@ -83,4 +83,13 @@ export interface UseSettingsReturn {
   /** Persisted voice setting (last save). Used by useVoiceSession at connect
    * time so an in-modal edit doesn't reach into the live session. */
   savedRealtimeVoice: string;
+
+  /** In-modal voice playback speed multiplier (audio.output.speed for the
+   * OpenAI Realtime API). Mid-session edits don't affect the live session —
+   * applied on the next Stop → Talk. */
+  voiceSpeed: number;
+  setVoiceSpeed: (speed: number) => void;
+
+  /** Persisted voice speed (last save). Read by useVoiceSession at connect time. */
+  savedVoiceSpeed: number;
 }

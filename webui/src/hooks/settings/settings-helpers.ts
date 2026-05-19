@@ -11,6 +11,11 @@ import {
 import { type Provider } from "#webui/types/settings";
 
 const REALTIME_VOICE_KEY = "producer_pal_realtime_voice";
+const VOICE_SPEED_KEY = "producer_pal_voice_speed";
+
+export const VOICE_SPEED_MIN = 0.5;
+export const VOICE_SPEED_MAX = 1.5;
+export const VOICE_SPEED_DEFAULT = 1.0;
 
 /**
  * Loads the saved realtime voice from localStorage, falling back to the
@@ -31,6 +36,30 @@ export function loadRealtimeVoice(): string {
  */
 export function saveRealtimeVoice(voice: string): void {
   localStorage.setItem(REALTIME_VOICE_KEY, voice);
+}
+
+/**
+ * Loads the saved voice playback speed multiplier from localStorage. Falls
+ * back to 1.0 (normal speed) when missing or out of range.
+ * @returns A speed multiplier clamped to [VOICE_SPEED_MIN, VOICE_SPEED_MAX]
+ */
+export function loadVoiceSpeed(): number {
+  const stored = localStorage.getItem(VOICE_SPEED_KEY);
+
+  if (stored == null) return VOICE_SPEED_DEFAULT;
+  const parsed = Number.parseFloat(stored);
+
+  if (!Number.isFinite(parsed)) return VOICE_SPEED_DEFAULT;
+
+  return Math.min(VOICE_SPEED_MAX, Math.max(VOICE_SPEED_MIN, parsed));
+}
+
+/**
+ * Persists the voice playback speed multiplier to localStorage.
+ * @param speed - The speed multiplier to persist
+ */
+export function saveVoiceSpeed(speed: number): void {
+  localStorage.setItem(VOICE_SPEED_KEY, String(speed));
 }
 
 const VALID_THINKING_LEVELS: readonly string[] = THINKING_LEVELS;

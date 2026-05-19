@@ -142,6 +142,9 @@ describe("SettingsScreen", () => {
     realtimeVoice: "marin",
     setRealtimeVoice: vi.fn(),
     savedRealtimeVoice: "marin",
+    voiceSpeed: 1.0,
+    setVoiceSpeed: vi.fn(),
+    savedVoiceSpeed: 1.0,
   };
 
   const defaultDisplay = {

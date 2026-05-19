@@ -72,6 +72,8 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     openAiKey,
     enabledTools: settings.enabledTools,
     voice: settings.savedRealtimeVoice,
+    speed: settings.savedVoiceSpeed,
+    thinking: settings.thinking,
   });
 
   const persistence = useVoicePersistence({

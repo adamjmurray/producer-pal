@@ -35,6 +35,7 @@ function serialize(s: UseSettingsReturn, a: AppearanceSettings): string {
     enabledTools: s.enabledTools,
     smallModelMode: s.smallModelMode,
     realtimeVoice: s.realtimeVoice,
+    voiceSpeed: s.voiceSpeed,
     ...a,
   });
 }

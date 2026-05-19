@@ -14,6 +14,7 @@ import {
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
 import { VoiceSelector } from "./controls/VoiceSelector";
+import { VoiceSpeedSlider } from "./controls/VoiceSpeedSlider";
 import { TestConnectionButton } from "./TestConnectionButton";
 
 interface ConnectionTabProps {
@@ -32,6 +33,8 @@ interface ConnectionTabProps {
   setSmallModelMode: (enabled: boolean) => void;
   realtimeVoice: string;
   setRealtimeVoice: (voice: string) => void;
+  voiceSpeed: number;
+  setVoiceSpeed: (speed: number) => void;
   /** Voice currently locked into the live RealtimeSession (or null when idle).
    * Used to render a pending-change notice. */
   activeVoice: string | null;
@@ -71,6 +74,8 @@ export function ConnectionTab({
   setSmallModelMode,
   realtimeVoice,
   setRealtimeVoice,
+  voiceSpeed,
+  setVoiceSpeed,
   activeVoice,
 }: ConnectionTabProps) {
   const showVoiceSelector = provider === "openai" && isRealtimeModel(model);
@@ -151,11 +156,14 @@ export function ConnectionTab({
       )}
 
       {showVoiceSelector && (
-        <VoiceSelector
-          voice={realtimeVoice}
-          setVoice={setRealtimeVoice}
-          activeVoice={activeVoice}
-        />
+        <>
+          <VoiceSelector
+            voice={realtimeVoice}
+            setVoice={setRealtimeVoice}
+            activeVoice={activeVoice}
+          />
+          <VoiceSpeedSlider speed={voiceSpeed} setSpeed={setVoiceSpeed} />
+        </>
       )}
 
       <div className="flex items-center justify-between">

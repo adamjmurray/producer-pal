@@ -144,6 +144,8 @@ function SettingsTabContent(props: SettingsScreenProps) {
           setSmallModelMode={settings.setSmallModelMode}
           realtimeVoice={settings.realtimeVoice}
           setRealtimeVoice={settings.setRealtimeVoice}
+          voiceSpeed={settings.voiceSpeed}
+          setVoiceSpeed={settings.setVoiceSpeed}
           activeVoice={props.activeVoice}
         />
       )}

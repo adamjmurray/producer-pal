@@ -12,6 +12,8 @@ import {
   type TransportEvent,
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { mapThinkingToRealtimeEffort } from "#webui/hooks/settings/config-builders";
+import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import {
   extractErrorMessage,
@@ -44,6 +46,11 @@ interface UseVoiceSessionParams {
   /** Voice id baked into the RealtimeAgent at connect time. The session locks
    * the voice once the model emits audio; if undefined, OpenAI picks a default. */
   voice?: string;
+  /** Output playback speed (audio.output.speed). Defaults to 1.0 when undefined. */
+  speed?: number;
+  /** Thinking UI level ("Default" | "Max" | "Off"). Mapped to
+   * reasoning.effort at connect time. */
+  thinking?: string;
 }
 
 interface UseVoiceSessionReturn {
@@ -100,7 +107,15 @@ interface UseVoiceSessionReturn {
 export function useVoiceSession(
   params: UseVoiceSessionParams,
 ): UseVoiceSessionReturn {
-  const { mcpUrl, voiceTokenUrl, openAiKey, enabledTools, voice } = params;
+  const {
+    mcpUrl,
+    voiceTokenUrl,
+    openAiKey,
+    enabledTools,
+    voice,
+    speed,
+    thinking,
+  } = params;
 
   const sessionRef = useRef<RealtimeSession | null>(null);
   const mcpClientRef = useRef<Client | null>(null);
@@ -182,9 +197,16 @@ export function useVoiceSession(
         // realtime-next example.
         const transport = new OpenAIRealtimeWebRTC();
 
+        const reasoningEffort = mapThinkingToRealtimeEffort(thinking ?? "");
         const session = new RealtimeSession(agent, {
           model: OPENAI_REALTIME_MODEL,
           transport,
+          config: {
+            audio: { output: { speed: speed ?? VOICE_SPEED_DEFAULT } },
+            ...(reasoningEffort
+              ? { reasoning: { effort: reasoningEffort } }
+              : {}),
+          },
         });
 
         session.on("history_updated", (next: RealtimeItem[]) => {
@@ -258,7 +280,16 @@ export function useVoiceSession(
         await cleanup();
       }
     },
-    [mcpUrl, voiceTokenUrl, openAiKey, enabledTools, voice, cleanup],
+    [
+      mcpUrl,
+      voiceTokenUrl,
+      openAiKey,
+      enabledTools,
+      voice,
+      speed,
+      thinking,
+      cleanup,
+    ],
   );
 
   const disconnect = useCallback(async () => {
