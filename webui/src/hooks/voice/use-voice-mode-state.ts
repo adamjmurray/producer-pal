@@ -120,6 +120,8 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     enabledToolsCount,
     setModeContext,
     activeVoice: voice.activeVoice,
+    savedModel: settings.savedModel,
+    savedProvider: settings.provider,
   });
 
   return {

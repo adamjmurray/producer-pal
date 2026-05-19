@@ -8,6 +8,7 @@ import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderAc
 import { type ModeContext } from "#webui/components/mode-context";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
+import { type Provider } from "#webui/types/settings";
 
 interface VoicePersistenceLike {
   activeConversationId: string | null;
@@ -24,6 +25,11 @@ interface UseVoiceModeReportingParams {
   /** Voice id locked into the live RealtimeSession (null when idle). Reported
    * up so the settings Voice picker can flag mid-session pending changes. */
   activeVoice: string | null;
+  /** The user's saved model/provider — used so the top bar can flag divergence
+   * when a voice record is being viewed but saved settings point at a chat
+   * model (e.g. opening a voice convo from history while saved is GPT-5). */
+  savedModel: string;
+  savedProvider: Provider;
 }
 
 /**
@@ -45,6 +51,8 @@ export function useVoiceModeReporting(
     enabledToolsCount,
     setModeContext,
     activeVoice,
+    savedModel,
+    savedProvider,
   } = params;
   const hasActiveVoiceConv = persistence.activeConversationId != null;
   // Read delete handlers via a ref so the effect's deps stay stable —
@@ -84,8 +92,8 @@ export function useVoiceModeReporting(
   return {
     activeModel: OPENAI_REALTIME_MODEL,
     activeProvider: "openai",
-    model: OPENAI_REALTIME_MODEL,
-    provider: "openai",
+    model: savedModel,
+    provider: savedProvider,
     enabledToolsCount,
     totalToolsCount,
     smallModelMode: false,

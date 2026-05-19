@@ -38,6 +38,7 @@ export interface UseChatModeStateParams {
   totalToolsCount: number;
   enabledToolsCount: number;
   onForeignRecord: (record: ConversationRecord) => void;
+  clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
 }
 
@@ -63,6 +64,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
     totalToolsCount,
     enabledToolsCount,
     onForeignRecord,
+    clearViewingMode,
     setModeContext,
   } = params;
 
@@ -128,6 +130,7 @@ export function useChatModeState(params: UseChatModeStateParams) {
   const conversationHandlers = useConversationHandlers(
     conversationManager,
     chat.stopResponse,
+    clearViewingMode,
   );
 
   const conversationPanelState = useConversationPanelState({

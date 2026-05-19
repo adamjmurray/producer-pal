@@ -30,7 +30,6 @@ import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useViewState } from "#webui/hooks/use-view-state";
 import { isRealtimeModel } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
-import { type Provider } from "#webui/types/settings";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
 
@@ -137,31 +136,26 @@ export function App() {
   const [modeContext, setModeContext] =
     useState<ModeContext>(DEFAULT_MODE_CONTEXT);
 
-  // When a foreign record (chat-in-voice-mode or voice-in-chat-mode) is found,
-  // atomically swap the provider + model. The new mode mounts and its hook
-  // picks the conversation up via the URL hash on mount.
-  // Stable callback so child hooks can include it in deps without re-running
-  // their init effects on every App render. The deep dep is the setter from
-  // useSettings, which is already useCallback-stable.
-  const { setProviderAndModel } = settings;
-  const onForeignRecord = useCallback(
-    (record: ConversationRecord) => {
-      // record.provider/model can be null on legacy records; fall back to the
-      // current selection so the swap still triggers a re-render.
-      setProviderAndModel(
-        (record.provider ?? settings.provider) as Provider,
-        record.model ?? "",
-      );
-    },
-    [setProviderAndModel, settings.provider],
-  );
+  // Override the mode-routing decision so a foreign-mode conversation (e.g. a
+  // voice record opened while saved is a chat model) renders in its native UI
+  // without mutating the user's saved settings. null = follow savedModel.
+  // Cleared by "New conversation" so the next fresh session uses savedModel.
+  const [viewingMode, setViewingMode] = useState<"chat" | "voice" | null>(null);
+  const onForeignRecord = useCallback((record: ConversationRecord) => {
+    setViewingMode(record.sessionType === "voice" ? "voice" : "chat");
+  }, []);
+  const clearViewingMode = useCallback(() => {
+    setViewingMode(null);
+  }, []);
 
-  // Mode is derived from savedModel (only updates on save / foreign-record
-  // switch), not the in-modal `model`. This prevents the underlying chat or
-  // voice screen from re-mounting mid-modal whenever the user explores the
-  // provider dropdown — that re-mount used to trigger a foreign-record
-  // callback that immediately reverted the dropdown selection.
-  const isVoiceMode = isRealtimeModel(settings.savedModel);
+  // Mode is derived from savedModel (only updates on save), not the in-modal
+  // `model`. This prevents the underlying chat or voice screen from re-mounting
+  // mid-modal whenever the user explores the provider dropdown. viewingMode
+  // overrides the route while a foreign-mode conversation is being viewed.
+  const isVoiceMode =
+    viewingMode != null
+      ? viewingMode === "voice"
+      : isRealtimeModel(settings.savedModel);
 
   const sharedModeProps = {
     settings,
@@ -177,6 +171,7 @@ export function App() {
     onOpenConnectionSettings: () => openSettings("connection"),
     /* v8 ignore stop */
     onForeignRecord,
+    clearViewingMode,
     setModeContext,
   };
 

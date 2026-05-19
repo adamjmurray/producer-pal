@@ -48,7 +48,7 @@ describe("useConversationHandlers", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     const { result } = renderHook(() =>
-      useConversationHandlers(manager, stopResponse),
+      useConversationHandlers(manager, stopResponse, vi.fn()),
     );
 
     await act(() => result.current.handleDelete("conv-1"));
@@ -64,7 +64,9 @@ describe("useConversationHandlers", () => {
     const manager = createMockManager();
     const stop = vi.fn();
 
-    const { result } = renderHook(() => useConversationHandlers(manager, stop));
+    const { result } = renderHook(() =>
+      useConversationHandlers(manager, stop, vi.fn()),
+    );
 
     await act(() => result.current.handleSelect("conv-1"));
 
@@ -76,7 +78,9 @@ describe("useConversationHandlers", () => {
     const manager = createMockManager();
     const stop = vi.fn();
 
-    const { result } = renderHook(() => useConversationHandlers(manager, stop));
+    const { result } = renderHook(() =>
+      useConversationHandlers(manager, stop, vi.fn()),
+    );
 
     result.current.handleNew();
 
@@ -84,11 +88,26 @@ describe("useConversationHandlers", () => {
     expect(manager.startNewConversation).toHaveBeenCalled();
   });
 
+  it("clears the foreign-mode view override when starting a new conversation", () => {
+    const manager = createMockManager();
+    const clearViewingMode = vi.fn();
+
+    const { result } = renderHook(() =>
+      useConversationHandlers(manager, vi.fn(), clearViewingMode),
+    );
+
+    result.current.handleNew();
+
+    expect(clearViewingMode).toHaveBeenCalledOnce();
+  });
+
   it("stops response and delegates to deleteAllConversations", () => {
     const manager = createMockManager();
     const stop = vi.fn();
 
-    const { result } = renderHook(() => useConversationHandlers(manager, stop));
+    const { result } = renderHook(() =>
+      useConversationHandlers(manager, stop, vi.fn()),
+    );
 
     result.current.handleDeleteAll();
 
@@ -100,7 +119,9 @@ describe("useConversationHandlers", () => {
     const manager = createMockManager();
     const stop = vi.fn();
 
-    const { result } = renderHook(() => useConversationHandlers(manager, stop));
+    const { result } = renderHook(() =>
+      useConversationHandlers(manager, stop, vi.fn()),
+    );
 
     result.current.handleDeleteUnbookmarked();
 

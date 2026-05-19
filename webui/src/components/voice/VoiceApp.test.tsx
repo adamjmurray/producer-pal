@@ -140,6 +140,7 @@ function makeProps(o: PropOverrides = {}): VoiceAppProps {
       provider,
       apiKey,
       model: "gpt-realtime-2",
+      savedModel: "gpt-realtime-2",
       enabledTools: {},
       savedRealtimeVoice: o.savedRealtimeVoice ?? "marin",
     } as unknown as UseSettingsReturn,
@@ -164,6 +165,7 @@ function makeProps(o: PropOverrides = {}): VoiceAppProps {
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
     onForeignRecord: vi.fn(),
+    clearViewingMode: vi.fn(),
     setModeContext: vi.fn(),
   } as unknown as VoiceAppProps;
 }

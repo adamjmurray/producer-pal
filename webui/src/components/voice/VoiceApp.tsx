@@ -32,6 +32,7 @@ export interface VoiceAppProps {
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
   onForeignRecord: (record: ConversationRecord) => void;
+  clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
 }
 
@@ -49,6 +50,7 @@ export function VoiceApp(props: VoiceAppProps) {
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    clearViewingMode,
   } = props;
 
   const {
@@ -76,6 +78,7 @@ export function VoiceApp(props: VoiceAppProps) {
     isConnected,
     disconnect: voice.disconnect,
     resetVoiceHistory: voice.resetHistory,
+    clearViewingMode,
   });
 
   return (
@@ -132,6 +135,7 @@ interface BuildConversationPanelParams {
   isConnected: boolean;
   disconnect: () => Promise<void>;
   resetVoiceHistory: () => void;
+  clearViewingMode: () => void;
 }
 
 /**
@@ -156,6 +160,7 @@ function buildConversationPanel(
       if (isConnected) void params.disconnect();
       params.resetVoiceHistory();
       persistence.startNewConversation();
+      params.clearViewingMode();
     },
     onSelect: (id) => {
       if (isConnected) void params.disconnect();

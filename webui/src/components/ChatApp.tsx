@@ -32,6 +32,7 @@ interface ChatAppProps {
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
   onForeignRecord: (record: ConversationRecord) => void;
+  clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
 }
 

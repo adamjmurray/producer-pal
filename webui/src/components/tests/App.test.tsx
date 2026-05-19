@@ -148,48 +148,42 @@ describe("App", () => {
       expect(calls[0]![0].adapter).toHaveProperty("createClient");
     });
 
-    it("onForeignRecord swaps the provider+model via settings", () => {
+    it("onForeignRecord switches the viewing mode without mutating saved settings", async () => {
       const setProviderAndModel = vi.fn();
 
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
-        setProviderAndModel,
-      });
-      render(<App />);
-      const conversationsCall = (
-        useConversations as ReturnType<typeof vi.fn>
-      ).mock.calls.at(-1);
-      const onForeignRecord = conversationsCall?.[0]?.onForeignRecord;
-
-      expect(typeof onForeignRecord).toBe("function");
-
-      onForeignRecord?.({
+        // Saved is a chat model; clicking a voice record from history should
+        // route to VoiceApp without changing this.
         provider: "openai",
-        model: "gpt-realtime-2",
-      });
-
-      expect(setProviderAndModel).toHaveBeenCalledWith(
-        "openai",
-        "gpt-realtime-2",
-      );
-    });
-
-    it("onForeignRecord falls back to current provider when record.provider is null", () => {
-      const setProviderAndModel = vi.fn();
-
-      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...mockSettingsHook,
-        provider: "gemini",
+        model: "gpt-5",
+        savedModel: "gpt-5",
         setProviderAndModel,
       });
-      render(<App />);
+      const { rerender } = render(<App />);
+
+      // Initially in chat mode (saved is chat)
+      expect(document.body.textContent).not.toMatch(/Talk|Stop/);
+
       const onForeignRecord = (
         useConversations as ReturnType<typeof vi.fn>
       ).mock.calls.at(-1)?.[0]?.onForeignRecord;
 
-      onForeignRecord?.({ provider: null, model: null });
+      expect(typeof onForeignRecord).toBe("function");
 
-      expect(setProviderAndModel).toHaveBeenCalledWith("gemini", "");
+      await act(() => {
+        onForeignRecord?.({
+          sessionType: "voice",
+          provider: "openai",
+          model: "gpt-realtime-2",
+        });
+      });
+      rerender(<App />);
+
+      // Should not mutate saved settings.
+      expect(setProviderAndModel).not.toHaveBeenCalled();
+      // Should route to VoiceApp via viewingMode override.
+      expect(document.body.textContent).toMatch(/Talk|Stop/);
     });
   });
 
