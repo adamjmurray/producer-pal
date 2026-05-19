@@ -66,6 +66,10 @@ describe("patchFadeOutCurve", () => {
   });
 });
 
+// Hinweis: Die After-Fixtures sind WITNESS-only (Skew-Literal-Cross-Check),
+// KEIN reiner Kurven-Byte-Delta von base — ihr FadeOutLength divergiert
+// (User-gezogen). Niemals ein `patch(base) === after`-Diff hieraus ableiten;
+// Diff-Isolation wird oben gegen `patch(base)` vs `base` geprueft.
 describe("getFadeOutCurve", () => {
   it("liest Witness aus echten After-Fixtures (Cross-Check)", () => {
     expect(getFadeOutCurve(clipBlock("4c-fadeout-after-up.als"))).toBe("up");
