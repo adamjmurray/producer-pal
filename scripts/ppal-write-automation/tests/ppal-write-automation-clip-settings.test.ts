@@ -231,6 +231,73 @@ describe("clip-settings", () => {
     }
   });
 
+  // Window-Guard-Staerkung (Slice ppal-window-guard): die Migration zur
+  // ReplacementRange-API erhaelt die alte Prefix/Suffix-Semantik fuer
+  // diese Single-Range-Call-Site (Range = gesamtes Clip-Fenster). Test
+  // bestaetigt, dass eine ZUSAETZLICHE Outside-Window-Mutation im
+  // Apply-Output (Fremd-Track-Korruption) weiterhin durch den
+  // gestaerkten Guard gefangen wird — Mitigation-B-Schutz konstant.
+  it("Window-Guard (ReplacementRange-API): Fremd-Track-Korruption im Apply -> Exit 1", () => {
+    const xml = [
+      `<Ableton><Tracks>`,
+      // Ziel-Track mit Ziel-Clip:
+      `<MidiTrack Id="1">`,
+      `<Name><EffectiveName Value="T" /><UserName Value="T" /></Name>`,
+      `<DeviceChain><MainSequencer><ClipSlotList><ClipSlot>`,
+      `<MidiClip Time="0"><Name Value="ZielClip" /><Color Value="1" />`,
+      `<LaunchMode Value="0" /><LaunchQuantisation Value="0" />`,
+      `<TimeSignature><Foo /></TimeSignature></MidiClip>`,
+      `</ClipSlot></ClipSlotList></MainSequencer></DeviceChain>`,
+      `</MidiTrack>`,
+      // Fremd-Track ausserhalb des Fensters:
+      `<MidiTrack Id="2">`,
+      `<Name><EffectiveName Value="Fremd" /><UserName Value="Fremd" /></Name>`,
+      `<DeviceChain><MainSequencer><ClipSlotList /></MainSequencer></DeviceChain>`,
+      `</MidiTrack>`,
+      `</Tracks></Ableton>`,
+    ].join("");
+    const tmp = tmpAls(xml);
+    const applySpy = vi
+      .spyOn(clipSettingsInternals, "applyClipSettingPatches")
+      .mockImplementation((x, loc, pairs) =>
+        // Ziel-Patch + Mutation an einer Byte-Position AUSSERHALB des
+        // Ziel-Clip-Fensters [loc.start, loc.end) (im Fremd-Track-Namen):
+        applyClipSettingPatches(x, loc, pairs).replace(
+          '<EffectiveName Value="Fremd" />',
+          '<EffectiveName Value="FremdKORRUPT" />',
+        ),
+      );
+    const errSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const code = runCli(
+        csArgs(
+          "set",
+          tmp,
+          "T",
+          "ZielClip",
+          "--key",
+          "LaunchMode",
+          "--value",
+          "1",
+          "--force",
+        ),
+      );
+
+      expect(code).toBe(1);
+      expect(errSpy.mock.calls.map((c) => String(c[0])).join("")).toContain(
+        "außerhalb des Ziel-Clip-Blocks",
+      );
+    } finally {
+      applySpy.mockRestore();
+      errSpy.mockRestore();
+      fs.rmSync(tmp, { force: true });
+      fs.rmSync(`${tmp}.bak`, { force: true });
+    }
+  });
+
   it("zwei gleichnamige Clips im Track -> Klartext-Fehler (keine stille Auswahl)", () => {
     const tmp = tmpAls(dupClipXml("DubClip", "DubClip"));
     const spy = vi

@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { readFileSync } from "node:fs";
+import { type ReplacementRange } from "./clip-patch-cli.ts";
 
 /**
  * Subcommand-Validierung fuer get|set-only Slice-Helper. Schreibt
@@ -104,4 +105,31 @@ export function parseJsonFile<T>(
   }
 
   return data;
+}
+
+/**
+ * Aus dem alten Prefix/Suffix-Single-Window-Guard eine
+ * `ReplacementRange` aufbauen. Formal:
+ * `replacement = updated.slice(start, updated.length - (xml.length - end))`.
+ * Diese Slice-Formel ist mechanisch korrekt: was im `updated` zwischen
+ * dem unveraenderten Prefix `[0, start)` und dem unveraenderten Suffix
+ * (Laenge `xml.length - end`) liegt, sind genau die neuen Bytes des
+ * Fensters. Sie bleibt aequivalent zur alten Prefix/Suffix-Semantik,
+ * der neue Guard prueft dann aber ZUSAETZLICH die Mitte byte-genau.
+ *
+ * @param xml - Original-XML vor dem Patch.
+ * @param updated - Komplettes XML nach dem Patch.
+ * @param start - Inklusive Start-Position des Fensters im Original-`xml`.
+ * @param end - Exklusive End-Position des Fensters im Original-`xml`.
+ * @returns `ReplacementRange` mit den extrahierten Replacement-Bytes.
+ */
+export function singleRangeReplacement(
+  xml: string,
+  updated: string,
+  start: number,
+  end: number,
+): ReplacementRange {
+  const replacement = updated.slice(start, updated.length - (xml.length - end));
+
+  return { start, end, replacement };
 }
