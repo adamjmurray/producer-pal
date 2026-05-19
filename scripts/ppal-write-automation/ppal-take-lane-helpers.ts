@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readFileSync } from "node:fs";
 import { isSetLikelyOpen } from "#src/automation/als-file.ts";
 import { locateTrackBlock } from "#src/automation/als-param-resolver.ts";
 import {
@@ -12,6 +11,7 @@ import {
   type TakeLaneSpec,
 } from "#src/automation/als-takelane.ts";
 import { type LeanLoc, runLeanTrackCli } from "./lean-track-cli.ts";
+import { parseJsonFile } from "./shared-cli-helpers.ts";
 
 /** Eindeutiges Wrapper-Ende (AreTakeLanesFolded 1×/Wrapper, Premortem R1). */
 const WRAPPER_RE =
@@ -135,42 +135,24 @@ export function runTakeLane(
  * @returns Lane-Specs oder `null` bei fehlendem/ungueltigem Flag.
  */
 function parseLanesFile(path: string | undefined): TakeLaneSpec[] | null {
-  if (path == null || path === "true" || path.trim() === "") {
-    return null;
-  }
-
-  let data: unknown;
-
-  try {
-    data = JSON.parse(readFileSync(path, "utf8"));
-  } catch {
-    return null;
-  }
-
-  if (!Array.isArray(data) || data.length === 0) {
-    return null;
-  }
-
   // Feld-Validierung vor dem Cast: ohne sie umgehen `undefined`-Felder den
   // Pflichtfeld-Check in patchTakeLanes (`undefined === ""` ist false),
   // was zu einer irrefuehrenden generischen Verify-Fehlermeldung statt
   // "Lane-Spec: Pflichtfeld leer" fuehrt (Stage-1-Review F2).
-  const allValid = data.every((x: unknown) => {
-    if (x == null || typeof x !== "object") return false;
-    const r = x as Record<string, unknown>;
+  return parseJsonFile<TakeLaneSpec[]>(path, (data): data is TakeLaneSpec[] => {
+    if (!Array.isArray(data) || data.length === 0) return false;
 
-    return (
-      typeof r.id === "string" &&
-      typeof r.takeId === "string" &&
-      typeof r.height === "string" &&
-      typeof r.isContentSelected === "string" &&
-      typeof r.clipXml === "string"
-    );
+    return data.every((x: unknown) => {
+      if (x == null || typeof x !== "object") return false;
+      const r = x as Record<string, unknown>;
+
+      return (
+        typeof r.id === "string" &&
+        typeof r.takeId === "string" &&
+        typeof r.height === "string" &&
+        typeof r.isContentSelected === "string" &&
+        typeof r.clipXml === "string"
+      );
+    });
   });
-
-  if (!allValid) {
-    return null;
-  }
-
-  return data as TakeLaneSpec[];
 }

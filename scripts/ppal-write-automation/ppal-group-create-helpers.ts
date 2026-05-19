@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readFileSync } from "node:fs";
 import {
   backupAls,
   isSetLikelyOpen,
@@ -15,6 +14,7 @@ import {
   getGroupTracks,
   injectGroupCreate,
 } from "#src/automation/als-group-create.ts";
+import { parseJsonFile, requireAlsCliPrelude } from "./shared-cli-helpers.ts";
 
 /** Spy-Seam fuer Tests (open-set-Guard + Inject-Funktion stubbar). */
 export const groupCreateInternals = { isSetLikelyOpen, injectGroupCreate };
@@ -33,22 +33,10 @@ export function runGroupCreate(
   rest: string[],
   parseFlags: (argv: string[]) => Record<string, string>,
 ): number {
-  const sub = rest[0];
+  const pre = requireAlsCliPrelude(rest, "group-create", parseFlags);
 
-  if (sub !== "get" && sub !== "set") {
-    process.stderr.write("FEHLER: group-create get|set\n");
-
-    return 1;
-  }
-
-  const flags = parseFlags(rest);
-  const alsPath = flags.als;
-
-  if (alsPath == null) {
-    process.stderr.write("FEHLER: --als erforderlich\n");
-
-    return 1;
-  }
+  if (pre == null) return 1;
+  const { sub, flags, alsPath } = pre;
 
   if (sub === "get") {
     process.stdout.write(JSON.stringify(getGroupTracks(readAls(alsPath))));
@@ -219,46 +207,25 @@ function trackGroupIdOf(
  * @returns Spec oder `null` bei fehlendem/ungueltigem Flag.
  */
 function parseSpecFile(path: string | undefined): GroupCreateSpec | null {
-  if (path == null || path === "true" || path.trim() === "") {
-    return null;
-  }
+  return parseJsonFile<GroupCreateSpec>(
+    path,
+    (data): data is GroupCreateSpec => {
+      if (data == null || typeof data !== "object") return false;
+      const r = data as Record<string, unknown>;
+      const insertOk =
+        r.insertAfterTrackId === null ||
+        typeof r.insertAfterTrackId === "number";
 
-  let data: unknown;
-
-  try {
-    data = JSON.parse(readFileSync(path, "utf8"));
-  } catch {
-    return null;
-  }
-
-  if (data == null || typeof data !== "object") {
-    return null;
-  }
-
-  const r = data as Record<string, unknown>;
-  const insertOk =
-    r.insertAfterTrackId === null || typeof r.insertAfterTrackId === "number";
-
-  if (
-    typeof r.groupTrackId !== "number" ||
-    typeof r.nextPointeeId !== "number" ||
-    typeof r.returnCount !== "number" ||
-    typeof r.groupName !== "string" ||
-    typeof r.color !== "number" ||
-    !Array.isArray(r.memberTrackIds) ||
-    !r.memberTrackIds.every((x) => typeof x === "number") ||
-    !insertOk
-  ) {
-    return null;
-  }
-
-  return {
-    groupTrackId: r.groupTrackId,
-    nextPointeeId: r.nextPointeeId,
-    returnCount: r.returnCount,
-    groupName: r.groupName,
-    color: r.color,
-    memberTrackIds: r.memberTrackIds,
-    insertAfterTrackId: r.insertAfterTrackId as number | null,
-  };
+      return (
+        typeof r.groupTrackId === "number" &&
+        typeof r.nextPointeeId === "number" &&
+        typeof r.returnCount === "number" &&
+        typeof r.groupName === "string" &&
+        typeof r.color === "number" &&
+        Array.isArray(r.memberTrackIds) &&
+        r.memberTrackIds.every((x) => typeof x === "number") &&
+        insertOk
+      );
+    },
+  );
 }

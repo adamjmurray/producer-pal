@@ -16,6 +16,7 @@ import {
   writeAls,
 } from "#src/automation/als-file.ts";
 import { isOnlyWindowChanged } from "./clip-patch-cli.ts";
+import { requireAlsCliPrelude } from "./shared-cli-helpers.ts";
 
 /** Spy-Seam fuer Tests (open-set-Guard + Patch-Funktion stubbar). */
 export const arrLoopInternals = { isSetLikelyOpen, patchArrangementLoop };
@@ -37,22 +38,10 @@ export function runArrangementLoop(
   rest: string[],
   parseFlags: (argv: string[]) => Record<string, string>,
 ): number {
-  const sub = rest[0];
+  const pre = requireAlsCliPrelude(rest, "arrangement-loop", parseFlags);
 
-  if (sub !== "get" && sub !== "set") {
-    process.stderr.write("FEHLER: arrangement-loop get|set\n");
-
-    return 1;
-  }
-
-  const flags = parseFlags(rest);
-  const alsPath = flags.als;
-
-  if (alsPath == null) {
-    process.stderr.write("FEHLER: --als erforderlich\n");
-
-    return 1;
-  }
+  if (pre == null) return 1;
+  const { sub, flags, alsPath } = pre;
 
   if (sub === "get") {
     const arrangementLoop = getArrangementLoop(readAls(alsPath));
