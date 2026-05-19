@@ -27,6 +27,7 @@ import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
 import { parseFlags } from "./clip-patch-cli.ts";
 import { runClipFlags } from "./ppal-clip-flags-helpers.ts";
+import { runClipScale } from "./ppal-clip-scale-helpers.ts";
 import { runClipSettings } from "./ppal-clip-settings-helpers.ts";
 import { runFadeoutCurve } from "./ppal-fadeout-curve-helpers.ts";
 import { runFades } from "./ppal-fades-helpers.ts";
@@ -439,6 +440,7 @@ const DISPATCH: Record<string, DispatchHandler> = {
   tempo: (rest) => runTempo(rest),
   timesig: (rest) => runTimesig(rest),
   "clip-flags": (rest) => runClipFlags(rest),
+  "clip-scale": (rest) => runClipScale(rest, parseFlags),
   "track-group": (rest) => runTrackGroup(rest),
   "mixer-routing": (rest) => runMixerRouting(rest),
   modulation: (rest) => runModulation(rest),
