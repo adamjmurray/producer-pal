@@ -364,6 +364,19 @@ describe("useVoiceSession transport event handling", () => {
     expect(result.current.rateLimitedUntil).toBeNull();
   });
 
+  it("rate_limit_exceeded without a 'try again in Xs' pattern keeps rateLimitedUntil=null", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    await emitResponseFailure(
+      session,
+      "rate_limit_exceeded",
+      "Rate limit exceeded (no retry hint).",
+    );
+
+    expect(result.current.error).toMatch(/rate limit/i);
+    expect(result.current.rateLimitedUntil).toBeNull();
+  });
+
   it("a successful response.done clears a prior rate-limit indicator", async () => {
     const { result, session } = await connectAndGetSession();
 
@@ -557,6 +570,37 @@ describe("useVoiceSession mute / interrupt / retry", () => {
       result.current.retryResponse();
     });
     expect(result.current.error).toBeNull();
+  });
+
+  it("non-Error throws from mute/interrupt/sendEvent are stringified into error state", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    session.mute.mockImplementationOnce(() => {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- exercising the non-Error branch
+      throw "mute exploded";
+    });
+    await act(async () => {
+      await result.current.toggleMute();
+    });
+    expect(result.current.error).toBe("mute exploded");
+
+    session.interrupt.mockImplementationOnce(() => {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- exercising the non-Error branch
+      throw "interrupt exploded";
+    });
+    await act(() => {
+      result.current.interrupt();
+    });
+    expect(result.current.error).toBe("interrupt exploded");
+
+    session.transport.sendEvent.mockImplementationOnce(() => {
+      // eslint-disable-next-line @typescript-eslint/only-throw-error -- exercising the non-Error branch
+      throw "send exploded";
+    });
+    await act(() => {
+      result.current.retryResponse();
+    });
+    expect(result.current.error).toBe("send exploded");
   });
 });
 
