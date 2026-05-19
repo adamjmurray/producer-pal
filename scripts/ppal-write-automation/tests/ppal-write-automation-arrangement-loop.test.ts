@@ -121,6 +121,32 @@ describe("runArrangementLoop guards", () => {
   });
 });
 
+describe("runArrangementLoop Window-Guard-Staerkung (Slice ppal-window-guard)", () => {
+  // ReplacementRange-API: die Migration erhaelt fuer diese Single-Range-
+  // Call-Site (Range = <Transport>-Fenster) die alte Prefix/Suffix-
+  // Semantik. Beweis: eine ZUSAETZLICHE Mutation AUSSERHALB des
+  // <Transport>-Fensters im Apply-Output wird vom Guard gefangen.
+  it("Outside-<Transport>-Mutation im Apply -> Exit 1 (Guard greift)", () => {
+    const f = tmpCopy();
+    const realPatch = arrLoopInternals.patchArrangementLoop;
+
+    vi.spyOn(arrLoopInternals, "patchArrangementLoop").mockImplementation(
+      (xml: string, patch) => {
+        const real = realPatch(xml, patch);
+
+        // Reale Patch-Wirkung im <Transport>-Fenster ERHALTEN, aber
+        // zusaetzlich ein Byte AUSSERHALB des <Transport>-Blocks
+        // mutieren (Ableton-Root-Tag manipulieren).
+        return real.replace("<Ableton ", "<AbletoN ");
+      },
+    );
+
+    const r = run(["set", "--als", f, "--length", "8", "--force"]);
+
+    expect(r.code).toBe(1);
+  });
+});
+
 describe("runArrangementLoop get/set", () => {
   it("get liefert exit 0 + JSON", () => {
     const r = run(["get", "--als", tmpCopy()]);

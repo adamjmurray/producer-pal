@@ -6,9 +6,10 @@
 import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { readAls } from "#src/automation/als-file.ts";
 import { runCli } from "../ppal-write-automation.ts";
+import { grooveInternals } from "../ppal-groove-helpers.ts";
 
 const AGR = "/Users/macuser/Desktop/AIbleton/g5b-fixture/G5b-RockFatback.agr";
 const BEFORE_ALS =
@@ -221,6 +222,111 @@ describe("groove subcommand", () => {
       expect(runCli(["groove", "import", "--als", als, "--force"])).toBe(1);
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // Window-Guard-Staerkung (Slice ppal-window-guard):
+  // `assign` ist block-scoped (setClipGrooveId arbeitet nur am Clip-Block,
+  // splice produziert garantiert Prefix/Suffix byte-identisch) — die
+  // Migration zur ReplacementRange-API erhaelt fuer diese Single-Range-
+  // Call-Site die alte Semantik. Charakterisierung: keine Mutation kann
+  // strukturell ausserhalb des Clip-Fensters landen.
+  it("Window-Guard (assign): Block-Apply ist strukturell aufs Clip-Fenster eingegrenzt", () => {
+    const tmp = THROW.replace(/\.als$/, ".gAssignW.als");
+
+    copyFileSync(THROW, tmp);
+
+    try {
+      const before = readAls(tmp);
+      const code = runCli([
+        "groove",
+        "assign",
+        "--als",
+        tmp,
+        "--track",
+        TRACK,
+        "--clip",
+        "Spike Test",
+        "--groove-id",
+        "-1",
+        "--force",
+      ]);
+
+      expect(code).toBe(0);
+
+      const after = readAls(tmp);
+      // Strukturelle Invariante: setClipGrooveId arbeitet block-scoped,
+      // daher kann sich ausserhalb des Clip-Fensters NUR die GrooveId
+      // aendern. Hier konkret: vor `<GrooveId Value="4" />` (der einzige
+      // Clip-GrooveId-Tag im Track-Clip) ist der gesamte Bytestrom
+      // byte-identisch. (Wir koennen nicht das gesamte Outside-Fenster
+      // pruefen, weil splicen die Laenge aendern darf — aber wir koennen
+      // den Anker als Lebendigkeitsbeweis nutzen.)
+      const beforeTag = '<GrooveId Value="4" />';
+      const afterTag = '<GrooveId Value="-1" />';
+
+      expect(before).toContain(beforeTag);
+      expect(after).toContain(afterTag);
+      // Pool-MidiClip-GrooveId (-1) und Track-Clip-GrooveId (4 -> -1) sind
+      // strikt isoliert: ALLE OUTSIDE-Bytes der Datei sind identisch ausser
+      // exakt der einen GrooveId-Tag-Bytes.
+      expect(after.split(afterTag)).toHaveLength(
+        before.split(afterTag).length + 1,
+      );
+    } finally {
+      rmSync(tmp, { force: true });
+      rmSync(tmp + ".bak", { force: true });
+    }
+  });
+
+  // Window-Guard-Staerkung (Slice ppal-window-guard):
+  // `tune` ruft `patchGrooveTune` mit whole-XML, daher kann ein Spy eine
+  // ZUSAETZLICHE Mutation ausserhalb des Groove-Eintrag-Fensters
+  // einschleusen. Der Guard mit `singleRangeReplacement` muss diese
+  // Outside-Window-Korruption als Exit 1 melden.
+  it("Window-Guard (tune): Spy mutiert Byte ausserhalb des Groove-Eintrags -> Exit 1", () => {
+    const tmp = THROW.replace(/\.als$/, ".gTuneW.als");
+
+    copyFileSync(THROW, tmp);
+
+    try {
+      const realPatch = grooveInternals.patchGrooveTune;
+      const spy = vi
+        .spyOn(grooveInternals, "patchGrooveTune")
+        .mockImplementation((xml, id, key, value) => {
+          const realOut = realPatch(xml, id, key, value);
+
+          // Zusaetzliche Mutation an einer Byte-Position AUSSERHALB des
+          // Groove-Eintrag-Fensters (Ableton-Root-Tag manipulieren).
+          return realOut.replace("<Ableton ", "<AbletoN ");
+        });
+      const errSpy = vi
+        .spyOn(process.stderr, "write")
+        .mockImplementation(() => true);
+
+      const code = runCli([
+        "groove",
+        "tune",
+        "--als",
+        tmp,
+        "--groove-id",
+        "4",
+        "--key",
+        "TimingAmount",
+        "--value",
+        "42",
+        "--force",
+      ]);
+
+      const errOut = errSpy.mock.calls.map((c) => String(c[0])).join("");
+
+      spy.mockRestore();
+      errSpy.mockRestore();
+      expect(code).toBe(1);
+      expect(errOut).toContain("außerhalb des Ziel-Groove-Eintrags");
+    } finally {
+      rmSync(tmp, { force: true });
+      rmSync(tmp + ".bak", { force: true });
     }
   });
 

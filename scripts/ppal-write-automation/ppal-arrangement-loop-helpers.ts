@@ -16,7 +16,10 @@ import {
   writeAls,
 } from "#src/automation/als-file.ts";
 import { isOnlyWindowChanged } from "./clip-patch-cli.ts";
-import { requireAlsCliPrelude } from "./shared-cli-helpers.ts";
+import {
+  requireAlsCliPrelude,
+  singleRangeReplacement,
+} from "./shared-cli-helpers.ts";
 
 /** Spy-Seam fuer Tests (open-set-Guard + Patch-Funktion stubbar). */
 export const arrLoopInternals = { isSetLikelyOpen, patchArrangementLoop };
@@ -125,7 +128,11 @@ function patchWithinTransport(
     return { error: err instanceof Error ? err.message : String(err) };
   }
 
-  if (!isOnlyWindowChanged(xml, updated, tStart, tEnd)) {
+  if (
+    !isOnlyWindowChanged(xml, updated, [
+      singleRangeReplacement(xml, updated, tStart, tEnd),
+    ])
+  ) {
     return { error: "unerwartete Aenderung ausserhalb des <Transport>-Blocks" };
   }
 
