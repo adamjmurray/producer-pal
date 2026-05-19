@@ -62,6 +62,7 @@ interface VoiceSessionStub {
   toggleMute: ReturnType<typeof vi.fn>;
   interrupt: ReturnType<typeof vi.fn>;
   retryResponse: ReturnType<typeof vi.fn>;
+  resetHistory: ReturnType<typeof vi.fn>;
 }
 
 function baseSession(
@@ -80,6 +81,7 @@ function baseSession(
     toggleMute: vi.fn(),
     interrupt: vi.fn(),
     retryResponse: vi.fn(),
+    resetHistory: vi.fn(),
     ...overrides,
   };
 }
@@ -559,6 +561,7 @@ describe("VoiceApp", () => {
       fireEvent.click(screen.getByText(/new conversation/i));
 
       expect(session.disconnect).toHaveBeenCalled();
+      expect(session.resetHistory).toHaveBeenCalled();
       expect(persistence.startNewConversation).toHaveBeenCalled();
     });
 
@@ -738,6 +741,7 @@ describe("VoiceApp", () => {
       fireEvent.click(screen.getByText("Other"));
 
       expect(session.disconnect).toHaveBeenCalled();
+      expect(session.resetHistory).toHaveBeenCalled();
       expect(persistence.switchConversation).toHaveBeenCalledWith("other-conv");
     });
 

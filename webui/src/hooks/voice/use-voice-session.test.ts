@@ -537,13 +537,21 @@ describe("useVoiceSession transport event handling", () => {
     expect(result.current.rateLimitedUntil).toBeNull();
   });
 
-  it("history_updated copies the items into local state", async () => {
+  it("history_updated copies items; history survives disconnect; resetHistory clears it", async () => {
     const { result, session } = await connectAndGetSession();
 
     await act(() => {
       session.emit("history_updated", [{ itemId: "i1", type: "message" }]);
     });
+    await act(async () => {
+      await result.current.disconnect();
+    });
     expect(result.current.history).toHaveLength(1);
+
+    await act(() => {
+      result.current.resetHistory();
+    });
+    expect(result.current.history).toStrictEqual([]);
   });
 
   it("session.error sets the error state with a string message for Errors, strings, and object payloads", async () => {

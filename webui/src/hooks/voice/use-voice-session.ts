@@ -65,6 +65,10 @@ interface UseVoiceSessionReturn {
   interrupt: () => void;
   /** Ask the server to generate the next response. Used after a rate-limit retry. */
   retryResponse: () => void;
+  /** Clear the local transcript buffer. Called when the user navigates away
+   * from the current conversation (New, Select different) so the prior
+   * session's items don't bleed into the next view. */
+  resetHistory: () => void;
 }
 
 /**
@@ -315,6 +319,7 @@ export function useVoiceSession(
     toggleMute,
     interrupt,
     retryResponse,
+    resetHistory: () => setHistory([]),
   };
 }
 

@@ -73,6 +73,7 @@ export function VoiceApp(props: VoiceAppProps) {
     transfer,
     isConnected,
     disconnect: voice.disconnect,
+    resetVoiceHistory: voice.resetHistory,
   });
 
   return (
@@ -127,6 +128,7 @@ interface BuildConversationPanelParams {
   transfer: ReturnType<typeof useConversationTransfer>;
   isConnected: boolean;
   disconnect: () => Promise<void>;
+  resetVoiceHistory: () => void;
 }
 
 /**
@@ -149,10 +151,12 @@ function buildConversationPanel(
     onToggle: () => setHistoryPanelOpen((open) => !open),
     onNew: () => {
       if (isConnected) void params.disconnect();
+      params.resetVoiceHistory();
       persistence.startNewConversation();
     },
     onSelect: (id) => {
       if (isConnected) void params.disconnect();
+      params.resetVoiceHistory();
       void persistence.switchConversation(id);
     },
     onDelete: (id) => void persistence.deleteConversation(id),
