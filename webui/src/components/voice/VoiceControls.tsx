@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { ThinkingToggle } from "#webui/components/chat/controls/ThinkingToggle";
 import { type useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 
 type VoiceSessionState = ReturnType<typeof useVoiceSession>;
@@ -17,13 +18,14 @@ interface VoiceControlsProps {
   /** User's saved voice preference (post-save). Compared against the live
    * session's `activeVoice` to render the pending-change indicator. */
   savedVoice: string;
+  thinking: string;
+  onThinkingChange: (thinking: string) => void;
 }
 
 /**
- * Composer-area voice controls: Talk/Stop button, status badge, and the
- * contextual secondary action (Interrupt while the assistant is working, Mute
- * otherwise). Rendered in the composer slot of AppShell so it sits where the
- * chat ChatInput would.
+ * Composer-area voice controls laid out like the chat composer: status + voice
+ * info on the left, ThinkingToggle and Talk/Stop on the right. Mute/Interrupt
+ * is a contextual inline button next to the primary action when connected.
  *
  * @param props - component props
  * @param props.voice - The useVoiceSession hook return value
@@ -33,6 +35,8 @@ interface VoiceControlsProps {
  * @param props.isUnsupportedBrowser - True when the browser is known broken (Firefox)
  * @param props.onToggleConnection - Toggle connect/disconnect
  * @param props.savedVoice - User's saved realtime voice preference (post-save)
+ * @param props.thinking - Current thinking level
+ * @param props.onThinkingChange - Callback when thinking level changes
  * @returns Controls UI
  */
 export function VoiceControls({
@@ -43,6 +47,8 @@ export function VoiceControls({
   isUnsupportedBrowser,
   onToggleConnection,
   savedVoice,
+  thinking,
+  onThinkingChange,
 }: VoiceControlsProps) {
   const assistantActive = voice.assistantSpeaking || voice.assistantThinking;
   const activeVoice = voice.activeVoice;
@@ -50,52 +56,62 @@ export function VoiceControls({
   const displayVoice = activeVoice ?? savedVoice;
 
   return (
-    <div className="flex flex-col items-center gap-3 px-4 py-4 border-t border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900">
-      <button
-        type="button"
-        onClick={onToggleConnection}
-        disabled={isBusy || !openAiKey || isUnsupportedBrowser}
-        className={`
-              w-24 h-24 rounded-full text-base font-semibold transition-colors
-              shadow-lg disabled:opacity-40 disabled:cursor-not-allowed
-              ${
+    <div className="border-t border-zinc-300 dark:border-zinc-700 shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.08)] dark:shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.3)] relative z-10">
+      <div className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex-1 flex items-center gap-3 min-w-0">
+            <VoiceLabel
+              displayVoice={displayVoice}
+              voiceDiverges={voiceDiverges}
+              savedVoice={savedVoice}
+            />
+            <div className="flex-1 flex justify-center min-w-0">
+              <StatusBadge
+                status={voice.status}
+                assistantSpeaking={voice.assistantSpeaking}
+                assistantThinking={voice.assistantThinking}
+                userMuted={voice.isMuted}
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isConnected && assistantActive && (
+              <button
+                type="button"
+                onClick={voice.interrupt}
+                className="text-sm px-3 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-medium shadow"
+              >
+                Interrupt
+              </button>
+            )}
+            {isConnected && !assistantActive && (
+              <button
+                type="button"
+                onClick={() => void voice.toggleMute()}
+                className="text-sm px-3 py-1 rounded border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                {voice.isMuted ? "Unmute" : "Mute"}
+              </button>
+            )}
+            <ThinkingToggle
+              thinking={thinking}
+              onThinkingChange={onThinkingChange}
+            />
+            <button
+              type="button"
+              onClick={onToggleConnection}
+              disabled={isBusy || !openAiKey || isUnsupportedBrowser}
+              className={`px-6 py-2 rounded-lg text-base font-semibold transition-colors shadow disabled:opacity-40 disabled:cursor-not-allowed ${
                 isConnected
                   ? "bg-red-600 hover:bg-red-700 text-white"
                   : "bg-blue-600 hover:bg-blue-700 text-white"
-              }
-            `}
-      >
-        {isBusy ? "..." : isConnected ? "Stop" : "Talk"}
-      </button>
-      <StatusBadge
-        status={voice.status}
-        assistantSpeaking={voice.assistantSpeaking}
-        assistantThinking={voice.assistantThinking}
-        userMuted={voice.isMuted}
-      />
-      <VoiceLabel
-        displayVoice={displayVoice}
-        voiceDiverges={voiceDiverges}
-        savedVoice={savedVoice}
-      />
-      {isConnected && assistantActive && (
-        <button
-          type="button"
-          onClick={voice.interrupt}
-          className="text-sm px-4 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-medium shadow"
-        >
-          Interrupt
-        </button>
-      )}
-      {isConnected && !assistantActive && (
-        <button
-          type="button"
-          onClick={() => void voice.toggleMute()}
-          className="text-sm px-3 py-1 rounded border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-        >
-          {voice.isMuted ? "Unmute" : "Mute"}
-        </button>
-      )}
+              }`}
+            >
+              {isBusy ? "..." : isConnected ? "Stop" : "Talk"}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -125,7 +141,7 @@ function VoiceLabel({
 }: VoiceLabelProps) {
   return (
     <div
-      className={`text-xs ${
+      className={`text-sm ${
         voiceDiverges
           ? "text-amber-600 dark:text-amber-400"
           : "text-zinc-500 dark:text-zinc-400"
@@ -173,9 +189,9 @@ function StatusBadge({
   });
 
   return (
-    <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+    <div className="flex items-center gap-2 text-base text-zinc-600 dark:text-zinc-400">
       <span
-        className={`inline-block w-2.5 h-2.5 rounded-full ${color} ${pulse ? "animate-pulse" : ""}`}
+        className={`inline-block w-3 h-3 rounded-full ${color} ${pulse ? "animate-pulse" : ""}`}
       />
       {label}
     </div>

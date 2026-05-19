@@ -120,6 +120,8 @@ export function VoiceApp(props: VoiceAppProps) {
         isUnsupportedBrowser={firefoxDetected}
         onToggleConnection={onToggleConnection}
         savedVoice={savedVoice}
+        thinking={props.settings.thinking}
+        onThinkingChange={props.settings.setThinking}
       />
     </AppShell>
   );
