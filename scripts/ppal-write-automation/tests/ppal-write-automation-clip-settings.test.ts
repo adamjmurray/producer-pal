@@ -231,13 +231,15 @@ describe("clip-settings", () => {
     }
   });
 
-  // Window-Guard-Staerkung (Slice ppal-window-guard): die Migration zur
-  // ReplacementRange-API erhaelt die alte Prefix/Suffix-Semantik fuer
-  // diese Single-Range-Call-Site (Range = gesamtes Clip-Fenster). Test
-  // bestaetigt, dass eine ZUSAETZLICHE Outside-Window-Mutation im
-  // Apply-Output (Fremd-Track-Korruption) weiterhin durch den
-  // gestaerkten Guard gefangen wird — Mitigation-B-Schutz konstant.
-  it("Window-Guard (ReplacementRange-API): Fremd-Track-Korruption im Apply -> Exit 1", () => {
+  // Regression-Beweis (NICHT Staerkungs-Beweis) der Migration zur
+  // ReplacementRange-API: die Single-Range-Call-Site (Range = gesamtes
+  // Clip-Fenster) erhaelt die alte Prefix/Suffix-Semantik. Eine Outside-
+  // Window-Mutation (Fremd-Track-Korruption im Suffix-Bereich) wird vom
+  // Guard weiterhin gefangen — der alte Guard haette das ebenfalls per
+  // Suffix-Check gefangen. Der eigentliche Staerkungs-Beweis (Gap-
+  // Mutation zwischen Multi-Range-Subranges) liegt in window-guard.test.ts
+  // (Differenzial-Test).
+  it("Fremd-Track-Korruption im Apply -> Exit 1 (Migration nicht regressiert)", () => {
     const xml = [
       `<Ableton><Tracks>`,
       // Ziel-Track mit Ziel-Clip:

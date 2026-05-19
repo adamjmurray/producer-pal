@@ -213,16 +213,19 @@ describe("runRouting Flag-/Guard-Exit-Codes", () => {
   });
 });
 
-describe("runRouting Window-Guard-Staerkung (Slice ppal-window-guard)", () => {
-  // ReplacementRange-API: lean-track-cli baut updated als
+describe("runRouting Window-Guard-Migration (Slice ppal-window-guard)", () => {
+  // Strukturelle Charakterisierung (NICHT Staerkungs-Beweis):
+  // lean-track-cli baut updated als
   // xml.slice(0, loc.start) + newBlock + xml.slice(loc.end), d.h. der
   // Apply-Pfad ist STRUKTURELL auf das Track-Fenster eingegrenzt. Diese
-  // Charakterisierung verifiziert die Invariante: jede Spy-Mutation am
-  // Block-Output landet INNERHALB von [loc.start, loc.start+|newBlock|)
-  // -> Guard mit Range = ganzes Track-Fenster bleibt gruen, Prefix/Suffix
-  // unveraendert. Aufruf-seitig vereinbart, dass kein verdeckter
-  // Out-of-Window-Defekt existieren KANN — Mitigation R2 dokumentiert.
-  it("Block-Apply ist strukturell aufs Track-Fenster eingegrenzt (Spy laesst Prefix/Suffix invariant)", () => {
+  // Invariante bedeutet: jede Spy-Mutation am Block-Output landet
+  // INNERHALB von [loc.start, loc.start+|newBlock|) -> Guard mit Range =
+  // ganzes Track-Fenster bleibt gruen, Prefix/Suffix unveraendert.
+  // Aufruf-seitig vereinbart, dass kein verdeckter Out-of-Window-Defekt
+  // existieren KANN (Mitigation R2 der Premortem dokumentiert). Der
+  // eigentliche Staerkungs-Beweis (Gap-Mutation in Multi-Range) liegt in
+  // window-guard.test.ts (Differenzial-Test).
+  it("Block-Apply strukturell aufs Track-Fenster eingegrenzt (Charakterisierung)", () => {
     const f = tmpCopy();
     const before = readAls(f);
     const realPatch = routingInternals.patchTrackRouting;

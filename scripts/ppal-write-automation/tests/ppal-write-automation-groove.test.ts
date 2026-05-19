@@ -225,13 +225,14 @@ describe("groove subcommand", () => {
     }
   });
 
-  // Window-Guard-Staerkung (Slice ppal-window-guard):
+  // Strukturelle Charakterisierung (Slice ppal-window-guard):
   // `assign` ist block-scoped (setClipGrooveId arbeitet nur am Clip-Block,
   // splice produziert garantiert Prefix/Suffix byte-identisch) — die
   // Migration zur ReplacementRange-API erhaelt fuer diese Single-Range-
-  // Call-Site die alte Semantik. Charakterisierung: keine Mutation kann
-  // strukturell ausserhalb des Clip-Fensters landen.
-  it("Window-Guard (assign): Block-Apply ist strukturell aufs Clip-Fenster eingegrenzt", () => {
+  // Call-Site die alte Semantik. Keine Mutation kann strukturell ausserhalb
+  // des Clip-Fensters landen; der Test ist ein Lebendigkeits-/Regression-
+  // Beweis, kein Staerkungs-Beweis (siehe window-guard.test.ts Differenzial).
+  it("assign: Block-Apply strukturell aufs Clip-Fenster eingegrenzt (Regression-Beweis)", () => {
     const tmp = THROW.replace(/\.als$/, ".gAssignW.als");
 
     copyFileSync(THROW, tmp);
@@ -279,12 +280,14 @@ describe("groove subcommand", () => {
     }
   });
 
-  // Window-Guard-Staerkung (Slice ppal-window-guard):
-  // `tune` ruft `patchGrooveTune` mit whole-XML, daher kann ein Spy eine
-  // ZUSAETZLICHE Mutation ausserhalb des Groove-Eintrag-Fensters
-  // einschleusen. Der Guard mit `singleRangeReplacement` muss diese
-  // Outside-Window-Korruption als Exit 1 melden.
-  it("Window-Guard (tune): Spy mutiert Byte ausserhalb des Groove-Eintrags -> Exit 1", () => {
+  // Regression-Beweis (NICHT Staerkungs-Beweis) der Migration: `tune` ruft
+  // `patchGrooveTune` mit whole-XML, daher kann ein Spy eine zusaetzliche
+  // Mutation AUSSERHALB des Groove-Eintrag-Fensters einschleusen (hier:
+  // Ableton-Root-Tag im Prefix-Bereich). Der Guard meldet das als Exit 1 —
+  // der alte Prefix/Suffix-Guard haette das ebenfalls gefangen. Der
+  // eigentliche Staerkungs-Beweis (Gap-Mutation in Multi-Range) liegt in
+  // window-guard.test.ts (Differenzial-Test).
+  it("tune: Spy mutiert Byte ausserhalb des Groove-Eintrags -> Exit 1 (Migration nicht regressiert)", () => {
     const tmp = THROW.replace(/\.als$/, ".gTuneW.als");
 
     copyFileSync(THROW, tmp);

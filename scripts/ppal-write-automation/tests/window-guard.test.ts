@@ -147,6 +147,42 @@ describe("isOnlyWindowChanged — Defekt-Faenge", () => {
     expect(isOnlyWindowChanged(xml, updated, ranges)).toBe(false);
   });
 
+  // Differenzial-Beweis (Codex Stage-2-Review): der vorhergehende Test prueft
+  // nur, dass der NEUE Guard die Gap-Mutation ablehnt. Das beweist noch nicht,
+  // dass der ALTE Prefix/Suffix-Guard sie zugelassen haette. Dieser Test
+  // reproduziert den alten Guard inline und zeigt: alter Guard akzeptiert die
+  // Gap-Mutation, neuer Guard lehnt sie ab. Damit ist die Staerkung formell
+  // belegt — der neue Guard fangt Defekte, die der alte durchgelassen haette.
+  it("Differenzial: alter [r0.start,rN.end)-Guard akzeptiert Gap-Mutation, neuer lehnt ab", () => {
+    const xml = "AAA<X>11</X>BBB<Y>22</Y>CCC";
+    const s1 = xml.indexOf("11");
+    const e1 = s1 + "11".length;
+    const s2 = xml.indexOf("22");
+    const e2 = s2 + "22".length;
+    const updated = "AAA<X>9999</X>BXB<Y>3</Y>CCC";
+
+    // Alten Prefix/Suffix-Guard inline reproduzieren (Code aus
+    // origin/main:clip-patch-cli.ts:292-304 vor der Slice-Aenderung).
+    const oldGuardAccepts = (() => {
+      const start = s1;
+      const end = e2;
+      const delta = updated.length - xml.length;
+
+      return (
+        xml.slice(0, start) === updated.slice(0, start) &&
+        xml.slice(end) === updated.slice(end + delta)
+      );
+    })();
+
+    const newGuardRejects = !isOnlyWindowChanged(xml, updated, [
+      { start: s1, end: e1, replacement: "9999" },
+      { start: s2, end: e2, replacement: "3" },
+    ]);
+
+    expect(oldGuardAccepts).toBe(true);
+    expect(newGuardRejects).toBe(true);
+  });
+
   it("Replacement-Mismatch: deklarierter Inhalt != tatsaechlicher Inhalt -> false", () => {
     const xml = "PREFIX[INSIDE]SUFFIX";
     const start = xml.indexOf("[") + 1;
