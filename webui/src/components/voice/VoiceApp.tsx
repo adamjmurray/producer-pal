@@ -21,6 +21,7 @@ import {
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
 import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
+import { mergeVoiceHistory } from "#webui/hooks/voice/use-voice-persistence-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import { isFirefox } from "#webui/utils/browser-detect";
@@ -62,10 +63,15 @@ export function VoiceApp() {
   const persistence = useVoicePersistence({ liveHistory: voice.history });
   const transfer = useConversationTransfer(persistence.refreshList);
 
-  // Show live transcript while a session is producing items; otherwise show
-  // the saved transcript of the active voice conversation (read-only view).
-  const displayItems =
-    voice.history.length > 0 ? voice.history : persistence.savedItems;
+  // Merge the saved record (with historical tool calls) with the live session
+  // history. When no session is running, this is just the saved items. During
+  // a continued session, this preserves the visual record of prior tool calls
+  // — the Realtime SDK can't re-seed function_call items so they'd otherwise
+  // disappear from view the moment the user clicks Talk.
+  const displayItems = useMemo(
+    () => mergeVoiceHistory(persistence.savedItems, voice.history),
+    [persistence.savedItems, voice.history],
+  );
   const messages = useMemo(
     () => realtimeItemsToUIMessages(displayItems),
     [displayItems],
@@ -90,12 +96,15 @@ export function VoiceApp() {
       return;
     }
 
-    // Starting a new session — clear any saved transcript so the live history
-    // takes over an empty viewport. Commit 6 will replace this with proper
-    // priming from prior items.
-    persistence.startNewConversation();
-    void voice.connect();
-  }, [isConnected, persistence, voice]);
+    // If a saved voice conversation is loaded, prime the new session with its
+    // messages so the model has prior context. Function calls are dropped by
+    // the SDK during priming but stay visible in the saved record via the
+    // merge in displayItems / persistence's auto-save.
+    const seed =
+      persistence.savedItems.length > 0 ? persistence.savedItems : undefined;
+
+    void voice.connect(seed);
+  }, [isConnected, persistence.savedItems, voice]);
 
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools

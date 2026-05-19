@@ -47,7 +47,14 @@ interface UseVoiceSessionReturn {
   assistantThinking: boolean;
   /** Epoch ms when the current rate-limit clears, or null if not rate-limited. */
   rateLimitedUntil: number | null;
-  connect: () => Promise<void>;
+  /**
+   * Open the realtime connection. If `initialHistory` is provided, message
+   * items from it are seeded onto the server's conversation after connect so
+   * the model has prior context. function_call items are silently dropped —
+   * the Realtime SDK refuses to re-add them ("Function calls cannot be
+   * manually added or updated at the moment.").
+   */
+  connect: (initialHistory?: RealtimeItem[]) => Promise<void>;
   disconnect: () => Promise<void>;
   toggleMute: () => Promise<void>;
   /** Interrupt the current model response (cut audio, keep transcript so far). */
@@ -113,108 +120,123 @@ export function useVoiceSession(
     setAssistantThinking(false);
   }, []);
 
-  const connect = useCallback(async () => {
-    if (sessionRef.current) return;
+  const connect = useCallback(
+    async (initialHistory?: RealtimeItem[]) => {
+      if (sessionRef.current) return;
 
-    if (!openAiKey) {
-      setStatus("error");
-      setError("Configure your OpenAI API key in the chat UI settings first.");
+      if (!openAiKey) {
+        setStatus("error");
+        setError(
+          "Configure your OpenAI API key in the chat UI settings first.",
+        );
 
-      return;
-    }
+        return;
+      }
 
-    setStatus("connecting");
-    setError(null);
-    setHistory([]);
+      setStatus("connecting");
+      setError(null);
+      setHistory([]);
 
-    try {
-      const { tools, mcpClient } = await createRealtimeMcpTools(
-        mcpUrl,
-        enabledTools,
-      );
+      try {
+        const { tools, mcpClient } = await createRealtimeMcpTools(
+          mcpUrl,
+          enabledTools,
+        );
 
-      mcpClientRef.current = mcpClient;
+        mcpClientRef.current = mcpClient;
 
-      const agent = new RealtimeAgent({
-        name: "Producer Pal Voice",
-        instructions: AGENT_INSTRUCTIONS,
-        tools,
-      });
+        const agent = new RealtimeAgent({
+          name: "Producer Pal Voice",
+          instructions: AGENT_INSTRUCTIONS,
+          tools,
+        });
 
-      // Construct the transport with no options. The SDK calls
-      // getUserMedia({ audio: true }) (default constraints — browser/OS-level
-      // AEC is on by default on macOS and modern Chromium/Safari) and creates
-      // its own <audio> element for playback. This matches the canonical
-      // realtime-next example.
-      const transport = new OpenAIRealtimeWebRTC();
+        // Construct the transport with no options. The SDK calls
+        // getUserMedia({ audio: true }) (default constraints — browser/OS-level
+        // AEC is on by default on macOS and modern Chromium/Safari) and creates
+        // its own <audio> element for playback. This matches the canonical
+        // realtime-next example.
+        const transport = new OpenAIRealtimeWebRTC();
 
-      const session = new RealtimeSession(agent, {
-        model: OPENAI_REALTIME_MODEL,
-        transport,
-      });
+        const session = new RealtimeSession(agent, {
+          model: OPENAI_REALTIME_MODEL,
+          transport,
+        });
 
-      session.on("history_updated", (next: RealtimeItem[]) => {
-        setHistory([...next]);
-      });
+        session.on("history_updated", (next: RealtimeItem[]) => {
+          setHistory([...next]);
+        });
 
-      session.on("transport_event", (event: TransportEvent) => {
-        // High-frequency stream — log to console (devtools filter "[voice]"),
-        // not React state, to avoid re-rendering on every delta.
-        console.debug("[voice]", event.type, event);
+        session.on("transport_event", (event: TransportEvent) => {
+          // High-frequency stream — log to console (devtools filter "[voice]"),
+          // not React state, to avoid re-rendering on every delta.
+          console.debug("[voice]", event.type, event);
 
-        // These flags drive the UI status pill only. They do NOT touch the
-        // mic — the canonical example doesn't auto-mute and we follow suit.
-        if (event.type === "response.created") {
-          setAssistantThinking(true);
-        } else if (event.type === "response.done") {
-          setAssistantThinking(false);
-          const failure = extractResponseFailure(event);
+          // These flags drive the UI status pill only. They do NOT touch the
+          // mic — the canonical example doesn't auto-mute and we follow suit.
+          if (event.type === "response.created") {
+            setAssistantThinking(true);
+          } else if (event.type === "response.done") {
+            setAssistantThinking(false);
+            const failure = extractResponseFailure(event);
 
-          if (failure) {
-            setError(failure.message);
+            if (failure) {
+              setError(failure.message);
 
-            if (failure.code === "rate_limit_exceeded") {
-              const seconds = parseRetrySeconds(failure.message);
+              if (failure.code === "rate_limit_exceeded") {
+                const seconds = parseRetrySeconds(failure.message);
 
-              if (seconds != null) {
-                setRateLimitedUntil(Date.now() + seconds * 1000);
+                if (seconds != null) {
+                  setRateLimitedUntil(Date.now() + seconds * 1000);
+                }
               }
+            } else {
+              setRateLimitedUntil(null);
             }
-          } else {
-            setRateLimitedUntil(null);
+          } else if (event.type === "output_audio_buffer.started") {
+            setAssistantSpeaking(true);
+          } else if (
+            event.type === "output_audio_buffer.stopped" ||
+            event.type === "output_audio_buffer.cleared"
+          ) {
+            setAssistantSpeaking(false);
           }
-        } else if (event.type === "output_audio_buffer.started") {
-          setAssistantSpeaking(true);
-        } else if (
-          event.type === "output_audio_buffer.stopped" ||
-          event.type === "output_audio_buffer.cleared"
-        ) {
-          setAssistantSpeaking(false);
+        });
+
+        session.on("error", (err: { type: "error"; error: unknown }) => {
+          console.error("RealtimeSession error", err.error);
+          const inner = err.error;
+
+          setError(inner instanceof Error ? inner.message : String(inner));
+        });
+
+        // eslint-disable-next-line require-atomic-updates -- ref is not subject to React batching
+        sessionRef.current = session;
+
+        const token = await fetchEphemeralToken(voiceTokenUrl, openAiKey);
+
+        await session.connect({ apiKey: token });
+
+        if (initialHistory && initialHistory.length > 0) {
+          // The SDK's resetHistory only echoes "message" items back to the
+          // server — function_call/mcp_call items are dropped. Filter to avoid
+          // SDK warnings and rely on the saved record for tool-call review.
+          const primable = initialHistory.filter((i) => i.type === "message");
+
+          if (primable.length > 0) session.updateHistory(primable);
         }
-      });
 
-      session.on("error", (err: { type: "error"; error: unknown }) => {
-        console.error("RealtimeSession error", err.error);
-        const inner = err.error;
+        setStatus("connected");
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
 
-        setError(inner instanceof Error ? inner.message : String(inner));
-      });
-
-      // eslint-disable-next-line require-atomic-updates -- ref is not subject to React batching
-      sessionRef.current = session;
-
-      const token = await fetchEphemeralToken(voiceTokenUrl, openAiKey);
-
-      await session.connect({ apiKey: token });
-      setStatus("connected");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-
-      setStatus("error");
-      setError(message);
-      await cleanup();
-    }
-  }, [mcpUrl, voiceTokenUrl, openAiKey, enabledTools, cleanup]);
+        setStatus("error");
+        setError(message);
+        await cleanup();
+      }
+    },
+    [mcpUrl, voiceTokenUrl, openAiKey, enabledTools, cleanup],
+  );
 
   const disconnect = useCallback(async () => {
     setStatus("disconnecting");

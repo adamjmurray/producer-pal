@@ -50,6 +50,7 @@ const mocks = vi.hoisted(() => {
 
     mute = vi.fn();
     interrupt = vi.fn();
+    updateHistory = vi.fn();
     close = vi.fn(() => {
       this.closed = true;
     });
@@ -279,6 +280,96 @@ describe("useVoiceSession.connect", () => {
 
     expect(result.current.status).toBe("error");
     expect(result.current.error).toMatch(/value/i);
+  });
+
+  it("primes message items via session.updateHistory when initialHistory is provided", async () => {
+    stubFetchOk({ value: "ek_x" });
+
+    const initialHistory = [
+      {
+        itemId: "u1",
+        type: "message",
+        role: "user",
+        status: "completed",
+        content: [{ type: "input_audio", transcript: "earlier" }],
+      },
+      // Function-call items must be filtered out — the SDK can't re-add them.
+      {
+        itemId: "fc1",
+        type: "function_call",
+        status: "completed",
+        name: "ppal-read-track",
+        arguments: "{}",
+        output: '{"ok":true}',
+      },
+      {
+        itemId: "a1",
+        type: "message",
+        role: "assistant",
+        status: "completed",
+        content: [{ type: "output_audio", transcript: "ok" }],
+      },
+    ];
+    const { result } = renderHook(() => useVoiceSession(defaultParams()));
+
+    await act(async () => {
+      await result.current.connect(
+        initialHistory as unknown as Parameters<
+          typeof result.current.connect
+        >[0],
+      );
+    });
+
+    const session = mocks.FakeSession.instances[0]!;
+    const args = session.updateHistory.mock.calls[0]?.[0] as
+      | { itemId: string; type: string }[]
+      | undefined;
+
+    expect(args).toBeDefined();
+    expect(args!.map((i) => i.itemId)).toStrictEqual(["u1", "a1"]);
+    expect(args!.every((i) => i.type === "message")).toBe(true);
+  });
+
+  it("does not call updateHistory when initialHistory is empty or omitted", async () => {
+    stubFetchOk({ value: "ek_x" });
+
+    const { result } = renderHook(() => useVoiceSession(defaultParams()));
+
+    await act(async () => {
+      await result.current.connect();
+    });
+
+    expect(
+      mocks.FakeSession.instances[0]!.updateHistory,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("skips updateHistory when initialHistory contains only function_call items", async () => {
+    stubFetchOk({ value: "ek_x" });
+    const onlyFunctionCalls = [
+      {
+        itemId: "fc1",
+        type: "function_call",
+        status: "completed",
+        name: "ppal-read-track",
+        arguments: "{}",
+        output: '{"ok":true}',
+      },
+    ];
+
+    const { result } = renderHook(() => useVoiceSession(defaultParams()));
+
+    await act(async () => {
+      await result.current.connect(
+        onlyFunctionCalls as unknown as Parameters<
+          typeof result.current.connect
+        >[0],
+      );
+    });
+
+    expect(
+      mocks.FakeSession.instances[0]!.updateHistory,
+    ).not.toHaveBeenCalled();
   });
 
   it("is a no-op when called twice in a row (second call ignored)", async () => {

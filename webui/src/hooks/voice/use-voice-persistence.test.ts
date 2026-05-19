@@ -408,6 +408,64 @@ describe("useVoicePersistence", () => {
     expect(loaded?.title).toBeNull();
   });
 
+  it("preserves prior function_call items when auto-saving a continued session", async () => {
+    const functionCall = {
+      itemId: "fc1",
+      type: "function_call",
+      status: "completed",
+      name: "ppal-read-track",
+      arguments: "{}",
+      output: '{"result":"ok"}',
+    } as unknown as RealtimeItem;
+
+    const userMsg = {
+      itemId: "u1",
+      type: "message",
+      role: "user",
+      status: "completed",
+      content: [{ type: "input_audio", transcript: "earlier" }],
+    } as unknown as RealtimeItem;
+
+    const priorRecord = createTestRecord({
+      sessionType: "voice",
+      // Saved record has a function_call sandwiched between messages.
+      voiceHistory: [userMsg, functionCall],
+      messages: [],
+    });
+
+    await saveConversation(priorRecord);
+    window.location.hash = priorRecord.id;
+
+    // Continuation: the live SDK history only contains the primed message
+    // (function_call dropped during priming) plus a new user turn.
+    const continuation: RealtimeItem[] = [
+      userMsg,
+      {
+        itemId: "u2",
+        type: "message",
+        role: "user",
+        status: "completed",
+        content: [{ type: "input_audio", transcript: "follow-up" }],
+      } as unknown as RealtimeItem,
+    ];
+
+    const { rerender } = renderHook(
+      ({ history }: { history: RealtimeItem[] }) =>
+        useVoicePersistence({ liveHistory: history }),
+      { initialProps: { history: [] as RealtimeItem[] } },
+    );
+
+    await waitForEffects();
+    rerender({ history: continuation });
+    await waitForEffects(800);
+
+    const loaded = await loadConversation(priorRecord.id);
+
+    expect(
+      loaded?.voiceHistory?.map((i) => (i as RealtimeItem).itemId),
+    ).toStrictEqual(["u1", "fc1", "u2"]);
+  });
+
   it("renames and toggles bookmark on a saved conversation", async () => {
     const record = createTestRecord({
       sessionType: "voice",

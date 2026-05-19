@@ -5,6 +5,7 @@
 
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { mergeVoiceHistory } from "#webui/hooks/voice/use-voice-persistence-helpers";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import {
   type ConversationRecord,
@@ -60,6 +61,10 @@ export function useVoicePersistence(
   const createdAtRef = useRef<number | null>(null);
   const bookmarkedRef = useRef(false);
   const titleRef = useRef<string | null>(null);
+  // Snapshot of the loaded record's full voiceHistory (including function_call
+  // items). Used by the auto-save merge so historical tool calls survive a
+  // continued session even though the Realtime SDK can't re-seed them.
+  const priorItemsRef = useRef<RealtimeItem[]>([]);
 
   useEffect(() => {
     activeIdRef.current = activeConversationId;
@@ -106,7 +111,10 @@ export function useVoicePersistence(
       createdAtRef.current = record.createdAt;
       bookmarkedRef.current = record.bookmarked;
       titleRef.current = record.title;
-      setSavedItems((record.voiceHistory ?? []) as RealtimeItem[]);
+      const items = (record.voiceHistory ?? []) as RealtimeItem[];
+
+      priorItemsRef.current = items;
+      setSavedItems(items);
     }
   }, [refreshList, setActiveId]);
 
@@ -115,8 +123,9 @@ export function useVoicePersistence(
     if (liveHistory.length === 0) return;
 
     const id = activeIdRef.current ?? crypto.randomUUID();
+    const merged = mergeVoiceHistory(priorItemsRef.current, liveHistory);
     const timer = setTimeout(() => {
-      void saveVoiceRecord(id, liveHistory, {
+      void saveVoiceRecord(id, merged, {
         createdAt: createdAtRef.current,
         bookmarked: bookmarkedRef.current,
         title: titleRef.current,
@@ -138,6 +147,7 @@ export function useVoicePersistence(
       if (!record) {
         setActiveId(null);
         setSavedItems([]);
+        priorItemsRef.current = [];
 
         return;
       }
@@ -151,7 +161,10 @@ export function useVoicePersistence(
       createdAtRef.current = record.createdAt;
       bookmarkedRef.current = record.bookmarked;
       titleRef.current = record.title;
-      setSavedItems((record.voiceHistory ?? []) as RealtimeItem[]);
+      const items = (record.voiceHistory ?? []) as RealtimeItem[];
+
+      priorItemsRef.current = items;
+      setSavedItems(items);
       setActiveId(id);
     },
     [setActiveId],
@@ -161,6 +174,7 @@ export function useVoicePersistence(
     createdAtRef.current = null;
     bookmarkedRef.current = false;
     titleRef.current = null;
+    priorItemsRef.current = [];
     setSavedItems([]);
     setActiveId(null);
   }, [setActiveId]);

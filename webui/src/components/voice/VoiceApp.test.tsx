@@ -634,7 +634,7 @@ describe("VoiceApp", () => {
       expect(screen.getByText("from saved record")).toBeDefined();
     });
 
-    it("clearing the saved transcript when starting a new live session via Talk", () => {
+    it("Talk on a fresh page calls connect() with no seed and does not reset persistence", () => {
       const persistence = basePersistence();
       const session = baseSession();
 
@@ -644,8 +644,87 @@ describe("VoiceApp", () => {
       render(<VoiceApp />);
       fireEvent.click(screen.getByRole("button", { name: "Talk" }));
 
-      expect(persistence.startNewConversation).toHaveBeenCalled();
-      expect(session.connect).toHaveBeenCalled();
+      expect(persistence.startNewConversation).not.toHaveBeenCalled();
+      expect(session.connect).toHaveBeenCalledWith(undefined);
+    });
+
+    it("Talk on a loaded voice conversation primes the new session with saved items", () => {
+      const savedItems = [
+        {
+          itemId: "u1",
+          type: "message",
+          role: "user",
+          status: "completed",
+          content: [{ type: "input_audio", transcript: "from saved" }],
+        },
+      ] as unknown as RealtimeItem[];
+
+      const persistence = basePersistence({
+        savedItems,
+        activeConversationId: "saved-id",
+      });
+      const session = baseSession();
+
+      mocks.useVoiceSession.mockReturnValue(session);
+      mocks.useVoicePersistence.mockReturnValue(persistence);
+
+      render(<VoiceApp />);
+      fireEvent.click(screen.getByRole("button", { name: "Talk" }));
+
+      expect(session.connect).toHaveBeenCalledWith(savedItems);
+      expect(persistence.startNewConversation).not.toHaveBeenCalled();
+    });
+
+    it("merges saved record with live history so historical tool calls stay visible mid-session", () => {
+      const savedItems = [
+        {
+          itemId: "u1",
+          type: "message",
+          role: "user",
+          status: "completed",
+          content: [{ type: "input_audio", transcript: "earlier turn" }],
+        },
+        {
+          itemId: "fc1",
+          type: "function_call",
+          status: "completed",
+          name: "ppal-read-track",
+          arguments: "{}",
+          output: '{"result":"ok"}',
+        },
+      ] as unknown as RealtimeItem[];
+
+      const liveHistory = [
+        {
+          itemId: "u1",
+          type: "message",
+          role: "user",
+          status: "completed",
+          content: [{ type: "input_audio", transcript: "earlier turn" }],
+        },
+        {
+          itemId: "a2",
+          type: "message",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_audio", transcript: "fresh assistant" }],
+        },
+      ] as unknown as RealtimeItem[];
+
+      mocks.useVoiceSession.mockReturnValue(
+        baseSession({ status: "connected", history: liveHistory }),
+      );
+      mocks.useVoicePersistence.mockReturnValue(
+        basePersistence({ savedItems, activeConversationId: "saved-id" }),
+      );
+
+      render(<VoiceApp />);
+
+      // The function-call rollup from the saved record is preserved even
+      // though the live SDK history does not contain it.
+      expect(screen.getAllByText(/ppal-read-track/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/earlier turn/i)).toBeDefined();
+      expect(screen.getByText(/fresh assistant/i)).toBeDefined();
     });
 
     it("opens chat when the settings button is clicked", () => {
