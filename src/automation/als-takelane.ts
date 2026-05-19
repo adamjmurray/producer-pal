@@ -76,6 +76,23 @@ export function patchTakeLanes(wrapper: string, lanes: TakeLaneSpec[]): string {
     if (!lane.clipXml.startsWith("<AudioClip")) {
       throw new Error("Lane-Spec: clipXml ist kein <AudioClip-Block");
     }
+
+    // Pre-Render-Konsistenz-Check (Codex-Review F1): embedded <TakeId> im
+    // verbatim gesplicten clipXml muss == lane.takeId sein. Sonst wuerde
+    // der Mismatch erst im Post-Write-Verify auffallen — die .als waere da
+    // schon korrupt geschrieben (Throw-statt-Teil-Patch-Bruch).
+    const embeddedTakeId = lane.clipXml.match(/<TakeId Value="([^"]*)" \/>/);
+
+    if (embeddedTakeId == null) {
+      throw new Error("Lane-Spec: clipXml ohne <TakeId>");
+    }
+
+    if (embeddedTakeId[1] !== lane.takeId) {
+      throw new Error(
+        `Lane-Spec: takeId "${lane.takeId}" != embedded <TakeId> ` +
+          `"${embeddedTakeId[1]}" in clipXml`,
+      );
+    }
   }
 
   const laneI = `${base}\t`;

@@ -392,4 +392,75 @@ describe("als-group-create byte-spot-check vs -after (R=0/1/2)", () => {
       }),
     ).toThrow(/777 existiert nicht/);
   });
+
+  it("Codex F2: nicht-Integer memberTrackId (1.5) -> Throw (Regex-Injection-Schutz)", () => {
+    expect(() =>
+      injectGroupCreate(baseXml(0), {
+        ...specFor(0),
+        memberTrackIds: [13, 1.5],
+      }),
+    ).toThrow(/keine nicht-negative Ganzzahl/);
+  });
+
+  it("Codex F2: negative memberTrackId -> Throw", () => {
+    expect(() =>
+      injectGroupCreate(baseXml(0), {
+        ...specFor(0),
+        memberTrackIds: [13, -1],
+      }),
+    ).toThrow(/keine nicht-negative Ganzzahl/);
+  });
+
+  it("Codex F2: nicht-Integer insertAfterTrackId (2.7) -> Throw", () => {
+    expect(() =>
+      injectGroupCreate(baseXml(0), {
+        ...specFor(0),
+        insertAfterTrackId: 2.7,
+      }),
+    ).toThrow(/insertAfterTrackId/);
+  });
+
+  it("Codex F3: groupTrackId kollidiert mit ReturnTrack -> Throw", () => {
+    // grp2-base hat ReturnTrack Id=2, Id=3 — vor Fix wuerde 2 silent durchgehen
+    expect(() =>
+      injectGroupCreate(baseXml(2), {
+        ...specFor(2),
+        groupTrackId: 2,
+        memberTrackIds: [13, 8],
+      }),
+    ).toThrow(/existiert bereits/);
+  });
+
+  it("Codex F4: Insert ohne newline nach </Tracks>-Listing-Eintrag -> sauberer Split", () => {
+    // Synthetisches Set: gleicher Track-Block-Schluss, aber kein \n nach
+    // </MidiTrack> vor dem naechsten Tag. Fix darf nicht durch das naechste
+    // Tag in der Mitte spalten.
+    const base0 = baseXml(0);
+    const noNlBase = base0.replace(
+      /<\/MidiTrack>\n(\s*<(?:MidiTrack|AudioTrack))/,
+      "</MidiTrack>$1",
+    );
+
+    expect(() => injectGroupCreate(noNlBase, specFor(0))).not.toThrow();
+  });
+
+  it("Codex F5: groupName mit XML-Sonderzeichen -> escapet, kein Korrupt-XML", () => {
+    const out = injectGroupCreate(baseXml(0), {
+      ...specFor(0),
+      groupName: 'A & "B" <C>',
+    });
+
+    expect(out).toContain('Value="A &amp; &quot;B&quot; &lt;C&gt;"');
+    expect(out).not.toContain('Value="A & "B" <C>"');
+  });
+
+  it("Codex F5: groupName mit `$1` -> kein String.replace-Pattern-Expand", () => {
+    const out = injectGroupCreate(baseXml(0), {
+      ...specFor(0),
+      groupName: "Group $1 X",
+    });
+
+    // Literal `$1` muss erhalten bleiben (kein Pattern-Expand auf Match).
+    expect(out).toContain("Group $1 X");
+  });
 });

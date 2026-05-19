@@ -160,4 +160,26 @@ describe("patchTakeLanes", () => {
 
     expect(() => patchTakeLanes(EMPTY, bad)).toThrow(/AudioClip/);
   });
+
+  it("Codex F1: takeId != embedded <TakeId> -> Throw VOR Write (kein Teil-Patch)", () => {
+    // SPECS[0].takeId = "1", aber clipXml enthaelt <TakeId Value="9" />
+    const corruptClip = CLIP_A.replace(
+      '<TakeId Value="1" />',
+      '<TakeId Value="9" />',
+    );
+    const bad = [
+      { ...SPECS[0], clipXml: corruptClip },
+      SPECS[1],
+    ] as TakeLaneSpec[];
+
+    expect(() => patchTakeLanes(EMPTY, bad)).toThrow(/takeId "1" != embedded/);
+  });
+
+  it("Codex F1: clipXml ohne <TakeId> -> Throw", () => {
+    const noTakeId =
+      '<AudioClip Id="0" Time="0"><Name Value="X" /></AudioClip>';
+    const bad = [{ ...SPECS[0], clipXml: noTakeId }] as TakeLaneSpec[];
+
+    expect(() => patchTakeLanes(EMPTY, bad)).toThrow(/ohne <TakeId>/);
+  });
 });
