@@ -33,6 +33,7 @@ import { runClipSettings } from "./ppal-clip-settings-helpers.ts";
 import { runFadeoutCurve } from "./ppal-fadeout-curve-helpers.ts";
 import { runFades } from "./ppal-fades-helpers.ts";
 import { runGroove } from "./ppal-groove-helpers.ts";
+import { runGroupCreate } from "./ppal-group-create-helpers.ts";
 import { runMidiExport } from "./ppal-midi-export-helpers.ts";
 import { runMixerRouting } from "./ppal-mixer-routing-helpers.ts";
 import { runModulation } from "./ppal-modulation-helpers.ts";
@@ -452,6 +453,7 @@ const DISPATCH: Record<string, DispatchHandler> = {
   "shift-time": (rest) => runShiftTime(rest, parseFlags),
   "take-lane": (rest) => runTakeLane(rest, parseFlags),
   "midi-export": (rest) => runMidiExport(rest, parseFlags),
+  "group-create": (rest) => runGroupCreate(rest, parseFlags),
 };
 
 /**
