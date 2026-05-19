@@ -218,7 +218,7 @@ function parseSpecFile(path: string | undefined): GroupCreateSpec | null {
       if (data == null || typeof data !== "object") return false;
       const r = data as Record<string, unknown>;
       const insertOk =
-        r.insertAfterTrackId === null ||
+        r.insertAfterTrackId == null ||
         typeof r.insertAfterTrackId === "number";
 
       return (

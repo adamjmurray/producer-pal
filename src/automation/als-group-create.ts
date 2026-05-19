@@ -38,9 +38,20 @@ export function synthesizeGroupTrack(spec: GroupCreateSpec): {
   let counter = nextPointeeId;
   const fillIds = (s: string): string =>
     s.replaceAll("{{ID}}", () => String(counter++));
-  const head = GROUP_TRACK_PREFIX.replace("{{GROUP_ID}}", String(groupTrackId))
-    .replace("{{NAME}}", groupName)
-    .replace("{{COLOR}}", String(color));
+  // XML-Attribut-Escape fuer User-String (Codex-Review F5): `"`/`&`/`<`/`>`
+  // korrumpieren das XML; `$` in String.replace triggert sonst Pattern-
+  // Expansion. Replacement-Funktion-Overload unterdrueckt `$`-Expansion
+  // zusaetzlich (defense-in-depth fuer Konstanten-Vorlagen).
+  const escapedName = groupName
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+  const head = GROUP_TRACK_PREFIX.replace("{{GROUP_ID}}", () =>
+    String(groupTrackId),
+  )
+    .replace("{{NAME}}", () => escapedName)
+    .replace("{{COLOR}}", () => String(color));
   let block = fillIds(head);
 
   if (returnCount === 0) {
@@ -126,9 +137,15 @@ export function injectGroupCreate(xml: string, spec: GroupCreateSpec): string {
     );
   }
 
+  // Kollision umfasst MidiTrack/AudioTrack (findTrackOpen) + GroupTrack
+  // PLUS ReturnTrack (Codex-Review F3: Fixtures enthalten ReturnTrack
+  // Id=2/3, eine `groupTrackId:2` wuerde sonst still mit Return-Id
+  // kollidieren). Sequenziell, weil OR-Kurzschluss klare Fehler-Pfade
+  // erlaubt; die Regex sind alle anchor-fest auf konkrete Tag-Namen.
   if (
     findTrackOpen(xml, spec.groupTrackId) != null ||
-    new RegExp(`<GroupTrack Id="${spec.groupTrackId}"[^>]*>`).test(xml)
+    new RegExp(`<GroupTrack Id="${spec.groupTrackId}"[^>]*>`).test(xml) ||
+    new RegExp(`<ReturnTrack Id="${spec.groupTrackId}"[^>]*>`).test(xml)
   ) {
     throw new Error(`Track-Id ${spec.groupTrackId} existiert bereits`);
   }
@@ -185,6 +202,26 @@ function validateSpec(spec: GroupCreateSpec): void {
     throw new Error("memberTrackIds darf nicht leer sein");
   }
 
+  // Integer-Hardening (Codex-Review F2): einzelne Member-Ids muessen
+  // positive Ganzzahlen sein. `1.5` wird sonst zu Regex `.` interpoliert
+  // (in findTrackOpen) und mis-targetet beliebige Track-Ids.
+  for (const mid of spec.memberTrackIds) {
+    if (!Number.isInteger(mid) || mid < 0) {
+      throw new Error(
+        `memberTrackIds-Eintrag ${mid} ist keine nicht-negative Ganzzahl`,
+      );
+    }
+  }
+
+  if (
+    spec.insertAfterTrackId != null &&
+    (!Number.isInteger(spec.insertAfterTrackId) || spec.insertAfterTrackId < 0)
+  ) {
+    throw new Error(
+      "insertAfterTrackId muss null oder nicht-negative Ganzzahl sein",
+    );
+  }
+
   if (new Set(spec.memberTrackIds).size !== spec.memberTrackIds.length) {
     throw new Error("memberTrackIds enthaelt Duplikate");
   }
@@ -212,12 +249,32 @@ function resolveInsertOffset(
       throw new Error("<Tracks> nicht im Set gefunden");
     }
 
-    return tracksOpen + "<Tracks>\n".length;
+    const afterOpen = tracksOpen + "<Tracks>".length;
+
+    return afterOpen + consumeOptionalNewline(xml, afterOpen);
   }
 
   const open = locateRequiredTrack(xml, insertAfterTrackId);
+  const afterClose = open.closeAt + `</${open.tag}>`.length;
 
-  return open.closeAt + `</${open.tag}>`.length + 1;
+  return afterClose + consumeOptionalNewline(xml, afterClose);
+}
+
+/**
+ * Robuste Newline-Behandlung (Codex-Review F4): nach einem Tag-Ende NUR
+ * ein optionales `\n` (oder `\r\n`) konsumieren, NICHT blind `+1`
+ * hartkodieren. Ableton schreibt konsistent `\n`, aber Hand-editierte
+ * oder anders-komprimierte Sets koennten kein Newline haben — dort
+ * waere `+1` der Split mitten in den Folge-Tag.
+ * @param xml - Dekomprimierter .als-XML-String.
+ * @param at - Byte-Offset direkt hinter dem letzten verbrauchten Zeichen.
+ * @returns Anzahl konsumierter Newline-Bytes (0, 1 oder 2).
+ */
+function consumeOptionalNewline(xml: string, at: number): number {
+  if (xml.startsWith("\r\n", at)) return 2;
+  if (xml.startsWith("\n", at)) return 1;
+
+  return 0;
 }
 
 /**
