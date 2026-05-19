@@ -36,6 +36,7 @@ import { runModulation } from "./ppal-modulation-helpers.ts";
 import { runTempo } from "./ppal-tempo-helpers.ts";
 import { runTimesig } from "./ppal-timesig-helpers.ts";
 import { runTrackGroup } from "./ppal-track-group-helpers.ts";
+import { runWarpMarker } from "./ppal-warp-markers-helpers.ts";
 
 /** Parsed arguments for the `write` subcommand. */
 interface WriteArgs {
@@ -456,6 +457,7 @@ export function runCli(argv: string[]): number {
     if (subcommand === "track-group") return runTrackGroup(rest);
     if (subcommand === "mixer-routing") return runMixerRouting(rest);
     if (subcommand === "modulation") return runModulation(rest);
+    if (subcommand === "warp-marker") return runWarpMarker(rest, parseFlags);
 
     process.stderr.write(
       `FEHLER: Unbekanntes Subcommand "${subcommand}". Nutze list oder write.\n`,
