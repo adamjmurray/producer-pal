@@ -42,7 +42,7 @@ Claude Code should use the CLI tool to:
 **Important:** Always ask for user permission before using the CLI tool to
 update state in Ableton Live.
 
-## Raw Live API Tool
+## Live API Tool
 
 Available only in debug builds (`npm run build:debug` or `npm run dev:debug`).
 

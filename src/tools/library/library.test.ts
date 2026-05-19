@@ -126,9 +126,9 @@ describe("library tool — folder scan integration", () => {
     expect(names).toContain("kick.wav");
     expect(names).toContain("snare.wav");
     expect(names).toContain("clap.wav");
-    // Folder items get source: "folder"
+    // Folder items get source: "sampleFolder"
     expect(result.items.find((i) => i.name === "kick.wav")?.source).toBe(
-      "folder",
+      "sampleFolder",
     );
   });
 
@@ -155,7 +155,7 @@ describe("library tool — folder scan integration", () => {
 
     expect(kicks).toHaveLength(1);
     // Folder wins (it's user-explicit)
-    expect(kicks[0]?.source).toBe("folder");
+    expect(kicks[0]?.source).toBe("sampleFolder");
   });
 
   it("skips folder scan when source is a DB-only category", async () => {
@@ -170,16 +170,18 @@ describe("library tool — folder scan integration", () => {
     );
 
     if (!("items" in result)) throw new Error("expected items");
-    expect(result.items.find((i) => i.source === "folder")).toBeUndefined();
+    expect(
+      result.items.find((i) => i.source === "sampleFolder"),
+    ).toBeUndefined();
   });
 
-  it("source: 'folder' returns folder items only and skips DB call", async () => {
+  it("source: 'sampleFolder' returns folder items only and skips DB call", async () => {
     mockFolderStructure({
       "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
     });
 
     const result = await library(
-      { source: "folder" },
+      { source: "sampleFolder" },
       { sampleFolder: "/samples/" },
     );
 
@@ -215,7 +217,9 @@ describe("library tool — folder scan integration", () => {
     );
 
     if (!("items" in result)) throw new Error("expected items");
-    expect(result.items.find((i) => i.source === "folder")).toBeUndefined();
+    expect(
+      result.items.find((i) => i.source === "sampleFolder"),
+    ).toBeUndefined();
     // Tags only live in the DB; readSamples must not be invoked at all
     // (skipping the scan beats filtering its results post-hoc).
     expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
@@ -233,7 +237,9 @@ describe("library tool — folder scan integration", () => {
     );
 
     if (!("items" in result)) throw new Error("expected items");
-    expect(result.items.find((i) => i.source === "folder")).toBeUndefined();
+    expect(
+      result.items.find((i) => i.source === "sampleFolder"),
+    ).toBeUndefined();
     // Folder scan only knows about audio; any non-audio kind must bypass it.
     expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
   });
@@ -250,7 +256,9 @@ describe("library tool — folder scan integration", () => {
     );
 
     if (!("items" in result)) throw new Error("expected items");
-    expect(result.items.find((i) => i.source === "folder")).toBeUndefined();
+    expect(
+      result.items.find((i) => i.source === "sampleFolder"),
+    ).toBeUndefined();
     // deviceKind is DB-only metadata; the scan can't satisfy it.
     expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
   });
@@ -482,6 +490,54 @@ describe("library tool — folder scan integration", () => {
 
     if (!("items" in result)) throw new Error("expected items");
     expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
+  });
+
+  it("surfaces a reason when source=sampleFolder is requested with no sampleFolder", async () => {
+    // Regression vs the old ppal-context search: silently returning [] makes
+    // the LLM tell the user "no samples found"; the reason field lets it say
+    // "you need to configure a sample folder".
+    const result = await library({ source: "sampleFolder" }, {});
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.items).toHaveLength(0);
+    expect(result.reason).toMatch(/sample folder not configured/i);
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
+
+  it("preserves the DB-side reason when the merged DB call returns one", async () => {
+    mockFolderStructure({
+      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
+    });
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: {
+        dbAvailable: false,
+        items: [],
+        reason: "Live database not found",
+      },
+    });
+
+    const result = await library({}, { sampleFolder: "/samples/" });
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.dbAvailable).toBe(false);
+    expect(result.reason).toBe("Live database not found");
+    // Folder items should still come through alongside the diagnostic.
+    expect(result.items.map((i) => i.name)).toStrictEqual(["kick.wav"]);
+  });
+
+  it("surfaces a reason when the folder scan throws", async () => {
+    vi.mocked(readSamplesMock.readSamples).mockImplementationOnce(() => {
+      throw new Error("EACCES: permission denied");
+    });
+    mockSearchRoute([]);
+
+    const result = await library({}, { sampleFolder: "/samples/" });
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.reason).toMatch(/sample folder scan failed.*EACCES/);
+    // DB results should still flow through.
+    expect(result.dbAvailable).toBe(true);
   });
 
   it("extracts the leaf filename from nested folder paths", async () => {

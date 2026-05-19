@@ -5,6 +5,8 @@
 
 import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import {
+  clampLibraryLimit,
+  DEFAULT_LIBRARY_LIMIT,
   type LibraryDeviceKind,
   type LibraryItem,
   type LibraryKind,
@@ -16,29 +18,29 @@ import {
 import { readSamples } from "#src/tools/workflow/read-samples.ts";
 
 interface LibraryArgs {
+  // Typed as plain string (not the enum) so the runtime "Unknown action"
+  // guard below — defense against the V8 adapter forwarding unvalidated
+  // input — remains reachable.
   action?: string;
   query?: string;
   tags?: string;
-  kind?: string;
-  deviceKind?: string;
-  source?: string;
-  sort?: string;
+  kind?: LibraryKind;
+  deviceKind?: LibraryDeviceKind;
+  source?: LibrarySource;
+  sort?: LibrarySort;
   limit?: number;
 }
 
 type LibraryResult = LibrarySearchResult | LibraryListTagsResult;
 
-/** Default item cap (mirrors the DB-side default) */
-const DEFAULT_LIMIT = 50;
-
 /**
  * Search Live's browser library or enumerate available tags.
  *
  * The search action runs two sources in parallel:
- *  - Folder scan (V8): the user-configured sampleFolder, when set
+ *  - sampleFolder scan (V8): the user-configured sampleFolder, when set
  *    AND filters don't require DB-only data (tags, non-audio kind, deviceKind).
  *  - DB query (Node): library.search route via requestNode RPC.
- * Results are merged and de-duplicated by absolute path. The folder
+ * Results are merged and de-duplicated by absolute path. The sampleFolder
  * scan wins ties because the folder is explicitly user-configured.
  *
  * @param args - Tool arguments (action + filters)
@@ -76,83 +78,116 @@ async function runSearch(
   args: LibraryArgs,
   ctx: Partial<ToolContext>,
 ): Promise<LibrarySearchResult> {
-  const folderItems = scanFolderItems(args, ctx);
-  // source=folder bypasses the DB entirely; the response omits dbAvailable
+  const folderScan = scanFolderItems(args, ctx);
+  // source=sampleFolder bypasses the DB entirely; the response omits dbAvailable
   // to signal "did not consult the DB" instead of lying with `true`.
   const dbResult =
-    args.source === "folder"
+    args.source === "sampleFolder"
       ? null
       : await callRoute<LibrarySearchResult>("library.search", {
           query: args.query,
           tags: args.tags,
-          kind: args.kind as LibraryKind | undefined,
-          deviceKind: args.deviceKind as LibraryDeviceKind | undefined,
-          source: args.source as LibrarySource | undefined,
-          sort: args.sort as LibrarySort | undefined,
+          kind: args.kind,
+          deviceKind: args.deviceKind,
+          source: args.source,
+          sort: args.sort,
           limit: args.limit,
         });
 
-  const folderPaths = new Set(folderItems.map((i) => i.path));
+  const folderPaths = new Set(folderScan.items.map((i) => i.path));
   const dbItems = (dbResult?.items ?? []).filter(
     (i) => !folderPaths.has(i.path),
   );
-  const merged = sortItems([...folderItems, ...dbItems], args.sort);
-  const limit = clampLimit(args.limit);
+  const merged = sortItems([...folderScan.items, ...dbItems], args.sort);
+  const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
   const items = merged.slice(0, limit);
+  const reason = folderScan.reason ?? dbResult?.reason;
 
   if (dbResult == null) {
-    return { items };
+    return reason == null ? { items } : { items, reason };
   }
 
-  return { dbAvailable: dbResult.dbAvailable, items };
+  const base: LibrarySearchResult = {
+    dbAvailable: dbResult.dbAvailable,
+    items,
+  };
+
+  return reason == null ? base : { ...base, reason };
+}
+
+interface FolderScan {
+  items: LibraryItem[];
+  /** Set when items is empty due to a discoverable cause */
+  reason?: string;
 }
 
 /**
  * Scan the configured sample folder when filters allow it and
- * convert results to LibraryItem shape.
+ * convert results to LibraryItem shape. Returns a reason string when
+ * the scan is skipped or fails for a user-actionable cause so callers
+ * can surface diagnostics rather than reporting silent empty results.
  *
  * @param args - Tool arguments
  * @param ctx - Per-request context
- * @returns Folder-sourced library items, or empty if scan is skipped
+ * @returns Folder scan result with items and optional reason
  */
 function scanFolderItems(
   args: LibraryArgs,
   ctx: Partial<ToolContext>,
-): LibraryItem[] {
+): FolderScan {
   const sampleFolder = ctx.sampleFolder;
 
   if (!sampleFolder) {
-    return [];
+    if (args.source === "sampleFolder") {
+      return {
+        items: [],
+        reason:
+          "sample folder not configured (set one in the Producer Pal Setup tab)",
+      };
+    }
+
+    return { items: [] };
   }
 
   // The folder scan can only satisfy: name substring + (implicit) audio kind.
-  // Any DB-only filter means the user is not asking for folder content.
-  if (args.source && args.source !== "folder") {
-    return [];
+  // Any DB-only filter means the user is not asking for sampleFolder content.
+  if (args.source && args.source !== "sampleFolder") {
+    return { items: [] };
   }
 
   if (args.tags) {
-    return [];
+    return { items: [] };
   }
 
   if (args.kind && args.kind !== "audio") {
-    return [];
+    return { items: [] };
   }
 
   if (args.deviceKind) {
-    return [];
+    return { items: [] };
   }
 
-  const result = readSamples({ search: args.query }, ctx);
+  let result;
 
-  return result.samples.map((rel) => ({
+  try {
+    result = readSamples({ search: args.query }, ctx);
+  } catch (err) {
+    return {
+      items: [],
+      reason: `sample folder scan failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
+  const items: LibraryItem[] = result.samples.map((rel) => ({
     name: leafName(rel),
     path: `${result.sampleFolder}${rel}`,
     kind: "audio",
     tags: [],
     useCount: 0,
-    source: "folder",
+    source: "sampleFolder",
   }));
+
+  return { items };
 }
 
 /**
@@ -168,20 +203,20 @@ function leafName(rel: string): string {
 }
 
 /**
- * Sort merged items. Folder items are always grouped before DB items:
+ * Sort merged items. sampleFolder items are always grouped before DB items:
  * the sampleFolder is an explicit user choice, so those samples should
  * surface ahead of generic DB hits regardless of sort or useCount.
  *
- * @param items - Combined list of folder + DB items
+ * @param items - Combined list of sampleFolder + DB items
  * @param sort - Sort enum (defaults to use_count)
- * @returns Sorted copy of items, folder partition first
+ * @returns Sorted copy of items, sampleFolder partition first
  */
 function sortItems(
   items: LibraryItem[],
-  sort: string | undefined,
+  sort: LibrarySort | undefined,
 ): LibraryItem[] {
-  const folder = items.filter((i) => i.source === "folder");
-  const db = items.filter((i) => i.source !== "folder");
+  const folder = items.filter((i) => i.source === "sampleFolder");
+  const db = items.filter((i) => i.source !== "sampleFolder");
 
   return [...sortPartition(folder, sort), ...sortPartition(db, sort)];
 }
@@ -191,22 +226,26 @@ function sortItems(
  * requested order. The DB partition trusts upstream ordering for
  * mod_date since LibraryItem has no mod_date field to re-sort by.
  *
+ * Mirrors the SQL side in `orderByClause` (library-search.ts). When
+ * adding a new LibrarySort variant, update BOTH sites — there is no
+ * shared mapping table because one returns SQL and the other a Comparator.
+ *
  * @param items - Partition to sort
  * @param sort - Sort enum
  * @returns Sorted copy
  */
 function sortPartition(
   items: LibraryItem[],
-  sort: string | undefined,
+  sort: LibrarySort | undefined,
 ): LibraryItem[] {
   if (sort === "name") {
     return [...items].sort((a, b) => a.name.localeCompare(b.name));
   }
 
   if (sort === "mod_date") {
-    // Folder items have no mod_date metadata; fall back to name order.
+    // sampleFolder items have no mod_date metadata; fall back to name order.
     // DB items keep their upstream order (already mod_date-sorted by SQL).
-    return items.every((i) => i.source === "folder")
+    return items.every((i) => i.source === "sampleFolder")
       ? [...items].sort((a, b) => a.name.localeCompare(b.name))
       : [...items];
   }
@@ -214,20 +253,6 @@ function sortPartition(
   return [...items].sort(
     (a, b) => b.useCount - a.useCount || a.name.localeCompare(b.name),
   );
-}
-
-/**
- * Clamp a requested limit to a safe positive integer.
- *
- * @param requested - User-supplied limit
- * @returns Limit between 1 and 1000
- */
-function clampLimit(requested: number | undefined): number {
-  if (requested == null || !Number.isFinite(requested) || requested <= 0) {
-    return DEFAULT_LIMIT;
-  }
-
-  return Math.min(Math.floor(requested), 1_000);
 }
 
 /**

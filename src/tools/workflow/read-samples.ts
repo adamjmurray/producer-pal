@@ -18,6 +18,7 @@ const AUDIO_EXTENSIONS = new Set([
 ]);
 
 interface ReadSamplesArgs {
+  /** Case-insensitive substring match. `*` is a multi-character wildcard. */
   search?: string;
 }
 
@@ -55,9 +56,9 @@ export function readSamples(
 
   const samples: string[] = [];
   const limitReached = { value: false };
-  const searchLower = search ? search.toLowerCase() : null;
+  const matcher = search ? buildSearchMatcher(search) : null;
 
-  scanFolder(sampleFolder, sampleFolder, samples, limitReached, searchLower);
+  scanFolder(sampleFolder, sampleFolder, samples, limitReached, matcher);
 
   if (limitReached.value) {
     console.warn(
@@ -75,14 +76,14 @@ export function readSamples(
  * @param results - Array to append results to
  * @param limitReached - Mutable flag object to track if file limit was reached
  * @param limitReached.value - Whether the limit has been reached
- * @param searchLower - Lowercase search filter or null
+ * @param matcher - Predicate matching relative paths against the search query, or null
  */
 function scanFolder(
   dirPath: string,
   baseFolder: string,
   results: string[],
   limitReached: { value: boolean },
-  searchLower: string | null,
+  matcher: ((relativePath: string) => boolean) | null,
 ): void {
   const f = new Folder(dirPath);
 
@@ -97,17 +98,11 @@ function scanFolder(
     const filepath = `${f.pathname}${f.filename}`;
 
     if (f.filetype === "fold") {
-      scanFolder(
-        `${filepath}/`,
-        baseFolder,
-        results,
-        limitReached,
-        searchLower,
-      );
+      scanFolder(`${filepath}/`, baseFolder, results, limitReached, matcher);
     } else if (AUDIO_EXTENSIONS.has(f.extension.toLowerCase())) {
       const relativePath = filepath.substring(baseFolder.length);
 
-      if (!searchLower || relativePath.toLowerCase().includes(searchLower)) {
+      if (!matcher || matcher(relativePath)) {
         results.push(relativePath);
       }
     }
@@ -116,4 +111,26 @@ function scanFolder(
   }
 
   f.close();
+}
+
+/**
+ * Build a case-insensitive matcher for the search query. Without `*`,
+ * the matcher behaves like substring containment. With `*`, the query
+ * is treated as a multi-character wildcard pattern.
+ *
+ * @param search - User search query
+ * @returns Predicate against a relative path
+ */
+function buildSearchMatcher(search: string): (relativePath: string) => boolean {
+  const lower = search.toLowerCase();
+
+  if (!lower.includes("*")) {
+    return (rel) => rel.toLowerCase().includes(lower);
+  }
+
+  const escaped = lower.replaceAll(/[$()+.?[\\\]^{|}]/g, "\\$&");
+  const pattern = escaped.replaceAll("*", ".*");
+  const re = new RegExp(pattern);
+
+  return (rel) => re.test(rel.toLowerCase());
 }

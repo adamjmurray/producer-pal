@@ -12,6 +12,8 @@
 - Task-focused personas and better optimized "small model mode" via
   customization presets
 - Workflows: pre-defined tool call sequences for reliable, repeatable operations
+- A new context management section in the built-in chat UI for working with all
+  the above
 - Companion MCP server template for building new capabilities as separate
   servers
 
@@ -22,22 +24,35 @@ See [Extending Producer Pal](/extending) for more on the extension model.
 See [the list of releases](https://github.com/adamjmurray/producer-pal/releases)
 for more detailed information.
 
-### 1.4 - MIDI Transforms (February 2026)
+### 1.4 - MIDI Transforms, REST API, and Live API Access (February–May 2026)
 
-Transform note and audio clip properties using math expressions:
+MIDI transforms: math expressions for transforming note properties
 
 - Ramps, curves, and LFO shapes (arrangement-relative or clip-relative)
 - Randomization with arbitrary ranges, or choose from a set of values
-- Swing and other timing patterns
+- Helpers: `swing()`, `quant()`, `legato()`, `seq()`, `step()`, `wrap()`,
+  `reflect()`
 - Context variables like note index and clip position in the arrangement
+
+REST API and agent skills:
+
+- HTTP-based tool calls without MCP setup
+- Drop-in agent skill for Claude Code, Codex CLI, Gemini CLI, and other
+  SKILL.md-compatible runtimes
+
+New tools and broader Live API coverage:
+
+- `ppal-library` for searching the Live Library (samples)
+- `ppal-live-api` for direct Live API access to cover gaps in specialized tools
+- Simpler sample loading via `ppal-update-device` (requires Live 12.4+)
 
 Other improvements:
 
 - Split arrangement clips at specified positions
-- Configurable Ollama API URL for remote hosting
-- Improved support for creating, updating, and duplicating multiple objects
-  (tracks, clips, scenes, devices) in one operation for efficiency
-- Many improvements to the built-in chat UI
+- Multi-object create / update / duplicate operations
+- Configurable Ollama and LM Studio URLs for remote hosting
+- Many built-in chat UI improvements: conversation history, token usage
+  reporting, grouped tool calls, message editing, and more
 
 ### 1.3 - Device Control (January 2026)
 
@@ -85,3 +100,5 @@ companion MCP servers.
 - Bar|beat and MIDI transform notation refinements (including alternate
   notations that may work better with smaller models)
 - Device-specific features (EQ 8, Wavetable, etc.)
+- Hands-free voice control
+- Audio analysis

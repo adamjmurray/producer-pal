@@ -12,20 +12,15 @@ import {
   MockChatClient,
   createDefaultProps,
   createMockAdapter,
+  createScriptedAdapter,
 } from "./use-chat-test-helpers";
 
 // Mock streaming helpers
-vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
-  handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
-    for await (const chatHistory of stream) {
-      onUpdate(formatter(chatHistory));
-    }
+vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
+  const { streamingHelpersMockBody } = await import("./use-chat-test-helpers");
 
-    return true;
-  }),
-  validateMcpConnection: vi.fn(),
-  filterOverrides: vi.fn((overrides) => overrides),
-}));
+  return streamingHelpersMockBody();
+});
 
 const mockAdapter = createMockAdapter();
 
@@ -271,19 +266,14 @@ describe("useChat", () => {
     });
 
     it("covers getChatHistory callback when sendMessage throws non-rate-limit error", async () => {
-      const errorAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
+      const errorAdapter = createScriptedAdapter(
+        mockAdapter,
+        () =>
           // eslint-disable-next-line require-yield -- Throws before yielding
-          client.sendMessage = async function* () {
+          async function* () {
             throw new Error("Network failure");
-          };
-
-          return client;
-        }),
-      };
+          },
+      );
 
       const { result } = renderHook(() =>
         useChat({ ...defaultProps, adapter: errorAdapter }),

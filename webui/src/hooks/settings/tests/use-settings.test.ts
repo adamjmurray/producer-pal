@@ -195,6 +195,65 @@ describe("useSettings", () => {
     });
   });
 
+  describe("liveApiEnabled dirty flag", () => {
+    it("starts not dirty and reports the default value", () => {
+      const { result } = renderHook(() => useSettings());
+
+      expect(result.current.liveApiEnabled).toBe(false);
+      expect(result.current.liveApiEnabledDirty).toBe(false);
+    });
+
+    it("setLiveApiEnabled marks dirty and updates the value", async () => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.setLiveApiEnabled(true);
+      });
+
+      expect(result.current.liveApiEnabled).toBe(true);
+      expect(result.current.liveApiEnabledDirty).toBe(true);
+    });
+
+    it("seedLiveApiEnabled updates the value without marking dirty", async () => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.seedLiveApiEnabled(true);
+      });
+
+      expect(result.current.liveApiEnabled).toBe(true);
+      expect(result.current.liveApiEnabledDirty).toBe(false);
+    });
+
+    it("saveSettings clears the dirty flag", async () => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.setLiveApiEnabled(true);
+      });
+      expect(result.current.liveApiEnabledDirty).toBe(true);
+
+      await act(() => {
+        result.current.saveSettings();
+      });
+      expect(result.current.liveApiEnabledDirty).toBe(false);
+    });
+
+    it("cancelSettings clears the dirty flag", async () => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.setLiveApiEnabled(true);
+      });
+      expect(result.current.liveApiEnabledDirty).toBe(true);
+
+      await act(() => {
+        result.current.cancelSettings();
+      });
+      expect(result.current.liveApiEnabledDirty).toBe(false);
+    });
+  });
+
   it("reverts to saved settings on cancel", async () => {
     localStorage.setItem("gemini_api_key", "saved-key");
     localStorage.setItem("gemini_model", "gemini-2.5-pro");

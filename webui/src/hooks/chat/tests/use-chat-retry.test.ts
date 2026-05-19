@@ -13,21 +13,16 @@ import {
   MockChatClient,
   createDefaultProps,
   createMockAdapter,
+  createScriptedAdapter,
   RESTORED_HISTORY,
 } from "./use-chat-test-helpers";
 
 // Mock streaming helpers
-vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), () => ({
-  handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
-    for await (const chatHistory of stream) {
-      onUpdate(formatter(chatHistory));
-    }
+vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
+  const { streamingHelpersMockBody } = await import("./use-chat-test-helpers");
 
-    return true;
-  }),
-  validateMcpConnection: vi.fn(),
-  filterOverrides: vi.fn((overrides) => overrides),
-}));
+  return streamingHelpersMockBody();
+});
 
 // Shrink retry backoff so tests don't sit through real seconds-long delays.
 // 200 ms is small enough to keep the suite fast but large enough that the
@@ -580,15 +575,10 @@ describe("useChat", () => {
       const receivedMessages: string[] = [];
       let callCount = 0;
 
-      const rateLimitAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
-          client.sendMessage = async function* (
-            message: string,
-            _signal: AbortSignal,
-          ) {
+      const rateLimitAdapter = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message, _signal) {
             receivedMessages.push(message);
             callCount++;
 
@@ -604,11 +594,8 @@ describe("useChat", () => {
               content: `Done: ${message}`,
             });
             yield [...client.chatHistory];
-          };
-
-          return client;
-        }),
-      };
+          },
+      );
 
       const { result } = renderHook(() =>
         useChat({ ...defaultProps, adapter: rateLimitAdapter }),
@@ -625,15 +612,10 @@ describe("useChat", () => {
       const receivedMessages: string[] = [];
       let callCount = 0;
 
-      const rateLimitAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
-          client.sendMessage = async function* (
-            message: string,
-            _signal: AbortSignal,
-          ) {
+      const rateLimitAdapter = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message, _signal) {
             receivedMessages.push(message);
             callCount++;
 
@@ -657,11 +639,8 @@ describe("useChat", () => {
               content: `Continued from: ${message}`,
             });
             yield [...client.chatHistory];
-          };
-
-          return client;
-        }),
-      };
+          },
+      );
 
       const { result } = renderHook(() =>
         useChat({ ...defaultProps, adapter: rateLimitAdapter }),
@@ -688,15 +667,10 @@ describe("useChat", () => {
         resolveGate = resolve;
       });
 
-      const rateLimitAdapter = {
-        ...mockAdapter,
-        createClient: vi.fn(() => {
-          const client = new MockChatClient();
-
-          client.sendMessage = async function* (
-            message: string,
-            _signal: AbortSignal,
-          ) {
+      const rateLimitAdapter = createScriptedAdapter(
+        mockAdapter,
+        (client) =>
+          async function* (message, _signal) {
             callCount++;
 
             if (callCount === 1) {
@@ -714,11 +688,8 @@ describe("useChat", () => {
               content: "ok",
             });
             yield [...client.chatHistory];
-          };
-
-          return client;
-        }),
-      };
+          },
+      );
 
       const { result } = renderHook(() =>
         useChat({ ...defaultProps, adapter: rateLimitAdapter }),

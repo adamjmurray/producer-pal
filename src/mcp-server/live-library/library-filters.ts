@@ -36,7 +36,18 @@ export function fourCC(code: string): number {
   return n >>> 0;
 }
 
-/** file_type fourCC sets per public LibraryKind enum */
+/**
+ * file_type fourCC sets per public LibraryKind enum.
+ *
+ * Coverage note: the audio list is spike-confirmed against a Live 12.3 install
+ * but may be incomplete. The prior ppal-context.search-samples implementation
+ * filtered by Live's `file_kind` bitmask (4 = uncompressed, 2048 = compressed),
+ * which covers *every* audio format Live indexes. Switching to an explicit
+ * fourCC allow-list means any format the spike didn't observe (caf, m4a/aac,
+ * wma, opus, etc.) silently drops out of audio queries. Add new fourCCs here
+ * as they're verified — do not guess, since unverified codes are harmless but
+ * create false confidence in the lock-down test below.
+ */
 const KIND_FOURCC: Record<LibraryKind, number[]> = {
   audio: [
     fourCC("aiff"),
@@ -119,10 +130,10 @@ export function deviceTypeForKind(deviceKind: LibraryDeviceKind): number {
 
 /**
  * places.folder_kind values that map to each DB-side source enum.
- * "folder" is not here — it's a V8-only synthetic source for the
+ * "sampleFolder" is not here — it's a V8-only synthetic source for the
  * user-configured custom sample folder, with no DB encoding.
  */
-type DbLibrarySource = Exclude<LibrarySource, "folder">;
+type DbLibrarySource = Exclude<LibrarySource, "sampleFolder">;
 
 const SOURCE_TO_FOLDER_KINDS: Record<DbLibrarySource, number[]> = {
   user: [1, 2],
@@ -144,13 +155,13 @@ for (const [src, kinds] of Object.entries(SOURCE_TO_FOLDER_KINDS) as Array<
 
 /**
  * Map a public source enum to the folder_kind integers it covers.
- * Returns [] for "folder" (no DB encoding); callers should guard.
+ * Returns [] for "sampleFolder" (no DB encoding); callers should guard.
  *
  * @param source - Public source enum
  * @returns Array of folder_kind integers to IN-match
  */
 export function folderKindsForSource(source: LibrarySource): number[] {
-  return source === "folder" ? [] : SOURCE_TO_FOLDER_KINDS[source];
+  return source === "sampleFolder" ? [] : SOURCE_TO_FOLDER_KINDS[source];
 }
 
 /**

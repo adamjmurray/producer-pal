@@ -11,9 +11,22 @@
  */
 
 import Max from "max-api";
+import {
+  MAX_ERROR_DELIMITER,
+  planChunks,
+} from "#src/shared/mcp-response-utils.ts";
 import * as console from "../node-for-max-logger.ts";
 
 export type NodeRouteHandler = (args: unknown) => unknown;
+
+/**
+ * Max time a route handler may run before we synthesize a timeout failure.
+ * Slightly longer than the V8-side request timeout (10s) so the V8 side
+ * times out first in the common case; this is a backstop that ensures Node
+ * stops holding the handler's closure state and pending args indefinitely
+ * if the handler itself hangs (e.g. SQLite deadlock).
+ */
+const NODE_HANDLER_TIMEOUT_MS = 15_000;
 
 /** Registry of route name → handler */
 const routes = new Map<string, NodeRouteHandler>();
@@ -89,7 +102,12 @@ export async function handleNodeRequest(
   }
 
   try {
-    const result = await handler(args);
+    const result = await runWithTimeout(
+      () => handler(args),
+      NODE_HANDLER_TIMEOUT_MS,
+      route,
+      requestId,
+    );
 
     await sendNodeResponse(requestId, { success: true, result });
   } catch (error) {
@@ -99,6 +117,44 @@ export async function handleNodeRequest(
       success: false,
       error: message,
     });
+  }
+}
+
+/**
+ * Race a handler invocation against a timeout. The handler promise is not
+ * cancellable — on timeout we abandon it (the race result is the timeout
+ * rejection) but the underlying work keeps running until it settles. Logs
+ * once on timeout so a hung handler is visible.
+ *
+ * @param invoke - Thunk that calls the route handler
+ * @param timeoutMs - Timeout in milliseconds
+ * @param route - Route name (for the log message)
+ * @param requestId - Request ID (for the log message)
+ * @returns Handler's result, or throws if the timeout fires first
+ */
+async function runWithTimeout(
+  invoke: () => unknown,
+  timeoutMs: number,
+  route: string,
+  requestId: string,
+): Promise<unknown> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      const message = `Route '${route}' timed out after ${timeoutMs}ms`;
+
+      console.error(`${message} [requestId=${requestId}]`);
+      reject(new Error(message));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([
+      Promise.resolve().then(() => invoke()),
+      timeoutPromise,
+    ]);
+  } finally {
+    if (timer != null) clearTimeout(timer);
   }
 }
 
@@ -115,8 +171,20 @@ async function sendNodeResponse(
   requestId: string,
   response: { success: boolean; result?: unknown; error?: string },
 ): Promise<void> {
+  const jsonString = JSON.stringify(response);
+  const plan = planChunks(jsonString);
+  const chunks =
+    plan.tooLargeError == null
+      ? plan.chunks
+      : [JSON.stringify({ success: false, error: plan.tooLargeError })];
+
   try {
-    await Max.outlet("node_response", requestId, JSON.stringify(response));
+    await Max.outlet(
+      "node_response",
+      requestId,
+      ...chunks,
+      MAX_ERROR_DELIMITER,
+    );
   } catch (error) {
     console.error(
       `Failed to send node_response: ${String(error)} [requestId=${requestId}]`,

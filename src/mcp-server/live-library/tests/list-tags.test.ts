@@ -3,21 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { listTags } from "../list-tags.ts";
-import {
-  createLibraryFixture,
-  type LibraryFixture,
-} from "./library-fixture.ts";
+import { setupLibraryFixtureLifecycle } from "./library-fixture.ts";
 
 vi.mock(import("../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
@@ -27,24 +15,8 @@ vi.mock(import("../live-db-path.ts"), () => ({
 
 const dbPathMod = await import("../live-db-path.ts");
 
-let fixture: LibraryFixture;
-
 describe("listTags", () => {
-  beforeAll(() => {
-    fixture = createLibraryFixture();
-  });
-
-  beforeEach(() => {
-    vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(fixture.dbPath);
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  afterAll(() => {
-    fixture.cleanup();
-  });
+  setupLibraryFixtureLifecycle(dbPathMod);
 
   it("returns dbAvailable: false when no Live DB is found", async () => {
     vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);

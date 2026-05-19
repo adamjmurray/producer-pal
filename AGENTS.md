@@ -65,6 +65,12 @@ web UI architecture.
   assistance line already exists, append additional tools as a comma-separated
   list (e.g., `// AI assistance: Gemini (Google), Claude (Anthropic)`).
 
+  **Exception: `examples/**`** — files under `examples/` are intentionally
+  exempt from SPDX/copyright headers. They are reference snippets meant to be
+  copied freely into user projects, and the headers would add friction and
+  potentially confuse users about licensing. Do not add SPDX headers to files in
+  this directory.
+
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
   other files use kebab-case (e.g., `use-chat.ts`, `live-api-adapter.ts`)
 

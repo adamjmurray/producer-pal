@@ -13,7 +13,7 @@ hero:
     The Ableton MCP server that brings AI to Ableton Live. Free and open-source.
     Works with Claude, Gemini, ChatGPT, Ollama, and more.
   image:
-    src: /producer-pal-logo.svg
+    src: /producer-pal-logo-animated.svg
     alt: Producer Pal
   actions:
     - theme: brand

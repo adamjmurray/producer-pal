@@ -170,6 +170,17 @@ swing() auto-quantizes to the swing grid, so changing swing amount is always saf
 Transforms modify notes in place — previous transforms are already baked in. Don't re-apply earlier transforms.
 MIDI params ignored for audio clips, vice versa.
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
+## Finding Library Content
+
+Use \`ppal-library\` to search Live's browser library and the user's configured sample folder.
+
+- Defaults to audio samples (the only kind loadable into clips/Simpler today). Other \`kind\` values are discovery-only.
+- \`query\` is a name substring; use \`*\` as a multi-character wildcard (e.g., \`kick*acoustic\`).
+- \`tags\` is comma-separated; results must match ALL listed tags. Use \`action: "listTags"\` to discover available tags.
+- \`source\`: filter where the file lives. \`sampleFolder\` is the user-configured sample folder on disk (bypasses Live's DB); \`user\`, \`pack\`, \`builtin\`, \`cloud\`, \`plugin\` query Live's DB.
+- Items from the user's sample folder appear before Live's library items in results.
+- Pass an absolute \`path\` from a result to \`ppal-create-clip\` / \`ppal-update-clip\` (audio clips) or \`ppal-create-device\` / \`ppal-update-device\` (Simpler \`sample\`).
+
 ## Working with Ableton Live
 
 **Views and Playback:**

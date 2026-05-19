@@ -16,6 +16,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
 import { fourCC } from "../library-filters.ts";
 
 export interface LibraryFixture {
@@ -70,6 +71,35 @@ export function createLibraryFixture(): LibraryFixture {
     dbPath,
     cleanup: () => rmSync(dir, { recursive: true, force: true }),
   };
+}
+
+/**
+ * Wire up beforeAll/beforeEach/afterEach/afterAll hooks for a Live-library DB test:
+ * creates the fixture, mocks `findLiveFilesDbPath` to return its path, and cleans up.
+ *
+ * @param dbPathMod - The mocked `live-db-path` module
+ * @param dbPathMod.findLiveFilesDbPath - The mocked finder function whose mock is rebound each test
+ */
+export function setupLibraryFixtureLifecycle(dbPathMod: {
+  findLiveFilesDbPath: (...args: unknown[]) => unknown;
+}): void {
+  let fixture: LibraryFixture;
+
+  beforeAll(() => {
+    fixture = createLibraryFixture();
+  });
+
+  beforeEach(() => {
+    vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(fixture.dbPath);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterAll(() => {
+    fixture.cleanup();
+  });
 }
 
 const FLDR = fourCC("fldr");

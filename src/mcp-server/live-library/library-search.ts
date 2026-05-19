@@ -23,16 +23,15 @@ import {
   resolveSource,
 } from "./library-filters.ts";
 import {
+  clampLibraryLimit,
+  DEFAULT_LIBRARY_LIMIT,
   type LibraryItem,
   type LibrarySearchArgs,
   type LibrarySearchResult,
 } from "./library-types.ts";
 import { findLiveFilesDbPath } from "./live-db-path.ts";
 import { openLiveDb } from "./live-db.ts";
-import { resolveAbsolutePaths } from "./reconstruct-path.ts";
-
-const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 1_000;
+import { resolveAbsolutePaths, type ResolvedPath } from "./reconstruct-path.ts";
 
 interface SearchRow {
   file_id: number;
@@ -67,6 +66,10 @@ export async function librarySearch(
 
   try {
     const { sql, params } = buildSearchQuery(args);
+    // node:sqlite returns `unknown[]`. We trust the SELECT column list to
+    // match SearchRow — the SQL is hand-written and pinned by tests, so a
+    // per-row runtime validator would be dead weight at the cost of
+    // measurable overhead at limit=1000.
     const rows = db.prepare(sql).all(...params) as unknown as SearchRow[];
     const fileIds = rows.map((r) => r.file_id);
     const paths = resolveAbsolutePaths(db, fileIds);
@@ -112,13 +115,21 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
   if (args.source) {
     const kinds = folderKindsForSource(args.source);
 
-    where.push(`p.folder_kind IN (${kinds.map(() => "?").join(",")})`);
-    params.push(...kinds);
+    // Defensive: source=sampleFolder has no DB encoding and yields an empty
+    // kinds list. The tool caller filters this out, but the route is
+    // publicly reachable — emit an impossible predicate to keep the
+    // SQL valid (no rows match) rather than producing `IN ()`.
+    if (kinds.length === 0) {
+      where.push("1 = 0");
+    } else {
+      where.push(`p.folder_kind IN (${kinds.map(() => "?").join(",")})`);
+      params.push(...kinds);
+    }
   }
 
   if (args.query) {
-    where.push("f.name LIKE ?");
-    params.push(`%${args.query}%`);
+    where.push("f.name LIKE ? ESCAPE '\\'");
+    params.push(buildLikePattern(args.query));
   }
 
   const tagNames = parseTags(args.tags);
@@ -127,6 +138,12 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
     // Match tags case-insensitively (lowercase both sides) so callers
     // can pass "kick" or "KICK" — listTags returns canonical casing
     // but the LLM may not echo it exactly.
+    //
+    // Unicode caveat: JS `.toLowerCase()` is Unicode-aware, but SQLite's
+    // built-in `LOWER()` is ASCII-only (no ICU). A tag like "Café" stored
+    // with mixed casing won't match user input that differs only in the
+    // accented byte's case. Factory tags are ASCII so this is uncommon;
+    // bringing in SQLite's ICU extension would be overkill.
     const lowerTagNames = tagNames.map((t) => t.toLowerCase());
 
     where.push(`(
@@ -139,7 +156,7 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
   }
 
   const orderBy = orderByClause(args.sort);
-  const limit = clampLimit(args.limit);
+  const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
 
   params.push(limit);
 
@@ -152,6 +169,23 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
                LIMIT ?`;
 
   return { sql, params };
+}
+
+/**
+ * Build a SQL LIKE pattern from a user query. Escapes LIKE metacharacters
+ * (`%`, `_`, `\`) so filenames containing them match literally, then
+ * translates `*` to `%` as the user-facing wildcard. The result is wrapped
+ * with implicit `%...%` for substring matching, and the caller must use
+ * `ESCAPE '\'` in the LIKE clause.
+ *
+ * @param query - User-supplied query string
+ * @returns LIKE pattern ready to bind as a parameter
+ */
+function buildLikePattern(query: string): string {
+  const escaped = query.replaceAll(/[%\\_]/g, "\\$&");
+  const withWildcards = escaped.replaceAll("*", "%");
+
+  return `%${withWildcards}%`;
 }
 
 /**
@@ -174,7 +208,16 @@ function parseTags(tags: string | undefined): string[] {
 }
 
 /**
- * Map the public sort enum to a SQL ORDER BY clause.
+ * Map the public LibrarySort enum to a SQL ORDER BY clause.
+ *
+ * Mirrors the JS comparator side in `sortPartition` (library.ts). When
+ * adding a new LibrarySort variant, update BOTH sites — there is no
+ * shared mapping table because one returns SQL and the other a Comparator.
+ *
+ * Sort variants:
+ *   - "name":      f.name ASC                                ↔ a.name.localeCompare(b.name)
+ *   - "mod_date":  f.mod_date DESC, f.name ASC               ↔ (DB items trust upstream order)
+ *   - "use_count": f.use_count DESC, f.mod_date DESC, name   ↔ b.useCount - a.useCount || name
  *
  * @param sort - Sort enum (defaults to use_count)
  * @returns SQL fragment safe to inline (no params)
@@ -194,41 +237,34 @@ function orderByClause(sort: LibrarySearchArgs["sort"]): string {
 }
 
 /**
- * Clamp a requested limit to safe bounds.
- *
- * @param requested - User-supplied limit
- * @returns Limit between 1 and MAX_LIMIT
- */
-function clampLimit(requested: number | undefined): number {
-  if (requested == null || !Number.isFinite(requested) || requested <= 0) {
-    return DEFAULT_LIMIT;
-  }
-
-  return Math.min(Math.floor(requested), MAX_LIMIT);
-}
-
-/**
  * Build a public LibraryItem from a raw SearchRow, with both path and
  * tags pre-resolved in bulk to avoid per-row N+1 queries.
  *
  * @param row - Raw search row
- * @param paths - Map of file_id to absolute path resolved upfront
+ * @param paths - Map of file_id to resolved path resolved upfront
  * @param tagsByFile - Map of file_id to tag names resolved upfront
  * @returns Public LibraryItem with resolved path/kind/source/tags
  */
 function buildLibraryItem(
   row: SearchRow,
-  paths: Map<number, string>,
+  paths: Map<number, ResolvedPath>,
   tagsByFile: Map<number, string[]>,
 ): LibraryItem {
-  return {
+  const resolved = paths.get(row.file_id);
+  const item: LibraryItem = {
     name: row.name,
-    path: paths.get(row.file_id) ?? `/${row.name}`,
+    path: resolved?.path ?? `/${row.name}`,
     kind: resolveKind(row.file_type),
     tags: tagsByFile.get(row.file_id) ?? [],
     useCount: row.use_count,
     source: row.folder_kind == null ? null : resolveSource(row.folder_kind),
   };
+
+  if (resolved?.truncated) {
+    item.pathTruncated = true;
+  }
+
+  return item;
 }
 
 /**
@@ -251,6 +287,7 @@ function fetchTagsBulk(
   }
 
   const placeholders = fileIds.map(() => "?").join(",");
+  // Same SELECT-column trust as the main query — see comment in librarySearch.
   const rows = db
     .prepare(
       `SELECT k.file_id AS file_id, kw.name AS name

@@ -94,6 +94,67 @@ describe("setSimplerSample", () => {
     );
   });
 
+  it("warns and skips when the path is empty or whitespace", () => {
+    const device = registerSimpler();
+
+    setSimplerSample(LiveAPI.from("id simpler-1"), "   ", "updateDevice");
+
+    expect(device.call).not.toHaveBeenCalledWith(
+      "replace_sample",
+      expect.anything(),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("non-empty file path"),
+    );
+  });
+
+  it("warns and skips when the path is not absolute", () => {
+    const device = registerSimpler();
+
+    setSimplerSample(
+      LiveAPI.from("id simpler-1"),
+      "relative/kick.wav",
+      "updateDevice",
+    );
+
+    expect(device.call).not.toHaveBeenCalledWith(
+      "replace_sample",
+      expect.anything(),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("absolute file path"),
+    );
+  });
+
+  it("trims surrounding whitespace before passing the path to Live", () => {
+    const device = registerSimpler();
+
+    setSimplerSample(
+      LiveAPI.from("id simpler-1"),
+      "  /tmp/kick.wav  ",
+      "updateDevice",
+    );
+
+    expect(device.call).toHaveBeenCalledWith("replace_sample", "/tmp/kick.wav");
+  });
+
+  it("accepts Windows-style drive-letter paths", () => {
+    const device = registerSimpler();
+
+    setSimplerSample(
+      LiveAPI.from("id simpler-1"),
+      "C:\\samples\\kick.wav",
+      "updateDevice",
+    );
+
+    expect(device.call).toHaveBeenCalledWith(
+      "replace_sample",
+      "C:\\samples\\kick.wav",
+    );
+  });
+
   it("uses the toolName parameter as warning prefix", () => {
     registerMockObject("op-1", {
       path: livePath.track(0).device(0),

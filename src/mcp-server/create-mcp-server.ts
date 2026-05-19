@@ -95,7 +95,7 @@ export function createMcpServer(
     toolDef(server, callLiveApi, { smallModelMode });
   }
 
-  // Raw Live API: opt-in via device Setup tab. Goes through the same
+  // Live API: opt-in via device Setup tab. Goes through the same
   // tools whitelist as standard tools. Excluded under smallModelMode
   // because its schema is too large to be useful with small models.
   if (

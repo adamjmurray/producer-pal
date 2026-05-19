@@ -98,19 +98,19 @@
     "e2e:webui": "npm run ui:test"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "3.0.74",
-    "@ai-sdk/google": "3.0.67",
-    "@ai-sdk/mistral": "3.0.33",
-    "@ai-sdk/openai": "3.0.58",
+    "@ai-sdk/anthropic": "3.0.76",
+    "@ai-sdk/google": "3.0.71",
+    "@ai-sdk/mistral": "3.0.36",
+    "@ai-sdk/openai": "3.0.63",
     "@modelcontextprotocol/sdk": "1.29.0",
     "@openai/agents": "0.11.4",
     "@openrouter/ai-sdk-provider": "2.9.0",
     "@tailwindcss/typography": "0.5.19",
-    "ai": "6.0.174",
+    "ai": "6.0.177",
     "dompurify": "3.4.2",
     "express": "5.2.1",
     "idb": "8.0.3",
-    "marked": "18.0.0",
+    "marked": "18.0.3",
     "preact": "10.29.1",
     "zod": "4.3.6"
   },
@@ -127,14 +127,14 @@
     "@rollup/plugin-replace": "6.0.3",
     "@rollup/plugin-terser": "1.0.0",
     "@stylistic/eslint-plugin": "5.10.0",
-    "@tailwindcss/vite": "4.2.4",
+    "@tailwindcss/vite": "4.3.0",
     "@testing-library/preact": "3.2.4",
     "@types/express": "5.0.6",
-    "@types/node": "25.6.0",
-    "@typescript-eslint/eslint-plugin": "8.59.1",
-    "@typescript-eslint/parser": "8.59.1",
+    "@types/node": "25.6.2",
+    "@typescript-eslint/eslint-plugin": "8.59.2",
+    "@typescript-eslint/parser": "8.59.2",
     "@vitest/coverage-v8": "4.1.5",
-    "@vitest/eslint-plugin": "1.6.16",
+    "@vitest/eslint-plugin": "1.6.17",
     "chokidar-cli": "3.0.0",
     "commander": "14.0.3",
     "eslint": "10.2.0",
@@ -147,10 +147,10 @@
     "fake-indexeddb": "6.2.5",
     "globals": "17.6.0",
     "happy-dom": "20.9.0",
-    "jscpd": "4.0.9",
+    "jscpd": "4.2.3",
     "peggy": "5.1.0",
     "prettier": "3.8.3",
-    "rollup": "4.60.2",
+    "rollup": "4.60.3",
     "rollup-plugin-copy": "3.5.0",
     "rollup-plugin-esbuild": "6.2.1",
     "typescript": "6.0.2",
@@ -158,10 +158,5 @@
     "vite-plugin-singlefile": "2.3.3",
     "vitepress": "1.6.4",
     "vitest": "4.1.5"
-  },
-  "overrides": {
-    "eslint-plugin-react-hooks": {
-      "eslint": "10.2.0"
-    }
   }
 }
