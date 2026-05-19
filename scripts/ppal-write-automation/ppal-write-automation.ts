@@ -38,6 +38,7 @@ import { runMixerRouting } from "./ppal-mixer-routing-helpers.ts";
 import { runModulation } from "./ppal-modulation-helpers.ts";
 import { runRouting } from "./ppal-routing-helpers.ts";
 import { runShiftTime } from "./ppal-shift-time-helpers.ts";
+import { runTakeLane } from "./ppal-take-lane-helpers.ts";
 import { runTempo } from "./ppal-tempo-helpers.ts";
 import { runTimesig } from "./ppal-timesig-helpers.ts";
 import { runTrackGroup } from "./ppal-track-group-helpers.ts";
@@ -449,6 +450,7 @@ const DISPATCH: Record<string, DispatchHandler> = {
   "warp-marker": (rest) => runWarpMarker(rest, parseFlags),
   routing: (rest) => runRouting(rest, parseFlags),
   "shift-time": (rest) => runShiftTime(rest, parseFlags),
+  "take-lane": (rest) => runTakeLane(rest, parseFlags),
   "midi-export": (rest) => runMidiExport(rest, parseFlags),
 };
 
