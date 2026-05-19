@@ -139,6 +139,9 @@ describe("SettingsScreen", () => {
     liveApiEnabledDirty: false,
     setLiveApiEnabled: vi.fn(),
     seedLiveApiEnabled: vi.fn(),
+    realtimeVoice: "marin",
+    setRealtimeVoice: vi.fn(),
+    savedRealtimeVoice: "marin",
   };
 
   const defaultDisplay = {
@@ -175,6 +178,7 @@ describe("SettingsScreen", () => {
       activeSmallModelMode: null,
     },
     liveApiForcedOn: false,
+    activeVoice: null,
   };
 
   /**

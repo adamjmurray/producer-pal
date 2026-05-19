@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { isRealtimeModel } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 import {
   API_KEY_URLS,
@@ -12,6 +13,7 @@ import {
 } from "./connection-tab-helpers";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
+import { VoiceSelector } from "./controls/VoiceSelector";
 import { TestConnectionButton } from "./TestConnectionButton";
 
 interface ConnectionTabProps {
@@ -28,6 +30,11 @@ interface ConnectionTabProps {
   setThinking: (thinking: string) => void;
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
+  realtimeVoice: string;
+  setRealtimeVoice: (voice: string) => void;
+  /** Voice currently locked into the live RealtimeSession (or null when idle).
+   * Used to render a pending-change notice. */
+  activeVoice: string | null;
 }
 
 /**
@@ -62,7 +69,12 @@ export function ConnectionTab({
   setThinking,
   smallModelMode,
   setSmallModelMode,
+  realtimeVoice,
+  setRealtimeVoice,
+  activeVoice,
 }: ConnectionTabProps) {
+  const showVoiceSelector = provider === "openai" && isRealtimeModel(model);
+
   return (
     <>
       <ProviderSelector provider={provider} setProvider={setProvider} />
@@ -136,6 +148,14 @@ export function ConnectionTab({
             {providerLabel} models
           </a>
         </p>
+      )}
+
+      {showVoiceSelector && (
+        <VoiceSelector
+          voice={realtimeVoice}
+          setVoice={setRealtimeVoice}
+          activeVoice={activeVoice}
+        />
       )}
 
       <div className="flex items-center justify-between">

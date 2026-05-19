@@ -225,6 +225,7 @@ export function App() {
             }
             conversationLock={modeContext.conversationLock}
             liveApiForcedOn={remoteConfig.serverLiveApiForcedOn}
+            activeVoice={modeContext.activeVoice}
           />
         </div>
       )}

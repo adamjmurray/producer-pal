@@ -72,4 +72,15 @@ export interface UseSettingsReturn {
   liveApiEnabledDirty: boolean;
   setLiveApiEnabled: (enabled: boolean) => void;
   seedLiveApiEnabled: (enabled: boolean) => void;
+
+  /** In-modal voice selection for the OpenAI Realtime API. Editing this
+   * during a live voice session does NOT change the active voice — the
+   * RealtimeAgent locks the voice at connect time. Takes effect on the next
+   * Stop → Talk cycle. */
+  realtimeVoice: string;
+  setRealtimeVoice: (voice: string) => void;
+
+  /** Persisted voice setting (last save). Used by useVoiceSession at connect
+   * time so an in-modal edit doesn't reach into the live session. */
+  savedRealtimeVoice: string;
 }

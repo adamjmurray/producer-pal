@@ -29,7 +29,7 @@ vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () => ({
     enabledTools ? tools.filter((t) => enabledTools[t.name] !== false) : tools,
 }));
 
-import { createRealtimeMcpTools } from "./realtime-mcp-tools";
+import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 
 afterEach(() => {
   callToolMock.mockReset();

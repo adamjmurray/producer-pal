@@ -12,9 +12,11 @@ import {
   loadCurrentProvider,
   loadEnabledTools,
   loadProviderSettings,
+  loadRealtimeVoice,
   loadSmallModelMode,
   type ProviderSettings,
   saveCurrentSettings,
+  saveRealtimeVoice,
   saveSmallModelMode,
 } from "./settings-helpers";
 
@@ -73,6 +75,14 @@ export function useSettings(): UseSettingsReturn {
   const [liveApiEnabled, setLiveApiEnabledState] = useState<boolean>(false);
   const [liveApiEnabledDirty, setLiveApiEnabledDirty] =
     useState<boolean>(false);
+  // In-modal voice value vs. persisted/applied value. Same split as
+  // `model`/`savedModel` — saveSettings/cancelSettings synchronize them, but
+  // the live voice session reads `savedRealtimeVoice` so mid-edit changes
+  // don't leak into the active RealtimeAgent.
+  const [realtimeVoice, setRealtimeVoiceState] =
+    useState<string>(loadRealtimeVoice);
+  const [savedRealtimeVoice, setSavedRealtimeVoice] =
+    useState<string>(loadRealtimeVoice);
 
   const setLiveApiEnabled = useCallback((enabled: boolean) => {
     setLiveApiEnabledState(enabled);
@@ -165,13 +175,16 @@ export function useSettings(): UseSettingsReturn {
 
     saveCurrentSettings(provider, enabledTools, allSettings);
     saveSmallModelMode(smallModelMode);
+    saveRealtimeVoice(realtimeVoice);
     setSavedModel(allSettings[provider].model);
+    setSavedRealtimeVoice(realtimeVoice);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
   }, [
     provider,
     enabledTools,
     smallModelMode,
+    realtimeVoice,
     anthropicSettings,
     geminiSettings,
     openaiSettings,
@@ -186,6 +199,7 @@ export function useSettings(): UseSettingsReturn {
     setProviderState(loadCurrentProvider());
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
+    setRealtimeVoiceState(loadRealtimeVoice());
     applyLoadedSettings(loadAllProviderSettings());
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
@@ -284,5 +298,8 @@ export function useSettings(): UseSettingsReturn {
     liveApiEnabledDirty,
     setLiveApiEnabled,
     seedLiveApiEnabled,
+    realtimeVoice,
+    setRealtimeVoice: setRealtimeVoiceState,
+    savedRealtimeVoice,
   };
 }

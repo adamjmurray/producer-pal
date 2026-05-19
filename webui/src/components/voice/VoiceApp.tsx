@@ -66,6 +66,8 @@ export function VoiceApp(props: VoiceAppProps) {
     headerInfo,
   } = useVoiceModeState(props);
 
+  const savedVoice = props.settings.savedRealtimeVoice;
+
   const conversationPanel = buildConversationPanel({
     isOpen: historyPanelOpen,
     setHistoryPanelOpen,
@@ -114,6 +116,7 @@ export function VoiceApp(props: VoiceAppProps) {
         isConnected={isConnected}
         isUnsupportedBrowser={firefoxDetected}
         onToggleConnection={onToggleConnection}
+        savedVoice={savedVoice}
       />
     </AppShell>
   );

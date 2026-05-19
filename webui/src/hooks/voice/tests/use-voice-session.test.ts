@@ -87,7 +87,7 @@ vi.mock(import("#webui/hooks/voice/realtime-mcp-tools"), () => ({
   createRealtimeMcpTools: mocks.createRealtimeMcpTools,
 }));
 
-import { useVoiceSession } from "./use-voice-session";
+import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 
 const REAL_FETCH = globalThis.fetch;
 

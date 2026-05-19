@@ -21,6 +21,9 @@ interface UseVoiceModeReportingParams {
   totalToolsCount: number;
   enabledToolsCount: number;
   setModeContext: (ctx: ModeContext) => void;
+  /** Voice id locked into the live RealtimeSession (null when idle). Reported
+   * up so the settings Voice picker can flag mid-session pending changes. */
+  activeVoice: string | null;
 }
 
 /**
@@ -41,6 +44,7 @@ export function useVoiceModeReporting(
     totalToolsCount,
     enabledToolsCount,
     setModeContext,
+    activeVoice,
   } = params;
   const hasActiveVoiceConv = persistence.activeConversationId != null;
   // Read delete handlers via a ref so the effect's deps stay stable —
@@ -73,8 +77,9 @@ export function useVoiceModeReporting(
       onDeleteAllConversations: () => void handlersRef.current.deleteAll(),
       onDeleteUnbookmarkedConversations: () =>
         void handlersRef.current.deleteUnbookmarked(),
+      activeVoice,
     });
-  }, [hasActiveVoiceConv, setModeContext]);
+  }, [hasActiveVoiceConv, setModeContext, activeVoice]);
 
   return {
     activeModel: OPENAI_REALTIME_MODEL,

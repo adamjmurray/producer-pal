@@ -71,6 +71,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     voiceTokenUrl,
     openAiKey,
     enabledTools: settings.enabledTools,
+    voice: settings.savedRealtimeVoice,
   });
 
   const persistence = useVoicePersistence({
@@ -118,6 +119,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     totalToolsCount,
     enabledToolsCount,
     setModeContext,
+    activeVoice: voice.activeVoice,
   });
 
   return {

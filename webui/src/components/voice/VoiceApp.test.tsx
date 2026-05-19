@@ -63,6 +63,7 @@ interface VoiceSessionStub {
   interrupt: ReturnType<typeof vi.fn>;
   retryResponse: ReturnType<typeof vi.fn>;
   resetHistory: ReturnType<typeof vi.fn>;
+  activeVoice: string | null;
 }
 
 function baseSession(
@@ -82,6 +83,7 @@ function baseSession(
     interrupt: vi.fn(),
     retryResponse: vi.fn(),
     resetHistory: vi.fn(),
+    activeVoice: null,
     ...overrides,
   };
 }
@@ -123,6 +125,7 @@ interface PropOverrides {
   apiKey?: string;
   provider?: "openai" | "anthropic";
   onOpenSettings?: () => void;
+  savedRealtimeVoice?: string;
 }
 
 // vi.fn() returns a Mock that includes a Constructable signature, which TS
@@ -138,6 +141,7 @@ function makeProps(o: PropOverrides = {}): VoiceAppProps {
       apiKey,
       model: "gpt-realtime-2",
       enabledTools: {},
+      savedRealtimeVoice: o.savedRealtimeVoice ?? "marin",
     } as unknown as UseSettingsReturn,
     display: {
       showTimestamps: false,
@@ -411,6 +415,26 @@ describe("VoiceApp", () => {
     renderVoiceApp();
 
     expect(screen.getByText(/muted/i)).toBeDefined();
+  });
+
+  it("Voice label reflects the saved preference while idle", () => {
+    mocks.useVoiceSession.mockReturnValue(baseSession());
+    renderVoiceApp({ savedRealtimeVoice: "cedar" });
+
+    expect(screen.getByText(/voice: cedar/i)).toBeDefined();
+  });
+
+  it("Voice label highlights when the live session diverges from the saved voice", () => {
+    mocks.useVoiceSession.mockReturnValue(
+      baseSession({ status: "connected", activeVoice: "marin" }),
+    );
+
+    renderVoiceApp({ savedRealtimeVoice: "cedar" });
+
+    const label = screen.getByText(/voice: marin/i);
+
+    expect(label.className).toMatch(/amber/);
+    expect(label.getAttribute("title")).toMatch(/applies on next session/i);
   });
 
   it("shows the Firefox-unsupported banner when running in Firefox", () => {

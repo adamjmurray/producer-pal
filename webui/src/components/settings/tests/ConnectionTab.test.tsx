@@ -43,6 +43,9 @@ describe("ConnectionTab", () => {
     setThinking: vi.fn(),
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
+    realtimeVoice: "marin",
+    setRealtimeVoice: vi.fn(),
+    activeVoice: null as string | null,
   };
 
   describe("cloud providers - API key input", () => {

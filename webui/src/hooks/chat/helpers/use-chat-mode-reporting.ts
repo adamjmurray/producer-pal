@@ -70,6 +70,7 @@ export function useChatModeReporting(
       onDeleteAllConversations: () => handlersRef.current.handleDeleteAll(),
       onDeleteUnbookmarkedConversations: () =>
         handlersRef.current.handleDeleteUnbookmarked(),
+      activeVoice: null,
     });
   }, [
     chat.activeModel,

@@ -12,6 +12,10 @@ export interface ModeContext {
   conversationLock: ConversationLock;
   onDeleteAllConversations: () => void;
   onDeleteUnbookmarkedConversations: () => void;
+  /** Voice id locked into the live RealtimeSession (voice mode only). Null in
+   * chat mode and when voice mode is idle. Surfaced into the settings modal so
+   * the Voice picker can warn that a mid-session edit applies on next Stop → Talk. */
+  activeVoice: string | null;
 }
 
 // Placeholder before any mode reports its context. Exported so the default
@@ -28,4 +32,5 @@ export const DEFAULT_MODE_CONTEXT: ModeContext = {
   },
   onDeleteAllConversations: noop,
   onDeleteUnbookmarkedConversations: noop,
+  activeVoice: null,
 };

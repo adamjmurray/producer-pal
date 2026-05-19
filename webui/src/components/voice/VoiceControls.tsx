@@ -14,6 +14,9 @@ interface VoiceControlsProps {
   isConnected: boolean;
   isUnsupportedBrowser: boolean;
   onToggleConnection: () => void;
+  /** User's saved voice preference (post-save). Compared against the live
+   * session's `activeVoice` to render the pending-change indicator. */
+  savedVoice: string;
 }
 
 /**
@@ -29,6 +32,7 @@ interface VoiceControlsProps {
  * @param props.isConnected - True when the realtime session is live
  * @param props.isUnsupportedBrowser - True when the browser is known broken (Firefox)
  * @param props.onToggleConnection - Toggle connect/disconnect
+ * @param props.savedVoice - User's saved realtime voice preference (post-save)
  * @returns Controls UI
  */
 export function VoiceControls({
@@ -38,8 +42,12 @@ export function VoiceControls({
   isConnected,
   isUnsupportedBrowser,
   onToggleConnection,
+  savedVoice,
 }: VoiceControlsProps) {
   const assistantActive = voice.assistantSpeaking || voice.assistantThinking;
+  const activeVoice = voice.activeVoice;
+  const voiceDiverges = activeVoice != null && activeVoice !== savedVoice;
+  const displayVoice = activeVoice ?? savedVoice;
 
   return (
     <div className="flex flex-col items-center gap-3 px-4 py-4 border-t border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900">
@@ -65,6 +73,11 @@ export function VoiceControls({
         assistantThinking={voice.assistantThinking}
         userMuted={voice.isMuted}
       />
+      <VoiceLabel
+        displayVoice={displayVoice}
+        voiceDiverges={voiceDiverges}
+        savedVoice={savedVoice}
+      />
       {isConnected && assistantActive && (
         <button
           type="button"
@@ -83,6 +96,47 @@ export function VoiceControls({
           {voice.isMuted ? "Unmute" : "Mute"}
         </button>
       )}
+    </div>
+  );
+}
+
+interface VoiceLabelProps {
+  displayVoice: string;
+  voiceDiverges: boolean;
+  savedVoice: string;
+}
+
+/**
+ * Small caption showing the active voice. Renders in amber when the live
+ * session's voice diverges from the user's saved selection (a mid-session
+ * settings edit), with a tooltip that explains the change applies on the
+ * next Stop → Talk.
+ *
+ * @param props - Component props
+ * @param props.displayVoice - The voice id to display (live if active, else saved)
+ * @param props.voiceDiverges - Whether the saved preference differs from the live session voice
+ * @param props.savedVoice - Saved voice preference (shown in the tooltip)
+ * @returns Voice label element
+ */
+function VoiceLabel({
+  displayVoice,
+  voiceDiverges,
+  savedVoice,
+}: VoiceLabelProps) {
+  return (
+    <div
+      className={`text-xs ${
+        voiceDiverges
+          ? "text-amber-600 dark:text-amber-400"
+          : "text-zinc-500 dark:text-zinc-400"
+      }`}
+      title={
+        voiceDiverges
+          ? `Voice change to "${savedVoice}" applies on next session (Stop, then Talk)`
+          : undefined
+      }
+    >
+      Voice: {displayVoice}
     </div>
   );
 }

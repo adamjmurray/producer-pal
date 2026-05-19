@@ -3,8 +3,35 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { THINKING_LEVELS } from "#webui/components/settings/controls/thinking-levels";
-import { DEFAULT_MODELS } from "#webui/lib/constants/models";
+import {
+  DEFAULT_MODELS,
+  DEFAULT_REALTIME_VOICE,
+  isValidRealtimeVoice,
+} from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
+
+const REALTIME_VOICE_KEY = "producer_pal_realtime_voice";
+
+/**
+ * Loads the saved realtime voice from localStorage, falling back to the
+ * default voice when missing or invalid.
+ * @returns A known realtime voice id
+ */
+export function loadRealtimeVoice(): string {
+  const stored = localStorage.getItem(REALTIME_VOICE_KEY);
+
+  if (stored && isValidRealtimeVoice(stored)) return stored;
+
+  return DEFAULT_REALTIME_VOICE;
+}
+
+/**
+ * Persists the realtime voice selection to localStorage.
+ * @param voice - The voice id to persist
+ */
+export function saveRealtimeVoice(voice: string): void {
+  localStorage.setItem(REALTIME_VOICE_KEY, voice);
+}
 
 const VALID_THINKING_LEVELS: readonly string[] = THINKING_LEVELS;
 
