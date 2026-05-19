@@ -20,6 +20,8 @@ const mocks = vi.hoisted(() => ({
   isFirefox: vi.fn(),
   useMcpConnection: vi.fn(),
   useUpdateCheck: vi.fn(),
+  useVoicePersistence: vi.fn(),
+  useConversationTransfer: vi.fn(),
 }));
 
 vi.mock(import("#webui/hooks/settings/settings-helpers"), () => ({
@@ -47,6 +49,16 @@ vi.mock(import("#webui/hooks/use-update-check"), () => ({
   useUpdateCheck: mocks.useUpdateCheck,
 }));
 
+vi.mock(import("#webui/hooks/voice/use-voice-persistence"), () => ({
+  useVoicePersistence: mocks.useVoicePersistence,
+}));
+
+vi.mock(import("#webui/hooks/chat/use-conversation-transfer"), () => ({
+  useConversationTransfer: mocks.useConversationTransfer,
+}));
+
+import { type ConversationSummary } from "#webui/lib/conversation-db";
+import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 import { VoiceApp } from "./VoiceApp";
 
 interface VoiceSessionStub {
@@ -84,6 +96,35 @@ function baseSession(
   };
 }
 
+interface PersistenceStub {
+  conversations: ConversationSummary[];
+  activeConversationId: string | null;
+  savedItems: RealtimeItem[];
+  refreshList: ReturnType<typeof vi.fn>;
+  switchConversation: ReturnType<typeof vi.fn>;
+  startNewConversation: ReturnType<typeof vi.fn>;
+  deleteConversation: ReturnType<typeof vi.fn>;
+  renameConversation: ReturnType<typeof vi.fn>;
+  toggleBookmark: ReturnType<typeof vi.fn>;
+}
+
+function basePersistence(
+  overrides: Partial<PersistenceStub> = {},
+): PersistenceStub {
+  return {
+    conversations: [],
+    activeConversationId: null,
+    savedItems: [],
+    refreshList: vi.fn(),
+    switchConversation: vi.fn(),
+    startNewConversation: vi.fn(),
+    deleteConversation: vi.fn(),
+    renameConversation: vi.fn(),
+    toggleBookmark: vi.fn(),
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   mocks.loadProviderSettings.mockReturnValue({ apiKey: "sk-test" });
   mocks.loadEnabledTools.mockReturnValue({});
@@ -99,6 +140,14 @@ beforeEach(() => {
     checkMcpConnection: vi.fn(),
   });
   mocks.useUpdateCheck.mockReturnValue(null);
+  mocks.useVoicePersistence.mockReturnValue(basePersistence());
+  mocks.useConversationTransfer.mockReturnValue({
+    notification: null,
+    dismissNotification: vi.fn(),
+    handleExport: vi.fn(),
+    handleExportOne: vi.fn(),
+    handleImport: vi.fn(),
+  });
 });
 
 afterEach(() => {
@@ -109,6 +158,8 @@ afterEach(() => {
   mocks.isFirefox.mockReset();
   mocks.useMcpConnection.mockReset();
   mocks.useUpdateCheck.mockReset();
+  mocks.useVoicePersistence.mockReset();
+  mocks.useConversationTransfer.mockReset();
 });
 
 describe("VoiceApp", () => {
@@ -485,6 +536,21 @@ describe("VoiceApp", () => {
       expect(screen.getByText(/gpt realtime/i)).toBeDefined();
     });
 
+    it("renders header tool counts as 0 when the MCP tools list is unavailable", () => {
+      mocks.useMcpConnection.mockReturnValue({
+        mcpStatus: "connecting",
+        mcpError: null,
+        mcpTools: null,
+        checkMcpConnection: vi.fn(),
+      });
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+
+      render(<VoiceApp />);
+
+      // Page renders without throwing — counts fall back to 0
+      expect(screen.getByTitle(/producer pal website/i)).toBeDefined();
+    });
+
     it("toggles the conversation panel open via the header button", () => {
       mocks.useVoiceSession.mockReturnValue(baseSession());
 
@@ -503,21 +569,83 @@ describe("VoiceApp", () => {
       expect(findPanel()?.className).toContain("w-full");
     });
 
-    it("ignores clicks on the conversation sidebar's stub handlers (commit 4)", () => {
+    it("wires the conversation sidebar buttons to persistence + transfer", () => {
+      const persistence = basePersistence();
+      const transfer = {
+        notification: null,
+        dismissNotification: vi.fn(),
+        handleExport: vi.fn(),
+        handleExportOne: vi.fn(),
+        handleImport: vi.fn(),
+      };
+
       mocks.useVoiceSession.mockReturnValue(baseSession());
+      mocks.useVoicePersistence.mockReturnValue(persistence);
+      mocks.useConversationTransfer.mockReturnValue(transfer);
 
       render(<VoiceApp />);
 
-      // Open the sidebar so its toolbar is reachable, then click each stub.
-      // Voice doesn't persist conversations yet — the buttons must not crash.
       fireEvent.click(screen.getByLabelText(/toggle conversation history/i));
       fireEvent.click(screen.getByText(/new conversation/i));
       fireEvent.click(screen.getByLabelText(/export conversations/i));
       fireEvent.click(screen.getByLabelText(/import conversations/i));
 
-      // Sidebar still rendered (no crash) — the message-list debug note
-      // confirms the page hasn't unmounted.
-      expect(screen.getByText(/transport events are logged/i)).toBeDefined();
+      expect(persistence.startNewConversation).toHaveBeenCalled();
+      expect(transfer.handleExport).toHaveBeenCalled();
+      expect(transfer.handleImport).toHaveBeenCalled();
+    });
+
+    it("disconnects an active session and clears state when New Conversation is clicked", () => {
+      const persistence = basePersistence();
+      const session = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(session);
+      mocks.useVoicePersistence.mockReturnValue(persistence);
+
+      render(<VoiceApp />);
+      fireEvent.click(screen.getByLabelText(/toggle conversation history/i));
+      fireEvent.click(screen.getByText(/new conversation/i));
+
+      expect(session.disconnect).toHaveBeenCalled();
+      expect(persistence.startNewConversation).toHaveBeenCalled();
+    });
+
+    it("renders saved voice items when there is no live history", () => {
+      const savedItems = [
+        {
+          itemId: "u1",
+          type: "message",
+          role: "user",
+          status: "completed",
+          content: [{ type: "input_audio", transcript: "from saved record" }],
+        },
+      ] as unknown as RealtimeItem[];
+
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+      mocks.useVoicePersistence.mockReturnValue(
+        basePersistence({
+          savedItems,
+          activeConversationId: "saved-id",
+        }),
+      );
+
+      render(<VoiceApp />);
+
+      expect(screen.getByText("from saved record")).toBeDefined();
+    });
+
+    it("clearing the saved transcript when starting a new live session via Talk", () => {
+      const persistence = basePersistence();
+      const session = baseSession();
+
+      mocks.useVoiceSession.mockReturnValue(session);
+      mocks.useVoicePersistence.mockReturnValue(persistence);
+
+      render(<VoiceApp />);
+      fireEvent.click(screen.getByRole("button", { name: "Talk" }));
+
+      expect(persistence.startNewConversation).toHaveBeenCalled();
+      expect(session.connect).toHaveBeenCalled();
     });
 
     it("opens chat when the settings button is clicked", () => {
@@ -542,6 +670,70 @@ describe("VoiceApp", () => {
           writable: true,
         });
       }
+    });
+
+    it("wires per-conversation sidebar item handlers (select/delete/rename/bookmark)", () => {
+      const summary = createTestSummary({
+        id: "voice-conv-1",
+        title: "Voice Chat",
+        sessionType: "voice",
+      });
+      const persistence = basePersistence({ conversations: [summary] });
+
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+      mocks.useVoicePersistence.mockReturnValue(persistence);
+
+      render(<VoiceApp />);
+      fireEvent.click(screen.getByLabelText(/toggle conversation history/i));
+
+      fireEvent.click(screen.getByText("Voice Chat"));
+      expect(persistence.switchConversation).toHaveBeenCalledWith(
+        "voice-conv-1",
+      );
+
+      // Header also renders a (disabled) "Bookmark conversation" button —
+      // the per-item one is the last match in document order.
+      const bookmarkButtons = screen.getAllByLabelText(
+        /^bookmark conversation$/i,
+      );
+
+      fireEvent.click(bookmarkButtons.at(-1) as Element);
+      expect(persistence.toggleBookmark).toHaveBeenCalledWith("voice-conv-1");
+
+      fireEvent.click(screen.getByLabelText(/^rename conversation$/i));
+      const renameInput = screen.getByDisplayValue("Voice Chat");
+
+      fireEvent.input(renameInput, { target: { value: "Renamed Chat" } });
+      fireEvent.blur(renameInput);
+      expect(persistence.renameConversation).toHaveBeenCalledWith(
+        "voice-conv-1",
+        "Renamed Chat",
+      );
+
+      fireEvent.click(screen.getByLabelText(/^delete conversation$/i));
+      expect(persistence.deleteConversation).toHaveBeenCalledWith(
+        "voice-conv-1",
+      );
+    });
+
+    it("disconnects an active session when selecting a different conversation", () => {
+      const summary = createTestSummary({
+        id: "other-conv",
+        title: "Other",
+        sessionType: "voice",
+      });
+      const persistence = basePersistence({ conversations: [summary] });
+      const session = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(session);
+      mocks.useVoicePersistence.mockReturnValue(persistence);
+
+      render(<VoiceApp />);
+      fireEvent.click(screen.getByLabelText(/toggle conversation history/i));
+      fireEvent.click(screen.getByText("Other"));
+
+      expect(session.disconnect).toHaveBeenCalled();
+      expect(persistence.switchConversation).toHaveBeenCalledWith("other-conv");
     });
   });
 });

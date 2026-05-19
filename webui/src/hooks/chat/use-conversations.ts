@@ -152,29 +152,8 @@ export function useConversations({
     setLocationHash(null);
   }, []);
 
-  /**
-   * Sync active metadata from a loaded conversation record.
-   * @param record - Conversation record to sync from
-   */
-  const syncActiveMeta = (record: ConversationRecord) => {
-    activeMetaRef.current = {
-      title: record.title,
-      createdAt: record.createdAt,
-      bookmarked: record.bookmarked,
-      model: record.model,
-      provider: record.provider as Provider | null,
-      thinking: record.thinking,
-      temperature: record.temperature,
-      showThoughts: record.showThoughts,
-      smallModelMode: record.smallModelMode ?? null,
-    };
-  };
-
-  /**
-   * Snapshot active metadata for save record construction.
-   * @param id - Conversation ID
-   * @returns Active refs snapshot
-   */
+  const syncActiveMeta = (record: ConversationRecord) =>
+    syncMetaRef(activeMetaRef, record);
   const getActiveRefs = (id: string): ActiveRefs => ({
     id,
     ...(activeMetaRef.current ?? DEFAULT_META),
@@ -188,6 +167,12 @@ export function useConversations({
 
       if (hashId) {
         const record = await loadConversation(hashId);
+
+        if (record?.sessionType === "voice") {
+          window.location.href = `/voice#${hashId}`;
+
+          return;
+        }
 
         if (record && record.messages.length > 0) {
           setActiveId(hashId);
@@ -246,6 +231,13 @@ export function useConversations({
 
       if (!record) {
         clearActiveId();
+
+        return;
+      }
+
+      if (record.sessionType === "voice") {
+        // Voice records can't replay through the chat hook — bounce to /voice.
+        window.location.href = `/voice#${id}`;
 
         return;
       }
@@ -367,5 +359,30 @@ export function useConversations({
     renameConversation,
     toggleBookmark,
     refreshList,
+  };
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Overwrite the active-meta ref from a freshly loaded conversation record.
+ * @param ref - Ref holding the active-meta object
+ * @param ref.current - Mutable slot updated in place
+ * @param record - Conversation record to copy metadata from
+ */
+function syncMetaRef(
+  ref: { current: ActiveMeta | null },
+  record: ConversationRecord,
+): void {
+  ref.current = {
+    title: record.title,
+    createdAt: record.createdAt,
+    bookmarked: record.bookmarked,
+    model: record.model,
+    provider: record.provider as Provider | null,
+    thinking: record.thinking,
+    temperature: record.temperature,
+    showThoughts: record.showThoughts,
+    smallModelMode: record.smallModelMode ?? null,
   };
 }

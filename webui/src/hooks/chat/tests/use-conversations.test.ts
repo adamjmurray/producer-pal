@@ -55,7 +55,9 @@ async function saveTestConversation(
     showThoughts: null,
     smallModelMode: null,
     totalUsage: null,
+    sessionType: "text",
     messages,
+    voiceHistory: null,
   });
 
   return id;
@@ -118,7 +120,9 @@ describe("useConversations", () => {
       showThoughts: null,
       smallModelMode: null,
       totalUsage: null,
+      sessionType: "text",
       messages: [{ role: "user", content: "original" }],
+      voiceHistory: null,
     });
 
     const { props, state } = createProps();
@@ -217,7 +221,9 @@ describe("useConversations", () => {
       showThoughts: null,
       smallModelMode: null,
       totalUsage: null,
+      sessionType: "text",
       messages: [{ role: "user", content: "existing conversation" }],
+      voiceHistory: null,
     });
 
     const { result } = renderHook(() => useConversations(props));
@@ -319,7 +325,9 @@ describe("useConversations", () => {
       showThoughts: null,
       smallModelMode: null,
       totalUsage: null,
+      sessionType: "text",
       messages: [{ role: "user", content: "restored" }],
+      voiceHistory: null,
     });
     window.location.hash = existingId;
 

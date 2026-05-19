@@ -312,6 +312,7 @@ describe("ChatScreen", () => {
                 showThoughts: null,
                 smallModelMode: null,
                 totalUsage: null,
+                sessionType: "text",
               },
             ],
             activeConversationId: "conv-1",

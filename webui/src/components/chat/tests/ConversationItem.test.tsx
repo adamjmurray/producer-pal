@@ -105,5 +105,32 @@ describe("ConversationItem", () => {
 
       expect(container.textContent).toContain("some-unknown-model-xyz");
     });
+
+    it("shows the Voice badge when sessionType is voice", () => {
+      const { container } = renderItem({
+        conv: createTestSummary({
+          title: "Voice Chat",
+          sessionType: "voice",
+        }),
+      });
+
+      const badge = container.querySelector('[title="Voice conversation"]');
+
+      expect(badge).not.toBeNull();
+      expect(badge?.textContent).toBe("Voice");
+    });
+
+    it("omits the Voice badge for text conversations", () => {
+      const { container } = renderItem({
+        conv: createTestSummary({
+          title: "Text Chat",
+          sessionType: "text",
+        }),
+      });
+
+      expect(
+        container.querySelector('[title="Voice conversation"]'),
+      ).toBeNull();
+    });
   });
 });

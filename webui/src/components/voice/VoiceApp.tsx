@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import {
   AppShell,
   type ConversationPanelState,
@@ -12,6 +12,7 @@ import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderAc
 import { RateLimitRetry } from "#webui/components/voice/RateLimitRetry";
 import { VoiceControls } from "#webui/components/voice/VoiceControls";
 import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
+import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import {
   loadEnabledTools,
@@ -19,16 +20,11 @@ import {
 } from "#webui/hooks/settings/settings-helpers";
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
+import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import { isFirefox } from "#webui/utils/browser-detect";
 import { getMcpUrl } from "#webui/utils/mcp-url";
-
-// The conversation sidebar is a stub until commit 5 wires up voice-session
-// persistence, so every handler is a no-op. TS lets us pass a zero-arg no-op
-// where typed-parameter callbacks are expected, including onExportItem's
-// `void | Promise<void>` return.
-const noop = (): void => undefined;
 
 // Voice still lives on its own /voice route in this commit, so the header's
 // settings buttons can't open a modal here. Route to /chat instead — that's
@@ -63,9 +59,16 @@ export function VoiceApp() {
     enabledTools,
   });
 
+  const persistence = useVoicePersistence({ liveHistory: voice.history });
+  const transfer = useConversationTransfer(persistence.refreshList);
+
+  // Show live transcript while a session is producing items; otherwise show
+  // the saved transcript of the active voice conversation (read-only view).
+  const displayItems =
+    voice.history.length > 0 ? voice.history : persistence.savedItems;
   const messages = useMemo(
-    () => realtimeItemsToUIMessages(voice.history),
-    [voice.history],
+    () => realtimeItemsToUIMessages(displayItems),
+    [displayItems],
   );
 
   useEffect(() => {
@@ -73,20 +76,26 @@ export function VoiceApp() {
       top: document.documentElement.scrollHeight,
       behavior: "smooth",
     });
-  }, [voice.history]);
+  }, [displayItems]);
 
   const isBusy =
     voice.status === "connecting" || voice.status === "disconnecting";
   const isConnected = voice.status === "connected";
   const isUnsupportedBrowser = firefoxDetected;
 
-  const onToggleConnection = () => {
+  const onToggleConnection = useCallback(() => {
     if (isConnected) {
       void voice.disconnect();
-    } else {
-      void voice.connect();
+
+      return;
     }
-  };
+
+    // Starting a new session — clear any saved transcript so the live history
+    // takes over an empty viewport. Commit 6 will replace this with proper
+    // priming from prior items.
+    persistence.startNewConversation();
+    void voice.connect();
+  }, [isConnected, persistence, voice]);
 
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
@@ -105,22 +114,14 @@ export function VoiceApp() {
     showHelpLinks: preferences.showHelpLinks,
   };
 
-  const conversationPanel: ConversationPanelState = {
+  const conversationPanel = buildConversationPanel({
     isOpen: historyPanelOpen,
-    conversations: [],
-    activeConversationId: null,
-    onToggle: () => setHistoryPanelOpen((open) => !open),
-    onNew: noop,
-    onSelect: noop,
-    onDelete: noop,
-    onExportItem: noop,
-    onRename: noop,
-    onToggleBookmark: noop,
-    onExport: noop,
-    onImport: noop,
-    notification: null,
-    onDismissNotification: noop,
-  };
+    setHistoryPanelOpen,
+    persistence,
+    transfer,
+    isConnected,
+    disconnect: voice.disconnect,
+  });
 
   return (
     <AppShell
@@ -163,4 +164,53 @@ export function VoiceApp() {
       />
     </AppShell>
   );
+}
+
+// --- Helpers below main export ---
+
+interface BuildConversationPanelParams {
+  isOpen: boolean;
+  setHistoryPanelOpen: (updater: (open: boolean) => boolean) => void;
+  persistence: ReturnType<typeof useVoicePersistence>;
+  transfer: ReturnType<typeof useConversationTransfer>;
+  isConnected: boolean;
+  disconnect: () => Promise<void>;
+}
+
+/**
+ * Compose the AppShell conversation-panel state object from the voice page's
+ * persistence + transfer hooks. Pulled out of VoiceApp purely to keep its
+ * main function under the line limit.
+ *
+ * @param params - Panel state dependencies
+ * @returns ConversationPanelState ready to hand to AppShell
+ */
+function buildConversationPanel(
+  params: BuildConversationPanelParams,
+): ConversationPanelState {
+  const { isOpen, setHistoryPanelOpen, persistence, transfer, isConnected } =
+    params;
+
+  return {
+    isOpen,
+    conversations: persistence.conversations,
+    activeConversationId: persistence.activeConversationId,
+    onToggle: () => setHistoryPanelOpen((open) => !open),
+    onNew: () => {
+      if (isConnected) void params.disconnect();
+      persistence.startNewConversation();
+    },
+    onSelect: (id) => {
+      if (isConnected) void params.disconnect();
+      void persistence.switchConversation(id);
+    },
+    onDelete: (id) => void persistence.deleteConversation(id),
+    onExportItem: transfer.handleExportOne,
+    onRename: (id, title) => void persistence.renameConversation(id, title),
+    onToggleBookmark: (id) => void persistence.toggleBookmark(id),
+    onExport: () => void transfer.handleExport(),
+    onImport: () => void transfer.handleImport(),
+    notification: transfer.notification,
+    onDismissNotification: transfer.dismissNotification,
+  };
 }
