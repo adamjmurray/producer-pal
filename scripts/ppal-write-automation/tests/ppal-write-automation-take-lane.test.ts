@@ -82,7 +82,11 @@ function reGet(f: string): tl.ParsedTakeLanes {
     /<TakeLanes>[\S\s]*?<AreTakeLanesFolded Value="\w+" \/>\s*<\/TakeLanes>/,
   );
 
-  return tl.getTakeLanes(w?.[0] ?? "");
+  if (w == null) {
+    throw new Error("TakeLanes-Wrapper im Track nicht gefunden");
+  }
+
+  return tl.getTakeLanes(w[0]);
 }
 
 describe("runTakeLane get", () => {
@@ -169,6 +173,29 @@ describe("runTakeLane set", () => {
   it("--lanes-file JSON-Parse-Fehler -> exit 1", () => {
     const f = tmpCopy();
     const lf = lanesFile("{ kaputt");
+    const err = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+    const code = runTakeLane(
+      ["set", "--als", f, "--track", TRACK, "--lanes-file", lf, "--force"],
+      parseFlags,
+    );
+
+    err.mockRestore();
+    expect(code).toBe(1);
+  });
+
+  it("--lanes-file Spec mit fehlendem Pflichtfeld -> exit 1 (F2)", () => {
+    const f = tmpCopy();
+    // takeId fehlt -> parseLanesFile-Feld-Validierung verwirft (null).
+    const lf = lanesFile([
+      {
+        id: "1",
+        height: "51",
+        isContentSelected: "false",
+        clipXml: "<AudioClip",
+      },
+    ]);
     const err = vi
       .spyOn(process.stderr, "write")
       .mockImplementation(() => true);

@@ -151,5 +151,26 @@ function parseLanesFile(path: string | undefined): TakeLaneSpec[] | null {
     return null;
   }
 
+  // Feld-Validierung vor dem Cast: ohne sie umgehen `undefined`-Felder den
+  // Pflichtfeld-Check in patchTakeLanes (`undefined === ""` ist false),
+  // was zu einer irrefuehrenden generischen Verify-Fehlermeldung statt
+  // "Lane-Spec: Pflichtfeld leer" fuehrt (Stage-1-Review F2).
+  const allValid = data.every((x: unknown) => {
+    if (x == null || typeof x !== "object") return false;
+    const r = x as Record<string, unknown>;
+
+    return (
+      typeof r.id === "string" &&
+      typeof r.takeId === "string" &&
+      typeof r.height === "string" &&
+      typeof r.isContentSelected === "string" &&
+      typeof r.clipXml === "string"
+    );
+  });
+
+  if (!allValid) {
+    return null;
+  }
+
   return data as TakeLaneSpec[];
 }

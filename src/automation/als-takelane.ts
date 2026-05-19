@@ -25,6 +25,9 @@ export interface ParsedTakeLanes {
 
 // Eindeutiges Wrapper-Ende: <AreTakeLanesFolded …/> kommt exakt 1×/Wrapper
 // (Premortem R1 — verhindert non-greedy-Stopp am inneren </TakeLanes>).
+// Akzeptiert NUR den exakten leeren Default (folded=true); ein leerer
+// Wrapper mit folded=false (manuell aufgeklappt) wird ebenfalls abgelehnt
+// (Recon-Verdikt: populiert ⇒ folded=false, leer-Default ⇒ true).
 const EMPTY_DEFAULT_RE =
   /^<TakeLanes>\n(\t*)<TakeLanes \/>\n\t*<AreTakeLanesFolded Value="true" \/>\n(\t*)<\/TakeLanes>$/;
 
@@ -133,6 +136,20 @@ export function getTakeLanes(wrapper: string): ParsedTakeLanes {
       isContentSelected: isSel,
       clipXml,
     });
+  }
+
+  // Silent-Skip-Guard (Stage-1-Review F1): laneRe verlangt
+  // `<AudioClip Id="0"` — das ist eine Recon-Beobachtung aus EINEM
+  // Fixture, keine bewiesene Invariante. Weicht das Id-Format ab, wuerde
+  // matchAll die Lane kommentarlos ueberspringen und im get-Pfad (kein
+  // Verify) zu kurzes JSON liefern. Tag-Zaehlung erzwingt Vollstaendigkeit.
+  const laneTagCount = (wrapper.match(/<TakeLane /g) ?? []).length;
+
+  if (lanes.length !== laneTagCount) {
+    throw new Error(
+      `TakeLane-Anzahl (${laneTagCount}) != geparste Lanes ` +
+        `(${lanes.length}): AudioClip-Id-Format unerwartet`,
+    );
   }
 
   return { folded, lanes };

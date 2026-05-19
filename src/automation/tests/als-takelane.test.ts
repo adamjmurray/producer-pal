@@ -82,6 +82,17 @@ describe("getTakeLanes", () => {
 
     expect(() => getTakeLanes(noTakeId)).toThrow(/TakeId/);
   });
+
+  it("Silent-Skip-Guard: <TakeLane> mit AudioClip Id!=0 -> Throw (F1)", () => {
+    // Eine Lane bekommt AudioClip Id="1"; laneRe (Id="0") ueberspringt sie,
+    // der Tag-Count-Guard erzwingt den Fehler statt stiller Kuerzung.
+    const populated = patchTakeLanes(EMPTY, SPECS).replace(
+      '<AudioClip Id="0" Time="10">\n\t\t\t\t\t\t\t\t\t\t<TakeId Value="2"',
+      '<AudioClip Id="1" Time="10">\n\t\t\t\t\t\t\t\t\t\t<TakeId Value="2"',
+    );
+
+    expect(() => getTakeLanes(populated)).toThrow(/TakeLane-Anzahl/);
+  });
 });
 
 describe("patchTakeLanes", () => {
