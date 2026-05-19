@@ -13,8 +13,7 @@ import {
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
-
-const REALTIME_MODEL = "gpt-realtime-2";
+import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 
 const AGENT_INSTRUCTIONS = [
   "You are Producer Pal, an AI music production assistant working with the user in Ableton Live.",
@@ -150,7 +149,7 @@ export function useVoiceSession(
       const transport = new OpenAIRealtimeWebRTC();
 
       const session = new RealtimeSession(agent, {
-        model: REALTIME_MODEL,
+        model: OPENAI_REALTIME_MODEL,
         transport,
       });
 
@@ -313,7 +312,7 @@ async function fetchEphemeralToken(
       "Content-Type": "application/json",
       "X-OpenAI-Key": openAiKey,
     },
-    body: JSON.stringify({ model: "gpt-realtime-2" }),
+    body: JSON.stringify({ model: OPENAI_REALTIME_MODEL }),
   });
 
   if (!response.ok) {

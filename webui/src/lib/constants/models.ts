@@ -8,10 +8,20 @@
  * Convention: First item in each list is the default model for that provider.
  */
 
+export type ModelKind = "realtime";
+
+export interface ModelPresetItem {
+  value: string;
+  label: string;
+  kind?: ModelKind;
+}
+
 export const OTHER_MODEL_OPTION = {
   value: "OTHER",
   label: "Other...",
 } as const;
+
+export const OPENAI_REALTIME_MODEL = "gpt-realtime-2";
 
 export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
@@ -27,12 +37,30 @@ export const GEMINI_MODELS = [
   OTHER_MODEL_OPTION,
 ];
 
-export const OPENAI_MODELS = [
+export const OPENAI_MODELS: ModelPresetItem[] = [
   { value: "gpt-5.5", label: "GPT-5.5" },
   { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
   { value: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
+  {
+    value: OPENAI_REALTIME_MODEL,
+    label: "GPT Realtime 2 (Voice)",
+    kind: "realtime",
+  },
   OTHER_MODEL_OPTION,
 ];
+
+/**
+ * Returns true when the given model id corresponds to a realtime (voice) model.
+ * @param modelId - The model identifier to check
+ * @returns True if the model has kind "realtime"
+ */
+export function isRealtimeModel(modelId: string | null | undefined): boolean {
+  if (modelId == null) return false;
+
+  return OPENAI_MODELS.some(
+    (m) => m.value === modelId && m.kind === "realtime",
+  );
+}
 
 export const MISTRAL_MODELS = [
   { value: "mistral-medium-latest", label: "Mistral Medium" },

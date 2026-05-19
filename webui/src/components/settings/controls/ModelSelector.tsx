@@ -7,6 +7,7 @@ import {
   ANTHROPIC_MODELS,
   GEMINI_MODELS,
   MISTRAL_MODELS,
+  type ModelPresetItem,
   OLLAMA_MODELS,
   OPENAI_MODELS,
   OPENROUTER_MODELS,
@@ -14,12 +15,16 @@ import {
 } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 
-type ModelPreset = readonly { value: string; label: string }[];
+type ModelPreset = readonly ModelPresetItem[];
+
+// Hide realtime models from chat-mode dropdown until voice integration
+// can swap the chat hook for the voice hook (planned commit 7).
+const isSelectableInChat = (m: ModelPresetItem) => m.kind !== "realtime";
 
 const PROVIDER_MODELS: Partial<Record<Provider, ModelPreset>> = {
   anthropic: ANTHROPIC_MODELS,
   gemini: GEMINI_MODELS,
-  openai: OPENAI_MODELS,
+  openai: OPENAI_MODELS.filter(isSelectableInChat),
   mistral: MISTRAL_MODELS,
   openrouter: OPENROUTER_MODELS,
   ollama: OLLAMA_MODELS,

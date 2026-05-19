@@ -97,6 +97,11 @@ describe("ModelSelector", () => {
 
       expectModelSelected("gpt-5.4-mini", setModel);
     });
+
+    it("hides realtime models from the chat-mode dropdown", () => {
+      renderModelSelector({ provider: "openai", model: "gpt-5.5" });
+      expect(screen.queryByRole("option", { name: /Realtime/ })).toBeNull();
+    });
   });
 
   describe("Mistral provider", () => {
