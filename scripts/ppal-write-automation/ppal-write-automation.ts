@@ -28,6 +28,7 @@ import { validateBreakpoints } from "#src/automation/breakpoint-validator.ts";
 import { parseFlags } from "./clip-patch-cli.ts";
 import { runClipFlags } from "./ppal-clip-flags-helpers.ts";
 import { runClipSettings } from "./ppal-clip-settings-helpers.ts";
+import { runFadeoutCurve } from "./ppal-fadeout-curve-helpers.ts";
 import { runFades } from "./ppal-fades-helpers.ts";
 import { runGroove } from "./ppal-groove-helpers.ts";
 import { runMixerRouting } from "./ppal-mixer-routing-helpers.ts";
@@ -446,6 +447,8 @@ export function runCli(argv: string[]): number {
     if (subcommand === "clip-settings")
       return runClipSettings(rest, parseFlags);
     if (subcommand === "fades") return runFades(rest, parseFlags);
+    if (subcommand === "fadeout-curve")
+      return runFadeoutCurve(rest, parseFlags);
     if (subcommand === "groove") return runGroove(rest);
     if (subcommand === "tempo") return runTempo(rest);
     if (subcommand === "timesig") return runTimesig(rest);
