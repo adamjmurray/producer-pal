@@ -13,6 +13,7 @@ import {
   type GroupCreateSpec,
   getGroupTracks,
   injectGroupCreate,
+  synthesizeGroupTrack,
 } from "#src/automation/als-group-create.ts";
 import { parseJsonFile, requireAlsCliPrelude } from "./shared-cli-helpers.ts";
 
@@ -111,7 +112,11 @@ function verify(
   const now = readAls(alsPath);
   const { groupTracks } = getGroupTracks(now);
   const created = groupTracks.find((g) => g.id === spec.groupTrackId);
-  const wantNp = spec.nextPointeeId + 22 + 2 * spec.returnCount;
+  // Einzige Quelle der Wahrheit fuer den NextPointeeId-Verbrauch ist
+  // synthesizeGroupTrack (Stage-1-Review F1: vermeidet zweite Hartcodierung
+  // der `22 + 2R`-Formel — falls die Template-Slots sich aendern, bleibt
+  // verify deckungsgleich mit der Synthese).
+  const wantNp = synthesizeGroupTrack(spec).nextId;
   const npMatch = /<NextPointeeId Value="(\d+)" \/>/.exec(now);
   const wantMembers = [...spec.memberTrackIds].sort((a, b) => a - b).join(",");
   const sortedAttached = [...(created?.memberTrackIds ?? [])]
