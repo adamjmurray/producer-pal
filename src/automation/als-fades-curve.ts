@@ -66,9 +66,7 @@ export function patchFadeOutCurve(clipXml: string, dir: string): string {
  */
 export function getFadeOutCurve(clipXml: string): string {
   const fb = fadesBlockOrNull(clipXml);
-  const m = (fb?.block ?? "").match(
-    /<FadeOutCurveSkew Value="([^"]*)" \/>/,
-  );
+  const m = (fb?.block ?? "").match(/<FadeOutCurveSkew Value="([^"]*)" \/>/);
   const skew = m?.[1] ?? "0";
 
   return skew === "-1" ? "up" : skew === "1" ? "down" : "none";

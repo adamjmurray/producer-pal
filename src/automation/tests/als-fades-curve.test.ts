@@ -18,6 +18,7 @@ const CLIP = "Wurli Piano Dmin";
 // kein Track nötig). KEIN scripts-Import aus src-Tests (Layer/Alias).
 function clipBlock(file: string): string {
   const xml = readAls(`${DIR}/${file}`);
+
   return locateClipBlock(xml, CLIP).block;
 }
 
@@ -25,6 +26,7 @@ describe("patchFadeOutCurve", () => {
   it("schreibt das up-Tupel woertlich, FadeIn/Length unveraendert", () => {
     const before = clipBlock("4c-fadeout-base.als");
     const out = patchFadeOutCurve(before, "up");
+
     expect(out).toContain('<FadeOutCurveSkew Value="-1" />');
     expect(out).toContain('<FadeOutCurveSlope Value="-0.8999999762" />');
     // Diff-Isolation: FadeIn + Laenge + IsDefaultFadeOut unveraendert.
@@ -32,13 +34,12 @@ describe("patchFadeOutCurve", () => {
     expect(out).toContain('<FadeInCurveSlope Value="0" />');
     expect(out).toContain('<IsDefaultFadeIn Value="true" />');
     expect(out).toContain('<IsDefaultFadeOut Value="false" />');
-    expect(out).toContain(
-      '<FadeOutLength Value="0.0101333562271062275" />',
-    );
+    expect(out).toContain('<FadeOutLength Value="0.0101333562271062275" />');
   });
 
   it("schreibt das down-Tupel woertlich", () => {
     const out = patchFadeOutCurve(clipBlock("4c-fadeout-base.als"), "down");
+
     expect(out).toContain('<FadeOutCurveSkew Value="1" />');
     expect(out).toContain('<FadeOutCurveSlope Value="0.8999999762" />');
   });
@@ -54,6 +55,7 @@ describe("patchFadeOutCurve", () => {
       '<AudioClip><Fades><FadeOutLength Value="0" />' +
       '<FadeOutCurveSkew Value="0" /><FadeOutCurveSlope Value="0" />' +
       '<IsDefaultFadeOut Value="true" /></Fades></AudioClip>';
+
     expect(() => patchFadeOutCurve(stub, "up")).toThrow(/FadeOut/);
   });
 
@@ -75,6 +77,28 @@ describe("getFadeOutCurve", () => {
 
   it("Roundtrip patch->get", () => {
     const out = patchFadeOutCurve(clipBlock("4c-fadeout-base.als"), "down");
+
     expect(getFadeOutCurve(out)).toBe("down");
+  });
+
+  it("none ohne <Fades> (fb null) und ohne Skew-Tag (m null)", () => {
+    expect(getFadeOutCurve("<AudioClip></AudioClip>")).toBe("none");
+    expect(
+      getFadeOutCurve(
+        '<AudioClip><Fades><FadeOutLength Value="1" /></Fades></AudioClip>',
+      ),
+    ).toBe("none");
+  });
+});
+
+describe("patchFadeOutCurve Tag-fehlt-Zweig", () => {
+  it("wirft wenn FadeOutCurveSkew-Tag im <Fades> fehlt", () => {
+    const stub =
+      '<AudioClip><Fades><IsDefaultFadeOut Value="false" />' +
+      '<FadeOutCurveSlope Value="0" /></Fades></AudioClip>';
+
+    expect(() => patchFadeOutCurve(stub, "up")).toThrow(
+      /FadeOutCurveSkew.*nicht gefunden/,
+    );
   });
 });
