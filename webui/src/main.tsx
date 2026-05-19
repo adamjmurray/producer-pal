@@ -4,7 +4,6 @@
 
 import { render } from "preact";
 import { App } from "#webui/components/App";
-import { VoiceApp } from "#webui/components/voice/VoiceApp";
 import { DemoMode } from "#webui/demo/DemoMode";
 import "./main.css";
 
@@ -16,8 +15,5 @@ if (!appElement) {
 
 const params = new URLSearchParams(window.location.search);
 const isDemo = params.has("demo");
-const isVoice =
-  params.get("view") === "voice" ||
-  window.location.pathname.replace(/\/$/, "") === "/voice";
 
-render(isDemo ? <DemoMode /> : isVoice ? <VoiceApp /> : <App />, appElement);
+render(isDemo ? <DemoMode /> : <App />, appElement);

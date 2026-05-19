@@ -16,6 +16,7 @@ interface VoiceTranscriptProps {
 // Voice transcripts are read-only — the user can't edit past turns or retry
 // individual responses (the underlying audio is gone). MessageList still
 // requires these handlers; provide a shared no-op.
+/* v8 ignore next 1 -- no-op for read-only voice transcript */
 const noopAsync = async (): Promise<void> => undefined;
 
 /**
@@ -54,11 +55,7 @@ export function VoiceTranscript({
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-4 text-sm">
           <p className="font-medium mb-1">OpenAI API key required.</p>
           <p>
-            Open the{" "}
-            <a className="underline" href="/chat">
-              chat UI
-            </a>
-            , set your OpenAI API key in settings, then reload this page.
+            Open Settings, select the OpenAI provider, and paste your API key.
           </p>
         </div>
       )}

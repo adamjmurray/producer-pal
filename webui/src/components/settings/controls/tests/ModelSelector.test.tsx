@@ -98,9 +98,9 @@ describe("ModelSelector", () => {
       expectModelSelected("gpt-5.4-mini", setModel);
     });
 
-    it("hides realtime models from the chat-mode dropdown", () => {
+    it("includes the realtime (voice) model in the OpenAI dropdown", () => {
       renderModelSelector({ provider: "openai", model: "gpt-5.5" });
-      expect(screen.queryByRole("option", { name: /Realtime/ })).toBeNull();
+      expect(screen.getByRole("option", { name: /Realtime/ })).toBeDefined();
     });
   });
 

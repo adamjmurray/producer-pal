@@ -3,125 +3,68 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import {
   AppShell,
   type ConversationPanelState,
 } from "#webui/components/AppShell";
-import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
+import { type ModeContext } from "#webui/components/mode-context";
 import { RateLimitRetry } from "#webui/components/voice/RateLimitRetry";
 import { VoiceControls } from "#webui/components/voice/VoiceControls";
 import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
-import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
-import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
-import {
-  loadEnabledTools,
-  loadProviderSettings,
-} from "#webui/hooks/settings/settings-helpers";
-import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
-import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
-import { mergeVoiceHistory } from "#webui/hooks/voice/use-voice-persistence-helpers";
-import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
-import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
-import { isFirefox } from "#webui/utils/browser-detect";
-import { getMcpUrl } from "#webui/utils/mcp-url";
+import { type useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
+import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
+import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
+import { type ViewState } from "#webui/hooks/use-view-state";
+import { useVoiceModeState } from "#webui/hooks/voice/use-voice-mode-state";
+import { type useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
+import { type ConversationRecord } from "#webui/lib/conversation-db";
+import { type UseSettingsReturn } from "#webui/types/settings";
 
-// Voice still lives on its own /voice route in this commit, so the header's
-// settings buttons can't open a modal here. Route to /chat instead — that's
-// already where the OpenAI-key-required banner sends users.
-const goToChat = (): void => {
-  window.location.href = "/chat";
-};
+export interface VoiceAppProps {
+  settings: UseSettingsReturn;
+  display: PreferencesSettings;
+  viewState: ViewState;
+  setViewState: (partial: Partial<ViewState>) => void;
+  mcpStatus: McpStatus;
+  totalToolsCount: number;
+  enabledToolsCount: number;
+  onOpenSettings: () => void;
+  onOpenToolsSettings: () => void;
+  onOpenConnectionSettings: () => void;
+  onForeignRecord: (record: ConversationRecord) => void;
+  setModeContext: (ctx: ModeContext) => void;
+}
 
 /**
- * Standalone Producer Pal voice page. Reuses the chat UI's localStorage
- * settings (OpenAI API key + per-tool enable map) and the MCP URL helper.
+ * Voice mode: OpenAI Realtime API voice UI. The voice hook graph lives in
+ * `useVoiceModeState`; this component is just the JSX shell wrapped in
+ * AppShell.
  *
- * @returns Voice prototype UI
+ * @param props - VoiceAppProps
+ * @returns Voice screen wrapped in AppShell
  */
-export function VoiceApp() {
-  const mcpUrl = getMcpUrl();
-  const voiceTokenUrl = mcpUrl.replace(/\/mcp$/, "/voice-token");
-  const { mcpStatus, mcpTools } = useMcpConnection();
-  const preferences = usePreferencesSettings();
+export function VoiceApp(props: VoiceAppProps) {
+  const {
+    mcpStatus,
+    onOpenSettings,
+    onOpenToolsSettings,
+    onOpenConnectionSettings,
+  } = props;
 
-  const [openAiKey] = useState<string | null>(
-    () => loadProviderSettings("openai").apiKey || null,
-  );
-  const enabledTools = useMemo(() => loadEnabledTools(), []);
-  const firefoxDetected = useMemo(() => isFirefox(), []);
-  const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
-
-  const voice = useVoiceSession({
-    mcpUrl,
-    voiceTokenUrl,
+  const {
+    voice,
+    persistence,
+    transfer,
+    messages,
     openAiKey,
-    enabledTools,
-  });
-
-  const persistence = useVoicePersistence({ liveHistory: voice.history });
-  const transfer = useConversationTransfer(persistence.refreshList);
-
-  // Merge the saved record (with historical tool calls) with the live session
-  // history. When no session is running, this is just the saved items. During
-  // a continued session, this preserves the visual record of prior tool calls
-  // — the Realtime SDK can't re-seed function_call items so they'd otherwise
-  // disappear from view the moment the user clicks Talk.
-  const displayItems = useMemo(
-    () => mergeVoiceHistory(persistence.savedItems, voice.history),
-    [persistence.savedItems, voice.history],
-  );
-  const messages = useMemo(
-    () => realtimeItemsToUIMessages(displayItems),
-    [displayItems],
-  );
-
-  useEffect(() => {
-    window.scrollTo({
-      top: document.documentElement.scrollHeight,
-      behavior: "smooth",
-    });
-  }, [displayItems]);
-
-  const isBusy =
-    voice.status === "connecting" || voice.status === "disconnecting";
-  const isConnected = voice.status === "connected";
-  const isUnsupportedBrowser = firefoxDetected;
-
-  const onToggleConnection = useCallback(() => {
-    if (isConnected) {
-      void voice.disconnect();
-
-      return;
-    }
-
-    // If a saved voice conversation is loaded, prime the new session with its
-    // messages so the model has prior context. Function calls are dropped by
-    // the SDK during priming but stay visible in the saved record via the
-    // merge in displayItems / persistence's auto-save.
-    const seed =
-      persistence.savedItems.length > 0 ? persistence.savedItems : undefined;
-
-    void voice.connect(seed);
-  }, [isConnected, persistence.savedItems, voice]);
-
-  const totalToolsCount = mcpTools?.length ?? 0;
-  const enabledToolsCount = mcpTools
-    ? mcpTools.filter((t) => enabledTools[t.id] !== false).length
-    : 0;
-
-  const headerInfo: HeaderInfo = {
-    activeModel: OPENAI_REALTIME_MODEL,
-    activeProvider: "openai",
-    model: OPENAI_REALTIME_MODEL,
-    provider: "openai",
-    enabledToolsCount,
-    totalToolsCount,
-    smallModelMode: false,
-    defaultSmallModelMode: false,
-    showHelpLinks: preferences.showHelpLinks,
-  };
+    firefoxDetected,
+    historyPanelOpen,
+    setHistoryPanelOpen,
+    isConnected,
+    isBusy,
+    onToggleConnection,
+    headerInfo,
+  } = useVoiceModeState(props);
 
   const conversationPanel = buildConversationPanel({
     isOpen: historyPanelOpen,
@@ -137,9 +80,9 @@ export function VoiceApp() {
       headerInfo={headerInfo}
       mcpStatus={mcpStatus}
       conversationPanel={conversationPanel}
-      onOpenSettings={goToChat}
-      onOpenToolsSettings={goToChat}
-      onOpenConnectionSettings={goToChat}
+      onOpenSettings={onOpenSettings}
+      onOpenToolsSettings={onOpenToolsSettings}
+      onOpenConnectionSettings={onOpenConnectionSettings}
     >
       <VoiceTranscript
         messages={messages}
@@ -168,7 +111,7 @@ export function VoiceApp() {
         openAiKey={openAiKey}
         isBusy={isBusy}
         isConnected={isConnected}
-        isUnsupportedBrowser={isUnsupportedBrowser}
+        isUnsupportedBrowser={firefoxDetected}
         onToggleConnection={onToggleConnection}
       />
     </AppShell>
@@ -188,8 +131,7 @@ interface BuildConversationPanelParams {
 
 /**
  * Compose the AppShell conversation-panel state object from the voice page's
- * persistence + transfer hooks. Pulled out of VoiceApp purely to keep its
- * main function under the line limit.
+ * persistence + transfer hooks.
  *
  * @param params - Panel state dependencies
  * @returns ConversationPanelState ready to hand to AppShell

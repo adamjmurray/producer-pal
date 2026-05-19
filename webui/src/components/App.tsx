@@ -3,19 +3,23 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
-import { chatAdapter } from "#webui/hooks/chat/adapter";
-import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
-import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
-import { useConversationPanelState } from "#webui/hooks/chat/helpers/use-conversation-panel-state";
-import { useChat } from "#webui/hooks/chat/use-chat";
-import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
+import { ChatApp } from "#webui/components/ChatApp";
+import {
+  DEFAULT_MODE_CONTEXT,
+  type ModeContext,
+} from "#webui/components/mode-context";
+import { VoiceApp } from "#webui/components/voice/VoiceApp";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
 import { useSyncLiveApiEnabled } from "#webui/hooks/connection/use-sync-live-api-enabled";
-import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
 import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
 import { useSaveSettingsHandler } from "#webui/hooks/settings/use-save-settings-handler";
 import { useSettings } from "#webui/hooks/settings/use-settings";
@@ -24,25 +28,35 @@ import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useViewState } from "#webui/hooks/use-view-state";
-import { getBaseUrl, LOCAL_PROVIDER_API_KEY } from "#webui/utils/provider-url";
-import { ChatScreen } from "./chat/ChatScreen";
+import { isRealtimeModel } from "#webui/lib/constants/models";
+import { type ConversationRecord } from "#webui/lib/conversation-db";
+import { type Provider } from "#webui/types/settings";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
 
 /**
- * @returns {JSX.Element} - React component
+ * Root component. Owns shared chrome (settings hook, theme, view state, MCP
+ * connection, settings modal) and routes the body to either the chat or voice
+ * mode based on the current settings.model. Each mode component owns its own
+ * conversation/session hooks and reports its delete handlers + conversation
+ * lock back here so the shared SettingsScreen can act on the active mode.
+ *
+ * @returns App element with mode-routed body and shared settings modal
  */
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
   const { viewState, setViewState } = useViewState();
-  const openSettings = (settingsTab?: TabId) =>
-    setViewState(
-      settingsTab
-        ? { settingsOpen: true, settingsTab }
-        : { settingsOpen: true },
-    );
   const display = usePreferencesSettings();
+  const openSettings = useCallback(
+    (settingsTab?: TabId) =>
+      setViewState(
+        settingsTab
+          ? { settingsOpen: true, settingsTab }
+          : { settingsOpen: true },
+      ),
+    [setViewState],
+  );
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
   const toolNamesMap = useMemo(
@@ -50,95 +64,6 @@ export function App() {
     [mcpTools],
   );
   const remoteConfig = useRemoteConfig(mcpStatus);
-  const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
-
-  const autoSaveRef = useRef<(() => void) | null>(null);
-
-  const aiSdkChat = useChat({
-    provider: settings.provider,
-    apiKey:
-      settings.provider === "lmstudio" || settings.provider === "ollama"
-        ? settings.apiKey || LOCAL_PROVIDER_API_KEY
-        : settings.apiKey,
-    model: settings.model,
-    thinking: settings.thinking,
-    temperature: settings.temperature,
-    enabledTools: settings.enabledTools,
-    smallModelMode: settings.smallModelMode,
-    mcpStatus,
-    mcpError,
-    checkMcpConnection,
-    adapter: chatAdapter,
-    extraParams: {
-      baseUrl,
-      showThoughts: settings.showThoughts,
-      provider: settings.provider,
-      apiKey:
-        settings.provider === "lmstudio" || settings.provider === "ollama"
-          ? settings.apiKey || LOCAL_PROVIDER_API_KEY
-          : settings.apiKey,
-    },
-    autoSaveRef,
-  });
-
-  const { chat, wrappedHandleSend, wrappedClearConversation } =
-    useConversationLock({ chat: aiSdkChat });
-
-  // Sync smallModelMode: seed from server when no active lock, post to server when lock changes
-  useSyncSmallModelMode(
-    remoteConfig.serverSmallModelMode,
-    chat.activeSmallModelMode,
-    settings.setSmallModelMode,
-    remoteConfig.postSmallModelMode,
-  );
-
-  const conversationManager = useConversations({
-    getChatHistory: chat.getChatHistory,
-    restoreChatHistory: chat.restoreChatHistory,
-    clearConversation: wrappedClearConversation,
-    activeModel: chat.activeModel,
-    activeProvider: chat.activeProvider,
-    activeThinking: chat.activeThinking,
-    activeTemperature: chat.activeTemperature,
-    activeShowThoughts: chat.activeShowThoughts,
-    activeSmallModelMode: chat.activeSmallModelMode,
-  });
-
-  // Auto-save on user message sent (called from useChat on first stream yield)
-  useEffect(() => {
-    /* v8 ignore start -- auto-save ref: only invoked during streaming */
-    autoSaveRef.current = () =>
-      void conversationManager.saveCurrentConversation(Date.now());
-    /* v8 ignore stop */
-  }, [conversationManager]);
-
-  const transfer = useConversationTransfer(conversationManager.refreshList);
-  const conversationHandlers = useConversationHandlers(
-    conversationManager,
-    chat.stopResponse,
-  );
-  const { handleDeleteAll, handleDeleteUnbookmarked } = conversationHandlers;
-
-  const conversationPanelState = useConversationPanelState({
-    conversationManager,
-    transfer,
-    viewState,
-    setViewState,
-    handlers: conversationHandlers,
-  });
-
-  // Auto-save when streaming completes — covers tool results and follow-up
-  // text merged into existing UIMessages
-  const prevRespondingRef = useRef(false);
-
-  useEffect(() => {
-    if (!chat.isAssistantResponding && prevRespondingRef.current) {
-      void conversationManager.saveCurrentConversation(Date.now());
-    }
-
-    prevRespondingRef.current = chat.isAssistantResponding;
-  }, [chat.isAssistantResponding, conversationManager]);
-
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
     ? mcpTools.filter((t) => settings.enabledTools[t.id] !== false).length
@@ -158,7 +83,6 @@ export function App() {
   const originalDisplayRef = useRef(display);
   const prevShowSettingsRef = useRef(showSettings);
 
-  // Save originals only when settings transitions from closed to open
   useEffect(() => {
     if (showSettings && !prevShowSettingsRef.current) {
       originalThemeRef.current = theme;
@@ -208,6 +132,49 @@ export function App() {
     handleCancelSettings,
   });
 
+  // The active mode reports its conversation lock + delete handlers here via
+  // setModeContext so the shared SettingsScreen renders them.
+  const [modeContext, setModeContext] =
+    useState<ModeContext>(DEFAULT_MODE_CONTEXT);
+
+  // When a foreign record (chat-in-voice-mode or voice-in-chat-mode) is found,
+  // atomically swap the provider + model. The new mode mounts and its hook
+  // picks the conversation up via the URL hash on mount.
+  // Stable callback so child hooks can include it in deps without re-running
+  // their init effects on every App render. The deep dep is the setter from
+  // useSettings, which is already useCallback-stable.
+  const { setProviderAndModel } = settings;
+  const onForeignRecord = useCallback(
+    (record: ConversationRecord) => {
+      // record.provider/model can be null on legacy records; fall back to the
+      // current selection so the swap still triggers a re-render.
+      setProviderAndModel(
+        (record.provider ?? settings.provider) as Provider,
+        record.model ?? "",
+      );
+    },
+    [setProviderAndModel, settings.provider],
+  );
+
+  const isVoiceMode = isRealtimeModel(settings.model);
+
+  const sharedModeProps = {
+    settings,
+    display,
+    viewState,
+    setViewState,
+    mcpStatus,
+    totalToolsCount,
+    enabledToolsCount,
+    onOpenSettings: () => openSettings(),
+    /* v8 ignore start -- inline settings tab navigation */
+    onOpenToolsSettings: () => openSettings("tools"),
+    onOpenConnectionSettings: () => openSettings("connection"),
+    /* v8 ignore stop */
+    onForeignRecord,
+    setModeContext,
+  };
+
   return (
     <ToolNamesContext.Provider value={toolNamesMap}>
       <div
@@ -217,40 +184,16 @@ export function App() {
             : ""
         }
       >
-        <ChatScreen
-          messages={chat.messages}
-          isAssistantResponding={chat.isAssistantResponding}
-          rateLimitState={chat.rateLimitState}
-          handleSend={wrappedHandleSend}
-          handleRetry={chat.handleRetry}
-          handleEdit={chat.handleEdit}
-          headerInfo={{
-            activeModel: chat.activeModel,
-            activeProvider: chat.activeProvider,
-            model: settings.model,
-            provider: settings.provider,
-            enabledToolsCount,
-            totalToolsCount,
-            smallModelMode:
-              chat.activeSmallModelMode ?? settings.smallModelMode,
-            defaultSmallModelMode: settings.smallModelMode,
-            showHelpLinks: display.showHelpLinks,
-          }}
-          activeThinking={chat.activeThinking}
-          defaultThinking={settings.thinking}
-          mcpStatus={mcpStatus}
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          onOpenSettings={() => openSettings()}
-          /* v8 ignore start -- inline settings tab navigation */
-          onOpenToolsSettings={() => openSettings("tools")}
-          onOpenConnectionSettings={() => openSettings("connection")}
-          /* v8 ignore stop */
-          onStop={chat.stopResponse}
-          showTimestamps={display.showTimestamps}
-          showTokenUsage={display.showTokenUsage}
-          conversationPanel={conversationPanelState}
-        />
+        {isVoiceMode ? (
+          <VoiceApp {...sharedModeProps} />
+        ) : (
+          <ChatApp
+            {...sharedModeProps}
+            mcpError={mcpError}
+            checkMcpConnection={checkMcpConnection}
+            remoteConfig={remoteConfig}
+          />
+        )}
       </div>
       {showSettings && (
         <div
@@ -271,13 +214,11 @@ export function App() {
             shake={shake}
             onShakeEnd={clearShake}
             hasUnsavedChanges={hasUnsavedChanges}
-            onDeleteAllConversations={handleDeleteAll}
-            onDeleteUnbookmarkedConversations={handleDeleteUnbookmarked}
-            conversationLock={{
-              activeModel: chat.activeModel,
-              activeProvider: chat.activeProvider,
-              activeSmallModelMode: chat.activeSmallModelMode,
-            }}
+            onDeleteAllConversations={modeContext.onDeleteAllConversations}
+            onDeleteUnbookmarkedConversations={
+              modeContext.onDeleteUnbookmarkedConversations
+            }
+            conversationLock={modeContext.conversationLock}
             liveApiForcedOn={remoteConfig.serverLiveApiForcedOn}
           />
         </div>

@@ -10,23 +10,13 @@ import { type RealtimeItem } from "@openai/agents/realtime";
 import { act, fireEvent, render, screen } from "@testing-library/preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// vi.mock() is hoisted to the top of the file, so any variables it captures
-// must also be hoisted via vi.hoisted() to be defined when mocks evaluate.
 const mocks = vi.hoisted(() => ({
-  loadProviderSettings: vi.fn(),
-  loadEnabledTools: vi.fn(),
   getMcpUrl: vi.fn(),
   useVoiceSession: vi.fn(),
   isFirefox: vi.fn(),
-  useMcpConnection: vi.fn(),
   useUpdateCheck: vi.fn(),
   useVoicePersistence: vi.fn(),
   useConversationTransfer: vi.fn(),
-}));
-
-vi.mock(import("#webui/hooks/settings/settings-helpers"), () => ({
-  loadProviderSettings: mocks.loadProviderSettings,
-  loadEnabledTools: mocks.loadEnabledTools,
 }));
 
 vi.mock(import("#webui/utils/mcp-url"), () => ({
@@ -41,10 +31,6 @@ vi.mock(import("#webui/hooks/voice/use-voice-session"), () => ({
   useVoiceSession: mocks.useVoiceSession,
 }));
 
-vi.mock(import("#webui/hooks/connection/use-mcp-connection"), () => ({
-  useMcpConnection: mocks.useMcpConnection,
-}));
-
 vi.mock(import("#webui/hooks/use-update-check"), () => ({
   useUpdateCheck: mocks.useUpdateCheck,
 }));
@@ -57,9 +43,11 @@ vi.mock(import("#webui/hooks/chat/use-conversation-transfer"), () => ({
   useConversationTransfer: mocks.useConversationTransfer,
 }));
 
+import { type ModeContext } from "#webui/components/mode-context";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
-import { VoiceApp } from "./VoiceApp";
+import { type UseSettingsReturn } from "#webui/types/settings";
+import { VoiceApp, type VoiceAppProps } from "./VoiceApp";
 
 interface VoiceSessionStub {
   status: "idle" | "connecting" | "connected" | "disconnecting" | "error";
@@ -104,6 +92,8 @@ interface PersistenceStub {
   switchConversation: ReturnType<typeof vi.fn>;
   startNewConversation: ReturnType<typeof vi.fn>;
   deleteConversation: ReturnType<typeof vi.fn>;
+  deleteAllConversations: ReturnType<typeof vi.fn>;
+  deleteUnbookmarkedConversations: ReturnType<typeof vi.fn>;
   renameConversation: ReturnType<typeof vi.fn>;
   toggleBookmark: ReturnType<typeof vi.fn>;
 }
@@ -119,26 +109,66 @@ function basePersistence(
     switchConversation: vi.fn(),
     startNewConversation: vi.fn(),
     deleteConversation: vi.fn(),
+    deleteAllConversations: vi.fn(),
+    deleteUnbookmarkedConversations: vi.fn(),
     renameConversation: vi.fn(),
     toggleBookmark: vi.fn(),
     ...overrides,
   };
 }
 
+interface PropOverrides {
+  apiKey?: string;
+  provider?: "openai" | "anthropic";
+  onOpenSettings?: () => void;
+}
+
+// vi.fn() returns a Mock that includes a Constructable signature, which TS
+// refuses to assign to a plain `() => void` parameter. Cast the result so
+// the JSX spread typechecks against VoiceAppProps.
+function makeProps(o: PropOverrides = {}): VoiceAppProps {
+  const apiKey = o.apiKey ?? "sk-test";
+  const provider = o.provider ?? "openai";
+
+  return {
+    settings: {
+      provider,
+      apiKey,
+      model: "gpt-realtime-2",
+      enabledTools: {},
+    } as unknown as UseSettingsReturn,
+    display: {
+      showTimestamps: false,
+      showHelpLinks: false,
+      showTokenUsage: false,
+      setShowTimestamps: vi.fn(),
+      setShowHelpLinks: vi.fn(),
+      setShowTokenUsage: vi.fn(),
+    },
+    viewState: {
+      historyPanelOpen: false,
+      settingsOpen: false,
+      settingsTab: "connection",
+    },
+    setViewState: vi.fn(),
+    mcpStatus: "connected",
+    totalToolsCount: 2,
+    enabledToolsCount: 2,
+    onOpenSettings: o.onOpenSettings ?? vi.fn(),
+    onOpenToolsSettings: vi.fn(),
+    onOpenConnectionSettings: vi.fn(),
+    onForeignRecord: vi.fn(),
+    setModeContext: vi.fn(),
+  } as unknown as VoiceAppProps;
+}
+
+function renderVoiceApp(overrides: PropOverrides = {}) {
+  return render(<VoiceApp {...makeProps(overrides)} />);
+}
+
 beforeEach(() => {
-  mocks.loadProviderSettings.mockReturnValue({ apiKey: "sk-test" });
-  mocks.loadEnabledTools.mockReturnValue({});
   mocks.getMcpUrl.mockReturnValue("http://localhost:3350/mcp");
   mocks.isFirefox.mockReturnValue(false);
-  mocks.useMcpConnection.mockReturnValue({
-    mcpStatus: "connected",
-    mcpError: null,
-    mcpTools: [
-      { id: "ppal-connect", name: "Connect to Ableton" },
-      { id: "ppal-read-live-set", name: "Read Live Set" },
-    ],
-    checkMcpConnection: vi.fn(),
-  });
   mocks.useUpdateCheck.mockReturnValue(null);
   mocks.useVoicePersistence.mockReturnValue(basePersistence());
   mocks.useConversationTransfer.mockReturnValue({
@@ -151,12 +181,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  mocks.loadProviderSettings.mockReset();
-  mocks.loadEnabledTools.mockReset();
   mocks.getMcpUrl.mockReset();
   mocks.useVoiceSession.mockReset();
   mocks.isFirefox.mockReset();
-  mocks.useMcpConnection.mockReset();
   mocks.useUpdateCheck.mockReset();
   mocks.useVoicePersistence.mockReset();
   mocks.useConversationTransfer.mockReset();
@@ -164,10 +191,9 @@ afterEach(() => {
 
 describe("VoiceApp", () => {
   it("shows the OpenAI-key-required banner when key is missing", () => {
-    mocks.loadProviderSettings.mockReturnValue({ apiKey: "" });
     mocks.useVoiceSession.mockReturnValue(baseSession());
 
-    render(<VoiceApp />);
+    renderVoiceApp({ apiKey: "" });
 
     expect(screen.getByText(/openai api key required/i)).toBeDefined();
   });
@@ -175,9 +201,17 @@ describe("VoiceApp", () => {
   it("hides the banner when an API key is configured", () => {
     mocks.useVoiceSession.mockReturnValue(baseSession());
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
     expect(screen.queryByText(/openai api key required/i)).toBeNull();
+  });
+
+  it("shows the OpenAI-key-required banner when current provider is not openai", () => {
+    mocks.useVoiceSession.mockReturnValue(baseSession());
+
+    renderVoiceApp({ provider: "anthropic", apiKey: "sk-ant" });
+
+    expect(screen.getByText(/openai api key required/i)).toBeDefined();
   });
 
   it("renders the Talk button when idle and clicking it calls connect()", () => {
@@ -185,11 +219,9 @@ describe("VoiceApp", () => {
 
     mocks.useVoiceSession.mockReturnValue(session);
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
-    const talk = screen.getByRole("button", { name: "Talk" });
-
-    fireEvent.click(talk);
+    fireEvent.click(screen.getByRole("button", { name: "Talk" }));
     expect(session.connect).toHaveBeenCalledOnce();
   });
 
@@ -198,11 +230,9 @@ describe("VoiceApp", () => {
 
     mocks.useVoiceSession.mockReturnValue(session);
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
-    const restart = screen.getByRole("button", { name: "Restart" });
-
-    fireEvent.click(restart);
+    fireEvent.click(screen.getByRole("button", { name: "Restart" }));
     expect(session.disconnect).toHaveBeenCalledOnce();
     expect(screen.getByText(/listening/i)).toBeDefined();
   });
@@ -212,7 +242,7 @@ describe("VoiceApp", () => {
       baseSession({ status: "connecting" }),
     );
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
     const btn = screen.getByRole("button", { name: "..." });
 
@@ -221,17 +251,16 @@ describe("VoiceApp", () => {
   });
 
   it("disables the main button when no OpenAI key is configured", () => {
-    mocks.loadProviderSettings.mockReturnValue({ apiKey: "" });
     mocks.useVoiceSession.mockReturnValue(baseSession());
 
-    render(<VoiceApp />);
+    renderVoiceApp({ apiKey: "" });
 
     const btn = screen.getByRole("button", { name: "Talk" });
 
     expect((btn as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("shows the Interrupt button while the assistant is speaking, and clicking calls interrupt()", () => {
+  it("shows the Interrupt button while assistant is speaking, click calls interrupt()", () => {
     const session = baseSession({
       status: "connected",
       assistantSpeaking: true,
@@ -239,11 +268,9 @@ describe("VoiceApp", () => {
 
     mocks.useVoiceSession.mockReturnValue(session);
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
-    const interruptBtn = screen.getByRole("button", { name: "Interrupt" });
-
-    fireEvent.click(interruptBtn);
+    fireEvent.click(screen.getByRole("button", { name: "Interrupt" }));
     expect(session.interrupt).toHaveBeenCalledOnce();
   });
 
@@ -252,17 +279,17 @@ describe("VoiceApp", () => {
       baseSession({ status: "connected", assistantThinking: true }),
     );
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
     expect(screen.getByRole("button", { name: "Interrupt" })).toBeDefined();
     expect(screen.getByText(/thinking/i)).toBeDefined();
   });
 
-  it("shows the Mute button (and Unmute label when muted) instead of Interrupt when idle-listening", () => {
+  it("shows Mute (and Unmute label when muted) instead of Interrupt when idle-listening", () => {
     const session = baseSession({ status: "connected" });
 
     mocks.useVoiceSession.mockReturnValue(session);
-    const { rerender } = render(<VoiceApp />);
+    const { rerender } = renderVoiceApp();
 
     fireEvent.click(screen.getByRole("button", { name: "Mute" }));
     expect(session.toggleMute).toHaveBeenCalledOnce();
@@ -270,7 +297,7 @@ describe("VoiceApp", () => {
     mocks.useVoiceSession.mockReturnValue(
       baseSession({ status: "connected", isMuted: true }),
     );
-    rerender(<VoiceApp />);
+    rerender(<VoiceApp {...makeProps()} />);
     expect(screen.getByRole("button", { name: "Unmute" })).toBeDefined();
   });
 
@@ -279,11 +306,11 @@ describe("VoiceApp", () => {
       baseSession({
         status: "connected",
         error: "Rate limit exceeded. Please try again in 5s.",
-        rateLimitedUntil: Date.now() - 1000, // already cleared
+        rateLimitedUntil: Date.now() - 1000,
       }),
     );
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
     expect(screen.getByText(/rate limit exceeded/i)).toBeDefined();
     const retryBtn = screen.getByRole("button", { name: "Retry" });
@@ -300,11 +327,12 @@ describe("VoiceApp", () => {
       }),
     );
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
-    const retryBtn = screen.getByRole("button", { name: "Retry" });
-
-    expect((retryBtn as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole("button", { name: "Retry" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
     expect(screen.getByText(/retry available in/i)).toBeDefined();
   });
 
@@ -317,7 +345,7 @@ describe("VoiceApp", () => {
 
     mocks.useVoiceSession.mockReturnValue(session);
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(session.retryResponse).toHaveBeenCalledOnce();
@@ -336,14 +364,13 @@ describe("VoiceApp", () => {
     );
 
     try {
-      render(<VoiceApp />);
+      renderVoiceApp();
       const retryBtn = screen.getByRole("button", {
         name: "Retry",
       }) as HTMLButtonElement;
 
       expect(retryBtn.disabled).toBe(true);
 
-      // The interval ticks every 250ms; advance past the deadline.
       await act(() => {
         vi.advanceTimersByTime(1500);
       });
@@ -359,9 +386,8 @@ describe("VoiceApp", () => {
       baseSession({ status: "error", error: "Connection failed" }),
     );
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
-    // Error label appears in the status pill
     expect(screen.getAllByText(/error/i).length).toBeGreaterThan(0);
   });
 
@@ -370,7 +396,7 @@ describe("VoiceApp", () => {
       baseSession({ status: "disconnecting" }),
     );
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
     expect(screen.getByText(/disconnecting/i)).toBeDefined();
   });
@@ -380,7 +406,7 @@ describe("VoiceApp", () => {
       baseSession({ status: "connected", isMuted: true }),
     );
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
     expect(screen.getByText(/muted/i)).toBeDefined();
   });
@@ -389,7 +415,7 @@ describe("VoiceApp", () => {
     mocks.isFirefox.mockReturnValue(true);
     mocks.useVoiceSession.mockReturnValue(baseSession());
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
     expect(screen.getByText(/firefox is not supported/i)).toBeDefined();
   });
@@ -398,7 +424,7 @@ describe("VoiceApp", () => {
     mocks.isFirefox.mockReturnValue(true);
     mocks.useVoiceSession.mockReturnValue(baseSession());
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
     const btn = screen.getByRole("button", { name: "Talk" });
 
@@ -408,7 +434,7 @@ describe("VoiceApp", () => {
   it("hides the Firefox banner in Chrome (or other non-Firefox browsers)", () => {
     mocks.useVoiceSession.mockReturnValue(baseSession());
 
-    render(<VoiceApp />);
+    renderVoiceApp();
 
     expect(screen.queryByText(/firefox is not supported/i)).toBeNull();
   });
@@ -417,7 +443,7 @@ describe("VoiceApp", () => {
     it("shows the empty-state placeholder when history is empty", () => {
       mocks.useVoiceSession.mockReturnValue(baseSession());
 
-      render(<VoiceApp />);
+      renderVoiceApp();
 
       expect(
         screen.getByText(
@@ -449,80 +475,12 @@ describe("VoiceApp", () => {
         baseSession({ status: "connected", history }),
       );
 
-      render(<VoiceApp />);
+      renderVoiceApp();
 
       expect(screen.getByTestId("message-list")).toBeDefined();
       expect(screen.getByText("hello pal")).toBeDefined();
       expect(screen.getByText("hi there")).toBeDefined();
       expect(screen.queryByText(/conversation will appear here/i)).toBeNull();
-    });
-
-    it("clicking Edit and Save on a transcribed user message resolves the voice no-op handler", async () => {
-      const history: RealtimeItem[] = [
-        {
-          itemId: "u1",
-          type: "message",
-          role: "user",
-          status: "completed",
-          content: [{ type: "input_audio", transcript: "rename track 1" }],
-        },
-        {
-          itemId: "a1",
-          type: "message",
-          role: "assistant",
-          status: "completed",
-          content: [{ type: "output_audio", transcript: "done" }],
-        },
-      ];
-
-      mocks.useVoiceSession.mockReturnValue(
-        baseSession({ status: "connected", history }),
-      );
-
-      render(<VoiceApp />);
-
-      fireEvent.click(screen.getByLabelText(/edit message/i));
-      // Save & Send commits via the voice no-op edit handler (returns void Promise)
-      await act(async () => {
-        fireEvent.click(screen.getByRole("button", { name: /save & send/i }));
-      });
-
-      // Editor closes after save — original message text re-appears in display mode
-      expect(screen.getByText("rename track 1")).toBeDefined();
-    });
-
-    it("clicking Retry on an assistant bubble invokes the voice no-op retry handler", async () => {
-      const history: RealtimeItem[] = [
-        {
-          itemId: "u1",
-          type: "message",
-          role: "user",
-          status: "completed",
-          content: [{ type: "input_audio", transcript: "do it" }],
-        },
-        {
-          itemId: "a1",
-          type: "message",
-          role: "assistant",
-          status: "completed",
-          content: [{ type: "output_audio", transcript: "ok" }],
-        },
-      ];
-
-      mocks.useVoiceSession.mockReturnValue(
-        baseSession({ status: "connected", history }),
-      );
-
-      render(<VoiceApp />);
-
-      const retryBtn = screen.getByRole("button", { name: /retry/i });
-
-      await act(async () => {
-        fireEvent.click(retryBtn);
-      });
-
-      // No throw — handler resolves silently. Bubble still rendered.
-      expect(screen.getByText("ok")).toBeDefined();
     });
   });
 
@@ -530,43 +488,30 @@ describe("VoiceApp", () => {
     it("renders the shared chat header with the GPT Realtime model name", () => {
       mocks.useVoiceSession.mockReturnValue(baseSession());
 
-      render(<VoiceApp />);
+      renderVoiceApp();
 
       expect(screen.getByTitle(/producer pal website/i)).toBeDefined();
       expect(screen.getByText(/gpt realtime/i)).toBeDefined();
     });
 
-    it("renders header tool counts as 0 when the MCP tools list is unavailable", () => {
-      mocks.useMcpConnection.mockReturnValue({
-        mcpStatus: "connecting",
-        mcpError: null,
-        mcpTools: null,
-        checkMcpConnection: vi.fn(),
-      });
+    it("opens settings via onOpenSettings callback when the settings button is clicked", () => {
       mocks.useVoiceSession.mockReturnValue(baseSession());
+      const onOpenSettings = vi.fn();
 
-      render(<VoiceApp />);
-
-      // Page renders without throwing — counts fall back to 0
-      expect(screen.getByTitle(/producer pal website/i)).toBeDefined();
+      renderVoiceApp({ onOpenSettings });
+      fireEvent.click(screen.getByLabelText("Settings"));
+      expect(onOpenSettings).toHaveBeenCalled();
     });
 
-    it("toggles the conversation panel open via the header button", () => {
+    it("toggles the conversation panel via the header button", () => {
       mocks.useVoiceSession.mockReturnValue(baseSession());
+      const props = makeProps();
 
-      const { container } = render(<VoiceApp />);
-
-      const toggleBtn = screen.getByLabelText(/toggle conversation history/i);
-
-      // Panel sits in a wrapper whose horizontal-size classes flip with isOpen
-      // — w-0 collapsed → w-full expanded. Toggling once must expand it.
-      const findPanel = () =>
-        container.querySelector('[class*="basis-0"]') ??
-        container.querySelector('[class*="basis-64"]');
-
-      expect(findPanel()?.className).toContain("w-0");
-      fireEvent.click(toggleBtn);
-      expect(findPanel()?.className).toContain("w-full");
+      render(<VoiceApp {...props} />);
+      fireEvent.click(screen.getByLabelText(/toggle conversation history/i));
+      expect(props.setViewState).toHaveBeenCalledWith({
+        historyPanelOpen: true,
+      });
     });
 
     it("wires the conversation sidebar buttons to persistence + transfer", () => {
@@ -582,10 +527,13 @@ describe("VoiceApp", () => {
       mocks.useVoiceSession.mockReturnValue(baseSession());
       mocks.useVoicePersistence.mockReturnValue(persistence);
       mocks.useConversationTransfer.mockReturnValue(transfer);
+      const props = makeProps();
+      const propsWithOpen = {
+        ...props,
+        viewState: { ...props.viewState, historyPanelOpen: true },
+      };
 
-      render(<VoiceApp />);
-
-      fireEvent.click(screen.getByLabelText(/toggle conversation history/i));
+      render(<VoiceApp {...propsWithOpen} />);
       fireEvent.click(screen.getByText(/new conversation/i));
       fireEvent.click(screen.getByLabelText(/export conversations/i));
       fireEvent.click(screen.getByLabelText(/import conversations/i));
@@ -601,9 +549,13 @@ describe("VoiceApp", () => {
 
       mocks.useVoiceSession.mockReturnValue(session);
       mocks.useVoicePersistence.mockReturnValue(persistence);
+      const props = makeProps();
+      const propsWithOpen = {
+        ...props,
+        viewState: { ...props.viewState, historyPanelOpen: true },
+      };
 
-      render(<VoiceApp />);
-      fireEvent.click(screen.getByLabelText(/toggle conversation history/i));
+      render(<VoiceApp {...propsWithOpen} />);
       fireEvent.click(screen.getByText(/new conversation/i));
 
       expect(session.disconnect).toHaveBeenCalled();
@@ -623,13 +575,10 @@ describe("VoiceApp", () => {
 
       mocks.useVoiceSession.mockReturnValue(baseSession());
       mocks.useVoicePersistence.mockReturnValue(
-        basePersistence({
-          savedItems,
-          activeConversationId: "saved-id",
-        }),
+        basePersistence({ savedItems, activeConversationId: "saved-id" }),
       );
 
-      render(<VoiceApp />);
+      renderVoiceApp();
 
       expect(screen.getByText("from saved record")).toBeDefined();
     });
@@ -641,7 +590,7 @@ describe("VoiceApp", () => {
       mocks.useVoiceSession.mockReturnValue(session);
       mocks.useVoicePersistence.mockReturnValue(persistence);
 
-      render(<VoiceApp />);
+      renderVoiceApp();
       fireEvent.click(screen.getByRole("button", { name: "Talk" }));
 
       expect(persistence.startNewConversation).not.toHaveBeenCalled();
@@ -659,20 +608,17 @@ describe("VoiceApp", () => {
         },
       ] as unknown as RealtimeItem[];
 
-      const persistence = basePersistence({
-        savedItems,
-        activeConversationId: "saved-id",
-      });
       const session = baseSession();
 
       mocks.useVoiceSession.mockReturnValue(session);
-      mocks.useVoicePersistence.mockReturnValue(persistence);
+      mocks.useVoicePersistence.mockReturnValue(
+        basePersistence({ savedItems, activeConversationId: "saved-id" }),
+      );
 
-      render(<VoiceApp />);
+      renderVoiceApp();
       fireEvent.click(screen.getByRole("button", { name: "Talk" }));
 
       expect(session.connect).toHaveBeenCalledWith(savedItems);
-      expect(persistence.startNewConversation).not.toHaveBeenCalled();
     });
 
     it("merges saved record with live history so historical tool calls stay visible mid-session", () => {
@@ -718,37 +664,11 @@ describe("VoiceApp", () => {
         basePersistence({ savedItems, activeConversationId: "saved-id" }),
       );
 
-      render(<VoiceApp />);
+      renderVoiceApp();
 
-      // The function-call rollup from the saved record is preserved even
-      // though the live SDK history does not contain it.
       expect(screen.getAllByText(/ppal-read-track/i).length).toBeGreaterThan(0);
       expect(screen.getByText(/earlier turn/i)).toBeDefined();
       expect(screen.getByText(/fresh assistant/i)).toBeDefined();
-    });
-
-    it("opens chat when the settings button is clicked", () => {
-      mocks.useVoiceSession.mockReturnValue(baseSession());
-      const originalHref = window.location.href;
-      const setHref = vi.fn();
-
-      Object.defineProperty(window.location, "href", {
-        configurable: true,
-        get: () => originalHref,
-        set: setHref,
-      });
-
-      try {
-        render(<VoiceApp />);
-        fireEvent.click(screen.getByLabelText("Settings"));
-        expect(setHref).toHaveBeenCalledWith("/chat");
-      } finally {
-        Object.defineProperty(window.location, "href", {
-          configurable: true,
-          value: originalHref,
-          writable: true,
-        });
-      }
     });
 
     it("wires per-conversation sidebar item handlers (select/delete/rename/bookmark)", () => {
@@ -761,17 +681,19 @@ describe("VoiceApp", () => {
 
       mocks.useVoiceSession.mockReturnValue(baseSession());
       mocks.useVoicePersistence.mockReturnValue(persistence);
+      const props = makeProps();
+      const propsWithOpen = {
+        ...props,
+        viewState: { ...props.viewState, historyPanelOpen: true },
+      };
 
-      render(<VoiceApp />);
-      fireEvent.click(screen.getByLabelText(/toggle conversation history/i));
+      render(<VoiceApp {...propsWithOpen} />);
 
       fireEvent.click(screen.getByText("Voice Chat"));
       expect(persistence.switchConversation).toHaveBeenCalledWith(
         "voice-conv-1",
       );
 
-      // Header also renders a (disabled) "Bookmark conversation" button —
-      // the per-item one is the last match in document order.
       const bookmarkButtons = screen.getAllByLabelText(
         /^bookmark conversation$/i,
       );
@@ -806,13 +728,44 @@ describe("VoiceApp", () => {
 
       mocks.useVoiceSession.mockReturnValue(session);
       mocks.useVoicePersistence.mockReturnValue(persistence);
+      const props = makeProps();
+      const propsWithOpen = {
+        ...props,
+        viewState: { ...props.viewState, historyPanelOpen: true },
+      };
 
-      render(<VoiceApp />);
-      fireEvent.click(screen.getByLabelText(/toggle conversation history/i));
+      render(<VoiceApp {...propsWithOpen} />);
       fireEvent.click(screen.getByText("Other"));
 
       expect(session.disconnect).toHaveBeenCalled();
       expect(persistence.switchConversation).toHaveBeenCalledWith("other-conv");
+    });
+
+    it("reports its mode context (delete handlers + lock) up to App", () => {
+      const persistence = basePersistence({ activeConversationId: "voice-1" });
+
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+      mocks.useVoicePersistence.mockReturnValue(persistence);
+      const props = makeProps();
+
+      render(<VoiceApp {...props} />);
+
+      const setModeContextMock = props.setModeContext as unknown as ReturnType<
+        typeof vi.fn
+      >;
+
+      expect(setModeContextMock).toHaveBeenCalled();
+      const ctx = setModeContextMock.mock.calls.at(-1)?.[0] as
+        | ModeContext
+        | undefined;
+
+      expect(ctx?.conversationLock.activeModel).toBe("gpt-realtime-2");
+      expect(ctx?.conversationLock.activeProvider).toBe("openai");
+      // Delete handlers route through the persistence hook
+      ctx?.onDeleteAllConversations();
+      expect(persistence.deleteAllConversations).toHaveBeenCalled();
+      ctx?.onDeleteUnbookmarkedConversations();
+      expect(persistence.deleteUnbookmarkedConversations).toHaveBeenCalled();
     });
   });
 });

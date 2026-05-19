@@ -53,36 +53,6 @@ beforeEach(async () => {
   await db.clear("conversations");
 });
 
-/**
- * Spy on `window.location.href = "..."` while still allowing other location
- * writes (notably `hash` and `replaceState`) to pass through.
- *
- * @returns A vi.fn that records each href assignment
- */
-function spyOnHrefSetter() {
-  const hrefSpy = vi.fn<(value: string) => void>();
-
-  Object.defineProperty(window, "location", {
-    configurable: true,
-    value: new Proxy(originalLocation, {
-      set(target, prop, value: string) {
-        if (prop === "href") {
-          hrefSpy(value);
-
-          return true;
-        }
-
-        return Reflect.set(target, prop, value);
-      },
-      get(target, prop) {
-        return Reflect.get(target, prop) as unknown;
-      },
-    }),
-  });
-
-  return hrefSpy;
-}
-
 describe("useVoicePersistence", () => {
   it("initializes with an empty list and no active conversation", async () => {
     const { result } = renderHook(() =>
@@ -194,18 +164,34 @@ describe("useVoicePersistence", () => {
     expect(result.current.savedItems).toHaveLength(1);
   });
 
-  it("redirects to /chat when the hash points to a text conversation", async () => {
+  it("invokes onForeignRecord when the hash points to a text conversation", async () => {
     const textRecord = createTestRecord({ sessionType: "text" });
 
     await saveConversation(textRecord);
     window.location.hash = textRecord.id;
 
-    const hrefSpy = spyOnHrefSetter();
+    const onForeignRecord = vi.fn();
 
-    renderHook(() => useVoicePersistence({ liveHistory: [] }));
+    renderHook(() => useVoicePersistence({ liveHistory: [], onForeignRecord }));
     await waitForEffects();
 
-    expect(hrefSpy).toHaveBeenCalledWith(`/chat#${textRecord.id}`);
+    expect(onForeignRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ id: textRecord.id }),
+    );
+  });
+
+  it("clears the hash when a text record is loaded without an onForeignRecord handler", async () => {
+    const textRecord = createTestRecord({ sessionType: "text" });
+
+    await saveConversation(textRecord);
+    window.location.hash = textRecord.id;
+
+    const { result } = renderHook(() =>
+      useVoicePersistence({ liveHistory: [] }),
+    );
+
+    await waitForEffects();
+    expect(result.current.activeConversationId).toBeNull();
   });
 
   it("startNewConversation clears active id and saved items", async () => {
@@ -266,22 +252,23 @@ describe("useVoicePersistence", () => {
     expect(result.current.savedItems).toStrictEqual([]);
   });
 
-  it("switchConversation navigates to /chat for text records", async () => {
+  it("switchConversation invokes onForeignRecord for text records", async () => {
     const textRecord = createTestRecord({ sessionType: "text" });
 
     await saveConversation(textRecord);
+    const onForeignRecord = vi.fn();
 
     const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
+      useVoicePersistence({ liveHistory: [], onForeignRecord }),
     );
 
     await waitForEffects();
 
-    const hrefSpy = spyOnHrefSetter();
-
     await act(() => result.current.switchConversation(textRecord.id));
 
-    expect(hrefSpy).toHaveBeenCalledWith(`/chat#${textRecord.id}`);
+    expect(onForeignRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ id: textRecord.id }),
+    );
   });
 
   it("deletes a conversation and refreshes the list", async () => {
@@ -303,6 +290,66 @@ describe("useVoicePersistence", () => {
     await act(() => result.current.deleteConversation(record.id));
 
     expect(result.current.conversations).toHaveLength(0);
+  });
+
+  it("deleteAllConversations clears DB and resets state", async () => {
+    const record = createTestRecord({
+      sessionType: "voice",
+      voiceHistory: [userTextItem("hi")],
+      messages: [],
+    });
+
+    await saveConversation(record);
+    window.location.hash = record.id;
+
+    const { result } = renderHook(() =>
+      useVoicePersistence({ liveHistory: [] }),
+    );
+
+    await waitForEffects();
+    expect(result.current.conversations).toHaveLength(1);
+
+    await act(() => result.current.deleteAllConversations());
+
+    expect(result.current.conversations).toHaveLength(0);
+    expect(result.current.activeConversationId).toBeNull();
+    expect(result.current.savedItems).toStrictEqual([]);
+  });
+
+  it("deleteUnbookmarkedConversations clears unbookmarked but keeps bookmarked", async () => {
+    const bookmarked = createTestRecord({
+      id: "bk-1",
+      sessionType: "voice",
+      bookmarked: true,
+      voiceHistory: [userTextItem("keep")],
+      messages: [],
+    });
+    const unbookmarked = createTestRecord({
+      id: "ub-1",
+      sessionType: "voice",
+      bookmarked: false,
+      voiceHistory: [userTextItem("toss")],
+      messages: [],
+    });
+
+    await saveConversation(bookmarked);
+    await saveConversation(unbookmarked);
+    window.location.hash = unbookmarked.id;
+
+    const { result } = renderHook(() =>
+      useVoicePersistence({ liveHistory: [] }),
+    );
+
+    await waitForEffects();
+    expect(result.current.conversations).toHaveLength(2);
+
+    await act(() => result.current.deleteUnbookmarkedConversations());
+
+    expect(result.current.conversations.map((c) => c.id)).toStrictEqual([
+      "bk-1",
+    ]);
+    // Active was unbookmarked, so it gets cleared
+    expect(result.current.activeConversationId).toBeNull();
   });
 
   it("updates ref state when renaming/bookmarking/deleting the active conversation", async () => {

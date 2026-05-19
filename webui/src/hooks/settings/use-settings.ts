@@ -213,6 +213,20 @@ export function useSettings(): UseSettingsReturn {
   const setProvider = useCallback((newProvider: Provider) => {
     setProviderState(newProvider);
   }, []);
+  // Atomically switch provider + that provider's model in one render. Using
+  // setProvider() then setModel() separately doesn't work because setModel
+  // closes over the OLD provider — its setter was memoized when provider
+  // had its previous value, so it'd write into the old provider's slot.
+  const setProviderAndModel = useCallback(
+    (newProvider: Provider, newModel: string) => {
+      setProviderState(newProvider);
+      providerStateSetters[newProvider]((prev) => ({
+        ...prev,
+        model: newModel,
+      }));
+    },
+    [providerStateSetters],
+  );
   const hasApiKey = checkHasApiKey(provider);
   const isToolEnabled = useCallback(
     (toolId: string) => enabledTools[toolId] ?? true,
@@ -229,6 +243,7 @@ export function useSettings(): UseSettingsReturn {
   return {
     provider,
     setProvider,
+    setProviderAndModel,
     apiKey: currentSettings.apiKey,
     setApiKey,
     baseUrl: hasBaseUrl ? currentSettings.baseUrl : undefined,

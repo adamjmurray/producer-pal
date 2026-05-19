@@ -15,6 +15,7 @@ import {
   setLocationHash,
 } from "#webui/hooks/chat/helpers/use-conversations-helpers";
 import { useLimitNotification } from "#webui/hooks/chat/helpers/use-limit-notification";
+import { useSyncActiveMeta } from "#webui/hooks/chat/helpers/use-sync-active-meta";
 import { type ConversationLockedSettings } from "#webui/hooks/chat/use-chat-types";
 import {
   type ConversationRecord,
@@ -43,6 +44,10 @@ interface UseConversationsProps {
   activeTemperature: number | null;
   activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
+  /** Invoked when a voice record is encountered. The parent should switch
+   * modes so the voice hook can pick the conversation up from the URL hash.
+   * When omitted, the hook falls back to clearing the active id. */
+  onForeignRecord?: (record: ConversationRecord) => void;
 }
 
 export interface UseConversationsReturn {
@@ -74,6 +79,7 @@ export interface UseConversationsReturn {
  * @param props.activeTemperature - Active temperature for the current conversation
  * @param props.activeShowThoughts - Active showThoughts setting for the current conversation
  * @param props.activeSmallModelMode - Active smallModelMode setting for the current conversation
+ * @param props.onForeignRecord - Optional callback invoked when a voice record is encountered; parent should switch modes
  * @returns Conversation management state and handlers
  */
 export function useConversations({
@@ -86,6 +92,7 @@ export function useConversations({
   activeTemperature: activeTemperatureProp,
   activeShowThoughts: activeShowThoughtsProp,
   activeSmallModelMode: activeSmallModelModeProp,
+  onForeignRecord,
 }: UseConversationsProps): UseConversationsReturn {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const limit = useLimitNotification();
@@ -100,28 +107,14 @@ export function useConversations({
     activeIdRef.current = activeConversationId;
   }, [activeConversationId]);
 
-  // Keep active meta in sync with props from useChat
-  useEffect(() => {
-    activeMetaRef.current ??= { ...DEFAULT_META };
-
-    const meta = activeMetaRef.current;
-
-    if (activeModelProp != null) meta.model = activeModelProp;
-    if (activeProviderProp != null) meta.provider = activeProviderProp;
-    if (activeThinkingProp != null) meta.thinking = activeThinkingProp;
-    if (activeTemperatureProp != null) meta.temperature = activeTemperatureProp;
-    if (activeShowThoughtsProp != null)
-      meta.showThoughts = activeShowThoughtsProp;
-    if (activeSmallModelModeProp != null)
-      meta.smallModelMode = activeSmallModelModeProp;
-  }, [
-    activeModelProp,
-    activeProviderProp,
-    activeThinkingProp,
-    activeTemperatureProp,
-    activeShowThoughtsProp,
-    activeSmallModelModeProp,
-  ]);
+  useSyncActiveMeta(activeMetaRef, {
+    activeModel: activeModelProp,
+    activeProvider: activeProviderProp,
+    activeThinking: activeThinkingProp,
+    activeTemperature: activeTemperatureProp,
+    activeShowThoughts: activeShowThoughtsProp,
+    activeSmallModelMode: activeSmallModelModeProp,
+  });
 
   const refreshList = useCallback(async () => {
     const list = await listConversations();
@@ -169,7 +162,8 @@ export function useConversations({
         const record = await loadConversation(hashId);
 
         if (record?.sessionType === "voice") {
-          window.location.href = `/voice#${hashId}`;
+          if (onForeignRecord) onForeignRecord(record);
+          else clearActiveId();
 
           return;
         }
@@ -186,7 +180,13 @@ export function useConversations({
     };
 
     void init();
-  }, [refreshList, restoreChatHistory, setActiveId, clearActiveId]);
+  }, [
+    refreshList,
+    restoreChatHistory,
+    setActiveId,
+    clearActiveId,
+    onForeignRecord,
+  ]);
 
   const saveCurrentConversation = useCallback(
     async (updatedAt?: number) => {
@@ -236,8 +236,10 @@ export function useConversations({
       }
 
       if (record.sessionType === "voice") {
-        // Voice records can't replay through the chat hook — bounce to /voice.
-        window.location.href = `/voice#${id}`;
+        // Voice records can't replay through the chat hook. Hand off to the
+        // parent, which switches modes so the voice hook can take over.
+        if (onForeignRecord) onForeignRecord(record);
+        else clearActiveId();
 
         return;
       }
@@ -247,7 +249,13 @@ export function useConversations({
       setActiveId(id);
       syncActiveMeta(record);
     },
-    [clearConversation, clearActiveId, restoreChatHistory, setActiveId],
+    [
+      clearConversation,
+      clearActiveId,
+      restoreChatHistory,
+      setActiveId,
+      onForeignRecord,
+    ],
   );
 
   const startNewConversation = useCallback(() => {

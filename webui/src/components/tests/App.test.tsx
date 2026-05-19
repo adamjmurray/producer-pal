@@ -44,6 +44,7 @@ vi.mock(import("#webui/hooks/use-view-state"), () => ({
 }));
 
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
@@ -101,12 +102,28 @@ describe("App", () => {
 
       expect(header).toBeDefined();
     });
+
+    it("renders VoiceApp when the selected model is a realtime model", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "openai",
+        model: "gpt-realtime-2",
+      });
+      render(<App />);
+      // VoiceApp shows the Talk button; ChatScreen does not
+      expect(document.body.textContent).toMatch(/Talk|Restart/);
+    });
   });
 
   describe("provider routing", () => {
-    it("calls useChat once (AI SDK adapter handles all providers)", () => {
+    it("calls useChat (AI SDK adapter handles all providers)", () => {
       render(<App />);
-      expect(useChat).toHaveBeenCalledTimes(1);
+      // ChatApp reports its mode context up to App via setState, which causes
+      // one additional re-render — so useChat is called more than once but
+      // exactly once per render cycle.
+      expect(
+        (useChat as ReturnType<typeof vi.fn>).mock.calls.length,
+      ).toBeGreaterThanOrEqual(1);
     });
 
     it("passes AI SDK adapter with createClient", () => {
@@ -114,6 +131,50 @@ describe("App", () => {
       const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
 
       expect(calls[0]![0].adapter).toHaveProperty("createClient");
+    });
+
+    it("onForeignRecord swaps the provider+model via settings", () => {
+      const setProviderAndModel = vi.fn();
+
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        setProviderAndModel,
+      });
+      render(<App />);
+      const conversationsCall = (
+        useConversations as ReturnType<typeof vi.fn>
+      ).mock.calls.at(-1);
+      const onForeignRecord = conversationsCall?.[0]?.onForeignRecord;
+
+      expect(typeof onForeignRecord).toBe("function");
+
+      onForeignRecord?.({
+        provider: "openai",
+        model: "gpt-realtime-2",
+      });
+
+      expect(setProviderAndModel).toHaveBeenCalledWith(
+        "openai",
+        "gpt-realtime-2",
+      );
+    });
+
+    it("onForeignRecord falls back to current provider when record.provider is null", () => {
+      const setProviderAndModel = vi.fn();
+
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "gemini",
+        setProviderAndModel,
+      });
+      render(<App />);
+      const onForeignRecord = (
+        useConversations as ReturnType<typeof vi.fn>
+      ).mock.calls.at(-1)?.[0]?.onForeignRecord;
+
+      onForeignRecord?.({ provider: null, model: null });
+
+      expect(setProviderAndModel).toHaveBeenCalledWith("gemini", "");
     });
   });
 

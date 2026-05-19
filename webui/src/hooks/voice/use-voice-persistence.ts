@@ -10,7 +10,9 @@ import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import {
   type ConversationRecord,
   type ConversationSummary,
+  deleteAllConversations as dbDeleteAllConversations,
   deleteConversation as dbDeleteConversation,
+  deleteUnbookmarkedConversations as dbDeleteUnbookmarkedConversations,
   listConversations,
   loadConversation,
   renameConversation as dbRenameConversation,
@@ -23,6 +25,11 @@ const AUTOSAVE_DEBOUNCE_MS = 600;
 interface UseVoicePersistenceParams {
   /** Current live voice transcript from useVoiceSession (drives auto-save). */
   liveHistory: RealtimeItem[];
+  /** Invoked when a non-voice (chat) record is encountered. The parent should
+   * switch modes (e.g. settings.setProviderAndModel) so the chat hook can pick
+   * up the conversation from the URL hash. When omitted, the hook falls back
+   * to clearing the active id. */
+  onForeignRecord?: (record: ConversationRecord) => void;
 }
 
 export interface UseVoicePersistenceReturn {
@@ -34,6 +41,8 @@ export interface UseVoicePersistenceReturn {
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
   deleteConversation: (id: string) => Promise<void>;
+  deleteAllConversations: () => Promise<void>;
+  deleteUnbookmarkedConversations: () => Promise<void>;
   renameConversation: (id: string, title: string | null) => Promise<void>;
   toggleBookmark: (id: string) => Promise<void>;
 }
@@ -51,7 +60,7 @@ export interface UseVoicePersistenceReturn {
 export function useVoicePersistence(
   params: UseVoicePersistenceParams,
 ): UseVoicePersistenceReturn {
-  const { liveHistory } = params;
+  const { liveHistory, onForeignRecord } = params;
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
@@ -95,7 +104,8 @@ export function useVoicePersistence(
       }
 
       if (record.sessionType !== "voice") {
-        window.location.href = `/chat#${hashId}`;
+        if (onForeignRecord) onForeignRecord(record);
+        else setActiveId(null);
 
         return;
       }
@@ -116,7 +126,7 @@ export function useVoicePersistence(
       priorItemsRef.current = items;
       setSavedItems(items);
     }
-  }, [refreshList, setActiveId]);
+  }, [refreshList, setActiveId, onForeignRecord]);
 
   // Auto-save: debounce so we don't write IDB on every transcript token.
   useEffect(() => {
@@ -153,7 +163,8 @@ export function useVoicePersistence(
       }
 
       if (record.sessionType !== "voice") {
-        window.location.href = `/chat#${id}`;
+        if (onForeignRecord) onForeignRecord(record);
+        else setActiveId(null);
 
         return;
       }
@@ -167,7 +178,7 @@ export function useVoicePersistence(
       setSavedItems(items);
       setActiveId(id);
     },
-    [setActiveId],
+    [setActiveId, onForeignRecord],
   );
 
   const startNewConversation = useCallback(() => {
@@ -187,6 +198,22 @@ export function useVoicePersistence(
     },
     [refreshList, startNewConversation],
   );
+
+  const deleteAllConversations = useCallback(async () => {
+    await dbDeleteAllConversations();
+    startNewConversation();
+    await refreshList();
+  }, [refreshList, startNewConversation]);
+
+  const deleteUnbookmarkedConversations = useCallback(async () => {
+    await dbDeleteUnbookmarkedConversations();
+
+    if (activeIdRef.current && !bookmarkedRef.current) {
+      startNewConversation();
+    }
+
+    await refreshList();
+  }, [refreshList, startNewConversation]);
 
   const renameConversation = useCallback(
     async (id: string, title: string | null) => {
@@ -219,6 +246,8 @@ export function useVoicePersistence(
     switchConversation,
     startNewConversation,
     deleteConversation,
+    deleteAllConversations,
+    deleteUnbookmarkedConversations,
     renameConversation,
     toggleBookmark,
   };

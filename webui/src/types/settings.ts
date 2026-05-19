@@ -31,6 +31,9 @@ export type Provider =
 export interface UseSettingsReturn {
   provider: Provider;
   setProvider: (provider: Provider) => void;
+  /** Atomically swap the active provider + that provider's model (used when
+   * loading a conversation whose stored mode differs from the current one). */
+  setProviderAndModel: (provider: Provider, model: string) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
   baseUrl?: string; // For custom, lmstudio, and ollama providers
