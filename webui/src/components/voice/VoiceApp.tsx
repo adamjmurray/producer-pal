@@ -4,21 +4,38 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useMemo, useState } from "preact/hooks";
-import { MessageList } from "#webui/components/chat/MessageList";
+import {
+  AppShell,
+  type ConversationPanelState,
+} from "#webui/components/AppShell";
+import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
+import { RateLimitRetry } from "#webui/components/voice/RateLimitRetry";
+import { VoiceControls } from "#webui/components/voice/VoiceControls";
+import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
+import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import {
   loadEnabledTools,
   loadProviderSettings,
 } from "#webui/hooks/settings/settings-helpers";
+import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
+import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import { isFirefox } from "#webui/utils/browser-detect";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 
-// Voice transcripts are read-only — the user can't edit past turns or retry
-// individual responses (the underlying audio is gone). MessageList still
-// requires these handlers; provide no-ops.
-const noopRetry = async (): Promise<void> => undefined;
-const noopEdit = async (): Promise<void> => undefined;
+// The conversation sidebar is a stub until commit 5 wires up voice-session
+// persistence, so every handler is a no-op. TS lets us pass a zero-arg no-op
+// where typed-parameter callbacks are expected, including onExportItem's
+// `void | Promise<void>` return.
+const noop = (): void => undefined;
+
+// Voice still lives on its own /voice route in this commit, so the header's
+// settings buttons can't open a modal here. Route to /chat instead — that's
+// already where the OpenAI-key-required banner sends users.
+const goToChat = (): void => {
+  window.location.href = "/chat";
+};
 
 /**
  * Standalone Producer Pal voice page. Reuses the chat UI's localStorage
@@ -29,12 +46,15 @@ const noopEdit = async (): Promise<void> => undefined;
 export function VoiceApp() {
   const mcpUrl = getMcpUrl();
   const voiceTokenUrl = mcpUrl.replace(/\/mcp$/, "/voice-token");
+  const { mcpStatus, mcpTools } = useMcpConnection();
+  const preferences = usePreferencesSettings();
 
   const [openAiKey] = useState<string | null>(
     () => loadProviderSettings("openai").apiKey || null,
   );
   const enabledTools = useMemo(() => loadEnabledTools(), []);
   const firefoxDetected = useMemo(() => isFirefox(), []);
+  const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
 
   const voice = useVoiceSession({
     mcpUrl,
@@ -68,316 +88,79 @@ export function VoiceApp() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col items-center bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
-      <header className="w-full max-w-3xl px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Producer Pal Voice</h1>
-        <a
-          href="/chat"
-          className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
-        >
-          Back to chat
-        </a>
-      </header>
+  const totalToolsCount = mcpTools?.length ?? 0;
+  const enabledToolsCount = mcpTools
+    ? mcpTools.filter((t) => enabledTools[t.id] !== false).length
+    : 0;
 
-      <main className="w-full max-w-3xl px-6 pb-12 flex-1 flex flex-col gap-6">
-        {firefoxDetected && (
-          <div className="rounded-md border border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-700 p-4 text-sm">
-            <p className="font-medium mb-1">
-              Firefox is not supported for voice.
-            </p>
-            <p>
-              Voice currently works in Chrome (other Chromium browsers like Edge
-              are likely fine but untested). Please open this page in Chrome.
-            </p>
-          </div>
-        )}
-
-        {!openAiKey && (
-          <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-4 text-sm">
-            <p className="font-medium mb-1">OpenAI API key required.</p>
-            <p>
-              Open the{" "}
-              <a className="underline" href="/chat">
-                chat UI
-              </a>
-              , set your OpenAI API key in settings, then reload this page.
-            </p>
-          </div>
-        )}
-
-        <VoiceControls
-          voice={voice}
-          openAiKey={openAiKey}
-          isBusy={isBusy}
-          isConnected={isConnected}
-          isUnsupportedBrowser={isUnsupportedBrowser}
-          onToggleConnection={onToggleConnection}
-        />
-
-        {voice.error && (
-          <div className="rounded-md border border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-700 p-3 text-sm space-y-2">
-            <div>
-              <span className="font-medium">Error: </span>
-              {voice.error}
-            </div>
-            {voice.rateLimitedUntil != null && (
-              <RateLimitRetry
-                until={voice.rateLimitedUntil}
-                onRetry={voice.retryResponse}
-              />
-            )}
-          </div>
-        )}
-
-        {messages.length === 0 ? (
-          <div className="text-sm text-zinc-500 text-center py-8">
-            Conversation will appear here once you start talking.
-          </div>
-        ) : (
-          <MessageList
-            messages={messages}
-            isAssistantResponding={voice.assistantThinking}
-            handleRetry={noopRetry}
-            handleEdit={noopEdit}
-            showTimestamps={false}
-            showTokenUsage={false}
-          />
-        )}
-
-        <p className="text-xs text-zinc-500">
-          Transport events are logged to the browser console (filter:{" "}
-          <code>[voice]</code>).
-        </p>
-      </main>
-    </div>
-  );
-}
-
-type VoiceSessionState = ReturnType<typeof useVoiceSession>;
-
-interface VoiceControlsProps {
-  voice: VoiceSessionState;
-  openAiKey: string | null;
-  isBusy: boolean;
-  isConnected: boolean;
-  isUnsupportedBrowser: boolean;
-  onToggleConnection: () => void;
-}
-
-/**
- * The big Talk/Stop button plus the status badge and contextual secondary
- * action (Interrupt while the assistant is working, Mute otherwise).
- *
- * @param props - component props
- * @param props.voice - The useVoiceSession hook return value
- * @param props.openAiKey - User's OpenAI API key (controls disabled state)
- * @param props.isBusy - True during connecting/disconnecting transitions
- * @param props.isConnected - True when the realtime session is live
- * @param props.isUnsupportedBrowser - True when the browser is known broken (Firefox)
- * @param props.onToggleConnection - Toggle connect/disconnect
- * @returns Controls UI
- */
-function VoiceControls({
-  voice,
-  openAiKey,
-  isBusy,
-  isConnected,
-  isUnsupportedBrowser,
-  onToggleConnection,
-}: VoiceControlsProps) {
-  const assistantActive = voice.assistantSpeaking || voice.assistantThinking;
-
-  return (
-    <div className="flex flex-col items-center gap-3 py-6">
-      <button
-        type="button"
-        onClick={onToggleConnection}
-        disabled={isBusy || !openAiKey || isUnsupportedBrowser}
-        className={`
-              w-32 h-32 rounded-full text-lg font-semibold transition-colors
-              shadow-lg disabled:opacity-40 disabled:cursor-not-allowed
-              ${
-                isConnected
-                  ? "bg-red-600 hover:bg-red-700 text-white"
-                  : "bg-blue-600 hover:bg-blue-700 text-white"
-              }
-            `}
-      >
-        {isBusy ? "..." : isConnected ? "Restart" : "Talk"}
-      </button>
-      <StatusBadge
-        status={voice.status}
-        assistantSpeaking={voice.assistantSpeaking}
-        assistantThinking={voice.assistantThinking}
-        userMuted={voice.isMuted}
-      />
-      {isConnected && assistantActive && (
-        <button
-          type="button"
-          onClick={voice.interrupt}
-          className="text-sm px-4 py-1.5 rounded-full bg-amber-500 hover:bg-amber-600 text-white font-medium shadow"
-        >
-          Interrupt
-        </button>
-      )}
-      {isConnected && !assistantActive && (
-        <button
-          type="button"
-          onClick={() => void voice.toggleMute()}
-          className="text-sm px-3 py-1 rounded border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-        >
-          {voice.isMuted ? "Unmute" : "Mute"}
-        </button>
-      )}
-    </div>
-  );
-}
-
-interface RateLimitRetryProps {
-  until: number;
-  onRetry: () => void;
-}
-
-/**
- * Countdown until an OpenAI rate-limit window expires, with a retry button
- * that becomes enabled when the countdown reaches zero.
- *
- * @param props - component props
- * @param props.until - Epoch ms when the rate limit clears
- * @param props.onRetry - Callback to nudge the model to generate the next response
- * @returns Countdown UI
- */
-function RateLimitRetry({ until, onRetry }: RateLimitRetryProps) {
-  const [remainingMs, setRemainingMs] = useState(() =>
-    Math.max(0, until - Date.now()),
-  );
-
-  useEffect(() => {
-    setRemainingMs(Math.max(0, until - Date.now()));
-    const id = setInterval(() => {
-      const next = Math.max(0, until - Date.now());
-
-      setRemainingMs(next);
-      if (next === 0) clearInterval(id);
-    }, 250);
-
-    return () => clearInterval(id);
-  }, [until]);
-
-  const ready = remainingMs === 0;
-  const seconds = Math.ceil(remainingMs / 1000);
-
-  return (
-    <div className="flex items-center gap-3">
-      <span className="text-xs text-zinc-600 dark:text-zinc-400">
-        {ready ? "Ready to retry." : `Retry available in ${seconds}s…`}
-      </span>
-      <button
-        type="button"
-        onClick={onRetry}
-        disabled={!ready}
-        className="text-sm px-3 py-1 rounded border border-red-400 dark:border-red-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-red-100 dark:hover:bg-red-900/40"
-      >
-        Retry
-      </button>
-    </div>
-  );
-}
-
-interface StatusBadgeProps {
-  status: string;
-  assistantSpeaking: boolean;
-  assistantThinking: boolean;
-  userMuted: boolean;
-}
-
-/**
- * Connection-status indicator with mic-availability state. When connected,
- * differentiates between "you can talk now" and "wait — the model is working".
- *
- * @param props - component props
- * @param props.status - the voice session status string
- * @param props.assistantSpeaking - true while the model is producing audio
- * @param props.assistantThinking - true between response.created and response.done
- * @param props.userMuted - true when the user has explicitly muted their mic
- * @returns Status pill
- */
-function StatusBadge({
-  status,
-  assistantSpeaking,
-  assistantThinking,
-  userMuted,
-}: StatusBadgeProps) {
-  const { label, color, pulse } = computeStatusVisuals({
-    status,
-    assistantSpeaking,
-    assistantThinking,
-    userMuted,
-  });
-
-  return (
-    <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-      <span
-        className={`inline-block w-2.5 h-2.5 rounded-full ${color} ${pulse ? "animate-pulse" : ""}`}
-      />
-      {label}
-    </div>
-  );
-}
-
-const NEUTRAL_DOT = "bg-zinc-400";
-
-/**
- * Map the connection + speaking + mute states into a single label/dot pair.
- *
- * @param state - status, assistantSpeaking, userMuted flags
- * @returns Label text, dot color class, and whether to pulse
- */
-function computeStatusVisuals(state: StatusBadgeProps): {
-  label: string;
-  color: string;
-  pulse: boolean;
-} {
-  if (state.status === "connecting") {
-    return { label: "Connecting…", color: NEUTRAL_DOT, pulse: true };
-  }
-
-  if (state.status === "disconnecting") {
-    return { label: "Disconnecting…", color: NEUTRAL_DOT, pulse: false };
-  }
-
-  if (state.status === "error") {
-    return { label: "Error", color: "bg-red-500", pulse: false };
-  }
-
-  if (state.status !== "connected") {
-    return { label: "Idle", color: NEUTRAL_DOT, pulse: false };
-  }
-
-  if (state.userMuted) {
-    return { label: "Muted", color: "bg-zinc-500", pulse: false };
-  }
-
-  if (state.assistantSpeaking) {
-    return {
-      label: "Assistant speaking — wait",
-      color: "bg-amber-500",
-      pulse: true,
-    };
-  }
-
-  if (state.assistantThinking) {
-    return {
-      label: "Thinking — wait",
-      color: "bg-yellow-500",
-      pulse: true,
-    };
-  }
-
-  return {
-    label: "Listening — go ahead",
-    color: "bg-green-500",
-    pulse: true,
+  const headerInfo: HeaderInfo = {
+    activeModel: OPENAI_REALTIME_MODEL,
+    activeProvider: "openai",
+    model: OPENAI_REALTIME_MODEL,
+    provider: "openai",
+    enabledToolsCount,
+    totalToolsCount,
+    smallModelMode: false,
+    defaultSmallModelMode: false,
+    showHelpLinks: preferences.showHelpLinks,
   };
+
+  const conversationPanel: ConversationPanelState = {
+    isOpen: historyPanelOpen,
+    conversations: [],
+    activeConversationId: null,
+    onToggle: () => setHistoryPanelOpen((open) => !open),
+    onNew: noop,
+    onSelect: noop,
+    onDelete: noop,
+    onExportItem: noop,
+    onRename: noop,
+    onToggleBookmark: noop,
+    onExport: noop,
+    onImport: noop,
+    notification: null,
+    onDismissNotification: noop,
+  };
+
+  return (
+    <AppShell
+      headerInfo={headerInfo}
+      mcpStatus={mcpStatus}
+      conversationPanel={conversationPanel}
+      onOpenSettings={goToChat}
+      onOpenToolsSettings={goToChat}
+      onOpenConnectionSettings={goToChat}
+    >
+      <VoiceTranscript
+        messages={messages}
+        assistantThinking={voice.assistantThinking}
+        firefoxDetected={firefoxDetected}
+        hasOpenAiKey={openAiKey != null}
+      />
+
+      {voice.error && (
+        <div className="border-t border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 px-4 py-3 text-sm space-y-2">
+          <div>
+            <span className="font-medium">Error: </span>
+            {voice.error}
+          </div>
+          {voice.rateLimitedUntil != null && (
+            <RateLimitRetry
+              until={voice.rateLimitedUntil}
+              onRetry={voice.retryResponse}
+            />
+          )}
+        </div>
+      )}
+
+      <VoiceControls
+        voice={voice}
+        openAiKey={openAiKey}
+        isBusy={isBusy}
+        isConnected={isConnected}
+        isUnsupportedBrowser={isUnsupportedBrowser}
+        onToggleConnection={onToggleConnection}
+      />
+    </AppShell>
+  );
 }

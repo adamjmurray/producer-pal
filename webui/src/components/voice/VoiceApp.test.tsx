@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   getMcpUrl: vi.fn(),
   useVoiceSession: vi.fn(),
   isFirefox: vi.fn(),
+  useMcpConnection: vi.fn(),
+  useUpdateCheck: vi.fn(),
 }));
 
 vi.mock(import("#webui/hooks/settings/settings-helpers"), () => ({
@@ -35,6 +37,14 @@ vi.mock(import("#webui/utils/browser-detect"), () => ({
 
 vi.mock(import("#webui/hooks/voice/use-voice-session"), () => ({
   useVoiceSession: mocks.useVoiceSession,
+}));
+
+vi.mock(import("#webui/hooks/connection/use-mcp-connection"), () => ({
+  useMcpConnection: mocks.useMcpConnection,
+}));
+
+vi.mock(import("#webui/hooks/use-update-check"), () => ({
+  useUpdateCheck: mocks.useUpdateCheck,
 }));
 
 import { VoiceApp } from "./VoiceApp";
@@ -79,6 +89,16 @@ beforeEach(() => {
   mocks.loadEnabledTools.mockReturnValue({});
   mocks.getMcpUrl.mockReturnValue("http://localhost:3350/mcp");
   mocks.isFirefox.mockReturnValue(false);
+  mocks.useMcpConnection.mockReturnValue({
+    mcpStatus: "connected",
+    mcpError: null,
+    mcpTools: [
+      { id: "ppal-connect", name: "Connect to Ableton" },
+      { id: "ppal-read-live-set", name: "Read Live Set" },
+    ],
+    checkMcpConnection: vi.fn(),
+  });
+  mocks.useUpdateCheck.mockReturnValue(null);
 });
 
 afterEach(() => {
@@ -87,6 +107,8 @@ afterEach(() => {
   mocks.getMcpUrl.mockReset();
   mocks.useVoiceSession.mockReset();
   mocks.isFirefox.mockReset();
+  mocks.useMcpConnection.mockReset();
+  mocks.useUpdateCheck.mockReset();
 });
 
 describe("VoiceApp", () => {
@@ -450,6 +472,76 @@ describe("VoiceApp", () => {
 
       // No throw — handler resolves silently. Bubble still rendered.
       expect(screen.getByText("ok")).toBeDefined();
+    });
+  });
+
+  describe("AppShell integration", () => {
+    it("renders the shared chat header with the GPT Realtime model name", () => {
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+
+      render(<VoiceApp />);
+
+      expect(screen.getByTitle(/producer pal website/i)).toBeDefined();
+      expect(screen.getByText(/gpt realtime/i)).toBeDefined();
+    });
+
+    it("toggles the conversation panel open via the header button", () => {
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+
+      const { container } = render(<VoiceApp />);
+
+      const toggleBtn = screen.getByLabelText(/toggle conversation history/i);
+
+      // Panel sits in a wrapper whose horizontal-size classes flip with isOpen
+      // — w-0 collapsed → w-full expanded. Toggling once must expand it.
+      const findPanel = () =>
+        container.querySelector('[class*="basis-0"]') ??
+        container.querySelector('[class*="basis-64"]');
+
+      expect(findPanel()?.className).toContain("w-0");
+      fireEvent.click(toggleBtn);
+      expect(findPanel()?.className).toContain("w-full");
+    });
+
+    it("ignores clicks on the conversation sidebar's stub handlers (commit 4)", () => {
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+
+      render(<VoiceApp />);
+
+      // Open the sidebar so its toolbar is reachable, then click each stub.
+      // Voice doesn't persist conversations yet — the buttons must not crash.
+      fireEvent.click(screen.getByLabelText(/toggle conversation history/i));
+      fireEvent.click(screen.getByText(/new conversation/i));
+      fireEvent.click(screen.getByLabelText(/export conversations/i));
+      fireEvent.click(screen.getByLabelText(/import conversations/i));
+
+      // Sidebar still rendered (no crash) — the message-list debug note
+      // confirms the page hasn't unmounted.
+      expect(screen.getByText(/transport events are logged/i)).toBeDefined();
+    });
+
+    it("opens chat when the settings button is clicked", () => {
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+      const originalHref = window.location.href;
+      const setHref = vi.fn();
+
+      Object.defineProperty(window.location, "href", {
+        configurable: true,
+        get: () => originalHref,
+        set: setHref,
+      });
+
+      try {
+        render(<VoiceApp />);
+        fireEvent.click(screen.getByLabelText("Settings"));
+        expect(setHref).toHaveBeenCalledWith("/chat");
+      } finally {
+        Object.defineProperty(window.location, "href", {
+          configurable: true,
+          value: originalHref,
+          writable: true,
+        });
+      }
     });
   });
 });
