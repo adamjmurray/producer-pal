@@ -271,6 +271,28 @@ describe("useVoicePersistence", () => {
     );
   });
 
+  it("switchConversation updates the URL hash before onForeignRecord runs", async () => {
+    const textRecord = createTestRecord({ id: "chat-1", sessionType: "text" });
+
+    await saveConversation(textRecord);
+    let hashWhenForeignCalled: string | null = null;
+    const onForeignRecord = vi.fn(() => {
+      hashWhenForeignCalled = window.location.hash;
+    });
+
+    const { result } = renderHook(() =>
+      useVoicePersistence({ liveHistory: [], onForeignRecord }),
+    );
+
+    await waitForEffects();
+
+    await act(() => result.current.switchConversation(textRecord.id));
+
+    // The new mode mounts after onForeignRecord settles state, so the hash
+    // must point to the foreign id *before* the callback fires.
+    expect(hashWhenForeignCalled).toBe("#chat-1");
+  });
+
   it("deletes a conversation and refreshes the list", async () => {
     const record = createTestRecord({
       sessionType: "voice",

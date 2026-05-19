@@ -156,7 +156,12 @@ export function App() {
     [setProviderAndModel, settings.provider],
   );
 
-  const isVoiceMode = isRealtimeModel(settings.model);
+  // Mode is derived from savedModel (only updates on save / foreign-record
+  // switch), not the in-modal `model`. This prevents the underlying chat or
+  // voice screen from re-mounting mid-modal whenever the user explores the
+  // provider dropdown — that re-mount used to trigger a foreign-record
+  // callback that immediately reverted the dropdown selection.
+  const isVoiceMode = isRealtimeModel(settings.savedModel);
 
   const sharedModeProps = {
     settings,

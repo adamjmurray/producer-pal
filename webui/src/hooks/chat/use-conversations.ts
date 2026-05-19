@@ -99,13 +99,11 @@ export function useConversations({
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(() => getHashConversationId());
+  // activeIdRef is kept in lockstep with state by every setter below
+  // (setActiveId / clearActiveId), so no effect-sync is needed.
   const activeIdRef = useRef(activeConversationId);
   const activeMetaRef = useRef<ActiveMeta | null>(null);
   const programmaticHashRef = useRef(false);
-
-  useEffect(() => {
-    activeIdRef.current = activeConversationId;
-  }, [activeConversationId]);
 
   useSyncActiveMeta(activeMetaRef, {
     activeModel: activeModelProp,
@@ -238,8 +236,12 @@ export function useConversations({
       if (record.sessionType === "voice") {
         // Voice records can't replay through the chat hook. Hand off to the
         // parent, which switches modes so the voice hook can take over.
-        if (onForeignRecord) onForeignRecord(record);
-        else clearActiveId();
+        // Update the URL hash to the foreign id *before* the mode swap so
+        // the freshly-mounted voice hook picks it up from the hash on mount.
+        if (onForeignRecord) {
+          setActiveId(id);
+          onForeignRecord(record);
+        } else clearActiveId();
 
         return;
       }

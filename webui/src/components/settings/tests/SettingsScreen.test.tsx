@@ -118,6 +118,7 @@ describe("SettingsScreen", () => {
     setApiKey: vi.fn(),
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
+    savedModel: "gemini-2.5-pro",
     thinking: "Default",
     setThinking: vi.fn(),
     temperature: 1,

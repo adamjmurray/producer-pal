@@ -103,15 +103,30 @@ describe("App", () => {
       expect(header).toBeDefined();
     });
 
-    it("renders VoiceApp when the selected model is a realtime model", () => {
+    it("renders VoiceApp when the saved model is a realtime model", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         provider: "openai",
         model: "gpt-realtime-2",
+        savedModel: "gpt-realtime-2",
       });
       render(<App />);
       // VoiceApp shows the Talk button; ChatScreen does not
       expect(document.body.textContent).toMatch(/Talk|Restart/);
+    });
+
+    it("does NOT mount VoiceApp when only the in-modal model is realtime", () => {
+      // Simulates the mid-modal state where the user picked a realtime model
+      // in the provider dropdown but hasn't saved yet. App.tsx routes off
+      // savedModel so the underlying chat screen stays mounted.
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "openai",
+        model: "gpt-realtime-2",
+        savedModel: "gemini-1.5-flash",
+      });
+      render(<App />);
+      expect(document.body.textContent).not.toMatch(/Talk|Restart/);
     });
   });
 

@@ -50,6 +50,14 @@ function createProviderSetter<K extends keyof ProviderSettings>(
  */
 export function useSettings(): UseSettingsReturn {
   const [provider, setProviderState] = useState<Provider>(loadCurrentProvider);
+  // `model` (returned below) is the in-modal value: changing it mid-edit
+  // doesn't switch app modes. `savedModel` only updates on saveSettings or
+  // setProviderAndModel and is what App.tsx routes on — that way picking a
+  // realtime model in the provider dropdown doesn't briefly mount VoiceApp
+  // behind the modal and trigger a foreign-record bounce.
+  const [savedModel, setSavedModel] = useState<string>(
+    () => loadProviderSettings(loadCurrentProvider()).model,
+  );
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
     () => localStorage.getItem("producer_pal_settings_configured") === "true",
   );
@@ -157,6 +165,7 @@ export function useSettings(): UseSettingsReturn {
 
     saveCurrentSettings(provider, enabledTools, allSettings);
     saveSmallModelMode(smallModelMode);
+    setSavedModel(allSettings[provider].model);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
   }, [
@@ -217,6 +226,9 @@ export function useSettings(): UseSettingsReturn {
   // setProvider() then setModel() separately doesn't work because setModel
   // closes over the OLD provider — its setter was memoized when provider
   // had its previous value, so it'd write into the old provider's slot.
+  // Also updates savedModel so App.tsx routes to the new mode immediately
+  // (this is the "settle on this mode now" path used by onForeignRecord when
+  // a conversation from a different mode is opened).
   const setProviderAndModel = useCallback(
     (newProvider: Provider, newModel: string) => {
       setProviderState(newProvider);
@@ -224,6 +236,7 @@ export function useSettings(): UseSettingsReturn {
         ...prev,
         model: newModel,
       }));
+      setSavedModel(newModel);
     },
     [providerStateSetters],
   );
@@ -250,6 +263,7 @@ export function useSettings(): UseSettingsReturn {
     setBaseUrl: hasBaseUrl ? setBaseUrl : undefined,
     model: currentSettings.model,
     setModel,
+    savedModel,
     thinking: currentSettings.thinking,
     setThinking,
     temperature: currentSettings.temperature,

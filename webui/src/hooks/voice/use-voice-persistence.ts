@@ -163,8 +163,15 @@ export function useVoicePersistence(
       }
 
       if (record.sessionType !== "voice") {
-        if (onForeignRecord) onForeignRecord(record);
-        else setActiveId(null);
+        // Foreign record. Update the URL hash to the new id *before* the
+        // mode swap so the freshly-mounted chat hook picks it up from the
+        // hash on mount.
+        if (onForeignRecord) {
+          setActiveId(id);
+          onForeignRecord(record);
+        } else {
+          setActiveId(null);
+        }
 
         return;
       }

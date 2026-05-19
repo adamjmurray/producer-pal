@@ -40,6 +40,10 @@ export interface UseSettingsReturn {
   setBaseUrl?: (url: string) => void;
   model: string;
   setModel: (model: string) => void;
+  /** The persisted model (last save or setProviderAndModel), independent of
+   * in-modal edits. App.tsx routes voice vs chat off this so picking a
+   * realtime model in the dropdown doesn't switch modes until the user saves. */
+  savedModel: string;
   thinking: string;
   setThinking: (thinking: string) => void;
   temperature: number;
