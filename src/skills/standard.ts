@@ -192,6 +192,8 @@ ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 
 **Record Arrangement (runbook):** ppal-record-arrangement returns a deterministic computer-use step plan for Live's transport-record workflow (record button click + transport stop + optional save). It is a pure recipe - no Live API call. Pre-conditions are the caller's responsibility: arm the target track with ppal-update-track first, position the insert marker via ppal-playback (jump-to-cue / start-time). Execute the returned \`steps[]\` via your computer-use tools.
 
+**Load Max-for-Live device (runbook):** ppal-load-m4l-device returns a step plan for Live's browser → track drag-and-drop. \`ppal-create-device\` only loads native Live devices; .amxd's need this runbook. After executing the recipe, confirm via ppal-read-track and set macros via ppal-update-device. Pure recipe - no Live API call.
+
 ### Device Paths
 
 Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=device, \`c\`=chain, \`rc\`=return chain, \`p\`=drum pad

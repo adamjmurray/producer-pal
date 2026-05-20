@@ -18,6 +18,7 @@ import { toolDefReadLiveSet } from "#src/tools/live-set/read-live-set.def.ts";
 import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts";
 import { toolDefDelete } from "#src/tools/operations/delete/delete.def.ts";
 import { toolDefDuplicate } from "#src/tools/operations/duplicate/duplicate.def.ts";
+import { toolDefLoadM4lDevice } from "#src/tools/runbook/load-m4l-device.def.ts";
 import { toolDefRecordArrangement } from "#src/tools/runbook/record-arrangement.def.ts";
 import { toolDefRenderExport } from "#src/tools/runbook/render-export.def.ts";
 import { toolDefCreateScene } from "#src/tools/scene/create-scene.def.ts";
@@ -60,6 +61,7 @@ export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
   toolDefPlayback,
   toolDefRenderExport,
   toolDefRecordArrangement,
+  toolDefLoadM4lDevice,
 ];
 
 /** All standard tool names (frozen). Does not include dev-only tools like ppal-raw-live-api. */
