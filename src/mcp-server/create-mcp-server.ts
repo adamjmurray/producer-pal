@@ -18,6 +18,7 @@ import { toolDefReadLiveSet } from "#src/tools/live-set/read-live-set.def.ts";
 import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts";
 import { toolDefDelete } from "#src/tools/operations/delete/delete.def.ts";
 import { toolDefDuplicate } from "#src/tools/operations/duplicate/duplicate.def.ts";
+import { toolDefRenderExport } from "#src/tools/runbook/render-export.def.ts";
 import { toolDefCreateScene } from "#src/tools/scene/create-scene.def.ts";
 import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
 import { toolDefUpdateScene } from "#src/tools/scene/update-scene.def.ts";
@@ -56,6 +57,7 @@ export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
   toolDefDuplicate,
   toolDefSelect,
   toolDefPlayback,
+  toolDefRenderExport,
 ];
 
 /** All standard tool names (frozen). Does not include dev-only tools like ppal-raw-live-api. */

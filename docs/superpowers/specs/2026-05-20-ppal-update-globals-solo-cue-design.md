@@ -1,9 +1,9 @@
 # Design: ppal-update-globals Solo/Cue-Mode-Toggle (Welle 2 Slice 1)
 
-**Datum:** 2026-05-20
-**Status:** STOP (siehe `2026-05-20-ppal-update-globals-solo-cue-STOP-verdict.md`)
-**Welle:** 2 (MCP-Tool-Erweiterung via LOM-Live-API)
-**Tool:** `ppal-update-live-set` (im Goal konzeptuell "ppal-update-globals")
+**Datum:** 2026-05-20 **Status:** STOP (siehe
+`2026-05-20-ppal-update-globals-solo-cue-STOP-verdict.md`) **Welle:** 2
+(MCP-Tool-Erweiterung via LOM-Live-API) **Tool:** `ppal-update-live-set` (im
+Goal konzeptuell "ppal-update-globals")
 
 ## Ziel
 
@@ -13,12 +13,12 @@ in Ableton Lives Mixer-Logik, ob die Solo-Buttons der Tracks
 
 - **Modus "Solo"** (in-place): den selektierten Track exklusiv hoerbar machen
   (andere Tracks werden gemutet), oder
-- **Modus "Cue"** (PFL / Pre-Listen): den selektierten Track zusaetzlich auf
-  den Cue-Output (separater Headphone-Bus) routen, ohne den Main-Output zu
+- **Modus "Cue"** (PFL / Pre-Listen): den selektierten Track zusaetzlich auf den
+  Cue-Output (separater Headphone-Bus) routen, ohne den Main-Output zu
   beeintraechtigen.
 
-GUI-Position: kleiner Wahlschalter rechts neben dem Master-Track im Session-
-und Arrangement-View, beschriftet "Cue" / "Solo".
+GUI-Position: kleiner Wahlschalter rechts neben dem Master-Track im Session- und
+Arrangement-View, beschriftet "Cue" / "Solo".
 
 ## Angedachtes API-Design (rein hypothetisch, siehe STOP-Verdict)
 
@@ -39,21 +39,20 @@ Lesbarkeit erhoeht ggue. `cueOut: true/false`.
 ## Recon-Pattern (Welle 2)
 
 Anders als Welle 1 (`.als`-Byte-Diff via Computer-Use-Fixtures) ist das
-Recon-Pattern hier **Live-Object-Model-Introspection** gegen ein geoeffnetes
-Set via `scripts/ppal-client.ts` REST-Aufruf an `ppal-raw-live-api`. Property
+Recon-Pattern hier **Live-Object-Model-Introspection** gegen ein geoeffnetes Set
+via `scripts/ppal-client.ts` REST-Aufruf an `ppal-raw-live-api`. Property
 existiert oder existiert nicht.
 
 ## Vorab-Konstanten
 
-- `arm64-Node-v24` PATH-Prefix
-  (`$HOME/.nvm/versions/node/v24.15.0/bin`)
+- `arm64-Node-v24` PATH-Prefix (`$HOME/.nvm/versions/node/v24.15.0/bin`)
 - `npm run check` muss Exit 0
 - Branch-Coverage `>= 95.53%`
 - jscpd `src/0.25`, `scripts/0.5`
 - Plain `git commit` (kein `--no-verify`)
 - Gezielte `git add`-Pfadliste
-- Feature-Branch von echtem `origin/main`
-  (d088cbd9 verifiziert via `git ls-remote`)
+- Feature-Branch von echtem `origin/main` (d088cbd9 verifiziert via
+  `git ls-remote`)
 - Kein Worktree, current branch
 - PR-Ziel: `elchuckobar/producer-pal`
 

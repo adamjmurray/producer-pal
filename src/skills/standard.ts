@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 const codeTransformsSkills = `
@@ -186,6 +187,8 @@ ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 **Layering:** To layer tracks on one instrument, duplicate with routeToSource=true. New track controls the same instrument.
 
 **Locators:** Use ppal-update-live-set to create/rename/delete locators at bar|beat positions. Use locator names with ppal-playback to start or loop from named positions. Use ppal-playback jump-to-next-cue / jump-to-prev-cue to step between locators, or set-or-delete-cue to toggle a locator at the current play head.
+
+**Render export (runbook):** ppal-render-export builds a deterministic computer-use step plan for Ableton's Export Audio/Video dialog (a runbook). It returns JSON only - no Live API call, no disk write. Execute the returned \`steps[]\` via your computer-use tools, then check the post-render file against \`verify\`. Pixel anchors are locale-agnostic; use \`abletonLocale\` only as a meta hint.
 
 ### Device Paths
 

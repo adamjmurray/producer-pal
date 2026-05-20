@@ -1,19 +1,19 @@
 # Plan: ppal-cv-routing (Welle 1 Item 1/6)
 
-**Datum:** 2026-05-20
-**Spec:** `docs/superpowers/specs/2026-05-20-ppal-cv-routing-design.md`
-**Status:** Pre-Recon — wartet auf Fixture-Lieferung vom User
-**Branch (vorab geplant):** `feat/ppal-cv-routing` von `origin/main`
+**Datum:** 2026-05-20 **Spec:**
+`docs/superpowers/specs/2026-05-20-ppal-cv-routing-design.md` **Status:**
+Pre-Recon — wartet auf Fixture-Lieferung vom User **Branch (vorab geplant):**
+`feat/ppal-cv-routing` von `origin/main`
 
 ## 1. Voraussetzungen (vor Code-Start)
 
-| Schritt | Status | Bemerkung |
-|---|---|---|
-| Spec geschrieben | DONE | siehe Spec-Dokument |
-| Recon-Diff-Tool gebaut | DONE | `scripts/recon-cv-routing-diff.mjs` (AIbleton-Root, nicht in producer-pal) |
-| Fixtures `cv-fixture/{A,B,C[,D]}.als` geliefert | PENDING | User-Geste in Live 12 |
-| Diff-Tool ausgewertet | PENDING | nach Lieferung; entscheidet GO vs STOP |
-| `git ls-remote origin main` + `git reset --hard origin/main` | PENDING | vor Branch-Erstellung |
+| Schritt                                                      | Status  | Bemerkung                                                                  |
+| ------------------------------------------------------------ | ------- | -------------------------------------------------------------------------- |
+| Spec geschrieben                                             | DONE    | siehe Spec-Dokument                                                        |
+| Recon-Diff-Tool gebaut                                       | DONE    | `scripts/recon-cv-routing-diff.mjs` (AIbleton-Root, nicht in producer-pal) |
+| Fixtures `cv-fixture/{A,B,C[,D]}.als` geliefert              | PENDING | User-Geste in Live 12                                                      |
+| Diff-Tool ausgewertet                                        | PENDING | nach Lieferung; entscheidet GO vs STOP                                     |
+| `git ls-remote origin main` + `git reset --hard origin/main` | PENDING | vor Branch-Erstellung                                                      |
 
 ## 2. Recon-Auswertung (sofort nach Fixture-Lieferung)
 
@@ -23,13 +23,16 @@ node /Users/macuser/Desktop/AIbleton/scripts/recon-cv-routing-diff.mjs <fixture-
 
 Tool-Output entscheidet:
 
-- **GO** wenn: gemeinsamer Upper, Target+Lower indizieren Channel, kein Leak in D
-- **STOP** wenn: Upper enthaelt Interface-Display-Name oder Lower nicht-numerisch
+- **GO** wenn: gemeinsamer Upper, Target+Lower indizieren Channel, kein Leak in
+  D
+- **STOP** wenn: Upper enthaelt Interface-Display-Name oder Lower
+  nicht-numerisch
 - **AMBIVALENT** wenn: zusaetzliche Fixtures noetig → User-Frage
 
 ## 3. GO-Pfad — Code-Aenderungen (minimal-invasiv)
 
-**Datei A: `src/automation/als-routing.ts`** (heute 236 Zeilen, +N Vocabulary-Eintraege; keine Strukturaenderung).
+**Datei A: `src/automation/als-routing.ts`** (heute 236 Zeilen, +N
+Vocabulary-Eintraege; keine Strukturaenderung).
 
 Eintrag pro neuem Key in `ROUTING_TARGETS["audio-out"]`:
 
@@ -48,12 +51,12 @@ Eintrag pro neuem Key in `ROUTING_TARGETS["audio-out"]`:
 ```
 
 **Datei B: `src/automation/tests/als-routing.test.ts`** Zeile 37 ("enthaelt
-exakt die Recon-Tripel"): hardcoded Tabellen-Assertion mit den gleichen
-neuen Eintraegen erweitern. **WICHTIG (Premortem R2)**: beide Tabellen
-muessen byte-identisch synchron sein.
+exakt die Recon-Tripel"): hardcoded Tabellen-Assertion mit den gleichen neuen
+Eintraegen erweitern. **WICHTIG (Premortem R2)**: beide Tabellen muessen
+byte-identisch synchron sein.
 
-**KEIN Helper-File-Edit, KEIN CLI-Dispatch-Edit.** Test-Infrastruktur
-greift automatisch:
+**KEIN Helper-File-Edit, KEIN CLI-Dispatch-Edit.** Test-Infrastruktur greift
+automatisch:
 
 - `describe.each` ueber alle Tripel im Roundtrip-Test
 - "andere 3 Routings byte-unveraendert" Voll-XML-Diff
@@ -61,34 +64,33 @@ greift automatisch:
 
 ## 4. STOP-Pfad — Doku statt Code
 
-- `docs/superpowers/specs/2026-05-20-ppal-cv-routing-STOP-verdict.md`
-  schreiben (analog `…-crossfade-expert-STOP-verdict.md`).
-- Inhalt: Recon-Bytes-Auszug, Leak-Beweis, Begruendung warum closed
-  vocabulary nicht moeglich.
+- `docs/superpowers/specs/2026-05-20-ppal-cv-routing-STOP-verdict.md` schreiben
+  (analog `…-crossfade-expert-STOP-verdict.md`).
+- Inhalt: Recon-Bytes-Auszug, Leak-Beweis, Begruendung warum closed vocabulary
+  nicht moeglich.
 - Memory-Eintrag `ppal-cv-routing-stop-verdict.md`.
 - NEXT-GOAL.md aktualisieren: Item 1/6 als STOP entschieden.
 
 ## 5. Subagent-TDD-Prompt (GO-Pfad, vorformuliert)
 
 > Slice: ppal-cv-routing (Vocabulary-Erweiterung). Branch: feat/ppal-cv-
-> routing. Erweitere `src/automation/als-routing.ts` `ROUTING_TARGETS
-> ["audio-out"]` um genau folgende Eintraege (byte-belegt aus Recon-
-> Fixtures):
+> routing. Erweitere `src/automation/als-routing.ts`
+> `ROUTING_TARGETS ["audio-out"]` um genau folgende Eintraege (byte-belegt aus
+> Recon- Fixtures):
 >
 > [INSERT-RECON-BYTE-TRIPEL-HIER]
 >
 > Spiegele dieselben Eintraege in der Hard-Coded-Assertion in
 > `src/automation/tests/als-routing.test.ts` Block "enthaelt exakt die
-> Recon-Tripel". WICHTIG: beide Tabellen muessen identisch sein,
-> sonst Test-Fail.
+> Recon-Tripel". WICHTIG: beide Tabellen muessen identisch sein, sonst
+> Test-Fail.
 >
-> KEINE anderen Datei-Aenderungen. KEIN Helper-Code, KEIN Dispatch,
-> KEINE Schema-Aenderung. Vor Commit: `npm run fix && npm run check`
-> mit arm64-Node-v24:
-> `export PATH=/Users/macuser/.nvm/versions/node/v24.15.0/bin:$PATH`.
-> Branch-Cov muss ≥ 95.53% bleiben (Vocabulary-Eintraege addieren keine
-> Branches, also stabil). Plain `git commit` (kein --no-verify),
-> gezielte `git add` Pfadliste.
+> KEINE anderen Datei-Aenderungen. KEIN Helper-Code, KEIN Dispatch, KEINE
+> Schema-Aenderung. Vor Commit: `npm run fix && npm run check` mit
+> arm64-Node-v24:
+> `export PATH=/Users/macuser/.nvm/versions/node/v24.15.0/bin:$PATH`. Branch-Cov
+> muss ≥ 95.53% bleiben (Vocabulary-Eintraege addieren keine Branches, also
+> stabil). Plain `git commit` (kein --no-verify), gezielte `git add` Pfadliste.
 
 ## 6. Stage-1-Review (eigenes)
 
@@ -101,9 +103,9 @@ greift automatisch:
 
 ## 7. Stage-2-Review via codex:rescue (PFLICHT)
 
-`codex:rescue` mit dem PR-Branch. Nicht report-glaeubig — jeden Finding
-selbst verifizieren. Bekannte Defekt-Klassen die Codex schon mal in
-diesem Repo fand: ungebundene Regex, Silent-Mis-Target, kind-Verwechslung,
+`codex:rescue` mit dem PR-Branch. Nicht report-glaeubig — jeden Finding selbst
+verifizieren. Bekannte Defekt-Klassen die Codex schon mal in diesem Repo fand:
+ungebundene Regex, Silent-Mis-Target, kind-Verwechslung,
 Display-String-Inkonsistenz mit Target.
 
 ## 8. Verify-Gate
@@ -116,12 +118,12 @@ npm run fix && npm run check
 
 ## 9. PR + Merge
 
-- Branch: `feat/ppal-cv-routing` von echtem `origin/main`
-  (`git ls-remote` + `reset --hard` + `rev-parse` verify).
-- PR-Titel (GO): `ppal-cv-routing: CV-Out Vocabulary-Erweiterung (N
-  Channels byte-belegt)`.
-- PR-Titel (STOP): `ppal-cv-routing: STOP-Verdict (Item 1/6 dokumentierte
-  Grenze)`.
+- Branch: `feat/ppal-cv-routing` von echtem `origin/main` (`git ls-remote` +
+  `reset --hard` + `rev-parse` verify).
+- PR-Titel (GO):
+  `ppal-cv-routing: CV-Out Vocabulary-Erweiterung (N Channels byte-belegt)`.
+- PR-Titel (STOP):
+  `ppal-cv-routing: STOP-Verdict (Item 1/6 dokumentierte Grenze)`.
 - Merge: bei User-Wort oder bei Mandat autonom.
 
 ## 10. Memory + NEXT-GOAL
