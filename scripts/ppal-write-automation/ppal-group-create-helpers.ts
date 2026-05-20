@@ -12,6 +12,8 @@ import {
 import {
   type GroupCreateSpec,
   getGroupTracks,
+  inferGroupTrackId,
+  inferNextPointeeId,
   injectGroupCreate,
   synthesizeGroupTrack,
 } from "#src/automation/als-group-create.ts";
@@ -57,7 +59,8 @@ export function runGroupCreate(
  * @returns Exit-Code: 0 Erfolg, 1 Fehler, 2 Open-Set-Guard.
  */
 function runSet(alsPath: string, specPath: string | undefined): number {
-  const spec = parseSpecFile(specPath);
+  const xml = readAls(alsPath);
+  const spec = parseSpecFile(specPath, xml);
 
   if (spec == null) {
     process.stderr.write(
@@ -75,7 +78,6 @@ function runSet(alsPath: string, specPath: string | undefined): number {
     return 2;
   }
 
-  const xml = readAls(alsPath);
   let patched: string;
 
   try {
@@ -206,24 +208,36 @@ function trackGroupIdOf(
 
 /**
  * `--group-spec-file` lesen und als `GroupCreateSpec` validieren.
- * Fehlend/JSON-Fehler/Typ-Verstoss → `null` (Caller exit 1). Tiefe
- * Wert-Haertung macht `injectGroupCreate` (Throw, kein Partial).
+ * `groupTrackId` und `nextPointeeId` sind OPTIONAL (Slice
+ * ppal-grouptrack-id-inference): bei Auslassung leitet die Funktion sie
+ * aus dem Vorher-XML ab (`inferGroupTrackId` = max(Track-Id)+1,
+ * `inferNextPointeeId` = `<NextPointeeId>`-Tag). Fehlend/JSON-Fehler/
+ * Typ-Verstoss bei den uebrigen Pflichtfeldern → `null` (Caller exit 1).
+ * Tiefe Wert-Haertung macht `injectGroupCreate` (Throw, kein Partial).
+ *
  * @param path - Roher `--group-spec-file`-Flag-Wert (oder undefined).
- * @returns Spec oder `null` bei fehlendem/ungueltigem Flag.
+ * @param xml - Vorher-XML zum Ableiten inferred-Felder.
+ * @returns Vollstaendige Spec oder `null` bei fehlendem/ungueltigem Flag.
  */
-function parseSpecFile(path: string | undefined): GroupCreateSpec | null {
-  return parseJsonFile<GroupCreateSpec>(
+function parseSpecFile(
+  path: string | undefined,
+  xml: string,
+): GroupCreateSpec | null {
+  const partial = parseJsonFile<Partial<GroupCreateSpec>>(
     path,
-    (data): data is GroupCreateSpec => {
+    (data): data is Partial<GroupCreateSpec> => {
       if (data == null || typeof data !== "object") return false;
       const r = data as Record<string, unknown>;
+      const idOk = r.groupTrackId == null || typeof r.groupTrackId === "number";
+      const nextOk =
+        r.nextPointeeId == null || typeof r.nextPointeeId === "number";
       const insertOk =
         r.insertAfterTrackId == null ||
         typeof r.insertAfterTrackId === "number";
 
       return (
-        typeof r.groupTrackId === "number" &&
-        typeof r.nextPointeeId === "number" &&
+        idOk &&
+        nextOk &&
         typeof r.returnCount === "number" &&
         typeof r.groupName === "string" &&
         typeof r.color === "number" &&
@@ -233,4 +247,20 @@ function parseSpecFile(path: string | undefined): GroupCreateSpec | null {
       );
     },
   );
+
+  if (partial == null) return null;
+
+  // Inferenz nur fuer fehlende Felder (explizite Eingabe = Override).
+  const groupTrackId = partial.groupTrackId ?? inferGroupTrackId(xml);
+  const nextPointeeId = partial.nextPointeeId ?? inferNextPointeeId(xml);
+
+  return {
+    groupTrackId,
+    nextPointeeId,
+    returnCount: partial.returnCount as number,
+    groupName: partial.groupName as string,
+    color: partial.color as number,
+    memberTrackIds: partial.memberTrackIds as number[],
+    insertAfterTrackId: partial.insertAfterTrackId ?? null,
+  };
 }

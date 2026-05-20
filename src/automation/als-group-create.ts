@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/** Eingabe-Spec fuer `group-create set` (alles explizit, nicht abgeleitet). */
+/** Eingabe-Spec fuer `group-create set`. `groupTrackId` und `nextPointeeId`
+ *  sind seit Slice ppal-grouptrack-id-inference (Mai 2026) OPTIONAL — bei
+ *  Auslassung leitet der Helper sie aus dem Ziel-Set ab (`max(Track-Id)+1`
+ *  bzw. `<NextPointeeId Value=…>`). Explizite Eingabe bleibt Override. */
 export interface GroupCreateSpec {
   groupTrackId: number;
   nextPointeeId: number;
@@ -12,6 +15,51 @@ export interface GroupCreateSpec {
   color: number;
   memberTrackIds: number[];
   insertAfterTrackId: number | null;
+}
+
+/**
+ * `groupTrackId` aus dem Vorher-XML ableiten: `max(Id)+1` ueber alle
+ * MidiTrack/AudioTrack/ReturnTrack/GroupTrack-Tags. Byte-belegt durch
+ * 4-Fixture-Recon (grp0/grp1/grp2 max=15 -> Id=16; g2-id-B max=18 -> Id=19;
+ * Verdict 2026-05-20-ppal-grouptrack-id-inference-verdict.md). Live fuellt
+ * KEINE Track-Id-Luecken, sondern allokiert strikt max+1.
+ *
+ * @param xml - Roher .als-XML-Inhalt des Vorher-Sets.
+ * @returns Die naechste freie GroupTrack-Id.
+ */
+export function inferGroupTrackId(xml: string): number {
+  const trackIdRegex =
+    /<(?:MidiTrack|AudioTrack|ReturnTrack|GroupTrack) Id="(\d+)"/g;
+  let maxId = 0;
+
+  for (const m of xml.matchAll(trackIdRegex)) {
+    const id = Number.parseInt(m[1] as string, 10);
+
+    if (id > maxId) maxId = id;
+  }
+
+  return maxId + 1;
+}
+
+/**
+ * `nextPointeeId` aus dem Vorher-XML ableiten: Wert des set-globalen
+ * `<NextPointeeId Value="N" />`-Tags. Dies ist der Allokations-Anker fuer
+ * alle in `synthesizeGroupTrack` sequentiell vergebenen Pointee-Ids.
+ *
+ * @param xml - Roher .als-XML-Inhalt des Vorher-Sets.
+ * @returns NextPointeeId-Wert aus dem Set.
+ * @throws Wenn der Tag fehlt (keine ableitbare Spec).
+ */
+export function inferNextPointeeId(xml: string): number {
+  const m = xml.match(/<NextPointeeId Value="(\d+)"/);
+
+  if (m == null) {
+    throw new Error(
+      "inferNextPointeeId: <NextPointeeId> Tag im Vorher-Set nicht gefunden",
+    );
+  }
+
+  return Number.parseInt(m[1] as string, 10);
 }
 
 /** Ein per `getGroupTracks` gelesener GroupTrack. */
