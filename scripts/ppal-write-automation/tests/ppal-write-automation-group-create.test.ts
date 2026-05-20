@@ -144,6 +144,15 @@ describe("runGroupCreate guards", () => {
     );
   });
 
+  it("Codex-Final-Pass: --force umgeht den Open-Set-Guard (exit 0)", () => {
+    vi.spyOn(groupCreateInternals, "isSetLikelyOpen").mockReturnValue(true);
+    const f = specFile(validSpec);
+
+    expect(
+      run(["set", "--als", tmpCopy(), "--group-spec-file", f, "--force"]).code,
+    ).toBe(0);
+  });
+
   it("exit 1 when injectGroupCreate throws (precondition)", () => {
     const f = specFile({ ...validSpec, returnCount: 5 });
 

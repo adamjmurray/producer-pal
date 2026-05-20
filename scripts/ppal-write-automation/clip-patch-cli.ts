@@ -316,9 +316,18 @@ export function isOnlyWindowChanged(
   for (let i = 0; i < replacements.length; i++) {
     const r = replacements[i] as ReplacementRange;
 
-    if (r.start < 0 || r.end > xml.length || r.start >= r.end) {
+    // Codex-Final-Pass-Defense: NaN-Bounds slipen durch `<`/`>`/`>=`-Vergleiche
+    // (NaN-Vergleiche sind immer false) und `slice` coerced NaN zu 0. Bounds
+    // muessen Ganzzahlen >= 0 sein.
+    if (
+      !Number.isInteger(r.start) ||
+      !Number.isInteger(r.end) ||
+      r.start < 0 ||
+      r.end > xml.length ||
+      r.start >= r.end
+    ) {
       throw new Error(
-        `isOnlyWindowChanged: Range [${r.start},${r.end}) ausserhalb [0,${xml.length})-Bereich`,
+        `isOnlyWindowChanged: Range [${r.start},${r.end}) ausserhalb [0,${xml.length})-Bereich oder nicht-ganzzahlig`,
       );
     }
 

@@ -46,20 +46,32 @@ export function inferGroupTrackId(xml: string): number {
  * `<NextPointeeId Value="N" />`-Tags. Dies ist der Allokations-Anker fuer
  * alle in `synthesizeGroupTrack` sequentiell vergebenen Pointee-Ids.
  *
+ * Codex-Final-Pass-Defense: wenn das Set MEHRERE `<NextPointeeId>`-Tags
+ * enthaelt (z.B. nested in Wrapper-Strukturen vor dem set-globalen Tag),
+ * waere die Wahl mehrdeutig und der Allokations-Counter koennte am
+ * falschen Tag landen. Echte .als-Files haben immer genau 1 Tag — wir
+ * lehnen alles andere defensiv ab.
+ *
  * @param xml - Roher .als-XML-Inhalt des Vorher-Sets.
  * @returns NextPointeeId-Wert aus dem Set.
- * @throws Wenn der Tag fehlt (keine ableitbare Spec).
+ * @throws Wenn der Tag fehlt ODER mehrfach vorkommt.
  */
 export function inferNextPointeeId(xml: string): number {
-  const m = xml.match(/<NextPointeeId Value="(\d+)"/);
+  const matches = [...xml.matchAll(/<NextPointeeId Value="(\d+)" \/>/g)];
 
-  if (m == null) {
+  if (matches.length === 0) {
     throw new Error(
       "inferNextPointeeId: <NextPointeeId> Tag im Vorher-Set nicht gefunden",
     );
   }
 
-  return Number.parseInt(m[1] as string, 10);
+  if (matches.length > 1) {
+    throw new Error(
+      `inferNextPointeeId: erwarte genau 1 <NextPointeeId> Tag, gefunden ${matches.length} (mehrdeutiger Allokations-Anker)`,
+    );
+  }
+
+  return Number.parseInt(matches[0]?.[1] as string, 10);
 }
 
 /** Ein per `getGroupTracks` gelesener GroupTrack. */
