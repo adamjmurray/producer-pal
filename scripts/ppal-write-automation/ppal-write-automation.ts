@@ -471,8 +471,10 @@ export function runCli(argv: string[]): number {
 
     if (handler != null) return handler(rest, flags);
 
+    const known = Object.keys(DISPATCH).sort().join(", ");
+
     process.stderr.write(
-      `FEHLER: Unbekanntes Subcommand "${subcommand}". Nutze list oder write.\n`,
+      `FEHLER: Unbekanntes Subcommand "${subcommand}". Verfuegbar: ${known}.\n`,
     );
 
     return 1;
