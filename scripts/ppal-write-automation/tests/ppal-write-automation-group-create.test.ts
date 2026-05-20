@@ -6,7 +6,7 @@
 import { copyFileSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readAls } from "#src/automation/als-file.ts";
 import { getGroupTracks } from "#src/automation/als-group-create.ts";
 import { parseFlags } from "../clip-patch-cli.ts";
@@ -77,6 +77,13 @@ function run(argv: string[]): { code: number; out: string } {
 
   return { code, out };
 }
+
+beforeEach(() => {
+  // Default: Open-Set-Guard auf "closed", damit Tests robust gegen ein lokal
+  // laufendes Producer-Pal auf Port 3350 sind. Tests, die exit 2 erwarten,
+  // ueberschreiben das via eigenem vi.spyOn(...).mockReturnValue(true).
+  vi.spyOn(groupCreateInternals, "isSetLikelyOpen").mockReturnValue(false);
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
