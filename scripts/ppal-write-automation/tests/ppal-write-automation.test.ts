@@ -9,7 +9,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { runCli } from "../ppal-write-automation.ts";
-import * as alsFile from "#src/automation/als-file.ts";
+import { ppalWriteAutomationInternals } from "../ppal-write-automation-internals.ts";
 import { readAls } from "#src/automation/als-file.ts";
 import * as envelopeWriter from "#src/automation/als-envelope-writer.ts";
 import { injectClipEnvelope } from "#src/automation/als-envelope-writer.ts";
@@ -60,7 +60,9 @@ beforeEach(() => {
   // Default: Open-Set-Guard auf "closed", damit Tests robust gegen ein lokal
   // laufendes Producer-Pal auf Port 3350 sind. Tests, die exit 2 erwarten,
   // ueberschreiben das via eigenem vi.spyOn(...).mockReturnValue(true).
-  vi.spyOn(alsFile, "isSetLikelyOpen").mockReturnValue(false);
+  vi.spyOn(ppalWriteAutomationInternals, "isSetLikelyOpen").mockReturnValue(
+    false,
+  );
 });
 
 afterEach(() => {
@@ -475,7 +477,9 @@ describe("CLI Error- und Args-Branches (Slice 2)", () => {
 
   it("open-set-Guard ohne --force -> Exit 2 wenn Set offen scheint", () => {
     const tmpPath = createTmpAls();
-    const guardSpy = vi.spyOn(alsFile, "isSetLikelyOpen").mockReturnValue(true);
+    const guardSpy = vi
+      .spyOn(ppalWriteAutomationInternals, "isSetLikelyOpen")
+      .mockReturnValue(true);
 
     try {
       let code = 0;

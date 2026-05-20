@@ -13,7 +13,6 @@ import {
   readAls,
   writeAls,
   backupAls,
-  isSetLikelyOpen,
   assertOnlyEnvelopeChanged,
 } from "#src/automation/als-file.ts";
 import {
@@ -44,6 +43,7 @@ import { runTempo } from "./ppal-tempo-helpers.ts";
 import { runTimesig } from "./ppal-timesig-helpers.ts";
 import { runTrackGroup } from "./ppal-track-group-helpers.ts";
 import { runWarpMarker } from "./ppal-warp-markers-helpers.ts";
+import { ppalWriteAutomationInternals } from "./ppal-write-automation-internals.ts";
 
 /** Parsed arguments for the `write` subcommand. */
 interface WriteArgs {
@@ -191,7 +191,7 @@ function runWrite(flags: Record<string, string>): number {
       : validateBreakpoints(parsed, { min: -Infinity, max: Infinity });
 
   // Open-set guard
-  if (!args.force && isSetLikelyOpen()) {
+  if (!args.force && ppalWriteAutomationInternals.isSetLikelyOpen()) {
     process.stderr.write(
       "Set scheint offen (Port 3350). Schliesse es in Ableton oder nutze --force.\n",
     );
@@ -321,7 +321,7 @@ function runWriteArrangement(flags: Record<string, string>): number {
     return fail("FEHLER: --als, --track und --breakpoints erforderlich\n");
   }
 
-  if (isSetLikelyOpen() && !force) {
+  if (ppalWriteAutomationInternals.isSetLikelyOpen() && !force) {
     process.stderr.write(
       "Set scheint offen (Port 3350). Schliesse es in Ableton oder nutze --force.\n",
     );
