@@ -121,6 +121,36 @@ describe("runArrangementLoop guards", () => {
   });
 });
 
+describe("runArrangementLoop Window-Guard-Migration (Slice ppal-window-guard)", () => {
+  // Regression-Beweis (NICHT Staerkungs-Beweis): die Migration auf die
+  // ReplacementRange-API erhaelt fuer diese Single-Range-Call-Site
+  // (Range = <Transport>-Fenster) die alte Prefix/Suffix-Semantik. Eine
+  // Mutation AUSSERHALB des <Transport>-Fensters (hier: Ableton-Root-Tag,
+  // Prefix-Bereich) wird vom Guard weiterhin gefangen — der alte Guard
+  // haette das ebenfalls per Prefix-Check gefangen. Der eigentliche
+  // Staerkungs-Beweis (Gap-Mutation zwischen Multi-Range-Subranges) liegt
+  // in window-guard.test.ts (Differenzial-Test).
+  it("Outside-<Transport>-Mutation im Apply -> Exit 1 (Migration nicht regressiert)", () => {
+    const f = tmpCopy();
+    const realPatch = arrLoopInternals.patchArrangementLoop;
+
+    vi.spyOn(arrLoopInternals, "patchArrangementLoop").mockImplementation(
+      (xml: string, patch) => {
+        const real = realPatch(xml, patch);
+
+        // Reale Patch-Wirkung im <Transport>-Fenster ERHALTEN, aber
+        // zusaetzlich ein Byte AUSSERHALB des <Transport>-Blocks
+        // mutieren (Ableton-Root-Tag manipulieren).
+        return real.replace("<Ableton ", "<AbletoN ");
+      },
+    );
+
+    const r = run(["set", "--als", f, "--length", "8", "--force"]);
+
+    expect(r.code).toBe(1);
+  });
+});
+
 describe("runArrangementLoop get/set", () => {
   it("get liefert exit 0 + JSON", () => {
     const r = run(["get", "--als", tmpCopy()]);

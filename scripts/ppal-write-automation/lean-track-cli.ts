@@ -5,6 +5,7 @@
 
 import { backupAls, readAls, writeAls } from "#src/automation/als-file.ts";
 import { isOnlyWindowChanged } from "./clip-patch-cli.ts";
+import { singleRangeReplacement } from "./shared-cli-helpers.ts";
 
 /**
  * Einheitlich normalisierte Block-Lokation: `locateTrackBlock` liefert
@@ -221,7 +222,11 @@ function runLeanSet<Ctx, Exp>(
     return 1;
   }
 
-  if (!isOnlyWindowChanged(xml, updated, loc.start, loc.end)) {
+  if (
+    !isOnlyWindowChanged(xml, updated, [
+      singleRangeReplacement(xml, updated, loc.start, loc.end),
+    ])
+  ) {
     process.stderr.write(cfg.windowErrMsg);
 
     return 1;

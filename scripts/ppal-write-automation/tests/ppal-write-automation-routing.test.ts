@@ -213,6 +213,65 @@ describe("runRouting Flag-/Guard-Exit-Codes", () => {
   });
 });
 
+describe("runRouting Window-Guard-Migration (Slice ppal-window-guard)", () => {
+  // Strukturelle Charakterisierung (NICHT Staerkungs-Beweis):
+  // lean-track-cli baut updated als
+  // xml.slice(0, loc.start) + newBlock + xml.slice(loc.end), d.h. der
+  // Apply-Pfad ist STRUKTURELL auf das Track-Fenster eingegrenzt. Diese
+  // Invariante bedeutet: jede Spy-Mutation am Block-Output landet
+  // INNERHALB von [loc.start, loc.start+|newBlock|) -> Guard mit Range =
+  // ganzes Track-Fenster bleibt gruen, Prefix/Suffix unveraendert.
+  // Aufruf-seitig vereinbart, dass kein verdeckter Out-of-Window-Defekt
+  // existieren KANN (Mitigation R2 der Premortem dokumentiert). Der
+  // eigentliche Staerkungs-Beweis (Gap-Mutation in Multi-Range) liegt in
+  // window-guard.test.ts (Differenzial-Test).
+  it("Block-Apply strukturell aufs Track-Fenster eingegrenzt (Charakterisierung)", () => {
+    const f = tmpCopy();
+    const before = readAls(f);
+    const realPatch = routingInternals.patchTrackRouting;
+
+    vi.spyOn(routingInternals, "patchTrackRouting").mockImplementation(
+      (block: string, kind, target) => {
+        // Strukturvalide Variante (echte Routing-Aenderung), aber wir
+        // koennen NICHTS ausserhalb des Blocks aendern — das beweist:
+        return realPatch(block, kind, target); // Identitaet zur echten Patch-Logik
+      },
+    );
+
+    const closed = forceSetClosed();
+
+    const r = captureOut(() =>
+      runRouting(
+        [
+          "set",
+          "--als",
+          f,
+          "--track",
+          MIDI_TRACK,
+          "--kind",
+          "audio-out",
+          "--target",
+          "none",
+        ],
+        parseFlags,
+      ),
+    );
+
+    closed();
+    expect(r.code).toBe(0);
+
+    // Charakterisierung: Prefix vor Track + Suffix nach Track
+    // garantiert byte-identisch zu before (Out-of-Window-Defekt ist
+    // strukturell ausgeschlossen).
+    const after = readAls(f);
+    const tBefore = locateTrackBlock(before, MIDI_TRACK);
+    const delta = after.length - before.length;
+
+    expect(after.slice(0, tBefore.index)).toBe(before.slice(0, tBefore.index));
+    expect(after.slice(tBefore.end + delta)).toBe(before.slice(tBefore.end));
+  });
+});
+
 describe.each([
   ["MIDI", MIDI_TRACK],
   ["Audio", AUDIO_TRACK],

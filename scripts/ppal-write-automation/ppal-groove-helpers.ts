@@ -31,10 +31,25 @@ import {
   parseFlags,
   warnDuplicateKeys,
 } from "./clip-patch-cli.ts";
+import { singleRangeReplacement } from "./shared-cli-helpers.ts";
 
 /** Shared Open-Set (Port 3350) guard message for the writing subcommands. */
 const OPEN_SET_MSG =
   "Set scheint offen (Port 3350). Schliesse es in Ableton oder nutze --force.\n";
+
+/**
+ * Spy-Seam fuer den Window-Guard-Beweis am `tune`-Aufrufer (Slice
+ * ppal-window-guard, Mitigation R2): `patchGrooveTune` arbeitet auf dem
+ * gesamten XML, daher ist eine Outside-Window-Mutation strukturell
+ * moeglich. Tests via `vi.spyOn(grooveInternals, "patchGrooveTune")`
+ * beweisen, dass der Guard am Aufruf-Punkt feuert. Default-Verhalten =
+ * direkte Delegation (byte-/verhaltensgleich zu vorher).
+ *
+ * Hinweis: `assign` (`setClipGrooveId`) ist block-scoped — eine
+ * Outside-Window-Mutation ist dort strukturell ausgeschlossen, daher
+ * keine zusaetzliche Spy-Seam noetig (Charakterisierung im Test).
+ */
+export const grooveInternals = { patchGrooveTune };
 
 /**
  * Run the `groove list|assign|tune` subcommand.
@@ -228,8 +243,9 @@ function runGrooveAssign(rest: string[]): number {
   const loc = locateClipWithinTrack(xml, track, clip);
   const patchedBlock = setClipGrooveId(loc.block, grooveId);
   const updated = xml.slice(0, loc.start) + patchedBlock + xml.slice(loc.end);
+  const range = singleRangeReplacement(xml, updated, loc.start, loc.end);
 
-  if (!isOnlyWindowChanged(xml, updated, loc.start, loc.end)) {
+  if (!isOnlyWindowChanged(xml, updated, [range])) {
     process.stderr.write(
       "FEHLER: unerwartete Änderung außerhalb des Ziel-Clip-Blocks\n",
     );
@@ -315,7 +331,12 @@ function runGrooveTune(rest: string[]): number {
 
   try {
     for (const { key, value } of pairs) {
-      workingXml = patchGrooveTune(workingXml, grooveId, key, value);
+      workingXml = grooveInternals.patchGrooveTune(
+        workingXml,
+        grooveId,
+        key,
+        value,
+      );
     }
   } catch (err) {
     process.stderr.write(
@@ -325,7 +346,11 @@ function runGrooveTune(rest: string[]): number {
     return 1;
   }
 
-  if (!isOnlyWindowChanged(xml, workingXml, loc0.start, loc0.end)) {
+  if (
+    !isOnlyWindowChanged(xml, workingXml, [
+      singleRangeReplacement(xml, workingXml, loc0.start, loc0.end),
+    ])
+  ) {
     process.stderr.write(
       "FEHLER: unerwartete Änderung außerhalb des Ziel-Groove-Eintrags\n",
     );

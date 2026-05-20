@@ -11,6 +11,7 @@ import {
   isSetLikelyOpen,
 } from "#src/automation/als-file.ts";
 import { locateTrackBlock } from "#src/automation/als-param-resolver.ts";
+import { singleRangeReplacement } from "./shared-cli-helpers.ts";
 
 /** Absolute byte range + text of a clip block within the whole .als XML. */
 export interface ClipLocation {
@@ -270,37 +271,82 @@ export function collectKeyValuePairs(
 }
 
 /**
- * Generic, locator-agnostic Mitigation-B guard (Slice-2-FIX-1 Längendelta).
+ * Eine zusammenhaengende Byte-Subrange im Original-`xml`, samt der Bytes,
+ * die der Apply-Schritt fuer dieses Fenster in `updated` deponiert. Halboffen
+ * `[start, end)`; `replacement` darf jede Laenge haben (auch `""`).
+ */
+export interface ReplacementRange {
+  /** inklusive Start-Position im Original-`xml`. */
+  start: number;
+  /** exklusive End-Position im Original-`xml`. */
+  end: number;
+  /** Neue Bytes, die im `updated` an dieser Stelle stehen. */
+  replacement: string;
+}
+
+/**
+ * Subrange-spec-getriebener Window-Guard (Slice-2-FIX-1 Längendelta verschärft).
  *
- * Asserts that the patch transform changed ONLY bytes inside the half-open
- * window `[start, end)` of the original `xml`: the prefix `[0, start)` is
- * byte-identical AND the suffix from the original `end` is byte-identical
- * (in the possibly-longer `updated` that suffix begins at `end + delta`).
+ * Rekonstruiert die erwartete `updated`-Form aus dem Original-`xml` plus der
+ * Liste deklarierter `ReplacementRange`s und vergleicht byte-identisch. Jede
+ * Mutation AUSSERHALB der deklarierten Subranges fuehrt zu Mismatch und
+ * `false` — auch im Gap zwischen zwei Subranges (genau der Schutz, den die
+ * alte Prefix/Suffix-Variante nicht hatte). Innerhalb der Subranges darf der
+ * Aufrufer beliebig patchen.
  *
- * This is the exact formula used by the clip-scoped `set` path; extracted
- * here so the groove `tune` path (Pool-entry offsets via `locateGrooveEntry`)
- * can reuse it WITHOUT re-implementing the formula. Behavior of the existing
- * clip-scoped guard in `runSet` is byte-for-byte equivalent — Slice-3/4 tests
- * remain the net (unchanged).
+ * Validierung (throw): leere Range-Liste, nicht aufsteigend sortiert,
+ * Ueberlappung, oder ausserhalb des `xml`-Bereichs (`start < 0`,
+ * `end > xml.length`, `start >= end`).
  *
- * @param xml - Original raw `.als` XML before patching
- * @param updated - Whole XML after patching
- * @param start - Window start offset (absolute, into `xml`)
- * @param end - Window end offset (absolute, into `xml`)
- * @returns True iff only bytes within `[start, end)` changed
+ * @param xml - Original-XML vor dem Patch.
+ * @param updated - Komplettes XML nach dem Patch.
+ * @param replacements - Aufsteigend sortierte, nicht ueberlappende Subranges.
+ * @returns `true` genau dann wenn nur die deklarierten Subranges differieren.
+ * @throws Bei verletzter Validierung (siehe oben).
  */
 export function isOnlyWindowChanged(
   xml: string,
   updated: string,
-  start: number,
-  end: number,
+  replacements: ReplacementRange[],
 ): boolean {
-  const delta = updated.length - xml.length;
+  if (replacements.length === 0) {
+    throw new Error("isOnlyWindowChanged: leere Range-Liste");
+  }
 
-  return (
-    xml.slice(0, start) === updated.slice(0, start) &&
-    xml.slice(end) === updated.slice(end + delta)
-  );
+  for (let i = 0; i < replacements.length; i++) {
+    const r = replacements[i] as ReplacementRange;
+
+    if (r.start < 0 || r.end > xml.length || r.start >= r.end) {
+      throw new Error(
+        `isOnlyWindowChanged: Range [${r.start},${r.end}) ausserhalb [0,${xml.length})-Bereich`,
+      );
+    }
+
+    if (i > 0) {
+      const prev = replacements[i - 1] as ReplacementRange;
+
+      if (r.start < prev.end) {
+        throw new Error(
+          `isOnlyWindowChanged: Range [${r.start},${r.end}) ` +
+            `${r.start === prev.start && r.end === prev.end ? "doppelt" : "ueberlappt"} ` +
+            `mit voriger [${prev.start},${prev.end}) — nicht sortiert oder ueberlappend`,
+        );
+      }
+    }
+  }
+
+  let expected = "";
+  let cursor = 0;
+
+  for (const r of replacements) {
+    expected += xml.slice(cursor, r.start);
+    expected += r.replacement;
+    cursor = r.end;
+  }
+
+  expected += xml.slice(cursor);
+
+  return expected === updated;
 }
 
 /** Resolved set-context shared between dispatch and the set worker. */
@@ -357,11 +403,15 @@ function runSet(rest: string[], ctx: SetContext, cfg: ClipPatchConfig): number {
     updated = cfg.resolveApply()(xml, loc, pairs);
   }
 
-  // Mitigation B (Slice-2-FIX-1-Längendelta-Formel): nur Bytes innerhalb
-  // [loc.start, loc.end) dürfen sich ändern. Geteilte locator-agnostische
-  // Implementierung (auch vom groove `tune`-Pfad genutzt) — Verhalten
-  // byte-identisch zur vorherigen Inline-Formel.
-  if (!isOnlyWindowChanged(xml, updated, loc.start, loc.end)) {
+  // Mitigation B (Slice-2-FIX-1-Längendelta-Formel + Window-Guard-Stärkung):
+  // nur Bytes innerhalb [loc.start, loc.end) dürfen sich ändern, UND jede
+  // Mutation muss explizit als ReplacementRange deklariert sein. Auch der
+  // groove `tune`-Pfad nutzt diesen geteilten Guard.
+  if (
+    !isOnlyWindowChanged(xml, updated, [
+      singleRangeReplacement(xml, updated, loc.start, loc.end),
+    ])
+  ) {
     process.stderr.write(
       "FEHLER: unerwartete Änderung außerhalb des Ziel-Clip-Blocks\n",
     );
