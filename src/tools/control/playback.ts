@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -437,7 +438,51 @@ function handlePlaybackAction(
         currentTimeBeats: 0,
       };
 
+    case "jump-to-next-cue":
+      return handleJumpCue(liveSet, "next", state);
+
+    case "jump-to-prev-cue":
+      return handleJumpCue(liveSet, "prev", state);
+
+    case "set-or-delete-cue":
+      liveSet.call("set_or_delete_cue");
+
+      return state;
+
     default:
       throw new Error(`playback failed: unknown action "${action}"`);
   }
+}
+
+/**
+ * Handle jump-to-next-cue / jump-to-prev-cue locator navigation.
+ * Pre-checks can_jump_to_{next,prev}_cue (Boolean-coercion is robust for
+ * either 0|1 number or true|false boolean LOM return shape), then calls
+ * the corresponding Song.jump_to_*_cue() method. After jump, re-reads
+ * current_song_time so the result reflects the new play head position.
+ *
+ * @param liveSet - LiveAPI instance for live_set
+ * @param direction - "next" or "prev"
+ * @param state - Current playback state
+ * @returns Updated playback state with re-read currentTimeBeats
+ */
+function handleJumpCue(
+  liveSet: LiveAPI,
+  direction: "next" | "prev",
+  state: PlaybackState,
+): PlaybackState {
+  const canProp = `can_jump_to_${direction}_cue`;
+  const callFn = `jump_to_${direction}_cue`;
+  const label = direction === "next" ? "next" : "previous";
+
+  if (!liveSet.getProperty(canProp)) {
+    throw new Error(`playback failed: no ${label} locator available`);
+  }
+
+  liveSet.call(callFn);
+
+  return {
+    isPlaying: state.isPlaying,
+    currentTimeBeats: liveSet.getProperty("current_song_time") as number,
+  };
 }

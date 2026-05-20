@@ -24,6 +24,9 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         "stop-session-clips",
         "stop-all-session-clips",
         "stop",
+        "jump-to-next-cue",
+        "jump-to-prev-cue",
+        "set-or-delete-cue",
       ])
       .describe(
         `play-arrangement: from startTime
@@ -32,7 +35,10 @@ play-scene: all clips in scene
 play-session-clips: by id(s) or slot(s)
 stop-session-clips: by id(s) or slot(s)
 stop-all-session-clips: all
-stop: session and arrangement`,
+stop: session and arrangement
+jump-to-next-cue: play head -> next locator
+jump-to-prev-cue: play head -> previous locator
+set-or-delete-cue: toggle locator at play head`,
       ),
     startTime: z
       .string()
