@@ -45,7 +45,7 @@ falls Bedarf), Slice fokussiert auf Track-Level-MIDI-Out.
 | `M-B-iac1-all.als`        | MidiOut=IAC Driver Bus 1, Channel=All                  | erstes Tripel + Channel-All-Schema |
 | `M-C-iac1-ch1.als`        | MidiOut=IAC Driver Bus 1, Channel=1                    | Channel-Pick-Schema                |
 | `M-D-iac2-ch1.als`        | MidiOut=IAC Driver Bus 2, Channel=1                    | Bus-Index-Schema                   |
-| `M-E-hardware.als` (opt.) | MidiOut=<irgendein USB-MIDI-Out>, Channel=All          | Geraete-Name-Leak-Test             |
+| `M-E-hardware.als` (opt.) | `MidiOut=<irgendein USB-MIDI-Out>, Channel=All`        | Geraete-Name-Leak-Test             |
 | `M-F-audio-in.als` (opt.) | Audio-Track AudioIn auf konkreten Mono-In (ext-mono-3) | komplementiert audio-in-Vocabulary |
 
 **Voraussetzung User**: macOS IAC Driver Bus 1 + Bus 2 aktiv (Audio-MIDI-

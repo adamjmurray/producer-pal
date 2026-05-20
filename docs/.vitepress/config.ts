@@ -18,9 +18,11 @@ export default defineConfig({
   srcExclude: [
     "_generated/**",
     "public/markdown/**",
-    // Internal Recon-Notes (Welle-1/2/3 Spec/Plan-Materialien) — nicht fuer
-    // Production-Site gedacht, enthalten Markdown mit <placeholder>-Tags die
-    // der Vue-Compiler als HTML-Tags interpretieren wuerde.
+    // Interne Recon-Notes (Welle-1/2/3 Spec/Plan-/STOP-Verdict-Materialien)
+    // — bewusst NICHT auf der Production-Site indexiert. Build-Tauglichkeit
+    // ist separat sichergestellt (Welle-5-Slice-2 hat den letzten rohen
+    // <placeholder>-Tag in Backticks gesetzt), so dass dieser Exclude eine
+    // Veroeffentlichungs-Entscheidung ist und kein Workaround mehr.
     "superpowers/**",
   ],
 
