@@ -9,6 +9,8 @@ import { describe, expect, it } from "vitest";
 import {
   type GroupCreateSpec,
   getGroupTracks,
+  inferGroupTrackId,
+  inferNextPointeeId,
   injectGroupCreate,
   synthesizeGroupTrack,
 } from "#src/automation/als-group-create.ts";
@@ -462,5 +464,55 @@ describe("als-group-create byte-spot-check vs -after (R=0/1/2)", () => {
 
     // Literal `$1` muss erhalten bleiben (kein Pattern-Expand auf Match).
     expect(out).toContain("Group $1 X");
+  });
+});
+
+describe("inferGroupTrackId (Slice ppal-grouptrack-id-inference)", () => {
+  // 4-Fixture-byte-Spot-Check: grp0/grp1/grp2 (max=15 -> 16),
+  // g2-id-B-base (max=18 -> 19). Belegt H1 (max+1-Regel).
+  it.each([
+    ["grp0", "e2e/live-sets/grp0-base Project/grp0-base.als", 16],
+    ["grp1", "e2e/live-sets/grp1-base Project/grp1-base.als", 16],
+    ["grp2", "e2e/live-sets/grp2-base Project/grp2-base.als", 16],
+    [
+      "g2-id-B",
+      "e2e/live-sets/g2-id-B-base Project/g2-id-B-base Project/g2-id-B-base.als",
+      19,
+    ],
+  ])(
+    "inferierte GroupTrackId fuer %s == byte-belegter Wert",
+    (_, path, want) => {
+      const xml = gunzipSync(readFileSync(path)).toString("utf8");
+
+      expect(inferGroupTrackId(xml)).toBe(want);
+    },
+  );
+
+  it("ignoriert MainTrack/MasterTrack (irrelevante Tag-Namen)", () => {
+    const xml =
+      '<MidiTrack Id="3"></MidiTrack><MainTrack Id="999"></MainTrack>';
+
+    expect(inferGroupTrackId(xml)).toBe(4);
+  });
+});
+
+describe("inferNextPointeeId", () => {
+  it.each([
+    ["grp0", "e2e/live-sets/grp0-base Project/grp0-base.als", 22346],
+    [
+      "g2-id-B",
+      "e2e/live-sets/g2-id-B-base Project/g2-id-B-base Project/g2-id-B-base.als",
+      22454,
+    ],
+  ])("liest %s NextPointeeId byte-treu", (_, path, want) => {
+    const xml = gunzipSync(readFileSync(path)).toString("utf8");
+
+    expect(inferNextPointeeId(xml)).toBe(want);
+  });
+
+  it("wirft wenn <NextPointeeId> Tag fehlt", () => {
+    expect(() => inferNextPointeeId("<Ableton></Ableton>")).toThrow(
+      /<NextPointeeId>/,
+    );
   });
 });
