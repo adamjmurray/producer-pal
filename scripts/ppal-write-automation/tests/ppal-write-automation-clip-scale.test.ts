@@ -6,7 +6,7 @@
 import { copyFileSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readAls } from "#src/automation/als-file.ts";
 import * as scale from "#src/automation/als-clip-scale.ts";
 import {
@@ -31,6 +31,17 @@ function tmpCopy(): string {
 
   return dst;
 }
+
+beforeEach(() => {
+  // Default: Open-Set-Guard auf "closed", damit Tests robust gegen ein lokal
+  // laufendes Producer-Pal auf Port 3350 sind. Tests, die exit 2 erwarten,
+  // ueberschreiben das via eigenem vi.spyOn(...).mockReturnValue(true).
+  vi.spyOn(clipScaleInternals, "isSetLikelyOpen").mockReturnValue(false);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("runClipScale get", () => {
   it("liest Root/Scale des echten MidiClips als JSON (exit 0)", () => {

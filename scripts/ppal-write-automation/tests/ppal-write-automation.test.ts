@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import * as zlib from "node:zlib";
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -55,6 +55,17 @@ function createTmpAls(): string {
 
   return tmpPath;
 }
+
+beforeEach(() => {
+  // Default: Open-Set-Guard auf "closed", damit Tests robust gegen ein lokal
+  // laufendes Producer-Pal auf Port 3350 sind. Tests, die exit 2 erwarten,
+  // ueberschreiben das via eigenem vi.spyOn(...).mockReturnValue(true).
+  vi.spyOn(alsFile, "isSetLikelyOpen").mockReturnValue(false);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("ppal-write-automation CLI", () => {
   it("write: gibt exit 0 zurueck und schreibt Envelope in die Datei", () => {

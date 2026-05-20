@@ -6,7 +6,7 @@
 import { copyFileSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readAls } from "#src/automation/als-file.ts";
 import * as tl from "#src/automation/als-takelane.ts";
 import { locateTrackBlock } from "#src/automation/als-param-resolver.ts";
@@ -88,6 +88,17 @@ function reGet(f: string): tl.ParsedTakeLanes {
 
   return tl.getTakeLanes(w[0]);
 }
+
+beforeEach(() => {
+  // Default: Open-Set-Guard auf "closed", damit Tests robust gegen ein lokal
+  // laufendes Producer-Pal auf Port 3350 sind. Tests, die exit 2 erwarten,
+  // ueberschreiben das via eigenem vi.spyOn(...).mockReturnValue(true).
+  vi.spyOn(takeLaneInternals, "isSetLikelyOpen").mockReturnValue(false);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("runTakeLane get", () => {
   it("liest leeren Default als JSON (exit 0)", () => {

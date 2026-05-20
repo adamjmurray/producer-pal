@@ -6,7 +6,7 @@
 import { copyFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readAls } from "#src/automation/als-file.ts";
 import { locateTrackBlock } from "#src/automation/als-param-resolver.ts";
 import { getTrackRouting } from "#src/automation/als-routing.ts";
@@ -62,18 +62,16 @@ function muteErr(): () => void {
   return () => w.mockRestore();
 }
 
-/**
- * Open-Set-Guard deterministisch als GESCHLOSSEN erzwingen (lokaler
- * Port-3350-Zustand darf den Write-Pfad nicht maskieren).
- * @returns Restore-Funktion fuer den Spy.
- */
-function forceSetClosed(): () => void {
-  const s = vi
-    .spyOn(routingInternals, "isSetLikelyOpen")
-    .mockReturnValue(false);
+beforeEach(() => {
+  // Default: Open-Set-Guard auf "closed", damit Tests robust gegen ein lokal
+  // laufendes Producer-Pal auf Port 3350 sind. Tests, die exit 2 erwarten,
+  // ueberschreiben das via eigenem vi.spyOn(...).mockReturnValue(true).
+  vi.spyOn(routingInternals, "isSetLikelyOpen").mockReturnValue(false);
+});
 
-  return () => s.mockRestore();
-}
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("runRouting Flag-/Guard-Exit-Codes", () => {
   it("exit 1 bei fehlendem --track", () => {
@@ -104,7 +102,6 @@ describe("runRouting Flag-/Guard-Exit-Codes", () => {
   });
 
   it("exit 1 bei bad-kind", () => {
-    const closed = forceSetClosed();
     const restore = muteErr();
     const code = runRouting(
       [
@@ -122,12 +119,10 @@ describe("runRouting Flag-/Guard-Exit-Codes", () => {
     );
 
     restore();
-    closed();
     expect(code).toBe(1);
   });
 
   it("exit 1 bei kind-fremdem/inkonsistentem target (R4)", () => {
-    const closed = forceSetClosed();
     const restore = muteErr();
     const code = runRouting(
       [
@@ -145,7 +140,6 @@ describe("runRouting Flag-/Guard-Exit-Codes", () => {
     );
 
     restore();
-    closed();
     expect(code).toBe(1);
   });
 
@@ -176,7 +170,6 @@ describe("runRouting Flag-/Guard-Exit-Codes", () => {
 
   it("exit 1 bei wert-gebundenem Verify-Mismatch (Spy verfaelscht Output)", () => {
     const f = tmpCopy();
-    const closed = forceSetClosed();
     const real = routingInternals.patchTrackRouting;
     const spy = vi
       .spyOn(routingInternals, "patchTrackRouting")
@@ -208,7 +201,6 @@ describe("runRouting Flag-/Guard-Exit-Codes", () => {
 
     restore();
     spy.mockRestore();
-    closed();
     expect(code).toBe(1);
   });
 });
@@ -238,8 +230,6 @@ describe("runRouting Window-Guard-Migration (Slice ppal-window-guard)", () => {
       },
     );
 
-    const closed = forceSetClosed();
-
     const r = captureOut(() =>
       runRouting(
         [
@@ -257,7 +247,6 @@ describe("runRouting Window-Guard-Migration (Slice ppal-window-guard)", () => {
       ),
     );
 
-    closed();
     expect(r.code).toBe(0);
 
     // Charakterisierung: Prefix vor Track + Suffix nach Track
@@ -295,7 +284,6 @@ describe.each([
   it("set schreibt das Tripel, exit 0, verified:true, Voll-XML nur Fenster", () => {
     const f = tmpCopy();
     const before = readAls(f);
-    const closed = forceSetClosed();
     const r = captureOut(() =>
       runRouting(
         [
@@ -313,7 +301,6 @@ describe.each([
       ),
     );
 
-    closed();
     expect(r.code).toBe(0);
 
     const json = JSON.parse(r.out) as {
@@ -349,7 +336,6 @@ describe.each([
   it("ist deterministisch (Doppellauf gleiche Bytes)", () => {
     const f1 = tmpCopy();
     const f2 = tmpCopy();
-    const closed = forceSetClosed();
 
     for (const f of [f1, f2]) {
       const restore = muteErr();
@@ -371,7 +357,6 @@ describe.each([
       restore();
     }
 
-    closed();
     expect(readAls(f1)).toBe(readAls(f2));
   });
 });

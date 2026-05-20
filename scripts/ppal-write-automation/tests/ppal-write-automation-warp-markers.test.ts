@@ -6,7 +6,7 @@
 import { copyFileSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readAls } from "#src/automation/als-file.ts";
 import * as warp from "#src/automation/als-warp-markers.ts";
 import { runWarpMarker, warpInternals } from "../ppal-warp-markers-helpers.ts";
@@ -30,6 +30,17 @@ function tmpCopy(): string {
 }
 
 const M3 = "0:0,1.0:0.5,2.5:1.0830000000000001";
+
+beforeEach(() => {
+  // Default: Open-Set-Guard auf "closed", damit Tests robust gegen ein lokal
+  // laufendes Producer-Pal auf Port 3350 sind. Tests, die exit 2 erwarten,
+  // ueberschreiben das via eigenem vi.spyOn(...).mockReturnValue(true).
+  vi.spyOn(warpInternals, "isSetLikelyOpen").mockReturnValue(false);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("runWarpMarker get", () => {
   it("liest die echten Marker als JSON-Payload (exit 0)", () => {
