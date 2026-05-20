@@ -26,7 +26,7 @@ export const toolDefLoadM4lDevice = defineTool("ppal-load-m4l-device", {
     category: z
       .enum(["max-audio-effect", "max-instrument", "max-midi-effect", "user"])
       .describe(
-        "browser sub-category - 'user' for User Library .amxd's, otherwise the built-in slot",
+        "browser sub-category - 'user' for User Library .amxd's, otherwise the built-in Max-for-Live slot. ADVISORY: the three Max-for-Live sub-categories share a single browser pixel anchor; disambiguation happens via the device-name search. Echoed in verify.expectedCategory so the caller can cross-check the loaded device type against ppal-read-device after the drop",
       ),
     dropX: z.coerce
       .number()

@@ -25,7 +25,10 @@ interface FailMode {
 }
 
 interface VerifyChecks {
-  transportShouldBeStopped: true;
+  // True only when the recipe emitted an explicit stop step (durationSeconds
+  // set). Without durationSeconds the transport keeps running and the caller
+  // stops it themselves - the recipe can't promise a stopped transport.
+  transportShouldBeStopped: boolean;
   setDirty: boolean;
 }
 
@@ -87,14 +90,26 @@ export function recordArrangement(
 
   const baseSeconds = args.durationSeconds ?? 0;
   const saveMode = args.saveAfter ?? "none";
-  const overheadSeconds = 1 + (saveMode === "none" ? 0 : 0.4);
+  // A save step is only emitted when the recipe also emits the stop step,
+  // which happens only when durationSeconds is set. Without durationSeconds
+  // the transport keeps running (manual-stop pathway) and saveAfter is
+  // effectively ignored. Additionally, 'save-as' bails out without writing
+  // when savePath is missing.
+  const durationDriven = args.durationSeconds != null;
+  const saveActuallyHappens =
+    durationDriven &&
+    (saveMode === "save" ||
+      (saveMode === "save-as" && normalisedSavePath != null));
+  const overheadSeconds = saveActuallyHappens ? 1.4 : durationDriven ? 1 : 0;
+  // transport is only known-stopped when the recipe emitted the stop step.
+  const transportShouldBeStopped = durationDriven;
 
   return {
     steps,
     failModes: buildFailModes(),
     verify: {
-      transportShouldBeStopped: true,
-      setDirty: saveMode === "none",
+      transportShouldBeStopped,
+      setDirty: !saveActuallyHappens,
     },
     meta: {
       tool: "ppal-record-arrangement",
@@ -150,10 +165,11 @@ function buildFailModes(): FailMode[] {
         "caller must supply savePath in args or switch to saveAfter='save'",
     },
     {
-      symptom: "Live still in Session view despite Tab",
-      detect: "screenshot before record-click shows session grid",
+      symptom: "Live in the wrong view before Record click",
+      detect:
+        "view-verify screenshot before record-click shows session grid when caller asked for arrangement (or vice versa)",
       recovery:
-        "second Tab keypress; Live ignores Tab when a text field is focused",
+        "the recipe does NOT auto-press Tab (Tab toggles unsafely). Caller dispatches Tab manually after the verify-screenshot, then re-invokes ppal-record-arrangement",
     },
     {
       symptom: "Producer-Pal watchdog respawns Live after save",

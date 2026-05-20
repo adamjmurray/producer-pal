@@ -111,7 +111,7 @@ describe("ppal-load-m4l-device runbook", () => {
     expect(symptoms.size).toBe(result.failModes.length);
   });
 
-  it("verify echoes back the deviceName the caller asked for", () => {
+  it("verify echoes back deviceName AND category so caller can cross-check device type", () => {
     const result = loadM4lDevice({
       deviceName: "Max MIDI Effect",
       category: "max-midi-effect",
@@ -120,7 +120,23 @@ describe("ppal-load-m4l-device runbook", () => {
     expect(result.verify).toStrictEqual({
       deviceShouldExist: true,
       expectedDeviceName: "Max MIDI Effect",
+      expectedCategory: "max-midi-effect",
     });
+  });
+
+  it("verify.expectedCategory captures the requested category for name-collision disambiguation", () => {
+    const audioFx = loadM4lDevice({
+      deviceName: "MyPlugin",
+      category: "max-audio-effect",
+    });
+
+    expect(audioFx.verify.expectedCategory).toBe("max-audio-effect");
+    const userLib = loadM4lDevice({
+      deviceName: "MyPlugin",
+      category: "user",
+    });
+
+    expect(userLib.verify.expectedCategory).toBe("user");
   });
 
   it("meta carries tool, version, locale default, estimatedSeconds", () => {

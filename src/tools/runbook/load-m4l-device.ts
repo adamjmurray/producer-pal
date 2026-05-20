@@ -26,6 +26,16 @@ interface FailMode {
 interface VerifyChecks {
   deviceShouldExist: true;
   expectedDeviceName: string;
+  // Echoed so the caller can cross-check the loaded device type against the
+  // category they asked for. The three Max-for-Live sub-categories share a
+  // pixel anchor (browser disambiguates by name search), so a name collision
+  // could load the wrong kind; this field lets the post-load
+  // ppal-read-device call verify the device type matches.
+  expectedCategory:
+    | "max-audio-effect"
+    | "max-instrument"
+    | "max-midi-effect"
+    | "user";
 }
 
 interface LoadM4lDeviceResult {
@@ -72,6 +82,7 @@ export function loadM4lDevice(args: LoadM4lDeviceArgs): LoadM4lDeviceResult {
     verify: {
       deviceShouldExist: true,
       expectedDeviceName: args.deviceName,
+      expectedCategory: args.category,
     },
     meta: {
       tool: "ppal-load-m4l-device",

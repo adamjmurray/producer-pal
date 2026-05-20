@@ -278,7 +278,11 @@ export function appendSaveDialog(
   steps.push({
     action: "key",
     text: "Return",
-    label: "save and start render",
+    // Label kept neutral so the Slice-2 save-as path (record-arrangement
+    // reuses appendSaveDialog) doesn't mislead callers - the Return here
+    // confirms the macOS save dialog regardless of whether a render or a
+    // set save is the surrounding workflow.
+    label: "confirm save dialog",
   });
 }
 
