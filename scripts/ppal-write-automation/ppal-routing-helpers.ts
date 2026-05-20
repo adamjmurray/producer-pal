@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { isSetLikelyOpen } from "#src/automation/als-file.ts";
-import { locateTrackBlock } from "#src/automation/als-param-resolver.ts";
 import {
   getTrackRouting,
   patchTrackRouting,
@@ -12,7 +11,8 @@ import {
   type RoutingKind,
   type RoutingValue,
 } from "#src/automation/als-routing.ts";
-import { type LeanLoc, runLeanTrackCli } from "./lean-track-cli.ts";
+import { locateTrackLeanBlock } from "./lean-locators.ts";
+import { runLeanTrackCli } from "./lean-track-cli.ts";
 
 /**
  * Mutable Spy-Seam: Open-Set-Guard und Routing-Patch werden hierueber
@@ -36,20 +36,6 @@ interface RoutingCtx {
 }
 
 /**
- * Track-Block auf die einheitliche `{block,start,end}`-Form normalisieren
- * (`locateTrackBlock` liefert `index`; `start = index`).
- *
- * @param xml - Roher `.als`-XML-Inhalt.
- * @param flags - Geparster Flag-Map (nutzt `--track`).
- * @returns Normalisierte Block-Lokation.
- */
-function locate(xml: string, flags: Record<string, string>): LeanLoc {
-  const loc = locateTrackBlock(xml, flags.track as string);
-
-  return { block: loc.block, start: loc.index, end: loc.end };
-}
-
-/**
  * Run the `routing get|set` subcommand (offline byte-true Track-I/O-
  * Routing aus dem well-known closed vocabulary). Lean track-scoped Pfad
  * analog `runShiftTime`: locate -> patch -> Offset-Splice -> Fenster-Guard
@@ -70,7 +56,7 @@ export function runRouting(
       names: ["als", "track"],
       errMsg: "FEHLER: --als, --track erforderlich\n",
     },
-    locate,
+    locate: locateTrackLeanBlock,
     getJson: (flags, loc) => ({
       track: flags.track,
       routing: getTrackRouting(loc.block),

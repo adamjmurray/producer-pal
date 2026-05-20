@@ -4,13 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { isSetLikelyOpen } from "#src/automation/als-file.ts";
-import { locateTrackBlock } from "#src/automation/als-param-resolver.ts";
 import {
   getArrangementClips,
   shiftTrackArrangementClips,
   type ArrClip,
 } from "#src/automation/als-shift-time.ts";
-import { type LeanLoc, runLeanTrackCli } from "./lean-track-cli.ts";
+import { locateTrackLeanBlock } from "./lean-locators.ts";
+import { runLeanTrackCli } from "./lean-track-cli.ts";
 
 /**
  * Mutable Spy-Seam: Open-Set-Guard und Shift-Transform werden hierueber
@@ -32,20 +32,6 @@ interface ShiftCtx {
   fromBeat: number;
   delta: number;
   shifted: number;
-}
-
-/**
- * Track-Block auf die einheitliche `{block,start,end}`-Form normalisieren
- * (`locateTrackBlock` liefert `index`; `start = index`).
- *
- * @param xml - Roher `.als`-XML-Inhalt.
- * @param flags - Geparster Flag-Map (nutzt `--track`).
- * @returns Normalisierte Block-Lokation.
- */
-function locate(xml: string, flags: Record<string, string>): LeanLoc {
-  const loc = locateTrackBlock(xml, flags.track as string);
-
-  return { block: loc.block, start: loc.index, end: loc.end };
 }
 
 /**
@@ -71,7 +57,7 @@ export function runShiftTime(
         names: ["als", "track"],
         errMsg: "FEHLER: --als, --track erforderlich\n",
       },
-      locate,
+      locate: locateTrackLeanBlock,
       getJson: (flags, loc) => ({
         track: flags.track,
         clips: getArrangementClips(loc.block),
