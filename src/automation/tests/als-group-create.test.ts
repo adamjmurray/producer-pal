@@ -515,4 +515,14 @@ describe("inferNextPointeeId", () => {
       /<NextPointeeId>/,
     );
   });
+
+  it("Codex-Final-Pass: wirft bei MEHRFACHEM <NextPointeeId> Tag (mehrdeutig)", () => {
+    const dupe =
+      '<Wrapper><NextPointeeId Value="5" /></Wrapper>' +
+      '<NextPointeeId Value="100" />';
+
+    expect(() => inferNextPointeeId(dupe)).toThrow(
+      /mehrdeutiger Allokations-Anker/,
+    );
+  });
 });

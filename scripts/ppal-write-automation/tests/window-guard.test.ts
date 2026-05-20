@@ -147,6 +147,29 @@ describe("isOnlyWindowChanged — Defekt-Faenge", () => {
     expect(isOnlyWindowChanged(xml, updated, ranges)).toBe(false);
   });
 
+  // Codex-Final-Pass: NaN-Bounds slippen sonst durch `<`/`>`/`>=`-Vergleiche
+  // (alle NaN-Vergleiche false) und `slice` coerced NaN zu 0. Number.isInteger-
+  // Check wirft jetzt.
+  it("Codex-Final-Pass: NaN/non-integer Bounds werden abgewiesen", () => {
+    expect(() =>
+      isOnlyWindowChanged("abc", "abc", [
+        { start: Number.NaN, end: 1, replacement: "a" },
+      ]),
+    ).toThrow(/nicht-ganzzahlig/);
+
+    expect(() =>
+      isOnlyWindowChanged("abcdef", "abcdef", [
+        { start: 0, end: Number.NaN, replacement: "" },
+      ]),
+    ).toThrow(/nicht-ganzzahlig/);
+
+    expect(() =>
+      isOnlyWindowChanged("abcdef", "abcdef", [
+        { start: 1.5, end: 3, replacement: "x" },
+      ]),
+    ).toThrow(/nicht-ganzzahlig/);
+  });
+
   // Differenzial-Beweis (Codex Stage-2-Review): der vorhergehende Test prueft
   // nur, dass der NEUE Guard die Gap-Mutation ablehnt. Das beweist noch nicht,
   // dass der ALTE Prefix/Suffix-Guard sie zugelassen haette. Dieser Test

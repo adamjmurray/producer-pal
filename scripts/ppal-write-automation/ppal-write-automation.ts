@@ -433,7 +433,7 @@ type DispatchHandler = (
   flags: Record<string, string>,
 ) => number;
 
-const DISPATCH: Record<string, DispatchHandler> = {
+export const DISPATCH: Record<string, DispatchHandler> = {
   list: (_rest, flags) => runList(flags),
   write: (_rest, flags) => runWrite(flags),
   "arrangement-loop": (rest) => runArrangementLoop(rest, parseFlags),

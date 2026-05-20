@@ -47,7 +47,7 @@ export function runGroupCreate(
     return 0;
   }
 
-  return runSet(alsPath, flags["group-spec-file"]);
+  return runSet(alsPath, flags["group-spec-file"], flags.force === "true");
 }
 
 /**
@@ -56,9 +56,14 @@ export function runGroupCreate(
  * wert-gebundenes Re-Parse-Verify.
  * @param alsPath - Pfad zur `.als`-Datei.
  * @param specPath - Roher `--group-spec-file`-Flag-Wert.
+ * @param force - Wenn `true`, Open-Set-Guard (exit 2) umgehen.
  * @returns Exit-Code: 0 Erfolg, 1 Fehler, 2 Open-Set-Guard.
  */
-function runSet(alsPath: string, specPath: string | undefined): number {
+function runSet(
+  alsPath: string,
+  specPath: string | undefined,
+  force: boolean,
+): number {
   const xml = readAls(alsPath);
   const spec = parseSpecFile(specPath, xml);
 
@@ -70,9 +75,9 @@ function runSet(alsPath: string, specPath: string | undefined): number {
     return 1;
   }
 
-  if (groupCreateInternals.isSetLikelyOpen()) {
+  if (!force && groupCreateInternals.isSetLikelyOpen()) {
     process.stderr.write(
-      "Set scheint offen (Port 3350). Schliesse es in Ableton.\n",
+      "Set scheint offen (Port 3350). Schliesse es in Ableton oder nutze --force.\n",
     );
 
     return 2;
