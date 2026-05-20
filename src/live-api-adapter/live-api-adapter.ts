@@ -31,6 +31,7 @@ import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { deleteObject } from "#src/tools/operations/delete/delete.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
+import { recordArrangement } from "#src/tools/runbook/record-arrangement.ts";
 import { renderExport } from "#src/tools/runbook/render-export.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
 import { readScene } from "#src/tools/scene/read-scene.ts";
@@ -139,6 +140,7 @@ const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
   },
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
   "ppal-render-export": (args) => renderExport(args as any),
+  "ppal-record-arrangement": (args) => recordArrangement(args as any),
   "ppal-raw-live-api": (args, ctx) => rawLiveApi(args as any, ctx),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */

@@ -190,6 +190,8 @@ ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 
 **Render export (runbook):** ppal-render-export builds a deterministic computer-use step plan for Ableton's Export Audio/Video dialog (a runbook). It returns JSON only - no Live API call, no disk write. Execute the returned \`steps[]\` via your computer-use tools, then check the post-render file against \`verify\`. Pixel anchors are locale-agnostic; use \`abletonLocale\` only as a meta hint.
 
+**Record Arrangement (runbook):** ppal-record-arrangement returns a deterministic computer-use step plan for Live's transport-record workflow (record button click + transport stop + optional save). It is a pure recipe - no Live API call. Pre-conditions are the caller's responsibility: arm the target track with ppal-update-track first, position the insert marker via ppal-playback (jump-to-cue / start-time). Execute the returned \`steps[]\` via your computer-use tools.
+
 ### Device Paths
 
 Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=device, \`c\`=chain, \`rc\`=return chain, \`p\`=drum pad
