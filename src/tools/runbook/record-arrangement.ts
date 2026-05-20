@@ -68,10 +68,10 @@ export function recordArrangement(
     (args.savePath == null || args.savePath === "")
   ) {
     console.warn(
-      "ppal-record-arrangement: saveAfter='save-as' requires savePath; emitting cmd+shift+s but caller must fill the dialog",
+      "ppal-record-arrangement: saveAfter='save-as' requires savePath; no save steps will be emitted",
     );
     notes.push(
-      "savePath missing: save-as dialog will open but recipe stops before path entry",
+      "savePath missing: no save steps emitted; re-invoke with explicit savePath to save the set",
     );
   }
 

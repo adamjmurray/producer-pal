@@ -249,8 +249,9 @@ Live's UI (Export dialog, Arrangement recording, Max-for-Live device loading).
 
 Each tool returns `{ steps, failModes, verify, meta }` as JSON:
 
-- `steps` — ordered list of `screenshot`, `click`, `key`, `drag`, `type`, or
-  `wait` primitives with pixel anchors or shortcuts
+- `steps` — ordered list of primitives: `screenshot`, `left_click`, `key`,
+  `type`, `wait`, plus `left_mouse_down`/`mouse_move`/`left_mouse_up` for drag
+  composition
 - `failModes` — documented failure scenarios with detect/recovery pairs
 - `verify` — post-execution checks (file existence, audio length, etc.)
 - `meta` — version, locale, estimated duration
@@ -263,32 +264,41 @@ fires. Producer Pal itself never touches the desktop.
 
 - Generate a computer-use step plan that drives Ableton Live's Export
   Audio/Video dialog (`Cmd+Shift+R`)
-- Format, bit depth, sample rate, render range, returns/master, loop, mono,
-  normalize, and analysis-file toggles
+- Format, render range, returns/master, loop, mono, normalize, and analysis-file
+  toggles (bit depth, dither, and sample rate are not exposed by this runbook —
+  the caller relies on Live's current dialog defaults)
 - Save target is a fully qualified path (filename + extension); the recipe
   drives the macOS save sheet via `Cmd+Shift+G`
-- macOS locale hint (`abletonLocale`) selects between Pixel-Anker sets when
+- macOS locale hint (`abletonLocale`) selects between pixel-anchor sets when
   Live's UI is not in English/German
-- 8+ documented `failModes` (dialog never opens, dropdown stuck, save sheet
-  missing, "Datei existiert" prompt, render-range zero, locale drift, ...)
+- 8 documented `failModes` (dialog never opens, dropdown stuck, save sheet
+  missing, "File exists" prompt, render-range zero, locale drift, Beta bounce
+  warning, save path inexistent)
 
 Workflow example:
 
 ```
-1. ppal-update-live-set → arrange render bracket, set tempo
-2. ppal-render-export   → returns step-plan JSON
-3. Agent executes steps via mcp__computer-use__*
-4. Agent reads verify checks: file exists, expected length matches
+1. ppal-update-live-set { tempo: 124 }                 → set tempo via LOM
+2. ppal-render-export   { destPath, renderStart,       → returns step-plan JSON
+                          renderLength, format: "wav" }
+3. Agent executes steps via mcp__computer-use__*       → drives the dialog
+4. Agent reads verify checks: file exists, length ≈ renderLength
 ```
 
-| Fail mode           | Detect                                  | Recovery                                |
-| ------------------- | --------------------------------------- | --------------------------------------- |
-| Dialog doesn't open | Screenshot after step 2 lacks the title | Re-focus Live, re-fire `Cmd+Shift+R`    |
-| Dropdown stuck open | Aufgeklappte Liste auf Screenshot       | Click list item (never press Escape)    |
-| Save sheet missing  | No native macOS file dialog             | Render-range too short — set explicitly |
-| "File exists" sheet | Modal blocks export                     | Cancel, choose new filename             |
-| Render length zero  | UI shows `0.0.0`                        | Pass `renderLength` explicitly          |
-| Locale drift        | Pixel anchors miss                      | Set `abletonLocale="unknown"`, ask user |
+Render-Bracket-Position (start/length) is passed to `ppal-render-export`
+directly via `renderStart`/`renderLength`; if omitted, the recipe relies on
+Live's current Insert Marker and Loop bracket.
+
+| Fail mode            | Detect                                  | Recovery                                |
+| -------------------- | --------------------------------------- | --------------------------------------- |
+| Dialog doesn't open  | Screenshot after step 2 lacks the title | Re-focus Live, re-fire `Cmd+Shift+R`    |
+| Dropdown stuck open  | Dropdown still expanded in screenshot   | Click list item (never press Escape)    |
+| Save sheet missing   | No native macOS file dialog             | Render-range too short — set explicitly |
+| "File exists" sheet  | Modal blocks export                     | Cancel, choose new filename             |
+| Beta bounce warning  | Modal "Bounce engine" dialog            | User decision — never auto-dismiss      |
+| Render length zero   | UI shows `0.0.0`                        | Pass `renderLength` explicitly          |
+| Save path inexistent | Save dialog: "path does not exist"      | Re-fire `Cmd+Shift+G`, set parent dir   |
+| Locale drift         | Pixel anchors miss                      | Set `abletonLocale="unknown"`, ask user |
 
 <!--@include: ./_generated/ppal-render-export-schema.md-->
 
@@ -298,30 +308,36 @@ Workflow example:
   Record button, optionally wait for a fixed duration, then stop via Spacebar
 - Optional `saveAfter` step: `none`, `save` (existing path), or `save-as`
   (drives `Cmd+Shift+S` with explicit save path)
-- Pre-flight assertion: `view: 'arrangement'` switches via Tab if Live still
-  shows Session view (Tab is a toggle — the recipe only fires it after a
-  screenshot verification)
+- Pre-flight assertion: `view: 'arrangement'` emits a screenshot anchor so the
+  caller can verify Live is in Arrangement view before recording. The recipe
+  never auto-presses Tab — Tab is a toggle and would be unsafe; the caller
+  dispatches Tab if needed
 - Locale-aware: shortcut-driven where possible, pixel anchors fall back to the
   same `abletonLocale` hint as the Export tool
 
 Workflow example:
 
 ```
-1. ppal-update-track { arm: true }    → arm tracks via LOM
-2. ppal-record-arrangement            → returns step-plan JSON
-3. Agent executes: Spacebar starts, sleep N seconds, Spacebar stops
-4. Optional Cmd+Shift+S sub-recipe writes the set
+1. ppal-update-track { ids: "<id>", arm: true }     → arm target track via LOM
+2. ppal-record-arrangement { durationSeconds: 32,   → returns step-plan JSON
+                              saveAfter: "save" }
+3. Agent executes: click Record button, wait 32s, Spacebar stops, Cmd+S
+4. Caller checks verify.transportShouldBeStopped + setDirty
 ```
 
-| Fail mode                       | Detect                           | Recovery                               |
-| ------------------------------- | -------------------------------- | -------------------------------------- |
-| No armed track                  | Empty arrangement                | Call `ppal-update-track { arm:true }`  |
-| Record button click miss        | Record lamp stays gray           | Re-click button                        |
-| Save dialog despite `save`      | First-save case                  | Caller falls back to `save-as`         |
-| Recording keeps running         | Record lamp still red after Stop | Second Spacebar or Record-Button-Klick |
-| Locale drift                    | Pixel anchors miss               | Set `abletonLocale="unknown"`          |
-| `savePath` missing on `save-as` | Schema validation fails          | Tool throws, caller supplies path      |
-| Session view still active       | Tab needed — but Tab is a toggle | Recipe screenshot-verifies before Tab  |
+`durationSeconds` is what triggers the recipe to emit the wait + Spacebar-stop
+steps. Without it the recipe leaves the transport running and the caller is
+expected to stop it manually — `saveAfter` is then a no-op.
+
+| Fail mode                       | Detect                           | Recovery                                                  |
+| ------------------------------- | -------------------------------- | --------------------------------------------------------- |
+| No armed track                  | Empty arrangement                | Call `ppal-update-track { ids:"<id>", arm:true }` first   |
+| Record button click miss        | Record lamp stays gray           | Re-click button                                           |
+| Save dialog despite `save`      | First-save case                  | Caller falls back to `save-as`                            |
+| Recording keeps running         | Record lamp still red after Stop | Second Spacebar or click Record button again              |
+| Locale drift                    | Pixel anchors miss               | Set `abletonLocale="unknown"`                             |
+| `savePath` missing on `save-as` | `meta.notes` flags it            | No save steps emitted; re-invoke with explicit `savePath` |
+| Session view still active       | Tab needed — but Tab is a toggle | Recipe screenshot-verifies before Tab                     |
 
 <!--@include: ./_generated/ppal-record-arrangement-schema.md-->
 
@@ -336,14 +352,15 @@ Workflow example:
   for Browser→Track drops and routinely misses
 - Optional explicit `dropX`/`dropY` overrides the computed track-header pixel
   for non-standard track-list layouts
-- Returns the same `{steps, failModes, verify, meta}` envelope; `verify`
-  includes a device-count delta check the caller wires to `ppal-read-track`
+- Returns the same `{steps, failModes, verify, meta}` envelope; `verify` echoes
+  the expected device-name and category so the caller can cross- check against
+  `ppal-read-device` after the drop
 
 Workflow example:
 
 ```
 1. ppal-create-track { type: "midi" }      → create empty track via LOM
-2. ppal-load-m4l-device { category: "max-instrument", name: "Producer_Pal" }
+2. ppal-load-m4l-device { category: "max-instrument", deviceName: "Producer_Pal" }
 3. Agent executes drag: browser → track header
 4. ppal-read-track                          → verify device added
 ```

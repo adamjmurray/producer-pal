@@ -9,7 +9,7 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 export const toolDefRecordArrangement = defineTool("ppal-record-arrangement", {
   title: "Record Arrangement Runbook",
   description:
-    "Generate a deterministic computer-use step plan for Ableton's Arrangement-Record workflow (record button click + transport stop + optional save). Returns JSON only - the caller executes it via mcp__computer-use__*. Compose with ppal-playback (jump-to-cue) and ppal-update-track (arm=true) first.",
+    "Generate a deterministic computer-use step plan for Ableton's Arrangement-Record workflow (record button click + transport stop + optional save). Returns JSON only - the caller executes it via mcp__computer-use__*. Compose with ppal-playback (action: 'jump-to-next-cue' / 'jump-to-prev-cue') and ppal-update-track (arm=true) first.",
 
   annotations: {
     readOnlyHint: true,
@@ -28,7 +28,7 @@ export const toolDefRecordArrangement = defineTool("ppal-record-arrangement", {
       .enum(["arrangement", "session"])
       .optional()
       .describe(
-        "ensure Live is in this view before recording; default 'arrangement'",
+        "if provided, emit a screenshot anchor so the caller can verify this view before recording. The recipe performs no view switch (Tab is a toggle and unsafe); the caller dispatches Tab themselves if needed.",
       ),
     homeBeforeRecord: z
       .boolean()
