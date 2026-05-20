@@ -2,16 +2,17 @@
 title: Features
 description:
   Full feature list for Producer Pal, the Ableton MCP server that brings AI to
-  Ableton Live — 20 tools for tracks, MIDI/audio clips, devices, and
-  arrangements.
+  Ableton Live — 23 tools for tracks, MIDI/audio clips, devices, arrangements,
+  and computer-use runbooks.
 ---
 
 # Features
 
 Producer Pal is an AI-powered music production assistant for Ableton Live — an
 Ableton MCP server that lets any AI read, create, and modify your Live Set. Tell
-the AI what you want and it uses 20 specialized tools to read, create, and
-modify tracks, clips, devices, and more in your Live Set.
+the AI what you want and it uses 23 specialized tools to read, create, and
+modify tracks, clips, devices, and to drive Live's UI-only workflows (Export,
+Record, Max-for-Live device loading) via computer-use runbooks.
 
 It works with virtually any AI, including its
 [built-in Chat UI](/guide/chat-ui), desktop apps like
@@ -237,6 +238,126 @@ limitation).
     detail on device selection
 
 <!--@include: ./_generated/ppal-select-schema.md-->
+
+## Runbook Tools {#runbook-tools}
+
+Runbook tools return a deterministic computer-use step plan that the caller
+executes via `mcp__computer-use__*`. They do not call the Live API and do not
+write to disk — they are pure recipe generators. This is the bridge between
+Producer Pal's LOM-level tools and Ableton workflows that live entirely in
+Live's UI (Export dialog, Arrangement recording, Max-for-Live device loading).
+
+Each tool returns `{ steps, failModes, verify, meta }` as JSON:
+
+- `steps` — ordered list of `screenshot`, `click`, `key`, `drag`, `type`, or
+  `wait` primitives with pixel anchors or shortcuts
+- `failModes` — documented failure scenarios with detect/recovery pairs
+- `verify` — post-execution checks (file existence, audio length, etc.)
+- `meta` — version, locale, estimated duration
+
+The caller (any AI agent with computer-use access) is expected to consume the
+JSON, run the steps, and re-invoke the tool with corrections if a failMode
+fires. Producer Pal itself never touches the desktop.
+
+### 🔧 Render Export (`ppal-render-export`) {#ppal-render-export}
+
+- Generate a computer-use step plan that drives Ableton Live's Export
+  Audio/Video dialog (`Cmd+Shift+R`)
+- Format, bit depth, sample rate, render range, returns/master, loop, mono,
+  normalize, and analysis-file toggles
+- Save target is a fully qualified path (filename + extension); the recipe
+  drives the macOS save sheet via `Cmd+Shift+G`
+- macOS locale hint (`abletonLocale`) selects between Pixel-Anker sets when
+  Live's UI is not in English/German
+- 8+ documented `failModes` (dialog never opens, dropdown stuck, save sheet
+  missing, "Datei existiert" prompt, render-range zero, locale drift, ...)
+
+Workflow example:
+
+```
+1. ppal-update-live-set → arrange render bracket, set tempo
+2. ppal-render-export   → returns step-plan JSON
+3. Agent executes steps via mcp__computer-use__*
+4. Agent reads verify checks: file exists, expected length matches
+```
+
+| Fail mode           | Detect                                  | Recovery                                |
+| ------------------- | --------------------------------------- | --------------------------------------- |
+| Dialog doesn't open | Screenshot after step 2 lacks the title | Re-focus Live, re-fire `Cmd+Shift+R`    |
+| Dropdown stuck open | Aufgeklappte Liste auf Screenshot       | Click list item (never press Escape)    |
+| Save sheet missing  | No native macOS file dialog             | Render-range too short — set explicitly |
+| "File exists" sheet | Modal blocks export                     | Cancel, choose new filename             |
+| Render length zero  | UI shows `0.0.0`                        | Pass `renderLength` explicitly          |
+| Locale drift        | Pixel anchors miss                      | Set `abletonLocale="unknown"`, ask user |
+
+<!--@include: ./_generated/ppal-render-export-schema.md-->
+
+### 🔧 Record Arrangement (`ppal-record-arrangement`) {#ppal-record-arrangement}
+
+- Generate a computer-use step plan to arm the Arrangement transport, click the
+  Record button, optionally wait for a fixed duration, then stop via Spacebar
+- Optional `saveAfter` step: `none`, `save` (existing path), or `save-as`
+  (drives `Cmd+Shift+S` with explicit save path)
+- Pre-flight assertion: `view: 'arrangement'` switches via Tab if Live still
+  shows Session view (Tab is a toggle — the recipe only fires it after a
+  screenshot verification)
+- Locale-aware: shortcut-driven where possible, pixel anchors fall back to the
+  same `abletonLocale` hint as the Export tool
+
+Workflow example:
+
+```
+1. ppal-update-track { arm: true }    → arm tracks via LOM
+2. ppal-record-arrangement            → returns step-plan JSON
+3. Agent executes: Spacebar starts, sleep N seconds, Spacebar stops
+4. Optional Cmd+Shift+S sub-recipe writes the set
+```
+
+| Fail mode                       | Detect                           | Recovery                               |
+| ------------------------------- | -------------------------------- | -------------------------------------- |
+| No armed track                  | Empty arrangement                | Call `ppal-update-track { arm:true }`  |
+| Record button click miss        | Record lamp stays gray           | Re-click button                        |
+| Save dialog despite `save`      | First-save case                  | Caller falls back to `save-as`         |
+| Recording keeps running         | Record lamp still red after Stop | Second Spacebar or Record-Button-Klick |
+| Locale drift                    | Pixel anchors miss               | Set `abletonLocale="unknown"`          |
+| `savePath` missing on `save-as` | Schema validation fails          | Tool throws, caller supplies path      |
+| Session view still active       | Tab needed — but Tab is a toggle | Recipe screenshot-verifies before Tab  |
+
+<!--@include: ./_generated/ppal-record-arrangement-schema.md-->
+
+### 🔧 Load Max-for-Live Device (`ppal-load-m4l-device`) {#ppal-load-m4l-device}
+
+- Generate a computer-use step plan that opens Live's Browser, navigates to a
+  Max-for-Live category (`max-instrument`, `max-audio-effect`,
+  `max-midi-effect`, or `user`), locates an `.amxd` device by name, and drags it
+  onto a target track
+- Drag primitives encode the Welle-3 Settle-Timing lesson: 0.55s pause after
+  `mouse_down`, 0.35s pause before `mouse_up` — `left_click_drag` is too fast
+  for Browser→Track drops and routinely misses
+- Optional explicit `dropX`/`dropY` overrides the computed track-header pixel
+  for non-standard track-list layouts
+- Returns the same `{steps, failModes, verify, meta}` envelope; `verify`
+  includes a device-count delta check the caller wires to `ppal-read-track`
+
+Workflow example:
+
+```
+1. ppal-create-track { type: "midi" }      → create empty track via LOM
+2. ppal-load-m4l-device { category: "max-instrument", name: "Producer_Pal" }
+3. Agent executes drag: browser → track header
+4. ppal-read-track                          → verify device added
+```
+
+| Fail mode                    | Detect                   | Recovery                              |
+| ---------------------------- | ------------------------ | ------------------------------------- |
+| Browser pane closed          | No browser visible       | `Cmd+Alt+B` shortcut to toggle        |
+| Category click misses        | Labels shift with scroll | Scroll category list to top first     |
+| Drop on empty timeline       | Wrong track-header pixel | Supply explicit `dropX`/`dropY`       |
+| `.amxd` not in category      | Search returns empty     | Switch category (`user` if user lib)  |
+| Live shows compilation modal | M4L is recompiling       | Wait and surface — never auto-dismiss |
+| Macro defaults differ        | Out of scope             | `ppal-update-device` after load       |
+
+<!--@include: ./_generated/ppal-load-m4l-device-schema.md-->
 
 ## Custom Music Notation {#custom-music-notation}
 

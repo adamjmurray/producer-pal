@@ -15,7 +15,14 @@ export default defineConfig({
 
   cleanUrls: true,
 
-  srcExclude: ["_generated/**", "public/markdown/**"],
+  srcExclude: [
+    "_generated/**",
+    "public/markdown/**",
+    // Internal Recon-Notes (Welle-1/2/3 Spec/Plan-Materialien) — nicht fuer
+    // Production-Site gedacht, enthalten Markdown mit <placeholder>-Tags die
+    // der Vue-Compiler als HTML-Tags interpretieren wuerde.
+    "superpowers/**",
+  ],
 
   transformPageData(pageData) {
     const path = pageData.relativePath
