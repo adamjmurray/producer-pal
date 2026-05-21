@@ -75,6 +75,39 @@ Everything below documents **deltas** from this baseline.
 These cross-cutting decisions apply to multiple specialized devices. Per-device
 sections below reference these patterns rather than redocumenting them.
 
+## Wire format
+
+All specialized-device pseudo-params flow through existing tool surfaces. Only
+**one new top-level arg** and **one new include value** are added across all
+this work:
+
+| Surface                                                                           | Where it goes                                                        |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Writable pseudo-params (e.g. `globalMode`, `voices`, `irCategory`, `sample`)      | Inside `update-device`'s existing `params` arg as `name=value` lines |
+| Read-only pseudo-params (e.g. `multiSampleMode`, `estimatedPlaybackLength`)       | Inside `read-device`'s existing `params` output field                |
+| Actions (e.g. `reverse`, `warpAs(4.0)`)                                           | **New top-level `actions: string[]` arg** on `update-device`         |
+| Catalogs / "what's available" data (e.g. `irFileList`, `sidechainSourceTrackIds`) | New value `"assets"` for `read-device`'s existing `include` arg      |
+
+This keeps the tool schema flat — no per-device arg explosion — and gives the
+LLM one consistent surface for setting both DeviceParameters and class-level
+pseudo-params.
+
+### Actions syntax
+
+Function-call form: bare name for no-args, or `name(arg1, arg2, ...)` for args.
+String args should be quoted where needed.
+
+```
+actions: [
+  "reverse",
+  "warpAs(4.0)",
+  "addModulation('Filter Freq', 'Env 2', 0.5)"
+]
+```
+
+Parser scope: handle bare names, positional args (ints, floats, quoted strings).
+No implicit type coercion beyond standard JS literal parsing.
+
 ## The `assets` include (opt-in discoverability)
 
 `read-device` supports an opt-in `include: ["assets"]` parameter that surfaces
@@ -106,6 +139,25 @@ tool descriptions / skill instructions rather than surfaced via this include.
 **Why opt-in:** Most reads inspect current state, not catalogs. Drift in
 particular would bloat every read significantly. Opt-in keeps the happy path
 compact and establishes a clear browse pattern: "to see what's available, ask."
+
+**Response shape:** when requested, catalog data comes back in a separate
+`assets` field — not mixed into `params`. Catalogs aren't param values; they're
+metadata about valid choices:
+
+```json
+{
+  "id": "232",
+  "params": {
+    "irCategory": "Halls",
+    "irFile": "Berliner Hall LR",
+    "irDecayTime": 12.5
+  },
+  "assets": {
+    "irCategoryList": [...],
+    "irFileList": [...]
+  }
+}
+```
 
 ## Documentation strategy
 
@@ -305,6 +357,70 @@ State / mode selectors:
 
 **Note:** `multi_sample_mode` / `pad_slicing` suggest Simpler can morph into
 Sampler/slicing modes. Notably, **Sampler** has none of this.
+
+**Producer Pal interface design (decided 2026-05-21 via probe):**
+
+Read-only fields in `read-device`'s `params` output:
+
+- `multiSampleMode` (bool) — true when hosting a multi-sample preset; `sample`
+  writes likely fail in this state.
+- `estimatedPlaybackLength` (float beats, only when a sample is loaded) —
+  computed via `guess_playback_length`. Probe-verified pure compute (returned 16
+  beats with no side effects on `can_warp_*`, `S Start`, `S Length`).
+
+Writable via `update-device`'s `params` arg:
+
+- `sample` (string path) — formalizes the existing `sample=` shortcut; reads
+  back as `null` when no sample loaded.
+- `playbackMode` (enum: `"classic"` | `"one-shot"` | `"slicing"`) — maps to int
+  0/1/2.
+- `slicingPlaybackMode` (enum: `"mono"` | `"poly"` | `"thru"`) — maps to int
+  0/1/2 (only meaningful when `playbackMode = "slicing"`).
+- `retrigger` (bool).
+- `voices` (discrete int set: **1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 14, 16, 20, 24,
+  32**) — probe confirmed exact UI set; in-between values silently revert.
+  Define as Zod literal union to constrain at schema level.
+
+Actions via `update-device`'s new `actions: string[]` arg:
+
+- `"reverse"` — reverses the loaded sample.
+- `"crop"` — destructively trim to the marked region (frees memory; commits
+  trim).
+- `"warpDouble"` — doubles tempo of the marked region.
+- `"warpHalf"` — halves tempo of the marked region.
+- `"warpAs(N)"` — warps marked region to fit `N` beats (float). First test case
+  for actions-with-args; design the parser to be extensible (Wavetable's
+  `set_modulation_value` will need similar treatment).
+
+**Skipped:**
+
+- `can_warp_as` / `can_warp_double` / `can_warp_half` — state-dependent
+  capability flags; let LLM attempt the action and warn on failure rather than
+  surface the flags.
+- `playing_position` / `playing_position_enabled` — realtime, not useful for
+  Producer Pal's batch model.
+- `pad_slicing` — niche.
+- raw `guess_playback_length` as an action — surfaced as
+  `estimatedPlaybackLength` RO pseudo-prop instead (pure compute).
+- `warp_as(beats)` is exposed via the action syntax (`"warpAs(N)"`), not as a
+  separate writable param.
+
+**Implementation gotchas (verified by probe 2026-05-21):**
+
+1. **Warp/crop actions operate on the active region** (`S Start` to
+   `S Start + S Length`), not the whole sample. Skill instructions should make
+   this clear so the LLM sets markers first when targeting a sub-region.
+2. **`sample` writes likely fail when `multiSampleMode = true`** — warn-and-skip
+   on failure.
+3. **`voices` is a discrete set, not a continuous range.** Use Zod literal union
+   (`z.union([z.literal(1), z.literal(2), ...])`) so out-of-set values are
+   rejected at schema level. Probe: setting 9/11/13/15/17-19/21-23/25-31 all
+   silently revert to prior valid.
+4. **`can_warp_*` capability flags change after sample load and warp ops** —
+   per-state, not stable. Don't cache. (Probe: `can_warp_as` went `0` → `1`
+   after loading a sample; `can_warp_double/half` stayed `0`.)
+5. **`estimatedPlaybackLength` should be omitted from read output when `sample`
+   is null** — `guess_playback_length` returns garbage / 0 with no sample.
 
 ### Wavetable — `WavetableDevice` (`class_name: InstrumentVector`)
 
