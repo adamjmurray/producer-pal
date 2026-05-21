@@ -22,11 +22,12 @@ For each native device:
    the baseline is "specialized."
 
 Scan performed on Live 12.4 with Producer Pal 1.4.8 on 2026-05-21. The LOM docs
-at https://docs.cycling74.com/apiref/lom/ describe most but not all of these —
-several classes below (e.g., `DriftDevice`, `MeldDevice`, `RoarDevice`,
-`ShifterDevice`, `SpectralResonatorDevice`, `Eq8Device`, `CompressorDevice`) are
-undocumented or partially documented in the public M4L API reference at the time
-of writing.
+at https://docs.cycling74.com/apiref/lom/ describe most but not all of these.
+Confirmed undocumented (as of 2026-05-21): `DriftDevice`, `Eq8Device`,
+`ShifterDevice`. Confirmed documented (per-device links in each section below):
+`CompressorDevice`, `HybridReverbDevice`, `MeldDevice`, `RoarDevice`,
+`SimplerDevice`, `SpectralResonatorDevice`, `WavetableDevice` — though some have
+gaps (e.g. Simpler's `replace_sample` is undocumented but real).
 
 ## Baseline `Device` signature
 
@@ -73,77 +74,187 @@ Everything below documents **deltas** from this baseline.
 
 ### Drift — `DriftDevice` (`class_name: Drift`)
 
-Compact synth, all specialization is around its modulation matrix. Routing is
-exposed declaratively as index/list property pairs (no functions).
+Compact synth. All specialization is around its modulation matrix, exposed
+declaratively as `_index`/`_list` property pairs (no functions).
 
-- **Extra properties:**
-  - `mod_matrix_filter_source_1_index` (int) + `mod_matrix_filter_source_1_list`
-    (StringVector)
-  - `mod_matrix_filter_source_2_index` (int) + `mod_matrix_filter_source_2_list`
-    (StringVector)
-  - `mod_matrix_lfo_source_index` (int) + `mod_matrix_lfo_source_list`
-    (StringVector)
-  - `mod_matrix_pitch_source_1_index` (int) + `mod_matrix_pitch_source_1_list`
-    (StringVector)
-  - `mod_matrix_pitch_source_2_index` (int) + `mod_matrix_pitch_source_2_list`
-    (StringVector)
-  - `mod_matrix_shape_source_index` (int) + `mod_matrix_shape_source_list`
-    (StringVector)
-  - `mod_matrix_source_1_index` (int) + `mod_matrix_source_1_list`
-    (StringVector)
-  - `mod_matrix_source_2_index` (int) + `mod_matrix_source_2_list`
-    (StringVector)
-  - `mod_matrix_source_3_index` (int) + `mod_matrix_source_3_list`
-    (StringVector)
-  - `mod_matrix_target_1_index` (int) + `mod_matrix_target_1_list`
-    (StringVector)
-  - `mod_matrix_target_2_index` (int) + `mod_matrix_target_2_list`
-    (StringVector)
-  - `mod_matrix_target_3_index` (int) + `mod_matrix_target_3_list`
-    (StringVector)
-  - `pitch_bend_range` (int)
-  - `voice_count_index` (int) + `voice_count_list` (StringVector)
-  - `voice_mode_index` (int) + `voice_mode_list` (StringVector)
+**Cycling LOM docs:** _not documented._ Read/write status below inferred from
+convention: `_list` StringVectors are enumeration catalogs (RO), `_index` ints
+are the active selection (RW).
+
+**Properties (extras beyond baseline):**
+
+Modulation matrix — filter routing:
+
+- `mod_matrix_filter_source_1_index` (int) [RW]
+- `mod_matrix_filter_source_1_list` (StringVector) [RO]
+- `mod_matrix_filter_source_2_index` (int) [RW]
+- `mod_matrix_filter_source_2_list` (StringVector) [RO]
+
+Modulation matrix — LFO / pitch / shape routing:
+
+- `mod_matrix_lfo_source_index` (int) [RW]
+- `mod_matrix_lfo_source_list` (StringVector) [RO]
+- `mod_matrix_pitch_source_1_index` (int) [RW]
+- `mod_matrix_pitch_source_1_list` (StringVector) [RO]
+- `mod_matrix_pitch_source_2_index` (int) [RW]
+- `mod_matrix_pitch_source_2_list` (StringVector) [RO]
+- `mod_matrix_shape_source_index` (int) [RW]
+- `mod_matrix_shape_source_list` (StringVector) [RO]
+
+Modulation matrix — three free source→target slots:
+
+- `mod_matrix_source_1_index` (int) [RW]
+- `mod_matrix_source_1_list` (StringVector) [RO]
+- `mod_matrix_source_2_index` (int) [RW]
+- `mod_matrix_source_2_list` (StringVector) [RO]
+- `mod_matrix_source_3_index` (int) [RW]
+- `mod_matrix_source_3_list` (StringVector) [RO]
+- `mod_matrix_target_1_index` (int) [RW]
+- `mod_matrix_target_1_list` (StringVector) [RO]
+- `mod_matrix_target_2_index` (int) [RW]
+- `mod_matrix_target_2_list` (StringVector) [RO]
+- `mod_matrix_target_3_index` (int) [RW]
+- `mod_matrix_target_3_list` (StringVector) [RO]
+
+Voice / pitch config:
+
+- `pitch_bend_range` (int) [RW]
+- `voice_count_index` (int) [RW]
+- `voice_count_list` (StringVector) [RO]
+- `voice_mode_index` (int) [RW]
+- `voice_mode_list` (StringVector) [RO]
+
+**Children:** none beyond baseline.
+
+**Functions:** none beyond baseline.
 
 ### Meld — `MeldDevice` (`class_name: InstrumentMeld`)
 
-- **Extra properties:** `mono_poly` (int), `poly_voices` (int),
-  `selected_engine` (bool), `unison_voices` (int)
-- **Note:** `selected_engine` as `bool` matches Meld's A/B dual-engine UI.
+**Cycling LOM docs:**
+[melddevice](https://docs.cycling74.com/apiref/lom/melddevice/). All extras
+documented.
+
+**Properties (extras beyond baseline):**
+
+- `mono_poly` (int) [RW] — polyphony mode selector
+- `poly_voices` (int) [RW] — polyphony voice count
+- `selected_engine` (bool) [RW] — A/B dual-engine selector (scan returned
+  `bool`; doc lists it as `int` — likely doc shorthand for the same underlying
+  boolean toggle)
+- `unison_voices` (int) [RW] — unison voice count
+
+**Children:** none beyond baseline.
+
+**Functions:** none beyond baseline.
 
 ### Simpler — `SimplerDevice` (`class_name: OriginalSimpler`)
 
 The richest single-device API among the in-scope natives. Exposes a `Sample`
 child and destructive sample-edit functions. **Producer Pal today only supports
-loading a sample via the `sample=` params shortcut (equivalent to
-`replace_sample`).** Nothing else in this surface is currently wired up.
+loading a sample via the `sample=` params shortcut (which calls `replace_sample`
+under the hood).** Nothing else in this surface is currently wired up.
 
-- **Extra children:** `sample` (Sample)
-- **Extra properties:** `can_warp_as` (bool), `can_warp_double` (bool),
-  `can_warp_half` (bool), `multi_sample_mode` (bool), `pad_slicing` (bool),
-  `playback_mode` (int), `playing_position` (float), `playing_position_enabled`
-  (bool), `retrigger` (bool), `slicing_playback_mode` (int), `voices` (int)
-- **Extra functions:** `crop`, `guess_playback_length`, `replace_sample`,
-  `reverse`, `warp_as`, `warp_double`, `warp_half`
-- **Note:** `multi_sample_mode` / `pad_slicing` suggest Simpler can morph into
-  Sampler/slicing modes. Notably, **Sampler** has none of this.
+**Cycling LOM docs:**
+[simplerdevice](https://docs.cycling74.com/apiref/lom/simplerdevice/). Most
+extras documented; `replace_sample` is undocumented but present in our scan and
+already used by Producer Pal.
+
+**Properties (extras beyond baseline):**
+
+Capability flags (indicate whether warp operations are valid for the current
+sample):
+
+- `can_warp_as` (bool) [RO]
+- `can_warp_double` (bool) [RO]
+- `can_warp_half` (bool) [RO]
+- `multi_sample_mode` (bool) [RO] — true when Simpler is hosting a multi-sample
+  preset
+- `playing_position` (float) [RO] — real-time playback head position
+- `playing_position_enabled` (bool) [RO]
+
+State / mode selectors:
+
+- `pad_slicing` (bool) [RW]
+- `playback_mode` (int) [RW] — Classic / One-Shot / Slicing
+- `retrigger` (bool) [RW]
+- `slicing_playback_mode` (int) [RW]
+- `voices` (int) [RW]
+
+**Children (extras beyond baseline):**
+
+- `sample` (Sample) [RO reference] — the child reference itself is immutable
+  (you can't reassign it); to load a different sample, call `replace_sample` on
+  the device. Sample sub-state (warp markers, slices, etc.) is mutated via
+  Simpler's functions.
+
+**Functions (extras beyond baseline):**
+
+- `crop()` — destructive: trims the sample to its current start/end markers
+- `guess_playback_length()` — heuristic: sets playback length from transients
+- `replace_sample(file_path)` — undocumented; loads a new sample file
+- `reverse()` — destructive: reverses the sample
+- `warp_as(beats: int)` — sets warp tempo so the sample spans `beats` beats
+- `warp_double()` — doubles the warp tempo (halves length)
+- `warp_half()` — halves the warp tempo (doubles length)
+
+**Note:** `multi_sample_mode` / `pad_slicing` suggest Simpler can morph into
+Sampler/slicing modes. Notably, **Sampler** has none of this.
 
 ### Wavetable — `WavetableDevice` (`class_name: InstrumentVector`)
 
 Two oscillator engines with wavetable selectors and an imperative mod-matrix API
-(contrast with Drift's declarative index/list approach).
+(contrast with Drift's declarative `_index`/`_list` approach).
 
-- **Extra properties:** `filter_routing` (int), `mono_poly` (int),
-  `oscillator_1_effect_mode` (int), `oscillator_1_wavetable_category` (int),
-  `oscillator_1_wavetable_index` (int), `oscillator_1_wavetables`
-  (StringVector), `oscillator_2_effect_mode` (int),
-  `oscillator_2_wavetable_category` (int), `oscillator_2_wavetable_index` (int),
-  `oscillator_2_wavetables` (StringVector), `oscillator_wavetable_categories`
-  (StringVector), `poly_voices` (int), `unison_mode` (int), `unison_voice_count`
-  (int), `visible_modulation_target_names` (StringVector)
-- **Extra functions:** `add_parameter_to_modulation_matrix`,
-  `get_modulation_target_parameter_name`, `get_modulation_value`,
-  `is_parameter_modulatable`, `set_modulation_value`
+**Cycling LOM docs:**
+[wavetabledevice](https://docs.cycling74.com/apiref/lom/wavetabledevice/). All
+extras documented.
+
+**Properties (extras beyond baseline):**
+
+Wavetable selection (per oscillator):
+
+- `oscillator_1_wavetable_category` (int) [RW]
+- `oscillator_1_wavetable_index` (int) [RW]
+- `oscillator_1_wavetables` (StringVector) [RO] — list of wavetables in the
+  currently selected category for oscillator 1
+- `oscillator_2_wavetable_category` (int) [RW]
+- `oscillator_2_wavetable_index` (int) [RW]
+- `oscillator_2_wavetables` (StringVector) [RO]
+- `oscillator_wavetable_categories` (StringVector) [RO] — shared category list
+
+Oscillator engine mode:
+
+- `oscillator_1_effect_mode` (int) [RW] — engine mode (None / FM / Classic /
+  Modern)
+- `oscillator_2_effect_mode` (int) [RW]
+
+Topology / voice config:
+
+- `filter_routing` (int) [RW]
+- `mono_poly` (int) [RW]
+- `poly_voices` (int) [RW]
+- `unison_mode` (int) [RW]
+- `unison_voice_count` (int) [RW]
+
+Modulation matrix support:
+
+- `visible_modulation_target_names` (StringVector) [RO] — names of parameters
+  currently visible as modulation targets
+
+**Children:** none beyond baseline.
+
+**Functions (extras beyond baseline) — imperative mod-matrix API:**
+
+- `add_parameter_to_modulation_matrix(parameter: DeviceParameter)` — registers a
+  DeviceParameter as a modulation target
+- `get_modulation_target_parameter_name(index: int)` — returns the parameter
+  name for a target slot
+- `get_modulation_value(target_index: int, source_index: int)` — reads the
+  amount in a matrix cell
+- `is_parameter_modulatable(parameter: DeviceParameter)` [RO query] — capability
+  check
+- `set_modulation_value(target_index: int, source_index: int)` — writes a matrix
+  cell (signature in doc omits the amount; verify at implementation time)
 
 ## Generic-Device instruments (no specialization)
 
@@ -169,49 +280,138 @@ Two oscillator engines with wavetable selectors and an imperative mod-matrix API
 Exposes sidechain input routing dictionaries at the class level (Live's standard
 routing-dict shape — values are dicts, not simple ints).
 
-- **Extra properties:** `available_input_routing_channels` (dict),
-  `available_input_routing_types` (dict), `input_routing_channel` (dict),
-  `input_routing_type` (dict)
-- **Note:** Gate, Glue Compressor, Multiband Dynamics, Auto Filter all support
-  sidechain in the UI but expose nothing class-level.
+**Cycling LOM docs:**
+[compressordevice](https://docs.cycling74.com/apiref/lom/compressordevice/). All
+extras documented.
+
+**Properties (extras beyond baseline):**
+
+- `available_input_routing_channels` (dict) [RO] — catalog of channel choices
+  for the currently selected routing type
+- `available_input_routing_types` (dict) [RO] — catalog of routing-type choices
+  (Ext. In, tracks, returns, master, etc.)
+- `input_routing_channel` (dict) [RW] — selected channel sub-routing (e.g.
+  Post-FX / Pre-FX / Post-Mixer for a track)
+- `input_routing_type` (dict) [RW] — selected sidechain input source
+
+**Children:** none beyond baseline.
+
+**Functions:** none beyond baseline.
+
+**Note:** Gate, Glue Compressor, Multiband Dynamics, Auto Filter all support
+sidechain in the UI but expose nothing class-level. The dict shape here matches
+the standard Live "routing object" used elsewhere (Track inputs, etc.).
 
 ### EQ Eight — `Eq8Device`
 
-- **Extra properties:** `edit_mode` (bool), `global_mode` (int), `oversample`
-  (bool)
-- **Note:** Per-band gain/freq/Q/type remain as DeviceParameters. Only the
-  global toggles (edit mode, stereo/L/R/M/S mode, oversampling) are class-level.
+**Cycling LOM docs:** _not documented._ Read/write status below inferred from
+convention: simple scalar toggles are RW.
+
+**Properties (extras beyond baseline):**
+
+- `edit_mode` (bool) [RW] — single-band vs full-curve edit view
+- `global_mode` (int) [RW] — Stereo / L / R / M / S processing mode
+- `oversample` (bool) [RW]
+
+**Children:** none beyond baseline.
+
+**Functions:** none beyond baseline.
+
+**Note:** Per-band gain/freq/Q/type remain as DeviceParameters. Only the global
+toggles (edit mode, stereo/L/R/M/S mode, oversampling) are class-level.
 
 ### Hybrid Reverb — `HybridReverbDevice`
 
 Exposes the convolution IR library — categories, files, and IR-shaping controls.
 This data can't be expressed as DeviceParameters.
 
-- **Extra properties:** `ir_attack_time` (float), `ir_category_index` (int),
-  `ir_category_list` (StringVector), `ir_decay_time` (float), `ir_file_index`
-  (int), `ir_file_list` (StringVector), `ir_size_factor` (float),
-  `ir_time_shaping_on` (bool)
-- **Note:** Classic `Reverb` is generic `Device` — no specialization.
+**Cycling LOM docs:**
+[hybridreverbdevice](https://docs.cycling74.com/apiref/lom/hybridreverbdevice/).
+All extras documented.
+
+**Properties (extras beyond baseline):**
+
+IR library selection:
+
+- `ir_category_index` (int) [RW] — selected category
+- `ir_category_list` (StringVector) [RO] — catalog of categories
+- `ir_file_index` (int) [RW] — selected IR file within the current category
+- `ir_file_list` (StringVector) [RO] — catalog of IR files in the current
+  category (doc summary labeled this RW; flagged as likely doc error since it
+  serves the same enumeration role as `ir_category_list` — verify at
+  implementation time)
+
+IR shaping (time-domain controls applied to the loaded IR):
+
+- `ir_attack_time` (float) [RW]
+- `ir_decay_time` (float) [RW]
+- `ir_size_factor` (float) [RW]
+- `ir_time_shaping_on` (bool) [RW] — master toggle for the shaping section
+
+**Children:** none beyond baseline.
+
+**Functions:** none beyond baseline.
+
+**Note:** Classic `Reverb` is generic `Device` — no specialization.
 
 ### Roar — `RoarDevice`
 
-- **Extra properties:** `env_listen` (bool), `routing_mode_index` (int),
-  `routing_mode_list` (StringVector)
+**Cycling LOM docs:**
+[roardevice](https://docs.cycling74.com/apiref/lom/roardevice/). All extras
+documented.
+
+**Properties (extras beyond baseline):**
+
+- `env_listen` (bool) [RW] — envelope listen toggle (monitors sidechain input)
+- `routing_mode_index` (int) [RW] — selected multiband / serial / parallel
+  routing
+- `routing_mode_list` (StringVector) [RO]
+
+**Children:** none beyond baseline.
+
+**Functions:** none beyond baseline.
 
 ### Shifter — `ShifterDevice`
 
 MIDI-driven pitch behavior exposed at class level.
 
-- **Extra properties:** `pitch_bend_range` (int), `pitch_mode_index` (int)
+**Cycling LOM docs:** _not documented._ Read/write status below inferred from
+convention: scalar config selectors are RW.
+
+**Properties (extras beyond baseline):**
+
+- `pitch_bend_range` (int) [RW]
+- `pitch_mode_index` (int) [RW] — note: scan found no companion
+  `pitch_mode_list`; the index choices are presumably documented in the device
+  UI rather than enumerated via LOM
+
+**Children:** none beyond baseline.
+
+**Functions:** none beyond baseline.
 
 ### Spectral Resonator — `SpectralResonatorDevice`
 
 Most class-level enums of any specialized audio effect — mostly MIDI-input and
 pitch-mode toggles.
 
-- **Extra properties:** `frequency_dial_mode` (int), `midi_gate` (int),
-  `mod_mode` (int), `mono_poly` (int), `pitch_bend_range` (int), `pitch_mode`
-  (int), `polyphony` (int)
+**Cycling LOM docs:**
+[spectralresonatordevice](https://docs.cycling74.com/apiref/lom/spectralresonatordevice/).
+All extras documented.
+
+**Properties (extras beyond baseline):**
+
+- `frequency_dial_mode` (int) [RW]
+- `midi_gate` (int) [RW] — MIDI gating behavior
+- `mod_mode` (int) [RW]
+- `mono_poly` (int) [RW]
+- `pitch_bend_range` (int) [RW]
+- `pitch_mode` (int) [RW] — note: no companion `_index`/`_list` pair — bare
+  `pitch_mode` int (contrast with Shifter's `pitch_mode_index`)
+- `polyphony` (int) [RW]
+
+**Children:** none beyond baseline.
+
+**Functions:** none beyond baseline.
 
 ## Generic-Device audio effects (no specialization)
 
