@@ -2,6 +2,12 @@
 
 ## Upcoming
 
+### 1.4.x
+
+- Take lane support
+- Support for device-specific parameters (e.g. deeper support for Wavetable)
+- Experimental voice interface via OpenAI's realtime v2 model
+
 ### 1.5 - Personalization and Extensibility
 
 - Global context: add your own reference material and custom instructions across
@@ -9,13 +15,9 @@
 - Global memory: Producer Pal can adapt over time to your needs and interaction
   style
 - Custom skills, system prompts, tool sets, and tool descriptions
-- Task-focused personas and better optimized "small model mode" via
-  customization presets
 - Workflows: pre-defined tool call sequences for reliable, repeatable operations
-- A new context management section in the built-in chat UI for working with all
-  the above
-- Companion MCP server template for building new capabilities as separate
-  servers
+- Alternative MIDI syntaxes
+- Context manager in the built-in chat UI for working with all the above
 
 See [Extending Producer Pal](/extending) for more on the extension model.
 
@@ -95,7 +97,6 @@ companion MCP servers.
 
 **Core features under consideration:**
 
-- Take lane support (pending Live API improvements)
 - Chord notation and pitches as scale/chord degrees
 - Bar|beat and MIDI transform notation refinements (including alternate
   notations that may work better with smaller models)
