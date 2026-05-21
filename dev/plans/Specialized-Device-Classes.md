@@ -302,6 +302,66 @@ extras documented.
 sidechain in the UI but expose nothing class-level. The dict shape here matches
 the standard Live "routing object" used elsewhere (Track inputs, etc.).
 
+**Producer Pal interface design (decided 2026-05-21 via probe):**
+
+Two writable fields on `update-device`, also returned by `read-device`:
+
+- `sidechainSourceTrackId` (trackId or null) — `null` means "No Input"
+- `sidechainChannel` (`"Pre FX"` | `"Post FX"` | `"Post Mixer"` or null)
+
+The class-level `available_input_routing_types` and
+`available_input_routing_channels` are used internally for validation but not
+surfaced (would add noise to every `read-device` response).
+
+**Implementation gotchas (verified by probe 2026-05-21):**
+
+1. **Live silently swallows invalid sets.** Bad identifiers, unknown
+   `display_name`s, and excluded-track identifiers all return `success` but the
+   value doesn't actually change. **Pre-validation is required** — there is no
+   error signal to react to after the fact.
+
+2. **Routing identifiers are NOT Live object IDs.** They're a separate
+   Live-internal namespace. In our test set, Drift's trackId is `"136"` but its
+   routing identifier is `3`; AudioFX's trackId is `"149"` but its routing
+   identifier is `16`. Translate by matching the track's `name` against the
+   `display_name` of entries in `available_input_routing_types`.
+
+3. **Excluded source tracks:** any track whose device chain has no audio-bearing
+   device (no instrument, no audio effect) is omitted from
+   `available_input_routing_types`. Pure-MIDI tracks with only MIDI effects are
+   excluded. Attempted writes should warn-and-skip:
+   `"Track 'foo' cannot be a sidechain source — it has no audio-bearing devices"`.
+
+4. **Channel options vary by source:**
+   - Self-reference (Compressor sidechaining its own track): only `Pre FX`
+   - Source has audio effects but no instrument: no `Pre FX` (no pre-FX signal
+     exists)
+   - Source is master or has an instrument: full `Pre FX, Post FX, Post Mixer`
+
+5. **Channel `identifier` values are not stable across reads.** `Pre FX` was id
+   20 with source=Drift, 23 with source=AudioFX, 24 with source=Main, 27 with
+   source=MIDI-FX. Always re-read `available_input_routing_channels` after a
+   source change; never cache.
+
+6. **Order matters in batched updates.** If both `sidechainSourceTrackId` and
+   `sidechainChannel` are in the same `update-device` call: apply source first,
+   re-read `available_input_routing_channels`, then apply channel (validated
+   against the freshly read list).
+
+7. **Sidechain on/off is a DeviceParameter** (`S/C On`, param index 20), not
+   part of this work. Already accessible via the existing parameter surface.
+
+**Set value format:** the `set` operation must receive a stringified JSON dict,
+e.g. `value: '{"identifier": 3}'` — `ppal-live-api`'s `value` field doesn't
+accept native objects.
+
+**Shared helper opportunity:** Live uses the same routing-dict shape for Track
+inputs/outputs. The resolver
+(`{trackId, channelString} ↔ {routing identifier, channel identifier}`) belongs
+in a shared helper. If Ableton later adds class-level routing APIs to Gate /
+Glue Compressor / Multiband Dynamics / Auto Filter, the helper can pick them up
+cheaply.
+
 ### EQ Eight — `Eq8Device`
 
 **Cycling LOM docs:** _not documented._ Read/write status below inferred from
