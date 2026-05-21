@@ -77,16 +77,19 @@ sections below reference these patterns rather than redocumenting them.
 
 ## Wire format
 
-All specialized-device pseudo-params flow through existing tool surfaces. Only
-**one new top-level arg** and **one new include value** are added across all
-this work:
+All specialized-device pseudo-params flow through existing tool surfaces. Across
+all this work the new surfaces are limited to: **one new top-level write arg**
+(`actions` on `update-device`), **one new include value** (`"assets"` on
+`read-device`), and **one new top-level read output field** (`modulations` on
+`read-device`, for Wavetable's mod matrix only):
 
-| Surface                                                                           | Where it goes                                                        |
-| --------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Writable pseudo-params (e.g. `globalMode`, `voices`, `irCategory`, `sample`)      | Inside `update-device`'s existing `params` arg as `name=value` lines |
-| Read-only pseudo-params (e.g. `multiSampleMode`, `estimatedPlaybackLength`)       | Inside `read-device`'s existing `params` output field                |
-| Actions (e.g. `reverse`, `warpAs(4.0)`)                                           | **New top-level `actions: string[]` arg** on `update-device`         |
-| Catalogs / "what's available" data (e.g. `irFileList`, `sidechainSourceTrackIds`) | New value `"assets"` for `read-device`'s existing `include` arg      |
+| Surface                                                                                         | Where it goes                                                                                                            |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Writable pseudo-params (e.g. `globalMode`, `voices`, `irCategory`, `sample`, `mod1Source`)      | Inside `update-device`'s existing `params` arg as `name=value` lines                                                     |
+| Read-only pseudo-params (e.g. `multiSampleMode`, `estimatedPlaybackLength`)                     | Inside `read-device`'s existing `params` output field                                                                    |
+| Actions (e.g. `reverse`, `warpAs(4.0)`, `setModulation(...)`)                                   | **New top-level `actions: string[]` arg** on `update-device`                                                             |
+| Catalogs / "what's available" data (e.g. `irFileList`, `sidechainSourceTrackIds`)               | New value `"assets"` for `read-device`'s existing `include` arg                                                          |
+| Structured non-param state (Wavetable's mod-matrix cells — inherently 2D, name-collision-prone) | **New top-level `modulations` output field** on `read-device` (always-on for Wavetable; omitted/empty for other devices) |
 
 This keeps the tool schema flat — no per-device arg explosion — and gives the
 LLM one consistent surface for setting both DeviceParameters and class-level
@@ -101,12 +104,32 @@ String args should be quoted where needed.
 actions: [
   "reverse",
   "warpAs(4.0)",
-  "addModulation('Filter Freq', 'Env 2', 0.5)"
+  "setModulation('Osc 1 Pos', 'Env 2', 0.5)",
+  "clearModulation('Osc 1 Pos', 'LFO 1')",
+  "addModulationTarget('Filter 1 Freq')"
 ]
 ```
 
-Parser scope: handle bare names, positional args (ints, floats, quoted strings).
-No implicit type coercion beyond standard JS literal parsing.
+Parser scope: bare names; positional args; literal types are int, float, and
+quoted strings (single or double quotes — pick one and stick with it; commas
+inside quotes are respected; no nested function calls; no implicit type coercion
+beyond standard JS literal parsing).
+
+### Structured read output beyond `params`
+
+When state is inherently multi-dimensional or would suffer name collisions in a
+flat `params` map, surface it as a separate top-level output field on
+`read-device`. Currently only Wavetable's mod matrix uses this pattern:
+
+- **`modulations`** (Wavetable) — array of `{ target, source, amount }` objects.
+  The target is a parameter name (matches the matrix's internal keying), the
+  source is a canonical source name. Always on for Wavetable; omitted or empty
+  `[]` for other devices.
+
+Reserved for cases where (a) the data is genuinely structured and (b) flattening
+would either invent ugly composite keys (`mod[Osc 1 Pos][Env 2]`) or collide
+with regular DeviceParameter names. Don't reach for this when `params` already
+handles the shape.
 
 ## The `assets` include (opt-in discoverability)
 
@@ -128,9 +151,14 @@ for this include):
 - **Hybrid Reverb:** `irCategoryList` (all 10 stable categories) + `irFileList`
   (files in the currently selected category — varies per Live install and per
   category).
-- **Wavetable:** category list + current-category wavetables list (mirrors the
-  Hybrid Reverb pattern; see Wavetable section below).
-- **Drift:** all 15 mod-matrix `_list` properties as resolved name arrays.
+- **Wavetable:** `oscillatorCategories`, `osc1Wavetables`, `osc2Wavetables`,
+  `modulationSources` (hard-coded 13 source names), `modulationTargets` (current
+  matrix target parameter names), `modulatableParameters` (DeviceParameter names
+  where `is_parameter_modulatable=1`).
+- **Drift:** `modulationSources` (the shared 8-source list — used by all source
+  slots), `modulationTargets` (the shared 12-target list — used by the 3
+  free-slot target enums), `voiceModes`, `voiceCounts`. The LOM exposes 15
+  `_list` properties but probe-confirmed they collapse to 2 distinct lists.
 
 Stable enums that don't change per Live install (e.g. EQ Eight's
 `globalMode: stereo|L/R|M/S`, Meld's `monoPoly: mono|poly`) are documented in
@@ -202,7 +230,7 @@ declaratively as `_index`/`_list` property pairs (no functions).
 
 **Cycling LOM docs:** _not documented._ Read/write status below inferred from
 convention: `_list` StringVectors are enumeration catalogs (RO), `_index` ints
-are the active selection (RW).
+are the active selection (RW). Probe 2026-05-21 confirmed.
 
 **Properties (extras beyond baseline):**
 
@@ -250,6 +278,77 @@ Voice / pitch config:
 **Children:** none beyond baseline.
 
 **Functions:** none beyond baseline.
+
+**Probe findings (2026-05-21):** The 15 `_list` properties collapse to only **2
+distinct lists** — every source slot returns the same 8 sources, every target
+slot returns the same 12 targets:
+
+- Sources (shared across all 11 source slots — both fixed-target and free
+  slots): `["Env 1", "Env 2", "LFO", "Key", "Vel", "Mod", "Press", "Slide"]`
+- Targets (for the 3 free slots, includes a `"None"` sentinel):
+  `["None", "Osc 1 Gain", "Osc 1 Shape", "Osc 2 Gain", "Osc 2 Detune", "Noise Gain", "LP Frequency", "LP Resonance", "HP Frequency", "LFO Rate", "Cyc Env Rate", "Main Volume"]`
+- `voice_mode_list`: `["Poly", "Mono", "Stereo", "Unison"]`
+- `voice_count_list`: `[4, 8, 16, 24, 32]` — returns **ints**, not strings
+  (despite the doc declaring StringVector). Note: docs say `voice_count_list`
+  but the values "1, 4, 8, 16, 24, 32" appear in some UI configurations — verify
+  exact set at implementation time.
+
+**Modulation amounts are DeviceParameters, not class-level state.** Probe
+confirmed `LP Mod Amt 1`, `LP Mod Amt 2`, `LFO Mod Amt`, `Osc 1 Shape Mod Amt`,
+`Pitch Mod Amt 1`, `Pitch Mod Amt 2`, `Mod Matrix Amt 1`, `Mod Matrix Amt 2`,
+`Mod Matrix Amt 3` all exist as regular parameters. So Drift's split is clean:
+**source/target selection at class level, amounts as DeviceParameters**.
+
+**Producer Pal interface design (decided 2026-05-21 via probe):**
+
+Fourteen writable string-enum pseudo-params on `update-device`, also returned by
+`read-device` (in the `params` field — same surface as every other specialized
+device):
+
+Source slots (each takes one of the 8 source names):
+
+- `filterMod1Source`, `filterMod2Source` — wire filter-frequency mods
+- `lfoSource` — wire LFO-amount mod
+- `pitchMod1Source`, `pitchMod2Source` — wire pitch mods
+- `shapeSource` — wire osc-shape mod
+- `mod1Source`, `mod2Source`, `mod3Source` — sources for the 3 free slots
+
+Target slots (each takes one of the 12 target names, including `"None"`):
+
+- `mod1Target`, `mod2Target`, `mod3Target` — targets for the 3 free slots
+
+Voice / pitch config:
+
+- `voiceMode` — `"Poly"` | `"Mono"` | `"Stereo"` | `"Unison"` (maps to
+  `voice_mode_index` 0-3)
+- `voiceCount` — discrete int set: **4, 8, 16, 24, 32** (Zod literal union; maps
+  to `voice_count_index` into `voice_count_list`)
+- `pitchBendRange` (int, semitones)
+
+**Modulation amounts continue to flow through the regular DeviceParameter
+surface.** They are not duplicated as pseudo-params — the LLM sets `mod1Source`
+(pseudo-param) and `Mod Matrix Amt 1` (DeviceParameter) in the same
+`update-device` call via the existing `params` arg.
+
+The `assets` include adds (for Drift only):
+
+- `modulationSources` — the 8-source list (shared by all source slots)
+- `modulationTargets` — the 12-target list (used by the 3 free target slots)
+- `voiceModes` — the 4 voice-mode names
+- `voiceCounts` — the discrete int set
+
+**Implementation gotchas:**
+
+1. **Source list is shared across 11 slots.** A single canonical
+   `modulationSources` list serves every slot — don't pretend there are 11
+   distinct lists.
+2. **`voice_count_list` returns ints, not strings**, despite being typed
+   `StringVector` in the LOM docs. Read as `number[]` not `string[]`.
+3. **`"None"` is a meaningful target value** — selecting it disables a free
+   modulation slot. Treat as an explicit clear, not "skip the field."
+4. **Modulation amounts stay on the DeviceParameter surface.** Document the
+   pairing in skill instructions (e.g. "to wire LFO modulating Filter Freq, set
+   `filterMod1Source = 'LFO'` and adjust `LP Mod Amt 1`").
 
 ### Meld — `MeldDevice` (`class_name: InstrumentMeld`)
 
@@ -469,14 +568,143 @@ Modulation matrix support:
 
 - `add_parameter_to_modulation_matrix(parameter: DeviceParameter)` — registers a
   DeviceParameter as a modulation target
-- `get_modulation_target_parameter_name(index: int)` — returns the parameter
-  name for a target slot
-- `get_modulation_value(target_index: int, source_index: int)` — reads the
-  amount in a matrix cell
-- `is_parameter_modulatable(parameter: DeviceParameter)` [RO query] — capability
-  check
-- `set_modulation_value(target_index: int, source_index: int)` — writes a matrix
-  cell (signature in doc omits the amount; verify at implementation time)
+- `get_modulation_target_parameter_name(index: int) → str` — returns the
+  parameter name for a target slot (returns int sentinel `1` for out-of-range)
+- `get_modulation_value(target_index: int, source_index: int) → float` — reads
+  the amount in a matrix cell. Returns `0` for a valid cell with no modulation;
+  returns int sentinel `1` for out-of-range indices.
+- `is_parameter_modulatable(parameter: DeviceParameter) → int` — capability
+  check (1 = modulatable)
+- `set_modulation_value(target_index: int, source_index: int, amount: float)` —
+  **3 args** (probe-verified; doc omits the amount). Writes a matrix cell;
+  amount is float (range presumed -1..1 — verify at implementation time).
+
+**Probe findings (2026-05-21):**
+
+- **Default visible targets (4):** indices 0..3 return parameter names
+  `"Volume"`, `"Transpose"`, `"Osc 1 Pos"`, `"Osc 1 Effect 1"`. Indices 4+
+  return int sentinel `1`.
+- **Source count: 13** (indices 0..12 valid). Index 13+ returns int sentinel
+  `1`. **There is no `_list` property exposing source names** — the source
+  index→name mapping must be hard-coded from the Wavetable UI at implementation
+  time (likely Envelopes, LFOs, MIDI-related sources; exact ordering TBD).
+- **`set_modulation_value(0, 0, 0.5)` then `get_modulation_value(0, 0)`
+  round-trips correctly** (read back 0.5). Cleanup `set(.., 0)` clears the cell.
+- **`visible_modulation_target_names` returns display labels**
+  (`["Amp", "Pitch", "Osc 1 Pos", "Osc 1 Warp"]`), but
+  `get_modulation_target_parameter_name` returns **parameter names** that differ
+  for some entries (`"Volume"` ↔ "Amp", `"Transpose"` ↔ "Pitch",
+  `"Osc 1 Effect 1"` ↔ "Osc 1 Warp"). The matrix is keyed by **parameter name**,
+  not display label. Resolver must translate.
+
+**Producer Pal interface design (decided 2026-05-21 via probe):**
+
+Writable pseudo-params on `update-device` (via the existing `params` arg, also
+returned by `read-device` in `params`):
+
+Topology / voicing:
+
+- `filterRouting` — `"serial"` | `"parallel"` | `"split"` (maps to int 0/1/2)
+- `monoPoly` — `"mono"` | `"poly"` (maps to int 0/1)
+- `polyVoices` (int) — current polyphony count
+- `unisonMode` — `"none"` | `"classic"` | `"shimmer"` | `"noise"` |
+  `"phase-sync"` | `"position-spread"` | `"random-note"` (maps to int 0..6)
+- `unisonVoiceCount` (int)
+
+Oscillator engines + wavetables:
+
+- `osc1Engine`, `osc2Engine` — engine mode per oscillator. Names TBD (likely
+  `"none"` | `"FM"` | `"classic"` | `"modern"`); verify at implementation.
+- `osc1Category`, `osc2Category` — wavetable category (string from the shared
+  catalog list)
+- `osc1Wavetable`, `osc2Wavetable` — selected wavetable within the
+  per-oscillator category-dependent list
+
+**Modulation matrix writes via the `actions: string[]` arg:**
+
+- `setModulation('<targetParameterName>', '<sourceName>', <amount>)` — writes
+  one cell. Internally: ensure the target is in the matrix (call
+  `add_parameter_to_modulation_matrix` if needed — needs probe to confirm
+  whether `set_modulation_value` auto-registers, see open questions), resolve
+  target index via `get_modulation_target_parameter_name`, resolve source name
+  via hard-coded source table, call `set_modulation_value(t, s, amount)`.
+- `clearModulation('<targetParameterName>', '<sourceName>')` — equivalent to
+  `setModulation(..., ..., 0)`.
+- `addModulationTarget('<parameterName>')` — explicit
+  `add_parameter_to_modulation_matrix` for cases where the LLM wants to
+  pre-register a target without setting a value yet (rare; covered by
+  `setModulation` in the common case).
+
+**Modulation matrix reads via a new top-level `modulations` output field on
+`read-device`:**
+
+```json
+{
+  "id": "...",
+  "params": { "filterRouting": "serial", "osc1Wavetable": "Saw Dual 1", ... },
+  "modulations": [
+    {
+      "target": "Osc 1 Pos",
+      "source": "Env 2",
+      "amount": 0.5
+    },
+    { "target": "Osc 1 Pos", "source": "LFO 1", "amount": -0.25 }
+  ]
+}
+```
+
+This field is parallel to `assets` in role — structured data that isn't
+param-shaped — but it's **current state, not catalog discovery**, so it's always
+on (not opt-in) and present for Wavetable only (omitted or empty for other
+devices). The matrix can't be flattened into `name = value` lines without name
+collisions (e.g. `"Osc 1 Pos"` is **both** a DeviceParameter and a modulation
+target).
+
+**`assets` include adds (for Wavetable):**
+
+- `oscillatorCategories` — shared category list (resolved string array)
+- `osc1Wavetables`, `osc2Wavetables` — current-category wavetables per
+  oscillator
+- `modulationSources` — the 13 source names (hard-coded canonical list)
+- `modulationTargets` — currently-in-matrix target **parameter names** (resolved
+  via `get_modulation_target_parameter_name`, not the display-label
+  `visible_modulation_target_names`)
+- `modulatableParameters` — list of DeviceParameter names where
+  `is_parameter_modulatable=1` (the candidates for `addModulationTarget`)
+
+**Implementation gotchas:**
+
+1. **`set_modulation_value` signature is 3 args, not 2.** Docs are wrong;
+   probe-verified 3rd arg is the float amount.
+2. **Display-label vs parameter-name mismatch.** Always use parameter names
+   (from `get_modulation_target_parameter_name`) as the canonical matrix
+   identifier. `visible_modulation_target_names` is for UI display only.
+3. **Source index → name mapping is hard-coded.** No LOM property exposes it.
+   Document the 13 source names in code (with a test that re-verifies the count
+   against `get_modulation_value(0, 13)` returning sentinel `1`).
+4. **Sentinel `1` for out-of-range.** Both
+   `get_modulation_target_parameter_name` and `get_modulation_value` return int
+   `1` for invalid indices instead of throwing. The resolver must check bounds
+   before assuming the result.
+5. **Target list extension semantics need a confirmation probe.** Whether
+   `set_modulation_value` on a not-yet-added target auto-registers it, or
+   requires `add_parameter_to_modulation_matrix` first, isn't yet verified.
+   `setModulation` should defensively call `add_parameter_to_modulation_matrix`
+   when the target name isn't found in the current target list — idempotency
+   verified at implementation.
+6. **No "remove target" function documented.** Cleanup of an unused target row
+   is unclear (set all cells to 0? leave it?). Decide policy at implementation —
+   likely "no cleanup; zero values are inert."
+7. **Engine mode names TBD.** `oscillator_N_effect_mode` is an int; the string
+   enum mapping must be verified against the Wavetable UI at implementation time
+   (likely None/FM/Classic/Modern but probe before locking).
+
+**Skipped:**
+
+- Direct exposure of `visible_modulation_target_names` — internal display
+  artifact superseded by `modulationTargets` in `assets`.
+- Raw `is_parameter_modulatable` — implicit in the `modulatableParameters`
+  catalog.
 
 ## Generic-Device instruments (no specialization)
 
@@ -978,9 +1206,12 @@ ticket planning, not a final recommendation.
 - **Wavetable** — wavetable selection (`oscillator_N_wavetable_category` /
   `_index` with backing `_wavetables` / `_categories` lists); engine mode
   (`oscillator_N_effect_mode`); voice config (`mono_poly`, `poly_voices`,
-  `unison_mode`, `unison_voice_count`); `filter_routing`.
-- **Drift** — mod-matrix routing (the bulk of Drift's character). Plus
-  `voice_mode_index`, `voice_count_index`, `pitch_bend_range`.
+  `unison_mode`, `unison_voice_count`); `filter_routing`. Plus mod-matrix
+  reads/writes via imperative API (`setModulation` / `clearModulation` actions
+  - new `modulations` output field).
+- **Drift** — mod-matrix routing (the bulk of Drift's character) via declarative
+  source/target string enums; modulation amounts continue via DeviceParameters.
+  Plus `voice_mode_index`, `voice_count_index`, `pitch_bend_range`.
 
 **Medium value:**
 
