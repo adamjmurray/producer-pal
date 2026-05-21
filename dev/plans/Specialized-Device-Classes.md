@@ -68,6 +68,45 @@ Everything below documents **deltas** from this baseline.
 
 ---
 
+# Interface conventions
+
+These cross-cutting decisions apply to multiple specialized devices. Per-device
+sections below reference these patterns rather than redocumenting them.
+
+## The `assets` include (opt-in discoverability)
+
+`read-device` supports an opt-in `include: ["assets"]` parameter that surfaces
+per-device "what choices are available" data — catalogs, enum source lists, and
+other browse-style metadata that the LLM needs when planning a write but doesn't
+care about during normal state inspection.
+
+**Default OFF.** Without the include, `read-device` returns only current state,
+keeping reads compact. The LLM opts in when actively choosing from a catalog
+(picking an IR file, selecting a wavetable, configuring a mod-matrix route).
+
+**Per-device contents** (only the devices listed add anything; others are no-ops
+for this include):
+
+- **Compressor:** `sidechainSourceTrackIds` — trackIds that are valid sidechain
+  sources for the current Live Set (excludes tracks with no audio-bearing
+  devices).
+- **Hybrid Reverb:** `irCategoryList` (all 10 stable categories) + `irFileList`
+  (files in the currently selected category — varies per Live install and per
+  category).
+- **Wavetable:** category list + current-category wavetables list (mirrors the
+  Hybrid Reverb pattern; see Wavetable section below).
+- **Drift:** all 15 mod-matrix `_list` properties as resolved name arrays.
+
+Stable enums that don't change per Live install (e.g. EQ Eight's
+`globalMode: stereo|L/R|M/S`, Meld's `monoPoly: mono|poly`) are documented in
+tool descriptions / skill instructions rather than surfaced via this include.
+
+**Why opt-in:** Most reads inspect current state, not catalogs. Drift in
+particular would bloat every read significantly. Opt-in keeps the happy path
+compact and establishes a clear browse pattern: "to see what's available, ask."
+
+---
+
 # Instruments
 
 ## Specialized instruments
@@ -345,8 +384,12 @@ Two writable fields on `update-device`, also returned by `read-device`:
 - `sidechainChannel` (`"Pre FX"` | `"Post FX"` | `"Post Mixer"` or null)
 
 The class-level `available_input_routing_types` and
-`available_input_routing_channels` are used internally for validation but not
-surfaced (would add noise to every `read-device` response).
+`available_input_routing_channels` are used internally for validation. See
+[`assets` include](#the-assets-include-opt-in-discoverability) — opt-in adds
+`sidechainSourceTrackIds` (list of trackIds that are valid sources, filtered to
+tracks with audio-bearing devices). Channel options (`"Pre FX"` / `"Post FX"` /
+`"Post Mixer"`) are stable per Live version and documented in the tool
+description rather than surfaced.
 
 **Implementation gotchas (verified by probe 2026-05-21):**
 
@@ -497,7 +540,68 @@ IR shaping (time-domain controls applied to the loaded IR):
 
 **Functions:** none beyond baseline.
 
-**Note:** Classic `Reverb` is generic `Device` — no specialization.
+**Note:** Classic `Reverb` is generic `Device` — no specialization. Device-wide
+reverb knobs (Predelay, Decay, Size, Damping, Diffusion, Modulation, etc.) are
+exposed as 30+ DeviceParameters and are separate from the IR shaping params
+below — those apply specifically to the convolution IR.
+
+**Producer Pal interface design (decided 2026-05-21 via probe):**
+
+Six writable fields on `update-device`, also returned by `read-device`:
+
+- `irCategory` (enum string) — one of: `"Early Reflections"`, `"Real Places"`,
+  `"Chambers and Large Rooms"`, `"Made for Drums"`, `"Halls"`, `"Plates"`,
+  `"Springs"`, `"Bigger Spaces"`, `"Textures"`, `"User"`. Mapped via
+  underscore↔space translation against `ir_category_list`.
+- `irFile` (string) — must match a file in the currently selected category (e.g.
+  `"Berliner Hall LR"`, `"Town Hall Long"`). File names already contain spaces —
+  no transformation.
+- `irAttackTime` (float, 0..3 seconds) — silent clamping at bounds.
+- `irDecayTime` (float, 0.02..20 seconds) — silent clamping at bounds.
+- `irSizeFactor` (float, 0.2..5.0) — silent clamping at bounds.
+- `irTimeShapingOn` (bool)
+
+Class-level `ir_category_list` and `ir_file_list` are used for validation. See
+[`assets` include](#the-assets-include-opt-in-discoverability) — opt-in adds
+`irCategoryList` (all 10 stable categories) + `irFileList` (files in the
+currently selected category, 11-29 strings depending on category). To browse a
+different category, set `irCategory` first and re-read with the include.
+
+**Implementation gotchas (verified by probe 2026-05-21):**
+
+1. **`ir_file_list` is RO and category-dependent.** Setting it is silently
+   no-op'd (the doc summary that said RW was misleading). Contents change with
+   `ir_category_index` — Halls has 11 files, Early Reflections has 22, etc. Must
+   re-read after every category change.
+
+2. **Out-of-range writes:**
+   - Category index: silent **clamp to max** (`99` → `9`), not revert.
+   - File index: silent **revert** to prior valid value.
+   - Float params: silent clamp at min/max (`ir_decay_time = -100` → `0.02`;
+     `= 10000` → `20`). No revert.
+   - String validation prevents the index issues; floats can be passed through.
+
+3. **Order matters in batched updates.** If both `irCategory` and `irFile` are
+   set: apply category first, re-read `ir_file_list`, then resolve and apply
+   file. Same pattern as Compressor.
+
+4. **Changing `irCategory` resets `ir_file_index` to 0.** Probe: was at index 15
+   in cat 0 (22 files); switched to cat 4 (Halls, 11 files); index reset to 0
+   (not clamped to 10). Changing category WILL change the loaded IR file. Read
+   back the resulting `irFile` and include in response.
+
+5. **The `"User"` category may be empty.** When no user IRs are imported,
+   `ir_file_list` returns `["<empty>"]` (a sentinel single-element array, not a
+   true empty array). Treat as "no files available" and warn-and-skip if
+   `irFile` is requested.
+
+6. **Underscore ↔ space translation is one-way safe.** All 10 category names use
+   underscores as word separators (no literal underscores). Implementation:
+   `replace(/_/g, ' ')` for read, `replace(/ /g, '_')` for write lookup.
+
+7. **Time-shaping floats are silently inert when `irTimeShapingOn=false`.**
+   Values persist but have no audible effect until shaping is enabled. We don't
+   warn — caller's intent.
 
 ### Roar — `RoarDevice`
 
