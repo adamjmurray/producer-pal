@@ -605,22 +605,47 @@ different category, set `irCategory` first and re-read with the include.
    Values persist but have no audible effect until shaping is enabled. We don't
    warn — caller's intent.
 
-### Roar — `RoarDevice`
+### Roar — `RoarDevice` (`class_name: Roar`)
 
 **Cycling LOM docs:**
 [roardevice](https://docs.cycling74.com/apiref/lom/roardevice/). All extras
-documented.
+documented; semantics verified by probe 2026-05-21.
 
 **Properties (extras beyond baseline):**
 
-- `env_listen` (bool) [RW] — envelope listen toggle (monitors sidechain input)
-- `routing_mode_index` (int) [RW] — selected multiband / serial / parallel
-  routing
-- `routing_mode_list` (StringVector) [RO]
+- `env_listen` (bool) [RW] — auditions Roar's internal envelope signal at the
+  output (sound-design preview toggle).
+- `routing_mode_index` (int, 0-6) [RW] — selected processing topology. Out of
+  range silently reverts.
+- `routing_mode_list` (StringVector) [RO] — stable 7-value catalog:
+  `["Single", "Serial", "Parallel", "Multi Band", "Mid Side", "Feedback", "Delay"]`.
+  Same on every Roar instance — no per-install or per-set variation.
 
 **Children:** none beyond baseline.
 
 **Functions:** none beyond baseline.
+
+**Producer Pal interface design (decided 2026-05-21 via probe):**
+
+Two writable fields on `update-device`, also returned by `read-device`:
+
+- `routingMode` (enum: `"single"` | `"serial"` | `"parallel"` | `"multi-band"` |
+  `"mid-side"` | `"feedback"` | `"delay"`) — maps to internal int 0..6.
+- `envListen` (bool) — maps to int 0/1.
+
+**Not surfaced via `include: ["assets"]`.** The routing-mode catalog is stable
+per Live version (probe confirmed 7 fixed names). Document the enum values in
+the tool description / skill instructions — same pattern as EQ Eight's
+`globalMode` and Compressor's channel options. No `assets` participation.
+
+**Implementation gotchas (verified by probe 2026-05-21):**
+
+1. **Silent revert on out-of-range writes.** `routing_mode_index=7` reverts to
+   6; `env_listen=2` reverts to 1. The enum mapping should prevent invalid
+   values from reaching the API, but defensive: validate before set.
+2. **`env_listen` is a sound-design toggle**, not a "set and forget" param.
+   Typical LLM workflows won't enable it. Expose for completeness but don't
+   emphasize.
 
 ### Shifter — `ShifterDevice`
 
