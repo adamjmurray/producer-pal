@@ -132,20 +132,55 @@ Voice / pitch config:
 
 **Cycling LOM docs:**
 [melddevice](https://docs.cycling74.com/apiref/lom/melddevice/). All extras
-documented.
+documented; semantics verified by probe 2026-05-21.
 
 **Properties (extras beyond baseline):**
 
-- `mono_poly` (int) [RW] — polyphony mode selector
-- `poly_voices` (int) [RW] — polyphony voice count
-- `selected_engine` (bool) [RW] — A/B dual-engine selector (scan returned
-  `bool`; doc lists it as `int` — likely doc shorthand for the same underlying
-  boolean toggle)
-- `unison_voices` (int) [RW] — unison voice count
+- `mono_poly` (int) [RW] — `0` = mono, `1` = poly. Out-of-range silently
+  reverts.
+- `poly_voices` (int) [RW] — polyphony voice count. Valid range: **1-6** (probe
+  confirmed; 7+ silently reverts to last valid).
+- `unison_voices` (int) [RW] — unison voice count. Valid range: **0-2** (probe
+  confirmed; 3+ silently reverts). Exact semantic of each value (off vs voice
+  count) TBD at implementation time — verify against Meld UI.
+- `selected_engine` (int, 0 or 1) [RW] — UI-only A/B engine display selector.
+  Probe verified that writes to `A Osc Shape` with `selected_engine=1` still go
+  to A. Functional engine choice for each chain is exposed as DeviceParameters
+  (`A Osc Type`, `B Osc Type`, etc.).
 
 **Children:** none beyond baseline.
 
 **Functions:** none beyond baseline.
+
+**Note on per-engine parameters:** Meld exposes **129 DeviceParameters** — both
+A and B chains have their full engine, filter, LFO, amp, and modulation settings
+as separate `A *` and `B *` params (e.g. `A Osc Type`, `A Filter Freq`,
+`B LFO 1 Sync`, `B Glide Time`). Both chains are always independently
+addressable regardless of `selected_engine`.
+
+**Producer Pal interface design (decided 2026-05-21 via probe):**
+
+Three writable fields on `update-device`, also returned by `read-device`:
+
+- `monoPoly` (enum: `"mono"` | `"poly"`) — maps to internal int 0/1
+- `polyVoices` (int, 1-6)
+- `unisonVoices` (int, 0-2)
+
+**`selected_engine` deliberately NOT exposed** — UI-only display selector
+(parallel to EQ Eight's `edit_mode`). Both A and B engines are reached directly
+via `A *` / `B *` DeviceParameters.
+
+**Implementation gotchas (verified by probe 2026-05-21):**
+
+1. **Silent rejection on out-of-range writes.** `poly_voices=7`, `mono_poly=2`,
+   `unison_voices=3`, etc. all return success but revert to prior valid value.
+   Pre-validate against documented ranges.
+2. **`polyVoices` is ignored in mono mode (semantically).** Setting it still
+   succeeds and persists, but has no audible effect until `monoPoly` becomes
+   `"poly"`. We don't warn — caller's intent.
+3. **`unisonVoices` semantic meaning of 0/1/2 needs UI verification.** Likely
+   `0` = off / single voice and `1`/`2` = additional unison voices, but confirm
+   at implementation time.
 
 ### Simpler — `SimplerDevice` (`class_name: OriginalSimpler`)
 
