@@ -364,21 +364,71 @@ cheaply.
 
 ### EQ Eight — `Eq8Device`
 
-**Cycling LOM docs:** _not documented._ Read/write status below inferred from
-convention: simple scalar toggles are RW.
+**Cycling LOM docs:** _not documented._ Semantics verified by probe 2026-05-21.
 
 **Properties (extras beyond baseline):**
 
-- `edit_mode` (bool) [RW] — single-band vs full-curve edit view
-- `global_mode` (int) [RW] — Stereo / L / R / M / S processing mode
+- `edit_mode` (int, 0 or 1) [RW] — UI-only selector for which chain (A=0, B=1)
+  the device GUI displays. Does NOT affect parameter writes (probe-verified).
+  Out-of-range writes (2, 99) silently revert to prior value.
+- `global_mode` (int, 0/1/2) [RW] — processing mode. Valid: 0=Stereo, 1=L/R,
+  2=M/S. Out-of-range writes silently revert.
 - `oversample` (bool) [RW]
 
 **Children:** none beyond baseline.
 
 **Functions:** none beyond baseline.
 
-**Note:** Per-band gain/freq/Q/type remain as DeviceParameters. Only the global
-toggles (edit mode, stereo/L/R/M/S mode, oversampling) are class-level.
+**Note on per-band parameters:** Per-band controls are 80 DeviceParameters: 8
+bands × 5 controls (Filter On, Filter Type, Frequency, Gain, Q) × 2 chains (`A`
+and `B`), e.g. `1 Filter On A`, `1 Frequency A`, ... `8 Q B`. Plus device-wide:
+`Device On`, `Output`, `Scale`, `Adaptive Q`. **Both A and B parameters are
+always independently addressable by name regardless of `edit_mode` or
+`global_mode`** — chain is determined by parameter suffix.
+
+**Producer Pal interface design (decided 2026-05-21 via probe):**
+
+Two writable fields on `update-device`, also returned by `read-device`:
+
+- `globalMode` (enum: `"stereo"` | `"L/R"` | `"M/S"`) — maps to internal int
+  0/1/2
+- `oversample` (bool)
+
+**`edit_mode` deliberately NOT exposed.** It's a UI display selector — probe
+verified that writes to `1 Frequency A` with `edit_mode=1` still write to A, and
+`1 Frequency B` was untouched. The LLM has no use for a GUI view preference.
+
+**A/B chain meaning depends on `globalMode`** (verified by probe — A/B parameter
+values persist across mode changes, and parameter names stay `"A"`/`"B"`):
+
+| `globalMode` | A chain processes | B chain processes              |
+| ------------ | ----------------- | ------------------------------ |
+| `"stereo"`   | both channels     | (inactive — stored but silent) |
+| `"L/R"`      | Left channel      | Right channel                  |
+| `"M/S"`      | Mid signal        | Side signal                    |
+
+This mapping is the entire point of exposing `globalMode` — typical M/S
+mastering moves (e.g. "boost the Sides at 5 kHz", "cut 200 Hz only on the
+Right") are reached by setting `globalMode` and then writing the appropriate
+`B`-suffix DeviceParameters. **The skill instructions / tool documentation must
+state this A↔L↔M and B↔R↔S mapping**, since the parameter names don't change to
+reflect it.
+
+**Implementation gotchas (verified by probe 2026-05-21):**
+
+1. **B-chain parameters are silently inaudible in Stereo mode.** Setting
+   B-suffix params (e.g. `1 Frequency B`) in Stereo mode persists the values but
+   they don't process audio. Switching `globalMode` to `"L/R"` or `"M/S"`
+   activates them. We don't enforce or warn — caller's intent.
+2. **Silent rejection on out-of-range writes** to raw `global_mode`. The enum
+   mapping should prevent this from reaching the API, but defensive: validate
+   before set.
+3. **Order matters in batched updates.** Apply `globalMode` before per-band
+   params. (Not for correctness — A/B params are independent regardless — but so
+   the structural intent reads cleanly when reviewing the resulting state.)
+4. **A/B parameter values persist across `globalMode` changes.** Switching from
+   Stereo to L/R does not reset anything — the previously-stored A values become
+   the Left chain, B values become the Right chain. Same for M/S.
 
 ### Hybrid Reverb — `HybridReverbDevice`
 
@@ -587,12 +637,14 @@ ticket planning, not a final recommendation.
 - **Compressor** sidechain routing (`input_routing_type`,
   `input_routing_channel`, plus the `available_*` lists). Sidechain is a common
   production move.
+- **EQ Eight** — `global_mode` (Stereo / L/R / M/S) and `oversample`. Promoted
+  from "lower value" after probe revealed `edit_mode` is UI-only and per-band
+  A/B parameters are independently addressable. M/S processing is a common
+  mastering move.
 - **Meld** — `mono_poly`, `poly_voices`, `unison_voices`, `selected_engine`.
 
 **Lower value:**
 
-- **EQ Eight** — `edit_mode`, `global_mode`, `oversample`. Probably fine to
-  leave alone unless we need M/S processing flows.
 - **Spectral Resonator** / **Shifter** / **Roar** — small surfaces, mostly MIDI
   / mode toggles that aren't expressible as parameters but also aren't a typical
   creative bottleneck.
