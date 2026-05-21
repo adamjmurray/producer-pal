@@ -107,6 +107,36 @@ tool descriptions / skill instructions rather than surfaced via this include.
 particular would bloat every read significantly. Opt-in keeps the happy path
 compact and establishes a clear browse pattern: "to see what's available, ask."
 
+## Documentation strategy
+
+Each kind of "what to tell the LLM" lives in a specific layer:
+
+| Information                                                                                                | Where it lives                                                          |
+| ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Static enum values & their meanings (e.g. `globalMode: "stereo" \| "L/R" \| "M/S"`)                        | Zod `.describe()` on the parameter, concise (~100-200 chars)            |
+| Rich semantic guidance (when to reach for M/S processing, sidechain use cases, A/B chain mapping in modes) | Producer Pal Skills via `ppal-connect` (already trimmed in small model) |
+| Dynamic catalogs (IR files, wavetables, mod-matrix sources)                                                | `assets` include (see above)                                            |
+
+### Small model mode
+
+The codebase has first-class support for trimming tool surface in small model
+mode via `smallModelModeConfig` (`excludeParams`, `descriptionOverrides`,
+`toolDescription` — see AGENTS.md). Guidelines for specialized-device params:
+
+- **Write tight base descriptions** that work in both normal and small-model
+  modes without needing overrides. Aim for ~100-200 chars per parameter.
+- **Use `descriptionOverrides`** only when the base description genuinely
+  exceeds what's useful for a small model (e.g. many enum values with rich
+  semantics).
+- **Generally avoid `excludeParams`** for specialized fields — keep the
+  capability available; the LLM just gets less inline guidance. The Zod enum
+  constraint still prevents invalid values at the schema level.
+- **Rich semantic guidance belongs in Producer Pal Skills**, which is already
+  trimmed in small model mode — safer than bloating Zod descriptions.
+
+Each device ticket's notes include a reminder to check `smallModelModeConfig`
+when implementing.
+
 ---
 
 # Instruments
