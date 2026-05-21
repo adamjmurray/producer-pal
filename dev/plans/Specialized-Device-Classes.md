@@ -65,6 +65,8 @@ Everything below documents **deltas** from this baseline.
   - Sampler → `MultiSampler` (generic Device)
   - Simpler → `OriginalSimpler` (`SimplerDevice`)
   - Wavetable → `InstrumentVector` (`WavetableDevice`)
+  - Spectral Resonator → `Transmute` (`SpectralResonatorDevice`) — internal code
+    name; sibling Spectral Time has `class_name: Spectral` but is generic Device
 
 ---
 
@@ -638,29 +640,67 @@ convention: scalar config selectors are RW.
 
 **Functions:** none beyond baseline.
 
-### Spectral Resonator — `SpectralResonatorDevice`
+### Spectral Resonator — `SpectralResonatorDevice` (`class_name: Transmute`)
 
 Most class-level enums of any specialized audio effect — mostly MIDI-input and
-pitch-mode toggles.
+pitch-mode toggles. Heritage `class_name: Transmute` (sibling of Spectral Time
+at `class_name: Spectral`, which is generic Device).
 
 **Cycling LOM docs:**
 [spectralresonatordevice](https://docs.cycling74.com/apiref/lom/spectralresonatordevice/).
-All extras documented.
+All extras documented; ranges verified by probe 2026-05-21.
 
 **Properties (extras beyond baseline):**
 
-- `frequency_dial_mode` (int) [RW]
-- `midi_gate` (int) [RW] — MIDI gating behavior
-- `mod_mode` (int) [RW]
-- `mono_poly` (int) [RW]
-- `pitch_bend_range` (int) [RW]
-- `pitch_mode` (int) [RW] — note: no companion `_index`/`_list` pair — bare
-  `pitch_mode` int (contrast with Shifter's `pitch_mode_index`)
-- `polyphony` (int) [RW]
+- `frequency_dial_mode` (int, 0-1) [RW] — UI display selector for the frequency
+  dial (likely Hz vs Note); `Freq. Hz` and `Note` exist as separate
+  DeviceParameters. Out-of-range silently reverts to prior value.
+- `midi_gate` (int, 0-1) [RW] — MIDI gating on/off.
+- `mod_mode` (int, 0-3) [RW] — modulation routing mode (4 modes; specific names
+  TBD).
+- `mono_poly` (int, 0-1) [RW] — `0` = mono, `1` = poly.
+- `pitch_bend_range` (int, 0-24) [RW] — semitones.
+- `pitch_mode` (int, 0-1) [RW] — pitch source mode (2 modes; names TBD — likely
+  MIDI vs Fixed). No companion `_list`.
+- `polyphony` (int, 0-3) [RW] — polyphony voice count or mode (4 values;
+  semantic of each value TBD).
+
+All out-of-range writes silently revert to last valid value.
 
 **Children:** none beyond baseline.
 
 **Functions:** none beyond baseline.
+
+**Producer Pal interface design (decided 2026-05-21 via probe):**
+
+Six writable fields on `update-device`, also returned by `read-device`:
+
+- `midiGate` (bool) — maps to int 0/1
+- `modMode` (enum string, 4 values, names TBD at implementation time after UI
+  inspection) — maps to int 0/1/2/3
+- `monoPoly` (enum: `"mono"` | `"poly"`) — maps to int 0/1
+- `pitchBendRange` (int, 0-24 semitones)
+- `pitchMode` (enum string, 2 values, names TBD at implementation time) — maps
+  to int 0/1
+- `polyphony` (int, 0-3) — semantic of each value (voice count vs mode) TBD at
+  implementation time
+
+**`frequency_dial_mode` deliberately NOT exposed.** Probable UI display selector
+— `Freq. Hz` and `Note` are both directly addressable DeviceParameters, so the
+LLM doesn't need a display preference.
+
+**Implementation gotchas (verified by probe 2026-05-21):**
+
+1. **Silent revert on out-of-range writes** — same pattern as Meld. Set
+   `polyphony=4` → reverts to 3; `pitch_bend_range=99` → reverts to 24.
+   Pre-validate against documented ranges.
+2. **Semantic meaning of enum values needs UI verification.** Probe established
+   valid ranges but not the meaning of each int value. Verify against Live's
+   Spectral Resonator UI at implementation time:
+   - `modMode`: 0/1/2/3 → ?
+   - `pitchMode`: 0/1 → ?
+   - `polyphony`: 0/1/2/3 → voice count (1/2/4/8?) or named modes?
+3. **`pitchBendRange = 0` means no pitch bend** (probably; verify).
 
 ## Generic-Device audio effects (no specialization)
 
@@ -780,10 +820,15 @@ ticket planning, not a final recommendation.
   from "lower value" after probe revealed `edit_mode` is UI-only and per-band
   A/B parameters are independently addressable. M/S processing is a common
   mastering move.
-- **Meld** — `mono_poly`, `poly_voices`, `unison_voices`, `selected_engine`.
+- **Meld** — `mono_poly`, `poly_voices`, `unison_voices`. Promoted after probe
+  revealed `selected_engine` is UI-only.
+- **Spectral Resonator** — 6 mode/voice toggles (midi_gate, mod_mode, mono_poly,
+  pitch_bend_range, pitch_mode, polyphony). Promoted after deciding to skip the
+  UI-only `frequency_dial_mode`.
+- **Roar** — `env_listen`, `routing_mode_index` (with `_list` for
+  discoverability).
 
 **Lower value:**
 
-- **Spectral Resonator** / **Shifter** / **Roar** — small surfaces, mostly MIDI
-  / mode toggles that aren't expressible as parameters but also aren't a typical
-  creative bottleneck.
+- **Shifter** — small surface (pitch_bend_range, pitch_mode_index), no companion
+  `_list` for `pitch_mode_index`. Defer unless explicit demand.
