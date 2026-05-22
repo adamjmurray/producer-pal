@@ -5,6 +5,7 @@
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import {
   setParamValues,
   updateABCompare,
@@ -19,6 +20,7 @@ import {
 
 export interface UpdatePropertyOptions {
   params?: string;
+  actions?: string[];
   macroVariation?: string;
   macroVariationIndex?: number;
   macroCount?: number;
@@ -43,6 +45,7 @@ export function updateDeviceProperties(
 ): void {
   const {
     params,
+    actions,
     macroVariation,
     macroVariationIndex,
     macroCount,
@@ -56,6 +59,10 @@ export function updateDeviceProperties(
 
   if (params != null) {
     setParamValues(target, params);
+  }
+
+  if (actions != null) {
+    applySpecializedActions(target, actions, "updateDevice");
   }
 
   if (abCompare != null) {
@@ -95,6 +102,7 @@ export function updateNonDeviceProperties(
   options: UpdatePropertyOptions,
 ): void {
   warnIfSet("params", options.params, type);
+  warnIfSet("actions", options.actions, type);
   warnIfSet("macroVariation", options.macroVariation, type);
   warnIfSet("macroVariationIndex", options.macroVariationIndex, type);
   warnIfSet("macroCount", options.macroCount, type);
