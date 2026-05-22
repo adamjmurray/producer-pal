@@ -9,6 +9,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { runCli } from "../ppal-write-automation.ts";
+import { ppalWriteAutomationInternals } from "../ppal-write-automation-internals.ts";
 import { readAls } from "#src/automation/als-file.ts";
 import { parseBreakpoints } from "#src/automation/breakpoint-parser.ts";
 import * as arrangementWriter from "#src/automation/als-arrangement-writer.ts";
@@ -86,6 +87,44 @@ describe("scope=arrangement Guards & Mitigation-B (Slice 2 T5)", () => {
       );
     } finally {
       spy.mockRestore();
+      if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
+      if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
+    }
+  });
+
+  it("open-set-Guard ohne --force -> Exit 2 wenn Set offen scheint (arrangement-Pfad)", () => {
+    const tmpPath = createTmpAlsFrom(MULTI_TRACK_XML);
+    const guardSpy = vi
+      .spyOn(ppalWriteAutomationInternals, "isSetLikelyOpen")
+      .mockReturnValue(true);
+    const errSpy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation(() => true);
+
+    try {
+      const code = runCli([
+        "write",
+        "--scope",
+        "arrangement",
+        "--als",
+        tmpPath,
+        "--track",
+        "TrackA",
+        "--target",
+        "mixer:volume",
+        "--breakpoints",
+        "0=0.5,4=1.0",
+      ]);
+
+      expect(code).toBe(2);
+      expect(errSpy.mock.calls.map((c) => String(c[0])).join("")).toContain(
+        "Set scheint offen (Port 3350)",
+      );
+      // Guard greift VOR dem Backup: keine .bak-Datei geschrieben.
+      expect(fs.existsSync(`${tmpPath}.bak`)).toBe(false);
+    } finally {
+      guardSpy.mockRestore();
+      errSpy.mockRestore();
       if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
       if (fs.existsSync(`${tmpPath}.bak`)) fs.unlinkSync(`${tmpPath}.bak`);
     }
