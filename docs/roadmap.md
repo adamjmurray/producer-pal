@@ -100,6 +100,5 @@ companion MCP servers.
 - Chord notation and pitches as scale/chord degrees
 - Bar|beat and MIDI transform notation refinements (including alternate
   notations that may work better with smaller models)
-- Device-specific features (EQ 8, Wavetable, etc.)
-- Hands-free voice control
 - Audio analysis
+- Audio synthesis
