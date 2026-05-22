@@ -91,6 +91,38 @@ export async function getProperty(
 }
 
 /**
+ * Get a property value, extracted and prefix-stripped
+ * @param baseUrl - Base URL
+ * @param path - Live API path
+ * @param property - Property name
+ * @returns The property value (without the leading property name), or null
+ */
+export async function getPropertyValue(
+  baseUrl: string,
+  path: string,
+  property: string,
+): Promise<string | null> {
+  const raw = await getProperty(baseUrl, path, property);
+
+  if (!raw) return null;
+
+  const match = /result:"((?:[^"\\]|\\.)*)"/.exec(raw);
+
+  if (!match) return null;
+
+  const unescaped = (match[1] as string)
+    .replaceAll("\\n", "\n")
+    .replaceAll("\\\\", "\\");
+
+  // `get` returns "<property> <value>" — strip the property prefix
+  const prefix = `${property} `;
+
+  return unescaped.startsWith(prefix)
+    ? unescaped.slice(prefix.length)
+    : unescaped;
+}
+
+/**
  * Parse an info string into structured entries
  * @param info - Raw info string
  * @returns Array of entries

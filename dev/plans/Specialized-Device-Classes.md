@@ -1191,15 +1191,33 @@ Distortion, Vocoder.
 
 # Reproducing the scan
 
-To recreate the test bed in a clean Live Set:
+Two scripts automate building the test bed and surveying it. Both talk to a
+running Producer Pal (`npm run build:debug` recommended so the Direct Live API
+tool is always available).
 
-```
-t1..t15     15 MIDI tracks, one per instrument; create instrument at d0 on each
-t16         1 audio track "AudioFX"; create all 42 audio effects in series on it
+**1. Build the test bed** — `scripts/scan-live-api/setup-all-devices.ts` creates
+a clean device set: every built-in instrument on its own MIDI track, all MIDI
+effects on track 0 (before its instrument), and all audio effects distributed
+across the instrument tracks.
+
+```bash
+node scripts/scan-live-api/setup-all-devices.ts
 ```
 
-`scripts/ppal-client.ts` drives `ppal-create-device` and
-`ppal-live-api { info }`. To inspect any device:
+**2. Survey it** — `scripts/scan-live-api/scan-all-devices.ts` iterates every
+device on every track, groups by `(type, class_name)`, and writes a report
+(default `dev/per-device-scan.txt`) listing the unique device shapes — the
+specialized classes are the ones that aren't plain `Device`.
+
+```bash
+node scripts/scan-live-api/scan-all-devices.ts
+```
+
+(For core LOM object types rather than devices — Song, Track, Scene, Clip, etc.
+— use the sibling `scan-live-api.ts`.)
+
+**Ad-hoc single-device inspection** — `scripts/ppal-client.ts` drives any tool
+directly. To inspect one device:
 
 ```bash
 node scripts/ppal-client.ts tools/call ppal-live-api '{
