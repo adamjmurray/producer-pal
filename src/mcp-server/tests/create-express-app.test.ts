@@ -133,6 +133,7 @@ describe("MCP Express App", () => {
         "ppal-render-export",
         "ppal-record-arrangement",
         "ppal-load-m4l-device",
+        "ppal-open-device-window",
         "ppal-raw-live-api",
       ]);
     });

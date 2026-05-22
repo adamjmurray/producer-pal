@@ -376,6 +376,42 @@ Workflow example:
 
 <!--@include: ./_generated/ppal-load-m4l-device-schema.md-->
 
+### 🔧 Open Device Window (`ppal-open-device-window`) {#ppal-open-device-window}
+
+- Generate a computer-use step plan that opens a device's floating plugin editor
+  window (VST/AU/Max-for-Live) in Live's Device View — the Live API cannot pop a
+  plugin window, so this is a UI gesture
+- Compose with `ppal-select` (devicePath) FIRST so Live scrolls the device into
+  the Device View; this recipe only emits the show-window click + verify
+- `verify` is vision-only — no Live API exposes a plugin window's open state, so
+  confirmation is via the post-click screenshot
+- The default click anchor is an unverified recon placeholder (surfaced in
+  `meta.notes`); inspect the selection screenshot and pass explicit `editX`/
+  `editY` when it misses (supplied as a pair — a half-override throws)
+- Native Live devices have no floating window (they live inline in the Device
+  View); filter them out via the device `type` from `ppal-read-live-set` /
+  `ppal-read-device`
+- Returns the same `{steps, failModes, verify, meta}` envelope
+
+Workflow example:
+
+```
+1. ppal-read-live-set { include: ["tracks","devices"] }  → find the device path
+2. ppal-select { devicePath: "t0/d1" }                    → scroll device into view (LOM)
+3. ppal-open-device-window { devicePath: "t0/d1" }        → returns step-plan JSON
+4. Agent executes: screenshot, click show-window button, screenshot
+```
+
+| Fail mode                          | Detect                           | Recovery                                              |
+| ---------------------------------- | -------------------------------- | ----------------------------------------------------- |
+| Native device has no window        | Device type is a built-in        | No-op — do not run this recipe for native devices     |
+| Window opens behind Live           | No floating window in screenshot | Raise via `open_application` / app switcher           |
+| Device not selected / off-screen   | Wrong device highlighted         | Run `ppal-select` on the devicePath first             |
+| Click misses show-window toggle    | No editor and no visual change   | Unfold/scroll device, supply explicit `editX`/`editY` |
+| Set-dependent layout shifts anchor | Click hits wrong device          | Pass explicit `editX`/`editY` from the screenshot     |
+
+<!--@include: ./_generated/ppal-open-device-window-schema.md-->
+
 ## Custom Music Notation {#custom-music-notation}
 
 Producer Pal uses a text-based music notation syntax called `bar|beat` to work

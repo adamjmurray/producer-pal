@@ -194,6 +194,8 @@ ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 
 **Load Max-for-Live device (runbook):** ppal-load-m4l-device returns a step plan for Live's browser → track drag-and-drop. \`ppal-create-device\` only loads native Live devices; .amxd's need this runbook. After executing the recipe, confirm via ppal-read-track and set macros via ppal-update-device. Pure recipe - no Live API call.
 
+**Open device window (runbook):** ppal-open-device-window returns a step plan to open a plugin's floating editor window (VST/AU/Max). The Live API cannot pop a plugin window, so it is a UI gesture. Call ppal-select with the devicePath FIRST so Live scrolls the device into the Device View, then execute the returned \`steps[]\`. \`verify\` is vision-only. The default click anchor is an unverified placeholder (see meta.notes) - inspect the selection screenshot and pass explicit editX/editY when it misses. Native Live devices have no floating window.
+
 ### Device Paths
 
 Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=device, \`c\`=chain, \`rc\`=return chain, \`p\`=drum pad

@@ -32,6 +32,7 @@ import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { deleteObject } from "#src/tools/operations/delete/delete.ts";
 import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
 import { loadM4lDevice } from "#src/tools/runbook/load-m4l-device.ts";
+import { openDeviceWindow } from "#src/tools/runbook/open-device-window.ts";
 import { recordArrangement } from "#src/tools/runbook/record-arrangement.ts";
 import { renderExport } from "#src/tools/runbook/render-export.ts";
 import { createScene } from "#src/tools/scene/create-scene.ts";
@@ -143,6 +144,7 @@ const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
   "ppal-render-export": (args) => renderExport(args as any),
   "ppal-record-arrangement": (args) => recordArrangement(args as any),
   "ppal-load-m4l-device": (args) => loadM4lDevice(args as any),
+  "ppal-open-device-window": (args) => openDeviceWindow(args as any),
   "ppal-raw-live-api": (args, ctx) => rawLiveApi(args as any, ctx),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */
