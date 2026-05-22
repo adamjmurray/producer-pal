@@ -385,9 +385,11 @@ Workflow example:
   the Device View; this recipe only emits the show-window click + verify
 - `verify` is vision-only — no Live API exposes a plugin window's open state, so
   confirmation is via the post-click screenshot
-- The default click anchor is an unverified recon placeholder (surfaced in
-  `meta.notes`); inspect the selection screenshot and pass explicit `editX`/
-  `editY` when it misses (supplied as a pair — a half-override throws)
+- A single click toggles the plugin window (recon-verified against
+  ValhallaVintageVerb AU); the default click anchor is recon-verified but
+  set-dependent (x depends on device order/scroll — surfaced in `meta.notes`).
+  Inspect the selection screenshot and pass explicit `editX`/`editY` when the
+  Device-View layout differs (supplied as a pair — a half-override throws)
 - Native Live devices have no floating window (they live inline in the Device
   View); filter them out via the device `type` from `ppal-read-live-set` /
   `ppal-read-device`
