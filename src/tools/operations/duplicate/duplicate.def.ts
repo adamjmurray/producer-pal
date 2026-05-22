@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
@@ -80,6 +81,24 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "route new track to source's instrument? (for MIDI layering/polyrhythms)",
       ),
+
+    transforms: z
+      .string()
+      .optional()
+      .describe(
+        "transform expressions applied to each duplicated clip (clips only, per-clip)",
+      ),
+    ...(process.env.ENABLE_CODE_EXEC === "true"
+      ? {
+          code: z
+            .string()
+            .max(MAX_CODE_LENGTH)
+            .optional()
+            .describe(
+              "JS function body applied to each duplicated clip: receives (notes, context), returns notes array (clips only)",
+            ),
+        }
+      : {}),
   },
   smallModelModeConfig: {
     toolDescription:
@@ -91,6 +110,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       "withoutDevices",
       "locator",
       "routeToSource",
+      "transforms",
+      "code",
     ],
     descriptionOverrides: {
       name: "name",

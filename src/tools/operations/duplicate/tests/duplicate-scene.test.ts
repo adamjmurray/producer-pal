@@ -33,13 +33,13 @@ interface DuplicateSceneResult {
 }
 
 describe("duplicate - scene duplication", () => {
-  it("should duplicate a single scene to session view (default behavior)", () => {
+  it("should duplicate a single scene to session view (default behavior)", async () => {
     const liveSet = setupSessionSceneMocks();
 
-    const result = duplicate({
+    const result = (await duplicate({
       type: "scene",
       id: "scene1",
-    }) as DuplicateSceneResult;
+    })) as DuplicateSceneResult;
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
@@ -59,7 +59,7 @@ describe("duplicate - scene duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_scene", 0);
   });
 
-  it("should duplicate multiple scenes with same name", () => {
+  it("should duplicate multiple scenes with same name", async () => {
     const liveSet = setupSessionSceneMocks({ registerNewScene: false });
 
     // Register additional clip slots and mocks for second duplicated scene
@@ -74,12 +74,12 @@ describe("duplicate - scene duplication", () => {
       path: livePath.scene(2),
     });
 
-    const result = duplicate({
+    const result = (await duplicate({
       type: "scene",
       id: "scene1",
       count: 2,
       name: "Custom Scene",
-    }) as DuplicateSceneResult[];
+    })) as DuplicateSceneResult[];
 
     expect(result).toStrictEqual([
       {
@@ -119,7 +119,7 @@ describe("duplicate - scene duplication", () => {
     expect(scene2.set).toHaveBeenCalledWith("name", "Custom Scene");
   });
 
-  it("should duplicate a scene without clips when withoutClips is true", () => {
+  it("should duplicate a scene without clips when withoutClips is true", async () => {
     const liveSet = setupArrangementSceneMocks();
 
     const slot0 = registerClipSlot(0, 1, true);
@@ -129,11 +129,11 @@ describe("duplicate - scene duplication", () => {
     registerClipMocks(2, 1);
     registerMockObject("live_set/scenes/1", { path: livePath.scene(1) });
 
-    const result = duplicate({
+    const result = (await duplicate({
       type: "scene",
       id: "scene1",
       withoutClips: true,
-    }) as DuplicateSceneResult;
+    })) as DuplicateSceneResult;
 
     expect(result).toStrictEqual({
       id: "live_set/scenes/1",
@@ -158,7 +158,7 @@ describe("duplicate - scene duplication", () => {
   });
 
   describe("arrangement destination", () => {
-    it("should duplicate a scene to arrangement view", () => {
+    it("should duplicate a scene to arrangement view", async () => {
       setupArrangementSceneMocks();
 
       registerClipSlot(
@@ -215,12 +215,12 @@ describe("duplicate - scene duplication", () => {
       registerArrangementClip(0, 0, 16);
       registerArrangementClip(2, 0, 16);
 
-      const result = duplicate({
+      const result = (await duplicate({
         type: "scene",
         id: "scene1",
 
         arrangementStart: "5|1",
-      }) as DuplicateSceneResult;
+      })) as DuplicateSceneResult;
 
       // Both clips now use duplicate_clip_to_arrangement
       // Track 0 clip (4 beats -> 8 beats) - lengthened via updateClip
@@ -247,7 +247,7 @@ describe("duplicate - scene duplication", () => {
       ).toBe(true);
     });
 
-    it("should duplicate multiple scenes to arrangement view at sequential positions", () => {
+    it("should duplicate multiple scenes to arrangement view at sequential positions", async () => {
       setupArrangementSceneMocks(1);
 
       // Mock scene with one clip of length 8 beats
@@ -260,14 +260,14 @@ describe("duplicate - scene duplication", () => {
       registerArrangementClip(0, 1, 24);
       registerArrangementClip(0, 2, 32);
 
-      const result = duplicate({
+      const result = (await duplicate({
         type: "scene",
         id: "scene1",
 
         arrangementStart: "5|1",
         count: 3,
         name: "Scene Copy",
-      }) as DuplicateSceneResult[];
+      })) as DuplicateSceneResult[];
 
       // Scenes should be placed at sequential positions based on scene length (8 beats)
       // All use duplicate_clip_to_arrangement (exact match, no lengthening needed)
@@ -321,18 +321,18 @@ describe("duplicate - scene duplication", () => {
       ]);
     });
 
-    it("should handle empty scenes gracefully", () => {
+    it("should handle empty scenes gracefully", async () => {
       setupArrangementSceneMocks(2);
 
       registerClipSlot(0, 0, false);
       registerClipSlot(1, 0, false);
 
-      const result = duplicate({
+      const result = (await duplicate({
         type: "scene",
         id: "scene1",
 
         arrangementStart: "5|1",
-      }) as DuplicateSceneResult;
+      })) as DuplicateSceneResult;
 
       expect(result).toStrictEqual({
         arrangementStart: "5|1",
@@ -340,7 +340,7 @@ describe("duplicate - scene duplication", () => {
       });
     });
 
-    it("should duplicate a scene to arrangement without clips when withoutClips is true", () => {
+    it("should duplicate a scene to arrangement without clips when withoutClips is true", async () => {
       setupArrangementSceneMocks();
 
       registerClipSlot(0, 0, true, { length: 4 });
@@ -358,13 +358,13 @@ describe("duplicate - scene duplication", () => {
         path: livePath.track(2),
       });
 
-      const result = duplicate({
+      const result = (await duplicate({
         type: "scene",
         id: "scene1",
 
         arrangementStart: "5|1",
         withoutClips: true,
-      }) as DuplicateSceneResult;
+      })) as DuplicateSceneResult;
 
       // Verify that duplicate_clip_to_arrangement was NOT called on any track
       expect(track0.call).not.toHaveBeenCalledWith(
@@ -390,7 +390,7 @@ describe("duplicate - scene duplication", () => {
     });
   });
 
-  it("should apply color when duplicating a scene", () => {
+  it("should apply color when duplicating a scene", async () => {
     registerMockObject("scene1", { path: livePath.scene(0) });
 
     const liveSet = registerMockObject("live_set", {
@@ -402,11 +402,11 @@ describe("duplicate - scene duplication", () => {
       path: livePath.scene(1),
     });
 
-    const result = duplicate({
+    const result = (await duplicate({
       type: "scene",
       id: "scene1",
       color: "#00ff00",
-    }) as DuplicateSceneResult;
+    })) as DuplicateSceneResult;
 
     expect(liveSet.call).toHaveBeenCalledWith("duplicate_scene", 0);
     expect(newScene.set).toHaveBeenCalledWith("color", 0x00ff00);

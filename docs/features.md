@@ -101,6 +101,8 @@ It works with virtually any AI, including its
   Arrangement
   - Position in the Arrangement by bar|beat or locator
   - Auto-tile clips to fill longer arrangement durations
+- Apply [transforms](#transforms) to each duplicated clip (e.g. transpose
+  copies, vary velocities) without a separate update step
 - Copy devices to any track, return track, or rack chain
 - Route duplicated tracks to source instrument for MIDI layering
 
@@ -294,7 +296,8 @@ positions in Ableton Live clips and the arrangement timeline.
 ## Transforms {#transforms}
 
 Apply complex changes to clips using math expressions via
-[Create Clip](#ppal-create-clip) and [Update Clip](#ppal-update-clip):
+[Create Clip](#ppal-create-clip), [Update Clip](#ppal-update-clip), and
+[Duplicate](#ppal-duplicate) (applied to each copy):
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift

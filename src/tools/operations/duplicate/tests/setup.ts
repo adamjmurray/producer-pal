@@ -10,12 +10,22 @@ interface MockTrack {
   path: string;
 }
 
+interface MockClipResult {
+  id: string;
+  noteCount?: number;
+  transformed?: number;
+}
+
 /**
  * Mock implementation for updateClip that returns tiled clip array format.
+ * Typed as the real updateClip return (single or array, with optional note
+ * stats) so tests can override it with transformed/noteCount values.
  */
-export const updateClipMock = vi.fn(({ ids }: { ids: string }) => [
-  { id: ids },
-]);
+export const updateClipMock = vi.fn(
+  ({ ids }: { ids: string }): MockClipResult | MockClipResult[] => [
+    { id: ids },
+  ],
+);
 
 /**
  * Mock implementation for createShortenedClipInHolding.

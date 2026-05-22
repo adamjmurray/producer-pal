@@ -30,7 +30,7 @@ function setupLengthMocks(): LengthMocks {
 }
 
 describe("duplicate - arrangementLength functionality", () => {
-  it("should duplicate a clip to arrangement with shorter length", () => {
+  it("should duplicate a clip to arrangement with shorter length", async () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
       properties: {
@@ -52,7 +52,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     registerMockObject("live_set", { path: livePath.liveSet });
 
-    const result = duplicate({
+    const result = await duplicate({
       type: "clip",
       id: "clip1",
 
@@ -70,7 +70,7 @@ describe("duplicate - arrangementLength functionality", () => {
     // Just verify the result is correct - the holding area operations are tested in arrangement-tiling.test.js
   });
 
-  it("should duplicate a looping clip with lengthening via updateClip", () => {
+  it("should duplicate a looping clip with lengthening via updateClip", async () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
       properties: {
@@ -88,7 +88,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     const { track0 } = setupLengthMocks();
 
-    const result = duplicate({
+    const result = await duplicate({
       type: "clip",
       id: "clip1",
 
@@ -111,7 +111,7 @@ describe("duplicate - arrangementLength functionality", () => {
     expect(result).toHaveProperty("id", livePath.track(0).arrangementClip(0));
   });
 
-  it("should duplicate a non-looping clip at original length when requested length is longer", () => {
+  it("should duplicate a non-looping clip at original length when requested length is longer", async () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
       properties: {
@@ -125,7 +125,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     const { track0 } = setupLengthMocks();
 
-    const result = duplicate({
+    const result = await duplicate({
       type: "clip",
       id: "clip1",
 
@@ -152,7 +152,7 @@ describe("duplicate - arrangementLength functionality", () => {
     ["2/2", 2, 2, 8],
   ] as const)(
     "should correctly handle %s time signature duration conversion",
-    (label, numerator, denominator, clipLength) => {
+    async (label, numerator, denominator, clipLength) => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
         properties: {
@@ -182,7 +182,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
       registerArrangementClip(0, 0, 0);
 
-      const result = duplicate({
+      const result = await duplicate({
         type: "clip",
         id: "clip1",
 
@@ -197,7 +197,7 @@ describe("duplicate - arrangementLength functionality", () => {
     },
   );
 
-  it("should error when arrangementLength is zero or negative", () => {
+  it("should error when arrangementLength is zero or negative", async () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
       properties: { length: 4, looping: 1 },
@@ -205,7 +205,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     registerMockObject("live_set", { path: livePath.liveSet });
 
-    expect(() =>
+    await expect(
       duplicate({
         type: "clip",
         id: "clip1",
@@ -213,12 +213,12 @@ describe("duplicate - arrangementLength functionality", () => {
         arrangementStart: "5|1",
         arrangementLength: "0:0", // 0 bars + 0 beats = 0 total
       }),
-    ).toThrow(
+    ).rejects.toThrow(
       'duplicate failed: arrangementLength must be positive, got "0:0"',
     );
   });
 
-  it("should work normally without arrangementLength (backward compatibility)", () => {
+  it("should work normally without arrangementLength (backward compatibility)", async () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
       properties: { length: 8, looping: 0 },
@@ -229,7 +229,7 @@ describe("duplicate - arrangementLength functionality", () => {
 
     registerMockObject("live_set", { path: livePath.liveSet });
 
-    const result = duplicate({
+    const result = await duplicate({
       type: "clip",
       id: "clip1",
 

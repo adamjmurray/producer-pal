@@ -36,7 +36,7 @@ describe("duplicate - device duplication", () => {
     vi.clearAllMocks();
   });
 
-  it("should duplicate a device to position after original (no toPath)", () => {
+  it("should duplicate a device to position after original (no toPath)", async () => {
     registerMockObject("device1", {
       path: livePath.track(0).device(2),
       type: "PluginDevice",
@@ -50,7 +50,7 @@ describe("duplicate - device duplication", () => {
       path: livePath.track(1).device(2),
     });
 
-    const result = duplicate({ type: "device", id: "device1" });
+    const result = await duplicate({ type: "device", id: "device1" });
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/1/devices/2",
@@ -71,10 +71,10 @@ describe("duplicate - device duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 
-  it("should duplicate a device with toPath to different track", () => {
+  it("should duplicate a device with toPath to different track", async () => {
     setupDeviceDuplicationMocks(1);
 
-    const result = duplicate({
+    const result = await duplicate({
       type: "device",
       id: "device1",
       toPath: "t2/d0",
@@ -93,7 +93,7 @@ describe("duplicate - device duplication", () => {
     );
   });
 
-  it("should duplicate a device in a rack chain", () => {
+  it("should duplicate a device in a rack chain", async () => {
     registerMockObject("rack_device1", {
       path: livePath.track(1).device(0).chain(0).device(1),
       type: "PluginDevice",
@@ -107,7 +107,7 @@ describe("duplicate - device duplication", () => {
       path: livePath.track(2).device(0).chain(0).device(1),
     });
 
-    const result = duplicate({ type: "device", id: "rack_device1" });
+    const result = await duplicate({ type: "device", id: "rack_device1" });
 
     expect(result).toStrictEqual({
       id: "live_set/tracks/2/devices/0/chains/0/devices/1",
@@ -128,39 +128,39 @@ describe("duplicate - device duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 2);
   });
 
-  it("should emit warning when count > 1", () => {
+  it("should emit warning when count > 1", async () => {
     setupDeviceDuplicationMocks();
 
-    duplicate({ type: "device", id: "device1", count: 3 });
+    await duplicate({ type: "device", id: "device1", count: 3 });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       "count parameter ignored for device duplication (only single copy supported)",
     );
   });
 
-  it("should throw error for device on return track", () => {
+  it("should throw error for device on return track", async () => {
     registerMockObject("return_device1", {
       path: livePath.returnTrack(0).device(0),
       type: "PluginDevice",
     });
 
-    expect(() => duplicate({ type: "device", id: "return_device1" })).toThrow(
-      "cannot duplicate devices on return/master tracks",
-    );
+    await expect(
+      duplicate({ type: "device", id: "return_device1" }),
+    ).rejects.toThrow("cannot duplicate devices on return/master tracks");
   });
 
-  it("should throw error for device on master track", () => {
+  it("should throw error for device on master track", async () => {
     registerMockObject("master_device1", {
       path: livePath.masterTrack().device(0),
       type: "PluginDevice",
     });
 
-    expect(() => duplicate({ type: "device", id: "master_device1" })).toThrow(
-      "cannot duplicate devices on return/master tracks",
-    );
+    await expect(
+      duplicate({ type: "device", id: "master_device1" }),
+    ).rejects.toThrow("cannot duplicate devices on return/master tracks");
   });
 
-  it("should set custom name on duplicated device", () => {
+  it("should set custom name on duplicated device", async () => {
     registerMockObject("device1", {
       path: livePath.track(0).device(0),
       type: "PluginDevice",
@@ -170,13 +170,13 @@ describe("duplicate - device duplication", () => {
       path: livePath.track(1).device(0),
     });
 
-    duplicate({ type: "device", id: "device1", name: "My Effect" });
+    await duplicate({ type: "device", id: "device1", name: "My Effect" });
 
     // Check that set was called with name
     expect(tempDevice.set).toHaveBeenCalledWith("name", "My Effect");
   });
 
-  it("should not adjust destination for tracks before source", () => {
+  it("should not adjust destination for tracks before source", async () => {
     registerMockObject("device1", {
       path: livePath.track(5).device(0),
       type: "PluginDevice",
@@ -186,7 +186,7 @@ describe("duplicate - device duplication", () => {
       path: livePath.track(6).device(0),
     });
 
-    duplicate({ type: "device", id: "device1", toPath: "t2/d0" });
+    await duplicate({ type: "device", id: "device1", toPath: "t2/d0" });
 
     // Destination t2 is before source t5, should not be adjusted
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
@@ -195,7 +195,7 @@ describe("duplicate - device duplication", () => {
     );
   });
 
-  it("should throw and cleanup if device not found in duplicated track", () => {
+  it("should throw and cleanup if device not found in duplicated track", async () => {
     registerMockObject("device1", {
       path: livePath.track(0).device(0),
       type: "PluginDevice",
@@ -208,7 +208,7 @@ describe("duplicate - device duplication", () => {
     // Do NOT register "live_set tracks 1 devices 0" — this makes it non-existent
     mockNonExistentObjects();
 
-    expect(() => duplicate({ type: "device", id: "device1" })).toThrow(
+    await expect(duplicate({ type: "device", id: "device1" })).rejects.toThrow(
       "device not found in duplicated track",
     );
 
@@ -216,11 +216,11 @@ describe("duplicate - device duplication", () => {
     expect(liveSet.call).toHaveBeenCalledWith("delete_track", 1);
   });
 
-  it("should not adjust non-track destination path (return/master)", () => {
+  it("should not adjust non-track destination path (return/master)", async () => {
     setupDeviceDuplicationMocks();
 
     // Using a path that doesn't start with "t" should not be adjusted
-    duplicate({ type: "device", id: "device1", toPath: "r0/d0" });
+    await duplicate({ type: "device", id: "device1", toPath: "r0/d0" });
 
     // Should pass the path through unchanged (return track)
     expect(moveDeviceToPathMock).toHaveBeenCalledWith(
@@ -229,22 +229,22 @@ describe("duplicate - device duplication", () => {
     );
   });
 
-  it("should throw error for invalid device path without device segment", () => {
+  it("should throw error for invalid device path without device segment", async () => {
     // Path with track but no device segment - triggers extractDevicePathWithinTrack error
     registerMockObject("device1", {
       path: livePath.track(0),
       type: "PluginDevice",
     });
 
-    expect(() => duplicate({ type: "device", id: "device1" })).toThrow(
+    await expect(duplicate({ type: "device", id: "device1" })).rejects.toThrow(
       "cannot extract device path",
     );
   });
 
-  it("should duplicate a device to multiple toPath destinations", () => {
+  it("should duplicate a device to multiple toPath destinations", async () => {
     setupDeviceDuplicationMocks(1);
 
-    const result = duplicate({
+    const result = await duplicate({
       type: "device",
       id: "device1",
       toPath: "t2/d0, t3/d0",
@@ -255,7 +255,7 @@ describe("duplicate - device duplication", () => {
     expect(result).toHaveLength(2);
   });
 
-  it("should handle device path ending with chain segment (not device)", () => {
+  it("should handle device path ending with chain segment (not device)", async () => {
     // When extractDevicePath returns a path that ends with a chain (not device),
     // it should use the fallback of returning the simplified path as-is
     // This tests the "return simplifiedPath" fallback in calculateDefaultDestination
@@ -268,7 +268,7 @@ describe("duplicate - device duplication", () => {
       path: livePath.track(1).device(0).chain(0),
     });
 
-    const result = duplicate({ type: "device", id: "device1" });
+    const result = await duplicate({ type: "device", id: "device1" });
 
     expect(result).toBeDefined();
     // When last segment is "c0" (not "d"), use the simplified path as destination

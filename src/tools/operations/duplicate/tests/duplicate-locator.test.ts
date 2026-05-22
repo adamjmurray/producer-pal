@@ -126,10 +126,10 @@ const standardCuePoints: CuePointConfig[] = [
 
 describe("duplicate - locator-based arrangement positioning", () => {
   describe("parameter validation", () => {
-    it("should throw error when arrangementStart and locator are both provided", () => {
+    it("should throw error when arrangementStart and locator are both provided", async () => {
       registerMockObject("scene1", { path: livePath.scene(0) });
 
-      expect(() =>
+      await expect(
         duplicate({
           type: "scene",
           id: "scene1",
@@ -137,15 +137,15 @@ describe("duplicate - locator-based arrangement positioning", () => {
           arrangementStart: "5|1",
           locator: "locator-0",
         }),
-      ).toThrow(
+      ).rejects.toThrow(
         "duplicate failed: arrangementStart and locator are mutually exclusive",
       );
     });
 
-    it("should throw error when arrangementStart and locator name are both provided", () => {
+    it("should throw error when arrangementStart and locator name are both provided", async () => {
       registerMockObject("scene1", { path: livePath.scene(0) });
 
-      expect(() =>
+      await expect(
         duplicate({
           type: "scene",
           id: "scene1",
@@ -153,20 +153,20 @@ describe("duplicate - locator-based arrangement positioning", () => {
           arrangementStart: "5|1",
           locator: "Verse",
         }),
-      ).toThrow(
+      ).rejects.toThrow(
         "duplicate failed: arrangementStart and locator are mutually exclusive",
       );
     });
   });
 
   describe("scene duplication with locator", () => {
-    it("should duplicate a scene to arrangement at locator ID position", () => {
+    it("should duplicate a scene to arrangement at locator ID position", async () => {
       const track0 = setupSceneWithLocators([
         { time: 0, name: "Intro" },
         { time: 16, name: "Verse" },
       ]);
 
-      const result = duplicate({
+      const result = await duplicate({
         type: "scene",
         id: "scene1",
         locator: "locator-1",
@@ -176,14 +176,14 @@ describe("duplicate - locator-based arrangement positioning", () => {
       expect(result).toHaveProperty("arrangementStart", "5|1");
     });
 
-    it("should duplicate a scene to arrangement at locator name position", () => {
+    it("should duplicate a scene to arrangement at locator name position", async () => {
       const track0 = setupSceneWithLocators([
         { time: 0, name: "Intro" },
         { time: 16, name: "Verse" },
         { time: 32, name: "Chorus" },
       ]);
 
-      const result = duplicate({
+      const result = await duplicate({
         type: "scene",
         id: "scene1",
         locator: "Chorus",
@@ -195,10 +195,10 @@ describe("duplicate - locator-based arrangement positioning", () => {
   });
 
   describe("clip duplication with locator", () => {
-    it("should duplicate a clip to arrangement at locator ID position", () => {
+    it("should duplicate a clip to arrangement at locator ID position", async () => {
       const track0 = setupClipWithLocators(standardCuePoints);
 
-      const result = duplicate({
+      const result = await duplicate({
         type: "clip",
         id: "clip1",
         locator: "locator-1",
@@ -208,10 +208,14 @@ describe("duplicate - locator-based arrangement positioning", () => {
       expect(result).toHaveProperty("arrangementStart", "3|1");
     });
 
-    it("should duplicate a clip to arrangement at locator name position", () => {
+    it("should duplicate a clip to arrangement at locator name position", async () => {
       const track0 = setupClipWithLocators(standardCuePoints);
 
-      const result = duplicate({ type: "clip", id: "clip1", locator: "Drop" });
+      const result = await duplicate({
+        type: "clip",
+        id: "clip1",
+        locator: "Drop",
+      });
 
       expectDuplicatedAt(track0, "id clip1", 8);
       expect(result).toHaveProperty("arrangementStart", "3|1");
@@ -225,9 +229,9 @@ describe("duplicate - locator-based arrangement positioning", () => {
       { time: 16, name: "Chorus" },
     ];
 
-    it("should duplicate a clip to multiple locator ID positions", () => {
+    it("should duplicate a clip to multiple locator ID positions", async () => {
       const track0 = setupClipWithLocators(multiCuePoints);
-      const result = duplicate({
+      const result = await duplicate({
         type: "clip",
         id: "clip1",
         locator: "locator-1, locator-2",
@@ -237,9 +241,9 @@ describe("duplicate - locator-based arrangement positioning", () => {
       expect(result).toHaveLength(2);
     });
 
-    it("should duplicate a clip to multiple locator name positions", () => {
+    it("should duplicate a clip to multiple locator name positions", async () => {
       const track0 = setupClipWithLocators(multiCuePoints);
-      const result = duplicate({
+      const result = await duplicate({
         type: "clip",
         id: "clip1",
         locator: "Verse, Chorus",
@@ -249,9 +253,9 @@ describe("duplicate - locator-based arrangement positioning", () => {
       expect(result).toHaveLength(2);
     });
 
-    it("should duplicate a clip to mixed locator ID and name positions", () => {
+    it("should duplicate a clip to mixed locator ID and name positions", async () => {
       const track0 = setupClipWithLocators(multiCuePoints);
-      const result = duplicate({
+      const result = await duplicate({
         type: "clip",
         id: "clip1",
         locator: "locator-1, Chorus",
@@ -261,14 +265,14 @@ describe("duplicate - locator-based arrangement positioning", () => {
       expect(result).toHaveLength(2);
     });
 
-    it("should duplicate a scene to multiple locator ID positions", () => {
+    it("should duplicate a scene to multiple locator ID positions", async () => {
       const track0 = setupSceneWithLocators([
         { time: 0, name: "Intro" },
         { time: 16, name: "Verse" },
         { time: 32, name: "Chorus" },
       ]);
 
-      const result = duplicate({
+      const result = await duplicate({
         type: "scene",
         id: "scene1",
         locator: "locator-1, locator-2",
@@ -303,30 +307,32 @@ describe("duplicate - locator-based arrangement positioning", () => {
       registerMockObject("cue0", { properties: { time: 0, name: "Intro" } });
     }
 
-    it("should throw error for non-existent locator ID", () => {
+    it("should throw error for non-existent locator ID", async () => {
       setupErrorHandlingMocks();
 
-      expect(() =>
+      await expect(
         duplicate({
           type: "scene",
           id: "scene1",
 
           locator: "locator-5",
         }),
-      ).toThrow("duplicate failed: locator not found: locator-5");
+      ).rejects.toThrow("duplicate failed: locator not found: locator-5");
     });
 
-    it("should throw error for non-existent locator name", () => {
+    it("should throw error for non-existent locator name", async () => {
       setupErrorHandlingMocks();
 
-      expect(() =>
+      await expect(
         duplicate({
           type: "scene",
           id: "scene1",
 
           locator: "NonExistent",
         }),
-      ).toThrow('duplicate failed: no locator found with name "NonExistent"');
+      ).rejects.toThrow(
+        'duplicate failed: no locator found with name "NonExistent"',
+      );
     });
   });
 });

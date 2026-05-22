@@ -69,6 +69,8 @@ export interface MinimalClipInfo {
   trackIndex?: number;
   arrangementStart?: string;
   name?: string;
+  noteCount?: number;
+  transformed?: number;
 }
 
 /**

@@ -15,22 +15,22 @@ import {
 } from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
 
 describe("duplicate - clip duplication", () => {
-  it("should throw an error when clip has no position params", () => {
+  it("should throw an error when clip has no position params", async () => {
     registerMockObject("clip1", {
       path: livePath.track(0).clipSlot(0).clip(),
     });
-    expect(() => duplicate({ type: "clip", id: "clip1" })).toThrow(
+    await expect(duplicate({ type: "clip", id: "clip1" })).rejects.toThrow(
       "duplicate failed: clip requires toSlot (for session) or arrangementStart/locator (for arrangement)",
     );
   });
 
   describe("session destination", () => {
-    it("should duplicate a single clip to the session view", () => {
+    it("should duplicate a single clip to the session view", async () => {
       const { sourceClipSlot } = registerSessionClipDuplication({
         destClipProperties: {},
       });
 
-      const result = duplicate({
+      const result = await duplicate({
         type: "clip",
         id: "clip1",
 
@@ -48,7 +48,7 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
-    it("should duplicate multiple clips to session view with comma-separated toSceneIndex", () => {
+    it("should duplicate multiple clips to session view with comma-separated toSceneIndex", async () => {
       const { sourceClipSlot } = registerSessionClipDuplication();
 
       registerMockObject("live_set/tracks/0/clip_slots/2", {
@@ -70,7 +70,7 @@ describe("duplicate - clip duplication", () => {
         },
       );
 
-      const result = duplicate({
+      const result = await duplicate({
         type: "clip",
         id: "clip1",
 
@@ -102,26 +102,26 @@ describe("duplicate - clip duplication", () => {
       expect(destClip2.set).toHaveBeenCalledWith("name", "Custom Clip");
     });
 
-    it("should throw an error when trying to duplicate an arrangement clip to session", () => {
+    it("should throw an error when trying to duplicate an arrangement clip to session", async () => {
       registerMockObject("arrangementClip1", {
         path: livePath.track(0).arrangementClip(0),
       });
 
-      expect(() =>
+      await expect(
         duplicate({
           type: "clip",
           id: "arrangementClip1",
 
           toSlot: "1/2",
         }),
-      ).toThrow(
+      ).rejects.toThrow(
         'unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="arrangementClip1" path="live_set tracks 0 arrangement_clips 0") ',
       );
     });
   });
 
   describe("arrangement destination", () => {
-    it("should duplicate a single clip to the arrangement view", () => {
+    it("should duplicate a single clip to the arrangement view", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
       });
@@ -130,7 +130,7 @@ describe("duplicate - clip duplication", () => {
 
       registerArrangementClip(0, 0, 8);
 
-      const result = duplicate({
+      const result = await duplicate({
         type: "clip",
         id: "clip1",
 
@@ -150,7 +150,7 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
-    it("should duplicate multiple clips to arrangement view with comma-separated positions", () => {
+    it("should duplicate multiple clips to arrangement view with comma-separated positions", async () => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
       });
@@ -161,7 +161,7 @@ describe("duplicate - clip duplication", () => {
       registerArrangementClip(0, 1, 12);
       registerArrangementClip(0, 2, 16);
 
-      const result = duplicate({
+      const result = await duplicate({
         type: "clip",
         id: "clip1",
 

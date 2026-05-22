@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
@@ -23,6 +24,7 @@ import {
   calculateSceneLength,
   duplicateSceneToArrangement,
 } from "./helpers/duplicate-track-scene-helpers.ts";
+import { applyTransformsToDuplicatedClips } from "./helpers/duplicate-transform-helpers.ts";
 import {
   resolveArrangementPositions,
   inferDestination,
@@ -49,6 +51,8 @@ interface DuplicateArgs {
   focus?: boolean;
   toSlot?: string;
   toPath?: string;
+  transforms?: string;
+  code?: string;
 }
 
 interface DuplicateParams {
@@ -77,10 +81,12 @@ interface DuplicateParams {
  * @param args.focus - Focus duplicated clip/scene
  * @param args.toSlot - Destination clip slot(s)
  * @param args.toPath - Destination path
+ * @param args.transforms - Transform expressions applied per duplicated clip
+ * @param args.code - JavaScript function body applied per duplicated clip
  * @param context - Context object
  * @returns Result object(s)
  */
-export function duplicate(
+export async function duplicate(
   {
     type,
     id,
@@ -96,9 +102,11 @@ export function duplicate(
     focus,
     toSlot,
     toPath,
+    transforms,
+    code,
   }: DuplicateArgs,
   context: Partial<ToolContext> = {},
-): object | object[] {
+): Promise<object | object[]> {
   // Validate basic inputs
   validateBasicInputs(type, id, count);
 
@@ -127,6 +135,13 @@ export function duplicate(
 
   // Validate arrangement parameters
   validateArrangementParameters(destination, arrangementStart, locator);
+
+  // transforms/code only apply to clips
+  if (type !== "clip" && (transforms != null || code != null)) {
+    console.warn(
+      `transforms/code ignored: only supported when duplicating clips (type "${type}")`,
+    );
+  }
 
   // Handle device duplication (supports comma-separated toPath for multiple destinations)
   if (type === "device") {
@@ -166,6 +181,16 @@ export function duplicate(
           },
           context,
         );
+
+  // Apply transforms/code to the duplicated clips (per-clip via update-clip DSL)
+  if (type === "clip" && (transforms != null || code != null)) {
+    await applyTransformsToDuplicatedClips(
+      createdObjects,
+      transforms,
+      code,
+      context,
+    );
+  }
 
   // Handle view switching if requested
   focusIfRequested(focus, destination, type, createdObjects);
