@@ -271,7 +271,7 @@ export function createExpressApp(): Express {
 
   registerRestApiRoutes(app, () => config, callLiveApi);
 
-  registerVoiceTokenRoute(app);
+  registerVoiceTokenRoute(app, () => chatUIEnabled);
 
   return app;
 }

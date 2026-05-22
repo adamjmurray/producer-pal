@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { setupExpressAppServer } from "../../tests/express-app-test-helpers.ts";
+import {
+  mockMax,
+  setupExpressAppServer,
+} from "../../tests/express-app-test-helpers.ts";
 
 const REAL_FETCH = globalThis.fetch;
 
@@ -113,6 +116,25 @@ describe("voice-token route", () => {
     const json = (await res.json()) as { error: string };
 
     expect(json.error.toLowerCase()).toContain("x-openai-key");
+  });
+
+  it("returns 403 when the chat UI is disabled", async () => {
+    const setChatUIEnabled = mockMax.handlers.get("chatUIEnabled") as (
+      input: unknown,
+    ) => void;
+
+    setChatUIEnabled(0);
+
+    try {
+      const res = await postVoiceToken(appState.baseUrl);
+
+      expect(res.status).toBe(403);
+      const json = (await res.json()) as { error: string };
+
+      expect(json.error).toBe("Chat UI is disabled");
+    } finally {
+      setChatUIEnabled(1);
+    }
   });
 
   it("blocks cross-origin requests with 403", async () => {
