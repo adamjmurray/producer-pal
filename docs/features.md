@@ -260,13 +260,17 @@ limitation).
 
 Direct access to the
 [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
-scripting and debugging. Can read or modify any Live Set property — use with
-care.
+scripting and debugging.
 
-**Off by default.** Enable on the **Setup** tab of the Producer Pal Max for Live
-device. When disabled, MCP clients and the [REST API](/guide/rest-api) both stop
-seeing the tool. See the [REST API Live API section](/guide/rest-api#live-api)
-for the full operation reference and examples.
+**Off by default.** Producer Pal's specialized tools are tuned for reliable
+results across most models. The raw Live API is low-level and can give weaker
+results out of the box, so it's hidden rather than competing with the focused
+tools. It's a powerful escape hatch for scripting and advanced workflows,
+especially with capable coding agents. Enable it on the **Setup** tab of the
+Producer Pal Max for Live device. When disabled, MCP clients and the
+[REST API](/guide/rest-api) both stop seeing the tool. See the
+[REST API Live API section](/guide/rest-api#live-api) for the full operation
+reference and examples.
 
 <!--@include: ./_generated/ppal-live-api-schema.md-->
 
