@@ -504,6 +504,8 @@ describe("device-reader", () => {
 
           return [];
         },
+        call: (method: string) =>
+          method === "guess_playback_length" ? 16 : null,
       };
     }
 
