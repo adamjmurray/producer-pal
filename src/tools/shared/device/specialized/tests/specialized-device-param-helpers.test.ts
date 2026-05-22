@@ -66,6 +66,21 @@ describe("writeEnumByIndex", () => {
     expect(device.set).toHaveBeenCalledWith("mode_index", 2);
   });
 
+  it("matches labels case-insensitively and trims whitespace", () => {
+    const device = registerDevice({ mode_index: 0 });
+
+    writeEnumByIndex(
+      LiveAPI.from("id dev-1"),
+      "mode_index",
+      "  GaMmA ",
+      LABELS,
+      "updateDevice",
+      "mode",
+    );
+
+    expect(device.set).toHaveBeenCalledWith("mode_index", 2);
+  });
+
   it("warns and skips an unknown label", () => {
     const device = registerDevice({ mode_index: 0 });
 

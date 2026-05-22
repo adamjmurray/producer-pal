@@ -31,7 +31,8 @@ export function readEnumByIndex(
 
 /**
  * Map an enum label to its index and write it to an int-indexed property.
- * Warns and skips when the label isn't in the catalog.
+ * Matching is case-insensitive and trims surrounding whitespace. Warns and
+ * skips when the label isn't in the catalog.
  * @param device - LiveAPI device object
  * @param property - Live API property holding the int index
  * @param value - Incoming value (a label string)
@@ -47,7 +48,8 @@ export function writeEnumByIndex(
   toolName: string,
   paramName: string,
 ): void {
-  const index = labels.indexOf(String(value));
+  const target = String(value).trim().toLowerCase();
+  const index = labels.findIndex((label) => label.toLowerCase() === target);
 
   if (index < 0) {
     console.warn(

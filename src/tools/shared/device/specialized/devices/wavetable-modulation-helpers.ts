@@ -41,6 +41,11 @@ export const MOD_SOURCES = [
 /** Total source count (13). */
 const SOURCE_COUNT = MOD_SOURCES.length;
 
+// Defensive cap on the matrix-target scan. The loops stop at the LOM's numeric
+// sentinel; this guards against an infinite loop if a future Live version stops
+// returning it. Far above any real device's parameter count.
+const MAX_TARGETS = 512;
+
 /**
  * Resolve the target index for a named parameter in the modulation matrix.
  * Iterates `get_modulation_target_parameter_name` until the sentinel (number)
@@ -50,18 +55,20 @@ const SOURCE_COUNT = MOD_SOURCES.length;
  * @returns Target index (0-based), or -1 if not found
  */
 export function resolveTargetIndex(device: LiveAPI, target: string): number {
-  for (let i = 0; ; i++) {
+  for (let i = 0; i < MAX_TARGETS; i++) {
     const name = device.call("get_modulation_target_parameter_name", i);
 
     // Sentinel: the LOM returns number 1 for out-of-range indices.
     if (typeof name === "number") {
-      return -1;
+      break;
     }
 
     if (name === target) {
       return i;
     }
   }
+
+  return -1;
 }
 
 /**
@@ -223,7 +230,7 @@ export function addModulationTargetAction(
 export function readModulations(device: LiveAPI): unknown[] {
   const result: { target: string; source: string; amount: number }[] = [];
 
-  for (let t = 0; ; t++) {
+  for (let t = 0; t < MAX_TARGETS; t++) {
     const name = device.call("get_modulation_target_parameter_name", t);
 
     // Sentinel: number 1 signals end of valid targets.

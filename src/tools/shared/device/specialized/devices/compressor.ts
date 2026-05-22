@@ -11,6 +11,13 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 // Sidechain input routing via Live's standard routing-dict shape. Routing
 // identifiers are NOT Live object IDs — they're a separate Live-internal
 // namespace; translation happens by matching track names to display_names.
+//
+// READ CAVEATS (write fidelity is exact; read is best-effort by name):
+// - Duplicate track names are ambiguous — the read returns the FIRST regular
+//   track whose name matches the routing display_name.
+// - Return-track / master / "Ext. In" sources have no matching regular-track id
+//   and read back as null even though a source is set. Writes only accept
+//   regular-track ids (readOptions lists the valid sidechainSourceTrackIds).
 
 interface RoutingEntry {
   display_name: string;
