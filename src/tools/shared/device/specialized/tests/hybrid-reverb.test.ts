@@ -77,6 +77,14 @@ describe("Hybrid Reverb pseudo-params", () => {
       });
     });
 
+    it("omits irCategory when the index is out of range", () => {
+      const device = registerHybridReverb({ ir_category_index: 99 });
+
+      const names = readSpecializedParams(device).map((p) => p.name);
+
+      expect(names).not.toContain("irCategory");
+    });
+
     it("translates underscores to spaces for index 2", () => {
       // index 2 → "Real_Places" → "Real Places"
       const device = registerHybridReverb({ ir_category_index: 2 });

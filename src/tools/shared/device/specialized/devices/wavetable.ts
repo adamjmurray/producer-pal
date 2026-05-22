@@ -9,11 +9,11 @@ import {
   readEnumByIndex,
   writeEnumByIndex,
   writeIntInRange,
-} from "./specialized-device-param-helpers.ts";
+} from "../specialized-device-param-helpers.ts";
 import {
   type PseudoParam,
   type SpecializedDeviceSpec,
-} from "./specialized-device-types.ts";
+} from "../specialized-device-types.ts";
 import {
   addModulationTargetAction,
   clearModulationAction,
@@ -49,9 +49,7 @@ const UNISON_MODES = [
  * @returns The integer value, or undefined
  */
 function readIntProp(device: LiveAPI, property: string): number | undefined {
-  const value = device.getProperty(property);
-
-  return typeof value === "number" ? value : undefined;
+  return device.getProperty(property) as number | undefined;
 }
 
 /**
@@ -108,19 +106,17 @@ function buildOscParams(
   const categoryParam: PseudoParam = {
     name: categoryName,
     read: (device) => {
-      const list =
-        (device.getProperty("oscillator_wavetable_categories") as
-          | string[]
-          | undefined) ?? [];
+      const list = device.getProperty(
+        "oscillator_wavetable_categories",
+      ) as string[];
       const index = device.getProperty(categoryProp) as number;
 
       return list[index];
     },
     write: (device, value, toolName) => {
-      const list =
-        (device.getProperty("oscillator_wavetable_categories") as
-          | string[]
-          | undefined) ?? [];
+      const list = device.getProperty(
+        "oscillator_wavetable_categories",
+      ) as string[];
       const index = list.indexOf(String(value));
 
       if (index < 0) {
@@ -138,15 +134,13 @@ function buildOscParams(
   const wavetableParam: PseudoParam = {
     name: wavetableName,
     read: (device) => {
-      const list =
-        (device.getProperty(oscListProp) as string[] | undefined) ?? [];
+      const list = device.getProperty(oscListProp) as string[];
       const index = device.getProperty(wavetableIndexProp) as number;
 
       return list[index];
     },
     write: (device, value, toolName) => {
-      const list =
-        (device.getProperty(oscListProp) as string[] | undefined) ?? [];
+      const list = device.getProperty(oscListProp) as string[];
       const index = list.indexOf(String(value));
 
       if (index < 0) {
@@ -287,12 +281,12 @@ export const wavetableSpec: SpecializedDeviceSpec = {
   readModulations,
 
   readOptions(device) {
-    const osc1Wavetables =
-      (device.getProperty("oscillator_1_wavetables") as string[] | undefined) ??
-      [];
-    const osc2Wavetables =
-      (device.getProperty("oscillator_2_wavetables") as string[] | undefined) ??
-      [];
+    const osc1Wavetables = device.getProperty(
+      "oscillator_1_wavetables",
+    ) as string[];
+    const osc2Wavetables = device.getProperty(
+      "oscillator_2_wavetables",
+    ) as string[];
 
     const modulatableParameters: string[] = [];
     const children = device.getChildren("parameters");

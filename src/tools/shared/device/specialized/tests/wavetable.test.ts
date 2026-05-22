@@ -116,22 +116,19 @@ describe("Wavetable pseudo-params — read", () => {
     ).toContainEqual({ name: "monoPoly", value: "poly" });
   });
 
-  it("reads polyVoices as a number", () => {
-    expect(
-      readSpecializedParams(registerWavetable({ poly_voices: 8 })),
-    ).toContainEqual({ name: "polyVoices", value: 8 });
+  it("reads polyVoices and unisonVoiceCount as numbers", () => {
+    const params = readSpecializedParams(
+      registerWavetable({ poly_voices: 8, unison_voice_count: 4 }),
+    );
+
+    expect(params).toContainEqual({ name: "polyVoices", value: 8 });
+    expect(params).toContainEqual({ name: "unisonVoiceCount", value: 4 });
   });
 
   it("reads unisonMode enum", () => {
     expect(
       readSpecializedParams(registerWavetable({ unison_mode: 3 })),
     ).toContainEqual({ name: "unisonMode", value: "noise" });
-  });
-
-  it("reads unisonVoiceCount as a number", () => {
-    expect(
-      readSpecializedParams(registerWavetable({ unison_voice_count: 4 })),
-    ).toContainEqual({ name: "unisonVoiceCount", value: 4 });
   });
 
   it("reads osc1Engine and osc2Engine as integers", () => {
@@ -438,7 +435,8 @@ describe("Wavetable pseudo-params — write", () => {
 });
 
 describe("Wavetable actions — setModulation", () => {
-  it("resolves target index and calls set_modulation_value", () => {
+  it("resolves a target past the first slot and calls set_modulation_value", () => {
+    // Targeting the second slot also exercises the resolve loop's continue path.
     const device = registerWavetable(
       {},
       buildModMethods(["Osc 1 Pos", "Filter Freq"]),
@@ -446,11 +444,11 @@ describe("Wavetable actions — setModulation", () => {
 
     applySpecializedActions(
       device,
-      ["setModulation('Osc 1 Pos', 0, 0.5)"],
+      ["setModulation('Filter Freq', 0, 0.5)"],
       "updateDevice",
     );
 
-    expect(device.call).toHaveBeenCalledWith("set_modulation_value", 0, 0, 0.5);
+    expect(device.call).toHaveBeenCalledWith("set_modulation_value", 1, 0, 0.5);
   });
 
   it("auto-adds missing target then calls set_modulation_value", () => {
@@ -565,6 +563,27 @@ describe("Wavetable actions — clearModulation", () => {
     );
     expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("Missing"));
   });
+
+  it("warns on a source index out of range", () => {
+    const device = registerWavetable({}, buildModMethods(["Osc 1 Pos"]));
+
+    applySpecializedActions(
+      device,
+      ["clearModulation('Osc 1 Pos', 13)"],
+      "updateDevice",
+    );
+
+    expect(device.call).not.toHaveBeenCalledWith(
+      "set_modulation_value",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("clearModulation source"),
+    );
+  });
 });
 
 describe("Wavetable actions — addModulationTarget", () => {
@@ -599,6 +618,47 @@ describe("Wavetable actions — addModulationTarget", () => {
     expect(outlet).toHaveBeenCalledWith(
       1,
       expect.stringContaining("Unknown Param"),
+    );
+  });
+});
+
+describe("Wavetable actions — argument validation", () => {
+  it.each([
+    ["setModulation('Volume')", "setModulation requires 3 arguments"],
+    ["clearModulation('Volume')", "clearModulation requires 2 arguments"],
+    ["addModulationTarget()", "addModulationTarget requires 1 argument"],
+  ])("warns when %s has too few arguments", (action, message) => {
+    const device = registerWavetable({}, buildModMethods(["Volume"]));
+
+    applySpecializedActions(device, [action], "updateDevice");
+
+    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(message));
+  });
+
+  it("warns when a found target still cannot be added to the matrix", () => {
+    // 'Volume' exists as a param child, but the (no-op) add never registers it,
+    // so the re-resolve still fails → "could not add to matrix".
+    const device = registerWavetable({}, buildModMethods([]));
+
+    applySpecializedActions(
+      device,
+      ["setModulation('Volume', 0, 0.5)"],
+      "updateDevice",
+    );
+
+    expect(device.call).toHaveBeenCalledWith(
+      "add_parameter_to_modulation_matrix",
+      expect.anything(),
+    );
+    expect(device.call).not.toHaveBeenCalledWith(
+      "set_modulation_value",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("could not add to matrix"),
     );
   });
 });

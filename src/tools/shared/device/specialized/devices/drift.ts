@@ -9,11 +9,11 @@ import {
   readEnumByIndex,
   writeEnumByIndex,
   writeIntFromSet,
-} from "./specialized-device-param-helpers.ts";
+} from "../specialized-device-param-helpers.ts";
 import {
   type PseudoParam,
   type SpecializedDeviceSpec,
-} from "./specialized-device-types.ts";
+} from "../specialized-device-types.ts";
 
 // Drift (DriftDevice, class_name "Drift"). AJM-374. See
 // dev/plans/Specialized-Device-Classes.md.

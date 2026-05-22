@@ -9,8 +9,8 @@ import {
   writeBoolProp,
   writeEnumByIndex,
   writeIntInRange,
-} from "./specialized-device-param-helpers.ts";
-import { type SpecializedDeviceSpec } from "./specialized-device-types.ts";
+} from "../specialized-device-param-helpers.ts";
+import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Spectral Resonator (SpectralResonatorDevice, class_name "Transmute").
 // AJM-378. See dev/plans/Specialized-Device-Classes.md.

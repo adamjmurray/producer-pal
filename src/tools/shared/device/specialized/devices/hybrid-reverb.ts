@@ -7,8 +7,8 @@ import * as console from "#src/shared/v8-max-console.ts";
 import {
   readBoolProp,
   writeBoolProp,
-} from "./specialized-device-param-helpers.ts";
-import { type SpecializedDeviceSpec } from "./specialized-device-types.ts";
+} from "../specialized-device-param-helpers.ts";
+import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Hybrid Reverb (HybridReverbDevice). AJM-372. See
 // dev/plans/Specialized-Device-Classes.md.
@@ -25,7 +25,7 @@ const EMPTY_FILE_SENTINEL = "<empty>";
  * @returns Array of category name strings (underscore-separated)
  */
 function readCategoryList(device: LiveAPI): string[] {
-  return (device.getProperty("ir_category_list") as string[] | undefined) ?? [];
+  return device.getProperty("ir_category_list") as string[];
 }
 
 /**
@@ -34,7 +34,7 @@ function readCategoryList(device: LiveAPI): string[] {
  * @returns Array of file name strings (may contain sentinel "<empty>")
  */
 function readFileList(device: LiveAPI): string[] {
-  return (device.getProperty("ir_file_list") as string[] | undefined) ?? [];
+  return device.getProperty("ir_file_list") as string[];
 }
 
 /**

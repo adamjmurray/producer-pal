@@ -15,8 +15,8 @@ import {
   writeBoolProp,
   writeEnumByIndex,
   writeIntFromSet,
-} from "./specialized-device-param-helpers.ts";
-import { type SpecializedDeviceSpec } from "./specialized-device-types.ts";
+} from "../specialized-device-param-helpers.ts";
+import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Simpler (SimplerDevice, class_name "OriginalSimpler"). AJM-371. See
 // dev/plans/Specialized-Device-Classes.md.

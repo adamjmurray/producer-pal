@@ -8,8 +8,8 @@ import {
   readEnumByIndex,
   writeBoolProp,
   writeEnumByIndex,
-} from "./specialized-device-param-helpers.ts";
-import { type SpecializedDeviceSpec } from "./specialized-device-types.ts";
+} from "../specialized-device-param-helpers.ts";
+import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Roar (RoarDevice, class_name "Roar"). Exposes its processing-topology
 // selector and an envelope-audition toggle at the class level — neither is

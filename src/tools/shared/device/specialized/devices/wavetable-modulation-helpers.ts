@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
-import { coerceInt } from "./specialized-device-param-helpers.ts";
+import { coerceInt } from "../specialized-device-param-helpers.ts";
 
 // Wavetable mod-matrix helpers. AJM-373. See
 // dev/plans/Specialized-Device-Classes.md.

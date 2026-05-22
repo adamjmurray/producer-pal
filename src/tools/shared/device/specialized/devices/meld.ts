@@ -7,8 +7,8 @@ import {
   readEnumByIndex,
   writeEnumByIndex,
   writeIntInRange,
-} from "./specialized-device-param-helpers.ts";
-import { type SpecializedDeviceSpec } from "./specialized-device-types.ts";
+} from "../specialized-device-param-helpers.ts";
+import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Meld (MeldDevice, class_name "InstrumentMeld"). Exposes its polyphony mode
 // and voice-count controls at the class level — none are reachable as

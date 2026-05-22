@@ -4,21 +4,21 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
-import { compressorSpec } from "./compressor.ts";
-import { driftSpec } from "./drift.ts";
-import { eqEightSpec } from "./eq-eight.ts";
-import { hybridReverbSpec } from "./hybrid-reverb.ts";
-import { meldSpec } from "./meld.ts";
-import { roarSpec } from "./roar.ts";
-import { simplerSpec } from "./simpler.ts";
+import { compressorSpec } from "./devices/compressor.ts";
+import { driftSpec } from "./devices/drift.ts";
+import { eqEightSpec } from "./devices/eq-eight.ts";
+import { hybridReverbSpec } from "./devices/hybrid-reverb.ts";
+import { meldSpec } from "./devices/meld.ts";
+import { roarSpec } from "./devices/roar.ts";
+import { simplerSpec } from "./devices/simpler.ts";
+import { spectralResonatorSpec } from "./devices/spectral-resonator.ts";
+import { wavetableSpec } from "./devices/wavetable.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
 import {
   type ActionHandler,
   type PseudoParam,
   type SpecializedDeviceSpec,
 } from "./specialized-device-types.ts";
-import { spectralResonatorSpec } from "./spectral-resonator.ts";
-import { wavetableSpec } from "./wavetable.ts";
 
 // Central registry of specialized-device specs and the dispatch entry points
 // used by the device read/update plumbing. Devices are matched by

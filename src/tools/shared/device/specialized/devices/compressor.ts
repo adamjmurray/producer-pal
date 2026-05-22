@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
-import { type SpecializedDeviceSpec } from "./specialized-device-types.ts";
+import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Compressor (CompressorDevice). AJM-375. See
 // dev/plans/Specialized-Device-Classes.md.
@@ -25,11 +25,7 @@ const NO_INPUT_LABEL = "No Input";
  * @returns Array of routing entries
  */
 function readAvailableTypes(device: LiveAPI): RoutingEntry[] {
-  return (
-    (device.getProperty("available_input_routing_types") as
-      | RoutingEntry[]
-      | null) ?? []
-  );
+  return device.getProperty("available_input_routing_types") as RoutingEntry[];
 }
 
 /**
@@ -38,11 +34,9 @@ function readAvailableTypes(device: LiveAPI): RoutingEntry[] {
  * @returns Array of routing entries
  */
 function readAvailableChannels(device: LiveAPI): RoutingEntry[] {
-  return (
-    (device.getProperty("available_input_routing_channels") as
-      | RoutingEntry[]
-      | null) ?? []
-  );
+  return device.getProperty(
+    "available_input_routing_channels",
+  ) as RoutingEntry[];
 }
 
 /**
@@ -55,7 +49,7 @@ function readLiveSetTracks(): Array<{ id: string; name: string }> {
 
   return tracks.map((track) => ({
     id: track.id,
-    name: (track.getProperty("name") as string | null) ?? "",
+    name: track.getProperty("name") as string,
   }));
 }
 
@@ -111,7 +105,7 @@ function writeSidechainSourceTrackId(
     return;
   }
 
-  const trackName = (track.getProperty("name") as string | null) ?? "";
+  const trackName = track.getProperty("name") as string;
   const available = readAvailableTypes(device);
   const entry = available.find((e) => e.display_name === trackName);
 
