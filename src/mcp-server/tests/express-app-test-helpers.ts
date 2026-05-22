@@ -9,7 +9,7 @@ import express from "express";
 import Max from "max-api";
 import { afterAll, beforeAll, type Mock, vi } from "vitest";
 import { type CallLiveApiFunction } from "../create-mcp-server.ts";
-import { registerRestApiRoutes } from "../rest-api-routes.ts";
+import { registerRestApiRoutes } from "../routes/rest-api-routes.ts";
 
 export type MockMax = typeof Max & {
   handlers: Map<string, (input: unknown) => void>;

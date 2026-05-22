@@ -42,6 +42,10 @@ interface SettingsScreenProps {
    * device toggle is ignored, so the chat UI must mirror that and disable
    * the checkbox. Mirrors the server-side liveApiForcedOn flag. */
   liveApiForcedOn: boolean;
+  /** Voice id locked into a live RealtimeSession (null when idle or chat
+   * mode). Used by the VoiceSelector to render a pending-change notice when
+   * the user edits voice mid-session. */
+  activeVoice: string | null;
 }
 
 const helpLinkClass =
@@ -138,6 +142,11 @@ function SettingsTabContent(props: SettingsScreenProps) {
           setThinking={settings.setThinking}
           smallModelMode={settings.smallModelMode}
           setSmallModelMode={settings.setSmallModelMode}
+          realtimeVoice={settings.realtimeVoice}
+          setRealtimeVoice={settings.setRealtimeVoice}
+          voiceSpeed={settings.voiceSpeed}
+          setVoiceSpeed={settings.setVoiceSpeed}
+          activeVoice={props.activeVoice}
         />
       )}
 

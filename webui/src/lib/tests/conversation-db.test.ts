@@ -106,6 +106,7 @@ describe("conversation-db", () => {
       showThoughts: null,
       smallModelMode: null,
       totalUsage: null,
+      sessionType: "text",
     });
     expect(
       (list[0] as unknown as Record<string, unknown>).messages,
@@ -223,6 +224,58 @@ describe("conversation-db", () => {
     expect(loaded?.temperature).toBeNull();
     expect(loaded?.showThoughts).toBeNull();
     expect(loaded?.smallModelMode).toBeNull();
+  });
+
+  it("defaults missing sessionType to 'text' and voiceHistory to null on load", async () => {
+    const record = createRecord();
+
+    await saveConversation(record);
+    const db = await getConversationDb();
+    const raw = await db.get("conversations", record.id);
+
+    delete (raw as Record<string, unknown>).sessionType;
+    delete (raw as Record<string, unknown>).voiceHistory;
+    await db.put("conversations", raw);
+
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.sessionType).toBe("text");
+    expect(loaded?.voiceHistory).toBeNull();
+  });
+
+  it("defaults missing sessionType to 'text' in list summaries", async () => {
+    const record = createRecord();
+
+    await saveConversation(record);
+    const db = await getConversationDb();
+    const raw = await db.get("conversations", record.id);
+
+    delete (raw as Record<string, unknown>).sessionType;
+    await db.put("conversations", raw);
+
+    const list = await listConversations();
+
+    expect(list[0]?.sessionType).toBe("text");
+  });
+
+  it("preserves voice sessionType and voiceHistory through save/load", async () => {
+    const record = createRecord({
+      sessionType: "voice",
+      voiceHistory: [{ type: "message", role: "user", content: [] }],
+      messages: [],
+    });
+
+    await saveConversation(record);
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.sessionType).toBe("voice");
+    expect(loaded?.voiceHistory).toStrictEqual([
+      { type: "message", role: "user", content: [] },
+    ]);
+
+    const list = await listConversations();
+
+    expect(list[0]?.sessionType).toBe("voice");
   });
 
   it("defaults missing fields to null in list summaries", async () => {

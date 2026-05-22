@@ -11,6 +11,11 @@ import {
   checkHasApiKey,
   loadEnabledTools,
   loadProviderSettings,
+  loadVoiceSpeed,
+  saveVoiceSpeed,
+  VOICE_SPEED_DEFAULT,
+  VOICE_SPEED_MAX,
+  VOICE_SPEED_MIN,
 } from "#webui/hooks/settings/settings-helpers";
 
 describe("settings-helpers", () => {
@@ -67,6 +72,32 @@ describe("settings-helpers", () => {
       localStorage.setItem("producer_pal_enabled_tools", "not-json");
 
       expect(loadEnabledTools()).toStrictEqual({});
+    });
+  });
+
+  describe("voice speed persistence", () => {
+    it("returns the default speed when no value is stored", () => {
+      expect(loadVoiceSpeed()).toBe(VOICE_SPEED_DEFAULT);
+    });
+
+    it("round-trips through localStorage", () => {
+      saveVoiceSpeed(1.25);
+      expect(loadVoiceSpeed()).toBe(1.25);
+    });
+
+    it("clamps stored values above the max down to the max", () => {
+      saveVoiceSpeed(99);
+      expect(loadVoiceSpeed()).toBe(VOICE_SPEED_MAX);
+    });
+
+    it("clamps stored values below the min up to the min", () => {
+      saveVoiceSpeed(0.1);
+      expect(loadVoiceSpeed()).toBe(VOICE_SPEED_MIN);
+    });
+
+    it("falls back to default on unparseable values", () => {
+      localStorage.setItem("producer_pal_voice_speed", "not-a-number");
+      expect(loadVoiceSpeed()).toBe(VOICE_SPEED_DEFAULT);
     });
   });
 });

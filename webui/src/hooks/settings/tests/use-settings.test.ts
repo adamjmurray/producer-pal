@@ -135,6 +135,37 @@ describe("useSettings", () => {
     expect(result.current.model).toBe("gemini-3-flash-preview");
   });
 
+  it("setProviderAndModel atomically swaps provider + that provider's model", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.provider).toBe("gemini");
+
+    await act(() => {
+      result.current.setProviderAndModel("openai", "gpt-realtime-2");
+    });
+
+    expect(result.current.provider).toBe("openai");
+    expect(result.current.model).toBe("gpt-realtime-2");
+    expect(result.current.savedModel).toBe("gpt-realtime-2");
+  });
+
+  it("savedModel only updates on saveSettings, not setModel", async () => {
+    const { result } = renderHook(() => useSettings());
+    const initialSavedModel = result.current.savedModel;
+
+    await act(() => {
+      result.current.setModel("gemini-3-flash-preview");
+    });
+    // In-modal change should NOT flip the App-level routing model.
+    expect(result.current.model).toBe("gemini-3-flash-preview");
+    expect(result.current.savedModel).toBe(initialSavedModel);
+
+    await act(() => {
+      result.current.saveSettings();
+    });
+    expect(result.current.savedModel).toBe("gemini-3-flash-preview");
+  });
+
   it("updates thinking when setThinking is called", async () => {
     const { result } = renderHook(() => useSettings());
 

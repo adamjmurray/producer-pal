@@ -6,9 +6,10 @@
 import { describe, it, expect } from "vitest";
 import {
   extractGptVersion,
-  mapThinkingToReasoningEffort,
-  mapThinkingToOpenRouterEffort,
   mapThinkingToOllamaThink,
+  mapThinkingToOpenRouterEffort,
+  mapThinkingToReasoningEffort,
+  mapThinkingToRealtimeEffort,
 } from "#webui/hooks/settings/config-builders";
 
 describe("config-builders", () => {
@@ -136,6 +137,25 @@ describe("config-builders", () => {
       expect(
         mapThinkingToOllamaThink("UnknownLevel", "qwen3.6"),
       ).toBeUndefined();
+    });
+  });
+
+  describe("mapThinkingToRealtimeEffort", () => {
+    it("maps Off to minimal", () => {
+      expect(mapThinkingToRealtimeEffort("Off")).toBe("minimal");
+    });
+
+    it("maps Max to high", () => {
+      expect(mapThinkingToRealtimeEffort("Max")).toBe("high");
+    });
+
+    it("returns undefined for Default so the API picks its own tier", () => {
+      expect(mapThinkingToRealtimeEffort("Default")).toBeUndefined();
+    });
+
+    it("returns undefined for unknown levels", () => {
+      expect(mapThinkingToRealtimeEffort("Whatever")).toBeUndefined();
+      expect(mapThinkingToRealtimeEffort("")).toBeUndefined();
     });
   });
 });

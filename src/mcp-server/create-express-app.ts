@@ -18,7 +18,8 @@ import { toolDefLiveApi } from "#src/tools/control/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
-import { registerRestApiRoutes } from "./rest-api-routes.ts";
+import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
+import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 
 const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 
@@ -248,6 +249,19 @@ export function createExpressApp(): Express {
     res.type("html").send(chatUiHtml);
   });
 
+  // /voice serves the same single-page bundle; main.tsx routes by pathname.
+  // Honor the chatUIEnabled toggle since the voice view shares the same
+  // localStorage settings and OpenAI key as the chat UI.
+  app.get("/voice", (_req: Request, res: Response): void => {
+    if (!chatUIEnabled) {
+      res.status(403).send("Chat UI is disabled");
+
+      return;
+    }
+
+    res.type("html").send(chatUiHtml);
+  });
+
   // Config endpoints for device UI settings
   app.get("/config", (_req: Request, res: Response): void => {
     res.json(config);
@@ -256,6 +270,8 @@ export function createExpressApp(): Express {
   app.post("/config", handleConfigUpdate);
 
   registerRestApiRoutes(app, () => config, callLiveApi);
+
+  registerVoiceTokenRoute(app);
 
   return app;
 }

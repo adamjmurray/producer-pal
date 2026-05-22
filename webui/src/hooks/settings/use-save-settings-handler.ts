@@ -9,6 +9,7 @@ import {
   type PreferencesSettings,
   savePreferencesSettings,
 } from "#webui/hooks/use-preferences-settings";
+import { isRealtimeModel } from "#webui/lib/constants/models";
 import { type UseSettingsReturn } from "#webui/types/settings";
 
 interface UseSaveSettingsHandlerArgs {
@@ -39,8 +40,23 @@ export function useSaveSettingsHandler(
     // changes that arrived mid-modal, or post the default `false` if the
     // server fetch hadn't resolved by the time the user opened settings.
     const liveApiChanged = settings.liveApiEnabledDirty;
+    // If saving flips voice ↔ chat mode, the URL hash (which points to the
+    // previous mode's conversation) becomes a "foreign" record. Without
+    // clearing it, the new mode's mount handler would bounce the user right
+    // back into the old mode via onForeignRecord. Clear it synchronously so
+    // the new mode mounts with no active conversation.
+    const modeWillChange =
+      isRealtimeModel(settings.savedModel) !== isRealtimeModel(settings.model);
 
     closeSettings(() => {
+      if (modeWillChange) {
+        history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
+      }
+
       settings.saveSettings();
       remoteConfig.postSmallModelMode(settings.smallModelMode);
       savePreferencesSettings(display);

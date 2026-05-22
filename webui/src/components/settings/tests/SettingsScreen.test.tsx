@@ -113,10 +113,12 @@ describe("SettingsScreen", () => {
   const defaultSettings = {
     provider: "gemini" as const,
     setProvider: vi.fn(),
+    setProviderAndModel: vi.fn(),
     apiKey: "",
     setApiKey: vi.fn(),
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
+    savedModel: "gemini-2.5-pro",
     thinking: "Default",
     setThinking: vi.fn(),
     temperature: 1,
@@ -137,6 +139,12 @@ describe("SettingsScreen", () => {
     liveApiEnabledDirty: false,
     setLiveApiEnabled: vi.fn(),
     seedLiveApiEnabled: vi.fn(),
+    realtimeVoice: "marin",
+    setRealtimeVoice: vi.fn(),
+    savedRealtimeVoice: "marin",
+    voiceSpeed: 1.0,
+    setVoiceSpeed: vi.fn(),
+    savedVoiceSpeed: 1.0,
   };
 
   const defaultDisplay = {
@@ -173,6 +181,7 @@ describe("SettingsScreen", () => {
       activeSmallModelMode: null,
     },
     liveApiForcedOn: false,
+    activeVoice: null,
   };
 
   /**

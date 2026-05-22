@@ -116,7 +116,9 @@ export function buildSaveRecord(
     showThoughts: refs.showThoughts,
     smallModelMode: refs.smallModelMode,
     totalUsage: sumMessageUsage(chatHistory),
+    sessionType: "text",
     messages: chatHistory as ConversationRecord["messages"],
+    voiceHistory: null,
   };
 }
 

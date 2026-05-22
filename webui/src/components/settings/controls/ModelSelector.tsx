@@ -7,6 +7,7 @@ import {
   ANTHROPIC_MODELS,
   GEMINI_MODELS,
   MISTRAL_MODELS,
+  type ModelPresetItem,
   OLLAMA_MODELS,
   OPENAI_MODELS,
   OPENROUTER_MODELS,
@@ -14,7 +15,7 @@ import {
 } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 
-type ModelPreset = readonly { value: string; label: string }[];
+type ModelPreset = readonly ModelPresetItem[];
 
 const PROVIDER_MODELS: Partial<Record<Provider, ModelPreset>> = {
   anthropic: ANTHROPIC_MODELS,

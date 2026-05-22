@@ -17,6 +17,7 @@ import {
   saveCurrentSettings,
   saveSmallModelMode,
 } from "./settings-helpers";
+import { useVoiceModeSettings } from "./use-voice-mode-settings";
 
 type ProviderStateSetters = Record<
   Provider,
@@ -50,6 +51,14 @@ function createProviderSetter<K extends keyof ProviderSettings>(
  */
 export function useSettings(): UseSettingsReturn {
   const [provider, setProviderState] = useState<Provider>(loadCurrentProvider);
+  // `model` (returned below) is the in-modal value: changing it mid-edit
+  // doesn't switch app modes. `savedModel` only updates on saveSettings or
+  // setProviderAndModel and is what App.tsx routes on — that way picking a
+  // realtime model in the provider dropdown doesn't briefly mount VoiceApp
+  // behind the modal and trigger a foreign-record bounce.
+  const [savedModel, setSavedModel] = useState<string>(
+    () => loadProviderSettings(loadCurrentProvider()).model,
+  );
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
     () => localStorage.getItem("producer_pal_settings_configured") === "true",
   );
@@ -65,6 +74,11 @@ export function useSettings(): UseSettingsReturn {
   const [liveApiEnabled, setLiveApiEnabledState] = useState<boolean>(false);
   const [liveApiEnabledDirty, setLiveApiEnabledDirty] =
     useState<boolean>(false);
+  // In-modal voice settings vs. persisted/applied values. Same split as
+  // `model`/`savedModel` — saveSettings/cancelSettings synchronize them, but
+  // the live voice session reads the `saved*` snapshots so mid-edit changes
+  // don't leak into the active RealtimeAgent.
+  const voiceModeSettings = useVoiceModeSettings();
 
   const setLiveApiEnabled = useCallback((enabled: boolean) => {
     setLiveApiEnabledState(enabled);
@@ -157,12 +171,15 @@ export function useSettings(): UseSettingsReturn {
 
     saveCurrentSettings(provider, enabledTools, allSettings);
     saveSmallModelMode(smallModelMode);
+    voiceModeSettings.commit();
+    setSavedModel(allSettings[provider].model);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
   }, [
     provider,
     enabledTools,
     smallModelMode,
+    voiceModeSettings,
     anthropicSettings,
     geminiSettings,
     openaiSettings,
@@ -177,11 +194,12 @@ export function useSettings(): UseSettingsReturn {
     setProviderState(loadCurrentProvider());
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
+    voiceModeSettings.revert();
     applyLoadedSettings(loadAllProviderSettings());
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);
-  }, [applyLoadedSettings]);
+  }, [applyLoadedSettings, voiceModeSettings]);
 
   // Individual setters that update the current provider's settings
   const setters = useMemo(() => {
@@ -213,6 +231,24 @@ export function useSettings(): UseSettingsReturn {
   const setProvider = useCallback((newProvider: Provider) => {
     setProviderState(newProvider);
   }, []);
+  // Atomically switch provider + that provider's model in one render. Using
+  // setProvider() then setModel() separately doesn't work because setModel
+  // closes over the OLD provider — its setter was memoized when provider
+  // had its previous value, so it'd write into the old provider's slot.
+  // Also updates savedModel so App.tsx routes to the new mode immediately
+  // (this is the "settle on this mode now" path used by onForeignRecord when
+  // a conversation from a different mode is opened).
+  const setProviderAndModel = useCallback(
+    (newProvider: Provider, newModel: string) => {
+      setProviderState(newProvider);
+      providerStateSetters[newProvider]((prev) => ({
+        ...prev,
+        model: newModel,
+      }));
+      setSavedModel(newModel);
+    },
+    [providerStateSetters],
+  );
   const hasApiKey = checkHasApiKey(provider);
   const isToolEnabled = useCallback(
     (toolId: string) => enabledTools[toolId] ?? true,
@@ -229,12 +265,14 @@ export function useSettings(): UseSettingsReturn {
   return {
     provider,
     setProvider,
+    setProviderAndModel,
     apiKey: currentSettings.apiKey,
     setApiKey,
     baseUrl: hasBaseUrl ? currentSettings.baseUrl : undefined,
     setBaseUrl: hasBaseUrl ? setBaseUrl : undefined,
     model: currentSettings.model,
     setModel,
+    savedModel,
     thinking: currentSettings.thinking,
     setThinking,
     temperature: currentSettings.temperature,
@@ -255,5 +293,11 @@ export function useSettings(): UseSettingsReturn {
     liveApiEnabledDirty,
     setLiveApiEnabled,
     seedLiveApiEnabled,
+    realtimeVoice: voiceModeSettings.realtimeVoice,
+    setRealtimeVoice: voiceModeSettings.setRealtimeVoice,
+    savedRealtimeVoice: voiceModeSettings.savedRealtimeVoice,
+    voiceSpeed: voiceModeSettings.voiceSpeed,
+    setVoiceSpeed: voiceModeSettings.setVoiceSpeed,
+    savedVoiceSpeed: voiceModeSettings.savedVoiceSpeed,
   };
 }

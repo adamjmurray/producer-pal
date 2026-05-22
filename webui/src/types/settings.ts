@@ -31,12 +31,19 @@ export type Provider =
 export interface UseSettingsReturn {
   provider: Provider;
   setProvider: (provider: Provider) => void;
+  /** Atomically swap the active provider + that provider's model (used when
+   * loading a conversation whose stored mode differs from the current one). */
+  setProviderAndModel: (provider: Provider, model: string) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
   baseUrl?: string; // For custom, lmstudio, and ollama providers
   setBaseUrl?: (url: string) => void;
   model: string;
   setModel: (model: string) => void;
+  /** The persisted model (last save or setProviderAndModel), independent of
+   * in-modal edits. App.tsx routes voice vs chat off this so picking a
+   * realtime model in the dropdown doesn't switch modes until the user saves. */
+  savedModel: string;
   thinking: string;
   setThinking: (thinking: string) => void;
   temperature: number;
@@ -65,4 +72,24 @@ export interface UseSettingsReturn {
   liveApiEnabledDirty: boolean;
   setLiveApiEnabled: (enabled: boolean) => void;
   seedLiveApiEnabled: (enabled: boolean) => void;
+
+  /** In-modal voice selection for the OpenAI Realtime API. Editing this
+   * during a live voice session does NOT change the active voice — the
+   * RealtimeAgent locks the voice at connect time. Takes effect on the next
+   * Stop → Talk cycle. */
+  realtimeVoice: string;
+  setRealtimeVoice: (voice: string) => void;
+
+  /** Persisted voice setting (last save). Used by useVoiceSession at connect
+   * time so an in-modal edit doesn't reach into the live session. */
+  savedRealtimeVoice: string;
+
+  /** In-modal voice playback speed multiplier (audio.output.speed for the
+   * OpenAI Realtime API). Mid-session edits don't affect the live session —
+   * applied on the next Stop → Talk. */
+  voiceSpeed: number;
+  setVoiceSpeed: (speed: number) => void;
+
+  /** Persisted voice speed (last save). Read by useVoiceSession at connect time. */
+  savedVoiceSpeed: number;
 }

@@ -97,6 +97,11 @@ describe("ModelSelector", () => {
 
       expectModelSelected("gpt-5.4-mini", setModel);
     });
+
+    it("includes the realtime (voice) model in the OpenAI dropdown", () => {
+      renderModelSelector({ provider: "openai", model: "gpt-5.5" });
+      expect(screen.getByRole("option", { name: /Realtime/ })).toBeDefined();
+    });
   });
 
   describe("Mistral provider", () => {

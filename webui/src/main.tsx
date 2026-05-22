@@ -13,6 +13,7 @@ if (!appElement) {
   throw new Error("Could not find #app element");
 }
 
-const isDemo = new URLSearchParams(window.location.search).has("demo");
+const params = new URLSearchParams(window.location.search);
+const isDemo = params.has("demo");
 
 render(isDemo ? <DemoMode /> : <App />, appElement);

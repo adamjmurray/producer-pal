@@ -515,6 +515,44 @@ describe("MCP Express App", () => {
         chatUIHandler(1);
       }
     });
+
+    it("should serve the same HTML at /voice when chat UI is enabled", async () => {
+      const voiceUrl = appState.serverUrl.replace("/mcp", "/voice");
+      const response = await fetch(voiceUrl);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("html");
+      const html = await response.text();
+
+      expect(html.length).toBeGreaterThan(0);
+    });
+
+    it("should return 403 at /voice when chat UI is disabled", async () => {
+      const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
+        input: unknown,
+      ) => void;
+
+      chatUIHandler(0);
+
+      const { createExpressApp } = await import("../create-express-app.ts");
+      const testApp = createExpressApp();
+      const testServer = await new Promise<Server>((resolve) => {
+        const s = testApp.listen(0, () => resolve(s));
+      });
+      const testVoiceUrl = `http://localhost:${(testServer.address() as AddressInfo).port}/voice`;
+
+      try {
+        const response = await fetch(testVoiceUrl);
+
+        expect(response.status).toBe(403);
+        const text = await response.text();
+
+        expect(text).toBe("Chat UI is disabled");
+      } finally {
+        await new Promise<void>((resolve) => testServer.close(() => resolve()));
+        chatUIHandler(1);
+      }
+    });
   });
 
   describe("Config Endpoints", () => {

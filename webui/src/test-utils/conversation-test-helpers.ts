@@ -19,6 +19,7 @@ export function createTestRecord(
   return {
     ...sharedDefaults(),
     messages: [{ role: "user", content: "hello" }],
+    voiceHistory: null,
     ...overrides,
   };
 }
@@ -56,5 +57,6 @@ function sharedDefaults(): ConversationSummary {
     showThoughts: null,
     smallModelMode: null,
     totalUsage: null,
+    sessionType: "text",
   };
 }

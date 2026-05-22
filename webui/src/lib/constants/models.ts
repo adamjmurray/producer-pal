@@ -8,10 +8,53 @@
  * Convention: First item in each list is the default model for that provider.
  */
 
+export type ModelKind = "realtime";
+
+export interface ModelPresetItem {
+  value: string;
+  label: string;
+  kind?: ModelKind;
+}
+
 export const OTHER_MODEL_OPTION = {
   value: "OTHER",
   label: "Other...",
 } as const;
+
+export const OPENAI_REALTIME_MODEL = "gpt-realtime-2";
+
+/**
+ * Voice options accepted by OpenAI's Realtime API. Recommended by OpenAI:
+ * `marin` or `cedar` for best audio quality. Once the model has emitted audio
+ * in a session, the voice is locked for that session — we can change it
+ * between sessions (Stop → Talk creates a fresh RealtimeAgent).
+ */
+export const REALTIME_VOICES = [
+  { value: "marin", label: "Marin (recommended)" },
+  { value: "cedar", label: "Cedar (recommended)" },
+  { value: "alloy", label: "Alloy" },
+  { value: "ash", label: "Ash" },
+  { value: "ballad", label: "Ballad" },
+  { value: "coral", label: "Coral" },
+  { value: "echo", label: "Echo" },
+  { value: "sage", label: "Sage" },
+  { value: "shimmer", label: "Shimmer" },
+  { value: "verse", label: "Verse" },
+] as const;
+
+export type RealtimeVoice = (typeof REALTIME_VOICES)[number]["value"];
+
+export const DEFAULT_REALTIME_VOICE: RealtimeVoice = "marin";
+
+/**
+ * Validates that a string is a known realtime voice id. Used when loading
+ * the saved voice from localStorage to guard against stale or hand-edited values.
+ * @param value - Candidate voice id
+ * @returns True if the value is one of REALTIME_VOICES
+ */
+export function isValidRealtimeVoice(value: string): value is RealtimeVoice {
+  return REALTIME_VOICES.some((v) => v.value === value);
+}
 
 export const ANTHROPIC_MODELS = [
   { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
@@ -27,12 +70,30 @@ export const GEMINI_MODELS = [
   OTHER_MODEL_OPTION,
 ];
 
-export const OPENAI_MODELS = [
+export const OPENAI_MODELS: ModelPresetItem[] = [
   { value: "gpt-5.5", label: "GPT-5.5" },
   { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
   { value: "gpt-5.4-mini", label: "GPT-5.4 Mini" },
+  {
+    value: OPENAI_REALTIME_MODEL,
+    label: "GPT Realtime 2 (Voice)",
+    kind: "realtime",
+  },
   OTHER_MODEL_OPTION,
 ];
+
+/**
+ * Returns true when the given model id corresponds to a realtime (voice) model.
+ * @param modelId - The model identifier to check
+ * @returns True if the model has kind "realtime"
+ */
+export function isRealtimeModel(modelId: string | null | undefined): boolean {
+  if (modelId == null) return false;
+
+  return OPENAI_MODELS.some(
+    (m) => m.value === modelId && m.kind === "realtime",
+  );
+}
 
 export const MISTRAL_MODELS = [
   { value: "mistral-medium-latest", label: "Mistral Medium" },

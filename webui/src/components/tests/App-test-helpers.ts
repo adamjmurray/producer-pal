@@ -28,6 +28,7 @@ export const mockChatHook = {
 export const mockSettingsHook = {
   provider: "gemini" as const,
   setProvider: vi.fn(),
+  setProviderAndModel: vi.fn(),
 
   apiKey: "test-key",
   setApiKey: vi.fn(),
@@ -35,6 +36,7 @@ export const mockSettingsHook = {
   setBaseUrl: vi.fn(),
   model: "gemini-1.5-flash",
   setModel: vi.fn(),
+  savedModel: "gemini-1.5-flash",
   thinking: "default" as const,
   setThinking: vi.fn(),
   temperature: 1.0,
