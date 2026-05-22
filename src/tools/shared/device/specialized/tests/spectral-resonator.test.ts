@@ -48,9 +48,9 @@ describe("Spectral Resonator pseudo-params", () => {
         { name: "midiGate", value: false },
         { name: "monoPoly", value: "mono" },
         { name: "pitchBendRange", value: 0 },
-        { name: "modMode", value: 0 },
-        { name: "pitchMode", value: 0 },
-        { name: "polyphony", value: 0 },
+        { name: "modMode", value: "None" },
+        { name: "pitchMode", value: "Hertz" },
+        { name: "polyphony", value: 2 },
       ]);
     });
 
@@ -99,30 +99,30 @@ describe("Spectral Resonator pseudo-params", () => {
       });
     });
 
-    it("reads modMode as a numeric value", () => {
+    it("reads modMode by index (3 → Granular)", () => {
       const device = registerSpectralResonator({ mod_mode: 3 });
 
       expect(readSpecializedParams(device)).toContainEqual({
         name: "modMode",
-        value: 3,
+        value: "Granular",
       });
     });
 
-    it("reads pitchMode as a numeric value", () => {
+    it("reads pitchMode by index (1 → MIDI Note)", () => {
       const device = registerSpectralResonator({ pitch_mode: 1 });
 
       expect(readSpecializedParams(device)).toContainEqual({
         name: "pitchMode",
-        value: 1,
+        value: "MIDI Note",
       });
     });
 
-    it("reads polyphony as a numeric value", () => {
+    it("reads polyphony as a voice count (index 2 → 8)", () => {
       const device = registerSpectralResonator({ polyphony: 2 });
 
       expect(readSpecializedParams(device)).toContainEqual({
         name: "polyphony",
-        value: 2,
+        value: 8,
       });
     });
   });
@@ -266,138 +266,107 @@ describe("Spectral Resonator pseudo-params", () => {
   });
 
   describe("write modMode", () => {
-    it("sets mod_mode when value is in range", () => {
+    it("maps the enum label 'Wander' to index 2", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "modMode", 2, "updateDevice");
+      applySpecializedParamWrite(device, "modMode", "Wander", "updateDevice");
 
       expect(device.set).toHaveBeenCalledWith("mod_mode", 2);
     });
 
-    it("sets mod_mode at the minimum boundary (0)", () => {
+    it("maps 'None' to index 0", () => {
       const device = registerSpectralResonator({ mod_mode: 2 });
 
-      applySpecializedParamWrite(device, "modMode", 0, "updateDevice");
+      applySpecializedParamWrite(device, "modMode", "None", "updateDevice");
 
       expect(device.set).toHaveBeenCalledWith("mod_mode", 0);
     });
 
-    it("sets mod_mode at the maximum boundary (3)", () => {
+    it("maps 'Granular' to index 3", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "modMode", 3, "updateDevice");
+      applySpecializedParamWrite(device, "modMode", "Granular", "updateDevice");
 
       expect(device.set).toHaveBeenCalledWith("mod_mode", 3);
     });
 
-    it("warns and skips when modMode is above range (4)", () => {
+    it("warns and skips an invalid modMode label", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "modMode", 4, "updateDevice");
+      applySpecializedParamWrite(device, "modMode", "Reverb", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("modMode"),
-      );
-    });
-
-    it("warns and skips when modMode is a non-integer", () => {
-      const device = registerSpectralResonator();
-
-      applySpecializedParamWrite(device, "modMode", 1.5, "updateDevice");
-
-      expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("modMode"),
+        expect.stringContaining("not a valid modMode"),
       );
     });
   });
 
   describe("write pitchMode", () => {
-    it("sets pitch_mode at the minimum boundary (0)", () => {
+    it("maps 'Hertz' to index 0", () => {
       const device = registerSpectralResonator({ pitch_mode: 1 });
 
-      applySpecializedParamWrite(device, "pitchMode", 0, "updateDevice");
+      applySpecializedParamWrite(device, "pitchMode", "Hertz", "updateDevice");
 
       expect(device.set).toHaveBeenCalledWith("pitch_mode", 0);
     });
 
-    it("sets pitch_mode at the maximum boundary (1)", () => {
+    it("maps 'MIDI Note' to index 1", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "pitchMode", 1, "updateDevice");
+      applySpecializedParamWrite(
+        device,
+        "pitchMode",
+        "MIDI Note",
+        "updateDevice",
+      );
 
       expect(device.set).toHaveBeenCalledWith("pitch_mode", 1);
     });
 
-    it("warns and skips when pitchMode is above range (2)", () => {
+    it("warns and skips an invalid pitchMode label", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "pitchMode", 2, "updateDevice");
+      applySpecializedParamWrite(device, "pitchMode", "Cents", "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(outlet).toHaveBeenCalledWith(
         1,
-        expect.stringContaining("pitchMode"),
-      );
-    });
-
-    it("warns and skips when pitchMode is a non-integer", () => {
-      const device = registerSpectralResonator();
-
-      applySpecializedParamWrite(device, "pitchMode", 0.5, "updateDevice");
-
-      expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("pitchMode"),
+        expect.stringContaining("not a valid pitchMode"),
       );
     });
   });
 
   describe("write polyphony", () => {
-    it("sets polyphony when value is in range", () => {
+    it("maps a voice count to its index (8 → 2)", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "polyphony", 2, "updateDevice");
+      applySpecializedParamWrite(device, "polyphony", 8, "updateDevice");
 
       expect(device.set).toHaveBeenCalledWith("polyphony", 2);
     });
 
-    it("sets polyphony at the minimum boundary (0)", () => {
+    it("maps the minimum count (2 → index 0)", () => {
       const device = registerSpectralResonator({ polyphony: 3 });
 
-      applySpecializedParamWrite(device, "polyphony", 0, "updateDevice");
+      applySpecializedParamWrite(device, "polyphony", 2, "updateDevice");
 
       expect(device.set).toHaveBeenCalledWith("polyphony", 0);
     });
 
-    it("sets polyphony at the maximum boundary (3)", () => {
+    it("maps the maximum count (16 → index 3)", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "polyphony", 3, "updateDevice");
+      applySpecializedParamWrite(device, "polyphony", 16, "updateDevice");
 
       expect(device.set).toHaveBeenCalledWith("polyphony", 3);
     });
 
-    it("warns and skips when polyphony is above range (4)", () => {
+    it("warns and skips a count not in the set (e.g. 3)", () => {
       const device = registerSpectralResonator();
 
-      applySpecializedParamWrite(device, "polyphony", 4, "updateDevice");
-
-      expect(device.set).not.toHaveBeenCalled();
-      expect(outlet).toHaveBeenCalledWith(
-        1,
-        expect.stringContaining("polyphony"),
-      );
-    });
-
-    it("warns and skips when polyphony is a non-integer", () => {
-      const device = registerSpectralResonator();
-
-      applySpecializedParamWrite(device, "polyphony", 1.5, "updateDevice");
+      applySpecializedParamWrite(device, "polyphony", 3, "updateDevice");
 
       expect(device.set).not.toHaveBeenCalled();
       expect(outlet).toHaveBeenCalledWith(
@@ -453,9 +422,9 @@ describe("Spectral Resonator via read-device", () => {
       { name: "midiGate", value: true },
       { name: "monoPoly", value: "poly" },
       { name: "pitchBendRange", value: 12 },
-      { name: "modMode", value: 2 },
-      { name: "pitchMode", value: 1 },
-      { name: "polyphony", value: 3 },
+      { name: "modMode", value: "Wander" },
+      { name: "pitchMode", value: "MIDI Note" },
+      { name: "polyphony", value: 16 },
     ]);
     expect(result.modulations).toBeUndefined();
   });

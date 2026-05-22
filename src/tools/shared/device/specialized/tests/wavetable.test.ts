@@ -131,15 +131,15 @@ describe("Wavetable pseudo-params — read", () => {
     ).toContainEqual({ name: "unisonMode", value: "noise" });
   });
 
-  it("reads osc1Engine and osc2Engine as integers", () => {
+  it("reads osc1Engine and osc2Engine as enum labels", () => {
     const device = registerWavetable({
       oscillator_1_effect_mode: 2,
       oscillator_2_effect_mode: 1,
     });
     const params = readSpecializedParams(device);
 
-    expect(params).toContainEqual({ name: "osc1Engine", value: 2 });
-    expect(params).toContainEqual({ name: "osc2Engine", value: 1 });
+    expect(params).toContainEqual({ name: "osc1Engine", value: "Classic" });
+    expect(params).toContainEqual({ name: "osc2Engine", value: "Fm" });
   });
 
   it("reads osc1Category and osc2Category from shared category list", () => {
@@ -289,39 +289,28 @@ describe("Wavetable pseudo-params — write", () => {
     );
   });
 
-  it("writes osc1Engine in range and warns out of range", () => {
+  it("maps osc engine labels to indices and warns on an invalid label", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "osc1Engine", 3, "updateDevice");
+    applySpecializedParamWrite(device, "osc1Engine", "Modern", "updateDevice");
+    applySpecializedParamWrite(device, "osc2Engine", "Fm", "updateDevice");
 
     expect(device.set).toHaveBeenCalledWith("oscillator_1_effect_mode", 3);
+    expect(device.set).toHaveBeenCalledWith("oscillator_2_effect_mode", 1);
 
     const device2 = registerWavetable();
 
-    applySpecializedParamWrite(device2, "osc1Engine", 4, "updateDevice");
+    applySpecializedParamWrite(
+      device2,
+      "osc1Engine",
+      "Wavefold",
+      "updateDevice",
+    );
 
     expect(device2.set).not.toHaveBeenCalled();
     expect(outlet).toHaveBeenCalledWith(
       1,
       expect.stringContaining("osc1Engine"),
-    );
-  });
-
-  it("writes osc2Engine in range and warns out of range", () => {
-    const device = registerWavetable();
-
-    applySpecializedParamWrite(device, "osc2Engine", 0, "updateDevice");
-
-    expect(device.set).toHaveBeenCalledWith("oscillator_2_effect_mode", 0);
-
-    const device2 = registerWavetable();
-
-    applySpecializedParamWrite(device2, "osc2Engine", -1, "updateDevice");
-
-    expect(device2.set).not.toHaveBeenCalled();
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("osc2Engine"),
     );
   });
 
@@ -435,8 +424,9 @@ describe("Wavetable pseudo-params — write", () => {
 });
 
 describe("Wavetable actions — setModulation", () => {
-  it("resolves a target past the first slot and calls set_modulation_value", () => {
-    // Targeting the second slot also exercises the resolve loop's continue path.
+  it("resolves a target past the first slot and a source by name", () => {
+    // Second-slot target exercises the resolve loop's continue path; the
+    // case-insensitive source name "lfo 1" resolves to column index 3.
     const device = registerWavetable(
       {},
       buildModMethods(["Osc 1 Pos", "Filter Freq"]),
@@ -444,11 +434,11 @@ describe("Wavetable actions — setModulation", () => {
 
     applySpecializedActions(
       device,
-      ["setModulation('Filter Freq', 0, 0.5)"],
+      ["setModulation('Filter Freq', lfo 1, 0.5)"],
       "updateDevice",
     );
 
-    expect(device.call).toHaveBeenCalledWith("set_modulation_value", 1, 0, 0.5);
+    expect(device.call).toHaveBeenCalledWith("set_modulation_value", 1, 3, 0.5);
   });
 
   it("auto-adds missing target then calls set_modulation_value", () => {
@@ -675,8 +665,8 @@ describe("Wavetable readModulations", () => {
 
     expect(readSpecializedModulations(device)).toStrictEqual(
       expect.arrayContaining([
-        { target: "Osc 1 Pos", source: 3, amount: 0.5 },
-        { target: "Filter Freq", source: 7, amount: -0.25 },
+        { target: "Osc 1 Pos", source: "LFO 1", amount: 0.5 },
+        { target: "Filter Freq", source: "PB", amount: -0.25 },
       ]),
     );
   });
@@ -802,7 +792,9 @@ describe("Wavetable via read-device", () => {
     });
     expect(result.modulations).toBeDefined();
     expect(result.modulations).toStrictEqual(
-      expect.arrayContaining([{ target: "Osc 1 Pos", source: 2, amount: 0.3 }]),
+      expect.arrayContaining([
+        { target: "Osc 1 Pos", source: "Env 3", amount: 0.3 },
+      ]),
     );
   });
 

@@ -9,7 +9,6 @@ import {
   coerceInt,
   readEnumByIndex,
   writeEnumByIndex,
-  writeIntInRange,
 } from "../specialized-device-param-helpers.ts";
 import {
   type PseudoParam,
@@ -42,6 +41,11 @@ const UNISON_MODES = [
   "position-spread",
   "random-note",
 ] as const;
+
+// oscillator_N_effect_mode index → label (the per-oscillator effect engine).
+// Verified vs Live 12.4 UI (2026-05-22). The FX 1 / FX 2 knobs change meaning
+// per engine, but those are regular DeviceParameters and not remapped here.
+const OSC_ENGINES = ["None", "Fm", "Classic", "Modern"] as const;
 
 /**
  * Read an integer property as a plain number (undefined on non-number).
@@ -236,33 +240,29 @@ export const wavetableSpec: SpecializedDeviceSpec = {
         ),
     },
     {
-      // TODO(AJM-373): map to a string enum (likely none/FM/classic/modern)
-      // once verified vs Live UI.
       name: "osc1Engine",
-      read: (device) => readIntProp(device, "oscillator_1_effect_mode"),
+      read: (device) =>
+        readEnumByIndex(device, "oscillator_1_effect_mode", OSC_ENGINES),
       write: (device, value, toolName) =>
-        writeIntInRange(
+        writeEnumByIndex(
           device,
           "oscillator_1_effect_mode",
           value,
-          0,
-          3,
+          OSC_ENGINES,
           toolName,
           "osc1Engine",
         ),
     },
     {
-      // TODO(AJM-373): map to a string enum (likely none/FM/classic/modern)
-      // once verified vs Live UI.
       name: "osc2Engine",
-      read: (device) => readIntProp(device, "oscillator_2_effect_mode"),
+      read: (device) =>
+        readEnumByIndex(device, "oscillator_2_effect_mode", OSC_ENGINES),
       write: (device, value, toolName) =>
-        writeIntInRange(
+        writeEnumByIndex(
           device,
           "oscillator_2_effect_mode",
           value,
-          0,
-          3,
+          OSC_ENGINES,
           toolName,
           "osc2Engine",
         ),

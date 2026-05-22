@@ -220,7 +220,7 @@ Some native devices expose class-level controls beyond their DeviceParameters. T
 Instruments:
 
 - **Drift** mod matrix. Source slots \`filterMod1Source\` \`filterMod2Source\` \`lfoSource\` \`pitchMod1Source\` \`pitchMod2Source\` \`shapeSource\` \`mod1Source\` \`mod2Source\` \`mod3Source\` take: Env 1, Env 2, LFO, Key, Vel, Mod, Press, Slide. Free-slot targets \`mod1Target\` \`mod2Target\` \`mod3Target\` take: None (disables), Osc 1 Gain, Osc 1 Shape, Osc 2 Gain, Osc 2 Detune, Noise Gain, LP Frequency, LP Resonance, HP Frequency, LFO Rate, Cyc Env Rate, Main Volume. Also set the matching amount DeviceParameter (e.g. \`Mod Matrix Amt 1\`). Plus \`voiceMode\` (Poly/Mono/Stereo/Unison), \`voiceCount\` (4/8/16/24/32), \`pitchBendRange\`.
-- **Wavetable** \`filterRouting\` (serial/parallel/split), \`monoPoly\` (mono/poly), \`polyVoices\`, \`unisonMode\` (none/classic/shimmer/noise/phase-sync/position-spread/random-note), \`unisonVoiceCount\`, \`osc1Category\`/\`osc2Category\` + \`osc1Wavetable\`/\`osc2Wavetable\` (browse via options \`osc1Wavetables\`/\`osc2Wavetables\`). Mod matrix via actions: \`setModulation('<targetParamName>', <sourceIndex 0-12>, <amount -1..1>)\`, \`clearModulation('<targetParamName>', <sourceIndex>)\`, \`addModulationTarget('<paramName>')\`. Current routes are in the \`modulations\` output; options also lists \`modulatableParameters\`.
+- **Wavetable** \`filterRouting\` (serial/parallel/split), \`monoPoly\` (mono/poly), \`polyVoices\`, \`unisonMode\` (none/classic/shimmer/noise/phase-sync/position-spread/random-note), \`unisonVoiceCount\`, \`osc1Engine\`/\`osc2Engine\` (None/Fm/Classic/Modern), \`osc1Category\`/\`osc2Category\` + \`osc1Wavetable\`/\`osc2Wavetable\` (browse via options \`osc1Wavetables\`/\`osc2Wavetables\`). Mod matrix via actions: \`setModulation('<targetParamName>', '<source>', <amount -1..1>)\`, \`clearModulation('<targetParamName>', '<source>')\`, \`addModulationTarget('<paramName>')\`. Sources: Amp, Env 2, Env 3, LFO 1, LFO 2, Vel, Key, PB, Press, Mod, Rand, Note PB, Slide. Current routes are in the \`modulations\` output; options also lists \`modulatableParameters\`.
 - **Meld** \`monoPoly\` (mono/poly), \`polyVoices\` (1-6), \`unisonVoices\` (0-2).
 - **Simpler** \`playbackMode\` (classic/one-shot/slicing), \`slicingPlaybackMode\` (mono/poly/thru), \`retrigger\`, \`voices\`; read-only \`multiSampleMode\`, \`estimatedPlaybackLength\`. Actions \`reverse\`, \`crop\`, \`warpDouble\`, \`warpHalf\`, \`warpAs(<beats>)\` operate on the active region — set the \`S Start\`/\`S Length\` DeviceParameters first to target a sub-range.
 
@@ -230,7 +230,7 @@ Audio effects:
 - **EQ Eight** \`globalMode\` (stereo / L/R / M/S), \`oversample\`. In L/R the A bands process Left and B bands Right; in M/S, A = Mid and B = Side. Set \`globalMode\`, then write the A-/B-suffix band DeviceParameters (e.g. \`5 Frequency B\`).
 - **Hybrid Reverb** \`irCategory\`, \`irFile\` (set category first; browse files in the current category via options \`irFileList\`), \`irAttackTime\`, \`irDecayTime\`, \`irSizeFactor\`, \`irTimeShapingOn\`.
 - **Roar** \`routingMode\` (single/serial/parallel/multi-band/mid-side/feedback/delay), \`envListen\`.
-- **Spectral Resonator** \`midiGate\`, \`monoPoly\` (mono/poly), \`pitchBendRange\` (0-24), and integer \`modMode\`, \`pitchMode\`, \`polyphony\`.
+- **Spectral Resonator** \`midiGate\`, \`monoPoly\` (mono/poly), \`pitchBendRange\` (0-24), \`modMode\` (None/Chorus/Wander/Granular), \`pitchMode\` (Hertz / MIDI Note), \`polyphony\` (2/4/8/16).
 
 ### Moving Clips
 

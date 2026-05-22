@@ -8,6 +8,7 @@ import {
   readEnumByIndex,
   writeBoolProp,
   writeEnumByIndex,
+  writeIntFromSet,
   writeIntInRange,
 } from "../specialized-device-param-helpers.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
@@ -15,15 +16,22 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 // Spectral Resonator (SpectralResonatorDevice, class_name "Transmute").
 // AJM-378. See dev/plans/Specialized-Device-Classes.md.
 //
-// frequency_dial_mode is deliberately NOT exposed — it is a UI display selector
-// (Hz vs Note). Both "Freq. Hz" and "Note" are directly addressable as
-// DeviceParameters.
-//
-// Live silently reverts out-of-range writes, so we pre-validate against the
-// documented ranges before calling device.set.
+// Enum index→label mappings and the polyphony count set were verified against
+// Live 12.4's UI (2026-05-22). pitchMode (pitch_mode) is the Hz/Note selector
+// next to the Freq dial. Live silently reverts out-of-range writes, so we
+// pre-validate ranges before calling device.set.
 
 // User-facing mono/poly labels in internal-index order.
 const MONO_POLY_LABELS = ["mono", "poly"] as const;
+
+// mod_mode index → label (the Mod section's effect selector).
+const MOD_MODES = ["None", "Chorus", "Wander", "Granular"] as const;
+
+// pitch_mode index → label (the frequency dial's Hz/Note mode).
+const PITCH_MODES = ["Hertz", "MIDI Note"] as const;
+
+// polyphony index → voice count (the count box next to the Poly toggle).
+const POLYPHONY_COUNTS = [2, 4, 8, 16] as const;
 
 /**
  * Read pitch_bend_range from the device.
@@ -35,33 +43,14 @@ function readPitchBendRange(device: LiveAPI): number {
 }
 
 /**
- * Read mod_mode from the device.
+ * Read the polyphony voice count (maps the polyphony index to its count value).
  * @param device - LiveAPI device object
- * @returns The mod mode integer (0-3)
+ * @returns The voice count (2, 4, 8, or 16)
  */
-function readModMode(device: LiveAPI): number {
-  // TODO(AJM-378): map to a string enum once value semantics are verified against Live's UI
-  return device.getProperty("mod_mode") as number;
-}
+function readPolyphony(device: LiveAPI): number | undefined {
+  const index = device.getProperty("polyphony") as number;
 
-/**
- * Read pitch_mode from the device.
- * @param device - LiveAPI device object
- * @returns The pitch mode integer (0-1)
- */
-function readPitchMode(device: LiveAPI): number {
-  // TODO(AJM-378): map to a string enum once value semantics are verified against Live's UI
-  return device.getProperty("pitch_mode") as number;
-}
-
-/**
- * Read polyphony from the device.
- * @param device - LiveAPI device object
- * @returns The polyphony integer (0-3)
- */
-function readPolyphony(device: LiveAPI): number {
-  // TODO(AJM-378): map to a string enum once value semantics are verified against Live's UI
-  return device.getProperty("polyphony") as number;
+  return POLYPHONY_COUNTS[index];
 }
 
 export const spectralResonatorSpec: SpecializedDeviceSpec = {
@@ -102,20 +91,26 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
     },
     {
       name: "modMode",
-      read: readModMode,
+      read: (device) => readEnumByIndex(device, "mod_mode", MOD_MODES),
       write: (device, value, toolName) =>
-        writeIntInRange(device, "mod_mode", value, 0, 3, toolName, "modMode"),
+        writeEnumByIndex(
+          device,
+          "mod_mode",
+          value,
+          MOD_MODES,
+          toolName,
+          "modMode",
+        ),
     },
     {
       name: "pitchMode",
-      read: readPitchMode,
+      read: (device) => readEnumByIndex(device, "pitch_mode", PITCH_MODES),
       write: (device, value, toolName) =>
-        writeIntInRange(
+        writeEnumByIndex(
           device,
           "pitch_mode",
           value,
-          0,
-          1,
+          PITCH_MODES,
           toolName,
           "pitchMode",
         ),
@@ -124,14 +119,14 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
       name: "polyphony",
       read: readPolyphony,
       write: (device, value, toolName) =>
-        writeIntInRange(
+        writeIntFromSet(
           device,
           "polyphony",
           value,
-          0,
-          3,
+          POLYPHONY_COUNTS,
           toolName,
           "polyphony",
+          true,
         ),
     },
   ],

@@ -14,18 +14,32 @@ import { coerceInt } from "../specialized-device-param-helpers.ts";
 // DeviceParameter reference, indexed by position, and cells are read/written
 // via device.call("get/set_modulation_value", targetIndex, sourceIndex, amount).
 //
-// Source indices 0-12 are valid (13 sources total). No LOM property exposes
-// source names — the index is passed directly by the caller and labelled as
-// "source" in the output. Verified by probe: index 13+ returns sentinel 1.
+// The 13 sources are addressed by name (MOD_SOURCES, in matrix column order),
+// verified against Live 12.4's UI (2026-05-22). A bare integer index 0-12 is
+// also accepted for robustness. No LOM property exposes the source names.
 //
 // Matrix keyed by PARAMETER NAME (from get_modulation_target_parameter_name),
 // not display label (visible_modulation_target_names).
 
-/** Maximum valid source index (inclusive, probe-verified). */
-const MAX_SOURCE_INDEX = 12;
+// Modulation sources in matrix column order (index = sourceIndex 0-12).
+export const MOD_SOURCES = [
+  "Amp",
+  "Env 2",
+  "Env 3",
+  "LFO 1",
+  "LFO 2",
+  "Vel",
+  "Key",
+  "PB",
+  "Press",
+  "Mod",
+  "Rand",
+  "Note PB",
+  "Slide",
+] as const;
 
-/** Total source count = MAX_SOURCE_INDEX + 1 = 13. */
-const SOURCE_COUNT = MAX_SOURCE_INDEX + 1;
+/** Total source count (13). */
+const SOURCE_COUNT = MOD_SOURCES.length;
 
 /**
  * Resolve the target index for a named parameter in the modulation matrix.
@@ -89,12 +103,11 @@ export function setModulationAction(
   }
 
   const target = String(args[0]);
-  // args[1] is source index (0-12); pending Wavetable UI verification of names
-  const s = coerceInt(args[1] as string | number);
+  const s = resolveSourceIndex(args[1] as string | number);
 
-  if (s == null || s < 0 || s > MAX_SOURCE_INDEX) {
+  if (s < 0) {
     console.warn(
-      `${toolName}: setModulation source must be an integer 0-${MAX_SOURCE_INDEX} (got "${String(args[1])}")`,
+      `${toolName}: setModulation source "${String(args[1])}" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
     );
 
     return;
@@ -142,11 +155,11 @@ export function clearModulationAction(
   }
 
   const target = String(args[0]);
-  const s = coerceInt(args[1] as string | number);
+  const s = resolveSourceIndex(args[1] as string | number);
 
-  if (s == null || s < 0 || s > MAX_SOURCE_INDEX) {
+  if (s < 0) {
     console.warn(
-      `${toolName}: clearModulation source must be an integer 0-${MAX_SOURCE_INDEX} (got "${String(args[1])}")`,
+      `${toolName}: clearModulation source "${String(args[1])}" is invalid. Valid: ${MOD_SOURCES.join(", ")}`,
     );
 
     return;
@@ -208,7 +221,7 @@ export function addModulationTargetAction(
  * @returns Array of { target, source, amount } entries
  */
 export function readModulations(device: LiveAPI): unknown[] {
-  const result: { target: string; source: number; amount: number }[] = [];
+  const result: { target: string; source: string; amount: number }[] = [];
 
   for (let t = 0; ; t++) {
     const name = device.call("get_modulation_target_parameter_name", t);
@@ -222,7 +235,10 @@ export function readModulations(device: LiveAPI): unknown[] {
       const v = device.call("get_modulation_value", t, s);
 
       if (typeof v === "number" && v !== 0) {
-        result.push({ target: String(name), source: s, amount: v });
+        // s is bounded by SOURCE_COUNT, so MOD_SOURCES[s] is always defined.
+        const source = MOD_SOURCES[s] as string;
+
+        result.push({ target: String(name), source, amount: v });
       }
     }
   }
@@ -231,6 +247,25 @@ export function readModulations(device: LiveAPI): unknown[] {
 }
 
 // --- internal ---
+
+/**
+ * Resolve a modulation source to its column index. Accepts a source name
+ * (case-insensitive, e.g. "LFO 1") or a bare integer index 0-12.
+ * @param value - Source name or index
+ * @returns Source index 0-12, or -1 when invalid
+ */
+function resolveSourceIndex(value: string | number): number {
+  const name = String(value).trim().toLowerCase();
+  const byName = MOD_SOURCES.findIndex((s) => s.toLowerCase() === name);
+
+  if (byName >= 0) {
+    return byName;
+  }
+
+  const n = coerceInt(value);
+
+  return n != null && n >= 0 && n < SOURCE_COUNT ? n : -1;
+}
 
 /**
  * Ensure a named parameter is registered as a modulation target, adding it if
