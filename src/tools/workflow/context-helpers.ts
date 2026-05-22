@@ -3,17 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { readSamples } from "./read-samples.ts";
-
 export interface MemoryResult {
   enabled: boolean;
   writable?: boolean;
   content?: string;
-}
-
-export interface SamplesResult {
-  sampleFolder: string;
-  samples: string[];
 }
 
 /**
@@ -73,17 +66,4 @@ export function handleWriteMemory(
     writable: memory.writable,
     content: memory.content,
   };
-}
-
-/**
- * Handle search action by delegating to existing readSamples() function
- * @param search - Optional search filter
- * @param context - The context object
- * @returns Samples result with sample folder and file list
- */
-export function handleSearchSamples(
-  search: string | undefined,
-  context: Partial<ToolContext> = {},
-): SamplesResult {
-  return readSamples({ search }, context);
 }

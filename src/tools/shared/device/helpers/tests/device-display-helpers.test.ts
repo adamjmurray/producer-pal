@@ -152,6 +152,19 @@ describe("device-display-helpers", () => {
         expect(parseLabel("Off")).toStrictEqual({ value: null, unit: null });
       });
 
+      it("trims whitespace from VST-style right-padded labels", () => {
+        expect(parseLabel("    8 Hz")).toStrictEqual({ value: 8, unit: "Hz" });
+        expect(parseLabel("  425 Hz")).toStrictEqual({
+          value: 425,
+          unit: "Hz",
+        });
+        expect(parseLabel("22050 Hz ")).toStrictEqual({
+          value: 22050,
+          unit: "Hz",
+        });
+        expect(parseLabel("  -6 dB")).toStrictEqual({ value: -6, unit: "dB" });
+      });
+
       it("handles null/undefined/non-string input", () => {
         expect(parseLabel(null as unknown as string)).toStrictEqual({
           value: null,

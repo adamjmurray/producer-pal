@@ -199,19 +199,14 @@ Use the [list tools endpoint](#list-tools) to discover all available tools and
 their input schemas at runtime. You can also browse the full tool documentation
 on the [Features](/features) page.
 
-## Raw Live API
+## Live API
 
-The `ppal-raw-live-api` tool provides direct access to the
+The `ppal-live-api` tool provides direct access to the
 [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
-development, scripting, and debugging. It is always available via the REST API
-regardless of tool configuration.
+scripting and debugging.
 
-::: warning
-
-This is a development tool for scripting and debugging. It can read and modify
-any Live Set property — use it with care.
-
-:::
+It is opt-in: enable **Direct Live API** on the **Setup** tab of the Producer
+Pal Max for Live device.
 
 ### Request structure
 
@@ -240,7 +235,7 @@ Available operation types:
 
 ```bash
 # Get the tempo
-curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
+curl -X POST http://localhost:3350/api/tools/ppal-live-api \
   -H 'Content-Type: application/json' \
   -d '{
     "path": "live_set",
@@ -248,7 +243,7 @@ curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
   }'
 
 # Set the tempo to 140 BPM
-curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
+curl -X POST http://localhost:3350/api/tools/ppal-live-api \
   -H 'Content-Type: application/json' \
   -d '{
     "path": "live_set",
@@ -256,7 +251,7 @@ curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
   }'
 
 # Fire scene 0
-curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
+curl -X POST http://localhost:3350/api/tools/ppal-live-api \
   -H 'Content-Type: application/json' \
   -d '{
     "path": "live_set",
@@ -264,7 +259,7 @@ curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
   }'
 
 # Chain multiple operations on one object
-curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
+curl -X POST http://localhost:3350/api/tools/ppal-live-api \
   -H 'Content-Type: application/json' \
   -d '{
     "path": "live_set tracks 0",
@@ -278,9 +273,8 @@ curl -X POST http://localhost:3350/api/tools/ppal-raw-live-api \
 
 ::: info
 
-This tool is always available via the REST API. It is only available via MCP
-when the `ENABLE_RAW_LIVE_API` environment variable is set at build time
-(`npm run build:debug`).
+When the **Direct Live API** toggle is off on the device Setup tab, requests to
+`ppal-live-api` return 404.
 
 :::
 

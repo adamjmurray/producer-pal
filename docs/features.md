@@ -2,7 +2,7 @@
 title: Features
 description:
   Full feature list for Producer Pal, the Ableton MCP server that brings AI to
-  Ableton Live — 20 tools for tracks, MIDI/audio clips, devices, and
+  Ableton Live — 22 tools for tracks, MIDI/audio clips, devices, and
   arrangements.
 ---
 
@@ -10,7 +10,7 @@ description:
 
 Producer Pal is an AI-powered music production assistant for Ableton Live — an
 Ableton MCP server that lets any AI read, create, and modify your Live Set. Tell
-the AI what you want and it uses 20 specialized tools to read, create, and
+the AI what you want and it uses 22 specialized tools to read, create, and
 modify tracks, clips, devices, and more in your Live Set.
 
 It works with virtually any AI, including its
@@ -37,11 +37,10 @@ It works with virtually any AI, including its
 
 - Read and write project memory — persistent notes that help the AI understand
   your goals across conversations
-- Search configured sample folder for audio files by filename or path
 
 <!--@include: ./_generated/ppal-context-schema.md-->
 
-## Transport Tools
+## Session Tools
 
 ### 🔧 Playback (`ppal-playback`) {#ppal-playback}
 
@@ -54,6 +53,61 @@ It works with virtually any AI, including its
 - Stop all clips or specific track clips
 
 <!--@include: ./_generated/ppal-playback-schema.md-->
+
+### 🔧 Library (`ppal-library`) {#ppal-library}
+
+- Search Live's browser library by name, tags, content kind, device kind, or
+  source category (User Library, Pack, Built-in, Cloud, Plugin)
+- Also includes the user-configured sample folder when set, with results merged
+  and de-duplicated against Live's library
+- Sort by `use_count` (Live's persistent usage counter — surfaces what you
+  actually use most), `mod_date`, or `name`
+- Enumerate available tags with `action: "listTags"` so the AI can discover the
+  tag vocabulary on your machine
+
+<!--@include: ./_generated/ppal-library-schema.md-->
+
+### 🔧 Select (`ppal-select`) {#ppal-select}
+
+- Read current selection and view state (when no arguments)
+  - Returns only non-null fields: selected track, scene, clip, device
+  - Rich object shapes with IDs, types, and context (slot, path, etc.)
+- Update selection and returns only relevant fields
+  - Select any object by ID (auto-detects track/scene/clip/device)
+  - Select tracks by index/category, scenes by index
+  - Select clips by slot position (e.g., `0/3`)
+  - Select devices by path (e.g., `t0/d1`)
+  - Switch between Session and Arrangement views
+  - Auto-switches to session view for scene/clipSlot selection
+  - Detail views auto-managed: clip detail opens on clip selection, device
+    detail on device selection
+
+<!--@include: ./_generated/ppal-select-schema.md-->
+
+## Action Tools
+
+### 🔧 Delete (`ppal-delete`) {#ppal-delete}
+
+- Remove tracks, return tracks, scenes, clips, or devices
+- Bulk delete multiple objects
+
+<!--@include: ./_generated/ppal-delete-schema.md-->
+
+### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
+
+- Copy tracks, scenes, clips, or devices
+- Create multiple copies at once
+- Copy clips anywhere in the Session, Arrangement, or from Session to
+  Arrangement
+  - Position in the Arrangement by bar|beat or locator
+  - Auto-tile clips to fill longer arrangement durations
+- Copy devices to any track, return track, or rack chain
+- Route duplicated tracks to source instrument for MIDI layering
+
+Note: Return tracks and devices on return tracks cannot be duplicated (Live API
+limitation).
+
+<!--@include: ./_generated/ppal-duplicate-schema.md-->
 
 ## Live Set Tools
 
@@ -129,40 +183,6 @@ It works with virtually any AI, including its
 
 <!--@include: ./_generated/ppal-update-scene-schema.md-->
 
-## Device Tools
-
-### 🔧 Create Device (`ppal-create-device`) {#ppal-create-device}
-
-- Add native Live devices (instruments, MIDI effects, audio effects)
-- Place devices on any track type: MIDI, audio, return, or master
-- Position devices at a specific index in the device chain
-- Create devices inside rack chains or drum pads using path notation
-- List the native Live devices
-
-<!--@include: ./_generated/ppal-create-device-schema.md-->
-
-### 🔧 Read Device (`ppal-read-device`) {#ppal-read-device}
-
-- Get detailed info about any device, including inside rack chains and drum pad
-  chains
-- List device parameter names and values (the state of knobs, dials, etc)
-
-<!--@include: ./_generated/ppal-read-device-schema.md-->
-
-### 🔧 Update Device (`ppal-update-device`) {#ppal-update-device}
-
-- Change device name
-- Change device parameter values (control knobs, dials, etc)
-- Update multiple devices at once
-- Move devices anywhere else in the Live Set, including into racks / wrapping in
-  a new rack
-- Create, load, delete, and randomize rack macros variations
-- A/B Compare with supported devices
-- Control chain and drum pad mute and solo state
-- Change the choke group and output MIDI note of drum chains
-
-<!--@include: ./_generated/ppal-update-device-schema.md-->
-
 ## Clip Tools
 
 ### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
@@ -196,47 +216,63 @@ It works with virtually any AI, including its
 
 <!--@include: ./_generated/ppal-update-clip-schema.md-->
 
-## Action Tools
+## Device Tools
 
-### 🔧 Delete (`ppal-delete`) {#ppal-delete}
+### 🔧 Create Device (`ppal-create-device`) {#ppal-create-device}
 
-- Remove tracks, return tracks, scenes, clips, or devices
-- Bulk delete multiple objects
+- Add native Live devices (instruments, MIDI effects, audio effects)
+- Place devices on any track type: MIDI, audio, return, or master
+- Position devices at a specific index in the device chain
+- Create devices inside rack chains or drum pads using path notation
+- List the native Live devices
+- Load a sample into a Simpler instrument via `params: "sample=<path>"` (new in
+  Live 12.4)
 
-<!--@include: ./_generated/ppal-delete-schema.md-->
+<!--@include: ./_generated/ppal-create-device-schema.md-->
 
-### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
+### 🔧 Read Device (`ppal-read-device`) {#ppal-read-device}
 
-- Copy tracks, scenes, clips, or devices
-- Create multiple copies at once
-- Copy clips anywhere in the Session, Arrangement, or from Session to
-  Arrangement
-  - Position in the Arrangement by bar|beat or locator
-  - Auto-tile clips to fill longer arrangement durations
-- Copy devices to any track, return track, or rack chain
-- Route duplicated tracks to source instrument for MIDI layering
+- Get detailed info about any device, including inside rack chains and drum pad
+  chains
+- List device parameter names and values (the state of knobs, dials, etc)
 
-Note: Return tracks and devices on return tracks cannot be duplicated (Live API
-limitation).
+<!--@include: ./_generated/ppal-read-device-schema.md-->
 
-<!--@include: ./_generated/ppal-duplicate-schema.md-->
+### 🔧 Update Device (`ppal-update-device`) {#ppal-update-device}
 
-### 🔧 Select (`ppal-select`) {#ppal-select}
+- Change device name
+- Change device parameter values (control knobs, dials, etc)
+- Update multiple devices at once
+- Move devices anywhere else in the Live Set, including into racks / wrapping in
+  a new rack
+- Create, load, delete, and randomize rack macros variations
+- A/B Compare with supported devices
+- Control chain and drum pad mute and solo state
+- Change the choke group and output MIDI note of drum chains
+- Load a sample into a Simpler instrument via `params: "sample=<path>"` (new in
+  Live 12.4)
 
-- Read current selection and view state (when no arguments)
-  - Returns only non-null fields: selected track, scene, clip, device
-  - Rich object shapes with IDs, types, and context (slot, path, etc.)
-- Update selection and returns only relevant fields
-  - Select any object by ID (auto-detects track/scene/clip/device)
-  - Select tracks by index/category, scenes by index
-  - Select clips by slot position (e.g., `0/3`)
-  - Select devices by path (e.g., `t0/d1`)
-  - Switch between Session and Arrangement views
-  - Auto-switches to session view for scene/clipSlot selection
-  - Detail views auto-managed: clip detail opens on clip selection, device
-    detail on device selection
+<!--@include: ./_generated/ppal-update-device-schema.md-->
 
-<!--@include: ./_generated/ppal-select-schema.md-->
+## Advanced Tools
+
+### 🔧 Live API (`ppal-live-api`) {#ppal-live-api}
+
+Direct access to the
+[Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
+scripting and debugging.
+
+**Off by default.** Producer Pal's specialized tools are tuned for reliable
+results across most models. The raw Live API is low-level and can give weaker
+results out of the box, so it's hidden rather than competing with the focused
+tools. It's a powerful escape hatch for scripting and advanced workflows,
+especially with capable coding agents. Enable it on the **Setup** tab of the
+Producer Pal Max for Live device. When disabled, MCP clients and the
+[REST API](/guide/rest-api) both stop seeing the tool. See the
+[REST API Live API section](/guide/rest-api#live-api) for the full operation
+reference and examples.
+
+<!--@include: ./_generated/ppal-live-api-schema.md-->
 
 ## Custom Music Notation {#custom-music-notation}
 

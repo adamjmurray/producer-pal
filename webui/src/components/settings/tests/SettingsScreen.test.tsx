@@ -133,6 +133,10 @@ describe("SettingsScreen", () => {
     isToolEnabled: () => true,
     smallModelMode: false,
     setSmallModelMode: vi.fn(),
+    liveApiEnabled: false,
+    liveApiEnabledDirty: false,
+    setLiveApiEnabled: vi.fn(),
+    seedLiveApiEnabled: vi.fn(),
   };
 
   const defaultDisplay = {
@@ -168,6 +172,7 @@ describe("SettingsScreen", () => {
       activeProvider: null,
       activeSmallModelMode: null,
     },
+    liveApiForcedOn: false,
   };
 
   /**

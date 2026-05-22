@@ -27,41 +27,6 @@ export type Provider =
   | "ollama"
   | "custom";
 
-// Gemini-specific settings
-export interface GeminiSettings {
-  apiKey: string;
-  model: string;
-  thinking: string; // "Auto" | "Off" | specific thinking budget (e.g., "5000")
-  temperature: number;
-  showThoughts: boolean;
-}
-
-// Provider settings interface
-export interface ProviderSettings {
-  // Active provider
-  provider: Provider;
-
-  // Per-provider API keys
-  geminiApiKey: string;
-  openaiApiKey: string;
-  mistralApiKey: string;
-  openrouterApiKey: string;
-  lmstudioApiKey: string;
-  ollamaApiKey: string;
-  customApiKey: string;
-
-  // Base URLs for local and custom providers
-  lmstudioBaseUrl: string;
-  ollamaBaseUrl: string;
-  customBaseUrl: string;
-
-  // Common settings
-  model: string;
-  temperature: number;
-  thinking: string;
-  showThoughts: boolean;
-}
-
 // Hook return type for useSettings
 export interface UseSettingsReturn {
   provider: Provider;
@@ -89,4 +54,15 @@ export interface UseSettingsReturn {
   isToolEnabled: (toolId: string) => boolean;
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
+  // Mirrors server-side ProducerPalConfig.liveApiEnabled, kept in modal-local
+  // state. Source of truth is the server (which mirrors the device Setup-tab
+  // toggle) — not localStorage. The dirty flag distinguishes "user toggled
+  // this in the modal" from "server seeded this value", so the save handler
+  // only POSTs when the user expressed intent (avoids clobbering device-side
+  // changes that arrive mid-modal and avoids posting the default `false` on
+  // first open if the server fetch hasn't resolved yet).
+  liveApiEnabled: boolean;
+  liveApiEnabledDirty: boolean;
+  setLiveApiEnabled: (enabled: boolean) => void;
+  seedLiveApiEnabled: (enabled: boolean) => void;
 }

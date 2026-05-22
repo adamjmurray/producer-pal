@@ -75,9 +75,9 @@ const mockMcpServer = {
       description: "Creates MIDI clips in Session or Arrangement",
       inputSchema: { type: "object", properties: {} },
     },
-    "ppal-raw-live-api": {
-      title: "Raw Live API",
-      description: "Development only tool",
+    "ppal-live-api": {
+      title: "Live API",
+      description: "Direct access to the Ableton Live Object Model.",
       inputSchema: { type: "object", properties: {} },
     },
   },
@@ -280,11 +280,11 @@ describe("StdioHttpBridge", () => {
       expect(customBridge.httpUrl).toBe("http://localhost:8080/mcp");
     });
 
-    it("generates fallback tools excluding ppal-raw-live-api", () => {
+    it("generates fallback tools excluding ppal-live-api", () => {
       const tools = bridge.fallbackTools.tools;
 
-      expect(tools).toHaveLength(2); // Based on our mock that has 3 tools minus ppal-raw-live-api
-      expect(tools.map((t) => t.name)).not.toContain("ppal-raw-live-api");
+      expect(tools).toHaveLength(2); // Based on our mock that has 3 tools minus ppal-live-api
+      expect(tools.map((t) => t.name)).not.toContain("ppal-live-api");
 
       // Check expected tools are present
       const toolNames = tools.map((t) => t.name);

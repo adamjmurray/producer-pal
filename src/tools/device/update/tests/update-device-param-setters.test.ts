@@ -186,7 +186,7 @@ describe("updateDevice - param value conversion", () => {
     });
   });
 
-  describe("string value fallback", () => {
+  describe("uninterpretable string input", () => {
     let param: RegisteredMockObject;
 
     beforeEach(() => {
@@ -210,10 +210,14 @@ describe("updateDevice - param value conversion", () => {
       });
     });
 
-    it("should set value directly for non-numeric string input", () => {
+    it("should warn and not write when string input can't be interpreted", () => {
       updateDevice({ ids: "dev1", params: "Mode = custom-value" });
 
-      expect(param.set).toHaveBeenCalledWith("value", "custom-value");
+      expect(param.set).not.toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining('could not interpret "custom-value"'),
+      );
     });
   });
 

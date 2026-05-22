@@ -5,7 +5,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { z } from "zod";
-import { toolDefRawLiveApi } from "#src/tools/control/raw-live-api.def.ts";
+import { toolDefLiveApi } from "#src/tools/control/live-api.def.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,
@@ -19,6 +19,7 @@ import * as console from "./node-for-max-logger.ts";
 
 interface RestApiConfig {
   tools: string[];
+  liveApiEnabled: boolean;
 }
 
 /**
@@ -33,17 +34,20 @@ export function registerRestApiRoutes(
   getConfig: () => RestApiConfig,
   callLiveApi: CallLiveApiFunction,
 ): void {
-  // Dev-only tool: gated by env var, matches MCP server gating in create-mcp-server.ts
-  const rawLiveApiEnabled = process.env.ENABLE_RAW_LIVE_API === "true";
-  const restToolDefs = rawLiveApiEnabled
-    ? [...STANDARD_TOOL_DEFS, toolDefRawLiveApi]
-    : [...STANDARD_TOOL_DEFS];
+  // Resolve which tool defs are available right now. The raw Live API
+  // is opt-in via the device Setup tab; when disabled, it is fully absent
+  // (not in the catalog, not callable). When enabled it flows through the
+  // same /config tools whitelist as every other tool.
+  const getActiveToolDefs = () =>
+    getConfig().liveApiEnabled
+      ? [...STANDARD_TOOL_DEFS, toolDefLiveApi]
+      : [...STANDARD_TOOL_DEFS];
 
   app.get("/api/tools", (_req: Request, res: Response): void => {
     const enabledSet = new Set(getConfig().tools);
 
-    const tools = restToolDefs
-      .filter((td) => enabledSet.has(td.toolName) || td === toolDefRawLiveApi)
+    const tools = getActiveToolDefs()
+      .filter((td) => enabledSet.has(td.toolName))
       .map((td) => ({
         name: td.toolName,
         title: td.toolOptions.title,
@@ -64,10 +68,11 @@ export function registerRestApiRoutes(
       const { toolName } = req.params;
       const enabledSet = new Set(getConfig().tools);
 
-      const toolDef = restToolDefs.find((td) => td.toolName === toolName);
-      const isRawTool = toolDef === toolDefRawLiveApi;
+      const toolDef = getActiveToolDefs().find(
+        (td) => td.toolName === toolName,
+      );
 
-      if (!toolDef || (!isRawTool && !enabledSet.has(toolName))) {
+      if (!toolDef || !enabledSet.has(toolName)) {
         res
           .status(404)
           .json({ error: `Unknown or disabled tool: ${toolName}` });

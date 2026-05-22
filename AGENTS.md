@@ -65,6 +65,12 @@ web UI architecture.
   assistance line already exists, append additional tools as a comma-separated
   list (e.g., `// AI assistance: Gemini (Google), Claude (Anthropic)`).
 
+  **Exception: `examples/**`** — files under `examples/` are intentionally
+  exempt from SPDX/copyright headers. They are reference snippets meant to be
+  copied freely into user projects, and the headers would add friction and
+  potentially confuse users about licensing. Do not add SPDX headers to files in
+  this directory.
+
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
   other files use kebab-case (e.g., `use-chat.ts`, `live-api-adapter.ts`)
 
@@ -95,8 +101,12 @@ web UI architecture.
 - **No barrel files**: Do not create index.ts or other files that only re-export
   from other modules. Import directly from the source file instead.
 
-- **Testing builds**: Always use `npm run build:debug` for development (includes
-  debugging tools like `ppal-raw-live-api`)
+- **Testing builds**: Always use `npm run build:debug` for development. It sets
+  `ENABLE_LIVE_API=true` (forces the runtime `liveApiEnabled` flag on so the
+  Direct Live API tool is always available — the Setup-tab toggle cannot disable
+  it in this build), `ENABLE_CODE_EXEC=true`, and `ENABLE_DEV_CORS=true`.
+  `POST /config { liveApiEnabled }` still works in either direction (used by e2e
+  tests to exercise the disabled state).
 
 - **Exact dependency versions**: All versions in package.json must be exact (no
   `^`, `~`, or ranges). `.npmrc` enforces this for `npm install`. A test in

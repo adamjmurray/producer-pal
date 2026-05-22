@@ -34,7 +34,7 @@ interface OperationErrorMessages {
   value?: string;
 }
 
-export interface RawApiOperation {
+export interface LiveApiOperation {
   type: OperationType;
   property?: string;
   method?: string;
@@ -42,17 +42,17 @@ export interface RawApiOperation {
   args?: unknown[];
 }
 
-interface RawLiveApiArgs {
+interface LiveApiArgs {
   path?: string;
-  operations: RawApiOperation[];
+  operations: LiveApiOperation[];
 }
 
 interface OperationResult {
-  operation: RawApiOperation;
+  operation: LiveApiOperation;
   result: unknown;
 }
 
-interface RawLiveApiResult {
+interface LiveApiResult {
   path?: string;
   id: string;
   results: OperationResult[];
@@ -104,7 +104,7 @@ const OPERATION_ERROR_MESSAGES: Record<OperationType, OperationErrorMessages> =
  * @param operation - The operation object
  * @throws If required parameters are missing
  */
-function validateOperationParameters(operation: RawApiOperation): void {
+function validateOperationParameters(operation: LiveApiOperation): void {
   const { type, property, method, value } = operation;
 
   if (!(type in OPERATION_REQUIREMENTS)) {
@@ -139,7 +139,7 @@ function validateOperationParameters(operation: RawApiOperation): void {
  * @param operation - The operation to execute
  * @returns The result of the operation
  */
-function executeOperation(api: LiveAPI, operation: RawApiOperation): unknown {
+function executeOperation(api: LiveAPI, operation: LiveApiOperation): unknown {
   const { type } = operation;
 
   // Property and method are validated by validateOperationParameters
@@ -212,10 +212,10 @@ function executeOperation(api: LiveAPI, operation: RawApiOperation): unknown {
  * @param _context - Internal context object (unused)
  * @returns Result object with path, id, and operation results
  */
-export function rawLiveApi(
-  { path, operations }: RawLiveApiArgs,
+export function liveApi(
+  { path, operations }: LiveApiArgs,
   _context: Partial<ToolContext> = {},
-): RawLiveApiResult {
+): LiveApiResult {
   if (!Array.isArray(operations)) {
     throw new Error("operations must be an array");
   }

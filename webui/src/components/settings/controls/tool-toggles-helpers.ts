@@ -15,14 +15,46 @@ export interface GroupedTools {
   tools: McpTool[];
 }
 
+export const LIVE_API_TOOL_ID = "ppal-live-api";
+
+// Description shown when the server hasn't returned ppal-live-api (i.e. it's
+// currently disabled at the device level). Keep terse and aligned with the
+// server-side toolDefLiveApi description so toggling on doesn't surprise the
+// user with a different blurb.
+const LIVE_API_TOOL_FALLBACK: McpTool = {
+  id: LIVE_API_TOOL_ID,
+  name: "Live API",
+  description:
+    "Direct access to the Ableton Live Object Model. " +
+    "Mirrors the Setup-tab toggle on the Max for Live device.",
+};
+
+/**
+ * Inject the Live API tool placeholder into the tools list if the server
+ * didn't return it. The Tools-tab Core group always shows a Live API checkbox
+ * so the user can toggle it on/off from the chat UI, even when it's currently
+ * disabled at the device level.
+ * @param tools - Tools as returned by MCP listTools
+ * @returns Tools list guaranteed to contain a Live API entry
+ */
+export function ensureLiveApiTool(tools: McpTool[]): McpTool[] {
+  if (tools.some((t) => t.id === LIVE_API_TOOL_ID)) return tools;
+
+  return [...tools, LIVE_API_TOOL_FALLBACK];
+}
+
 const TOOL_GROUPS: ToolGroup[] = [
   {
     label: "Core",
     toolIds: ["ppal-connect", "ppal-context"],
   },
   {
-    label: "Transport",
-    toolIds: ["ppal-playback"],
+    label: "Session",
+    toolIds: ["ppal-playback", "ppal-library", "ppal-select"],
+  },
+  {
+    label: "Actions",
+    toolIds: ["ppal-delete", "ppal-duplicate"],
   },
   {
     label: "Live Set",
@@ -37,16 +69,16 @@ const TOOL_GROUPS: ToolGroup[] = [
     toolIds: ["ppal-create-scene", "ppal-read-scene", "ppal-update-scene"],
   },
   {
-    label: "Device",
-    toolIds: ["ppal-create-device", "ppal-read-device", "ppal-update-device"],
-  },
-  {
     label: "Clip",
     toolIds: ["ppal-create-clip", "ppal-read-clip", "ppal-update-clip"],
   },
   {
-    label: "Actions",
-    toolIds: ["ppal-delete", "ppal-duplicate", "ppal-select"],
+    label: "Device",
+    toolIds: ["ppal-create-device", "ppal-read-device", "ppal-update-device"],
+  },
+  {
+    label: "Advanced",
+    toolIds: ["ppal-live-api"],
   },
 ];
 

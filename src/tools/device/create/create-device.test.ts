@@ -39,6 +39,34 @@ function registerTrack0WithDevice123(): void {
   registerMockObject("device123", { path: livePath.track(0).device(2) });
 }
 
+/**
+ * Register a freshly-created Simpler at track 0 / device 2, plus track 0
+ * itself with an `insert_device` method returning that Simpler's id.
+ *
+ * @returns The simpler and track 0 mocks
+ */
+function registerSimplerCreationFixture(): {
+  simpler: RegisteredMockObject;
+  track0: RegisteredMockObject;
+} {
+  const simpler = registerMockObject("simpler-new", {
+    path: livePath.track(0).device(2),
+    type: "SimplerDevice",
+    properties: {
+      class_display_name: "Simpler",
+      multi_sample_mode: 0,
+      parameters: children(),
+    },
+  });
+
+  const track0 = registerMockObject("track-0", {
+    path: livePath.track(0),
+    methods: { insert_device: () => ["id", "simpler-new"] },
+  });
+
+  return { simpler, track0 };
+}
+
 describe("createDevice", () => {
   let track0: RegisteredMockObject;
   let chain0: RegisteredMockObject;
@@ -536,6 +564,71 @@ describe("createDevice", () => {
       createDevice({});
 
       expect(selectMockRef.get()).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("params after creation", () => {
+    it("loads a sample on a created Simpler via params", () => {
+      const fixture = registerSimplerCreationFixture();
+
+      track0 = fixture.track0;
+
+      createDevice({
+        deviceName: "Simpler",
+        path: "t0",
+        params: "sample=/tmp/kick.wav",
+      });
+
+      expect(fixture.simpler.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/tmp/kick.wav",
+      );
+    });
+
+    it("prefixes param warnings with createDevice, not updateDevice", async () => {
+      const mockConsole = await import("#src/shared/v8-max-console.ts");
+
+      vi.mocked(mockConsole.warn).mockClear();
+
+      track0 = registerSimplerCreationFixture().track0;
+
+      createDevice({
+        deviceName: "Simpler",
+        path: "t0",
+        params: "nonexistent=42",
+      });
+
+      const calls = vi.mocked(mockConsole.warn).mock.calls.flat().join("\n");
+
+      expect(calls).toMatch(/createDevice: param "nonexistent" not found/);
+      expect(calls).not.toMatch(/updateDevice:/);
+    });
+
+    it("does not call replace_sample on a non-Simpler when sample is in params", () => {
+      const eqEight = registerMockObject("eq-new", {
+        path: livePath.track(0).device(2),
+        type: "Device",
+        properties: {
+          class_display_name: "EQ Eight",
+          parameters: children(),
+        },
+      });
+
+      track0 = registerMockObject("track-0", {
+        path: livePath.track(0),
+        methods: { insert_device: () => ["id", "eq-new"] },
+      });
+
+      createDevice({
+        deviceName: "EQ Eight",
+        path: "t0",
+        params: "sample=/tmp/kick.wav",
+      });
+
+      expect(eqEight.call).not.toHaveBeenCalledWith(
+        "replace_sample",
+        expect.anything(),
+      );
     });
   });
 });

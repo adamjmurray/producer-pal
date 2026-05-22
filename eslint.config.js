@@ -338,6 +338,7 @@ export default [
       "node_modules/**",
       "npm/**",
       "release/**",
+      "scratchpad/**",
       "test-results/**",
       "**/generated-*-parser.js", // Generated parsers
       "**/*.d.ts", // TypeScript declaration files
@@ -549,6 +550,38 @@ export default [
       globals: {
         ...globals.node,
       },
+    },
+  },
+
+  // Examples (JS/MJS): reference snippets meant to be copy-paste-friendly.
+  // We lint for real bugs (baseRules, sonarjs) but skip TypeScript and JSDoc
+  // requirements to keep the files approachable.
+  {
+    files: ["examples/**/*.{js,mjs}"],
+    languageOptions: {
+      ecmaVersion: 2024,
+      sourceType: "module",
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: importResolverSettings,
+    plugins: {
+      "@stylistic": stylistic,
+      "@eslint-community/eslint-comments": eslintComments,
+      "import-x": importPlugin,
+      sonarjs,
+      unicorn,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...unicornRules,
+      // Examples are short, copy-paste-friendly snippets. The project-wide
+      // padding-line rule (blank line before return, after const, etc.) makes
+      // them airy and harder to skim — turn it off here.
+      "@stylistic/padding-line-between-statements": "off",
     },
   },
 

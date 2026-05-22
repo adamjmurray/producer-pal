@@ -8,12 +8,13 @@ import { VERSION } from "#src/shared/version.ts";
 import { toolDefCreateClip } from "#src/tools/clip/create/create-clip.def.ts";
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
+import { toolDefLiveApi } from "#src/tools/control/live-api.def.ts";
 import { toolDefPlayback } from "#src/tools/control/playback.def.ts";
-import { toolDefRawLiveApi } from "#src/tools/control/raw-live-api.def.ts";
 import { toolDefSelect } from "#src/tools/control/select.def.ts";
 import { toolDefCreateDevice } from "#src/tools/device/create/create-device.def.ts";
 import { toolDefReadDevice } from "#src/tools/device/read/read-device.def.ts";
 import { toolDefUpdateDevice } from "#src/tools/device/update/update-device.def.ts";
+import { toolDefLibrary } from "#src/tools/library/library.def.ts";
 import { toolDefReadLiveSet } from "#src/tools/live-set/read-live-set.def.ts";
 import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts";
 import { toolDefDelete } from "#src/tools/operations/delete/delete.def.ts";
@@ -56,15 +57,17 @@ export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
   toolDefDuplicate,
   toolDefSelect,
   toolDefPlayback,
+  toolDefLibrary,
 ];
 
-/** All standard tool names (frozen). Does not include dev-only tools like ppal-raw-live-api. */
+/** All standard tool names (frozen). Opt-in tools like ppal-live-api are not included. */
 export const TOOL_NAMES: readonly string[] = Object.freeze(
   STANDARD_TOOL_DEFS.map((td) => td.toolName),
 );
 
 interface CreateMcpServerOptions {
   smallModelMode?: boolean;
+  liveApiEnabled?: boolean;
   tools?: string[];
 }
 
@@ -79,7 +82,7 @@ export function createMcpServer(
   callLiveApi: CallLiveApiFunction,
   options: CreateMcpServerOptions = {},
 ): McpServer {
-  const { smallModelMode = false, tools } = options;
+  const { smallModelMode = false, liveApiEnabled = false, tools } = options;
   const includedSet = tools ? new Set(tools) : null;
 
   const server = new McpServer({
@@ -92,9 +95,15 @@ export function createMcpServer(
     toolDef(server, callLiveApi, { smallModelMode });
   }
 
-  // Dev-only tool: bypasses the tools whitelist, gated by env var
-  if (process.env.ENABLE_RAW_LIVE_API === "true" && !smallModelMode) {
-    toolDefRawLiveApi(server, callLiveApi, { smallModelMode });
+  // Live API: opt-in via device Setup tab. Goes through the same
+  // tools whitelist as standard tools. Excluded under smallModelMode
+  // because its schema is too large to be useful with small models.
+  if (
+    liveApiEnabled &&
+    !smallModelMode &&
+    (!includedSet || includedSet.has(toolDefLiveApi.toolName))
+  ) {
+    toolDefLiveApi(server, callLiveApi, { smallModelMode });
   }
 
   return server;

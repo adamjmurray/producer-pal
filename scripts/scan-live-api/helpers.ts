@@ -36,7 +36,7 @@ export async function callRawApi(
   operations: Record<string, unknown>[],
 ): Promise<string | null> {
   try {
-    const res = await fetch(`${baseUrl}/api/tools/ppal-raw-live-api`, {
+    const res = await fetch(`${baseUrl}/api/tools/ppal-live-api`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path, operations }),

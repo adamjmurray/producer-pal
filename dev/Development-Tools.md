@@ -42,7 +42,7 @@ Claude Code should use the CLI tool to:
 **Important:** Always ask for user permission before using the CLI tool to
 update state in Ableton Live.
 
-## Raw Live API Tool
+## Live API Tool
 
 Available only in debug builds (`npm run build:debug` or `npm run dev:debug`).
 
@@ -62,7 +62,7 @@ Not included in production builds.
 
 ```bash
 # Multiple operation types on live_set tempo
-node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
+node scripts/ppal-client.ts tools/call ppal-live-api '{
   "path": "live_set",
   "operations": [
     {"type": "get", "property": "tempo"},
@@ -71,7 +71,7 @@ node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
 }'
 
 # Explore track properties
-node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
+node scripts/ppal-client.ts tools/call ppal-live-api '{
   "path": "live_set tracks 0",
   "operations": [
     {"type": "info"},
@@ -80,7 +80,7 @@ node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
 }'
 
 # Navigate and modify
-node scripts/ppal-client.ts tools/call ppal-raw-live-api '{
+node scripts/ppal-client.ts tools/call ppal-live-api '{
   "operations": [
     {"type": "goto", "value": "live_set tracks 0"},
     {"type": "set", "property": "name", "value": "My Track"},

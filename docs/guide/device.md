@@ -57,12 +57,18 @@ Example notes:
   slow computers if experiencing timeouts during complex operations)
 - **Small Model Mode** - Reduces prompt size for local/smaller models like
   Ollama and LM Studio
+- **Direct Live API** - Enables the opt-in
+  [Direct Live API](/features#ppal-live-api) tool, giving the AI direct access
+  to the [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
+  scripting, debugging, and covering gaps in Producer Pal's specialized tools
 
 ### Sample Folder
 
-Configure a folder containing audio samples for the "read samples" tool.
+Configure a folder of audio samples to expose to the
+[Library](/features#ppal-library) tool. Items from this folder appear before
+Live's library results in searches.
 
-- **Choose** - Select your sample library folder
+- **Choose** - Select your sample folder
 - **Clear** - Remove the configured folder
 
 ### Debug

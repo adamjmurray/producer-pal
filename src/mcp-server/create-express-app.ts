@@ -14,10 +14,13 @@ import express, {
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { toolDefLiveApi } from "#src/tools/control/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 import { registerRestApiRoutes } from "./rest-api-routes.ts";
+
+const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 
 interface ProducerPalConfig {
   memoryEnabled: boolean;
@@ -26,8 +29,21 @@ interface ProducerPalConfig {
   smallModelMode: boolean;
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
+  liveApiEnabled: boolean;
+  liveApiForcedOn: boolean;
   tools: string[];
 }
+
+// ENABLE_LIVE_API=true forces the Live API tool on for dev builds
+// (npm run dev:debug / build:debug). When set, the device Setup-tab toggle
+// cannot disable it — the Max handler at "liveApiEnabled" ignores
+// device-side `false` updates and re-emits the forced value.
+//
+// Asymmetry: POST /config remains authoritative in both directions even
+// when the env var is set. This is intentional so e2e tests can exercise
+// the disabled-state code paths without rebuilding. Production deployments
+// don't set ENABLE_LIVE_API, so the asymmetry is dev-only.
+const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
 const config: ProducerPalConfig = {
   memoryEnabled: false,
@@ -36,7 +52,11 @@ const config: ProducerPalConfig = {
   smallModelMode: false,
   jsonOutput: false,
   sampleFolder: "",
-  tools: [...TOOL_NAMES],
+  liveApiEnabled: liveApiForcedOn,
+  liveApiForcedOn,
+  tools: liveApiForcedOn
+    ? [...TOOL_NAMES, toolDefLiveApi.toolName]
+    : [...TOOL_NAMES],
 };
 
 let chatUIEnabled = true; // default
@@ -75,6 +95,40 @@ Max.addHandler("sampleFolder", (path: unknown) => {
 
   config.sampleFolder = value;
 });
+
+Max.addHandler("liveApiEnabled", (enabled: unknown) => {
+  const next = Boolean(enabled);
+
+  if (liveApiForcedOn && !next) {
+    // Env var forces this on — re-emit the current value so the device
+    // toggle UI snaps back to its forced state.
+    void Max.outlet("config", "liveApiEnabled", config.liveApiEnabled);
+
+    return;
+  }
+
+  applyLiveApiEnabled(next);
+});
+
+/**
+ * Apply a liveApiEnabled change to runtime config and the tools whitelist.
+ * Keeps config.tools symmetric with config.liveApiEnabled so the tool name
+ * never lingers in the whitelist while the flag is off (which would silently
+ * drop on a later validateTools call).
+ *
+ * @param next - The new value of liveApiEnabled
+ */
+function applyLiveApiEnabled(next: boolean): void {
+  config.liveApiEnabled = next;
+
+  const has = config.tools.includes(LIVE_API_TOOL_NAME);
+
+  if (next && !has) {
+    config.tools = [...config.tools, LIVE_API_TOOL_NAME];
+  } else if (!next && has) {
+    config.tools = config.tools.filter((t) => t !== LIVE_API_TOOL_NAME);
+  }
+}
 
 interface JsonRpcError {
   jsonrpc: string;
@@ -147,6 +201,7 @@ export function createExpressApp(): Express {
 
       const server = createMcpServer(callLiveApi, {
         smallModelMode: config.smallModelMode,
+        liveApiEnabled: config.liveApiEnabled,
         tools: config.tools,
       });
       const transport = new StreamableHTTPServerTransport({
@@ -206,6 +261,28 @@ export function createExpressApp(): Express {
 }
 
 const VALID_TOOL_SET = new Set<string>(TOOL_NAMES);
+
+/**
+ * Build the set of valid tool names, including ppal-live-api when enabled.
+ * @param liveApiEnabled - Current value of config.liveApiEnabled
+ * @returns Set of valid tool names
+ */
+function getValidToolSet(liveApiEnabled: boolean): Set<string> {
+  if (!liveApiEnabled) return VALID_TOOL_SET;
+
+  return new Set<string>([...VALID_TOOL_SET, LIVE_API_TOOL_NAME]);
+}
+
+/**
+ * Build the list of valid tool names for error responses.
+ * @param liveApiEnabled - Current value of config.liveApiEnabled
+ * @returns Sorted list of valid tool names
+ */
+function getValidToolNames(liveApiEnabled: boolean): string[] {
+  if (!liveApiEnabled) return [...TOOL_NAMES];
+
+  return [...TOOL_NAMES, LIVE_API_TOOL_NAME];
+}
 
 /**
  * Handle POST /config requests to update device UI settings
@@ -271,8 +348,28 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     );
   }
 
+  if (incoming.liveApiEnabled !== undefined) {
+    const next = Boolean(incoming.liveApiEnabled);
+    const beforeTools = config.tools;
+
+    applyLiveApiEnabled(next);
+
+    if (config.tools !== beforeTools) {
+      outlets.push(() =>
+        Max.outlet("config", "tools", JSON.stringify(config.tools)),
+      );
+    }
+
+    outlets.push(() =>
+      Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
+    );
+  }
+
   if (incoming.tools !== undefined) {
-    const validationError = validateTools(incoming.tools);
+    const validationError = validateTools(
+      incoming.tools,
+      config.liveApiEnabled,
+    );
 
     if (validationError) {
       res.status(400).json(validationError);
@@ -299,25 +396,30 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
  * Returns an error object if invalid, or null if valid.
  *
  * @param tools - The tools value from the request body
+ * @param liveApiEnabled - Whether ppal-live-api is an accepted tool name
  * @returns Error response body or null
  */
 function validateTools(
   tools: unknown,
+  liveApiEnabled: boolean,
 ): { error: string; validToolNames: string[] } | null {
+  const validToolNames = getValidToolNames(liveApiEnabled);
+  const validToolSet = getValidToolSet(liveApiEnabled);
+
   if (!Array.isArray(tools)) {
     return {
       error: "tools must be an array of tool names",
-      validToolNames: [...TOOL_NAMES],
+      validToolNames,
     };
   }
 
   const list = tools.map(String);
-  const invalid = list.filter((name) => !VALID_TOOL_SET.has(name));
+  const invalid = list.filter((name) => !validToolSet.has(name));
 
   if (invalid.length > 0) {
     return {
       error: `Invalid tool name(s): ${invalid.join(", ")}`,
-      validToolNames: [...TOOL_NAMES],
+      validToolNames,
     };
   }
 
@@ -325,7 +427,7 @@ function validateTools(
     return {
       error:
         "ppal-connect must be included in tools (it is the required entry point)",
-      validToolNames: [...TOOL_NAMES],
+      validToolNames,
     };
   }
 

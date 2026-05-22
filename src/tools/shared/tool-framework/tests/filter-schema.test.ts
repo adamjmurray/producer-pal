@@ -283,7 +283,45 @@ describe("filterSchemaForSmallModel", () => {
 
     expect(() =>
       filterSchemaForSmallModel(schema, [], {}, { include: ["a"] }),
-    ).toThrow("excludeEnumValues requires z.array(z.enum([...])).default([])");
+    ).toThrow("excludeEnumValues requires a schema with .default(");
+  });
+
+  it("should remove enum values from optional single-enum param with default", () => {
+    const schema = {
+      kind: z
+        .enum(["audio", "midi", "preset", "image", "video"])
+        .optional()
+        .default("audio")
+        .describe("content kind filter"),
+    };
+
+    const filtered = filterSchemaForSmallModel(
+      schema,
+      [],
+      {},
+      { kind: ["image", "video"] },
+    );
+
+    // single-enum shape: ZodDefault > ZodOptional > ZodEnum
+    expect(getOptionalEnumOptions(filtered.kind)).toStrictEqual([
+      "audio",
+      "midi",
+      "preset",
+    ]);
+    expect(getDefault(filtered.kind)).toBe("audio");
+    expect(filtered.kind!.description).toBe("content kind filter");
+  });
+
+  it("should remove enum values from single-enum param with default (no optional)", () => {
+    const schema = {
+      kind: z.enum(["a", "b", "c"]).default("a"),
+    };
+
+    const filtered = filterSchemaForSmallModel(schema, [], {}, { kind: ["c"] });
+
+    // ZodDefault > ZodEnum (no optional wrapper)
+    expect(getBareEnumOptions(filtered.kind)).toStrictEqual(["a", "b"]);
+    expect(getDefault(filtered.kind)).toBe("a");
   });
 
   it("should throw when all enum values would be excluded", () => {
@@ -297,12 +335,20 @@ describe("filterSchemaForSmallModel", () => {
   });
 });
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- Zod v4 internal type access for inspecting rebuilt schemas */
 function getEnumOptions(schema: z.ZodType | undefined): string[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Zod v4 internal type access
   return (schema as any).def.innerType.def.element.options;
 }
 
-function getDefault(schema: z.ZodType | undefined): string[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Zod v4 internal type access
+function getOptionalEnumOptions(schema: z.ZodType | undefined): string[] {
+  return (schema as any).def.innerType.def.innerType.options;
+}
+
+function getBareEnumOptions(schema: z.ZodType | undefined): string[] {
+  return (schema as any).def.innerType.options;
+}
+
+function getDefault(schema: z.ZodType | undefined): string[] | string {
   return (schema as any).def.defaultValue;
 }
+/* eslint-enable @typescript-eslint/no-explicit-any -- end of helper block */

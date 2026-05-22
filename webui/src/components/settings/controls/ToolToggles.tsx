@@ -7,7 +7,12 @@ import {
   type McpStatus,
   type McpTool,
 } from "#webui/hooks/connection/use-mcp-connection";
-import { type GroupedTools, groupTools } from "./tool-toggles-helpers";
+import {
+  ensureLiveApiTool,
+  LIVE_API_TOOL_ID,
+  type GroupedTools,
+  groupTools,
+} from "./tool-toggles-helpers";
 import { Tooltip } from "./Tooltip";
 
 interface ToolTogglesProps {
@@ -15,6 +20,16 @@ interface ToolTogglesProps {
   mcpStatus: McpStatus;
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
+  // Server-mirrored Live API state. The MCP /tools response only includes
+  // ppal-live-api when the server flag is on, but we want the checkbox always
+  // visible in the Core group — so its checked state binds here, not to
+  // enabledTools (which is the localStorage map for ordinary tools).
+  liveApiEnabled: boolean;
+  setLiveApiEnabled: (enabled: boolean) => void;
+  // ENABLE_LIVE_API=true (dev/build:debug) forces the server flag on and
+  // makes the device-side toggle a no-op. We disable the checkbox here so
+  // the UI doesn't silently snap back after a click.
+  liveApiForcedOn: boolean;
 }
 
 /**
@@ -31,6 +46,9 @@ export function ToolToggles({
   mcpStatus,
   enabledTools,
   setEnabledTools,
+  liveApiEnabled,
+  setLiveApiEnabled,
+  liveApiForcedOn,
 }: ToolTogglesProps) {
   if (!tools) {
     return (
@@ -49,35 +67,71 @@ export function ToolToggles({
 
   const isAlwaysEnabled = (toolId: string) => toolId === "ppal-connect";
 
+  const isToolDisabled = (toolId: string) => {
+    if (isAlwaysEnabled(toolId)) return true;
+    if (toolId === LIVE_API_TOOL_ID && liveApiForcedOn) return true;
+
+    return false;
+  };
+
+  const getDisabledReason = (toolId: string): string | undefined => {
+    if (toolId === LIVE_API_TOOL_ID && liveApiForcedOn) {
+      return "Forced on by ENABLE_LIVE_API build flag";
+    }
+
+    return undefined;
+  };
+
   const handleToggle = (toolId: string) => {
-    if (isAlwaysEnabled(toolId)) return;
+    if (isToolDisabled(toolId)) return;
+
+    if (toolId === LIVE_API_TOOL_ID) {
+      setLiveApiEnabled(!liveApiEnabled);
+
+      return;
+    }
+
     setEnabledTools({
       ...enabledTools,
       [toolId]: !enabledTools[toolId],
     });
   };
 
-  const enableAllTools = () => {
-    const allEnabled: Record<string, boolean> = {};
+  const isToolChecked = (toolId: string) => {
+    if (isAlwaysEnabled(toolId)) return true;
+    if (toolId === LIVE_API_TOOL_ID) return liveApiEnabled;
+
+    return enabledTools[toolId] ?? true;
+  };
+
+  const enableDefaultTools = () => {
+    const defaults: Record<string, boolean> = {};
 
     for (const tool of tools) {
-      allEnabled[tool.id] = true;
+      if (tool.id === LIVE_API_TOOL_ID) continue;
+      defaults[tool.id] = true;
     }
 
-    setEnabledTools(allEnabled);
+    setEnabledTools(defaults);
+    // Live API is opt-in — not part of the default toolset. Respect the
+    // forced-on flag: don't fight ENABLE_LIVE_API.
+    if (!liveApiForcedOn) setLiveApiEnabled(false);
   };
 
   const disableAllTools = () => {
     const allDisabled: Record<string, boolean> = {};
 
     for (const tool of tools) {
+      if (tool.id === LIVE_API_TOOL_ID) continue;
       allDisabled[tool.id] = isAlwaysEnabled(tool.id);
     }
 
     setEnabledTools(allDisabled);
+    // Respect the forced-on flag: "disable all" shouldn't fight the env var.
+    if (!liveApiForcedOn) setLiveApiEnabled(false);
   };
 
-  const groups = groupTools(tools);
+  const groups = groupTools(ensureLiveApiTool(tools));
 
   return (
     <div>
@@ -86,10 +140,10 @@ export function ToolToggles({
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={enableAllTools}
+            onClick={enableDefaultTools}
             className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
           >
-            Enable all (default)
+            Enable default toolset
           </button>
           <button
             type="button"
@@ -107,8 +161,9 @@ export function ToolToggles({
           <ToolGroupSection
             key={group.label}
             group={group}
-            enabledTools={enabledTools}
-            isAlwaysEnabled={isAlwaysEnabled}
+            isToolChecked={isToolChecked}
+            isToolDisabled={isToolDisabled}
+            getDisabledReason={getDisabledReason}
             onToggle={handleToggle}
           />
         ))}
@@ -121,15 +176,17 @@ export function ToolToggles({
 
 interface ToolGroupSectionProps {
   group: GroupedTools;
-  enabledTools: Record<string, boolean>;
-  isAlwaysEnabled: (toolId: string) => boolean;
+  isToolChecked: (toolId: string) => boolean;
+  isToolDisabled: (toolId: string) => boolean;
+  getDisabledReason: (toolId: string) => string | undefined;
   onToggle: (toolId: string) => void;
 }
 
 function ToolGroupSection({
   group,
-  enabledTools,
-  isAlwaysEnabled,
+  isToolChecked,
+  isToolDisabled,
+  getDisabledReason,
   onToggle,
 }: ToolGroupSectionProps) {
   return (
@@ -138,26 +195,39 @@ function ToolGroupSection({
         {group.label}
       </h4>
       <div className="space-y-1">
-        {group.tools.map((tool) => (
-          <div
-            key={tool.id}
-            className="flex items-center gap-1.5 whitespace-nowrap"
-          >
-            <input
-              type="checkbox"
-              id={`tool-${tool.id}`}
-              checked={
-                isAlwaysEnabled(tool.id) || (enabledTools[tool.id] ?? true)
-              }
-              disabled={isAlwaysEnabled(tool.id)}
-              onChange={() => onToggle(tool.id)}
-            />
-            <label htmlFor={`tool-${tool.id}`} className="text-sm">
-              {tool.name}
-            </label>
-            {tool.description && <Tooltip text={tool.description} />}
-          </div>
-        ))}
+        {group.tools.map((tool) => {
+          const reason = getDisabledReason(tool.id);
+
+          return (
+            <div
+              key={tool.id}
+              className="flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <input
+                type="checkbox"
+                id={`tool-${tool.id}`}
+                checked={isToolChecked(tool.id)}
+                disabled={isToolDisabled(tool.id)}
+                title={reason}
+                aria-describedby={reason ? `tool-${tool.id}-reason` : undefined}
+                onChange={() => onToggle(tool.id)}
+              />
+              <label
+                htmlFor={`tool-${tool.id}`}
+                className="text-sm"
+                title={reason}
+              >
+                {tool.name}
+              </label>
+              {reason && (
+                <span id={`tool-${tool.id}-reason`} className="sr-only">
+                  {reason}
+                </span>
+              )}
+              {tool.description && <Tooltip text={tool.description} />}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

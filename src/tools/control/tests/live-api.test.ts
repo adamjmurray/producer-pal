@@ -14,19 +14,16 @@ import {
   LiveAPI,
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
-import {
-  rawLiveApi,
-  type RawApiOperation,
-} from "#src/tools/control/raw-live-api.ts";
+import { liveApi, type LiveApiOperation } from "#src/tools/control/live-api.ts";
 
-describe("rawLiveApi", () => {
+describe("liveApi", () => {
   let defaultMock: RegisteredMockObject;
 
   beforeEach(() => {
     vi.clearAllMocks();
     clearMockRegistry();
 
-    // Register default mock for "live_set" path (rawLiveApi's default)
+    // Register default mock for "live_set" path (liveApi's default)
     // Use ID "1" so api.id returns "id 1"
     defaultMock = registerMockObject("1", {
       path: livePath.liveSet,
@@ -78,8 +75,8 @@ describe("rawLiveApi", () => {
   describe("input validation", () => {
     it("should throw error if operations is not an array", () => {
       expect(() =>
-        rawLiveApi({ operations: "not-array" } as unknown as Parameters<
-          typeof rawLiveApi
+        liveApi({ operations: "not-array" } as unknown as Parameters<
+          typeof liveApi
         >[0]),
       ).toThrow("operations must be an array");
     });
@@ -87,25 +84,25 @@ describe("rawLiveApi", () => {
     it("should throw error if operations array exceeds 50 operations", () => {
       const operations = Array(51).fill({
         type: "info",
-      }) as RawApiOperation[];
+      }) as LiveApiOperation[];
 
-      expect(() => rawLiveApi({ operations })).toThrow(
+      expect(() => liveApi({ operations })).toThrow(
         "operations array cannot exceed 50 operations",
       );
     });
 
     it("should throw error for unknown operation type", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "unknown" }],
-        } as unknown as Parameters<typeof rawLiveApi>[0]),
+        } as unknown as Parameters<typeof liveApi>[0]),
       ).toThrow("Unknown operation type: unknown");
     });
   });
 
   describe("core operations", () => {
     it("should handle get_property operation", () => {
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "get_property", property: "id" }],
       });
 
@@ -116,14 +113,14 @@ describe("rawLiveApi", () => {
 
     it("should throw error for get_property without property", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "get_property" }],
         }),
       ).toThrow("get_property operation requires property");
     });
 
     it("should handle set_property operation", () => {
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "set_property", property: "tempo", value: 140 }],
       });
 
@@ -134,7 +131,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error for set_property without property", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "set_property", value: 140 }],
         }),
       ).toThrow("set_property operation requires property");
@@ -142,7 +139,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error for set_property without value", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "set_property", property: "tempo" }],
         }),
       ).toThrow("set_property operation requires value");
@@ -151,7 +148,7 @@ describe("rawLiveApi", () => {
     it("should handle call_method operation", () => {
       defaultMock.get.mockReturnValueOnce([120]);
 
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "call_method", method: "get", args: ["tempo"] }],
       });
 
@@ -163,7 +160,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error for call_method without method", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "call_method", args: ["tempo"] }],
         }),
       ).toThrow("call_method operation requires method");
@@ -171,7 +168,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error for call_method with non-existent method", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [
             { type: "call_method", method: "nonExistentMethod", args: [] },
           ],
@@ -184,7 +181,7 @@ describe("rawLiveApi", () => {
     it("should handle get operation", () => {
       defaultMock.get.mockReturnValueOnce([120]);
 
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "get", property: "tempo" }],
       });
 
@@ -195,7 +192,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error for get without property", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "get" }],
         }),
       ).toThrow("get operation requires property");
@@ -204,7 +201,7 @@ describe("rawLiveApi", () => {
     it("should handle set operation", () => {
       defaultMock.set.mockReturnValueOnce(1);
 
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "set", property: "tempo", value: 130 }],
       });
 
@@ -215,7 +212,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error for set without property", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "set", value: 130 }],
         }),
       ).toThrow("set operation requires property");
@@ -223,14 +220,14 @@ describe("rawLiveApi", () => {
 
     it("should throw error for set without value", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "set", property: "tempo" }],
         }),
       ).toThrow("set operation requires value");
     });
 
     it("should handle call operation", () => {
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "call", method: "get_current_beats_song_time" }],
       });
 
@@ -243,7 +240,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error for call without method", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "call" }],
         }),
       ).toThrow("call operation requires method");
@@ -256,7 +253,7 @@ describe("rawLiveApi", () => {
         type: "Track",
       });
 
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "goto", value: String(livePath.track(0)) }],
       });
 
@@ -267,7 +264,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error for goto without value", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "goto" }],
         }),
       ).toThrow("goto operation requires value (path)");
@@ -281,7 +278,7 @@ describe("rawLiveApi", () => {
         configurable: true,
       });
 
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "info" }],
       });
 
@@ -294,7 +291,7 @@ describe("rawLiveApi", () => {
     it("should handle getProperty operation", () => {
       defaultMock.get.mockReturnValueOnce(["Test Track"]);
 
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "getProperty", property: "name" }],
       });
 
@@ -305,14 +302,14 @@ describe("rawLiveApi", () => {
 
     it("should throw error for getProperty without property", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "getProperty" }],
         }),
       ).toThrow("getProperty operation requires property");
     });
 
     it("should handle getChildIds operation", () => {
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "getChildIds", property: "clip_slots" }],
       });
 
@@ -326,14 +323,14 @@ describe("rawLiveApi", () => {
 
     it("should throw error for getChildIds without property", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "getChildIds" }],
         }),
       ).toThrow("getChildIds operation requires property (child type)");
     });
 
     it("should handle exists operation", () => {
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "exists" }],
       });
 
@@ -343,7 +340,7 @@ describe("rawLiveApi", () => {
     });
 
     it("should handle getColor operation", () => {
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "getColor" }],
       });
 
@@ -353,7 +350,7 @@ describe("rawLiveApi", () => {
     });
 
     it("should handle setColor operation", () => {
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "setColor", value: "#00FF00" }],
       });
 
@@ -364,7 +361,7 @@ describe("rawLiveApi", () => {
 
     it("should throw error for setColor without value", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "setColor" }],
         }),
       ).toThrow("setColor operation requires value (color)");
@@ -383,7 +380,7 @@ describe("rawLiveApi", () => {
         configurable: true,
       });
 
-      const result = rawLiveApi({
+      const result = liveApi({
         path: String(livePath.track(0)),
         operations: [{ type: "info" }],
       });
@@ -393,7 +390,7 @@ describe("rawLiveApi", () => {
     });
 
     it("should create LiveAPI without path when not provided", () => {
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "info" }],
       });
 
@@ -410,7 +407,7 @@ describe("rawLiveApi", () => {
         configurable: true,
       });
 
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [
           { type: "get_property", property: "id" },
           { type: "get", property: "tempo" },
@@ -427,7 +424,7 @@ describe("rawLiveApi", () => {
     it("should return operation details with each result", () => {
       defaultMock.get.mockReturnValueOnce([120]);
 
-      const result = rawLiveApi({
+      const result = liveApi({
         operations: [{ type: "get", property: "tempo" }],
       });
 
@@ -446,7 +443,7 @@ describe("rawLiveApi", () => {
         configurable: true,
       });
 
-      const result = rawLiveApi({
+      const result = liveApi({
         path: livePath.liveSet,
         operations: [{ type: "info" }],
       });
@@ -467,9 +464,9 @@ describe("rawLiveApi", () => {
   describe("error handling", () => {
     it("should throw error for unknown operation type", () => {
       expect(() =>
-        rawLiveApi({
+        liveApi({
           operations: [{ type: "unknown_operation" }],
-        } as unknown as Parameters<typeof rawLiveApi>[0]),
+        } as unknown as Parameters<typeof liveApi>[0]),
       ).toThrow("Unknown operation type: unknown_operation");
     });
   });

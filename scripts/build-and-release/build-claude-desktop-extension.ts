@@ -31,7 +31,7 @@ const rootPackageJson = JSON.parse(
 );
 const version = rootPackageJson.version;
 
-// Generate tools from MCP server (excluding development-only ppal-raw-live-api)
+// Generate tools from MCP server (excluding development-only ppal-live-api)
 const tools: { name: string; description: string }[] = [];
 
 interface RegisteredTool {

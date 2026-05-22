@@ -28,6 +28,7 @@ export const mockChatHook = {
 export const mockSettingsHook = {
   provider: "gemini" as const,
   setProvider: vi.fn(),
+
   apiKey: "test-key",
   setApiKey: vi.fn(),
   baseUrl: "",
@@ -40,14 +41,22 @@ export const mockSettingsHook = {
   setTemperature: vi.fn(),
   showThoughts: false,
   setShowThoughts: vi.fn(),
+
   enabledTools: {},
   setEnabledTools: vi.fn(),
   resetBehaviorToDefaults: vi.fn(),
+
   saveSettings: vi.fn(),
   cancelSettings: vi.fn(),
   settingsConfigured: true,
+
   smallModelMode: false,
   setSmallModelMode: vi.fn(),
+
+  liveApiEnabled: false,
+  liveApiEnabledDirty: false,
+  setLiveApiEnabled: vi.fn(),
+  seedLiveApiEnabled: vi.fn(),
 };
 
 /**
@@ -90,6 +99,9 @@ export function setupDefaultMocks(): void {
   });
   (useRemoteConfig as ReturnType<typeof vi.fn>).mockReturnValue({
     serverSmallModelMode: false,
+    serverLiveApiEnabled: false,
+    serverLiveApiForcedOn: false,
     postSmallModelMode: vi.fn(),
+    postLiveApiEnabled: vi.fn().mockResolvedValue(undefined),
   });
 }

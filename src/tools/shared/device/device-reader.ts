@@ -4,7 +4,6 @@
 
 import * as console from "#src/shared/v8-max-console.ts";
 import {
-  DEVICE_CLASS,
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
@@ -20,6 +19,7 @@ import {
   readMacroVariations,
 } from "./helpers/device-reader-helpers.ts";
 import { extractDevicePath } from "./helpers/path/device-path-helpers.ts";
+import { probeSimplerSample } from "./simpler-sample.ts";
 
 export interface ReadDeviceOptions {
   includeChains?: boolean;
@@ -266,13 +266,47 @@ export function readDevice(
   });
 
   if (includeParams) {
-    deviceInfo.parameters = readDeviceParameters(device, {
+    const parameters = readDeviceParameters(device, {
       includeValues: includeParamValues,
       search: paramSearch,
     });
+    const pseudoParams = readPseudoParameters(device, className, paramSearch);
+
+    deviceInfo.parameters = [...pseudoParams, ...parameters];
   }
 
   return deviceInfo;
+}
+
+/**
+ * Read pseudo-parameters (writable values that aren't DeviceParameter objects).
+ * Currently: Simpler `sample` file path.
+ * @param device - LiveAPI device object
+ * @param className - Device class display name
+ * @param search - Optional case-insensitive name filter
+ * @returns Array of pseudo-parameter info objects
+ */
+function readPseudoParameters(
+  device: LiveAPI,
+  className: string,
+  search: string | undefined,
+): Record<string, unknown>[] {
+  const entries: Record<string, unknown>[] = [];
+  const probe = probeSimplerSample(device, className);
+
+  if (probe.kind === "single") {
+    entries.push({ name: "sample", value: probe.path });
+  }
+
+  if (search) {
+    const searchLower = search.toLowerCase().trim();
+
+    return entries.filter((entry) =>
+      String(entry.name).toLowerCase().includes(searchLower),
+    );
+  }
+
+  return entries;
 }
 
 /**
@@ -285,34 +319,20 @@ function readSimplerSample(
   device: LiveAPI,
   className: string,
 ): Record<string, unknown> {
-  if (className !== DEVICE_CLASS.SIMPLER) {
-    return {};
-  }
+  const probe = probeSimplerSample(device, className);
 
-  // Multisample mode doesn't expose a single sample file path
-  if ((device.getProperty("multi_sample_mode") as number) > 0) {
+  if (probe.kind === "multisample") {
     return { multisample: true };
   }
 
-  const samples = device.getChildren("sample");
-
-  if (samples.length === 0) {
+  if (probe.kind !== "single") {
     return {};
   }
 
-  const firstSample = assertDefined(samples[0], "first sample");
-  const samplePath = firstSample.getProperty("file_path");
+  const result: Record<string, unknown> = { sample: probe.path };
 
-  if (!samplePath) {
-    return {};
-  }
-
-  const result: Record<string, unknown> = { sample: samplePath };
-
-  const gain = firstSample.getProperty("gain") as number | undefined;
-
-  if (gain != null) {
-    result.gainDb = liveGainToDb(gain);
+  if (probe.gain != null) {
+    result.gainDb = liveGainToDb(probe.gain);
   }
 
   return result;

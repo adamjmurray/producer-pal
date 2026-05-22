@@ -26,14 +26,10 @@ import {
 } from "./select-test-helpers.ts";
 
 vi.mock(import("#src/tools/shared/utils.ts"), async (importOriginal) => {
-  const { viewMockToLive, viewMockFromLive } =
+  const { selectSharedUtilsMockBody } =
     await import("./select-test-helpers.ts");
 
-  return {
-    ...(await importOriginal()),
-    toLiveApiView: vi.fn(viewMockToLive),
-    fromLiveApiView: vi.fn(viewMockFromLive),
-  };
+  return selectSharedUtilsMockBody(await importOriginal());
 });
 
 describe("select-response-helpers", () => {

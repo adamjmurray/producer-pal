@@ -475,5 +475,156 @@ describe("device-reader", () => {
       expect(result.multisample).toBe(true);
       expect(result.sample).toBeUndefined();
     });
+
+    function makeSimplerDevice(opts: {
+      multiSampleMode?: number;
+      samplePath?: string;
+    }): unknown {
+      const sampleChild = {
+        getProperty: (prop: string) =>
+          prop === "file_path" ? (opts.samplePath ?? null) : null,
+      };
+
+      return {
+        id: "simpler_1",
+        path: "live_set tracks 0 devices 0",
+        getProperty: (prop: string) => {
+          if (prop === "type") return LIVE_API_DEVICE_TYPE_INSTRUMENT;
+          if (prop === "can_have_chains") return false;
+          if (prop === "can_have_drum_pads") return false;
+          if (prop === "class_display_name") return DEVICE_CLASS.SIMPLER;
+          if (prop === "name") return DEVICE_CLASS.SIMPLER;
+          if (prop === "is_active") return 1;
+          if (prop === "multi_sample_mode") return opts.multiSampleMode ?? 0;
+
+          return null;
+        },
+        getChildren: (kind: string) => {
+          if (kind === "sample" && opts.samplePath) return [sampleChild];
+
+          return [];
+        },
+      };
+    }
+
+    function setupLiveApiMock(): void {
+      interface MockInstance {
+        exists: ReturnType<typeof vi.fn>;
+        getProperty: ReturnType<typeof vi.fn>;
+      }
+      const TestMockLiveAPI = vi.fn(function (this: MockInstance) {
+        this.exists = vi.fn().mockReturnValue(false);
+        this.getProperty = vi.fn().mockReturnValue(0);
+      }) as unknown as { from: ReturnType<typeof vi.fn>; new (): MockInstance };
+
+      TestMockLiveAPI.from = vi.fn(() => new TestMockLiveAPI());
+      g.LiveAPI = TestMockLiveAPI;
+    }
+
+    it("adds synthetic sample entry to parameters[] when params included", () => {
+      const device = makeSimplerDevice({ samplePath: "/tmp/kick.wav" });
+
+      setupLiveApiMock();
+
+      const result = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeParams: true,
+      });
+      const params = result.parameters as Record<string, unknown>[];
+
+      expect(params[0]).toStrictEqual({
+        name: "sample",
+        value: "/tmp/kick.wav",
+      });
+    });
+
+    it("does not add synthetic sample entry for non-Simpler devices", () => {
+      const device = {
+        id: "op_1",
+        path: "live_set tracks 0 devices 0",
+        getProperty: (prop: string) => {
+          if (prop === "type") return LIVE_API_DEVICE_TYPE_INSTRUMENT;
+          if (prop === "can_have_chains") return false;
+          if (prop === "can_have_drum_pads") return false;
+          if (prop === "class_display_name") return "Operator";
+          if (prop === "name") return "Operator";
+          if (prop === "is_active") return 1;
+
+          return null;
+        },
+        getChildren: () => [],
+      };
+
+      setupLiveApiMock();
+
+      const result = readDevice(device as unknown as LiveAPI, {
+        includeChains: false,
+        includeParams: true,
+      });
+      const params = result.parameters as Record<string, unknown>[];
+
+      expect(params.find((p) => p.name === "sample")).toBeUndefined();
+    });
+
+    it("omits synthetic sample entry for Simpler in multi-sample mode", () => {
+      const device = makeSimplerDevice({
+        multiSampleMode: 1,
+        samplePath: "/tmp/kick.wav",
+      });
+
+      setupLiveApiMock();
+
+      const result = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeParams: true,
+      });
+      const params = result.parameters as Record<string, unknown>[];
+
+      expect(params.find((p) => p.name === "sample")).toBeUndefined();
+    });
+
+    it("omits synthetic sample entry when no sample is loaded", () => {
+      const device = makeSimplerDevice({});
+
+      setupLiveApiMock();
+
+      const result = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeParams: true,
+      });
+      const params = result.parameters as Record<string, unknown>[];
+
+      expect(params.find((p) => p.name === "sample")).toBeUndefined();
+    });
+
+    it("filters synthetic sample entry by paramSearch", () => {
+      const device = makeSimplerDevice({ samplePath: "/tmp/kick.wav" });
+
+      setupLiveApiMock();
+
+      const matched = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeParams: true,
+        paramSearch: "samp",
+      });
+      const matchedParams = matched.parameters as Record<string, unknown>[];
+
+      expect(matchedParams[0]).toStrictEqual({
+        name: "sample",
+        value: "/tmp/kick.wav",
+      });
+
+      const filteredOut = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeParams: true,
+        paramSearch: "volume",
+      });
+      const filteredParams = filteredOut.parameters as Record<
+        string,
+        unknown
+      >[];
+
+      expect(filteredParams.find((p) => p.name === "sample")).toBeUndefined();
+    });
   });
 });

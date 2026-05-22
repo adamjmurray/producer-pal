@@ -290,6 +290,37 @@ describe("readSamples", () => {
       expect(result.samples).toStrictEqual(["KICK.wav", "kick_808.WAV"]);
     });
 
+    it("should treat * as a multi-character wildcard", () => {
+      context.sampleFolder = "/samples/";
+      mockFolderStructure({
+        "/samples/": [
+          { name: "kick.wav", type: "file", extension: ".wav" },
+          { name: "user_kick.wav", type: "file", extension: ".wav" },
+          { name: "snare.wav", type: "file", extension: ".wav" },
+        ],
+      });
+
+      const result = readSamples({ search: "user*kick" }, context);
+
+      expect(result.samples).toStrictEqual(["user_kick.wav"]);
+    });
+
+    it("should treat regex specials other than * as literal", () => {
+      context.sampleFolder = "/samples/";
+      mockFolderStructure({
+        "/samples/": [
+          { name: "kick.wav", type: "file", extension: ".wav" },
+          { name: "kickXwav", type: "file", extension: "" },
+        ],
+      });
+
+      // "." in the query should match a literal dot, not "any char". So
+      // "kick.wav" matches but "kickXwav" does not.
+      const result = readSamples({ search: "kick.wav" }, context);
+
+      expect(result.samples).toStrictEqual(["kick.wav"]);
+    });
+
     it("should only count matching files toward MAX_SAMPLE_FILES limit", () => {
       context.sampleFolder = "/samples/";
 

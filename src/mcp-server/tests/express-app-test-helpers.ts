@@ -5,12 +5,41 @@
 
 import { type Server } from "node:http";
 import { type AddressInfo } from "node:net";
-import { afterAll, beforeAll } from "vitest";
+import express from "express";
+import Max from "max-api";
+import { afterAll, beforeAll, type Mock, vi } from "vitest";
+import { type CallLiveApiFunction } from "../create-mcp-server.ts";
+import { registerRestApiRoutes } from "../rest-api-routes.ts";
+
+export type MockMax = typeof Max & {
+  handlers: Map<string, (input: unknown) => void>;
+};
+
+export const mockMax = Max as MockMax;
+
+/**
+ * Build a helper that POSTs JSON to a config URL.
+ *
+ * @param configUrl - The fully-qualified /config endpoint
+ * @returns Fetch helper that posts a JSON body
+ */
+export function makePostConfig(
+  configUrl: string,
+): (body: object) => Promise<Response> {
+  return (body: object) =>
+    fetch(configUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+}
 
 interface ExpressAppTestState {
   server: Server | undefined;
   baseUrl: string;
   serverUrl: string;
+  configUrl: string;
+  postConfig: (body: object) => Promise<Response>;
 }
 
 /**
@@ -28,6 +57,10 @@ export function setupExpressAppServer(
     server: undefined,
     baseUrl: "",
     serverUrl: "",
+    configUrl: "",
+    postConfig: () => {
+      throw new Error("postConfig used before server started");
+    },
   };
 
   beforeAll(async () => {
@@ -44,6 +77,8 @@ export function setupExpressAppServer(
 
     state.baseUrl = `http://localhost:${port}`;
     state.serverUrl = `${state.baseUrl}/mcp`;
+    state.configUrl = `${state.baseUrl}/config`;
+    state.postConfig = makePostConfig(state.configUrl);
   });
 
   afterAll(async () => {
@@ -51,6 +86,51 @@ export function setupExpressAppServer(
       await new Promise<void>((resolve) =>
         state.server?.close(() => resolve()),
       );
+    }
+  });
+
+  return state;
+}
+
+interface RestRoutesTestState {
+  baseUrl: string;
+  callLiveApi: Mock<CallLiveApiFunction>;
+}
+
+/**
+ * Set up an Express server that only registers the REST API routes.
+ * Registers beforeAll/afterAll hooks to start and stop the server.
+ *
+ * @param options - Setup options
+ * @param options.getConfig - Function returning the runtime config (tools + liveApiEnabled)
+ * @returns Test state with base URL and the shared callLiveApi mock
+ */
+export function setupRestRoutesServer(options: {
+  getConfig: () => { tools: string[]; liveApiEnabled: boolean };
+}): RestRoutesTestState {
+  const callLiveApi = vi.fn<CallLiveApiFunction>();
+  const state: RestRoutesTestState = {
+    baseUrl: "",
+    callLiveApi,
+  };
+  let server: Server | undefined;
+
+  beforeAll(async () => {
+    const app = express();
+
+    app.use(express.json());
+    registerRestApiRoutes(app, options.getConfig, callLiveApi);
+
+    server = app.listen(0);
+    await new Promise<void>((resolve) => server?.once("listening", resolve));
+    const port = (server.address() as AddressInfo).port;
+
+    state.baseUrl = `http://localhost:${port}`;
+  });
+
+  afterAll(async () => {
+    if (server) {
+      await new Promise<void>((resolve) => server?.close(() => resolve()));
     }
   });
 

@@ -11,9 +11,9 @@ import { toCompactJSLiteral } from "#src/shared/compact-serializer.ts";
 import {
   formatErrorResponse,
   formatSuccessResponse,
-  MAX_CHUNK_SIZE,
-  MAX_CHUNKS,
   MAX_ERROR_DELIMITER,
+  planChunks,
+  reassembleChunks,
 } from "#src/shared/mcp-response-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { isNewerVersion } from "#src/shared/version-check.ts";
@@ -21,12 +21,13 @@ import { MIN_LIVE_VERSION, VERSION } from "#src/shared/version.ts";
 import { createClip } from "#src/tools/clip/create/create-clip.ts";
 import { readClip } from "#src/tools/clip/read/read-clip.ts";
 import { updateClip } from "#src/tools/clip/update/update-clip.ts";
+import { liveApi } from "#src/tools/control/live-api.ts";
 import { playback } from "#src/tools/control/playback.ts";
-import { rawLiveApi } from "#src/tools/control/raw-live-api.ts";
 import { select } from "#src/tools/control/select.ts";
 import { createDevice } from "#src/tools/device/create/create-device.ts";
 import { readDevice } from "#src/tools/device/read/read-device.ts";
 import { updateDevice } from "#src/tools/device/update/update-device.ts";
+import { library } from "#src/tools/library/library.ts";
 import { readLiveSet } from "#src/tools/live-set/read-live-set.ts";
 import { updateLiveSet } from "#src/tools/live-set/update-live-set.ts";
 import { deleteObject } from "#src/tools/operations/delete/delete.ts";
@@ -40,6 +41,7 @@ import { updateTrack } from "#src/tools/track/update/update-track.ts";
 import { connect } from "#src/tools/workflow/connect.ts";
 import { context as contextTool } from "#src/tools/workflow/context.ts";
 import { handleCodeExecResult } from "./code-exec-v8-protocol.ts";
+import { handleNodeResponse } from "./node-request-v8-protocol.ts";
 
 // Configure 2 outlets: MCP responses (0) and warnings (1)
 outlets = 2;
@@ -137,7 +139,8 @@ const tools: Record<string, (args: unknown, ctx: ToolContext) => unknown> = {
     return duplicate(args as any, ctx);
   },
   "ppal-context": (args, ctx) => contextTool(args as any, ctx),
-  "ppal-raw-live-api": (args, ctx) => rawLiveApi(args as any, ctx),
+  "ppal-library": (args, ctx) => library(args as any, ctx),
+  "ppal-live-api": (args, ctx) => liveApi(args as any, ctx),
 };
 /* eslint-enable @typescript-eslint/no-explicit-any -- end of tools dispatch section */
 
@@ -229,15 +232,10 @@ export function sampleFolder(path: unknown): void {
  */
 function sendResponse(requestId: string, result: object): void {
   const jsonString = JSON.stringify(result);
+  const { chunks, tooLargeError } = planChunks(jsonString);
 
-  // Calculate required chunks
-  const totalChunks = Math.ceil(jsonString.length / MAX_CHUNK_SIZE);
-
-  if (totalChunks > MAX_CHUNKS) {
-    // Response too large - send error instead
-    const errorResult = formatErrorResponse(
-      `Response too large: ${jsonString.length} bytes would require ${totalChunks} chunks (max ${MAX_CHUNKS})`,
-    );
+  if (tooLargeError != null) {
+    const errorResult = formatErrorResponse(tooLargeError);
 
     outlet(
       0,
@@ -248,13 +246,6 @@ function sendResponse(requestId: string, result: object): void {
     );
 
     return;
-  }
-
-  // Chunk the JSON string
-  const chunks = [];
-
-  for (let i = 0; i < jsonString.length; i += MAX_CHUNK_SIZE) {
-    chunks.push(jsonString.slice(i, i + MAX_CHUNK_SIZE));
   }
 
   // Send as: ["mcp_response", requestId, chunk1, chunk2, ..., delimiter]
@@ -269,6 +260,34 @@ function sendResponse(requestId: string, result: object): void {
  */
 export function code_exec_result(requestId: string, resultJson: string): void {
   handleCodeExecResult(requestId, resultJson);
+}
+
+/**
+ * Handle node_response message from Node after a node_request route ran.
+ * Payload is chunked across the Max IPC boundary the same way mcp_response
+ * is — args are: requestId, chunk1, ..., chunkN, MAX_ERROR_DELIMITER.
+ *
+ * @param requestId - Request identifier
+ * @param rest - Payload chunks followed by MAX_ERROR_DELIMITER
+ */
+export function node_response(requestId: string, ...rest: unknown[]): void {
+  let json: string;
+
+  try {
+    json = reassembleChunks(rest);
+  } catch (error) {
+    // Wire-format error (missing delimiter, etc.). Surface as a failure
+    // response so the pending Promise resolves rather than hanging until
+    // the 10s timeout — and log loudly so it shows in the Max console.
+    const message = error instanceof Error ? error.message : String(error);
+
+    console.error(
+      `node_response wire-format error [requestId=${requestId}]: ${message}`,
+    );
+    json = JSON.stringify({ success: false, error: message });
+  }
+
+  handleNodeResponse(requestId, json);
 }
 
 // Handle messages from Node for Max
