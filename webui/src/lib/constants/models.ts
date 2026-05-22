@@ -64,9 +64,9 @@ export const ANTHROPIC_MODELS = [
 ];
 
 export const GEMINI_MODELS = [
-  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash" },
+  { value: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
-  { value: "gemini-3.1-flash-lite-preview", label: "Gemini 3.1 Flash Lite" },
+  { value: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite" },
   OTHER_MODEL_OPTION,
 ];
 

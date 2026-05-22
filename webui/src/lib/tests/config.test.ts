@@ -23,13 +23,13 @@ describe("config", () => {
   });
 
   describe("getModelName", () => {
-    it("returns display name for gemini-3-flash-preview", () => {
-      expect(getModelName("gemini-3-flash-preview")).toBe("Gemini 3 Flash");
+    it("returns display name for gemini-3.5-flash", () => {
+      expect(getModelName("gemini-3.5-flash")).toBe("Gemini 3.5 Flash");
     });
 
-    it("returns display name for gemini-3.1-flash-lite-preview", () => {
-      expect(getModelName("gemini-3.1-flash-lite-preview")).toBe(
-        "Gemini 3.1 Flash Lite",
+    it("returns display name for gemini-3.1-flash-lite", () => {
+      expect(getModelName("gemini-3.1-flash-lite")).toBe(
+        "Gemini 3.1 Flash-Lite",
       );
     });
 
