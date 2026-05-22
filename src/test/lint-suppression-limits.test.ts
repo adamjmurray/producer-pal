@@ -32,7 +32,12 @@ const TS_EXPECT_ERROR_LIMITS: TreeLimits = {
   webui: 0,
 };
 
-// TODO: This looks to be enforced by eslint, so we can probably safely simplify and remove it here
+// Note: ESLint @typescript-eslint/ban-ts-comment bans the actual ts-nocheck
+// directive (eslint.config.js: "ts-nocheck": true). The limits here are
+// defense-in-depth for *pattern mentions* — string/regex literals that ESLint
+// would not flag — hence srcTests: 3 (this file's own pattern definitions).
+// Keep as a belt-and-braces cap. Avoid writing the literal pragma in comments
+// here, otherwise this count bumps.
 const TS_NOCHECK_LIMITS: TreeLimits = {
   src: 0,
   srcTests: 3, // This test file's pattern definitions
