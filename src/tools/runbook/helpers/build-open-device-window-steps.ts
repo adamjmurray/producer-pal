@@ -8,15 +8,17 @@ import { type RunbookStep } from "./build-m4l-load-steps.ts";
 /**
  * Device-View pixel anchors for opening a plugin's floating editor window.
  *
- * TODO(recon): Phase-0 computer-use recon against a real VST/AU plugin must
- * confirm this anchor AND that a single click on the device's
- * show/hide-plugin-window toggle opens the floating editor (vs. a title-bar
- * double-click). The Device-View layout is set-dependent (device order, fold
- * state, chain scroll), so callers should treat this as a best-effort default
- * and override via editX/editY after inspecting the selection screenshot.
+ * Recon (2026-05-22, ValhallaVintageVerb AU in Live 12.4): a SINGLE left_click
+ * on the device title-bar's wrench/plug toggle opens the floating editor (and a
+ * second click closes it - it is a toggle, not a double-click). The y here
+ * (~633) is the Device-View title-bar row and is reliable; the x is
+ * set-dependent (device order, fold state, chain scroll) - this value is the
+ * first plugin slot in a Max-device-led chain. Callers should still treat the
+ * default as best-effort and override via editX/editY after inspecting the
+ * selection screenshot whenever the layout differs.
  */
 export const DEVICE_VIEW_ANCHORS = {
-  showWindowButton: [1040, 645] as [number, number],
+  showWindowButton: [387, 633] as [number, number],
 } as const;
 
 interface OpenDeviceWindowStepOptions {

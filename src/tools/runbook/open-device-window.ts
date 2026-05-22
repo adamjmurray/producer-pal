@@ -63,12 +63,13 @@ export function openDeviceWindow(
     editY: args.editY,
   });
 
-  // The default anchor is an unverified recon placeholder; warn the caller
-  // whenever it is used so the click target is not blindly trusted.
+  // The default anchor's gesture is recon-verified (single click toggles the
+  // plugin window) but its x is set-dependent (device order/scroll). Warn the
+  // caller so the click target is not blindly trusted on differing layouts.
   const usingDefaultAnchor = args.editX == null && args.editY == null;
   const notes = usingDefaultAnchor
     ? [
-        "Default anchor (DEVICE_VIEW_ANCHORS.showWindowButton) is an unverified recon-TODO placeholder. Inspect the first (selection) screenshot and pass explicit editX/editY before trusting the click target.",
+        "Default anchor (DEVICE_VIEW_ANCHORS.showWindowButton) is set-dependent: its x assumes the first plugin slot of a Max-device-led chain. Inspect the first (selection) screenshot and pass explicit editX/editY when the Device-View layout differs.",
       ]
     : [];
 

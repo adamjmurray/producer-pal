@@ -104,14 +104,14 @@ describe("ppal-open-device-window runbook", () => {
     expect(r.meta.abletonLocale).toBe("de");
   });
 
-  it("warns in meta.notes when the default placeholder anchor is used", () => {
+  it("warns in meta.notes when the default set-dependent anchor is used", () => {
     const r = openDeviceWindow({ devicePath: "t0/d1" });
 
     expect(r.meta.notes.length).toBeGreaterThan(0);
-    expect(r.meta.notes.some((n) => /placeholder/i.test(n))).toBe(true);
+    expect(r.meta.notes.some((n) => /set-dependent/i.test(n))).toBe(true);
   });
 
-  it("omits the placeholder warning when explicit editX/editY are supplied", () => {
+  it("omits the default-anchor warning when explicit editX/editY are supplied", () => {
     const r = openDeviceWindow({ devicePath: "t0/d1", editX: 900, editY: 660 });
 
     expect(r.meta.notes).toStrictEqual([]);
