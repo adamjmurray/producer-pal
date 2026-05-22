@@ -149,6 +149,7 @@ The Connection tab is where you choose and configure your AI provider and model:
 - **Provider** - Choose from Google, Mistral, OpenAI, Anthropic, Ollama (local),
   LM Studio (local), OpenRouter, or Custom
 - **API Key** - Your API key (for cloud providers)
+- **Test Connection** - Verify your provider settings work before saving
 - **Model** - Select a model or enter a custom model name
 - **Thinking** - Default thinking level for new conversations (Off, Default, or
   Max). Can also be overridden per-message using the thinking toggle in the
@@ -159,6 +160,9 @@ The Connection tab is where you choose and configure your AI provider and model:
 #### Local AI settings (Ollama, LM Studio)
 
 <img src="/img/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
+
+Use **Test Connection** to confirm your local model server is running and
+reachable at the configured URL.
 
 Local models, such as those you can run with Ollama, do not require any API
 keys. Instead, they have a configurable URL.
@@ -191,6 +195,13 @@ you want to prevent the AI from using a specific tool, you can disable it here.
 Consult [the Features page](/features) for more info on what each tool does.
 
 <img src="/img/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>
+
+The **Live API** checkbox under **Advanced** behaves differently from the other
+toggles. The rest only filter which tools the chat UI's AI can see, but this one
+mirrors the device's Setup-tab **Direct Live API** toggle, so enabling it here
+also turns the tool on at the device level (MCP clients and the
+[REST API](/guide/rest-api) will see it too). It is off by default; see
+[Direct Live API](/features#ppal-live-api) for why.
 
 ### Preferences
 

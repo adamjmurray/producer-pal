@@ -205,18 +205,8 @@ The `ppal-live-api` tool provides direct access to the
 [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
 scripting and debugging.
 
-It is opt-in: enable **Live API** on the **Setup** tab of the Producer Pal Max
-for Live device. Disabling it from the Setup tab removes the tool entirely — MCP
-clients and the REST API both stop seeing it. The chat UI's tool list also
-exposes a checkbox for it under "Advanced", but that toggle only filters whether
-the chat UI's own LLM sees the tool — it does not change what MCP clients or the
-REST API see. To fully turn the tool off, use the device Setup tab.
-
-::: warning
-
-This tool can read or modify any Live Set property — use it with care.
-
-:::
+It is opt-in: enable **Direct Live API** on the **Setup** tab of the Producer
+Pal Max for Live device.
 
 ### Request structure
 
@@ -283,8 +273,8 @@ curl -X POST http://localhost:3350/api/tools/ppal-live-api \
 
 ::: info
 
-This tool is shared between MCP and REST. When the **Live API** toggle is off on
-the device Setup tab, requests to `ppal-live-api` return 404 on both interfaces.
+When the **Direct Live API** toggle is off on the device Setup tab, requests to
+`ppal-live-api` return 404.
 
 :::
 

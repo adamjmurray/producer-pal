@@ -65,7 +65,7 @@ The script always sends `?format=json`, so:
 `ppal-live-api` provides direct access to the
 [Live Object Model](https://docs.cycling74.com/apiref/lom/) for reads and writes
 that aren't covered by the higher-level tools. It's off by default — if it's
-missing from `--list-tools`, ask the user to enable **Live API** on the
+missing from `--list-tools`, ask the user to enable **Direct Live API** on the
 **Setup** tab of the Producer Pal device.
 
 ## Prerequisites

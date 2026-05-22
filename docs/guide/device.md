@@ -57,6 +57,10 @@ Example notes:
   slow computers if experiencing timeouts during complex operations)
 - **Small Model Mode** - Reduces prompt size for local/smaller models like
   Ollama and LM Studio
+- **Direct Live API** - Enables the opt-in
+  [Direct Live API](/features#ppal-live-api) tool, giving the AI direct access
+  to the [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
+  scripting, debugging, and covering gaps in Producer Pal's specialized tools
 
 ### Sample Folder
 
@@ -66,20 +70,6 @@ Live's library results in searches.
 
 - **Choose** - Select your sample folder
 - **Clear** - Remove the configured folder
-
-### Live API
-
-Enable the opt-in [Live API](/features#ppal-live-api) tool, which gives the AI
-direct access to the
-[Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
-scripting and debugging. Off by default. When disabled, MCP clients and the
-[REST API](/guide/rest-api) both stop seeing the tool.
-
-::: warning
-
-This tool can read or modify any Live Set property — use it with care.
-
-:::
 
 ### Debug
 

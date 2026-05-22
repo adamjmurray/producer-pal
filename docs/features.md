@@ -40,6 +40,20 @@ It works with virtually any AI, including its
 
 <!--@include: ./_generated/ppal-context-schema.md-->
 
+## Session Tools
+
+### 🔧 Playback (`ppal-playback`) {#ppal-playback}
+
+- Start/stop playback in Session or Arrangement view
+- Play specific scenes or clips
+- Set loop points and playback position
+- Jump to arrangement locators by ID or name
+- Set loop start/end using locators
+- Control which tracks follow the Arrangement
+- Stop all clips or specific track clips
+
+<!--@include: ./_generated/ppal-playback-schema.md-->
+
 ### 🔧 Library (`ppal-library`) {#ppal-library}
 
 - Search Live's browser library by name, tags, content kind, device kind, or
@@ -53,19 +67,47 @@ It works with virtually any AI, including its
 
 <!--@include: ./_generated/ppal-library-schema.md-->
 
-## Transport Tools
+### 🔧 Select (`ppal-select`) {#ppal-select}
 
-### 🔧 Playback (`ppal-playback`) {#ppal-playback}
+- Read current selection and view state (when no arguments)
+  - Returns only non-null fields: selected track, scene, clip, device
+  - Rich object shapes with IDs, types, and context (slot, path, etc.)
+- Update selection and returns only relevant fields
+  - Select any object by ID (auto-detects track/scene/clip/device)
+  - Select tracks by index/category, scenes by index
+  - Select clips by slot position (e.g., `0/3`)
+  - Select devices by path (e.g., `t0/d1`)
+  - Switch between Session and Arrangement views
+  - Auto-switches to session view for scene/clipSlot selection
+  - Detail views auto-managed: clip detail opens on clip selection, device
+    detail on device selection
 
-- Start/stop playback in Session or Arrangement view
-- Play specific scenes or clips
-- Set loop points and playback position
-- Jump to arrangement locators by ID or name
-- Set loop start/end using locators
-- Control which tracks follow the Arrangement
-- Stop all clips or specific track clips
+<!--@include: ./_generated/ppal-select-schema.md-->
 
-<!--@include: ./_generated/ppal-playback-schema.md-->
+## Action Tools
+
+### 🔧 Delete (`ppal-delete`) {#ppal-delete}
+
+- Remove tracks, return tracks, scenes, clips, or devices
+- Bulk delete multiple objects
+
+<!--@include: ./_generated/ppal-delete-schema.md-->
+
+### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
+
+- Copy tracks, scenes, clips, or devices
+- Create multiple copies at once
+- Copy clips anywhere in the Session, Arrangement, or from Session to
+  Arrangement
+  - Position in the Arrangement by bar|beat or locator
+  - Auto-tile clips to fill longer arrangement durations
+- Copy devices to any track, return track, or rack chain
+- Route duplicated tracks to source instrument for MIDI layering
+
+Note: Return tracks and devices on return tracks cannot be duplicated (Live API
+limitation).
+
+<!--@include: ./_generated/ppal-duplicate-schema.md-->
 
 ## Live Set Tools
 
@@ -141,6 +183,39 @@ It works with virtually any AI, including its
 
 <!--@include: ./_generated/ppal-update-scene-schema.md-->
 
+## Clip Tools
+
+### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
+
+- Generate MIDI clips with notes, velocities, and timing using
+  [custom notation](#custom-music-notation)
+- Place clips in Session slots or Arrangement timeline
+- Support for probability, velocity ranges, and complex rhythms
+- Apply [transforms](#transforms) to shape notes with math expressions
+- Auto-create scenes as needed
+
+<!--@include: ./_generated/ppal-create-clip-schema.md-->
+
+### 🔧 Read Clip (`ppal-read-clip`) {#ppal-read-clip}
+
+- Get detailed info about any clip in Session or Arrangement
+- Read MIDI notes in [custom notation](#custom-music-notation) (C3, D#4, etc.)
+- Get audio clip gain, pitch, warp settings, and sample info
+
+<!--@include: ./_generated/ppal-read-clip-schema.md-->
+
+### 🔧 Update Clip (`ppal-update-clip`) {#ppal-update-clip}
+
+- Change clip name, color, and loop settings
+- Add/remove MIDI notes using [custom notation](#custom-music-notation)
+- Apply [transforms](#transforms) to modify existing notes and audio properties
+- Change audio clip gain, pitch shift, and warp settings
+- Move clips and change their length in the Arrangement
+- Split arrangement clips at specified positions
+- Update multiple clips at once
+
+<!--@include: ./_generated/ppal-update-clip-schema.md-->
+
 ## Device Tools
 
 ### 🔧 Create Device (`ppal-create-device`) {#ppal-create-device}
@@ -179,94 +254,23 @@ It works with virtually any AI, including its
 
 <!--@include: ./_generated/ppal-update-device-schema.md-->
 
-## Clip Tools
-
-### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
-
-- Generate MIDI clips with notes, velocities, and timing using
-  [custom notation](#custom-music-notation)
-- Place clips in Session slots or Arrangement timeline
-- Support for probability, velocity ranges, and complex rhythms
-- Apply [transforms](#transforms) to shape notes with math expressions
-- Auto-create scenes as needed
-
-<!--@include: ./_generated/ppal-create-clip-schema.md-->
-
-### 🔧 Read Clip (`ppal-read-clip`) {#ppal-read-clip}
-
-- Get detailed info about any clip in Session or Arrangement
-- Read MIDI notes in [custom notation](#custom-music-notation) (C3, D#4, etc.)
-- Get audio clip gain, pitch, warp settings, and sample info
-
-<!--@include: ./_generated/ppal-read-clip-schema.md-->
-
-### 🔧 Update Clip (`ppal-update-clip`) {#ppal-update-clip}
-
-- Change clip name, color, and loop settings
-- Add/remove MIDI notes using [custom notation](#custom-music-notation)
-- Apply [transforms](#transforms) to modify existing notes and audio properties
-- Change audio clip gain, pitch shift, and warp settings
-- Move clips and change their length in the Arrangement
-- Split arrangement clips at specified positions
-- Update multiple clips at once
-
-<!--@include: ./_generated/ppal-update-clip-schema.md-->
-
-## Action Tools
-
-### 🔧 Delete (`ppal-delete`) {#ppal-delete}
-
-- Remove tracks, return tracks, scenes, clips, or devices
-- Bulk delete multiple objects
-
-<!--@include: ./_generated/ppal-delete-schema.md-->
-
-### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
-
-- Copy tracks, scenes, clips, or devices
-- Create multiple copies at once
-- Copy clips anywhere in the Session, Arrangement, or from Session to
-  Arrangement
-  - Position in the Arrangement by bar|beat or locator
-  - Auto-tile clips to fill longer arrangement durations
-- Copy devices to any track, return track, or rack chain
-- Route duplicated tracks to source instrument for MIDI layering
-
-Note: Return tracks and devices on return tracks cannot be duplicated (Live API
-limitation).
-
-<!--@include: ./_generated/ppal-duplicate-schema.md-->
-
-### 🔧 Select (`ppal-select`) {#ppal-select}
-
-- Read current selection and view state (when no arguments)
-  - Returns only non-null fields: selected track, scene, clip, device
-  - Rich object shapes with IDs, types, and context (slot, path, etc.)
-- Update selection and returns only relevant fields
-  - Select any object by ID (auto-detects track/scene/clip/device)
-  - Select tracks by index/category, scenes by index
-  - Select clips by slot position (e.g., `0/3`)
-  - Select devices by path (e.g., `t0/d1`)
-  - Switch between Session and Arrangement views
-  - Auto-switches to session view for scene/clipSlot selection
-  - Detail views auto-managed: clip detail opens on clip selection, device
-    detail on device selection
-
-<!--@include: ./_generated/ppal-select-schema.md-->
-
 ## Advanced Tools
 
 ### 🔧 Live API (`ppal-live-api`) {#ppal-live-api}
 
 Direct access to the
 [Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
-scripting and debugging. Can read or modify any Live Set property — use with
-care.
+scripting and debugging.
 
-**Off by default.** Enable on the **Setup** tab of the Producer Pal Max for Live
-device. When disabled, MCP clients and the [REST API](/guide/rest-api) both stop
-seeing the tool. See the [REST API Live API section](/guide/rest-api#live-api)
-for the full operation reference and examples.
+**Off by default.** Producer Pal's specialized tools are tuned for reliable
+results across most models. The raw Live API is low-level and can give weaker
+results out of the box, so it's hidden rather than competing with the focused
+tools. It's a powerful escape hatch for scripting and advanced workflows,
+especially with capable coding agents. Enable it on the **Setup** tab of the
+Producer Pal Max for Live device. When disabled, MCP clients and the
+[REST API](/guide/rest-api) both stop seeing the tool. See the
+[REST API Live API section](/guide/rest-api#live-api) for the full operation
+reference and examples.
 
 <!--@include: ./_generated/ppal-live-api-schema.md-->
 
