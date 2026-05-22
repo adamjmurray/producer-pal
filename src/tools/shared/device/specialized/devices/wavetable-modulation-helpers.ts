@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { coerceInt } from "../specialized-device-param-helpers.ts";
 
 // Wavetable mod-matrix helpers. AJM-373. See
@@ -196,7 +197,7 @@ export function addModulationTargetAction(
     return;
   }
 
-  device.call("add_parameter_to_modulation_matrix", param);
+  device.call("add_parameter_to_modulation_matrix", toLiveApiId(param.id));
 }
 
 /**
@@ -261,7 +262,7 @@ function ensureModulationTarget(
     return -1;
   }
 
-  device.call("add_parameter_to_modulation_matrix", param);
+  device.call("add_parameter_to_modulation_matrix", toLiveApiId(param.id));
   targetIndex = resolveTargetIndex(device, target);
 
   if (targetIndex < 0) {

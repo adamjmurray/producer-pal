@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import {
   coerceInt,
   readEnumByIndex,
@@ -106,7 +107,7 @@ function buildOscParams(
   const categoryParam: PseudoParam = {
     name: categoryName,
     read: (device) => {
-      const list = device.getProperty(
+      const list = device.getPropertyList(
         "oscillator_wavetable_categories",
       ) as string[];
       const index = device.getProperty(categoryProp) as number;
@@ -114,7 +115,7 @@ function buildOscParams(
       return list[index];
     },
     write: (device, value, toolName) => {
-      const list = device.getProperty(
+      const list = device.getPropertyList(
         "oscillator_wavetable_categories",
       ) as string[];
       const index = list.indexOf(String(value));
@@ -134,13 +135,13 @@ function buildOscParams(
   const wavetableParam: PseudoParam = {
     name: wavetableName,
     read: (device) => {
-      const list = device.getProperty(oscListProp) as string[];
+      const list = device.getPropertyList(oscListProp) as string[];
       const index = device.getProperty(wavetableIndexProp) as number;
 
       return list[index];
     },
     write: (device, value, toolName) => {
-      const list = device.getProperty(oscListProp) as string[];
+      const list = device.getPropertyList(oscListProp) as string[];
       const index = list.indexOf(String(value));
 
       if (index < 0) {
@@ -281,10 +282,10 @@ export const wavetableSpec: SpecializedDeviceSpec = {
   readModulations,
 
   readOptions(device) {
-    const osc1Wavetables = device.getProperty(
+    const osc1Wavetables = device.getPropertyList(
       "oscillator_1_wavetables",
     ) as string[];
-    const osc2Wavetables = device.getProperty(
+    const osc2Wavetables = device.getPropertyList(
       "oscillator_2_wavetables",
     ) as string[];
 
@@ -292,7 +293,10 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     const children = device.getChildren("parameters");
 
     for (const param of children) {
-      const isModulatable = device.call("is_parameter_modulatable", param);
+      const isModulatable = device.call(
+        "is_parameter_modulatable",
+        toLiveApiId(param.id),
+      );
 
       if (isModulatable === 1) {
         modulatableParameters.push(String(param.getProperty("name")));

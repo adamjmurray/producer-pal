@@ -25,7 +25,7 @@ const EMPTY_FILE_SENTINEL = "<empty>";
  * @returns Array of category name strings (underscore-separated)
  */
 function readCategoryList(device: LiveAPI): string[] {
-  return device.getProperty("ir_category_list") as string[];
+  return device.getPropertyList("ir_category_list") as string[];
 }
 
 /**
@@ -34,7 +34,7 @@ function readCategoryList(device: LiveAPI): string[] {
  * @returns Array of file name strings (may contain sentinel "<empty>")
  */
 function readFileList(device: LiveAPI): string[] {
-  return device.getProperty("ir_file_list") as string[];
+  return device.getPropertyList("ir_file_list") as string[];
 }
 
 /**

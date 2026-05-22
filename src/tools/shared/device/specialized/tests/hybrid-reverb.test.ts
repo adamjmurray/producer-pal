@@ -27,9 +27,7 @@ const MOCK_FILE_LIST = ["Berliner Hall LR", "Town Hall Long", "Studio Verb"];
 
 /**
  * Register a mock Hybrid Reverb device and return its LiveAPI.
- * Lists must be nested arrays so getProperty() returns the array (not just
- * the first element): register [["a","b"]] → get() returns [["a","b"]] →
- * getProperty() returns result[0] which is ["a","b"].
+ * List props register flat (["a","b"]) so getPropertyList() returns ["a","b"].
  * @param properties - Property overrides merged onto Hybrid Reverb defaults
  * @returns The Hybrid Reverb LiveAPI object
  */
@@ -41,9 +39,9 @@ function registerHybridReverb(
     properties: {
       class_display_name: "Hybrid Reverb",
       ir_category_index: 1,
-      ir_category_list: [MOCK_CATEGORY_LIST],
+      ir_category_list: MOCK_CATEGORY_LIST,
       ir_file_index: 0,
-      ir_file_list: [MOCK_FILE_LIST],
+      ir_file_list: MOCK_FILE_LIST,
       ir_attack_time: 0.1,
       ir_decay_time: 5.0,
       ir_size_factor: 1.0,
@@ -165,7 +163,7 @@ describe("Hybrid Reverb pseudo-params", () => {
 
     it("returns undefined for the <empty> sentinel", () => {
       const device = registerHybridReverb({
-        ir_file_list: [["<empty>"]],
+        ir_file_list: ["<empty>"],
         ir_file_index: 0,
       });
 
@@ -210,7 +208,7 @@ describe("Hybrid Reverb pseudo-params", () => {
 
     it("warns and skips when category is empty (sentinel only)", () => {
       const device = registerHybridReverb({
-        ir_file_list: [["<empty>"]],
+        ir_file_list: ["<empty>"],
       });
 
       applySpecializedParamWrite(device, "irFile", "Any File", "updateDevice");
@@ -381,7 +379,7 @@ describe("Hybrid Reverb pseudo-params", () => {
 
     it("returns empty irFileList when the category has only the sentinel", () => {
       const device = registerHybridReverb({
-        ir_file_list: [["<empty>"]],
+        ir_file_list: ["<empty>"],
       });
 
       const options = readSpecializedOptions(device);
@@ -391,7 +389,7 @@ describe("Hybrid Reverb pseudo-params", () => {
 
     it("excludes the sentinel but keeps other files when mixed", () => {
       const device = registerHybridReverb({
-        ir_file_list: [["File A", "<empty>", "File B"]],
+        ir_file_list: ["File A", "<empty>", "File B"],
       });
 
       const options = readSpecializedOptions(device);
@@ -423,9 +421,9 @@ describe("Hybrid Reverb via read-device", () => {
         is_active: 1,
         parameters: [],
         ir_category_index: 1,
-        ir_category_list: [MOCK_CATEGORY_LIST],
+        ir_category_list: MOCK_CATEGORY_LIST,
         ir_file_index: 0,
-        ir_file_list: [MOCK_FILE_LIST],
+        ir_file_list: MOCK_FILE_LIST,
         ir_attack_time: 0.1,
         ir_decay_time: 5.0,
         ir_size_factor: 1.0,

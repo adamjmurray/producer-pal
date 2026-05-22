@@ -52,7 +52,7 @@ function buildModMethods(
 
 /**
  * Register a mock Wavetable device and return its LiveAPI.
- * Lists must be double-nested: register [[a,b]] so getProperty() returns [a,b].
+ * List props register flat ([a,b]) so getPropertyList() returns [a,b].
  * @param properties - Property overrides merged onto Wavetable defaults
  * @param methods - Method overrides for device.call()
  * @returns The Wavetable LiveAPI object
@@ -76,9 +76,9 @@ function registerWavetable(
       oscillator_2_wavetable_category: 0,
       oscillator_1_wavetable_index: 0,
       oscillator_2_wavetable_index: 0,
-      oscillator_wavetable_categories: [OSC_CATEGORIES],
-      oscillator_1_wavetables: [OSC1_WAVETABLES],
-      oscillator_2_wavetables: [OSC2_WAVETABLES],
+      oscillator_wavetable_categories: OSC_CATEGORIES,
+      oscillator_1_wavetables: OSC1_WAVETABLES,
+      oscillator_2_wavetables: OSC2_WAVETABLES,
       parameters: PARAM_IDS,
       ...properties,
     },
@@ -767,9 +767,9 @@ describe("Wavetable via read-device", () => {
         oscillator_2_wavetable_category: 1,
         oscillator_1_wavetable_index: 1,
         oscillator_2_wavetable_index: 0,
-        oscillator_wavetable_categories: [OSC_CATEGORIES],
-        oscillator_1_wavetables: [OSC1_WAVETABLES],
-        oscillator_2_wavetables: [OSC2_WAVETABLES],
+        oscillator_wavetable_categories: OSC_CATEGORIES,
+        oscillator_1_wavetables: OSC1_WAVETABLES,
+        oscillator_2_wavetables: OSC2_WAVETABLES,
         ...properties,
       },
       methods: {
