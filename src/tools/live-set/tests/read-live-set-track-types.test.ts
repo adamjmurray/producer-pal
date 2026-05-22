@@ -194,7 +194,15 @@ describe("readLiveSet - track types", () => {
 
     // Test explicit list - should produce identical result
     const resultExplicit = readLiveSet({
-      include: ["scenes", "routings", "tracks", "color", "locators", "mixer"],
+      include: [
+        "scenes",
+        "routings",
+        "tracks",
+        "devices",
+        "color",
+        "locators",
+        "mixer",
+      ],
     });
 
     // Results should be identical

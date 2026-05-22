@@ -20,6 +20,7 @@ export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
         z.enum([
           "tracks",
           "scenes",
+          "devices",
           "routings",
           "mixer",
           "color",
@@ -29,7 +30,7 @@ export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
       )
       .default([])
       .describe(
-        'tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes). locators = arrangement markers. "*" = all',
+        'tracks, scenes = lists. devices = device/plugin list per track (use with tracks). routings, mixer, color = detail (use with tracks/scenes). locators = arrangement markers. "*" = all',
       ),
   },
 
@@ -37,7 +38,7 @@ export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
     excludeEnumValues: { include: ["locators", "*"] },
     descriptionOverrides: {
       include:
-        "tracks, scenes = lists. routings, mixer, color = detail (use with tracks/scenes)",
+        "tracks, scenes = lists. devices = device/plugin list per track (use with tracks). routings, mixer, color = detail (use with tracks/scenes)",
     },
   },
 });

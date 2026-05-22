@@ -26,7 +26,7 @@ const LOCATORS = "locators";
  * All available include options mapped by tool type
  */
 const ALL_INCLUDE_OPTIONS: Record<string, string[]> = {
-  song: ["scenes", "routings", TRACKS, COLOR, MIXER, LOCATORS],
+  song: ["scenes", "routings", TRACKS, DEVICES, COLOR, MIXER, LOCATORS],
   track: [
     SESSION_CLIPS,
     ARRANGEMENT_CLIPS,

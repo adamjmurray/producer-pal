@@ -43,8 +43,8 @@ debugging, but should be avoided in production for large Live Sets.
 
 `ppal-read-track` and `ppal-read-scene` pass their full `include` array through
 to `readClip()`. Only clip-recognized includes affect clip output.
-`ppal-read-live-set` propagates only track-level includes (`routings`, `mixer`,
-`color`) to its nested track/scene reads.
+`ppal-read-live-set` propagates track-level includes (`devices`, `routings`,
+`mixer`, `color`) to its nested track/scene reads.
 
 ### Redundant field stripping
 
@@ -105,9 +105,11 @@ Returns the Live Set overview. Use includes to expand track/scene detail.
 - `routings` — propagated: adds routing info to tracks
 - `mixer` — propagated: adds gain, pan, sends to tracks
 - `color` — propagated: adds hex color to tracks and scenes
+- `devices` — propagated: adds the device/plugin list to each track (regular,
+  return, and master) — full-set device overview in one call
 - `locators` — adds arrangement cue points with names and bar|beat positions
 
-For device details, use `ppal-read-track` with `devices` include. For clip
+For device parameters or rack-chain details, use `ppal-read-device`. For clip
 details, use `ppal-read-track` with `session-clips` or `arrangement-clips`. For
 clip notes and audio properties, use `ppal-read-clip`.
 
