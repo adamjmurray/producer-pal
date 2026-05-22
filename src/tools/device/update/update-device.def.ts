@@ -44,6 +44,15 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .describe(
         "name=value per line (display units: enum string, note name, number)",
       ),
+    // Intentionally an array (not the usual comma-separated string): action
+    // arguments themselves contain commas (e.g. setModulation('x','y',0.5)), so
+    // a delimited string would be ambiguous. One action string per element.
+    actions: z
+      .array(z.string())
+      .optional()
+      .describe(
+        'Device-specific action(s), function-call syntax: bare name or name(args). E.g. "reverse", "warpAs(4)", "setModulation(\'Osc 1 Pos\',\'Env 2\',0.5)"',
+      ),
     macroVariation: z
       .enum(["create", "load", "delete", "revert", "randomize"])
       .optional()
@@ -99,6 +108,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
 
   smallModelModeConfig: {
     excludeParams: [
+      "actions",
       "macroVariation",
       "macroVariationIndex",
       "macroCount",

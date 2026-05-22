@@ -31,12 +31,13 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
           "param-values",
           "return-chains",
           "sample",
+          "options",
           "*",
         ]),
       )
       .default([])
       .describe(
-        'chains, return-chains, drum-pads = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file. "*" = all',
+        'chains, return-chains, drum-pads = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file. options = dynamic catalogs for specialized devices (IR files, sidechain sources, wavetables). "*" = all',
       ),
     maxDepth: z.coerce
       .number()
@@ -58,7 +59,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
     excludeEnumValues: { include: ["drum-pads", "return-chains", "*"] },
     descriptionOverrides: {
       include:
-        "chains = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file",
+        "chains = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file. options = device catalogs",
       maxDepth:
         "Device tree depth for chains. 0=chains only with deviceCount, 1=direct devices, 2+=deeper",
     },

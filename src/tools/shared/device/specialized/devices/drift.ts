@@ -1,0 +1,174 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import * as console from "#src/shared/v8-max-console.ts";
+import {
+  coerceInt,
+  readEnumByIndex,
+  writeEnumByIndex,
+  writeIntFromSet,
+} from "../specialized-device-param-helpers.ts";
+import {
+  type PseudoParam,
+  type SpecializedDeviceSpec,
+} from "../specialized-device-types.ts";
+
+// Drift (DriftDevice, class_name "Drift"). AJM-374. See
+// dev/plans/Specialized-Device-Classes.md.
+// Declarative mod matrix: each slot is an int `_index` property; the value
+// lists are stable, hardcoded. Modulation amounts are regular DeviceParameters
+// and are NOT duplicated here.
+
+const SOURCES = [
+  "Env 1",
+  "Env 2",
+  "LFO",
+  "Key",
+  "Vel",
+  "Mod",
+  "Press",
+  "Slide",
+] as const;
+
+const TARGETS = [
+  "None",
+  "Osc 1 Gain",
+  "Osc 1 Shape",
+  "Osc 2 Gain",
+  "Osc 2 Detune",
+  "Noise Gain",
+  "LP Frequency",
+  "LP Resonance",
+  "HP Frequency",
+  "LFO Rate",
+  "Cyc Env Rate",
+  "Main Volume",
+] as const;
+
+const VOICE_MODES = ["Poly", "Mono", "Stereo", "Unison"] as const;
+
+const VOICE_COUNTS = [4, 8, 16, 24, 32] as const;
+
+/**
+ * Build a pseudo-param backed by a stable string enum via an `_index` property.
+ * @param name - Camel-case param name
+ * @param property - Live API property name (the `_index` int)
+ * @param labels - Enum labels in index order
+ * @returns A PseudoParam for the slot
+ */
+function enumParam(
+  name: string,
+  property: string,
+  labels: readonly string[],
+): PseudoParam {
+  return {
+    name,
+    read: (device) => readEnumByIndex(device, property, labels),
+    write: (device, value, toolName) =>
+      writeEnumByIndex(device, property, value, labels, toolName, name),
+  };
+}
+
+/**
+ * Read the voice count from voice_count_index (returns the count value, not the
+ * index).
+ * @param device - LiveAPI device object
+ * @returns The voice count (4, 8, 16, 24, or 32)
+ */
+function readVoiceCount(device: LiveAPI): number | undefined {
+  const index = device.getProperty("voice_count_index") as number;
+
+  return VOICE_COUNTS[index];
+}
+
+/**
+ * Write the voice count by writing its catalog index to voice_count_index.
+ * Warns and skips when the value is not in the allowed set.
+ * @param device - LiveAPI device object
+ * @param value - Incoming value (must be 4, 8, 16, 24, or 32)
+ * @param toolName - Calling tool name for warning prefix
+ */
+function writeVoiceCount(
+  device: LiveAPI,
+  value: string | number,
+  toolName: string,
+): void {
+  writeIntFromSet(
+    device,
+    "voice_count_index",
+    value,
+    VOICE_COUNTS,
+    toolName,
+    "voiceCount",
+    true,
+  );
+}
+
+/**
+ * Read pitch_bend_range from the device.
+ * @param device - LiveAPI device object
+ * @returns The pitch bend range in semitones
+ */
+function readPitchBendRange(device: LiveAPI): number {
+  return device.getProperty("pitch_bend_range") as number;
+}
+
+/**
+ * Write the pitch bend range. Live clamps silently so we pass through any int.
+ * Warns and skips on non-integer input.
+ * @param device - LiveAPI device object
+ * @param value - Incoming value (semitones, integer)
+ * @param toolName - Calling tool name for warning prefix
+ */
+function writePitchBendRange(
+  device: LiveAPI,
+  value: string | number,
+  toolName: string,
+): void {
+  const n = coerceInt(value);
+
+  if (n == null) {
+    console.warn(
+      `${toolName}: pitchBendRange must be an integer (got "${value}")`,
+    );
+
+    return;
+  }
+
+  device.set("pitch_bend_range", n);
+}
+
+export const driftSpec: SpecializedDeviceSpec = {
+  displayNames: ["Drift"],
+  params: [
+    // Source slots — fixed targets (filter, LFO, pitch, shape)
+    enumParam("filterMod1Source", "mod_matrix_filter_source_1_index", SOURCES),
+    enumParam("filterMod2Source", "mod_matrix_filter_source_2_index", SOURCES),
+    enumParam("lfoSource", "mod_matrix_lfo_source_index", SOURCES),
+    enumParam("pitchMod1Source", "mod_matrix_pitch_source_1_index", SOURCES),
+    enumParam("pitchMod2Source", "mod_matrix_pitch_source_2_index", SOURCES),
+    enumParam("shapeSource", "mod_matrix_shape_source_index", SOURCES),
+    // Source slots — three free slots
+    enumParam("mod1Source", "mod_matrix_source_1_index", SOURCES),
+    enumParam("mod2Source", "mod_matrix_source_2_index", SOURCES),
+    enumParam("mod3Source", "mod_matrix_source_3_index", SOURCES),
+    // Target slots — three free slots ("None" disables the slot)
+    enumParam("mod1Target", "mod_matrix_target_1_index", TARGETS),
+    enumParam("mod2Target", "mod_matrix_target_2_index", TARGETS),
+    enumParam("mod3Target", "mod_matrix_target_3_index", TARGETS),
+    // Voice / pitch config
+    enumParam("voiceMode", "voice_mode_index", VOICE_MODES),
+    {
+      name: "voiceCount",
+      read: readVoiceCount,
+      write: writeVoiceCount,
+    },
+    {
+      name: "pitchBendRange",
+      read: readPitchBendRange,
+      write: writePitchBendRange,
+    },
+  ],
+};
