@@ -179,7 +179,7 @@ function writeSidechainChannel(
   value: string | number,
   toolName: string,
 ): void {
-  const channelName = String(value);
+  const channelName = String(value).trim();
   const available = readAvailableChannels(device);
   const entry = available.find((e) => e.display_name === channelName);
 

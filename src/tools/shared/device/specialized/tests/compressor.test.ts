@@ -436,6 +436,23 @@ describe("Compressor sidechainChannel write", () => {
     );
   });
 
+  it("trims surrounding whitespace before matching the channel name", () => {
+    registerLiveSetTracks();
+    const device = registerCompressor();
+
+    applySpecializedParamWrite(
+      device,
+      "sidechainChannel",
+      "  Post FX  ",
+      "updateDevice",
+    );
+
+    expect(device.set).toHaveBeenCalledWith(
+      "input_routing_channel",
+      JSON.stringify({ input_routing_channel: { identifier: 21 } }),
+    );
+  });
+
   it("warns and skips for an unavailable channel name", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
