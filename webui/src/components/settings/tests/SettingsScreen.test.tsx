@@ -9,6 +9,7 @@ import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { SettingsScreen } from "#webui/components/settings/SettingsScreen";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 
 // Mock child components
 vi.mock(import("#webui/components/settings/ConnectionTab"), async () => {
@@ -145,6 +146,9 @@ describe("SettingsScreen", () => {
     voiceSpeed: 1.0,
     setVoiceSpeed: vi.fn(),
     savedVoiceSpeed: 1.0,
+    turnDetection: DEFAULT_TURN_DETECTION,
+    setTurnDetection: vi.fn(),
+    savedTurnDetection: DEFAULT_TURN_DETECTION,
   };
 
   const defaultDisplay = {

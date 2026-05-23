@@ -146,6 +146,8 @@ function SettingsTabContent(props: SettingsScreenProps) {
           setRealtimeVoice={settings.setRealtimeVoice}
           voiceSpeed={settings.voiceSpeed}
           setVoiceSpeed={settings.setVoiceSpeed}
+          turnDetection={settings.turnDetection}
+          setTurnDetection={settings.setTurnDetection}
           activeVoice={props.activeVoice}
         />
       )}

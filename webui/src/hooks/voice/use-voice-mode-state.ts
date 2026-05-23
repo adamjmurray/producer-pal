@@ -74,6 +74,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     voice: settings.savedRealtimeVoice,
     speed: settings.savedVoiceSpeed,
     thinking: settings.thinking,
+    turnDetection: settings.savedTurnDetection,
   });
 
   const persistence = useVoicePersistence({

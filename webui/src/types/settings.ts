@@ -2,6 +2,8 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
+
 /**
  * Type definitions for provider settings and configuration.
  *
@@ -92,4 +94,13 @@ export interface UseSettingsReturn {
 
   /** Persisted voice speed (last save). Read by useVoiceSession at connect time. */
   savedVoiceSpeed: number;
+
+  /** In-modal OpenAI Realtime turn-detection (VAD) settings. Mid-session edits
+   * don't affect the live session — applied on the next Stop → Talk. */
+  turnDetection: TurnDetectionSettings;
+  setTurnDetection: (settings: TurnDetectionSettings) => void;
+
+  /** Persisted turn-detection settings (last save). Read by useVoiceSession at
+   * connect time. */
+  savedTurnDetection: TurnDetectionSettings;
 }

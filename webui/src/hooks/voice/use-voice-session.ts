@@ -12,8 +12,12 @@ import {
   type TransportEvent,
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { mapThinkingToRealtimeEffort } from "#webui/hooks/settings/config-builders";
+import {
+  mapThinkingToRealtimeEffort,
+  mapTurnDetectionToConfig,
+} from "#webui/hooks/settings/config-builders";
 import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import {
   extractErrorMessage,
@@ -51,6 +55,9 @@ interface UseVoiceSessionParams {
   /** Thinking UI level ("Default" | "Max" | "Off"). Mapped to
    * reasoning.effort at connect time. */
   thinking?: string;
+  /** Turn-detection (VAD) settings, applied to audio.input.turnDetection at
+   * connect time. When undefined, the server uses its default endpointing. */
+  turnDetection?: TurnDetectionSettings;
 }
 
 interface UseVoiceSessionReturn {
@@ -115,6 +122,7 @@ export function useVoiceSession(
     voice,
     speed,
     thinking,
+    turnDetection,
   } = params;
 
   const sessionRef = useRef<RealtimeSession | null>(null);
@@ -211,7 +219,16 @@ export function useVoiceSession(
           model: OPENAI_REALTIME_MODEL,
           transport,
           config: {
-            audio: { output: { speed: speed ?? VOICE_SPEED_DEFAULT } },
+            audio: {
+              ...(turnDetection
+                ? {
+                    input: {
+                      turnDetection: mapTurnDetectionToConfig(turnDetection),
+                    },
+                  }
+                : {}),
+              output: { speed: speed ?? VOICE_SPEED_DEFAULT },
+            },
             ...(reasoningEffort
               ? { reasoning: { effort: reasoningEffort } }
               : {}),
@@ -293,6 +310,7 @@ export function useVoiceSession(
       voice,
       speed,
       thinking,
+      turnDetection,
       cleanup,
     ],
   );

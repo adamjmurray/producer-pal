@@ -4,8 +4,14 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { ThinkingStateIcon } from "#webui/components/chat/controls/ThinkingToggle";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import { isRealtimeModel } from "#webui/lib/constants/models";
+import { type Provider } from "#webui/types/settings";
 import { THINKING_LEVELS } from "./controls/thinking-levels";
 import { Tooltip } from "./controls/Tooltip";
+import { TurnDetectionControls } from "./controls/TurnDetectionControls";
+import { VoiceSelector } from "./controls/VoiceSelector";
+import { VoiceSpeedSlider } from "./controls/VoiceSpeedSlider";
 
 export const API_KEY_URLS: Record<string, string | undefined> = {
   anthropic: "https://console.anthropic.com/settings/keys",
@@ -101,5 +107,61 @@ export function SmallModelToggle({
       Small model mode
       <Tooltip text="Simplifies skills and tool parameters for less capable models. Recommended for local models (Ollama and LM Studio)." />
     </label>
+  );
+}
+
+interface VoiceSettingsProps {
+  provider: Provider;
+  model: string;
+  realtimeVoice: string;
+  setRealtimeVoice: (voice: string) => void;
+  voiceSpeed: number;
+  setVoiceSpeed: (speed: number) => void;
+  turnDetection: TurnDetectionSettings;
+  setTurnDetection: (settings: TurnDetectionSettings) => void;
+  activeVoice: string | null;
+}
+
+/**
+ * Voice-mode settings group (voice, speed, turn detection), shown only for the
+ * OpenAI realtime model. Returns null otherwise.
+ * @param props - Component props
+ * @param props.provider - Current provider
+ * @param props.model - Current model id
+ * @param props.realtimeVoice - In-modal voice id
+ * @param props.setRealtimeVoice - Voice setter callback
+ * @param props.voiceSpeed - In-modal playback speed
+ * @param props.setVoiceSpeed - Speed setter callback
+ * @param props.turnDetection - In-modal turn-detection settings
+ * @param props.setTurnDetection - Turn-detection setter callback
+ * @param props.activeVoice - Voice locked into the live session (or null)
+ * @returns Voice settings group, or null when not a realtime selection
+ */
+export function VoiceSettings({
+  provider,
+  model,
+  realtimeVoice,
+  setRealtimeVoice,
+  voiceSpeed,
+  setVoiceSpeed,
+  turnDetection,
+  setTurnDetection,
+  activeVoice,
+}: VoiceSettingsProps) {
+  if (provider !== "openai" || !isRealtimeModel(model)) return null;
+
+  return (
+    <>
+      <VoiceSelector
+        voice={realtimeVoice}
+        setVoice={setRealtimeVoice}
+        activeVoice={activeVoice}
+      />
+      <VoiceSpeedSlider speed={voiceSpeed} setSpeed={setVoiceSpeed} />
+      <TurnDetectionControls
+        settings={turnDetection}
+        setSettings={setTurnDetection}
+      />
+    </>
   );
 }

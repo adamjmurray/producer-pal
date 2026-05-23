@@ -8,6 +8,7 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ConnectionTab } from "#webui/components/settings/ConnectionTab";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 
 // Mock child components
 vi.mock(import("#webui/components/settings/controls/ProviderSelector"), () => ({
@@ -47,6 +48,8 @@ describe("ConnectionTab", () => {
     setRealtimeVoice: vi.fn(),
     voiceSpeed: 1.0,
     setVoiceSpeed: vi.fn(),
+    turnDetection: DEFAULT_TURN_DETECTION,
+    setTurnDetection: vi.fn(),
     activeVoice: null as string | null,
   };
 

@@ -10,6 +10,11 @@ import {
   saveRealtimeVoice,
   saveVoiceSpeed,
 } from "#webui/hooks/settings/settings-helpers";
+import {
+  loadTurnDetection,
+  saveTurnDetection,
+  type TurnDetectionSettings,
+} from "#webui/hooks/settings/turn-detection-helpers";
 
 export interface UseVoiceModeSettingsReturn {
   realtimeVoice: string;
@@ -18,6 +23,9 @@ export interface UseVoiceModeSettingsReturn {
   voiceSpeed: number;
   setVoiceSpeed: (speed: number) => void;
   savedVoiceSpeed: number;
+  turnDetection: TurnDetectionSettings;
+  setTurnDetection: (settings: TurnDetectionSettings) => void;
+  savedTurnDetection: TurnDetectionSettings;
   /** Persist current voice-mode values and update the "saved" snapshots so
    * the live session reads the new values on the next connect. */
   commit: () => void;
@@ -45,17 +53,24 @@ export function useVoiceModeSettings(): UseVoiceModeSettingsReturn {
   const [voiceSpeed, setVoiceSpeedState] = useState<number>(loadVoiceSpeed);
   const [savedVoiceSpeed, setSavedVoiceSpeed] =
     useState<number>(loadVoiceSpeed);
+  const [turnDetection, setTurnDetectionState] =
+    useState<TurnDetectionSettings>(loadTurnDetection);
+  const [savedTurnDetection, setSavedTurnDetection] =
+    useState<TurnDetectionSettings>(loadTurnDetection);
 
   const commit = useCallback(() => {
     saveRealtimeVoice(realtimeVoice);
     saveVoiceSpeed(voiceSpeed);
+    saveTurnDetection(turnDetection);
     setSavedRealtimeVoice(realtimeVoice);
     setSavedVoiceSpeed(voiceSpeed);
-  }, [realtimeVoice, voiceSpeed]);
+    setSavedTurnDetection(turnDetection);
+  }, [realtimeVoice, voiceSpeed, turnDetection]);
 
   const revert = useCallback(() => {
     setRealtimeVoiceState(loadRealtimeVoice());
     setVoiceSpeedState(loadVoiceSpeed());
+    setTurnDetectionState(loadTurnDetection());
   }, []);
 
   return {
@@ -65,6 +80,9 @@ export function useVoiceModeSettings(): UseVoiceModeSettingsReturn {
     voiceSpeed,
     setVoiceSpeed: setVoiceSpeedState,
     savedVoiceSpeed,
+    turnDetection,
+    setTurnDetection: setTurnDetectionState,
+    savedTurnDetection,
     commit,
     revert,
   };

@@ -1,0 +1,121 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+/**
+ * @vitest-environment happy-dom
+ */
+import { act, renderHook } from "@testing-library/preact";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const realtime = vi.hoisted(() => {
+  const constructed: { options: unknown }[] = [];
+
+  class SessionDouble {
+    options: unknown;
+    on = vi.fn();
+    close = vi.fn();
+    constructor(_agent: unknown, options: unknown) {
+      this.options = options;
+      constructed.push(this);
+    }
+
+    connect(): Promise<void> {
+      return Promise.resolve();
+    }
+  }
+
+  return {
+    constructed,
+    module: {
+      RealtimeAgent: class {} as never,
+      RealtimeSession: SessionDouble as never,
+      OpenAIRealtimeWebRTC: class {} as never,
+    },
+    mcpTools: vi.fn(),
+    fetchSpy: vi.fn(),
+  };
+});
+
+vi.mock(import("@openai/agents/realtime"), () => realtime.module);
+vi.mock(import("#webui/hooks/voice/realtime-mcp-tools"), () => ({
+  createRealtimeMcpTools: realtime.mcpTools,
+}));
+
+import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
+
+const ORIGINAL_FETCH = globalThis.fetch;
+
+const PARAMS = {
+  mcpUrl: "http://localhost:3350/mcp",
+  voiceTokenUrl: "http://localhost:3350/voice-token",
+  openAiKey: "sk-test",
+};
+
+beforeEach(() => {
+  realtime.constructed.length = 0;
+  realtime.mcpTools.mockResolvedValue({
+    tools: [],
+    mcpClient: { close: vi.fn(async () => {}) },
+  });
+  realtime.fetchSpy.mockResolvedValue(
+    new Response(JSON.stringify({ value: "ek_token" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+  globalThis.fetch = realtime.fetchSpy as unknown as typeof globalThis.fetch;
+});
+
+afterEach(() => {
+  globalThis.fetch = ORIGINAL_FETCH;
+});
+
+/**
+ * Connect the hook with the given params and return the audio config that was
+ * passed to the realtime session constructor.
+ * @param params - useVoiceSession params
+ * @returns The constructed session's audio config
+ */
+async function connectAndReadAudio(
+  params: Parameters<typeof useVoiceSession>[0],
+): Promise<{ input?: { turnDetection?: unknown } }> {
+  const { result } = renderHook(() => useVoiceSession(params));
+
+  await act(async () => {
+    await result.current.connect();
+  });
+
+  const options = realtime.constructed[0]!.options as {
+    config: { audio: { input?: { turnDetection?: unknown } } };
+  };
+
+  return options.config.audio;
+}
+
+describe("useVoiceSession turn-detection config", () => {
+  it("maps server_vad turnDetection into audio.input", async () => {
+    const turnDetection: TurnDetectionSettings = {
+      mode: "server_vad",
+      threshold: 0.7,
+      silenceDurationMs: 350,
+      eagerness: "auto",
+    };
+
+    const audio = await connectAndReadAudio({ ...PARAMS, turnDetection });
+
+    expect(audio.input?.turnDetection).toStrictEqual({
+      type: "server_vad",
+      threshold: 0.7,
+      silence_duration_ms: 350,
+    });
+  });
+
+  it("omits audio.input when no turnDetection is provided", async () => {
+    const audio = await connectAndReadAudio(PARAMS);
+
+    expect(audio.input).toBeUndefined();
+  });
+});

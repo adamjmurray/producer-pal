@@ -10,9 +10,37 @@ import {
   mapThinkingToOpenRouterEffort,
   mapThinkingToReasoningEffort,
   mapThinkingToRealtimeEffort,
+  mapTurnDetectionToConfig,
 } from "#webui/hooks/settings/config-builders";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 
 describe("config-builders", () => {
+  describe("mapTurnDetectionToConfig", () => {
+    const base: TurnDetectionSettings = {
+      mode: "server_vad",
+      threshold: 0.6,
+      silenceDurationMs: 300,
+      eagerness: "high",
+    };
+
+    it("maps server_vad to threshold + silence, omitting eagerness", () => {
+      expect(mapTurnDetectionToConfig(base)).toStrictEqual({
+        type: "server_vad",
+        threshold: 0.6,
+        silence_duration_ms: 300,
+      });
+    });
+
+    it("maps semantic_vad to eagerness, omitting server knobs", () => {
+      expect(
+        mapTurnDetectionToConfig({ ...base, mode: "semantic_vad" }),
+      ).toStrictEqual({
+        type: "semantic_vad",
+        eagerness: "high",
+      });
+    });
+  });
+
   describe("extractGptVersion", () => {
     it("should extract version from gpt-5.2 models", () => {
       expect(extractGptVersion("gpt-5.2-2025-12-11")).toBe(5.2);

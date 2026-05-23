@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { isRealtimeModel } from "#webui/lib/constants/models";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { type Provider } from "#webui/types/settings";
 import {
   API_KEY_URLS,
@@ -10,11 +10,10 @@ import {
   MODEL_DOCS_URLS,
   SmallModelToggle,
   ThinkingSelector,
+  VoiceSettings,
 } from "./connection-tab-helpers";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
-import { VoiceSelector } from "./controls/VoiceSelector";
-import { VoiceSpeedSlider } from "./controls/VoiceSpeedSlider";
 import { TestConnectionButton } from "./TestConnectionButton";
 
 interface ConnectionTabProps {
@@ -35,6 +34,8 @@ interface ConnectionTabProps {
   setRealtimeVoice: (voice: string) => void;
   voiceSpeed: number;
   setVoiceSpeed: (speed: number) => void;
+  turnDetection: TurnDetectionSettings;
+  setTurnDetection: (settings: TurnDetectionSettings) => void;
   /** Voice currently locked into the live RealtimeSession (or null when idle).
    * Used to render a pending-change notice. */
   activeVoice: string | null;
@@ -76,10 +77,10 @@ export function ConnectionTab({
   setRealtimeVoice,
   voiceSpeed,
   setVoiceSpeed,
+  turnDetection,
+  setTurnDetection,
   activeVoice,
 }: ConnectionTabProps) {
-  const showVoiceSelector = provider === "openai" && isRealtimeModel(model);
-
   return (
     <>
       <ProviderSelector provider={provider} setProvider={setProvider} />
@@ -155,16 +156,17 @@ export function ConnectionTab({
         </p>
       )}
 
-      {showVoiceSelector && (
-        <>
-          <VoiceSelector
-            voice={realtimeVoice}
-            setVoice={setRealtimeVoice}
-            activeVoice={activeVoice}
-          />
-          <VoiceSpeedSlider speed={voiceSpeed} setSpeed={setVoiceSpeed} />
-        </>
-      )}
+      <VoiceSettings
+        provider={provider}
+        model={model}
+        realtimeVoice={realtimeVoice}
+        setRealtimeVoice={setRealtimeVoice}
+        voiceSpeed={voiceSpeed}
+        setVoiceSpeed={setVoiceSpeed}
+        turnDetection={turnDetection}
+        setTurnDetection={setTurnDetection}
+        activeVoice={activeVoice}
+      />
 
       <div className="flex items-center justify-between">
         <ThinkingSelector thinking={thinking} setThinking={setThinking} />

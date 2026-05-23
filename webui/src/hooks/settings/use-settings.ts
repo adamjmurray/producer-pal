@@ -299,5 +299,8 @@ export function useSettings(): UseSettingsReturn {
     voiceSpeed: voiceModeSettings.voiceSpeed,
     setVoiceSpeed: voiceModeSettings.setVoiceSpeed,
     savedVoiceSpeed: voiceModeSettings.savedVoiceSpeed,
+    turnDetection: voiceModeSettings.turnDetection,
+    setTurnDetection: voiceModeSettings.setTurnDetection,
+    savedTurnDetection: voiceModeSettings.savedTurnDetection,
   };
 }

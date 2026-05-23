@@ -3,6 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import {
+  type SemanticEagerness,
+  type TurnDetectionSettings,
+} from "#webui/hooks/settings/turn-detection-helpers";
+
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 export type RealtimeReasoningEffort =
@@ -32,6 +37,38 @@ export function mapThinkingToRealtimeEffort(
     default:
       return undefined;
   }
+}
+
+/** OpenAI Realtime `audio.input.turnDetection` payload (snake_case "as-is"
+ * shape). Only the fields each mode uses are sent. Structurally validated at
+ * the assignment site against the SDK's RealtimeTurnDetectionConfig. */
+export interface RealtimeTurnDetectionPayload {
+  type: "server_vad" | "semantic_vad";
+  threshold?: number;
+  silence_duration_ms?: number;
+  eagerness?: SemanticEagerness;
+}
+
+/**
+ * Maps the UI turn-detection settings to the OpenAI Realtime
+ * audio.input.turnDetection payload. server_vad carries the volume threshold
+ * and silence window; semantic_vad carries the eagerness tier. Each mode omits
+ * the other mode's fields.
+ * @param settings - UI turn-detection settings
+ * @returns The turn-detection payload for the realtime session config
+ */
+export function mapTurnDetectionToConfig(
+  settings: TurnDetectionSettings,
+): RealtimeTurnDetectionPayload {
+  if (settings.mode === "semantic_vad") {
+    return { type: "semantic_vad", eagerness: settings.eagerness };
+  }
+
+  return {
+    type: "server_vad",
+    threshold: settings.threshold,
+    silence_duration_ms: settings.silenceDurationMs,
+  };
 }
 
 /**
