@@ -3,12 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import * as console from "#src/shared/v8-max-console.ts";
 import {
-  coerceInt,
   readEnumByIndex,
   writeEnumByIndex,
   writeIntFromSet,
+  writeIntInRange,
 } from "../specialized-device-param-helpers.ts";
 import {
   type PseudoParam,
@@ -106,6 +105,12 @@ function writeVoiceCount(
   );
 }
 
+// pitch_bend_range accepts integers 0-12. Live silently REVERTS out-of-range
+// writes (verified vs Live 12.4 2026-05-23 — it does NOT clamp), so we
+// pre-validate the range before device.set, matching Spectral Resonator.
+const PITCH_BEND_RANGE_MIN = 0;
+const PITCH_BEND_RANGE_MAX = 12;
+
 /**
  * Read pitch_bend_range from the device.
  * @param device - LiveAPI device object
@@ -113,31 +118,6 @@ function writeVoiceCount(
  */
 function readPitchBendRange(device: LiveAPI): number {
   return device.getProperty("pitch_bend_range") as number;
-}
-
-/**
- * Write the pitch bend range. Live clamps silently so we pass through any int.
- * Warns and skips on non-integer input.
- * @param device - LiveAPI device object
- * @param value - Incoming value (semitones, integer)
- * @param toolName - Calling tool name for warning prefix
- */
-function writePitchBendRange(
-  device: LiveAPI,
-  value: string | number,
-  toolName: string,
-): void {
-  const n = coerceInt(value);
-
-  if (n == null) {
-    console.warn(
-      `${toolName}: pitchBendRange must be an integer (got "${value}")`,
-    );
-
-    return;
-  }
-
-  device.set("pitch_bend_range", n);
 }
 
 export const driftSpec: SpecializedDeviceSpec = {
@@ -168,7 +148,16 @@ export const driftSpec: SpecializedDeviceSpec = {
     {
       name: "pitchBendRange",
       read: readPitchBendRange,
-      write: writePitchBendRange,
+      write: (device, value, toolName) =>
+        writeIntInRange(
+          device,
+          "pitch_bend_range",
+          value,
+          PITCH_BEND_RANGE_MIN,
+          PITCH_BEND_RANGE_MAX,
+          toolName,
+          "pitchBendRange",
+        ),
     },
   ],
 };

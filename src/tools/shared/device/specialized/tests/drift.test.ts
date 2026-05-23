@@ -373,6 +373,28 @@ describe("Drift pseudo-params", () => {
       expect(device.set).toHaveBeenCalledWith("pitch_bend_range", 7);
     });
 
+    it("sets the boundary value 0", () => {
+      const device = registerDrift();
+
+      applySpecializedParamWrite(device, "pitchBendRange", 0, "updateDevice");
+
+      expect(device.set).toHaveBeenCalledWith("pitch_bend_range", 0);
+    });
+
+    it("warns and skips an out-of-range value (Live reverts, does not clamp)", () => {
+      // pitch_bend_range max is 12; Live silently reverts >12 writes, so we
+      // pre-validate rather than pass the value through. See AJM-389.
+      const device = registerDrift();
+
+      applySpecializedParamWrite(device, "pitchBendRange", 13, "updateDevice");
+
+      expect(device.set).not.toHaveBeenCalled();
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("pitchBendRange"),
+      );
+    });
+
     it("warns and skips a non-integer value", () => {
       const device = registerDrift();
 
