@@ -320,8 +320,7 @@ function appendDeviceDetails(
 }
 
 /**
- * Append DeviceParameters, specialized pseudo-params, and modulation-matrix
- * state to a device info object.
+ * Append DeviceParameters and specialized pseudo-params to a device info object.
  * @param device - LiveAPI device object
  * @param deviceInfo - Device info object to mutate
  * @param includeValues - Whether to include current param values
@@ -340,17 +339,12 @@ function appendParameters(
   const pseudoParams = readSpecializedParams(device, paramSearch);
 
   deviceInfo.parameters = [...pseudoParams, ...parameters];
-
-  // Modulation-matrix state (Wavetable only; undefined for other devices).
-  const modulations = readSpecializedModulations(device);
-
-  if (modulations != null) {
-    deviceInfo.modulations = modulations;
-  }
 }
 
 /**
- * Append dynamic catalog data (the `options` include) to a device info object.
+ * Append dynamic catalog data and modulation-matrix state (the `options`
+ * include) to a device info object. Both are opt-in because the matrix scan
+ * costs many Live API calls; only request it when working the mod matrix.
  * @param device - LiveAPI device object
  * @param deviceInfo - Device info object to mutate
  */
@@ -362,6 +356,13 @@ function appendOptions(
 
   if (Object.keys(deviceOptions).length > 0) {
     deviceInfo.options = deviceOptions;
+  }
+
+  // Current modulation-matrix routes (Wavetable only; undefined otherwise).
+  const modulations = readSpecializedModulations(device);
+
+  if (modulations != null) {
+    deviceInfo.modulations = modulations;
   }
 }
 

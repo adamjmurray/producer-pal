@@ -37,7 +37,7 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
       )
       .default([])
       .describe(
-        'chains, return-chains, drum-pads = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file. options = dynamic catalogs for specialized devices (IR files, sidechain sources, wavetables). "*" = all',
+        'chains, return-chains, drum-pads = rack contents (use maxDepth). params, param-values = parameters. drum-map = note names. sample = Simpler file. options = dynamic catalogs for specialized devices (IR files, sidechain sources, wavetables) + Wavetable mod routes. "*" = all',
       ),
     maxDepth: z.coerce
       .number()

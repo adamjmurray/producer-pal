@@ -773,7 +773,7 @@ describe("Wavetable via read-device", () => {
     registerMockObject("p3", { properties: { name: "Volume" } });
   }
 
-  it("includes pseudo-params and modulations when include contains params", () => {
+  it("includes pseudo-params without the modulation scan when include is params", () => {
     registerReadableWavetable();
 
     const result = readDevice({ deviceId: "wt-1", include: ["params"] });
@@ -790,19 +790,12 @@ describe("Wavetable via read-device", () => {
       name: "osc2Category",
       value: "Bass",
     });
-    expect(result.modulations).toBeDefined();
-    expect(result.modulations).toStrictEqual(
-      expect.arrayContaining([
-        { target: "Osc 1 Pos", source: "Env 3", amount: 0.3 },
-      ]),
-    );
+    // The mod-matrix scan is opt-in via "options" to avoid its per-read cost.
+    expect(result.modulations).toBeUndefined();
   });
 
-  it("includes options when include contains options", () => {
-    registerReadableWavetable(
-      {},
-      { ...buildModMethods([]), is_parameter_modulatable: () => 1 },
-    );
+  it("includes options and modulations when include contains options", () => {
+    registerReadableWavetable({}, { is_parameter_modulatable: () => 1 });
 
     const result = readDevice({
       deviceId: "wt-1",
@@ -813,5 +806,10 @@ describe("Wavetable via read-device", () => {
     expect(opts.osc1Wavetables).toStrictEqual(OSC1_WAVETABLES);
     expect(opts.osc2Wavetables).toStrictEqual(OSC2_WAVETABLES);
     expect(Array.isArray(opts.modulatableParameters)).toBe(true);
+    expect(result.modulations).toStrictEqual(
+      expect.arrayContaining([
+        { target: "Osc 1 Pos", source: "Env 3", amount: 0.3 },
+      ]),
+    );
   });
 });
