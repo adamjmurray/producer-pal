@@ -50,6 +50,8 @@ const AUDIO_FX_ENTRY: RoutingEntry = {
   identifier: 16,
 };
 const EXT_IN_ENTRY: RoutingEntry = { display_name: "Ext. In", identifier: 1 };
+const RETURN_ENTRY: RoutingEntry = { display_name: "A-Reverb", identifier: 30 };
+const MASTER_ENTRY: RoutingEntry = { display_name: "Main", identifier: 40 };
 
 // Channel entries used across tests.
 const PRE_FX_ENTRY: RoutingEntry = { display_name: "Pre FX", identifier: 20 };
@@ -154,6 +156,34 @@ function registerLiveSetTracks(): void {
   });
 }
 
+/**
+ * Register a live_set that also exposes a return track ("A-Reverb", id "r1") and
+ * the master track ("Main", id "master-1"), so sidechain reads can resolve
+ * return/master sources to track ids (AJM-391).
+ */
+function registerLiveSetWithReturnsAndMaster(): void {
+  registerMockObject("live_set", {
+    path: "live_set",
+    type: "Device",
+    properties: {
+      tracks: ["id", "t1", "id", "t2"],
+      return_tracks: ["id", "r1"],
+    },
+  });
+
+  registerMockObject("t1", { type: "Device", properties: { name: "Drift" } });
+  registerMockObject("t2", { type: "Device", properties: { name: "AudioFX" } });
+  registerMockObject("r1", {
+    type: "Device",
+    properties: { name: "A-Reverb" },
+  });
+  registerMockObject("master-1", {
+    path: "live_set master_track",
+    type: "Device",
+    properties: { name: "Main" },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // sidechainSourceTrackId — read
 // ---------------------------------------------------------------------------
@@ -193,6 +223,42 @@ describe("Compressor sidechainSourceTrackId read", () => {
 
   it("returns null when display_name does not match any track", () => {
     registerLiveSetTracks();
+    const device = registerCompressor({ inputRoutingType: EXT_IN_ENTRY });
+
+    expect(readSpecializedParams(device)).toContainEqual({
+      name: "sidechainSourceTrackId",
+      value: null,
+    });
+  });
+
+  it("resolves a return-track source to its track id", () => {
+    registerLiveSetWithReturnsAndMaster();
+    const device = registerCompressor({
+      availableTypes: [...DEFAULT_AVAILABLE_TYPES, RETURN_ENTRY],
+      inputRoutingType: RETURN_ENTRY,
+    });
+
+    expect(readSpecializedParams(device)).toContainEqual({
+      name: "sidechainSourceTrackId",
+      value: "r1",
+    });
+  });
+
+  it("resolves a master-track source to its track id", () => {
+    registerLiveSetWithReturnsAndMaster();
+    const device = registerCompressor({
+      availableTypes: [...DEFAULT_AVAILABLE_TYPES, MASTER_ENTRY],
+      inputRoutingType: MASTER_ENTRY,
+    });
+
+    expect(readSpecializedParams(device)).toContainEqual({
+      name: "sidechainSourceTrackId",
+      value: "master-1",
+    });
+  });
+
+  it("still returns null for Ext. In when returns/master are present", () => {
+    registerLiveSetWithReturnsAndMaster();
     const device = registerCompressor({ inputRoutingType: EXT_IN_ENTRY });
 
     expect(readSpecializedParams(device)).toContainEqual({
@@ -558,6 +624,22 @@ describe("Compressor readOptions", () => {
     const options = readSpecializedOptions(device);
 
     expect(options.sidechainSourceTrackIds).toStrictEqual([]);
+  });
+
+  it("includes return-track and master ids when they are routable sources", () => {
+    registerLiveSetWithReturnsAndMaster();
+    const device = registerCompressor({
+      availableTypes: [...DEFAULT_AVAILABLE_TYPES, RETURN_ENTRY, MASTER_ENTRY],
+    });
+
+    const options = readSpecializedOptions(device);
+
+    expect(options.sidechainSourceTrackIds).toStrictEqual([
+      "t1",
+      "t2",
+      "r1",
+      "master-1",
+    ]);
   });
 
   it("includes only tracks present in the available routing types list", () => {

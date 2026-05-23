@@ -13,11 +13,11 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 // namespace; translation happens by matching track names to display_names.
 //
 // READ CAVEATS (write fidelity is exact; read is best-effort by name):
-// - Duplicate track names are ambiguous — the read returns the FIRST regular
-//   track whose name matches the routing display_name.
-// - Return-track / master / "Ext. In" sources have no matching regular-track id
-//   and read back as null even though a source is set. Writes only accept
-//   regular-track ids (readOptions lists the valid sidechainSourceTrackIds).
+// - Regular tracks, return tracks, and the master track all resolve to their
+//   track id (AJM-391). "Ext. In" and other non-track hardware sources have no
+//   track id and still read back as null even though a source is set.
+// - Duplicate track names are ambiguous — the read returns the FIRST matching
+//   track (regular tracks are searched before returns/master).
 
 interface RoutingEntry {
   display_name: string;
@@ -51,12 +51,21 @@ function readAvailableChannels(device: LiveAPI): RoutingEntry[] {
 }
 
 /**
- * Read all tracks from the live set as an array of {id, name} objects.
- * @returns Array of {id, name} for each track
+ * Read every track that can serve as a sidechain source — regular tracks,
+ * return tracks, and the master track — as {id, name} objects. Including
+ * returns/master (AJM-391) lets reads resolve those sources to a track id
+ * instead of null; hardware sources ("Ext. In") still have no track id and read
+ * back as null. Regular tracks come first, so a name shared with a return/master
+ * resolves to the regular track (best-effort; duplicate names remain ambiguous).
+ * @returns Array of {id, name} for each routable track
  */
-function readLiveSetTracks(): Array<{ id: string; name: string }> {
+function readRoutableTracks(): Array<{ id: string; name: string }> {
   const liveSet = LiveAPI.from("live_set");
-  const tracks = liveSet.getChildren("tracks");
+  const tracks = [
+    ...liveSet.getChildren("tracks"),
+    ...liveSet.getChildren("return_tracks"),
+    liveSet.child("master_track"),
+  ];
 
   return tracks.map((track) => ({
     id: track.id,
@@ -80,7 +89,7 @@ function readSidechainSourceTrackId(device: LiveAPI): string | null {
   }
 
   const trackName = routingType.display_name;
-  const tracks = readLiveSetTracks();
+  const tracks = readRoutableTracks();
   const match = tracks.find((t) => t.name === trackName);
 
   return match != null ? match.id : null;
@@ -204,9 +213,9 @@ function writeSidechainChannel(
 
 /**
  * Build the Compressor option catalogs:
- * - `sidechainSourceTrackIds`: track ids whose display_name in
- *   available_input_routing_types matches a live_set track name. Excludes
- *   "No Input", "Ext. In", "Master", and return tracks (no matching track id).
+ * - `sidechainSourceTrackIds`: track ids (regular, return, or master) whose name
+ *   matches a display_name in available_input_routing_types. Excludes "No Input",
+ *   "Ext. In", and other non-track hardware sources (no matching track id).
  * - `sidechainChannels`: valid `sidechainChannel` values for the CURRENTLY
  *   selected source. The list is source-dependent (a plain track offers Pre
  *   FX/Post FX/Post Mixer; a drum-rack/chained source exposes per-device
@@ -216,7 +225,7 @@ function writeSidechainChannel(
  */
 function readCompressorOptions(device: LiveAPI): Record<string, unknown> {
   const available = readAvailableTypes(device);
-  const tracks = readLiveSetTracks();
+  const tracks = readRoutableTracks();
   const trackByName = new Map(tracks.map((t) => [t.name, t.id]));
   const trackIds: string[] = [];
 

@@ -71,6 +71,35 @@ function enumParam(
 }
 
 /**
+ * Build a source pseudo-param for one of the 3 free mod-matrix slots. Reads are
+ * omitted when the paired target is "None" (the slot is disabled) — otherwise a
+ * source value implies an active route that isn't there (AJM-391). Writes still
+ * set the source independently, so a source can be staged before its target.
+ * @param name - Camel-case param name
+ * @param sourceProperty - The source `_index` property for this slot
+ * @param targetProperty - The paired target `_index` property for this slot
+ * @returns A PseudoParam for the free-slot source
+ */
+function freeSlotSourceParam(
+  name: string,
+  sourceProperty: string,
+  targetProperty: string,
+): PseudoParam {
+  return {
+    name,
+    read: (device) => {
+      if (readEnumByIndex(device, targetProperty, TARGETS) === "None") {
+        return;
+      }
+
+      return readEnumByIndex(device, sourceProperty, SOURCES);
+    },
+    write: (device, value, toolName) =>
+      writeEnumByIndex(device, sourceProperty, value, SOURCES, toolName, name),
+  };
+}
+
+/**
  * Read the voice count from voice_count_index (returns the count value, not the
  * index).
  * @param device - LiveAPI device object
@@ -130,10 +159,23 @@ export const driftSpec: SpecializedDeviceSpec = {
     enumParam("pitchMod1Source", "mod_matrix_pitch_source_1_index", SOURCES),
     enumParam("pitchMod2Source", "mod_matrix_pitch_source_2_index", SOURCES),
     enumParam("shapeSource", "mod_matrix_shape_source_index", SOURCES),
-    // Source slots — three free slots
-    enumParam("mod1Source", "mod_matrix_source_1_index", SOURCES),
-    enumParam("mod2Source", "mod_matrix_source_2_index", SOURCES),
-    enumParam("mod3Source", "mod_matrix_source_3_index", SOURCES),
+    // Source slots — three free slots (omitted from reads when the paired
+    // target is "None", i.e. the slot is disabled)
+    freeSlotSourceParam(
+      "mod1Source",
+      "mod_matrix_source_1_index",
+      "mod_matrix_target_1_index",
+    ),
+    freeSlotSourceParam(
+      "mod2Source",
+      "mod_matrix_source_2_index",
+      "mod_matrix_target_2_index",
+    ),
+    freeSlotSourceParam(
+      "mod3Source",
+      "mod_matrix_source_3_index",
+      "mod_matrix_target_3_index",
+    ),
     // Target slots — three free slots ("None" disables the slot)
     enumParam("mod1Target", "mod_matrix_target_1_index", TARGETS),
     enumParam("mod2Target", "mod_matrix_target_2_index", TARGETS),

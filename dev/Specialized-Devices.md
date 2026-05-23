@@ -367,7 +367,11 @@ Source slots (each takes one of the 8 source names):
 - `lfoSource` — wire LFO-amount mod
 - `pitchMod1Source`, `pitchMod2Source` — wire pitch mods
 - `shapeSource` — wire osc-shape mod
-- `mod1Source`, `mod2Source`, `mod3Source` — sources for the 3 free slots
+- `mod1Source`, `mod2Source`, `mod3Source` — sources for the 3 free slots.
+  **Omitted from reads when the paired target is `"None"`** (the slot is
+  disabled): Live always reports a source index even for an off slot, so
+  surfacing it would imply an active route that isn't there (AJM-391). Writes
+  are unaffected — a source can be staged before its target.
 
 Target slots (each takes one of the 12 target names, including `"None"`):
 
@@ -835,10 +839,10 @@ Two writable fields on `update-device`, also returned by `read-device`:
 The class-level `available_input_routing_types` and
 `available_input_routing_channels` are used internally for validation. See
 [`options` include](#the-options-include-opt-in-discoverability) — opt-in adds
-`sidechainSourceTrackIds` (list of trackIds that are valid sources, filtered to
-tracks with audio-bearing devices). Channel options (`"Pre FX"` / `"Post FX"` /
-`"Post Mixer"`) are stable per Live version and documented in the tool
-description rather than surfaced.
+`sidechainSourceTrackIds` (list of trackIds that are valid sources — regular,
+return, and master tracks with audio-bearing devices). Channel options
+(`"Pre FX"` / `"Post FX"` / `"Post Mixer"`) are stable per Live version and
+documented in the tool description rather than surfaced.
 
 **Implementation gotchas (verified by probe 2026-05-21):**
 
@@ -851,7 +855,12 @@ description rather than surfaced.
    Live-internal namespace. In our test set, Drift's trackId is `"136"` but its
    routing identifier is `3`; AudioFX's trackId is `"149"` but its routing
    identifier is `16`. Translate by matching the track's `name` against the
-   `display_name` of entries in `available_input_routing_types`.
+   `display_name` of entries in `available_input_routing_types`. The name search
+   spans regular tracks, return tracks, and the master track (AJM-391), so
+   return/master sources resolve to a track id on read; regular tracks are
+   searched first, so a shared name resolves to the regular track. Hardware
+   sources (`"Ext. In"`) and duplicate track names remain inherently ambiguous —
+   the former has no track id; the latter resolves to the first match.
 
 3. **Excluded source tracks:** any track whose device chain has no audio-bearing
    device (no instrument, no audio effect) is omitted from

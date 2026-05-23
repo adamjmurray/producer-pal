@@ -314,6 +314,45 @@ describe("specialized devices: Compressor", () => {
       ),
     ).toBeNull();
   });
+
+  it("resolves a return-track sidechain source to its track id", async () => {
+    // AJM-391: return/master sources now resolve to a track id on read (they
+    // previously read back as null). A return track only becomes a routable
+    // sidechain source once it carries an audio-bearing device, so give it one.
+    const created = parseToolResult<{ id: string; returnTrackIndex: number }>(
+      await ctx.client!.callTool({
+        name: "ppal-create-track",
+        arguments: { type: "return" },
+      }),
+    );
+
+    await sleep(100);
+
+    const returnTrackId = String(created.id);
+
+    await createTestDevice(
+      ctx.client!,
+      "Reverb",
+      `rt${created.returnTrackIndex}`,
+    );
+
+    const compId = await createEffect("Compressor");
+    const sourceIds = (await readDevice(compId, ["options"])).options
+      ?.sidechainSourceTrackIds as string[];
+
+    expect(sourceIds).toContain(returnTrackId);
+
+    await updateDevice(compId, {
+      params: [{ name: "sidechainSourceTrackId", value: returnTrackId }],
+    });
+
+    expect(
+      paramValue(
+        await readDevice(compId, ["params"], "sidechainSourceTrackId"),
+        "sidechainSourceTrackId",
+      ),
+    ).toBe(returnTrackId);
+  });
 });
 
 describe("specialized devices: Hybrid Reverb", () => {

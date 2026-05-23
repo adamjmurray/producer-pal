@@ -57,9 +57,6 @@ describe("Drift pseudo-params", () => {
       ["pitchMod1Source", "mod_matrix_pitch_source_1_index"],
       ["pitchMod2Source", "mod_matrix_pitch_source_2_index"],
       ["shapeSource", "mod_matrix_shape_source_index"],
-      ["mod1Source", "mod_matrix_source_1_index"],
-      ["mod2Source", "mod_matrix_source_2_index"],
-      ["mod3Source", "mod_matrix_source_3_index"],
     ])("%s reads index 0 as 'Env 1'", (paramName, property) => {
       const device = registerDrift({ [property]: 0 });
 
@@ -88,13 +85,52 @@ describe("Drift pseudo-params", () => {
     });
 
     it("reads all source labels in index order", () => {
-      const device = registerDrift({ mod_matrix_source_1_index: 4 });
+      const device = registerDrift({ mod_matrix_filter_source_1_index: 4 });
 
       expect(readSpecializedParams(device)).toContainEqual({
-        name: "mod1Source",
+        name: "filterMod1Source",
         value: "Vel",
       });
     });
+  });
+
+  describe("read free-slot sources", () => {
+    it.each([
+      ["mod1Source", "mod_matrix_source_1_index", "mod_matrix_target_1_index"],
+      ["mod2Source", "mod_matrix_source_2_index", "mod_matrix_target_2_index"],
+      ["mod3Source", "mod_matrix_source_3_index", "mod_matrix_target_3_index"],
+    ])(
+      "%s is read when its paired target is active",
+      (paramName, sourceProp, targetProp) => {
+        const device = registerDrift({
+          [sourceProp]: 2, // LFO
+          [targetProp]: 6, // LP Frequency (active)
+        });
+
+        expect(readSpecializedParams(device)).toContainEqual({
+          name: paramName,
+          value: "LFO",
+        });
+      },
+    );
+
+    it.each([
+      ["mod1Source", "mod_matrix_source_1_index", "mod_matrix_target_1_index"],
+      ["mod2Source", "mod_matrix_source_2_index", "mod_matrix_target_2_index"],
+      ["mod3Source", "mod_matrix_source_3_index", "mod_matrix_target_3_index"],
+    ])(
+      "%s is omitted when its paired target is 'None' (slot disabled)",
+      (paramName, sourceProp, targetProp) => {
+        const device = registerDrift({
+          [sourceProp]: 2, // a source is selected in Live's UI...
+          [targetProp]: 0, // ...but the target is "None", so the slot is off
+        });
+
+        const names = readSpecializedParams(device).map((p) => p.name);
+
+        expect(names).not.toContain(paramName);
+      },
+    );
   });
 
   describe("read target slots", () => {
@@ -456,7 +492,11 @@ describe("Drift via read-device", () => {
         voice_count_index: 2,
         pitch_bend_range: 4,
         mod_matrix_filter_source_1_index: 2,
+        // All three free slots have active targets so every free-slot source is
+        // present (see the omit-when-None case below).
         mod_matrix_target_1_index: 6,
+        mod_matrix_target_2_index: 7,
+        mod_matrix_target_3_index: 9,
         ...properties,
       },
     });
@@ -507,6 +547,20 @@ describe("Drift via read-device", () => {
       name: "mod2Target",
       value: "None",
     });
+  });
+
+  it("omits a free-slot source whose target is 'None' via read-device", () => {
+    registerReadableDrift({ mod_matrix_target_2_index: 0 });
+
+    const result = readDevice({ deviceId: "drift-1", include: ["params"] });
+    const names = (result.parameters as Array<{ name: string }>).map(
+      (p) => p.name,
+    );
+
+    expect(names).not.toContain("mod2Source");
+    // The other free slots stay active and present.
+    expect(names).toContain("mod1Source");
+    expect(names).toContain("mod3Source");
   });
 
   it("omits the options field when the device contributes no catalogs", () => {
