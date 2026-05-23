@@ -74,6 +74,11 @@ export function useVoicePersistence(
   // items). Used by the auto-save merge so historical tool calls survive a
   // continued session even though the Realtime SDK can't re-seed them.
   const priorItemsRef = useRef<RealtimeItem[]>([]);
+  // Ids whose autosave must be abandoned because the record was deleted. A
+  // delete can land after the debounce timer has already fired (the in-flight
+  // IDB write is no longer cancellable), so the save checks this set right
+  // before writing to avoid resurrecting a just-deleted conversation.
+  const canceledIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     activeIdRef.current = activeConversationId;
@@ -135,11 +140,17 @@ export function useVoicePersistence(
     const id = activeIdRef.current ?? crypto.randomUUID();
     const merged = mergeVoiceHistory(priorItemsRef.current, liveHistory);
     const timer = setTimeout(() => {
-      void saveVoiceRecord(id, merged, {
-        createdAt: createdAtRef.current,
-        bookmarked: bookmarkedRef.current,
-        title: titleRef.current,
-      }).then((record) => {
+      void saveVoiceRecord(
+        id,
+        merged,
+        {
+          createdAt: createdAtRef.current,
+          bookmarked: bookmarkedRef.current,
+          title: titleRef.current,
+        },
+        () => canceledIdsRef.current.has(id),
+      ).then((record) => {
+        if (!record) return; // deleted while the save was pending/in-flight
         createdAtRef.current = record.createdAt;
         titleRef.current = record.title;
         if (activeIdRef.current !== id) setActiveId(id);
@@ -199,6 +210,7 @@ export function useVoicePersistence(
 
   const deleteConversation = useCallback(
     async (id: string) => {
+      canceledIdsRef.current.add(id);
       await dbDeleteConversation(id);
       if (activeIdRef.current === id) startNewConversation();
       await refreshList();
@@ -207,18 +219,24 @@ export function useVoicePersistence(
   );
 
   const deleteAllConversations = useCallback(async () => {
+    if (activeIdRef.current != null) {
+      canceledIdsRef.current.add(activeIdRef.current);
+    }
+
     await dbDeleteAllConversations();
     startNewConversation();
     await refreshList();
   }, [refreshList, startNewConversation]);
 
   const deleteUnbookmarkedConversations = useCallback(async () => {
-    await dbDeleteUnbookmarkedConversations();
+    const activeId = activeIdRef.current;
 
-    if (activeIdRef.current && !bookmarkedRef.current) {
+    if (activeId != null && !bookmarkedRef.current) {
+      canceledIdsRef.current.add(activeId);
       startNewConversation();
     }
 
+    await dbDeleteUnbookmarkedConversations();
     await refreshList();
   }, [refreshList, startNewConversation]);
 
@@ -301,13 +319,15 @@ interface SaveContext {
  * @param id - Conversation id (existing or freshly generated)
  * @param items - Live RealtimeItem history
  * @param ctx - Snapshot of metadata refs (createdAt, bookmarked, manual title)
- * @returns The saved record
+ * @param isCanceled - Returns true if the record was deleted; bail before writing
+ * @returns The saved record, or null if the save was canceled
  */
 async function saveVoiceRecord(
   id: string,
   items: RealtimeItem[],
   ctx: SaveContext,
-): Promise<ConversationRecord> {
+  isCanceled: () => boolean,
+): Promise<ConversationRecord | null> {
   const existing = await loadConversation(id);
   const now = Date.now();
   const title = ctx.title ?? deriveVoiceTitle(items);
@@ -329,6 +349,11 @@ async function saveVoiceRecord(
     messages: [],
     voiceHistory: items,
   };
+
+  // A delete for this id can land while the debounce was pending or while we
+  // awaited the read above. Check as late as possible — right before the write
+  // — so a just-deleted conversation isn't resurrected.
+  if (isCanceled()) return null;
 
   await saveConversation(record);
 

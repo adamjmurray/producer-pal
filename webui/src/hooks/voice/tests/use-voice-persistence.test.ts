@@ -314,6 +314,58 @@ describe("useVoicePersistence", () => {
     expect(result.current.conversations).toHaveLength(0);
   });
 
+  it("does not resurrect a conversation deleted while its autosave is pending", async () => {
+    const record = createTestRecord({
+      sessionType: "voice",
+      voiceHistory: [userTextItem("original")],
+      messages: [],
+    });
+
+    await saveConversation(record);
+    window.location.hash = record.id;
+
+    const { result, rerender } = renderHook(
+      ({ history }: { history: RealtimeItem[] }) =>
+        useVoicePersistence({ liveHistory: history }),
+      { initialProps: { history: [] as RealtimeItem[] } },
+    );
+
+    await waitForEffects();
+    expect(result.current.activeConversationId).toBe(record.id);
+
+    // A new transcript turn schedules the debounced autosave for record.id...
+    rerender({ history: [userTextItem("a new turn")] });
+    // ...then the user deletes the active conversation before it fires.
+    await act(() => result.current.deleteConversation(record.id));
+    // Let the debounce fire; the in-flight save must bail, not re-create it.
+    await waitForEffects(800);
+
+    expect(await loadConversation(record.id)).toBeUndefined();
+    expect(result.current.conversations).toHaveLength(0);
+  });
+
+  it("deleteAllConversations works when no conversation is active", async () => {
+    const record = createTestRecord({
+      sessionType: "voice",
+      voiceHistory: [userTextItem("hi")],
+      messages: [],
+    });
+
+    await saveConversation(record);
+
+    const { result } = renderHook(() =>
+      useVoicePersistence({ liveHistory: [] }),
+    );
+
+    await waitForEffects();
+    expect(result.current.activeConversationId).toBeNull();
+    expect(result.current.conversations).toHaveLength(1);
+
+    await act(() => result.current.deleteAllConversations());
+
+    expect(result.current.conversations).toHaveLength(0);
+  });
+
   it("deleteAllConversations clears DB and resets state", async () => {
     const record = createTestRecord({
       sessionType: "voice",

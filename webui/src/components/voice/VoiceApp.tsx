@@ -170,10 +170,10 @@ function buildConversationPanel(
       void persistence.switchConversation(id);
     },
     onDelete: (id) => {
-      // Deleting the conversation you're actively talking in must stop the
-      // session first. Otherwise it keeps streaming and the next autosave
-      // tick re-forks the live transcript under a fresh id, resurrecting the
-      // record you just deleted.
+      // Stop the session when deleting the conversation you're actively talking
+      // in, so it stops streaming new transcript. (deleteConversation also
+      // guards autosave against resurrecting a deleted record, covering a save
+      // that was already in flight when the delete landed.)
       if (id === persistence.activeConversationId && isConnected) {
         void params.disconnect();
         params.resetVoiceHistory();
