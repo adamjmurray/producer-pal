@@ -181,6 +181,7 @@ export function useVoiceSession(
       connectingRef.current = true;
       setStatus("connecting");
       setError(null);
+      setRateLimitedUntil(null);
       setHistory([]);
 
       try {
