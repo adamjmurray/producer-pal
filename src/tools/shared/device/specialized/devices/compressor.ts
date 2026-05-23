@@ -27,23 +27,27 @@ interface RoutingEntry {
 const NO_INPUT_LABEL = "No Input";
 
 /**
- * Read available input routing types from the device.
+ * Read available input routing types from the device. Falls back to an empty
+ * array when the property is unset (getProperty returns null), so callers can
+ * warn-and-skip rather than throw.
  * @param device - LiveAPI device object
- * @returns Array of routing entries
+ * @returns Array of routing entries (empty when unavailable)
  */
 function readAvailableTypes(device: LiveAPI): RoutingEntry[] {
-  return device.getProperty("available_input_routing_types") as RoutingEntry[];
+  return (device.getProperty("available_input_routing_types") ??
+    []) as RoutingEntry[];
 }
 
 /**
- * Read available input routing channels from the device.
+ * Read available input routing channels from the device. Falls back to an empty
+ * array when the property is unset (getProperty returns null), so callers can
+ * warn-and-skip rather than throw.
  * @param device - LiveAPI device object
- * @returns Array of routing entries
+ * @returns Array of routing entries (empty when unavailable)
  */
 function readAvailableChannels(device: LiveAPI): RoutingEntry[] {
-  return device.getProperty(
-    "available_input_routing_channels",
-  ) as RoutingEntry[];
+  return (device.getProperty("available_input_routing_channels") ??
+    []) as RoutingEntry[];
 }
 
 /**

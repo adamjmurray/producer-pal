@@ -484,6 +484,32 @@ describe("Compressor sidechainChannel write", () => {
 
     expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("Pre FX"));
   });
+
+  it("warns and skips (no throw) when channels are unavailable", () => {
+    // Register channels as a raw empty array so getProperty() unwraps to null —
+    // exercises the readAvailableChannels `?? []` fallback.
+    registerMockObject("comp-1", {
+      type: "Device",
+      properties: {
+        class_display_name: "Compressor",
+        available_input_routing_channels: [],
+      },
+    });
+    const device = LiveAPI.from("id comp-1");
+
+    applySpecializedParamWrite(
+      device,
+      "sidechainChannel",
+      "Post FX",
+      "updateDevice",
+    );
+
+    expect(device.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("not a valid sidechainChannel"),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -530,6 +556,25 @@ describe("Compressor readOptions", () => {
     const options = readSpecializedOptions(device);
 
     expect(options.sidechainSourceTrackIds).toStrictEqual(["t1"]);
+  });
+
+  it("returns empty array (no throw) when routing types are unavailable", () => {
+    registerLiveSetTracks();
+    // Register the list props as raw empty arrays so getProperty() unwraps to
+    // null — exercises the readAvailableTypes/Channels `?? []` fallback.
+    registerMockObject("comp-1", {
+      type: "Device",
+      properties: {
+        class_display_name: "Compressor",
+        available_input_routing_types: [],
+        available_input_routing_channels: [],
+      },
+    });
+    const device = LiveAPI.from("id comp-1");
+
+    expect(
+      readSpecializedOptions(device).sidechainSourceTrackIds,
+    ).toStrictEqual([]);
   });
 });
 
