@@ -149,8 +149,6 @@ describe("App", () => {
     });
 
     it("onForeignRecord switches the viewing mode without mutating saved settings", async () => {
-      const setProviderAndModel = vi.fn();
-
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         // Saved is a chat model; clicking a voice record from history should
@@ -158,7 +156,6 @@ describe("App", () => {
         provider: "openai",
         model: "gpt-5",
         savedModel: "gpt-5",
-        setProviderAndModel,
       });
       const { rerender } = render(<App />);
 
@@ -180,9 +177,7 @@ describe("App", () => {
       });
       rerender(<App />);
 
-      // Should not mutate saved settings.
-      expect(setProviderAndModel).not.toHaveBeenCalled();
-      // Should route to VoiceApp via viewingMode override.
+      // Routes to VoiceApp via the viewingMode override; savedModel stays chat.
       expect(document.body.textContent).toMatch(/Talk|Stop/);
     });
   });

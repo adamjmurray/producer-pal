@@ -28,7 +28,6 @@ export const mockChatHook = {
 export const mockSettingsHook = {
   provider: "gemini" as const,
   setProvider: vi.fn(),
-  setProviderAndModel: vi.fn(),
 
   apiKey: "test-key",
   setApiKey: vi.fn(),

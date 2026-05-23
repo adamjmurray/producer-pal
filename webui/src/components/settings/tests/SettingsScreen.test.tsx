@@ -114,7 +114,6 @@ describe("SettingsScreen", () => {
   const defaultSettings = {
     provider: "gemini" as const,
     setProvider: vi.fn(),
-    setProviderAndModel: vi.fn(),
     apiKey: "",
     setApiKey: vi.fn(),
     model: "gemini-2.5-pro",

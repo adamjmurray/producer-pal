@@ -135,20 +135,6 @@ describe("useSettings", () => {
     expect(result.current.model).toBe("gemini-3.5-flash");
   });
 
-  it("setProviderAndModel atomically swaps provider + that provider's model", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    expect(result.current.provider).toBe("gemini");
-
-    await act(() => {
-      result.current.setProviderAndModel("openai", "gpt-realtime-2");
-    });
-
-    expect(result.current.provider).toBe("openai");
-    expect(result.current.model).toBe("gpt-realtime-2");
-    expect(result.current.savedModel).toBe("gpt-realtime-2");
-  });
-
   it("savedModel only updates on saveSettings, not setModel", async () => {
     const { result } = renderHook(() => useSettings());
     const initialSavedModel = result.current.savedModel;

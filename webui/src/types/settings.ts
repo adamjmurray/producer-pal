@@ -33,18 +33,15 @@ export type Provider =
 export interface UseSettingsReturn {
   provider: Provider;
   setProvider: (provider: Provider) => void;
-  /** Atomically swap the active provider + that provider's model (used when
-   * loading a conversation whose stored mode differs from the current one). */
-  setProviderAndModel: (provider: Provider, model: string) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
   baseUrl?: string; // For custom, lmstudio, and ollama providers
   setBaseUrl?: (url: string) => void;
   model: string;
   setModel: (model: string) => void;
-  /** The persisted model (last save or setProviderAndModel), independent of
-   * in-modal edits. App.tsx routes voice vs chat off this so picking a
-   * realtime model in the dropdown doesn't switch modes until the user saves. */
+  /** The persisted model (last save), independent of in-modal edits. App.tsx
+   * routes voice vs chat off this so picking a realtime model in the dropdown
+   * doesn't switch modes until the user saves. */
   savedModel: string;
   thinking: string;
   setThinking: (thinking: string) => void;

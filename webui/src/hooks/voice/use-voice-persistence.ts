@@ -25,10 +25,10 @@ const AUTOSAVE_DEBOUNCE_MS = 600;
 interface UseVoicePersistenceParams {
   /** Current live voice transcript from useVoiceSession (drives auto-save). */
   liveHistory: RealtimeItem[];
-  /** Invoked when a non-voice (chat) record is encountered. The parent should
-   * switch modes (e.g. settings.setProviderAndModel) so the chat hook can pick
-   * up the conversation from the URL hash. When omitted, the hook falls back
-   * to clearing the active id. */
+  /** Invoked when a non-voice (chat) record is encountered. The parent (App.tsx)
+   * switches modes via viewingMode so the chat hook can pick up the conversation
+   * from the URL hash. When omitted, the hook falls back to clearing the active
+   * id. */
   onForeignRecord?: (record: ConversationRecord) => void;
 }
 
