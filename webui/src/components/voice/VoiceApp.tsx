@@ -19,6 +19,7 @@ import { useVoiceModeState } from "#webui/hooks/voice/use-voice-mode-state";
 import { type useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
 import { type UseSettingsReturn } from "#webui/types/settings";
+import { isMobile } from "#webui/utils/is-mobile";
 
 export interface VoiceAppProps {
   settings: UseSettingsReturn;
@@ -153,6 +154,12 @@ function buildConversationPanel(
   const { isOpen, setHistoryPanelOpen, persistence, transfer, isConnected } =
     params;
 
+  // On phones the panel overlays the screen, so collapse it after picking or
+  // creating a conversation (matches chat's useConversationPanelState).
+  const closeOnMobile = () => {
+    if (isMobile()) setHistoryPanelOpen(() => false);
+  };
+
   return {
     isOpen,
     conversations: persistence.conversations,
@@ -163,11 +170,13 @@ function buildConversationPanel(
       params.resetVoiceHistory();
       persistence.startNewConversation();
       params.clearViewingMode();
+      closeOnMobile();
     },
     onSelect: (id) => {
       if (isConnected) void params.disconnect();
       params.resetVoiceHistory();
       void persistence.switchConversation(id);
+      closeOnMobile();
     },
     onDelete: (id) => {
       // Stop the session when deleting the conversation you're actively talking

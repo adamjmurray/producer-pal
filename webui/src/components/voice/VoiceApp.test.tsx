@@ -197,18 +197,21 @@ function renderVoiceApp(overrides: PropOverrides = {}) {
 function renderWithPanelOpen(overrides: PropOverrides = {}) {
   const props = makeProps(overrides);
 
-  return render(
+  const result = render(
     <VoiceApp
       {...props}
       viewState={{ ...props.viewState, historyPanelOpen: true }}
     />,
   );
+
+  return { ...result, props };
 }
 
 beforeEach(() => {
   mocks.getMcpUrl.mockReturnValue("http://localhost:3350/mcp");
   mocks.isFirefox.mockReturnValue(false);
   mocks.useUpdateCheck.mockReturnValue(null);
+  mocks.useVoiceSession.mockReturnValue(baseSession());
   mocks.useVoicePersistence.mockReturnValue(basePersistence());
   mocks.useConversationTransfer.mockReturnValue({
     notification: null,
@@ -230,24 +233,18 @@ afterEach(() => {
 
 describe("VoiceApp", () => {
   it("shows the OpenAI-key-required banner when key is missing", () => {
-    mocks.useVoiceSession.mockReturnValue(baseSession());
-
     renderVoiceApp({ apiKey: "" });
 
     expect(screen.getByText(/openai api key required/i)).toBeDefined();
   });
 
   it("hides the banner when an API key is configured", () => {
-    mocks.useVoiceSession.mockReturnValue(baseSession());
-
     renderVoiceApp();
 
     expect(screen.queryByText(/openai api key required/i)).toBeNull();
   });
 
   it("shows the OpenAI-key-required banner when current provider is not openai", () => {
-    mocks.useVoiceSession.mockReturnValue(baseSession());
-
     renderVoiceApp({ provider: "anthropic", apiKey: "sk-ant" });
 
     expect(screen.getByText(/openai api key required/i)).toBeDefined();
@@ -290,8 +287,6 @@ describe("VoiceApp", () => {
   });
 
   it("disables the main button when no OpenAI key is configured", () => {
-    mocks.useVoiceSession.mockReturnValue(baseSession());
-
     renderVoiceApp({ apiKey: "" });
 
     const btn = screen.getByRole("button", { name: "Talk" });
@@ -451,7 +446,6 @@ describe("VoiceApp", () => {
   });
 
   it("Voice label reflects the saved preference while idle", () => {
-    mocks.useVoiceSession.mockReturnValue(baseSession());
     renderVoiceApp({ savedRealtimeVoice: "cedar" });
 
     expect(screen.getByText(/voice: cedar/i)).toBeDefined();
@@ -472,7 +466,6 @@ describe("VoiceApp", () => {
 
   it("shows the Firefox-unsupported banner when running in Firefox", () => {
     mocks.isFirefox.mockReturnValue(true);
-    mocks.useVoiceSession.mockReturnValue(baseSession());
 
     renderVoiceApp();
 
@@ -481,7 +474,6 @@ describe("VoiceApp", () => {
 
   it("disables the Talk button when running in Firefox", () => {
     mocks.isFirefox.mockReturnValue(true);
-    mocks.useVoiceSession.mockReturnValue(baseSession());
 
     renderVoiceApp();
 
@@ -491,8 +483,6 @@ describe("VoiceApp", () => {
   });
 
   it("hides the Firefox banner in Chrome (or other non-Firefox browsers)", () => {
-    mocks.useVoiceSession.mockReturnValue(baseSession());
-
     renderVoiceApp();
 
     expect(screen.queryByText(/firefox is not supported/i)).toBeNull();
@@ -500,8 +490,6 @@ describe("VoiceApp", () => {
 
   describe("transcript rendering", () => {
     it("shows the empty-state placeholder when history is empty", () => {
-      mocks.useVoiceSession.mockReturnValue(baseSession());
-
       renderVoiceApp();
 
       expect(
@@ -533,8 +521,6 @@ describe("VoiceApp", () => {
 
   describe("AppShell integration", () => {
     it("renders the shared chat header with the GPT Realtime model name", () => {
-      mocks.useVoiceSession.mockReturnValue(baseSession());
-
       renderVoiceApp();
 
       expect(screen.getByTitle(/producer pal website/i)).toBeDefined();
@@ -542,7 +528,6 @@ describe("VoiceApp", () => {
     });
 
     it("opens settings via onOpenSettings callback when the settings button is clicked", () => {
-      mocks.useVoiceSession.mockReturnValue(baseSession());
       const onOpenSettings = vi.fn();
 
       renderVoiceApp({ onOpenSettings });
@@ -551,7 +536,6 @@ describe("VoiceApp", () => {
     });
 
     it("toggles the conversation panel via the header button", () => {
-      mocks.useVoiceSession.mockReturnValue(baseSession());
       const props = makeProps();
 
       render(<VoiceApp {...props} />);
@@ -571,7 +555,6 @@ describe("VoiceApp", () => {
         handleImport: vi.fn(),
       };
 
-      mocks.useVoiceSession.mockReturnValue(baseSession());
       mocks.useVoicePersistence.mockReturnValue(persistence);
       mocks.useConversationTransfer.mockReturnValue(transfer);
       renderWithPanelOpen();
@@ -598,10 +581,35 @@ describe("VoiceApp", () => {
       expect(persistence.startNewConversation).toHaveBeenCalled();
     });
 
+    it("collapses the history panel on mobile after New or Select", () => {
+      const realMatchMedia = window.matchMedia;
+
+      window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as never;
+      const summary = createTestSummary({
+        id: "c1",
+        title: "Conv",
+        sessionType: "voice",
+      });
+
+      mocks.useVoicePersistence.mockReturnValue(
+        basePersistence({ conversations: [summary] }),
+      );
+      const { props } = renderWithPanelOpen();
+      const setViewState = props.setViewState as ReturnType<typeof vi.fn>;
+
+      fireEvent.click(screen.getByText(/new conversation/i));
+      expect(setViewState).toHaveBeenCalledWith({ historyPanelOpen: false });
+
+      setViewState.mockClear();
+      fireEvent.click(screen.getByText("Conv"));
+      expect(setViewState).toHaveBeenCalledWith({ historyPanelOpen: false });
+
+      window.matchMedia = realMatchMedia;
+    });
+
     it("renders saved voice items when there is no live history", () => {
       const savedItems = [userMsg("u1", "from saved record")];
 
-      mocks.useVoiceSession.mockReturnValue(baseSession());
       mocks.useVoicePersistence.mockReturnValue(
         basePersistence({ savedItems, activeConversationId: "saved-id" }),
       );
@@ -651,7 +659,6 @@ describe("VoiceApp", () => {
       const session = baseSession({ status: "idle", history: retainedHistory });
 
       mocks.useVoiceSession.mockReturnValue(session);
-      mocks.useVoicePersistence.mockReturnValue(basePersistence());
 
       renderVoiceApp();
       fireEvent.click(screen.getByRole("button", { name: "Talk" }));
@@ -699,7 +706,6 @@ describe("VoiceApp", () => {
       });
       const persistence = basePersistence({ conversations: [summary] });
 
-      mocks.useVoiceSession.mockReturnValue(baseSession());
       mocks.useVoicePersistence.mockReturnValue(persistence);
       renderWithPanelOpen();
 
@@ -800,7 +806,6 @@ describe("VoiceApp", () => {
     it("reports its mode context (delete handlers + lock) up to App", () => {
       const persistence = basePersistence({ activeConversationId: "voice-1" });
 
-      mocks.useVoiceSession.mockReturnValue(baseSession());
       mocks.useVoicePersistence.mockReturnValue(persistence);
       const props = makeProps();
 
