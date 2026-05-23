@@ -28,7 +28,7 @@ import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-to
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
-import { type RequestOverrides } from "./request-overrides.ts";
+import { type RequestOverrides } from "./helpers/request-overrides.ts";
 
 export type CallLiveApiFunction = (
   tool: string,

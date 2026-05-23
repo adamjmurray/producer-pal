@@ -5,6 +5,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { isLocalOrigin } from "../helpers/request-origin.ts";
 import * as console from "../node-for-max-logger.ts";
 
 const OPENAI_CLIENT_SECRETS_URL =
@@ -133,27 +134,5 @@ async function safeReadError(upstream: globalThis.Response): Promise<unknown> {
     return JSON.parse(text);
   } catch {
     return text;
-  }
-}
-
-/**
- * Check whether an Origin header value points to localhost. Mirrors the
- * helper in create-express-app.ts so cross-origin browsers can't proxy
- * arbitrary keys through the device.
- *
- * @param origin - Origin header value
- * @returns true if origin hostname is localhost/127.0.0.1/[::1]
- */
-function isLocalOrigin(origin: string): boolean {
-  try {
-    const { hostname } = new URL(origin);
-
-    return (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "[::1]"
-    );
-  } catch {
-    return false;
   }
 }

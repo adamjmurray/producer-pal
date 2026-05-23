@@ -16,6 +16,7 @@ import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
+import { isLocalOrigin } from "./helpers/request-origin.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
@@ -449,24 +450,4 @@ function validateTools(
   }
 
   return null;
-}
-
-/**
- * Check whether an Origin header value points to localhost.
- *
- * @param origin - Origin header value
- * @returns true if origin hostname is localhost/127.0.0.1/[::1]
- */
-function isLocalOrigin(origin: string): boolean {
-  try {
-    const { hostname } = new URL(origin);
-
-    return (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "[::1]"
-    );
-  } catch {
-    return false;
-  }
 }
