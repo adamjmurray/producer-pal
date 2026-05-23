@@ -15,7 +15,7 @@ import {
   type LibrarySort,
   type LibrarySource,
 } from "#src/mcp-server/live-library/library-types.ts";
-import { readSamples } from "#src/tools/workflow/read-samples.ts";
+import { readSamples } from "./read-samples.ts";
 
 interface LibraryArgs {
   // Typed as plain string (not the enum) so the runtime "Unknown action"
