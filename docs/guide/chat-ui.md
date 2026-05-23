@@ -123,6 +123,63 @@ overrides it for individual messages.
 - **Text area** - Type your message (Shift+Enter for new line)
 - **Send / Stop** - Send your message, or stop a response in progress
 
+## Voice Mode
+
+Producer Pal includes an experimental hands-free voice mode that uses OpenAI's
+realtime model to talk with the AI out loud. It is **OpenAI only** (for now) and
+**requires an OpenAI API key**.
+
+To enter voice mode, open [Settings](#settings), set the **Provider** to
+**OpenAI**, and select the **GPT Realtime 2 (Voice)** model. The chat composer
+is replaced by the voice controls described below. See [Voice settings](#voice)
+for the voice, speed, and turn-detection options.
+
+> Voice currently works in Chrome (other Chromium browsers like Edge are likely
+> fine but untested). Firefox is not supported.
+
+_Screenshot placeholder: add `producer-pal-chat-voice-mode.png` here showing the
+voice transcript with the Talk/Stop controls bar._
+
+### Talking with the AI
+
+The control bar at the bottom of the voice screen works like the chat composer,
+but for speech:
+
+- **Talk / Stop** - The first click connects to Ableton and opens your
+  microphone; **Stop** ends the session. Edits to [voice settings](#voice) apply
+  on the next Stop → Talk.
+- **Status indicator** - A colored dot and label show the current state:
+  - **Listening — go ahead** (green) - The session is live and your mic is open;
+    start speaking.
+  - **Thinking — wait** (yellow) - The model is preparing a response.
+  - **Assistant speaking — wait** (amber) - The assistant is talking.
+  - Plus **Connecting…**, **Muted**, **Idle**, and **Error** for the other
+    states.
+- **Mute / Unmute** - Appears while connected and listening. Mutes your
+  microphone without ending the session.
+- **Interrupt** - Appears while the assistant is thinking or speaking. Cuts off
+  the current response so you can take over (the transcript so far is kept). To
+  interrupt by simply speaking instead, enable
+  [barge-in](#turn-detection-advanced).
+- **Voice label** - Shows the active voice. It turns amber when you change the
+  voice in settings mid-session, as a reminder that the change applies on the
+  next Stop → Talk.
+- **Thinking toggle** - The same per-session reasoning-effort control as in
+  chat.
+
+### Transcript
+
+A running transcript appears above the controls, styled like a chat
+conversation. It is read-only — past spoken turns can't be edited or retried,
+since the audio isn't kept. Voice conversations are saved to
+[history](#conversation-history) alongside chat conversations, so you can
+revisit them later.
+
+### Rate limits
+
+If OpenAI rate-limits your account mid-session, an error banner shows a
+countdown and a **Retry** button that activates once the limit clears.
+
 ## Settings
 
 Settings open as a modal overlay. Press Escape or click outside to close (if
