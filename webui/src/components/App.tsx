@@ -28,7 +28,7 @@ import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useViewState } from "#webui/hooks/use-view-state";
-import { isRealtimeModel } from "#webui/lib/constants/models";
+import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
@@ -148,14 +148,17 @@ export function App() {
     setViewingMode(null);
   }, []);
 
-  // Mode is derived from savedModel (only updates on save), not the in-modal
-  // `model`. This prevents the underlying chat or voice screen from re-mounting
-  // mid-modal whenever the user explores the provider dropdown. viewingMode
-  // overrides the route while a foreign-mode conversation is being viewed.
+  // Mode is derived from the saved provider+model (only updates on save), not
+  // the in-modal `provider`/`model`. This prevents the underlying chat or voice
+  // screen from re-mounting mid-modal whenever the user explores the dropdowns.
+  // Pairing the saved provider with the saved model also keeps voice routing to
+  // providers that actually have a voice backend (OpenAI today): a foreign
+  // provider reusing a realtime model id stays in chat. viewingMode overrides
+  // the route while a foreign-mode conversation is being viewed.
   const isVoiceMode =
     viewingMode != null
       ? viewingMode === "voice"
-      : isRealtimeModel(settings.savedModel);
+      : isRealtimeSelection(settings.savedProvider, settings.savedModel);
 
   const sharedModeProps = {
     settings,

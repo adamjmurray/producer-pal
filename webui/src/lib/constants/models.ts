@@ -3,6 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type Provider } from "#webui/types/settings";
+
 /**
  * Model presets for each provider.
  * Convention: First item in each list is the default model for that provider.
@@ -82,19 +84,6 @@ export const OPENAI_MODELS: ModelPresetItem[] = [
   OTHER_MODEL_OPTION,
 ];
 
-/**
- * Returns true when the given model id corresponds to a realtime (voice) model.
- * @param modelId - The model identifier to check
- * @returns True if the model has kind "realtime"
- */
-export function isRealtimeModel(modelId: string | null | undefined): boolean {
-  if (modelId == null) return false;
-
-  return OPENAI_MODELS.some(
-    (m) => m.value === modelId && m.kind === "realtime",
-  );
-}
-
 export const MISTRAL_MODELS = [
   { value: "mistral-medium-latest", label: "Mistral Medium" },
   { value: "magistral-medium-2509", label: "Magistral Medium" },
@@ -170,3 +159,42 @@ export const DEFAULT_MODELS = {
   lmstudio: "",
   custom: "",
 } as const;
+
+/**
+ * Model presets keyed by provider, used by the model selector and by voice
+ * routing. `lmstudio` and `custom` are intentionally absent — they use
+ * free-text model entry, so they have no presets (and thus no realtime model).
+ */
+export const PROVIDER_MODELS: Partial<
+  Record<Provider, readonly ModelPresetItem[]>
+> = {
+  anthropic: ANTHROPIC_MODELS,
+  gemini: GEMINI_MODELS,
+  openai: OPENAI_MODELS,
+  mistral: MISTRAL_MODELS,
+  openrouter: OPENROUTER_MODELS,
+  ollama: OLLAMA_MODELS,
+};
+
+/**
+ * Returns true when the selected model is a realtime (voice) model that belongs
+ * to the selected provider. Provider scoping is the point: a realtime model id
+ * is only valid for the provider listing it, so a non-matching provider (e.g. a
+ * custom OpenAI-compatible endpoint reusing the id) routes to text chat rather
+ * than a voice UI it has no key/transport for.
+ * @param provider - The selected provider
+ * @param model - The selected model id
+ * @returns True if the model is a realtime model for this provider
+ */
+export function isRealtimeSelection(
+  provider: Provider,
+  model: string | null | undefined,
+): boolean {
+  if (model == null) return false;
+
+  return (
+    PROVIDER_MODELS[provider]?.some(
+      (m) => m.value === model && m.kind === "realtime",
+    ) ?? false
+  );
+}

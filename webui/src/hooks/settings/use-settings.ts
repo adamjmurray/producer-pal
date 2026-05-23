@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
@@ -59,6 +60,11 @@ export function useSettings(): UseSettingsReturn {
   const [savedModel, setSavedModel] = useState<string>(
     () => loadProviderSettings(loadCurrentProvider()).model,
   );
+  // Save-buffered companion to `savedModel`. `provider` applies immediately, but
+  // voice routing must pair the saved model with the saved provider, so this
+  // lags `provider` until saveSettings (mirrors the savedModel rationale above).
+  const [savedProvider, setSavedProvider] =
+    useState<Provider>(loadCurrentProvider);
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
     () => localStorage.getItem("producer_pal_settings_configured") === "true",
   );
@@ -173,6 +179,7 @@ export function useSettings(): UseSettingsReturn {
     saveSmallModelMode(smallModelMode);
     voiceModeSettings.commit();
     setSavedModel(allSettings[provider].model);
+    setSavedProvider(provider);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
   }, [
@@ -254,6 +261,7 @@ export function useSettings(): UseSettingsReturn {
     model: currentSettings.model,
     setModel,
     savedModel,
+    savedProvider,
     thinking: currentSettings.thinking,
     setThinking,
     temperature: currentSettings.temperature,

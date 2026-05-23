@@ -103,10 +103,11 @@ describe("App", () => {
       expect(header).toBeDefined();
     });
 
-    it("renders VoiceApp when the saved model is a realtime model", () => {
+    it("renders VoiceApp when the saved provider+model is a realtime model", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         provider: "openai",
+        savedProvider: "openai",
         model: "gpt-realtime-2",
         savedModel: "gpt-realtime-2",
       });
@@ -122,8 +123,23 @@ describe("App", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
         provider: "openai",
+        savedProvider: "gemini",
         model: "gpt-realtime-2",
         savedModel: "gemini-1.5-flash",
+      });
+      render(<App />);
+      expect(document.body.textContent).not.toMatch(/Talk|Stop/);
+    });
+
+    it("does NOT mount VoiceApp for a non-openai provider reusing the realtime model id", () => {
+      // A custom/OpenAI-compatible provider whose model id happens to equal the
+      // realtime model must stay in chat: voice has no key/transport for it.
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "custom",
+        savedProvider: "custom",
+        model: "gpt-realtime-2",
+        savedModel: "gpt-realtime-2",
       });
       render(<App />);
       expect(document.body.textContent).not.toMatch(/Talk|Stop/);
@@ -154,6 +170,7 @@ describe("App", () => {
         // Saved is a chat model; clicking a voice record from history should
         // route to VoiceApp without changing this.
         provider: "openai",
+        savedProvider: "openai",
         model: "gpt-5",
         savedModel: "gpt-5",
       });

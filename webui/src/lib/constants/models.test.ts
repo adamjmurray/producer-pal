@@ -7,26 +7,36 @@ import { describe, expect, it } from "vitest";
 import {
   OPENAI_MODELS,
   OPENAI_REALTIME_MODEL,
-  isRealtimeModel,
+  isRealtimeSelection,
 } from "#webui/lib/constants/models";
 
-describe("isRealtimeModel", () => {
-  it("returns true for the OpenAI realtime model", () => {
-    expect(isRealtimeModel(OPENAI_REALTIME_MODEL)).toBe(true);
+describe("isRealtimeSelection", () => {
+  it("returns true for the OpenAI realtime model under the openai provider", () => {
+    expect(isRealtimeSelection("openai", OPENAI_REALTIME_MODEL)).toBe(true);
+  });
+
+  it("returns false for the realtime model id under a non-openai provider", () => {
+    // The bug this guards: a custom/OpenAI-compatible provider reusing the
+    // realtime model id must NOT route to voice (no key/transport for it).
+    expect(isRealtimeSelection("custom", OPENAI_REALTIME_MODEL)).toBe(false);
+    expect(isRealtimeSelection("openrouter", OPENAI_REALTIME_MODEL)).toBe(
+      false,
+    );
+    expect(isRealtimeSelection("gemini", OPENAI_REALTIME_MODEL)).toBe(false);
   });
 
   it("returns false for standard chat models", () => {
-    expect(isRealtimeModel("gpt-5.5")).toBe(false);
-    expect(isRealtimeModel("claude-sonnet-4-6")).toBe(false);
+    expect(isRealtimeSelection("openai", "gpt-5.5")).toBe(false);
+    expect(isRealtimeSelection("anthropic", "claude-sonnet-4-6")).toBe(false);
   });
 
   it("returns false for null or undefined", () => {
-    expect(isRealtimeModel(null)).toBe(false);
-    expect(isRealtimeModel(undefined)).toBe(false);
+    expect(isRealtimeSelection("openai", null)).toBe(false);
+    expect(isRealtimeSelection("openai", undefined)).toBe(false);
   });
 
   it("returns false for unknown model strings", () => {
-    expect(isRealtimeModel("some-unrelated-model")).toBe(false);
+    expect(isRealtimeSelection("openai", "some-unrelated-model")).toBe(false);
   });
 });
 

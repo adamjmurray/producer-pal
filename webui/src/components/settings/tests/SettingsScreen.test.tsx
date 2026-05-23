@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -119,6 +120,7 @@ describe("SettingsScreen", () => {
     model: "gemini-2.5-pro",
     setModel: vi.fn(),
     savedModel: "gemini-2.5-pro",
+    savedProvider: "gemini" as const,
     thinking: "Default",
     setThinking: vi.fn(),
     temperature: 1,

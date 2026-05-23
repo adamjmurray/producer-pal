@@ -5,7 +5,7 @@
 
 import { ThinkingStateIcon } from "#webui/components/chat/controls/ThinkingToggle";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
-import { isRealtimeModel } from "#webui/lib/constants/models";
+import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 import { THINKING_LEVELS } from "./controls/thinking-levels";
 import { Tooltip } from "./controls/Tooltip";
@@ -148,7 +148,7 @@ export function VoiceSettings({
   setTurnDetection,
   activeVoice,
 }: VoiceSettingsProps) {
-  if (provider !== "openai" || !isRealtimeModel(model)) return null;
+  if (!isRealtimeSelection(provider, model)) return null;
 
   return (
     <>

@@ -158,6 +158,7 @@ function makeProps(o: PropOverrides = {}): VoiceAppProps {
   return {
     settings: {
       provider,
+      savedProvider: provider,
       apiKey,
       model: "gpt-realtime-2",
       savedModel: "gpt-realtime-2",

@@ -152,6 +152,25 @@ describe("useSettings", () => {
     expect(result.current.savedModel).toBe("gemini-3.5-flash");
   });
 
+  it("savedProvider only updates on saveSettings, not setProvider", async () => {
+    const { result } = renderHook(() => useSettings());
+    const initialSavedProvider = result.current.savedProvider;
+    const target = initialSavedProvider === "openai" ? "gemini" : "openai";
+
+    await act(() => {
+      result.current.setProvider(target);
+    });
+    // In-modal provider change applies immediately but must NOT flip routing
+    // until save — App.tsx pairs savedProvider with savedModel for voice/chat.
+    expect(result.current.provider).toBe(target);
+    expect(result.current.savedProvider).toBe(initialSavedProvider);
+
+    await act(() => {
+      result.current.saveSettings();
+    });
+    expect(result.current.savedProvider).toBe(target);
+  });
+
   it("updates thinking when setThinking is called", async () => {
     const { result } = renderHook(() => useSettings());
 

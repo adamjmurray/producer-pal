@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
@@ -43,6 +44,10 @@ export interface UseSettingsReturn {
    * routes voice vs chat off this so picking a realtime model in the dropdown
    * doesn't switch modes until the user saves. */
   savedModel: string;
+  /** The persisted provider (last save), paired with `savedModel` for voice
+   * routing. Like `savedModel`, it lags the in-modal `provider` until save so a
+   * mid-modal provider switch doesn't remount the chat/voice screen. */
+  savedProvider: Provider;
   thinking: string;
   setThinking: (thinking: string) => void;
   temperature: number;

@@ -137,7 +137,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     setModeContext,
     activeVoice: voice.activeVoice,
     savedModel: settings.savedModel,
-    savedProvider: settings.provider,
+    savedProvider: settings.savedProvider,
   });
 
   return {

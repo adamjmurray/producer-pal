@@ -16,19 +16,31 @@ vi.mock(import("#webui/hooks/use-preferences-settings"), () => ({
 
 /**
  * Build a minimal settings-handler arg bundle. Pass `model` and `savedModel`
- * to control whether the save flips voice ↔ chat mode.
+ * to control whether the save flips voice ↔ chat mode. Provider defaults to
+ * `openai` so realtime model ids are recognized for the mode-change check.
  * @param overrides - Field overrides
  * @param overrides.model - In-modal model value (defaults to a chat model)
  * @param overrides.savedModel - Persisted model value (defaults to a chat model)
+ * @param overrides.provider - In-modal provider (defaults to openai)
+ * @param overrides.savedProvider - Persisted provider (defaults to openai)
  * @returns Args plus the inner spies used to assert
  */
-function makeArgs(overrides: { model?: string; savedModel?: string } = {}): {
+function makeArgs(
+  overrides: {
+    model?: string;
+    savedModel?: string;
+    provider?: string;
+    savedProvider?: string;
+  } = {},
+): {
   args: Parameters<typeof useSaveSettingsHandler>[0];
   saveSettings: ReturnType<typeof vi.fn>;
 } {
   const saveSettings = vi.fn();
   const args = {
     settings: {
+      provider: overrides.provider ?? "openai",
+      savedProvider: overrides.savedProvider ?? "openai",
       model: overrides.model ?? "gemini-1.5-flash",
       savedModel: overrides.savedModel ?? "gemini-1.5-flash",
       liveApiEnabled: false,

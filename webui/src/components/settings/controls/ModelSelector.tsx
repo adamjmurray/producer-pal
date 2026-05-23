@@ -1,30 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import {
-  ANTHROPIC_MODELS,
-  GEMINI_MODELS,
-  MISTRAL_MODELS,
-  type ModelPresetItem,
-  OLLAMA_MODELS,
-  OPENAI_MODELS,
-  OPENROUTER_MODELS,
   OTHER_MODEL_OPTION,
+  PROVIDER_MODELS,
 } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
-
-type ModelPreset = readonly ModelPresetItem[];
-
-const PROVIDER_MODELS: Partial<Record<Provider, ModelPreset>> = {
-  anthropic: ANTHROPIC_MODELS,
-  gemini: GEMINI_MODELS,
-  openai: OPENAI_MODELS,
-  mistral: MISTRAL_MODELS,
-  openrouter: OPENROUTER_MODELS,
-  ollama: OLLAMA_MODELS,
-};
 
 const OTHER_MODEL_PLACEHOLDERS: Record<Provider, string> = {
   anthropic: "e.g., claude-sonnet-4-6-20250514",

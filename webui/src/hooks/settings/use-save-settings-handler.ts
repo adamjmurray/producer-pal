@@ -9,7 +9,7 @@ import {
   type PreferencesSettings,
   savePreferencesSettings,
 } from "#webui/hooks/use-preferences-settings";
-import { isRealtimeModel } from "#webui/lib/constants/models";
+import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type UseSettingsReturn } from "#webui/types/settings";
 
 interface UseSaveSettingsHandlerArgs {
@@ -52,7 +52,8 @@ export function useSaveSettingsHandler(
     // takes effect on the next conversation, matching how chat model/provider
     // changes apply going forward rather than retroactively.
     const modeWillChange =
-      isRealtimeModel(settings.savedModel) !== isRealtimeModel(settings.model);
+      isRealtimeSelection(settings.savedProvider, settings.savedModel) !==
+      isRealtimeSelection(settings.provider, settings.model);
 
     closeSettings(() => {
       if (modeWillChange) {
