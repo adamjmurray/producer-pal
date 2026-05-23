@@ -21,8 +21,9 @@ export interface UseVoiceModeSettingsReturn {
   /** Persist current voice-mode values and update the "saved" snapshots so
    * the live session reads the new values on the next connect. */
   commit: () => void;
-  /** Discard in-modal edits, reverting both in-modal and saved state to the
-   * values currently in localStorage. */
+  /** Discard in-modal edits, resetting the in-modal values back to what is
+   * currently in localStorage. The saved snapshots already mirror localStorage,
+   * so they are left untouched. */
   revert: () => void;
 }
 

@@ -90,8 +90,9 @@ export function findParamChild(
  * Handle the setModulation action: write a modulation-matrix cell.
  * Auto-adds the target parameter when not yet registered.
  *
- * Args: [target: string, source: int 0-12, amount: float]
- * Source is an integer index (pending name verification from the Wavetable UI).
+ * Args: [target: string, source: name|int 0-12, amount: float]
+ * Source accepts a name (e.g. "LFO 1") or a bare index 0-12; see
+ * resolveSourceIndex.
  * @param device - LiveAPI device object
  * @param args - Parsed action arguments
  * @param toolName - Calling tool name for warning prefix
