@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 const codeTransformsSkills = `
@@ -213,6 +214,8 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
 
 **Simpler sample:** Load a sample with \`params: "sample=<absolute file path>"\` on ppal-create-device or ppal-update-device. Read-device returns the loaded path as a top-level \`sample\` field and (when params are included) as a \`{name: "sample", value: <path>}\` entry in \`parameters\`. Skipped with a warning on non-Simpler devices and on Simpler in multi-sample mode.
+
+**Build a Drum Rack:** Create the rack (\`deviceName="Drum Rack"\`), then one ppal-create-device call per pad: \`deviceName="Simpler" path="t0/d0/p<Note>/d0" name="<PadName>" params="sample=<abs path>"\`. The note name addresses the pad (\`pC1\`, \`pF#1\`); its chain auto-creates, and \`params="sample=..."\` loads the sample into the Simpler in the same call — no separate sample step. One call per pad (each takes a different sample). Get paths from \`ppal-library\`; to match an existing kit's pad notes, read the track with \`drum-map\` first.
 
 ### Specialized Device Controls
 
