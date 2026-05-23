@@ -79,6 +79,13 @@ export function useVoicePersistence(
   // IDB write is no longer cancellable), so the save checks this set right
   // before writing to avoid resurrecting a just-deleted conversation.
   const canceledIdsRef = useRef<Set<string>>(new Set());
+  // Id reserved for the in-progress new conversation, before its first save
+  // resolves and adopts it as the active id. Generating the id inline in the
+  // autosave effect would mint a fresh UUID on every transcript delta that
+  // lands in the window between the first save's debounce firing and its async
+  // write resolving (activeId still null) — creating a duplicate record. Hold
+  // it here so concurrent effect runs reuse the same id. Cleared on navigation.
+  const pendingNewIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     activeIdRef.current = activeConversationId;
@@ -137,7 +144,8 @@ export function useVoicePersistence(
   useEffect(() => {
     if (liveHistory.length === 0) return;
 
-    const id = activeIdRef.current ?? crypto.randomUUID();
+    const id =
+      activeIdRef.current ?? (pendingNewIdRef.current ??= crypto.randomUUID());
     const merged = mergeVoiceHistory(priorItemsRef.current, liveHistory);
     const timer = setTimeout(() => {
       void saveVoiceRecord(
@@ -163,6 +171,7 @@ export function useVoicePersistence(
 
   const switchConversation = useCallback(
     async (id: string) => {
+      pendingNewIdRef.current = null;
       const record = await loadConversation(id);
 
       if (!record) {
@@ -204,6 +213,7 @@ export function useVoicePersistence(
     bookmarkedRef.current = false;
     titleRef.current = null;
     priorItemsRef.current = [];
+    pendingNewIdRef.current = null;
     setSavedItems([]);
     setActiveId(null);
   }, [setActiveId]);

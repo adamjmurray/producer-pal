@@ -88,6 +88,27 @@ describe("useVoicePersistence", () => {
     expect(loaded?.voiceHistory ?? []).toHaveLength(1);
   });
 
+  it("reuses one reserved id across rapid updates, creating a single record", async () => {
+    const { result, rerender } = renderHook(
+      ({ history }: { history: RealtimeItem[] }) =>
+        useVoicePersistence({ liveHistory: history }),
+      { initialProps: { history: [] as RealtimeItem[] } },
+    );
+
+    await waitForEffects();
+    // Two transcript updates land before any save resolves and adopts an
+    // active id. Both autosave effect runs must reuse the same reserved id,
+    // otherwise the second mints a fresh UUID and creates a duplicate record.
+    rerender({ history: [userTextItem("first")] });
+    rerender({ history: [userTextItem("first"), userTextItem("second")] });
+    await waitForEffects(800);
+
+    expect(result.current.conversations).toHaveLength(1);
+    expect(result.current.conversations[0]?.id).toBe(
+      result.current.activeConversationId,
+    );
+  });
+
   it("derives a title from the first user transcript", async () => {
     const { result, rerender } = renderHook(
       ({ history }: { history: RealtimeItem[] }) =>
