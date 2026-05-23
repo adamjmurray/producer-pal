@@ -229,8 +229,15 @@ export function useVoicePersistence(
   );
 
   const deleteAllConversations = useCallback(async () => {
-    if (activeIdRef.current != null) {
-      canceledIdsRef.current.add(activeIdRef.current);
+    // Cancel the in-flight autosave for the active record OR a not-yet-adopted
+    // new conversation (pendingNewIdRef holds its reserved id until the first
+    // save resolves and adopts it as the active id). A bulk delete doesn't stop
+    // the live session, so a save scheduled before the delete would otherwise
+    // resurrect the record.
+    const liveId = activeIdRef.current ?? pendingNewIdRef.current;
+
+    if (liveId != null) {
+      canceledIdsRef.current.add(liveId);
     }
 
     await dbDeleteAllConversations();
@@ -239,10 +246,13 @@ export function useVoicePersistence(
   }, [refreshList, startNewConversation]);
 
   const deleteUnbookmarkedConversations = useCallback(async () => {
-    const activeId = activeIdRef.current;
+    // The live record (active, or a pending-new one still on its reserved id)
+    // is unbookmarked unless explicitly bookmarked, so this bulk delete removes
+    // it too. Cancel its in-flight autosave and reset to a fresh session.
+    const liveId = activeIdRef.current ?? pendingNewIdRef.current;
 
-    if (activeId != null && !bookmarkedRef.current) {
-      canceledIdsRef.current.add(activeId);
+    if (liveId != null && !bookmarkedRef.current) {
+      canceledIdsRef.current.add(liveId);
       startNewConversation();
     }
 

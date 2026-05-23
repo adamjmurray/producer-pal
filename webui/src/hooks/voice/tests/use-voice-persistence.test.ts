@@ -387,6 +387,48 @@ describe("useVoicePersistence", () => {
     expect(result.current.conversations).toHaveLength(0);
   });
 
+  it("does not resurrect a pending new conversation deleted via deleteAllConversations", async () => {
+    const { result, rerender } = renderHook(
+      ({ history }: { history: RealtimeItem[] }) =>
+        useVoicePersistence({ liveHistory: history }),
+      { initialProps: { history: [] as RealtimeItem[] } },
+    );
+
+    await waitForEffects();
+    // A brand-new session produces transcript: the autosave reserves an id but
+    // hasn't resolved yet, so no active id has been adopted.
+    rerender({ history: [userTextItem("brand new")] });
+    expect(result.current.activeConversationId).toBeNull();
+
+    // Delete-all lands during that pre-adoption window. It doesn't stop the
+    // session, so the reserved-id autosave is still scheduled.
+    await act(() => result.current.deleteAllConversations());
+    // Let the debounce fire; the reserved-id save must bail, not create a record.
+    await waitForEffects(800);
+
+    expect(result.current.conversations).toHaveLength(0);
+    expect(result.current.activeConversationId).toBeNull();
+  });
+
+  it("does not resurrect a pending new conversation deleted via deleteUnbookmarkedConversations", async () => {
+    const { result, rerender } = renderHook(
+      ({ history }: { history: RealtimeItem[] }) =>
+        useVoicePersistence({ liveHistory: history }),
+      { initialProps: { history: [] as RealtimeItem[] } },
+    );
+
+    await waitForEffects();
+    rerender({ history: [userTextItem("brand new")] });
+    expect(result.current.activeConversationId).toBeNull();
+
+    // A pending-new conversation is unbookmarked, so the bulk delete targets it.
+    await act(() => result.current.deleteUnbookmarkedConversations());
+    await waitForEffects(800);
+
+    expect(result.current.conversations).toHaveLength(0);
+    expect(result.current.activeConversationId).toBeNull();
+  });
+
   it("deleteAllConversations clears DB and resets state", async () => {
     const record = createTestRecord({
       sessionType: "voice",
