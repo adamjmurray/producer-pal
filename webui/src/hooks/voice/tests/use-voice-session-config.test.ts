@@ -102,6 +102,7 @@ describe("useVoiceSession turn-detection config", () => {
       threshold: 0.7,
       silenceDurationMs: 350,
       eagerness: "auto",
+      interruptResponse: true,
     };
 
     const audio = await connectAndReadAudio({ ...PARAMS, turnDetection });
@@ -110,6 +111,7 @@ describe("useVoiceSession turn-detection config", () => {
       type: "server_vad",
       threshold: 0.7,
       silence_duration_ms: 350,
+      interrupt_response: true,
     });
   });
 

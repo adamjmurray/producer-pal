@@ -36,10 +36,21 @@ describe("turn-detection-helpers", () => {
         threshold: 0.7,
         silenceDurationMs: 400,
         eagerness: "high",
+        interruptResponse: true,
       };
 
       saveTurnDetection(settings);
       expect(loadTurnDetection()).toStrictEqual(settings);
+    });
+
+    it("defaults barge-in off and ignores a non-boolean stored value", () => {
+      expect(loadTurnDetection().interruptResponse).toBe(false);
+
+      localStorage.setItem(KEY, JSON.stringify({ interruptResponse: "yes" }));
+      expect(loadTurnDetection().interruptResponse).toBe(false);
+
+      localStorage.setItem(KEY, JSON.stringify({ interruptResponse: true }));
+      expect(loadTurnDetection().interruptResponse).toBe(true);
     });
 
     it("falls back to defaults on invalid JSON", () => {

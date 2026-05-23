@@ -19,6 +19,7 @@ const serverVad: TurnDetectionSettings = {
   threshold: 0.5,
   silenceDurationMs: 200,
   eagerness: "auto",
+  interruptResponse: false,
 };
 
 const semanticVad: TurnDetectionSettings = {
@@ -117,6 +118,33 @@ describe("TurnDetectionControls", () => {
     expect(setSettings).toHaveBeenCalledWith({
       ...serverVad,
       silenceDurationMs: 500,
+    });
+  });
+
+  it("renders the barge-in toggle reflecting interruptResponse, unchecked by default", () => {
+    render(
+      <TurnDetectionControls settings={serverVad} setSettings={vi.fn()} />,
+    );
+
+    const toggle = screen.getByTestId(
+      "turn-detection-barge-in",
+    ) as HTMLInputElement;
+
+    expect(toggle.checked).toBe(false);
+  });
+
+  it("enables barge-in when the toggle is checked", () => {
+    const setSettings = vi.fn();
+
+    render(
+      <TurnDetectionControls settings={serverVad} setSettings={setSettings} />,
+    );
+
+    fireEvent.click(screen.getByTestId("turn-detection-barge-in"));
+
+    expect(setSettings).toHaveBeenCalledWith({
+      ...serverVad,
+      interruptResponse: true,
     });
   });
 });

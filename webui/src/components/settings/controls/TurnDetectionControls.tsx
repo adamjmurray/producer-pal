@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
+import { Tooltip } from "#webui/components/settings/controls/Tooltip";
 import {
   type SemanticEagerness,
   type TurnDetectionMode,
@@ -88,6 +89,22 @@ export function TurnDetectionControls({
         ) : (
           <ServerVadSliders settings={settings} update={update} />
         )}
+
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            id="turn-detection-barge-in"
+            checked={settings.interruptResponse}
+            onChange={(e) =>
+              update({
+                interruptResponse: (e.target as HTMLInputElement).checked,
+              })
+            }
+            data-testid="turn-detection-barge-in"
+          />
+          Enable barge-in
+          <Tooltip text="Speak to interrupt Producer Pal while it's talking. Use headphones — without them, the assistant's own voice can trigger interruptions." />
+        </label>
 
         <p className="text-xs text-zinc-500 dark:text-zinc-400">
           Applied on the next session (Stop, then Talk).

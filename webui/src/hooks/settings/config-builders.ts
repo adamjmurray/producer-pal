@@ -47,13 +47,14 @@ export interface RealtimeTurnDetectionPayload {
   threshold?: number;
   silence_duration_ms?: number;
   eagerness?: SemanticEagerness;
+  interrupt_response: boolean;
 }
 
 /**
  * Maps the UI turn-detection settings to the OpenAI Realtime
  * audio.input.turnDetection payload. server_vad carries the volume threshold
  * and silence window; semantic_vad carries the eagerness tier. Each mode omits
- * the other mode's fields.
+ * the other mode's fields. interrupt_response (barge-in) applies to both.
  * @param settings - UI turn-detection settings
  * @returns The turn-detection payload for the realtime session config
  */
@@ -61,13 +62,18 @@ export function mapTurnDetectionToConfig(
   settings: TurnDetectionSettings,
 ): RealtimeTurnDetectionPayload {
   if (settings.mode === "semantic_vad") {
-    return { type: "semantic_vad", eagerness: settings.eagerness };
+    return {
+      type: "semantic_vad",
+      eagerness: settings.eagerness,
+      interrupt_response: settings.interruptResponse,
+    };
   }
 
   return {
     type: "server_vad",
     threshold: settings.threshold,
     silence_duration_ms: settings.silenceDurationMs,
+    interrupt_response: settings.interruptResponse,
   };
 }
 

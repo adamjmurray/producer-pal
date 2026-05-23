@@ -21,23 +21,33 @@ describe("config-builders", () => {
       threshold: 0.6,
       silenceDurationMs: 300,
       eagerness: "high",
+      interruptResponse: true,
     };
 
-    it("maps server_vad to threshold + silence, omitting eagerness", () => {
+    it("maps server_vad to threshold + silence + interrupt_response", () => {
       expect(mapTurnDetectionToConfig(base)).toStrictEqual({
         type: "server_vad",
         threshold: 0.6,
         silence_duration_ms: 300,
+        interrupt_response: true,
       });
     });
 
-    it("maps semantic_vad to eagerness, omitting server knobs", () => {
+    it("maps semantic_vad to eagerness + interrupt_response", () => {
       expect(
         mapTurnDetectionToConfig({ ...base, mode: "semantic_vad" }),
       ).toStrictEqual({
         type: "semantic_vad",
         eagerness: "high",
+        interrupt_response: true,
       });
+    });
+
+    it("passes interrupt_response: false through (barge-in off)", () => {
+      expect(
+        mapTurnDetectionToConfig({ ...base, interruptResponse: false })
+          .interrupt_response,
+      ).toBe(false);
     });
   });
 

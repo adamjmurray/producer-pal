@@ -20,6 +20,10 @@ export interface TurnDetectionSettings {
   silenceDurationMs: number;
   /** semantic_vad: how eagerly the model decides the user is done. */
   eagerness: SemanticEagerness;
+  /** Barge-in: when true, the user speaking interrupts the assistant's current
+   * response (maps to turn_detection.interrupt_response). Off by default —
+   * without headphones the assistant's own audio can self-interrupt. */
+  interruptResponse: boolean;
 }
 
 export const TURN_DETECTION_THRESHOLD_MIN = 0;
@@ -34,6 +38,7 @@ export const DEFAULT_TURN_DETECTION: TurnDetectionSettings = {
   threshold: 0.5,
   silenceDurationMs: 200,
   eagerness: "auto",
+  interruptResponse: false,
 };
 
 const VALID_MODES = new Set<TurnDetectionMode>(["server_vad", "semantic_vad"]);
@@ -90,6 +95,10 @@ function normalizeTurnDetection(
   return {
     mode,
     eagerness,
+    interruptResponse:
+      typeof raw.interruptResponse === "boolean"
+        ? raw.interruptResponse
+        : DEFAULT_TURN_DETECTION.interruptResponse,
     threshold: clampNumber(
       raw.threshold,
       DEFAULT_TURN_DETECTION.threshold,
