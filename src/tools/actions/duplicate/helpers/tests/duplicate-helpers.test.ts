@@ -436,23 +436,25 @@ describe("duplicate-helpers", () => {
       vi.clearAllMocks();
     });
 
-    it("throws error when clip does not exist", () => {
+    it("throws error when clip does not exist", async () => {
       (global as Record<string, unknown>).LiveAPI =
         createArrangementMockLiveAPI({ clipExists: false });
 
-      expect(() => duplicateClipToArrangement("nonexistent", 0)).toThrow(
+      await expect(
+        duplicateClipToArrangement("nonexistent", 0),
+      ).rejects.toThrow(
         'duplicate failed: no clip exists for clipId "nonexistent"',
       );
     });
 
-    it("throws error when clip has no track index", () => {
+    it("throws error when clip has no track index", async () => {
       (global as Record<string, unknown>).LiveAPI =
         createArrangementMockLiveAPI({
           clipExists: true,
           trackIndex: null,
         });
 
-      expect(() => duplicateClipToArrangement("clip1", 0)).toThrow(
+      await expect(duplicateClipToArrangement("clip1", 0)).rejects.toThrow(
         'duplicate failed: no track index for clipId "clip1"',
       );
     });

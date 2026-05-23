@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -149,38 +150,37 @@ export async function duplicate(
   }
 
   // For clips, use position-based iteration; for tracks/scenes, use count-based
-  const createdObjects =
-    type === "clip"
-      ? duplicateClipWithPositions(
-          destination,
-          object,
-          id,
-          name,
-          color,
-          toSlot,
+  const createdObjects = await (type === "clip"
+    ? duplicateClipWithPositions(
+        destination,
+        object,
+        id,
+        name,
+        color,
+        toSlot,
+        arrangementStart,
+        locator,
+        arrangementLength,
+        context,
+      )
+    : duplicateTrackOrSceneWithCount(
+        type,
+        destination,
+        object,
+        id,
+        count,
+        name,
+        color,
+        {
           arrangementStart,
           locator,
           arrangementLength,
-          context,
-        )
-      : duplicateTrackOrSceneWithCount(
-          type,
-          destination,
-          object,
-          id,
-          count,
-          name,
-          color,
-          {
-            arrangementStart,
-            locator,
-            arrangementLength,
-            withoutClips,
-            withoutDevices,
-            routeToSource,
-          },
-          context,
-        );
+          withoutClips,
+          withoutDevices,
+          routeToSource,
+        },
+        context,
+      ));
 
   // Apply transforms/code to the duplicated clips (per-clip via update-clip DSL)
   if (type === "clip" && (transforms != null || code != null)) {
@@ -246,7 +246,7 @@ function duplicateDeviceWithPaths(
  * @param context - Context object with holdingAreaStartBeats
  * @returns Array of result objects
  */
-function duplicateTrackOrSceneWithCount(
+async function duplicateTrackOrSceneWithCount(
   type: string,
   destination: string | undefined,
   object: LiveAPI,
@@ -256,10 +256,10 @@ function duplicateTrackOrSceneWithCount(
   color: string | undefined,
   params: DuplicateParams,
   context: Partial<ToolContext>,
-): object[] {
+): Promise<object[]> {
   // Scene to arrangement: use position-based iteration (supports multi-value locators)
   if (type === "scene" && destination === "arrangement") {
-    return duplicateSceneToArrangementAtPositions(
+    return await duplicateSceneToArrangementAtPositions(
       object,
       id,
       count,
@@ -310,14 +310,14 @@ function duplicateTrackOrSceneWithCount(
  * @param context - Context object
  * @returns Array of result objects
  */
-function duplicateSceneToArrangementAtPositions(
+async function duplicateSceneToArrangementAtPositions(
   object: LiveAPI,
   id: string,
   count: number,
   name: string | undefined,
   params: DuplicateParams,
   context: Partial<ToolContext>,
-): object[] {
+): Promise<object[]> {
   const { arrangementStart, locator, arrangementLength } = params;
   const withoutClips = params.withoutClips;
 
@@ -363,7 +363,7 @@ function duplicateSceneToArrangementAtPositions(
   warnExtraNames(parsedNames, allPositions.length, "duplicate");
 
   for (let i = 0; i < allPositions.length; i++) {
-    const result = duplicateSceneToArrangement(
+    const result = await duplicateSceneToArrangement(
       id,
       allPositions[i] as number, // bounded by loop
       getNameForIndex(name, i, parsedNames),

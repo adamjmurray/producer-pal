@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -37,7 +38,7 @@ import {
  * @param context - Context object with holdingAreaStartBeats
  * @returns Array of result objects
  */
-export function duplicateClipWithPositions(
+export async function duplicateClipWithPositions(
   destination: string | undefined,
   object: LiveAPI,
   id: string,
@@ -48,7 +49,7 @@ export function duplicateClipWithPositions(
   locator: string | undefined,
   arrangementLength: string | undefined,
   context: Partial<ToolContext>,
-): object[] {
+): Promise<object[]> {
   const createdObjects: object[] = [];
 
   if (destination === "session") {
@@ -109,7 +110,7 @@ export function duplicateClipWithPositions(
     warnExtraNames(parsedNames, positionsInBeats.length, "duplicate");
 
     for (let i = 0; i < positionsInBeats.length; i++) {
-      const result = duplicateClipToArrangement(
+      const result = await duplicateClipToArrangement(
         id,
         positionsInBeats[i] as number,
         getNameForIndex(name, i, parsedNames),

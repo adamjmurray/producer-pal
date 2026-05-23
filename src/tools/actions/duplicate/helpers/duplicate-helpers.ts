@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
@@ -153,7 +154,7 @@ export function getMinimalClipInfo(
  * @param color - Optional color for the clips
  * @returns Array of minimal clip info objects
  */
-export function createClipsForLength(
+export async function createClipsForLength(
   sourceClip: LiveAPI,
   track: LiveAPI,
   arrangementStartBeats: number,
@@ -162,7 +163,7 @@ export function createClipsForLength(
   omitFields: string[] = [],
   context: Partial<ToolContext & TilingContext> = {},
   color?: string,
-): MinimalClipInfo[] {
+): Promise<MinimalClipInfo[]> {
   const sourceClipLength = sourceClip.getProperty("length") as number;
   const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;
   const duplicatedClips: MinimalClipInfo[] = [];
@@ -211,7 +212,7 @@ export function createClipsForLength(
     const newClipId = newClip.id;
 
     if (arrangementLengthBeats > sourceClipLength) {
-      lengthenClipAndCollectInfo(
+      await lengthenClipAndCollectInfo(
         sourceClip,
         track,
         newClipId,
@@ -241,7 +242,7 @@ export function createClipsForLength(
  * @param context - Context object
  * @param duplicatedClips - Array to push results to
  */
-function lengthenClipAndCollectInfo(
+async function lengthenClipAndCollectInfo(
   sourceClip: LiveAPI,
   track: LiveAPI,
   newClipId: string,
@@ -250,7 +251,7 @@ function lengthenClipAndCollectInfo(
   omitFields: string[],
   context: Partial<ToolContext & TilingContext>,
   duplicatedClips: MinimalClipInfo[],
-): void {
+): Promise<void> {
   // Convert beats to bar:beat format using clip's time signature
   const timeSigNum = sourceClip.getProperty("signature_numerator") as number;
   const timeSigDenom = sourceClip.getProperty(
@@ -261,7 +262,7 @@ function lengthenClipAndCollectInfo(
   const remainingBeats = targetBeats - bars * beatsPerBar;
   const arrangementLengthBarBeat = `${bars}:${remainingBeats.toFixed(3)}`;
 
-  const updateResult = updateClip(
+  const updateResult = await updateClip(
     { ids: newClipId, arrangementLength: arrangementLengthBarBeat, name },
     context,
   );
@@ -355,7 +356,7 @@ export function duplicateClipSlot(
  * @param context - Context object with holdingAreaStartBeats and silenceWavPath
  * @returns Clip info or object with trackIndex and clips array
  */
-export function duplicateClipToArrangement(
+export async function duplicateClipToArrangement(
   clipId: string,
   arrangementStartBeats: number,
   name?: string,
@@ -364,7 +365,7 @@ export function duplicateClipToArrangement(
   _songTimeSigNumerator = 4,
   _songTimeSigDenominator = 4,
   context: Partial<ToolContext & TilingContext> = {},
-): MinimalClipInfo | { trackIndex: number; clips: MinimalClipInfo[] } {
+): Promise<MinimalClipInfo | { trackIndex: number; clips: MinimalClipInfo[] }> {
   // Support "id {id}" (such as returned by childIds()) and id values directly
   const clip = LiveAPI.from(clipId);
 
@@ -397,7 +398,7 @@ export function duplicateClipToArrangement(
       clipTimeSigDenominator,
     );
     // When creating multiple clips, omit trackIndex since they all share the same track
-    const clipsCreated = createClipsForLength(
+    const clipsCreated = await createClipsForLength(
       clip,
       track,
       arrangementStartBeats,

@@ -13,6 +13,7 @@ import {
   registerMockObject,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import { updateClipMock } from "./setup.ts";
 
 interface LengthMocks {
   track0: ReturnType<typeof registerMockObject>;
@@ -109,6 +110,41 @@ describe("duplicate - arrangementLength functionality", () => {
     // When updateClip returns a single clip, the result is the clip object directly
     expect(result).toHaveProperty("arrangementStart", "5|1");
     expect(result).toHaveProperty("id", livePath.track(0).arrangementClip(0));
+  });
+
+  it("returns the lengthened clip even when updateClip resolves asynchronously (regression for missing await)", async () => {
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      properties: {
+        length: 4,
+        looping: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_midi_clip: 1,
+      },
+    });
+
+    setupLengthMocks();
+
+    // The real updateClip is async. A caller that fails to await it would treat
+    // the returned Promise as the clip array (Array.isArray === false) and drop
+    // the lengthened clip from the result.
+    updateClipMock.mockReturnValueOnce(
+      Promise.resolve([{ id: livePath.track(0).arrangementClip(0) }]),
+    );
+
+    const result = await duplicate({
+      type: "clip",
+      id: "clip1",
+
+      arrangementStart: "5|1",
+      arrangementLength: "1:2", // 6 beats - longer than original 4 beats
+    });
+
+    expect(result).toStrictEqual({
+      id: livePath.track(0).arrangementClip(0),
+      arrangementStart: "5|1",
+    });
   });
 
   it("should duplicate a non-looping clip at original length when requested length is longer", async () => {

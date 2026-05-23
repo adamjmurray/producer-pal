@@ -561,10 +561,10 @@ describe("duplicate-track-scene-helpers", () => {
   }
 
   describe("duplicateSceneToArrangement", () => {
-    it("should throw error when scene does not exist", () => {
+    it("should throw error when scene does not exist", async () => {
       mockNonExistentObjects();
 
-      expect(() =>
+      await expect(
         duplicateSceneToArrangement(
           "scene123",
           16,
@@ -574,13 +574,15 @@ describe("duplicate-track-scene-helpers", () => {
           4,
           4,
         ),
-      ).toThrow('duplicate failed: scene with id "scene123" does not exist');
+      ).rejects.toThrow(
+        'duplicate failed: scene with id "scene123" does not exist',
+      );
     });
 
-    it("should throw error when scene has no sceneIndex", () => {
+    it("should throw error when scene has no sceneIndex", async () => {
       registerMockObject("scene123", { path: "some/invalid/path" });
 
-      expect(() =>
+      await expect(
         duplicateSceneToArrangement(
           "scene123",
           16,
@@ -590,17 +592,17 @@ describe("duplicate-track-scene-helpers", () => {
           4,
           4,
         ),
-      ).toThrow('duplicate failed: no scene index for id "scene123"');
+      ).rejects.toThrow('duplicate failed: no scene index for id "scene123"');
     });
 
-    it("should return empty clips when withoutClips is true", () => {
+    it("should return empty clips when withoutClips is true", async () => {
       setupSceneToArrangementBaseMocks();
       registerClipSlot(0, 0, true);
       registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
         path: livePath.track(0).clipSlot(0).clip(),
       });
 
-      const result = duplicateSceneToArrangement(
+      const result = await duplicateSceneToArrangement(
         "scene1",
         16,
         undefined,
@@ -635,7 +637,7 @@ describe("duplicate-track-scene-helpers", () => {
       },
     ])(
       "$desc",
-      ({
+      async ({
         clipLength,
         liveSetExtra,
         sceneName,
@@ -663,7 +665,7 @@ describe("duplicate-track-scene-helpers", () => {
           properties: { is_arrangement_clip: 1, start_time: 16 },
         });
 
-        const result = duplicateSceneToArrangement(
+        const result = await duplicateSceneToArrangement(
           "scene1",
           16,
           sceneName,

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // Shared mock setup for duplicate tests
@@ -18,13 +19,20 @@ interface MockClipResult {
 
 /**
  * Mock implementation for updateClip that returns tiled clip array format.
- * Typed as the real updateClip return (single or array, with optional note
- * stats) so tests can override it with transformed/noteCount values.
+ * The real updateClip is async, so the default returns a Promise — this keeps
+ * the mock faithful and ensures a missing `await` in a caller (e.g. the
+ * arrangement-length lengthen path) surfaces as a test failure. Tests may still
+ * override with a sync array/object; awaiting callers handle both.
  */
 export const updateClipMock = vi.fn(
-  ({ ids }: { ids: string }): MockClipResult | MockClipResult[] => [
-    { id: ids },
-  ],
+  ({
+    ids,
+  }: {
+    ids: string;
+  }):
+    | Promise<MockClipResult | MockClipResult[]>
+    | MockClipResult
+    | MockClipResult[] => Promise.resolve([{ id: ids }]),
 );
 
 /**

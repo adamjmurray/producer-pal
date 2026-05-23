@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -343,7 +344,7 @@ function assignNamesToClips(clips: MinimalClipInfo[], name: string): void {
  * @param context - Context object with holdingAreaStartBeats and silenceWavPath
  * @returns Object with arrangementStart and clips array
  */
-export function duplicateSceneToArrangement(
+export async function duplicateSceneToArrangement(
   sceneId: string,
   arrangementStartBeats: number,
   name?: string,
@@ -352,7 +353,7 @@ export function duplicateSceneToArrangement(
   songTimeSigNumerator = 4,
   songTimeSigDenominator = 4,
   context: Partial<ToolContext & TilingContext> = {},
-): { arrangementStart: string; clips: MinimalClipInfo[] } {
+): Promise<{ arrangementStart: string; clips: MinimalClipInfo[] }> {
   const scene = LiveAPI.from(sceneId);
 
   if (!scene.exists()) {
@@ -389,14 +390,21 @@ export function duplicateSceneToArrangement(
       arrangementLengthBeats = calculateSceneLength(sceneIndex);
     }
 
-    // Only duplicate clips if withoutClips is not explicitly true
-    // Find all clips in this scene and duplicate them to arrangement
+    // Only duplicate clips if withoutClips is not explicitly true.
+    // Gather the scene's clips first (forEachClipInScene is synchronous), then
+    // process them sequentially so each createClipsForLength call can be awaited.
+    const sceneClips: { clip: LiveAPI; trackIndex: number }[] = [];
+
     forEachClipInScene(sceneIndex, trackIds, (clip, _clipSlot, trackIndex) => {
+      sceneClips.push({ clip, trackIndex });
+    });
+
+    for (const { clip, trackIndex } of sceneClips) {
       const track = LiveAPI.from(livePath.track(trackIndex));
 
       // Use the new length-aware clip creation logic
       // Omit arrangementStart since all clips share the same start time
-      const clipsForTrack = createClipsForLength(
+      const clipsForTrack = await createClipsForLength(
         clip,
         track,
         arrangementStartBeats,
@@ -412,7 +420,7 @@ export function duplicateSceneToArrangement(
       }
 
       duplicatedClips.push(...clipsForTrack);
-    });
+    }
   }
 
   return {
