@@ -183,6 +183,44 @@ You may need to change the URL if:
   focuses on running Ableton Live. Replace `localhost` with the other computer's
   network address (e.g., `http://192.168.1.100:11434`)
 
+### Voice
+
+Producer Pal includes an experimental voice mode for spoken conversations with
+the AI. Voice mode is **OpenAI only** (for now) and **requires an OpenAI API
+key**. To use it, set the **Provider** to **OpenAI** and select the **GPT
+Realtime 2 (Voice)** model on the [Connection](#connection) tab — the voice
+settings below then appear.
+
+_Screenshot placeholder: add `producer-pal-chat-settings-voice.png` here showing
+the voice controls with the "Advanced" turn-detection section expanded._
+
+- **Voice** - The spoken voice the assistant uses (Marin, Cedar, Alloy, and
+  more). Marin and Cedar are recommended for the best audio quality. The voice
+  locks once a session starts talking, so changing it applies on the next
+  session (Stop, then Talk).
+- **Speed** - Playback speed of the assistant's voice (0.5×–1.5×, default 1.0×).
+
+#### Turn detection (Advanced)
+
+The **Advanced** disclosure controls how the model decides you've finished
+speaking — known as voice activity detection, or "VAD". As with the other voice
+settings, changes apply on the next session (Stop, then Talk).
+
+- **Turn detection** - The VAD strategy:
+  - **Server VAD (volume-based)** - Detects the end of your turn from audio
+    volume. Adds two tuning sliders:
+    - **Threshold** - Activation volume (0–1). Higher values ignore quieter
+      input.
+    - **Silence** - How long (in milliseconds) to wait after you stop speaking
+      before ending your turn.
+  - **Semantic VAD (model-based)** - The model decides when you've finished a
+    thought. Adds one setting:
+    - **Eagerness** - How quickly it responds: Auto, Low (waits longer), Medium,
+      or High (responds sooner).
+- **Enable barge-in** - When on, speaking interrupts the assistant while it's
+  still talking. Off by default. Use headphones — without them, the assistant's
+  own voice can trigger interruptions.
+
 ### Tools
 
 The Tools tab controls which tools are available to the AI when using the chat
