@@ -112,8 +112,27 @@ web UI architecture.
   `^`, `~`, or ranges). `.npmrc` enforces this for `npm install`. A test in
   `src/test/package-json-versions.test.ts` validates it.
 
-- **Zod limitations**: Use only primitive types and enums in tool input schemas.
-  For list-like inputs, use comma-separated strings
+- **Tool input schema shapes**: Rich JSON Schema shapes (arrays, nested objects)
+  are safe — every current provider/model accepts and correctly fills them.
+  (`ppal-live-api` already ships `z.array(z.object(...))`; a cross-provider
+  probe in `evals/schema-compat/` confirms it across the curated webui model
+  set, incl. small/free models.) Choose the shape by the data:
+  - **Flat scalar list** (ids, note names, paths) → comma-separated string.
+    Still the default: natural for LLMs, token-cheap, no reason to change
+    existing ones.
+  - **List of structured records** (e.g. per-item fields) →
+    `z.array(z.object())`. Prefer this over inventing a string mini-DSL
+    (`a=1|b=2,...`) that has to be taught and parsed.
+  - **Values that can contain the list delimiter** (e.g. function-call args with
+    commas) → `z.array(z.string())`, not a comma-separated string. See `actions`
+    in `update-device.def.ts`.
+  - **"One or many"** → always use an array (a single-element array is fine). Do
+    NOT use `string | array` (`z.union` → JSON Schema `anyOf`): the probe found
+    it is the one fragile construct — accepted everywhere but mis-filled (Claude
+    collapses to the scalar and drops data; some small models JSON-stringify the
+    array into the string slot).
+  - Anything richer than a primitive MUST have a `smallModelModeConfig` plan
+    (exclude the param, or degrade it to a comma-separated string).
 
 - **Tool schema coercion**: Use `z.coerce.string()` instead of `z.string()` for
   ID parameters in tool input schemas (e.g., `ids`, `trackId`, `clipId`,
