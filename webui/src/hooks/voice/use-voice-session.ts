@@ -222,10 +222,6 @@ export function useVoiceSession(
         });
 
         session.on("transport_event", (event: TransportEvent) => {
-          // High-frequency stream — log to console (devtools filter "[voice]"),
-          // not React state, to avoid re-rendering on every delta.
-          console.debug("[voice]", event.type, event);
-
           // These flags drive the UI status pill only. They do NOT touch the
           // mic — the canonical example doesn't auto-mute and we follow suit.
           if (event.type === "response.created") {
