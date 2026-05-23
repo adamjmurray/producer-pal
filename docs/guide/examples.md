@@ -196,8 +196,5 @@ Max device to persist important context. For particularly complex tasks,
 "extended thinking" or "high reasoning effort" features can help, though it's
 typically overkill and will hit usage limits faster.
 
-## Limitations
-
-Drum Racks work in nested structures, but tracks with multiple Drum Racks only
-use the first one's drum map. Use one Drum Rack per track for predictable
-results.
+For known constraints, see [Limitations](/features#limitations) on the Features
+page.

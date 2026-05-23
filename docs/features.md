@@ -316,6 +316,16 @@ Control Ableton Live from another computer on your local network, no extra setup
 required. For fully remote control, use
 [web tunnels](/installation/web-tunnels).
 
+## Limitations
+
+- **Automation and envelopes are not supported.** Producer Pal cannot read,
+  create, or edit arrangement automation or clip envelopes — parameter values
+  that change over time. Track and device parameters like volume, pan, sends,
+  and knobs can be set to static values, but not automated.
+- **One Drum Rack per track.** Drum Racks work in nested structures, but tracks
+  with multiple Drum Racks only use the first one's drum map. Use one Drum Rack
+  per track for predictable results.
+
 ## Small Model Mode {#small-model-mode}
 
 Adapts Producer Pal for less capable AI models by returning simplified
