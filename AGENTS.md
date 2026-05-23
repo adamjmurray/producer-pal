@@ -388,4 +388,6 @@ Rules:
   deployment
 - `dev/Read-Tool-Includes.md` - Read tool include parameter system and
   conventions
+- `dev/Specialized-Devices.md` - Specialized device LOM classes, pseudo-param
+  mappings, and the probe-against-Live verification discipline
 - `DEVELOPERS.md` - Development setup and testing

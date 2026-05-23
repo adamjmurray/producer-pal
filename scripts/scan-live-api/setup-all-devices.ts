@@ -10,7 +10,7 @@
 //
 // This builds the reproducible test bed surveyed by scan-all-devices.ts. See
 // the "Reproducing the scan" section of
-// dev/plans/Specialized-Device-Classes.md.
+// dev/Specialized-Devices.md.
 //
 // Usage: node scripts/scan-live-api/setup-all-devices.ts [--url=http://localhost:3350/mcp]
 

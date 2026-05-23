@@ -14,7 +14,7 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 // Roar (RoarDevice, class_name "Roar"). Exposes its processing-topology
 // selector and an envelope-audition toggle at the class level — neither is
 // reachable as a DeviceParameter. AJM-379. See
-// dev/plans/Specialized-Device-Classes.md.
+// dev/Specialized-Devices.md.
 //
 // This is the reference implementation for the simplest device shape:
 // stable enum + boolean pseudo-params, no actions/options/modulations.

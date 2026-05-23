@@ -14,7 +14,7 @@
 //   - `readOptions`→ dynamic catalogs surfaced via `include: ["options"]`
 //   - `readModulations` → the `modulations` output field (Wavetable only)
 //
-// See dev/plans/Specialized-Device-Classes.md for the full design.
+// See dev/Specialized-Devices.md for the full design.
 
 /**
  * A pseudo-parameter: a named value that behaves like a DeviceParameter from

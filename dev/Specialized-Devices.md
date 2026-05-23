@@ -1,8 +1,16 @@
 # Specialized Device Classes in the Ableton Live LOM
 
-Survey of native instruments and audio effects in Live 12.4 to identify which
-devices expose a specialized LOM class (with properties / children / functions
-beyond the generic `Device` baseline) versus which are plain `Device`.
+Reference for Producer Pal's specialized-device support: which native Live 12.4
+instruments and audio effects expose a specialized LOM class (properties /
+children / functions beyond the generic `Device` baseline), and how Producer Pal
+maps each one to pseudo-params, actions, and `options` catalogs.
+
+**Status:** 9 of the 10 specialized devices surveyed below are implemented
+(`src/tools/shared/device/specialized/`) and e2e-validated against Live 12.4;
+only **Shifter** is deferred (small surface, no demand yet). This started as a
+survey and design plan — it is now the as-built reference. Device behavior
+documented here is authoritative; "what changed when" lives in git history, not
+this doc.
 
 **Scope (deliberately narrowed):** MIDI effects are out of scope. The following
 specialized classes are also out of scope for Producer Pal follow-up and are
@@ -28,6 +36,40 @@ Confirmed undocumented (as of 2026-05-21): `DriftDevice`, `Eq8Device`,
 `CompressorDevice`, `HybridReverbDevice`, `MeldDevice`, `RoarDevice`,
 `SimplerDevice`, `SpectralResonatorDevice`, `WavetableDevice` — though some have
 gaps (e.g. Simpler's `replace_sample` is undocumented but real).
+
+## Verification discipline (probe against a running Live)
+
+Enum orders, value catalogs, and ranges are only trustworthy if they were probed
+against a running device. Live **silently reverts** invalid writes — it returns
+success and keeps the prior value — so a wrong index or range produces no error
+to catch after the fact. The discipline that prevents shipping a wrong mapping:
+
+- **Prefer a LOM `_list` / `_categories` source of truth.** Roar
+  (`routing_mode_list`), Drift (`*_list`), and Hybrid Reverb (`ir_*_list`)
+  expose their catalogs; read the list and cross-check the hardcoded labels
+  against it rather than trusting the order from memory.
+- **No `_list`? Hardcode from the UI, then probe the cardinality.** Wavetable,
+  EQ Eight, and Spectral Resonator have no list property. Walk the index upward
+  until a write reverts; the count must match the hardcoded array length. The
+  labels still come from the UI, but the size is verified.
+- **Index-vs-count trap.** A property named like a count can actually be an
+  _index_ into a value catalog. The tell: if index `0` is a valid sticking
+  value, it's an index (zero voices is nonsense). Map index↔value like Drift's
+  `voice_count_index`, not as a raw number. _(This was the Wavetable
+  `polyVoices` bug: it exposed the raw index `0-7`, so "set polyVoices 5"
+  produced 7 voices. Spectral Resonator's `polyphony` is the same shape, done
+  right.)_
+- **Probe the full contiguous range — don't skip.** Walking `0,1,2,3,8,16` and
+  seeing 8 revert looks like "max is 3", but it's really "max index is 7 and 8
+  reverted to the last valid value." Step one at a time through the plausible
+  range. _(The polyVoices range was first misread as 0-3 this exact way.)_
+- **Validate before the write, not after.** Use `writeIntInRange` (contiguous
+  range), `writeIntFromSet` (discrete set; `asIndex` when the property is an
+  index), or `writeEnumByIndex` (string enums). Out-of-range input then warns
+  and skips instead of silently no-op'ing.
+
+When you change any of these mappings, re-probe — never edit the catalog or
+range from memory.
 
 ## Baseline `Device` signature
 
@@ -303,9 +345,9 @@ slot returns the same 12 targets:
   `["None", "Osc 1 Gain", "Osc 1 Shape", "Osc 2 Gain", "Osc 2 Detune", "Noise Gain", "LP Frequency", "LP Resonance", "HP Frequency", "LFO Rate", "Cyc Env Rate", "Main Volume"]`
 - `voice_mode_list`: `["Poly", "Mono", "Stereo", "Unison"]`
 - `voice_count_list`: `[4, 8, 16, 24, 32]` — returns **ints**, not strings
-  (despite the doc declaring StringVector). Note: docs say `voice_count_list`
-  but the values "1, 4, 8, 16, 24, 32" appear in some UI configurations — verify
-  exact set at implementation time.
+  (despite the doc declaring StringVector). Implemented set is
+  `[4, 8, 16, 24, 32]` (`drift.ts` `VOICE_COUNTS`); the stray "1" seen in some
+  UI configurations did not hold up.
 
 **Modulation amounts are DeviceParameters, not class-level state.** Probe
 confirmed `LP Mod Amt 1`, `LP Mod Amt 2`, `LFO Mod Amt`, `Osc 1 Shape Mod Amt`,
@@ -313,7 +355,7 @@ confirmed `LP Mod Amt 1`, `LP Mod Amt 2`, `LFO Mod Amt`, `Osc 1 Shape Mod Amt`,
 `Mod Matrix Amt 3` all exist as regular parameters. So Drift's split is clean:
 **source/target selection at class level, amounts as DeviceParameters**.
 
-**Producer Pal interface design (decided 2026-05-21 via probe):**
+**Producer Pal interface** (as built; design probed 2026-05-21):
 
 Fourteen writable string-enum pseudo-params on `update-device`, also returned by
 `read-device` (in the `params` field — same surface as every other specialized
@@ -377,8 +419,8 @@ documented; semantics verified by probe 2026-05-21.
 - `poly_voices` (int) [RW] — polyphony voice count. Valid range: **1-6** (probe
   confirmed; 7+ silently reverts to last valid).
 - `unison_voices` (int) [RW] — unison voice count. Valid range: **0-2** (probe
-  confirmed; 3+ silently reverts). Exact semantic of each value (off vs voice
-  count) TBD at implementation time — verify against Meld UI.
+  confirmed; 3+ silently reverts). Implemented as a validated raw 0-2 value
+  (`meld.ts`, `writeIntInRange(0, 2)`).
 - `selected_engine` (int, 0 or 1) [RW] — UI-only A/B engine display selector.
   Probe verified that writes to `A Osc Shape` with `selected_engine=1` still go
   to A. Functional engine choice for each chain is exposed as DeviceParameters
@@ -394,7 +436,7 @@ as separate `A *` and `B *` params (e.g. `A Osc Type`, `A Filter Freq`,
 `B LFO 1 Sync`, `B Glide Time`). Both chains are always independently
 addressable regardless of `selected_engine`.
 
-**Producer Pal interface design (decided 2026-05-21 via probe):**
+**Producer Pal interface** (as built; design probed 2026-05-21):
 
 Three writable fields on `update-device`, also returned by `read-device`:
 
@@ -414,9 +456,9 @@ via `A *` / `B *` DeviceParameters.
 2. **`polyVoices` is ignored in mono mode (semantically).** Setting it still
    succeeds and persists, but has no audible effect until `monoPoly` becomes
    `"poly"`. We don't warn — caller's intent.
-3. **`unisonVoices` semantic meaning of 0/1/2 needs UI verification.** Likely
-   `0` = off / single voice and `1`/`2` = additional unison voices, but confirm
-   at implementation time.
+3. **`unisonVoices` is exposed as a validated raw 0-2 value**
+   (`writeIntInRange`). The per-value meaning follows the Meld UI; Producer Pal
+   does not reinterpret it.
 
 ### Simpler — `SimplerDevice` (`class_name: OriginalSimpler`)
 
@@ -471,7 +513,7 @@ State / mode selectors:
 **Note:** `multi_sample_mode` / `pad_slicing` suggest Simpler can morph into
 Sampler/slicing modes. Notably, **Sampler** has none of this.
 
-**Producer Pal interface design (decided 2026-05-21 via probe):**
+**Producer Pal interface** (as built; design probed 2026-05-21):
 
 Read-only fields in `read-device`'s `params` output:
 
@@ -594,7 +636,8 @@ Modulation matrix support:
   check (1 = modulatable)
 - `set_modulation_value(target_index: int, source_index: int, amount: float)` —
   **3 args** (probe-verified; doc omits the amount). Writes a matrix cell;
-  amount is float (range presumed -1..1 — verify at implementation time).
+  amount is a float in `-1..1` (the range Producer Pal documents and the skill
+  advertises).
 
 **Probe findings (2026-05-21):**
 
@@ -603,8 +646,9 @@ Modulation matrix support:
   return int sentinel `1`.
 - **Source count: 13** (indices 0..12 valid). Index 13+ returns int sentinel
   `1`. **There is no `_list` property exposing source names** — the source
-  index→name mapping must be hard-coded from the Wavetable UI at implementation
-  time (likely Envelopes, LFOs, MIDI-related sources; exact ordering TBD).
+  index→name mapping is hard-coded from the Wavetable UI (verified 2026-05-22;
+  `MOD_SOURCES` in `wavetable-modulation-helpers.ts`):
+  `Amp, Env 2, Env 3, LFO 1, LFO 2, Vel, Key, PB, Press, Mod, Rand, Note PB, Slide`.
 - **`set_modulation_value(0, 0, 0.5)` then `get_modulation_value(0, 0)`
   round-trips correctly** (read back 0.5). Cleanup `set(.., 0)` clears the cell.
 - **`visible_modulation_target_names` returns display labels**
@@ -614,7 +658,7 @@ Modulation matrix support:
   `"Osc 1 Effect 1"` ↔ "Osc 1 Warp"). The matrix is keyed by **parameter name**,
   not display label. Resolver must translate.
 
-**Producer Pal interface design (decided 2026-05-21 via probe):**
+**Producer Pal interface** (as built; design probed 2026-05-21):
 
 Writable pseudo-params on `update-device` (via the existing `params` arg, also
 returned by `read-device` in `params`):
@@ -631,8 +675,9 @@ Topology / voicing:
 
 Oscillator engines + wavetables:
 
-- `osc1Engine`, `osc2Engine` — engine mode per oscillator. Names TBD (likely
-  `"none"` | `"FM"` | `"classic"` | `"modern"`); verify at implementation.
+- `osc1Engine`, `osc2Engine` — engine mode per oscillator: `"None"` | `"Fm"` |
+  `"Classic"` | `"Modern"` (verified vs Live 12.4 UI; `wavetable.ts`
+  `OSC_ENGINES`).
 - `osc1Category`, `osc2Category` — wavetable category (string from the shared
   catalog list)
 - `osc1Wavetable`, `osc2Wavetable` — selected wavetable within the
@@ -641,11 +686,11 @@ Oscillator engines + wavetables:
 **Modulation matrix writes via the `actions: string[]` arg:**
 
 - `setModulation('<targetParameterName>', '<sourceName>', <amount>)` — writes
-  one cell. Internally: ensure the target is in the matrix (call
-  `add_parameter_to_modulation_matrix` if needed — needs probe to confirm
-  whether `set_modulation_value` auto-registers, see open questions), resolve
-  target index via `get_modulation_target_parameter_name`, resolve source name
-  via hard-coded source table, call `set_modulation_value(t, s, amount)`.
+  one cell. Internally: ensure the target is in the matrix (calls
+  `add_parameter_to_modulation_matrix` when it isn't already registered),
+  resolve target index via `get_modulation_target_parameter_name`, resolve
+  source name via the hard-coded source table, call
+  `set_modulation_value(t, s, amount)`.
 - `clearModulation('<targetParameterName>', '<sourceName>')` — equivalent to
   `setModulation(..., ..., 0)`.
 - `addModulationTarget('<parameterName>')` — explicit
@@ -708,18 +753,16 @@ model mode trims via `descriptionOverrides`):
    `get_modulation_target_parameter_name` and `get_modulation_value` return int
    `1` for invalid indices instead of throwing. The resolver must check bounds
    before assuming the result.
-5. **Target list extension semantics need a confirmation probe.** Whether
-   `set_modulation_value` on a not-yet-added target auto-registers it, or
-   requires `add_parameter_to_modulation_matrix` first, isn't yet verified.
-   `setModulation` should defensively call `add_parameter_to_modulation_matrix`
-   when the target name isn't found in the current target list — idempotency
-   verified at implementation.
+5. **Targets are auto-registered.** `setModulation` defensively calls
+   `add_parameter_to_modulation_matrix` when the target name isn't already in
+   the matrix, then resolves its index (`ensureModulationTarget` in
+   `wavetable-modulation-helpers.ts`). Callers don't need a separate
+   `addModulationTarget` in the common case.
 6. **No "remove target" function documented.** Cleanup of an unused target row
    is unclear (set all cells to 0? leave it?). Decide policy at implementation —
    likely "no cleanup; zero values are inert."
-7. **Engine mode names TBD.** `oscillator_N_effect_mode` is an int; the string
-   enum mapping must be verified against the Wavetable UI at implementation time
-   (likely None/FM/Classic/Modern but probe before locking).
+7. **Engine mode names resolved.** `oscillator_N_effect_mode` maps to
+   `None / Fm / Classic / Modern` (verified vs Live 12.4 UI; `OSC_ENGINES`).
 
 **Skipped:**
 
@@ -775,7 +818,7 @@ extras documented.
 sidechain in the UI but expose nothing class-level. The dict shape here matches
 the standard Live "routing object" used elsewhere (Track inputs, etc.).
 
-**Producer Pal interface design (decided 2026-05-21 via probe):**
+**Producer Pal interface** (as built; design probed 2026-05-21):
 
 Two writable fields on `update-device`, also returned by `read-device`:
 
@@ -863,7 +906,7 @@ and `B`), e.g. `1 Filter On A`, `1 Frequency A`, ... `8 Q B`. Plus device-wide:
 always independently addressable by name regardless of `edit_mode` or
 `global_mode`** — chain is determined by parameter suffix.
 
-**Producer Pal interface design (decided 2026-05-21 via probe):**
+**Producer Pal interface** (as built; design probed 2026-05-21):
 
 Two writable fields on `update-device`, also returned by `read-device`:
 
@@ -944,7 +987,7 @@ reverb knobs (Predelay, Decay, Size, Damping, Diffusion, Modulation, etc.) are
 exposed as 30+ DeviceParameters and are separate from the IR shaping params
 below — those apply specifically to the convolution IR.
 
-**Producer Pal interface design (decided 2026-05-21 via probe):**
+**Producer Pal interface** (as built; design probed 2026-05-21):
 
 Six writable fields on `update-device`, also returned by `read-device`:
 
@@ -1025,7 +1068,7 @@ documented; semantics verified by probe 2026-05-21.
 
 **Functions:** none beyond baseline.
 
-**Producer Pal interface design (decided 2026-05-21 via probe):**
+**Producer Pal interface** (as built; design probed 2026-05-21):
 
 Two writable fields on `update-device`, also returned by `read-device`:
 
@@ -1081,14 +1124,14 @@ All extras documented; ranges verified by probe 2026-05-21.
   dial (likely Hz vs Note); `Freq. Hz` and `Note` exist as separate
   DeviceParameters. Out-of-range silently reverts to prior value.
 - `midi_gate` (int, 0-1) [RW] — MIDI gating on/off.
-- `mod_mode` (int, 0-3) [RW] — modulation routing mode (4 modes; specific names
-  TBD).
+- `mod_mode` (int, 0-3) [RW] — modulation routing mode:
+  `None / Chorus / Wander / Granular`.
 - `mono_poly` (int, 0-1) [RW] — `0` = mono, `1` = poly.
 - `pitch_bend_range` (int, 0-24) [RW] — semitones.
-- `pitch_mode` (int, 0-1) [RW] — pitch source mode (2 modes; names TBD — likely
-  MIDI vs Fixed). No companion `_list`.
-- `polyphony` (int, 0-3) [RW] — polyphony voice count or mode (4 values;
-  semantic of each value TBD).
+- `pitch_mode` (int, 0-1) [RW] — the Freq dial's `Hertz / MIDI Note` selector.
+  No companion `_list`.
+- `polyphony` (int, 0-3) [RW] — **index** into voice counts `[2, 4, 8, 16]` (not
+  the raw count).
 
 All out-of-range writes silently revert to last valid value.
 
@@ -1096,19 +1139,19 @@ All out-of-range writes silently revert to last valid value.
 
 **Functions:** none beyond baseline.
 
-**Producer Pal interface design (decided 2026-05-21 via probe):**
+**Producer Pal interface** (as built; design probed 2026-05-21):
 
 Six writable fields on `update-device`, also returned by `read-device`:
 
 - `midiGate` (bool) — maps to int 0/1
-- `modMode` (enum string, 4 values, names TBD at implementation time after UI
-  inspection) — maps to int 0/1/2/3
+- `modMode` (enum: `"None"` | `"Chorus"` | `"Wander"` | `"Granular"`) — maps to
+  int 0/1/2/3 (`spectral-resonator.ts` `MOD_MODES`)
 - `monoPoly` (enum: `"mono"` | `"poly"`) — maps to int 0/1
 - `pitchBendRange` (int, 0-24 semitones)
-- `pitchMode` (enum string, 2 values, names TBD at implementation time) — maps
-  to int 0/1
-- `polyphony` (int, 0-3) — semantic of each value (voice count vs mode) TBD at
-  implementation time
+- `pitchMode` (enum: `"Hertz"` | `"MIDI Note"`) — maps to int 0/1 (the Freq
+  dial's Hz/Note selector)
+- `polyphony` (int) — actual voice count `2/4/8/16`; the `polyphony` property is
+  an **index** into that set, mapped like Wavetable's `polyVoices`
 
 **`frequency_dial_mode` deliberately NOT exposed.** Probable UI display selector
 — `Freq. Hz` and `Note` are both directly addressable DeviceParameters, so the
@@ -1119,12 +1162,10 @@ LLM doesn't need a display preference.
 1. **Silent revert on out-of-range writes** — same pattern as Meld. Set
    `polyphony=4` → reverts to 3; `pitch_bend_range=99` → reverts to 24.
    Pre-validate against documented ranges.
-2. **Semantic meaning of enum values needs UI verification.** Probe established
-   valid ranges but not the meaning of each int value. Verify against Live's
-   Spectral Resonator UI at implementation time:
-   - `modMode`: 0/1/2/3 → ?
-   - `pitchMode`: 0/1 → ?
-   - `polyphony`: 0/1/2/3 → voice count (1/2/4/8?) or named modes?
+2. **Enum values resolved against the Spectral Resonator UI (2026-05-22):**
+   - `modMode`: `None / Chorus / Wander / Granular`
+   - `pitchMode`: `Hertz / MIDI Note`
+   - `polyphony`: index `0..3` → voice count `2 / 4 / 8 / 16`
 3. **`pitchBendRange = 0` means no pitch bend** (probably; verify).
 
 ## Generic-Device audio effects (no specialization)
@@ -1232,49 +1273,33 @@ node scripts/ppal-client.ts tools/call ppal-live-api '{
 
 ---
 
-# Candidates for Producer Pal exposure (for follow-up)
+# Implementation status
 
-Loose ranking by "how much value would this unlock that's currently invisible to
-the LLM and not reachable via DeviceParameters?" — starting point for Linear
-ticket planning, not a final recommendation.
+All specialized devices surveyed above are implemented in
+`src/tools/shared/device/specialized/` (one file per device under `devices/`,
+registered in `specialized-device-registry.ts`) and e2e-validated against Live
+12.4 — **except Shifter**. The original value-ranked backlog that lived here (a
+guide for what to build first) has been retired now that the work is done.
 
-**High value:**
+What each device exposes:
 
-- **Simpler** — `sample` child + `replace_sample`, `crop`, `reverse`, warp
-  helpers; `playback_mode`, `multi_sample_mode`, `pad_slicing`. Producer Pal
-  currently only does the `sample=` load shortcut; this would unlock destructive
-  sample editing.
-- **Hybrid Reverb** — IR file/category selection via `ir_category_index` /
-  `ir_file_index` against the `_list` StringVectors. Today the IR choice is
-  completely opaque to the LLM.
-- **Wavetable** — wavetable selection (`oscillator_N_wavetable_category` /
-  `_index` with backing `_wavetables` / `_categories` lists); engine mode
-  (`oscillator_N_effect_mode`); voice config (`mono_poly`, `poly_voices`,
-  `unison_mode`, `unison_voice_count`); `filter_routing`. Plus mod-matrix
-  reads/writes via imperative API (`setModulation` / `clearModulation` actions
-  - new `modulations` output field).
-- **Drift** — mod-matrix routing (the bulk of Drift's character) via declarative
-  source/target string enums; modulation amounts continue via DeviceParameters.
-  Plus `voice_mode_index`, `voice_count_index`, `pitch_bend_range`.
+- **Drift** — mod-matrix source/target string enums (amounts stay
+  DeviceParameters), `voiceMode`, `voiceCount`, `pitchBendRange`.
+- **Meld** — `monoPoly`, `polyVoices`, `unisonVoices`.
+- **Simpler** — `playbackMode`, `slicingPlaybackMode`, `retrigger`, `voices`,
+  `sample` load; `reverse` / `crop` / `warpDouble` / `warpHalf` / `warpAs(N)`
+  actions; read-only `multiSampleMode`, `estimatedPlaybackLength`.
+- **Wavetable** — `filterRouting`, `monoPoly`, `polyVoices`, `unisonMode`,
+  `unisonVoiceCount`, osc engines + wavetable selectors; mod matrix via
+  `setModulation` / `clearModulation` / `addModulationTarget` actions and the
+  `modulations` output.
+- **Compressor** — sidechain source + channel.
+- **EQ Eight** — `globalMode`, `oversample`.
+- **Hybrid Reverb** — IR category/file selection + IR shaping params.
+- **Roar** — `routingMode`, `envListen`.
+- **Spectral Resonator** — `midiGate`, `monoPoly`, `pitchBendRange`, `modMode`,
+  `pitchMode`, `polyphony`.
 
-**Medium value:**
-
-- **Compressor** sidechain routing (`input_routing_type`,
-  `input_routing_channel`, plus the `available_*` lists). Sidechain is a common
-  production move.
-- **EQ Eight** — `global_mode` (Stereo / L/R / M/S) and `oversample`. Promoted
-  from "lower value" after probe revealed `edit_mode` is UI-only and per-band
-  A/B parameters are independently addressable. M/S processing is a common
-  mastering move.
-- **Meld** — `mono_poly`, `poly_voices`, `unison_voices`. Promoted after probe
-  revealed `selected_engine` is UI-only.
-- **Spectral Resonator** — 6 mode/voice toggles (midi_gate, mod_mode, mono_poly,
-  pitch_bend_range, pitch_mode, polyphony). Promoted after deciding to skip the
-  UI-only `frequency_dial_mode`.
-- **Roar** — `env_listen`, `routing_mode_index` (with `_list` for
-  discoverability).
-
-**Lower value:**
-
-- **Shifter** — small surface (pitch_bend_range, pitch_mode_index), no companion
-  `_list` for `pitch_mode_index`. Defer unless explicit demand.
+**Not implemented — Shifter.** Small surface (`pitch_bend_range`,
+`pitch_mode_index`) with no companion `_list` for `pitch_mode_index`. Deferred
+unless there's explicit demand.

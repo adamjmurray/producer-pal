@@ -16,7 +16,7 @@ import {
 } from "../specialized-device-types.ts";
 
 // Drift (DriftDevice, class_name "Drift"). AJM-374. See
-// dev/plans/Specialized-Device-Classes.md.
+// dev/Specialized-Devices.md.
 // Declarative mod matrix: each slot is an int `_index` property; the value
 // lists are stable, hardcoded. Modulation amounts are regular DeviceParameters
 // and are NOT duplicated here.

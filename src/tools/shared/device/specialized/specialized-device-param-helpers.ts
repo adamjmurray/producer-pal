@@ -10,7 +10,7 @@ import * as console from "#src/shared/v8-max-console.ts";
 // (Roar routing mode, EQ Eight global mode, ...), a boolean toggle, or a
 // bounded / discrete-set integer. These helpers centralize the index↔label
 // mapping, coercion, and warn-and-skip validation so each device spec stays
-// declarative. See dev/plans/Specialized-Device-Classes.md.
+// declarative. See dev/Specialized-Devices.md.
 
 /**
  * Read an int-indexed property and map it to its enum label.

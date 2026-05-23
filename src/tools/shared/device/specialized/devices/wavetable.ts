@@ -23,7 +23,7 @@ import {
 } from "./wavetable-modulation-helpers.ts";
 
 // Wavetable (WavetableDevice, class_name "InstrumentVector"). AJM-373. See
-// dev/plans/Specialized-Device-Classes.md.
+// dev/Specialized-Devices.md.
 //
 // Imperative mod-matrix API (contrast with Drift's declarative _index/_list
 // approach). Matrix keyed by DeviceParameter name (not display label). Source

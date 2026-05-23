@@ -7,7 +7,7 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Compressor (CompressorDevice). AJM-375. See
-// dev/plans/Specialized-Device-Classes.md.
+// dev/Specialized-Devices.md.
 // Sidechain input routing via Live's standard routing-dict shape. Routing
 // identifiers are NOT Live object IDs — they're a separate Live-internal
 // namespace; translation happens by matching track names to display_names.

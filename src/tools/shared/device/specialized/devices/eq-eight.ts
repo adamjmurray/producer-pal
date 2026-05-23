@@ -11,7 +11,7 @@ import {
 } from "../specialized-device-param-helpers.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
-// EQ Eight (Eq8Device). AJM-377. See dev/plans/Specialized-Device-Classes.md.
+// EQ Eight (Eq8Device). AJM-377. See dev/Specialized-Devices.md.
 //
 // Exposes two class-level properties not reachable as DeviceParameters:
 // - globalMode: processing mode (Stereo / L/R / M/S) → global_mode int 0/1/2

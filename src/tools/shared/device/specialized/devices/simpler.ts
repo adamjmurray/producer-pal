@@ -19,7 +19,7 @@ import {
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Simpler (SimplerDevice, class_name "OriginalSimpler"). AJM-371. See
-// dev/plans/Specialized-Device-Classes.md.
+// dev/Specialized-Devices.md.
 //
 // The `include: ["sample"]` top-level field (sample/gainDb/multisample) is a
 // separate read path in device-reader.ts and is unaffected by this spec.
