@@ -244,6 +244,11 @@ export function useVoiceSession(
           // mic — the canonical example doesn't auto-mute and we follow suit.
           if (event.type === "response.created") {
             setAssistantThinking(true);
+            // A new turn is underway, so any error from a prior response is
+            // stale — clear it so the banner doesn't linger over a healthy
+            // response. (rateLimitedUntil is cleared on the success path of
+            // response.done and by retryResponse.)
+            setError(null);
           } else if (event.type === "response.done") {
             setAssistantThinking(false);
             const failure = extractResponseFailure(event);

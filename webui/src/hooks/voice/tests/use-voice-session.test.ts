@@ -16,6 +16,7 @@ import {
   it,
   vi,
 } from "vitest";
+import { createVoiceSessionTestKit } from "./use-voice-session-test-helpers";
 
 const mocks = vi.hoisted(() => {
   class FakeSession {
@@ -89,6 +90,15 @@ vi.mock(import("#webui/hooks/voice/realtime-mcp-tools"), () => ({
 
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 
+const {
+  defaultParams,
+  stubFetchOk,
+  renderAndConnect,
+  connectAndGetSession,
+  connectWithSeed,
+  emitResponseFailure,
+} = createVoiceSessionTestKit(mocks);
+
 const REAL_FETCH = globalThis.fetch;
 
 beforeEach(() => {
@@ -108,113 +118,6 @@ afterEach(() => {
 afterAll(() => {
   globalThis.fetch = REAL_FETCH;
 });
-
-interface BasicParams {
-  mcpUrl?: string;
-  voiceTokenUrl?: string;
-  openAiKey?: string | null;
-}
-
-function defaultParams(overrides: BasicParams = {}): {
-  mcpUrl: string;
-  voiceTokenUrl: string;
-  openAiKey: string | null;
-} {
-  return {
-    mcpUrl: "http://localhost:3350/mcp",
-    voiceTokenUrl: "http://localhost:3350/voice-token",
-    openAiKey: "sk-test",
-    ...overrides,
-  };
-}
-
-function stubFetchOk(body: unknown): void {
-  mocks.fetchMock.mockResolvedValue(
-    new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
-}
-
-type HookResult = ReturnType<
-  typeof renderHook<ReturnType<typeof useVoiceSession>, unknown>
->["result"];
-
-/**
- * Render the hook and invoke connect() once. Caller is responsible for
- * setting up the fetch mock before calling.
- *
- * @returns The hook result
- */
-async function renderAndConnect(): Promise<{ result: HookResult }> {
-  const { result } = renderHook(() => useVoiceSession(defaultParams()));
-
-  await act(async () => {
-    await result.current.connect();
-  });
-
-  return { result };
-}
-
-/**
- * Happy-path setup: stub the token fetch, mount, connect, and return both
- * the hook result and the newly-constructed FakeSession.
- *
- * @returns The render result and the newly-constructed FakeSession
- */
-async function connectAndGetSession(): Promise<{
-  result: HookResult;
-  session: InstanceType<typeof mocks.FakeSession>;
-}> {
-  stubFetchOk({ value: "ek_x" });
-  const { result } = await renderAndConnect();
-
-  return { result, session: mocks.FakeSession.instances[0]! };
-}
-
-/**
- * Render the hook and connect() with a loosely-typed seed history, casting the
- * test fixtures to the connect() parameter type.
- *
- * @param seed - Seed history items (loosely-typed test fixtures)
- * @returns The hook result
- */
-async function connectWithSeed(seed: unknown[]): Promise<HookResult> {
-  const { result } = renderHook(() => useVoiceSession(defaultParams()));
-
-  await act(async () => {
-    await result.current.connect(
-      seed as Parameters<typeof result.current.connect>[0],
-    );
-  });
-
-  return result;
-}
-
-/**
- * Emit a transport `response.done` event with a failure payload, wrapped in
- * `act()` so React state updates flush before the test assertion.
- *
- * @param session - The FakeSession to emit on
- * @param code - The OpenAI error code (e.g. "rate_limit_exceeded")
- * @param message - The human-readable error message
- */
-async function emitResponseFailure(
-  session: InstanceType<typeof mocks.FakeSession>,
-  code: string,
-  message: string,
-): Promise<void> {
-  await act(() => {
-    session.emit("transport_event", {
-      type: "response.done",
-      response: {
-        status: "failed",
-        status_details: { error: { code, message } },
-      },
-    });
-  });
-}
 
 describe("useVoiceSession initial state", () => {
   it("starts in 'idle' with empty history and no error", () => {
@@ -485,6 +388,18 @@ describe("useVoiceSession transport event handling", () => {
       session.emit("transport_event", { type: "output_audio_buffer.cleared" });
     });
     expect(result.current.assistantSpeaking).toBe(false);
+  });
+
+  it("clears a prior error when the next response.created arrives", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    await emitResponseFailure(session, "content_filter", "blocked");
+    expect(result.current.error).toBe("blocked");
+
+    await act(() => {
+      session.emit("transport_event", { type: "response.created" });
+    });
+    expect(result.current.error).toBeNull();
   });
 
   it("response.done with status=failed and rate_limit_exceeded sets the countdown", async () => {
