@@ -458,6 +458,21 @@ describe("specialized devices: Simpler", () => {
     expect(paramValue(paramsView, "gainDb")).toBeCloseTo(-6, 0);
     expect(paramsView).not.toHaveProperty("sample");
   });
+
+  it('include: ["*"] emits both the top-level sample field and the sample param entry', async () => {
+    const id = await createInstrument("Simpler");
+
+    await updateDevice(id, {
+      params: [{ name: "sample", value: SAMPLE_FILE }],
+    });
+
+    // "*" requests both params and sample includes; they are independent, so
+    // the flat top-level sample and the sample param entry both appear.
+    const allView = await readDevice(id, ["*"]);
+
+    expect(String(allView.sample)).toContain("sample.aiff");
+    expect(String(paramValue(allView, "sample"))).toContain("sample.aiff");
+  });
 });
 
 describe("specialized devices: EQ Eight", () => {

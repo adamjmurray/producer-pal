@@ -305,11 +305,16 @@ function appendDeviceDetails(
       opts.includeParamValues,
       opts.paramSearch,
     );
-  } else if (opts.includeSample) {
-    // Focused discovery view: just the Simpler sample file path as a flat
-    // top-level `sample` field, optimized for scanning many devices at once
-    // (e.g. every pad in a drum rack). gainDb, multi-sample state, and the
-    // other Simpler params live in the full `params` set, not here.
+  }
+
+  if (opts.includeSample) {
+    // Focused discovery view: the Simpler sample file path as a flat top-level
+    // `sample` field, optimized for scanning many devices at once (e.g. every
+    // pad in a drum rack). gainDb, multi-sample state, and the other Simpler
+    // params live in the full `params` set, not here. Independent of
+    // includeParams so include:["*"] (and explicitly requesting both) still
+    // emits the top-level field — redundant with the `sample` param entry, but
+    // least-surprising.
     const probe = probeSimplerSample(device, opts.className);
 
     if (probe.kind === "single") {

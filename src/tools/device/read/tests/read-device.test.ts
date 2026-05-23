@@ -202,6 +202,23 @@ describe("readDevice", () => {
         type: "instrument: Operator",
       });
     });
+
+    it('include: ["*"] emits both the top-level sample field and the sample param entry', () => {
+      setupBasicDeviceMock({
+        class_display_name: "Simpler",
+        type: 1,
+        sample: "/path/to/sample.wav",
+      });
+      const result = readDevice({ deviceId: "device-123", include: ["*"] });
+
+      // "*" sets both params and sample includes. They are independent, so the
+      // flat top-level `sample` is emitted alongside the `sample` param entry.
+      expect(result.sample).toBe("/path/to/sample.wav");
+      expect(result.parameters as Record<string, unknown>[]).toContainEqual({
+        name: "sample",
+        value: "/path/to/sample.wav",
+      });
+    });
   });
 
   describe("drum rack includes", () => {

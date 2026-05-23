@@ -496,6 +496,27 @@ describe("device-reader", () => {
       expect(result.parameters).toBeUndefined();
     });
 
+    it("emits both the top-level sample field and the sample param entry when params and sample are both included", () => {
+      const device = makeSimplerDevice({ samplePath: "/tmp/kick.wav" });
+
+      setupLiveApiMock();
+
+      const result = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeParams: true,
+        includeSample: true,
+      });
+
+      // The two includes are independent (e.g. include:["*"]): the flat
+      // top-level `sample` is emitted alongside the `sample` param entry —
+      // redundant, but least-surprising.
+      expect(result.sample).toBe("/tmp/kick.wav");
+
+      const params = result.parameters as Record<string, unknown>[];
+
+      expect(params).toContainEqual({ name: "sample", value: "/tmp/kick.wav" });
+    });
+
     function makeSimplerDevice(opts: {
       multiSampleMode?: number;
       samplePath?: string;
