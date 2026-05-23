@@ -249,9 +249,10 @@ export function createExpressApp(): Express {
     res.type("html").send(chatUiHtml);
   });
 
-  // /voice serves the same single-page bundle; main.tsx routes by pathname.
-  // Honor the chatUIEnabled toggle since the voice view shares the same
-  // localStorage settings and OpenAI key as the chat UI.
+  // /voice is an alias that serves the same single-page bundle as /chat. The
+  // app picks chat vs. voice from the saved model (App.tsx), not the URL path,
+  // so this just lets users open/bookmark /voice. Honor the chatUIEnabled
+  // toggle since the voice view shares the same settings and OpenAI key.
   app.get("/voice", (_req: Request, res: Response): void => {
     if (!chatUIEnabled) {
       res.status(403).send("Chat UI is disabled");
