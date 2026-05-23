@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useMemo } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 import { type ModeContext } from "#webui/components/mode-context";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
@@ -91,11 +91,20 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     [displayItems],
   );
 
+  const prevItemCountRef = useRef(0);
+
   useEffect(() => {
-    window.scrollTo({
-      top: document.documentElement.scrollHeight,
-      behavior: "smooth",
-    });
+    // Scroll only when a new item appears, not on every transcript delta —
+    // otherwise streaming stacks overlapping smooth-scroll animations. Mirrors
+    // chat's MessageList, which scrolls on new messages rather than per token.
+    if (displayItems.length > prevItemCountRef.current) {
+      window.scrollTo({
+        top: document.documentElement.scrollHeight,
+        behavior: "smooth",
+      });
+    }
+
+    prevItemCountRef.current = displayItems.length;
   }, [displayItems]);
 
   const isConnected = voice.status === "connected";
