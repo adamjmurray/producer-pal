@@ -169,7 +169,18 @@ function buildConversationPanel(
       params.resetVoiceHistory();
       void persistence.switchConversation(id);
     },
-    onDelete: (id) => void persistence.deleteConversation(id),
+    onDelete: (id) => {
+      // Deleting the conversation you're actively talking in must stop the
+      // session first. Otherwise it keeps streaming and the next autosave
+      // tick re-forks the live transcript under a fresh id, resurrecting the
+      // record you just deleted.
+      if (id === persistence.activeConversationId && isConnected) {
+        void params.disconnect();
+        params.resetVoiceHistory();
+      }
+
+      void persistence.deleteConversation(id);
+    },
     onExportItem: transfer.handleExportOne,
     onRename: (id, title) => void persistence.renameConversation(id, title),
     onToggleBookmark: (id) => void persistence.toggleBookmark(id),

@@ -194,6 +194,17 @@ function renderVoiceApp(overrides: PropOverrides = {}) {
   return render(<VoiceApp {...makeProps(overrides)} />);
 }
 
+function renderWithPanelOpen(overrides: PropOverrides = {}) {
+  const props = makeProps(overrides);
+
+  return render(
+    <VoiceApp
+      {...props}
+      viewState={{ ...props.viewState, historyPanelOpen: true }}
+    />,
+  );
+}
+
 beforeEach(() => {
   mocks.getMcpUrl.mockReturnValue("http://localhost:3350/mcp");
   mocks.isFirefox.mockReturnValue(false);
@@ -563,13 +574,7 @@ describe("VoiceApp", () => {
       mocks.useVoiceSession.mockReturnValue(baseSession());
       mocks.useVoicePersistence.mockReturnValue(persistence);
       mocks.useConversationTransfer.mockReturnValue(transfer);
-      const props = makeProps();
-      const propsWithOpen = {
-        ...props,
-        viewState: { ...props.viewState, historyPanelOpen: true },
-      };
-
-      render(<VoiceApp {...propsWithOpen} />);
+      renderWithPanelOpen();
       fireEvent.click(screen.getByText(/new conversation/i));
       fireEvent.click(screen.getByLabelText(/export conversations/i));
       fireEvent.click(screen.getByLabelText(/import conversations/i));
@@ -585,13 +590,7 @@ describe("VoiceApp", () => {
 
       mocks.useVoiceSession.mockReturnValue(session);
       mocks.useVoicePersistence.mockReturnValue(persistence);
-      const props = makeProps();
-      const propsWithOpen = {
-        ...props,
-        viewState: { ...props.viewState, historyPanelOpen: true },
-      };
-
-      render(<VoiceApp {...propsWithOpen} />);
+      renderWithPanelOpen();
       fireEvent.click(screen.getByText(/new conversation/i));
 
       expect(session.disconnect).toHaveBeenCalled();
@@ -702,13 +701,7 @@ describe("VoiceApp", () => {
 
       mocks.useVoiceSession.mockReturnValue(baseSession());
       mocks.useVoicePersistence.mockReturnValue(persistence);
-      const props = makeProps();
-      const propsWithOpen = {
-        ...props,
-        viewState: { ...props.viewState, historyPanelOpen: true },
-      };
-
-      render(<VoiceApp {...propsWithOpen} />);
+      renderWithPanelOpen();
 
       fireEvent.click(screen.getByText("Voice Chat"));
       expect(persistence.switchConversation).toHaveBeenCalledWith(
@@ -749,18 +742,59 @@ describe("VoiceApp", () => {
 
       mocks.useVoiceSession.mockReturnValue(session);
       mocks.useVoicePersistence.mockReturnValue(persistence);
-      const props = makeProps();
-      const propsWithOpen = {
-        ...props,
-        viewState: { ...props.viewState, historyPanelOpen: true },
-      };
-
-      render(<VoiceApp {...propsWithOpen} />);
+      renderWithPanelOpen();
       fireEvent.click(screen.getByText("Other"));
 
       expect(session.disconnect).toHaveBeenCalled();
       expect(session.resetHistory).toHaveBeenCalled();
       expect(persistence.switchConversation).toHaveBeenCalledWith("other-conv");
+    });
+
+    it("stops the live session when deleting the active conversation", () => {
+      // Without disconnecting first, the session keeps streaming and autosave
+      // re-forks the transcript under a new id, resurrecting the deleted record.
+      const summary = createTestSummary({
+        id: "active-conv",
+        title: "Active",
+        sessionType: "voice",
+      });
+      const persistence = basePersistence({
+        conversations: [summary],
+        activeConversationId: "active-conv",
+      });
+      const session = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(session);
+      mocks.useVoicePersistence.mockReturnValue(persistence);
+      renderWithPanelOpen();
+      fireEvent.click(screen.getByLabelText(/^delete conversation$/i));
+
+      expect(session.disconnect).toHaveBeenCalled();
+      expect(session.resetHistory).toHaveBeenCalled();
+      expect(persistence.deleteConversation).toHaveBeenCalledWith(
+        "active-conv",
+      );
+    });
+
+    it("leaves the live session alone when deleting a non-active conversation", () => {
+      const summary = createTestSummary({
+        id: "other-conv",
+        title: "Other",
+        sessionType: "voice",
+      });
+      const persistence = basePersistence({
+        conversations: [summary],
+        activeConversationId: "active-conv",
+      });
+      const session = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(session);
+      mocks.useVoicePersistence.mockReturnValue(persistence);
+      renderWithPanelOpen();
+      fireEvent.click(screen.getByLabelText(/^delete conversation$/i));
+
+      expect(session.disconnect).not.toHaveBeenCalled();
+      expect(persistence.deleteConversation).toHaveBeenCalledWith("other-conv");
     });
 
     it("reports its mode context (delete handlers + lock) up to App", () => {
