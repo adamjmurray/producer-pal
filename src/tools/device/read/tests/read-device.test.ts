@@ -155,7 +155,7 @@ describe("readDevice", () => {
   // Path-based tests are in read-device-path.test.js
 
   describe("Simpler sample reading", () => {
-    it("should include sample path for Simpler device with loaded sample", () => {
+    it("should expose the sample group in parameters[] for a loaded Simpler", () => {
       setupBasicDeviceMock({
         class_display_name: "Simpler",
         type: 1,
@@ -166,11 +166,14 @@ describe("readDevice", () => {
         include: ["sample"],
       });
 
+      // No top-level sample/gainDb fields — only the focused sample group.
       expect(result).toStrictEqual({
         id: "device-123",
         type: "instrument: Simpler",
-        sample: "/path/to/sample.wav",
-        gainDb: -70, // Mock returns 0 for gain → liveGainToDb(0) = -70
+        parameters: [
+          { name: "sample", value: "/path/to/sample.wav" },
+          { name: "gainDb", value: -70 }, // Mock gain 0 → liveGainToDb(0) = -70
+        ],
       });
     });
 

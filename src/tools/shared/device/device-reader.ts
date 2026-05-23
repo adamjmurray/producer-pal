@@ -9,7 +9,6 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.ts";
-import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
 import {
   isRedundantDeviceClassName,
@@ -19,11 +18,11 @@ import {
   readMacroVariations,
 } from "./helpers/device-reader-helpers.ts";
 import { extractDevicePath } from "./helpers/path/device-path-helpers.ts";
-import { probeSimplerSample } from "./simpler-sample.ts";
 import {
   readSpecializedModulations,
   readSpecializedOptions,
   readSpecializedParams,
+  readSpecializedSampleParams,
 } from "./specialized/specialized-device-registry.ts";
 
 export interface ReadDeviceOptions {
@@ -260,7 +259,7 @@ export function readDevice(
     devicePath: path ?? undefined,
   });
 
-  appendDeviceDetails(device, deviceInfo, className, {
+  appendDeviceDetails(device, deviceInfo, {
     includeParams,
     includeParamValues,
     includeSample,
@@ -280,17 +279,16 @@ interface DeviceDetailOptions {
 }
 
 /**
- * Append optional detail sections (macro/AB state, Simpler sample, parameters,
- * and dynamic catalogs) to a device info object, per the requested includes.
+ * Append optional detail sections (macro/AB state, parameters, the focused
+ * Simpler sample group, and dynamic catalogs) to a device info object, per the
+ * requested includes.
  * @param device - LiveAPI device object
  * @param deviceInfo - Device info object to mutate
- * @param className - Device class display name (for the Simpler sample read)
  * @param opts - Which detail sections to include
  */
 function appendDeviceDetails(
   device: LiveAPI,
   deviceInfo: Record<string, unknown>,
-  className: string,
   opts: DeviceDetailOptions,
 ): void {
   if (opts.includeParams) {
@@ -298,19 +296,16 @@ function appendDeviceDetails(
     // object when not applicable).
     Object.assign(deviceInfo, readMacroVariations(device));
     Object.assign(deviceInfo, readABCompare(device));
-  }
-
-  if (opts.includeSample) {
-    Object.assign(deviceInfo, readSimplerSample(device, className));
-  }
-
-  if (opts.includeParams) {
     appendParameters(
       device,
       deviceInfo,
       opts.includeParamValues,
       opts.paramSearch,
     );
+  } else if (opts.includeSample) {
+    // Focused sample view: just the sample-group pseudo-params (Simpler
+    // sample + gainDb). The full `params` superset already includes these.
+    appendSampleParameters(device, deviceInfo);
   }
 
   // Dynamic catalogs (opt-in; only devices that contribute add anything).
@@ -367,30 +362,19 @@ function appendOptions(
 }
 
 /**
- * Read sample path from Simpler device
- * @param device - Live API device object
- * @param className - Device class display name
- * @returns Object with sample property, or empty object
+ * Append the focused Simpler sample group (sample + gainDb) to a device info
+ * object as `parameters`. Adds nothing for non-Simpler devices or a Simpler
+ * with no single sample loaded (e.g. multi-sample mode).
+ * @param device - LiveAPI device object
+ * @param deviceInfo - Device info object to mutate
  */
-function readSimplerSample(
+function appendSampleParameters(
   device: LiveAPI,
-  className: string,
-): Record<string, unknown> {
-  const probe = probeSimplerSample(device, className);
+  deviceInfo: Record<string, unknown>,
+): void {
+  const sampleParams = readSpecializedSampleParams(device);
 
-  if (probe.kind === "multisample") {
-    return { multisample: true };
+  if (sampleParams.length > 0) {
+    deviceInfo.parameters = sampleParams;
   }
-
-  if (probe.kind !== "single") {
-    return {};
-  }
-
-  const result: Record<string, unknown> = { sample: probe.path };
-
-  if (probe.gain != null) {
-    result.gainDb = liveGainToDb(probe.gain);
-  }
-
-  return result;
 }

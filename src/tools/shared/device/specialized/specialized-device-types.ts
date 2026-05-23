@@ -36,6 +36,12 @@ export interface PseudoParam {
    * invalid input rather than throwing.
    */
   write?: (device: LiveAPI, value: string | number, toolName: string) => void;
+  /**
+   * When true, this param belongs to the focused `include: ["sample"]` read
+   * group (Simpler's sample + gainDb). It is read normally for
+   * `include: ["params"]`; the sample group is a filtered subset.
+   */
+  sampleGroup?: boolean;
 }
 
 /** A parsed `actions` entry: a name plus positional literal args. */

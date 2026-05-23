@@ -110,23 +110,19 @@ export function readSpecializedParams(
   device: LiveAPI,
   search?: string,
 ): Record<string, unknown>[] {
-  const spec = getSpecForDevice(device);
+  return readParamEntries(device, () => true, search);
+}
 
-  if (!spec?.params) {
-    return [];
-  }
-
-  const entries: Record<string, unknown>[] = [];
-
-  for (const param of spec.params) {
-    const value = param.read(device);
-
-    if (value !== undefined) {
-      entries.push({ name: param.name, value });
-    }
-  }
-
-  return filterBySearch(entries, search);
+/**
+ * Read only the sample-group pseudo-params for a device (Simpler's sample +
+ * gainDb), used by the focused `include: ["sample"]` read.
+ * @param device - LiveAPI device object
+ * @returns Array of {name, value} entries (empty for non-sample devices)
+ */
+export function readSpecializedSampleParams(
+  device: LiveAPI,
+): Record<string, unknown>[] {
+  return readParamEntries(device, (param) => param.sampleGroup === true);
 }
 
 /**
@@ -189,6 +185,41 @@ export function readSpecializedModulations(
   const spec = getSpecForDevice(device);
 
   return spec?.readModulations ? spec.readModulations(device) : undefined;
+}
+
+/**
+ * Read the pseudo-params matching a predicate into {name, value} entries.
+ * @param device - LiveAPI device object
+ * @param predicate - Selects which params to read
+ * @param search - Optional case-insensitive name filter
+ * @returns Array of {name, value} entries
+ */
+function readParamEntries(
+  device: LiveAPI,
+  predicate: (param: PseudoParam) => boolean,
+  search?: string,
+): Record<string, unknown>[] {
+  const spec = getSpecForDevice(device);
+
+  if (!spec?.params) {
+    return [];
+  }
+
+  const entries: Record<string, unknown>[] = [];
+
+  for (const param of spec.params) {
+    if (!predicate(param)) {
+      continue;
+    }
+
+    const value = param.read(device);
+
+    if (value !== undefined) {
+      entries.push({ name: param.name, value });
+    }
+  }
+
+  return filterBySearch(entries, search);
 }
 
 /**

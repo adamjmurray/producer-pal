@@ -228,7 +228,8 @@ limitation).
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
 - Load a sample into a Simpler instrument via
-  `params: [{name: "sample", value: "<path>"}]` (new in Live 12.4)
+  `params: [{name: "sample", value: "<path>"}]`, and set its level with
+  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
 
 <!--@include: ./_generated/ppal-create-device-schema.md-->
 
@@ -252,7 +253,8 @@ limitation).
 - Control chain and drum pad mute and solo state
 - Change the choke group and output MIDI note of drum chains
 - Load a sample into a Simpler instrument via
-  `params: [{name: "sample", value: "<path>"}]` (new in Live 12.4)
+  `params: [{name: "sample", value: "<path>"}]`, and set its level with
+  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
 
 <!--@include: ./_generated/ppal-update-device-schema.md-->
 

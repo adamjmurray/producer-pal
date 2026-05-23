@@ -435,7 +435,7 @@ describe("device-reader", () => {
       );
     });
 
-    it("returns multisample flag for Simpler in multisample mode", () => {
+    it("omits the sample group for Simpler in multisample mode", () => {
       const device = {
         id: "simpler_1",
         path: "live_set tracks 0 devices 0",
@@ -472,8 +472,12 @@ describe("device-reader", () => {
         includeSample: true,
       });
 
-      expect(result.multisample).toBe(true);
+      // No single sample loaded in multi-sample mode → no top-level fields and
+      // no sample group (multisample state is conveyed via the multiSampleMode
+      // param in the full `params` view).
+      expect(result.multisample).toBeUndefined();
       expect(result.sample).toBeUndefined();
+      expect(result.parameters).toBeUndefined();
     });
 
     function makeSimplerDevice(opts: {

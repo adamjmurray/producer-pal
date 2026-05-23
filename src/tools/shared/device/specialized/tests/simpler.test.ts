@@ -7,6 +7,7 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 
 import { describe, expect, it } from "vitest";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
+import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 import {
   applySpecializedActions,
   applySpecializedParamWrite,
@@ -69,6 +70,7 @@ describe("Simpler pseudo-params", () => {
       const params = readSpecializedParams(device);
 
       expect(params).toContainEqual({ name: "sample", value: "/tmp/kick.wav" });
+      expect(params).toContainEqual({ name: "gainDb", value: 24 }); // gain 1 → 24 dB
       expect(params).toContainEqual({ name: "playbackMode", value: "slicing" });
       expect(params).toContainEqual({
         name: "slicingPlaybackMode",
@@ -90,6 +92,7 @@ describe("Simpler pseudo-params", () => {
       const names = params.map((p) => p.name);
 
       expect(names).not.toContain("sample");
+      expect(names).not.toContain("gainDb");
       expect(names).not.toContain("estimatedPlaybackLength");
     });
 
@@ -138,6 +141,22 @@ describe("Simpler pseudo-params", () => {
       applySpecializedParamWrite(device, "retrigger", "true", "t");
 
       expect(device.set).toHaveBeenCalledWith("retrigger", 1);
+    });
+
+    it("sets gainDb on the loaded sample, converting dB to linear", () => {
+      registerSimpler({ samplePath: "/tmp/kick.wav" });
+
+      applySpecializedParamWrite(
+        LiveAPI.from("id simpler-1"),
+        "gainDb",
+        0,
+        "t",
+      );
+
+      expect(LiveAPI.from("id sample-1").set).toHaveBeenCalledWith(
+        "gain",
+        dbToLiveGain(0),
+      );
     });
 
     it("sets voices when in the allowed set", () => {

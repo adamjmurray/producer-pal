@@ -5,11 +5,12 @@
 
 import * as console from "#src/shared/v8-max-console.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
+import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 
 /**
- * Result of probing a device for its Simpler sample state. Callers
- * branch on `kind` to render the appropriate response shape (a
- * `parameters` entry, a top-level `sample`/`multisample` field, etc.).
+ * Result of probing a device for its Simpler sample state. Callers branch on
+ * `kind` to decide what to surface (the `sample`/`gainDb` pseudo-params, the
+ * read-only `multiSampleMode` param, or nothing).
  */
 export type SimplerSampleProbe =
   | { kind: "not-simpler" }
@@ -88,25 +89,80 @@ export function setSimplerSample(
     return;
   }
 
-  const displayName = device.getProperty("class_display_name") as string;
-
-  if (displayName !== DEVICE_CLASS.SIMPLER) {
-    console.warn(
-      `${toolName}: 'sample' only applies to Simpler devices (got ${displayName})`,
-    );
-
-    return;
-  }
-
-  if ((device.getProperty("multi_sample_mode") as number) > 0) {
-    console.warn(
-      `${toolName}: 'sample' is not supported on Simpler in multi-sample mode`,
-    );
-
+  if (!isWritableSimpler(device, "sample", toolName)) {
     return;
   }
 
   device.call("replace_sample", trimmed);
+}
+
+/**
+ * Set the gain (in dB) of the loaded sample on a Simpler device. Warns and
+ * skips for non-Simpler devices, multi-sample mode, no loaded sample, or a
+ * non-numeric value. The dB→linear mapping mirrors the read side
+ * (`liveGainToDb`).
+ * @param device - LiveAPI device object
+ * @param dB - Gain in decibels
+ * @param toolName - Calling tool name for warning prefix
+ */
+export function setSimplerGain(
+  device: LiveAPI,
+  dB: number,
+  toolName: string,
+): void {
+  if (!Number.isFinite(dB)) {
+    console.warn(`${toolName}: 'gainDb' must be a number (got "${dB}")`);
+
+    return;
+  }
+
+  if (!isWritableSimpler(device, "gainDb", toolName)) {
+    return;
+  }
+
+  const sample = device.getChildren("sample")[0];
+
+  if (sample?.getProperty("file_path") == null) {
+    console.warn(`${toolName}: 'gainDb' requires a loaded sample`);
+
+    return;
+  }
+
+  sample.set("gain", dbToLiveGain(dB));
+}
+
+/**
+ * Guard a Simpler single-sample write. Warns and returns false unless the
+ * device is a Simpler in single-sample mode.
+ * @param device - LiveAPI device object
+ * @param param - Pseudo-param name for warning text (e.g. "sample", "gainDb")
+ * @param toolName - Calling tool name for warning prefix
+ * @returns True when the device accepts single-sample writes
+ */
+function isWritableSimpler(
+  device: LiveAPI,
+  param: string,
+  toolName: string,
+): boolean {
+  const displayName = device.getProperty("class_display_name") as string;
+
+  if (displayName !== DEVICE_CLASS.SIMPLER) {
+    console.warn(
+      `${toolName}: '${param}' only applies to Simpler devices (got ${displayName})`,
+    );
+
+    return false;
+  }
+
+  if ((device.getProperty("multi_sample_mode") as number) > 0) {
+    console.warn(
+      `${toolName}: '${param}' is not supported on Simpler in multi-sample mode`,
+    );
+
+    return false;
+  }
+
+  return true;
 }
 
 /**

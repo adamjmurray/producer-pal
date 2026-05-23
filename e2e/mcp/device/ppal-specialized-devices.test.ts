@@ -20,6 +20,7 @@ import {
   createTestDevice,
   parseToolResult,
   parseToolResultWithWarnings,
+  SAMPLE_FILE,
   setConfig,
   setupMcpTestContext,
   sleep,
@@ -381,6 +382,26 @@ describe("specialized devices: Simpler", () => {
     expect(paramValue(after, "playbackMode")).toBe("one-shot");
     expect(paramValue(after, "voices")).toBe(8);
     expect(paramValue(after, "retrigger")).toBe(false);
+  });
+
+  it("loads a sample and round-trips gainDb via the sample group", async () => {
+    const id = await createInstrument("Simpler");
+
+    // Two calls: the sample must be loaded before gain can be set on it.
+    await updateDevice(id, {
+      params: [{ name: "sample", value: SAMPLE_FILE }],
+    });
+    await updateDevice(id, { params: [{ name: "gainDb", value: "-6" }] });
+
+    // include: ["sample"] returns just the sample group inside parameters[],
+    // with no top-level sample/gainDb/multisample fields.
+    const sampleView = await readDevice(id, ["sample"]);
+
+    expect(String(paramValue(sampleView, "sample"))).toContain("sample.aiff");
+    expect(paramValue(sampleView, "gainDb")).toBeCloseTo(-6, 0);
+    expect(sampleView).not.toHaveProperty("sample");
+    expect(sampleView).not.toHaveProperty("gainDb");
+    expect(sampleView).not.toHaveProperty("multisample");
   });
 });
 

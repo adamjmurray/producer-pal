@@ -7,8 +7,10 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { DEVICE_CLASS } from "#src/tools/constants.ts";
 import {
   probeSimplerSample,
+  setSimplerGain,
   setSimplerSample,
 } from "#src/tools/shared/device/simpler-sample.ts";
+import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 import {
   readBoolProp,
   readEnumByIndex,
@@ -21,8 +23,9 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 // Simpler (SimplerDevice, class_name "OriginalSimpler"). AJM-371. See
 // dev/Specialized-Devices.md.
 //
-// The `include: ["sample"]` top-level field (sample/gainDb/multisample) is a
-// separate read path in device-reader.ts and is unaffected by this spec.
+// The `sample` and `gainDb` params are tagged `sampleGroup` so the focused
+// `include: ["sample"]` read in device-reader.ts can return just those entries
+// (the full set still appears for `include: ["params"]`).
 
 const PLAYBACK_MODES = ["classic", "one-shot", "slicing"] as const;
 
@@ -41,6 +44,20 @@ function readSamplePath(device: LiveAPI): string | undefined {
   const probe = probeSimplerSample(device, DEVICE_CLASS.SIMPLER);
 
   return probe.kind === "single" ? probe.path : undefined;
+}
+
+/**
+ * Read the loaded sample's gain in dB (undefined unless a single sample is
+ * loaded). Mirrors the linear→dB mapping used everywhere else.
+ * @param device - LiveAPI device object
+ * @returns Gain in dB, or undefined
+ */
+function readSimplerGain(device: LiveAPI): number | undefined {
+  const probe = probeSimplerSample(device, DEVICE_CLASS.SIMPLER);
+
+  return probe.kind === "single" && probe.gain != null
+    ? liveGainToDb(probe.gain)
+    : undefined;
 }
 
 /**
@@ -84,9 +101,17 @@ export const simplerSpec: SpecializedDeviceSpec = {
   params: [
     {
       name: "sample",
+      sampleGroup: true,
       read: readSamplePath,
       write: (device, value, toolName) =>
         setSimplerSample(device, String(value), toolName),
+    },
+    {
+      name: "gainDb",
+      sampleGroup: true,
+      read: readSimplerGain,
+      write: (device, value, toolName) =>
+        setSimplerGain(device, Number(value), toolName),
     },
     {
       name: "playbackMode",
