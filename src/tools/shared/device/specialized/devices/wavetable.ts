@@ -279,6 +279,12 @@ export const wavetableSpec: SpecializedDeviceSpec = {
   readModulations,
 
   readOptions(device) {
+    // Shared category catalog (both oscillators index into it). Surface it so
+    // the LLM can switch categories — each osc's wavetable list below is scoped
+    // to its currently-selected category.
+    const oscWavetableCategories = device.getPropertyList(
+      "oscillator_wavetable_categories",
+    ) as string[];
     const osc1Wavetables = device.getPropertyList(
       "oscillator_1_wavetables",
     ) as string[];
@@ -300,6 +306,11 @@ export const wavetableSpec: SpecializedDeviceSpec = {
       }
     }
 
-    return { modulatableParameters, osc1Wavetables, osc2Wavetables };
+    return {
+      modulatableParameters,
+      oscWavetableCategories,
+      osc1Wavetables,
+      osc2Wavetables,
+    };
   },
 };

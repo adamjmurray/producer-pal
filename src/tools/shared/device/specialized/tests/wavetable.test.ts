@@ -710,6 +710,7 @@ describe("Wavetable readOptions", () => {
     );
     const options = readSpecializedOptions(device) as Record<string, unknown>;
 
+    expect(options.oscWavetableCategories).toStrictEqual(OSC_CATEGORIES);
     expect(options.osc1Wavetables).toStrictEqual(OSC1_WAVETABLES);
     expect(options.osc2Wavetables).toStrictEqual(OSC2_WAVETABLES);
     expect(options.modulatableParameters).toStrictEqual([

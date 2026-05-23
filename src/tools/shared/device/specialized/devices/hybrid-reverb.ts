@@ -206,9 +206,15 @@ export const hybridReverbSpec: SpecializedDeviceSpec = {
     },
   ],
   readOptions(device) {
-    const list = readFileList(device);
-    const irFileList = list.filter((f) => f !== EMPTY_FILE_SENTINEL);
+    // Categories use underscores internally; surface user-facing (spaced) names
+    // so the LLM can switch categories without first guessing a valid name.
+    const irCategoryList = readCategoryList(device).map((c) =>
+      c.replaceAll("_", " "),
+    );
+    const irFileList = readFileList(device).filter(
+      (f) => f !== EMPTY_FILE_SENTINEL,
+    );
 
-    return { irFileList };
+    return { irCategoryList, irFileList };
   },
 };

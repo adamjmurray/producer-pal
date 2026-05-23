@@ -377,6 +377,18 @@ describe("Hybrid Reverb pseudo-params", () => {
       expect(options.irFileList).toStrictEqual(MOCK_FILE_LIST);
     });
 
+    it("returns irCategoryList with underscores translated to spaces", () => {
+      const device = registerHybridReverb();
+
+      const options = readSpecializedOptions(device);
+
+      expect(options.irCategoryList).toStrictEqual([
+        "Early Reflections",
+        "Halls",
+        "Real Places",
+      ]);
+    });
+
     it("returns empty irFileList when the category has only the sentinel", () => {
       const device = registerHybridReverb({
         ir_file_list: ["<empty>"],
