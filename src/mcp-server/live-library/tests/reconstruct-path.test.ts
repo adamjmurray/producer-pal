@@ -76,6 +76,7 @@ describe("resolveAbsolutePaths", () => {
     expect(map.get(4)).toStrictEqual({
       path: "/Users/me/kick.wav",
       truncated: false,
+      folder: "me",
     });
   });
 
@@ -91,6 +92,7 @@ describe("resolveAbsolutePaths", () => {
     expect(resolveAbsolutePaths(db, [4]).get(4)).toStrictEqual({
       path: "C:/Users/me/kick.wav",
       truncated: false,
+      folder: "me",
     });
   });
 
@@ -133,6 +135,28 @@ describe("resolveAbsolutePaths", () => {
     // levels, but the segments it does have are contiguous and
     // leaf-anchored — verify the deep.wav tail is intact.
     expect(resolved?.path.endsWith("/deep.wav")).toBe(true);
+    // Truncation only drops root-ward segments, so the immediate parent
+    // (deep.wav's parent, file 34) is still recovered.
+    expect(resolved?.folder).toBe("level34");
+  });
+
+  it("captures the immediate parent folder name", () => {
+    insertRow(1, 0, "/");
+    insertRow(2, 1, "Samples");
+    insertRow(3, 2, "Drums");
+    insertRow(4, 3, "kick.wav");
+
+    expect(resolveAbsolutePaths(db, [4]).get(4)?.folder).toBe("Drums");
+  });
+
+  it("omits folder for a file directly at the root", () => {
+    insertRow(1, 0, "/");
+    insertRow(2, 1, "loop.wav");
+
+    const resolved = resolveAbsolutePaths(db, [2]).get(2);
+
+    expect(resolved?.path).toBe("/loop.wav");
+    expect(resolved).not.toHaveProperty("folder");
   });
 
   it("treats parent_id=NULL on the chain head as reaching the root", () => {

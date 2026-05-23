@@ -554,5 +554,23 @@ describe("library tool — folder scan integration", () => {
 
     expect(item?.name).toBe("snare.wav");
     expect(item?.path).toBe("/samples/drums/snare.wav");
+    // Immediate parent folder of a nested sample is its last folder segment.
+    expect(item?.folder).toBe("drums");
+  });
+
+  it("uses the sample folder's basename as folder for top-level files", async () => {
+    mockFolderStructure({
+      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
+    });
+    mockSearchRoute([]);
+
+    const result = await library({}, { sampleFolder: "/samples/" });
+
+    if (!("items" in result)) throw new Error("expected items");
+    // A top-level sample has no folder segment of its own, so its parent is
+    // the configured sample folder itself ("/samples/" → "samples").
+    expect(result.items.find((i) => i.name === "kick.wav")?.folder).toBe(
+      "samples",
+    );
   });
 });

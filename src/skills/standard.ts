@@ -181,6 +181,7 @@ Use \`ppal-library\` to search Live's browser library and the user's configured 
 - \`tags\` is comma-separated; results must match ALL listed tags. Use \`action: "listTags"\` to discover available tags.
 - \`source\`: filter where the file lives. \`sampleFolder\` is the user-configured sample folder on disk (bypasses Live's DB); \`user\`, \`pack\`, \`builtin\`, \`cloud\`, \`plugin\` query Live's DB.
 - Items from the user's sample folder appear before Live's library items in results.
+- Each result includes \`folder\` (its immediate parent folder name). Use it to sanity-check tag hits: Live's tags are noisy, so a \`Kick\`-tagged file under an \`IR Library\` folder is probably a reverb impulse, not a drum.
 - Pass an absolute \`path\` from a result to \`ppal-create-clip\` / \`ppal-update-clip\` (audio clips) or \`ppal-create-device\` / \`ppal-update-device\` (Simpler \`sample\`).
 
 ## Working with Ableton Live

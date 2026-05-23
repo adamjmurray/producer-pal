@@ -37,6 +37,13 @@ export interface ResolvedPath {
    * treating the truncated path as authoritative.
    */
   truncated: boolean;
+  /**
+   * Immediate parent folder's display name (the second-to-last path
+   * segment). Omitted for files at the filesystem root, whose only parent
+   * is the root segment itself ("/" or "C:"). Robust to truncation, which
+   * only drops root-ward segments — never the leaf or its immediate parent.
+   */
+  folder?: string;
 }
 
 interface WalkRow {
@@ -108,10 +115,19 @@ export function resolveAbsolutePaths(
   }
 
   for (const [rootId, segs] of segmentsByRoot.entries()) {
-    result.set(rootId, {
+    const resolved: ResolvedPath = {
       path: joinPathSegments(segs),
       truncated: (headParentByRoot.get(rootId) ?? 0) !== 0,
-    });
+    };
+
+    // segs are root-first, leaf-last; the immediate parent folder is the
+    // second-to-last segment. With only two segments the parent is the root
+    // ("/" or "C:"), which isn't a useful folder name — leave folder unset.
+    if (segs.length >= 3) {
+      resolved.folder = segs.at(-2);
+    }
+
+    result.set(rootId, resolved);
   }
 
   return result;

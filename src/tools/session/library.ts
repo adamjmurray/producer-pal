@@ -185,6 +185,7 @@ function scanFolderItems(
     tags: [],
     useCount: 0,
     source: "sampleFolder",
+    folder: parentFolder(rel, result.sampleFolder),
   }));
 
   return { items };
@@ -200,6 +201,30 @@ function leafName(rel: string): string {
   const idx = rel.lastIndexOf("/");
 
   return idx === -1 ? rel : rel.slice(idx + 1);
+}
+
+/**
+ * Immediate parent folder display name for a sampleFolder item, mirroring
+ * the `folder` field DB items carry. For a nested relative path the parent
+ * is its last folder segment ("drums/kick.wav" → "drums"); for a top-level
+ * file the parent is the configured sample folder's own basename.
+ *
+ * @param rel - Relative path like "drums/kick.wav"
+ * @param sampleFolder - Absolute sample folder path (trailing slash)
+ * @returns Parent folder display name
+ */
+function parentFolder(rel: string, sampleFolder: string): string {
+  const idx = rel.lastIndexOf("/");
+
+  if (idx !== -1) {
+    return leafName(rel.slice(0, idx));
+  }
+
+  const trimmed = sampleFolder.endsWith("/")
+    ? sampleFolder.slice(0, -1)
+    : sampleFolder;
+
+  return leafName(trimmed);
 }
 
 /**
