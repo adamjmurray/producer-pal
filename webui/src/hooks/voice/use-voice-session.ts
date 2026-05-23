@@ -119,6 +119,12 @@ export function useVoiceSession(
 
   const sessionRef = useRef<RealtimeSession | null>(null);
   const mcpClientRef = useRef<Client | null>(null);
+  // Set synchronously at the start of connect() so a second call during the
+  // await window (token fetch, MCP-tool setup) can't create a second session +
+  // MCP client. sessionRef alone is insufficient — it isn't assigned until
+  // after those awaits. Cleared in cleanup() (error/disconnect); after a
+  // successful connect, sessionRef takes over as the reentrancy guard.
+  const connectingRef = useRef(false);
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<RealtimeItem[]>([]);
@@ -136,6 +142,7 @@ export function useVoiceSession(
 
     sessionRef.current = null;
     mcpClientRef.current = null;
+    connectingRef.current = false;
 
     if (session) {
       try {
@@ -160,7 +167,7 @@ export function useVoiceSession(
 
   const connect = useCallback(
     async (initialHistory?: RealtimeItem[]) => {
-      if (sessionRef.current) return;
+      if (sessionRef.current || connectingRef.current) return;
 
       if (!openAiKey) {
         setStatus("error");
@@ -171,6 +178,7 @@ export function useVoiceSession(
         return;
       }
 
+      connectingRef.current = true;
       setStatus("connecting");
       setError(null);
       setHistory([]);

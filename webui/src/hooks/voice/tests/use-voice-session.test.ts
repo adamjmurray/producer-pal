@@ -174,6 +174,25 @@ async function connectAndGetSession(): Promise<{
 }
 
 /**
+ * Render the hook and connect() with a loosely-typed seed history, casting the
+ * test fixtures to the connect() parameter type.
+ *
+ * @param seed - Seed history items (loosely-typed test fixtures)
+ * @returns The hook result
+ */
+async function connectWithSeed(seed: unknown[]): Promise<HookResult> {
+  const { result } = renderHook(() => useVoiceSession(defaultParams()));
+
+  await act(async () => {
+    await result.current.connect(
+      seed as Parameters<typeof result.current.connect>[0],
+    );
+  });
+
+  return result;
+}
+
+/**
  * Emit a transport `response.done` event with a failure payload, wrapped in
  * `act()` so React state updates flush before the test assertion.
  *
@@ -346,15 +365,8 @@ describe("useVoiceSession.connect", () => {
         content: [{ type: "input_text", text: "system note" }],
       },
     ];
-    const { result } = renderHook(() => useVoiceSession(defaultParams()));
 
-    await act(async () => {
-      await result.current.connect(
-        initialHistory as unknown as Parameters<
-          typeof result.current.connect
-        >[0],
-      );
-    });
+    await connectWithSeed(initialHistory);
 
     const session = mocks.FakeSession.instances[0]!;
     const args = session.updateHistory.mock.calls[0]?.[0] as
@@ -381,17 +393,9 @@ describe("useVoiceSession.connect", () => {
   });
 
   it("does not call updateHistory when initialHistory is empty or omitted", async () => {
-    stubFetchOk({ value: "ek_x" });
+    const { session } = await connectAndGetSession();
 
-    const { result } = renderHook(() => useVoiceSession(defaultParams()));
-
-    await act(async () => {
-      await result.current.connect();
-    });
-
-    expect(
-      mocks.FakeSession.instances[0]!.updateHistory,
-    ).not.toHaveBeenCalled();
+    expect(session.updateHistory).not.toHaveBeenCalled();
   });
 
   it("skips updateHistory when initialHistory contains only function_call items", async () => {
@@ -407,16 +411,9 @@ describe("useVoiceSession.connect", () => {
       },
     ];
 
-    const { result } = renderHook(() => useVoiceSession(defaultParams()));
+    const result = await connectWithSeed(onlyFunctionCalls);
 
-    await act(async () => {
-      await result.current.connect(
-        onlyFunctionCalls as unknown as Parameters<
-          typeof result.current.connect
-        >[0],
-      );
-    });
-
+    expect(result.current.status).toBe("connected");
     expect(
       mocks.FakeSession.instances[0]!.updateHistory,
     ).not.toHaveBeenCalled();
@@ -433,6 +430,21 @@ describe("useVoiceSession.connect", () => {
     });
 
     expect(mocks.FakeSession.instances).toHaveLength(1);
+  });
+
+  it("ignores a concurrent connect() during the await window", async () => {
+    stubFetchOk({ value: "ek_x" });
+    const { result } = renderHook(() => useVoiceSession(defaultParams()));
+
+    // The second connect lands before the first resolves its awaits (MCP-tool
+    // setup, token fetch). sessionRef isn't set yet, so only connectingRef
+    // guards against a duplicate session + leaked MCP client.
+    await act(async () => {
+      await Promise.all([result.current.connect(), result.current.connect()]);
+    });
+
+    expect(mocks.FakeSession.instances).toHaveLength(1);
+    expect(result.current.status).toBe("connected");
   });
 });
 
