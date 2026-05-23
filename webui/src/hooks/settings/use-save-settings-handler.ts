@@ -45,6 +45,12 @@ export function useSaveSettingsHandler(
     // clearing it, the new mode's mount handler would bounce the user right
     // back into the old mode via onForeignRecord. Clear it synchronously so
     // the new mode mounts with no active conversation.
+    //
+    // This intentionally does NOT touch App.tsx's `viewingMode`. If the user
+    // opened a record from the other mode and is viewing it, saving leaves them
+    // on that record (cleared only by "New conversation") — the new default
+    // takes effect on the next conversation, matching how chat model/provider
+    // changes apply going forward rather than retroactively.
     const modeWillChange =
       isRealtimeModel(settings.savedModel) !== isRealtimeModel(settings.model);
 
