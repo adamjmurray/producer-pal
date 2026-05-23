@@ -9,7 +9,7 @@ import {
   type RegisteredMockObject,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { playback } from "#src/tools/control/playback.ts";
+import { playback } from "#src/tools/session/playback.ts";
 import {
   setupDefaultTimeSignature,
   setupPlaybackLiveSet,

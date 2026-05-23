@@ -10,7 +10,7 @@ import {
   clearMockRegistry,
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
-import { type SelectResult } from "#src/tools/control/select.ts";
+import { type SelectResult } from "#src/tools/session/select.ts";
 import type * as SharedUtils from "#src/tools/shared/utils.ts";
 
 /**

@@ -66,7 +66,7 @@ jobs:
           - "src/tools/clip/**/*.ts"
           - "src/tools/track/**/*.ts"
           - "src/tools/device/**/*.ts"
-          - "src/tools/operations/**/*.ts"
+          - "src/tools/actions/**/*.ts"
           - "src/tools/{scene,control,live-set,workflow}/**/*.ts"
     steps:
       - run: npx stryker run --mutate '${{ matrix.mutate }}'

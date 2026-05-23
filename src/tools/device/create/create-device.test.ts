@@ -19,7 +19,7 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
   warn: vi.fn(),
 }));
 
-vi.mock(import("#src/tools/control/select.ts"), () => ({
+vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 

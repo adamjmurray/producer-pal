@@ -13,7 +13,7 @@ import {
   computeLoopDeadline,
   isDeadlineExceeded,
 } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { select } from "#src/tools/control/select.ts";
+import { select } from "#src/tools/session/select.ts";
 import {
   prepareSplitParams,
   performSplitting,

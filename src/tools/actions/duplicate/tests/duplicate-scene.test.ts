@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import "./duplicate-mocks-test-helpers.ts";
-import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
+import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   createStandardMidiClipMock,
@@ -16,7 +16,7 @@ import {
   registerTrackWithArrangementDup,
   setupArrangementSceneMocks,
   setupSessionSceneMocks,
-} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
+} from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 
 interface DuplicateClipResult {
   id: string;

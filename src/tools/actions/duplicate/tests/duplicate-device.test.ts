@@ -5,11 +5,11 @@
 
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
-import { duplicate } from "#src/tools/operations/duplicate/duplicate.ts";
+import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
 import {
   registerMockObject,
   setupDeviceDuplicationMocks,
-} from "#src/tools/operations/duplicate/helpers/duplicate-test-helpers.ts";
+} from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
 import { mockNonExistentObjects } from "#src/test/mocks/mock-registry.ts";
 
 // Mock moveDeviceToPath to track calls

@@ -9,7 +9,7 @@ import { beforeEach, type vi } from "vitest";
  * Set up a select() mock for focus functionality tests.
  * Registers a beforeEach hook that imports the mocked select function and clears it.
  *
- * The caller must have `vi.mock(import("#src/tools/control/select.ts"), ...)`
+ * The caller must have `vi.mock(import("#src/tools/session/select.ts"), ...)`
  * at the top level of their test file (vi.mock is hoisted by Vitest).
  * @returns Object with a getter for the select mock (populated after beforeEach runs)
  */
@@ -19,7 +19,7 @@ export function setupSelectMock(): {
   let selectMock: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
-    const selectModule = await import("#src/tools/control/select.ts");
+    const selectModule = await import("#src/tools/session/select.ts");
 
     selectMock = selectModule.select as ReturnType<typeof vi.fn>;
     selectMock.mockClear();

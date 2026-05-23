@@ -11,7 +11,7 @@ import { toJSONSchema, z } from "zod";
 import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
 import { skills as basicSkills } from "#src/skills/basic.ts";
 import { skills as standardSkills } from "#src/skills/standard.ts";
-import { toolDefLiveApi } from "#src/tools/control/live-api.def.ts";
+import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

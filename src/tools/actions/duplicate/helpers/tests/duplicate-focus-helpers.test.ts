@@ -8,7 +8,7 @@ import { setupSelectMock } from "#src/test/focus-test-helpers.ts";
 import { focusIfRequested } from "../duplicate-focus-helpers.ts";
 
 // Mock the select module to avoid Live API dependencies
-vi.mock(import("#src/tools/control/select.ts"), () => ({
+vi.mock(import("#src/tools/session/select.ts"), () => ({
   select: vi.fn(),
 }));
 

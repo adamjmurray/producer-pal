@@ -6,7 +6,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { select } from "#src/tools/control/select.ts";
+import { select } from "#src/tools/session/select.ts";
 import {
   getDefaultReadState,
   resetSelectTestState,

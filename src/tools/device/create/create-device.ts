@@ -5,8 +5,8 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
-import { select } from "#src/tools/control/select.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
+import { select } from "#src/tools/session/select.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
   parseCommaSeparatedIds,

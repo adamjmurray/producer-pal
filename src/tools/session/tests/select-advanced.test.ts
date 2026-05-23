@@ -11,7 +11,7 @@ import {
   registerMockObject,
 } from "#src/test/mocks/mock-registry.ts";
 import { LIVE_API_VIEW_NAMES } from "#src/tools/constants.ts";
-import { select } from "#src/tools/control/select.ts";
+import { select } from "#src/tools/session/select.ts";
 import {
   expectReadState,
   resetSelectTestState,

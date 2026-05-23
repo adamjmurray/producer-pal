@@ -5,7 +5,7 @@
 
 import { type Express, type Request, type Response } from "express";
 import { z } from "zod";
-import { toolDefLiveApi } from "#src/tools/control/live-api.def.ts";
+import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import {
   STANDARD_TOOL_DEFS,
   type CallLiveApiFunction,

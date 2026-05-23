@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
-import { library } from "./library.ts";
+import { library } from "../library.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
   requestNode: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
 // Wrap the real readSamples in a spy so existing tests keep their
 // mockFolderStructure-driven behavior, while letting new tests assert
 // the folder scan was skipped entirely (call count = 0).
-vi.mock(import("./read-samples.ts"), async (importOriginal) => {
+vi.mock(import("../read-samples.ts"), async (importOriginal) => {
   const actual = await importOriginal();
 
   return { ...actual, readSamples: vi.fn(actual.readSamples) };
@@ -23,7 +23,7 @@ vi.mock(import("./read-samples.ts"), async (importOriginal) => {
 
 const protocolMock =
   await import("#src/live-api-adapter/node-request-v8-protocol.ts");
-const readSamplesMock = await import("./read-samples.ts");
+const readSamplesMock = await import("../read-samples.ts");
 
 /**
  * Stub the library.search route with the given items.

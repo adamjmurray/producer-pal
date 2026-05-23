@@ -5,7 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
-import { readSamples } from "./read-samples.ts";
+import { readSamples } from "../read-samples.ts";
 import {
   createWavEntries,
   mockKickSnareFolder,

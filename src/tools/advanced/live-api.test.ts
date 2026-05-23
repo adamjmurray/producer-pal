@@ -14,7 +14,10 @@ import {
   LiveAPI,
   type MockLiveAPIContext,
 } from "#src/test/mocks/mock-live-api.ts";
-import { liveApi, type LiveApiOperation } from "#src/tools/control/live-api.ts";
+import {
+  liveApi,
+  type LiveApiOperation,
+} from "#src/tools/advanced/live-api.ts";
 
 describe("liveApi", () => {
   let defaultMock: RegisteredMockObject;

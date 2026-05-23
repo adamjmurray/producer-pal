@@ -155,7 +155,7 @@ web UI architecture.
   - Example: `console.warn("quantize parameter ignored for audio clip")`
 
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
-  in `src/tools/workflow/connect.ts`. It needs to be adjusted after changes to
+  in `src/tools/core/connect.ts`. It needs to be adjusted after changes to
   bar|beat notation and when changing behavior that invalidates any of its
   instructions.
 

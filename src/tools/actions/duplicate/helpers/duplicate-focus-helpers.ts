@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { select } from "#src/tools/control/select.ts";
+import { select } from "#src/tools/session/select.ts";
 
 /**
  * Determines the target view based on destination and type
