@@ -121,6 +121,26 @@ function basePersistence(
   };
 }
 
+function userMsg(itemId: string, transcript: string): RealtimeItem {
+  return {
+    itemId,
+    type: "message",
+    role: "user",
+    status: "completed",
+    content: [{ type: "input_audio", transcript }],
+  } as unknown as RealtimeItem;
+}
+
+function assistantMsg(itemId: string, transcript: string): RealtimeItem {
+  return {
+    itemId,
+    type: "message",
+    role: "assistant",
+    status: "completed",
+    content: [{ type: "output_audio", transcript }],
+  } as unknown as RealtimeItem;
+}
+
 interface PropOverrides {
   apiKey?: string;
   provider?: "openai" | "anthropic";
@@ -483,20 +503,8 @@ describe("VoiceApp", () => {
 
     it("renders the chat MessageList when history has items", () => {
       const history: RealtimeItem[] = [
-        {
-          itemId: "u1",
-          type: "message",
-          role: "user",
-          status: "completed",
-          content: [{ type: "input_audio", transcript: "hello pal" }],
-        },
-        {
-          itemId: "a1",
-          type: "message",
-          role: "assistant",
-          status: "completed",
-          content: [{ type: "output_audio", transcript: "hi there" }],
-        },
+        userMsg("u1", "hello pal"),
+        assistantMsg("a1", "hi there"),
       ];
 
       mocks.useVoiceSession.mockReturnValue(
@@ -592,15 +600,7 @@ describe("VoiceApp", () => {
     });
 
     it("renders saved voice items when there is no live history", () => {
-      const savedItems = [
-        {
-          itemId: "u1",
-          type: "message",
-          role: "user",
-          status: "completed",
-          content: [{ type: "input_audio", transcript: "from saved record" }],
-        },
-      ] as unknown as RealtimeItem[];
+      const savedItems = [userMsg("u1", "from saved record")];
 
       mocks.useVoiceSession.mockReturnValue(baseSession());
       mocks.useVoicePersistence.mockReturnValue(
@@ -627,15 +627,7 @@ describe("VoiceApp", () => {
     });
 
     it("Talk on a loaded voice conversation primes the new session with saved items", () => {
-      const savedItems = [
-        {
-          itemId: "u1",
-          type: "message",
-          role: "user",
-          status: "completed",
-          content: [{ type: "input_audio", transcript: "from saved" }],
-        },
-      ] as unknown as RealtimeItem[];
+      const savedItems = [userMsg("u1", "from saved")];
 
       const session = baseSession();
 
@@ -650,15 +642,27 @@ describe("VoiceApp", () => {
       expect(session.connect).toHaveBeenCalledWith(savedItems);
     });
 
+    it("Stop then Talk on a fresh conversation reseeds from the retained live history", () => {
+      // A conversation started and continued in one sitting never populates
+      // savedItems (autosave doesn't refresh it), but the previous session's
+      // transcript is retained in voice.history after Stop. Reconnecting must
+      // seed from that so prior context isn't lost.
+      const retainedHistory = [userMsg("u1", "earlier turn")];
+
+      const session = baseSession({ status: "idle", history: retainedHistory });
+
+      mocks.useVoiceSession.mockReturnValue(session);
+      mocks.useVoicePersistence.mockReturnValue(basePersistence());
+
+      renderVoiceApp();
+      fireEvent.click(screen.getByRole("button", { name: "Talk" }));
+
+      expect(session.connect).toHaveBeenCalledWith(retainedHistory);
+    });
+
     it("merges saved record with live history so historical tool calls stay visible mid-session", () => {
       const savedItems = [
-        {
-          itemId: "u1",
-          type: "message",
-          role: "user",
-          status: "completed",
-          content: [{ type: "input_audio", transcript: "earlier turn" }],
-        },
+        userMsg("u1", "earlier turn"),
         {
           itemId: "fc1",
           type: "function_call",
@@ -666,25 +670,13 @@ describe("VoiceApp", () => {
           name: "ppal-read-track",
           arguments: "{}",
           output: '{"result":"ok"}',
-        },
-      ] as unknown as RealtimeItem[];
+        } as unknown as RealtimeItem,
+      ];
 
       const liveHistory = [
-        {
-          itemId: "u1",
-          type: "message",
-          role: "user",
-          status: "completed",
-          content: [{ type: "input_audio", transcript: "earlier turn" }],
-        },
-        {
-          itemId: "a2",
-          type: "message",
-          role: "assistant",
-          status: "completed",
-          content: [{ type: "output_audio", transcript: "fresh assistant" }],
-        },
-      ] as unknown as RealtimeItem[];
+        userMsg("u1", "earlier turn"),
+        assistantMsg("a2", "fresh assistant"),
+      ];
 
       mocks.useVoiceSession.mockReturnValue(
         baseSession({ status: "connected", history: liveHistory }),

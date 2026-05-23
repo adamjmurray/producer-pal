@@ -109,11 +109,15 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
       return;
     }
 
-    const seed =
-      persistence.savedItems.length > 0 ? persistence.savedItems : undefined;
+    // Seed the new session from the full displayed transcript (saved record +
+    // retained live history), not just savedItems. Autosave never refreshes
+    // savedItems, so a conversation started and continued in one sitting
+    // (Stop → Talk) would otherwise reconnect with no prior context.
+    // displayItems already merges and dedupes the two sources.
+    const seed = displayItems.length > 0 ? displayItems : undefined;
 
     void voice.connect(seed);
-  }, [isConnected, persistence.savedItems, voice]);
+  }, [isConnected, displayItems, voice]);
 
   const headerInfo = useVoiceModeReporting({
     persistence,
