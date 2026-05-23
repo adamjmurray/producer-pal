@@ -203,11 +203,16 @@ function writeSidechainChannel(
 }
 
 /**
- * Build the sidechainSourceTrackIds option: track ids whose display_name in
- * available_input_routing_types matches a live_set track name. Excludes
- * "No Input", "Ext. In", "Master", and return tracks (no matching track id).
+ * Build the Compressor option catalogs:
+ * - `sidechainSourceTrackIds`: track ids whose display_name in
+ *   available_input_routing_types matches a live_set track name. Excludes
+ *   "No Input", "Ext. In", "Master", and return tracks (no matching track id).
+ * - `sidechainChannels`: valid `sidechainChannel` values for the CURRENTLY
+ *   selected source. The list is source-dependent (a plain track offers Pre
+ *   FX/Post FX/Post Mixer; a drum-rack/chained source exposes per-device
+ *   channels), so read it after setting the source.
  * @param device - LiveAPI device object
- * @returns Object with sidechainSourceTrackIds array
+ * @returns Object with sidechainSourceTrackIds and sidechainChannels arrays
  */
 function readCompressorOptions(device: LiveAPI): Record<string, unknown> {
   const available = readAvailableTypes(device);
@@ -223,7 +228,11 @@ function readCompressorOptions(device: LiveAPI): Record<string, unknown> {
     }
   }
 
-  return { sidechainSourceTrackIds: trackIds };
+  const sidechainChannels = readAvailableChannels(device).map(
+    (e) => e.display_name,
+  );
+
+  return { sidechainSourceTrackIds: trackIds, sidechainChannels };
 }
 
 export const compressorSpec: SpecializedDeviceSpec = {

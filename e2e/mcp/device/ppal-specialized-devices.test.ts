@@ -261,23 +261,30 @@ describe("specialized devices: Wavetable", () => {
 describe("specialized devices: Compressor", () => {
   it("round-trips sidechain source + channel and clears to No Input", async () => {
     const id = await createEffect("Compressor");
-    const { options } = await readDevice(id, ["options"]);
-    const sourceIds = options?.sidechainSourceTrackIds as string[];
+    const sourceIds = (await readDevice(id, ["options"])).options
+      ?.sidechainSourceTrackIds as string[];
 
     expect(sourceIds.length).toBeGreaterThan(0);
 
     const sourceId = sourceIds[0]!;
 
-    // Apply source before channel. "Pre FX" is present for every source type
-    // (other channels vary with the source track's internal routing).
-    await updateDevice(id, {
-      params: `sidechainSourceTrackId=${sourceId}\nsidechainChannel=Pre FX`,
-    });
+    // Apply source before channel — the valid channels are scoped to the
+    // selected source, so set the source first, then read the catalog.
+    await updateDevice(id, { params: `sidechainSourceTrackId=${sourceId}` });
+
+    const channels = (await readDevice(id, ["options"])).options
+      ?.sidechainChannels as string[];
+
+    expect(channels.length).toBeGreaterThan(0);
+
+    const channel = channels.includes("Pre FX") ? "Pre FX" : channels[0]!;
+
+    await updateDevice(id, { params: `sidechainChannel=${channel}` });
 
     const routed = await readDevice(id, ["params"], "sidechain");
 
     expect(paramValue(routed, "sidechainSourceTrackId")).toBe(sourceId);
-    expect(paramValue(routed, "sidechainChannel")).toBe("Pre FX");
+    expect(paramValue(routed, "sidechainChannel")).toBe(channel);
 
     await updateDevice(id, { params: "sidechainSourceTrackId=null" });
 

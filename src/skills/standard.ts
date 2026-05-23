@@ -230,7 +230,7 @@ Instruments:
 
 Audio effects:
 
-- **Compressor** sidechain: \`sidechainSourceTrackId\` (a trackId, or null for No Input) and \`sidechainChannel\` (Pre FX/Post FX/Post Mixer). Apply source before channel. options lists valid \`sidechainSourceTrackIds\`.
+- **Compressor** sidechain: \`sidechainSourceTrackId\` (a trackId, or null for No Input) and \`sidechainChannel\` (valid set varies by source — typically Pre FX/Post FX/Post Mixer, but a drum-rack/chained source exposes per-device channels). Apply source before channel. options lists \`sidechainSourceTrackIds\` and (for the current source) \`sidechainChannels\`.
 - **EQ Eight** \`globalMode\` (stereo / L/R / M/S), \`oversample\`. In L/R the A bands process Left and B bands Right; in M/S, A = Mid and B = Side. Set \`globalMode\`, then write the A-/B-suffix band DeviceParameters (e.g. \`5 Frequency B\`).
 - **Hybrid Reverb** \`irCategory\`, \`irFile\` (set category first; browse via options \`irCategoryList\`, then \`irFileList\` lists the selected category's files), \`irAttackTime\`, \`irDecayTime\`, \`irSizeFactor\`, \`irTimeShapingOn\`.
 - **Roar** \`routingMode\` (single/serial/parallel/multi-band/mid-side/feedback/delay), \`envListen\`.

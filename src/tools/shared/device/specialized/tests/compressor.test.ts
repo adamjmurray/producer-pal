@@ -526,6 +526,19 @@ describe("Compressor readOptions", () => {
     expect(options.sidechainSourceTrackIds).toStrictEqual(["t1", "t2"]);
   });
 
+  it("returns sidechainChannels (display_names for the current source)", () => {
+    registerLiveSetTracks();
+    const device = registerCompressor();
+
+    const options = readSpecializedOptions(device);
+
+    expect(options.sidechainChannels).toStrictEqual([
+      "Pre FX",
+      "Post FX",
+      "Post Mixer",
+    ]);
+  });
+
   it("excludes entries that have no matching live_set track (Ext. In, No Input)", () => {
     registerLiveSetTracks();
     const device = registerCompressor();
