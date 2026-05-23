@@ -116,12 +116,13 @@ describe("Wavetable pseudo-params — read", () => {
     ).toContainEqual({ name: "monoPoly", value: "poly" });
   });
 
-  it("reads polyVoices and unisonVoiceCount as numbers", () => {
+  it("maps polyVoices index to its voice count and reads unisonVoiceCount raw", () => {
+    // poly_voices is an index into [2,3,4,5,6,7,8,16]; index 7 → 16 voices.
     const params = readSpecializedParams(
-      registerWavetable({ poly_voices: 8, unison_voice_count: 4 }),
+      registerWavetable({ poly_voices: 7, unison_voice_count: 4 }),
     );
 
-    expect(params).toContainEqual({ name: "polyVoices", value: 8 });
+    expect(params).toContainEqual({ name: "polyVoices", value: 16 });
     expect(params).toContainEqual({ name: "unisonVoiceCount", value: 4 });
   });
 
@@ -219,18 +220,25 @@ describe("Wavetable pseudo-params — write", () => {
     );
   });
 
-  it("writes polyVoices integer", () => {
+  it("writes polyVoices count as its catalog index", () => {
     const device = registerWavetable();
 
+    // 16 voices is the last catalog entry → index 7.
     applySpecializedParamWrite(device, "polyVoices", 16, "updateDevice");
+    expect(device.set).toHaveBeenCalledWith("poly_voices", 7);
 
-    expect(device.set).toHaveBeenCalledWith("poly_voices", 16);
+    // 5 voices → index 3.
+    const device2 = registerWavetable();
+
+    applySpecializedParamWrite(device2, "polyVoices", 5, "updateDevice");
+    expect(device2.set).toHaveBeenCalledWith("poly_voices", 3);
   });
 
-  it("warns and skips non-integer polyVoices", () => {
+  it("warns and skips polyVoices not in the catalog", () => {
     const device = registerWavetable();
 
-    applySpecializedParamWrite(device, "polyVoices", 3.5, "updateDevice");
+    // 10 is a plausible-looking count but not a valid Wavetable option.
+    applySpecializedParamWrite(device, "polyVoices", 10, "updateDevice");
 
     expect(device.set).not.toHaveBeenCalled();
     expect(outlet).toHaveBeenCalledWith(
@@ -264,7 +272,7 @@ describe("Wavetable pseudo-params — write", () => {
     );
   });
 
-  it("writes unisonVoiceCount integer", () => {
+  it("writes unisonVoiceCount as a raw count within range", () => {
     const device = registerWavetable();
 
     applySpecializedParamWrite(device, "unisonVoiceCount", 8, "updateDevice");
@@ -748,7 +756,7 @@ describe("Wavetable via read-device", () => {
         parameters: PARAM_IDS,
         filter_routing: 0,
         mono_poly: 0,
-        poly_voices: 8,
+        poly_voices: 3,
         unison_mode: 1,
         unison_voice_count: 2,
         oscillator_1_effect_mode: 0,

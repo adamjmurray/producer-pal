@@ -6,9 +6,10 @@
 import * as console from "#src/shared/v8-max-console.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import {
-  coerceInt,
   readEnumByIndex,
   writeEnumByIndex,
+  writeIntFromSet,
+  writeIntInRange,
 } from "../specialized-device-param-helpers.ts";
 import {
   type PseudoParam,
@@ -47,45 +48,31 @@ const UNISON_MODES = [
 // per engine, but those are regular DeviceParameters and not remapped here.
 const OSC_ENGINES = ["None", "Fm", "Classic", "Modern"] as const;
 
+// poly_voices is an INDEX into this voice-count catalog (not the raw count),
+// mirroring Drift's voice_count_index. Verified vs Live 12.4 UI (2026-05-23):
+// index 0-7 → these counts; 8+ silently reverts. unison_voice_count, by
+// contrast, IS a raw count (range 2-8).
+const POLY_VOICES = [2, 3, 4, 5, 6, 7, 8, 16] as const;
+
 /**
- * Read an integer property as a plain number (undefined on non-number).
+ * Read poly_voices and map its catalog index to the actual voice count.
+ * (poly_voices stores an index into POLY_VOICES, not the count itself.)
  * @param device - LiveAPI device object
- * @param property - Live API property name
- * @returns The integer value, or undefined
+ * @returns The voice count (2,3,4,5,6,7,8,16), or undefined
  */
-function readIntProp(device: LiveAPI, property: string): number | undefined {
-  return device.getProperty(property) as number | undefined;
+function readPolyVoices(device: LiveAPI): number | undefined {
+  const index = device.getProperty("poly_voices") as number;
+
+  return POLY_VOICES[index];
 }
 
 /**
- * Write an integer property, coercing and warning on non-integer input.
- * Live silently reverts out-of-range values; the caller pre-validates range
- * where needed (e.g. engine mode). Used for polyVoices and unisonVoiceCount
- * where Live accepts any int but silently rejects out-of-range values.
+ * Read unison_voice_count as a plain number (it stores the raw count).
  * @param device - LiveAPI device object
- * @param property - Live API property name
- * @param value - Incoming value
- * @param paramName - Pseudo-param name for warning text
- * @param toolName - Calling tool name for warning prefix
+ * @returns The unison voice count, or undefined
  */
-function writeIntProp(
-  device: LiveAPI,
-  property: string,
-  value: string | number,
-  paramName: string,
-  toolName: string,
-): void {
-  const n = coerceInt(value);
-
-  if (n == null) {
-    console.warn(
-      `${toolName}: ${paramName} must be an integer (got "${String(value)}")`,
-    );
-
-    return;
-  }
-
-  device.set(property, n);
+function readUnisonVoiceCount(device: LiveAPI): number | undefined {
+  return device.getProperty("unison_voice_count") as number | undefined;
 }
 
 /**
@@ -210,9 +197,17 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "polyVoices",
-      read: (device) => readIntProp(device, "poly_voices"),
+      read: readPolyVoices,
       write: (device, value, toolName) =>
-        writeIntProp(device, "poly_voices", value, "polyVoices", toolName),
+        writeIntFromSet(
+          device,
+          "poly_voices",
+          value,
+          POLY_VOICES,
+          toolName,
+          "polyVoices",
+          true,
+        ),
     },
     {
       name: "unisonMode",
@@ -229,14 +224,16 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "unisonVoiceCount",
-      read: (device) => readIntProp(device, "unison_voice_count"),
+      read: readUnisonVoiceCount,
       write: (device, value, toolName) =>
-        writeIntProp(
+        writeIntInRange(
           device,
           "unison_voice_count",
           value,
-          "unisonVoiceCount",
+          2,
+          8,
           toolName,
+          "unisonVoiceCount",
         ),
     },
     {

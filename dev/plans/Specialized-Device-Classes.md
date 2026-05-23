@@ -567,9 +567,12 @@ Topology / voice config:
 
 - `filter_routing` (int) [RW]
 - `mono_poly` (int) [RW]
-- `poly_voices` (int) [RW]
+- `poly_voices` (int) [RW] — **index** (0-7) into the voice-count catalog
+  `[2,3,4,5,6,7,8,16]`, NOT the raw count (verified vs Live 12.4 UI 2026-05-23;
+  8+ silently reverts). Mirrors Drift's `voice_count_index`.
 - `unison_mode` (int) [RW]
-- `unison_voice_count` (int) [RW]
+- `unison_voice_count` (int) [RW] — raw count, valid range **2-8** (probe
+  confirmed 2026-05-23; outside reverts).
 
 Modulation matrix support:
 
@@ -620,10 +623,11 @@ Topology / voicing:
 
 - `filterRouting` — `"serial"` | `"parallel"` | `"split"` (maps to int 0/1/2)
 - `monoPoly` — `"mono"` | `"poly"` (maps to int 0/1)
-- `polyVoices` (int) — current polyphony count
+- `polyVoices` (int) — actual voice count, one of `2/3/4/5/6/7/8/16` (maps to
+  the `poly_voices` catalog index)
 - `unisonMode` — `"none"` | `"classic"` | `"shimmer"` | `"noise"` |
   `"phase-sync"` | `"position-spread"` | `"random-note"` (maps to int 0..6)
-- `unisonVoiceCount` (int)
+- `unisonVoiceCount` (int, 2-8)
 
 Oscillator engines + wavetables:
 
