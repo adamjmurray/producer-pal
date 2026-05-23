@@ -114,18 +114,6 @@ export function readSpecializedParams(
 }
 
 /**
- * Read only the sample-group pseudo-params for a device (Simpler's sample +
- * gainDb), used by the focused `include: ["sample"]` read.
- * @param device - LiveAPI device object
- * @returns Array of {name, value} entries (empty for non-sample devices)
- */
-export function readSpecializedSampleParams(
-  device: LiveAPI,
-): Record<string, unknown>[] {
-  return readParamEntries(device, (param) => param.sampleGroup === true);
-}
-
-/**
  * Parse and dispatch the `actions` arg for a specialized device. Unknown or
  * malformed actions warn-and-skip.
  * @param device - LiveAPI device object

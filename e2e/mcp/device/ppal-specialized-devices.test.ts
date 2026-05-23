@@ -41,6 +41,7 @@ interface ModulationRoute {
 interface ReadDeviceResult {
   id: string;
   type: string;
+  sample?: string;
   parameters?: PseudoParam[];
   options?: Record<string, unknown>;
   modulations?: ModulationRoute[];
@@ -423,7 +424,24 @@ describe("specialized devices: Simpler", () => {
     expect(paramValue(after, "retrigger")).toBe(false);
   });
 
-  it("loads a sample and round-trips gainDb via the sample group", async () => {
+  it('include: ["sample"] returns the sample as a flat top-level field, not in params', async () => {
+    const id = await createInstrument("Simpler");
+
+    await updateDevice(id, {
+      params: [{ name: "sample", value: SAMPLE_FILE }],
+    });
+
+    // Focused discovery view: just the sample file path as a top-level field
+    // (ideal for scanning every pad's sample in a drum rack). No gainDb, and
+    // no parameters[] at all.
+    const sampleView = await readDevice(id, ["sample"]);
+
+    expect(String(sampleView.sample)).toContain("sample.aiff");
+    expect(sampleView).not.toHaveProperty("gainDb");
+    expect(sampleView).not.toHaveProperty("parameters");
+  });
+
+  it('include: ["params"] returns sample (and gainDb) inside parameters[], not top-level', async () => {
     const id = await createInstrument("Simpler");
 
     // Two calls: the sample must be loaded before gain can be set on it.
@@ -432,15 +450,13 @@ describe("specialized devices: Simpler", () => {
     });
     await updateDevice(id, { params: [{ name: "gainDb", value: "-6" }] });
 
-    // include: ["sample"] returns just the sample group inside parameters[],
-    // with no top-level sample/gainDb/multisample fields.
-    const sampleView = await readDevice(id, ["sample"]);
+    // Full params view: sample + gainDb appear as {name, value} entries, with
+    // no flat top-level sample field.
+    const paramsView = await readDevice(id, ["params"]);
 
-    expect(String(paramValue(sampleView, "sample"))).toContain("sample.aiff");
-    expect(paramValue(sampleView, "gainDb")).toBeCloseTo(-6, 0);
-    expect(sampleView).not.toHaveProperty("sample");
-    expect(sampleView).not.toHaveProperty("gainDb");
-    expect(sampleView).not.toHaveProperty("multisample");
+    expect(String(paramValue(paramsView, "sample"))).toContain("sample.aiff");
+    expect(paramValue(paramsView, "gainDb")).toBeCloseTo(-6, 0);
+    expect(paramsView).not.toHaveProperty("sample");
   });
 });
 

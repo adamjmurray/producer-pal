@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -435,7 +436,7 @@ describe("device-reader", () => {
       );
     });
 
-    it("omits the sample group for Simpler in multisample mode", () => {
+    it("omits the focused sample field for Simpler in multisample mode", () => {
       const device = {
         id: "simpler_1",
         path: "live_set tracks 0 devices 0",
@@ -472,11 +473,26 @@ describe("device-reader", () => {
         includeSample: true,
       });
 
-      // No single sample loaded in multi-sample mode → no top-level fields and
-      // no sample group (multisample state is conveyed via the multiSampleMode
-      // param in the full `params` view).
+      // No single sample loaded in multi-sample mode → no top-level `sample`
+      // field (multi-sample state is conveyed via the multiSampleMode param in
+      // the full `params` view).
       expect(result.multisample).toBeUndefined();
       expect(result.sample).toBeUndefined();
+      expect(result.parameters).toBeUndefined();
+    });
+
+    it("returns the focused sample as a flat top-level field (no gainDb, no parameters)", () => {
+      const device = makeSimplerDevice({ samplePath: "/tmp/kick.wav" });
+
+      setupLiveApiMock();
+
+      const result = readDevice(device as LiveAPI, {
+        includeChains: false,
+        includeSample: true,
+      });
+
+      expect(result.sample).toBe("/tmp/kick.wav");
+      expect(result.gainDb).toBeUndefined();
       expect(result.parameters).toBeUndefined();
     });
 

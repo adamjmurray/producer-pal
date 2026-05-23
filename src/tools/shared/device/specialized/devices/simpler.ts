@@ -23,9 +23,10 @@ import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 // Simpler (SimplerDevice, class_name "OriginalSimpler"). AJM-371. See
 // dev/Specialized-Devices.md.
 //
-// The `sample` and `gainDb` params are tagged `sampleGroup` so the focused
-// `include: ["sample"]` read in device-reader.ts can return just those entries
-// (the full set still appears for `include: ["params"]`).
+// `sample` (file path) and `gainDb` are normal writable pseudo-params: set them
+// via `params` {name, value} entries, read them back in `parameters` for
+// `include: ["params"]`. The focused `include: ["sample"]` read surfaces just
+// the sample file path as a flat top-level field (see device-reader.ts).
 
 const PLAYBACK_MODES = ["classic", "one-shot", "slicing"] as const;
 
@@ -101,14 +102,12 @@ export const simplerSpec: SpecializedDeviceSpec = {
   params: [
     {
       name: "sample",
-      sampleGroup: true,
       read: readSamplePath,
       write: (device, value, toolName) =>
         setSimplerSample(device, String(value), toolName),
     },
     {
       name: "gainDb",
-      sampleGroup: true,
       read: readSimplerGain,
       write: (device, value, toolName) =>
         setSimplerGain(device, Number(value), toolName),

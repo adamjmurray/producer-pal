@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
@@ -18,11 +19,11 @@ import {
   readMacroVariations,
 } from "./helpers/device-reader-helpers.ts";
 import { extractDevicePath } from "./helpers/path/device-path-helpers.ts";
+import { probeSimplerSample } from "./simpler-sample.ts";
 import {
   readSpecializedModulations,
   readSpecializedOptions,
   readSpecializedParams,
-  readSpecializedSampleParams,
 } from "./specialized/specialized-device-registry.ts";
 
 export interface ReadDeviceOptions {
@@ -260,6 +261,7 @@ export function readDevice(
   });
 
   appendDeviceDetails(device, deviceInfo, {
+    className,
     includeParams,
     includeParamValues,
     includeSample,
@@ -271,6 +273,7 @@ export function readDevice(
 }
 
 interface DeviceDetailOptions {
+  className: string;
   includeParams: boolean;
   includeParamValues: boolean;
   includeSample: boolean;
@@ -280,8 +283,8 @@ interface DeviceDetailOptions {
 
 /**
  * Append optional detail sections (macro/AB state, parameters, the focused
- * Simpler sample group, and dynamic catalogs) to a device info object, per the
- * requested includes.
+ * Simpler sample file path, and dynamic catalogs) to a device info object, per
+ * the requested includes.
  * @param device - LiveAPI device object
  * @param deviceInfo - Device info object to mutate
  * @param opts - Which detail sections to include
@@ -303,9 +306,15 @@ function appendDeviceDetails(
       opts.paramSearch,
     );
   } else if (opts.includeSample) {
-    // Focused sample view: just the sample-group pseudo-params (Simpler
-    // sample + gainDb). The full `params` superset already includes these.
-    appendSampleParameters(device, deviceInfo);
+    // Focused discovery view: just the Simpler sample file path as a flat
+    // top-level `sample` field, optimized for scanning many devices at once
+    // (e.g. every pad in a drum rack). gainDb, multi-sample state, and the
+    // other Simpler params live in the full `params` set, not here.
+    const probe = probeSimplerSample(device, opts.className);
+
+    if (probe.kind === "single") {
+      deviceInfo.sample = probe.path;
+    }
   }
 
   // Dynamic catalogs (opt-in; only devices that contribute add anything).
@@ -358,23 +367,5 @@ function appendOptions(
 
   if (modulations != null) {
     deviceInfo.modulations = modulations;
-  }
-}
-
-/**
- * Append the focused Simpler sample group (sample + gainDb) to a device info
- * object as `parameters`. Adds nothing for non-Simpler devices or a Simpler
- * with no single sample loaded (e.g. multi-sample mode).
- * @param device - LiveAPI device object
- * @param deviceInfo - Device info object to mutate
- */
-function appendSampleParameters(
-  device: LiveAPI,
-  deviceInfo: Record<string, unknown>,
-): void {
-  const sampleParams = readSpecializedSampleParams(device);
-
-  if (sampleParams.length > 0) {
-    deviceInfo.parameters = sampleParams;
   }
 }

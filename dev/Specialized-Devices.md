@@ -529,15 +529,16 @@ Read-only fields in `read-device`'s `params` output:
 
 Writable via `update-device`'s `params` arg:
 
-- `sample` (string path) — formalizes the existing `sample=` shortcut; reads
-  back as `null` when no sample loaded.
+- `sample` (string path) — set via the `params` arg only; there is no top-level
+  `sample` argument on create/update-device. Reads back as `null` when no sample
+  loaded. The focused `include: ["sample"]` read surfaces it as a flat top-level
+  `sample` field (discovery view, e.g. scanning every pad in a drum rack); the
+  full `include: ["params"]` set also includes it.
 - `gainDb` (float dB) — the loaded sample's gain, using the same linear↔dB
   mapping as track/clip gain (`gain-utils`). Reads/writes only when a single
-  sample is loaded (warn-and-skip otherwise). Tagged `sampleGroup` alongside
-  `sample`: the focused `include: ["sample"]` read returns just these two
-  entries in `parameters`; there are **no** top-level `sample`/`gainDb`/
-  `multisample` fields (AJM-332 — multisample is conveyed by the read-only
-  `multiSampleMode` param).
+  sample is loaded (warn-and-skip otherwise). A normal pseudo-param: appears in
+  `include: ["params"]`, **not** in the focused `include: ["sample"]` view.
+  Multi-sample state is conveyed by the read-only `multiSampleMode` param.
 - `playbackMode` (enum: `"classic"` | `"one-shot"` | `"slicing"`) — maps to int
   0/1/2.
 - `slicingPlaybackMode` (enum: `"mono"` | `"poly"` | `"thru"`) — maps to int

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -155,7 +156,7 @@ describe("readDevice", () => {
   // Path-based tests are in read-device-path.test.js
 
   describe("Simpler sample reading", () => {
-    it("should expose the sample group in parameters[] for a loaded Simpler", () => {
+    it("should expose the sample file path as a flat top-level field for a loaded Simpler", () => {
       setupBasicDeviceMock({
         class_display_name: "Simpler",
         type: 1,
@@ -166,14 +167,12 @@ describe("readDevice", () => {
         include: ["sample"],
       });
 
-      // No top-level sample/gainDb fields — only the focused sample group.
+      // Focused discovery view: just the sample path. gainDb and multi-sample
+      // state live in the full `params` view, not here.
       expect(result).toStrictEqual({
         id: "device-123",
         type: "instrument: Simpler",
-        parameters: [
-          { name: "sample", value: "/path/to/sample.wav" },
-          { name: "gainDb", value: -70 }, // Mock gain 0 → liveGainToDb(0) = -70
-        ],
+        sample: "/path/to/sample.wav",
       });
     });
 
