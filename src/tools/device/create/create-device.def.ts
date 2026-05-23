@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefCreateDevice = defineTool("ppal-create-device", {
@@ -28,12 +29,9 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .string()
       .optional()
       .describe("name for all, or comma-separated for each"),
-    params: z
-      .string()
-      .optional()
-      .describe(
-        "applied after creation — name=value per line (display units: enum string, note name, number)",
-      ),
+    params: paramsInputSchema.describe(
+      "applied after creation — array of {name, value} (display units: enum string, note name, number)",
+    ),
   },
 
   smallModelModeConfig: {
@@ -41,7 +39,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     descriptionOverrides: {
       path: "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0')",
       name: "display name",
-      params: "name=value per line",
+      params: "array of {name, value}",
     },
   },
 });

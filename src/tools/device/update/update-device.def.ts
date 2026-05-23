@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import { paramsInputSchema } from "#src/tools/device/update/device-params-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
@@ -38,12 +39,9 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       ),
     // Kept for potential future use
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
-    params: z
-      .string()
-      .optional()
-      .describe(
-        "name=value per line (display units: enum string, note name, number)",
-      ),
+    params: paramsInputSchema.describe(
+      "array of {name, value} (display units: enum string, note name, number)",
+    ),
     // Intentionally an array (not the usual comma-separated string): action
     // arguments themselves contain commas (e.g. setModulation('x','y',0.5)), so
     // a delimited string would be ambiguous. One action string per element.
@@ -121,7 +119,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       path: "device path like 't0/d0' (track 0, device 0)",
       toPath: "destination path to move device to",
       name: "display name (not drum pads)",
-      params: "name=value per line",
+      params: "array of {name, value}",
       color: "#RRGGBB (chains only)",
     },
   },

@@ -124,7 +124,10 @@ describe("specialized devices: Drift", () => {
     const id = await createInstrument("Drift");
 
     await updateDevice(id, {
-      params: "mod1Source=LFO\nmod1Target=LP Frequency",
+      params: [
+        { name: "mod1Source", value: "LFO" },
+        { name: "mod1Target", value: "LP Frequency" },
+      ],
     });
 
     const after = await readDevice(id, ["params"], "mod1");
@@ -156,7 +159,9 @@ describe("specialized devices: Drift", () => {
   it("validates pitchBendRange (Live reverts out-of-range, does not clamp)", async () => {
     const id = await createInstrument("Drift");
 
-    await updateDevice(id, { params: "pitchBendRange=12" });
+    await updateDevice(id, {
+      params: [{ name: "pitchBendRange", value: "12" }],
+    });
     expect(
       paramValue(
         await readDevice(id, ["params"], "pitchBendRange"),
@@ -169,7 +174,10 @@ describe("specialized devices: Drift", () => {
     const { warnings } = parseToolResultWithWarnings(
       await ctx.client!.callTool({
         name: "ppal-update-device",
-        arguments: { ids: id, params: "pitchBendRange=13" },
+        arguments: {
+          ids: id,
+          params: [{ name: "pitchBendRange", value: "13" }],
+        },
       }),
     );
 
@@ -187,7 +195,7 @@ describe("specialized devices: Drift", () => {
   it("round-trips voiceCount (index-mapped catalog value)", async () => {
     const id = await createInstrument("Drift");
 
-    await updateDevice(id, { params: "voiceCount=16" });
+    await updateDevice(id, { params: [{ name: "voiceCount", value: "16" }] });
 
     expect(
       paramValue(await readDevice(id, ["params"], "voiceCount"), "voiceCount"),
@@ -236,7 +244,9 @@ describe("specialized devices: Wavetable", () => {
   it("round-trips osc category + wavetable (category scopes the list)", async () => {
     const id = await createInstrument("Wavetable");
 
-    await updateDevice(id, { params: "osc1Category=Harmonics" });
+    await updateDevice(id, {
+      params: [{ name: "osc1Category", value: "Harmonics" }],
+    });
 
     const afterCategory = await readDevice(id, ["params"], "osc1Category");
 
@@ -247,7 +257,9 @@ describe("specialized devices: Wavetable", () => {
       ?.osc1Wavetables as string[];
     const target = wavetables[0]!;
 
-    await updateDevice(id, { params: `osc1Wavetable=${target}` });
+    await updateDevice(id, {
+      params: [{ name: "osc1Wavetable", value: target }],
+    });
 
     expect(
       paramValue(
@@ -270,7 +282,9 @@ describe("specialized devices: Compressor", () => {
 
     // Apply source before channel — the valid channels are scoped to the
     // selected source, so set the source first, then read the catalog.
-    await updateDevice(id, { params: `sidechainSourceTrackId=${sourceId}` });
+    await updateDevice(id, {
+      params: [{ name: "sidechainSourceTrackId", value: sourceId }],
+    });
 
     const channels = (await readDevice(id, ["options"])).options
       ?.sidechainChannels as string[];
@@ -279,14 +293,18 @@ describe("specialized devices: Compressor", () => {
 
     const channel = channels.includes("Pre FX") ? "Pre FX" : channels[0]!;
 
-    await updateDevice(id, { params: `sidechainChannel=${channel}` });
+    await updateDevice(id, {
+      params: [{ name: "sidechainChannel", value: channel }],
+    });
 
     const routed = await readDevice(id, ["params"], "sidechain");
 
     expect(paramValue(routed, "sidechainSourceTrackId")).toBe(sourceId);
     expect(paramValue(routed, "sidechainChannel")).toBe(channel);
 
-    await updateDevice(id, { params: "sidechainSourceTrackId=null" });
+    await updateDevice(id, {
+      params: [{ name: "sidechainSourceTrackId", value: "null" }],
+    });
 
     expect(
       paramValue(
@@ -305,7 +323,9 @@ describe("specialized devices: Hybrid Reverb", () => {
     expect((options?.irCategoryList as string[]).length).toBeGreaterThan(0);
     expect((options?.irFileList as string[]).length).toBeGreaterThan(0);
 
-    await updateDevice(id, { params: "irCategory=Halls" });
+    await updateDevice(id, {
+      params: [{ name: "irCategory", value: "Halls" }],
+    });
 
     expect(
       paramValue(await readDevice(id, ["params"], "irCategory"), "irCategory"),
@@ -316,7 +336,7 @@ describe("specialized devices: Hybrid Reverb", () => {
       ?.irFileList as string[];
     const file = files[0]!;
 
-    await updateDevice(id, { params: `irFile=${file}` });
+    await updateDevice(id, { params: [{ name: "irFile", value: file }] });
 
     expect(
       paramValue(await readDevice(id, ["params"], "irFile"), "irFile"),
@@ -329,7 +349,11 @@ describe("specialized devices: Meld", () => {
     const id = await createInstrument("Meld");
 
     await updateDevice(id, {
-      params: "monoPoly=mono\npolyVoices=4\nunisonVoices=2",
+      params: [
+        { name: "monoPoly", value: "mono" },
+        { name: "polyVoices", value: "4" },
+        { name: "unisonVoices", value: "2" },
+      ],
     });
 
     const after = await readDevice(id, ["params"]);
@@ -345,7 +369,11 @@ describe("specialized devices: Simpler", () => {
     const id = await createInstrument("Simpler");
 
     await updateDevice(id, {
-      params: "playbackMode=one-shot\nvoices=8\nretrigger=false",
+      params: [
+        { name: "playbackMode", value: "one-shot" },
+        { name: "voices", value: "8" },
+        { name: "retrigger", value: "false" },
+      ],
     });
 
     const after = await readDevice(id, ["params"]);
@@ -360,7 +388,12 @@ describe("specialized devices: EQ Eight", () => {
   it("round-trips globalMode and oversample", async () => {
     const id = await createEffect("EQ Eight");
 
-    await updateDevice(id, { params: "globalMode=M/S\noversample=false" });
+    await updateDevice(id, {
+      params: [
+        { name: "globalMode", value: "M/S" },
+        { name: "oversample", value: "false" },
+      ],
+    });
 
     const after = await readDevice(id, ["params"], "global");
 
@@ -376,7 +409,12 @@ describe("specialized devices: Roar", () => {
   it("round-trips routingMode and envListen", async () => {
     const id = await createEffect("Roar");
 
-    await updateDevice(id, { params: "routingMode=parallel\nenvListen=true" });
+    await updateDevice(id, {
+      params: [
+        { name: "routingMode", value: "parallel" },
+        { name: "envListen", value: "true" },
+      ],
+    });
 
     const after = await readDevice(id, ["params"]);
 
@@ -390,7 +428,11 @@ describe("specialized devices: Spectral Resonator", () => {
     const id = await createEffect("Spectral Resonator");
 
     await updateDevice(id, {
-      params: "modMode=Chorus\npitchMode=MIDI Note\npolyphony=4",
+      params: [
+        { name: "modMode", value: "Chorus" },
+        { name: "pitchMode", value: "MIDI Note" },
+        { name: "polyphony", value: "4" },
+      ],
     });
 
     const after = await readDevice(id, ["params"]);

@@ -5,6 +5,7 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
+import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
 import { select } from "#src/tools/session/select.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
@@ -22,7 +23,7 @@ interface CreateDeviceArgs {
   deviceName?: string;
   path?: string;
   name?: string;
-  params?: string;
+  params?: ParamEntry[];
   focus?: boolean;
 }
 
@@ -56,7 +57,7 @@ function validateDeviceName(deviceName: string): void {
  * @param args.deviceName - Device name, omit to list available devices
  * @param args.path - Device path(s), comma-separated for multiple (required when deviceName provided)
  * @param args.name - Name for all, or comma-separated for each
- * @param args.params - name=value lines applied to each created device (e.g. Simpler: sample=<file path>)
+ * @param args.params - {name, value} entries applied to each created device (e.g. Simpler: {name:"sample", value:"<file path>"})
  * @param args.focus - Select the device and show device detail view
  * @param _context - Internal context object (unused)
  * @returns Device list, or object(s) with deviceId and deviceIndex
@@ -107,7 +108,7 @@ export function createDevice(
  * @param paths - Array of device paths
  * @param baseName - Base display name
  * @param parsedNames - Comma-separated display names, or null
- * @param params - name=value lines applied to each created device
+ * @param params - {name, value} entries applied to each created device
  * @returns Array of results for successfully created devices
  */
 function createDevicesAtPaths(
@@ -115,7 +116,7 @@ function createDevicesAtPaths(
   paths: string[],
   baseName: string | undefined,
   parsedNames: string[] | null,
-  params: string | undefined,
+  params: ParamEntry[] | undefined,
 ): CreateDeviceResult[] {
   const results: CreateDeviceResult[] = [];
 

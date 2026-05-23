@@ -576,7 +576,7 @@ describe("createDevice", () => {
       createDevice({
         deviceName: "Simpler",
         path: "t0",
-        params: "sample=/tmp/kick.wav",
+        params: [{ name: "sample", value: "/tmp/kick.wav" }],
       });
 
       expect(fixture.simpler.call).toHaveBeenCalledWith(
@@ -595,7 +595,7 @@ describe("createDevice", () => {
       createDevice({
         deviceName: "Simpler",
         path: "t0",
-        params: "nonexistent=42",
+        params: [{ name: "nonexistent", value: "42" }],
       });
 
       const calls = vi.mocked(mockConsole.warn).mock.calls.flat().join("\n");
@@ -622,7 +622,7 @@ describe("createDevice", () => {
       createDevice({
         deviceName: "EQ Eight",
         path: "t0",
-        params: "sample=/tmp/kick.wav",
+        params: [{ name: "sample", value: "/tmp/kick.wav" }],
       });
 
       expect(eqEight.call).not.toHaveBeenCalledWith(

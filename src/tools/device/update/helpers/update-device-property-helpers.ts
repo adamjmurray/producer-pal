@@ -5,6 +5,7 @@
 
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import { applySpecializedActions } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import {
   setParamValues,
@@ -19,7 +20,7 @@ import {
 } from "./update-device-type-helpers.ts";
 
 export interface UpdatePropertyOptions {
-  params?: string;
+  params?: ParamEntry[];
   actions?: string[];
   macroVariation?: string;
   macroVariationIndex?: number;

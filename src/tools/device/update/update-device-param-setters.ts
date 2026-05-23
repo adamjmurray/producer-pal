@@ -5,33 +5,47 @@
 
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
   isDivisionLabel,
   isPanLabel,
   parseLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
-import { parseParamLines } from "./update-device-param-parser.ts";
+import { normalizeParamValue } from "./update-device-param-parser.ts";
 
 const BINARY_SEARCH_ITERATIONS = 40;
 
 /**
- * Set parameter values from name=value lines. Specialized-device pseudo-params
- * (e.g. `sample=<file path>` for Simpler, `routingMode=` for Roar) are
+ * Set parameter values from an array of {name, value} entries. Specialized-device
+ * pseudo-params (e.g. `sample` for Simpler, `routingMode` for Roar) are
  * dispatched via the specialized-device registry before falling through to
- * DeviceParameter resolution.
+ * DeviceParameter resolution. Entries with an empty name or value are skipped.
  * @param device - LiveAPI device object to update
- * @param paramsInput - Multiline name=value string
+ * @param params - Array of {name, value} param entries
  * @param toolName - Calling tool name for warning prefix (defaults to "updateDevice")
  */
 export function setParamValues(
   device: LiveAPI,
-  paramsInput: string,
+  params: ParamEntry[],
   toolName: string = "updateDevice",
 ): void {
-  const paramEntries = parseParamLines(paramsInput, toolName);
+  for (const entry of params) {
+    const key = entry.name.trim();
+    const rawValue = String(entry.value).trim();
 
-  for (const [key, inputValue] of paramEntries) {
+    if (key === "") {
+      console.warn(`${toolName}: skipping param with empty name`);
+      continue;
+    }
+
+    if (rawValue === "") {
+      console.warn(`${toolName}: skipping param "${key}" with empty value`);
+      continue;
+    }
+
+    const inputValue = normalizeParamValue(rawValue);
+
     if (applySpecializedParamWrite(device, key, inputValue, toolName)) {
       continue;
     }
