@@ -159,7 +159,7 @@ export function VoiceSettings({
         setVoice={setRealtimeVoice}
         activeVoice={activeVoice}
       />
-      <details className="disclosure">
+      <details className="disclosure open:rounded-lg open:border open:border-zinc-300 dark:open:border-zinc-700 open:bg-zinc-200 dark:open:bg-zinc-900 open:p-3">
         <summary className="text-sm cursor-pointer select-none flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
           <DisclosureChevron />
           Voice Settings
