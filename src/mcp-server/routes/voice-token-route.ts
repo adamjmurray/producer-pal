@@ -12,6 +12,9 @@ const OPENAI_CLIENT_SECRETS_URL =
   "https://api.openai.com/v1/realtime/client_secrets";
 const DEFAULT_REALTIME_MODEL = "gpt-realtime-2";
 const OPENAI_KEY_HEADER = "x-openai-key";
+// Bound the upstream token mint so a stalled OpenAI connection can't hang the
+// request forever and leak the Express socket. Minting is fast; 15s is generous.
+const UPSTREAM_TIMEOUT_MS = 15_000;
 
 interface OpenAIClientSecretResponse {
   value: string;
@@ -82,6 +85,7 @@ export function registerVoiceTokenRoute(
               model,
             },
           }),
+          signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
         });
 
         if (!upstream.ok) {
@@ -118,6 +122,19 @@ export function registerVoiceTokenRoute(
           expires_at: json.expires_at,
         });
       } catch (err) {
+        // AbortSignal.timeout fires a DOMException named "TimeoutError"; surface
+        // it as a gateway timeout rather than a generic 502.
+        if (err instanceof Error && err.name === "TimeoutError") {
+          console.warn(
+            `voice-token: upstream timed out after ${UPSTREAM_TIMEOUT_MS}ms`,
+          );
+          res
+            .status(504)
+            .json({ error: "OpenAI client_secrets request timed out" });
+
+          return;
+        }
+
         console.error(`voice-token error: ${errorMessage(err)}`);
         res.status(502).json({ error: errorMessage(err) });
       }

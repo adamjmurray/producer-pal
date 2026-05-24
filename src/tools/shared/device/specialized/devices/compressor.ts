@@ -3,7 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
 // Compressor (CompressorDevice). AJM-375. See
@@ -60,7 +62,7 @@ function readAvailableChannels(device: LiveAPI): RoutingEntry[] {
  * @returns Array of {id, name} for each routable track
  */
 function readRoutableTracks(): Array<{ id: string; name: string }> {
-  const liveSet = LiveAPI.from("live_set");
+  const liveSet = LiveAPI.from(livePath.liveSet);
   const tracks = [
     ...liveSet.getChildren("tracks"),
     ...liveSet.getChildren("return_tracks"),
@@ -115,7 +117,7 @@ function writeSidechainSourceTrackId(
     return;
   }
 
-  const track = LiveAPI.from(`id ${strValue}`);
+  const track = LiveAPI.from(toLiveApiId(strValue));
 
   if (!track.exists()) {
     console.warn(
@@ -226,7 +228,17 @@ function writeSidechainChannel(
 function readCompressorOptions(device: LiveAPI): Record<string, unknown> {
   const available = readAvailableTypes(device);
   const tracks = readRoutableTracks();
-  const trackByName = new Map(tracks.map((t) => [t.name, t.id]));
+  // First-wins so a name shared across a regular track and a return/master
+  // resolves to the regular track — matching readSidechainSourceTrackId's
+  // .find() (regular tracks come first in readRoutableTracks). A plain
+  // new Map(...) would keep the last entry and advertise a different id than
+  // the param reads back.
+  const trackByName = new Map<string, string>();
+
+  for (const t of tracks) {
+    if (!trackByName.has(t.name)) trackByName.set(t.name, t.id);
+  }
+
   const trackIds: string[] = [];
 
   for (const entry of available) {

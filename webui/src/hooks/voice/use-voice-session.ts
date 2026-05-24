@@ -188,6 +188,10 @@ export function useVoiceSession(
     setAssistantSpeaking(false);
     setAssistantThinking(false);
     setActiveVoice(null);
+    // Reset mute here (not just in disconnect()) so a dropped connection — which
+    // routes through cleanup(), not disconnect() — doesn't leave the next session
+    // showing "Muted" in the UI while its mic is actually live.
+    setIsMuted(false);
   }, []);
 
   const connect = useCallback(
@@ -270,9 +274,12 @@ export function useVoiceSession(
             setAssistantThinking(true);
             // A new turn is underway, so any error from a prior response is
             // stale — clear it so the banner doesn't linger over a healthy
-            // response. (rateLimitedUntil is cleared on the success path of
-            // response.done and by retryResponse.)
+            // response. Clear rateLimitedUntil too: the retry UI renders inside
+            // the error banner, so leaving it set without an error would orphan
+            // an unrenderable countdown. A new response succeeding means the
+            // limit has passed; if it fails again, response.done re-sets it.
             setError(null);
+            setRateLimitedUntil(null);
           } else if (event.type === "response.done") {
             setAssistantThinking(false);
             const failure = extractResponseFailure(event);
@@ -352,7 +359,6 @@ export function useVoiceSession(
     setStatus("disconnecting");
     await cleanup();
     setStatus("idle");
-    setIsMuted(false);
   }, [cleanup]);
 
   const toggleMute = useCallback(async () => {

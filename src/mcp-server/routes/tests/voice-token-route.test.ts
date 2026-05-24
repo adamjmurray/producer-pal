@@ -261,6 +261,23 @@ describe("voice-token route", () => {
     expect(json.error).toContain("network down");
   });
 
+  it("returns 504 when the upstream fetch times out", async () => {
+    mockOpenAIFetch(async () => {
+      // AbortSignal.timeout rejects with a DOMException named "TimeoutError".
+      const err = new Error("The operation timed out.");
+
+      err.name = "TimeoutError";
+      throw err;
+    });
+
+    const res = await postVoiceToken(appState.baseUrl);
+
+    expect(res.status).toBe(504);
+    const json = (await res.json()) as { error: string };
+
+    expect(json.error).toMatch(/timed out/i);
+  });
+
   it("returns 500 with null detail when upstream response body is unreadable", async () => {
     mockOpenAIFetch(async () => {
       return {

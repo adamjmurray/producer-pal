@@ -653,6 +653,40 @@ describe("Compressor readOptions", () => {
     expect(options.sidechainSourceTrackIds).toStrictEqual(["t1"]);
   });
 
+  it("resolves a name shared by a regular track and a return to the regular track (first-wins, matching read)", () => {
+    registerMockObject("live_set", {
+      path: "live_set",
+      type: "Device",
+      properties: { tracks: ["id", "t1"], return_tracks: ["id", "r1"] },
+    });
+    registerMockObject("t1", {
+      type: "Device",
+      properties: { name: "Shared" },
+    });
+    registerMockObject("r1", {
+      type: "Device",
+      properties: { name: "Shared" },
+    });
+    registerMockObject("master-1", {
+      path: "live_set master_track",
+      type: "Device",
+      properties: { name: "Main" },
+    });
+    const device = registerCompressor({
+      availableTypes: [
+        NO_INPUT_ENTRY,
+        { display_name: "Shared", identifier: 30 },
+      ],
+    });
+
+    // The catalog must advertise the regular track (t1), not the return (r1) —
+    // otherwise it disagrees with readSidechainSourceTrackId, which .find()s the
+    // regular track first. A plain new Map(...) would keep the last (return) id.
+    expect(
+      readSpecializedOptions(device).sidechainSourceTrackIds,
+    ).toStrictEqual(["t1"]);
+  });
+
   it("returns empty array (no throw) when routing types are unavailable", () => {
     registerLiveSetTracks();
     // Register the list props as raw empty arrays so getProperty() unwraps to
