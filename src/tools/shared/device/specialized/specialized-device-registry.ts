@@ -202,6 +202,9 @@ function readParamEntries(
 
     const value = param.read(device);
 
+    // !== undefined (not != null): a meaningful null — e.g. Compressor's "No
+    // Input" sidechain source — must still be emitted; only an absent/N/A param
+    // (undefined) is skipped.
     if (value !== undefined) {
       entries.push({ name: param.name, value });
     }
