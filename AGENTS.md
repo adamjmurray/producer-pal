@@ -131,8 +131,13 @@ web UI architecture.
     it is the one fragile construct — accepted everywhere but mis-filled (Claude
     collapses to the scalar and drops data; some small models JSON-stringify the
     array into the string slot).
-  - Anything richer than a primitive MUST have a `smallModelModeConfig` plan
-    (exclude the param, or degrade it to a comma-separated string).
+  - Anything richer than a primitive MUST have a `smallModelModeConfig` plan:
+    either exclude the param (`excludeParams`), or keep it with a
+    small-model-tolerant schema. There is no built-in "degrade to a
+    comma-separated string" switch — the tolerance lives in the schema. Example:
+    the `params` array in `device-params-schema.ts` adds a `preprocess` that
+    also accepts a JSON-stringified array (absorbing the small-model habit of
+    stringifying structured args) alongside a `descriptionOverrides` entry.
 
 - **Tool schema coercion**: Use `z.coerce.string()` instead of `z.string()` for
   ID parameters in tool input schemas (e.g., `ids`, `trackId`, `clipId`,
