@@ -16,7 +16,10 @@ import {
   it,
   vi,
 } from "vitest";
-import { createVoiceSessionTestKit } from "./use-voice-session-test-helpers";
+import {
+  createVoiceSessionTestKit,
+  SEEDABLE_HISTORY_FIXTURE,
+} from "./use-voice-session-test-helpers";
 
 const mocks = vi.hoisted(() => {
   class FakeSession {
@@ -216,69 +219,7 @@ describe("useVoiceSession.connect", () => {
   it("seeds initialHistory: rewrites audio→text, passes text through, drops untranscribed audio and function_calls", async () => {
     stubFetchOk({ value: "ek_x" });
 
-    const initialHistory = [
-      // user audio with transcript → input_text
-      {
-        itemId: "u-audio",
-        type: "message",
-        role: "user",
-        status: "completed",
-        content: [{ type: "input_audio", transcript: "earlier" }],
-      },
-      // user mixed: untranscribed audio is dropped, typed text survives
-      {
-        itemId: "u-mixed",
-        type: "message",
-        role: "user",
-        status: "completed",
-        content: [
-          { type: "input_audio", transcript: null },
-          { type: "input_text", text: "typed too" },
-        ],
-      },
-      // user with only untranscribed audio → whole item dropped
-      {
-        itemId: "u-pending",
-        type: "message",
-        role: "user",
-        status: "in_progress",
-        content: [{ type: "input_audio", transcript: null }],
-      },
-      // function_call: dropped (SDK refuses to re-add)
-      {
-        itemId: "fc1",
-        type: "function_call",
-        status: "completed",
-        name: "ppal-read-track",
-        arguments: "{}",
-        output: '{"ok":true}',
-      },
-      // assistant audio with transcript → output_text
-      {
-        itemId: "a-audio",
-        type: "message",
-        role: "assistant",
-        status: "completed",
-        content: [{ type: "output_audio", transcript: "ok" }],
-      },
-      // assistant pre-existing text → passes through
-      {
-        itemId: "a-text",
-        type: "message",
-        role: "assistant",
-        status: "completed",
-        content: [{ type: "output_text", text: "reply" }],
-      },
-      // system message → passes through
-      {
-        itemId: "sys",
-        type: "message",
-        role: "system",
-        content: [{ type: "input_text", text: "system note" }],
-      },
-    ];
-
-    await connectWithSeed(initialHistory);
+    await connectWithSeed(SEEDABLE_HISTORY_FIXTURE);
 
     const session = mocks.FakeSession.instances[0]!;
     const args = session.updateHistory.mock.calls[0]?.[0] as
@@ -376,6 +317,67 @@ describe("useVoiceSession.connect", () => {
     expect(sessions).toHaveLength(1);
     expect(sessions[0]!.connectArgs).toBeNull();
     expect(sessions[0]!.close).toHaveBeenCalled();
+  });
+
+  it("aborts after session.connect() resolves post-teardown: closes the session, never publishes 'connected'", async () => {
+    stubFetchOk({ value: "ek_x" });
+
+    // Suspend the WebRTC handshake so a teardown can land mid-connect, then let
+    // it resolve — the case where session.connect() opens WebRTC *after* the
+    // session was already torn down. The two earlier guards run before the peer
+    // connection exists, so only the post-connect guard covers this.
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const connectSpy = vi
+      .spyOn(mocks.FakeSession.prototype, "connect")
+      .mockReturnValueOnce(gate as Promise<void>);
+
+    const { result } = renderHook(() => useVoiceSession(defaultParams()));
+    let connectPromise!: Promise<void>;
+    // A non-empty seed: if the guard fails, the resumed connect() would seed
+    // history onto the closed session, so updateHistory becoming a no-op proves
+    // the bail happened before the publish step.
+    const seed = [
+      {
+        itemId: "u1",
+        type: "message",
+        role: "user",
+        status: "completed",
+        content: [{ type: "input_text", text: "earlier" }],
+      },
+    ] as Parameters<typeof result.current.connect>[0];
+
+    await act(async () => {
+      connectPromise = result.current.connect(seed);
+      // Pump past MCP setup + token fetch so we're suspended on session.connect.
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(result.current.status).toBe("connecting");
+
+    // Teardown lands while the handshake is suspended (e.g. New/Select/Delete).
+    await act(async () => {
+      await result.current.disconnect();
+    });
+    expect(result.current.status).toBe("idle");
+
+    // The handshake now resolves. The post-connect generation guard must keep
+    // connect() from publishing "connected" or seeding history on the torn-down
+    // session, and must close the just-opened connection.
+    await act(async () => {
+      release();
+      await connectPromise;
+    });
+
+    const session = mocks.FakeSession.instances[0]!;
+
+    expect(result.current.status).toBe("idle");
+    expect(session.close).toHaveBeenCalled();
+    expect(session.updateHistory).not.toHaveBeenCalled();
+    expect(result.current.history).toStrictEqual([]);
+
+    connectSpy.mockRestore();
   });
 });
 

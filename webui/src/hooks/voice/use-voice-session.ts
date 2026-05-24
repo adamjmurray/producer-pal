@@ -323,6 +323,18 @@ export function useVoiceSession(
 
         await session.connect({ apiKey: token });
 
+        // Torn down during the WebRTC handshake itself? session.connect() can
+        // resolve — opening the peer connection + mic — *after* a teardown's
+        // cleanup() already closed the stored ref (that close may have been a
+        // no-op before the handshake finished). Close this just-opened session
+        // directly and bail before publishing "connected"/history that nothing
+        // is left to manage. The two checks above can't cover this window: they
+        // run before the peer connection exists.
+        if (
+          await bailIfStale(connectGenRef.current !== myGen, cleanup, session)
+        )
+          return;
+
         setActiveVoice(voice ?? null);
 
         if (initialHistory && initialHistory.length > 0) {
@@ -484,13 +496,27 @@ function buildSessionOptions(
  *
  * @param isStale - Whether cleanup() ran since this connect() started
  * @param cleanup - Tears down the stored session + MCP client
+ * @param session - The just-opened session, if the await being guarded was
+ *   session.connect(). The stale teardown's cleanup() closed the stored ref,
+ *   but that close may have been a no-op before the handshake completed, so we
+ *   close this resolved session directly to avoid leaking a live peer
+ *   connection + mic. Omitted for checks that run before any connection exists.
  * @returns True if stale (caller should return); false to continue
  */
 async function bailIfStale(
   isStale: boolean,
   cleanup: () => Promise<void>,
+  session?: RealtimeSession,
 ): Promise<boolean> {
   if (!isStale) return false;
+
+  if (session) {
+    try {
+      session.close();
+    } catch {
+      // swallow — best-effort teardown
+    }
+  }
 
   await cleanup();
 

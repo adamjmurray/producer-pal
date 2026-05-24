@@ -87,6 +87,75 @@ export interface VoiceSessionTestKit {
 }
 
 /**
+ * A representative initialHistory covering every seeding branch: audio→text
+ * rewrite, mixed (untranscribed audio dropped, typed text kept), an
+ * only-untranscribed-audio item (dropped), a function_call (dropped), assistant
+ * audio→text, pass-through assistant text, and a system message. Shared so the
+ * seeding test reads as assertions rather than fixture setup.
+ */
+export const SEEDABLE_HISTORY_FIXTURE: unknown[] = [
+  // user audio with transcript → input_text
+  {
+    itemId: "u-audio",
+    type: "message",
+    role: "user",
+    status: "completed",
+    content: [{ type: "input_audio", transcript: "earlier" }],
+  },
+  // user mixed: untranscribed audio is dropped, typed text survives
+  {
+    itemId: "u-mixed",
+    type: "message",
+    role: "user",
+    status: "completed",
+    content: [
+      { type: "input_audio", transcript: null },
+      { type: "input_text", text: "typed too" },
+    ],
+  },
+  // user with only untranscribed audio → whole item dropped
+  {
+    itemId: "u-pending",
+    type: "message",
+    role: "user",
+    status: "in_progress",
+    content: [{ type: "input_audio", transcript: null }],
+  },
+  // function_call: dropped (SDK refuses to re-add)
+  {
+    itemId: "fc1",
+    type: "function_call",
+    status: "completed",
+    name: "ppal-read-track",
+    arguments: "{}",
+    output: '{"ok":true}',
+  },
+  // assistant audio with transcript → output_text
+  {
+    itemId: "a-audio",
+    type: "message",
+    role: "assistant",
+    status: "completed",
+    content: [{ type: "output_audio", transcript: "ok" }],
+  },
+  // assistant pre-existing text → passes through
+  {
+    itemId: "a-text",
+    type: "message",
+    role: "assistant",
+    status: "completed",
+    content: [{ type: "output_text", text: "reply" }],
+  },
+  // system message → passes through
+  {
+    itemId: "sys",
+    type: "message",
+    role: "system",
+    content: [{ type: "input_text", text: "system note" }],
+  },
+];
+
+/**
  * Build the shared render/connect helpers around a set of test doubles. The
  * doubles are created per test file via `vi.hoisted` (required for vi.mock
  * hoisting) and handed in here so the helper bodies live in one place.

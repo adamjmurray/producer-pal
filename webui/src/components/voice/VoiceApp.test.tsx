@@ -44,82 +44,14 @@ vi.mock(import("#webui/hooks/chat/use-conversation-transfer"), () => ({
 }));
 
 import { type ModeContext } from "#webui/components/mode-context";
-import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
-import { makeProps, type PropOverrides } from "./voice-app-test-helpers";
+import {
+  basePersistence,
+  baseSession,
+  makeProps,
+  type PropOverrides,
+} from "./voice-app-test-helpers";
 import { VoiceApp } from "./VoiceApp";
-
-interface VoiceSessionStub {
-  status: "idle" | "connecting" | "connected" | "disconnecting" | "error";
-  error: string | null;
-  history: RealtimeItem[];
-  isMuted: boolean;
-  assistantSpeaking: boolean;
-  assistantThinking: boolean;
-  rateLimitedUntil: number | null;
-  connect: ReturnType<typeof vi.fn>;
-  disconnect: ReturnType<typeof vi.fn>;
-  toggleMute: ReturnType<typeof vi.fn>;
-  interrupt: ReturnType<typeof vi.fn>;
-  retryResponse: ReturnType<typeof vi.fn>;
-  resetHistory: ReturnType<typeof vi.fn>;
-  activeVoice: string | null;
-}
-
-function baseSession(
-  overrides: Partial<VoiceSessionStub> = {},
-): VoiceSessionStub {
-  return {
-    status: "idle",
-    error: null,
-    history: [],
-    isMuted: false,
-    assistantSpeaking: false,
-    assistantThinking: false,
-    rateLimitedUntil: null,
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    toggleMute: vi.fn(),
-    interrupt: vi.fn(),
-    retryResponse: vi.fn(),
-    resetHistory: vi.fn(),
-    activeVoice: null,
-    ...overrides,
-  };
-}
-
-interface PersistenceStub {
-  conversations: ConversationSummary[];
-  activeConversationId: string | null;
-  savedItems: RealtimeItem[];
-  refreshList: ReturnType<typeof vi.fn>;
-  switchConversation: ReturnType<typeof vi.fn>;
-  startNewConversation: ReturnType<typeof vi.fn>;
-  deleteConversation: ReturnType<typeof vi.fn>;
-  deleteAllConversations: ReturnType<typeof vi.fn>;
-  deleteUnbookmarkedConversations: ReturnType<typeof vi.fn>;
-  renameConversation: ReturnType<typeof vi.fn>;
-  toggleBookmark: ReturnType<typeof vi.fn>;
-}
-
-function basePersistence(
-  overrides: Partial<PersistenceStub> = {},
-): PersistenceStub {
-  return {
-    conversations: [],
-    activeConversationId: null,
-    savedItems: [],
-    refreshList: vi.fn(),
-    switchConversation: vi.fn(),
-    startNewConversation: vi.fn(),
-    deleteConversation: vi.fn(),
-    deleteAllConversations: vi.fn(),
-    deleteUnbookmarkedConversations: vi.fn(),
-    renameConversation: vi.fn(),
-    toggleBookmark: vi.fn(),
-    ...overrides,
-  };
-}
 
 function userMsg(itemId: string, transcript: string): RealtimeItem {
   return {
@@ -698,23 +630,46 @@ describe("VoiceApp", () => {
       );
     });
 
-    it("disconnects an active session when selecting a different conversation", () => {
-      const summary = createTestSummary({
-        id: "other-conv",
-        title: "Other",
-        sessionType: "voice",
-      });
-      const persistence = basePersistence({ conversations: [summary] });
-      const session = baseSession({ status: "connected" });
+    // Both statuses must tear down: gating on isConnected alone leaves a
+    // "connecting" session to finish its handshake (opening WebRTC + mic) after
+    // the user navigated away. The gate is isSessionActive (any non-idle).
+    it.each(["connected", "connecting"] as const)(
+      "tears down a %s session when selecting a different conversation",
+      (status) => {
+        const summary = createTestSummary({
+          id: "other-conv",
+          title: "Other",
+          sessionType: "voice",
+        });
+        const persistence = basePersistence({ conversations: [summary] });
+        const session = baseSession({ status });
+
+        mocks.useVoiceSession.mockReturnValue(session);
+        mocks.useVoicePersistence.mockReturnValue(persistence);
+        renderWithPanelOpen();
+        fireEvent.click(screen.getByText("Other"));
+
+        expect(session.disconnect).toHaveBeenCalled();
+        expect(session.resetHistory).toHaveBeenCalled();
+        expect(persistence.switchConversation).toHaveBeenCalledWith(
+          "other-conv",
+        );
+      },
+    );
+
+    it("cancels a still-connecting session when starting a new conversation", () => {
+      const session = baseSession({ status: "connecting" });
 
       mocks.useVoiceSession.mockReturnValue(session);
-      mocks.useVoicePersistence.mockReturnValue(persistence);
       renderWithPanelOpen();
-      fireEvent.click(screen.getByText("Other"));
+      // Both the header pen-icon and the panel toolbar expose a "New
+      // conversation" button; either routes to the same onNew handler.
+      fireEvent.click(
+        screen.getAllByRole("button", { name: /new conversation/i })[0]!,
+      );
 
       expect(session.disconnect).toHaveBeenCalled();
       expect(session.resetHistory).toHaveBeenCalled();
-      expect(persistence.switchConversation).toHaveBeenCalledWith("other-conv");
     });
 
     it("stops the live session when deleting the active conversation", () => {
@@ -764,7 +719,7 @@ describe("VoiceApp", () => {
       expect(persistence.deleteConversation).toHaveBeenCalledWith("other-conv");
     });
 
-    it("bulk-delete teardown disconnects only when connected, always resets history", () => {
+    it("bulk-delete teardown disconnects any non-idle session (incl. connecting), always resets history", () => {
       // useVoicePersistence is mocked, so reach for the onLiveRecordDeleted
       // callback it was handed and fire it as a Settings bulk delete would.
       const connected = baseSession({ status: "connected" });
@@ -775,6 +730,16 @@ describe("VoiceApp", () => {
       grabOnLiveRecordDeleted()?.();
       expect(connected.disconnect).toHaveBeenCalledOnce();
       expect(connected.resetHistory).toHaveBeenCalledOnce();
+
+      // A session still mid-connect must also be torn down, or its handshake
+      // finishes and opens WebRTC after the record it belongs to is deleted.
+      const connecting = baseSession({ status: "connecting" });
+
+      mocks.useVoiceSession.mockReturnValue(connecting);
+      rerender(<VoiceApp {...makeProps()} />);
+      grabOnLiveRecordDeleted()?.();
+      expect(connecting.disconnect).toHaveBeenCalledOnce();
+      expect(connecting.resetHistory).toHaveBeenCalledOnce();
 
       const idle = baseSession({ status: "idle" });
 

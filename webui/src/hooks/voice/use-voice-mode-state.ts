@@ -83,8 +83,11 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
   // When a Settings bulk delete removes the in-progress live record, tear the
   // session down too (mirrors the sidebar delete-active path) so the deleted
   // conversation isn't left streaming on screen and re-saved under a fresh id.
+  // Tear down for any non-idle session, not just "connected": a session still
+  // "connecting" would otherwise finish its handshake and open WebRTC + mic
+  // after the record it belongs to is gone.
   const onLiveRecordDeleted = useCallback(() => {
-    if (voice.status === "connected") void voice.disconnect();
+    if (voice.status !== "idle") void voice.disconnect();
     voice.resetHistory();
   }, [voice]);
 
@@ -128,6 +131,10 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
   const isConnected = voice.status === "connected";
   const isBusy =
     voice.status === "connecting" || voice.status === "disconnecting";
+  // True whenever a session exists or is forming. Sidebar New/Select/Delete gate
+  // their teardown on this (not just isConnected) so navigating away mid-connect
+  // cancels the in-flight handshake instead of leaving an orphaned live session.
+  const isSessionActive = voice.status !== "idle";
 
   const onToggleConnection = useCallback(() => {
     if (isConnected) {
@@ -168,6 +175,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     setHistoryPanelOpen,
     isConnected,
     isBusy,
+    isSessionActive,
     onToggleConnection,
     headerInfo,
   };

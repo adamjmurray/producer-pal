@@ -65,6 +65,7 @@ export function VoiceApp(props: VoiceAppProps) {
     setHistoryPanelOpen,
     isConnected,
     isBusy,
+    isSessionActive,
     onToggleConnection,
     headerInfo,
   } = useVoiceModeState(props);
@@ -76,7 +77,7 @@ export function VoiceApp(props: VoiceAppProps) {
     setHistoryPanelOpen,
     persistence,
     transfer,
-    isConnected,
+    isSessionActive,
     disconnect: voice.disconnect,
     resetVoiceHistory: voice.resetHistory,
     clearViewingMode,
@@ -135,7 +136,9 @@ interface BuildConversationPanelParams {
   setHistoryPanelOpen: (updater: (open: boolean) => boolean) => void;
   persistence: ReturnType<typeof useVoicePersistence>;
   transfer: ReturnType<typeof useConversationTransfer>;
-  isConnected: boolean;
+  /** True for any non-idle session (connecting included), so navigating away
+   * mid-connect cancels the handshake instead of orphaning a live session. */
+  isSessionActive: boolean;
   disconnect: () => Promise<void>;
   resetVoiceHistory: () => void;
   clearViewingMode: () => void;
@@ -151,8 +154,13 @@ interface BuildConversationPanelParams {
 function buildConversationPanel(
   params: BuildConversationPanelParams,
 ): ConversationPanelState {
-  const { isOpen, setHistoryPanelOpen, persistence, transfer, isConnected } =
-    params;
+  const {
+    isOpen,
+    setHistoryPanelOpen,
+    persistence,
+    transfer,
+    isSessionActive,
+  } = params;
 
   // On phones the panel overlays the screen, so collapse it after picking or
   // creating a conversation (matches chat's useConversationPanelState).
@@ -166,24 +174,26 @@ function buildConversationPanel(
     activeConversationId: persistence.activeConversationId,
     onToggle: () => setHistoryPanelOpen((open) => !open),
     onNew: () => {
-      if (isConnected) void params.disconnect();
+      if (isSessionActive) void params.disconnect();
       params.resetVoiceHistory();
       persistence.startNewConversation();
       params.clearViewingMode();
       closeOnMobile();
     },
     onSelect: (id) => {
-      if (isConnected) void params.disconnect();
+      if (isSessionActive) void params.disconnect();
       params.resetVoiceHistory();
       void persistence.switchConversation(id);
       closeOnMobile();
     },
     onDelete: (id) => {
       // Stop the session when deleting the conversation you're actively talking
-      // in, so it stops streaming new transcript. (deleteConversation also
-      // guards autosave against resurrecting a deleted record, covering a save
-      // that was already in flight when the delete landed.)
-      if (id === persistence.activeConversationId && isConnected) {
+      // in, so it stops streaming new transcript. Gate on isSessionActive (not
+      // just connected) so a delete during the connect handshake cancels it
+      // too. (deleteConversation also guards autosave against resurrecting a
+      // deleted record, covering a save that was already in flight when the
+      // delete landed.)
+      if (id === persistence.activeConversationId && isSessionActive) {
         void params.disconnect();
         params.resetVoiceHistory();
       }
