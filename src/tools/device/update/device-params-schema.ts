@@ -6,13 +6,17 @@
 import { z } from "zod";
 
 /**
- * A single device parameter setting. `value` is a coerced string (a numeric
- * `value: 1` arrives as `"1"`); the setter pipeline interprets it as a number,
- * note name, enum, or unit-suffixed value at write time.
+ * A single device parameter setting. `value` is coerced to a string (a numeric
+ * `value: 1` arrives as `"1"`); the setter pipeline then interprets it as a
+ * number, note name, enum, or unit-suffixed value at write time. The nullish
+ * guard below (rather than z.coerce.string) makes a missing or null `value` fail
+ * schema validation with a clear error instead of silently becoming the literal
+ * string "undefined"/"null". A `preprocess` (input-side) is used rather than a
+ * `.transform` so the schema stays representable as JSON Schema for tools/list.
  */
 export const paramEntrySchema = z.object({
   name: z.string(),
-  value: z.coerce.string(),
+  value: z.preprocess((v) => (v == null ? v : String(v)), z.string()),
 });
 
 export type ParamEntry = z.infer<typeof paramEntrySchema>;

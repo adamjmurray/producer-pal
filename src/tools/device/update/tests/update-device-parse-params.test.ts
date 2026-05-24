@@ -69,6 +69,16 @@ describe("paramsInputSchema", () => {
     expect(paramsInputSchema.parse(undefined)).toBeUndefined();
   });
 
+  it("rejects an entry with a missing value", () => {
+    expect(() => paramsInputSchema.parse([{ name: "Freq" }])).toThrow();
+  });
+
+  it("rejects an entry with a null value", () => {
+    expect(() =>
+      paramsInputSchema.parse([{ name: "Freq", value: null }]),
+    ).toThrow();
+  });
+
   it("rejects a non-JSON string with a clear array error", () => {
     expect(() => paramsInputSchema.parse("not valid format")).toThrow();
   });
