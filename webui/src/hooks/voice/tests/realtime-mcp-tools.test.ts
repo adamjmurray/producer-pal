@@ -147,10 +147,11 @@ describe("createRealtimeMcpTools", () => {
     const { tools } = await createRealtimeMcpTools("http://localhost:3350/mcp");
     const out = await runTool(tools[0]!, { foo: "bar" });
 
-    expect(callToolMock).toHaveBeenCalledWith({
-      name: "ppal-read-live-set",
-      arguments: { foo: "bar" },
-    });
+    expect(callToolMock).toHaveBeenCalledWith(
+      { name: "ppal-read-live-set", arguments: { foo: "bar" } },
+      undefined,
+      { timeout: 30_000 },
+    );
     expect(out).toBe("Track 1: Drums\nTrack 2: Bass");
   });
 
@@ -162,10 +163,26 @@ describe("createRealtimeMcpTools", () => {
     const tool = await buildSingleTool("ppal-x");
 
     await runTool(tool, {});
-    expect(callToolMock).toHaveBeenCalledWith({
-      name: "ppal-x",
-      arguments: {},
+    expect(callToolMock).toHaveBeenCalledWith(
+      { name: "ppal-x", arguments: {} },
+      undefined,
+      { timeout: 30_000 },
+    );
+  });
+
+  it("caps the tool call with a request timeout so a stuck Live op surfaces fast", async () => {
+    callToolMock.mockResolvedValueOnce({
+      isError: false,
+      content: [{ type: "text", text: "ok" }],
     });
+    const tool = await buildSingleTool("ppal-slow");
+
+    await runTool(tool, {});
+    expect(callToolMock).toHaveBeenLastCalledWith(
+      expect.anything(),
+      undefined,
+      { timeout: 30_000 },
+    );
   });
 
   it("execute() returns prefixed error text instead of throwing when MCP isError is true", async () => {

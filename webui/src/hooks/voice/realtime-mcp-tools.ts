@@ -17,6 +17,12 @@ export interface RealtimeMcpTools {
   mcpClient: Client;
 }
 
+// Cap how long a voice tool call can run. The MCP SDK's default is 60s; a stuck
+// Live operation would otherwise block the voice turn that long with no
+// feedback. On timeout the SDK rejects with an McpError, which is caught below
+// and returned to the model as a normal tool-error string so it can recover.
+const VOICE_TOOL_TIMEOUT_MS = 30_000;
+
 /**
  * Build OpenAI Realtime SDK tools from a Producer Pal MCP server. Each tool's
  * execute() forwards to mcpClient.callTool(), so the voice agent reaches Live
@@ -46,10 +52,14 @@ export async function createRealtimeMcpTools(
       strict: false,
       execute: async (args: unknown) => {
         try {
-          const result = await mcpClient.callTool({
-            name: t.name,
-            arguments: args as Record<string, unknown>,
-          });
+          const result = await mcpClient.callTool(
+            {
+              name: t.name,
+              arguments: args as Record<string, unknown>,
+            },
+            undefined,
+            { timeout: VOICE_TOOL_TIMEOUT_MS },
+          );
 
           const content = result.content as Array<{
             type: string;
