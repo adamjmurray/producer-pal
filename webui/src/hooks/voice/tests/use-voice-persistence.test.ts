@@ -7,13 +7,15 @@
 
 import "fake-indexeddb/auto";
 import { type RealtimeItem } from "@openai/agents/realtime";
-import { act, renderHook } from "@testing-library/preact";
+import { act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import {
+  renderVoicePersistence,
+  renderVoicePersistenceWithHistory,
   resetConversationsDb,
+  saveVoiceRecord,
   userTextItem,
   userTranscriptItem,
   waitForEffects,
@@ -33,9 +35,7 @@ beforeEach(async () => {
 
 describe("useVoicePersistence", () => {
   it("initializes with an empty list and no active conversation", async () => {
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
 
@@ -45,14 +45,10 @@ describe("useVoicePersistence", () => {
   });
 
   it("auto-saves the live transcript with sessionType=voice", async () => {
-    const { result, rerender } = renderHook(
-      ({ history }: { history: RealtimeItem[] }) =>
-        useVoicePersistence({ liveHistory: history }),
-      { initialProps: { history: [] as RealtimeItem[] } },
-    );
+    const { result, rerender } = renderVoicePersistenceWithHistory();
 
     await waitForEffects();
-    rerender({ history: [userTextItem("hi pal")] });
+    rerender([userTextItem("hi pal")]);
     await waitForEffects(800);
 
     expect(result.current.activeConversationId).not.toBeNull();
@@ -67,18 +63,14 @@ describe("useVoicePersistence", () => {
   });
 
   it("reuses one reserved id across rapid updates, creating a single record", async () => {
-    const { result, rerender } = renderHook(
-      ({ history }: { history: RealtimeItem[] }) =>
-        useVoicePersistence({ liveHistory: history }),
-      { initialProps: { history: [] as RealtimeItem[] } },
-    );
+    const { result, rerender } = renderVoicePersistenceWithHistory();
 
     await waitForEffects();
     // Two transcript updates land before any save resolves and adopts an
     // active id. Both autosave effect runs must reuse the same reserved id,
     // otherwise the second mints a fresh UUID and creates a duplicate record.
-    rerender({ history: [userTextItem("first")] });
-    rerender({ history: [userTextItem("first"), userTextItem("second")] });
+    rerender([userTextItem("first")]);
+    rerender([userTextItem("first"), userTextItem("second")]);
     await waitForEffects(800);
 
     expect(result.current.conversations).toHaveLength(1);
@@ -88,16 +80,10 @@ describe("useVoicePersistence", () => {
   });
 
   it("derives a title from the first user transcript", async () => {
-    const { result, rerender } = renderHook(
-      ({ history }: { history: RealtimeItem[] }) =>
-        useVoicePersistence({ liveHistory: history }),
-      { initialProps: { history: [] as RealtimeItem[] } },
-    );
+    const { result, rerender } = renderVoicePersistenceWithHistory();
 
     await waitForEffects();
-    rerender({
-      history: [userTranscriptItem("make me a clip")],
-    });
+    rerender([userTranscriptItem("make me a clip")]);
     await waitForEffects(800);
 
     const loaded = await loadConversation(
@@ -110,9 +96,7 @@ describe("useVoicePersistence", () => {
   it("clears the active id when the hash points to a missing record", async () => {
     window.location.hash = "missing-id";
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
 
@@ -126,14 +110,10 @@ describe("useVoicePersistence", () => {
       content: [{ type: "output_audio", transcript: "hello" }],
     } as unknown as RealtimeItem;
 
-    const { result, rerender } = renderHook(
-      ({ history }: { history: RealtimeItem[] }) =>
-        useVoicePersistence({ liveHistory: history }),
-      { initialProps: { history: [] as RealtimeItem[] } },
-    );
+    const { result, rerender } = renderVoicePersistenceWithHistory();
 
     await waitForEffects();
-    rerender({ history: [assistantOnly] });
+    rerender([assistantOnly]);
     await waitForEffects(800);
 
     const loaded = await loadConversation(
@@ -144,18 +124,13 @@ describe("useVoicePersistence", () => {
   });
 
   it("loads a saved voice conversation from the URL hash on mount", async () => {
-    const voiceRecord = createTestRecord({
-      sessionType: "voice",
+    const voiceRecord = await saveVoiceRecord({
       voiceHistory: [userTextItem("from hash")],
-      messages: [],
     });
 
-    await saveConversation(voiceRecord);
     window.location.hash = voiceRecord.id;
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
 
@@ -171,7 +146,7 @@ describe("useVoicePersistence", () => {
 
     const onForeignRecord = vi.fn();
 
-    renderHook(() => useVoicePersistence({ liveHistory: [], onForeignRecord }));
+    renderVoicePersistence({ onForeignRecord });
     await waitForEffects();
 
     expect(onForeignRecord).toHaveBeenCalledWith(
@@ -185,27 +160,20 @@ describe("useVoicePersistence", () => {
     await saveConversation(textRecord);
     window.location.hash = textRecord.id;
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     expect(result.current.activeConversationId).toBeNull();
   });
 
   it("startNewConversation clears active id and saved items", async () => {
-    const voiceRecord = createTestRecord({
-      sessionType: "voice",
+    const voiceRecord = await saveVoiceRecord({
       voiceHistory: [userTextItem("saved")],
-      messages: [],
     });
 
-    await saveConversation(voiceRecord);
     window.location.hash = voiceRecord.id;
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     expect(result.current.savedItems).toHaveLength(1);
@@ -220,17 +188,11 @@ describe("useVoicePersistence", () => {
   });
 
   it("switchConversation loads a voice record's saved items", async () => {
-    const voiceRecord = createTestRecord({
-      sessionType: "voice",
+    const voiceRecord = await saveVoiceRecord({
       voiceHistory: [userTextItem("voice content")],
-      messages: [],
     });
 
-    await saveConversation(voiceRecord);
-
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     await act(() => result.current.switchConversation(voiceRecord.id));
@@ -240,9 +202,7 @@ describe("useVoicePersistence", () => {
   });
 
   it("switchConversation clears active state when the record is missing", async () => {
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     await act(() => result.current.switchConversation("does-not-exist"));
@@ -257,9 +217,7 @@ describe("useVoicePersistence", () => {
     await saveConversation(textRecord);
     const onForeignRecord = vi.fn();
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [], onForeignRecord }),
-    );
+    const { result } = renderVoicePersistence({ onForeignRecord });
 
     await waitForEffects();
 
@@ -279,9 +237,7 @@ describe("useVoicePersistence", () => {
       hashWhenForeignCalled = window.location.hash;
     });
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [], onForeignRecord }),
-    );
+    const { result } = renderVoicePersistence({ onForeignRecord });
 
     await waitForEffects();
 
@@ -293,17 +249,9 @@ describe("useVoicePersistence", () => {
   });
 
   it("deletes a conversation and refreshes the list", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
-      voiceHistory: [],
-      messages: [],
-    });
+    const record = await saveVoiceRecord({ voiceHistory: [] });
 
-    await saveConversation(record);
-
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     expect(result.current.conversations).toHaveLength(1);
@@ -314,26 +262,19 @@ describe("useVoicePersistence", () => {
   });
 
   it("does not resurrect a conversation deleted while its autosave is pending", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
+    const record = await saveVoiceRecord({
       voiceHistory: [userTextItem("original")],
-      messages: [],
     });
 
-    await saveConversation(record);
     window.location.hash = record.id;
 
-    const { result, rerender } = renderHook(
-      ({ history }: { history: RealtimeItem[] }) =>
-        useVoicePersistence({ liveHistory: history }),
-      { initialProps: { history: [] as RealtimeItem[] } },
-    );
+    const { result, rerender } = renderVoicePersistenceWithHistory();
 
     await waitForEffects();
     expect(result.current.activeConversationId).toBe(record.id);
 
     // A new transcript turn schedules the debounced autosave for record.id...
-    rerender({ history: [userTextItem("a new turn")] });
+    rerender([userTextItem("a new turn")]);
     // ...then the user deletes the active conversation before it fires.
     await act(() => result.current.deleteConversation(record.id));
     // Let the debounce fire; the in-flight save must bail, not re-create it.
@@ -344,17 +285,11 @@ describe("useVoicePersistence", () => {
   });
 
   it("deleteAllConversations works when no conversation is active", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
+    await saveVoiceRecord({
       voiceHistory: [userTextItem("hi")],
-      messages: [],
     });
 
-    await saveConversation(record);
-
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     expect(result.current.activeConversationId).toBeNull();
@@ -366,16 +301,12 @@ describe("useVoicePersistence", () => {
   });
 
   it("does not resurrect a pending new conversation deleted via deleteAllConversations", async () => {
-    const { result, rerender } = renderHook(
-      ({ history }: { history: RealtimeItem[] }) =>
-        useVoicePersistence({ liveHistory: history }),
-      { initialProps: { history: [] as RealtimeItem[] } },
-    );
+    const { result, rerender } = renderVoicePersistenceWithHistory();
 
     await waitForEffects();
     // A brand-new session produces transcript: the autosave reserves an id but
     // hasn't resolved yet, so no active id has been adopted.
-    rerender({ history: [userTextItem("brand new")] });
+    rerender([userTextItem("brand new")]);
     expect(result.current.activeConversationId).toBeNull();
 
     // Delete-all lands during that pre-adoption window. It doesn't stop the
@@ -389,14 +320,10 @@ describe("useVoicePersistence", () => {
   });
 
   it("does not resurrect a pending new conversation deleted via deleteUnbookmarkedConversations", async () => {
-    const { result, rerender } = renderHook(
-      ({ history }: { history: RealtimeItem[] }) =>
-        useVoicePersistence({ liveHistory: history }),
-      { initialProps: { history: [] as RealtimeItem[] } },
-    );
+    const { result, rerender } = renderVoicePersistenceWithHistory();
 
     await waitForEffects();
-    rerender({ history: [userTextItem("brand new")] });
+    rerender([userTextItem("brand new")]);
     expect(result.current.activeConversationId).toBeNull();
 
     // A pending-new conversation is unbookmarked, so the bulk delete targets it.
@@ -408,19 +335,14 @@ describe("useVoicePersistence", () => {
   });
 
   it("fires onLiveRecordDeleted when deleteAllConversations removes the live record", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
+    const record = await saveVoiceRecord({
       voiceHistory: [userTextItem("live")],
-      messages: [],
     });
 
-    await saveConversation(record);
     window.location.hash = record.id;
     const onLiveRecordDeleted = vi.fn();
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [], onLiveRecordDeleted }),
-    );
+    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
 
     await waitForEffects();
     await act(() => result.current.deleteAllConversations());
@@ -429,19 +351,13 @@ describe("useVoicePersistence", () => {
   });
 
   it("does not fire onLiveRecordDeleted when deleteAllConversations has no live record", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
+    await saveVoiceRecord({
       voiceHistory: [userTextItem("other")],
-      messages: [],
     });
-
-    await saveConversation(record);
     // No hash → no active/pending live record, just a stored conversation.
     const onLiveRecordDeleted = vi.fn();
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [], onLiveRecordDeleted }),
-    );
+    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
 
     await waitForEffects();
     await act(() => result.current.deleteAllConversations());
@@ -450,20 +366,15 @@ describe("useVoicePersistence", () => {
   });
 
   it("fires onLiveRecordDeleted when deleteUnbookmarked removes an unbookmarked live record", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
+    const record = await saveVoiceRecord({
       bookmarked: false,
       voiceHistory: [userTextItem("live")],
-      messages: [],
     });
 
-    await saveConversation(record);
     window.location.hash = record.id;
     const onLiveRecordDeleted = vi.fn();
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [], onLiveRecordDeleted }),
-    );
+    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
 
     await waitForEffects();
     await act(() => result.current.deleteUnbookmarkedConversations());
@@ -472,20 +383,15 @@ describe("useVoicePersistence", () => {
   });
 
   it("does not fire onLiveRecordDeleted when the live record is bookmarked", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
+    const record = await saveVoiceRecord({
       bookmarked: true,
       voiceHistory: [userTextItem("keep")],
-      messages: [],
     });
 
-    await saveConversation(record);
     window.location.hash = record.id;
     const onLiveRecordDeleted = vi.fn();
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [], onLiveRecordDeleted }),
-    );
+    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
 
     await waitForEffects();
     await act(() => result.current.deleteUnbookmarkedConversations());
@@ -494,18 +400,13 @@ describe("useVoicePersistence", () => {
   });
 
   it("deleteAllConversations clears DB and resets state", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
+    const record = await saveVoiceRecord({
       voiceHistory: [userTextItem("hi")],
-      messages: [],
     });
 
-    await saveConversation(record);
     window.location.hash = record.id;
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     expect(result.current.conversations).toHaveLength(1);
@@ -518,28 +419,20 @@ describe("useVoicePersistence", () => {
   });
 
   it("deleteUnbookmarkedConversations clears unbookmarked but keeps bookmarked", async () => {
-    const bookmarked = createTestRecord({
+    await saveVoiceRecord({
       id: "bk-1",
-      sessionType: "voice",
       bookmarked: true,
       voiceHistory: [userTextItem("keep")],
-      messages: [],
     });
-    const unbookmarked = createTestRecord({
+    const unbookmarked = await saveVoiceRecord({
       id: "ub-1",
-      sessionType: "voice",
       bookmarked: false,
       voiceHistory: [userTextItem("toss")],
-      messages: [],
     });
 
-    await saveConversation(bookmarked);
-    await saveConversation(unbookmarked);
     window.location.hash = unbookmarked.id;
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     expect(result.current.conversations).toHaveLength(2);
@@ -554,18 +447,13 @@ describe("useVoicePersistence", () => {
   });
 
   it("updates ref state when renaming/bookmarking/deleting the active conversation", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
+    const record = await saveVoiceRecord({
       voiceHistory: [userTextItem("a")],
-      messages: [],
     });
 
-    await saveConversation(record);
     window.location.hash = record.id;
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     await act(() => result.current.renameConversation(record.id, "Renamed"));
@@ -577,17 +465,9 @@ describe("useVoicePersistence", () => {
   });
 
   it("switchConversation handles voice records with no saved history", async () => {
-    const voiceEmpty = createTestRecord({
-      sessionType: "voice",
-      voiceHistory: null,
-      messages: [],
-    });
+    const voiceEmpty = await saveVoiceRecord({ voiceHistory: null });
 
-    await saveConversation(voiceEmpty);
-
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     await act(() => result.current.switchConversation(voiceEmpty.id));
@@ -597,26 +477,15 @@ describe("useVoicePersistence", () => {
   });
 
   it("preserves the active bookmark ref when toggling a non-active conversation", async () => {
-    const active = createTestRecord({
+    const active = await saveVoiceRecord({
       id: "active",
-      sessionType: "voice",
       voiceHistory: [userTextItem("a")],
-      messages: [],
     });
-    const other = createTestRecord({
-      id: "other",
-      sessionType: "voice",
-      voiceHistory: [],
-      messages: [],
-    });
+    const other = await saveVoiceRecord({ id: "other", voiceHistory: [] });
 
-    await saveConversation(active);
-    await saveConversation(other);
     window.location.hash = active.id;
 
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     await act(() => result.current.toggleBookmark(other.id));
@@ -639,14 +508,10 @@ describe("useVoicePersistence", () => {
       content: [{ type: "input_audio", transcript: null }],
     } as unknown as RealtimeItem;
 
-    const { result, rerender } = renderHook(
-      ({ history }: { history: RealtimeItem[] }) =>
-        useVoicePersistence({ liveHistory: history }),
-      { initialProps: { history: [] as RealtimeItem[] } },
-    );
+    const { result, rerender } = renderVoicePersistenceWithHistory();
 
     await waitForEffects();
-    rerender({ history: [emptyUserItem] });
+    rerender([emptyUserItem]);
     await waitForEffects(800);
 
     const loaded = await loadConversation(
@@ -674,14 +539,11 @@ describe("useVoicePersistence", () => {
       content: [{ type: "input_audio", transcript: "earlier" }],
     } as unknown as RealtimeItem;
 
-    const priorRecord = createTestRecord({
-      sessionType: "voice",
+    const priorRecord = await saveVoiceRecord({
       // Saved record has a function_call sandwiched between messages.
       voiceHistory: [userMsg, functionCall],
-      messages: [],
     });
 
-    await saveConversation(priorRecord);
     window.location.hash = priorRecord.id;
 
     // Continuation: the live SDK history only contains the primed message
@@ -697,14 +559,10 @@ describe("useVoicePersistence", () => {
       } as unknown as RealtimeItem,
     ];
 
-    const { rerender } = renderHook(
-      ({ history }: { history: RealtimeItem[] }) =>
-        useVoicePersistence({ liveHistory: history }),
-      { initialProps: { history: [] as RealtimeItem[] } },
-    );
+    const { rerender } = renderVoicePersistenceWithHistory();
 
     await waitForEffects();
-    rerender({ history: continuation });
+    rerender(continuation);
     await waitForEffects(800);
 
     const loaded = await loadConversation(priorRecord.id);
@@ -715,17 +573,9 @@ describe("useVoicePersistence", () => {
   });
 
   it("renames and toggles bookmark on a saved conversation", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
-      voiceHistory: [],
-      messages: [],
-    });
+    const record = await saveVoiceRecord({ voiceHistory: [] });
 
-    await saveConversation(record);
-
-    const { result } = renderHook(() =>
-      useVoicePersistence({ liveHistory: [] }),
-    );
+    const { result } = renderVoicePersistence();
 
     await waitForEffects();
     await act(() => result.current.renameConversation(record.id, "Renamed"));

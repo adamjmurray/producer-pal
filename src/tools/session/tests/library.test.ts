@@ -37,6 +37,40 @@ function mockSearchRoute(items: unknown[]): void {
   });
 }
 
+/**
+ * Stub the "/samples/" folder with the given top-level .wav file names.
+ *
+ * @param names - File names to place directly under "/samples/"
+ */
+function mockSampleFolder(...names: string[]): void {
+  mockFolderStructure({
+    "/samples/": names.map((name) => ({
+      name,
+      type: "file" as const,
+      extension: ".wav",
+    })),
+  });
+}
+
+/**
+ * Assert a filter bypasses the folder scan entirely: no sampleFolder-sourced
+ * items in the result and readSamples never invoked.
+ *
+ * @param filter - The library filter under test
+ */
+async function expectFolderScanSkipped(
+  filter: Parameters<typeof library>[0],
+): Promise<void> {
+  mockSampleFolder("kick.wav");
+  mockSearchRoute([]);
+
+  const result = await library(filter, { sampleFolder: "/samples/" });
+
+  if (!("items" in result)) throw new Error("expected items");
+  expect(result.items.find((i) => i.source === "sampleFolder")).toBeUndefined();
+  expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
+}
+
 describe("library tool — action dispatch", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -96,12 +130,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("scans the configured sample folder and merges with DB results", async () => {
-    mockFolderStructure({
-      "/samples/": [
-        { name: "kick.wav", type: "file", extension: ".wav" },
-        { name: "snare.wav", type: "file", extension: ".wav" },
-      ],
-    });
+    mockSampleFolder("kick.wav", "snare.wav");
     mockSearchRoute([
       {
         name: "clap.wav",
@@ -130,9 +159,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("dedupes folder hits against DB hits by absolute path", async () => {
-    mockFolderStructure({
-      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
-    });
+    mockSampleFolder("kick.wav");
     mockSearchRoute([
       {
         name: "kick.wav",
@@ -156,9 +183,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("skips folder scan when source is a DB-only category", async () => {
-    mockFolderStructure({
-      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
-    });
+    mockSampleFolder("kick.wav");
     mockSearchRoute([]);
 
     const result = await library(
@@ -173,9 +198,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("source: 'sampleFolder' returns folder items only and skips DB call", async () => {
-    mockFolderStructure({
-      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
-    });
+    mockSampleFolder("kick.wav");
 
     const result = await library(
       { source: "sampleFolder" },
@@ -191,9 +214,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("merged requests propagate dbAvailable from the DB call", async () => {
-    mockFolderStructure({
-      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
-    });
+    mockSampleFolder("kick.wav");
     mockSearchRoute([]);
 
     const result = await library({}, { sampleFolder: "/samples/" });
@@ -203,70 +224,26 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("skips folder scan when tags filter is set (folder has no tag info)", async () => {
-    mockFolderStructure({
-      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
-    });
-    mockSearchRoute([]);
-
-    const result = await library(
-      { tags: "Kick" },
-      { sampleFolder: "/samples/" },
-    );
-
-    if (!("items" in result)) throw new Error("expected items");
-    expect(
-      result.items.find((i) => i.source === "sampleFolder"),
-    ).toBeUndefined();
     // Tags only live in the DB; readSamples must not be invoked at all
     // (skipping the scan beats filtering its results post-hoc).
-    expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
+    await expectFolderScanSkipped({ tags: "Kick" });
   });
 
   it("skips folder scan when kind is non-audio", async () => {
-    mockFolderStructure({
-      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
-    });
-    mockSearchRoute([]);
-
-    const result = await library(
-      { kind: "plugin" },
-      { sampleFolder: "/samples/" },
-    );
-
-    if (!("items" in result)) throw new Error("expected items");
-    expect(
-      result.items.find((i) => i.source === "sampleFolder"),
-    ).toBeUndefined();
     // Folder scan only knows about audio; any non-audio kind must bypass it.
-    expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
+    await expectFolderScanSkipped({ kind: "plugin" });
   });
 
   it("skips folder scan when deviceKind is set", async () => {
-    mockFolderStructure({
-      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
-    });
-    mockSearchRoute([]);
-
-    const result = await library(
-      { deviceKind: "instrument" },
-      { sampleFolder: "/samples/" },
-    );
-
-    if (!("items" in result)) throw new Error("expected items");
-    expect(
-      result.items.find((i) => i.source === "sampleFolder"),
-    ).toBeUndefined();
     // deviceKind is DB-only metadata; the scan can't satisfy it.
-    expect(readSamplesMock.readSamples).not.toHaveBeenCalled();
+    await expectFolderScanSkipped({ deviceKind: "instrument" });
   });
 
   it("invokes the folder scan for audio-compatible filters (positive control)", async () => {
     // Sanity check that the spy actually fires when it should — otherwise
     // the three "not.toHaveBeenCalled" assertions above would pass trivially
     // if the mock were broken.
-    mockFolderStructure({
-      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
-    });
+    mockSampleFolder("kick.wav");
     mockSearchRoute([]);
 
     await library({ kind: "audio" }, { sampleFolder: "/samples/" });
@@ -293,12 +270,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("respects limit after merging", async () => {
-    mockFolderStructure({
-      "/samples/": [
-        { name: "a.wav", type: "file", extension: ".wav" },
-        { name: "b.wav", type: "file", extension: ".wav" },
-      ],
-    });
+    mockSampleFolder("a.wav", "b.wav");
     mockSearchRoute([
       {
         name: "c.wav",
@@ -317,12 +289,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("default sort places folder items before DB items, each ordered internally", async () => {
-    mockFolderStructure({
-      "/samples/": [
-        { name: "folder_a.wav", type: "file", extension: ".wav" },
-        { name: "folder_z.wav", type: "file", extension: ".wav" },
-      ],
-    });
+    mockSampleFolder("folder_a.wav", "folder_z.wav");
     mockSearchRoute([
       {
         name: "high_use.wav",
@@ -356,12 +323,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("folder scan query is case-insensitive", async () => {
-    mockFolderStructure({
-      "/samples/": [
-        { name: "kick.wav", type: "file", extension: ".wav" },
-        { name: "snare.wav", type: "file", extension: ".wav" },
-      ],
-    });
+    mockSampleFolder("kick.wav", "snare.wav");
     mockSearchRoute([]);
 
     const result = await library(
@@ -374,12 +336,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("limit=0 falls back to the default cap rather than returning an empty list", async () => {
-    mockFolderStructure({
-      "/samples/": [
-        { name: "a.wav", type: "file", extension: ".wav" },
-        { name: "b.wav", type: "file", extension: ".wav" },
-      ],
-    });
+    mockSampleFolder("a.wav", "b.wav");
     mockSearchRoute([]);
 
     const result = await library({ limit: 0 }, { sampleFolder: "/samples/" });
@@ -389,12 +346,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("sort=name keeps folder items first, each partition sorted alphabetically", async () => {
-    mockFolderStructure({
-      "/samples/": [
-        { name: "z_kick.wav", type: "file", extension: ".wav" },
-        { name: "m_snare.wav", type: "file", extension: ".wav" },
-      ],
-    });
+    mockSampleFolder("z_kick.wav", "m_snare.wav");
     mockSearchRoute([
       {
         name: "b_hat.wav",
@@ -430,12 +382,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("sort=mod_date keeps folder items first then DB items in upstream order", async () => {
-    mockFolderStructure({
-      "/samples/": [
-        { name: "z_folder.wav", type: "file", extension: ".wav" },
-        { name: "a_folder.wav", type: "file", extension: ".wav" },
-      ],
-    });
+    mockSampleFolder("z_folder.wav", "a_folder.wav");
     mockSearchRoute([
       {
         name: "newer.wav",
@@ -472,12 +419,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("query filter applies to folder scan", async () => {
-    mockFolderStructure({
-      "/samples/": [
-        { name: "kick.wav", type: "file", extension: ".wav" },
-        { name: "snare.wav", type: "file", extension: ".wav" },
-      ],
-    });
+    mockSampleFolder("kick.wav", "snare.wav");
     mockSearchRoute([]);
 
     const result = await library(
@@ -502,9 +444,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("preserves the DB-side reason when the merged DB call returns one", async () => {
-    mockFolderStructure({
-      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
-    });
+    mockSampleFolder("kick.wav");
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,
       result: {
@@ -559,9 +499,7 @@ describe("library tool — folder scan integration", () => {
   });
 
   it("uses the sample folder's basename as folder for top-level files", async () => {
-    mockFolderStructure({
-      "/samples/": [{ name: "kick.wav", type: "file", extension: ".wav" }],
-    });
+    mockSampleFolder("kick.wav");
     mockSearchRoute([]);
 
     const result = await library({}, { sampleFolder: "/samples/" });

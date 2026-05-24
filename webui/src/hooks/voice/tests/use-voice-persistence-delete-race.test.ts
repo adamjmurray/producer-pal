@@ -6,8 +6,6 @@
 // @vitest-environment happy-dom
 
 import "fake-indexeddb/auto";
-import { type RealtimeItem } from "@openai/agents/realtime";
-import { renderHook } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Gate a one-shot callback that runs *after* the real write commits, so a test
@@ -41,11 +39,11 @@ vi.mock(import("#webui/lib/conversation-db"), async (importOriginal) => {
   };
 });
 
-import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
-import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
-import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
+import { loadConversation } from "#webui/lib/conversation-db";
 import {
+  renderVoicePersistenceWithHistory,
   resetConversationsDb,
+  saveVoiceRecord,
   userTextItem,
   waitForEffects,
 } from "./voice-persistence-test-helpers";
@@ -58,20 +56,14 @@ beforeEach(async () => {
 
 describe("useVoicePersistence autosave delete-during-write race", () => {
   it("does not adopt a just-deleted id when the delete lands during the write", async () => {
-    const record = createTestRecord({
-      sessionType: "voice",
+    // afterSave unarmed here → plain write
+    const record = await saveVoiceRecord({
       voiceHistory: [userTextItem("seed")],
-      messages: [],
     });
 
-    await saveConversation(record); // afterSave unarmed → plain write
     window.location.hash = record.id;
 
-    const { result, rerender } = renderHook(
-      ({ history }: { history: RealtimeItem[] }) =>
-        useVoicePersistence({ liveHistory: history }),
-      { initialProps: { history: [] as RealtimeItem[] } },
-    );
+    const { result, rerender } = renderVoicePersistenceWithHistory();
 
     await waitForEffects();
     expect(result.current.activeConversationId).toBe(record.id);
@@ -82,7 +74,7 @@ describe("useVoicePersistence autosave delete-during-write race", () => {
       await result.current.deleteConversation(record.id);
     };
 
-    rerender({ history: [userTextItem("a new turn")] });
+    rerender([userTextItem("a new turn")]);
     await waitForEffects(800);
 
     // .then() must re-check canceledIds and bail: no stale re-adoption of the
