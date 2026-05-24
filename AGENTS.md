@@ -113,10 +113,11 @@ web UI architecture.
   `src/test/package-json-versions.test.ts` validates it.
 
 - **Tool input schema shapes**: Rich JSON Schema shapes (arrays, nested objects)
-  are safe — every current provider/model accepts and correctly fills them.
-  (`ppal-live-api` already ships `z.array(z.object(...))`; a cross-provider
-  probe in `evals/schema-compat/` confirms it across the curated webui model
-  set, incl. small/free models.) Choose the shape by the data:
+  are safe to use — accepted and filled by every model the probe tried.
+  (`ppal-live-api` already ships `z.array(z.object(...))`; the
+  `evals/schema-compat/` probe spot-checks one model per provider in a single,
+  zero-repeat, provider-default-temperature run — corroboration, not exhaustive
+  proof.) Choose the shape by the data:
   - **Flat scalar list** (ids, note names, paths) → comma-separated string.
     Still the default: natural for LLMs, token-cheap, no reason to change
     existing ones.
@@ -127,10 +128,12 @@ web UI architecture.
     commas) → `z.array(z.string())`, not a comma-separated string. See `actions`
     in `update-device.def.ts`.
   - **"One or many"** → always use an array (a single-element array is fine). Do
-    NOT use `string | array` (`z.union` → JSON Schema `anyOf`): the probe found
-    it is the one fragile construct — accepted everywhere but mis-filled (Claude
-    collapses to the scalar and drops data; some small models JSON-stringify the
-    array into the string slot).
+    NOT use `string | array` (`z.union` → JSON Schema `anyOf`): it is accepted
+    everywhere but mis-filled — Claude collapses to the scalar and drops data;
+    some small models JSON-stringify the array into the string slot. (This is
+    from eyeballing the probe's detail dump, not its pass/fail metric: that
+    metric scores any string as OK, so it can't catch either failure — see the
+    `string-or-array-union` variant.)
   - Anything richer than a primitive MUST have a `smallModelModeConfig` plan:
     either exclude the param (`excludeParams`), or keep it with a
     small-model-tolerant schema. There is no built-in "degrade to a
