@@ -133,6 +133,13 @@ export function useVoiceSession(
   // after those awaits. Cleared in cleanup() (error/disconnect); after a
   // successful connect, sessionRef takes over as the reentrancy guard.
   const connectingRef = useRef(false);
+  // Bumped by cleanup() so a connect() resumed after a teardown that landed
+  // during one of its awaits (most reachably the component unmounting while
+  // "Connecting…") detects it has gone stale and bails — instead of
+  // re-populating the refs and opening a WebRTC peer connection + mic that
+  // nothing is left to close. connectingRef alone can't catch this: the
+  // teardown resets it, then the resumed connect() runs to completion.
+  const connectGenRef = useRef(0);
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<RealtimeItem[]>([]);
@@ -151,6 +158,9 @@ export function useVoiceSession(
     sessionRef.current = null;
     mcpClientRef.current = null;
     connectingRef.current = false;
+    // Invalidate any connect() still suspended on an await: when it resumes it
+    // will see a changed generation and abort.
+    connectGenRef.current++;
 
     if (session) {
       try {
@@ -187,6 +197,8 @@ export function useVoiceSession(
       }
 
       connectingRef.current = true;
+      const myGen = connectGenRef.current;
+
       setStatus("connecting");
       setError(null);
       setRateLimitedUntil(null);
@@ -199,6 +211,10 @@ export function useVoiceSession(
         );
 
         mcpClientRef.current = mcpClient;
+
+        // Torn down during MCP setup (e.g. unmounted while "Connecting…")? Bail
+        // before building the session so we never open a peer connection + mic.
+        if (await bailIfStale(connectGenRef.current !== myGen, cleanup)) return;
 
         const agent = new RealtimeAgent({
           name: "Producer Pal Voice",
@@ -285,6 +301,10 @@ export function useVoiceSession(
         sessionRef.current = session;
 
         const token = await fetchEphemeralToken(voiceTokenUrl, openAiKey);
+
+        // Torn down during the token fetch? Bail before session.connect() opens
+        // the mic (cleanup() already closed the stored session).
+        if (await bailIfStale(connectGenRef.current !== myGen, cleanup)) return;
 
         await session.connect({ apiKey: token });
 
@@ -399,4 +419,25 @@ export function useVoiceSession(
     resetHistory: () => setHistory([]),
     activeVoice,
   };
+}
+
+/**
+ * Abort a connect() that went stale across one of its awaits — cleanup() bumped
+ * the generation, so this attempt's resources must not be published or opened.
+ * cleanup() closes whatever's been stored on the refs; the caller returns before
+ * opening (or after re-populating) the session + mic.
+ *
+ * @param isStale - Whether cleanup() ran since this connect() started
+ * @param cleanup - Tears down the stored session + MCP client
+ * @returns True if stale (caller should return); false to continue
+ */
+async function bailIfStale(
+  isStale: boolean,
+  cleanup: () => Promise<void>,
+): Promise<boolean> {
+  if (!isStale) return false;
+
+  await cleanup();
+
+  return true;
 }

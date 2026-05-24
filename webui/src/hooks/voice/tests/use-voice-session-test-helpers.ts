@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { act, renderHook } from "@testing-library/preact";
-import { type Mock } from "vitest";
+import { type Mock, vi } from "vitest";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 
 /** Shape of the FakeSession instance the test doubles construct. */
@@ -68,6 +68,10 @@ export interface VoiceSessionTestKit {
     code: string,
     message: string,
   ) => Promise<void>;
+  teardownDuring: (step: "mcp" | "token") => Promise<{
+    mcpClose: Mock;
+    sessions: FakeRealtimeSession[];
+  }>;
 }
 
 /**
@@ -150,6 +154,62 @@ export function createVoiceSessionTestKit(
     });
   }
 
+  /**
+   * Start connect(), then unmount mid-flight while a chosen await is still
+   * pending, then let it resolve — reproducing the connect/unmount race. Used
+   * to assert the generation guard closes resources and never opens a session.
+   *
+   * @param step - Which await to suspend on: "mcp" (tool setup) or "token"
+   * @returns The MCP client's close spy and the constructed FakeSession list
+   */
+  async function teardownDuring(step: "mcp" | "token"): Promise<{
+    mcpClose: Mock;
+    sessions: FakeRealtimeSession[];
+  }> {
+    const mcpClose = vi.fn(async () => {});
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const tokenOk = () =>
+      new Response(JSON.stringify({ value: "ek_x" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+
+    if (step === "mcp") {
+      mocks.createRealtimeMcpTools.mockReturnValueOnce(
+        gate.then(() => ({ tools: [], mcpClient: { close: mcpClose } })),
+      );
+      stubFetchOk({ value: "ek_x" });
+    } else {
+      mocks.createRealtimeMcpTools.mockResolvedValueOnce({
+        tools: [],
+        mcpClient: { close: mcpClose },
+      });
+      mocks.fetchMock.mockReturnValueOnce(gate.then(tokenOk));
+    }
+
+    const { result, unmount } = renderHook(() =>
+      useVoiceSession(defaultParams()),
+    );
+    let connectPromise!: Promise<void>;
+
+    await act(async () => {
+      connectPromise = result.current.connect();
+      // Pump past MCP setup (so "token" builds a session) and stop at the gate.
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    unmount();
+    await act(async () => {
+      release();
+      await connectPromise;
+    });
+
+    return { mcpClose, sessions: mocks.FakeSession.instances };
+  }
+
   return {
     defaultParams,
     stubFetchOk,
@@ -157,5 +217,6 @@ export function createVoiceSessionTestKit(
     connectAndGetSession,
     connectWithSeed,
     emitResponseFailure,
+    teardownDuring,
   };
 }

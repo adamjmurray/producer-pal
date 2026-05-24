@@ -97,6 +97,7 @@ const {
   connectAndGetSession,
   connectWithSeed,
   emitResponseFailure,
+  teardownDuring,
 } = createVoiceSessionTestKit(mocks);
 
 const REAL_FETCH = globalThis.fetch;
@@ -348,6 +349,25 @@ describe("useVoiceSession.connect", () => {
 
     expect(mocks.FakeSession.instances).toHaveLength(1);
     expect(result.current.status).toBe("connected");
+  });
+
+  it("aborts and closes the MCP client when torn down during MCP setup (no hot-mic leak)", async () => {
+    const { mcpClose, sessions } = await teardownDuring("mcp");
+
+    // The resumed connect detected the teardown: it closed the just-created
+    // client and never built a session (no peer connection / mic opened).
+    expect(mcpClose).toHaveBeenCalledTimes(1);
+    expect(sessions).toHaveLength(0);
+  });
+
+  it("aborts before session.connect when torn down during the token fetch", async () => {
+    const { sessions } = await teardownDuring("token");
+
+    // A session was built but session.connect() was never called: no peer
+    // connection / mic was opened.
+    expect(sessions).toHaveLength(1);
+    expect(sessions[0]!.connectArgs).toBeNull();
+    expect(sessions[0]!.close).toHaveBeenCalled();
   });
 });
 
