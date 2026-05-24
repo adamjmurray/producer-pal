@@ -59,6 +59,16 @@ describe("paramsInputSchema", () => {
     ).toStrictEqual([{ name: "Freq", value: "1000" }]);
   });
 
+  it("coerces a numeric name (param index) to a string instead of failing", () => {
+    expect(paramsInputSchema.parse([{ name: 3, value: 1 }])).toStrictEqual([
+      { name: "3", value: "1" },
+    ]);
+  });
+
+  it("rejects an entry with a missing name", () => {
+    expect(() => paramsInputSchema.parse([{ value: "1" }])).toThrow();
+  });
+
   it("parses a JSON-stringified array (small-model fallback)", () => {
     expect(
       paramsInputSchema.parse('[{"name":"Freq","value":1000}]'),
