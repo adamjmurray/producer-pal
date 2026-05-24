@@ -6,7 +6,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { renderHook } from "@testing-library/preact";
+import { renderHook, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSaveSettingsHandler } from "#webui/hooks/settings/use-save-settings-handler";
 
@@ -23,6 +23,8 @@ vi.mock(import("#webui/hooks/use-preferences-settings"), () => ({
  * @param overrides.savedModel - Persisted model value (defaults to a chat model)
  * @param overrides.provider - In-modal provider (defaults to openai)
  * @param overrides.savedProvider - Persisted provider (defaults to openai)
+ * @param overrides.liveApiEnabled - In-modal Live API toggle value
+ * @param overrides.liveApiEnabledDirty - Whether the toggle was changed in-modal
  * @returns Args plus the inner spies used to assert
  */
 function makeArgs(
@@ -31,20 +33,26 @@ function makeArgs(
     savedModel?: string;
     provider?: string;
     savedProvider?: string;
+    liveApiEnabled?: boolean;
+    liveApiEnabledDirty?: boolean;
   } = {},
 ): {
   args: Parameters<typeof useSaveSettingsHandler>[0];
   saveSettings: ReturnType<typeof vi.fn>;
+  postLiveApiEnabled: ReturnType<typeof vi.fn>;
+  checkMcpConnection: ReturnType<typeof vi.fn>;
 } {
   const saveSettings = vi.fn();
+  const postLiveApiEnabled = vi.fn().mockResolvedValue(undefined);
+  const checkMcpConnection = vi.fn().mockResolvedValue(undefined);
   const args = {
     settings: {
       provider: overrides.provider ?? "openai",
       savedProvider: overrides.savedProvider ?? "openai",
       model: overrides.model ?? "gemini-1.5-flash",
       savedModel: overrides.savedModel ?? "gemini-1.5-flash",
-      liveApiEnabled: false,
-      liveApiEnabledDirty: false,
+      liveApiEnabled: overrides.liveApiEnabled ?? false,
+      liveApiEnabledDirty: overrides.liveApiEnabledDirty ?? false,
       smallModelMode: false,
       saveSettings,
       // unused by the handler but required by the type
@@ -52,17 +60,17 @@ function makeArgs(
     display: {} as Parameters<typeof useSaveSettingsHandler>[0]["display"],
     remoteConfig: {
       postSmallModelMode: vi.fn(),
-      postLiveApiEnabled: vi.fn().mockResolvedValue(undefined),
+      postLiveApiEnabled,
     } as unknown as Parameters<
       typeof useSaveSettingsHandler
     >[0]["remoteConfig"],
-    checkMcpConnection: vi.fn().mockResolvedValue(undefined),
+    checkMcpConnection,
     closeSettings: ((afterClose: () => void) => afterClose()) as Parameters<
       typeof useSaveSettingsHandler
     >[0]["closeSettings"],
   };
 
-  return { args, saveSettings };
+  return { args, saveSettings, postLiveApiEnabled, checkMcpConnection };
 }
 
 describe("useSaveSettingsHandler", () => {
@@ -108,5 +116,32 @@ describe("useSaveSettingsHandler", () => {
     result.current();
 
     expect(window.location.hash).toBe("");
+  });
+
+  it("posts liveApiEnabled then re-lists MCP tools when the toggle changed", async () => {
+    const { args, postLiveApiEnabled, checkMcpConnection } = makeArgs({
+      liveApiEnabled: true,
+      liveApiEnabledDirty: true,
+    });
+    const { result } = renderHook(() => useSaveSettingsHandler(args));
+
+    result.current();
+
+    expect(postLiveApiEnabled).toHaveBeenCalledWith(true);
+    // checkMcpConnection runs only after the POST resolves (the server exposes
+    // ppal-live-api based on the flag, so listTools must follow the POST).
+    await waitFor(() => expect(checkMcpConnection).toHaveBeenCalledTimes(1));
+  });
+
+  it("does not post liveApiEnabled when the toggle was untouched", () => {
+    const { args, postLiveApiEnabled, checkMcpConnection } = makeArgs({
+      liveApiEnabledDirty: false,
+    });
+    const { result } = renderHook(() => useSaveSettingsHandler(args));
+
+    result.current();
+
+    expect(postLiveApiEnabled).not.toHaveBeenCalled();
+    expect(checkMcpConnection).not.toHaveBeenCalled();
   });
 });

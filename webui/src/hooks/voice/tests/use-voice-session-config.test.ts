@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const realtime = vi.hoisted(() => {
   const constructed: { options: unknown }[] = [];
+  const agents: { options: unknown }[] = [];
 
   class SessionDouble {
     options: unknown;
@@ -26,10 +27,19 @@ const realtime = vi.hoisted(() => {
     }
   }
 
+  class AgentDouble {
+    options: unknown;
+    constructor(options: unknown) {
+      this.options = options;
+      agents.push(this);
+    }
+  }
+
   return {
     constructed,
+    agents,
     module: {
-      RealtimeAgent: class {} as never,
+      RealtimeAgent: AgentDouble as never,
       RealtimeSession: SessionDouble as never,
       OpenAIRealtimeWebRTC: class {
         on = vi.fn();
@@ -45,6 +55,8 @@ vi.mock(import("#webui/hooks/voice/realtime-mcp-tools"), () => ({
   createRealtimeMcpTools: realtime.mcpTools,
 }));
 
+import { mapThinkingToRealtimeEffort } from "#webui/hooks/settings/config-builders";
+import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 
@@ -58,6 +70,7 @@ const PARAMS = {
 
 beforeEach(() => {
   realtime.constructed.length = 0;
+  realtime.agents.length = 0;
   realtime.mcpTools.mockResolvedValue({
     tools: [],
     mcpClient: { close: vi.fn(async () => {}) },
@@ -121,5 +134,50 @@ describe("useVoiceSession turn-detection config", () => {
     const audio = await connectAndReadAudio(PARAMS);
 
     expect(audio.input).toBeUndefined();
+  });
+});
+
+describe("useVoiceSession session config wiring", () => {
+  it("passes the output speed into the session config", async () => {
+    await connectAndReadAudio({ ...PARAMS, speed: 1.25 });
+    const { config } = realtime.constructed[0]!.options as {
+      config: { audio: { output?: { speed?: number } } };
+    };
+
+    expect(config.audio.output?.speed).toBe(1.25);
+  });
+
+  it("defaults the output speed when none is provided", async () => {
+    await connectAndReadAudio(PARAMS);
+    const { config } = realtime.constructed[0]!.options as {
+      config: { audio: { output?: { speed?: number } } };
+    };
+
+    expect(config.audio.output?.speed).toBe(VOICE_SPEED_DEFAULT);
+  });
+
+  it("maps thinking into reasoning.effort", async () => {
+    await connectAndReadAudio({ ...PARAMS, thinking: "Max" });
+    const { config } = realtime.constructed[0]!.options as {
+      config: { reasoning?: { effort?: string } };
+    };
+
+    expect(config.reasoning?.effort).toBe(mapThinkingToRealtimeEffort("Max"));
+  });
+
+  it("omits reasoning when thinking maps to no effort", async () => {
+    await connectAndReadAudio({ ...PARAMS, thinking: "Default" });
+    const { config } = realtime.constructed[0]!.options as {
+      config: { reasoning?: unknown };
+    };
+
+    expect(config.reasoning).toBeUndefined();
+  });
+
+  it("bakes the voice into the RealtimeAgent", async () => {
+    await connectAndReadAudio({ ...PARAMS, voice: "cedar" });
+    const agentOptions = realtime.agents[0]!.options as { voice?: string };
+
+    expect(agentOptions.voice).toBe("cedar");
   });
 });
