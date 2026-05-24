@@ -21,9 +21,8 @@ import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import {
   extractErrorMessage,
-  extractResponseFailure,
   fetchEphemeralToken,
-  parseRetrySeconds,
+  handleTransportEvent,
   toSeedableHistory,
 } from "#webui/hooks/voice/use-voice-session-helpers";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
@@ -100,9 +99,13 @@ interface UseVoiceSessionReturn {
 
 /**
  * Owns the OpenAI Realtime voice session lifecycle: token fetch, MCP-tool
- * bridge, WebRTC connect, history/event subscriptions. Mirrors the canonical
- * realtime-next example — no half-duplex auto-mute, no AEC constraints, no
- * audio-buffer tail timeouts. Browser/OS handles echo cancellation natively.
+ * bridge, WebRTC connect, history/event subscriptions. Full-duplex when
+ * barge-in is enabled (no AEC constraints, no audio-buffer tail timeouts;
+ * browser/OS handles echo cancellation natively). When barge-in is disabled
+ * (turn_detection.interrupt_response off — the default), it falls back to
+ * half-duplex by muting the mic for the duration of each response, so the
+ * user's speech can't interrupt the assistant or be committed as a phantom
+ * turn (which would also collide with the active response).
  *
  * @param params - hook parameters
  * @param params.mcpUrl - URL of the Producer Pal MCP server
@@ -144,6 +147,13 @@ export function useVoiceSession(
   // "disconnected" event (which fires for both our own close and a network drop)
   // is recognized as expected here and not surfaced as a lost connection.
   const intentionalCloseRef = useRef(false);
+  // Mirrors isMuted so the transport-event handlers (which close over
+  // connect-time state) can restore the user's manual mute intent after lifting
+  // a half-duplex auto-mute.
+  const isMutedRef = useRef(false);
+  // True while a half-duplex (barge-in disabled) response has the mic
+  // auto-muted, so response.done knows to lift it back to the manual state.
+  const autoMutedRef = useRef(false);
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<RealtimeItem[]>([]);
@@ -192,6 +202,8 @@ export function useVoiceSession(
     // routes through cleanup(), not disconnect() — doesn't leave the next session
     // showing "Muted" in the UI while its mic is actually live.
     setIsMuted(false);
+    isMutedRef.current = false;
+    autoMutedRef.current = false;
   }, []);
 
   const connect = useCallback(
@@ -267,45 +279,25 @@ export function useVoiceSession(
           setHistory([...next]);
         });
 
-        session.on("transport_event", (event: TransportEvent) => {
-          // These flags drive the UI status pill only. They do NOT touch the
-          // mic — the canonical example doesn't auto-mute and we follow suit.
-          if (event.type === "response.created") {
-            setAssistantThinking(true);
-            // A new turn is underway, so any error from a prior response is
-            // stale — clear it so the banner doesn't linger over a healthy
-            // response. Clear rateLimitedUntil too: the retry UI renders inside
-            // the error banner, so leaving it set without an error would orphan
-            // an unrenderable countdown. A new response succeeding means the
-            // limit has passed; if it fails again, response.done re-sets it.
-            setError(null);
-            setRateLimitedUntil(null);
-          } else if (event.type === "response.done") {
-            setAssistantThinking(false);
-            const failure = extractResponseFailure(event);
+        // Barge-in disabled (interrupt_response off, the default) → run
+        // half-duplex: handleTransportEvent mutes the mic for the duration of
+        // each response. When turnDetection is undefined, OpenAI's default
+        // (barge-in on) applies, so we stay full-duplex. turnDetection is fixed
+        // for the session (changes apply on the next Stop → Talk).
+        const halfDuplex = turnDetection?.interruptResponse === false;
 
-            if (failure) {
-              setError(failure.message);
-
-              if (failure.code === "rate_limit_exceeded") {
-                const seconds = parseRetrySeconds(failure.message);
-
-                if (seconds != null) {
-                  setRateLimitedUntil(Date.now() + seconds * 1000);
-                }
-              }
-            } else {
-              setRateLimitedUntil(null);
-            }
-          } else if (event.type === "output_audio_buffer.started") {
-            setAssistantSpeaking(true);
-          } else if (
-            event.type === "output_audio_buffer.stopped" ||
-            event.type === "output_audio_buffer.cleared"
-          ) {
-            setAssistantSpeaking(false);
-          }
-        });
+        session.on("transport_event", (event: TransportEvent) =>
+          handleTransportEvent(event, {
+            halfDuplex,
+            session,
+            autoMutedRef,
+            isMutedRef,
+            setAssistantThinking,
+            setAssistantSpeaking,
+            setError,
+            setRateLimitedUntil,
+          }),
+        );
 
         session.on("error", (err: { type: "error"; error: unknown }) => {
           console.error("RealtimeSession error", err.error);
@@ -381,6 +373,7 @@ export function useVoiceSession(
 
     try {
       session.mute(next);
+      isMutedRef.current = next;
       setIsMuted(next);
     } catch (err) {
       setError(extractErrorMessage(err));

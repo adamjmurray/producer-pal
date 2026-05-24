@@ -6,6 +6,8 @@
 import {
   type RealtimeItem,
   type RealtimeMessageItem,
+  type RealtimeSession,
+  type TransportEvent,
 } from "@openai/agents/realtime";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 
@@ -117,6 +119,146 @@ export function parseRetrySeconds(message: string): number | null {
   const seconds = Number.parseFloat(match[1]);
 
   return Number.isFinite(seconds) ? seconds : null;
+}
+
+/** Minimal session surface the transport helpers need (mic mute control). */
+type MutableSession = Pick<RealtimeSession, "mute">;
+
+/** Preact ref holder, narrowed to the boolean refs the helpers receive. */
+interface BooleanRef {
+  current: boolean;
+}
+
+/**
+ * Dependencies handleTransportEvent needs from the hook: the half-duplex flag,
+ * the live session, the mute-tracking refs, and the UI state setters.
+ */
+export interface TransportEventDeps {
+  /** True when barge-in is disabled — run half-duplex (auto-mute per response). */
+  halfDuplex: boolean;
+  session: MutableSession;
+  /** Flags an active half-duplex auto-mute so response.done can lift it. */
+  autoMutedRef: BooleanRef;
+  /** Mirrors the user's manual mute, restored when a half-duplex mute lifts. */
+  isMutedRef: BooleanRef;
+  setAssistantThinking: (value: boolean) => void;
+  setAssistantSpeaking: (value: boolean) => void;
+  setError: (value: string | null) => void;
+  setRateLimitedUntil: (value: number | null) => void;
+}
+
+/**
+ * Drive the UI status flags from a transport event and, in half-duplex mode
+ * (barge-in disabled), mute the mic for the duration of each response so the
+ * user can't interrupt the assistant or have speech committed as a phantom turn
+ * (which would collide with the active response). Extracted from useVoiceSession
+ * to keep the hook within its size limits.
+ *
+ * @param event - The transport event payload
+ * @param deps - Session refs, UI state setters, and the half-duplex flag
+ */
+export function handleTransportEvent(
+  event: TransportEvent,
+  deps: TransportEventDeps,
+): void {
+  if (event.type === "response.created") {
+    deps.setAssistantThinking(true);
+    // A new turn is underway, so any error from a prior response is stale —
+    // clear it so the banner doesn't linger over a healthy response. Clear
+    // rateLimitedUntil too: the retry UI renders inside the error banner, so
+    // leaving it set without an error would orphan an unrenderable countdown.
+    deps.setError(null);
+    deps.setRateLimitedUntil(null);
+    beginHalfDuplexMute(deps.session, deps.autoMutedRef, deps.halfDuplex);
+  } else if (event.type === "response.done") {
+    deps.setAssistantThinking(false);
+    endHalfDuplexMute(deps.session, deps.autoMutedRef, deps.isMutedRef);
+    applyResponseFailure(event, deps);
+  } else if (event.type === "output_audio_buffer.started") {
+    deps.setAssistantSpeaking(true);
+  } else if (
+    event.type === "output_audio_buffer.stopped" ||
+    event.type === "output_audio_buffer.cleared"
+  ) {
+    deps.setAssistantSpeaking(false);
+  }
+}
+
+/**
+ * Mute the mic at the start of a half-duplex (barge-in disabled) response and
+ * record the auto-mute so response.done can lift it. No-op when barge-in is
+ * enabled. Best-effort: a mute() throw is swallowed (the UI is unaffected).
+ *
+ * @param session - The live realtime session
+ * @param autoMutedRef - Ref flagging an active half-duplex auto-mute
+ * @param halfDuplex - Whether barge-in is disabled
+ */
+export function beginHalfDuplexMute(
+  session: MutableSession,
+  autoMutedRef: BooleanRef,
+  halfDuplex: boolean,
+): void {
+  if (!halfDuplex) return;
+  autoMutedRef.current = true;
+
+  try {
+    session.mute(true);
+  } catch {
+    // best-effort; the UI status pill is unaffected
+  }
+}
+
+/**
+ * Lift a half-duplex auto-mute when a response ends, restoring the user's
+ * manual mute intent. No-op when no auto-mute is active.
+ *
+ * @param session - The live realtime session
+ * @param autoMutedRef - Ref flagging an active half-duplex auto-mute
+ * @param isMutedRef - Ref mirroring the user's manual mute state
+ */
+export function endHalfDuplexMute(
+  session: MutableSession,
+  autoMutedRef: BooleanRef,
+  isMutedRef: BooleanRef,
+): void {
+  if (!autoMutedRef.current) return;
+  autoMutedRef.current = false;
+
+  try {
+    session.mute(isMutedRef.current);
+  } catch {
+    // best-effort
+  }
+}
+
+/**
+ * Apply a response.done failure to the UI: surface the message and, for a rate
+ * limit, set the retry countdown. Clears the countdown when there is no failure.
+ *
+ * @param event - The response.done transport event
+ * @param deps - The error + rate-limit state setters
+ */
+function applyResponseFailure(
+  event: TransportEvent,
+  deps: Pick<TransportEventDeps, "setError" | "setRateLimitedUntil">,
+): void {
+  const failure = extractResponseFailure(event);
+
+  if (!failure) {
+    deps.setRateLimitedUntil(null);
+
+    return;
+  }
+
+  deps.setError(failure.message);
+
+  if (failure.code === "rate_limit_exceeded") {
+    const seconds = parseRetrySeconds(failure.message);
+
+    if (seconds != null) {
+      deps.setRateLimitedUntil(Date.now() + seconds * 1000);
+    }
+  }
 }
 
 /**
