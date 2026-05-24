@@ -5,6 +5,8 @@
 
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { type TakeLaneTarget } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import {
   getColorForIndex,
@@ -23,6 +25,7 @@ import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "./duplicate-helpers.ts";
+import { duplicateClipsToTakeLane } from "./duplicate-take-lane-helpers.ts";
 
 /**
  * Duplicates a clip to explicit positions
@@ -35,6 +38,8 @@ import {
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
  * @param locator - Arrangement locator ID(s) or name(s) for position
  * @param arrangementLength - Duration in bar|beat format
+ * @param takeLaneTarget - Normalized take lane target for arrangement clips, or null for main lane
+ * @param takeLaneName - Name for a take lane newly created by this call
  * @param context - Context object with holdingAreaStartBeats
  * @returns Array of result objects
  */
@@ -48,11 +53,19 @@ export async function duplicateClipWithPositions(
   arrangementStart: string | undefined,
   locator: string | undefined,
   arrangementLength: string | undefined,
+  takeLaneTarget: TakeLaneTarget | null,
+  takeLaneName: string | undefined,
   context: Partial<ToolContext>,
 ): Promise<object[]> {
   const createdObjects: object[] = [];
 
   if (destination === "session") {
+    if (takeLaneTarget != null) {
+      console.warn(
+        "duplicate: takeLane ignored for session destination (arrangement-only)",
+      );
+    }
+
     const slots = parseSlotList(toSlot);
     const trackIndex = object.trackIndex;
     const sourceSceneIndex = object.sceneIndex;
@@ -100,6 +113,21 @@ export async function duplicateClipWithPositions(
       songTimeSigNumerator,
       songTimeSigDenominator,
     );
+
+    // Take lane targeting: re-create on the lane (no duplicate API for lanes)
+    if (takeLaneTarget != null) {
+      return duplicateClipsToTakeLane(
+        object,
+        id,
+        positionsInBeats,
+        name,
+        color,
+        takeLaneTarget,
+        takeLaneName,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      );
+    }
 
     const parsedNames = parseCommaSeparatedNames(name, positionsInBeats.length);
     const parsedColors = parseCommaSeparatedColors(

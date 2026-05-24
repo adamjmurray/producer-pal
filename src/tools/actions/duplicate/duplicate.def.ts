@@ -99,6 +99,18 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
             ),
         }
       : {}),
+
+    takeLane: z.coerce
+      .string()
+      .optional()
+      .describe(
+        'arrangement take lane (MIDI clips only): omit/0 = main lane, 1+ = that lane (auto-created), "new" = append a fresh lane for a variation',
+      ),
+
+    takeLaneName: z
+      .string()
+      .optional()
+      .describe("name for a take lane newly created by this call"),
   },
   smallModelModeConfig: {
     toolDescription:
@@ -112,6 +124,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       "routeToSource",
       "transforms",
       "code",
+      "takeLane",
+      "takeLaneName",
     ],
     descriptionOverrides: {
       name: "name",

@@ -44,6 +44,8 @@ export interface CreateClipsParams {
   deadline: number | null;
   code: string | null;
   transformedCount: number | undefined;
+  /** Take lane to create arrangement clips on, or null for the main lane */
+  takeLane: LiveAPI | null;
 }
 
 /**
@@ -80,6 +82,7 @@ export async function createClips(
     deadline,
     code,
     transformedCount,
+    takeLane,
   } = params;
 
   const createdClips: object[] = [];
@@ -148,6 +151,8 @@ export async function createClips(
         length,
         sampleFile,
         transformedCount,
+        // Take lanes apply only to arrangement clips (ignored for session view)
+        takeLane,
       );
 
       createdClips.push(clipResult);

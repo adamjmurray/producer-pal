@@ -192,6 +192,16 @@ function deleteSceneObject(id: string, object: LiveAPI): boolean {
  * @returns true if deleted, false if skipped with warning
  */
 function deleteClipObject(id: string, object: LiveAPI): boolean {
+  // Take-lane clips cannot be removed via the API (delete_clip is a no-op for
+  // them and there is no delete_take_lane) — the user must delete in Live's UI.
+  if (object.path.includes("take_lanes")) {
+    console.warn(
+      `delete: cannot delete take-lane clip "${id}" via the API; remove it in Live's UI`,
+    );
+
+    return false;
+  }
+
   const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
 
   if (!trackIndex) {

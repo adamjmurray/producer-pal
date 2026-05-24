@@ -1,0 +1,206 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { livePath } from "#src/shared/live-api-path-builders.ts";
+import "./duplicate-mocks-test-helpers.ts";
+import {
+  lookupMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import { registerTakeLaneTrack } from "#src/tools/shared/arrangement/tests/take-lane-test-helpers.ts";
+
+// Capture take lane warnings
+vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+  error: vi.fn(),
+  log: vi.fn(),
+  warn: vi.fn(),
+}));
+
+import { duplicate } from "#src/tools/actions/duplicate/duplicate.ts";
+import { duplicateClipsToTakeLane } from "#src/tools/actions/duplicate/helpers/duplicate-take-lane-helpers.ts";
+import { registerSessionClipDuplication } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
+import * as consoleMock from "#src/shared/v8-max-console.ts";
+
+const SOURCE_NOTE = {
+  pitch: 60,
+  start_time: 0,
+  duration: 1,
+  velocity: 100,
+  probability: 1,
+  velocity_deviation: 0,
+};
+
+/** Register the live_set time signature mock. */
+function registerLiveSet(): void {
+  registerMockObject("live-set", {
+    path: livePath.liveSet,
+    properties: { signature_numerator: 4, signature_denominator: 4 },
+  });
+}
+
+/**
+ * Register a source arrangement clip (track 0, main lane) for duplication.
+ * @param midi - Whether the source is a MIDI clip
+ * @param notes - Notes returned by the source's get_notes_extended
+ */
+function registerArrangementSource(
+  midi: boolean,
+  notes: Array<Record<string, number>> = [SOURCE_NOTE],
+): void {
+  registerMockObject("src_clip", {
+    path: livePath.track(0).arrangementClip(0),
+    type: "Clip",
+    properties: {
+      is_midi_clip: midi ? 1 : 0,
+      is_arrangement_clip: 1,
+      length: 4,
+      start_time: 0,
+      loop_start: 0,
+      loop_end: 4,
+      start_marker: 0,
+      end_marker: 4,
+      looping: 1,
+      signature_numerator: 4,
+      signature_denominator: 4,
+    },
+    methods: {
+      get_notes_extended: () => JSON.stringify({ notes }),
+    },
+  });
+}
+
+describe("duplicate take lane", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("duplicates a MIDI clip onto a fresh take lane (notes + loop copied)", async () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+    const result = (await duplicate({
+      type: "clip",
+      id: "src_clip",
+      arrangementStart: "5|1",
+      takeLane: "new",
+    })) as { id: string; trackIndex: number; arrangementStart: string };
+
+    expect(track.call).toHaveBeenCalledWith("create_take_lane");
+
+    const lane = lookupMockObject(undefined, livePath.track(0).takeLane(0));
+
+    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 16, 4);
+
+    const newClip = lookupMockObject(
+      undefined,
+      livePath.track(0).takeLane(0).arrangementClip(0),
+    );
+
+    expect(newClip?.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [SOURCE_NOTE],
+    });
+    expect(newClip?.set).toHaveBeenCalledWith("loop_end", 4);
+    expect(newClip?.set).toHaveBeenCalledWith("looping", 1);
+    expect(result).toMatchObject({ trackIndex: 0, arrangementStart: "5|1" });
+  });
+
+  it("skips add_new_notes when the source clip is empty", async () => {
+    registerLiveSet();
+    registerArrangementSource(true, []);
+    registerTakeLaneTrack({ initialLanes: 0 });
+
+    await duplicate({
+      type: "clip",
+      id: "src_clip",
+      arrangementStart: "1|1",
+      takeLane: "new",
+    });
+
+    const newClip = lookupMockObject(
+      undefined,
+      livePath.track(0).takeLane(0).arrangementClip(0),
+    );
+
+    expect(newClip?.call).not.toHaveBeenCalledWith(
+      "add_new_notes",
+      expect.anything(),
+    );
+  });
+
+  it("skips an audio source with a warning (MIDI-only)", async () => {
+    registerLiveSet();
+    registerArrangementSource(false);
+    const track = registerTakeLaneTrack({ initialLanes: 0 });
+
+    const result = await duplicate({
+      type: "clip",
+      id: "src_clip",
+      arrangementStart: "5|1",
+      takeLane: "new",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("takeLane supports MIDI clips only"),
+    );
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(result).toStrictEqual([]);
+  });
+
+  it("warns and ignores takeLane for a session destination", async () => {
+    registerSessionClipDuplication({ destClipProperties: {} });
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      toSlot: "0/1",
+      takeLane: "new",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("takeLane ignored for session destination"),
+    );
+  });
+
+  it("warns and ignores takeLane for non-clip types", async () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    await duplicate({ type: "track", id: "track1", takeLane: "new" });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "takeLane ignored: only supported when duplicating clips",
+      ),
+    );
+  });
+
+  it("throws when the source clip has no track index", () => {
+    registerMockObject("orphan_clip", {
+      path: "live_set scenes 0",
+      type: "Clip",
+      properties: { is_midi_clip: 1 },
+    });
+
+    expect(() =>
+      duplicateClipsToTakeLane(
+        LiveAPI.from("orphan_clip"),
+        "orphan_clip",
+        [0],
+        undefined,
+        undefined,
+        "new",
+        undefined,
+        4,
+        4,
+      ),
+    ).toThrow(/no track index for clip id "orphan_clip"/);
+  });
+});
