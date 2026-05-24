@@ -11,10 +11,17 @@ import {
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.ts";
 import { getDeviceType } from "#src/tools/shared/device/device-reader.ts";
 import { computeState } from "#src/tools/shared/device/helpers/device-state-helpers.ts";
+import { stripFields } from "#src/tools/shared/utils.ts";
 import {
   processAvailableRouting,
   processCurrentRouting,
 } from "#src/tools/track/helpers/track-routing-helpers.ts";
+
+/** A non-main take lane with its name and arrangement clips */
+export interface ReadTakeLaneResult {
+  name: string;
+  clips: ReadClipResult[];
+}
 
 interface SendInfo {
   gainDb: unknown;
@@ -108,6 +115,34 @@ export function readArrangementClips(
  */
 export function countArrangementClips(track: LiveAPI): number {
   return track.getChildIds("arrangement_clips").length;
+}
+
+/**
+ * Read all non-main take lanes from a track. Take lanes are arrangement-only
+ * and the main lane is not included in the track's take_lanes collection.
+ * @param track - Track object
+ * @param include - Include array for nested clip reads
+ * @returns Array of take lanes, each with its name and arrangement clips
+ */
+export function readTakeLanes(
+  track: LiveAPI,
+  include?: string[],
+): ReadTakeLaneResult[] {
+  return track.getChildren("take_lanes").map((lane) => {
+    const clips = lane
+      .getChildIds("arrangement_clips")
+      .map((clipId) => readClip({ clipId, ...(include && { include }) }))
+      .filter((clip) => clip.id != null);
+
+    // Strip fields redundant with the parent track context (take lane clips are
+    // always arrangement clips on this track, matching its MIDI/audio type)
+    stripFields(clips, "trackIndex", "view", "type");
+
+    return {
+      name: lane.getProperty("name") as string,
+      clips,
+    };
+  });
 }
 
 /**

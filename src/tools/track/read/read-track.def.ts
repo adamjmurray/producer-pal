@@ -51,7 +51,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
       )
       .default([])
       .describe(
-        'session-clips, arrangement-clips = clip lists. notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, available-routings, mixer = track data. color = track + clip color. "*" = all',
+        'session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, available-routings, mixer = track data. color = track + clip color. "*" = all',
       ),
   },
 
@@ -59,7 +59,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
     excludeEnumValues: { include: ["available-routings", "*"] },
     descriptionOverrides: {
       include:
-        "session-clips, arrangement-clips = clip lists. notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, mixer = track data. color = track + clip color",
+        "session-clips, arrangement-clips = clip lists (arrangement-clips also lists take lanes). notes, timing, sample = clip detail (use with clips). devices, drum-map, routings, mixer = track data. color = track + clip color",
     },
   },
 });
