@@ -25,6 +25,10 @@ describe("normalizeParamValue", () => {
     expect(normalizeParamValue("NaN")).toBe("NaN");
   });
 
+  it("keeps an empty string as a string (does not coerce to 0)", () => {
+    expect(normalizeParamValue("")).toBe("");
+  });
+
   it("keeps division-style string values as strings", () => {
     expect(normalizeParamValue("1/16")).toBe("1/16");
   });

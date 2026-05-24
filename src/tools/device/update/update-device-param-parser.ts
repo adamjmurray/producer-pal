@@ -12,11 +12,16 @@ import { parseLabel } from "#src/tools/shared/device/helpers/device-display-help
  *
  * Strings like "1/16" (division params), "On"/"Off" (enums), and note names
  * ("C3") are intentionally kept as strings for downstream handling. "Infinity"
- * and "NaN" are not treated as numbers.
+ * and "NaN" are not treated as numbers. An empty string stays a string (rather
+ * than coercing to 0 via Number("")) so a future caller can't silently write 0.
  * @param rawValue - Trimmed value string from a param entry
  * @returns The coerced number, or the original string
  */
 export function normalizeParamValue(rawValue: string): string | number {
+  if (rawValue === "") {
+    return rawValue;
+  }
+
   const num = Number(rawValue);
 
   if (Number.isFinite(num)) {
