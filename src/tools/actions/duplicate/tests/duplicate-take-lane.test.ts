@@ -72,6 +72,35 @@ function registerArrangementSource(
   });
 }
 
+/**
+ * Register a MIDI source on an empty take-lane track, run a take-lane duplicate,
+ * and return the newly created lane clip mock for assertions.
+ * @param overrides - Extra duplicate args merged over the take-lane defaults
+ * @param notes - Notes returned by the source's get_notes_extended
+ * @returns The new lane clip mock, or undefined if none was created
+ */
+async function duplicateToFreshLane(
+  overrides: Partial<Parameters<typeof duplicate>[0]> = {},
+  notes: Array<Record<string, number>> = [SOURCE_NOTE],
+): Promise<ReturnType<typeof lookupMockObject>> {
+  registerLiveSet();
+  registerArrangementSource(true, notes);
+  registerTakeLaneTrack({ initialLanes: 0 });
+
+  await duplicate({
+    type: "clip",
+    id: "src_clip",
+    arrangementStart: "1|1",
+    takeLane: "new",
+    ...overrides,
+  });
+
+  return lookupMockObject(
+    undefined,
+    livePath.track(0).takeLane(0).arrangementClip(0),
+  );
+}
+
 describe("duplicate take lane", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -108,22 +137,30 @@ describe("duplicate take lane", () => {
     expect(result).toMatchObject({ trackIndex: 0, arrangementStart: "5|1" });
   });
 
-  it("skips add_new_notes when the source clip is empty", async () => {
-    registerLiveSet();
-    registerArrangementSource(true, []);
-    registerTakeLaneTrack({ initialLanes: 0 });
+  it("strips Live note metadata before re-adding to the take lane", async () => {
+    const newClip = await duplicateToFreshLane({}, [
+      { ...SOURCE_NOTE, note_id: 7, mute: 0, release_velocity: 64 },
+    ]);
 
-    await duplicate({
-      type: "clip",
-      id: "src_clip",
-      arrangementStart: "1|1",
-      takeLane: "new",
+    // note_id/mute/release_velocity must not survive into add_new_notes
+    expect(newClip?.call).toHaveBeenCalledWith("add_new_notes", {
+      notes: [SOURCE_NOTE],
+    });
+  });
+
+  it("applies explicit name and color overrides to the take-lane copy", async () => {
+    const newClip = await duplicateToFreshLane({
+      name: "Variation A",
+      color: "#FF0000",
     });
 
-    const newClip = lookupMockObject(
-      undefined,
-      livePath.track(0).takeLane(0).arrangementClip(0),
-    );
+    expect(newClip?.set).toHaveBeenCalledWith("name", "Variation A");
+    // setColor("#FF0000") converts to Live's 0x00RRGGBB int
+    expect(newClip?.set).toHaveBeenCalledWith("color", 0xff0000);
+  });
+
+  it("skips add_new_notes when the source clip is empty", async () => {
+    const newClip = await duplicateToFreshLane({}, []);
 
     expect(newClip?.call).not.toHaveBeenCalledWith(
       "add_new_notes",

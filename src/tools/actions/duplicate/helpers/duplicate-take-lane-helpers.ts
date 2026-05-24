@@ -6,11 +6,13 @@
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import {
   assertNoTakeLaneOverlap,
   resolveTakeLane,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { rawNotesToNoteEvents } from "#src/tools/shared/clip-notes.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
@@ -117,7 +119,7 @@ export function duplicateClipsToTakeLane(
  * @param sourceClip - The clip being copied
  * @param lane - The destination take lane LiveAPI object
  * @param startBeats - Arrangement start position in Ableton beats
- * @param length - Source clip length in beats (note read window + clip length)
+ * @param length - Source clip length in beats (clip creation + overlap window)
  * @param name - Name for the new clip
  * @param color - Color for the new clip
  * @returns Minimal clip info for the created clip
@@ -137,21 +139,30 @@ function copyMidiClipToTakeLane(
   ) as string;
   const newClip = LiveAPI.from(newClipResult);
 
+  // Read all notes (not just within `length`): markers below can expose content
+  // beyond the visible length, so capture it to faithfully copy the source.
   const notesJson = sourceClip.call(
     "get_notes_extended",
     0,
     128,
     0,
-    length,
+    MAX_CLIP_BEATS,
   ) as string;
-  const notes = JSON.parse(notesJson).notes;
+  const rawNotes = (JSON.parse(notesJson).notes ?? []) as Record<
+    string,
+    unknown
+  >[];
 
-  if (Array.isArray(notes) && notes.length > 0) {
-    newClip.call("add_new_notes", { notes });
+  if (rawNotes.length > 0) {
+    // Strip Live's extra note properties (note_id, mute, release_velocity) so
+    // stale ids aren't re-fed when copying one source to multiple positions.
+    newClip.call("add_new_notes", { notes: rawNotesToNoteEvents(rawNotes) });
   }
 
   // Order mirrors create-clip's buildClipProperties to satisfy Live's
-  // loop_end > loop_start constraint while applying values.
+  // loop_end > loop_start constraint while applying values. Name/color fall back
+  // to the source so an un-overridden duplicate matches it (as native duplicate
+  // does); color is a Live int, so it bypasses setColor's #RRGGBB path.
   newClip.setAll({
     start_marker: sourceClip.getProperty("start_marker"),
     loop_start: sourceClip.getProperty("loop_start"),
@@ -160,9 +171,14 @@ function copyMidiClipToTakeLane(
     looping: sourceClip.getProperty("looping"),
     signature_numerator: sourceClip.getProperty("signature_numerator"),
     signature_denominator: sourceClip.getProperty("signature_denominator"),
-    name,
-    color,
+    name: name ?? sourceClip.getProperty("name"),
   });
+
+  if (color != null) {
+    newClip.setColor(color);
+  } else {
+    newClip.set("color", sourceClip.getProperty("color"));
+  }
 
   return getMinimalClipInfo(newClip);
 }
