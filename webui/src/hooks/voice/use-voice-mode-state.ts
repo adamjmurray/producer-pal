@@ -76,7 +76,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     enabledTools: settings.enabledTools,
     voice: settings.savedRealtimeVoice,
     speed: settings.savedVoiceSpeed,
-    thinking: settings.thinking,
+    thinking: settings.savedThinking,
     turnDetection: settings.savedTurnDetection,
   });
 

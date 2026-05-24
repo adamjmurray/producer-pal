@@ -50,6 +50,11 @@ export interface UseSettingsReturn {
   savedProvider: Provider;
   thinking: string;
   setThinking: (thinking: string) => void;
+  /** The persisted thinking level (last save), independent of in-modal edits.
+   * useVoiceSession reads this at connect time (mapped to reasoning.effort) so a
+   * mid-session edit doesn't leak into the active session — applied on the next
+   * Stop → Talk, matching savedRealtimeVoice/savedVoiceSpeed/savedTurnDetection. */
+  savedThinking: string;
   temperature: number;
   setTemperature: (temp: number) => void;
   showThoughts: boolean;

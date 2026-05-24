@@ -171,6 +171,25 @@ describe("useSettings", () => {
     expect(result.current.savedProvider).toBe(target);
   });
 
+  it("savedThinking only updates on saveSettings, not setThinking", async () => {
+    const { result } = renderHook(() => useSettings());
+    const initialSavedThinking = result.current.savedThinking;
+    const target = initialSavedThinking === "Off" ? "Max" : "Off";
+
+    await act(() => {
+      result.current.setThinking(target);
+    });
+    // In-modal change applies to the live value but must NOT leak into the
+    // voice session's connect-time snapshot until save.
+    expect(result.current.thinking).toBe(target);
+    expect(result.current.savedThinking).toBe(initialSavedThinking);
+
+    await act(() => {
+      result.current.saveSettings();
+    });
+    expect(result.current.savedThinking).toBe(target);
+  });
+
   it("updates thinking when setThinking is called", async () => {
     const { result } = renderHook(() => useSettings());
 

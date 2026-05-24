@@ -123,6 +123,7 @@ describe("SettingsScreen", () => {
     savedProvider: "gemini" as const,
     thinking: "Default",
     setThinking: vi.fn(),
+    savedThinking: "Default",
     temperature: 1,
     setTemperature: vi.fn(),
     showThoughts: false,

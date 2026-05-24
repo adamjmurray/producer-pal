@@ -65,6 +65,13 @@ export function useSettings(): UseSettingsReturn {
   // lags `provider` until saveSettings (mirrors the savedModel rationale above).
   const [savedProvider, setSavedProvider] =
     useState<Provider>(loadCurrentProvider);
+  // Save-buffered snapshot of `thinking` (per-provider, like `model`). The live
+  // voice session reads this at connect time so an in-modal thinking edit
+  // doesn't leak into the active RealtimeAgent's reasoning.effort — it applies
+  // on the next Stop → Talk, matching the other saved* voice settings.
+  const [savedThinking, setSavedThinking] = useState<string>(
+    () => loadProviderSettings(loadCurrentProvider()).thinking,
+  );
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
     () => localStorage.getItem("producer_pal_settings_configured") === "true",
   );
@@ -180,6 +187,7 @@ export function useSettings(): UseSettingsReturn {
     voiceModeSettings.commit();
     setSavedModel(allSettings[provider].model);
     setSavedProvider(provider);
+    setSavedThinking(allSettings[provider].thinking);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
   }, [
@@ -264,6 +272,7 @@ export function useSettings(): UseSettingsReturn {
     savedProvider,
     thinking: currentSettings.thinking,
     setThinking,
+    savedThinking,
     temperature: currentSettings.temperature,
     setTemperature,
     showThoughts: currentSettings.showThoughts,
