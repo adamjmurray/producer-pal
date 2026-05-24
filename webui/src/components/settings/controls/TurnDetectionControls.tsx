@@ -5,6 +5,7 @@
 
 import { Tooltip } from "#webui/components/settings/controls/Tooltip";
 import {
+  DEFAULT_TURN_DETECTION,
   type SemanticEagerness,
   type TurnDetectionMode,
   type TurnDetectionSettings,
@@ -155,6 +156,7 @@ function ServerVadSliders({ settings, update }: SubControlProps) {
       <LabeledSlider
         label={`Threshold (${settings.threshold.toFixed(2)})`}
         value={settings.threshold}
+        defaultValue={DEFAULT_TURN_DETECTION.threshold}
         min={TURN_DETECTION_THRESHOLD_MIN}
         max={TURN_DETECTION_THRESHOLD_MAX}
         step={0.05}
@@ -162,8 +164,9 @@ function ServerVadSliders({ settings, update }: SubControlProps) {
         onChange={(threshold) => update({ threshold })}
       />
       <LabeledSlider
-        label={`Silence (${settings.silenceDurationMs} ms)`}
+        label={`Pause (${settings.silenceDurationMs} ms)`}
         value={settings.silenceDurationMs}
+        defaultValue={DEFAULT_TURN_DETECTION.silenceDurationMs}
         min={TURN_DETECTION_SILENCE_MIN}
         max={TURN_DETECTION_SILENCE_MAX}
         step={50}
@@ -177,6 +180,7 @@ function ServerVadSliders({ settings, update }: SubControlProps) {
 interface LabeledSliderProps {
   label: string;
   value: number;
+  defaultValue: number;
   min: number;
   max: number;
   step: number;
@@ -185,20 +189,23 @@ interface LabeledSliderProps {
 }
 
 /**
- * Range slider with a label that includes the current value.
+ * Range slider with a label that includes the current value and a Reset link
+ * (right-aligned in the label row) that restores the default.
  * @param props - Component props
  * @param props.label - Label text (caller embeds the formatted value)
  * @param props.value - Current numeric value
+ * @param props.defaultValue - Value the Reset link restores
  * @param props.min - Minimum value
  * @param props.max - Maximum value
  * @param props.step - Step increment
- * @param props.testId - data-testid + element id
+ * @param props.testId - data-testid + element id (Reset adds `-reset`)
  * @param props.onChange - Called with the parsed numeric value on input
  * @returns Labeled slider element
  */
 function LabeledSlider({
   label,
   value,
+  defaultValue,
   min,
   max,
   step,
@@ -207,9 +214,19 @@ function LabeledSlider({
 }: LabeledSliderProps) {
   return (
     <div>
-      <label htmlFor={testId} className="block text-xs mb-1">
-        {label}
-      </label>
+      <div className="flex items-center justify-between mb-1">
+        <label htmlFor={testId} className="text-xs">
+          {label}
+        </label>
+        <button
+          type="button"
+          onClick={() => onChange(defaultValue)}
+          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          data-testid={`${testId}-reset`}
+        >
+          Reset
+        </button>
+      </div>
       <input
         id={testId}
         type="range"

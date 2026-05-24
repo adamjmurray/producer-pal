@@ -47,7 +47,7 @@ describe("TurnDetectionControls", () => {
     expect(screen.getByTestId("turn-detection-silence")).toBeTruthy();
     expect(screen.queryByTestId("turn-detection-eagerness")).toBeNull();
     expect(screen.getByText("Threshold (0.50)")).toBeTruthy();
-    expect(screen.getByText("Silence (200 ms)")).toBeTruthy();
+    expect(screen.getByText("Pause (200 ms)")).toBeTruthy();
   });
 
   it("shows the eagerness dropdown for semantic VAD, not the sliders", () => {
@@ -119,6 +119,27 @@ describe("TurnDetectionControls", () => {
     expect(setSettings).toHaveBeenCalledWith({
       ...serverVad,
       silenceDurationMs: 500,
+    });
+  });
+
+  it("resets threshold and pause to their defaults via the Reset links", () => {
+    const setSettings = vi.fn();
+    const tuned = { ...serverVad, threshold: 0.8, silenceDurationMs: 500 };
+
+    render(
+      <TurnDetectionControls settings={tuned} setSettings={setSettings} />,
+    );
+
+    fireEvent.click(screen.getByTestId("turn-detection-threshold-reset"));
+    expect(setSettings).toHaveBeenCalledWith({
+      ...tuned,
+      threshold: DEFAULT_TURN_DETECTION.threshold,
+    });
+
+    fireEvent.click(screen.getByTestId("turn-detection-silence-reset"));
+    expect(setSettings).toHaveBeenCalledWith({
+      ...tuned,
+      silenceDurationMs: DEFAULT_TURN_DETECTION.silenceDurationMs,
     });
   });
 
