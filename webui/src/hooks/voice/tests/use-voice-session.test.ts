@@ -63,7 +63,13 @@ const mocks = vi.hoisted(() => {
     }
   }
 
-  class FakeTransport {}
+  class FakeTransport {
+    static instances: FakeTransport[] = [];
+    on = vi.fn();
+    constructor() {
+      FakeTransport.instances.push(this);
+    }
+  }
 
   return {
     FakeSession,
@@ -97,6 +103,7 @@ const {
   connectAndGetSession,
   connectWithSeed,
   emitResponseFailure,
+  fireTransportDisconnect,
   teardownDuring,
 } = createVoiceSessionTestKit(mocks);
 
@@ -104,6 +111,7 @@ const REAL_FETCH = globalThis.fetch;
 
 beforeEach(() => {
   mocks.FakeSession.instances = [];
+  mocks.FakeTransport.instances = [];
   mocks.createRealtimeMcpTools.mockResolvedValue({
     tools: [],
     mcpClient: { close: vi.fn(async () => {}) },
@@ -368,6 +376,51 @@ describe("useVoiceSession.connect", () => {
     expect(sessions).toHaveLength(1);
     expect(sessions[0]!.connectArgs).toBeNull();
     expect(sessions[0]!.close).toHaveBeenCalled();
+  });
+});
+
+describe("useVoiceSession connection drop", () => {
+  it("surfaces a dropped connection, resets latched flags, and cleans up for reconnect", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    // Latch the thinking indicator, as if a drop landed mid-response.
+    await act(() => {
+      session.emit("transport_event", { type: "response.created" });
+    });
+    expect(result.current.assistantThinking).toBe(true);
+
+    // Network drop: the transport fires "disconnected" unprompted.
+    await act(async () => {
+      fireTransportDisconnect();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(result.current.status).toBe("error");
+    expect(result.current.error).toMatch(/connection lost/i);
+    // The latched indicator is cleared so the UI doesn't hang on "Thinking…".
+    expect(result.current.assistantThinking).toBe(false);
+    // cleanup() closed the dead session and cleared the refs, so Talk reconnects.
+    expect(session.close).toHaveBeenCalled();
+  });
+
+  it("ignores the transport 'disconnected' event during an intentional disconnect", async () => {
+    const { result, session } = await connectAndGetSession();
+
+    await act(async () => {
+      await result.current.disconnect();
+    });
+
+    expect(session.close).toHaveBeenCalled();
+    expect(result.current.status).toBe("idle");
+
+    // disconnect() set the intentional-close flag, so the transport's
+    // "disconnected" (real or a late stray) must not surface a lost-connection
+    // error.
+    await act(() => {
+      fireTransportDisconnect();
+    });
+    expect(result.current.status).toBe("idle");
+    expect(result.current.error).toBeNull();
   });
 });
 

@@ -140,6 +140,10 @@ export function useVoiceSession(
   // nothing is left to close. connectingRef alone can't catch this: the
   // teardown resets it, then the resumed connect() runs to completion.
   const connectGenRef = useRef(0);
+  // True while we are intentionally tearing the session down, so the transport's
+  // "disconnected" event (which fires for both our own close and a network drop)
+  // is recognized as expected here and not surfaced as a lost connection.
+  const intentionalCloseRef = useRef(false);
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<RealtimeItem[]>([]);
@@ -150,6 +154,9 @@ export function useVoiceSession(
   const [activeVoice, setActiveVoice] = useState<string | null>(null);
 
   const cleanup = useCallback(async () => {
+    // Mark this as an expected close so the transport's "disconnected" event
+    // (triggered by session.close() below) isn't mistaken for a network drop.
+    intentionalCloseRef.current = true;
     // Capture and null refs synchronously so any subsequent await can't race
     // a concurrent caller into double-closing.
     const session = sessionRef.current;
@@ -199,6 +206,7 @@ export function useVoiceSession(
       connectingRef.current = true;
       const myGen = connectGenRef.current;
 
+      intentionalCloseRef.current = false;
       setStatus("connecting");
       setError(null);
       setRateLimitedUntil(null);
@@ -230,26 +238,26 @@ export function useVoiceSession(
         // realtime-next example.
         const transport = new OpenAIRealtimeWebRTC();
 
-        const reasoningEffort = mapThinkingToRealtimeEffort(thinking ?? "");
-        const session = new RealtimeSession(agent, {
-          model: OPENAI_REALTIME_MODEL,
-          transport,
-          config: {
-            audio: {
-              ...(turnDetection
-                ? {
-                    input: {
-                      turnDetection: mapTurnDetectionToConfig(turnDetection),
-                    },
-                  }
-                : {}),
-              output: { speed: speed ?? VOICE_SPEED_DEFAULT },
-            },
-            ...(reasoningEffort
-              ? { reasoning: { effort: reasoningEffort } }
-              : {}),
-          },
+        // Surface a dropped connection (network blip, sleep/wake, tab
+        // backgrounding): the SDK closes the transport and emits "disconnected",
+        // but the session never re-emits it as an error, so the UI would
+        // otherwise stay "connected" — or hang on "Thinking…" if the drop landed
+        // mid-response — on a dead session. cleanup() closes the dead session and
+        // resets the latched indicators; we then prompt a reconnect. Our own
+        // teardowns set intentionalCloseRef first, so they are ignored here.
+        transport.on("disconnected", () => {
+          if (intentionalCloseRef.current) return;
+
+          void cleanup().then(() => {
+            setStatus("error");
+            setError("Connection lost. Press Talk to reconnect.");
+          });
         });
+
+        const session = new RealtimeSession(
+          agent,
+          buildSessionOptions(transport, { turnDetection, speed, thinking }),
+        );
 
         session.on("history_updated", (next: RealtimeItem[]) => {
           setHistory([...next]);
@@ -418,6 +426,47 @@ export function useVoiceSession(
     retryResponse,
     resetHistory: () => setHistory([]),
     activeVoice,
+  };
+}
+
+/**
+ * Build the RealtimeSession options (model, transport, audio + reasoning config)
+ * from the user's settings. Extracted so the hook's connect() stays focused; the
+ * mapping is covered by use-voice-session-config tests.
+ *
+ * @param transport - The WebRTC transport instance
+ * @param opts - Session-shaping settings
+ * @param opts.turnDetection - VAD settings, or undefined for server default
+ * @param opts.speed - Output playback speed (defaults to VOICE_SPEED_DEFAULT)
+ * @param opts.thinking - Thinking UI level, mapped to reasoning.effort
+ * @returns The RealtimeSession constructor options
+ */
+function buildSessionOptions(
+  transport: OpenAIRealtimeWebRTC,
+  opts: {
+    turnDetection?: TurnDetectionSettings;
+    speed?: number;
+    thinking?: string;
+  },
+): ConstructorParameters<typeof RealtimeSession>[1] {
+  const reasoningEffort = mapThinkingToRealtimeEffort(opts.thinking ?? "");
+
+  return {
+    model: OPENAI_REALTIME_MODEL,
+    transport,
+    config: {
+      audio: {
+        ...(opts.turnDetection
+          ? {
+              input: {
+                turnDetection: mapTurnDetectionToConfig(opts.turnDetection),
+              },
+            }
+          : {}),
+        output: { speed: opts.speed ?? VOICE_SPEED_DEFAULT },
+      },
+      ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),
+    },
   };
 }
 

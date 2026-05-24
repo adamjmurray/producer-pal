@@ -31,7 +31,9 @@ const realtime = vi.hoisted(() => {
     module: {
       RealtimeAgent: class {} as never,
       RealtimeSession: SessionDouble as never,
-      OpenAIRealtimeWebRTC: class {} as never,
+      OpenAIRealtimeWebRTC: class {
+        on = vi.fn();
+      } as never,
     },
     mcpTools: vi.fn(),
     fetchSpy: vi.fn(),

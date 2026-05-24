@@ -26,6 +26,17 @@ export interface FakeRealtimeSessionClass {
   instances: FakeRealtimeSession[];
 }
 
+/** Shape of the FakeTransport double (records its `.on` subscriptions). */
+export interface FakeRealtimeTransport {
+  on: Mock;
+}
+
+/** Constructor + static registry of the FakeTransport double. */
+export interface FakeRealtimeTransportClass {
+  new (): FakeRealtimeTransport;
+  instances: FakeRealtimeTransport[];
+}
+
 /**
  * The mock doubles each test file builds via `vi.hoisted`. They must live in
  * the test file (vi.mock is hoisted per-file and can only reference same-file
@@ -35,7 +46,7 @@ export interface FakeRealtimeSessionClass {
 export interface VoiceSessionMocks {
   FakeSession: FakeRealtimeSessionClass;
   FakeAgent: new (opts: unknown) => unknown;
-  FakeTransport: new () => unknown;
+  FakeTransport: FakeRealtimeTransportClass;
   createRealtimeMcpTools: Mock;
   fetchMock: Mock;
 }
@@ -68,6 +79,7 @@ export interface VoiceSessionTestKit {
     code: string,
     message: string,
   ) => Promise<void>;
+  fireTransportDisconnect: () => void;
   teardownDuring: (step: "mcp" | "token") => Promise<{
     mcpClose: Mock;
     sessions: FakeRealtimeSession[];
@@ -210,6 +222,19 @@ export function createVoiceSessionTestKit(
     return { mcpClose, sessions: mocks.FakeSession.instances };
   }
 
+  /**
+   * Invoke the handler the hook registered for the transport's "disconnected"
+   * event on the first transport instance, simulating a connection drop.
+   */
+  function fireTransportDisconnect(): void {
+    const transport = mocks.FakeTransport.instances[0];
+    const call = transport?.on.mock.calls.find(
+      ([event]) => event === "disconnected",
+    );
+
+    (call?.[1] as (() => void) | undefined)?.();
+  }
+
   return {
     defaultParams,
     stubFetchOk,
@@ -217,6 +242,7 @@ export function createVoiceSessionTestKit(
     connectAndGetSession,
     connectWithSeed,
     emitResponseFailure,
+    fireTransportDisconnect,
     teardownDuring,
   };
 }
