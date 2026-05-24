@@ -429,6 +429,92 @@ describe("useVoicePersistence", () => {
     expect(result.current.activeConversationId).toBeNull();
   });
 
+  it("fires onLiveRecordDeleted when deleteAllConversations removes the live record", async () => {
+    const record = createTestRecord({
+      sessionType: "voice",
+      voiceHistory: [userTextItem("live")],
+      messages: [],
+    });
+
+    await saveConversation(record);
+    window.location.hash = record.id;
+    const onLiveRecordDeleted = vi.fn();
+
+    const { result } = renderHook(() =>
+      useVoicePersistence({ liveHistory: [], onLiveRecordDeleted }),
+    );
+
+    await waitForEffects();
+    await act(() => result.current.deleteAllConversations());
+
+    expect(onLiveRecordDeleted).toHaveBeenCalledOnce();
+  });
+
+  it("does not fire onLiveRecordDeleted when deleteAllConversations has no live record", async () => {
+    const record = createTestRecord({
+      sessionType: "voice",
+      voiceHistory: [userTextItem("other")],
+      messages: [],
+    });
+
+    await saveConversation(record);
+    // No hash → no active/pending live record, just a stored conversation.
+    const onLiveRecordDeleted = vi.fn();
+
+    const { result } = renderHook(() =>
+      useVoicePersistence({ liveHistory: [], onLiveRecordDeleted }),
+    );
+
+    await waitForEffects();
+    await act(() => result.current.deleteAllConversations());
+
+    expect(onLiveRecordDeleted).not.toHaveBeenCalled();
+  });
+
+  it("fires onLiveRecordDeleted when deleteUnbookmarked removes an unbookmarked live record", async () => {
+    const record = createTestRecord({
+      sessionType: "voice",
+      bookmarked: false,
+      voiceHistory: [userTextItem("live")],
+      messages: [],
+    });
+
+    await saveConversation(record);
+    window.location.hash = record.id;
+    const onLiveRecordDeleted = vi.fn();
+
+    const { result } = renderHook(() =>
+      useVoicePersistence({ liveHistory: [], onLiveRecordDeleted }),
+    );
+
+    await waitForEffects();
+    await act(() => result.current.deleteUnbookmarkedConversations());
+
+    expect(onLiveRecordDeleted).toHaveBeenCalledOnce();
+  });
+
+  it("does not fire onLiveRecordDeleted when the live record is bookmarked", async () => {
+    const record = createTestRecord({
+      sessionType: "voice",
+      bookmarked: true,
+      voiceHistory: [userTextItem("keep")],
+      messages: [],
+    });
+
+    await saveConversation(record);
+    window.location.hash = record.id;
+    const onLiveRecordDeleted = vi.fn();
+
+    const { result } = renderHook(() =>
+      useVoicePersistence({ liveHistory: [], onLiveRecordDeleted }),
+    );
+
+    await waitForEffects();
+    await act(() => result.current.deleteUnbookmarkedConversations());
+
+    expect(onLiveRecordDeleted).not.toHaveBeenCalled();
+  });
+
   it("deleteAllConversations clears DB and resets state", async () => {
     const record = createTestRecord({
       sessionType: "voice",

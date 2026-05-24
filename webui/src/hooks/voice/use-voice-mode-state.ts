@@ -77,9 +77,18 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     turnDetection: settings.savedTurnDetection,
   });
 
+  // When a Settings bulk delete removes the in-progress live record, tear the
+  // session down too (mirrors the sidebar delete-active path) so the deleted
+  // conversation isn't left streaming on screen and re-saved under a fresh id.
+  const onLiveRecordDeleted = useCallback(() => {
+    if (voice.status === "connected") void voice.disconnect();
+    voice.resetHistory();
+  }, [voice]);
+
   const persistence = useVoicePersistence({
     liveHistory: voice.history,
     onForeignRecord,
+    onLiveRecordDeleted,
   });
   const transfer = useConversationTransfer(persistence.refreshList);
 

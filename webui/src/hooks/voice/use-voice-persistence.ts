@@ -30,6 +30,13 @@ interface UseVoicePersistenceParams {
    * from the URL hash. When omitted, the hook falls back to clearing the active
    * id. */
   onForeignRecord?: (record: ConversationRecord) => void;
+  /** Invoked when a bulk delete (all / unbookmarked) removes the in-progress
+   * live record — the active one, or a pending-new one still on its reserved id.
+   * The voice layer wires this to stop and reset the live session so a deleted
+   * conversation isn't left streaming on screen and re-saved under a fresh id.
+   * Unlike the sidebar delete paths, the Settings bulk deletes have no other
+   * route to the session controls. */
+  onLiveRecordDeleted?: () => void;
 }
 
 export interface UseVoicePersistenceReturn {
@@ -60,7 +67,7 @@ export interface UseVoicePersistenceReturn {
 export function useVoicePersistence(
   params: UseVoicePersistenceParams,
 ): UseVoicePersistenceReturn {
-  const { liveHistory, onForeignRecord } = params;
+  const { liveHistory, onForeignRecord, onLiveRecordDeleted } = params;
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
@@ -238,12 +245,13 @@ export function useVoicePersistence(
 
     if (liveId != null) {
       canceledIdsRef.current.add(liveId);
+      onLiveRecordDeleted?.();
     }
 
     await dbDeleteAllConversations();
     startNewConversation();
     await refreshList();
-  }, [refreshList, startNewConversation]);
+  }, [refreshList, startNewConversation, onLiveRecordDeleted]);
 
   const deleteUnbookmarkedConversations = useCallback(async () => {
     // The live record (active, or a pending-new one still on its reserved id)
@@ -253,12 +261,13 @@ export function useVoicePersistence(
 
     if (liveId != null && !bookmarkedRef.current) {
       canceledIdsRef.current.add(liveId);
+      onLiveRecordDeleted?.();
       startNewConversation();
     }
 
     await dbDeleteUnbookmarkedConversations();
     await refreshList();
-  }, [refreshList, startNewConversation]);
+  }, [refreshList, startNewConversation, onLiveRecordDeleted]);
 
   const renameConversation = useCallback(
     async (id: string, title: string | null) => {

@@ -46,8 +46,8 @@ vi.mock(import("#webui/hooks/chat/use-conversation-transfer"), () => ({
 import { type ModeContext } from "#webui/components/mode-context";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
-import { type UseSettingsReturn } from "#webui/types/settings";
-import { VoiceApp, type VoiceAppProps } from "./VoiceApp";
+import { makeProps, type PropOverrides } from "./voice-app-test-helpers";
+import { VoiceApp } from "./VoiceApp";
 
 interface VoiceSessionStub {
   status: "idle" | "connecting" | "connected" | "disconnecting" | "error";
@@ -141,56 +141,6 @@ function assistantMsg(itemId: string, transcript: string): RealtimeItem {
   } as unknown as RealtimeItem;
 }
 
-interface PropOverrides {
-  apiKey?: string;
-  provider?: "openai" | "anthropic";
-  onOpenSettings?: () => void;
-  savedRealtimeVoice?: string;
-}
-
-// vi.fn() returns a Mock that includes a Constructable signature, which TS
-// refuses to assign to a plain `() => void` parameter. Cast the result so
-// the JSX spread typechecks against VoiceAppProps.
-function makeProps(o: PropOverrides = {}): VoiceAppProps {
-  const apiKey = o.apiKey ?? "sk-test";
-  const provider = o.provider ?? "openai";
-
-  return {
-    settings: {
-      provider,
-      savedProvider: provider,
-      apiKey,
-      model: "gpt-realtime-2",
-      savedModel: "gpt-realtime-2",
-      enabledTools: {},
-      savedRealtimeVoice: o.savedRealtimeVoice ?? "marin",
-    } as unknown as UseSettingsReturn,
-    display: {
-      showTimestamps: false,
-      showHelpLinks: false,
-      showTokenUsage: false,
-      setShowTimestamps: vi.fn(),
-      setShowHelpLinks: vi.fn(),
-      setShowTokenUsage: vi.fn(),
-    },
-    viewState: {
-      historyPanelOpen: false,
-      settingsOpen: false,
-      settingsTab: "connection",
-    },
-    setViewState: vi.fn(),
-    mcpStatus: "connected",
-    totalToolsCount: 2,
-    enabledToolsCount: 2,
-    onOpenSettings: o.onOpenSettings ?? vi.fn(),
-    onOpenToolsSettings: vi.fn(),
-    onOpenConnectionSettings: vi.fn(),
-    onForeignRecord: vi.fn(),
-    clearViewingMode: vi.fn(),
-    setModeContext: vi.fn(),
-  } as unknown as VoiceAppProps;
-}
-
 function renderVoiceApp(overrides: PropOverrides = {}) {
   return render(<VoiceApp {...makeProps(overrides)} />);
 }
@@ -206,6 +156,16 @@ function renderWithPanelOpen(overrides: PropOverrides = {}) {
   );
 
   return { ...result, props };
+}
+
+// Pull the onLiveRecordDeleted callback handed to the mocked useVoicePersistence
+// so a test can fire it the way a Settings bulk delete would.
+function grabOnLiveRecordDeleted(): (() => void) | undefined {
+  const params = mocks.useVoicePersistence.mock.calls.at(-1)?.[0] as
+    | { onLiveRecordDeleted?: () => void }
+    | undefined;
+
+  return params?.onLiveRecordDeleted;
 }
 
 beforeEach(() => {
@@ -802,6 +762,27 @@ describe("VoiceApp", () => {
 
       expect(session.disconnect).not.toHaveBeenCalled();
       expect(persistence.deleteConversation).toHaveBeenCalledWith("other-conv");
+    });
+
+    it("bulk-delete teardown disconnects only when connected, always resets history", () => {
+      // useVoicePersistence is mocked, so reach for the onLiveRecordDeleted
+      // callback it was handed and fire it as a Settings bulk delete would.
+      const connected = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(connected);
+      const { rerender } = renderVoiceApp();
+
+      grabOnLiveRecordDeleted()?.();
+      expect(connected.disconnect).toHaveBeenCalledOnce();
+      expect(connected.resetHistory).toHaveBeenCalledOnce();
+
+      const idle = baseSession({ status: "idle" });
+
+      mocks.useVoiceSession.mockReturnValue(idle);
+      rerender(<VoiceApp {...makeProps()} />);
+      grabOnLiveRecordDeleted()?.();
+      expect(idle.disconnect).not.toHaveBeenCalled();
+      expect(idle.resetHistory).toHaveBeenCalledOnce();
     });
 
     it("reports its mode context (delete handlers + lock) up to App", () => {
