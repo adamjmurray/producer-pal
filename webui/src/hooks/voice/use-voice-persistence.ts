@@ -166,6 +166,11 @@ export function useVoicePersistence(
         () => canceledIdsRef.current.has(id),
       ).then((record) => {
         if (!record) return; // deleted while the save was pending/in-flight
+        // A delete can also land after saveVoiceRecord's pre-write check but
+        // during its await: the record gets written, then the delete removes
+        // it (the on-disk delete wins). Re-check here so we don't adopt a
+        // just-deleted id and leave a stale hash pointing at an empty list.
+        if (canceledIdsRef.current.has(id)) return;
         createdAtRef.current = record.createdAt;
         titleRef.current = record.title;
         if (activeIdRef.current !== id) setActiveId(id);

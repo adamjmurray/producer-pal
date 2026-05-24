@@ -10,33 +10,14 @@ import { type RealtimeItem } from "@openai/agents/realtime";
 import { act, renderHook } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
-import {
-  getConversationDb,
-  loadConversation,
-  resetDbCache,
-  saveConversation,
-} from "#webui/lib/conversation-db";
+import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
-
-async function waitForEffects(ms = 30): Promise<void> {
-  await act(async () => {
-    await new Promise((r) => setTimeout(r, ms));
-  });
-}
-
-const userTextItem = (text: string): RealtimeItem =>
-  ({
-    type: "message",
-    role: "user",
-    content: [{ type: "input_text", text }],
-  }) as unknown as RealtimeItem;
-
-const userTranscriptItem = (transcript: string): RealtimeItem =>
-  ({
-    type: "message",
-    role: "user",
-    content: [{ type: "input_audio", transcript }],
-  }) as unknown as RealtimeItem;
+import {
+  resetConversationsDb,
+  userTextItem,
+  userTranscriptItem,
+  waitForEffects,
+} from "./voice-persistence-test-helpers";
 
 const originalLocation = window.location;
 
@@ -47,10 +28,7 @@ beforeEach(async () => {
     value: originalLocation,
   });
   window.location.hash = "";
-  await resetDbCache();
-  const db = await getConversationDb();
-
-  await db.clear("conversations");
+  await resetConversationsDb();
 });
 
 describe("useVoicePersistence", () => {
