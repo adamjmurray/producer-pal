@@ -27,9 +27,18 @@ export interface VoiceSpeedSliderProps {
 export function VoiceSpeedSlider({ speed, setSpeed }: VoiceSpeedSliderProps) {
   return (
     <div>
-      <label htmlFor="voice-speed-slider" className="block text-sm mb-2">
-        Speed ({speed.toFixed(2)}x)
-      </label>
+      <div className="flex items-center justify-between mb-2">
+        <label htmlFor="voice-speed-slider" className="text-sm">
+          Speed ({speed.toFixed(2)}x)
+        </label>
+        <button
+          type="button"
+          onClick={() => setSpeed(VOICE_SPEED_DEFAULT)}
+          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+        >
+          Reset
+        </button>
+      </div>
       <input
         id="voice-speed-slider"
         type="range"
@@ -43,18 +52,6 @@ export function VoiceSpeedSlider({ speed, setSpeed }: VoiceSpeedSliderProps) {
         className="w-full"
         data-testid="voice-speed-slider"
       />
-      <div className="flex justify-between text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-        <button
-          type="button"
-          onClick={() => setSpeed(VOICE_SPEED_DEFAULT)}
-          className="underline hover:text-zinc-700 dark:hover:text-zinc-200"
-        >
-          Reset to {VOICE_SPEED_DEFAULT.toFixed(1)}x
-        </button>
-        <span>
-          {VOICE_SPEED_MIN.toFixed(1)}x – {VOICE_SPEED_MAX.toFixed(1)}x
-        </span>
-      </div>
     </div>
   );
 }

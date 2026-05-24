@@ -34,7 +34,7 @@ describe("VoiceVolumeSlider", () => {
 
     render(<VoiceVolumeSlider volume={0.4} setVolume={setVolume} />);
 
-    fireEvent.click(screen.getByText(/Reset to 100%/));
+    fireEvent.click(screen.getByText("Reset"));
     expect(setVolume).toHaveBeenCalledWith(1.0);
   });
 });

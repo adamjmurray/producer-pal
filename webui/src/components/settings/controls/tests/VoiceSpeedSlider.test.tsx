@@ -34,7 +34,7 @@ describe("VoiceSpeedSlider", () => {
 
     render(<VoiceSpeedSlider speed={1.4} setSpeed={setSpeed} />);
 
-    fireEvent.click(screen.getByText(/Reset to 1\.0x/));
+    fireEvent.click(screen.getByText("Reset"));
     expect(setSpeed).toHaveBeenCalledWith(1.0);
   });
 });

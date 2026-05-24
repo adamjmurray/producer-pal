@@ -30,9 +30,18 @@ export function VoiceVolumeSlider({
 }: VoiceVolumeSliderProps) {
   return (
     <div>
-      <label htmlFor="voice-volume-slider" className="block text-sm mb-2">
-        Volume ({Math.round(volume * 100)}%)
-      </label>
+      <div className="flex items-center justify-between mb-2">
+        <label htmlFor="voice-volume-slider" className="text-sm">
+          Volume ({Math.round(volume * 100)}%)
+        </label>
+        <button
+          type="button"
+          onClick={() => setVolume(VOICE_VOLUME_DEFAULT)}
+          className="text-xs underline text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+        >
+          Reset
+        </button>
+      </div>
       <input
         id="voice-volume-slider"
         type="range"
@@ -46,19 +55,6 @@ export function VoiceVolumeSlider({
         className="w-full"
         data-testid="voice-volume-slider"
       />
-      <div className="flex justify-between text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-        <button
-          type="button"
-          onClick={() => setVolume(VOICE_VOLUME_DEFAULT)}
-          className="underline hover:text-zinc-700 dark:hover:text-zinc-200"
-        >
-          Reset to {Math.round(VOICE_VOLUME_DEFAULT * 100)}%
-        </button>
-        <span>
-          {Math.round(VOICE_VOLUME_MIN * 100)}% –{" "}
-          {Math.round(VOICE_VOLUME_MAX * 100)}%
-        </span>
-      </div>
     </div>
   );
 }
