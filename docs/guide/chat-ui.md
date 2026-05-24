@@ -137,8 +137,7 @@ for the voice, speed, and turn-detection options.
 > Voice currently works in Chrome (other Chromium browsers like Edge are likely
 > fine but untested). Firefox is not supported.
 
-_Screenshot placeholder: add `producer-pal-chat-voice-mode.png` here showing the
-voice transcript with the Talk/Stop controls bar._
+<img src="/img/producer-pal-chat-voice-mode.png" alt="Voice mode" width="500"/>
 
 ### Talking with the AI
 
@@ -248,8 +247,7 @@ key**. To use it, set the **Provider** to **OpenAI** and select the **GPT
 Realtime 2 (Voice)** model on the [Connection](#connection) tab — the voice
 settings below then appear.
 
-_Screenshot placeholder: add `producer-pal-chat-settings-voice.png` here showing
-the voice controls with the "Advanced" turn-detection section expanded._
+<img src="/img/producer-pal-chat-settings-voice.png" alt="Voice settings" width="500"/>
 
 - **Voice** - The spoken voice the assistant uses (Marin, Cedar, Alloy, and
   more). Marin and Cedar are recommended for the best audio quality. The voice
