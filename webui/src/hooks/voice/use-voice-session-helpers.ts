@@ -53,9 +53,19 @@ export interface ResponseFailure {
   message: string;
 }
 
+// User-facing messages for the `incomplete` reasons worth surfacing. Reasons
+// not listed here (e.g. turn_detected / client_cancelled — a normal barge-in or
+// interruption) are intentionally ignored so they don't flash an error banner.
+const INCOMPLETE_MESSAGES: Record<string, string> = {
+  max_output_tokens: "Response cut off — it reached the maximum length.",
+  content_filter: "Response stopped by the content filter.",
+};
+
 /**
- * Inspect a transport `response.done` event for a failure status and return
- * the structured error. Returns null for successful responses.
+ * Inspect a transport `response.done` event and return a structured failure to
+ * surface, or null. Covers `failed` responses (server error) and the
+ * `incomplete` reasons worth flagging (max length, content filter); a benign
+ * incomplete reason such as an interruption returns null.
  *
  * @param event - The transport event payload
  * @returns Failure code + message, or null
@@ -64,19 +74,34 @@ export function extractResponseFailure(event: unknown): ResponseFailure | null {
   const e = event as {
     response?: {
       status?: string;
-      status_details?: { error?: { code?: string; message?: string } };
+      status_details?: {
+        error?: { code?: string; message?: string };
+        reason?: string;
+      };
     };
   };
 
   const response = e.response;
 
-  if (response?.status !== "failed") return null;
-  const err = response.status_details?.error;
+  if (response?.status === "failed") {
+    const err = response.status_details?.error;
 
-  return {
-    code: err?.code ?? "unknown",
-    message: err?.message ?? err?.code ?? "Response failed",
-  };
+    return {
+      code: err?.code ?? "unknown",
+      message: err?.message ?? err?.code ?? "Response failed",
+    };
+  }
+
+  if (response?.status === "incomplete") {
+    const reason = response.status_details?.reason;
+
+    if (reason == null) return null;
+    const message = INCOMPLETE_MESSAGES[reason];
+
+    return message == null ? null : { code: reason, message };
+  }
+
+  return null;
 }
 
 /**
