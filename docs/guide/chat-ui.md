@@ -132,7 +132,7 @@ realtime model to talk with the AI out loud. It is **OpenAI only** (for now) and
 To enter voice mode, open [Settings](#settings), set the **Provider** to
 **OpenAI**, and select the **GPT Realtime 2 (Voice)** model. The chat composer
 is replaced by the voice controls described below. See [Voice settings](#voice)
-for the voice, speed, and turn-detection options.
+for the voice, volume, speed, and turn-detection options.
 
 > Voice currently works in Chrome (other Chromium browsers like Edge are likely
 > fine but untested). Firefox is not supported.
@@ -158,8 +158,7 @@ but for speech:
   microphone without ending the session.
 - **Interrupt** - Appears while the assistant is thinking or speaking. Cuts off
   the current response so you can take over (the transcript so far is kept). To
-  interrupt by simply speaking instead, enable
-  [barge-in](#turn-detection-advanced).
+  interrupt by simply speaking instead, enable [barge-in](#voice-settings).
 - **Voice label** - Shows the active voice. It turns amber when you change the
   voice in settings mid-session, as a reminder that the change applies on the
   next Stop → Talk.
@@ -244,8 +243,8 @@ You may need to change the URL if:
 Producer Pal includes an experimental voice mode for spoken conversations with
 the AI. Voice mode is **OpenAI only** (for now) and **requires an OpenAI API
 key**. To use it, set the **Provider** to **OpenAI** and select the **GPT
-Realtime 2 (Voice)** model on the [Connection](#connection) tab — the voice
-settings below then appear.
+Realtime 2 (Voice)** model on the [Connection](#connection) tab — the **Voice**
+dropdown and a collapsible **Voice Settings** section then appear.
 
 <img src="/img/producer-pal-chat-settings-voice.png" alt="Voice settings" width="500"/>
 
@@ -253,20 +252,25 @@ settings below then appear.
   more). Marin and Cedar are recommended for the best audio quality. The voice
   locks once a session starts talking, so changing it applies on the next
   session (Stop, then Talk).
+
+#### Voice Settings
+
+The **Voice Settings** disclosure groups playback and turn-detection options.
+Each slider has a **Reset** link to restore its default. Changes apply on the
+next session (Stop, then Talk) — except **Volume**, which takes effect
+immediately.
+
+- **Volume** - Output loudness of the assistant's voice (0–100%, default 100%).
+  Adjustable live during a session, so you can balance the assistant against the
+  music coming from Ableton without touching Live's mixer.
 - **Speed** - Playback speed of the assistant's voice (0.5×–1.5×, default 1.0×).
-
-#### Turn detection (Advanced)
-
-The **Advanced** disclosure controls how the model decides you've finished
-speaking — known as voice activity detection, or "VAD". As with the other voice
-settings, changes apply on the next session (Stop, then Talk).
-
-- **Turn detection** - The VAD strategy:
+- **Turn detection** - How the model decides you've finished speaking — voice
+  activity detection, or "VAD":
   - **Server VAD (volume-based)** - Detects the end of your turn from audio
     volume. Adds two tuning sliders:
     - **Threshold** - Activation volume (0–1). Higher values ignore quieter
       input.
-    - **Silence** - How long (in milliseconds) to wait after you stop speaking
+    - **Pause** - How long (in milliseconds) to wait after you stop speaking
       before ending your turn.
   - **Semantic VAD (model-based)** - The model decides when you've finished a
     thought. Adds one setting:
