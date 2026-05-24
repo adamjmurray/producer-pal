@@ -182,6 +182,17 @@ describe("voice-token route", () => {
     expect(JSON.stringify(json)).not.toContain("sk-secret-do-not-leak");
   });
 
+  it("returns 502 when an upstream 200 response is missing the value field", async () => {
+    mockOpenAIFetch(async () => jsonResponse(200, { expires_at: 123 }));
+
+    const res = await postVoiceToken(appState.baseUrl);
+
+    expect(res.status).toBe(502);
+    const json = (await res.json()) as { error: string };
+
+    expect(json.error).toContain("missing 'value'");
+  });
+
   it("defaults to gpt-realtime-2 when no model is provided", async () => {
     const { calls } = mockOpenAIFetch(async () =>
       jsonResponse(200, { value: "ek_x", expires_at: 0 }),

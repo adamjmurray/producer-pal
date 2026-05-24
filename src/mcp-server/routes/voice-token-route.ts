@@ -98,7 +98,20 @@ export function registerVoiceTokenRoute(
           return;
         }
 
-        const json = (await upstream.json()) as OpenAIClientSecretResponse;
+        const json =
+          (await upstream.json()) as Partial<OpenAIClientSecretResponse> | null;
+
+        // A 200 with an unexpected shape (no ephemeral token) shouldn't relay a
+        // `{ value: undefined }` the client has to reverse-engineer. Validate at
+        // the trust boundary so the error names the real cause.
+        if (json == null || typeof json.value !== "string" || !json.value) {
+          console.warn("voice-token: upstream 200 response missing 'value'");
+          res.status(502).json({
+            error: "OpenAI client_secrets response missing 'value' field",
+          });
+
+          return;
+        }
 
         res.json({
           value: json.value,
