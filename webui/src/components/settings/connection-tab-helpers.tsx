@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { ThinkingStateIcon } from "#webui/components/chat/controls/ThinkingToggle";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
@@ -123,8 +124,9 @@ interface VoiceSettingsProps {
 }
 
 /**
- * Voice-mode settings group (voice, speed, turn detection), shown only for the
- * OpenAI realtime model. Returns null otherwise.
+ * Voice-mode settings, shown only for the OpenAI realtime model. The voice
+ * selector sits at the top level; speed and turn detection are tucked into a
+ * collapsed "Voice Settings" disclosure. Returns null otherwise.
  * @param props - Component props
  * @param props.provider - Current provider
  * @param props.model - Current model id
@@ -157,11 +159,22 @@ export function VoiceSettings({
         setVoice={setRealtimeVoice}
         activeVoice={activeVoice}
       />
-      <VoiceSpeedSlider speed={voiceSpeed} setSpeed={setVoiceSpeed} />
-      <TurnDetectionControls
-        settings={turnDetection}
-        setSettings={setTurnDetection}
-      />
+      <details className="disclosure">
+        <summary className="text-sm cursor-pointer select-none flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
+          <DisclosureChevron />
+          Voice Settings
+        </summary>
+        <div className="mt-3 space-y-3">
+          <VoiceSpeedSlider speed={voiceSpeed} setSpeed={setVoiceSpeed} />
+          <TurnDetectionControls
+            settings={turnDetection}
+            setSettings={setTurnDetection}
+          />
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Applied on the next session (Stop, then Talk).
+          </p>
+        </div>
+      </details>
     </>
   );
 }

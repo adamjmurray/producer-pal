@@ -29,12 +29,13 @@ const semanticVad: TurnDetectionSettings = {
 };
 
 describe("TurnDetectionControls", () => {
-  it("renders the Advanced disclosure summary", () => {
+  it("renders the turn-detection mode selector", () => {
     render(
       <TurnDetectionControls settings={serverVad} setSettings={vi.fn()} />,
     );
 
-    expect(screen.getByText("Advanced")).toBeTruthy();
+    expect(screen.getByText("Turn detection")).toBeTruthy();
+    expect(screen.getByTestId("turn-detection-mode")).toBeTruthy();
   });
 
   it("shows the threshold + silence sliders for server VAD, not eagerness", () => {

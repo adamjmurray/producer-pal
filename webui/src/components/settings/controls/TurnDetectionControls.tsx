@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { Tooltip } from "#webui/components/settings/controls/Tooltip";
 import {
   type SemanticEagerness,
@@ -36,15 +35,15 @@ export interface TurnDetectionControlsProps {
 }
 
 /**
- * Advanced (collapsed) disclosure for OpenAI Realtime turn detection (VAD).
- * Picks the VAD mode and exposes that mode's tuning knobs: eagerness for
- * Semantic VAD, threshold + silence window for Server VAD. Mid-session edits
- * apply on the next Stop → Talk, mirroring the voice + speed controls.
+ * OpenAI Realtime turn detection (VAD) controls. Picks the VAD mode and exposes
+ * that mode's tuning knobs: eagerness for Semantic VAD, threshold + silence
+ * window for Server VAD, plus the barge-in toggle. Rendered inside the parent
+ * "Voice Settings" disclosure; mid-session edits apply on the next Stop → Talk.
  *
  * @param props - Component props
  * @param props.settings - Current in-modal turn-detection settings
  * @param props.setSettings - Setter for the in-modal settings object
- * @returns Turn-detection settings disclosure element
+ * @returns Turn-detection controls element
  */
 export function TurnDetectionControls({
   settings,
@@ -54,63 +53,52 @@ export function TurnDetectionControls({
     setSettings({ ...settings, ...partial });
 
   return (
-    <details className="disclosure">
-      <summary className="text-sm cursor-pointer select-none flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
-        <DisclosureChevron />
-        Advanced
-      </summary>
-      <div className="mt-3 space-y-3">
-        <div>
-          <label htmlFor="turn-detection-mode" className="block text-sm mb-2">
-            Turn detection
-          </label>
-          <select
-            id="turn-detection-mode"
-            value={settings.mode}
-            onChange={(e) =>
-              update({
-                mode: (e.target as HTMLSelectElement)
-                  .value as TurnDetectionMode,
-              })
-            }
-            className={SELECT_CLASS}
-            data-testid="turn-detection-mode"
-          >
-            {MODE_OPTIONS.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {settings.mode === "semantic_vad" ? (
-          <EagernessSelect settings={settings} update={update} />
-        ) : (
-          <ServerVadSliders settings={settings} update={update} />
-        )}
-
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
-          <input
-            type="checkbox"
-            id="turn-detection-barge-in"
-            checked={settings.interruptResponse}
-            onChange={(e) =>
-              update({
-                interruptResponse: (e.target as HTMLInputElement).checked,
-              })
-            }
-            data-testid="turn-detection-barge-in"
-          />
-          Enable barge-in
-          <Tooltip text="Speak to interrupt Producer Pal while it's talking. Use headphones — without them, the assistant's own voice can trigger interruptions." />
+    <>
+      <div>
+        <label htmlFor="turn-detection-mode" className="block text-sm mb-2">
+          Turn detection
         </label>
-
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          Applied on the next session (Stop, then Talk).
-        </p>
+        <select
+          id="turn-detection-mode"
+          value={settings.mode}
+          onChange={(e) =>
+            update({
+              mode: (e.target as HTMLSelectElement).value as TurnDetectionMode,
+            })
+          }
+          className={SELECT_CLASS}
+          data-testid="turn-detection-mode"
+        >
+          {MODE_OPTIONS.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
       </div>
-    </details>
+
+      {settings.mode === "semantic_vad" ? (
+        <EagernessSelect settings={settings} update={update} />
+      ) : (
+        <ServerVadSliders settings={settings} update={update} />
+      )}
+
+      <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <input
+          type="checkbox"
+          id="turn-detection-barge-in"
+          checked={settings.interruptResponse}
+          onChange={(e) =>
+            update({
+              interruptResponse: (e.target as HTMLInputElement).checked,
+            })
+          }
+          data-testid="turn-detection-barge-in"
+        />
+        Enable barge-in
+        <Tooltip text="Speak to interrupt Producer Pal while it's talking. Use headphones — without them, the assistant's own voice can trigger interruptions." />
+      </label>
+    </>
   );
 }
 
