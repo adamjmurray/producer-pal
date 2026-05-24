@@ -86,7 +86,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "transform expressions applied to each duplicated clip (clips only, per-clip)",
+        "transform expressions, parameter: expression per line (applied to each duplicated clip; clips only)",
       ),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {

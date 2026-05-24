@@ -125,13 +125,13 @@ all this work the new surfaces are limited to: **one new top-level write arg**
 `read-device`), and **one new top-level read output field** (`modulations` on
 `read-device`, for Wavetable's mod matrix only):
 
-| Surface                                                                                         | Where it goes                                                                                                            |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Writable pseudo-params (e.g. `globalMode`, `voices`, `irCategory`, `sample`, `mod1Source`)      | Inside `update-device`'s existing `params` arg as `name=value` lines                                                     |
-| Read-only pseudo-params (e.g. `multiSampleMode`, `estimatedPlaybackLength`)                     | Inside `read-device`'s existing `params` output field                                                                    |
-| Actions (e.g. `reverse`, `warpAs(4.0)`, `setModulation(...)`)                                   | **New top-level `actions: string[]` arg** on `update-device`                                                             |
-| Dynamic per-state/per-install catalogs (e.g. `irFileList`, `sidechainSourceTrackIds`)           | New value `"options"` for `read-device`'s existing `include` arg                                                         |
-| Structured non-param state (Wavetable's mod-matrix cells — inherently 2D, name-collision-prone) | **New top-level `modulations` output field** on `read-device` (always-on for Wavetable; omitted/empty for other devices) |
+| Surface                                                                                         | Where it goes                                                                                                                                                                                                        |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Writable pseudo-params (e.g. `globalMode`, `voices`, `irCategory`, `sample`, `mod1Source`)      | Inside `update-device`'s existing `params` arg as `name=value` lines                                                                                                                                                 |
+| Read-only pseudo-params (e.g. `multiSampleMode`, `estimatedPlaybackLength`)                     | Inside `read-device`'s existing `params` output field                                                                                                                                                                |
+| Actions (e.g. `reverse`, `warpAs(4.0)`, `setModulation(...)`)                                   | **New top-level `actions: string[]` arg** on `update-device`                                                                                                                                                         |
+| Dynamic per-state/per-install catalogs (e.g. `irFileList`, `sidechainSourceTrackIds`)           | New value `"options"` for `read-device`'s existing `include` arg                                                                                                                                                     |
+| Structured non-param state (Wavetable's mod-matrix cells — inherently 2D, name-collision-prone) | **New top-level `modulations` output field** on `read-device` (Wavetable only; opt-in via `include: ["options"]`, alongside the dynamic catalogs, since the mod-matrix scan is expensive; omitted for other devices) |
 
 This keeps the tool schema flat — no per-device arg explosion — and gives the
 LLM one consistent surface for setting both DeviceParameters and class-level
@@ -729,8 +729,10 @@ Oscillator engines + wavetables:
 ```
 
 This field is parallel to `options` in role — structured data that isn't
-param-shaped — but it's **current state, not catalog discovery**, so it's always
-on (not opt-in) and present for Wavetable only (omitted or empty for other
+param-shaped (it's **current state**, not catalog discovery) — and ships
+alongside the dynamic catalogs: it is **opt-in via `include: ["options"]`**,
+because scanning the mod matrix costs many Live API calls and shouldn't run on
+every `read-device`. It is present for Wavetable only (omitted for other
 devices). The matrix can't be flattened into `name = value` lines without name
 collisions (e.g. `"Osc 1 Pos"` is **both** a DeviceParameter and a modulation
 target).
