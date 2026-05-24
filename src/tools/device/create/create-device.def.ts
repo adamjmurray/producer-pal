@@ -30,7 +30,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
       .optional()
       .describe("name for all, or comma-separated for each"),
     params: paramsInputSchema.describe(
-      "applied after creation — array of {name, value} (display units: enum string, note name, number)",
+      "applied after creation — array of {name, value} (name = param name or read-device id; value in display units: enum string, note name, number)",
     ),
   },
 
@@ -39,7 +39,7 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     descriptionOverrides: {
       path: "insertion path, required with deviceName (e.g., 't0', 't0/d1', 't0/d0/c0')",
       name: "display name",
-      params: "array of {name, value}",
+      params: "array of {name, value} (name = param name or id)",
     },
   },
 });

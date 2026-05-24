@@ -40,7 +40,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // Kept for potential future use
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: paramsInputSchema.describe(
-      "array of {name, value} (display units: enum string, note name, number)",
+      "array of {name, value} (name = param name or read-device id; value in display units: enum string, note name, number)",
     ),
     // Intentionally an array (not the usual comma-separated string): action
     // arguments themselves contain commas (e.g. setModulation('x','y',0.5)), so
@@ -119,7 +119,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       path: "device path like 't0/d0' (track 0, device 0)",
       toPath: "destination path to move device to",
       name: "display name (not drum pads)",
-      params: "array of {name, value}",
+      params: "array of {name, value} (name = param name or id)",
       color: "#RRGGBB (chains only)",
     },
   },
