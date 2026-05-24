@@ -70,9 +70,25 @@ const isStr = (x: unknown): x is string => typeof x === "string";
  */
 const isStrArray = (x: unknown): boolean => Array.isArray(x) && x.every(isStr);
 
-// Note: schemas omit additionalProperties on purpose. Some providers (notably
-// Gemini's OpenAPI subset) historically rejected it, which would confound the
-// construct-acceptance signal we actually care about here.
+/**
+ * @param x - Value to test
+ * @param keys - Keys that must be present
+ * @returns True if x is a plain (non-array) object containing every key
+ */
+const isParamMap = (x: unknown, keys: string[]): boolean =>
+  x != null &&
+  typeof x === "object" &&
+  !Array.isArray(x) &&
+  keys.every((k) => k in (x as Args));
+
+// Note: most variants omit additionalProperties on purpose so a clean shape is
+// probed without confounding the construct-acceptance signal. The two object-map
+// variants are the exception — they exist specifically to probe dynamic-key
+// objects (what `z.record(...)` emits). Finding: Gemini does NOT reject
+// additionalProperties anymore, but it (and the bare-object fallback) silently
+// fills `{}` — dropping every key. All other curated models fill it correctly.
+// This is why update-device `params` stays an array<object{name,value}> rather
+// than an object map: the map loses all params on Gemini with no error.
 const VARIANTS: Variant[] = [
   {
     id: "array-of-strings",
@@ -167,6 +183,42 @@ const VARIANTS: Variant[] = [
           isStr((p as Args).sample) &&
           isStr((p as Args).name),
       ),
+  },
+  {
+    id: "object-map",
+    toolName: "set_params_map",
+    tests:
+      "object{additionalProperties:string} (proposed update-device 'params' map)",
+    schema: {
+      type: "object",
+      properties: {
+        params: {
+          type: "object",
+          additionalProperties: { type: "string" },
+        },
+      },
+      required: ["params"],
+    },
+    prompt:
+      "Set these three device parameters using set_params_map: " +
+      "Frequency to 500, Resonance to 20, Drive to 30%.",
+    check: (i) => isParamMap(i.params, ["Frequency", "Resonance", "Drive"]),
+  },
+  {
+    id: "object-map-bare",
+    toolName: "set_params_bare",
+    tests: "object{} no additionalProperties (free-form fallback)",
+    schema: {
+      type: "object",
+      properties: {
+        params: { type: "object" },
+      },
+      required: ["params"],
+    },
+    prompt:
+      "Set these three device parameters using set_params_bare: " +
+      "Frequency to 500, Resonance to 20, Drive to 30%.",
+    check: (i) => isParamMap(i.params, ["Frequency", "Resonance", "Drive"]),
   },
   {
     id: "live-api-value-union",
