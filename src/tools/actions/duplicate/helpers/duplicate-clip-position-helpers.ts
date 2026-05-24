@@ -116,6 +116,12 @@ export async function duplicateClipWithPositions(
 
     // Take lane targeting: re-create on the lane (no duplicate API for lanes)
     if (takeLaneTarget != null) {
+      if (arrangementLength != null) {
+        console.warn(
+          "duplicate: arrangementLength ignored for take-lane duplication (the copy uses the source clip's length)",
+        );
+      }
+
       return duplicateClipsToTakeLane(
         object,
         id,

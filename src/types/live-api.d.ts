@@ -116,6 +116,9 @@ declare global {
     /** Extract clip slot index from path */
     readonly clipSlotIndex: number | null;
 
+    /** Extract take lane index from path (0-based), or null if not on a take lane */
+    readonly takeLaneIndex: number | null;
+
     /** Extract device index from path (last device in nested racks) */
     readonly deviceIndex: number | null;
 

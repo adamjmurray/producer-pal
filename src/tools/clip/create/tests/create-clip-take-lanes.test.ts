@@ -43,7 +43,7 @@ describe("createClip take lanes", () => {
       arrangementStart: "1|1",
       notes: "C3",
       takeLane: "new",
-    })) as { id: string };
+    })) as { id: string; takeLane?: number };
 
     expect(track.call).toHaveBeenCalledWith("create_take_lane");
     expect(track.call).not.toHaveBeenCalledWith(
@@ -56,6 +56,8 @@ describe("createClip take lanes", () => {
 
     expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(result.id).toMatch(/^tl_clip_/);
+    // result surfaces the 1-based lane the clip landed on
+    expect(result.takeLane).toBe(1);
   });
 
   it("creates an audio arrangement clip on a take lane", async () => {

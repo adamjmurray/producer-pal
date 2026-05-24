@@ -134,7 +134,19 @@ describe("duplicate take lane", () => {
     });
     expect(newClip?.set).toHaveBeenCalledWith("loop_end", 4);
     expect(newClip?.set).toHaveBeenCalledWith("looping", 1);
-    expect(result).toMatchObject({ trackIndex: 0, arrangementStart: "5|1" });
+    expect(result).toMatchObject({
+      trackIndex: 0,
+      arrangementStart: "5|1",
+      takeLane: 1,
+    });
+  });
+
+  it("warns and ignores arrangementLength for take-lane duplication", async () => {
+    await duplicateToFreshLane({ arrangementLength: "2:0" });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("arrangementLength ignored for take-lane"),
+    );
   });
 
   it("strips Live note metadata before re-adding to the take lane", async () => {

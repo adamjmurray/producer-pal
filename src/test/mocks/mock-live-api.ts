@@ -188,6 +188,7 @@ export class LiveAPI {
   declare category: "regular" | "return" | "master" | null;
   declare sceneIndex: number | null;
   declare clipSlotIndex: number | null;
+  declare takeLaneIndex: number | null;
   declare deviceIndex: number | null;
   declare timeSignature: string | null;
   declare getColor: () => string | null;
