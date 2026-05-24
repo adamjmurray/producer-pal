@@ -19,6 +19,7 @@ import {
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
+import { useClearViewingModeOnReset } from "#webui/hooks/use-clear-viewing-mode-on-reset";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { type ViewState } from "#webui/hooks/use-view-state";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
@@ -125,6 +126,11 @@ export function useChatModeState(params: UseChatModeStateParams) {
       void conversationManager.saveCurrentConversation(Date.now());
     /* v8 ignore stop */
   }, [conversationManager]);
+
+  useClearViewingModeOnReset(
+    conversationManager.activeConversationId,
+    clearViewingMode,
+  );
 
   const transfer = useConversationTransfer(conversationManager.refreshList);
   const conversationHandlers = useConversationHandlers(

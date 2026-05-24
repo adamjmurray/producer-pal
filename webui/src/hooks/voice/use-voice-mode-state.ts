@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 import { type ModeContext } from "#webui/components/mode-context";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
+import { useClearViewingModeOnReset } from "#webui/hooks/use-clear-viewing-mode-on-reset";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { type ViewState } from "#webui/hooks/use-view-state";
 import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
@@ -26,6 +27,7 @@ export interface UseVoiceModeStateParams {
   totalToolsCount: number;
   enabledToolsCount: number;
   onForeignRecord: (record: ConversationRecord) => void;
+  clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
 }
 
@@ -47,6 +49,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     totalToolsCount,
     enabledToolsCount,
     onForeignRecord,
+    clearViewingMode,
     setModeContext,
   } = params;
 
@@ -91,6 +94,11 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     onLiveRecordDeleted,
   });
   const transfer = useConversationTransfer(persistence.refreshList);
+
+  useClearViewingModeOnReset(
+    persistence.activeConversationId,
+    clearViewingMode,
+  );
 
   const displayItems = useMemo(
     () => mergeVoiceHistory(persistence.savedItems, voice.history),
