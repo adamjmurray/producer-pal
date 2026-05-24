@@ -69,7 +69,7 @@ const mocks = vi.hoisted(() => {
   class FakeTransport {
     static instances: FakeTransport[] = [];
     on = vi.fn();
-    constructor() {
+    constructor(public options?: unknown) {
       FakeTransport.instances.push(this);
     }
   }

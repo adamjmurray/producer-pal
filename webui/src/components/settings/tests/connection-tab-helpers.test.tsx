@@ -80,6 +80,8 @@ describe("VoiceSettings", () => {
     model: OPENAI_REALTIME_MODEL,
     realtimeVoice: "marin",
     setRealtimeVoice: vi.fn(),
+    voiceVolume: 1.0,
+    setVoiceVolume: vi.fn(),
     voiceSpeed: 1.0,
     setVoiceSpeed: vi.fn(),
     turnDetection: DEFAULT_TURN_DETECTION,
@@ -107,9 +109,12 @@ describe("VoiceSettings", () => {
     expect(screen.getByTestId("voice-select").closest("details")).toBeNull();
   });
 
-  it("tucks the speed slider and turn detection inside the disclosure", () => {
+  it("tucks the volume, speed, and turn detection inside the disclosure", () => {
     render(<VoiceSettings {...realtimeProps} />);
 
+    expect(
+      screen.getByTestId("voice-volume-slider").closest("details"),
+    ).not.toBeNull();
     expect(
       screen.getByTestId("voice-speed-slider").closest("details"),
     ).not.toBeNull();

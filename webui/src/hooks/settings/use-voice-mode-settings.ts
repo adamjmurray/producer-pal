@@ -7,8 +7,10 @@ import { useCallback, useState } from "preact/hooks";
 import {
   loadRealtimeVoice,
   loadVoiceSpeed,
+  loadVoiceVolume,
   saveRealtimeVoice,
   saveVoiceSpeed,
+  saveVoiceVolume,
 } from "#webui/hooks/settings/settings-helpers";
 import {
   loadTurnDetection,
@@ -23,6 +25,11 @@ export interface UseVoiceModeSettingsReturn {
   voiceSpeed: number;
   setVoiceSpeed: (speed: number) => void;
   savedVoiceSpeed: number;
+  /** Output playback volume (0.0–1.0). Live: changes drive the active session's
+   * loudness immediately (no Stop → Talk), unlike voice/speed/turn detection.
+   * commit/revert still persist it like the others. */
+  voiceVolume: number;
+  setVoiceVolume: (volume: number) => void;
   turnDetection: TurnDetectionSettings;
   setTurnDetection: (settings: TurnDetectionSettings) => void;
   savedTurnDetection: TurnDetectionSettings;
@@ -36,7 +43,8 @@ export interface UseVoiceModeSettingsReturn {
 }
 
 /**
- * Owns the voice-mode-only settings (voice id + playback speed). Kept
+ * Owns the voice-mode-only settings (voice id, playback speed, output volume,
+ * turn detection). Kept
  * separate from the chat-side useSettings hook to keep that one under the
  * `max-lines-per-function` limit. The in-modal / saved split matches the
  * pattern useSettings uses for chat model: editing during a live session
@@ -53,6 +61,7 @@ export function useVoiceModeSettings(): UseVoiceModeSettingsReturn {
   const [voiceSpeed, setVoiceSpeedState] = useState<number>(loadVoiceSpeed);
   const [savedVoiceSpeed, setSavedVoiceSpeed] =
     useState<number>(loadVoiceSpeed);
+  const [voiceVolume, setVoiceVolumeState] = useState<number>(loadVoiceVolume);
   const [turnDetection, setTurnDetectionState] =
     useState<TurnDetectionSettings>(loadTurnDetection);
   const [savedTurnDetection, setSavedTurnDetection] =
@@ -61,15 +70,17 @@ export function useVoiceModeSettings(): UseVoiceModeSettingsReturn {
   const commit = useCallback(() => {
     saveRealtimeVoice(realtimeVoice);
     saveVoiceSpeed(voiceSpeed);
+    saveVoiceVolume(voiceVolume);
     saveTurnDetection(turnDetection);
     setSavedRealtimeVoice(realtimeVoice);
     setSavedVoiceSpeed(voiceSpeed);
     setSavedTurnDetection(turnDetection);
-  }, [realtimeVoice, voiceSpeed, turnDetection]);
+  }, [realtimeVoice, voiceSpeed, voiceVolume, turnDetection]);
 
   const revert = useCallback(() => {
     setRealtimeVoiceState(loadRealtimeVoice());
     setVoiceSpeedState(loadVoiceSpeed());
+    setVoiceVolumeState(loadVoiceVolume());
     setTurnDetectionState(loadTurnDetection());
   }, []);
 
@@ -80,6 +91,8 @@ export function useVoiceModeSettings(): UseVoiceModeSettingsReturn {
     voiceSpeed,
     setVoiceSpeed: setVoiceSpeedState,
     savedVoiceSpeed,
+    voiceVolume,
+    setVoiceVolume: setVoiceVolumeState,
     turnDetection,
     setTurnDetection: setTurnDetectionState,
     savedTurnDetection,

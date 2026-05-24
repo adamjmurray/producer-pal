@@ -297,6 +297,8 @@ export function useSettings(): UseSettingsReturn {
     voiceSpeed: voiceModeSettings.voiceSpeed,
     setVoiceSpeed: voiceModeSettings.setVoiceSpeed,
     savedVoiceSpeed: voiceModeSettings.savedVoiceSpeed,
+    voiceVolume: voiceModeSettings.voiceVolume,
+    setVoiceVolume: voiceModeSettings.setVoiceVolume,
     turnDetection: voiceModeSettings.turnDetection,
     setTurnDetection: voiceModeSettings.setTurnDetection,
     savedTurnDetection: voiceModeSettings.savedTurnDetection,

@@ -9,6 +9,11 @@ import {
   type RealtimeSession,
   type TransportEvent,
 } from "@openai/agents/realtime";
+import {
+  VOICE_VOLUME_DEFAULT,
+  VOICE_VOLUME_MAX,
+  VOICE_VOLUME_MIN,
+} from "#webui/hooks/settings/settings-helpers";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 
 /**
@@ -374,4 +379,65 @@ export function extractErrorMessage(value: unknown): string {
   }
 
   return String(value);
+}
+
+/**
+ * Clamp a volume to the element-playback range, defaulting an undefined/invalid
+ * value to unity.
+ *
+ * @param volume - Desired volume (0.0–1.0), or undefined
+ * @returns A finite volume in [VOICE_VOLUME_MIN, VOICE_VOLUME_MAX]
+ */
+function clampVolume(volume: number | undefined): number {
+  if (volume == null || !Number.isFinite(volume)) return VOICE_VOLUME_DEFAULT;
+
+  return Math.min(VOICE_VOLUME_MAX, Math.max(VOICE_VOLUME_MIN, volume));
+}
+
+/**
+ * Create the `<audio>` element the WebRTC transport plays remote audio through.
+ * Supplying our own (instead of letting the SDK create one) lets us control
+ * output volume. The SDK sets autoplay + srcObject on it when the remote track
+ * arrives; setting volume here makes the initial level take effect immediately.
+ *
+ * @param volume - Initial output volume (0.0–1.0)
+ * @returns A configured, detached audio element
+ */
+export function createPlaybackAudioElement(
+  volume: number | undefined,
+): HTMLAudioElement {
+  const audioElement = document.createElement("audio");
+
+  audioElement.autoplay = true;
+  audioElement.volume = clampVolume(volume);
+
+  return audioElement;
+}
+
+/**
+ * Apply a live volume change to the active playback element. No-op when there is
+ * no element (idle session), letting the slider adjust loudness mid-session.
+ *
+ * @param audioElement - The active playback element, or null
+ * @param volume - Desired volume (0.0–1.0)
+ */
+export function setAudioVolume(
+  audioElement: HTMLAudioElement | null,
+  volume: number | undefined,
+): void {
+  if (audioElement != null) audioElement.volume = clampVolume(volume);
+}
+
+/**
+ * Stop and detach the playback element on teardown so a closed session leaves no
+ * element holding the (now-ended) remote stream.
+ *
+ * @param audioElement - The playback element to tear down, or null
+ */
+export function teardownAudioElement(
+  audioElement: HTMLAudioElement | null,
+): void {
+  if (audioElement == null) return;
+  audioElement.pause();
+  audioElement.srcObject = null;
 }

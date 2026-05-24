@@ -20,9 +20,12 @@ import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import {
+  createPlaybackAudioElement,
   extractErrorMessage,
   fetchEphemeralToken,
   handleTransportEvent,
+  setAudioVolume,
+  teardownAudioElement,
   toSeedableHistory,
 } from "#webui/hooks/voice/use-voice-session-helpers";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
@@ -51,6 +54,10 @@ interface UseVoiceSessionParams {
   voice?: string;
   /** Output playback speed (audio.output.speed). Defaults to 1.0 when undefined. */
   speed?: number;
+  /** Output playback volume (0.0–1.0) applied to our own <audio> element.
+   * Unlike speed, this is live: changing it updates the active session's
+   * loudness immediately. Defaults to 1.0 (unity) when undefined. */
+  volume?: number;
   /** Thinking UI level ("Default" | "Max" | "Off"). Mapped to
    * reasoning.effort at connect time. */
   thinking?: string;
@@ -124,11 +131,15 @@ export function useVoiceSession(
     enabledTools,
     voice,
     speed,
+    volume,
     thinking,
     turnDetection,
   } = params;
 
   const sessionRef = useRef<RealtimeSession | null>(null);
+  // Our own playback element (we supply it to the WebRTC transport) so output
+  // volume is under our control. Null while idle.
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const mcpClientRef = useRef<Client | null>(null);
   // Set synchronously at the start of connect() so a second call during the
   // await window (token fetch, MCP-tool setup) can't create a second session +
@@ -175,6 +186,8 @@ export function useVoiceSession(
     sessionRef.current = null;
     mcpClientRef.current = null;
     connectingRef.current = false;
+    teardownAudioElement(audioElementRef.current);
+    audioElementRef.current = null;
     // Invalidate any connect() still suspended on an await: when it resumes it
     // will see a changed generation and abort.
     connectGenRef.current++;
@@ -247,12 +260,16 @@ export function useVoiceSession(
           voice,
         });
 
-        // Construct the transport with no options. The SDK calls
-        // getUserMedia({ audio: true }) (default constraints — browser/OS-level
-        // AEC is on by default on macOS and modern Chromium/Safari) and creates
-        // its own <audio> element for playback. This matches the canonical
-        // realtime-next example.
-        const transport = new OpenAIRealtimeWebRTC();
+        // Construct the transport supplying our own <audio> element so we
+        // control output volume (the SDK would otherwise create its own,
+        // unreachable, element). The SDK still calls getUserMedia({ audio: true })
+        // (default constraints — browser/OS-level AEC is on by default on macOS
+        // and modern Chromium/Safari) and sets autoplay + srcObject on our
+        // element when the remote track arrives.
+        const audioElement = createPlaybackAudioElement(volume);
+
+        audioElementRef.current = audioElement;
+        const transport = new OpenAIRealtimeWebRTC({ audioElement });
 
         // Surface a dropped connection (network blip, sleep/wake, tab
         // backgrounding): the SDK closes the transport and emits "disconnected",
@@ -353,6 +370,7 @@ export function useVoiceSession(
       enabledTools,
       voice,
       speed,
+      volume,
       thinking,
       turnDetection,
       cleanup,
@@ -415,6 +433,10 @@ export function useVoiceSession(
       setError(extractErrorMessage(err));
     }
   }, []);
+
+  // Push live volume changes to the active playback element so the slider
+  // adjusts loudness mid-session (no Stop → Talk needed, unlike speed).
+  useEffect(() => setAudioVolume(audioElementRef.current, volume), [volume]);
 
   useEffect(() => {
     return () => {

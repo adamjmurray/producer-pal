@@ -7,7 +7,7 @@ import { type Provider } from "#webui/types/settings";
 import {
   API_KEY_URLS,
   DEFAULT_LOCAL_URLS,
-  MODEL_DOCS_URLS,
+  ModelDocsLink,
   SmallModelToggle,
   ThinkingSelector,
   VoiceSettings,
@@ -32,6 +32,8 @@ interface ConnectionTabProps {
   setSmallModelMode: (enabled: boolean) => void;
   realtimeVoice: string;
   setRealtimeVoice: (voice: string) => void;
+  voiceVolume: number;
+  setVoiceVolume: (volume: number) => void;
   voiceSpeed: number;
   setVoiceSpeed: (speed: number) => void;
   turnDetection: TurnDetectionSettings;
@@ -75,6 +77,8 @@ export function ConnectionTab({
   setSmallModelMode,
   realtimeVoice,
   setRealtimeVoice,
+  voiceVolume,
+  setVoiceVolume,
   voiceSpeed,
   setVoiceSpeed,
   turnDetection,
@@ -143,24 +147,15 @@ export function ConnectionTab({
       />
 
       <ModelSelector provider={provider} model={model} setModel={setModel} />
-      {MODEL_DOCS_URLS[provider] && (
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 -mt-2">
-          <a
-            href={MODEL_DOCS_URLS[provider]}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            {providerLabel} models
-          </a>
-        </p>
-      )}
+      <ModelDocsLink provider={provider} providerLabel={providerLabel} />
 
       <VoiceSettings
         provider={provider}
         model={model}
         realtimeVoice={realtimeVoice}
         setRealtimeVoice={setRealtimeVoice}
+        voiceVolume={voiceVolume}
+        setVoiceVolume={setVoiceVolume}
         voiceSpeed={voiceSpeed}
         setVoiceSpeed={setVoiceSpeed}
         turnDetection={turnDetection}

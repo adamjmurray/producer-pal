@@ -148,6 +148,8 @@ describe("SettingsScreen", () => {
     voiceSpeed: 1.0,
     setVoiceSpeed: vi.fn(),
     savedVoiceSpeed: 1.0,
+    voiceVolume: 1.0,
+    setVoiceVolume: vi.fn(),
     turnDetection: DEFAULT_TURN_DETECTION,
     setTurnDetection: vi.fn(),
     savedTurnDetection: DEFAULT_TURN_DETECTION,

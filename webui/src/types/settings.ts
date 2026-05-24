@@ -102,6 +102,12 @@ export interface UseSettingsReturn {
   /** Persisted voice speed (last save). Read by useVoiceSession at connect time. */
   savedVoiceSpeed: number;
 
+  /** Output playback volume (0.0–1.0) for the OpenAI Realtime API. Unlike the
+   * other voice settings, this is applied live — useVoiceSession reads this
+   * value directly and a mid-session change updates loudness immediately. */
+  voiceVolume: number;
+  setVoiceVolume: (volume: number) => void;
+
   /** In-modal OpenAI Realtime turn-detection (VAD) settings. Mid-session edits
    * don't affect the live session — applied on the next Stop → Talk. */
   turnDetection: TurnDetectionSettings;

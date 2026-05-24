@@ -12,10 +12,18 @@ import { type Provider } from "#webui/types/settings";
 
 const REALTIME_VOICE_KEY = "producer_pal_realtime_voice";
 const VOICE_SPEED_KEY = "producer_pal_voice_speed";
+const VOICE_VOLUME_KEY = "producer_pal_voice_volume";
 
 export const VOICE_SPEED_MIN = 0.5;
 export const VOICE_SPEED_MAX = 1.5;
 export const VOICE_SPEED_DEFAULT = 1.0;
+
+// Output playback gain as an HTMLMediaElement.volume value (0.0–1.0). Capped at
+// unity because plain element volume can't boost above 1.0 — boost above unity
+// is a follow-up (Web Audio GainNode).
+export const VOICE_VOLUME_MIN = 0;
+export const VOICE_VOLUME_MAX = 1;
+export const VOICE_VOLUME_DEFAULT = 1.0;
 
 /**
  * Loads the saved realtime voice from localStorage, falling back to the
@@ -60,6 +68,31 @@ export function loadVoiceSpeed(): number {
  */
 export function saveVoiceSpeed(speed: number): void {
   localStorage.setItem(VOICE_SPEED_KEY, String(speed));
+}
+
+/**
+ * Loads the saved output playback volume from localStorage. Falls back to 1.0
+ * (unity) when missing or out of range — existing users with no stored value
+ * get unity.
+ * @returns A volume clamped to [VOICE_VOLUME_MIN, VOICE_VOLUME_MAX]
+ */
+export function loadVoiceVolume(): number {
+  const stored = localStorage.getItem(VOICE_VOLUME_KEY);
+
+  if (stored == null) return VOICE_VOLUME_DEFAULT;
+  const parsed = Number.parseFloat(stored);
+
+  if (!Number.isFinite(parsed)) return VOICE_VOLUME_DEFAULT;
+
+  return Math.min(VOICE_VOLUME_MAX, Math.max(VOICE_VOLUME_MIN, parsed));
+}
+
+/**
+ * Persists the output playback volume to localStorage.
+ * @param volume - The volume (0.0–1.0) to persist
+ */
+export function saveVoiceVolume(volume: number): void {
+  localStorage.setItem(VOICE_VOLUME_KEY, String(volume));
 }
 
 const VALID_THINKING_LEVELS: readonly string[] = THINKING_LEVELS;

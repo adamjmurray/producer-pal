@@ -76,6 +76,8 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     enabledTools: settings.enabledTools,
     voice: settings.savedRealtimeVoice,
     speed: settings.savedVoiceSpeed,
+    // Live (not saved): volume changes take effect during the active session.
+    volume: settings.voiceVolume,
     thinking: settings.savedThinking,
     turnDetection: settings.savedTurnDetection,
   });

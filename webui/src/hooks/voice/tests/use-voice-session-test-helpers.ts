@@ -26,14 +26,16 @@ export interface FakeRealtimeSessionClass {
   instances: FakeRealtimeSession[];
 }
 
-/** Shape of the FakeTransport double (records its `.on` subscriptions). */
+/** Shape of the FakeTransport double (records its `.on` subscriptions and the
+ * constructor options, including the supplied playback audioElement). */
 export interface FakeRealtimeTransport {
   on: Mock;
+  options?: unknown;
 }
 
 /** Constructor + static registry of the FakeTransport double. */
 export interface FakeRealtimeTransportClass {
-  new (): FakeRealtimeTransport;
+  new (options?: unknown): FakeRealtimeTransport;
   instances: FakeRealtimeTransport[];
 }
 

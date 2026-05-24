@@ -69,7 +69,7 @@ const mocks = vi.hoisted(() => {
   class FakeTransport {
     static instances: FakeTransport[] = [];
     on = vi.fn();
-    constructor() {
+    constructor(public options?: unknown) {
       FakeTransport.instances.push(this);
     }
   }
@@ -388,5 +388,33 @@ describe("useVoiceSession half-duplex (barge-in disabled)", () => {
     });
 
     expect(session.mute).toHaveBeenLastCalledWith(false);
+  });
+});
+
+describe("useVoiceSession output volume", () => {
+  it("sets the initial volume on the playback element and updates it live", async () => {
+    stubFetchOk({ value: "ek_x" });
+    const { result, rerender } = renderHook(
+      ({ volume }: { volume: number }) =>
+        useVoiceSession({ ...defaultParams(), volume }),
+      { initialProps: { volume: 0.5 } },
+    );
+
+    await act(async () => {
+      await result.current.connect();
+    });
+
+    const audioElement = (
+      mocks.FakeTransport.instances[0]?.options as {
+        audioElement: HTMLAudioElement;
+      }
+    ).audioElement;
+
+    // The transport got our own element at the initial volume...
+    expect(audioElement.volume).toBe(0.5);
+
+    // ...and a mid-session change updates that same element immediately.
+    rerender({ volume: 0.25 });
+    expect(audioElement.volume).toBe(0.25);
   });
 });

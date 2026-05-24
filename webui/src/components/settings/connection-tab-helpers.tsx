@@ -13,6 +13,7 @@ import { Tooltip } from "./controls/Tooltip";
 import { TurnDetectionControls } from "./controls/TurnDetectionControls";
 import { VoiceSelector } from "./controls/VoiceSelector";
 import { VoiceSpeedSlider } from "./controls/VoiceSpeedSlider";
+import { VoiceVolumeSlider } from "./controls/VoiceVolumeSlider";
 
 export const API_KEY_URLS: Record<string, string | undefined> = {
   anthropic: "https://console.anthropic.com/settings/keys",
@@ -36,6 +37,38 @@ export const DEFAULT_LOCAL_URLS: Record<string, string> = {
   lmstudio: "http://localhost:1234",
   ollama: "http://localhost:11434",
 };
+
+interface ModelDocsLinkProps {
+  provider: Provider;
+  providerLabel: string;
+}
+
+/**
+ * External link to the active provider's model documentation. Renders nothing
+ * for providers without a docs URL.
+ * @param props - Component props
+ * @param props.provider - Current provider
+ * @param props.providerLabel - Display name for the provider
+ * @returns Docs link element, or null
+ */
+export function ModelDocsLink({ provider, providerLabel }: ModelDocsLinkProps) {
+  const url = MODEL_DOCS_URLS[provider];
+
+  if (!url) return null;
+
+  return (
+    <p className="text-xs text-zinc-500 dark:text-zinc-400 -mt-2">
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-600 dark:text-blue-400 hover:underline"
+      >
+        {providerLabel} models
+      </a>
+    </p>
+  );
+}
 
 interface ThinkingSelectorProps {
   thinking: string;
@@ -116,6 +149,8 @@ interface VoiceSettingsProps {
   model: string;
   realtimeVoice: string;
   setRealtimeVoice: (voice: string) => void;
+  voiceVolume: number;
+  setVoiceVolume: (volume: number) => void;
   voiceSpeed: number;
   setVoiceSpeed: (speed: number) => void;
   turnDetection: TurnDetectionSettings;
@@ -132,6 +167,8 @@ interface VoiceSettingsProps {
  * @param props.model - Current model id
  * @param props.realtimeVoice - In-modal voice id
  * @param props.setRealtimeVoice - Voice setter callback
+ * @param props.voiceVolume - In-modal output volume (0.0–1.0)
+ * @param props.setVoiceVolume - Volume setter callback
  * @param props.voiceSpeed - In-modal playback speed
  * @param props.setVoiceSpeed - Speed setter callback
  * @param props.turnDetection - In-modal turn-detection settings
@@ -144,6 +181,8 @@ export function VoiceSettings({
   model,
   realtimeVoice,
   setRealtimeVoice,
+  voiceVolume,
+  setVoiceVolume,
   voiceSpeed,
   setVoiceSpeed,
   turnDetection,
@@ -165,6 +204,7 @@ export function VoiceSettings({
           Voice Settings
         </summary>
         <div className="mt-3 space-y-3">
+          <VoiceVolumeSlider volume={voiceVolume} setVolume={setVoiceVolume} />
           <VoiceSpeedSlider speed={voiceSpeed} setSpeed={setVoiceSpeed} />
           <TurnDetectionControls
             settings={turnDetection}
