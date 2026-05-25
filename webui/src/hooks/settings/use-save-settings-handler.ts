@@ -18,6 +18,9 @@ interface UseSaveSettingsHandlerArgs {
   remoteConfig: UseRemoteConfigReturn;
   checkMcpConnection: () => Promise<void>;
   closeSettings: (afterClose: () => void) => void;
+  /** App.tsx's foreign-record view override. Non-null means a record from the
+   * other mode is pinned on screen; the hash must survive a mode-flip save. */
+  viewingMode: "chat" | "voice" | null;
 }
 
 /**
@@ -31,8 +34,14 @@ interface UseSaveSettingsHandlerArgs {
 export function useSaveSettingsHandler(
   args: UseSaveSettingsHandlerArgs,
 ): () => void {
-  const { settings, display, remoteConfig, checkMcpConnection, closeSettings } =
-    args;
+  const {
+    settings,
+    display,
+    remoteConfig,
+    checkMcpConnection,
+    closeSettings,
+    viewingMode,
+  } = args;
 
   return useCallback(() => {
     // Only POST liveApiEnabled when the user actually toggled it in the
@@ -51,12 +60,18 @@ export function useSaveSettingsHandler(
     // on that record (cleared only by "New conversation") — the new default
     // takes effect on the next conversation, matching how chat model/provider
     // changes apply going forward rather than retroactively.
+    //
+    // But when a foreign record IS pinned (viewingMode != null), the screen
+    // does NOT remount on save — viewingMode keeps driving the route — so the
+    // hash still points at the record on display. Clearing it then would wipe
+    // the only pointer to that conversation and lose it on reload. Only clear
+    // the hash when nothing foreign is pinned and the new mode mounts fresh.
     const modeWillChange =
       isRealtimeSelection(settings.savedProvider, settings.savedModel) !==
       isRealtimeSelection(settings.provider, settings.model);
 
     closeSettings(() => {
-      if (modeWillChange) {
+      if (modeWillChange && viewingMode == null) {
         history.replaceState(
           null,
           "",
@@ -74,5 +89,12 @@ export function useSaveSettingsHandler(
           .then(checkMcpConnection);
       }
     });
-  }, [settings, display, remoteConfig, checkMcpConnection, closeSettings]);
+  }, [
+    settings,
+    display,
+    remoteConfig,
+    checkMcpConnection,
+    closeSettings,
+    viewingMode,
+  ]);
 }

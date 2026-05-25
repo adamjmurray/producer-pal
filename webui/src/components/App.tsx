@@ -103,12 +103,25 @@ export function App() {
     showSettings,
   );
 
+  // Override the mode-routing decision so a foreign-mode conversation (e.g. a
+  // voice record opened while saved is a chat model) renders in its native UI
+  // without mutating the user's saved settings. null = follow savedModel.
+  // Cleared by "New conversation" so the next fresh session uses savedModel.
+  const [viewingMode, setViewingMode] = useState<"chat" | "voice" | null>(null);
+  const onForeignRecord = useCallback((record: ConversationRecord) => {
+    setViewingMode(record.sessionType === "voice" ? "voice" : "chat");
+  }, []);
+  const clearViewingMode = useCallback(() => {
+    setViewingMode(null);
+  }, []);
+
   const handleSaveSettings = useSaveSettingsHandler({
     settings,
     display,
     remoteConfig,
     checkMcpConnection,
     closeSettings,
+    viewingMode,
   });
 
   const handleCancelSettings = useCallback(() => {
@@ -135,18 +148,6 @@ export function App() {
   // setModeContext so the shared SettingsScreen renders them.
   const [modeContext, setModeContext] =
     useState<ModeContext>(DEFAULT_MODE_CONTEXT);
-
-  // Override the mode-routing decision so a foreign-mode conversation (e.g. a
-  // voice record opened while saved is a chat model) renders in its native UI
-  // without mutating the user's saved settings. null = follow savedModel.
-  // Cleared by "New conversation" so the next fresh session uses savedModel.
-  const [viewingMode, setViewingMode] = useState<"chat" | "voice" | null>(null);
-  const onForeignRecord = useCallback((record: ConversationRecord) => {
-    setViewingMode(record.sessionType === "voice" ? "voice" : "chat");
-  }, []);
-  const clearViewingMode = useCallback(() => {
-    setViewingMode(null);
-  }, []);
 
   // Mode is derived from the saved provider+model (only updates on save), not
   // the in-modal `provider`/`model`. This prevents the underlying chat or voice

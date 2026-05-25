@@ -25,6 +25,7 @@ vi.mock(import("#webui/hooks/use-preferences-settings"), () => ({
  * @param overrides.savedProvider - Persisted provider (defaults to openai)
  * @param overrides.liveApiEnabled - In-modal Live API toggle value
  * @param overrides.liveApiEnabledDirty - Whether the toggle was changed in-modal
+ * @param overrides.viewingMode - Foreign-record view override (defaults to null)
  * @returns Args plus the inner spies used to assert
  */
 function makeArgs(
@@ -35,6 +36,7 @@ function makeArgs(
     savedProvider?: string;
     liveApiEnabled?: boolean;
     liveApiEnabledDirty?: boolean;
+    viewingMode?: "chat" | "voice" | null;
   } = {},
 ): {
   args: Parameters<typeof useSaveSettingsHandler>[0];
@@ -68,6 +70,7 @@ function makeArgs(
     closeSettings: ((afterClose: () => void) => afterClose()) as Parameters<
       typeof useSaveSettingsHandler
     >[0]["closeSettings"],
+    viewingMode: overrides.viewingMode ?? null,
   };
 
   return { args, saveSettings, postLiveApiEnabled, checkMcpConnection };
@@ -116,6 +119,23 @@ describe("useSaveSettingsHandler", () => {
     result.current();
 
     expect(window.location.hash).toBe("");
+  });
+
+  it("preserves the URL hash on a mode-flip save when a foreign record is pinned", () => {
+    // A voice record is being viewed (viewingMode="voice") while the saved
+    // model is a chat model; the save flips the saved mode to voice. The screen
+    // won't remount, so wiping the hash here would lose the displayed record.
+    window.location.hash = "voice-conv-1";
+    const { args } = makeArgs({
+      model: "gpt-realtime-2",
+      savedModel: "gemini-1.5-flash",
+      viewingMode: "voice",
+    });
+    const { result } = renderHook(() => useSaveSettingsHandler(args));
+
+    result.current();
+
+    expect(window.location.hash).toBe("#voice-conv-1");
   });
 
   it("posts liveApiEnabled then re-lists MCP tools when the toggle changed", async () => {
