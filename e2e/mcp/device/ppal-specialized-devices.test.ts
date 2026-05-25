@@ -223,10 +223,14 @@ describe("specialized devices: Drift", () => {
     expect(paramValue(after, "voiceMode")).toBe("Stereo");
     expect(paramValue(after, "voiceCount")).toBe(16);
 
-    // Drift has no queryable _list for these enums, so the raw indices guard the
-    // property names + hardcoded catalog order (VOICE_MODES[2]="Stereo",
-    // VOICE_COUNTS[2]=16; verified vs Live 12.4 2026-05-25). A round-trip alone
-    // can't catch a symmetric mismatch (write X, read back X). See AJM-397.
+    // Drift has no queryable _list for these enums, so we can't compare against
+    // Live's authoritative order the way Roar's routing_mode_list check does.
+    // These raw-index asserts pin the property name and OUR catalog's position
+    // (VOICE_MODES[2]="Stereo", VOICE_COUNTS[2]=16; verified vs Live 12.4
+    // 2026-05-25): they catch a renamed property or an accidental edit to our
+    // catalog order, but NOT Live silently reordering its own enum — write and
+    // read both use this same catalog, so that drift stays invisible to CI and
+    // is only caught by re-running the manual probe-vs-Live. See AJM-397.
     const raw = parseToolResult<{ results: Array<{ result: number }> }>(
       await ctx.client!.callTool({
         name: "ppal-live-api",
