@@ -112,7 +112,7 @@
     "@openai/agents": "0.11.4",
     "@openrouter/ai-sdk-provider": "2.9.0",
     "@tailwindcss/typography": "0.5.19",
-    "ai": "6.0.184",
+    "ai": "6.0.185",
     "dompurify": "3.4.3",
     "express": "5.2.1",
     "idb": "8.0.3",
