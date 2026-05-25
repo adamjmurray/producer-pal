@@ -15,6 +15,7 @@
 
 import { stat } from "node:fs/promises";
 import { type DatabaseSync } from "node:sqlite";
+import { detectStalenessRisk } from "./db-staleness.ts";
 import {
   allKnownKindFourCCs,
   deviceTypeForKind,
@@ -63,6 +64,10 @@ export async function librarySearch(
     };
   }
 
+  // Best-effort advisory: flag when an unclean Live exit left a pending WAL
+  // that our immutable read can't see. Spread into every success return so the
+  // signal sits at the top alongside dbAvailable; omitted when there's no risk.
+  const stalenessRisk = await detectStalenessRisk(dbPath);
   const db = openLiveDb(dbPath);
 
   try {
@@ -71,7 +76,11 @@ export async function librarySearch(
 
     // inFolder was provided but the path doesn't map to any known folder
     if (args.inFolder != null && resolvedParent == null) {
-      return { dbAvailable: true, items: [] };
+      return {
+        dbAvailable: true,
+        ...(stalenessRisk && { stalenessRisk }),
+        items: [],
+      };
     }
 
     // At this point resolvedParent is either undefined (no inFolder) or a valid number
@@ -91,7 +100,11 @@ export async function librarySearch(
       await verifyItemPaths(items);
     }
 
-    return { dbAvailable: true, items };
+    return {
+      dbAvailable: true,
+      ...(stalenessRisk && { stalenessRisk }),
+      items,
+    };
   } finally {
     db.close();
   }

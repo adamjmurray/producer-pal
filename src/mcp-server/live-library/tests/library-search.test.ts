@@ -340,11 +340,15 @@ describe("librarySearch", () => {
   });
 
   describe("verifyPaths", () => {
-    it("does not set pathExists or stat the disk when verifyPaths is off", async () => {
+    it("does not set pathExists or stat item paths when verifyPaths is off", async () => {
       const result = await librarySearch({ query: "user_kick" });
+      const itemPath = result.items[0]?.path;
 
       expect(result.items[0]?.pathExists).toBeUndefined();
-      expect(vi.mocked(stat)).not.toHaveBeenCalled();
+      // The only stat() calls are the always-on stale-WAL advisory probes (the
+      // DB path and its `-wal` sidecar); no item path is verified.
+      expect(itemPath).toBeDefined();
+      expect(vi.mocked(stat)).not.toHaveBeenCalledWith(itemPath);
     });
 
     it("sets pathExists: true for files that exist on disk", async () => {

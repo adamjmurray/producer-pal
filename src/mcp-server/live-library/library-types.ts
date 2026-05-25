@@ -130,12 +130,35 @@ export interface LibraryItem {
   pathExists?: boolean;
 }
 
+/**
+ * Advisory that the served DB snapshot may be stale.
+ *
+ * We open Live's DB with `immutable=1`, which ignores the WAL sidecar. When a
+ * `-wal` persists with an mtime newer than the committed `.db` (typical after
+ * an unclean Live exit), the immutable read serves the last-checkpoint
+ * snapshot — missing whatever the WAL holds. This payload quantifies the gap.
+ */
+export interface StalenessRisk {
+  kind: "wal-pending";
+  /** Committed `.db` modification time (epoch ms). */
+  dbMtime: number;
+  /** `-wal` sidecar modification time (epoch ms). */
+  walMtime: number;
+  /** `-wal` sidecar size in MB (2-decimal rounding). */
+  walSizeMb: number;
+  /** How stale the served data could be: (walMtime - dbMtime) / 1000. */
+  ageSeconds: number;
+}
+
 export interface LibrarySearchResult {
   items: LibraryItem[];
   /** Present when the Live DB was consulted. False if the DB couldn't be
    * found (Live not installed). Omitted when the request bypassed the DB
    * entirely (e.g. source=sampleFolder). */
   dbAvailable?: boolean;
+  /** Set when the served snapshot may be stale (unclean Live exit left a
+   * pending WAL). Omitted when there's no detectable risk. */
+  stalenessRisk?: StalenessRisk;
   /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
   reason?: string;
 }
@@ -173,6 +196,9 @@ export interface LibraryListTagsResult {
   tags: LibraryTag[];
   /** Present when the Live DB was consulted; false if it couldn't be found. */
   dbAvailable?: boolean;
+  /** Set when the served snapshot may be stale (unclean Live exit left a
+   * pending WAL). Omitted when there's no detectable risk. */
+  stalenessRisk?: StalenessRisk;
   /** Set when tags is empty due to a discoverable failure (e.g. DB missing). */
   reason?: string;
 }

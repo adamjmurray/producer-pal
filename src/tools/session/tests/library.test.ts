@@ -110,6 +110,26 @@ describe("library tool — action dispatch", () => {
     );
   });
 
+  it("propagates the stale-WAL advisory from the search route", async () => {
+    const stalenessRisk = {
+      kind: "wal-pending" as const,
+      dbMtime: 1_000_000,
+      walMtime: 4_600_000,
+      walSizeMb: 18,
+      ageSeconds: 3_600,
+    };
+
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: { dbAvailable: true, stalenessRisk, items: [] },
+    });
+
+    const result = await library({ query: "kick" });
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.stalenessRisk).toStrictEqual(stalenessRisk);
+  });
+
   it("dispatches listTags action to library.listTags route", async () => {
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,

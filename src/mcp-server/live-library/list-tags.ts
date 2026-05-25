@@ -14,6 +14,7 @@
  * Read-only: SELECT statements only.
  */
 
+import { detectStalenessRisk } from "./db-staleness.ts";
 import {
   clampLibraryLimit,
   DEFAULT_LIST_TAGS_LIMIT,
@@ -51,6 +52,9 @@ export async function listTags(
   }
 
   const limit = clampLibraryLimit(args.limit, DEFAULT_LIST_TAGS_LIMIT);
+  // Best-effort advisory: flag a pending WAL from an unclean Live exit that our
+  // immutable read can't see. Omitted from the response when there's no risk.
+  const stalenessRisk = await detectStalenessRisk(dbPath);
   const db = openLiveDb(dbPath);
 
   try {
@@ -66,7 +70,7 @@ export async function listTags(
       .all(limit) as unknown as TagRow[];
     const tags = rows.map((r) => ({ name: r.name, count: r.cnt }));
 
-    return { dbAvailable: true, tags };
+    return { dbAvailable: true, ...(stalenessRisk && { stalenessRisk }), tags };
   } finally {
     db.close();
   }
