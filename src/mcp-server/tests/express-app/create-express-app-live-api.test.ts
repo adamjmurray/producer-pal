@@ -4,12 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { TOOL_NAMES } from "../create-mcp-server.ts";
+import { TOOL_NAMES } from "../../create-mcp-server.ts";
 import {
   mockMax,
   setupExpressAppServer,
   setupRestRoutesServer,
-} from "./express-app-test-helpers.ts";
+} from "../express-app-test-helpers.ts";
 
 describe("MCP Express App – Live API runtime gating", () => {
   const appState = setupExpressAppServer();

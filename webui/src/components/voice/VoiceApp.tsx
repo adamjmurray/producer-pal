@@ -14,7 +14,7 @@ import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
 import { type useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { type ViewState } from "#webui/hooks/use-view-state";
+import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { useVoiceModeState } from "#webui/hooks/voice/use-voice-mode-state";
 import { type useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
 import { type ConversationRecord } from "#webui/lib/conversation-db";

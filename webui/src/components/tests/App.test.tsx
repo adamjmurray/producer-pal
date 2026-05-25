@@ -39,7 +39,7 @@ vi.mock(import("#webui/hooks/use-update-check"), () => ({
   useUpdateCheck: () => null,
 }));
 
-vi.mock(import("#webui/hooks/use-view-state"), () => ({
+vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));
 
@@ -48,7 +48,7 @@ import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
-import { useViewState } from "#webui/hooks/use-view-state";
+import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 

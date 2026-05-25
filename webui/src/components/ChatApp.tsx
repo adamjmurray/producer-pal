@@ -12,7 +12,7 @@ import {
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { type ViewState } from "#webui/hooks/use-view-state";
+import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
 import { type UseSettingsReturn } from "#webui/types/settings";
 

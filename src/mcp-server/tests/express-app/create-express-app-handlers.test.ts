@@ -5,7 +5,7 @@
 
 import Max from "max-api";
 import { describe, expect, it } from "vitest";
-import { setupExpressAppServer } from "./express-app-test-helpers.ts";
+import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {
