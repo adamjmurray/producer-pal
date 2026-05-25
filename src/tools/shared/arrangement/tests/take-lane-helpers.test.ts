@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
   assertNoTakeLaneOverlap,
+  isTakeLaneRequested,
   MAX_TAKE_LANES,
   normalizeTakeLaneTarget,
   resolveTakeLane,
@@ -15,6 +16,23 @@ import {
   registerTakeLaneTrack,
   registerTakeLaneWithClips,
 } from "./take-lane-test-helpers.ts";
+
+describe("isTakeLaneRequested", () => {
+  it("is false for main-lane values", () => {
+    expect(isTakeLaneRequested(null)).toBe(false);
+    expect(isTakeLaneRequested(undefined)).toBe(false);
+    expect(isTakeLaneRequested("")).toBe(false);
+    expect(isTakeLaneRequested(0)).toBe(false);
+    expect(isTakeLaneRequested("0")).toBe(false);
+  });
+
+  it("is true for any non-main value (including invalid ones)", () => {
+    expect(isTakeLaneRequested(1)).toBe(true);
+    expect(isTakeLaneRequested("new")).toBe(true);
+    expect(isTakeLaneRequested(-1)).toBe(true);
+    expect(isTakeLaneRequested("abc")).toBe(true);
+  });
+});
 
 describe("normalizeTakeLaneTarget", () => {
   it("treats main-lane values as null", () => {

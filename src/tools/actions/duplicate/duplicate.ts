@@ -5,7 +5,10 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { normalizeTakeLaneTarget } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import {
+  isTakeLaneRequested,
+  normalizeTakeLaneTarget,
+} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
@@ -151,10 +154,12 @@ export async function duplicate(
     );
   }
 
-  // takeLane only applies to clips
-  const takeLaneTarget = normalizeTakeLaneTarget(takeLane);
+  // takeLane only applies to clips; for other types warn-and-ignore without
+  // validating it (don't throw on a value we're going to drop anyway).
+  const takeLaneTarget =
+    type === "clip" ? normalizeTakeLaneTarget(takeLane) : null;
 
-  if (type !== "clip" && takeLaneTarget != null) {
+  if (type !== "clip" && isTakeLaneRequested(takeLane)) {
     console.warn(
       `takeLane ignored: only supported when duplicating clips (type "${type}")`,
     );

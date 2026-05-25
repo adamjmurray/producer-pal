@@ -18,6 +18,8 @@ export interface TakeLaneTrackOptions {
   initialLanes?: number;
   /** Length in beats for clips created on lanes */
   clipLength?: number;
+  /** Make each lane's create_*_clip return a non-existent ref (id 0) */
+  clipCreationFails?: boolean;
 }
 
 /**
@@ -31,7 +33,12 @@ export interface TakeLaneTrackOptions {
 export function registerTakeLaneTrack(
   options: TakeLaneTrackOptions = {},
 ): RegisteredMockObject {
-  const { trackIndex = 0, initialLanes = 0, clipLength = 4 } = options;
+  const {
+    trackIndex = 0,
+    initialLanes = 0,
+    clipLength = 4,
+    clipCreationFails = false,
+  } = options;
   const laneIds: string[] = [];
 
   // Mutating the props objects is reflected by the registry's get() (read live),
@@ -45,6 +52,11 @@ export function registerTakeLaneTrack(
     };
 
     const createClip = (kind: string, startBeats: unknown): unknown[] => {
+      // Simulate Live failing to create the clip (returns the "no object" ref).
+      if (clipCreationFails) {
+        return ["id", "0"];
+      }
+
       const clipId = `tl_clip_${uid++}`;
       const start = typeof startBeats === "number" ? startBeats : 0;
 

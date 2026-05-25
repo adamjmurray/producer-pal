@@ -139,6 +139,10 @@ function copyMidiClipToTakeLane(
   ) as string;
   const newClip = LiveAPI.from(newClipResult);
 
+  if (!newClip.exists()) {
+    throw new Error("failed to create Arrangement clip");
+  }
+
   // Read all notes (not just within `length`): markers below can expose content
   // beyond the visible length, so capture it to faithfully copy the source.
   const notesJson = sourceClip.call(

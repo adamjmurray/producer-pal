@@ -29,6 +29,23 @@ export interface ResolvedTakeLane {
 }
 
 /**
+ * Whether a raw takeLane value requests a (non-main) take lane. The main lane is
+ * the default, selected by `0`, `null`, `undefined`, `""`, or `"0"`.
+ * @param takeLane - Raw takeLane value from a tool argument
+ * @returns true when a non-main take lane was requested
+ */
+export function isTakeLaneRequested(
+  takeLane: number | string | null | undefined,
+): boolean {
+  return !(
+    takeLane == null ||
+    takeLane === "" ||
+    takeLane === 0 ||
+    takeLane === "0"
+  );
+}
+
+/**
  * Normalize a raw takeLane argument to a target, or null for the main lane.
  * `0`, `null`, `undefined`, and `""` mean the main lane (unchanged behavior).
  * @param takeLane - Raw takeLane value from a tool argument
@@ -37,12 +54,7 @@ export interface ResolvedTakeLane {
 export function normalizeTakeLaneTarget(
   takeLane: number | string | null | undefined,
 ): TakeLaneTarget | null {
-  if (
-    takeLane == null ||
-    takeLane === "" ||
-    takeLane === 0 ||
-    takeLane === "0"
-  ) {
+  if (!isTakeLaneRequested(takeLane)) {
     return null;
   }
 
@@ -65,8 +77,9 @@ export function normalizeTakeLaneTarget(
  * Resolve (auto-creating as needed) the target take lane on a track.
  * A numeric target ensures at least that many lanes exist (auto-creating up to
  * the index, mirroring scene auto-create); "new" appends a fresh lane. The
- * MAX_TAKE_LANES cap is enforced. takeLaneName is applied only to a lane this
- * call creates — never renaming an existing lane.
+ * MAX_TAKE_LANES cap is enforced. takeLaneName names only the target lane, and
+ * only when this call created it — existing lanes and any intermediate lanes
+ * auto-created to fill a gap are left unnamed.
  * @param track - The regular track LiveAPI to resolve the lane on
  * @param target - Normalized take lane target (lane number or "new")
  * @param takeLaneName - Optional name for a newly created lane

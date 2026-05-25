@@ -231,6 +231,45 @@ describe("duplicate take lane", () => {
     );
   });
 
+  it("ignores (does not validate) an invalid takeLane for non-clip types", async () => {
+    registerMockObject("track1", { path: livePath.track(0) });
+    registerMockObject("live_set", { path: livePath.liveSet });
+    registerMockObject("live_set/tracks/1", {
+      path: livePath.track(1),
+      properties: { devices: [], clip_slots: [], arrangement_clips: [] },
+    });
+
+    // "garbage" would throw if normalized; for a non-clip type it is dropped
+    // (this await would reject if the value were still validated).
+    await duplicate({ type: "track", id: "track1", takeLane: "garbage" });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "takeLane ignored: only supported when duplicating clips",
+      ),
+    );
+  });
+
+  it("throws if Live fails to create the take-lane clip", () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    registerTakeLaneTrack({ initialLanes: 0, clipCreationFails: true });
+
+    expect(() =>
+      duplicateClipsToTakeLane(
+        LiveAPI.from("src_clip"),
+        "src_clip",
+        [0],
+        undefined,
+        undefined,
+        "new",
+        undefined,
+        4,
+        4,
+      ),
+    ).toThrow("failed to create Arrangement clip");
+  });
+
   it("throws when the source clip has no track index", () => {
     registerMockObject("orphan_clip", {
       path: "live_set scenes 0",
