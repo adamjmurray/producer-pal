@@ -88,6 +88,12 @@ export interface LibrarySearchArgs {
   inFolder?: string;
   sort?: LibrarySort;
   limit?: number;
+  /**
+   * When true, stat each result's reconstructed path and report whether the
+   * file still exists on disk via LibraryItem.pathExists. Off by default
+   * (adds one filesystem check per result).
+   */
+  verifyPaths?: boolean;
 }
 
 export interface LibraryItem {
@@ -115,6 +121,13 @@ export interface LibraryItem {
    * chain exceeded the reconstruction depth cap. Omitted otherwise.
    */
   pathTruncated?: true;
+  /**
+   * Whether `path` currently exists on disk. Only present when the request
+   * set verifyPaths. Lets the caller skip stale entries (moved Packs, deleted
+   * samples, disconnected drives) before passing a path to another tool.
+   * Omitted for truncated paths, which can't be verified.
+   */
+  pathExists?: boolean;
 }
 
 export interface LibrarySearchResult {

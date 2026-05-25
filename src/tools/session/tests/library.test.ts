@@ -99,6 +99,17 @@ describe("library tool — action dispatch", () => {
     );
   });
 
+  it("passes verifyPaths through to the library.search route", async () => {
+    mockSearchRoute([]);
+
+    await library({ query: "kick", verifyPaths: true });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ verifyPaths: true }),
+    );
+  });
+
   it("dispatches listTags action to library.listTags route", async () => {
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,
@@ -391,6 +402,23 @@ describe("library tool — folder scan integration", () => {
     expect(result.items.find((i) => i.name === "kick.wav")?.source).toBe(
       "sampleFolder",
     );
+  });
+
+  it("marks sampleFolder items pathExists: true when verifyPaths is set", async () => {
+    mockSampleFolder("kick.wav");
+    mockSearchRoute([]);
+
+    const result = await library(
+      { query: "", verifyPaths: true },
+      { sampleFolder: "/samples/" },
+    );
+
+    if (!("items" in result)) throw new Error("expected items");
+    const kick = result.items.find((i) => i.source === "sampleFolder");
+
+    // Folder-scan items came from a live filesystem enumeration, so they're
+    // reported as existing without a redundant re-stat.
+    expect(kick?.pathExists).toBe(true);
   });
 
   it("dedupes folder hits against DB hits by absolute path", async () => {

@@ -81,6 +81,13 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .optional()
       .describe("sort order (search only); defaults to use_count desc"),
 
+    verifyPaths: z
+      .boolean()
+      .optional()
+      .describe(
+        "search only: stat each result's path and add pathExists (true/false) so you can skip files moved/deleted since Live last indexed. Off by default (one filesystem check per result).",
+      ),
+
     limit: z.coerce
       .number()
       .optional()
@@ -90,7 +97,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
   smallModelModeConfig: {
     toolDescription:
       "Search Live's library by name/tags. Defaults to audio samples. Items from the user's sample folder appear before Live's library items.",
-    excludeParams: ["deviceKind", "sort", "queries"],
+    excludeParams: ["deviceKind", "sort", "queries", "verifyPaths"],
     excludeEnumValues: {
       action: ["searchBatch"],
       kind: [

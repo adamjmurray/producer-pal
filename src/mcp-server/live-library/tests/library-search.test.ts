@@ -13,7 +13,16 @@ vi.mock(import("../live-db-path.ts"), () => ({
   liveDatabaseDir: vi.fn(),
 }));
 
+// The fixture builds its DB with node:fs (sync), so mocking node:fs/promises
+// here only affects the verifyPaths stat() calls under test.
+vi.mock(import("node:fs/promises"), async (importOriginal) => {
+  const actual = await importOriginal();
+
+  return { ...actual, stat: vi.fn() };
+});
+
 const dbPathMod = await import("../live-db-path.ts");
+const { stat } = await import("node:fs/promises");
 
 describe("librarySearch", () => {
   setupLibraryFixtureLifecycle(dbPathMod);
@@ -328,6 +337,51 @@ describe("librarySearch", () => {
     expect(result.items[0]?.path).toBe(
       "/Users/test/Music/Ableton/User Library/user_kick.aif",
     );
+  });
+
+  describe("verifyPaths", () => {
+    it("does not set pathExists or stat the disk when verifyPaths is off", async () => {
+      const result = await librarySearch({ query: "user_kick" });
+
+      expect(result.items[0]?.pathExists).toBeUndefined();
+      expect(vi.mocked(stat)).not.toHaveBeenCalled();
+    });
+
+    it("sets pathExists: true for files that exist on disk", async () => {
+      vi.mocked(stat).mockResolvedValue({} as never);
+
+      const result = await librarySearch({ kind: "audio", verifyPaths: true });
+
+      expect(result.items.length).toBeGreaterThan(0);
+      expect(result.items.every((i) => i.pathExists === true)).toBe(true);
+    });
+
+    it("sets pathExists: false for files missing from disk", async () => {
+      vi.mocked(stat).mockRejectedValue(
+        Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
+      );
+
+      const result = await librarySearch({ kind: "audio", verifyPaths: true });
+
+      expect(result.items.length).toBeGreaterThan(0);
+      expect(result.items.every((i) => i.pathExists === false)).toBe(true);
+    });
+
+    it("reports existence independently per path", async () => {
+      const present = "/Users/test/Music/Ableton/User Library/user_kick.aif";
+
+      vi.mocked(stat).mockImplementation(((p: string) =>
+        p === present
+          ? Promise.resolve({})
+          : Promise.reject(new Error("ENOENT"))) as never);
+
+      const result = await librarySearch({ kind: "audio", verifyPaths: true });
+      const kick = result.items.find((i) => i.name === "user_kick.aif");
+      const others = result.items.filter((i) => i.name !== "user_kick.aif");
+
+      expect(kick?.pathExists).toBe(true);
+      expect(others.every((i) => i.pathExists === false)).toBe(true);
+    });
   });
 
   it("surfaces the immediate parent folder name on each item", async () => {

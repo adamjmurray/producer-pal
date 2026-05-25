@@ -13,6 +13,7 @@
  * Read-only: SELECT statements only. Never write SQL, never ATTACH.
  */
 
+import { stat } from "node:fs/promises";
 import { type DatabaseSync } from "node:sqlite";
 import {
   allKnownKindFourCCs,
@@ -86,9 +87,56 @@ export async function librarySearch(
     const tagsByFile = fetchTagsBulk(db, fileIds);
     const items = rows.map((row) => buildLibraryItem(row, paths, tagsByFile));
 
+    if (args.verifyPaths) {
+      await verifyItemPaths(items);
+    }
+
     return { dbAvailable: true, items };
   } finally {
     db.close();
+  }
+}
+
+/**
+ * Stat each item's path and set `pathExists` so the caller can drop stale
+ * entries. Runs in parallel — a warm-cache stat is sub-millisecond, so even a
+ * full limit=1000 result set stays well under a second. Truncated paths are
+ * skipped (their missing leading segments would always stat as not-found).
+ *
+ * @param items - Items to verify in place
+ */
+async function verifyItemPaths(items: LibraryItem[]): Promise<void> {
+  // Resolve every stat first, then assign synchronously. Mutating each item
+  // directly inside the async map trips require-atomic-updates (a false
+  // positive here — items are distinct — but cheap to sidestep).
+  const exists = await Promise.all(
+    items.map((item) =>
+      item.pathTruncated ? Promise.resolve(null) : pathExistsOnDisk(item.path),
+    ),
+  );
+
+  for (const [i, item] of items.entries()) {
+    const result = exists[i];
+
+    if (result != null) item.pathExists = result;
+  }
+}
+
+/**
+ * Check whether a path exists on disk. Any stat error (ENOENT, EACCES, a
+ * disconnected drive) is treated as "does not exist" — the point is whether
+ * the caller can use the path, not why it can't.
+ *
+ * @param path - Absolute filesystem path
+ * @returns true if stat succeeds, false on any error
+ */
+async function pathExistsOnDisk(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+
+    return true;
+  } catch {
+    return false;
   }
 }
 

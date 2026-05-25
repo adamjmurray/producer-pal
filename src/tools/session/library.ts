@@ -33,6 +33,7 @@ interface LibraryArgs {
   inFolder?: string;
   sort?: LibrarySort;
   limit?: number;
+  verifyPaths?: boolean;
   /** searchBatch only: per-query filter sets (see runSearchBatch). */
   queries?: LibraryBatchQuery[];
 }
@@ -107,6 +108,7 @@ export async function runSearch(
           inFolder: args.inFolder,
           sort: args.sort,
           limit: args.limit,
+          verifyPaths: args.verifyPaths,
         });
 
   const folderPaths = new Set(folderScan.items.map((i) => i.path));
@@ -205,6 +207,9 @@ function scanFolderItems(
     useCount: 0,
     source: "sampleFolder",
     folder: parentFolder(rel, result.sampleFolder),
+    // These came from a live filesystem scan, so they exist by construction —
+    // mark them without a redundant re-stat when the caller wants pathExists.
+    ...(args.verifyPaths ? { pathExists: true } : {}),
   }));
 
   return { items };
