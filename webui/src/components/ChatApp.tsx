@@ -64,6 +64,7 @@ export function ChatApp(props: ChatAppProps) {
       messages={chat.messages}
       isAssistantResponding={chat.isAssistantResponding}
       rateLimitState={chat.rateLimitState}
+      toolLimitReached={chat.toolLimitReached}
       handleSend={wrappedHandleSend}
       handleRetry={chat.handleRetry}
       handleEdit={chat.handleEdit}

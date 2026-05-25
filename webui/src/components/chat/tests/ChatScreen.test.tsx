@@ -38,6 +38,7 @@ describe("ChatScreen", () => {
     messages: [] as UIMessage[],
     isAssistantResponding: false,
     rateLimitState: null,
+    toolLimitReached: false,
     handleSend: mockHandleSend,
     handleRetry: mockHandleRetry,
     handleEdit: vi.fn(),
@@ -285,6 +286,44 @@ describe("ChatScreen", () => {
       const indicator = document.querySelector(".bg-yellow-50");
 
       expect(indicator).toBeDefined();
+    });
+  });
+
+  describe("tool limit notice", () => {
+    it("shows the Continue button when toolLimitReached is true", () => {
+      render(<ChatScreen {...defaultProps} toolLimitReached={true} />);
+
+      expect(screen.getByRole("button", { name: "Continue" })).toBeTruthy();
+    });
+
+    it("does not show the Continue button when toolLimitReached is false", () => {
+      render(<ChatScreen {...defaultProps} toolLimitReached={false} />);
+
+      expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+    });
+
+    it("hides the notice while the assistant is responding", () => {
+      render(
+        <ChatScreen
+          {...defaultProps}
+          toolLimitReached={true}
+          isAssistantResponding={true}
+        />,
+      );
+
+      expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
+    });
+
+    it("sends 'continue' when the Continue button is clicked", () => {
+      mockHandleSend.mockClear();
+      render(<ChatScreen {...defaultProps} toolLimitReached={true} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+      expect(mockHandleSend).toHaveBeenCalledWith(
+        "continue",
+        expect.anything(),
+      );
     });
   });
 

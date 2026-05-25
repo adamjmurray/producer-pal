@@ -14,6 +14,12 @@ export interface MessageOverrides {
 /** Chat client interface that all providers must implement */
 export interface ChatClient<TMessage> {
   chatHistory: TMessage[];
+  /**
+   * True when the last stream stopped because it hit the tool-call step limit
+   * while the model still wanted to call more tools. Optional: clients that do
+   * not support multi-step tool calling may omit it.
+   */
+  toolLimitReached?: boolean;
   initialize: () => Promise<void>;
   sendMessage: (
     message: string,
@@ -84,6 +90,8 @@ export interface UseChatReturn {
   activeShowThoughts: boolean | null;
   activeSmallModelMode: boolean | null;
   rateLimitState: RateLimitState | null;
+  /** True when the last response stopped at the tool-call step limit */
+  toolLimitReached: boolean;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   handleEdit: (mergedMessageIndex: number, newMessage: string) => Promise<void>;

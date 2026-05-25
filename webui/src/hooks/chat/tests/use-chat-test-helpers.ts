@@ -30,6 +30,7 @@ export interface TestConfig {
 export class MockChatClient implements ChatClient<TestMessage> {
   chatHistory: TestMessage[] = [];
   totalUsage: TokenUsage | null = null;
+  toolLimitReached = false;
 
   initialize = vi.fn(async () => {
     // Initialization logic
