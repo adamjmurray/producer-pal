@@ -311,6 +311,17 @@ if (typeof LiveAPI !== "undefined") {
     });
   }
 
+  if (
+    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "takeLaneIndex")
+  ) {
+    Object.defineProperty(LiveAPI.prototype, "takeLaneIndex", {
+      get: function (this: LiveAPI) {
+        const match = this.path.match(/take_lanes (\d+)/);
+        return match ? Number(match[1]) : null;
+      },
+    });
+  }
+
   // Device index extension - matches LAST "devices X" for nested rack support
   if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "deviceIndex")) {
     Object.defineProperty(LiveAPI.prototype, "deviceIndex", {

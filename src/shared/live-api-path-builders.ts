@@ -11,6 +11,7 @@
 //   livePath.track(0).device(1)                      // "live_set tracks 0 devices 1"
 //   livePath.track(0).clipSlot(2).clip()             // "live_set tracks 0 clip_slots 2 clip"
 //   livePath.track(0).arrangementClip(0)             // "live_set tracks 0 arrangement_clips 0"
+//   livePath.track(0).takeLane(1).arrangementClip(0) // "live_set tracks 0 take_lanes 1 arrangement_clips 0"
 //   livePath.track(0).device(0).parameter(1)         // "live_set tracks 0 devices 0 parameters 1"
 //   livePath.track(0).device(0).chain(1).device(0)   // "live_set tracks 0 devices 0 chains 1 devices 0"
 //   livePath.returnTrack(0).device(1)                // "live_set return_tracks 0 devices 1"
@@ -93,6 +94,24 @@ class ClipSlotPath {
   }
 }
 
+// Intermediate builder: take lane path with .arrangementClip() chaining
+class TakeLanePath {
+  private readonly base: string;
+
+  constructor(trackBase: string, laneIndex: number) {
+    this.base = `${trackBase} take_lanes ${laneIndex}`;
+  }
+
+  toString(): string {
+    return this.base;
+  }
+
+  // "...take_lanes X arrangement_clips Y"
+  arrangementClip(clipIndex: number): string {
+    return `${this.base} arrangement_clips ${clipIndex}`;
+  }
+}
+
 // Intermediate builder: track path with chaining methods
 export class TrackPath {
   private readonly base: string;
@@ -118,6 +137,11 @@ export class TrackPath {
   // "...arrangement_clips X"
   arrangementClip(clipIndex: number): string {
     return `${this.base} arrangement_clips ${clipIndex}`;
+  }
+
+  // "...take_lanes X" (chainable — returns TakeLanePath)
+  takeLane(laneIndex: number): TakeLanePath {
+    return new TakeLanePath(this.base, laneIndex);
   }
 
   // "...mixer_device"

@@ -135,19 +135,21 @@ interface ArrangementClipResult {
 }
 
 /**
- * Creates an arrangement clip on a track
+ * Creates an arrangement clip on a track or a take lane
  * @param trackIndex - Track index (0-based)
  * @param arrangementStartBeats - Starting position in beats
  * @param clipLength - Clip length in beats
+ * @param takeLane - Take lane to create on, or null for the track's main lane
  * @returns Object with clip and arrangementStartBeats
  */
 function createArrangementClip(
   trackIndex: number,
   arrangementStartBeats: number | null,
   clipLength: number,
+  takeLane: LiveAPI | null = null,
 ): ArrangementClipResult {
-  const track = LiveAPI.from(livePath.track(trackIndex));
-  const newClipResult = track.call(
+  const target = takeLane ?? LiveAPI.from(livePath.track(trackIndex));
+  const newClipResult = target.call(
     "create_midi_clip",
     arrangementStartBeats,
     clipLength,
@@ -183,6 +185,7 @@ function createArrangementClip(
  * @param length - Original length parameter
  * @param sampleFile - Audio file path (for audio clips)
  * @param transformedCount - Number of notes matched by transform selectors
+ * @param takeLane - Take lane to create arrangement clips on, or null for main lane
  * @returns Clip result for this iteration
  */
 export function processClipIteration(
@@ -206,6 +209,7 @@ export function processClipIteration(
   length: string | null,
   sampleFile: string | null,
   transformedCount: number | undefined,
+  takeLane: LiveAPI | null = null,
 ): object {
   let clip: LiveAPI;
   let currentSceneIndex: number | undefined;
@@ -231,6 +235,7 @@ export function processClipIteration(
         trackIndex,
         arrangementStartBeats,
         sampleFile,
+        takeLane,
       );
 
       clip = result.clip;
@@ -266,6 +271,7 @@ export function processClipIteration(
         trackIndex,
         arrangementStartBeats,
         clipLength,
+        takeLane,
       );
 
       clip = result.clip;

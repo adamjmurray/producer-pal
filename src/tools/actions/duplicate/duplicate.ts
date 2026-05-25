@@ -5,6 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { normalizeTakeLaneTarget } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
@@ -54,6 +55,8 @@ interface DuplicateArgs {
   toPath?: string;
   transforms?: string;
   code?: string;
+  takeLane?: number | string;
+  takeLaneName?: string;
 }
 
 interface DuplicateParams {
@@ -84,6 +87,8 @@ interface DuplicateParams {
  * @param args.toPath - Destination path
  * @param args.transforms - Transform expressions applied per duplicated clip
  * @param args.code - JavaScript function body applied per duplicated clip
+ * @param args.takeLane - Arrangement take lane target for clips (0/omitted = main, 1+, "new")
+ * @param args.takeLaneName - Name for a take lane newly created by this call
  * @param context - Context object
  * @returns Result object(s)
  */
@@ -105,6 +110,8 @@ export async function duplicate(
     toPath,
     transforms,
     code,
+    takeLane,
+    takeLaneName,
   }: DuplicateArgs,
   context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
@@ -144,6 +151,15 @@ export async function duplicate(
     );
   }
 
+  // takeLane only applies to clips
+  const takeLaneTarget = normalizeTakeLaneTarget(takeLane);
+
+  if (type !== "clip" && takeLaneTarget != null) {
+    console.warn(
+      `takeLane ignored: only supported when duplicating clips (type "${type}")`,
+    );
+  }
+
   // Handle device duplication (supports comma-separated toPath for multiple destinations)
   if (type === "device") {
     return duplicateDeviceWithPaths(object, toPath, name, count);
@@ -161,6 +177,8 @@ export async function duplicate(
         arrangementStart,
         locator,
         arrangementLength,
+        takeLaneTarget,
+        takeLaneName,
         context,
       )
     : duplicateTrackOrSceneWithCount(

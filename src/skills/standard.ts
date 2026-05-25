@@ -241,4 +241,12 @@ Audio effects:
 
 \`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, e.g., "2/3") moves session clips. Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions.
+
+### Take Lanes (Arrangement Variations)
+
+Stack alternate takes of an arrangement clip at the same position; only the active take plays (the user auditions/comps in Live's UI).
+
+- \`takeLane\` on create-clip + duplicate (arrangement only; duplicate is MIDI-only): omit/\`0\` = main lane; \`1+\` = that lane (auto-created up to it); \`"new"\` = append a fresh lane. \`takeLaneName\` names a lane this call creates.
+- Variation workflow: a few duplicate calls with \`takeLane: "new"\` + \`transforms\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\`.
+- 8 lanes/track max; the target position must be free on that lane. One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).
 `;

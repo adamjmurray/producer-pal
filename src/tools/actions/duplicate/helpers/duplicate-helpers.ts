@@ -69,6 +69,8 @@ export interface MinimalClipInfo {
   slot?: string;
   trackIndex?: number;
   arrangementStart?: string;
+  /** 1-based take lane number, present only for clips on a take lane */
+  takeLane?: number;
   name?: string;
   noteCount?: number;
   transformed?: number;
@@ -117,6 +119,13 @@ export function getMinimalClipInfo(
 
     if (!omitFields.includes("arrangementStart")) {
       result.arrangementStart = arrangementStart;
+    }
+
+    // Surface the take lane (1-based) when the clip landed on one
+    const takeLaneIndex = clip.takeLaneIndex;
+
+    if (takeLaneIndex != null) {
+      result.takeLane = takeLaneIndex + 1;
     }
 
     return result;
