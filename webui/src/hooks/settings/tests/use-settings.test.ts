@@ -7,14 +7,48 @@
  * @vitest-environment happy-dom
  * @returns {any} - Hook return value
  */
-import { renderHook, act } from "@testing-library/preact";
+import "fake-indexeddb/auto";
+import { renderHook, act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
+import { decryptApiKey } from "#webui/lib/api-key-crypto";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 
 describe("useSettings", () => {
   beforeEach(() => {
     localStorage.clear();
   });
+
+  /**
+   * Flush the post-mount async decrypt-load so it can't clobber later edits.
+   * The load chain is several microtask hops (loadAllProviderSettingsAsync →
+   * Promise.all → applyLoadedSettings), so yield several rounds inside act.
+   */
+  async function flushLoad(): Promise<void> {
+    await act(async () => {
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+    });
+  }
+
+  /**
+   * Assert a provider's stored JSON has an encrypted apiKey (not the cleartext)
+   * that decrypts back to the expected value, plus the other expected fields.
+   * @param provider - Provider storage key suffix
+   * @param expectedApiKey - The cleartext apiKey the stored value should decrypt to
+   * @param rest - Other non-apiKey fields expected in the stored JSON
+   */
+  async function expectStored(
+    provider: string,
+    expectedApiKey: string,
+    rest: Record<string, unknown>,
+  ): Promise<void> {
+    const stored = JSON.parse(
+      localStorage.getItem(`producer_pal_provider_${provider}`) ?? "{}",
+    );
+
+    expect(stored.apiKey).not.toBe(expectedApiKey);
+    expect(await decryptApiKey(stored.apiKey)).toBe(expectedApiKey);
+    expect(stored).toMatchObject(rest);
+  }
 
   it("loads default values when localStorage is empty", () => {
     const { result } = renderHook(() => useSettings());
@@ -29,7 +63,7 @@ describe("useSettings", () => {
     });
   });
 
-  it("migrates Gemini settings from old localStorage format", () => {
+  it("migrates Gemini settings from old localStorage format", async () => {
     localStorage.setItem("gemini_api_key", "test-key");
     localStorage.setItem("gemini_model", "gemini-2.5-pro");
     localStorage.setItem("thinking", "High");
@@ -38,17 +72,19 @@ describe("useSettings", () => {
 
     const { result } = renderHook(() => useSettings());
 
+    // Non-apiKey fields are available synchronously; the apiKey is decrypted
+    // (here a legacy cleartext passthrough) by the post-mount effect.
     expect(result.current).toMatchObject({
-      apiKey: "test-key",
       model: "gemini-2.5-pro",
       thinking: "High",
       temperature: 0.7,
       showThoughts: false,
       hasApiKey: true,
     });
+    await waitFor(() => expect(result.current.apiKey).toBe("test-key"));
   });
 
-  it("loads from new JSON blob format", () => {
+  it("loads from new JSON blob format", async () => {
     localStorage.setItem(
       "producer_pal_provider_gemini",
       JSON.stringify({
@@ -63,16 +99,16 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     expect(result.current).toMatchObject({
-      apiKey: "new-key",
       model: "gemini-3.5-flash",
       thinking: "Max",
       temperature: 1.5,
       showThoughts: false,
       hasApiKey: true,
     });
+    await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
   });
 
-  it("prefers new format over old format", () => {
+  it("prefers new format over old format", async () => {
     // Set both old and new formats
     localStorage.setItem("gemini_api_key", "old-key");
     localStorage.setItem("gemini_model", "gemini-2.5-pro");
@@ -90,8 +126,8 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     // Should use new format
-    expect(result.current.apiKey).toBe("new-key");
     expect(result.current.model).toBe("gemini-3.5-flash");
+    await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
   });
 
   it("loads saved Ollama thinking on first render", () => {
@@ -239,10 +275,25 @@ describe("useSettings", () => {
       "gemini",
     );
 
-    expect(
-      JSON.parse(localStorage.getItem("producer_pal_provider_gemini") ?? "{}"),
-    ).toMatchObject({
-      apiKey: "new-key",
+    // The apiKey is encrypted at rest: the raw stored value must NOT be the
+    // cleartext, and must decrypt back to it. Save is async (fire-and-forget),
+    // so wait for the write to land.
+    await waitFor(() => {
+      const raw = JSON.parse(
+        localStorage.getItem("producer_pal_provider_gemini") ?? "{}",
+      );
+
+      expect(typeof raw.apiKey).toBe("string");
+      expect(raw.apiKey.startsWith("enc:v1:")).toBe(true);
+    });
+
+    const stored = JSON.parse(
+      localStorage.getItem("producer_pal_provider_gemini") ?? "{}",
+    );
+
+    expect(stored.apiKey).not.toBe("new-key");
+    expect(await decryptApiKey(stored.apiKey)).toBe("new-key");
+    expect(stored).toMatchObject({
       model: "gemini-3.5-flash",
       thinking: "Max",
       temperature: 0.8,
@@ -315,6 +366,10 @@ describe("useSettings", () => {
 
     const { result } = renderHook(() => useSettings());
 
+    // Wait for the post-mount decrypt to apply the saved key before editing,
+    // so the async load can't clobber the edit below.
+    await waitFor(() => expect(result.current.apiKey).toBe("saved-key"));
+
     await act(() => {
       result.current.setApiKey("temporary-key");
       result.current.setModel("gemini-2.5-flash");
@@ -327,8 +382,11 @@ describe("useSettings", () => {
       result.current.cancelSettings();
     });
 
-    expect(result.current.apiKey).toBe("saved-key");
-    expect(result.current.model).toBe("gemini-2.5-pro");
+    // cancel reloads (and re-decrypts) saved settings asynchronously.
+    await waitFor(() => {
+      expect(result.current.model).toBe("gemini-2.5-pro");
+      expect(result.current.apiKey).toBe("saved-key");
+    });
   });
 
   it("hasApiKey returns false when no key in localStorage", () => {
@@ -356,6 +414,8 @@ describe("useSettings", () => {
 
   it("remembers all settings per provider when switching", async () => {
     const { result } = renderHook(() => useSettings());
+
+    await flushLoad();
 
     // Configure Gemini with custom settings
     await act(() => {
@@ -425,6 +485,8 @@ describe("useSettings", () => {
   it("saves and loads all provider settings separately", async () => {
     const { result } = renderHook(() => useSettings());
 
+    await flushLoad();
+
     // Configure each provider with unique settings
     await act(() => {
       result.current.setProvider("gemini");
@@ -464,44 +526,39 @@ describe("useSettings", () => {
       result.current.setTemperature(1.2);
     });
 
-    // Save all settings
+    // Save all settings (async encrypt + write)
     await act(() => {
       result.current.saveSettings();
     });
 
-    // Verify each provider's settings are saved separately as JSON
-    expect(
-      JSON.parse(localStorage.getItem("producer_pal_provider_gemini") ?? "{}"),
-    ).toMatchObject({
-      apiKey: "gemini-key",
+    // Wait for the async save to land all four providers' encrypted keys.
+    await waitFor(() => {
+      for (const p of ["gemini", "openai", "openrouter", "mistral"]) {
+        const raw = JSON.parse(
+          localStorage.getItem(`producer_pal_provider_${p}`) ?? "{}",
+        );
+
+        expect(raw.apiKey?.startsWith("enc:v1:")).toBe(true);
+      }
+    });
+
+    // Verify each provider's settings are saved separately as JSON, with the
+    // apiKey encrypted at rest (raw value is NOT the cleartext).
+    await expectStored("gemini", "gemini-key", {
       model: "gemini-2.5-pro",
       thinking: "Max",
       temperature: 0.5,
     });
-
-    expect(
-      JSON.parse(localStorage.getItem("producer_pal_provider_openai") ?? "{}"),
-    ).toMatchObject({
-      apiKey: "openai-key",
+    await expectStored("openai", "openai-key", {
       model: "gpt-5.4-mini",
       thinking: "Off",
       temperature: 1.5,
     });
-
-    expect(
-      JSON.parse(
-        localStorage.getItem("producer_pal_provider_openrouter") ?? "{}",
-      ),
-    ).toMatchObject({
-      apiKey: "openrouter-key",
+    await expectStored("openrouter", "openrouter-key", {
       model: "minimax/minimax-m2:free",
       temperature: 0.8,
     });
-
-    expect(
-      JSON.parse(localStorage.getItem("producer_pal_provider_mistral") ?? "{}"),
-    ).toMatchObject({
-      apiKey: "mistral-key",
+    await expectStored("mistral", "mistral-key", {
       model: "mistral-small-latest",
       temperature: 1.2,
     });
@@ -509,43 +566,43 @@ describe("useSettings", () => {
     // Clear and reload
     const { result: result2 } = renderHook(() => useSettings());
 
-    // Verify last selected provider (mistral) is loaded
+    // Verify last selected provider (mistral) is loaded (apiKey decrypted async)
     expect(result2.current).toMatchObject({
       provider: "mistral",
-      apiKey: "mistral-key",
       model: "mistral-small-latest",
       temperature: 1.2,
     });
+    await waitFor(() => expect(result2.current.apiKey).toBe("mistral-key"));
 
     // Switch providers and verify each loads correctly
     await act(() => {
       result2.current.setProvider("gemini");
     });
     expect(result2.current).toMatchObject({
-      apiKey: "gemini-key",
       model: "gemini-2.5-pro",
       thinking: "Max",
       temperature: 0.5,
     });
+    await waitFor(() => expect(result2.current.apiKey).toBe("gemini-key"));
 
     await act(() => {
       result2.current.setProvider("openai");
     });
     expect(result2.current).toMatchObject({
-      apiKey: "openai-key",
       model: "gpt-5.4-mini",
       thinking: "Off",
       temperature: 1.5,
     });
+    await waitFor(() => expect(result2.current.apiKey).toBe("openai-key"));
 
     await act(() => {
       result2.current.setProvider("openrouter");
     });
     expect(result2.current).toMatchObject({
-      apiKey: "openrouter-key",
       model: "minimax/minimax-m2:free",
       temperature: 0.8,
     });
+    await waitFor(() => expect(result2.current.apiKey).toBe("openrouter-key"));
   });
 
   it("settingsConfigured is false by default", () => {

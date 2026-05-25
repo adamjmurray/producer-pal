@@ -6,13 +6,17 @@
 /**
  * @vitest-environment happy-dom
  */
+import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
+import { isEncrypted } from "#webui/lib/api-key-crypto";
 import {
   checkHasApiKey,
   loadEnabledTools,
   loadProviderSettings,
+  loadProviderSettingsAsync,
   loadVoiceSpeed,
   loadVoiceVolume,
+  saveProviderSettings,
   saveVoiceSpeed,
   saveVoiceVolume,
   VOICE_SPEED_DEFAULT,
@@ -26,6 +30,106 @@ import {
 describe("settings-helpers", () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  describe("apiKey encryption at rest", () => {
+    it("save writes an encrypted (not cleartext) apiKey to localStorage", async () => {
+      await saveProviderSettings("anthropic", {
+        apiKey: "sk-ant-secret",
+        model: "claude-sonnet-4-6",
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
+
+      const raw = JSON.parse(
+        localStorage.getItem("producer_pal_provider_anthropic") ?? "{}",
+      );
+
+      expect(raw.apiKey).not.toBe("sk-ant-secret");
+      expect(isEncrypted(raw.apiKey)).toBe(true);
+    });
+
+    it("load decrypts a saved apiKey back to cleartext", async () => {
+      await saveProviderSettings("anthropic", {
+        apiKey: "sk-ant-secret",
+        model: "claude-sonnet-4-6",
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
+
+      const loaded = await loadProviderSettingsAsync("anthropic");
+
+      expect(loaded.apiKey).toBe("sk-ant-secret");
+    });
+
+    it("synchronous load blanks the apiKey (placeholder)", async () => {
+      await saveProviderSettings("anthropic", {
+        apiKey: "sk-ant-secret",
+        model: "claude-sonnet-4-6",
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
+
+      // The synchronous loader must not surface ciphertext; it returns "".
+      expect(loadProviderSettings("anthropic").apiKey).toBe("");
+    });
+
+    it("loads a legacy cleartext apiKey unchanged (migration passthrough)", async () => {
+      localStorage.setItem(
+        "producer_pal_provider_openai",
+        JSON.stringify({ apiKey: "sk-legacy-cleartext", model: "gpt-5.5" }),
+      );
+
+      const loaded = await loadProviderSettingsAsync("openai");
+
+      expect(loaded.apiKey).toBe("sk-legacy-cleartext");
+    });
+
+    it("save with empty apiKey stores empty (nothing to encrypt)", async () => {
+      await saveProviderSettings("openai", {
+        apiKey: "",
+        model: "gpt-5.5",
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
+
+      const raw = JSON.parse(
+        localStorage.getItem("producer_pal_provider_openai") ?? "{}",
+      );
+
+      expect(raw.apiKey).toBe("");
+    });
+  });
+
+  describe("checkHasApiKey presence detection", () => {
+    it("detects presence for an encrypted apiKey (without decrypting)", async () => {
+      await saveProviderSettings("anthropic", {
+        apiKey: "sk-ant-secret",
+        model: "claude-sonnet-4-6",
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
+
+      expect(checkHasApiKey("anthropic")).toBe(true);
+    });
+
+    it("detects presence for a legacy cleartext apiKey", () => {
+      localStorage.setItem(
+        "producer_pal_provider_openai",
+        JSON.stringify({ apiKey: "sk-legacy-cleartext" }),
+      );
+
+      expect(checkHasApiKey("openai")).toBe(true);
+    });
+
+    it("returns false when no apiKey is stored", () => {
+      expect(checkHasApiKey("anthropic")).toBe(false);
+    });
   });
 
   describe("loadProviderSettings", () => {

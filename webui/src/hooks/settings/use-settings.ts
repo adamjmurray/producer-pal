@@ -9,12 +9,13 @@ import {
   buildAllProviderSettings,
   checkHasApiKey,
   DEFAULT_SETTINGS,
-  loadAllProviderSettings,
+  loadAllProviderSettingsAsync,
   loadCurrentProvider,
   loadEnabledTools,
   loadProviderSettings,
   loadSmallModelMode,
   type ProviderSettings,
+  type ProviderSettingsApplier,
   saveCurrentSettings,
   saveSmallModelMode,
 } from "./settings-helpers";
@@ -154,21 +155,21 @@ export function useSettings(): UseSettingsReturn {
 
   const applyLoadedSettings = useCallback(
     (allSettings: typeof DEFAULT_SETTINGS) => {
-      setAnthropicSettings(allSettings.anthropic);
-      setGeminiSettings(allSettings.gemini);
-      setOpenaiSettings(allSettings.openai);
-      setMistralSettings(allSettings.mistral);
-      setOpenrouterSettings(allSettings.openrouter);
-      setLmstudioSettings(allSettings.lmstudio);
-      setOllamaSettings(allSettings.ollama);
-      setCustomSettings(allSettings.custom);
+      for (const p of Object.keys(allSettings) as Provider[]) {
+        providerStateSetters[p](() => allSettings[p]);
+      }
     },
-    [],
+    [providerStateSetters],
   );
 
-  useEffect(() => {
-    applyLoadedSettings(loadAllProviderSettings());
-  }, [applyLoadedSettings]);
+  // Post-mount: replace the synchronous placeholder settings (apiKey blanked)
+  // with the real values, decrypting each provider's apiKey from its at-rest
+  // envelope. Runs once; the synchronous useState initializers above already
+  // populated everything except the (async-decrypted) apiKey.
+  useEffect(
+    () => applyDecryptedSettings(applyLoadedSettings),
+    [applyLoadedSettings],
+  );
 
   const saveSettings = useCallback(() => {
     const allSettings = buildAllProviderSettings(
@@ -182,7 +183,13 @@ export function useSettings(): UseSettingsReturn {
       customSettings,
     );
 
-    saveCurrentSettings(provider, enabledTools, allSettings);
+    // apiKey encryption is async; save is user-triggered so fire-and-forget is
+    // fine. Errors are logged, never thrown into render.
+    saveCurrentSettings(provider, enabledTools, allSettings).catch(
+      (err: unknown) => {
+        console.error("Failed to save provider settings", err);
+      },
+    );
     saveSmallModelMode(smallModelMode);
     voiceModeSettings.commit();
     setSavedModel(allSettings[provider].model);
@@ -210,7 +217,9 @@ export function useSettings(): UseSettingsReturn {
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
     voiceModeSettings.revert();
-    applyLoadedSettings(loadAllProviderSettings());
+    // Re-decrypt and restore saved provider settings (async; the apiKey lands a
+    // tick later, mirroring the post-mount load).
+    applyDecryptedSettings(applyLoadedSettings);
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);
@@ -302,5 +311,28 @@ export function useSettings(): UseSettingsReturn {
     turnDetection: voiceModeSettings.turnDetection,
     setTurnDetection: voiceModeSettings.setTurnDetection,
     savedTurnDetection: voiceModeSettings.savedTurnDetection,
+  };
+}
+
+/**
+ * Load and decrypt all provider settings, then apply them via the given setter.
+ * Returns a cleanup callback (for useEffect) that ignores a late-arriving load
+ * after unmount. Errors are logged, never thrown into render.
+ * @param {ProviderSettingsApplier} apply - Setter that writes loaded settings to state
+ * @returns {() => void} Cleanup that cancels a pending apply
+ */
+function applyDecryptedSettings(apply: ProviderSettingsApplier): () => void {
+  let cancelled = false;
+
+  loadAllProviderSettingsAsync()
+    .then((loaded) => {
+      if (!cancelled) apply(loaded);
+    })
+    .catch((err: unknown) => {
+      console.error("Failed to load provider settings", err);
+    });
+
+  return () => {
+    cancelled = true;
   };
 }
