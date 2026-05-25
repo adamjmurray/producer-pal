@@ -20,6 +20,11 @@ export interface TakeLaneTrackOptions {
   clipLength?: number;
   /** Make each lane's create_*_clip return a non-existent ref (id 0) */
   clipCreationFails?: boolean;
+  /**
+   * Seed clips into pre-existing lanes for overlap testing. Index i lists the
+   * clip time ranges (in beats) to register on initial lane i.
+   */
+  initialLaneClips?: Array<Array<{ start: number; end: number }>>;
 }
 
 /**
@@ -38,6 +43,7 @@ export function registerTakeLaneTrack(
     initialLanes = 0,
     clipLength = 4,
     clipCreationFails = false,
+    initialLaneClips = [],
   } = options;
   const laneIds: string[] = [];
 
@@ -50,6 +56,14 @@ export function registerTakeLaneTrack(
       name: "Lane",
       arrangement_clips: children(),
     };
+
+    seedLaneClips(
+      laneProps,
+      laneClips,
+      trackIndex,
+      laneIndex,
+      initialLaneClips,
+    );
 
     const createClip = (kind: string, startBeats: unknown): unknown[] => {
       // Simulate Live failing to create the clip (returns the "no object" ref).
@@ -155,4 +169,43 @@ export function registerTakeLaneWithClips(
     type: "TakeLane",
     properties: { name: "Lane", arrangement_clips: children(...clipIds) },
   });
+}
+
+/**
+ * Seed pre-existing clips into a lane's arrangement_clips for overlap testing.
+ * No-op when the lane index has no seed entry (e.g. lanes created at runtime).
+ * @param laneProps - The lane's mutable props object
+ * @param laneClips - The lane's clip-id list (mutated in place)
+ * @param trackIndex - Owning track index
+ * @param laneIndex - 0-based lane index
+ * @param initialLaneClips - Per-lane seed clip ranges
+ */
+function seedLaneClips(
+  laneProps: Record<string, unknown>,
+  laneClips: string[],
+  trackIndex: number,
+  laneIndex: number,
+  initialLaneClips: Array<Array<{ start: number; end: number }>>,
+): void {
+  const seeds = initialLaneClips[laneIndex];
+
+  if (seeds == null || seeds.length === 0) return;
+
+  for (const { start, end } of seeds) {
+    const clipId = `tl_seed_clip_${uid++}`;
+
+    registerMockObject(clipId, {
+      path: String(
+        livePath
+          .track(trackIndex)
+          .takeLane(laneIndex)
+          .arrangementClip(laneClips.length),
+      ),
+      type: "Clip",
+      properties: { is_arrangement_clip: 1, start_time: start, end_time: end },
+    });
+    laneClips.push(clipId);
+  }
+
+  laneProps.arrangement_clips = children(...laneClips);
 }

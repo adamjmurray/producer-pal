@@ -80,6 +80,14 @@ export function normalizeTakeLaneTarget(
  * MAX_TAKE_LANES cap is enforced. takeLaneName names only the target lane, and
  * only when this call created it — existing lanes and any intermediate lanes
  * auto-created to fill a gap are left unnamed.
+ *
+ * NO ROLLBACK: Live has no take-lane delete (see file header), so a lane created
+ * here is permanent. Callers run their overlap check AFTER this — that is safe
+ * because auto-creation only ever yields a fresh, empty lane (which the overlap
+ * check passes), so an overlap error always corresponds to a pre-existing target
+ * where nothing was created. The one residual leak is unfixable: if a later clip
+ * write fails on a freshly created lane, that empty lane persists. Do all other
+ * throwing validation (e.g. invalid takeLane, the MAX cap) before calling this.
  * @param track - The regular track LiveAPI to resolve the lane on
  * @param target - Normalized take lane target (lane number or "new")
  * @param takeLaneName - Optional name for a newly created lane

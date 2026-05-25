@@ -270,6 +270,34 @@ describe("duplicate take lane", () => {
     ).toThrow("failed to create Arrangement clip");
   });
 
+  it("does not create a take lane when an overlap aborts the duplicate (no leak)", () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    // Existing lane 1 already holds a clip at beats 0-4.
+    const track = registerTakeLaneTrack({
+      initialLanes: 1,
+      initialLaneClips: [[{ start: 0, end: 4 }]],
+    });
+
+    expect(() =>
+      duplicateClipsToTakeLane(
+        LiveAPI.from("src_clip"),
+        "src_clip",
+        [0], // beat 0 overlaps the existing clip on lane 1
+        undefined,
+        undefined,
+        1, // target the EXISTING populated lane
+        undefined,
+        4,
+        4,
+      ),
+    ).toThrow(/Clip exists at .* on take lane 1/);
+
+    // The overlap is only reachable for a pre-existing lane, so the abort
+    // strands nothing: resolveTakeLane created no lane (Live can't delete one).
+    expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+  });
+
   it("throws when the source clip has no track index", () => {
     registerMockObject("orphan_clip", {
       path: "live_set scenes 0",

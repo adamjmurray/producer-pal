@@ -33,7 +33,9 @@ import {
  * Take lanes have no `duplicate_clip_to_arrangement`, so this re-creates the
  * clip on the lane via `create_midi_clip` and copies the notes plus loop/marker
  * properties. MIDI only: audio sources warn and are skipped (no v1 take-lane
- * audio support). Overlaps are checked up front so nothing is created on error.
+ * audio support). Overlaps are checked before any clips are created; the check
+ * can only throw for a pre-existing target lane, so it never strands a lane
+ * auto-created here (those are always fresh/empty) — see resolveTakeLane.
  * @param sourceClip - The clip being duplicated
  * @param id - Source clip ID (for messages)
  * @param positionsInBeats - Target arrangement start positions in Ableton beats
@@ -76,7 +78,9 @@ export function duplicateClipsToTakeLane(
   const length = sourceClip.getProperty("length") as number;
   const { lane, laneNumber } = resolveTakeLane(track, target, takeLaneName);
 
-  // Check every target position before creating anything (fail cleanly)
+  // Validate every position before creating clips. A throw here only hits a
+  // pre-existing lane (resolveTakeLane's auto-created lanes are always empty),
+  // so it never strands a newly created lane — see resolveTakeLane's docstring.
   for (const startBeats of positionsInBeats) {
     const label = abletonBeatsToBarBeat(
       startBeats,
