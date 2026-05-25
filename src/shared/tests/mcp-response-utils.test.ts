@@ -136,6 +136,22 @@ describe("mcp-response-utils", () => {
         isError: true,
       });
     });
+
+    it("omits errorCode by default", () => {
+      const result = formatErrorResponse("oops");
+
+      expect(result).not.toHaveProperty("errorCode");
+    });
+
+    it("includes the errorCode discriminator when provided", () => {
+      const result = formatErrorResponse("timed out", "timeout");
+
+      expect(result).toStrictEqual({
+        content: [{ type: "text", text: "timed out" }],
+        isError: true,
+        errorCode: "timeout",
+      });
+    });
   });
 
   describe("planChunks", () => {

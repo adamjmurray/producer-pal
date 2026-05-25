@@ -121,6 +121,20 @@ export function registerRestApiRoutes(
           overrides,
         )) as McpResponse;
 
+        // A tool-call timeout maps to a transport-level error: return HTTP 504
+        // instead of a 200 carrying isError. Ordinary tool errors keep their
+        // existing 200 + isError contract. The timeout is identified by the
+        // structured `errorCode` discriminator set at the timeout origin, not
+        // by matching the message text.
+        if (mcpResponse.errorCode === "timeout") {
+          res.status(504).json({
+            error: mcpResponse.content.map((c) => c.text).join("\n"),
+            errorCode: "timeout",
+          });
+
+          return;
+        }
+
         res.json(unwrapMcpResponse(mcpResponse, formatOverride === "json"));
       } catch (error) {
         console.error(`REST API error calling ${toolName}: ${String(error)}`);

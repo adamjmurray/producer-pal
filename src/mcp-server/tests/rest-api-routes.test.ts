@@ -58,6 +58,15 @@ function stubMaxOutlet(payload: Record<string, unknown>): {
   return holder;
 }
 
+/**
+ * Stub Max.outlet so it accepts the request but never sends a response,
+ * forcing the adapter's timeout path to fire. Used to exercise the REST
+ * route's timeout → HTTP 504 mapping end-to-end through the real adapter.
+ */
+function stubMaxOutletNeverResponds(): void {
+  Max.outlet = ((): Promise<void> => Promise.resolve()) as typeof Max.outlet;
+}
+
 describe("REST API Routes", () => {
   const appState = setupExpressAppServer();
 
@@ -95,6 +104,17 @@ describe("REST API Routes", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),
+    });
+  }
+
+  async function callToolWithQuery(
+    name: string,
+    query: string,
+  ): Promise<Response> {
+    return await fetch(`${appState.baseUrl}/api/tools/${name}?${query}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
     });
   }
 
@@ -379,17 +399,6 @@ describe("REST API Routes", () => {
   });
 
   describe("?timeoutMs query param", () => {
-    async function callToolWithQuery(
-      name: string,
-      query: string,
-    ): Promise<Response> {
-      return await fetch(`${appState.baseUrl}/api/tools/${name}?${query}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-    }
-
     it("should pass timeoutMs into context when provided", async () => {
       const holder = stubMaxOutlet({
         content: [{ type: "text", text: "ok" }],
@@ -444,6 +453,57 @@ describe("REST API Routes", () => {
       );
 
       expect(response.status).toBe(400);
+    });
+  });
+
+  describe("tool-call timeout", () => {
+    it("should return HTTP 504 when the tool call times out", async () => {
+      // Max accepts the request but never responds, so the adapter's real
+      // timeout path fires and tags the response with errorCode: "timeout".
+      stubMaxOutletNeverResponds();
+
+      const response = await callToolWithQuery("ppal-connect", "timeoutMs=1");
+
+      expect(response.status).toBe(504);
+
+      const body = await response.json();
+
+      expect(body.errorCode).toBe("timeout");
+      expect(body.error).toContain("timed out");
+    });
+
+    it("should keep returning HTTP 200 for an ordinary (non-timeout) tool error", async () => {
+      // An ordinary error carries isError but no timeout discriminator, so the
+      // legacy 200 + isError contract is preserved.
+      stubMaxOutlet({
+        content: [{ type: "text", text: "something went wrong" }],
+        isError: true,
+      });
+
+      const response = await callTool("ppal-connect");
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+
+      expect(body.isError).toBe(true);
+      expect(body.result).toBe("something went wrong");
+      expect(body.errorCode).toBeUndefined();
+    });
+
+    it("should keep returning HTTP 200 on success", async () => {
+      stubMaxOutlet({
+        content: [{ type: "text", text: "ok" }],
+      });
+
+      const response = await callTool("ppal-connect");
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+
+      expect(body.isError).toBe(false);
+      expect(body.result).toBe("ok");
     });
   });
 });

@@ -75,9 +75,19 @@ interface McpTextContent {
   text: string;
 }
 
+/**
+ * Structured discriminator for the error category of an MCP error response.
+ * Only "timeout" is defined so far. Callers (e.g. the REST route) use this to
+ * map specific error categories to transport-level signals (e.g. HTTP 504)
+ * without fragile string-matching of the error message text.
+ */
+export type McpErrorCode = "timeout";
+
 interface McpResponse {
   content: McpTextContent[];
   isError?: boolean;
+  /** Structured error category, set only for specific error origins. */
+  errorCode?: McpErrorCode;
   // Allow additional properties for MCP SDK compatibility
   [key: string]: unknown;
 }
@@ -103,11 +113,23 @@ export function formatSuccessResponse(result: string | object): McpResponse {
  * Format an error MCP response
  *
  * @param errorMessage - Error message text
+ * @param errorCode - Optional structured error category (e.g. "timeout") that
+ *   downstream transports can map to a status code. Omitted by default so
+ *   ordinary errors are indistinguishable from today's responses.
  * @returns Formatted MCP error response
  */
-export function formatErrorResponse(errorMessage: string): McpResponse {
-  return {
+export function formatErrorResponse(
+  errorMessage: string,
+  errorCode?: McpErrorCode,
+): McpResponse {
+  const response: McpResponse = {
     content: [{ type: "text", text: errorMessage }],
     isError: true,
   };
+
+  if (errorCode != null) {
+    response.errorCode = errorCode;
+  }
+
+  return response;
 }

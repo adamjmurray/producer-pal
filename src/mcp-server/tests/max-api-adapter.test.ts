@@ -160,7 +160,8 @@ describe("Max API Adapter", () => {
 
       const result = await callLiveApi("test-tool", {});
 
-      // Should resolve with isError: true instead of rejecting
+      // Should resolve with isError: true instead of rejecting, and carry the
+      // "timeout" discriminator so the REST route can map it to HTTP 504.
       expect(result).toStrictEqual({
         content: [
           {
@@ -169,6 +170,7 @@ describe("Max API Adapter", () => {
           },
         ],
         isError: true,
+        errorCode: "timeout",
       });
 
       expect(Max.outlet).toHaveBeenCalled();
@@ -251,6 +253,7 @@ describe("Max API Adapter", () => {
           { type: "text", text: "Tool call 'test-tool' timed out after 2ms" },
         ],
         isError: true,
+        errorCode: "timeout",
       });
     });
 
