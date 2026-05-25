@@ -8,6 +8,7 @@ import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
@@ -59,6 +60,8 @@ export const mockSettingsHook = {
   liveApiEnabledDirty: false,
   setLiveApiEnabled: vi.fn(),
   seedLiveApiEnabled: vi.fn(),
+
+  savedTurnDetection: DEFAULT_TURN_DETECTION,
 };
 
 /**

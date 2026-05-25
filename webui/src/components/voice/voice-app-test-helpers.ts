@@ -6,6 +6,7 @@
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { vi } from "vitest";
 import { type VoiceAppProps } from "#webui/components/voice/VoiceApp";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { type UseSettingsReturn } from "#webui/types/settings";
 
@@ -40,6 +41,7 @@ export function makeProps(o: PropOverrides = {}): VoiceAppProps {
       savedModel: model,
       enabledTools: {},
       savedRealtimeVoice: o.savedRealtimeVoice ?? "marin",
+      savedTurnDetection: DEFAULT_TURN_DETECTION,
     } as unknown as UseSettingsReturn,
     display: {
       showTimestamps: false,

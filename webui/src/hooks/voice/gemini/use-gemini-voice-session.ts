@@ -3,10 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { GoogleGenAI, type Session } from "@google/genai";
+import { type Session } from "@google/genai";
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { createGeminiMcpTools } from "#webui/hooks/voice/gemini/gemini-mcp-tools";
 import { GeminiMicCapture } from "#webui/hooks/voice/gemini/gemini-mic-capture";
 import { GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
@@ -14,6 +15,7 @@ import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-
 import { fetchGeminiToken } from "#webui/hooks/voice/gemini/gemini-voice-token";
 import {
   buildGeminiConfig,
+  createGenAIClient,
   GEMINI_INPUT_MIME_TYPE,
   type GeminiMessageDeps,
   handleGeminiMessage,
@@ -37,6 +39,8 @@ export interface UseGeminiVoiceSessionParams {
   voice?: string;
   /** Output playback volume (live; applied to the GainNode immediately). */
   volume?: number;
+  /** Gemini VAD/turn-detection settings; read at connect (next Stop → Talk). */
+  turnDetection?: GeminiVadSettings;
 }
 
 /**
@@ -64,6 +68,7 @@ export function useGeminiVoiceSession(
     enabledTools,
     voice,
     volume,
+    turnDetection,
   } = params;
 
   const sessionRef = useRef<Session | null>(null);
@@ -196,12 +201,7 @@ export function useGeminiVoiceSession(
           });
         };
 
-        const ai = new GoogleGenAI({
-          apiKey: credential.value,
-          ...(credential.ephemeral
-            ? { httpOptions: { apiVersion: "v1alpha" } }
-            : {}),
-        });
+        const ai = createGenAIClient(credential);
 
         const session = await ai.live.connect({
           model,
@@ -213,7 +213,11 @@ export function useGeminiVoiceSession(
             onclose: () =>
               handleDrop("Connection lost. Press Talk to reconnect."),
           },
-          config: buildGeminiConfig({ voice, functionDeclarations }),
+          config: buildGeminiConfig({
+            voice,
+            functionDeclarations,
+            vad: turnDetection,
+          }),
         });
 
         if (stale()) {
@@ -263,6 +267,7 @@ export function useGeminiVoiceSession(
       enabledTools,
       voice,
       volume,
+      turnDetection,
       cleanup,
     ],
   );

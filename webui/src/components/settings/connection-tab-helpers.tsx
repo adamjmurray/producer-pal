@@ -12,6 +12,7 @@ import {
   REALTIME_VOICES,
 } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
+import { GeminiTurnDetectionControls } from "./controls/GeminiTurnDetectionControls";
 import { THINKING_LEVELS } from "./controls/thinking-levels";
 import { Tooltip } from "./controls/Tooltip";
 import { TurnDetectionControls } from "./controls/TurnDetectionControls";
@@ -163,9 +164,10 @@ interface VoiceSettingsProps {
 }
 
 /**
- * Voice-mode settings, shown only for the OpenAI realtime model. The voice
- * selector sits at the top level; speed and turn detection are tucked into a
- * collapsed "Voice Settings" disclosure. Returns null otherwise.
+ * Voice-mode settings, shown only for a realtime model selection (OpenAI or
+ * Gemini). The voice selector sits at the top level; volume and the provider's
+ * turn-detection controls are tucked into a collapsed "Voice Settings"
+ * disclosure. Returns null otherwise.
  * @param props - Component props
  * @param props.provider - Current provider
  * @param props.model - Current model id
@@ -194,8 +196,9 @@ export function VoiceSettings({
   activeVoice,
 }: VoiceSettingsProps) {
   if (!isRealtimeSelection(provider, model)) return null;
-  // Speed + turn-detection map to OpenAI Realtime config that Gemini Live has no
-  // equivalent for, so only the voice picker and (live) volume show for Gemini.
+  // Each provider gets its own turn-detection controls (the VAD configs don't
+  // map 1:1). Speed has no Gemini equivalent (the Live API has no speaking-rate
+  // field), so it stays OpenAI-only.
   const isGemini = provider === "gemini";
   const voices = isGemini ? GEMINI_REALTIME_VOICES : REALTIME_VOICES;
 
@@ -214,7 +217,12 @@ export function VoiceSettings({
         </summary>
         <div className="mt-3 space-y-3">
           <VoiceVolumeSlider volume={voiceVolume} setVolume={setVoiceVolume} />
-          {!isGemini && (
+          {isGemini ? (
+            <GeminiTurnDetectionControls
+              settings={turnDetection}
+              setSettings={setTurnDetection}
+            />
+          ) : (
             <>
               <VoiceSpeedSlider speed={voiceSpeed} setSpeed={setVoiceSpeed} />
               <TurnDetectionControls

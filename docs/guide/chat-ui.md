@@ -135,7 +135,7 @@ key:
 To enter voice mode, open [Settings](#settings), set the **Provider**, and
 select that provider's voice model. The chat composer is replaced by the voice
 controls described below. See [Voice settings](#voice) for the voice, volume,
-and (OpenAI only) speed and turn-detection options.
+turn-detection, and (OpenAI only) speed options.
 
 > Voice works in Chrome and other Chromium browsers like Edge (Edge is untested
 > but likely fine). Firefox can't drive OpenAI's voice transport, but the Google
@@ -266,30 +266,35 @@ Each slider has a **Reset** link to restore its default. Changes apply on the
 next session (Stop, then Talk) — except **Volume**, which takes effect
 immediately.
 
-On **Google (Gemini)**, only **Volume** appears — speed, turn detection, and the
-barge-in toggle are OpenAI only. (Gemini interrupts automatically when you start
-speaking, so it has no barge-in setting.)
+Both providers offer volume, turn detection, and barge-in. The turn-detection
+controls differ because each provider exposes its own voice-activity-detection
+(VAD) knobs. **Speed** is OpenAI only (the Gemini Live API has no playback-speed
+setting).
 
 - **Volume** - Output loudness of the assistant's voice (0–100%, default 100%).
   Adjustable live during a session, so you can balance the assistant against the
   music coming from Ableton without touching Live's mixer.
 - **Speed** _(OpenAI only)_ - Playback speed of the assistant's voice
   (0.5×–1.5×, default 1.0×).
-- **Turn detection** _(OpenAI only)_ - How the model decides you've finished
-  speaking — voice activity detection, or "VAD":
-  - **Server VAD (volume-based)** - Detects the end of your turn from audio
-    volume. Adds two tuning sliders:
-    - **Threshold** - Activation volume (0–1). Higher values ignore quieter
-      input.
-    - **Pause** - How long (in milliseconds) to wait after you stop speaking
-      before ending your turn.
-  - **Semantic VAD (model-based)** - The model decides when you've finished a
-    thought. Adds one setting:
-    - **Eagerness** - How quickly it responds: Auto, Low (waits longer), Medium,
-      or High (responds sooner).
-- **Enable barge-in** _(OpenAI only)_ - When on, speaking interrupts the
-  assistant while it's still talking. Off by default. Use headphones — without
-  them, the assistant's own voice can trigger interruptions.
+- **Turn detection** - How the model decides you've finished speaking — voice
+  activity detection, or "VAD". The controls differ by provider:
+  - **OpenAI** picks a VAD mode:
+    - **Server VAD (volume-based)** - Detects the end of your turn from audio
+      volume. Adds **Threshold** (activation volume, 0–1; higher ignores quieter
+      input) and **Pause** (how long to wait after you stop speaking).
+    - **Semantic VAD (model-based)** - The model decides when you've finished a
+      thought. Adds **Eagerness** (Auto, Low, Medium, or High).
+  - **Google (Gemini)** exposes sensitivity and timing directly:
+    - **Start-of-speech / End-of-speech sensitivity** - High (detects more
+      readily) or Low.
+    - **Silence** - How long (ms) to wait after you stop speaking before ending
+      your turn.
+    - **Prefix padding** - How much audio (ms) to keep before detected speech
+      onset.
+- **Enable barge-in** - When on, speaking interrupts the assistant while it's
+  still talking. **Off by default for OpenAI, on by default for Gemini.** Use
+  headphones — without them, the assistant's own voice can trigger
+  interruptions.
 
 ### Tools
 

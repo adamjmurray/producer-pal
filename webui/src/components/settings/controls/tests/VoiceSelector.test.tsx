@@ -77,7 +77,7 @@ describe("VoiceSelector", () => {
     const select = screen.getByTestId("voice-select") as HTMLSelectElement;
 
     expect(select.value).toBe("Puck");
-    expect(screen.getByRole("option", { name: "Charon" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Charon/ })).toBeTruthy();
     expect(screen.queryByRole("option", { name: /Marin/ })).toBeNull();
   });
 

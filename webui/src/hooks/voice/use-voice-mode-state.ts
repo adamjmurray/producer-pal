@@ -141,6 +141,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     enabledTools: settings.enabledTools,
     voice: geminiVoiceId,
     volume: settings.voiceVolume,
+    turnDetection: settings.savedTurnDetection.gemini,
   });
   const voice = isGemini ? geminiVoiceSession : openAiVoice;
 

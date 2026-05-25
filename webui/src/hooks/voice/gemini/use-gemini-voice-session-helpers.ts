@@ -4,15 +4,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  ActivityHandling,
+  EndSensitivity,
   type FunctionDeclaration,
+  GoogleGenAI,
   type LiveConnectConfig,
   type LiveServerMessage,
   Modality,
+  type RealtimeInputConfig,
   type Session,
+  StartSensitivity,
 } from "@google/genai";
 import { type RealtimeItem } from "@openai/agents/realtime";
+import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { type GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
 import { type GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
+import { type GeminiVoiceCredential } from "#webui/hooks/voice/gemini/gemini-voice-token";
 import { extractErrorMessage } from "#webui/hooks/voice/use-voice-session-helpers";
 import { DEFAULT_GEMINI_REALTIME_VOICE } from "#webui/lib/constants/models";
 
@@ -28,19 +35,22 @@ export const GEMINI_AGENT_INSTRUCTIONS = [
 
 /**
  * Build the Live API session config: audio-out, the system instruction, the
- * MCP function declarations, the selected voice, and input/output transcription
- * (off by default on Gemini — we need both to render the transcript UI).
+ * MCP function declarations, the selected voice, input/output transcription
+ * (off by default on Gemini — we need both to render the transcript UI), and the
+ * VAD/turn-detection config when provided.
  *
- * @param opts - Voice id and the MCP function declarations
+ * @param opts - Voice id, the MCP function declarations, and optional VAD config
  * @param opts.voice - Prebuilt Gemini voice name (defaults to Puck)
  * @param opts.functionDeclarations - MCP tools as Gemini declarations
+ * @param opts.vad - Gemini VAD settings; when omitted, Live API defaults apply
  * @returns The LiveConnectConfig
  */
 export function buildGeminiConfig(opts: {
   voice: string | undefined;
   functionDeclarations: FunctionDeclaration[];
+  vad?: GeminiVadSettings;
 }): LiveConnectConfig {
-  return {
+  const config: LiveConnectConfig = {
     responseModalities: [Modality.AUDIO],
     systemInstruction: GEMINI_AGENT_INSTRUCTIONS,
     tools: [{ functionDeclarations: opts.functionDeclarations }],
@@ -54,6 +64,55 @@ export function buildGeminiConfig(opts: {
     inputAudioTranscription: {},
     outputAudioTranscription: {},
   };
+
+  if (opts.vad) config.realtimeInputConfig = buildRealtimeInputConfig(opts.vad);
+
+  return config;
+}
+
+/**
+ * Map the UI VAD settings to Gemini's realtimeInputConfig: start/end-of-speech
+ * sensitivity, silence + prefix-padding windows, and barge-in via
+ * activityHandling (NO_INTERRUPTION when barge-in is off).
+ *
+ * @param vad - Gemini VAD settings
+ * @returns The realtimeInputConfig payload
+ */
+function buildRealtimeInputConfig(vad: GeminiVadSettings): RealtimeInputConfig {
+  return {
+    automaticActivityDetection: {
+      startOfSpeechSensitivity:
+        vad.startSensitivity === "high"
+          ? StartSensitivity.START_SENSITIVITY_HIGH
+          : StartSensitivity.START_SENSITIVITY_LOW,
+      endOfSpeechSensitivity:
+        vad.endSensitivity === "high"
+          ? EndSensitivity.END_SENSITIVITY_HIGH
+          : EndSensitivity.END_SENSITIVITY_LOW,
+      prefixPaddingMs: vad.prefixPaddingMs,
+      silenceDurationMs: vad.silenceDurationMs,
+    },
+    activityHandling: vad.interruptResponse
+      ? ActivityHandling.START_OF_ACTIVITY_INTERRUPTS
+      : ActivityHandling.NO_INTERRUPTION,
+  };
+}
+
+/**
+ * Construct the GoogleGenAI client for a Live session. Ephemeral tokens are only
+ * valid on the v1alpha API, so the API version is pinned accordingly; a raw key
+ * uses the default version.
+ *
+ * @param credential - The Gemini voice credential (raw key or ephemeral token)
+ * @returns A configured GoogleGenAI client
+ */
+export function createGenAIClient(
+  credential: GeminiVoiceCredential,
+): GoogleGenAI {
+  return new GoogleGenAI({
+    apiKey: credential.value,
+    ...(credential.ephemeral ? { httpOptions: { apiVersion: "v1alpha" } } : {}),
+  });
 }
 
 /** Dependencies handleGeminiMessage needs from the hook. */

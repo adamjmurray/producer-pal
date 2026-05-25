@@ -12,11 +12,15 @@ import {
   mapThinkingToRealtimeEffort,
   mapTurnDetectionToConfig,
 } from "#webui/hooks/settings/config-builders";
-import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import {
+  DEFAULT_TURN_DETECTION,
+  type TurnDetectionSettings,
+} from "#webui/hooks/settings/turn-detection-helpers";
 
 describe("config-builders", () => {
   describe("mapTurnDetectionToConfig", () => {
     const base: TurnDetectionSettings = {
+      ...DEFAULT_TURN_DETECTION,
       mode: "server_vad",
       threshold: 0.6,
       silenceDurationMs: 300,
