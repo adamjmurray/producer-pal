@@ -9,12 +9,25 @@
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { VoiceVolumeSlider } from "#webui/components/settings/controls/VoiceVolumeSlider";
+import { VOICE_VOLUME_MAX } from "#webui/hooks/settings/settings-helpers";
 
 describe("VoiceVolumeSlider", () => {
   it("renders the current volume as a percentage in the label", () => {
     render(<VoiceVolumeSlider volume={0.8} setVolume={vi.fn()} />);
 
     expect(screen.getByText(/Volume \(80%\)/)).toBeTruthy();
+  });
+
+  it("renders boost above unity up to 125% and exposes the extended max", () => {
+    render(<VoiceVolumeSlider volume={1.25} setVolume={vi.fn()} />);
+
+    expect(screen.getByText(/Volume \(125%\)/)).toBeTruthy();
+    const slider = screen.getByTestId(
+      "voice-volume-slider",
+    ) as HTMLInputElement;
+
+    expect(slider.max).toBe(String(VOICE_VOLUME_MAX));
+    expect(slider.max).toBe("1.25");
   });
 
   it("calls setVolume with the parsed numeric value on slider input", () => {

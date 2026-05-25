@@ -18,11 +18,12 @@ export const VOICE_SPEED_MIN = 0.5;
 export const VOICE_SPEED_MAX = 1.5;
 export const VOICE_SPEED_DEFAULT = 1.0;
 
-// Output playback gain as an HTMLMediaElement.volume value (0.0–1.0). Capped at
-// unity because plain element volume can't boost above 1.0 — boost above unity
-// is a follow-up (Web Audio GainNode).
+// Output playback gain (1.0 = unity). Driven through a Web Audio GainNode, which
+// can boost above unity — so the range extends to 1.25 (125%). The plain
+// <audio> element is muted and the remote stream is routed source → gain →
+// destination; element .volume alone is hard-capped at 1.0 by the HTML spec.
 export const VOICE_VOLUME_MIN = 0;
-export const VOICE_VOLUME_MAX = 1;
+export const VOICE_VOLUME_MAX = 1.25;
 export const VOICE_VOLUME_DEFAULT = 1.0;
 
 /**
