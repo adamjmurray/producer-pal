@@ -14,6 +14,7 @@ import { useVoiceModeReporting } from "#webui/hooks/voice/use-voice-mode-reporti
 import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
 import { mergeVoiceHistory } from "#webui/hooks/voice/use-voice-persistence-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
+import { resolveRealtimeModel } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { isFirefox } from "#webui/utils/browser-detect";
@@ -60,6 +61,14 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
   );
   const openAiKey =
     settings.provider === "openai" && settings.apiKey ? settings.apiKey : null;
+  // The realtime model the active voice session runs on (the saved selection
+  // when it's realtime, else the default). Threaded into the session, ephemeral
+  // token, saved record, and header lock so a non-default realtime model isn't
+  // mislabeled as the default.
+  const realtimeModel = resolveRealtimeModel(
+    settings.savedProvider,
+    settings.savedModel,
+  );
   const firefoxDetected = useMemo(() => isFirefox(), []);
   const historyPanelOpen = viewState.historyPanelOpen;
   const setHistoryPanelOpen = useCallback(
@@ -73,6 +82,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     mcpUrl,
     voiceTokenUrl,
     openAiKey,
+    model: realtimeModel,
     enabledTools: settings.enabledTools,
     voice: settings.savedRealtimeVoice,
     speed: settings.savedVoiceSpeed,
@@ -95,6 +105,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
 
   const persistence = useVoicePersistence({
     liveHistory: voice.history,
+    model: realtimeModel,
     onForeignRecord,
     onLiveRecordDeleted,
   });
@@ -162,6 +173,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     enabledToolsCount,
     setModeContext,
     activeVoice: voice.activeVoice,
+    activeModel: realtimeModel,
     savedModel: settings.savedModel,
     savedProvider: settings.savedProvider,
   });

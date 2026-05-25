@@ -24,6 +24,7 @@ import {
   handleTransportEvent,
   seedInitialHistory,
   teardownAudioElement,
+  type TransportEventDeps,
 } from "#webui/hooks/voice/use-voice-session-helpers";
 import {
   createVoiceAudioGraph,
@@ -49,6 +50,9 @@ interface UseVoiceSessionParams {
   mcpUrl: string;
   voiceTokenUrl: string;
   openAiKey: string | null;
+  /** Realtime model id for the session + ephemeral token. Defaults to
+   * OPENAI_REALTIME_MODEL when undefined. */
+  model?: string;
   enabledTools?: Record<string, boolean>;
   /** Voice id baked into the RealtimeAgent at connect time. The session locks
    * the voice once the model emits audio; if undefined, OpenAI picks a default. */
@@ -130,6 +134,7 @@ export function useVoiceSession(
     mcpUrl,
     voiceTokenUrl,
     openAiKey,
+    model,
     enabledTools,
     voice,
     speed,
@@ -300,12 +305,13 @@ export function useVoiceSession(
 
         const session = new RealtimeSession(
           agent,
-          buildSessionOptions(transport, { turnDetection, speed, thinking }),
+          buildSessionOptions(transport, {
+            turnDetection,
+            speed,
+            thinking,
+            model,
+          }),
         );
-
-        session.on("history_updated", (next: RealtimeItem[]) => {
-          setHistory([...next]);
-        });
 
         // Barge-in disabled (interrupt_response off, the default) → run
         // half-duplex: handleTransportEvent mutes the mic for the duration of
@@ -314,28 +320,24 @@ export function useVoiceSession(
         // for the session (changes apply on the next Stop → Talk).
         const halfDuplex = turnDetection?.interruptResponse === false;
 
-        session.on("transport_event", (event: TransportEvent) =>
-          handleTransportEvent(event, {
-            halfDuplex,
-            session,
-            autoMutedRef,
-            isMutedRef,
-            setAssistantThinking,
-            setAssistantSpeaking,
-            setError,
-            setRateLimitedUntil,
-          }),
-        );
-
-        session.on("error", (err: { type: "error"; error: unknown }) => {
-          console.error("RealtimeSession error", err.error);
-          setError(extractErrorMessage(err.error));
+        wireSessionEvents(session, setHistory, {
+          halfDuplex,
+          autoMutedRef,
+          isMutedRef,
+          setAssistantThinking,
+          setAssistantSpeaking,
+          setError,
+          setRateLimitedUntil,
         });
 
         // eslint-disable-next-line require-atomic-updates -- ref is not subject to React batching
         sessionRef.current = session;
 
-        const token = await fetchEphemeralToken(voiceTokenUrl, openAiKey);
+        const token = await fetchEphemeralToken(
+          voiceTokenUrl,
+          openAiKey,
+          model,
+        );
 
         // Torn down during the token fetch? Bail before session.connect() opens
         // the mic (cleanup() already closed the stored session).
@@ -374,6 +376,7 @@ export function useVoiceSession(
       mcpUrl,
       voiceTokenUrl,
       openAiKey,
+      model,
       enabledTools,
       voice,
       speed,
@@ -468,4 +471,32 @@ export function useVoiceSession(
     resetHistory: () => setHistory([]),
     activeVoice,
   };
+}
+
+/**
+ * Wire the realtime session's history, transport-event, and error listeners.
+ * Extracted from useVoiceSession to keep the hook within its line budget.
+ *
+ * @param session - The realtime session to attach listeners to
+ * @param setHistory - State setter for the transcript history
+ * @param transportDeps - The half-duplex flag, mute refs, and UI setters
+ *   handleTransportEvent needs (every TransportEventDeps field but `session`)
+ */
+function wireSessionEvents(
+  session: RealtimeSession,
+  setHistory: (items: RealtimeItem[]) => void,
+  transportDeps: Omit<TransportEventDeps, "session">,
+): void {
+  session.on("history_updated", (next: RealtimeItem[]) => {
+    setHistory([...next]);
+  });
+
+  session.on("transport_event", (event: TransportEvent) =>
+    handleTransportEvent(event, { session, ...transportDeps }),
+  );
+
+  session.on("error", (err: { type: "error"; error: unknown }) => {
+    console.error("RealtimeSession error", err.error);
+    transportDeps.setError(extractErrorMessage(err.error));
+  });
 }

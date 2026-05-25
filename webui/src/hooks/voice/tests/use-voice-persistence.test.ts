@@ -62,6 +62,23 @@ describe("useVoicePersistence", () => {
     expect(loaded?.voiceHistory ?? []).toHaveLength(1);
   });
 
+  it("stamps the configured realtime model on saved records", async () => {
+    const { result, rerender } = renderVoicePersistenceWithHistory({
+      model: "gpt-4o-realtime-preview",
+    });
+
+    await waitForEffects();
+    rerender([userTextItem("hey")]);
+    await waitForEffects(800);
+
+    const loaded = await loadConversation(
+      result.current.activeConversationId as string,
+    );
+
+    expect(loaded?.model).toBe("gpt-4o-realtime-preview");
+    expect(loaded?.modelLabel).toBe("gpt-4o-realtime-preview");
+  });
+
   it("reuses one reserved id across rapid updates, creating a single record", async () => {
     const { result, rerender } = renderVoicePersistenceWithHistory();
 

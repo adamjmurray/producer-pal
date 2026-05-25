@@ -37,11 +37,14 @@ const ELEMENT_VOLUME_MAX = 1;
  *
  * @param voiceTokenUrl - URL of the /voice-token endpoint
  * @param openAiKey - User's OpenAI API key (sent in X-OpenAI-Key header)
+ * @param model - Realtime model id to mint the token for (defaults to
+ *   OPENAI_REALTIME_MODEL)
  * @returns The ephemeral client secret value
  */
 export async function fetchEphemeralToken(
   voiceTokenUrl: string,
   openAiKey: string,
+  model: string = OPENAI_REALTIME_MODEL,
 ): Promise<string> {
   const response = await fetch(voiceTokenUrl, {
     method: "POST",
@@ -49,7 +52,7 @@ export async function fetchEphemeralToken(
       "Content-Type": "application/json",
       "X-OpenAI-Key": openAiKey,
     },
-    body: JSON.stringify({ model: OPENAI_REALTIME_MODEL }),
+    body: JSON.stringify({ model }),
   });
 
   if (!response.ok) {
@@ -490,6 +493,7 @@ export function teardownAudioElement(
  * @param opts.turnDetection - VAD settings, or undefined for server default
  * @param opts.speed - Output playback speed (defaults to VOICE_SPEED_DEFAULT)
  * @param opts.thinking - Thinking UI level, mapped to reasoning.effort
+ * @param opts.model - Realtime model id (defaults to OPENAI_REALTIME_MODEL)
  * @returns The RealtimeSession constructor options
  */
 export function buildSessionOptions(
@@ -498,12 +502,13 @@ export function buildSessionOptions(
     turnDetection?: TurnDetectionSettings;
     speed?: number;
     thinking?: string;
+    model?: string;
   },
 ): ConstructorParameters<typeof RealtimeSession>[1] {
   const reasoningEffort = mapThinkingToRealtimeEffort(opts.thinking ?? "");
 
   return {
-    model: OPENAI_REALTIME_MODEL,
+    model: opts.model ?? OPENAI_REALTIME_MODEL,
     transport,
     config: {
       audio: {

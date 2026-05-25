@@ -7,7 +7,6 @@ import { useEffect, useRef } from "preact/hooks";
 import { type HeaderInfo } from "#webui/components/chat/controls/header/HeaderActions";
 import { type ModeContext } from "#webui/components/mode-context";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 
 interface VoicePersistenceLike {
@@ -25,6 +24,10 @@ interface UseVoiceModeReportingParams {
   /** Voice id locked into the live RealtimeSession (null when idle). Reported
    * up so the settings Voice picker can flag mid-session pending changes. */
   activeVoice: string | null;
+  /** Realtime model the active voice session/record runs on. Reported as the
+   * conversation-lock model so a non-default realtime model isn't shown (or
+   * flagged as diverging) as the default. */
+  activeModel: string;
   /** The user's saved model/provider — used so the top bar can flag divergence
    * when a voice record is being viewed but saved settings point at a chat
    * model (e.g. opening a voice convo from history while saved is GPT-5). */
@@ -51,6 +54,7 @@ export function useVoiceModeReporting(
     enabledToolsCount,
     setModeContext,
     activeVoice,
+    activeModel,
     savedModel,
     savedProvider,
   } = params;
@@ -78,7 +82,7 @@ export function useVoiceModeReporting(
   useEffect(() => {
     setModeContext({
       conversationLock: {
-        activeModel: hasActiveVoiceConv ? OPENAI_REALTIME_MODEL : null,
+        activeModel: hasActiveVoiceConv ? activeModel : null,
         activeProvider: hasActiveVoiceConv ? "openai" : null,
         activeSmallModelMode: hasActiveVoiceConv ? false : null,
       },
@@ -87,10 +91,10 @@ export function useVoiceModeReporting(
         void handlersRef.current.deleteUnbookmarked(),
       activeVoice,
     });
-  }, [hasActiveVoiceConv, setModeContext, activeVoice]);
+  }, [hasActiveVoiceConv, setModeContext, activeVoice, activeModel]);
 
   return {
-    activeModel: OPENAI_REALTIME_MODEL,
+    activeModel,
     activeProvider: "openai",
     model: savedModel,
     provider: savedProvider,

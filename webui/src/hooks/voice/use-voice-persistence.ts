@@ -25,6 +25,9 @@ const AUTOSAVE_DEBOUNCE_MS = 600;
 interface UseVoicePersistenceParams {
   /** Current live voice transcript from useVoiceSession (drives auto-save). */
   liveHistory: RealtimeItem[];
+  /** Realtime model id to stamp on saved voice records. Defaults to
+   * OPENAI_REALTIME_MODEL. */
+  model?: string;
   /** Invoked when a non-voice (chat) record is encountered. The parent (App.tsx)
    * switches modes via viewingMode so the chat hook can pick up the conversation
    * from the URL hash. When omitted, the hook falls back to clearing the active
@@ -67,7 +70,12 @@ export interface UseVoicePersistenceReturn {
 export function useVoicePersistence(
   params: UseVoicePersistenceParams,
 ): UseVoicePersistenceReturn {
-  const { liveHistory, onForeignRecord, onLiveRecordDeleted } = params;
+  const {
+    liveHistory,
+    model = OPENAI_REALTIME_MODEL,
+    onForeignRecord,
+    onLiveRecordDeleted,
+  } = params;
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
@@ -162,6 +170,7 @@ export function useVoicePersistence(
           createdAt: createdAtRef.current,
           bookmarked: bookmarkedRef.current,
           title: titleRef.current,
+          model,
         },
         () => canceledIdsRef.current.has(id),
       ).then((record) => {
@@ -190,7 +199,7 @@ export function useVoicePersistence(
     }, AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [liveHistory, refreshList, setActiveId]);
+  }, [liveHistory, model, refreshList, setActiveId]);
 
   const switchConversation = useCallback(
     async (id: string) => {
@@ -378,13 +387,14 @@ interface SaveContext {
   createdAt: number | null;
   bookmarked: boolean;
   title: string | null;
+  model: string;
 }
 
 /**
  * Persist the current live voice transcript under the given conversation id.
  * @param id - Conversation id (existing or freshly generated)
  * @param items - Live RealtimeItem history
- * @param ctx - Snapshot of metadata refs (createdAt, bookmarked, manual title)
+ * @param ctx - Snapshot of metadata refs (createdAt, bookmarked, title, model)
  * @param isCanceled - Returns true if the record was deleted; bail before writing
  * @returns The saved record, or null if the save was canceled
  */
@@ -404,8 +414,8 @@ async function saveVoiceRecord(
     updatedAt: now,
     bookmarked: existing?.bookmarked ?? ctx.bookmarked,
     provider: "openai",
-    model: OPENAI_REALTIME_MODEL,
-    modelLabel: OPENAI_REALTIME_MODEL,
+    model: ctx.model,
+    modelLabel: ctx.model,
     thinking: null,
     temperature: null,
     showThoughts: null,

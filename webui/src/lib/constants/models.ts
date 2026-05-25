@@ -176,12 +176,27 @@ export const PROVIDER_MODELS: Partial<
   ollama: OLLAMA_MODELS,
 };
 
+const REALTIME_MODEL_ID = /realtime/i;
+
 /**
- * Returns true when the selected model is a realtime (voice) model that belongs
- * to the selected provider. Provider scoping is the point: a realtime model id
- * is only valid for the provider listing it, so a non-matching provider (e.g. a
- * custom OpenAI-compatible endpoint reusing the id) routes to text chat rather
- * than a voice UI it has no key/transport for.
+ * Heuristic: does a model id name a realtime (voice) model? OpenAI's realtime
+ * models all carry "realtime" in their id (gpt-realtime, gpt-realtime-2,
+ * gpt-4o-realtime-preview, …). Lets a free-text "Other..." entry enable voice
+ * without shipping a preset for every realtime model id.
+ * @param model - Candidate model id
+ * @returns True if the id looks like a realtime model
+ */
+export function isRealtimeModelId(model: string | null | undefined): boolean {
+  return model != null && REALTIME_MODEL_ID.test(model);
+}
+
+/**
+ * Returns true when the selected model is a realtime (voice) model under the
+ * selected provider. A model qualifies as a realtime preset listed for the
+ * provider, or as a free-text realtime id entered via "Other..." — the latter
+ * only under the openai provider. Provider scoping is the point: voice is
+ * OpenAI-only (no key/transport elsewhere), so a non-openai endpoint reusing a
+ * realtime id routes to text chat rather than a voice UI it can't drive.
  * @param provider - The selected provider
  * @param model - The selected model id
  * @returns True if the model is a realtime model for this provider
@@ -192,9 +207,29 @@ export function isRealtimeSelection(
 ): boolean {
   if (model == null) return false;
 
-  return (
+  const isPreset =
     PROVIDER_MODELS[provider]?.some(
       (m) => m.value === model && m.kind === "realtime",
-    ) ?? false
-  );
+    ) ?? false;
+
+  return isPreset || (provider === "openai" && isRealtimeModelId(model));
+}
+
+/**
+ * Resolve the realtime model id voice should run on: the saved selection when
+ * it's a realtime model, else the default. Keeps the session, ephemeral token,
+ * saved record, and header lock consistent when a non-default realtime model is
+ * selected (instead of mislabeling everything as the default).
+ * @param provider - The saved provider
+ * @param model - The saved model id
+ * @returns A realtime model id (never null)
+ */
+export function resolveRealtimeModel(
+  provider: Provider,
+  model: string | null | undefined,
+): string {
+  // isRealtimeSelection is false for null/undefined, so model is a string here.
+  return isRealtimeSelection(provider, model)
+    ? (model as string)
+    : OPENAI_REALTIME_MODEL;
 }
