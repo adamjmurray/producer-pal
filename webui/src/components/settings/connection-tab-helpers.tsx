@@ -211,7 +211,8 @@ export function VoiceSettings({
             setSettings={setTurnDetection}
           />
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Applied on the next session (Stop, then Talk).
+            Applied on the next session (Stop, then Talk) — except Volume, which
+            is live.
           </p>
         </div>
       </details>
