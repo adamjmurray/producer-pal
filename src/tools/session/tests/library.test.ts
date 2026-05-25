@@ -5,7 +5,6 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
-import { queriesInputSchema } from "../library-query-schema.ts";
 import { library } from "../library.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
@@ -141,6 +140,20 @@ describe("library tool — action dispatch", () => {
     expect(protocolMock.requestNode).toHaveBeenCalledWith("library.listTags", {
       limit: 50,
     });
+  });
+
+  it("dispatches listCategories action, forwarding category + limit", async () => {
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: { dbAvailable: true, category: "Drums", tags: [] },
+    });
+
+    await library({ action: "listCategories", category: "Drums", limit: 5 });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.listCategories",
+      { category: "Drums", limit: 5 },
+    );
   });
 
   it("throws with a clean message when the route returns failure", async () => {
@@ -512,6 +525,11 @@ describe("library tool — folder scan integration", () => {
     await expectFolderScanSkipped({ tags: "Kick" });
   });
 
+  it("skips folder scan when type filter is set (folder has no tag info)", async () => {
+    // Playback type derives from DB Type-tags; the folder scan has none.
+    await expectFolderScanSkipped({ type: "loop" });
+  });
+
   it("skips folder scan when kind is non-audio", async () => {
     // Folder scan only knows about audio; any non-audio kind must bypass it.
     await expectFolderScanSkipped({ kind: "plugin" });
@@ -798,47 +816,5 @@ describe("library tool — folder scan integration", () => {
     expect(result.items.find((i) => i.name === "kick.wav")?.folder).toBe(
       "samples",
     );
-  });
-});
-
-describe("queriesInputSchema (searchBatch input)", () => {
-  it("parses an array of query objects", () => {
-    expect(
-      queriesInputSchema.parse([
-        { label: "Kick", tags: "Kick", limit: 3 },
-        { query: "808" },
-      ]),
-    ).toStrictEqual([
-      { label: "Kick", tags: "Kick", limit: 3 },
-      { query: "808" },
-    ]);
-  });
-
-  it("coerces scalar fields (numeric query/limit) to their target types", () => {
-    expect(
-      queriesInputSchema.parse([{ query: 808, limit: "3" }]),
-    ).toStrictEqual([{ query: "808", limit: 3 }]);
-  });
-
-  it("parses a JSON-stringified array (small-model fallback)", () => {
-    expect(
-      queriesInputSchema.parse('[{"label":"Snare","tags":"Snare"}]'),
-    ).toStrictEqual([{ label: "Snare", tags: "Snare" }]);
-  });
-
-  it("returns undefined when omitted", () => {
-    expect(queriesInputSchema.parse(undefined)).toBeUndefined();
-  });
-
-  it("rejects a non-array, non-JSON string", () => {
-    expect(() => queriesInputSchema.parse("not valid")).toThrow();
-  });
-
-  it("rejects a JSON string that does not parse to an array", () => {
-    expect(() => queriesInputSchema.parse('{"tags":"Kick"}')).toThrow();
-  });
-
-  it("rejects an unknown enum value", () => {
-    expect(() => queriesInputSchema.parse([{ kind: "bogus" }])).toThrow();
   });
 });

@@ -16,6 +16,7 @@ import {
   type LibrarySearchArgs,
   type ListPluginsArgs,
 } from "./library-types.ts";
+import { type ListCategoriesArgs, listCategories } from "./list-categories.ts";
 import { listPlugins } from "./list-plugins.ts";
 import { type ListTagsArgs, listTags } from "./list-tags.ts";
 
@@ -35,6 +36,10 @@ export function registerLibraryRoutes(): void {
 
   registerNodeRoute("library.listTags", async (args) => {
     return await listTags((args as ListTagsArgs | null) ?? {});
+  });
+
+  registerNodeRoute("library.listCategories", async (args) => {
+    return await listCategories((args as ListCategoriesArgs | null) ?? {});
   });
 
   registerNodeRoute("library.listPlugins", async (args) => {

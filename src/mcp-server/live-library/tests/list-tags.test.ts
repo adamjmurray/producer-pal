@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { listTags } from "../list-tags.ts";
-import { setupLibraryFixtureLifecycle } from "./library-fixture.ts";
+import { setupLibraryFixtureLifecycle } from "./fixtures/library-fixture.ts";
 
 vi.mock(import("../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),

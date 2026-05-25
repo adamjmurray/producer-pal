@@ -18,7 +18,7 @@ import {
   createFilesDbWithPluginsFixture,
   createPluginsDbFixture,
   type PluginsFixture,
-} from "./plugins-fixture.ts";
+} from "./fixtures/plugins-fixture.ts";
 
 vi.mock(import("../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),

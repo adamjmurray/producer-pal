@@ -17,7 +17,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
-import { fourCC } from "../library-filters.ts";
+import { fourCC } from "../../library-filters.ts";
 
 export interface LibraryFixture {
   dir: string;
@@ -45,7 +45,8 @@ export function createLibraryFixture(): LibraryFixture {
       use_count INTEGER DEFAULT 0,
       mod_date INTEGER DEFAULT 0,
       device_type INTEGER DEFAULT 0,
-      place_id INTEGER
+      place_id INTEGER,
+      subtype INTEGER
     );
     CREATE TABLE places (
       file_id INTEGER PRIMARY KEY,
@@ -58,11 +59,21 @@ export function createLibraryFixture(): LibraryFixture {
       keyw_id INTEGER,
       is_auto INTEGER DEFAULT 0
     );
+    CREATE TABLE metadata (
+      file_id INTEGER,
+      key INTEGER,
+      value_id INTEGER
+    );
+    CREATE TABLE metadata_values (
+      id INTEGER PRIMARY KEY,
+      value TEXT
+    );
   `);
 
   insertFiles(db);
   insertPlaces(db);
   insertKeywords(db);
+  insertMetadata(db);
 
   db.close();
 
@@ -112,6 +123,9 @@ const AMP = fourCC("amp-");
 const ALS = fourCC("als-");
 const VST3 = fourCC("vst3");
 const KEYW = fourCC("keyw");
+// metadata.key fourCCs carrying `Category|Sub|Leaf` tag-path strings
+const META_CKEY = fourCC("CKey");
+const META_KEYW = fourCC("Keyw");
 
 /**
  * Insert the synthetic file rows into the fixture DB.
@@ -153,8 +167,11 @@ function insertFiles(db: DatabaseSync): void {
   // Pack midi clip
   insert.run(2003, 200, MIDI, 1, "pack_riff.mid", 30, 1_700_000_400, 0, 200);
 
-  // Pack Live clip (.alc) — distinct kind from .mid
+  // Pack Live clips (.alc): one MIDI (alcM), one audio (alcA). The audio clip
+  // has place_id=null so it only surfaces in kind:live-clip (keeps source-filter
+  // tests stable). Subtypes set below via UPDATE. See AJM-335.
   insert.run(2004, 200, ALC, 2, "pack_loop.alc", 12, 1_700_000_450, 0, 200);
+  insert.run(2007, 200, ALC, 2, "pack_audio.alc", 6, 1_700_000_455, 0, null);
 
   // Pack Ableton device group (.adg) — kind=device-group
   insert.run(2005, 200, ADG, 32, "pack_chain.adg", 8, 1_700_000_460, 0, 200);
@@ -215,6 +232,15 @@ function insertFiles(db: DatabaseSync): void {
   insert.run(9004, 1, KEYW, 0, "One Shot", 0, 0, 0, null);
   // SubOnly tag: attached to subfolder_y.wav only, used in inFolder+tags test
   insert.run(9005, 1, KEYW, 0, "SubOnly", 0, 0, 0, null);
+
+  // Live-clip subtypes: pack_loop.alc is MIDI (alcM), pack_audio.alc is audio
+  // (alcA). Set separately so the shared INSERT column list stays unchanged.
+  const setSubtype = db.prepare(
+    "UPDATE files SET subtype = ? WHERE file_id = ?",
+  );
+
+  setSubtype.run(fourCC("alcM"), 2004);
+  setSubtype.run(fourCC("alcA"), 2007);
 }
 
 /**
@@ -257,4 +283,36 @@ function insertKeywords(db: DatabaseSync): void {
   // Built-in plugins: no tags
   // subfolder_y.wav (212) -> SubOnly (for inFolder + tags composition test)
   insert.run(212, 9005, 0);
+}
+
+/**
+ * Populate the metadata tables with a small `Category|Sub|Leaf` taxonomy for
+ * listCategories tests. Leaf segments deliberately reuse existing keyword names
+ * (Kick, Snare Hit, One Shot) so drill-down file counts resolve via the
+ * keywords table; "Synth Bass" has no keyword (counts to nothing) and a bare
+ * "Core Library" value (no pipe) must be excluded from the taxonomy.
+ *
+ * @param db - Open writable DB
+ */
+function insertMetadata(db: DatabaseSync): void {
+  const value = db.prepare(
+    "INSERT INTO metadata_values (id, value) VALUES (?, ?)",
+  );
+
+  value.run(1, "Drums|Kick");
+  value.run(2, "Drums|Snare|Snare Hit");
+  value.run(3, "Type|One Shot");
+  value.run(4, "Core Library");
+  value.run(5, "Sounds|Bass|Synth Bass");
+
+  const meta = db.prepare(
+    "INSERT INTO metadata (file_id, key, value_id) VALUES (?, ?, ?)",
+  );
+
+  meta.run(2001, META_CKEY, 1); // Drums|Kick
+  meta.run(1001, META_CKEY, 1); // Drums|Kick (second file, same value)
+  meta.run(1002, META_KEYW, 2); // Drums|Snare|Snare Hit
+  meta.run(2001, META_CKEY, 3); // Type|One Shot
+  meta.run(2001, META_CKEY, 4); // Core Library (no pipe → excluded)
+  meta.run(1001, META_CKEY, 5); // Sounds|Bass|Synth Bass (leaf has no keyword)
 }

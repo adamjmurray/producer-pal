@@ -182,7 +182,9 @@ Use \`ppal-library\` to search Live's browser library and the user's configured 
 
 - Defaults to audio samples (the only kind loadable into clips/Simpler today). Other \`kind\` values are discovery-only.
 - \`query\` is a name substring; use \`*\` as a multi-character wildcard (e.g., \`kick*acoustic\`).
-- \`tags\` is comma-separated; results must match ALL listed tags. Use \`action: "listTags"\` to discover available tags.
+- \`tags\` is comma-separated; results must match ALL listed tags. Use \`action: "listTags"\` to discover available tags, or \`action: "listCategories"\` to browse Live's category taxonomy (Sounds, Drums, Genres, …) and \`category: "Drums"\` to list a category's tags.
+- \`type\` filters by playback type: \`loop\` (loops), \`oneshot\` (one-shots, e.g. a kick), \`impulse-response\` (convolution IRs). Each result also reports \`type\`, so you can tell a one-shot kick from a drum loop — prefer \`oneshot\` for hits and \`loop\` for grooves.
+- \`kind: "midi"\` covers ALL MIDI content — both \`.mid\` files and MIDI Live clips (\`.alc\`) — so it's the right kind for melody/chord ideas. \`kind: "live-clip"\` returns every \`.alc\` (MIDI and audio); \`.alc\` results carry \`subtype\` (\`midi\`/\`audio\`) to disambiguate.
 - \`source\`: filter where the file lives. \`sampleFolder\` is the user-configured sample folder on disk (bypasses Live's DB); \`user\`, \`pack\`, \`builtin\`, \`cloud\`, \`plugin\` query Live's DB.
 - Items from the user's sample folder appear before Live's library items in results.
 - Each result includes \`folder\` (its immediate parent folder name). Use it to sanity-check tag hits: Live's tags are noisy, so a \`Kick\`-tagged file under an \`IR Library\` folder is probably a reverb impulse, not a drum.

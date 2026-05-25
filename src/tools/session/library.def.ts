@@ -9,6 +9,7 @@ import {
   LIBRARY_KIND_VALUES,
   LIBRARY_SORT_VALUES,
   LIBRARY_SOURCE_VALUES,
+  LIBRARY_TYPE_VALUES,
   queriesInputSchema,
 } from "#src/tools/session/library-query-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
@@ -25,10 +26,16 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
   inputSchema: {
     action: z
-      .enum(["search", "listTags", "searchBatch", "listPlugins"])
+      .enum([
+        "search",
+        "listTags",
+        "listCategories",
+        "searchBatch",
+        "listPlugins",
+      ])
       .optional()
       .describe(
-        "search: filter library items (default) | listTags: enumerate available tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query | listPlugins: list installed VST/VST3/AU plugins Live knows about (filter with query, vendor, format, deviceKind)",
+        "search: filter library items (default) | listTags: enumerate available tags | listCategories: browse Live's category taxonomy (Sounds, Drums, Genres, …); pass category to drill into its tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query | listPlugins: list installed VST/VST3/AU plugins Live knows about (filter with query, vendor, format, deviceKind)",
       ),
 
     queries: queriesInputSchema.describe(
@@ -54,7 +61,21 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .optional()
       .default("audio")
       .describe(
-        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler today, others are discovery-only). audio=.wav/.aif/.mp3/etc. samples | midi=.mid files | live-clip=.alc Ableton clips | preset=instrument/effect presets | device-group=.adg device chains (racks) | m4l-device=.amxd Max for Live devices | live-set=.als project files | plugin=VST/AU specs and presets | image/video=media assets | folder=directory entries (a DB row type, distinct from source:sampleFolder)",
+        "content kind filter (search only; default: audio — the only kind loadable into clips/Simpler today, others are discovery-only). audio=.wav/.aif/.mp3/etc. samples | midi=.mid files PLUS MIDI Live clips (.alc), so it covers all MIDI content | live-clip=all .alc Ableton clips (MIDI+audio; each result reports subtype) | preset=instrument/effect presets | device-group=.adg device chains (racks) | m4l-device=.amxd Max for Live devices | live-set=.als project files | plugin=VST/AU specs and presets | image/video=media assets | folder=directory entries (a DB row type, distinct from source:sampleFolder)",
+      ),
+
+    type: z
+      .enum(LIBRARY_TYPE_VALUES)
+      .optional()
+      .describe(
+        "playback type filter (search only): loop=loops | oneshot=one-shots (e.g. a kick) | impulse-response=convolution IRs. Also reported per result as `type`.",
+      ),
+
+    category: z.coerce
+      .string()
+      .optional()
+      .describe(
+        "listCategories only: a top-level category name (from listCategories with no category) to drill into; returns its tag names, each usable as a tags filter",
       ),
 
     deviceKind: z
@@ -120,9 +141,10 @@ export const toolDefLibrary = defineTool("ppal-library", {
       "verifyPaths",
       "vendor",
       "format",
+      "category",
     ],
     excludeEnumValues: {
-      action: ["searchBatch", "listPlugins"],
+      action: ["listCategories", "searchBatch", "listPlugins"],
       kind: [
         "live-clip",
         "m4l-device",
@@ -137,6 +159,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       action: "search (default) | listTags",
       query: "name substring; use * as wildcard",
       tags: "comma-separated tag names; results must match ALL",
+      type: "playback type: loop | oneshot | impulse-response",
       kind: "content kind (default: audio). audio | midi | preset | device-group",
       source:
         "where the file lives. sampleFolder | user | pack | builtin | cloud | plugin",
