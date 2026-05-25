@@ -27,6 +27,10 @@ import {
   getColorForIndex,
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
+import {
+  getCycledEntry,
+  warnExtraEntries,
+} from "#src/tools/shared/validation/cycle-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
@@ -42,7 +46,7 @@ import {
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   ids?: string;
   notes?: string;
-  transforms?: string;
+  transforms?: string[];
   noteUpdateMode?: string;
   name?: string;
   color?: string;
@@ -55,7 +59,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   arrangementLength?: string;
   toSlot?: string;
   split?: string;
-  code?: string;
+  code?: string[];
   focus?: boolean;
 }
 
@@ -70,7 +74,7 @@ interface ClipResult {
  * @param args - The clip parameters
  * @param args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param args.notes - Musical notation string
- * @param args.transforms - Transform expressions (parameter: expression per line)
+ * @param args.transforms - Per-clip transform expressions (cycled across ids)
  * @param args.noteUpdateMode - How to handle existing notes: 'replace' or 'merge'
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
@@ -94,7 +98,7 @@ interface ClipResult {
  * @param args.quantize - Quantization strength 0-1 (MIDI clips only)
  * @param args.quantizeGrid - Note grid for quantization
  * @param args.quantizePitch - Limit quantization to specific pitch
- * @param args.code - JavaScript code to transform notes
+ * @param args.code - Per-clip JavaScript code to transform notes (cycled across ids)
  * @param args.focus - Select the clip and show clip detail view
  * @param context - Tool execution context with holding area settings
  * @returns Single clip object or array of clip objects
@@ -103,7 +107,7 @@ export async function updateClip(
   {
     ids,
     notes: notationString,
-    transforms: transformString,
+    transforms,
     noteUpdateMode = "merge",
     name,
     color,
@@ -157,6 +161,9 @@ export async function updateClip(
 
   const parsedNames = parseNames(name, mutableClips.length, "updateClip");
   const parsedColors = parseCommaSeparatedColors(color, mutableClips.length);
+
+  warnExtraEntries(transforms, mutableClips.length, "updateClip", "transforms");
+  warnExtraEntries(code, mutableClips.length, "updateClip", "code");
   const updatedClips: ClipResult[] = [];
   const tracksWithMovedClips = new Map<number, number>();
 
@@ -177,7 +184,7 @@ export async function updateClip(
       clipIndex: i,
       clipCount: mutableClips.length,
       notationString,
-      transformString,
+      transformString: getCycledEntry(transforms, i),
       noteUpdateMode,
       name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
@@ -206,7 +213,11 @@ export async function updateClip(
       tracksWithMovedClips,
     });
 
-    await applyCodeExecToNewClips(updatedClips, prevLen, code);
+    await applyCodeExecToNewClips(
+      updatedClips,
+      prevLen,
+      getCycledEntry(code, i),
+    );
   }
 
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);

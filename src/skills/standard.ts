@@ -7,10 +7,12 @@ const codeTransformsSkills = `
 
 ### Code Transforms
 
-For complex logic beyond transforms, use the \`code\` parameter with JavaScript. The \`code\` value is the function body only. It runs as:
+For complex logic beyond transforms, use the \`code\` parameter with JavaScript. Each \`code\` value is the function body only. It runs as:
 \`(function(notes, context) { <code> })(notes, context)\`
 
-Example \`code\` value:
+Shape matches \`transforms\`: create-clip takes a string; update-clip/duplicate take an array (one entry per clip/copy, cycles).
+
+Example \`code\` value (one array entry):
 \`\`\`javascript
 return notes.filter(n => n.pitch >= 60).map(n => ({
   ...n,
@@ -118,7 +120,9 @@ v0 C1 13|3 v100 D1 13|3 // replace kick with snare in bar 13
 
 Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 
-**Syntax:** \`[selector:] parameter operator expression\` (one per line)
+**Shape:** create-clip takes a single string. update-clip/duplicate take an array — one entry per clip/copy (cycles if fewer entries than clips), each entry holding that clip's expressions (newline-separated for multiple). One transform for all clips = a 1-element array.
+
+**Syntax:** \`[selector:] parameter operator expression\` (one per line within an entry)
 - **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
 - **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
 - **Time filter:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
@@ -170,7 +174,7 @@ swing() auto-quantizes to the swing grid, so changing swing amount is always saf
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in. Don't re-apply earlier transforms.
 MIDI params ignored for audio clips, vice versa.
-On duplicate, transforms/code apply per-copy (not the source). With multiple copies, \`clip.index\`/\`clip.count\` span the copies — use \`seq()\` for variations (e.g. transpose each copy differently).
+On duplicate, transforms/code apply per-copy (not the source). With multiple copies, \`clip.index\`/\`clip.count\` span the copies — use \`seq()\` for variations (e.g. transpose each copy differently). The transforms/code array cycles per copy, so you can also give each copy distinct expressions directly: \`["pitch += 0", "pitch += 12"]\`.
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Finding Library Content
 

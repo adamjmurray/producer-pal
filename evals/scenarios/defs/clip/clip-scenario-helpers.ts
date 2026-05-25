@@ -50,13 +50,15 @@ export function assertNotesRead(turn: number): EvalAssertion {
 }
 
 /**
- * Extract the transforms string from a ppal-update-clip call in the given turn.
+ * Extract the transforms expressions from a ppal-update-clip call in the given
+ * turn. transforms is a per-clip array; entries are joined with newlines so
+ * selector/expression parsing in callers sees the raw expression text.
  * Throws descriptive errors if the tool call or transforms parameter is missing.
  *
  * @param turns - All turn results
  * @param turn - Turn index to extract from
  * @param toolName - Tool name to look for
- * @returns The transforms string
+ * @returns The transforms expressions joined with newlines
  */
 export function getTransforms(
   turns: EvalTurnResult[],
@@ -68,7 +70,8 @@ export function getTransforms(
 
   if (!updateCall) throw new Error(`${toolName} not found in turn ${turn}`);
 
-  const transforms = String(updateCall.args.transforms ?? "");
+  const raw = updateCall.args.transforms;
+  const transforms = Array.isArray(raw) ? raw.join("\n") : String(raw ?? "");
 
   if (!transforms) {
     throw new Error(`transforms parameter missing in turn ${turn}`);

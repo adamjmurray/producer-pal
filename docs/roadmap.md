@@ -52,6 +52,9 @@ Other improvements:
 
 - Split arrangement clips at specified positions
 - Multi-object create / update / duplicate operations
+- Per-clip `transforms`/`code` on update-clip and duplicate (breaking change:
+  these are now arrays — one entry per clip/copy, cycled — instead of a single
+  string)
 - Configurable Ollama and LM Studio URLs for remote hosting
 - Experimental voice control in the chat UI (OpenAI realtime)
 - Many built-in chat UI improvements: conversation history, token usage

@@ -44,7 +44,7 @@ describe("updateClip - code execution", () => {
 
     const result = await updateClip({
       ids: "123",
-      code: "return notes.map(n => ({ ...n, pitch: n.pitch + 12 }))",
+      code: ["return notes.map(n => ({ ...n, pitch: n.pitch + 12 }))"],
     });
 
     expect(executeNoteCode).toHaveBeenCalledExactlyOnceWith(
@@ -80,7 +80,9 @@ describe("updateClip - code execution", () => {
 
     const result = await updateClip({
       ids: "123, 456",
-      code: "return [{ pitch: 72, start: 0, duration: 1, velocity: 100, velocityDeviation: 0, probability: 1 }]",
+      code: [
+        "return [{ pitch: 72, start: 0, duration: 1, velocity: 100, velocityDeviation: 0, probability: 1 }]",
+      ],
     });
 
     expect(executeNoteCode).toHaveBeenCalledTimes(2);
@@ -99,7 +101,7 @@ describe("updateClip - code execution", () => {
 
     const result = await updateClip({
       ids: "123",
-      code: "invalid code {{",
+      code: ["invalid code {{"],
     });
 
     // Should NOT call add_new_notes since execution failed
@@ -128,7 +130,7 @@ describe("updateClip - code execution", () => {
 
     const result = await updateClip({
       ids: "123, 456",
-      code: "return notes",
+      code: ["return notes"],
     });
 
     // First clip succeeds, second clip fails
@@ -143,6 +145,94 @@ describe("updateClip - code execution", () => {
     );
   });
 
+  it("applies distinct per-clip code entries (aligned with ids)", async () => {
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+    setupMidiClipMock(mocks.clip456, { length: 4 });
+
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecSuccess([codeNote(60, 0)]),
+    );
+
+    await updateClip({
+      ids: "123, 456",
+      code: ["return a", "return b"],
+    });
+
+    expect(executeNoteCode).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ id: "123" }),
+      "return a",
+      "session",
+      0,
+      undefined,
+    );
+    expect(executeNoteCode).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ id: "456" }),
+      "return b",
+      "session",
+      1,
+      undefined,
+    );
+  });
+
+  it("cycles a single-element code array across clips via modulo", async () => {
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+    setupMidiClipMock(mocks.clip456, { length: 4 });
+
+    vi.mocked(executeNoteCode).mockResolvedValue(
+      codeExecSuccess([codeNote(60, 0)]),
+    );
+
+    await updateClip({
+      ids: "123, 456",
+      code: ["return notes"],
+    });
+
+    expect(executeNoteCode).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ id: "123" }),
+      "return notes",
+      "session",
+      0,
+      undefined,
+    );
+    expect(executeNoteCode).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ id: "456" }),
+      "return notes",
+      "session",
+      1,
+      undefined,
+    );
+  });
+
+  it("warns when more code entries are given than clips", async () => {
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+
+    vi.mocked(executeNoteCode).mockResolvedValue(codeExecSuccess([]));
+
+    await updateClip({
+      ids: "123",
+      code: ["return a", "return b"],
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining(
+        "updateClip: 2 code provided but only 1 clips — ignoring extra",
+      ),
+    );
+  });
+
+  it("does not execute code when the code array is empty", async () => {
+    setupMidiClipMock(mocks.clip123, { length: 4 });
+
+    await updateClip({ ids: "123", code: [] });
+
+    expect(executeNoteCode).not.toHaveBeenCalled();
+  });
+
   it("should pass arrangement clip location info to executeNoteCode", async () => {
     setupMidiClipMock(mocks.clip789, {
       is_arrangement_clip: 1,
@@ -154,7 +244,7 @@ describe("updateClip - code execution", () => {
 
     await updateClip({
       ids: "789",
-      code: "return []",
+      code: ["return []"],
     });
 
     expect(executeNoteCode).toHaveBeenCalledWith(

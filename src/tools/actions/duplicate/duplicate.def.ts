@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
@@ -83,19 +84,18 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       ),
 
     transforms: z
-      .string()
+      .array(z.string())
       .optional()
       .describe(
-        "transform expressions, parameter: expression per line (applied to each duplicated clip; clips only)",
+        "transform expressions per duplicate (cycles across copies; clips only); each entry is one copy's expressions, newline-separated for multiple",
       ),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
           code: z
-            .string()
-            .max(MAX_CODE_LENGTH)
+            .array(z.string().max(MAX_CODE_LENGTH))
             .optional()
             .describe(
-              "JS function body applied to each duplicated clip: receives (notes, context), returns notes array (clips only)",
+              "JS function body per duplicate (cycles across copies; clips only): receives (notes, context), returns notes array",
             ),
         }
       : {}),
