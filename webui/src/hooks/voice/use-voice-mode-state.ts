@@ -6,9 +6,9 @@
 import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
 import { type ModeContext } from "#webui/components/mode-context";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
-import { useClearViewingModeOnReset } from "#webui/hooks/use-clear-viewing-mode-on-reset";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { type ViewState } from "#webui/hooks/use-view-state";
+import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
+import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
 import { useVoiceModeReporting } from "#webui/hooks/voice/use-voice-mode-reporting";
 import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";

@@ -10,9 +10,8 @@ import { type AddressInfo } from "node:net";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
-import { TOOL_NAMES } from "../create-mcp-server.ts";
-import { setTimeoutForTesting } from "../max-api-adapter.ts";
-import { setupExpressAppServer } from "./express-app-test-helpers.ts";
+import { setTimeoutForTesting } from "../../max-api-adapter.ts";
+import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {
@@ -79,7 +78,7 @@ describe("MCP Express App", () => {
       vi.resetModules();
 
       // Re-import the module to trigger handler registration
-      await import("../create-express-app.ts");
+      await import("../../create-express-app.ts");
 
       expect(Max.addHandler).toHaveBeenCalledWith(
         "mcp_response",
@@ -440,7 +439,7 @@ describe("MCP Express App", () => {
 
   describe("Configuration Options", () => {
     it("should create app successfully without configuration options", async () => {
-      const { createExpressApp } = await import("../create-express-app.ts");
+      const { createExpressApp } = await import("../../create-express-app.ts");
       const app = createExpressApp();
 
       expect(app).toBeDefined();
@@ -469,9 +468,13 @@ describe("MCP Express App", () => {
 
   describe("Chat UI", () => {
     let chatUrl: string;
+    let contextUrl: string;
+    let rootUrl: string;
 
     beforeAll(() => {
       chatUrl = appState.serverUrl.replace("/mcp", "/chat");
+      contextUrl = appState.serverUrl.replace("/mcp", "/context");
+      rootUrl = appState.serverUrl.replace("/mcp", "/");
     });
 
     it("should serve chat UI when enabled", async () => {
@@ -486,6 +489,23 @@ describe("MCP Express App", () => {
       expect(html.length).toBeGreaterThan(0);
     });
 
+    it("should serve same UI bundle at /context", async () => {
+      const response = await fetch(contextUrl);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("html");
+      const html = await response.text();
+
+      expect(html.length).toBeGreaterThan(0);
+    });
+
+    it("should redirect / to /chat", async () => {
+      const response = await fetch(rootUrl, { redirect: "manual" });
+
+      expect(response.status).toBe(302);
+      expect(response.headers.get("location")).toBe("/chat");
+    });
+
     it("should return 403 when chat UI is disabled", async () => {
       // The chatUIEnabled variable is module-level - get the handler and disable it
       const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
@@ -495,20 +515,23 @@ describe("MCP Express App", () => {
       chatUIHandler(0);
 
       // Create a new app instance to use the updated chatUIEnabled value
-      const { createExpressApp } = await import("../create-express-app.ts");
+      const { createExpressApp } = await import("../../create-express-app.ts");
       const testApp = createExpressApp();
       const testServer = await new Promise<Server>((resolve) => {
         const s = testApp.listen(0, () => resolve(s));
       });
-      const testChatUrl = `http://localhost:${(testServer.address() as AddressInfo).port}/chat`;
+      const baseUrl = `http://localhost:${(testServer.address() as AddressInfo).port}`;
 
       try {
-        const response = await fetch(testChatUrl);
+        const chatResponse = await fetch(`${baseUrl}/chat`);
 
-        expect(response.status).toBe(403);
-        const text = await response.text();
+        expect(chatResponse.status).toBe(403);
+        expect(await chatResponse.text()).toBe("Chat UI is disabled");
 
-        expect(text).toBe("Chat UI is disabled");
+        const contextResponse = await fetch(`${baseUrl}/context`);
+
+        expect(contextResponse.status).toBe(403);
+        expect(await contextResponse.text()).toBe("Chat UI is disabled");
       } finally {
         // Clean up and re-enable for other tests
         await new Promise<void>((resolve) => testServer.close(() => resolve()));
@@ -534,7 +557,7 @@ describe("MCP Express App", () => {
 
       chatUIHandler(0);
 
-      const { createExpressApp } = await import("../create-express-app.ts");
+      const { createExpressApp } = await import("../../create-express-app.ts");
       const testApp = createExpressApp();
       const testServer = await new Promise<Server>((resolve) => {
         const s = testApp.listen(0, () => resolve(s));
@@ -552,306 +575,6 @@ describe("MCP Express App", () => {
         await new Promise<void>((resolve) => testServer.close(() => resolve()));
         chatUIHandler(1);
       }
-    });
-  });
-
-  describe("Config Endpoints", () => {
-    let configUrl: string;
-
-    beforeAll(() => {
-      configUrl = appState.serverUrl.replace("/mcp", "/config");
-    });
-
-    it("should return current config on GET /config", async () => {
-      const response = await fetch(configUrl);
-
-      expect(response.status).toBe(200);
-      const config = await response.json();
-
-      expect(config).toMatchObject({
-        memoryEnabled: expect.any(Boolean),
-        memoryContent: expect.any(String),
-        memoryWritable: expect.any(Boolean),
-        smallModelMode: expect.any(Boolean),
-        jsonOutput: expect.any(Boolean),
-        sampleFolder: expect.any(String),
-        tools: expect.any(Array),
-      });
-    });
-
-    it("should update config on POST /config", async () => {
-      // First, get current config
-      const initialResponse = await fetch(configUrl);
-      const initialConfig = await initialResponse.json();
-
-      // Update with new values
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          smallModelMode: true,
-          jsonOutput: true,
-        }),
-      });
-
-      expect(response.status).toBe(200);
-      const updatedConfig = await response.json();
-
-      expect(updatedConfig.smallModelMode).toBe(true);
-      expect(updatedConfig.jsonOutput).toBe(true);
-
-      // Restore original values
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          smallModelMode: initialConfig.smallModelMode,
-          jsonOutput: initialConfig.jsonOutput,
-        }),
-      });
-    });
-
-    it("should support partial config updates", async () => {
-      // Get current config
-      const getResponse = await fetch(configUrl);
-      const before = await getResponse.json();
-
-      // Only update memoryEnabled
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryEnabled: true }),
-      });
-
-      expect(response.status).toBe(200);
-      const after = await response.json();
-
-      expect(after.memoryEnabled).toBe(true);
-      // Other values should remain unchanged
-      expect(after.smallModelMode).toBe(before.smallModelMode);
-      expect(after.jsonOutput).toBe(before.jsonOutput);
-
-      // Restore
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryEnabled: false }),
-      });
-    });
-
-    it("should update memoryContent string", async () => {
-      const testNotes = "Test memory content";
-
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryContent: testNotes }),
-      });
-
-      expect(response.status).toBe(200);
-      const config = await response.json();
-
-      expect(config.memoryContent).toBe(testNotes);
-
-      // Clear notes
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryContent: "" }),
-      });
-    });
-
-    it("should update memoryWritable", async () => {
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryWritable: true }),
-      });
-
-      expect(response.status).toBe(200);
-      const config = await response.json();
-
-      expect(config.memoryWritable).toBe(true);
-
-      // Restore
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryWritable: false }),
-      });
-    });
-
-    it("should update sampleFolder", async () => {
-      const testPath = "/path/to/samples";
-
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sampleFolder: testPath }),
-      });
-
-      expect(response.status).toBe(200);
-      const config = await response.json();
-
-      expect(config.sampleFolder).toBe(testPath);
-
-      // Clear
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sampleFolder: "" }),
-      });
-    });
-
-    it("should update tools whitelist", async () => {
-      const subset = ["ppal-connect", "ppal-read-live-set", "ppal-playback"];
-
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: subset }),
-      });
-
-      expect(response.status).toBe(200);
-      const config = await response.json();
-
-      expect(config.tools).toStrictEqual(subset);
-
-      // Restore
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tools: [...TOOL_NAMES] }),
-      });
-    });
-
-    it.each([
-      {
-        tools: ["ppal-connect", "ppal-nonexistent"],
-        error: "ppal-nonexistent",
-      },
-      { tools: "not-an-array", error: "tools must be an array" },
-    ])(
-      "should return 400 for invalid tools: $error",
-      async ({ tools, error }) => {
-        const response = await fetch(configUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ tools }),
-        });
-
-        expect(response.status).toBe(400);
-        const body = await response.json();
-
-        expect(body.error).toContain(error);
-        expect(body.validToolNames).toStrictEqual([
-          ...TOOL_NAMES,
-          "ppal-live-api",
-        ]);
-      },
-    );
-
-    it("should return 400 when ppal-connect is omitted", async () => {
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tools: ["ppal-read-live-set", "ppal-playback"],
-        }),
-      });
-
-      expect(response.status).toBe(400);
-      const body = await response.json();
-
-      expect(body.error).toContain("ppal-connect");
-      expect(body.validToolNames).toStrictEqual([
-        ...TOOL_NAMES,
-        "ppal-live-api",
-      ]);
-    });
-
-    it("should reject POST /config from a cross-origin browser request", async () => {
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Origin: "https://evil.example.com",
-        },
-        body: JSON.stringify({ memoryEnabled: true }),
-      });
-
-      expect(response.status).toBe(403);
-      const body = await response.json();
-
-      expect(body.error).toContain("cross-origin");
-    });
-
-    it("should accept POST /config from a localhost Origin", async () => {
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Origin: "http://localhost:9999",
-        },
-        body: JSON.stringify({ memoryEnabled: false }),
-      });
-
-      expect(response.status).toBe(200);
-    });
-  });
-
-  describe("Tools Whitelist Filtering", () => {
-    let configUrl: string;
-
-    beforeAll(() => {
-      configUrl = appState.serverUrl.replace("/mcp", "/config");
-    });
-
-    it("should only include specified tools in listTools", async () => {
-      const headers = { "Content-Type": "application/json" };
-      const postConfig = (body: object) =>
-        fetch(configUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(body),
-        });
-
-      // Set tools to a subset (without ppal-delete and ppal-select)
-      const subset = [...TOOL_NAMES].filter(
-        (name) => name !== "ppal-delete" && name !== "ppal-select",
-      );
-
-      await postConfig({ tools: subset });
-
-      const client1 = new Client({ name: "test-client", version: "1.0.0" });
-      const transport1 = new StreamableHTTPClientTransport(
-        new URL(appState.serverUrl),
-      );
-
-      await client1.connect(transport1);
-      const filtered = await client1.listTools();
-      const filteredNames = filtered.tools.map((t) => t.name);
-
-      expect(filteredNames).not.toContain("ppal-delete");
-      expect(filteredNames).not.toContain("ppal-select");
-      expect(filteredNames).toContain("ppal-connect");
-      await transport1.close();
-
-      // Restore all tools and verify
-      await postConfig({ tools: [...TOOL_NAMES] });
-
-      const client2 = new Client({ name: "test-client", version: "1.0.0" });
-      const transport2 = new StreamableHTTPClientTransport(
-        new URL(appState.serverUrl),
-      );
-
-      await client2.connect(transport2);
-      const restored = await client2.listTools();
-      const restoredNames = restored.tools.map((t) => t.name);
-
-      expect(restoredNames).toContain("ppal-delete");
-      expect(restoredNames).toContain("ppal-select");
-      await transport2.close();
     });
   });
 });

@@ -235,19 +235,29 @@ export function createExpressApp(): Express {
   });
 
   // Allow chat UI to be disabled for security
-  app.use("/chat", (_req: Request, res: Response, next: NextFunction): void => {
-    if (!chatUIEnabled) {
-      res.status(403).send("Chat UI is disabled");
+  app.use(
+    ["/chat", "/context"],
+    (_req: Request, res: Response, next: NextFunction): void => {
+      if (!chatUIEnabled) {
+        res.status(403).send("Chat UI is disabled");
 
-      return;
-    }
+        return;
+      }
 
-    next();
+      next();
+    },
+  );
+
+  // Serve the chat UI (inlined for frozen .amxd builds).
+  // The same bundle handles both /chat and /context — main.tsx reads
+  // location.pathname to decide which view to render.
+  app.get(["/chat", "/context"], (_req: Request, res: Response): void => {
+    res.type("html").send(chatUiHtml);
   });
 
-  // Serve the chat UI (inlined for frozen .amxd builds)
-  app.get("/chat", (_req: Request, res: Response): void => {
-    res.type("html").send(chatUiHtml);
+  // Root redirects to /chat for direct browser visits.
+  app.get("/", (_req: Request, res: Response): void => {
+    res.redirect("/chat");
   });
 
   // /voice is an alias that serves the same single-page bundle as /chat. The
@@ -266,6 +276,9 @@ export function createExpressApp(): Express {
 
   // Config endpoints for device UI settings
   app.get("/config", (_req: Request, res: Response): void => {
+    // Memory edits in the device or via AI need to surface on the next
+    // browser fetch — never serve a cached snapshot.
+    res.set("Cache-Control", "no-store");
     res.json(config);
   });
 
