@@ -61,6 +61,15 @@ export type LibraryKind =
 export type LibraryDeviceKind = "instrument" | "audiofx" | "midifx";
 
 /**
+ * Sample playback classification derived from Live's "Type" tags. Surfaces the
+ * loop-vs-one-shot distinction (a common LLM blind spot) as a single glanceable
+ * field instead of requiring a scan of the noisy `tags` array. Only the
+ * playback-relevant types are modeled; other Type tags (Multisampled, MPE
+ * Enabled, Construction Kit) stay in `tags`.
+ */
+export type LibraryItemType = "loop" | "oneshot" | "impulse-response";
+
+/**
  * Where in Live's library a file lives. Mostly collapses Live's
  * `folder_kind` integers; "sampleFolder" is the special case for files
  * found via the user-configured custom sample folder (V8 filesystem
@@ -82,6 +91,9 @@ export interface LibrarySearchArgs {
   /** Comma-separated tag names; results must match ALL listed tags */
   tags?: string;
   kind?: LibraryKind;
+  /** Playback type filter (loop / oneshot / impulse-response). Sugar over the
+   * underlying Type tags — matches the corresponding Live keyword(s). */
+  type?: LibraryItemType;
   deviceKind?: LibraryDeviceKind;
   source?: LibrarySource;
   /** Absolute folder path; restrict results to immediate children of that folder */
@@ -103,6 +115,12 @@ export interface LibraryItem {
   path: string;
   /** Resolved content kind, or null if file_type didn't map to a known kind */
   kind: LibraryKind | null;
+  /**
+   * Playback type derived from Live's Type tags (loop / oneshot /
+   * impulse-response). Omitted when no Type tag applies. Lets the caller
+   * distinguish a one-shot kick from a drum loop without scanning `tags`.
+   */
+  type?: LibraryItemType;
   /** Tag names attached to this file */
   tags: string[];
   /** Live's persistent usage counter */
@@ -200,6 +218,25 @@ export interface LibraryListTagsResult {
    * pending WAL). Omitted when there's no detectable risk. */
   stalenessRisk?: StalenessRisk;
   /** Set when tags is empty due to a discoverable failure (e.g. DB missing). */
+  reason?: string;
+}
+
+export interface LibraryListCategoriesResult {
+  /** Top-level category names with their leaf-vocabulary size. Present in
+   * overview mode (no `category` requested). */
+  categories?: LibraryTag[];
+  /** Echo of the requested category. Present in drill-down mode. */
+  category?: string;
+  /** Leaf tag names under the requested category, with file counts (same basis
+   * as listTags). Present in drill-down mode. Pass a name as a `tags` filter to
+   * library.search. */
+  tags?: LibraryTag[];
+  /** Present when the Live DB was consulted; false if it couldn't be found. */
+  dbAvailable?: boolean;
+  /** Set when the served snapshot may be stale (unclean Live exit left a
+   * pending WAL). */
+  stalenessRisk?: StalenessRisk;
+  /** Set when the result is empty due to a discoverable failure (DB missing). */
   reason?: string;
 }
 

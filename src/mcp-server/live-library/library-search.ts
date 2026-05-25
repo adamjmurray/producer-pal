@@ -18,9 +18,11 @@ import { type DatabaseSync } from "node:sqlite";
 import { detectStalenessRisk } from "./db-staleness.ts";
 import {
   allKnownKindFourCCs,
+  deriveItemType,
   deviceTypeForKind,
   folderKindsForSource,
   fourCCsForKind,
+  keywordsForType,
   resolveKind,
   resolveSource,
 } from "./library-filters.ts";
@@ -212,6 +214,21 @@ function buildSearchQuery(
     params.push(buildLikePattern(args.query));
   }
 
+  if (args.type) {
+    // Playback-type filter: match files carrying any of the type's Live
+    // keywords. EXISTS (OR over names) rather than the AND-all tags subquery
+    // above, since "loop" covers both "Loop" and "Looping".
+    const typeNames = keywordsForType(args.type);
+
+    where.push(`EXISTS (
+      SELECT 1 FROM keywords kt
+      JOIN files kwt ON kwt.file_id = kt.keyw_id
+      WHERE kt.file_id = f.file_id
+        AND kwt.name IN (${typeNames.map(() => "?").join(",")})
+    )`);
+    params.push(...typeNames);
+  }
+
   const tagNames = parseTags(args.tags);
 
   if (tagNames.length > 0) {
@@ -331,14 +348,21 @@ function buildLibraryItem(
   tagsByFile: Map<number, string[]>,
 ): LibraryItem {
   const resolved = paths.get(row.file_id);
+  const tags = tagsByFile.get(row.file_id) ?? [];
   const item: LibraryItem = {
     name: row.name,
     path: resolved?.path ?? `/${row.name}`,
     kind: resolveKind(row.file_type),
-    tags: tagsByFile.get(row.file_id) ?? [],
+    tags,
     useCount: row.use_count,
     source: row.folder_kind == null ? null : resolveSource(row.folder_kind),
   };
+
+  const type = deriveItemType(tags);
+
+  if (type != null) {
+    item.type = type;
+  }
 
   if (resolved?.folder != null) {
     item.folder = resolved.folder;

@@ -18,7 +18,7 @@ import { listTags } from "../list-tags.ts";
 import {
   createLibraryFixture,
   type LibraryFixture,
-} from "./library-fixture.ts";
+} from "./fixtures/library-fixture.ts";
 
 vi.mock(import("../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),

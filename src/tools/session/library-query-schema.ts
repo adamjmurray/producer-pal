@@ -21,6 +21,12 @@ export const LIBRARY_KIND_VALUES = [
   "folder",
 ] as const;
 
+export const LIBRARY_TYPE_VALUES = [
+  "loop",
+  "oneshot",
+  "impulse-response",
+] as const;
+
 export const LIBRARY_DEVICE_KIND_VALUES = [
   "instrument",
   "audiofx",
@@ -61,6 +67,10 @@ export const batchQuerySchema = z.object({
     .enum(LIBRARY_KIND_VALUES)
     .optional()
     .describe("content kind filter (default: audio)"),
+  type: z
+    .enum(LIBRARY_TYPE_VALUES)
+    .optional()
+    .describe("playback type: loop | oneshot | impulse-response"),
   deviceKind: z
     .enum(LIBRARY_DEVICE_KIND_VALUES)
     .optional()

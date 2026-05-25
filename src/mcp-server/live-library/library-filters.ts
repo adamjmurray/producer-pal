@@ -14,6 +14,7 @@
 
 import {
   type LibraryDeviceKind,
+  type LibraryItemType,
   type LibraryKind,
   type LibrarySource,
 } from "./library-types.ts";
@@ -173,4 +174,54 @@ export function folderKindsForSource(source: LibrarySource): number[] {
  */
 export function resolveSource(folderKind: number): LibrarySource | null {
   return FOLDER_KIND_TO_SOURCE.get(folderKind) ?? null;
+}
+
+/**
+ * Live's "Type" keyword names per public LibraryItemType. A file may carry more
+ * than one (e.g. a clip tagged both "One Shot" and "Loop" — ~0.2% of the
+ * library); deriveItemType resolves that via TYPE_PRIORITY.
+ */
+const TYPE_KEYWORDS: Record<LibraryItemType, string[]> = {
+  loop: ["Loop", "Looping"],
+  oneshot: ["One Shot"],
+  "impulse-response": ["Impulse Response"],
+};
+
+/**
+ * Tie-break order when a file carries multiple Type tags. "loop" wins over
+ * "oneshot": a clip that loops is usable as a loop regardless of an extra
+ * one-shot tag.
+ */
+const TYPE_PRIORITY: LibraryItemType[] = [
+  "loop",
+  "oneshot",
+  "impulse-response",
+];
+
+/**
+ * Keyword names that identify a given item type, for tag-based filtering.
+ *
+ * @param type - Public item type
+ * @returns Live keyword names to OR-match against the keywords table
+ */
+export function keywordsForType(type: LibraryItemType): string[] {
+  return TYPE_KEYWORDS[type];
+}
+
+/**
+ * Derive an item's playback type from its tag names, or null when none apply.
+ *
+ * @param tags - Tag names attached to the file
+ * @returns Highest-priority matching LibraryItemType, or null
+ */
+export function deriveItemType(tags: string[]): LibraryItemType | null {
+  const set = new Set(tags);
+
+  for (const type of TYPE_PRIORITY) {
+    if (TYPE_KEYWORDS[type].some((name) => set.has(name))) {
+      return type;
+    }
+  }
+
+  return null;
 }

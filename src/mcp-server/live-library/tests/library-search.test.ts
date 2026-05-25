@@ -5,7 +5,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { librarySearch } from "../library-search.ts";
-import { setupLibraryFixtureLifecycle } from "./library-fixture.ts";
+import { setupLibraryFixtureLifecycle } from "./fixtures/library-fixture.ts";
 
 vi.mock(import("../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
@@ -255,6 +255,38 @@ describe("librarySearch", () => {
       expect(mixed.items.map((i) => i.name).sort()).toStrictEqual(
         lower.items.map((i) => i.name).sort(),
       );
+    });
+  });
+
+  describe("type filter and derived type field", () => {
+    it("filters to one-shots via the underlying Type tags", async () => {
+      const result = await librarySearch({ type: "oneshot" });
+
+      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+        "pack_clap.aif",
+        "pack_kick.wav",
+        "user_kick.aif",
+      ]);
+    });
+
+    it("returns empty when no item carries the type's tags", async () => {
+      const result = await librarySearch({ type: "loop" });
+
+      expect(result.items).toHaveLength(0);
+    });
+
+    it("derives the type field on each matching item", async () => {
+      const result = await librarySearch({ type: "oneshot" });
+
+      expect(result.items.every((i) => i.type === "oneshot")).toBe(true);
+    });
+
+    it("omits the type field when no Type tag applies", async () => {
+      // pack_riff.mid carries no tags
+      const result = await librarySearch({ kind: "midi" });
+
+      expect(result.items[0]?.name).toBe("pack_riff.mid");
+      expect(result.items[0]?.type).toBeUndefined();
     });
   });
 

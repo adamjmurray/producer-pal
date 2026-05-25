@@ -5,10 +5,12 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  deriveItemType,
   deviceTypeForKind,
   folderKindsForSource,
   fourCC,
   fourCCsForKind,
+  keywordsForType,
   resolveKind,
   resolveSource,
 } from "../library-filters.ts";
@@ -209,5 +211,33 @@ describe("resolveSource", () => {
     expect(resolveSource(8)).toBe("builtin");
     expect(resolveSource(9)).toBe("cloud");
     expect(resolveSource(10)).toBe("plugin");
+  });
+});
+
+describe("keywordsForType", () => {
+  it("maps each type to its Live keyword name(s)", () => {
+    expect(keywordsForType("loop")).toStrictEqual(["Loop", "Looping"]);
+    expect(keywordsForType("oneshot")).toStrictEqual(["One Shot"]);
+    expect(keywordsForType("impulse-response")).toStrictEqual([
+      "Impulse Response",
+    ]);
+  });
+});
+
+describe("deriveItemType", () => {
+  it("derives each type from its tag name", () => {
+    expect(deriveItemType(["Loop"])).toBe("loop");
+    expect(deriveItemType(["Looping"])).toBe("loop");
+    expect(deriveItemType(["One Shot"])).toBe("oneshot");
+    expect(deriveItemType(["Impulse Response"])).toBe("impulse-response");
+  });
+
+  it("returns null when no Type tag applies", () => {
+    expect(deriveItemType([])).toBeNull();
+    expect(deriveItemType(["Kick", "Punchy"])).toBeNull();
+  });
+
+  it("prefers loop over oneshot when a file carries both", () => {
+    expect(deriveItemType(["One Shot", "Loop"])).toBe("loop");
   });
 });

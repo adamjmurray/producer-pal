@@ -17,7 +17,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
-import { fourCC } from "../library-filters.ts";
+import { fourCC } from "../../library-filters.ts";
 
 export interface LibraryFixture {
   dir: string;
@@ -58,11 +58,21 @@ export function createLibraryFixture(): LibraryFixture {
       keyw_id INTEGER,
       is_auto INTEGER DEFAULT 0
     );
+    CREATE TABLE metadata (
+      file_id INTEGER,
+      key INTEGER,
+      value_id INTEGER
+    );
+    CREATE TABLE metadata_values (
+      id INTEGER PRIMARY KEY,
+      value TEXT
+    );
   `);
 
   insertFiles(db);
   insertPlaces(db);
   insertKeywords(db);
+  insertMetadata(db);
 
   db.close();
 
@@ -112,6 +122,9 @@ const AMP = fourCC("amp-");
 const ALS = fourCC("als-");
 const VST3 = fourCC("vst3");
 const KEYW = fourCC("keyw");
+// metadata.key fourCCs carrying `Category|Sub|Leaf` tag-path strings
+const META_CKEY = fourCC("CKey");
+const META_KEYW = fourCC("Keyw");
 
 /**
  * Insert the synthetic file rows into the fixture DB.
@@ -257,4 +270,36 @@ function insertKeywords(db: DatabaseSync): void {
   // Built-in plugins: no tags
   // subfolder_y.wav (212) -> SubOnly (for inFolder + tags composition test)
   insert.run(212, 9005, 0);
+}
+
+/**
+ * Populate the metadata tables with a small `Category|Sub|Leaf` taxonomy for
+ * listCategories tests. Leaf segments deliberately reuse existing keyword names
+ * (Kick, Snare Hit, One Shot) so drill-down file counts resolve via the
+ * keywords table; "Synth Bass" has no keyword (counts to nothing) and a bare
+ * "Core Library" value (no pipe) must be excluded from the taxonomy.
+ *
+ * @param db - Open writable DB
+ */
+function insertMetadata(db: DatabaseSync): void {
+  const value = db.prepare(
+    "INSERT INTO metadata_values (id, value) VALUES (?, ?)",
+  );
+
+  value.run(1, "Drums|Kick");
+  value.run(2, "Drums|Snare|Snare Hit");
+  value.run(3, "Type|One Shot");
+  value.run(4, "Core Library");
+  value.run(5, "Sounds|Bass|Synth Bass");
+
+  const meta = db.prepare(
+    "INSERT INTO metadata (file_id, key, value_id) VALUES (?, ?, ?)",
+  );
+
+  meta.run(2001, META_CKEY, 1); // Drums|Kick
+  meta.run(1001, META_CKEY, 1); // Drums|Kick (second file, same value)
+  meta.run(1002, META_KEYW, 2); // Drums|Snare|Snare Hit
+  meta.run(2001, META_CKEY, 3); // Type|One Shot
+  meta.run(2001, META_CKEY, 4); // Core Library (no pipe → excluded)
+  meta.run(1001, META_CKEY, 5); // Sounds|Bass|Synth Bass (leaf has no keyword)
 }

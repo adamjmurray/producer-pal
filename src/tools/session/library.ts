@@ -11,7 +11,9 @@ import {
   type LibraryBatchResult,
   type LibraryDeviceKind,
   type LibraryItem,
+  type LibraryItemType,
   type LibraryKind,
+  type LibraryListCategoriesResult,
   type LibraryListTagsResult,
   type LibrarySearchResult,
   type LibrarySort,
@@ -36,12 +38,15 @@ interface LibraryArgs {
   query?: string;
   tags?: string;
   kind?: LibraryKind;
+  type?: LibraryItemType;
   deviceKind?: LibraryDeviceKind;
   source?: LibrarySource;
   inFolder?: string;
   sort?: LibrarySort;
   limit?: number;
   verifyPaths?: boolean;
+  /** listCategories only: top-level category to drill into. */
+  category?: string;
   /** searchBatch only: per-query filter sets (see runSearchBatch). */
   queries?: LibraryBatchQuery[];
   /** listPlugins only: vendor/manufacturer substring filter. */
@@ -53,6 +58,7 @@ interface LibraryArgs {
 type LibraryResult =
   | LibrarySearchResult
   | LibraryListTagsResult
+  | LibraryListCategoriesResult
   | LibraryBatchResult
   | ListPluginsResult;
 
@@ -80,6 +86,13 @@ export async function library(
     return await callRoute<LibraryListTagsResult>("library.listTags", {
       limit: args.limit,
     });
+  }
+
+  if (action === "listCategories") {
+    return await callRoute<LibraryListCategoriesResult>(
+      "library.listCategories",
+      { category: args.category, limit: args.limit },
+    );
   }
 
   if (action === "searchBatch") {
@@ -131,6 +144,7 @@ export async function runSearch(
           query: args.query,
           tags: args.tags,
           kind: args.kind,
+          type: args.type,
           deviceKind: args.deviceKind,
           source: args.source,
           inFolder: args.inFolder,
@@ -203,6 +217,11 @@ function scanFolderItems(
   }
 
   if (args.tags) {
+    return { items: [] };
+  }
+
+  // The folder scan has no tag data, so it can't honor a Type-tag filter.
+  if (args.type) {
     return { items: [] };
   }
 
