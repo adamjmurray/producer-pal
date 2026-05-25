@@ -308,6 +308,27 @@ export function useVoicePersistence(
     [conversations, refreshList],
   );
 
+  // Handle browser Back/Forward: re-route to whatever conversation the URL hash
+  // now points at. Without this the voice page ignores history navigation, so a
+  // chat→voice handoff left a hash entry that desynced from the screen on Back.
+  // setHashId() uses replaceState (which fires no hashchange), so every event
+  // here is a genuine user navigation — no programmatic-set guard is needed
+  // (unlike the chat hook). switchConversation already hands foreign (chat)
+  // records back to App via onForeignRecord.
+  useEffect(() => {
+    const handler = () => {
+      const hashId = getHashId();
+
+      if (hashId === activeIdRef.current) return;
+      if (hashId) void switchConversation(hashId);
+      else startNewConversation();
+    };
+
+    window.addEventListener("hashchange", handler);
+
+    return () => window.removeEventListener("hashchange", handler);
+  }, [switchConversation, startNewConversation]);
+
   return {
     conversations,
     activeConversationId,

@@ -8,11 +8,12 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-// Gate a one-shot callback that runs *after* the real write commits, so a test
-// can simulate a delete landing during saveConversation's await window — the
-// narrow race the autosave .then() guard defends against. Mock the whole
-// conversation-db module (in this dedicated file only, so the main persistence
-// suite keeps the real saveConversation) and pass everything else through.
+// Gate a one-shot callback that runs *after* the real write commits but
+// *before* the autosave .then() runs, so a test can land an event (a delete, or
+// a navigation) inside the exact window the save's guards defend against. Mock
+// the whole conversation-db module (in this dedicated file only, so the main
+// persistence suite keeps the real saveConversation) and pass everything else
+// through.
 const gate = vi.hoisted(() => ({
   afterSave: null as null | (() => Promise<void>),
 }));
@@ -39,7 +40,8 @@ vi.mock(import("#webui/lib/conversation-db"), async (importOriginal) => {
   };
 });
 
-import { loadConversation } from "#webui/lib/conversation-db";
+import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
+import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import {
   renderVoicePersistenceWithHistory,
   resetConversationsDb,
@@ -82,5 +84,53 @@ describe("useVoicePersistence autosave delete-during-write race", () => {
     expect(result.current.activeConversationId).toBeNull();
     expect(result.current.conversations).toHaveLength(0);
     expect(await loadConversation(record.id)).toBeUndefined();
+  });
+});
+
+describe("useVoicePersistence autosave navigate-during-write race", () => {
+  it("does not re-adopt a stale id when New lands during the first save", async () => {
+    const { result, rerender } = renderVoicePersistenceWithHistory();
+
+    await waitForEffects();
+
+    // New is clicked just as the first save of this brand-new conversation
+    // commits — before its .then() can adopt the reserved id.
+    gate.afterSave = async () => {
+      result.current.startNewConversation();
+    };
+
+    rerender([userTextItem("a brand new turn")]);
+    await waitForEffects(800);
+
+    // The fresh session must stay active (null), not be bumped back onto the
+    // abandoned record's id.
+    expect(result.current.activeConversationId).toBeNull();
+  });
+
+  it("does not re-adopt a stale id when a foreign record is selected during the first save", async () => {
+    const textRecord = createTestRecord({ sessionType: "text" });
+
+    await saveConversation(textRecord);
+
+    const onForeignRecord = vi.fn();
+    const { result, rerender } = renderVoicePersistenceWithHistory({
+      onForeignRecord,
+    });
+
+    await waitForEffects();
+
+    // Select a foreign (chat) record mid-write. switchConversation pins the
+    // foreign id as active before handing off to the chat mode.
+    gate.afterSave = async () => {
+      await result.current.switchConversation(textRecord.id);
+    };
+
+    rerender([userTextItem("a brand new turn")]);
+    await waitForEffects(800);
+
+    // The hash/active id must stay on the foreign record, not snap back to the
+    // in-flight voice record.
+    expect(result.current.activeConversationId).toBe(textRecord.id);
+    expect(onForeignRecord).toHaveBeenCalled();
   });
 });

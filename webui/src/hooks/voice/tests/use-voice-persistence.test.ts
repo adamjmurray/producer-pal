@@ -588,4 +588,69 @@ describe("useVoicePersistence", () => {
     // unknown id is a no-op — list is unchanged
     expect(result.current.conversations).toHaveLength(1);
   });
+
+  describe("hashchange navigation (browser back/forward)", () => {
+    it("switches to a voice conversation when the hash changes to its id", async () => {
+      const record = await saveVoiceRecord({
+        voiceHistory: [userTextItem("from history")],
+      });
+
+      const { result } = renderVoicePersistence();
+
+      await waitForEffects();
+      expect(result.current.activeConversationId).toBeNull();
+
+      window.location.hash = record.id;
+      await act(async () => {
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(result.current.activeConversationId).toBe(record.id);
+      expect(result.current.savedItems).toHaveLength(1);
+    });
+
+    it("starts a fresh session when the hash is cleared by back", async () => {
+      const record = await saveVoiceRecord({
+        voiceHistory: [userTextItem("seed")],
+      });
+
+      window.location.hash = record.id;
+
+      const { result } = renderVoicePersistence();
+
+      await waitForEffects();
+      expect(result.current.activeConversationId).toBe(record.id);
+
+      history.replaceState(null, "", window.location.pathname);
+      await act(async () => {
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(result.current.activeConversationId).toBeNull();
+    });
+
+    it("hands a foreign chat record back to App when navigated to via history", async () => {
+      const textRecord = createTestRecord({ sessionType: "text" });
+
+      await saveConversation(textRecord);
+
+      const onForeignRecord = vi.fn();
+      const { result } = renderVoicePersistence({ onForeignRecord });
+
+      await waitForEffects();
+
+      window.location.hash = textRecord.id;
+      await act(async () => {
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(onForeignRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ id: textRecord.id }),
+      );
+      expect(result.current.activeConversationId).toBe(textRecord.id);
+    });
+  });
 });
