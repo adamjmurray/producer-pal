@@ -89,12 +89,15 @@ export interface VoicePersistenceHistoryView {
 /**
  * Render useVoicePersistence with a mutable live history so a test can simulate
  * incoming transcript turns. `rerender(history)` swaps the live history.
+ * @param options - onForeignRecord / onLiveRecordDeleted callbacks
  * @returns The renderHook result plus a history-only rerender shortcut
  */
-export function renderVoicePersistenceWithHistory(): VoicePersistenceHistoryView {
+export function renderVoicePersistenceWithHistory(
+  options: VoicePersistenceOptions = {},
+): VoicePersistenceHistoryView {
   const { result, rerender } = renderHook(
     ({ history }: { history: RealtimeItem[] }) =>
-      useVoicePersistence({ liveHistory: history }),
+      useVoicePersistence({ liveHistory: history, ...options }),
     { initialProps: { history: [] as RealtimeItem[] } },
   );
 

@@ -173,7 +173,18 @@ export function useVoicePersistence(
         if (canceledIdsRef.current.has(id)) return;
         createdAtRef.current = record.createdAt;
         titleRef.current = record.title;
-        if (activeIdRef.current !== id) setActiveId(id);
+
+        // Adopt the freshly-reserved id only if we're still on this pending-new
+        // conversation. If the user clicked New or selected a foreign record
+        // while this first save was in flight, navigation cleared/replaced
+        // pendingNewIdRef (and set activeId to null or the foreign id) — re-
+        // asserting `id` here would point the hash at an abandoned record while
+        // the screen shows another. The plain `activeIdRef.current !== id`
+        // check couldn't tell adoption from that stale-id race.
+        if (activeIdRef.current == null && pendingNewIdRef.current === id) {
+          setActiveId(id);
+        }
+
         void refreshList();
       });
     }, AUTOSAVE_DEBOUNCE_MS);
