@@ -11,6 +11,7 @@ import {
   applySpecializedActions,
   applySpecializedParamWrite,
   getSpecForDevice,
+  readSpecializedActions,
   readSpecializedModulations,
   readSpecializedOptions,
   readSpecializedParams,
@@ -146,6 +147,48 @@ describe("applySpecializedActions", () => {
       1,
       expect.stringContaining("unknown action"),
     );
+  });
+});
+
+describe("readSpecializedActions", () => {
+  it("returns Simpler actions with signature and description", () => {
+    const device = registerDevice("Simpler");
+    const actions = readSpecializedActions(device);
+
+    expect(actions.map((a) => a.name)).toStrictEqual([
+      "reverse",
+      "crop",
+      "warpDouble",
+      "warpHalf",
+      "warpAs",
+    ]);
+    expect(actions).toContainEqual({
+      name: "warpAs",
+      signature: "warpAs(beats)",
+      description: "Warp the active region to span the given number of beats",
+    });
+  });
+
+  it("returns Wavetable mod-matrix actions", () => {
+    const device = registerDevice("Wavetable");
+
+    expect(readSpecializedActions(device).map((a) => a.name)).toStrictEqual([
+      "setModulation",
+      "clearModulation",
+      "addModulationTarget",
+    ]);
+  });
+
+  it("returns an empty array for a specialized device with no actions", () => {
+    const device = registerDevice("Roar", { routing_mode_index: 0 });
+
+    expect(readSpecializedActions(device)).toStrictEqual([]);
+  });
+
+  it("returns an empty array for a generic device", () => {
+    const device = registerDevice("Operator");
+
+    expect(readSpecializedActions(device)).toStrictEqual([]);
   });
 });
 

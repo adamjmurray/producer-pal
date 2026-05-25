@@ -495,6 +495,31 @@ use `include: ["params"]` for the full set.
 | -------- | -------- | ---------------------------------------------- |
 | `sample` | `string` | File path (omitted if no single sample loaded) |
 
+### Include: `"actions"`
+
+Adds the device-specific actions available on `ppal-update-device` for the
+device's specialized class (e.g. Simpler's `warpAs`, Wavetable's
+`setModulation`). Lets the model discover what it can do to a device at runtime
+instead of relying on the skills prompt. Devices with no actions (most
+specialized classes and all generic devices) omit the field.
+
+| Field     | Type       | Description                             |
+| --------- | ---------- | --------------------------------------- |
+| `actions` | `Action[]` | Each `{ name, signature, description }` |
+
+### Include: `"options"`
+
+Adds dynamic per-state/per-install catalogs for specialized devices (IR files,
+sidechain sources, current-category wavetables, `modulatableParameters`) plus
+Wavetable's current mod-matrix routes (`modulations`). Opt-in because the scan
+can be expensive. Only devices that contribute add anything; others omit the
+field. See `dev/Specialized-Devices.md` for per-device contents.
+
+| Field         | Type       | Description                                  |
+| ------------- | ---------- | -------------------------------------------- |
+| `options`     | `object`   | Per-device catalogs (omitted when none)      |
+| `modulations` | `object[]` | Wavetable only: `{ target, source, amount }` |
+
 ### `maxDepth` arg
 
 Controls device tree expansion for `chains`, `return-chains`, and `drum-pads`:

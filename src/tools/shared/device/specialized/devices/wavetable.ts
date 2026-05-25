@@ -271,9 +271,23 @@ export const wavetableSpec: SpecializedDeviceSpec = {
   ],
 
   actions: {
-    setModulation: setModulationAction,
-    clearModulation: clearModulationAction,
-    addModulationTarget: addModulationTargetAction,
+    setModulation: {
+      handler: setModulationAction,
+      signature:
+        "setModulation('<targetParamName>', '<source>', <amount -1..1>)",
+      description:
+        "Set a mod-matrix amount routing a source to a target parameter",
+    },
+    clearModulation: {
+      handler: clearModulationAction,
+      signature: "clearModulation('<targetParamName>', '<source>')",
+      description: "Clear a mod-matrix routing from a source to a target",
+    },
+    addModulationTarget: {
+      handler: addModulationTargetAction,
+      signature: "addModulationTarget('<paramName>')",
+      description: "Add a parameter as a modulation target so it can be routed",
+    },
   },
 
   readModulations,

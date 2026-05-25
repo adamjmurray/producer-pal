@@ -91,6 +91,30 @@ describe("readDevice", () => {
     });
   });
 
+  it('include: ["actions"] lists a specialized device\'s actions', () => {
+    setupBasicDeviceMock({ class_display_name: "Simpler", type: 1 });
+    const result = readDevice({
+      deviceId: "device-123",
+      include: ["actions"],
+    });
+
+    expect(result.actions).toContainEqual({
+      name: "warpAs",
+      signature: "warpAs(beats)",
+      description: "Warp the active region to span the given number of beats",
+    });
+  });
+
+  it('include: ["actions"] omits the field for a device with no actions', () => {
+    setupBasicDeviceMock({ class_display_name: "Operator", type: 1 });
+    const result = readDevice({
+      deviceId: "device-123",
+      include: ["actions"],
+    });
+
+    expect(result).not.toHaveProperty("actions");
+  });
+
   it("should handle deactivated devices", () => {
     setupBasicDeviceMock({
       class_display_name: "EQ Eight",

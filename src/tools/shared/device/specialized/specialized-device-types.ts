@@ -52,6 +52,20 @@ export type ActionHandler = (
 ) => void;
 
 /**
+ * A named action's full definition: the handler plus the discovery metadata
+ * surfaced by `ppal-read-device include: ["actions"]`. Co-located with the
+ * handler so the docs can't drift from the implementation.
+ */
+export interface ActionDef {
+  /** The action implementation. */
+  handler: ActionHandler;
+  /** Call form shown to the model, e.g. `warpAs(beats)` or `reverse`. */
+  signature: string;
+  /** One-line description of what the action does. */
+  description: string;
+}
+
+/**
  * The full contribution a specialized device makes to the tool surface.
  * Dispatched by `class_display_name` (consistent with the existing Simpler
  * `sample` handling — display names are stable English device names).
@@ -61,8 +75,8 @@ export interface SpecializedDeviceSpec {
   displayNames: string[];
   /** Writable / read-only pseudo-params. */
   params?: PseudoParam[];
-  /** Action handlers, keyed by action name (matched case-insensitively). */
-  actions?: Record<string, ActionHandler>;
+  /** Action definitions, keyed by action name (matched case-insensitively). */
+  actions?: Record<string, ActionDef>;
   /** Dynamic catalogs for the `options` include. */
   readOptions?: (device: LiveAPI) => Record<string, unknown>;
   /** Structured modulation-matrix state (Wavetable). */

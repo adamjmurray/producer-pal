@@ -121,15 +121,16 @@ sections below reference these patterns rather than redocumenting them.
 
 All specialized-device pseudo-params flow through existing tool surfaces. Across
 all this work the new surfaces are limited to: **one new top-level write arg**
-(`actions` on `update-device`), **one new include value** (`"options"` on
-`read-device`), and **one new top-level read output field** (`modulations` on
-`read-device`, for Wavetable's mod matrix only):
+(`actions` on `update-device`), **two new include values** (`"options"` and
+`"actions"` on `read-device`), and **one new top-level read output field**
+(`modulations` on `read-device`, for Wavetable's mod matrix only):
 
 | Surface                                                                                         | Where it goes                                                                                                                                                                                                        |
 | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Writable pseudo-params (e.g. `globalMode`, `voices`, `irCategory`, `sample`, `mod1Source`)      | Inside `update-device`'s existing `params` arg as `name=value` lines                                                                                                                                                 |
 | Read-only pseudo-params (e.g. `multiSampleMode`, `estimatedPlaybackLength`)                     | Inside `read-device`'s existing `params` output field                                                                                                                                                                |
 | Actions (e.g. `reverse`, `warpAs(4.0)`, `setModulation(...)`)                                   | **New top-level `actions: string[]` arg** on `update-device`                                                                                                                                                         |
+| Action discovery (what actions a device supports)                                               | New value `"actions"` for `read-device`'s existing `include` arg (`{name, signature, description}` per action)                                                                                                       |
 | Dynamic per-state/per-install catalogs (e.g. `irFileList`, `sidechainSourceTrackIds`)           | New value `"options"` for `read-device`'s existing `include` arg                                                                                                                                                     |
 | Structured non-param state (Wavetable's mod-matrix cells — inherently 2D, name-collision-prone) | **New top-level `modulations` output field** on `read-device` (Wavetable only; opt-in via `include: ["options"]`, alongside the dynamic catalogs, since the mod-matrix scan is expensive; omitted for other devices) |
 
@@ -156,6 +157,18 @@ Parser scope: bare names; positional args; literal types are int, float, and
 quoted strings (single or double quotes — pick one and stick with it; commas
 inside quotes are respected; no nested function calls; no implicit type coercion
 beyond standard JS literal parsing).
+
+**Action discovery (`include: ["actions"]`).** The actions a device supports are
+discoverable at runtime via `ppal-read-device include: ["actions"]`, which
+returns `{ name, signature, description }` for each action on the resolved
+device's class (empty/omitted for the 7 action-less specialized classes and all
+generic devices). The metadata is co-located with each handler in its
+`SpecializedDeviceSpec`
+(`actions: Record<string, { handler, signature, description }>`), so the docs
+can't drift from the implementation. This lets the skills prompt point at the
+include rather than enumerate every action signature, recovering context-window
+budget. Kept in small-model mode — it's discovery, and only fires when
+explicitly requested.
 
 ### Structured read output beyond `params`
 
