@@ -216,6 +216,7 @@ limitation).
 - Change clip name, color, and loop settings
 - Add/remove MIDI notes using [custom notation](#custom-music-notation)
 - Apply [transforms](#transforms) to modify existing notes and audio properties
+  (a different transform per clip when updating multiple)
 - Change audio clip gain, pitch shift, and warp settings
 - Move clips and change their length in the Arrangement
 - Split arrangement clips at specified positions
@@ -304,7 +305,8 @@ positions in Ableton Live clips and the arrangement timeline.
 
 Apply complex changes to clips using math expressions via
 [Create Clip](#ppal-create-clip), [Update Clip](#ppal-update-clip), and
-[Duplicate](#ppal-duplicate) (applied to each copy):
+[Duplicate](#ppal-duplicate). When updating or duplicating multiple clips at
+once, each clip or copy can get its own transform:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
