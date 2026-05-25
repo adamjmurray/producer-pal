@@ -14,11 +14,20 @@
  *   ACCEPTED the schema (no API/schema error), and
  *   FILLED it in a structurally correct shape (per-variant check()).
  *
- * Run: npx tsx --env-file=.env evals/schema-compat/probe-schema-compat.ts [models...]
+ * The variant corpus lives in ./schema-compat-variants.ts.
+ *
+ * Run: npx tsx --env-file=.env evals/schema-compat/probe-schema-compat.ts [models...] [flags]
  *   models: provider/model or prefix-inferred (e.g. gemini-3.5-flash,
  *           mistral/mistral-small-latest, openrouter/anthropic/claude-haiku-4.5).
  *           Defaults to the supported providers (Gemini, OpenAI, Mistral,
  *           OpenRouter). Models whose API key is missing are skipped.
+ *   flags:  --repeat=N  draws per cell (default 3; controls for sampling noise)
+ *           --temp=N    sampling temperature (default: provider default; forcing
+ *                       0 breaks some reasoning models, so repeats — not temp 0 —
+ *                       are how this probe controls for noise)
+ *           --auto      let the model decide whether to call (see TOOL_CHOICE)
+ *
+ * See README.md in this directory for a checked-in results snapshot.
  */
 
 import { createMistral } from "@ai-sdk/mistral";
@@ -30,9 +39,7 @@ import {
   OPENAI_CONFIG,
   OPENROUTER_CONFIG,
 } from "#evals/shared/provider-configs.ts";
-
-type JsonSchemaInput = Parameters<typeof jsonSchema>[0];
-type Args = Record<string, unknown>;
+import { VARIANTS, type Args, type Variant } from "./schema-compat-variants.ts";
 
 /** Per-call wall-clock cap so a hung/rate-limited model can't stall the run. */
 const PROBE_TIMEOUT_MS = 60_000;
@@ -46,210 +53,71 @@ const MAX_OUTPUT_TOKENS = 8192;
 const TOOL_CHOICE: "auto" | "required" = process.argv.includes("--auto")
   ? "auto"
   : "required";
-
-interface Variant {
-  id: string;
-  toolName: string;
-  /** What construct this probes, for the report. */
-  tests: string;
-  schema: JsonSchemaInput;
-  prompt: string;
-  /** Structural correctness of the model's tool-call input. */
-  check: (input: Args) => boolean;
-}
-
 /**
- * @param x - Value to test
- * @returns True if x is a string
+ * Independent draws per (model, variant). n=1 can't be told from sampling
+ * noise; repeats expose it (a cell that flips status across draws is flaky, not
+ * a clean pass). Override with --repeat=N.
  */
-const isStr = (x: unknown): x is string => typeof x === "string";
-
+const REPEATS = Math.max(1, Math.floor(numArg("--repeat=") ?? 3));
 /**
- * @param x - Value to test
- * @returns True if x is an array of strings
+ * Sampling temperature. Left unset (provider default) by default: forcing 0 on
+ * reasoning models (e.g. gpt-5-nano) gets rejected by some endpoints, which
+ * would show as false `rejected` cells. Repeats — not temp 0 — are how this
+ * probe controls for noise. Override with --temp=N when the model allows it.
  */
-const isStrArray = (x: unknown): boolean => Array.isArray(x) && x.every(isStr);
-
-/**
- * @param x - Value to test
- * @param keys - Keys that must be present
- * @returns True if x is a plain (non-array) object containing every key
- */
-const isParamMap = (x: unknown, keys: string[]): boolean =>
-  x != null &&
-  typeof x === "object" &&
-  !Array.isArray(x) &&
-  keys.every((k) => k in (x as Args));
-
-// Note: most variants omit additionalProperties on purpose so a clean shape is
-// probed without confounding the construct-acceptance signal. The two object-map
-// variants are the exception — they exist specifically to probe dynamic-key
-// objects (what `z.record(...)` emits). Finding: Gemini does NOT reject
-// additionalProperties anymore, but it (and the bare-object fallback) silently
-// fills `{}` — dropping every key. All other curated models fill it correctly.
-// This is why update-device `params` stays an array<object{name,value}> rather
-// than an object map: the map loses all params on Gemini with no error.
-const VARIANTS: Variant[] = [
-  {
-    id: "array-of-strings",
-    toolName: "record_actions",
-    tests: "array<string> (baseline, == update-device 'actions')",
-    schema: {
-      type: "object",
-      properties: { actions: { type: "array", items: { type: "string" } } },
-      required: ["actions"],
-    },
-    prompt:
-      "Record exactly these three device actions verbatim using record_actions: " +
-      "reverse | warpAs(4) | setModulation('Osc 1 Pos','Env 2',0.5)",
-    check: (i) => isStrArray(i.actions) && (i.actions as unknown[]).length >= 3,
-  },
-  {
-    id: "csv-string",
-    toolName: "record_actions_csv",
-    tests: "comma-separated string (current convention; commas-in-values fail)",
-    schema: {
-      type: "object",
-      properties: {
-        actions: {
-          type: "string",
-          description: "comma-separated list of actions",
-        },
-      },
-      required: ["actions"],
-    },
-    prompt:
-      "Record exactly these three device actions verbatim using record_actions_csv: " +
-      "reverse | warpAs(4) | setModulation('Osc 1 Pos','Env 2',0.5)",
-    // "Correct" is impossible to recover unambiguously — the 3rd value has
-    // commas. We mark pass only if it's a string (acceptance), and the details
-    // dump shows how the ambiguity bites.
-    check: (i) => isStr(i.actions),
-  },
-  {
-    id: "string-or-array-union",
-    toolName: "record_action",
-    tests: "anyOf[string, array<string>] (THE concern)",
-    schema: {
-      type: "object",
-      properties: {
-        action: {
-          anyOf: [
-            { type: "string" },
-            { type: "array", items: { type: "string" } },
-          ],
-        },
-      },
-      required: ["action"],
-    },
-    prompt:
-      "Record these two device actions using record_action: reverse, warpAs(4)",
-    check: (i) => isStr(i.action) || isStrArray(i.action),
-  },
-  {
-    id: "nested-object-array",
-    toolName: "build_kit",
-    tests: "array<object{note,sample,name}> (drum-kit spec)",
-    schema: {
-      type: "object",
-      properties: {
-        pads: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              note: { type: "string" },
-              sample: { type: "string" },
-              name: { type: "string" },
-            },
-            required: ["note", "sample", "name"],
-          },
-        },
-      },
-      required: ["pads"],
-    },
-    prompt:
-      "Build a drum kit with build_kit using these three pads: " +
-      "C1 -> /samples/kick.wav named Kick; " +
-      "D1 -> /samples/snare.wav named Snare; " +
-      "F#1 -> /samples/hihat.wav named HiHat",
-    check: (i) =>
-      Array.isArray(i.pads) &&
-      i.pads.length >= 3 &&
-      i.pads.every(
-        (p) =>
-          p != null &&
-          isStr((p as Args).note) &&
-          isStr((p as Args).sample) &&
-          isStr((p as Args).name),
-      ),
-  },
-  {
-    id: "object-map",
-    toolName: "set_params_map",
-    tests:
-      "object{additionalProperties:string} (proposed update-device 'params' map)",
-    schema: {
-      type: "object",
-      properties: {
-        params: {
-          type: "object",
-          additionalProperties: { type: "string" },
-        },
-      },
-      required: ["params"],
-    },
-    prompt:
-      "Set these three device parameters using set_params_map: " +
-      "Frequency to 500, Resonance to 20, Drive to 30%.",
-    check: (i) => isParamMap(i.params, ["Frequency", "Resonance", "Drive"]),
-  },
-  {
-    id: "object-map-bare",
-    toolName: "set_params_bare",
-    tests: "object{} no additionalProperties (free-form fallback)",
-    schema: {
-      type: "object",
-      properties: {
-        params: { type: "object" },
-      },
-      required: ["params"],
-    },
-    prompt:
-      "Set these three device parameters using set_params_bare: " +
-      "Frequency to 500, Resonance to 20, Drive to 30%.",
-    check: (i) => isParamMap(i.params, ["Frequency", "Resonance", "Drive"]),
-  },
-  {
-    id: "live-api-value-union",
-    toolName: "set_value",
-    tests: "anyOf[string,number,boolean,array<number>] (== live-api 'value')",
-    schema: {
-      type: "object",
-      properties: {
-        value: {
-          anyOf: [
-            { type: "string" },
-            { type: "number" },
-            { type: "boolean" },
-            { type: "array", items: { type: "number" } },
-          ],
-        },
-      },
-      required: ["value"],
-    },
-    prompt:
-      "Set the parameter to the list of numbers 0.1, 0.2, 0.3 using set_value.",
-    check: (i) =>
-      Array.isArray(i.value) && i.value.every((x) => typeof x === "number"),
-  },
-];
+const TEMPERATURE = numArg("--temp=");
 
 type Status = "ok" | "wrong-shape" | "rejected" | "no-call" | "no-key";
 
 interface CellResult {
   status: Status;
   detail: string;
+}
+
+/** Worst-first: a flaky cell is reported by its most severe draw, not its best. */
+const SEVERITY: Status[] = [
+  "rejected",
+  "no-key",
+  "no-call",
+  "wrong-shape",
+  "ok",
+];
+
+/**
+ * Collapse repeated draws into one cell: status is the worst observed (so flaky
+ * cells can't masquerade as clean), detail carries the full distribution plus a
+ * representative input from the worst draw.
+ * @param results - One CellResult per draw
+ * @returns Aggregated CellResult
+ */
+function aggregate(results: CellResult[]): CellResult {
+  const counts = new Map<Status, number>();
+
+  for (const r of results)
+    counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
+
+  const worst = SEVERITY.find((s) => counts.has(s)) ?? "ok";
+  const dist = SEVERITY.filter((s) => counts.has(s))
+    .map((s) => `${s} ${counts.get(s)}/${results.length}`)
+    .join(", ");
+  const rep = results.find((r) => r.status === worst);
+
+  return { status: worst, detail: `[${dist}] ${rep?.detail ?? ""}` };
+}
+
+/**
+ * Parse a numeric CLI flag like --repeat=3 or --temp=0; absent flag is undefined.
+ * @param flag - Flag prefix including trailing '='
+ * @returns Parsed number, or undefined when the flag is absent/unparseable
+ */
+function numArg(flag: string): number | undefined {
+  const arg = process.argv.find((a) => a.startsWith(flag));
+
+  if (arg == null) return undefined;
+
+  const n = Number(arg.slice(flag.length));
+
+  return Number.isFinite(n) ? n : undefined;
 }
 
 /**
@@ -287,6 +155,7 @@ async function probe(
     model,
     toolChoice: TOOL_CHOICE,
     maxOutputTokens: MAX_OUTPUT_TOKENS,
+    temperature: TEMPERATURE,
     abortSignal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
     prompt: variant.prompt,
     tools: {
@@ -347,14 +216,17 @@ function defaultModels(): string[] {
  * @returns Promise that resolves when the report is printed
  */
 async function main(): Promise<void> {
-  const args = process.argv.slice(2).filter((a) => a !== "--auto");
+  const args = process.argv.slice(2).filter((a) => !a.startsWith("--"));
   const modelArgs = args.length > 0 ? args : defaultModels();
 
   console.log("Schema compatibility probe");
   console.log(`Variants: ${VARIANTS.map((v) => v.id).join(", ")}\n`);
   for (const v of VARIANTS) console.log(`  ${v.id}: ${v.tests}`);
   console.log("\nLegend: ✓ ok  ~ wrong-shape  ✗ rejected  · no-call  - no-key");
-  console.log(`Tool choice: ${TOOL_CHOICE}\n`);
+  console.log(
+    `Tool choice: ${TOOL_CHOICE} | repeats: ${REPEATS} | temperature: ` +
+      `${TEMPERATURE ?? "provider default"} (cell shows worst of N draws)\n`,
+  );
 
   const details: string[] = [];
   const header = ["model".padEnd(42), ...VARIANTS.map((v) => v.id.padEnd(22))];
@@ -391,13 +263,13 @@ async function main(): Promise<void> {
 }
 
 /**
- * Run one cell, converting thrown errors into a rejected/no-key result and
- * appending a details line.
+ * Run one (model, variant) cell REPEATS times, aggregate the draws, and append
+ * a details line carrying the full distribution.
  * @param model - Resolved AI SDK LanguageModel
  * @param variant - Schema variant
  * @param modelArg - Original model argument (for labeling)
  * @param details - Mutable details accumulator
- * @returns The cell result
+ * @returns The aggregated cell result
  */
 async function runCell(
   model: LanguageModel,
@@ -405,20 +277,35 @@ async function runCell(
   modelArg: string,
   details: string[],
 ): Promise<CellResult> {
-  let cell: CellResult;
+  const draws: CellResult[] = [];
 
-  try {
-    cell = await probe(model, variant);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    const status: Status = /api key/i.test(message) ? "no-key" : "rejected";
+  for (let n = 0; n < REPEATS; n++) draws.push(await runOnce(model, variant));
 
-    cell = { status, detail: truncate(message) };
-  }
+  const cell = aggregate(draws);
 
   details.push(`[${modelArg} | ${variant.id}] ${cell.status}: ${cell.detail}`);
 
   return cell;
+}
+
+/**
+ * One probe attempt, converting thrown errors into a rejected/no-key result.
+ * @param model - Resolved AI SDK LanguageModel
+ * @param variant - Schema variant
+ * @returns The single-draw cell result
+ */
+async function runOnce(
+  model: LanguageModel,
+  variant: Variant,
+): Promise<CellResult> {
+  try {
+    return await probe(model, variant);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const status: Status = /api key/i.test(message) ? "no-key" : "rejected";
+
+    return { status, detail: truncate(message) };
+  }
 }
 
 await main();

@@ -115,9 +115,10 @@ web UI architecture.
 - **Tool input schema shapes**: Rich JSON Schema shapes (arrays, nested objects)
   are safe to use — accepted and filled by every model the probe tried.
   (`ppal-live-api` already ships `z.array(z.object(...))`; the
-  `evals/schema-compat/` probe spot-checks one model per provider in a single,
-  zero-repeat, provider-default-temperature run — corroboration, not exhaustive
-  proof.) Choose the shape by the data:
+  `evals/schema-compat/` probe spot-checks one model per provider across 3 draws
+  at provider-default temperature, with a checked-in results snapshot in
+  `evals/schema-compat/README.md` — corroboration, not exhaustive proof.) Choose
+  the shape by the data:
   - **Flat scalar list** (ids, note names, paths) → comma-separated string.
     Still the default: natural for LLMs, token-cheap, no reason to change
     existing ones.
@@ -130,10 +131,12 @@ web UI architecture.
   - **"One or many"** → always use an array (a single-element array is fine). Do
     NOT use `string | array` (`z.union` → JSON Schema `anyOf`): it is accepted
     everywhere but mis-filled — Claude collapses to the scalar and drops data;
-    some small models JSON-stringify the array into the string slot. (This is
-    from eyeballing the probe's detail dump, not its pass/fail metric: that
-    metric scores any string as OK, so it can't catch either failure — see the
-    `string-or-array-union` variant.)
+    some small models JSON-stringify the array into the string slot. (The
+    probe's `string-or-array-union` check now asserts the lossless array branch
+    with both items present, so the collapse-to-scalar failure is measured, not
+    just eyeballed: in the 2026-05-24 snapshot `claude-haiku-4.5` returned
+    `{"action":"reverse"}` on all 3 draws — dropping data — while Gemini,
+    GPT-5-nano, and Mistral used the array.)
   - Anything richer than a primitive MUST have a `smallModelModeConfig` plan:
     either exclude the param (`excludeParams`), or keep it with a
     small-model-tolerant schema. There is no built-in "degrade to a
