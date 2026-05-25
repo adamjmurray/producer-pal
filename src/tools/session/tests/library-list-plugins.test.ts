@@ -39,6 +39,7 @@ describe("library tool — listPlugins action", () => {
       query: "serum",
       vendor: "xfer",
       format: "VST",
+      subcategory: "synth",
       limit: 10,
     });
 
@@ -49,6 +50,7 @@ describe("library tool — listPlugins action", () => {
         vendor: "xfer",
         format: "VST",
         category: undefined,
+        subcategory: "synth",
         limit: 10,
       },
     );

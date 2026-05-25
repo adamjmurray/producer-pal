@@ -53,6 +53,8 @@ interface LibraryArgs {
   vendor?: string;
   /** listPlugins only: restrict to a single plugin format. */
   format?: PluginFormat;
+  /** listPlugins only: subcategory substring filter (case-insensitive). */
+  subcategory?: string;
 }
 
 type LibraryResult =
@@ -110,6 +112,7 @@ export async function library(
       vendor: args.vendor,
       format: args.format,
       category,
+      subcategory: args.subcategory,
       limit: args.limit,
     });
   }

@@ -25,8 +25,10 @@
  * so a v1-shaped DB (without the v2 ARA columns) works identically. Still
  * unexercised: AU-format plugins (none installed) and the Live 11 / 12.0–12.1
  * files-DB fallback (this install ships a separate plugins DB) — the table probe
- * keeps the fallback safe. NOTE: a `subcategories` column ("Instrument",
- * "Fx|Delay") exists and is a richer category source than dev_identifier parsing.
+ * keeps the fallback safe. We also SELECT the `subcategories` column (verified
+ * present, e.g. "Instrument", "Fx|Delay") for finer genre tags; if an older
+ * Live's inline plugins table lacks it, the SELECT throws and the try/catch
+ * below degrades to dbAvailable:false rather than dumping a raw error.
  *
  * Read-only: SELECT statements only. Never write SQL, never ATTACH.
  */
@@ -55,6 +57,7 @@ interface PluginRow {
   // refinement can use it, but deliberately NOT filtered on.
   scanstate: number | null;
   enabled: number | null;
+  subcategories: string | null;
   dev_identifier: string | null;
 }
 
@@ -78,29 +81,44 @@ export async function listPlugins(
     };
   }
 
-  const db = openLiveDb(source);
-
+  // Guard the open + query: the plugin schema is the least-verified part of the
+  // library cluster (one real install) and the Live 11 / 12.0–12.1 fallback is
+  // untestable, so a renamed/missing column degrades to dbAvailable:false rather
+  // than throwing a raw SQLite error to the LLM.
   try {
-    // `enabled = 1` filter: verified (Live 12.3) that every scanned plugin has
-    // enabled = 1, so this surfaces all real plugins and would hide only ones
-    // Live has explicitly disabled.
-    const rows = db
-      .prepare(
-        `SELECT name, vendor, version, scanstate, enabled, dev_identifier
-         FROM ${PLUGINS_TABLE}
-         WHERE enabled = 1
-         ORDER BY name COLLATE NOCASE ASC`,
-      )
-      .all() as unknown as PluginRow[];
-    const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
-    const plugins = rows
-      .map(buildPluginItem)
-      .filter((item) => matchesFilters(item, args))
-      .slice(0, limit);
+    const db = openLiveDb(source);
 
-    return { dbAvailable: true, plugins };
-  } finally {
-    db.close();
+    try {
+      // `enabled = 1` filter: verified (Live 12.3) that every scanned plugin has
+      // enabled = 1, so this surfaces all real plugins and would hide only ones
+      // Live has explicitly disabled.
+      const rows = db
+        .prepare(
+          `SELECT name, vendor, version, scanstate, enabled,
+                  subcategories, dev_identifier
+           FROM ${PLUGINS_TABLE}
+           WHERE enabled = 1
+           ORDER BY name COLLATE NOCASE ASC`,
+        )
+        .all() as unknown as PluginRow[];
+      const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
+      const plugins = rows
+        .map(buildPluginItem)
+        .filter((item) => matchesFilters(item, args))
+        .slice(0, limit);
+
+      return { dbAvailable: true, plugins };
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    return {
+      dbAvailable: false,
+      plugins: [],
+      reason: `Failed to read Live plugin database: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    };
   }
 }
 
@@ -166,6 +184,7 @@ function buildPluginItem(row: PluginRow): PluginItem {
     version: row.version ?? null,
     format: deriveFormat(row.dev_identifier),
     category: deriveCategory(row.dev_identifier),
+    subcategories: parseSubcategories(row.subcategories),
     dev_identifier: row.dev_identifier ?? null,
   };
 }
@@ -192,6 +211,15 @@ function matchesFilters(item: PluginItem, args: ListPluginsArgs): boolean {
   }
 
   if (args.category && item.category !== args.category) {
+    return false;
+  }
+
+  const subFilter = args.subcategory;
+
+  if (
+    subFilter &&
+    !item.subcategories.some((sub) => includesIgnoreCase(sub, subFilter))
+  ) {
     return false;
   }
 
@@ -275,6 +303,40 @@ function deriveCategory(devIdentifier: string | null): PluginCategory | null {
   }
 
   return null;
+}
+
+/** Leading `subcategories` segments that merely restate the device category. */
+const CATEGORY_SUBCATEGORY_TOKENS = new Set(["fx", "instrument"]);
+
+/**
+ * Parse Live's pipe-delimited `subcategories` column into genre/role tags.
+ *
+ * Live stores e.g. `Fx|Delay|Reverb` or `Instrument|Synth`; the leading segment
+ * just restates the device category, so we drop it when it's a recognized
+ * category token (Fx / Instrument) and keep the rest. A null/empty value (common
+ * for VST2-format plugins) or a column with only the category token yields [].
+ * Original casing is preserved; only the drop test is case-insensitive.
+ *
+ * @param raw - Raw subcategories column value, possibly null
+ * @returns Trimmed subcategory tags, minus the redundant category prefix
+ */
+function parseSubcategories(raw: string | null): string[] {
+  if (raw == null) {
+    return [];
+  }
+
+  const segments = raw
+    .split("|")
+    .map((seg) => seg.trim())
+    .filter((seg) => seg.length > 0);
+
+  const first = segments[0];
+
+  if (first != null && CATEGORY_SUBCATEGORY_TOKENS.has(first.toLowerCase())) {
+    return segments.slice(1);
+  }
+
+  return segments;
 }
 
 /**

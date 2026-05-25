@@ -39,7 +39,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       // .default(). Matches library.ts which treats a missing action as search.
       .default("search")
       .describe(
-        "search: filter library items (default) | listTags: enumerate available tags | listCategories: browse Live's category taxonomy (Sounds, Drums, Genres, …); pass category to drill into its tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query | listPlugins: list installed VST/VST3/AU plugins Live knows about (filter with query, vendor, format, deviceKind)",
+        "search: filter library items (default) | listTags: enumerate available tags | listCategories: browse Live's category taxonomy (Sounds, Drums, Genres, …); pass category to drill into its tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query | listPlugins: list installed VST/VST3/AU plugins Live knows about (filter with query, vendor, format, deviceKind, subcategory)",
       ),
 
     queries: queriesInputSchema.describe(
@@ -101,6 +101,13 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .optional()
       .describe("plugin binary format filter (listPlugins only)"),
 
+    subcategory: z.coerce
+      .string()
+      .optional()
+      .describe(
+        "subcategory substring filter, case-insensitive (listPlugins only; matches any of a plugin's genre/role tags, e.g. reverb, delay, synth). Also reported per result as `subcategories`.",
+      ),
+
     source: z
       .enum(LIBRARY_SOURCE_VALUES)
       .optional()
@@ -146,6 +153,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       "vendor",
       "format",
       "category",
+      "subcategory",
     ],
     excludeEnumValues: {
       action: ["listCategories", "searchBatch", "listPlugins"],

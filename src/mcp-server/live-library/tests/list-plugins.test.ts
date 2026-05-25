@@ -241,6 +241,20 @@ describe("listPlugins — filtering and derivation", () => {
     ]);
   });
 
+  it("filters by subcategory substring (case-insensitive, any element)", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    // "Fx|Reverb" → ["Reverb"]; uppercase query proves case-insensitivity.
+    const reverb = await listPlugins({ subcategory: "REVERB" });
+
+    expect(reverb.plugins.map((p) => p.name)).toStrictEqual(["ValhallaRoom"]);
+
+    // "Instrument|Synth|Bass" → ["Synth","Bass"]; matches a non-leading element.
+    const bass = await listPlugins({ subcategory: "bass" });
+
+    expect(bass.plugins.map((p) => p.name)).toStrictEqual(["Massive"]);
+  });
+
   it("returns plugins sorted by name (case-insensitive)", async () => {
     usePluginsDb(fixture.dbPath);
 
@@ -261,3 +275,88 @@ describe("listPlugins — filtering and derivation", () => {
     expect(result.plugins).toHaveLength(2);
   });
 });
+
+describe("listPlugins — subcategories parsing", () => {
+  it("splits on |, drops the redundant category prefix, handles empty/null", async () => {
+    const fixture = createPluginsDbFixture("v2", [
+      pluginSeed("Multi", "device:vst3:instr:Multi", "Instrument|Synth|Bass"),
+      pluginSeed("Single", "device:vst3:audiofx:Single", "Fx|EQ"),
+      pluginSeed("CategoryOnly", "device:vst3:audiofx:CatOnly", "Fx"),
+      pluginSeed("Empty", "device:vst:instr:Empty", ""),
+      pluginSeed("NullSubs", "device:vst3:instr:NullSubs", null),
+      // No recognized category prefix → keep every segment.
+      pluginSeed("NoPrefix", "device:vst3:audiofx:NoPrefix", "Reverb|Delay"),
+    ]);
+
+    try {
+      usePluginsDb(fixture.dbPath);
+
+      const result = await listPlugins();
+      const subs = new Map(
+        result.plugins.map((p) => [p.name, p.subcategories]),
+      );
+
+      expect(subs.get("Multi")).toStrictEqual(["Synth", "Bass"]);
+      expect(subs.get("Single")).toStrictEqual(["EQ"]);
+      expect(subs.get("CategoryOnly")).toStrictEqual([]);
+      expect(subs.get("Empty")).toStrictEqual([]);
+      expect(subs.get("NullSubs")).toStrictEqual([]);
+      expect(subs.get("NoPrefix")).toStrictEqual(["Reverb", "Delay"]);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+});
+
+describe("listPlugins — error handling", () => {
+  it("degrades to dbAvailable:false when the plugins DB lacks the schema", async () => {
+    // A DB with no `plugins` table, pointed at via the PRIMARY plugins-DB
+    // finder (which does NOT probe for the table) so the SELECT throws and the
+    // guard catches it — modeling a renamed/missing column on an untested Live.
+    const fixture = createFilesDbWithoutPluginsFixture();
+
+    try {
+      usePluginsDb(fixture.dbPath);
+
+      const result = await listPlugins();
+
+      expect(result.dbAvailable).toBe(false);
+      expect(result.plugins).toHaveLength(0);
+      expect(result.reason).toContain("Failed to read Live plugin database");
+    } finally {
+      fixture.cleanup();
+    }
+  });
+});
+
+/**
+ * Build a minimal enabled PluginSeed for subcategory-parsing tests.
+ *
+ * @param name - Plugin display name
+ * @param devIdentifier - dev_identifier URI
+ * @param subcategories - Raw pipe-delimited subcategories column value (or null)
+ * @returns A PluginSeed-shaped object for createPluginsDbFixture
+ */
+function pluginSeed(
+  name: string,
+  devIdentifier: string,
+  subcategories: string | null,
+): {
+  name: string;
+  vendor: string | null;
+  version: string | null;
+  scanstate: number | null;
+  enabled: number;
+  subcategories: string | null;
+  dev_identifier: string | null;
+} {
+  return {
+    name,
+    vendor: null,
+    version: null,
+    scanstate: 1,
+    enabled: 1,
+    subcategories,
+    dev_identifier: devIdentifier,
+  };
+}

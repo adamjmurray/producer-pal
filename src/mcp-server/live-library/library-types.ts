@@ -264,6 +264,8 @@ export interface ListPluginsArgs {
   format?: PluginFormat;
   /** Restrict to a single device classification. */
   category?: PluginCategory;
+  /** Case-insensitive substring match on any of a plugin's subcategories. */
+  subcategory?: string;
   /** Max plugins to return. */
   limit?: number;
 }
@@ -279,6 +281,14 @@ export interface PluginItem {
   format: PluginFormat | null;
   /** Device classification, or null when it couldn't be derived. */
   category: PluginCategory | null;
+  /**
+   * Finer genre/role tags from Live's `subcategories` column (e.g. ["Delay",
+   * "Reverb"], ["Synth"]). The leading segment that just restates `category`
+   * (Fx / Instrument) is dropped; an empty list means Live recorded none
+   * (common for VST2-format plugins). Free-form — Live mixes genres with the
+   * occasional vendor name, so treat these as tags, not an enum.
+   */
+  subcategories: string[];
   /** Live's raw plugin identifier URI (e.g. "device:vst3:instr:..."). */
   dev_identifier: string | null;
 }

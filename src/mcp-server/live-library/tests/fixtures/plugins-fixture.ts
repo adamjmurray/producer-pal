@@ -6,15 +6,15 @@
 /**
  * Fixtures for Live plugin-DB tests.
  *
- * Builds SQLite files matching the plugin table shape from the ticket's spike
- * notes (a `plugins` table with name, vendor, version, scanstate, enabled,
- * dev_identifier). Three flavors:
+ * Builds SQLite files matching the plugin table shape verified against a real
+ * Live 12.3 install (a `plugins` table with name, vendor, version, scanstate,
+ * enabled, subcategories, dev_identifier). Three flavors:
  *  - separate `Live-plugins-NNNN.db` (Live 12.3+), v1 (no ARA cols) and v2
  *    (with the two ARA columns) shapes;
  *  - a `Live-files-NNNN.db` that ALSO carries the plugins table inline
  *    (Live 11 / 12.0–12.1 fallback path).
  *
- * SCHEMA NOTE: column/table names are from spike notes, not a live capture
+ * SCHEMA NOTE: column/table names verified against a real Live 12.3 install
  * (see list-plugins.ts header).
  */
 
@@ -38,6 +38,7 @@ interface PluginSeed {
   version: string | null;
   scanstate: number | null;
   enabled: number;
+  subcategories: string | null;
   dev_identifier: string | null;
 }
 
@@ -52,6 +53,8 @@ const DEFAULT_PLUGINS: PluginSeed[] = [
     version: "1.5.0",
     scanstate: 2,
     enabled: 1,
+    // multi-segment → leading category token dropped, rest kept
+    subcategories: "Instrument|Synth|Bass",
     dev_identifier: "device:vst3:instr:Massive",
   },
   {
@@ -60,6 +63,7 @@ const DEFAULT_PLUGINS: PluginSeed[] = [
     version: "3.2",
     scanstate: 2,
     enabled: 1,
+    subcategories: "Fx|EQ",
     dev_identifier: "device:vst3:audiofx:ProQ3",
   },
   {
@@ -68,6 +72,8 @@ const DEFAULT_PLUGINS: PluginSeed[] = [
     version: "1.3.6",
     scanstate: 2,
     enabled: 1,
+    // empty subcategories (typical of VST2-format rows) → []
+    subcategories: "",
     dev_identifier: "device:vst:instr:Serum",
   },
   {
@@ -76,6 +82,7 @@ const DEFAULT_PLUGINS: PluginSeed[] = [
     version: "1.6.1",
     scanstate: 2,
     enabled: 1,
+    subcategories: "Fx|Reverb",
     dev_identifier: "device:au:audiofx:ValhallaRoom",
   },
   {
@@ -85,6 +92,8 @@ const DEFAULT_PLUGINS: PluginSeed[] = [
     version: null,
     scanstate: null,
     enabled: 1,
+    // null subcategories → []
+    subcategories: null,
     dev_identifier: "garbage-no-scheme",
   },
   {
@@ -94,6 +103,7 @@ const DEFAULT_PLUGINS: PluginSeed[] = [
     version: "0.9",
     scanstate: 2,
     enabled: 0,
+    subcategories: "Fx|Reverb",
     dev_identifier: "device:vst3:audiofx:OldReverb",
   },
 ];
@@ -194,6 +204,7 @@ function createPluginsTableSql(schema: PluginsSchema): string {
       version TEXT,
       scanstate INTEGER,
       enabled INTEGER,
+      subcategories TEXT,
       dev_identifier TEXT${araColumns}
     );
   `;
@@ -216,14 +227,16 @@ function insertPlugins(
     schema === "v2"
       ? db.prepare(
           `INSERT INTO plugins
-           (name, vendor, version, scanstate, enabled, dev_identifier,
+           (name, vendor, version, scanstate, enabled, subcategories,
+            dev_identifier,
             lowest_ara_api_generation, highest_ara_api_generation)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
       : db.prepare(
           `INSERT INTO plugins
-           (name, vendor, version, scanstate, enabled, dev_identifier)
-           VALUES (?, ?, ?, ?, ?, ?)`,
+           (name, vendor, version, scanstate, enabled, subcategories,
+            dev_identifier)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
         );
 
   for (const p of plugins) {
@@ -234,6 +247,7 @@ function insertPlugins(
         p.version,
         p.scanstate,
         p.enabled,
+        p.subcategories,
         p.dev_identifier,
         1,
         2,
@@ -245,6 +259,7 @@ function insertPlugins(
         p.version,
         p.scanstate,
         p.enabled,
+        p.subcategories,
         p.dev_identifier,
       );
     }
