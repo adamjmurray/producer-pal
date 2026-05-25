@@ -36,19 +36,23 @@ export const GEMINI_AGENT_INSTRUCTIONS = [
 /**
  * Build the Live API session config: audio-out, the system instruction, the
  * MCP function declarations, the selected voice, input/output transcription
- * (off by default on Gemini — we need both to render the transcript UI), and the
- * VAD/turn-detection config when provided.
+ * (off by default on Gemini — we need both to render the transcript UI), the
+ * VAD/turn-detection config when provided, and session resumption (always on, so
+ * the server issues handles we can reconnect with after the ~10–15 min cap).
  *
  * @param opts - Voice id, the MCP function declarations, and optional VAD config
  * @param opts.voice - Prebuilt Gemini voice name (defaults to Puck)
  * @param opts.functionDeclarations - MCP tools as Gemini declarations
  * @param opts.vad - Gemini VAD settings; when omitted, Live API defaults apply
+ * @param opts.resumeHandle - Prior session's resumption handle; omit for a fresh
+ *   session (still enables resumption so the server starts issuing handles)
  * @returns The LiveConnectConfig
  */
 export function buildGeminiConfig(opts: {
   voice: string | undefined;
   functionDeclarations: FunctionDeclaration[];
   vad?: GeminiVadSettings;
+  resumeHandle?: string;
 }): LiveConnectConfig {
   const config: LiveConnectConfig = {
     responseModalities: [Modality.AUDIO],
@@ -63,6 +67,7 @@ export function buildGeminiConfig(opts: {
     },
     inputAudioTranscription: {},
     outputAudioTranscription: {},
+    sessionResumption: opts.resumeHandle ? { handle: opts.resumeHandle } : {},
   };
 
   if (opts.vad) config.realtimeInputConfig = buildRealtimeInputConfig(opts.vad);
@@ -115,6 +120,120 @@ export function createGenAIClient(
   });
 }
 
+/** Connection state + lifecycle callbacks openResumableGeminiSession needs. */
+export interface ResumableSessionContext {
+  /** The GenAI client (carries the credential and API version). */
+  ai: GoogleGenAI;
+  /** Gemini Live model id. */
+  model: string;
+  /** Prebuilt voice name, or undefined for the default. */
+  voice: string | undefined;
+  /** VAD/turn-detection settings, or undefined for Live API defaults. */
+  vad: GeminiVadSettings | undefined;
+  /** MCP tools exposed to the model. */
+  functionDeclarations: FunctionDeclaration[];
+  /** Message-handler deps (history builder, player, tool loop, UI setters). */
+  deps: GeminiMessageDeps;
+  /** Holds the latest server-issued resumption handle (null before the first). */
+  resumeHandleRef: { current: string | null };
+  /** True once teardown bumped the connect generation. */
+  isStale: () => boolean;
+  /** True when we initiated the close (disconnect/cleanup). */
+  isIntentionalClose: () => boolean;
+  /** Install a freshly (re)connected session as the active one. */
+  onSession: (session: Session) => void;
+  /** Report an unrecoverable drop (no handle, or a failed resume). */
+  onDrop: (message: string) => void;
+}
+
+/**
+ * Open a Gemini Live session that transparently resumes after a server-initiated
+ * drop. The Live API caps connection duration (~10–15 min) and periodically
+ * issues resumption handles (captured by handleGeminiMessage); when the socket
+ * closes or errors and a handle is available, this reconnects with it and swaps
+ * the new session in without tearing down the mic, player, MCP client, or
+ * transcript. A per-session `dropHandled` flag collapses the onerror+onclose pair
+ * a dead socket fires (and ignores a late callback from a session we've already
+ * replaced) so one drop triggers exactly one resume.
+ *
+ * @param ctx - Connection state and lifecycle callbacks
+ * @returns The connected Live session
+ */
+export async function openResumableGeminiSession(
+  ctx: ResumableSessionContext,
+): Promise<Session> {
+  let dropHandled = false;
+
+  const handleClose = (fallback: string): void => {
+    if (dropHandled || ctx.isIntentionalClose() || ctx.isStale()) return;
+    dropHandled = true;
+    void resumeOrFail(ctx, fallback);
+  };
+
+  return await ctx.ai.live.connect({
+    model: ctx.model,
+    callbacks: {
+      onopen: () => {},
+      onmessage: (m) => void handleGeminiMessage(m, ctx.deps),
+      onerror: (e) =>
+        handleClose(extractErrorMessage(e) || "Voice connection error."),
+      onclose: () => handleClose("Connection lost. Press Talk to reconnect."),
+    },
+    config: buildGeminiConfig({
+      voice: ctx.voice,
+      functionDeclarations: ctx.functionDeclarations,
+      vad: ctx.vad,
+      resumeHandle: ctx.resumeHandleRef.current ?? undefined,
+    }),
+  });
+}
+
+/**
+ * Resume the session from the stored handle, or report an unrecoverable drop.
+ * Without a handle (none issued yet) there is nothing to resume, so the drop is
+ * surfaced with the original message. A resume that races teardown closes the
+ * fresh session instead of leaking it.
+ *
+ * @param ctx - Connection state and lifecycle callbacks
+ * @param fallbackMessage - Drop message used when no handle is available
+ */
+async function resumeOrFail(
+  ctx: ResumableSessionContext,
+  fallbackMessage: string,
+): Promise<void> {
+  if (!ctx.resumeHandleRef.current) {
+    ctx.onDrop(fallbackMessage);
+
+    return;
+  }
+
+  try {
+    const session = await openResumableGeminiSession(ctx);
+
+    if (ctx.isStale() || ctx.isIntentionalClose()) {
+      closeQuietly(session);
+
+      return;
+    }
+
+    ctx.onSession(session);
+  } catch (err) {
+    ctx.onDrop(extractErrorMessage(err));
+  }
+}
+
+/**
+ * Close a session, swallowing any error (best-effort teardown).
+ * @param session - The session to close
+ */
+export function closeQuietly(session: Session): void {
+  try {
+    session.close();
+  } catch {
+    // best-effort
+  }
+}
+
 /** Dependencies handleGeminiMessage needs from the hook. */
 export interface GeminiMessageDeps {
   builder: GeminiHistoryBuilder;
@@ -127,6 +246,8 @@ export interface GeminiMessageDeps {
   setAssistantSpeaking: (value: boolean) => void;
   setAssistantThinking: (value: boolean) => void;
   setError: (value: string | null) => void;
+  /** Store the latest server-issued session-resumption handle. */
+  setResumeHandle: (handle: string) => void;
 }
 
 /**
@@ -143,6 +264,12 @@ export async function handleGeminiMessage(
   message: LiveServerMessage,
   deps: GeminiMessageDeps,
 ): Promise<void> {
+  const resumption = message.sessionResumptionUpdate;
+
+  if (resumption?.resumable && resumption.newHandle) {
+    deps.setResumeHandle(resumption.newHandle);
+  }
+
   const sc = message.serverContent;
 
   if (sc) {

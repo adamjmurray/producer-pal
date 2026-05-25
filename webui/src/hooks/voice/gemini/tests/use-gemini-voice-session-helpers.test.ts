@@ -7,6 +7,7 @@ import {
   ActivityHandling,
   EndSensitivity,
   GoogleGenAI,
+  type LiveConnectConfig,
   type LiveServerMessage,
   type Session,
   StartSensitivity,
@@ -18,9 +19,12 @@ import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-
 import { type GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
 import {
   buildGeminiConfig,
+  closeQuietly,
   createGenAIClient,
   type GeminiMessageDeps,
   handleGeminiMessage,
+  openResumableGeminiSession,
+  type ResumableSessionContext,
   seedGeminiContext,
 } from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
 
@@ -46,6 +50,7 @@ function makeDeps(overrides: Partial<GeminiMessageDeps> = {}) {
     setAssistantSpeaking: vi.fn(),
     setAssistantThinking: vi.fn(),
     setError: vi.fn(),
+    setResumeHandle: vi.fn(),
     ...overrides,
   };
 
@@ -90,6 +95,25 @@ describe("buildGeminiConfig", () => {
     expect(
       config.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName,
     ).toBe("Puck");
+  });
+
+  it("enables session resumption with an empty handle for a fresh session", () => {
+    const config = buildGeminiConfig({
+      voice: "Puck",
+      functionDeclarations: [],
+    });
+
+    expect(config.sessionResumption).toStrictEqual({});
+  });
+
+  it("passes the resumption handle when resuming a prior session", () => {
+    const config = buildGeminiConfig({
+      voice: "Puck",
+      functionDeclarations: [],
+      resumeHandle: "handle-9",
+    });
+
+    expect(config.sessionResumption).toStrictEqual({ handle: "handle-9" });
   });
 
   it("omits realtimeInputConfig when no VAD settings are given", () => {
@@ -244,6 +268,32 @@ describe("handleGeminiMessage", () => {
     expect(deps.publishHistory).not.toHaveBeenCalled();
   });
 
+  it("stores a resumable session-resumption handle", async () => {
+    const { deps } = makeDeps();
+
+    await handleGeminiMessage(
+      msg({ sessionResumptionUpdate: { resumable: true, newHandle: "h-1" } }),
+      deps,
+    );
+
+    expect(deps.setResumeHandle).toHaveBeenCalledWith("h-1");
+  });
+
+  it("ignores a non-resumable update and one with no handle", async () => {
+    const { deps } = makeDeps();
+
+    await handleGeminiMessage(
+      msg({ sessionResumptionUpdate: { resumable: false } }),
+      deps,
+    );
+    await handleGeminiMessage(
+      msg({ sessionResumptionUpdate: { resumable: true } }),
+      deps,
+    );
+
+    expect(deps.setResumeHandle).not.toHaveBeenCalled();
+  });
+
   it("runs a tool call and sends the response with matching id", async () => {
     const executeTool = vi.fn(async () => "Tempo updated.");
     const { deps, sendToolResponse } = makeDeps({ executeTool });
@@ -327,6 +377,202 @@ describe("handleGeminiMessage", () => {
 
     // No throw; thinking still toggled off.
     expect(deps.setAssistantThinking).toHaveBeenCalledWith(false);
+  });
+});
+
+/**
+ * Build a fake GenAI client whose live.connect records each call's config and
+ * callbacks and returns a shared fake session.
+ * @param closeImpl - Optional session.close implementation (defaults to a spy)
+ * @returns The fake ai, the shared session, and the recorded connect calls
+ */
+function makeFakeAi(closeImpl?: () => void) {
+  const session = {
+    close: closeImpl ? vi.fn(closeImpl) : vi.fn(),
+  } as unknown as Session;
+  const calls: {
+    config: LiveConnectConfig;
+    callbacks: Record<string, (arg?: unknown) => void>;
+  }[] = [];
+  const connect = vi.fn(
+    async (params: {
+      config: LiveConnectConfig;
+      callbacks: Record<string, (arg?: unknown) => void>;
+    }) => {
+      calls.push({ config: params.config, callbacks: params.callbacks });
+
+      return session;
+    },
+  );
+  const ai = { live: { connect } } as unknown as GoogleGenAI;
+
+  return { ai, session, connect, calls };
+}
+
+/**
+ * Build a ResumableSessionContext with sensible defaults and spy callbacks.
+ * @param ai - The fake GenAI client to drive
+ * @param over - Per-test overrides
+ * @returns A ResumableSessionContext
+ */
+function makeCtx(
+  ai: GoogleGenAI,
+  over: Partial<ResumableSessionContext> = {},
+): ResumableSessionContext {
+  const { deps } = makeDeps();
+
+  return {
+    ai,
+    model: "gemini-x",
+    voice: "Puck",
+    vad: undefined,
+    functionDeclarations: [],
+    deps,
+    resumeHandleRef: { current: null },
+    isStale: () => false,
+    isIntentionalClose: () => false,
+    onSession: vi.fn(),
+    onDrop: vi.fn(),
+    ...over,
+  };
+}
+
+const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+
+describe("openResumableGeminiSession", () => {
+  it("opens a session enabling resumption and returns it", async () => {
+    const { ai, session, calls } = makeFakeAi();
+
+    const result = await openResumableGeminiSession(makeCtx(ai));
+
+    expect(result).toBe(session);
+    expect(calls[0]!.config.sessionResumption).toStrictEqual({});
+  });
+
+  it("resumes with the stored handle after an unexpected close", async () => {
+    const { ai, calls } = makeFakeAi();
+    const ctx = makeCtx(ai, { resumeHandleRef: { current: "h-7" } });
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onclose?.();
+    await tick();
+
+    expect(ai.live.connect).toHaveBeenCalledTimes(2);
+    expect(calls[1]!.config.sessionResumption).toStrictEqual({ handle: "h-7" });
+    expect(ctx.onSession).toHaveBeenCalledTimes(1);
+    expect(ctx.onDrop).not.toHaveBeenCalled();
+  });
+
+  it("reports an unrecoverable drop when no handle is available", async () => {
+    const { ai, calls } = makeFakeAi();
+    const ctx = makeCtx(ai);
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onclose?.();
+    await tick();
+
+    expect(ai.live.connect).toHaveBeenCalledTimes(1);
+    expect(ctx.onDrop).toHaveBeenCalledWith(
+      "Connection lost. Press Talk to reconnect.",
+    );
+  });
+
+  it("reports the transport error message when erroring without a handle", async () => {
+    const { ai, calls } = makeFakeAi();
+    const ctx = makeCtx(ai);
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onerror?.(new Error("ws down"));
+    await tick();
+
+    expect(ctx.onDrop).toHaveBeenCalledWith("ws down");
+  });
+
+  it("handles a drop once when onerror and onclose both fire", async () => {
+    const { ai, calls } = makeFakeAi();
+    const ctx = makeCtx(ai, { resumeHandleRef: { current: "h" } });
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onerror?.(new Error("x"));
+    calls[0]!.callbacks.onclose?.();
+    await tick();
+
+    expect(ai.live.connect).toHaveBeenCalledTimes(2);
+    expect(ctx.onSession).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not resume after an intentional close", async () => {
+    const { ai, calls } = makeFakeAi();
+    const ctx = makeCtx(ai, {
+      resumeHandleRef: { current: "h" },
+      isIntentionalClose: () => true,
+    });
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onclose?.();
+    await tick();
+
+    expect(ai.live.connect).toHaveBeenCalledTimes(1);
+    expect(ctx.onDrop).not.toHaveBeenCalled();
+  });
+
+  it("closes a resumed session that races teardown instead of installing it", async () => {
+    // close throws to also exercise closeQuietly's swallow path.
+    const { ai, session, calls } = makeFakeAi(() => {
+      throw new Error("already closed");
+    });
+    let staleChecks = 0;
+    const ctx = makeCtx(ai, {
+      resumeHandleRef: { current: "h" },
+      // false at handleClose entry, true at resumeOrFail's post-await check.
+      isStale: () => staleChecks++ >= 1,
+    });
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onclose?.();
+    await tick();
+
+    expect(ctx.onSession).not.toHaveBeenCalled();
+    expect(session.close).toHaveBeenCalled();
+  });
+
+  it("reports a failed resume via onDrop", async () => {
+    const session = { close: vi.fn() } as unknown as Session;
+    let firstCallbacks!: Record<string, (arg?: unknown) => void>;
+    let n = 0;
+    const connect = vi.fn(
+      async (p: { callbacks: Record<string, (arg?: unknown) => void> }) => {
+        n++;
+
+        if (n === 1) {
+          firstCallbacks = p.callbacks;
+
+          return session;
+        }
+
+        throw new Error("resume failed");
+      },
+    );
+    const ai = { live: { connect } } as unknown as GoogleGenAI;
+    const ctx = makeCtx(ai, { resumeHandleRef: { current: "h" } });
+
+    await openResumableGeminiSession(ctx);
+    firstCallbacks.onclose?.();
+    await tick();
+
+    expect(ctx.onDrop).toHaveBeenCalledWith("resume failed");
+  });
+});
+
+describe("closeQuietly", () => {
+  it("swallows a close that throws", () => {
+    const session = {
+      close: () => {
+        throw new Error("boom");
+      },
+    } as unknown as Session;
+
+    expect(() => closeQuietly(session)).not.toThrow();
   });
 });
 

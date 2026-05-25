@@ -362,6 +362,32 @@ describe("useGeminiVoiceSession", () => {
     expect(result.current.error).toMatch(/Connection lost/);
   });
 
+  it("captures a resumption handle and silently resumes after a drop", async () => {
+    const { result } = await renderConnected();
+
+    await act(async () => {
+      h.state.callbacks.onmessage?.({
+        sessionResumptionUpdate: { resumable: true, newHandle: "handle-1" },
+      });
+    });
+
+    await act(async () => {
+      h.state.callbacks.onclose?.();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(h.liveConnect).toHaveBeenCalledTimes(2);
+    expect(result.current.status).toBe("connected");
+    expect(result.current.error).toBeNull();
+    const cfg = h.state.connectParams!.config as {
+      sessionResumption?: { handle?: string };
+    };
+
+    expect(cfg.sessionResumption?.handle).toBe("handle-1");
+    // The mic and player are reused across a resume, not rebuilt.
+    expect(h.FakeMic.last!.start).toHaveBeenCalledTimes(1);
+  });
+
   it("surfaces a transport error", async () => {
     const { result } = await renderConnected();
 

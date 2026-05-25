@@ -14,11 +14,11 @@ import { GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
 import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
 import { fetchGeminiToken } from "#webui/hooks/voice/gemini/gemini-voice-token";
 import {
-  buildGeminiConfig,
+  closeQuietly,
   createGenAIClient,
   GEMINI_INPUT_MIME_TYPE,
   type GeminiMessageDeps,
-  handleGeminiMessage,
+  openResumableGeminiSession,
   seedGeminiContext,
 } from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
 import {
@@ -52,7 +52,10 @@ export interface UseGeminiVoiceSessionParams {
  * 24 kHz PCM out gaplessly, GeminiHistoryBuilder synthesizes the transcript, and
  * the MCP tool loop is explicit. Reentrancy is guarded the same way (a
  * connecting flag plus a generation counter that a teardown bumps so a connect()
- * resumed after teardown bails instead of leaking a socket + mic).
+ * resumed after teardown bails instead of leaking a socket + mic). The Live API
+ * caps a connection at ~10–15 min; session resumption (in
+ * openResumableGeminiSession) reconnects with the server-issued handle on an
+ * unexpected drop, keeping the mic/player/MCP/transcript so long chats survive.
  *
  * @param params - Hook parameters
  * @returns Voice session state and controls
@@ -80,6 +83,9 @@ export function useGeminiVoiceSession(
   const connectGenRef = useRef(0);
   const intentionalCloseRef = useRef(false);
   const isMutedRef = useRef(false);
+  // Latest server-issued resumption handle; reset per fresh connect so a new
+  // Talk starts a new session rather than resuming the previous one.
+  const resumeHandleRef = useRef<string | null>(null);
 
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -151,6 +157,7 @@ export function useGeminiVoiceSession(
       const stale = (): boolean => connectGenRef.current !== myGen;
 
       intentionalCloseRef.current = false;
+      resumeHandleRef.current = null;
       setStatus("connecting");
       setError(null);
       setHistory([]);
@@ -191,6 +198,9 @@ export function useGeminiVoiceSession(
           setAssistantSpeaking,
           setAssistantThinking,
           setError,
+          setResumeHandle: (handle) => {
+            resumeHandleRef.current = handle;
+          },
         };
 
         const handleDrop = (message: string): void => {
@@ -203,29 +213,24 @@ export function useGeminiVoiceSession(
 
         const ai = createGenAIClient(credential);
 
-        const session = await ai.live.connect({
+        const session = await openResumableGeminiSession({
+          ai,
           model,
-          callbacks: {
-            onopen: () => {},
-            onmessage: (m) => void handleGeminiMessage(m, deps),
-            onerror: (e) =>
-              handleDrop(extractErrorMessage(e) || "Voice connection error."),
-            onclose: () =>
-              handleDrop("Connection lost. Press Talk to reconnect."),
+          voice,
+          vad: turnDetection,
+          functionDeclarations,
+          deps,
+          resumeHandleRef,
+          isStale: stale,
+          isIntentionalClose: () => intentionalCloseRef.current,
+          onSession: (s) => {
+            sessionRef.current = s;
           },
-          config: buildGeminiConfig({
-            voice,
-            functionDeclarations,
-            vad: turnDetection,
-          }),
+          onDrop: handleDrop,
         });
 
         if (stale()) {
-          try {
-            session.close();
-          } catch {
-            // best-effort
-          }
+          closeQuietly(session);
 
           return void (await cleanup());
         }
