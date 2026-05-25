@@ -7,10 +7,11 @@
  * @vitest-environment happy-dom
  */
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
-import { isEncrypted } from "#webui/lib/api-key-crypto";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { encryptApiKey, isEncrypted } from "#webui/lib/api-key-crypto";
 import {
   checkHasApiKey,
+  loadAllProviderSettingsAsync,
   loadEnabledTools,
   loadProviderSettings,
   loadProviderSettingsAsync,
@@ -102,6 +103,38 @@ describe("settings-helpers", () => {
       );
 
       expect(raw.apiKey).toBe("");
+    });
+  });
+
+  describe("loadAllProviderSettingsAsync resilience", () => {
+    it("blanks only the undecryptable provider, keeping the rest intact", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await saveProviderSettings("anthropic", {
+        apiKey: "sk-anthropic-good",
+        model: "claude-sonnet-4-6",
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
+
+      // Forge an undecryptable envelope for openai: a real IV paired with a
+      // ciphertext from a different encryption, so AES-GCM authentication fails.
+      // Without per-key fail-safe decryption this rejection would propagate
+      // through Promise.all and blank EVERY provider's key (finding #3).
+      const [ivA] = envelopeParts(await encryptApiKey("seed-a"));
+      const [, ctB] = envelopeParts(await encryptApiKey("seed-b"));
+
+      localStorage.setItem(
+        "producer_pal_provider_openai",
+        JSON.stringify({ apiKey: `enc:v1:${ivA}:${ctB}`, model: "gpt-5.5" }),
+      );
+
+      const all = await loadAllProviderSettingsAsync();
+
+      expect(all.anthropic.apiKey).toBe("sk-anthropic-good");
+      expect(all.openai.apiKey).toBe("");
+      warnSpy.mockRestore();
     });
   });
 
@@ -236,3 +269,15 @@ describe("settings-helpers", () => {
     });
   });
 });
+
+/**
+ * Split an `enc:v1:<iv>:<ciphertext>` envelope into its base64 IV and ciphertext
+ * parts. encryptApiKey always emits exactly those two segments.
+ * @param {string} envelope - An enc:v1: envelope from encryptApiKey
+ * @returns {[string, string]} The base64 IV and ciphertext
+ */
+function envelopeParts(envelope: string): [string, string] {
+  const [iv, ciphertext] = envelope.slice("enc:v1:".length).split(":");
+
+  return [iv as string, ciphertext as string];
+}

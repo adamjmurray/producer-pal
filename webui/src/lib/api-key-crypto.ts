@@ -46,8 +46,14 @@ export async function encryptApiKey(plain: string): Promise<string> {
  * `enc:v1:` prefix is treated as legacy cleartext and returned unchanged — this
  * is the migration path for keys saved before encryption (they get re-encrypted
  * on the next save).
+ *
+ * Decryption failures NEVER reject: an unrecoverable envelope (most often the
+ * IndexedDB CryptoKey was regenerated or cleared while this localStorage
+ * envelope persisted) resolves to "". This keeps one bad key contained — it
+ * reads as "not set" (prompting re-entry) instead of rejecting and blanking
+ * every provider's key via the `Promise.all` in `loadAllProviderSettingsAsync`.
  * @param value - Stored value (encrypted envelope or legacy cleartext)
- * @returns Cleartext API key
+ * @returns Cleartext API key, or "" when the envelope can't be decrypted
  */
 export async function decryptApiKey(value: string): Promise<string> {
   if (!value.startsWith(ENVELOPE_PREFIX)) return value;
@@ -56,14 +62,20 @@ export async function decryptApiKey(value: string): Promise<string> {
 
   if (ivB64 == null || ciphertextB64 == null) return value;
 
-  const key = await getOrCreateKey();
-  const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv: fromBase64(ivB64) },
-    key,
-    fromBase64(ciphertextB64),
-  );
+  try {
+    const key = await getOrCreateKey();
+    const plaintext = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: fromBase64(ivB64) },
+      key,
+      fromBase64(ciphertextB64),
+    );
 
-  return new TextDecoder().decode(plaintext);
+    return new TextDecoder().decode(plaintext);
+  } catch (err) {
+    console.warn("Failed to decrypt stored API key; treating as unset", err);
+
+    return "";
+  }
 }
 
 /**

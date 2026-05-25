@@ -6,7 +6,7 @@
 // @vitest-environment happy-dom
 
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   decryptApiKey,
   encryptApiKey,
@@ -88,6 +88,23 @@ describe("api-key-crypto", () => {
       const malformed = "enc:v1:onlyonepart";
 
       expect(await decryptApiKey(malformed)).toBe(malformed);
+    });
+  });
+
+  describe("undecryptable envelope handling", () => {
+    it("resolves to '' (never rejects) when the encryption key was replaced", async () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      // Encrypt under one key, then wipe it: the next decrypt generates a fresh
+      // key and the AES-GCM auth check fails. This is the real-world cause of
+      // finding #3 — IndexedDB cleared while the localStorage envelope persists.
+      const encrypted = await encryptApiKey("sk-orphaned-by-key-loss");
+
+      resetKeyCache();
+      await deleteCryptoDb();
+
+      expect(await decryptApiKey(encrypted)).toBe("");
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
     });
   });
 
