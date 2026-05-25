@@ -20,8 +20,8 @@ interface UseContextMemoryReturn {
   status: ContextMemoryStatus;
   saveStatus: SaveStatus;
   saveError: string | null;
-  /** Write content to memory. Resolves once the server responds. */
-  save: (content: string) => Promise<void>;
+  /** Write content to memory. Resolves to true on success, false on failure. */
+  save: (content: string) => Promise<boolean>;
   /** Re-read memory from the server (e.g. when tab becomes visible). */
   refresh: () => Promise<void>;
 }
@@ -58,7 +58,7 @@ export function useContextMemory(): UseContextMemoryReturn {
     }
   }, []);
 
-  const save = useCallback(async (content: string): Promise<void> => {
+  const save = useCallback(async (content: string): Promise<boolean> => {
     setSaveStatus("saving");
     setSaveError(null);
 
@@ -67,11 +67,15 @@ export function useContextMemory(): UseContextMemoryReturn {
 
       setStatus(toStatus(config));
       setSaveStatus("saved");
+
+      return true;
     } catch (error: unknown) {
       const message = errorMessage(error);
 
       setSaveError(message);
       setSaveStatus("error");
+
+      return false;
     }
   }, []);
 

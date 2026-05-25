@@ -107,10 +107,13 @@ describe("useContextMemory", () => {
       expect(result.current.status).toMatchObject({ content: "old" });
     });
 
+    let saved: boolean | undefined;
+
     await act(async () => {
-      await result.current.save("new");
+      saved = await result.current.save("new");
     });
 
+    expect(saved).toBe(true);
     expect(result.current.saveStatus).toBe("saved");
     expect(result.current.status).toStrictEqual({
       kind: "ready",
@@ -143,10 +146,13 @@ describe("useContextMemory", () => {
       expect(result.current.status.kind).toBe("ready");
     });
 
+    let saved: boolean | undefined;
+
     await act(async () => {
-      await result.current.save("attempt");
+      saved = await result.current.save("attempt");
     });
 
+    expect(saved).toBe(false);
     expect(result.current.saveStatus).toBe("error");
     expect(result.current.saveError).toContain("Config update failed");
   });

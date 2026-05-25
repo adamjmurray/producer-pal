@@ -96,7 +96,7 @@ describe("ContextScreen", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     saveMock.mockReset();
-    saveMock.mockResolvedValue(undefined);
+    saveMock.mockResolvedValue(true);
     refreshMock.mockReset();
     refreshMock.mockResolvedValue(undefined);
     editorChange.mockReset();
@@ -228,6 +228,37 @@ describe("ContextScreen", () => {
     await waitFor(() => {
       expect(saveMock).toHaveBeenCalledWith("draft");
     });
+  });
+
+  it("retries the same content on the next flush after a failed save", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "old";
+    // First save fails, second succeeds.
+    saveMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    render(<ContextScreen />);
+
+    await act(() => {
+      editorChange("draft");
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+      await Promise.resolve();
+    });
+
+    // The debounced save fired and failed; the marker was rolled back.
+    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(saveMock).toHaveBeenNthCalledWith(1, "draft");
+
+    // A later flush (blur) retries the unchanged content rather than skipping
+    // it as already-saved.
+    await act(() => {
+      editorBlur();
+    });
+
+    await waitFor(() => {
+      expect(saveMock).toHaveBeenCalledTimes(2);
+    });
+    expect(saveMock).toHaveBeenNthCalledWith(2, "draft");
   });
 
   it("clears any pending debounce timer when unmounted", async () => {

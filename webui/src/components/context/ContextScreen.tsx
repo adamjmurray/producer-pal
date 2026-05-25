@@ -13,9 +13,10 @@ import { MarkdownEditor } from "./MarkdownEditor";
 const SAVE_DEBOUNCE_MS = 800;
 
 /**
- * Editor screen for the project context memory. Auto-saves on idle,
- * flushes on blur and beforeunload, refreshes when the tab becomes visible
- * (unless the editor is focused).
+ * Editor screen for the project context memory. Auto-saves on idle and
+ * flushes on blur and beforeunload. Edits are last-write-wins: once the user
+ * starts typing, the local draft is authoritative and server-side changes
+ * (AI writes, device edits) are not replayed into the editor mid-session.
  * @returns Screen element
  */
 export function ContextScreen(): preact.JSX.Element {
@@ -40,7 +41,7 @@ export function ContextScreen(): preact.JSX.Element {
   // normalized whitespace differently from the user's input.
   useEffect(() => {
     if (memory.status.kind !== "ready") return;
-    if (draft !== null) return;
+    if (draft != null) return;
 
     setDraft(memory.status.content);
     draftRef.current = memory.status.content;
@@ -56,12 +57,20 @@ export function ContextScreen(): preact.JSX.Element {
     const value = draftRef.current;
     const current = memoryRef.current;
 
-    if (value === null) return;
+    if (value == null) return;
     if (current.status.kind !== "ready") return;
     if (value === lastSavedRef.current) return;
 
+    // Mark optimistically so a concurrent flush (debounce + blur) doesn't
+    // dispatch the same content twice. On failure, roll the marker back so the
+    // next flush (blur, beforeunload, or further edit) retries — unless the
+    // user has since typed something newer.
     lastSavedRef.current = value;
-    void current.save(value);
+    void current.save(value).then((saved) => {
+      if (!saved && lastSavedRef.current === value) {
+        lastSavedRef.current = null;
+      }
+    });
   }, []);
 
   const handleChange = useCallback(
@@ -237,7 +246,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     );
   }
 
-  if (status.kind === "loading" || draft === null) {
+  if (status.kind === "loading" || draft == null) {
     return (
       <div className="flex items-center justify-center h-full text-zinc-500">
         Loading project context…
