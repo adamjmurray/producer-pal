@@ -34,6 +34,10 @@ export const toolDefLibrary = defineTool("ppal-library", {
         "listPlugins",
       ])
       .optional()
+      // Default required so smallModelModeConfig.excludeEnumValues.action can
+      // filter it — filterEnumValues only accepts a schema with a top-level
+      // .default(). Matches library.ts which treats a missing action as search.
+      .default("search")
       .describe(
         "search: filter library items (default) | listTags: enumerate available tags | listCategories: browse Live's category taxonomy (Sounds, Drums, Genres, …); pass category to drill into its tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query | listPlugins: list installed VST/VST3/AU plugins Live knows about (filter with query, vendor, format, deviceKind)",
       ),
