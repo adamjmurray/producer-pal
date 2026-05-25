@@ -45,6 +45,11 @@ interface UseVoicePersistenceParams {
 export interface UseVoicePersistenceReturn {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
+  /** Realtime model of the currently-loaded saved record, or null for a fresh
+   * (unsaved) session. Lets the header lock show the model the conversation was
+   * recorded with rather than the current-settings model when viewing or
+   * continuing a saved conversation. */
+  activeRecordModel: string | null;
   /** Items to render when no live session is producing transcript (saved record). */
   savedItems: RealtimeItem[];
   refreshList: () => Promise<void>;
@@ -81,6 +86,9 @@ export function useVoicePersistence(
     string | null
   >(() => getHashId());
   const [savedItems, setSavedItems] = useState<RealtimeItem[]>([]);
+  const [activeRecordModel, setActiveRecordModel] = useState<string | null>(
+    null,
+  );
   const activeIdRef = useRef(activeConversationId);
   const createdAtRef = useRef<number | null>(null);
   const bookmarkedRef = useRef(false);
@@ -148,6 +156,7 @@ export function useVoicePersistence(
       createdAtRef.current = record.createdAt;
       bookmarkedRef.current = record.bookmarked;
       titleRef.current = record.title;
+      setActiveRecordModel(record.model ?? null);
       const items = (record.voiceHistory ?? []) as RealtimeItem[];
 
       priorItemsRef.current = items;
@@ -209,6 +218,7 @@ export function useVoicePersistence(
       if (!record) {
         setActiveId(null);
         setSavedItems([]);
+        setActiveRecordModel(null);
         priorItemsRef.current = [];
 
         return;
@@ -231,6 +241,7 @@ export function useVoicePersistence(
       createdAtRef.current = record.createdAt;
       bookmarkedRef.current = record.bookmarked;
       titleRef.current = record.title;
+      setActiveRecordModel(record.model ?? null);
       const items = (record.voiceHistory ?? []) as RealtimeItem[];
 
       priorItemsRef.current = items;
@@ -247,6 +258,7 @@ export function useVoicePersistence(
     priorItemsRef.current = [];
     pendingNewIdRef.current = null;
     setSavedItems([]);
+    setActiveRecordModel(null);
     setActiveId(null);
   }, [setActiveId]);
 
@@ -341,6 +353,7 @@ export function useVoicePersistence(
   return {
     conversations,
     activeConversationId,
+    activeRecordModel,
     savedItems,
     refreshList,
     switchConversation,
@@ -414,8 +427,11 @@ async function saveVoiceRecord(
     updatedAt: now,
     bookmarked: existing?.bookmarked ?? ctx.bookmarked,
     provider: "openai",
-    model: ctx.model,
-    modelLabel: ctx.model,
+    // First-write-wins (like createdAt/bookmarked): a record keeps the model it
+    // was created with. Continuing it (Stop → Talk) under different current
+    // settings must not silently overwrite the original model/label.
+    model: existing?.model ?? ctx.model,
+    modelLabel: existing?.modelLabel ?? ctx.model,
     thinking: null,
     temperature: null,
     showThoughts: null,

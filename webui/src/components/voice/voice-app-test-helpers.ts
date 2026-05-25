@@ -111,6 +111,7 @@ export function baseSession(
 export interface PersistenceStub {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
+  activeRecordModel: string | null;
   savedItems: RealtimeItem[];
   refreshList: ReturnType<typeof vi.fn>;
   switchConversation: ReturnType<typeof vi.fn>;
@@ -133,6 +134,7 @@ export function basePersistence(
   return {
     conversations: [],
     activeConversationId: null,
+    activeRecordModel: null,
     savedItems: [],
     refreshList: vi.fn(),
     switchConversation: vi.fn(),

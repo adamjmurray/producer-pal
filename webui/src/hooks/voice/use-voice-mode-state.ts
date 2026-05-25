@@ -166,6 +166,12 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     void voice.connect(seed);
   }, [isConnected, displayItems, voice]);
 
+  // Header lock shows the model the loaded record was recorded with (when
+  // viewing/continuing a saved conversation), falling back to the current
+  // session model for a fresh session. The live session still runs on
+  // realtimeModel; only the displayed/saved label tracks the record.
+  const headerModel = persistence.activeRecordModel ?? realtimeModel;
+
   const headerInfo = useVoiceModeReporting({
     persistence,
     display,
@@ -173,7 +179,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     enabledToolsCount,
     setModeContext,
     activeVoice: voice.activeVoice,
-    activeModel: realtimeModel,
+    activeModel: headerModel,
     savedModel: settings.savedModel,
     savedProvider: settings.savedProvider,
   });

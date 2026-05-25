@@ -79,6 +79,61 @@ describe("useVoicePersistence", () => {
     expect(loaded?.modelLabel).toBe("gpt-4o-realtime-preview");
   });
 
+  it("preserves an existing record's model when continued under different settings", async () => {
+    // A record created with one realtime model, then continued (Stop → Talk)
+    // while current settings point at a different realtime model, must keep its
+    // original model/label rather than being silently re-stamped.
+    const record = await saveVoiceRecord({
+      model: "gpt-realtime-original",
+      modelLabel: "gpt-realtime-original",
+      voiceHistory: [userTextItem("first turn")],
+    });
+
+    window.location.hash = record.id;
+
+    const { result, rerender } = renderVoicePersistenceWithHistory({
+      model: "gpt-realtime-current",
+    });
+
+    await waitForEffects();
+    rerender([userTextItem("first turn"), userTextItem("second turn")]);
+    await waitForEffects(800);
+
+    expect(result.current.activeConversationId).toBe(record.id);
+
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.model).toBe("gpt-realtime-original");
+    expect(loaded?.modelLabel).toBe("gpt-realtime-original");
+  });
+
+  it("exposes the loaded record's model via activeRecordModel (hash load)", async () => {
+    const record = await saveVoiceRecord({ model: "gpt-realtime-original" });
+
+    window.location.hash = record.id;
+
+    const { result } = renderVoicePersistence();
+
+    await waitForEffects();
+
+    expect(result.current.activeRecordModel).toBe("gpt-realtime-original");
+  });
+
+  it("tracks activeRecordModel across switch and clears it on a new conversation", async () => {
+    const record = await saveVoiceRecord({ model: "gpt-realtime-original" });
+
+    const { result } = renderVoicePersistence();
+
+    await waitForEffects();
+    expect(result.current.activeRecordModel).toBeNull();
+
+    await act(() => result.current.switchConversation(record.id));
+    expect(result.current.activeRecordModel).toBe("gpt-realtime-original");
+
+    await act(() => result.current.startNewConversation());
+    expect(result.current.activeRecordModel).toBeNull();
+  });
+
   it("reuses one reserved id across rapid updates, creating a single record", async () => {
     const { result, rerender } = renderVoicePersistenceWithHistory();
 
