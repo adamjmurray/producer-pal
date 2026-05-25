@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { mockFolderStructure } from "#src/test/mocks/mock-folder.ts";
+import { queriesInputSchema } from "../library-query-schema.ts";
 import { library } from "../library.ts";
 
 vi.mock(import("#src/live-api-adapter/node-request-v8-protocol.ts"), () => ({
@@ -132,6 +133,229 @@ describe("library tool — action dispatch", () => {
     await expect(library({ action: "bogus" })).rejects.toThrow(
       "Unknown action: bogus",
     );
+  });
+});
+
+describe("library tool — searchBatch action", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * Stub library.search to return items keyed off the request's `query`
+   * (or `tags`) so each batch query can be given distinct results.
+   *
+   * @param byFilter - Maps a query/tags value to the items to return
+   */
+  function mockSearchByFilter(byFilter: Record<string, unknown[]>): void {
+    vi.mocked(protocolMock.requestNode).mockImplementation(
+      async (_route, routeArgs) => {
+        const a = routeArgs as { query?: string; tags?: string };
+        const key = a.query ?? a.tags ?? "";
+
+        return {
+          success: true,
+          result: { dbAvailable: true, items: byFilter[key] ?? [] },
+        };
+      },
+    );
+  }
+
+  /**
+   * Build a minimal DB library item for the given name.
+   *
+   * @param name - Item name
+   * @returns A LibraryItem-shaped object
+   */
+  function dbItem(name: string): Record<string, unknown> {
+    return {
+      name,
+      path: `/L/${name}`,
+      kind: "audio",
+      tags: [],
+      useCount: 1,
+      source: "user",
+    };
+  }
+
+  it("returns results per query in order, grouped under their labels", async () => {
+    mockSearchByFilter({
+      Kick: [dbItem("kick.wav")],
+      Snare: [dbItem("snare.wav")],
+    });
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [
+        { label: "Kick", tags: "Kick" },
+        { label: "Snare", tags: "Snare" },
+      ],
+    });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.results.map((r) => r.label)).toStrictEqual(["Kick", "Snare"]);
+    expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
+      "kick.wav",
+    ]);
+    expect(result.results[1]?.items.map((i) => i.name)).toStrictEqual([
+      "snare.wav",
+    ]);
+    expect(result.dbAvailable).toBe(true);
+  });
+
+  it("defaults the label to the query index (as a string) when omitted", async () => {
+    mockSearchByFilter({
+      Kick: [dbItem("kick.wav")],
+      "808": [dbItem("a.wav")],
+    });
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [{ tags: "Kick" }, { query: "808" }],
+    });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.results.map((r) => r.label)).toStrictEqual(["0", "1"]);
+  });
+
+  it("yields an empty items entry (not a dropped entry) for a no-match query", async () => {
+    mockSearchByFilter({ Kick: [dbItem("kick.wav")] });
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [{ tags: "Kick" }, { tags: "Cowbell" }],
+    });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.results).toHaveLength(2);
+    expect(result.results[1]?.items).toStrictEqual([]);
+  });
+
+  it("applies per-query filters independently (tags vs query)", async () => {
+    mockSearchByFilter({
+      Kick: [dbItem("kick.wav")],
+      "808": [dbItem("808.wav")],
+    });
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [{ tags: "Kick" }, { query: "808" }],
+    });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ tags: "Kick" }),
+    );
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ query: "808" }),
+    );
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
+      "kick.wav",
+    ]);
+    expect(result.results[1]?.items.map((i) => i.name)).toStrictEqual([
+      "808.wav",
+    ]);
+  });
+
+  it("truncates to the first 20 queries and warns", async () => {
+    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const warnSpy = vi
+      .spyOn(consoleModule, "warn")
+      .mockImplementation(() => {});
+
+    mockSearchByFilter({});
+
+    const queries = Array.from({ length: 25 }, (_, i) => ({
+      query: String(i),
+    }));
+    const result = await library({ action: "searchBatch", queries });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.results).toHaveLength(20);
+    expect(protocolMock.requestNode).toHaveBeenCalledTimes(20);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("exceeds cap of 20"),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it("treats a missing queries arg as an empty batch", async () => {
+    const result = await library({ action: "searchBatch" });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.results).toStrictEqual([]);
+    // No query consulted the DB, so dbAvailable is omitted.
+    expect("dbAvailable" in result).toBe(false);
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
+  });
+
+  it("reports dbAvailable:false when any query finds the DB missing", async () => {
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: {
+        dbAvailable: false,
+        items: [],
+        reason: "Live database not found",
+      },
+    });
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [{ tags: "Kick" }],
+    });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.dbAvailable).toBe(false);
+    expect(result.results[0]?.reason).toBe("Live database not found");
+  });
+
+  it("downgrades dbAvailable to false when only some queries find the DB missing", async () => {
+    vi.mocked(protocolMock.requestNode)
+      .mockResolvedValueOnce({
+        success: true,
+        result: { dbAvailable: true, items: [dbItem("kick.wav")] },
+      })
+      .mockResolvedValueOnce({
+        success: true,
+        result: {
+          dbAvailable: false,
+          items: [],
+          reason: "Live database not found",
+        },
+      });
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [{ tags: "Kick" }, { tags: "Snare" }],
+    });
+
+    if (!("results" in result)) throw new Error("expected results");
+    // One query saw the DB fine, another didn't — global state is "not fully
+    // available", so false.
+    expect(result.dbAvailable).toBe(false);
+    expect(result.results[0]?.items).toHaveLength(1);
+  });
+
+  it("omits top-level dbAvailable when every query bypasses the DB", async () => {
+    mockSampleFolder("kick.wav");
+
+    const result = await library(
+      {
+        action: "searchBatch",
+        queries: [{ source: "sampleFolder" }],
+      },
+      { sampleFolder: "/samples/" },
+    );
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect("dbAvailable" in result).toBe(false);
+    expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
+      "kick.wav",
+    ]);
+    expect(protocolMock.requestNode).not.toHaveBeenCalled();
   });
 });
 
@@ -526,5 +750,47 @@ describe("library tool — folder scan integration", () => {
     expect(result.items.find((i) => i.name === "kick.wav")?.folder).toBe(
       "samples",
     );
+  });
+});
+
+describe("queriesInputSchema (searchBatch input)", () => {
+  it("parses an array of query objects", () => {
+    expect(
+      queriesInputSchema.parse([
+        { label: "Kick", tags: "Kick", limit: 3 },
+        { query: "808" },
+      ]),
+    ).toStrictEqual([
+      { label: "Kick", tags: "Kick", limit: 3 },
+      { query: "808" },
+    ]);
+  });
+
+  it("coerces scalar fields (numeric query/limit) to their target types", () => {
+    expect(
+      queriesInputSchema.parse([{ query: 808, limit: "3" }]),
+    ).toStrictEqual([{ query: "808", limit: 3 }]);
+  });
+
+  it("parses a JSON-stringified array (small-model fallback)", () => {
+    expect(
+      queriesInputSchema.parse('[{"label":"Snare","tags":"Snare"}]'),
+    ).toStrictEqual([{ label: "Snare", tags: "Snare" }]);
+  });
+
+  it("returns undefined when omitted", () => {
+    expect(queriesInputSchema.parse(undefined)).toBeUndefined();
+  });
+
+  it("rejects a non-array, non-JSON string", () => {
+    expect(() => queriesInputSchema.parse("not valid")).toThrow();
+  });
+
+  it("rejects a JSON string that does not parse to an array", () => {
+    expect(() => queriesInputSchema.parse('{"tags":"Kick"}')).toThrow();
+  });
+
+  it("rejects an unknown enum value", () => {
+    expect(() => queriesInputSchema.parse([{ kind: "bogus" }])).toThrow();
   });
 });

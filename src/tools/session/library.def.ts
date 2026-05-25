@@ -4,6 +4,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
+import {
+  LIBRARY_DEVICE_KIND_VALUES,
+  LIBRARY_KIND_VALUES,
+  LIBRARY_SORT_VALUES,
+  LIBRARY_SOURCE_VALUES,
+  queriesInputSchema,
+} from "#src/tools/session/library-query-schema.ts";
 import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefLibrary = defineTool("ppal-library", {
@@ -18,11 +25,15 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
   inputSchema: {
     action: z
-      .enum(["search", "listTags"])
+      .enum(["search", "listTags", "searchBatch"])
       .optional()
       .describe(
-        "search: filter library items (default) | listTags: enumerate available tags",
+        "search: filter library items (default) | listTags: enumerate available tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query",
       ),
+
+    queries: queriesInputSchema.describe(
+      "searchBatch only: array of query objects, each with the same filters as a single search (query, tags, kind, deviceKind, source, sort, limit) plus an optional label; results are returned in order, grouped per query (capped at 20)",
+    ),
 
     query: z.coerce
       .string()
@@ -39,19 +50,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       ),
 
     kind: z
-      .enum([
-        "audio",
-        "midi",
-        "live-clip",
-        "preset",
-        "device-group",
-        "m4l-device",
-        "live-set",
-        "plugin",
-        "image",
-        "video",
-        "folder",
-      ])
+      .enum(LIBRARY_KIND_VALUES)
       .optional()
       .default("audio")
       .describe(
@@ -59,12 +58,12 @@ export const toolDefLibrary = defineTool("ppal-library", {
       ),
 
     deviceKind: z
-      .enum(["instrument", "audiofx", "midifx"])
+      .enum(LIBRARY_DEVICE_KIND_VALUES)
       .optional()
       .describe("device classification filter (search only)"),
 
     source: z
-      .enum(["sampleFolder", "user", "pack", "builtin", "cloud", "plugin"])
+      .enum(LIBRARY_SOURCE_VALUES)
       .optional()
       .describe(
         "where the file lives (search only). sampleFolder=user-configured sample folder on disk (bypasses Live's DB) | user=your User Library | pack=installed Packs (factory + 3rd-party) | builtin=Ableton's Core Library | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins",
@@ -78,7 +77,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       ),
 
     sort: z
-      .enum(["use_count", "mod_date", "name"])
+      .enum(LIBRARY_SORT_VALUES)
       .optional()
       .describe("sort order (search only); defaults to use_count desc"),
 
@@ -91,8 +90,9 @@ export const toolDefLibrary = defineTool("ppal-library", {
   smallModelModeConfig: {
     toolDescription:
       "Search Live's library by name/tags. Defaults to audio samples. Items from the user's sample folder appear before Live's library items.",
-    excludeParams: ["deviceKind", "sort"],
+    excludeParams: ["deviceKind", "sort", "queries"],
     excludeEnumValues: {
+      action: ["searchBatch"],
       kind: [
         "live-clip",
         "m4l-device",

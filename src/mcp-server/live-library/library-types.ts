@@ -127,6 +127,29 @@ export interface LibrarySearchResult {
   reason?: string;
 }
 
+/** One query in a searchBatch call: the single-search filter set plus an
+ * optional label used to group its results in the response. */
+export interface LibraryBatchQuery extends LibrarySearchArgs {
+  /** Result-group label; defaults to the query's index (as a string). */
+  label?: string;
+}
+
+/** Results for a single searchBatch query, grouped under its label. */
+export interface LibraryBatchEntry {
+  /** Provided label, or the query's index as a string when none was given. */
+  label: string;
+  items: LibraryItem[];
+  /** Set when items is empty due to a discoverable failure (e.g. DB missing). */
+  reason?: string;
+}
+
+export interface LibraryBatchResult {
+  results: LibraryBatchEntry[];
+  /** Present when the Live DB was consulted; false if it couldn't be found.
+   * Omitted when every query bypassed the DB (e.g. all source=sampleFolder). */
+  dbAvailable?: boolean;
+}
+
 export interface LibraryTag {
   name: string;
   /** How many files carry this tag */
