@@ -6,14 +6,17 @@
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { vi } from "vitest";
 import { type VoiceAppProps } from "#webui/components/voice/VoiceApp";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { type UseSettingsReturn } from "#webui/types/settings";
 
 export interface PropOverrides {
   apiKey?: string;
-  provider?: "openai" | "anthropic";
+  provider?: "openai" | "anthropic" | "gemini";
   onOpenSettings?: () => void;
   savedRealtimeVoice?: string;
+  /** Override the saved/active model (defaults to the OpenAI realtime model). */
+  model?: string;
 }
 
 /**
@@ -27,16 +30,18 @@ export interface PropOverrides {
 export function makeProps(o: PropOverrides = {}): VoiceAppProps {
   const apiKey = o.apiKey ?? "sk-test";
   const provider = o.provider ?? "openai";
+  const model = o.model ?? "gpt-realtime-2";
 
   return {
     settings: {
       provider,
       savedProvider: provider,
       apiKey,
-      model: "gpt-realtime-2",
-      savedModel: "gpt-realtime-2",
+      model,
+      savedModel: model,
       enabledTools: {},
       savedRealtimeVoice: o.savedRealtimeVoice ?? "marin",
+      savedTurnDetection: DEFAULT_TURN_DETECTION,
     } as unknown as UseSettingsReturn,
     display: {
       showTimestamps: false,

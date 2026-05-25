@@ -8,6 +8,10 @@ import {
   mockMax,
   setupExpressAppServer,
 } from "../../tests/express-app-test-helpers.ts";
+import {
+  type PostTokenOptions,
+  postTokenRequest,
+} from "./voice-token-test-helpers.ts";
 
 const REAL_FETCH = globalThis.fetch;
 
@@ -72,33 +76,22 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 /**
- * Issue a POST to the local /voice-token endpoint with sane defaults so each
+ * Issue a POST to the local /voice-token endpoint with OpenAI defaults so each
  * test only needs to specify the bits it cares about.
  *
  * @param baseUrl - Base URL of the test Express server
- * @param opts - Optional overrides
- * @param opts.key - OpenAI API key header value; `null` to omit the header
- * @param opts.body - Request body (object stringified, string passed through)
- * @param opts.origin - Optional Origin header for cross-origin testing
+ * @param opts - Key/body/origin overrides
  * @returns The fetch Response
  */
 async function postVoiceToken(
   baseUrl: string,
-  opts: { key?: string | null; body?: unknown; origin?: string } = {},
+  opts: Pick<PostTokenOptions, "key" | "body" | "origin"> = {},
 ): Promise<Response> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (opts.key !== null) headers["X-OpenAI-Key"] = opts.key ?? "sk-test";
-  if (opts.origin) headers.Origin = opts.origin;
-  const body =
-    typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body ?? {});
-
-  return await fetch(`${baseUrl}/voice-token`, {
-    method: "POST",
-    headers,
-    body,
+  return await postTokenRequest(baseUrl, {
+    path: "/voice-token",
+    keyHeader: "X-OpenAI-Key",
+    defaultKey: "sk-test",
+    ...opts,
   });
 }
 

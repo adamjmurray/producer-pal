@@ -72,7 +72,7 @@ interface UseVoiceSessionParams {
   turnDetection?: TurnDetectionSettings;
 }
 
-interface UseVoiceSessionReturn {
+export interface UseVoiceSessionReturn {
   status: VoiceStatus;
   error: string | null;
   history: RealtimeItem[];

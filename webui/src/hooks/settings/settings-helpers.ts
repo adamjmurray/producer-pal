@@ -8,6 +8,7 @@ import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import {
   DEFAULT_MODELS,
   DEFAULT_REALTIME_VOICE,
+  isValidGeminiRealtimeVoice,
   isValidRealtimeVoice,
 } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
@@ -30,13 +31,20 @@ export const VOICE_VOLUME_DEFAULT = 1.0;
 
 /**
  * Loads the saved realtime voice from localStorage, falling back to the
- * default voice when missing or invalid.
+ * default voice when missing or invalid. Accepts either an OpenAI or a Gemini
+ * voice id (the two providers share this one field); the consuming hook
+ * re-validates per active provider, so storing the other provider's voice here
+ * is harmless and lets a chosen Gemini voice survive a reload.
  * @returns A known realtime voice id
  */
 export function loadRealtimeVoice(): string {
   const stored = localStorage.getItem(REALTIME_VOICE_KEY);
 
-  if (stored && isValidRealtimeVoice(stored)) return stored;
+  if (
+    stored &&
+    (isValidRealtimeVoice(stored) || isValidGeminiRealtimeVoice(stored))
+  )
+    return stored;
 
   return DEFAULT_REALTIME_VOICE;
 }

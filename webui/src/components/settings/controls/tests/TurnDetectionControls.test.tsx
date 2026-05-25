@@ -15,6 +15,7 @@ import {
 } from "#webui/hooks/settings/turn-detection-helpers";
 
 const serverVad: TurnDetectionSettings = {
+  ...DEFAULT_TURN_DETECTION,
   mode: "server_vad",
   threshold: 0.5,
   silenceDurationMs: 200,

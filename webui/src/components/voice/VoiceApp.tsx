@@ -59,8 +59,10 @@ export function VoiceApp(props: VoiceAppProps) {
     persistence,
     transfer,
     messages,
-    openAiKey,
-    firefoxDetected,
+    voiceKey,
+    voiceProviderName,
+    isUnsupportedBrowser,
+    activeVoiceId,
     historyPanelOpen,
     setHistoryPanelOpen,
     isConnected,
@@ -70,7 +72,9 @@ export function VoiceApp(props: VoiceAppProps) {
     headerInfo,
   } = useVoiceModeState(props);
 
-  const savedVoice = props.settings.savedRealtimeVoice;
+  // The validated voice the active backend will use (provider-aware), not the
+  // raw shared saved field — so the controls' pending-change notice is accurate.
+  const savedVoice = activeVoiceId;
 
   const conversationPanel = buildConversationPanel({
     isOpen: historyPanelOpen,
@@ -95,8 +99,9 @@ export function VoiceApp(props: VoiceAppProps) {
       <VoiceTranscript
         messages={messages}
         assistantThinking={voice.assistantThinking}
-        firefoxDetected={firefoxDetected}
-        hasOpenAiKey={openAiKey != null}
+        isUnsupportedBrowser={isUnsupportedBrowser}
+        hasVoiceKey={voiceKey != null}
+        providerName={voiceProviderName}
       />
 
       {voice.error && (
@@ -116,10 +121,10 @@ export function VoiceApp(props: VoiceAppProps) {
 
       <VoiceControls
         voice={voice}
-        openAiKey={openAiKey}
+        voiceKey={voiceKey}
         isBusy={isBusy}
         isConnected={isConnected}
-        isUnsupportedBrowser={firefoxDetected}
+        isUnsupportedBrowser={isUnsupportedBrowser}
         onToggleConnection={onToggleConnection}
         savedVoice={savedVoice}
         thinking={props.settings.thinking}

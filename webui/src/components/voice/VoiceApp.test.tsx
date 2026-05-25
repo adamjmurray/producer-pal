@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getMcpUrl: vi.fn(),
   useVoiceSession: vi.fn(),
+  useGeminiVoiceSession: vi.fn(),
   isFirefox: vi.fn(),
   useUpdateCheck: vi.fn(),
   useVoicePersistence: vi.fn(),
@@ -31,6 +32,10 @@ vi.mock(import("#webui/hooks/voice/use-voice-session"), () => ({
   useVoiceSession: mocks.useVoiceSession,
 }));
 
+vi.mock(import("#webui/hooks/voice/gemini/use-gemini-voice-session"), () => ({
+  useGeminiVoiceSession: mocks.useGeminiVoiceSession,
+}));
+
 vi.mock(import("#webui/hooks/use-update-check"), () => ({
   useUpdateCheck: mocks.useUpdateCheck,
 }));
@@ -44,6 +49,7 @@ vi.mock(import("#webui/hooks/chat/use-conversation-transfer"), () => ({
 }));
 
 import { type ModeContext } from "#webui/components/mode-context";
+import { GEMINI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 import {
   basePersistence,
@@ -105,6 +111,7 @@ beforeEach(() => {
   mocks.isFirefox.mockReturnValue(false);
   mocks.useUpdateCheck.mockReturnValue(null);
   mocks.useVoiceSession.mockReturnValue(baseSession());
+  mocks.useGeminiVoiceSession.mockReturnValue(baseSession());
   mocks.useVoicePersistence.mockReturnValue(basePersistence());
   mocks.useConversationTransfer.mockReturnValue({
     notification: null,
@@ -118,6 +125,7 @@ beforeEach(() => {
 afterEach(() => {
   mocks.getMcpUrl.mockReset();
   mocks.useVoiceSession.mockReset();
+  mocks.useGeminiVoiceSession.mockReset();
   mocks.isFirefox.mockReset();
   mocks.useUpdateCheck.mockReset();
   mocks.useVoicePersistence.mockReset();
@@ -141,6 +149,28 @@ describe("VoiceApp", () => {
     renderVoiceApp({ provider: "anthropic", apiKey: "sk-ant" });
 
     expect(screen.getByText(/openai api key required/i)).toBeDefined();
+  });
+
+  it("shows a Gemini-key-required banner for a Gemini realtime selection with no key", () => {
+    renderVoiceApp({
+      provider: "gemini",
+      apiKey: "",
+      model: GEMINI_REALTIME_MODEL,
+    });
+
+    expect(screen.getByText(/gemini api key required/i)).toBeDefined();
+    expect(screen.queryByText(/openai api key required/i)).toBeNull();
+  });
+
+  it("hides the banner for a Gemini selection with a key and a Gemini voice", () => {
+    renderVoiceApp({
+      provider: "gemini",
+      apiKey: "gem-key",
+      model: GEMINI_REALTIME_MODEL,
+      savedRealtimeVoice: "Puck",
+    });
+
+    expect(screen.queryByText(/api key required/i)).toBeNull();
   });
 
   it("renders the Talk button when idle and clicking it calls connect()", () => {

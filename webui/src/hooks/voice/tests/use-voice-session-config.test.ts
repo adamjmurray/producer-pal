@@ -57,7 +57,10 @@ vi.mock(import("#webui/hooks/voice/realtime-mcp-tools"), () => ({
 
 import { mapThinkingToRealtimeEffort } from "#webui/hooks/settings/config-builders";
 import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
-import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import {
+  DEFAULT_TURN_DETECTION,
+  type TurnDetectionSettings,
+} from "#webui/hooks/settings/turn-detection-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 
@@ -114,6 +117,7 @@ async function connectAndReadAudio(
 describe("useVoiceSession turn-detection config", () => {
   it("maps server_vad turnDetection into audio.input", async () => {
     const turnDetection: TurnDetectionSettings = {
+      ...DEFAULT_TURN_DETECTION,
       mode: "server_vad",
       threshold: 0.7,
       silenceDurationMs: 350,

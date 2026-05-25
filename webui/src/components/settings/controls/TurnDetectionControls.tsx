@@ -202,7 +202,7 @@ interface LabeledSliderProps {
  * @param props.onChange - Called with the parsed numeric value on input
  * @returns Labeled slider element
  */
-function LabeledSlider({
+export function LabeledSlider({
   label,
   value,
   defaultValue,

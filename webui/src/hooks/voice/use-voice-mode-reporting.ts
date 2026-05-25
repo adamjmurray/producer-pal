@@ -33,13 +33,17 @@ interface UseVoiceModeReportingParams {
    * model (e.g. opening a voice convo from history while saved is GPT-5). */
   savedModel: string;
   savedProvider: Provider;
+  /** The provider backing the active voice session ("openai" | "gemini"). Drives
+   * the header brand label and the saved-vs-active divergence check, so a Gemini
+   * session shows "Google" and isn't flagged as diverging from saved. */
+  activeProvider: Provider;
 }
 
 /**
  * Reports the active voice session's lock + delete handlers up to App and
- * builds the HeaderInfo. Voice mode's conversation lock is static (always
- * realtime/openai) but only meaningful when a record is loaded — the lock
- * notice should be invisible on a fresh session.
+ * builds the HeaderInfo. Voice mode's conversation lock is a realtime model on
+ * the active provider (OpenAI or Gemini) but only meaningful when a record is
+ * loaded — the lock notice should be invisible on a fresh session.
  *
  * @param params - reporting inputs
  * @returns The computed HeaderInfo
@@ -57,6 +61,7 @@ export function useVoiceModeReporting(
     activeModel,
     savedModel,
     savedProvider,
+    activeProvider,
   } = params;
   const hasActiveVoiceConv = persistence.activeConversationId != null;
   // Read delete handlers via a ref so the effect's deps stay stable —
@@ -83,7 +88,7 @@ export function useVoiceModeReporting(
     setModeContext({
       conversationLock: {
         activeModel: hasActiveVoiceConv ? activeModel : null,
-        activeProvider: hasActiveVoiceConv ? "openai" : null,
+        activeProvider: hasActiveVoiceConv ? activeProvider : null,
         activeSmallModelMode: hasActiveVoiceConv ? false : null,
       },
       onDeleteAllConversations: () => void handlersRef.current.deleteAll(),
@@ -91,11 +96,17 @@ export function useVoiceModeReporting(
         void handlersRef.current.deleteUnbookmarked(),
       activeVoice,
     });
-  }, [hasActiveVoiceConv, setModeContext, activeVoice, activeModel]);
+  }, [
+    hasActiveVoiceConv,
+    setModeContext,
+    activeVoice,
+    activeModel,
+    activeProvider,
+  ]);
 
   return {
     activeModel,
-    activeProvider: "openai",
+    activeProvider,
     model: savedModel,
     provider: savedProvider,
     enabledToolsCount,
