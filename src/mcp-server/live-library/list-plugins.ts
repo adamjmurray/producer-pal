@@ -16,14 +16,17 @@
  *    table-presence probe is the robust signal (the schema-version row is not
  *    a reliable discriminator across these releases).
  *
- * SCHEMA NOTE: The plugin table name (`plugins`) and column names
- * (`name, vendor, version, scanstate, enabled, dev_identifier`) are taken from
- * the ticket's spike notes, NOT from a live DB capture. They should be verified
- * against a real Live 12.3+ install (and a Live 11 / 12.0–12.1 install for the
- * files-DB fallback). We only SELECT the columns we need so a v1-shaped DB
- * (without the v2 ARA columns `lowest_ara_api_generation` /
- * `highest_ara_api_generation`) works identically — we never name the ARA
- * columns, so their presence or absence is irrelevant.
+ * SCHEMA NOTE: Verified against a real Live 12.3 install (2026-05-25,
+ * Live-plugins-1.db). The `plugins` table and every selected column
+ * (`name, vendor, version, scanstate, enabled, dev_identifier`) exist; all 339
+ * scanned plugins had `enabled = 1` (the filter hides nothing) and
+ * dev_identifier was `device:<format>:<category>:<id>` with vst3/vst formats and
+ * instr/audiofx tokens covering 100% of rows. We only SELECT the columns we need
+ * so a v1-shaped DB (without the v2 ARA columns) works identically. Still
+ * unexercised: AU-format plugins (none installed) and the Live 11 / 12.0–12.1
+ * files-DB fallback (this install ships a separate plugins DB) — the table probe
+ * keeps the fallback safe. NOTE: a `subcategories` column ("Instrument",
+ * "Fx|Delay") exists and is a richer category source than dev_identifier parsing.
  *
  * Read-only: SELECT statements only. Never write SQL, never ATTACH.
  */
@@ -78,8 +81,9 @@ export async function listPlugins(
   const db = openLiveDb(source);
 
   try {
-    // Defensive `enabled = 1` filter: the spike couldn't confirm disabled-plugin
-    // semantics, so we only surface plugins Live reports as enabled.
+    // `enabled = 1` filter: verified (Live 12.3) that every scanned plugin has
+    // enabled = 1, so this surfaces all real plugins and would hide only ones
+    // Live has explicitly disabled.
     const rows = db
       .prepare(
         `SELECT name, vendor, version, scanstate, enabled, dev_identifier
@@ -240,8 +244,8 @@ function deriveFormat(devIdentifier: string | null): PluginFormat | null {
  * the format segment, e.g. `device:vst3:instr:...`), so this stays robust to
  * the exact position. Returns "instrument" or "audiofx" only when a recognized
  * token is present; an unparseable identifier, a missing scheme, or a scheme
- * with no known category token all yield null (we don't guess a default —
- * NOTE: token vocabulary is unverified against a real Live plugin DB).
+ * with no known category token all yield null (we don't guess a default). The
+ * instr/audiofx tokens covered 100% of rows on a real Live 12.3 DB (2026-05-25).
  *
  * @param devIdentifier - Raw dev_identifier, possibly null
  * @returns Derived PluginCategory, or null when undeterminable
