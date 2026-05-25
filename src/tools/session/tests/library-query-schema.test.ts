@@ -14,21 +14,33 @@ describe("queriesInputSchema (searchBatch input)", () => {
         { query: "808" },
       ]),
     ).toStrictEqual([
-      { label: "Kick", tags: "Kick", limit: 3 },
-      { query: "808" },
+      { label: "Kick", tags: "Kick", limit: 3, kind: "audio" },
+      { query: "808", kind: "audio" },
+    ]);
+  });
+
+  it("defaults kind to audio (matching single search) and preserves an explicit kind", () => {
+    expect(
+      queriesInputSchema.parse([
+        { tags: "Kick" },
+        { tags: "Pad", kind: "midi" },
+      ]),
+    ).toStrictEqual([
+      { tags: "Kick", kind: "audio" },
+      { tags: "Pad", kind: "midi" },
     ]);
   });
 
   it("coerces scalar fields (numeric query/limit) to their target types", () => {
     expect(
       queriesInputSchema.parse([{ query: 808, limit: "3" }]),
-    ).toStrictEqual([{ query: "808", limit: 3 }]);
+    ).toStrictEqual([{ query: "808", limit: 3, kind: "audio" }]);
   });
 
   it("parses a JSON-stringified array (small-model fallback)", () => {
     expect(
       queriesInputSchema.parse('[{"label":"Snare","tags":"Snare"}]'),
-    ).toStrictEqual([{ label: "Snare", tags: "Snare" }]);
+    ).toStrictEqual([{ label: "Snare", tags: "Snare", kind: "audio" }]);
   });
 
   it("returns undefined when omitted", () => {

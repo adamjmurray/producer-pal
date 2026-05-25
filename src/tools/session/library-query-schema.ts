@@ -66,6 +66,10 @@ export const batchQuerySchema = z.object({
   kind: z
     .enum(LIBRARY_KIND_VALUES)
     .optional()
+    // Default to audio to match the single-search default; without it, the
+    // search path falls back to all kinds, so a batch query omitting kind would
+    // silently behave differently from the same standalone search.
+    .default("audio")
     .describe("content kind filter (default: audio)"),
   type: z
     .enum(LIBRARY_TYPE_VALUES)

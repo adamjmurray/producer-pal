@@ -238,9 +238,10 @@ function deriveFormat(devIdentifier: string | null): PluginFormat | null {
  * Derive the device category from a `dev_identifier` URI. We look across all
  * colon-delimited segments for a known category token (Live places it after
  * the format segment, e.g. `device:vst3:instr:...`), so this stays robust to
- * the exact position. Anything not recognized as an instrument token defaults
- * to audiofx ONLY when a usable scheme was present; an unparseable identifier
- * yields null.
+ * the exact position. Returns "instrument" or "audiofx" only when a recognized
+ * token is present; an unparseable identifier, a missing scheme, or a scheme
+ * with no known category token all yield null (we don't guess a default —
+ * NOTE: token vocabulary is unverified against a real Live plugin DB).
  *
  * @param devIdentifier - Raw dev_identifier, possibly null
  * @returns Derived PluginCategory, or null when undeterminable
@@ -255,8 +256,8 @@ function deriveCategory(devIdentifier: string | null): PluginCategory | null {
 
   const segments = (devIdentifier as string).toLowerCase().split(":");
 
-  // Instrument tokens Live is documented to use; treat anything else with a
-  // valid scheme as an audio effect.
+  // Recognized category tokens. A scheme with none of these yields null rather
+  // than a guessed default (see docstring).
   if (segments.some((seg) => seg === "instr" || seg === "instrument")) {
     return "instrument";
   }
