@@ -125,17 +125,21 @@ overrides it for individual messages.
 
 ## Voice Mode
 
-Producer Pal includes an experimental hands-free voice mode that uses OpenAI's
-realtime model to talk with the AI out loud. It is **OpenAI only** (for now) and
-**requires an OpenAI API key**.
+Producer Pal includes an experimental hands-free voice mode for talking with the
+AI out loud. It's available on two providers, each requiring that provider's API
+key:
 
-To enter voice mode, open [Settings](#settings), set the **Provider** to
-**OpenAI**, and select the **GPT Realtime 2 (Voice)** model. The chat composer
-is replaced by the voice controls described below. See [Voice settings](#voice)
-for the voice, volume, speed, and turn-detection options.
+- **OpenAI** — the **GPT Realtime 2 (Voice)** model
+- **Google** — the **Gemini 3.1 Flash Live (Voice)** model
 
-> Voice currently works in Chrome (other Chromium browsers like Edge are likely
-> fine but untested). Firefox is not supported.
+To enter voice mode, open [Settings](#settings), set the **Provider**, and
+select that provider's voice model. The chat composer is replaced by the voice
+controls described below. See [Voice settings](#voice) for the voice, volume,
+and (OpenAI only) speed and turn-detection options.
+
+> Voice works in Chrome and other Chromium browsers like Edge (Edge is untested
+> but likely fine). Firefox can't drive OpenAI's voice transport, but the Google
+> (Gemini) voice model works in Firefox.
 
 <img src="/img/producer-pal-chat-voice-mode.png" alt="Voice mode" width="500"/>
 
@@ -241,17 +245,19 @@ You may need to change the URL if:
 ### Voice
 
 Producer Pal includes an experimental voice mode for spoken conversations with
-the AI. Voice mode is **OpenAI only** (for now) and **requires an OpenAI API
-key**. To use it, set the **Provider** to **OpenAI** and select the **GPT
-Realtime 2 (Voice)** model on the [Connection](#connection) tab — the **Voice**
-dropdown and a collapsible **Voice Settings** section then appear.
+the AI, available on **OpenAI** and **Google (Gemini)**. To use it, set the
+**Provider** and select that provider's voice model on the
+[Connection](#connection) tab — **GPT Realtime 2 (Voice)** for OpenAI or
+**Gemini 3.1 Flash Live (Voice)** for Google. The **Voice** dropdown and a
+collapsible **Voice Settings** section then appear.
 
 <img src="/img/producer-pal-chat-settings-voice.png" alt="Voice settings" width="500"/>
 
-- **Voice** - The spoken voice the assistant uses (Marin, Cedar, Alloy, and
-  more). Marin and Cedar are recommended for the best audio quality. The voice
-  locks once a session starts talking, so changing it applies on the next
-  session (Stop, then Talk).
+- **Voice** - The spoken voice the assistant uses; the choices depend on the
+  provider. OpenAI offers Marin, Cedar, Alloy, and more (Marin and Cedar are
+  recommended for the best audio quality); Google offers Puck, Charon, Kore, and
+  more. The voice locks once a session starts talking, so changing it applies on
+  the next session (Stop, then Talk).
 
 #### Voice Settings
 
@@ -260,12 +266,17 @@ Each slider has a **Reset** link to restore its default. Changes apply on the
 next session (Stop, then Talk) — except **Volume**, which takes effect
 immediately.
 
+On **Google (Gemini)**, only **Volume** appears — speed, turn detection, and the
+barge-in toggle are OpenAI only. (Gemini interrupts automatically when you start
+speaking, so it has no barge-in setting.)
+
 - **Volume** - Output loudness of the assistant's voice (0–100%, default 100%).
   Adjustable live during a session, so you can balance the assistant against the
   music coming from Ableton without touching Live's mixer.
-- **Speed** - Playback speed of the assistant's voice (0.5×–1.5×, default 1.0×).
-- **Turn detection** - How the model decides you've finished speaking — voice
-  activity detection, or "VAD":
+- **Speed** _(OpenAI only)_ - Playback speed of the assistant's voice
+  (0.5×–1.5×, default 1.0×).
+- **Turn detection** _(OpenAI only)_ - How the model decides you've finished
+  speaking — voice activity detection, or "VAD":
   - **Server VAD (volume-based)** - Detects the end of your turn from audio
     volume. Adds two tuning sliders:
     - **Threshold** - Activation volume (0–1). Higher values ignore quieter
@@ -276,9 +287,9 @@ immediately.
     thought. Adds one setting:
     - **Eagerness** - How quickly it responds: Auto, Low (waits longer), Medium,
       or High (responds sooner).
-- **Enable barge-in** - When on, speaking interrupts the assistant while it's
-  still talking. Off by default. Use headphones — without them, the assistant's
-  own voice can trigger interruptions.
+- **Enable barge-in** _(OpenAI only)_ - When on, speaking interrupts the
+  assistant while it's still talking. Off by default. Use headphones — without
+  them, the assistant's own voice can trigger interruptions.
 
 ### Tools
 
