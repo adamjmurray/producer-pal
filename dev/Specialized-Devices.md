@@ -189,47 +189,53 @@ handles the shape.
 ## The `options` include (opt-in discoverability)
 
 `read-device` supports an opt-in `include: ["options"]` parameter that surfaces
-per-device "what choices are available" data **for cases where the choices are
-dynamic** — they vary per Live Set, per Live install, or per current device
-state. Stable enums (same on every install) are NOT surfaced here; they live in
-Zod descriptions and skill instructions.
+per-device "what choices are available" data. It returns two kinds of catalog:
+
+1. **`paramOptions`** — the valid values for each _writable_ pseudo-param, keyed
+   by param name. An array lists discrete choices (enum labels or a fixed
+   numeric set); a string states a constraint (e.g. `"0-12"`). This is the
+   canonical, machine-readable source of accepted values, so the LLM can
+   discover them without first attempting a failed write. It is built
+   automatically from each `PseudoParam`'s `options` field (declared with the
+   _same constant_ passed to `read`/`write`, so the catalog can't drift from
+   validation — see `collectParamOptions` in `specialized-device-registry.ts`).
+   Booleans, free-form values (sample paths, gains, IR shaping times), read-only
+   params, and dynamic-choice params (those in the catalogs below) are omitted.
+2. **Dynamic catalogs** — choices that vary per Live Set, per Live install, or
+   per current device state. These come from each spec's `readOptions`.
 
 **Default OFF.** Without the include, `read-device` returns only current state,
-keeping reads compact. The LLM opts in when actively choosing from a runtime
-catalog (picking an IR file from the user's library, selecting a wavetable from
-the currently-loaded category, listing valid sidechain source tracks).
+keeping reads compact. The LLM opts in when it needs to know what a param
+accepts, or when actively choosing from a runtime catalog (an IR file, a
+wavetable from the loaded category, a valid sidechain source track).
 
-**Per-device contents** (only the devices listed add anything; others are no-ops
-for this include):
+**Per-device dynamic catalogs** (these are _in addition to_ `paramOptions`; only
+the devices listed contribute dynamic catalogs — every specialized device with
+writable enum/range params contributes `paramOptions`):
 
 - **Compressor:** `sidechainSourceTrackIds` — trackIds that are valid sidechain
   sources for the current Live Set (excludes tracks with no audio-bearing
-  devices). Dynamic per set.
-- **Hybrid Reverb:** `irFileList` — IR files in the currently-selected category.
-  Dynamic per Live install and per current category.
+  devices). Dynamic per set. (`sidechainChannels` for the current source.)
+- **Hybrid Reverb:** `irCategoryList`, `irFileList` — IR categories and the
+  files in the currently-selected category. Dynamic per Live install and per
+  category.
 - **Wavetable:** `osc1Wavetables`, `osc2Wavetables` — wavetables in each
   oscillator's currently-selected category (dynamic per category × per Live
   install); `modulatableParameters` — long list (~30 DeviceParameter names where
-  `is_parameter_modulatable=1`) that's too noisy to fit in a Zod description.
-- **Drift:** _(no `options` participation — all Drift catalogs are stable enums
-  and live in Zod descriptions instead)._
+  `is_parameter_modulatable=1`); `modulationSources` — the hard-coded canonical
+  13 mod-matrix source names (for the `setModulation` action; no LOM property
+  exposes them).
 
-**Stable enums NOT surfaced via `options`** (documented in Zod `.describe()`
-text and/or skill instructions instead, for large-model consumption — small
-model mode trims them via `descriptionOverrides` to avoid bloat):
-
-| Device        | Enum                                           | Size |
-| ------------- | ---------------------------------------------- | ---- |
-| EQ Eight      | `globalMode` values                            | 3    |
-| Meld          | `monoPoly` values                              | 2    |
-| Roar          | `routingMode` values                           | 7    |
-| Hybrid Reverb | `irCategory` list                              | 10   |
-| Wavetable     | `oscillatorCategories`                         | 12   |
-| Wavetable     | `modulationSources` (hard-coded canonical 13)  | 13   |
-| Drift         | `modulationSources` (shared 8)                 | 8    |
-| Drift         | `modulationTargets` (shared 12 incl. `"None"`) | 12   |
-| Drift         | `voiceModes`                                   | 4    |
-| Drift         | `voiceCounts`                                  | 5    |
+**Stable enums ARE surfaced — via `paramOptions`.** Previously stable enums
+lived only in Zod descriptions and skill text and were deliberately kept out of
+`options`. That is no longer the case: every writable pseudo-param with a fixed
+value space (Drift's source/target slots, `voiceMode`, `voiceCount`; EQ Eight
+`globalMode`; Roar `routingMode`; Spectral Resonator `modMode`/`pitchMode`/
+`polyphony`; Wavetable `filterRouting`/`unisonMode`/…) reports its accepted
+values under `paramOptions`. The skill now points to `options` for accepted
+values and carries only names + non-obvious semantics, keeping a few short
+high-frequency hints inline (`voiceMode`, `playbackMode`, `globalMode`) to avoid
+a round-trip on common operations.
 
 **Why opt-in:** Most reads inspect current state, not catalogs. The dynamic ones
 (especially `modulatableParameters` and per-category wavetable lists) can be
@@ -243,14 +249,15 @@ metadata about valid choices:
 
 ```json
 {
-  "id": "232",
-  "params": {
-    "irCategory": "Halls",
-    "irFile": "Berliner Hall LR",
-    "irDecayTime": 12.5
-  },
+  "id": "227",
+  "type": "instrument: Wavetable",
   "options": {
-    "irFileList": [...]
+    "paramOptions": {
+      "filterRouting": ["serial", "parallel", "split"],
+      "unisonVoiceCount": "2-8"
+    },
+    "oscWavetableCategories": [...],
+    "modulationSources": [...]
   }
 }
 ```
@@ -259,12 +266,11 @@ metadata about valid choices:
 
 Each kind of "what to tell the LLM" lives in a specific layer:
 
-| Information                                                                                                                                                       | Where it lives                                                                    |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Static enum values & their meanings (e.g. `globalMode: "stereo" \| "L/R" \| "M/S"`)                                                                               | Zod `.describe()` on the parameter, concise (~100-200 chars)                      |
-| Rich semantic guidance (when to reach for M/S processing, sidechain use cases, A/B chain mapping in modes)                                                        | Producer Pal Skills via `ppal-connect` (already trimmed in small model)           |
-| Dynamic catalogs that vary per Live install / per set / per device state (IR files, current-category wavetables, valid sidechain sources, modulatable parameters) | `options` include (see above)                                                     |
-| Stable enums that don't vary (mod sources, voice modes, IR categories, oscillator categories)                                                                     | Zod `.describe()` text (large model) + `descriptionOverrides` (small model trims) |
+| Information                                                                                                                                                       | Where it lives                                                                                                                                                |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Valid values for a writable pseudo-param (enum labels, numeric sets, ranges)                                                                                      | `options.paramOptions`, built from each `PseudoParam.options` (the same constant passed to read/write, so it can't drift)                                     |
+| What an enum value _means_ / when to reach for it (M/S processing, sidechain use cases, A/B chain mapping)                                                        | Producer Pal Skills via `ppal-connect`; a few short, high-frequency value hints (`voiceMode`, `playbackMode`, `globalMode`) stay inline to avoid a round-trip |
+| Dynamic catalogs that vary per Live install / per set / per device state (IR files, current-category wavetables, valid sidechain sources, modulatable parameters) | `options` include dynamic catalogs (see above)                                                                                                                |
 
 ### Small model mode
 
@@ -403,12 +409,12 @@ surface.** They are not duplicated as pseudo-params — the LLM sets `mod1Source
 (pseudo-param) and `Mod Matrix Amt 1` (DeviceParameter) in the same
 `update-device` call via the existing `params` arg.
 
-**No `options` include participation.** All four catalogs (`modulationSources`,
-`modulationTargets`, `voiceModes`, `voiceCounts`) are stable enums that don't
-vary per Live install. They live in Zod `.describe()` text on the relevant
-pseudo-params, trimmed via `descriptionOverrides` in small model mode to keep
-schemas compact. Skill instructions cover the most common routing patterns (e.g.
-"Env 2 → Filter Freq").
+**Valid values flow through `options.paramOptions`.** The `modulationSources`,
+`modulationTargets`, `voiceModes`, and `voiceCounts` enums are stable (don't
+vary per Live install), so each pseudo-param declares them via its `options`
+field and `read-device include: ["options"]` reports them under `paramOptions`.
+The skill carries only param names + routing semantics (e.g. "Env 2 → Filter
+Freq"), with `voiceMode` kept as a short inline hint.
 
 **Implementation gotchas:**
 
@@ -754,17 +760,17 @@ target).
 
 - `osc1Wavetables`, `osc2Wavetables` — current-category wavetables per
   oscillator. Dynamic per category × per Live install.
+- `oscWavetableCategories` — the (install-dependent) category list both
+  oscillators index into (values of `osc1Category` / `osc2Category`).
 - `modulatableParameters` — list of DeviceParameter names where
   `is_parameter_modulatable=1` (the candidates for `addModulationTarget`).
   Stable per Live version but too long (~30 names) to fit in a Zod description.
-
-**Stable enums NOT in `options`** (live in Zod `.describe()` text instead; small
-model mode trims via `descriptionOverrides`):
-
-- `oscillatorCategories` (12 fixed names) — values of `osc1Category` /
-  `osc2Category`
-- `modulationSources` (the hard-coded 13 canonical source names) — values for
-  the source arg of `setModulation` / `clearModulation` actions
+- `modulationSources` — the hard-coded 13 canonical mod-matrix source names
+  (values for the source arg of `setModulation` / `clearModulation`); no LOM
+  property exposes them.
+- `paramOptions` — valid values for the writable enum/range pseudo-params
+  (`filterRouting`, `monoPoly`, `polyVoices`, `unisonMode`, `unisonVoiceCount`,
+  `osc1Engine` / `osc2Engine`).
 
 **Implementation gotchas:**
 
@@ -1037,12 +1043,11 @@ Six writable fields on `update-device`, also returned by `read-device`:
 
 Class-level `ir_category_list` and `ir_file_list` are used for validation. See
 [`options` include](#the-options-include-opt-in-discoverability) — opt-in adds
-`irFileList` (files in the currently selected category, 11-29 strings depending
-on category — dynamic per Live install). To browse a different category, set
-`irCategory` first and re-read with the include. The 10 fixed `irCategory`
-values are stable per Live version and live in the Zod `.describe()` text on the
-`irCategory` param (with `descriptionOverrides` to trim in small model mode)
-rather than the `options` include.
+`irCategoryList` (the fixed categories) and `irFileList` (files in the currently
+selected category, 11-29 strings depending on category — dynamic per Live
+install). To browse a different category, set `irCategory` first and re-read
+with the include. Hybrid Reverb's writable params are all dynamic-catalog,
+free-form, or boolean, so it contributes no static `paramOptions`.
 
 **Implementation gotchas (verified by probe 2026-05-21):**
 
@@ -1108,10 +1113,11 @@ Two writable fields on `update-device`, also returned by `read-device`:
   `"mid-side"` | `"feedback"` | `"delay"`) — maps to internal int 0..6.
 - `envListen` (bool) — maps to int 0/1.
 
-**Not surfaced via `include: ["options"]`.** The routing-mode catalog is stable
-per Live version (probe confirmed 7 fixed names). Document the enum values in
-the tool description / skill instructions — same pattern as EQ Eight's
-`globalMode` and Compressor's channel options. No `options` participation.
+**Valid values via `options.paramOptions`.** `routingMode` declares its 7 fixed
+labels through its `options` field, so `read-device include: ["options"]`
+reports them under `paramOptions` (same pattern as EQ Eight's `globalMode`).
+`envListen` is a boolean and contributes no `paramOptions` entry. The skill
+lists only the param names.
 
 **Implementation gotchas (verified by probe 2026-05-21):**
 

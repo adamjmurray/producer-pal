@@ -18,6 +18,7 @@ import {
 import {
   addModulationTargetAction,
   clearModulationAction,
+  MOD_SOURCES,
   readModulations,
   setModulationAction,
 } from "./wavetable-modulation-helpers.ts";
@@ -170,6 +171,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
   params: [
     {
       name: "filterRouting",
+      options: FILTER_ROUTING,
       read: (device) =>
         readEnumByIndex(device, "filter_routing", FILTER_ROUTING),
       write: (device, value, toolName) =>
@@ -184,6 +186,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "monoPoly",
+      options: MONO_POLY,
       read: (device) => readEnumByIndex(device, "mono_poly", MONO_POLY),
       write: (device, value, toolName) =>
         writeEnumByIndex(
@@ -197,6 +200,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "polyVoices",
+      options: POLY_VOICES,
       read: readPolyVoices,
       write: (device, value, toolName) =>
         writeIntFromSet(
@@ -211,6 +215,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "unisonMode",
+      options: UNISON_MODES,
       read: (device) => readEnumByIndex(device, "unison_mode", UNISON_MODES),
       write: (device, value, toolName) =>
         writeEnumByIndex(
@@ -224,6 +229,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "unisonVoiceCount",
+      options: "2-8",
       read: readUnisonVoiceCount,
       write: (device, value, toolName) =>
         writeIntInRange(
@@ -238,6 +244,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "osc1Engine",
+      options: OSC_ENGINES,
       read: (device) =>
         readEnumByIndex(device, "oscillator_1_effect_mode", OSC_ENGINES),
       write: (device, value, toolName) =>
@@ -252,6 +259,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "osc2Engine",
+      options: OSC_ENGINES,
       read: (device) =>
         readEnumByIndex(device, "oscillator_2_effect_mode", OSC_ENGINES),
       write: (device, value, toolName) =>
@@ -321,6 +329,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     }
 
     return {
+      modulationSources: MOD_SOURCES,
       modulatableParameters,
       oscWavetableCategories,
       osc1Wavetables,

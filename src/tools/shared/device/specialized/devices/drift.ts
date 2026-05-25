@@ -64,6 +64,7 @@ function enumParam(
 ): PseudoParam {
   return {
     name,
+    options: labels,
     read: (device) => readEnumByIndex(device, property, labels),
     write: (device, value, toolName) =>
       writeEnumByIndex(device, property, value, labels, toolName, name),
@@ -87,6 +88,7 @@ function freeSlotSourceParam(
 ): PseudoParam {
   return {
     name,
+    options: SOURCES,
     read: (device) => {
       if (readEnumByIndex(device, targetProperty, TARGETS) === "None") {
         return;
@@ -184,11 +186,13 @@ export const driftSpec: SpecializedDeviceSpec = {
     enumParam("voiceMode", "voice_mode_index", VOICE_MODES),
     {
       name: "voiceCount",
+      options: VOICE_COUNTS,
       read: readVoiceCount,
       write: writeVoiceCount,
     },
     {
       name: "pitchBendRange",
+      options: `${PITCH_BEND_RANGE_MIN}-${PITCH_BEND_RANGE_MAX}`,
       read: readPitchBendRange,
       write: (device, value, toolName) =>
         writeIntInRange(

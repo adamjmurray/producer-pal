@@ -114,6 +114,7 @@ export const simplerSpec: SpecializedDeviceSpec = {
     },
     {
       name: "playbackMode",
+      options: PLAYBACK_MODES,
       read: (device) =>
         readEnumByIndex(device, "playback_mode", PLAYBACK_MODES),
       write: (device, value, toolName) =>
@@ -128,6 +129,7 @@ export const simplerSpec: SpecializedDeviceSpec = {
     },
     {
       name: "slicingPlaybackMode",
+      options: SLICING_PLAYBACK_MODES,
       read: (device) =>
         readEnumByIndex(
           device,
@@ -152,6 +154,7 @@ export const simplerSpec: SpecializedDeviceSpec = {
     },
     {
       name: "voices",
+      options: VOICES,
       read: readVoices,
       write: (device, value, toolName) =>
         writeIntFromSet(device, "voices", value, VOICES, toolName, "voices"),

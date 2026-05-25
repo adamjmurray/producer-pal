@@ -563,14 +563,31 @@ describe("Drift via read-device", () => {
     expect(names).toContain("mod3Source");
   });
 
-  it("omits the options field when the device contributes no catalogs", () => {
+  it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableDrift();
 
-    const result = readDevice({
-      deviceId: "drift-1",
-      include: ["params", "options"],
-    });
+    const result = readDevice({ deviceId: "drift-1", include: ["options"] });
+    const paramOptions = (result.options as Record<string, unknown>)
+      .paramOptions as Record<string, unknown>;
 
-    expect(result.options).toBeUndefined();
+    expect(paramOptions.voiceMode).toStrictEqual([
+      "Poly",
+      "Mono",
+      "Stereo",
+      "Unison",
+    ]);
+    expect(paramOptions.voiceCount).toStrictEqual([4, 8, 16, 24, 32]);
+    expect(paramOptions.pitchBendRange).toBe("0-12");
+    expect(paramOptions.filterMod1Source).toStrictEqual([
+      "Env 1",
+      "Env 2",
+      "LFO",
+      "Key",
+      "Vel",
+      "Mod",
+      "Press",
+      "Slide",
+    ]);
+    expect(paramOptions.mod1Target).toContain("None");
   });
 });

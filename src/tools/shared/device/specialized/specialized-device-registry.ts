@@ -172,7 +172,11 @@ export function readSpecializedActions(
 }
 
 /**
- * Read the dynamic `options` catalogs for a device (for `include: ["options"]`).
+ * Read the `options` catalogs for a device (for `include: ["options"]`):
+ * `paramOptions` (each writable pseudo-param's static valid values) plus any
+ * dynamic catalogs the device contributes via `readOptions` (IR files,
+ * wavetables, sidechain sources). Lets the model discover accepted values
+ * without a failed write.
  * @param device - LiveAPI device object
  * @returns Catalog object (empty when the device contributes none)
  */
@@ -181,7 +185,39 @@ export function readSpecializedOptions(
 ): Record<string, unknown> {
   const spec = getSpecForDevice(device);
 
-  return spec?.readOptions ? spec.readOptions(device) : {};
+  if (!spec) {
+    return {};
+  }
+
+  const dynamic = spec.readOptions ? spec.readOptions(device) : {};
+  const paramOptions = collectParamOptions(spec);
+
+  // paramOptions first (the valid-values reference), then dynamic catalogs.
+  return Object.keys(paramOptions).length > 0
+    ? { paramOptions, ...dynamic }
+    : dynamic;
+}
+
+/**
+ * Build the static `paramOptions` catalog: each writable pseudo-param's declared
+ * valid values, keyed by param name. State-independent — it lists what a param
+ * accepts, not its current value. Params without `options` (booleans, free-form
+ * values, read-only, or dynamic-choice params) are omitted.
+ * @param spec - Device spec
+ * @returns Map of param name → valid values (array or constraint string)
+ */
+function collectParamOptions(
+  spec: SpecializedDeviceSpec,
+): Record<string, readonly (string | number)[] | string> {
+  const result: Record<string, readonly (string | number)[] | string> = {};
+
+  for (const param of spec.params) {
+    if (param.options != null) {
+      result[param.name] = param.options;
+    }
+  }
+
+  return result;
 }
 
 /**

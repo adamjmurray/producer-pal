@@ -205,14 +205,13 @@ describe("EQ Eight via read-device", () => {
     expect(result.modulations).toBeUndefined();
   });
 
-  it("omits the options field when the device contributes no catalogs", () => {
+  it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableEqEight();
 
-    const result = readDevice({
-      deviceId: "eq8-1",
-      include: ["params", "options"],
-    });
+    const result = readDevice({ deviceId: "eq8-1", include: ["options"] });
 
-    expect(result.options).toBeUndefined();
+    expect(
+      (result.options as Record<string, unknown>).paramOptions,
+    ).toStrictEqual({ globalMode: ["stereo", "L/R", "M/S"] });
   });
 });

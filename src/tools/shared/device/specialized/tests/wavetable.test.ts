@@ -718,6 +718,10 @@ describe("Wavetable readOptions", () => {
       "Filter Freq",
       "Volume",
     ]);
+    // Static paramOptions merge alongside the dynamic catalogs; mod-matrix
+    // source names (for the setModulation action) are discoverable too.
+    expect(options.paramOptions).toHaveProperty("filterRouting");
+    expect(options.modulationSources).toContain("LFO 1");
   });
 
   it("excludes non-modulatable parameters", () => {
