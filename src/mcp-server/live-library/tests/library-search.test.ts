@@ -36,12 +36,16 @@ describe("librarySearch", () => {
       // that returns the wrong audio items would fail (rather than just
       // "every item has kind audio", which holds via the reverse map).
       // Order is default use_count desc: pack_kick (100) > user_kick (50)
-      // > user_snare (25) > pack_clap (5).
+      // > user_snare (25) > pack_clap (5) > subfolder_x (3) > subfolder_z (2)
+      // > subfolder_y (1).
       expect(result.items.map((i) => i.name)).toStrictEqual([
         "pack_kick.wav",
         "user_kick.aif",
         "user_snare.wav",
         "pack_clap.aif",
+        "subfolder_x.wav",
+        "subfolder_z.wav",
+        "subfolder_y.wav",
       ]);
       expect(result.items.every((i) => i.kind === "audio")).toBe(true);
     });
@@ -110,7 +114,7 @@ describe("librarySearch", () => {
 
       // Pin specific names in default use_count desc order so a regression
       // that returns the wrong pack items (or the right count of wrong items)
-      // would fail.
+      // would fail. Includes subfolder_x/z/y from Pack One subdirectories.
       expect(result.items.map((i) => i.name)).toStrictEqual([
         "pack_kick.wav", // 100
         "pack_riff.mid", // 30
@@ -118,6 +122,9 @@ describe("librarySearch", () => {
         "pack_chain.adg", // 8
         "pack_clap.aif", // 5
         "pack_m4l.amxd", // 4
+        "subfolder_x.wav", // 3
+        "subfolder_z.wav", // 2
+        "subfolder_y.wav", // 1
       ]);
       expect(result.items.every((i) => i.source === "pack")).toBe(true);
     });
@@ -270,7 +277,7 @@ describe("librarySearch", () => {
       const result = await librarySearch({ kind: "audio" });
 
       expect(result.items.map((i) => i.useCount)).toStrictEqual([
-        100, 50, 25, 5,
+        100, 50, 25, 5, 3, 2, 1,
       ]);
     });
 
@@ -280,6 +287,9 @@ describe("librarySearch", () => {
       expect(result.items.map((i) => i.name)).toStrictEqual([
         "pack_clap.aif",
         "pack_kick.wav",
+        "subfolder_x.wav",
+        "subfolder_y.wav",
+        "subfolder_z.wav",
         "user_kick.aif",
         "user_snare.wav",
       ]);
@@ -288,8 +298,8 @@ describe("librarySearch", () => {
     it("sorts by mod_date desc when sort=mod_date", async () => {
       const result = await librarySearch({ kind: "audio", sort: "mod_date" });
 
-      // pack_clap mod_date 1700000300 is the latest of the 4 audio files
-      expect(result.items[0]?.name).toBe("pack_clap.aif");
+      // subfolder_z mod_date 1700001200 is the latest of all audio files
+      expect(result.items[0]?.name).toBe("subfolder_z.wav");
     });
 
     it("breaks use_count ties by mod_date desc on the default sort", async () => {
@@ -338,5 +348,84 @@ describe("librarySearch", () => {
     const result = await librarySearch({ kind: "audio", limit: -1 });
 
     expect(result.items.length).toBeGreaterThan(0);
+  });
+
+  describe("inFolder filter", () => {
+    it("returns only immediate children of the resolved folder", async () => {
+      // Pack One/SubA contains subfolder_x.wav and subfolder_y.wav (not subfolder_z)
+      const result = await librarySearch({
+        inFolder: "/Users/test/Music/Ableton/Factory Packs/Pack One/SubA",
+      });
+
+      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+        "subfolder_x.wav",
+        "subfolder_y.wav",
+      ]);
+    });
+
+    it("does not recurse into subdirectories", async () => {
+      // Pack One contains SubA and SubB subdirs plus pack audio files.
+      // With inFolder pointing at Pack One, we get only direct children
+      // (pack_kick, pack_clap, etc., SubA folder, SubB folder) — NOT
+      // subfolder_x/y/z which live one level deeper.
+      const result = await librarySearch({
+        inFolder: "/Users/test/Music/Ableton/Factory Packs/Pack One",
+        kind: "audio",
+      });
+
+      const names = result.items.map((i) => i.name).sort();
+
+      expect(names).toContain("pack_kick.wav");
+      expect(names).not.toContain("subfolder_x.wav");
+      expect(names).not.toContain("subfolder_y.wav");
+      expect(names).not.toContain("subfolder_z.wav");
+    });
+
+    it("composes with kind filter", async () => {
+      // SubA folder has only wav audio files; filter kind=audio should work
+      const result = await librarySearch({
+        inFolder: "/Users/test/Music/Ableton/Factory Packs/Pack One/SubA",
+        kind: "audio",
+      });
+
+      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+        "subfolder_x.wav",
+        "subfolder_y.wav",
+      ]);
+    });
+
+    it("composes with tags filter", async () => {
+      // Only subfolder_y.wav has the SubOnly tag in SubA
+      const result = await librarySearch({
+        inFolder: "/Users/test/Music/Ableton/Factory Packs/Pack One/SubA",
+        tags: "SubOnly",
+      });
+
+      expect(result.items.map((i) => i.name)).toStrictEqual([
+        "subfolder_y.wav",
+      ]);
+    });
+
+    it("returns empty results for an unresolvable path", async () => {
+      const result = await librarySearch({
+        inFolder: "/Users/test/Music/Ableton/NonExistentFolder",
+      });
+
+      expect(result.dbAvailable).toBe(true);
+      expect(result.items).toHaveLength(0);
+    });
+
+    it("normalizes trailing slash (with and without produce the same results)", async () => {
+      const withSlash = await librarySearch({
+        inFolder: "/Users/test/Music/Ableton/Factory Packs/Pack One/SubA/",
+      });
+      const withoutSlash = await librarySearch({
+        inFolder: "/Users/test/Music/Ableton/Factory Packs/Pack One/SubA",
+      });
+
+      expect(withSlash.items.map((i) => i.name).sort()).toStrictEqual(
+        withoutSlash.items.map((i) => i.name).sort(),
+      );
+    });
   });
 });

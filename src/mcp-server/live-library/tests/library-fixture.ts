@@ -194,11 +194,27 @@ function insertFiles(db: DatabaseSync): void {
   insert.run(4002, 5, ALS, 8, "set_newest.als", 0, 1_700_000_900, 0, null);
   insert.run(4003, 5, ALS, 8, "set_middle.als", 0, 1_700_000_800, 0, null);
 
+  // Subfolder hierarchy for inFolder tests:
+  //   /Users/test/Music/Ableton/Pack One/SubA/  (file_id 210)
+  //   /Users/test/Music/Ableton/Pack One/SubA/subfolder_x.wav  (file_id 211)
+  //   /Users/test/Music/Ableton/Pack One/SubA/subfolder_y.wav  (file_id 212, tagged SubOnly)
+  //   /Users/test/Music/Ableton/Pack One/SubB/   (file_id 220)
+  //   /Users/test/Music/Ableton/Pack One/SubB/subfolder_z.wav  (file_id 221)
+  // Use names that do NOT contain "kick"/"snare"/etc. to avoid collisions
+  // with existing query/tags tests. SubOnly tag is unique to the fixture.
+  insert.run(210, 200, FLDR, 512, "SubA", 0, 0, 0, null);
+  insert.run(211, 210, WAV, 4, "subfolder_x.wav", 3, 1_700_001_000, 0, 200);
+  insert.run(212, 210, WAV, 4, "subfolder_y.wav", 1, 1_700_001_100, 0, 200);
+  insert.run(220, 200, FLDR, 512, "SubB", 0, 0, 0, null);
+  insert.run(221, 220, WAV, 4, "subfolder_z.wav", 2, 1_700_001_200, 0, 200);
+
   // Keyword definitions (file_type='keyw')
   insert.run(9001, 1, KEYW, 0, "Kick", 0, 0, 0, null);
   insert.run(9002, 1, KEYW, 0, "Punchy", 0, 0, 0, null);
   insert.run(9003, 1, KEYW, 0, "Snare Hit", 0, 0, 0, null);
   insert.run(9004, 1, KEYW, 0, "One Shot", 0, 0, 0, null);
+  // SubOnly tag: attached to subfolder_y.wav only, used in inFolder+tags test
+  insert.run(9005, 1, KEYW, 0, "SubOnly", 0, 0, 0, null);
 }
 
 /**
@@ -239,4 +255,6 @@ function insertKeywords(db: DatabaseSync): void {
   insert.run(2002, 9004, 0);
   // pack_riff.mid -> (no tags)
   // Built-in plugins: no tags
+  // subfolder_y.wav (212) -> SubOnly (for inFolder + tags composition test)
+  insert.run(212, 9005, 0);
 }

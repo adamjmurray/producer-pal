@@ -65,7 +65,17 @@ export async function librarySearch(
   const db = openLiveDb(dbPath);
 
   try {
-    const { sql, params } = buildSearchQuery(args);
+    const resolvedParent =
+      args.inFolder != null ? resolveParentId(db, args.inFolder) : undefined;
+
+    // inFolder was provided but the path doesn't map to any known folder
+    if (args.inFolder != null && resolvedParent == null) {
+      return { dbAvailable: true, items: [] };
+    }
+
+    // At this point resolvedParent is either undefined (no inFolder) or a valid number
+    const parentId: number | undefined = resolvedParent ?? undefined;
+    const { sql, params } = buildSearchQuery(args, parentId);
     // node:sqlite returns `unknown[]`. We trust the SELECT column list to
     // match SearchRow — the SQL is hand-written and pinned by tests, so a
     // per-row runtime validator would be dead weight at the cost of
@@ -91,9 +101,13 @@ interface QueryPieces {
  * Compose the search SQL and its positional parameters from filter args.
  *
  * @param args - Filter parameters
+ * @param parentId - Resolved file_id for the inFolder constraint, when present
  * @returns SQL string and parameter array for prepared statement binding
  */
-function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
+function buildSearchQuery(
+  args: LibrarySearchArgs,
+  parentId?: number,
+): QueryPieces {
   const where: string[] = [];
   const params: Array<string | number> = [];
 
@@ -125,6 +139,11 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
       where.push(`p.folder_kind IN (${kinds.map(() => "?").join(",")})`);
       params.push(...kinds);
     }
+  }
+
+  if (parentId != null) {
+    where.push("f.parent_id = ?");
+    params.push(parentId);
   }
 
   if (args.query) {
@@ -269,6 +288,67 @@ function buildLibraryItem(
   }
 
   return item;
+}
+
+/**
+ * Resolve an absolute folder path to the file_id of the matching folder row
+ * by walking the path segments through the files table hierarchy. Returns
+ * null when any segment in the path is not found.
+ *
+ * Path normalization: leading and trailing slashes are stripped before
+ * splitting so "/Users/Ableton/" and "/Users/Ableton" resolve identically.
+ *
+ * Algorithm: start from the root row (parent_id = 0, name = "/" or a Windows
+ * drive letter like "C:"), then walk each path segment as a child lookup.
+ *
+ * @param db - Open database handle
+ * @param folderPath - Absolute path to resolve, with or without trailing slash
+ * @returns file_id of the folder, or null if unresolvable
+ */
+function resolveParentId(db: DatabaseSync, folderPath: string): number | null {
+  const normalized = folderPath.endsWith("/")
+    ? folderPath.slice(0, -1)
+    : folderPath;
+
+  // Split into segments. For a POSIX path "/Users/Ableton/User Library":
+  //   split("/") → ["", "Users", "Ableton", "User Library"]
+  // The empty first element corresponds to the root row ("/").
+  const segments = normalized.split("/");
+
+  // Find the root row — parent_id = 0, matching the first segment.
+  // POSIX root is stored as "/"; Windows drive root as "C:" (or "C:\").
+  const rootName = segments[0] === "" ? "/" : (segments[0] as string);
+  const rootRow = db
+    .prepare(
+      "SELECT file_id FROM files WHERE parent_id = 0 AND name = ? LIMIT 1",
+    )
+    .get(rootName) as { file_id: number } | undefined;
+
+  if (!rootRow) {
+    return null;
+  }
+
+  // Walk remaining segments down the hierarchy, skipping the root element
+  // (the empty string for POSIX "/..." paths, or the drive letter for Windows).
+  const childSegments = segments.slice(1);
+  let currentId = rootRow.file_id;
+
+  for (const seg of childSegments) {
+    if (seg === "") continue;
+    const row = db
+      .prepare(
+        "SELECT file_id FROM files WHERE parent_id = ? AND name = ? LIMIT 1",
+      )
+      .get(currentId, seg) as { file_id: number } | undefined;
+
+    if (!row) {
+      return null;
+    }
+
+    currentId = row.file_id;
+  }
+
+  return currentId;
 }
 
 /**

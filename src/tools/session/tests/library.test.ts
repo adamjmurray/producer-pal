@@ -87,6 +87,17 @@ describe("library tool — action dispatch", () => {
     );
   });
 
+  it("passes inFolder through to the library.search route", async () => {
+    mockSearchRoute([]);
+
+    await library({ inFolder: "/some/folder" });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ inFolder: "/some/folder" }),
+    );
+  });
+
   it("dispatches listTags action to library.listTags route", async () => {
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,
@@ -237,6 +248,11 @@ describe("library tool — folder scan integration", () => {
   it("skips folder scan when deviceKind is set", async () => {
     // deviceKind is DB-only metadata; the scan can't satisfy it.
     await expectFolderScanSkipped({ deviceKind: "instrument" });
+  });
+
+  it("skips folder scan when inFolder is set (DB-only path resolution)", async () => {
+    // inFolder resolves against the DB's file hierarchy, not the filesystem.
+    await expectFolderScanSkipped({ inFolder: "/some/folder" });
   });
 
   it("invokes the folder scan for audio-compatible filters (positive control)", async () => {

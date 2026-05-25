@@ -27,6 +27,7 @@ interface LibraryArgs {
   kind?: LibraryKind;
   deviceKind?: LibraryDeviceKind;
   source?: LibrarySource;
+  inFolder?: string;
   sort?: LibrarySort;
   limit?: number;
 }
@@ -90,6 +91,7 @@ async function runSearch(
           kind: args.kind,
           deviceKind: args.deviceKind,
           source: args.source,
+          inFolder: args.inFolder,
           sort: args.sort,
           limit: args.limit,
         });
@@ -164,6 +166,10 @@ function scanFolderItems(
   }
 
   if (args.deviceKind) {
+    return { items: [] };
+  }
+
+  if (args.inFolder) {
     return { items: [] };
   }
 

@@ -70,6 +70,13 @@ export const toolDefLibrary = defineTool("ppal-library", {
         "where the file lives (search only). sampleFolder=user-configured sample folder on disk (bypasses Live's DB) | user=your User Library | pack=installed Packs (factory + 3rd-party) | builtin=Ableton's Core Library | cloud=Cloud-stored items | plugin=installed VST/AU/etc. plugins",
       ),
 
+    inFolder: z.coerce
+      .string()
+      .optional()
+      .describe(
+        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Unresolvable paths return no results.",
+      ),
+
     sort: z
       .enum(["use_count", "mod_date", "name"])
       .optional()
@@ -103,6 +110,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       kind: "content kind (default: audio). audio | midi | preset | device-group",
       source:
         "where the file lives. sampleFolder | user | pack | builtin | cloud | plugin",
+      inFolder: "absolute folder path; returns immediate children only",
       limit: "max results; defaults to 50 (search) or 200 (listTags)",
     },
   },

@@ -84,6 +84,8 @@ export interface LibrarySearchArgs {
   kind?: LibraryKind;
   deviceKind?: LibraryDeviceKind;
   source?: LibrarySource;
+  /** Absolute folder path; restrict results to immediate children of that folder */
+  inFolder?: string;
   sort?: LibrarySort;
   limit?: number;
 }
