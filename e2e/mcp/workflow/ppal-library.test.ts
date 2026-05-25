@@ -33,6 +33,7 @@ interface LibraryItem {
   name: string;
   path: string;
   kind: string | null;
+  subtype?: "midi" | "audio";
   tags: string[];
   useCount: number;
   source: string | null;
@@ -197,9 +198,14 @@ describe("ppal-library", () => {
       const result = await search({ kind: "midi" });
 
       // Folder scan suppressed when kind != audio, so all items are DB items.
-      // Every returned item should resolve to "midi" via the file_type → kind map.
+      // kind:midi covers .mid files (kind "midi") plus MIDI Live clips, which
+      // keep their file-format kind "live-clip" qualified by subtype "midi".
       for (const item of result.items) {
-        expect(item.kind).toBe("midi");
+        const isMidi =
+          item.kind === "midi" ||
+          (item.kind === "live-clip" && item.subtype === "midi");
+
+        expect(isMidi).toBe(true);
       }
     });
 

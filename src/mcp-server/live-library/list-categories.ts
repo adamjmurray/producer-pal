@@ -90,8 +90,9 @@ export async function listCategories(
 }
 
 /**
- * Top-level categories with their leaf-vocabulary size (count of distinct
- * sub-paths), sorted by size desc.
+ * Top-level categories with their count of distinct tag-paths (a rough size
+ * signal — drill-down may list fewer leaves, since it counts only leaves that
+ * resolve to a keyword), sorted by size desc.
  *
  * @param db - Open database handle
  * @returns Top category names with counts

@@ -229,8 +229,10 @@ export interface LibraryListTagsResult {
 }
 
 export interface LibraryListCategoriesResult {
-  /** Top-level category names with their leaf-vocabulary size. Present in
-   * overview mode (no `category` requested). */
+  /** Top-level category names, each `count` being its number of distinct
+   * tag-paths — a rough size signal, not the exact drill-down tag count (which
+   * lists only leaves resolving to a keyword). Present in overview mode (no
+   * `category` requested). */
   categories?: LibraryTag[];
   /** Echo of the requested category. Present in drill-down mode. */
   category?: string;
