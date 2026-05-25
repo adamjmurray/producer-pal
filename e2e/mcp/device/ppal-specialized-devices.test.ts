@@ -30,12 +30,19 @@ interface PseudoParam {
   id?: string;
   name: string;
   value: unknown;
+  unit?: string;
 }
 
 interface ModulationRoute {
   target: string;
   source: string;
   amount: number;
+}
+
+interface ActionInfo {
+  name: string;
+  signature: string;
+  description: string;
 }
 
 interface ReadDeviceResult {
@@ -45,6 +52,7 @@ interface ReadDeviceResult {
   parameters?: PseudoParam[];
   options?: Record<string, unknown>;
   modulations?: ModulationRoute[];
+  actions?: ActionInfo[];
 }
 
 // Reuse one Live session across the suite (each test makes its own fresh
@@ -243,6 +251,35 @@ describe("specialized devices: Wavetable", () => {
     ).toBe(false);
   });
 
+  it('lists mod-matrix actions via include: ["actions"]', async () => {
+    const id = await createInstrument("Wavetable");
+    const { actions } = await readDevice(id, ["actions"]);
+
+    expect((actions ?? []).map((a) => a.name)).toStrictEqual(
+      expect.arrayContaining([
+        "setModulation",
+        "clearModulation",
+        "addModulationTarget",
+      ]),
+    );
+
+    const setMod = actions?.find((a) => a.name === "setModulation");
+
+    expect(setMod?.signature).toContain("setModulation(");
+    expect(setMod?.description.length).toBeGreaterThan(0);
+  });
+
+  it("surfaces the degrees unit on a Phase Offset param (param-values)", async () => {
+    const id = await createInstrument("Wavetable");
+    const device = await readDevice(id, ["param-values"], "Phase Offset");
+    const phaseParam = device.parameters?.find((p) =>
+      p.name.includes("Phase Offset"),
+    );
+
+    expect(phaseParam).toBeDefined();
+    expect(phaseParam?.unit).toBe("degrees");
+  });
+
   it("round-trips osc category + wavetable (category scopes the list)", async () => {
     const id = await createInstrument("Wavetable");
 
@@ -422,6 +459,24 @@ describe("specialized devices: Simpler", () => {
     expect(paramValue(after, "playbackMode")).toBe("one-shot");
     expect(paramValue(after, "voices")).toBe(8);
     expect(paramValue(after, "retrigger")).toBe(false);
+  });
+
+  it('lists sample-editing actions via include: ["actions"]', async () => {
+    const id = await createInstrument("Simpler");
+    const { actions } = await readDevice(id, ["actions"]);
+
+    expect((actions ?? []).map((a) => a.name)).toStrictEqual(
+      expect.arrayContaining([
+        "reverse",
+        "crop",
+        "warpDouble",
+        "warpHalf",
+        "warpAs",
+      ]),
+    );
+    expect(actions?.find((a) => a.name === "warpAs")?.signature).toBe(
+      "warpAs(beats)",
+    );
   });
 
   it('include: ["sample"] returns the sample as a flat top-level field, not in params', async () => {
