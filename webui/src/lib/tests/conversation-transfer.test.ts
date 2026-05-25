@@ -191,5 +191,34 @@ describe("conversation-transfer", () => {
     expect(imported.modelLabel).toBeNull();
     expect(imported.title).toBeNull();
     expect(imported.updatedAt).toBe(100);
+    expect(imported.sessionType).toBe("text");
+    expect(imported.voiceHistory).toBeNull();
+  });
+
+  it("preserves sessionType and voiceHistory on import", async () => {
+    const voiceItems = [{ type: "message", role: "user", content: [] }];
+    const data = {
+      version: 1,
+      conversations: [
+        {
+          id: "voice-record",
+          createdAt: 100,
+          messages: [],
+          sessionType: "voice",
+          voiceHistory: voiceItems,
+        },
+      ],
+    };
+
+    await importConversations(JSON.stringify(data));
+
+    const { json } = await exportConversations();
+    const parsed = JSON.parse(json) as {
+      conversations: ConversationRecord[];
+    };
+    const imported = parsed.conversations.find((c) => c.id === "voice-record")!;
+
+    expect(imported.sessionType).toBe("voice");
+    expect(imported.voiceHistory).toStrictEqual(voiceItems);
   });
 });

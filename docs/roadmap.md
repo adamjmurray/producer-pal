@@ -5,8 +5,6 @@
 ### 1.4.x
 
 - Take lane support
-- Support for device-specific parameters (e.g. deeper support for Wavetable)
-- Experimental voice interface via OpenAI's realtime v2 model
 
 ### 1.5 - Personalization and Extensibility
 
@@ -47,12 +45,15 @@ New tools and broader Live API coverage:
 - `ppal-library` for searching the Live Library (samples)
 - `ppal-live-api` for direct Live API access to cover gaps in specialized tools
 - Simpler sample loading via `ppal-update-device` (requires Live 12.4+)
+- Device-specific parameter control for 9 native devices (Drift, Wavetable,
+  Simpler, Meld, Compressor, EQ Eight, Hybrid Reverb, Roar, Spectral Resonator)
 
 Other improvements:
 
 - Split arrangement clips at specified positions
 - Multi-object create / update / duplicate operations
 - Configurable Ollama and LM Studio URLs for remote hosting
+- Experimental voice control in the chat UI (OpenAI realtime)
 - Many built-in chat UI improvements: conversation history, token usage
   reporting, grouped tool calls, message editing, and more
 

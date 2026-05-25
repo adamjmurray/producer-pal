@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 const codeTransformsSkills = `
@@ -115,7 +116,7 @@ v0 C1 13|3 v100 D1 13|3 // replace kick with snare in bar 13
 
 ### Transforms
 
-Add \`transforms\` parameter to create-clip or update-clip.
+Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 
 **Syntax:** \`[selector:] parameter operator expression\` (one per line)
 - **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
@@ -169,6 +170,7 @@ swing() auto-quantizes to the swing grid, so changing swing amount is always saf
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in. Don't re-apply earlier transforms.
 MIDI params ignored for audio clips, vice versa.
+On duplicate, transforms/code apply per-copy (not the source). With multiple copies, \`clip.index\`/\`clip.count\` span the copies — use \`seq()\` for variations (e.g. transpose each copy differently).
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Finding Library Content
 
@@ -179,6 +181,7 @@ Use \`ppal-library\` to search Live's browser library and the user's configured 
 - \`tags\` is comma-separated; results must match ALL listed tags. Use \`action: "listTags"\` to discover available tags.
 - \`source\`: filter where the file lives. \`sampleFolder\` is the user-configured sample folder on disk (bypasses Live's DB); \`user\`, \`pack\`, \`builtin\`, \`cloud\`, \`plugin\` query Live's DB.
 - Items from the user's sample folder appear before Live's library items in results.
+- Each result includes \`folder\` (its immediate parent folder name). Use it to sanity-check tag hits: Live's tags are noisy, so a \`Kick\`-tagged file under an \`IR Library\` folder is probably a reverb impulse, not a drum.
 - Pass an absolute \`path\` from a result to \`ppal-create-clip\` / \`ppal-update-clip\` (audio clips) or \`ppal-create-device\` / \`ppal-update-device\` (Simpler \`sample\`).
 
 ## Working with Ableton Live
@@ -211,7 +214,28 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 
 Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
 
-**Simpler sample:** Load a sample with \`params: "sample=<absolute file path>"\` on ppal-create-device or ppal-update-device. Read-device returns the loaded path as a top-level \`sample\` field and (when params are included) as a \`{name: "sample", value: <path>}\` entry in \`parameters\`. Skipped with a warning on non-Simpler devices and on Simpler in multi-sample mode.
+**Simpler sample:** Load a sample with \`params: [{name: "sample", value: "<absolute file path>"}]\` on ppal-create-device or ppal-update-device; set its level with \`{name: "gainDb", value: <dB>}\` (0 = unity). \`sample\` is always a \`params\` entry — there is no top-level \`sample\` argument. Read-device: \`include: ["sample"]\` returns just the sample file path as a flat top-level \`sample\` field (ideal for scanning every pad's sample in a drum rack); \`include: ["params"]\` returns the full set including \`sample\`, \`gainDb\`, and \`multiSampleMode\`. Writes are skipped with a warning on non-Simpler devices and on Simpler in multi-sample mode.
+
+**Build a Drum Rack:** Create the rack (\`deviceName="Drum Rack"\`), then one ppal-create-device call per pad: \`deviceName="Simpler" path="t0/d0/p<Note>/d0" name="<PadName>" params=[{name: "sample", value: "<abs path>"}]\`. The note name addresses the pad (\`pC1\`, \`pF#1\`); its chain auto-creates, and the \`sample\` param loads the sample into the Simpler in the same call — no separate sample step. One call per pad (each takes a different sample). Standard layout: 16 pads chromatically from C1 up to D#2/Eb2. Get paths from \`ppal-library\`; to match an existing kit's pad notes, read the track with \`drum-map\` first.
+
+### Specialized Device Controls
+
+Some native devices expose class-level controls beyond their DeviceParameters. These flow through existing surfaces: **pseudo-params** (set via \`params\` {name, value} entries, read back in \`parameters\`), **\`actions\`** (function-call strings on update-device), dynamic catalogs and (Wavetable) current mod routes via read-device \`include: ["options"]\`. Invalid enum values warn-and-skip and list the valid options.
+
+Instruments:
+
+- **Drift** mod matrix. Source slots \`filterMod1Source\` \`filterMod2Source\` \`lfoSource\` \`pitchMod1Source\` \`pitchMod2Source\` \`shapeSource\` \`mod1Source\` \`mod2Source\` \`mod3Source\` take: Env 1, Env 2, LFO, Key, Vel, Mod, Press, Slide. Free-slot targets \`mod1Target\` \`mod2Target\` \`mod3Target\` take: None (disables), Osc 1 Gain, Osc 1 Shape, Osc 2 Gain, Osc 2 Detune, Noise Gain, LP Frequency, LP Resonance, HP Frequency, LFO Rate, Cyc Env Rate, Main Volume. Also set the matching amount DeviceParameter (e.g. \`Mod Matrix Amt 1\`). Plus \`voiceMode\` (Poly/Mono/Stereo/Unison), \`voiceCount\` (4/8/16/24/32), \`pitchBendRange\` (0-12).
+- **Wavetable** \`filterRouting\` (serial/parallel/split), \`monoPoly\` (mono/poly), \`polyVoices\` (2/3/4/5/6/7/8/16), \`unisonMode\` (none/classic/shimmer/noise/phase-sync/position-spread/random-note), \`unisonVoiceCount\` (2-8), \`osc1Engine\`/\`osc2Engine\` (None/Fm/Classic/Modern), \`osc1Category\`/\`osc2Category\` + \`osc1Wavetable\`/\`osc2Wavetable\` (set category first; browse via options \`oscWavetableCategories\`, then \`osc1Wavetables\`/\`osc2Wavetables\` list the selected category's tables). Mod matrix via actions: \`setModulation('<targetParamName>', '<source>', <amount -1..1>)\`, \`clearModulation('<targetParamName>', '<source>')\`, \`addModulationTarget('<paramName>')\`. Sources: Amp, Env 2, Env 3, LFO 1, LFO 2, Vel, Key, PB, Press, Mod, Rand, Note PB, Slide. read-device \`include: ["options"]\` returns current routes (\`modulations\`) and \`modulatableParameters\`.
+- **Meld** \`monoPoly\` (mono/poly), \`polyVoices\` (1-6), \`unisonVoices\` (0-2).
+- **Simpler** \`sample\` (file path), \`gainDb\` (sample level, 0 = unity), \`playbackMode\` (classic/one-shot/slicing), \`slicingPlaybackMode\` (mono/poly/thru), \`retrigger\`, \`voices\`; read-only \`multiSampleMode\`, \`estimatedPlaybackLength\`. Actions \`reverse\`, \`crop\`, \`warpDouble\`, \`warpHalf\`, \`warpAs(<beats>)\` operate on the active region — set the \`S Start\`/\`S Length\` DeviceParameters first to target a sub-range.
+
+Audio effects:
+
+- **Compressor** sidechain: \`sidechainSourceTrackId\` (a trackId, or null for No Input) and \`sidechainChannel\` (valid set varies by source — typically Pre FX/Post FX/Post Mixer, but a drum-rack/chained source exposes per-device channels). Apply source before channel. options lists \`sidechainSourceTrackIds\` and (for the current source) \`sidechainChannels\`.
+- **EQ Eight** \`globalMode\` (stereo / L/R / M/S), \`oversample\`. In L/R the A bands process Left and B bands Right; in M/S, A = Mid and B = Side. Set \`globalMode\`, then write the A-/B-suffix band DeviceParameters (e.g. \`5 Frequency B\`).
+- **Hybrid Reverb** \`irCategory\`, \`irFile\` (set category first; browse via options \`irCategoryList\`, then \`irFileList\` lists the selected category's files), \`irAttackTime\`, \`irDecayTime\`, \`irSizeFactor\`, \`irTimeShapingOn\`.
+- **Roar** \`routingMode\` (single/serial/parallel/multi-band/mid-side/feedback/delay), \`envListen\`.
+- **Spectral Resonator** \`midiGate\`, \`monoPoly\` (mono/poly), \`pitchBendRange\` (0-24), \`modMode\` (None/Chorus/Wander/Granular), \`pitchMode\` (Hertz / MIDI Note), \`polyphony\` (2/4/8/16).
 
 ### Moving Clips
 

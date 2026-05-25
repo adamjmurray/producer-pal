@@ -237,6 +237,14 @@ function ConversationMeta({ conv }: { conv: ConversationSummary }) {
         {formatTimestampDate(conv.updatedAt)},{" "}
         {formatTimestampTime(conv.updatedAt)}
       </div>
+      {conv.sessionType === "voice" && (
+        <span
+          className="px-1.5 rounded-sm bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 font-medium"
+          title="Voice conversation"
+        >
+          Voice
+        </span>
+      )}
       {conv.totalUsage && (
         <div
           className="hidden @min-[20rem]:block truncate ml-2"

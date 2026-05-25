@@ -35,6 +35,8 @@ export const mockSettingsHook = {
   setBaseUrl: vi.fn(),
   model: "gemini-1.5-flash",
   setModel: vi.fn(),
+  savedModel: "gemini-1.5-flash",
+  savedProvider: "gemini" as const,
   thinking: "default" as const,
   setThinking: vi.fn(),
   temperature: 1.0,

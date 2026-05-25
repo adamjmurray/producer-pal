@@ -11,6 +11,16 @@ import {
   checkHasApiKey,
   loadEnabledTools,
   loadProviderSettings,
+  loadVoiceSpeed,
+  loadVoiceVolume,
+  saveVoiceSpeed,
+  saveVoiceVolume,
+  VOICE_SPEED_DEFAULT,
+  VOICE_SPEED_MAX,
+  VOICE_SPEED_MIN,
+  VOICE_VOLUME_DEFAULT,
+  VOICE_VOLUME_MAX,
+  VOICE_VOLUME_MIN,
 } from "#webui/hooks/settings/settings-helpers";
 
 describe("settings-helpers", () => {
@@ -67,6 +77,58 @@ describe("settings-helpers", () => {
       localStorage.setItem("producer_pal_enabled_tools", "not-json");
 
       expect(loadEnabledTools()).toStrictEqual({});
+    });
+  });
+
+  describe("voice speed persistence", () => {
+    it("returns the default speed when no value is stored", () => {
+      expect(loadVoiceSpeed()).toBe(VOICE_SPEED_DEFAULT);
+    });
+
+    it("round-trips through localStorage", () => {
+      saveVoiceSpeed(1.25);
+      expect(loadVoiceSpeed()).toBe(1.25);
+    });
+
+    it("clamps stored values above the max down to the max", () => {
+      saveVoiceSpeed(99);
+      expect(loadVoiceSpeed()).toBe(VOICE_SPEED_MAX);
+    });
+
+    it("clamps stored values below the min up to the min", () => {
+      saveVoiceSpeed(0.1);
+      expect(loadVoiceSpeed()).toBe(VOICE_SPEED_MIN);
+    });
+
+    it("falls back to default on unparseable values", () => {
+      localStorage.setItem("producer_pal_voice_speed", "not-a-number");
+      expect(loadVoiceSpeed()).toBe(VOICE_SPEED_DEFAULT);
+    });
+  });
+
+  describe("voice volume persistence", () => {
+    it("returns unity when no value is stored (existing users default)", () => {
+      expect(loadVoiceVolume()).toBe(VOICE_VOLUME_DEFAULT);
+    });
+
+    it("round-trips through localStorage", () => {
+      saveVoiceVolume(0.5);
+      expect(loadVoiceVolume()).toBe(0.5);
+    });
+
+    it("clamps stored values above the max down to the max", () => {
+      saveVoiceVolume(5);
+      expect(loadVoiceVolume()).toBe(VOICE_VOLUME_MAX);
+    });
+
+    it("clamps stored values below the min up to the min", () => {
+      saveVoiceVolume(-1);
+      expect(loadVoiceVolume()).toBe(VOICE_VOLUME_MIN);
+    });
+
+    it("falls back to default on unparseable values", () => {
+      localStorage.setItem("producer_pal_voice_volume", "not-a-number");
+      expect(loadVoiceVolume()).toBe(VOICE_VOLUME_DEFAULT);
     });
   });
 });

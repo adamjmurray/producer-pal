@@ -255,6 +255,14 @@ describe("librarySearch", () => {
         "pack_kick.wav",
       ]);
     });
+
+    it("narrows to the intersection when query + tags are both passed", async () => {
+      // query "kick" matches both kicks by name; tags=Punchy narrows to the
+      // one carrying that tag (pack_kick). Asserts the strict-AND combination.
+      const result = await librarySearch({ query: "kick", tags: "Punchy" });
+
+      expect(result.items.map((i) => i.name)).toStrictEqual(["pack_kick.wav"]);
+    });
   });
 
   describe("sort", () => {
@@ -310,6 +318,14 @@ describe("librarySearch", () => {
     expect(result.items[0]?.path).toBe(
       "/Users/test/Music/Ableton/User Library/user_kick.aif",
     );
+  });
+
+  it("surfaces the immediate parent folder name on each item", async () => {
+    const userKick = await librarySearch({ query: "user_kick" });
+    const packKick = await librarySearch({ query: "pack_kick" });
+
+    expect(userKick.items[0]?.folder).toBe("User Library");
+    expect(packKick.items[0]?.folder).toBe("Pack One");
   });
 
   it("respects limit", async () => {

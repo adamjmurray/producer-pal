@@ -43,7 +43,10 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should find correct raw value via binary search", () => {
-      updateDevice({ ids: "dev1", params: "AEG1 Rel = 600" });
+      updateDevice({
+        ids: "dev1",
+        params: [{ name: "AEG1 Rel", value: "600" }],
+      });
 
       const setCall = param.set.mock.calls.find(
         (c: unknown[]) => c[0] === "value",
@@ -57,7 +60,7 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should handle target at min boundary", () => {
-      updateDevice({ ids: "dev1", params: "AEG1 Rel = 5" });
+      updateDevice({ ids: "dev1", params: [{ name: "AEG1 Rel", value: "5" }] });
 
       const setCall = param.set.mock.calls.find(
         (c: unknown[]) => c[0] === "value",
@@ -68,7 +71,10 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should handle target at max boundary", () => {
-      updateDevice({ ids: "dev1", params: "AEG1 Rel = 15000" });
+      updateDevice({
+        ids: "dev1",
+        params: [{ name: "AEG1 Rel", value: "15000" }],
+      });
 
       const setCall = param.set.mock.calls.find(
         (c: unknown[]) => c[0] === "value",
@@ -111,7 +117,7 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should handle s to ms unit normalization during binary search", () => {
-      updateDevice({ ids: "dev1", params: "Decay = 5000" });
+      updateDevice({ ids: "dev1", params: [{ name: "Decay", value: "5000" }] });
 
       const setCall = param.set.mock.calls.find(
         (c: unknown[]) => c[0] === "value",
@@ -147,7 +153,10 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should fall back to raw value when min label is unparseable", () => {
-      updateDevice({ ids: "dev1", params: "Special = 0.7" });
+      updateDevice({
+        ids: "dev1",
+        params: [{ name: "Special", value: "0.7" }],
+      });
 
       expect(param.set).toHaveBeenCalledWith("value", 0.7);
     });
@@ -180,7 +189,10 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should fall back when max label is unparseable", () => {
-      updateDevice({ ids: "dev1", params: "HalfParsed = 0.3" });
+      updateDevice({
+        ids: "dev1",
+        params: [{ name: "HalfParsed", value: "0.3" }],
+      });
 
       expect(param.set).toHaveBeenCalledWith("value", 0.3);
     });
@@ -211,7 +223,10 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should warn and not write when string input can't be interpreted", () => {
-      updateDevice({ ids: "dev1", params: "Mode = custom-value" });
+      updateDevice({
+        ids: "dev1",
+        params: [{ name: "Mode", value: "custom-value" }],
+      });
 
       expect(param.set).not.toHaveBeenCalled();
       expect(outlet).toHaveBeenCalledWith(
@@ -255,7 +270,7 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should converge toward min when mid-range labels parse as NaN", () => {
-      updateDevice({ ids: "dev1", params: "Flaky = 500" });
+      updateDevice({ ids: "dev1", params: [{ name: "Flaky", value: "500" }] });
 
       const setCall = param.set.mock.calls.find(
         (c: unknown[]) => c[0] === "value",
@@ -294,7 +309,7 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should resolve param via absolute numeric ID fallback", () => {
-      updateDevice({ ids: "dev1", params: "42 = 0.8" });
+      updateDevice({ ids: "dev1", params: [{ name: "42", value: "0.8" }] });
 
       expect(param.set).toHaveBeenCalledWith("value", 0.8);
     });
@@ -334,7 +349,7 @@ describe("updateDevice - param value conversion", () => {
       // with "3" as paramId. Since "3" doesn't match /parameters (\d+)$/,
       // it falls through to LiveAPI.from("3") — the absolute ID path.
       // To test the relative "parameters N" path, use name-based resolution.
-      updateDevice({ ids: "dev1", params: "Freq = 0.6" });
+      updateDevice({ ids: "dev1", params: [{ name: "Freq", value: "0.6" }] });
 
       expect(param.set).toHaveBeenCalledWith("value", 0.6);
     });
@@ -364,7 +379,7 @@ describe("updateDevice - param value conversion", () => {
 
     it("should warn when note name is valid but out of MIDI range", () => {
       // C-3 is a valid note name but maps to MIDI note -12 (out of 0-127)
-      updateDevice({ ids: "dev1", params: "Pitch = C-3" });
+      updateDevice({ ids: "dev1", params: [{ name: "Pitch", value: "C-3" }] });
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -407,7 +422,10 @@ describe("updateDevice - param value conversion", () => {
     });
 
     it("should return mid when binary search encounters string-typed label", () => {
-      updateDevice({ ids: "dev1", params: "NoteParam = 500" });
+      updateDevice({
+        ids: "dev1",
+        params: [{ name: "NoteParam", value: "500" }],
+      });
 
       const setCall = param.set.mock.calls.find(
         (c: unknown[]) => c[0] === "value",
@@ -428,12 +446,157 @@ describe("updateDevice - param value conversion", () => {
         properties: { parameters: children() },
       });
 
-      updateDevice({ ids: "dev1", params: "NonExistentParam = 0.5" });
+      updateDevice({
+        ids: "dev1",
+        params: [{ name: "NonExistentParam", value: "0.5" }],
+      });
 
       expect(outlet).toHaveBeenCalledWith(
         1,
         expect.stringContaining('"NonExistentParam" not found'),
       );
     });
+  });
+});
+
+describe("updateDevice - sample pseudo-param", () => {
+  it("loads a sample on a Simpler device via params", () => {
+    const simpler = registerMockObject("simpler-1", {
+      path: livePath.track(0).device(0),
+      type: "SimplerDevice",
+      properties: {
+        class_display_name: "Simpler",
+        multi_sample_mode: 0,
+        parameters: children(),
+      },
+    });
+
+    const result = updateDevice({
+      ids: "simpler-1",
+      params: [{ name: "sample", value: "/tmp/kick.wav" }],
+    });
+
+    expect(simpler.call).toHaveBeenCalledWith(
+      "replace_sample",
+      "/tmp/kick.wav",
+    );
+    expect(result).toStrictEqual({ id: "simpler-1" });
+  });
+
+  it("does not look up sample as a DeviceParameter (no 'not found' warning)", () => {
+    registerMockObject("simpler-1", {
+      path: livePath.track(0).device(0),
+      type: "SimplerDevice",
+      properties: {
+        class_display_name: "Simpler",
+        multi_sample_mode: 0,
+        parameters: children(),
+      },
+    });
+
+    updateDevice({
+      ids: "simpler-1",
+      params: [{ name: "sample", value: "/tmp/kick.wav" }],
+    });
+
+    expect(outlet).not.toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('"sample" not found'),
+    );
+  });
+
+  it("loads sample alongside regular DeviceParameters in one params block", () => {
+    const simpler = registerMockObject("simpler-1", {
+      path: livePath.track(0).device(0),
+      type: "SimplerDevice",
+      properties: {
+        class_display_name: "Simpler",
+        multi_sample_mode: 0,
+        parameters: children("vol-param"),
+      },
+    });
+    const param = registerMockObject("vol-param", {
+      properties: {
+        name: "Volume",
+        original_name: "Volume",
+        is_quantized: 0,
+        value: 0.5,
+        min: 0,
+        max: 1,
+      },
+      methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
+    });
+
+    updateDevice({
+      ids: "simpler-1",
+      params: [
+        { name: "sample", value: "/tmp/kick.wav" },
+        { name: "Volume", value: "0.8" },
+      ],
+    });
+
+    expect(simpler.call).toHaveBeenCalledWith(
+      "replace_sample",
+      "/tmp/kick.wav",
+    );
+    expect(param.set).toHaveBeenCalledWith("value", 0.8);
+  });
+});
+
+describe("updateDevice - actions arg", () => {
+  it("dispatches a device action to its specialized handler", () => {
+    const simpler = registerMockObject("simpler-1", {
+      path: livePath.track(0).device(0),
+      type: "SimplerDevice",
+      properties: {
+        class_display_name: "Simpler",
+        multi_sample_mode: 0,
+        parameters: [],
+      },
+    });
+
+    const result = updateDevice({ ids: "simpler-1", actions: ["reverse"] });
+
+    expect(simpler.call).toHaveBeenCalledWith("reverse");
+    expect(result).toStrictEqual({ id: "simpler-1" });
+  });
+
+  it("applies actions alongside params in one call", () => {
+    const simpler = registerMockObject("simpler-1", {
+      path: livePath.track(0).device(0),
+      type: "SimplerDevice",
+      properties: {
+        class_display_name: "Simpler",
+        multi_sample_mode: 0,
+        parameters: [],
+      },
+    });
+
+    updateDevice({
+      ids: "simpler-1",
+      params: [{ name: "sample", value: "/tmp/kick.wav" }],
+      actions: ["reverse"],
+    });
+
+    expect(simpler.call).toHaveBeenCalledWith(
+      "replace_sample",
+      "/tmp/kick.wav",
+    );
+    expect(simpler.call).toHaveBeenCalledWith("reverse");
+  });
+
+  it("warns when actions are set on a non-device target (chain)", () => {
+    registerMockObject("chain-1", {
+      path: livePath.track(0).device(0).chain(0),
+      type: "Chain",
+      properties: { name: "Chain", mute: 0, solo: 0, devices: [] },
+    });
+
+    updateDevice({ ids: "chain-1", actions: ["reverse"] });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("'actions' not applicable to Chain"),
+    );
   });
 });

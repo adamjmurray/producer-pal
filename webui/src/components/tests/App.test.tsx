@@ -44,6 +44,7 @@ vi.mock(import("#webui/hooks/use-view-state"), () => ({
 }));
 
 import { useChat } from "#webui/hooks/chat/use-chat";
+import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
@@ -101,12 +102,59 @@ describe("App", () => {
 
       expect(header).toBeDefined();
     });
+
+    it("renders VoiceApp when the saved provider+model is a realtime model", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "openai",
+        savedProvider: "openai",
+        model: "gpt-realtime-2",
+        savedModel: "gpt-realtime-2",
+      });
+      render(<App />);
+      // VoiceApp shows the Talk button; ChatScreen does not
+      expect(document.body.textContent).toMatch(/Talk|Stop/);
+    });
+
+    it("does NOT mount VoiceApp when only the in-modal model is realtime", () => {
+      // Simulates the mid-modal state where the user picked a realtime model
+      // in the provider dropdown but hasn't saved yet. App.tsx routes off
+      // savedModel so the underlying chat screen stays mounted.
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "openai",
+        savedProvider: "gemini",
+        model: "gpt-realtime-2",
+        savedModel: "gemini-1.5-flash",
+      });
+      render(<App />);
+      expect(document.body.textContent).not.toMatch(/Talk|Stop/);
+    });
+
+    it("does NOT mount VoiceApp for a non-openai provider reusing the realtime model id", () => {
+      // A custom/OpenAI-compatible provider whose model id happens to equal the
+      // realtime model must stay in chat: voice has no key/transport for it.
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "custom",
+        savedProvider: "custom",
+        model: "gpt-realtime-2",
+        savedModel: "gpt-realtime-2",
+      });
+      render(<App />);
+      expect(document.body.textContent).not.toMatch(/Talk|Stop/);
+    });
   });
 
   describe("provider routing", () => {
-    it("calls useChat once (AI SDK adapter handles all providers)", () => {
+    it("calls useChat (AI SDK adapter handles all providers)", () => {
       render(<App />);
-      expect(useChat).toHaveBeenCalledTimes(1);
+      // ChatApp reports its mode context up to App via setState, which causes
+      // one additional re-render — so useChat is called more than once but
+      // exactly once per render cycle.
+      expect(
+        (useChat as ReturnType<typeof vi.fn>).mock.calls.length,
+      ).toBeGreaterThanOrEqual(1);
     });
 
     it("passes AI SDK adapter with createClient", () => {
@@ -114,6 +162,40 @@ describe("App", () => {
       const calls = (useChat as ReturnType<typeof vi.fn>).mock.calls;
 
       expect(calls[0]![0].adapter).toHaveProperty("createClient");
+    });
+
+    it("onForeignRecord switches the viewing mode without mutating saved settings", async () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        // Saved is a chat model; clicking a voice record from history should
+        // route to VoiceApp without changing this.
+        provider: "openai",
+        savedProvider: "openai",
+        model: "gpt-5",
+        savedModel: "gpt-5",
+      });
+      const { rerender } = render(<App />);
+
+      // Initially in chat mode (saved is chat)
+      expect(document.body.textContent).not.toMatch(/Talk|Stop/);
+
+      const onForeignRecord = (
+        useConversations as ReturnType<typeof vi.fn>
+      ).mock.calls.at(-1)?.[0]?.onForeignRecord;
+
+      expect(typeof onForeignRecord).toBe("function");
+
+      await act(() => {
+        onForeignRecord?.({
+          sessionType: "voice",
+          provider: "openai",
+          model: "gpt-realtime-2",
+        });
+      });
+      rerender(<App />);
+
+      // Routes to VoiceApp via the viewingMode override; savedModel stays chat.
+      expect(document.body.textContent).toMatch(/Talk|Stop/);
     });
   });
 

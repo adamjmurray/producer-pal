@@ -260,6 +260,10 @@ function buildLibraryItem(
     source: row.folder_kind == null ? null : resolveSource(row.folder_kind),
   };
 
+  if (resolved?.folder != null) {
+    item.folder = resolved.folder;
+  }
+
   if (resolved?.truncated) {
     item.pathTruncated = true;
   }

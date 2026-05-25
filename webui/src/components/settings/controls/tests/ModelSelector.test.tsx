@@ -27,7 +27,7 @@ function renderModelSelector(
   const result = render(
     <ModelSelector
       provider={props.provider ?? "gemini"}
-      model={props.model ?? "gemini-3.1-flash-lite-preview"}
+      model={props.model ?? "gemini-3.1-flash-lite"}
       setModel={setModel}
     />,
   );
@@ -44,7 +44,7 @@ describe("ModelSelector", () => {
   it("renders with correct selected model", () => {
     renderModelSelector();
     expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe(
-      "gemini-3.1-flash-lite-preview",
+      "gemini-3.1-flash-lite",
     );
   });
 
@@ -54,7 +54,7 @@ describe("ModelSelector", () => {
       screen.getByRole("option", { name: /^Gemini 3\.1 Pro$/ }),
     ).toBeDefined();
     expect(
-      screen.getByRole("option", { name: /^Gemini 3 Flash$/ }),
+      screen.getByRole("option", { name: /^Gemini 3\.5 Flash$/ }),
     ).toBeDefined();
   });
 
@@ -62,9 +62,9 @@ describe("ModelSelector", () => {
     renderModelSelector();
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
 
-    expect(options[0]!.value).toBe("gemini-3-flash-preview");
+    expect(options[0]!.value).toBe("gemini-3.5-flash");
     expect(options[1]!.value).toBe("gemini-3.1-pro-preview");
-    expect(options[2]!.value).toBe("gemini-3.1-flash-lite-preview");
+    expect(options[2]!.value).toBe("gemini-3.1-flash-lite");
   });
 
   it("triggers setModel callback on change", () => {
@@ -74,10 +74,10 @@ describe("ModelSelector", () => {
     expect(setModel).toHaveBeenCalledExactlyOnceWith("gemini-3.1-pro-preview");
   });
 
-  it("can select gemini-3-flash-preview", () => {
+  it("can select gemini-3.5-flash", () => {
     const { setModel } = renderModelSelector();
 
-    expectModelSelected("gemini-3-flash-preview", setModel);
+    expectModelSelected("gemini-3.5-flash", setModel);
   });
 
   describe("OpenAI provider", () => {
@@ -96,6 +96,11 @@ describe("ModelSelector", () => {
       });
 
       expectModelSelected("gpt-5.4-mini", setModel);
+    });
+
+    it("includes the realtime (voice) model in the OpenAI dropdown", () => {
+      renderModelSelector({ provider: "openai", model: "gpt-5.5" });
+      expect(screen.getByRole("option", { name: /Realtime/ })).toBeDefined();
     });
   });
 

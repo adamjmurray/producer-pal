@@ -485,13 +485,15 @@ display value, value items for quantized params).
 
 ### Include: `"sample"`
 
-Adds Simpler sample info. No effect on non-Simpler devices.
+A focused discovery view: adds just the Simpler sample file path as a flat
+top-level field, optimized for scanning many devices at once (e.g. every pad in
+a drum rack). No effect on non-Simpler devices. `gainDb`, multi-sample state
+(`multiSampleMode`), and the other Simpler sample params are not in this view —
+use `include: ["params"]` for the full set.
 
-| Field         | Type     | Description                              |
-| ------------- | -------- | ---------------------------------------- |
-| `sample`      | `string` | File path (omitted if no sample loaded)  |
-| `multisample` | `true`   | Only present for multisample instruments |
-| `gainDb`      | `number` | Gain in dB                               |
+| Field    | Type     | Description                                    |
+| -------- | -------- | ---------------------------------------------- |
+| `sample` | `string` | File path (omitted if no single sample loaded) |
 
 ### `maxDepth` arg
 

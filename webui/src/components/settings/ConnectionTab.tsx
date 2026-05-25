@@ -2,13 +2,15 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { type Provider } from "#webui/types/settings";
 import {
   API_KEY_URLS,
   DEFAULT_LOCAL_URLS,
-  MODEL_DOCS_URLS,
+  ModelDocsLink,
   SmallModelToggle,
   ThinkingSelector,
+  VoiceSettings,
 } from "./connection-tab-helpers";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
@@ -28,6 +30,17 @@ interface ConnectionTabProps {
   setThinking: (thinking: string) => void;
   smallModelMode: boolean;
   setSmallModelMode: (enabled: boolean) => void;
+  realtimeVoice: string;
+  setRealtimeVoice: (voice: string) => void;
+  voiceVolume: number;
+  setVoiceVolume: (volume: number) => void;
+  voiceSpeed: number;
+  setVoiceSpeed: (speed: number) => void;
+  turnDetection: TurnDetectionSettings;
+  setTurnDetection: (settings: TurnDetectionSettings) => void;
+  /** Voice currently locked into the live RealtimeSession (or null when idle).
+   * Used to render a pending-change notice. */
+  activeVoice: string | null;
 }
 
 /**
@@ -62,6 +75,15 @@ export function ConnectionTab({
   setThinking,
   smallModelMode,
   setSmallModelMode,
+  realtimeVoice,
+  setRealtimeVoice,
+  voiceVolume,
+  setVoiceVolume,
+  voiceSpeed,
+  setVoiceSpeed,
+  turnDetection,
+  setTurnDetection,
+  activeVoice,
 }: ConnectionTabProps) {
   return (
     <>
@@ -125,18 +147,21 @@ export function ConnectionTab({
       />
 
       <ModelSelector provider={provider} model={model} setModel={setModel} />
-      {MODEL_DOCS_URLS[provider] && (
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 -mt-2">
-          <a
-            href={MODEL_DOCS_URLS[provider]}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            {providerLabel} models
-          </a>
-        </p>
-      )}
+      <ModelDocsLink provider={provider} providerLabel={providerLabel} />
+
+      <VoiceSettings
+        provider={provider}
+        model={model}
+        realtimeVoice={realtimeVoice}
+        setRealtimeVoice={setRealtimeVoice}
+        voiceVolume={voiceVolume}
+        setVoiceVolume={setVoiceVolume}
+        voiceSpeed={voiceSpeed}
+        setVoiceSpeed={setVoiceSpeed}
+        turnDetection={turnDetection}
+        setTurnDetection={setTurnDetection}
+        activeVoice={activeVoice}
+      />
 
       <div className="flex items-center justify-between">
         <ThinkingSelector thinking={thinking} setThinking={setThinking} />

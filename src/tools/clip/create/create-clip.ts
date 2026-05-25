@@ -5,7 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { select } from "#src/tools/control/select.ts";
+import { select } from "#src/tools/session/select.ts";
 import {
   parseTimeSignature,
   unwrapSingleResult,

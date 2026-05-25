@@ -8,8 +8,15 @@ import "#src/live-api-adapter/live-api-extensions.ts";
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
-import { registerMockObject } from "#src/test/mocks/mock-registry.ts";
-import { setSimplerSample } from "#src/tools/shared/device/simpler-sample.ts";
+import {
+  type RegisteredMockObject,
+  registerMockObject,
+} from "#src/test/mocks/mock-registry.ts";
+import {
+  setSimplerGain,
+  setSimplerSample,
+} from "#src/tools/shared/device/simpler-sample.ts";
+import { dbToLiveGain } from "#src/tools/shared/gain-utils.ts";
 
 function registerSimpler(opts: { multiSampleMode?: number } = {}) {
   return registerMockObject("simpler-1", {
@@ -21,6 +28,34 @@ function registerSimpler(opts: { multiSampleMode?: number } = {}) {
       parameters: children(),
     },
   });
+}
+
+/**
+ * Register a Simpler with a loaded sample child and return the sample mock.
+ * @param opts - Options
+ * @param opts.gain - Current linear gain on the sample (default 1)
+ * @returns The Sample mock object
+ */
+function registerSimplerWithSample(
+  opts: { gain?: number } = {},
+): RegisteredMockObject {
+  const sample = registerMockObject("sample-1", {
+    type: "Sample",
+    properties: { file_path: "/tmp/kick.wav", gain: opts.gain ?? 1 },
+  });
+
+  registerMockObject("simpler-1", {
+    path: livePath.track(0).device(0),
+    type: "SimplerDevice",
+    properties: {
+      class_display_name: "Simpler",
+      multi_sample_mode: 0,
+      parameters: children(),
+      sample: ["id", "sample-1"],
+    },
+  });
+
+  return sample;
 }
 
 describe("setSimplerSample", () => {
@@ -170,6 +205,75 @@ describe("setSimplerSample", () => {
     expect(outlet).toHaveBeenCalledWith(
       1,
       expect.stringContaining("createDevice:"),
+    );
+  });
+});
+
+describe("setSimplerGain", () => {
+  it("sets the loaded sample's gain, converting dB to linear", () => {
+    const sample = registerSimplerWithSample();
+
+    setSimplerGain(LiveAPI.from("id simpler-1"), 0, "updateDevice");
+
+    expect(sample.set).toHaveBeenCalledWith("gain", dbToLiveGain(0));
+  });
+
+  it("warns and skips on a non-numeric value", () => {
+    const sample = registerSimplerWithSample();
+
+    setSimplerGain(
+      LiveAPI.from("id simpler-1"),
+      Number("oops"),
+      "updateDevice",
+    );
+
+    expect(sample.set).not.toHaveBeenCalledWith("gain", expect.anything());
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("'gainDb' must be a number"),
+    );
+  });
+
+  it("warns and skips on non-Simpler devices", () => {
+    const device = registerMockObject("op-1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: {
+        class_display_name: "Operator",
+        parameters: children(),
+      },
+    });
+
+    setSimplerGain(LiveAPI.from("id op-1"), 0, "updateDevice");
+
+    expect(device.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("'gainDb' only applies to Simpler devices"),
+    );
+  });
+
+  it("warns and skips on Simpler in multi-sample mode", () => {
+    const device = registerSimpler({ multiSampleMode: 1 });
+
+    setSimplerGain(LiveAPI.from("id simpler-1"), 0, "updateDevice");
+
+    expect(device.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("multi-sample mode"),
+    );
+  });
+
+  it("warns and skips when no sample is loaded", () => {
+    const device = registerSimpler();
+
+    setSimplerGain(LiveAPI.from("id simpler-1"), 0, "updateDevice");
+
+    expect(device.set).not.toHaveBeenCalled();
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("'gainDb' requires a loaded sample"),
     );
   });
 });

@@ -114,7 +114,7 @@ describe("updateDevice", () => {
     it("should set value for numeric params", () => {
       const result = updateDevice({
         ids: "123",
-        params: "789 = 0.8",
+        params: [{ name: "789", value: "0.8" }],
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 0.8);
@@ -124,7 +124,10 @@ describe("updateDevice", () => {
     it("should set multiple param values", () => {
       const result = updateDevice({
         ids: "123",
-        params: "789 = 0.3\n790 = 0.7",
+        params: [
+          { name: "789", value: "0.3" },
+          { name: "790", value: "0.7" },
+        ],
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 0.3);
@@ -137,7 +140,7 @@ describe("updateDevice", () => {
 
       const result = updateDevice({
         ids: "123",
-        params: "999 = 0.5",
+        params: [{ name: "999", value: "0.5" }],
       });
 
       expect(outlet).toHaveBeenCalledWith(
@@ -147,15 +150,28 @@ describe("updateDevice", () => {
       expect(result).toStrictEqual({ id: "123" });
     });
 
-    it("should warn and skip lines without =", () => {
+    it("should warn and skip entries with an empty name", () => {
       const result = updateDevice({
         ids: "123",
-        params: "not valid format",
+        params: [{ name: "  ", value: "0.5" }],
       });
 
       expect(outlet).toHaveBeenCalledWith(
         1,
-        'updateDevice: skipping line without "=": not valid format',
+        "updateDevice: skipping param with empty name",
+      );
+      expect(result).toStrictEqual({ id: "123" });
+    });
+
+    it("should warn and skip entries with an empty value", () => {
+      const result = updateDevice({
+        ids: "123",
+        params: [{ name: "789", value: "  " }],
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        'updateDevice: skipping param "789" with empty value',
       );
       expect(result).toStrictEqual({ id: "123" });
     });
@@ -176,7 +192,7 @@ describe("updateDevice", () => {
     it("should convert string value to index for quantized param", () => {
       const result = updateDevice({
         ids: "123",
-        params: "791 = Fade",
+        params: [{ name: "791", value: "Fade" }],
       });
 
       expect(param791.set).toHaveBeenCalledWith("value", 1);
@@ -186,7 +202,7 @@ describe("updateDevice", () => {
     it("should log error for invalid enum value", () => {
       const result = updateDevice({
         ids: "123",
-        params: "791 = InvalidValue",
+        params: [{ name: "791", value: "InvalidValue" }],
       });
 
       expect(outlet).toHaveBeenCalledWith(
@@ -208,7 +224,7 @@ describe("updateDevice", () => {
     it("should convert note name to MIDI number (Live convention: C3=60)", () => {
       const result = updateDevice({
         ids: "123",
-        params: "789 = C3",
+        params: [{ name: "789", value: "C3" }],
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 60);
@@ -218,7 +234,7 @@ describe("updateDevice", () => {
     it("should handle sharps and flats", () => {
       updateDevice({
         ids: "123",
-        params: "789 = F#-1",
+        params: [{ name: "789", value: "F#-1" }],
       });
 
       expect(param789.set).toHaveBeenCalledWith("value", 18);
@@ -238,7 +254,7 @@ describe("updateDevice", () => {
     it("should convert -1 to 1 range to internal range for pan", () => {
       const result = updateDevice({
         ids: "123",
-        params: "792 = -0.5",
+        params: [{ name: "792", value: "-0.5" }],
       });
 
       // -0.5 → internal: ((-0.5 + 1) / 2) * (1 - 0) + 0 = 0.25
@@ -249,7 +265,7 @@ describe("updateDevice", () => {
     it("should handle full left pan", () => {
       updateDevice({
         ids: "123",
-        params: "792 = -1",
+        params: [{ name: "792", value: "-1" }],
       });
 
       // -1 → internal: 0
@@ -259,7 +275,7 @@ describe("updateDevice", () => {
     it("should handle full right pan", () => {
       updateDevice({
         ids: "123",
-        params: "792 = 1",
+        params: [{ name: "792", value: "1" }],
       });
 
       // 1 → internal: 1
@@ -306,25 +322,34 @@ describe("updateDevice", () => {
     });
 
     it("should resolve param by exact name", () => {
-      updateDevice({ ids: "123", params: "Filter Freq = 1000" });
+      updateDevice({
+        ids: "123",
+        params: [{ name: "Filter Freq", value: "1000" }],
+      });
 
       expect(paramFreq.set).toHaveBeenCalledWith("value", 1000);
     });
 
     it("should resolve param by name case-insensitively", () => {
-      updateDevice({ ids: "123", params: "filter freq = 1000" });
+      updateDevice({
+        ids: "123",
+        params: [{ name: "filter freq", value: "1000" }],
+      });
 
       expect(paramFreq.set).toHaveBeenCalledWith("value", 1000);
     });
 
     it("should resolve rack macro by raw name", () => {
-      updateDevice({ ids: "123", params: "Reverb = 0.8" });
+      updateDevice({ ids: "123", params: [{ name: "Reverb", value: "0.8" }] });
 
       expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
     });
 
     it("should resolve rack macro by formatted name", () => {
-      updateDevice({ ids: "123", params: "Reverb (Macro 1) = 0.8" });
+      updateDevice({
+        ids: "123",
+        params: [{ name: "Reverb (Macro 1)", value: "0.8" }],
+      });
 
       expect(paramMacro.set).toHaveBeenCalledWith("value", 0.8);
     });
@@ -332,7 +357,10 @@ describe("updateDevice", () => {
     it("should resolve multiple params by name", () => {
       updateDevice({
         ids: "123",
-        params: "Filter Freq = 1000\nReverb = 0.8",
+        params: [
+          { name: "Filter Freq", value: "1000" },
+          { name: "Reverb", value: "0.8" },
+        ],
       });
 
       expect(paramFreq.set).toHaveBeenCalledWith("value", 1000);
@@ -340,7 +368,10 @@ describe("updateDevice", () => {
     });
 
     it("should warn for unresolvable non-integer key", () => {
-      updateDevice({ ids: "123", params: "Nonexistent = 0.5" });
+      updateDevice({
+        ids: "123",
+        params: [{ name: "Nonexistent", value: "0.5" }],
+      });
 
       expect(outlet).toHaveBeenCalledWith(
         1,
@@ -625,82 +656,4 @@ describe("updateDevice", () => {
   });
 
   // Drum chain move tests are in update-device-drum-chain-move.test.js
-
-  describe("sample pseudo-param", () => {
-    it("loads a sample on a Simpler device via params", () => {
-      const simpler = registerMockObject("simpler-1", {
-        path: livePath.track(0).device(0),
-        type: "SimplerDevice",
-        properties: {
-          class_display_name: "Simpler",
-          multi_sample_mode: 0,
-          parameters: children(),
-        },
-      });
-
-      const result = updateDevice({
-        ids: "simpler-1",
-        params: "sample=/tmp/kick.wav",
-      });
-
-      expect(simpler.call).toHaveBeenCalledWith(
-        "replace_sample",
-        "/tmp/kick.wav",
-      );
-      expect(result).toStrictEqual({ id: "simpler-1" });
-    });
-
-    it("does not look up sample as a DeviceParameter (no 'not found' warning)", () => {
-      registerMockObject("simpler-1", {
-        path: livePath.track(0).device(0),
-        type: "SimplerDevice",
-        properties: {
-          class_display_name: "Simpler",
-          multi_sample_mode: 0,
-          parameters: children(),
-        },
-      });
-
-      updateDevice({ ids: "simpler-1", params: "sample=/tmp/kick.wav" });
-
-      expect(outlet).not.toHaveBeenCalledWith(
-        1,
-        expect.stringContaining('"sample" not found'),
-      );
-    });
-
-    it("loads sample alongside regular DeviceParameters in one params block", () => {
-      const simpler = registerMockObject("simpler-1", {
-        path: livePath.track(0).device(0),
-        type: "SimplerDevice",
-        properties: {
-          class_display_name: "Simpler",
-          multi_sample_mode: 0,
-          parameters: children("vol-param"),
-        },
-      });
-      const param = registerMockObject("vol-param", {
-        properties: {
-          name: "Volume",
-          original_name: "Volume",
-          is_quantized: 0,
-          value: 0.5,
-          min: 0,
-          max: 1,
-        },
-        methods: { str_for_value: (v: unknown) => `${Number(v)} dB` },
-      });
-
-      updateDevice({
-        ids: "simpler-1",
-        params: "sample=/tmp/kick.wav\nVolume=0.8",
-      });
-
-      expect(simpler.call).toHaveBeenCalledWith(
-        "replace_sample",
-        "/tmp/kick.wav",
-      );
-      expect(param.set).toHaveBeenCalledWith("value", 0.8);
-    });
-  });
 });

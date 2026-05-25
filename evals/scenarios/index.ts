@@ -87,7 +87,7 @@ program
   )
   .option(
     "-m, --model <provider/model>",
-    "Model(s) to test (e.g., gemini-3-flash-preview, local/qwen3-8b)",
+    "Model(s) to test (e.g., gemini-3.5-flash, local/qwen3-8b)",
     collectValues,
     [],
   )

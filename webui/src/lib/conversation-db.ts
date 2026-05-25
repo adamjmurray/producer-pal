@@ -9,6 +9,9 @@ import { STORE_NAME, tryOpenDb } from "#webui/lib/conversation-db-helpers";
 
 export const MAX_CONVERSATIONS = 200;
 
+/** Distinguishes chat (text) from voice transcripts. Older records are treated as "text". */
+export type SessionType = "text" | "voice";
+
 /** Full conversation record stored in IndexedDB */
 export interface ConversationRecord {
   id: string;
@@ -24,11 +27,18 @@ export interface ConversationRecord {
   showThoughts: boolean | null;
   smallModelMode: boolean | null;
   totalUsage: TokenUsage | null;
+  sessionType: SessionType;
   messages: ChatMessage[];
+  // RealtimeItem[] for voice records, null for text. Typed as unknown[] so the
+  // storage layer stays decoupled from @openai/agents/realtime.
+  voiceHistory: unknown[] | null;
 }
 
-/** Lightweight summary for list display (no messages) */
-export type ConversationSummary = Omit<ConversationRecord, "messages">;
+/** Lightweight summary for list display (no transcript payload) */
+export type ConversationSummary = Omit<
+  ConversationRecord,
+  "messages" | "voiceHistory"
+>;
 
 /** Result of enforcing the conversation limit during save */
 export interface EnforceLimitResult {
@@ -74,20 +84,13 @@ export async function loadConversation(
   id: string,
 ): Promise<ConversationRecord | undefined> {
   const db = await getConversationDb();
-  const record = await (db.get(STORE_NAME, id) as Promise<
-    ConversationRecord | undefined
-  >);
+  const raw = (await db.get(STORE_NAME, id)) as
+    | Partial<ConversationRecord>
+    | undefined;
 
-  if (!record) return undefined;
+  if (!raw) return undefined;
 
-  // Default new fields for old records that predate these columns
-  record.thinking ??= null;
-  record.temperature ??= null;
-  record.showThoughts ??= null;
-  record.smallModelMode ??= null;
-  record.totalUsage ??= null;
-
-  return record;
+  return normalizeLegacyRecord(raw);
 }
 
 /**
@@ -170,9 +173,10 @@ export async function setBookmark(
  */
 export async function listConversations(): Promise<ConversationSummary[]> {
   const db = await getConversationDb();
-  const all = (await db.getAll(STORE_NAME)) as ConversationRecord[];
+  const all = (await db.getAll(STORE_NAME)) as Partial<ConversationRecord>[];
 
   return all
+    .map(normalizeLegacyRecord)
     .map(
       ({
         id,
@@ -188,6 +192,7 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         showThoughts,
         smallModelMode,
         totalUsage,
+        sessionType,
       }) => ({
         id,
         title,
@@ -197,11 +202,12 @@ export async function listConversations(): Promise<ConversationSummary[]> {
         provider,
         model,
         modelLabel,
-        thinking: thinking ?? null,
-        temperature: temperature ?? null,
-        showThoughts: showThoughts ?? null,
-        smallModelMode: smallModelMode ?? null,
-        totalUsage: totalUsage ?? null,
+        thinking,
+        temperature,
+        showThoughts,
+        smallModelMode,
+        totalUsage,
+        sessionType,
       }),
     )
     .sort((a, b) => b.updatedAt - a.updatedAt);
@@ -223,6 +229,26 @@ export async function resetDbCache(): Promise<void> {
 }
 
 // --- Helpers below main exports ---
+
+/**
+ * Fill in fields missing from records written by earlier schema versions, so
+ * the rest of the code can treat the result as a full {@link ConversationRecord}.
+ * @param raw - Raw record from IndexedDB (possibly missing newer fields)
+ * @returns Record with all fields populated to current shape
+ */
+function normalizeLegacyRecord(
+  raw: Partial<ConversationRecord>,
+): ConversationRecord {
+  raw.thinking ??= null;
+  raw.temperature ??= null;
+  raw.showThoughts ??= null;
+  raw.smallModelMode ??= null;
+  raw.totalUsage ??= null;
+  raw.sessionType ??= "text";
+  raw.voiceHistory ??= null;
+
+  return raw as ConversationRecord;
+}
 
 /**
  * Enforce the conversation limit by deleting oldest non-bookmarked conversations.

@@ -14,11 +14,13 @@ import express, {
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-utils.ts";
-import { toolDefLiveApi } from "#src/tools/control/live-api.def.ts";
+import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
+import { isLocalOrigin } from "./helpers/request-origin.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
-import { registerRestApiRoutes } from "./rest-api-routes.ts";
+import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
+import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 
 const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 
@@ -248,6 +250,20 @@ export function createExpressApp(): Express {
     res.type("html").send(chatUiHtml);
   });
 
+  // /voice is an alias that serves the same single-page bundle as /chat. The
+  // app picks chat vs. voice from the saved model (App.tsx), not the URL path,
+  // so this just lets users open/bookmark /voice. Honor the chatUIEnabled
+  // toggle since the voice view shares the same settings and OpenAI key.
+  app.get("/voice", (_req: Request, res: Response): void => {
+    if (!chatUIEnabled) {
+      res.status(403).send("Chat UI is disabled");
+
+      return;
+    }
+
+    res.type("html").send(chatUiHtml);
+  });
+
   // Config endpoints for device UI settings
   app.get("/config", (_req: Request, res: Response): void => {
     res.json(config);
@@ -256,6 +272,8 @@ export function createExpressApp(): Express {
   app.post("/config", handleConfigUpdate);
 
   registerRestApiRoutes(app, () => config, callLiveApi);
+
+  registerVoiceTokenRoute(app, () => chatUIEnabled);
 
   return app;
 }
@@ -432,24 +450,4 @@ function validateTools(
   }
 
   return null;
-}
-
-/**
- * Check whether an Origin header value points to localhost.
- *
- * @param origin - Origin header value
- * @returns true if origin hostname is localhost/127.0.0.1/[::1]
- */
-function isLocalOrigin(origin: string): boolean {
-  try {
-    const { hostname } = new URL(origin);
-
-    return (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "[::1]"
-    );
-  } catch {
-    return false;
-  }
 }

@@ -112,8 +112,35 @@ web UI architecture.
   `^`, `~`, or ranges). `.npmrc` enforces this for `npm install`. A test in
   `src/test/package-json-versions.test.ts` validates it.
 
-- **Zod limitations**: Use only primitive types and enums in tool input schemas.
-  For list-like inputs, use comma-separated strings
+- **Tool input schema shapes**: Rich JSON Schema shapes (arrays, nested objects)
+  are safe to use — accepted and filled by every model the probe tried.
+  (`ppal-live-api` already ships `z.array(z.object(...))`; the
+  `evals/schema-compat/` probe spot-checks one model per provider in a single,
+  zero-repeat, provider-default-temperature run — corroboration, not exhaustive
+  proof.) Choose the shape by the data:
+  - **Flat scalar list** (ids, note names, paths) → comma-separated string.
+    Still the default: natural for LLMs, token-cheap, no reason to change
+    existing ones.
+  - **List of structured records** (e.g. per-item fields) →
+    `z.array(z.object())`. Prefer this over inventing a string mini-DSL
+    (`a=1|b=2,...`) that has to be taught and parsed.
+  - **Values that can contain the list delimiter** (e.g. function-call args with
+    commas) → `z.array(z.string())`, not a comma-separated string. See `actions`
+    in `update-device.def.ts`.
+  - **"One or many"** → always use an array (a single-element array is fine). Do
+    NOT use `string | array` (`z.union` → JSON Schema `anyOf`): it is accepted
+    everywhere but mis-filled — Claude collapses to the scalar and drops data;
+    some small models JSON-stringify the array into the string slot. (This is
+    from eyeballing the probe's detail dump, not its pass/fail metric: that
+    metric scores any string as OK, so it can't catch either failure — see the
+    `string-or-array-union` variant.)
+  - Anything richer than a primitive MUST have a `smallModelModeConfig` plan:
+    either exclude the param (`excludeParams`), or keep it with a
+    small-model-tolerant schema. There is no built-in "degrade to a
+    comma-separated string" switch — the tolerance lives in the schema. Example:
+    the `params` array in `device-params-schema.ts` adds a `preprocess` that
+    also accepts a JSON-stringified array (absorbing the small-model habit of
+    stringifying structured args) alongside a `descriptionOverrides` entry.
 
 - **Tool schema coercion**: Use `z.coerce.string()` instead of `z.string()` for
   ID parameters in tool input schemas (e.g., `ids`, `trackId`, `clipId`,
@@ -155,7 +182,7 @@ web UI architecture.
   - Example: `console.warn("quantize parameter ignored for audio clip")`
 
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
-  in `src/tools/workflow/connect.ts`. It needs to be adjusted after changes to
+  in `src/tools/core/connect.ts`. It needs to be adjusted after changes to
   bar|beat notation and when changing behavior that invalidates any of its
   instructions.
 
@@ -369,4 +396,6 @@ Rules:
   deployment
 - `dev/Read-Tool-Includes.md` - Read tool include parameter system and
   conventions
+- `dev/Specialized-Devices.md` - Specialized device LOM classes, pseudo-param
+  mappings, and the probe-against-Live verification discipline
 - `DEVELOPERS.md` - Development setup and testing

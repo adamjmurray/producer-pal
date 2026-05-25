@@ -101,6 +101,8 @@ It works with virtually any AI, including its
   Arrangement
   - Position in the Arrangement by bar|beat or locator
   - Auto-tile clips to fill longer arrangement durations
+- Apply [transforms](#transforms) to each duplicated clip (e.g. transpose
+  copies, vary velocities) without a separate update step
 - Copy devices to any track, return track, or rack chain
 - Route duplicated tracks to source instrument for MIDI layering
 
@@ -225,8 +227,9 @@ limitation).
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
-- Load a sample into a Simpler instrument via `params: "sample=<path>"` (new in
-  Live 12.4)
+- Load a sample into a Simpler instrument via
+  `params: [{name: "sample", value: "<path>"}]`, and set its level with
+  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
 
 <!--@include: ./_generated/ppal-create-device-schema.md-->
 
@@ -249,8 +252,9 @@ limitation).
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
 - Change the choke group and output MIDI note of drum chains
-- Load a sample into a Simpler instrument via `params: "sample=<path>"` (new in
-  Live 12.4)
+- Load a sample into a Simpler instrument via
+  `params: [{name: "sample", value: "<path>"}]`, and set its level with
+  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
 
 <!--@include: ./_generated/ppal-update-device-schema.md-->
 
@@ -294,7 +298,8 @@ positions in Ableton Live clips and the arrangement timeline.
 ## Transforms {#transforms}
 
 Apply complex changes to clips using math expressions via
-[Create Clip](#ppal-create-clip) and [Update Clip](#ppal-update-clip):
+[Create Clip](#ppal-create-clip), [Update Clip](#ppal-update-clip), and
+[Duplicate](#ppal-duplicate) (applied to each copy):
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
@@ -312,6 +317,16 @@ Apply complex changes to clips using math expressions via
 Control Ableton Live from another computer on your local network, no extra setup
 required. For fully remote control, use
 [web tunnels](/installation/web-tunnels).
+
+## Limitations
+
+- **Automation and envelopes are not supported.** Producer Pal cannot read,
+  create, or edit arrangement automation or clip envelopes — parameter values
+  that change over time. Track and device parameters like volume, pan, sends,
+  and knobs can be set to static values, but not automated.
+- **One Drum Rack per track.** Drum Racks work in nested structures, but tracks
+  with multiple Drum Racks only use the first one's drum map. Use one Drum Rack
+  per track for predictable results.
 
 ## Small Model Mode {#small-model-mode}
 

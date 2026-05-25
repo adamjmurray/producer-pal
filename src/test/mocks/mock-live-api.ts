@@ -192,6 +192,7 @@ export class LiveAPI {
   declare timeSignature: string | null;
   declare getColor: () => string | null;
   declare setColor: (cssColor: string) => void;
+  declare getPropertyList: (property: string) => unknown[];
   declare setProperty: (property: string, value: unknown) => void;
   declare setAll: (properties: Record<string, unknown>) => void;
 }

@@ -86,6 +86,22 @@ if (typeof LiveAPI !== "undefined") {
   };
 
   /**
+   * Get a Live API list-valued property as a full array. Unlike getProperty,
+   * which unwraps to the first element for scalar ergonomics, this returns the
+   * entire array — use for list properties (e.g. wavetable catalogs, IR lists).
+   * @param property - Property name to get
+   * @returns The property value as an array (empty when unset)
+   */
+  LiveAPI.prototype.getPropertyList = function (
+    this: LiveAPI,
+    property: string,
+  ): unknown[] {
+    const result = this.get(property);
+
+    return Array.isArray(result) ? result : [];
+  };
+
+  /**
    * Set a Live API property with type-appropriate handling
    * @param property - Property name to set
    * @param value - Property value to set

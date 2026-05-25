@@ -21,7 +21,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       thinking: "Default",
       temperature: 1.0,
       showThoughts: true,
@@ -53,7 +53,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.5-flash",
         thinking: "Max",
         temperature: 1.5,
         showThoughts: false,
@@ -64,7 +64,7 @@ describe("useSettings", () => {
 
     expect(result.current).toMatchObject({
       apiKey: "new-key",
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       thinking: "Max",
       temperature: 1.5,
       showThoughts: false,
@@ -80,7 +80,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.5-flash",
         thinking: "Adaptive",
         temperature: 1.0,
         showThoughts: true,
@@ -91,7 +91,7 @@ describe("useSettings", () => {
 
     // Should use new format
     expect(result.current.apiKey).toBe("new-key");
-    expect(result.current.model).toBe("gemini-3-flash-preview");
+    expect(result.current.model).toBe("gemini-3.5-flash");
   });
 
   it("loads saved Ollama thinking on first render", () => {
@@ -129,10 +129,65 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     await act(() => {
-      result.current.setModel("gemini-3-flash-preview");
+      result.current.setModel("gemini-3.5-flash");
     });
 
-    expect(result.current.model).toBe("gemini-3-flash-preview");
+    expect(result.current.model).toBe("gemini-3.5-flash");
+  });
+
+  it("savedModel only updates on saveSettings, not setModel", async () => {
+    const { result } = renderHook(() => useSettings());
+    const initialSavedModel = result.current.savedModel;
+
+    await act(() => {
+      result.current.setModel("gemini-3.5-flash");
+    });
+    // In-modal change should NOT flip the App-level routing model.
+    expect(result.current.model).toBe("gemini-3.5-flash");
+    expect(result.current.savedModel).toBe(initialSavedModel);
+
+    await act(() => {
+      result.current.saveSettings();
+    });
+    expect(result.current.savedModel).toBe("gemini-3.5-flash");
+  });
+
+  it("savedProvider only updates on saveSettings, not setProvider", async () => {
+    const { result } = renderHook(() => useSettings());
+    const initialSavedProvider = result.current.savedProvider;
+    const target = initialSavedProvider === "openai" ? "gemini" : "openai";
+
+    await act(() => {
+      result.current.setProvider(target);
+    });
+    // In-modal provider change applies immediately but must NOT flip routing
+    // until save — App.tsx pairs savedProvider with savedModel for voice/chat.
+    expect(result.current.provider).toBe(target);
+    expect(result.current.savedProvider).toBe(initialSavedProvider);
+
+    await act(() => {
+      result.current.saveSettings();
+    });
+    expect(result.current.savedProvider).toBe(target);
+  });
+
+  it("savedThinking only updates on saveSettings, not setThinking", async () => {
+    const { result } = renderHook(() => useSettings());
+    const initialSavedThinking = result.current.savedThinking;
+    const target = initialSavedThinking === "Off" ? "Max" : "Off";
+
+    await act(() => {
+      result.current.setThinking(target);
+    });
+    // In-modal change applies to the live value but must NOT leak into the
+    // voice session's connect-time snapshot until save.
+    expect(result.current.thinking).toBe(target);
+    expect(result.current.savedThinking).toBe(initialSavedThinking);
+
+    await act(() => {
+      result.current.saveSettings();
+    });
+    expect(result.current.savedThinking).toBe(target);
   });
 
   it("updates thinking when setThinking is called", async () => {
@@ -170,7 +225,7 @@ describe("useSettings", () => {
 
     await act(() => {
       result.current.setApiKey("new-key");
-      result.current.setModel("gemini-3-flash-preview");
+      result.current.setModel("gemini-3.5-flash");
       result.current.setThinking("Max");
       result.current.setTemperature(0.8);
       result.current.setShowThoughts(false);
@@ -188,7 +243,7 @@ describe("useSettings", () => {
       JSON.parse(localStorage.getItem("producer_pal_provider_gemini") ?? "{}"),
     ).toMatchObject({
       apiKey: "new-key",
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       thinking: "Max",
       temperature: 0.8,
       showThoughts: false,

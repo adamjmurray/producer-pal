@@ -46,8 +46,14 @@ describe("ppal-read-device", () => {
     expect(withParams.parameters).toBeDefined();
     expect(Array.isArray(withParams.parameters)).toBe(true);
     expect(withParams.parameters!.length).toBeGreaterThan(0);
-    expect(withParams.parameters![0]!.id).toBeDefined();
-    expect(withParams.parameters![0]!.name).toBeDefined();
+    // Every parameter has a name. Specialized pseudo-params (the Compressor's
+    // sidechain routing) come first with a name + value but no id, so find a
+    // real DeviceParameter to assert the id shape.
+    expect(withParams.parameters!.every((p) => p.name != null)).toBe(true);
+    const realParam = withParams.parameters!.find((p) => p.id != null);
+
+    expect(realParam).toBeDefined();
+    expect(realParam!.name).toBeDefined();
 
     // Test 4: Read with include: ["param-values"] - full parameter details
     const paramValuesResult = await ctx.client!.callTool({
@@ -203,7 +209,7 @@ interface ReadDeviceResult {
   deactivated?: boolean;
   macros?: { count: number; hasMappings: boolean };
   parameters?: Array<{
-    id: string;
+    id?: string; // absent for specialized pseudo-params (name + value only)
     name: string;
     value?: number | string;
     min?: number;

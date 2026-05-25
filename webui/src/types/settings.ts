@@ -1,6 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
+
+import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 
 /**
  * Type definitions for provider settings and configuration.
@@ -37,8 +40,21 @@ export interface UseSettingsReturn {
   setBaseUrl?: (url: string) => void;
   model: string;
   setModel: (model: string) => void;
+  /** The persisted model (last save), independent of in-modal edits. App.tsx
+   * routes voice vs chat off this so picking a realtime model in the dropdown
+   * doesn't switch modes until the user saves. */
+  savedModel: string;
+  /** The persisted provider (last save), paired with `savedModel` for voice
+   * routing. Like `savedModel`, it lags the in-modal `provider` until save so a
+   * mid-modal provider switch doesn't remount the chat/voice screen. */
+  savedProvider: Provider;
   thinking: string;
   setThinking: (thinking: string) => void;
+  /** The persisted thinking level (last save), independent of in-modal edits.
+   * useVoiceSession reads this at connect time (mapped to reasoning.effort) so a
+   * mid-session edit doesn't leak into the active session — applied on the next
+   * Stop → Talk, matching savedRealtimeVoice/savedVoiceSpeed/savedTurnDetection. */
+  savedThinking: string;
   temperature: number;
   setTemperature: (temp: number) => void;
   showThoughts: boolean;
@@ -65,4 +81,39 @@ export interface UseSettingsReturn {
   liveApiEnabledDirty: boolean;
   setLiveApiEnabled: (enabled: boolean) => void;
   seedLiveApiEnabled: (enabled: boolean) => void;
+
+  /** In-modal voice selection for the OpenAI Realtime API. Editing this
+   * during a live voice session does NOT change the active voice — the
+   * RealtimeAgent locks the voice at connect time. Takes effect on the next
+   * Stop → Talk cycle. */
+  realtimeVoice: string;
+  setRealtimeVoice: (voice: string) => void;
+
+  /** Persisted voice setting (last save). Used by useVoiceSession at connect
+   * time so an in-modal edit doesn't reach into the live session. */
+  savedRealtimeVoice: string;
+
+  /** In-modal voice playback speed multiplier (audio.output.speed for the
+   * OpenAI Realtime API). Mid-session edits don't affect the live session —
+   * applied on the next Stop → Talk. */
+  voiceSpeed: number;
+  setVoiceSpeed: (speed: number) => void;
+
+  /** Persisted voice speed (last save). Read by useVoiceSession at connect time. */
+  savedVoiceSpeed: number;
+
+  /** Output playback volume (0.0–1.0) for the OpenAI Realtime API. Unlike the
+   * other voice settings, this is applied live — useVoiceSession reads this
+   * value directly and a mid-session change updates loudness immediately. */
+  voiceVolume: number;
+  setVoiceVolume: (volume: number) => void;
+
+  /** In-modal OpenAI Realtime turn-detection (VAD) settings. Mid-session edits
+   * don't affect the live session — applied on the next Stop → Talk. */
+  turnDetection: TurnDetectionSettings;
+  setTurnDetection: (settings: TurnDetectionSettings) => void;
+
+  /** Persisted turn-detection settings (last save). Read by useVoiceSession at
+   * connect time. */
+  savedTurnDetection: TurnDetectionSettings;
 }

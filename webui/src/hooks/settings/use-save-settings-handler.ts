@@ -9,6 +9,7 @@ import {
   type PreferencesSettings,
   savePreferencesSettings,
 } from "#webui/hooks/use-preferences-settings";
+import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type UseSettingsReturn } from "#webui/types/settings";
 
 interface UseSaveSettingsHandlerArgs {
@@ -39,8 +40,30 @@ export function useSaveSettingsHandler(
     // changes that arrived mid-modal, or post the default `false` if the
     // server fetch hadn't resolved by the time the user opened settings.
     const liveApiChanged = settings.liveApiEnabledDirty;
+    // If saving flips voice ↔ chat mode, the URL hash (which points to the
+    // previous mode's conversation) becomes a "foreign" record. Without
+    // clearing it, the new mode's mount handler would bounce the user right
+    // back into the old mode via onForeignRecord. Clear it synchronously so
+    // the new mode mounts with no active conversation.
+    //
+    // This intentionally does NOT touch App.tsx's `viewingMode`. If the user
+    // opened a record from the other mode and is viewing it, saving leaves them
+    // on that record (cleared only by "New conversation") — the new default
+    // takes effect on the next conversation, matching how chat model/provider
+    // changes apply going forward rather than retroactively.
+    const modeWillChange =
+      isRealtimeSelection(settings.savedProvider, settings.savedModel) !==
+      isRealtimeSelection(settings.provider, settings.model);
 
     closeSettings(() => {
+      if (modeWillChange) {
+        history.replaceState(
+          null,
+          "",
+          window.location.pathname + window.location.search,
+        );
+      }
+
       settings.saveSettings();
       remoteConfig.postSmallModelMode(settings.smallModelMode);
       savePreferencesSettings(display);

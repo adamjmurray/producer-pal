@@ -102,6 +102,13 @@ export interface LibraryItem {
   /** Resolved source category, or null if folder_kind was unrecognized */
   source: LibrarySource | null;
   /**
+   * Immediate parent folder's display name (e.g. "One Shots", "IR Library").
+   * Lets the caller self-filter Live's noisy tagging — a "Closed Hihat"-tagged
+   * file under "IR Library" probably isn't a hihat. Omitted for files at the
+   * filesystem root, which have no parent folder.
+   */
+  folder?: string;
+  /**
    * Present when `path` is missing leading segments because the parent
    * chain exceeded the reconstruction depth cap. Omitted otherwise.
    */

@@ -5,30 +5,30 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "#src/shared/version.ts";
+import { toolDefDelete } from "#src/tools/actions/delete/delete.def.ts";
+import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
+import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { toolDefCreateClip } from "#src/tools/clip/create/create-clip.def.ts";
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
-import { toolDefLiveApi } from "#src/tools/control/live-api.def.ts";
-import { toolDefPlayback } from "#src/tools/control/playback.def.ts";
-import { toolDefSelect } from "#src/tools/control/select.def.ts";
+import { toolDefConnect } from "#src/tools/core/connect.def.ts";
+import { toolDefContext } from "#src/tools/core/context.def.ts";
 import { toolDefCreateDevice } from "#src/tools/device/create/create-device.def.ts";
 import { toolDefReadDevice } from "#src/tools/device/read/read-device.def.ts";
 import { toolDefUpdateDevice } from "#src/tools/device/update/update-device.def.ts";
-import { toolDefLibrary } from "#src/tools/library/library.def.ts";
 import { toolDefReadLiveSet } from "#src/tools/live-set/read-live-set.def.ts";
 import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts";
-import { toolDefDelete } from "#src/tools/operations/delete/delete.def.ts";
-import { toolDefDuplicate } from "#src/tools/operations/duplicate/duplicate.def.ts";
 import { toolDefCreateScene } from "#src/tools/scene/create-scene.def.ts";
 import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
 import { toolDefUpdateScene } from "#src/tools/scene/update-scene.def.ts";
+import { toolDefLibrary } from "#src/tools/session/library.def.ts";
+import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
+import { toolDefSelect } from "#src/tools/session/select.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
-import { toolDefConnect } from "#src/tools/workflow/connect.def.ts";
-import { toolDefContext } from "#src/tools/workflow/context.def.ts";
-import { type RequestOverrides } from "./request-overrides.ts";
+import { type RequestOverrides } from "./helpers/request-overrides.ts";
 
 export type CallLiveApiFunction = (
   tool: string,

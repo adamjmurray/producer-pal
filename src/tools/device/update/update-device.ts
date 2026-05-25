@@ -4,7 +4,7 @@
 
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { select } from "#src/tools/control/select.ts";
+import { select } from "#src/tools/session/select.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
@@ -66,7 +66,8 @@ interface ResolvedTarget {
  * @param args.path - Device/chain/drum-pad path
  * @param args.toPath - Move device to this path (devices only)
  * @param args.name - Display name (not drum pads)
- * @param args.params - JSON: {"paramName": value} (devices only)
+ * @param args.params - {name, value} entries to set (devices only)
+ * @param args.actions - Device-specific action strings (devices only)
  * @param args.macroVariation - Rack variation action (racks only)
  * @param args.macroVariationIndex - Rack variation index (racks only)
  * @param args.macroCount - Rack visible macro count 0-16 (racks only)
@@ -88,6 +89,7 @@ export function updateDevice(
     toPath,
     name,
     params,
+    actions,
     macroVariation,
     macroVariationIndex,
     macroCount,
@@ -120,6 +122,7 @@ export function updateDevice(
       toPath,
       name,
       params,
+      actions,
       macroVariation,
       macroVariationIndex,
       macroCount,

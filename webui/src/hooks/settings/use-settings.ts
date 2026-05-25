@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
@@ -17,6 +18,7 @@ import {
   saveCurrentSettings,
   saveSmallModelMode,
 } from "./settings-helpers";
+import { useVoiceModeSettings } from "./use-voice-mode-settings";
 
 type ProviderStateSetters = Record<
   Provider,
@@ -50,6 +52,26 @@ function createProviderSetter<K extends keyof ProviderSettings>(
  */
 export function useSettings(): UseSettingsReturn {
   const [provider, setProviderState] = useState<Provider>(loadCurrentProvider);
+  // `model` (returned below) is the in-modal value: changing it mid-edit
+  // doesn't switch app modes. `savedModel` only updates on saveSettings and is
+  // what App.tsx routes on — that way picking a realtime model in the provider
+  // dropdown doesn't briefly mount VoiceApp behind the modal and trigger a
+  // foreign-record bounce.
+  const [savedModel, setSavedModel] = useState<string>(
+    () => loadProviderSettings(loadCurrentProvider()).model,
+  );
+  // Save-buffered companion to `savedModel`. `provider` applies immediately, but
+  // voice routing must pair the saved model with the saved provider, so this
+  // lags `provider` until saveSettings (mirrors the savedModel rationale above).
+  const [savedProvider, setSavedProvider] =
+    useState<Provider>(loadCurrentProvider);
+  // Save-buffered snapshot of `thinking` (per-provider, like `model`). The live
+  // voice session reads this at connect time so an in-modal thinking edit
+  // doesn't leak into the active RealtimeAgent's reasoning.effort — it applies
+  // on the next Stop → Talk, matching the other saved* voice settings.
+  const [savedThinking, setSavedThinking] = useState<string>(
+    () => loadProviderSettings(loadCurrentProvider()).thinking,
+  );
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
     () => localStorage.getItem("producer_pal_settings_configured") === "true",
   );
@@ -65,6 +87,11 @@ export function useSettings(): UseSettingsReturn {
   const [liveApiEnabled, setLiveApiEnabledState] = useState<boolean>(false);
   const [liveApiEnabledDirty, setLiveApiEnabledDirty] =
     useState<boolean>(false);
+  // In-modal voice settings vs. persisted/applied values. Same split as
+  // `model`/`savedModel` — saveSettings/cancelSettings synchronize them, but
+  // the live voice session reads the `saved*` snapshots so mid-edit changes
+  // don't leak into the active RealtimeAgent.
+  const voiceModeSettings = useVoiceModeSettings();
 
   const setLiveApiEnabled = useCallback((enabled: boolean) => {
     setLiveApiEnabledState(enabled);
@@ -157,12 +184,17 @@ export function useSettings(): UseSettingsReturn {
 
     saveCurrentSettings(provider, enabledTools, allSettings);
     saveSmallModelMode(smallModelMode);
+    voiceModeSettings.commit();
+    setSavedModel(allSettings[provider].model);
+    setSavedProvider(provider);
+    setSavedThinking(allSettings[provider].thinking);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
   }, [
     provider,
     enabledTools,
     smallModelMode,
+    voiceModeSettings,
     anthropicSettings,
     geminiSettings,
     openaiSettings,
@@ -177,11 +209,12 @@ export function useSettings(): UseSettingsReturn {
     setProviderState(loadCurrentProvider());
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
+    voiceModeSettings.revert();
     applyLoadedSettings(loadAllProviderSettings());
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);
-  }, [applyLoadedSettings]);
+  }, [applyLoadedSettings, voiceModeSettings]);
 
   // Individual setters that update the current provider's settings
   const setters = useMemo(() => {
@@ -235,8 +268,11 @@ export function useSettings(): UseSettingsReturn {
     setBaseUrl: hasBaseUrl ? setBaseUrl : undefined,
     model: currentSettings.model,
     setModel,
+    savedModel,
+    savedProvider,
     thinking: currentSettings.thinking,
     setThinking,
+    savedThinking,
     temperature: currentSettings.temperature,
     setTemperature,
     showThoughts: currentSettings.showThoughts,
@@ -255,5 +291,16 @@ export function useSettings(): UseSettingsReturn {
     liveApiEnabledDirty,
     setLiveApiEnabled,
     seedLiveApiEnabled,
+    realtimeVoice: voiceModeSettings.realtimeVoice,
+    setRealtimeVoice: voiceModeSettings.setRealtimeVoice,
+    savedRealtimeVoice: voiceModeSettings.savedRealtimeVoice,
+    voiceSpeed: voiceModeSettings.voiceSpeed,
+    setVoiceSpeed: voiceModeSettings.setVoiceSpeed,
+    savedVoiceSpeed: voiceModeSettings.savedVoiceSpeed,
+    voiceVolume: voiceModeSettings.voiceVolume,
+    setVoiceVolume: voiceModeSettings.setVoiceVolume,
+    turnDetection: voiceModeSettings.turnDetection,
+    setTurnDetection: voiceModeSettings.setTurnDetection,
+    savedTurnDetection: voiceModeSettings.savedTurnDetection,
   };
 }

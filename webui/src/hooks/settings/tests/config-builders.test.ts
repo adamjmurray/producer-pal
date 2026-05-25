@@ -6,12 +6,51 @@
 import { describe, it, expect } from "vitest";
 import {
   extractGptVersion,
-  mapThinkingToReasoningEffort,
-  mapThinkingToOpenRouterEffort,
   mapThinkingToOllamaThink,
+  mapThinkingToOpenRouterEffort,
+  mapThinkingToReasoningEffort,
+  mapThinkingToRealtimeEffort,
+  mapTurnDetectionToConfig,
 } from "#webui/hooks/settings/config-builders";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 
 describe("config-builders", () => {
+  describe("mapTurnDetectionToConfig", () => {
+    const base: TurnDetectionSettings = {
+      mode: "server_vad",
+      threshold: 0.6,
+      silenceDurationMs: 300,
+      eagerness: "high",
+      interruptResponse: true,
+    };
+
+    it("maps server_vad to threshold + silence + interrupt_response", () => {
+      expect(mapTurnDetectionToConfig(base)).toStrictEqual({
+        type: "server_vad",
+        threshold: 0.6,
+        silence_duration_ms: 300,
+        interrupt_response: true,
+      });
+    });
+
+    it("maps semantic_vad to eagerness + interrupt_response", () => {
+      expect(
+        mapTurnDetectionToConfig({ ...base, mode: "semantic_vad" }),
+      ).toStrictEqual({
+        type: "semantic_vad",
+        eagerness: "high",
+        interrupt_response: true,
+      });
+    });
+
+    it("passes interrupt_response: false through (barge-in off)", () => {
+      expect(
+        mapTurnDetectionToConfig({ ...base, interruptResponse: false })
+          .interrupt_response,
+      ).toBe(false);
+    });
+  });
+
   describe("extractGptVersion", () => {
     it("should extract version from gpt-5.2 models", () => {
       expect(extractGptVersion("gpt-5.2-2025-12-11")).toBe(5.2);
@@ -136,6 +175,25 @@ describe("config-builders", () => {
       expect(
         mapThinkingToOllamaThink("UnknownLevel", "qwen3.6"),
       ).toBeUndefined();
+    });
+  });
+
+  describe("mapThinkingToRealtimeEffort", () => {
+    it("maps Off to minimal", () => {
+      expect(mapThinkingToRealtimeEffort("Off")).toBe("minimal");
+    });
+
+    it("maps Max to high", () => {
+      expect(mapThinkingToRealtimeEffort("Max")).toBe("high");
+    });
+
+    it("returns undefined for Default so the API picks its own tier", () => {
+      expect(mapThinkingToRealtimeEffort("Default")).toBeUndefined();
+    });
+
+    it("returns undefined for unknown levels", () => {
+      expect(mapThinkingToRealtimeEffort("Whatever")).toBeUndefined();
+      expect(mapThinkingToRealtimeEffort("")).toBeUndefined();
     });
   });
 });
