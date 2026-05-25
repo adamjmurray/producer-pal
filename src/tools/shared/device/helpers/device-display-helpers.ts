@@ -42,6 +42,7 @@ const LABEL_PATTERNS: LabelPattern[] = [
   { regex: /^([\d.-]+)\s*db$/i, unit: "dB", multiplier: 1 },
   { regex: /^(-?inf)\s*db$/i, unit: "dB", fixedValue: -70 },
   { regex: /^([\d.-]+)\s*%$/, unit: "%", multiplier: 1 },
+  { regex: /^([\d.-]+)\s*°$/, unit: "degrees", multiplier: 1 },
   { regex: /^([+-]?\d+)\s*st$/i, unit: "semitones", multiplier: 1 },
   { regex: /^([a-g][#b]?-?\d+)$/i, unit: "note", isNoteName: true },
   { regex: /^(\d+)([lr])$/i, unit: "pan", isPan: true },

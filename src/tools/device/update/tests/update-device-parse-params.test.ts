@@ -40,6 +40,8 @@ describe("normalizeParamValue", () => {
     expect(normalizeParamValue("-6 dB")).toBe(-6);
     expect(normalizeParamValue("100 ms")).toBe(100);
     expect(normalizeParamValue("0.5 s")).toBe(500);
+    expect(normalizeParamValue("180°")).toBe(180);
+    expect(normalizeParamValue("180 °")).toBe(180);
   });
 
   it("accepts unit suffixes case-insensitively", () => {

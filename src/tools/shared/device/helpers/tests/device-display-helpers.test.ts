@@ -99,6 +99,24 @@ describe("device-display-helpers", () => {
       });
     });
 
+    describe("degrees (°)", () => {
+      it("parses degree values", () => {
+        expect(parseLabel("300°")).toStrictEqual({
+          value: 300,
+          unit: "degrees",
+        });
+        expect(parseLabel("0°")).toStrictEqual({ value: 0, unit: "degrees" });
+        expect(parseLabel("180 °")).toStrictEqual({
+          value: 180,
+          unit: "degrees",
+        });
+        expect(parseLabel("-90°")).toStrictEqual({
+          value: -90,
+          unit: "degrees",
+        });
+      });
+    });
+
     describe("note names", () => {
       it("parses note names and keeps as string", () => {
         expect(parseLabel("C4")).toStrictEqual({ value: "C4", unit: "note" });
