@@ -25,10 +25,10 @@ export const toolDefLibrary = defineTool("ppal-library", {
 
   inputSchema: {
     action: z
-      .enum(["search", "listTags", "searchBatch"])
+      .enum(["search", "listTags", "searchBatch", "listPlugins"])
       .optional()
       .describe(
-        "search: filter library items (default) | listTags: enumerate available tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query",
+        "search: filter library items (default) | listTags: enumerate available tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query | listPlugins: list installed VST/VST3/AU plugins Live knows about (filter with query, vendor, format, deviceKind)",
       ),
 
     queries: queriesInputSchema.describe(
@@ -39,7 +39,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .string()
       .optional()
       .describe(
-        "name substring (search only); use * as a multi-character wildcard",
+        "name substring (search: supports * as a multi-character wildcard; listPlugins: plain case-insensitive substring)",
       ),
 
     tags: z.coerce
@@ -60,7 +60,21 @@ export const toolDefLibrary = defineTool("ppal-library", {
     deviceKind: z
       .enum(LIBRARY_DEVICE_KIND_VALUES)
       .optional()
-      .describe("device classification filter (search only)"),
+      .describe(
+        "device classification filter (search + listPlugins; for listPlugins only instrument/audiofx apply)",
+      ),
+
+    vendor: z.coerce
+      .string()
+      .optional()
+      .describe(
+        "vendor/manufacturer substring, case-insensitive (listPlugins only)",
+      ),
+
+    format: z
+      .enum(["VST", "VST3", "AU"])
+      .optional()
+      .describe("plugin binary format filter (listPlugins only)"),
 
     source: z
       .enum(LIBRARY_SOURCE_VALUES)
@@ -97,9 +111,18 @@ export const toolDefLibrary = defineTool("ppal-library", {
   smallModelModeConfig: {
     toolDescription:
       "Search Live's library by name/tags. Defaults to audio samples. Items from the user's sample folder appear before Live's library items.",
-    excludeParams: ["deviceKind", "sort", "queries", "verifyPaths"],
+    // listPlugins is discovery-only (like searchBatch); its vendor/format
+    // filters are excluded since the action itself is hidden from small models.
+    excludeParams: [
+      "deviceKind",
+      "sort",
+      "queries",
+      "verifyPaths",
+      "vendor",
+      "format",
+    ],
     excludeEnumValues: {
-      action: ["searchBatch"],
+      action: ["searchBatch", "listPlugins"],
       kind: [
         "live-clip",
         "m4l-device",

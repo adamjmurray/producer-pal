@@ -16,9 +16,17 @@ import {
   type LibrarySearchResult,
   type LibrarySort,
   type LibrarySource,
+  type ListPluginsResult,
+  type PluginCategory,
+  type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
 import { runSearchBatch } from "./library-search-batch-helpers.ts";
 import { readSamples } from "./read-samples.ts";
+
+// deviceKind doubles as the plugin category filter for listPlugins. Only the
+// values plugins can actually be (instrument/audiofx) map through; midifx has
+// no plugin-category equivalent and is dropped.
+const PLUGIN_CATEGORIES = new Set<LibraryDeviceKind>(["instrument", "audiofx"]);
 
 interface LibraryArgs {
   // Typed as plain string (not the enum) so the runtime "Unknown action"
@@ -36,12 +44,17 @@ interface LibraryArgs {
   verifyPaths?: boolean;
   /** searchBatch only: per-query filter sets (see runSearchBatch). */
   queries?: LibraryBatchQuery[];
+  /** listPlugins only: vendor/manufacturer substring filter. */
+  vendor?: string;
+  /** listPlugins only: restrict to a single plugin format. */
+  format?: PluginFormat;
 }
 
 type LibraryResult =
   | LibrarySearchResult
   | LibraryListTagsResult
-  | LibraryBatchResult;
+  | LibraryBatchResult
+  | ListPluginsResult;
 
 /**
  * Search Live's browser library or enumerate available tags.
@@ -71,6 +84,21 @@ export async function library(
 
   if (action === "searchBatch") {
     return await runSearchBatch(args.queries ?? [], toolContext, runSearch);
+  }
+
+  if (action === "listPlugins") {
+    const category =
+      args.deviceKind != null && PLUGIN_CATEGORIES.has(args.deviceKind)
+        ? (args.deviceKind as PluginCategory)
+        : undefined;
+
+    return await callRoute<ListPluginsResult>("library.listPlugins", {
+      query: args.query,
+      vendor: args.vendor,
+      format: args.format,
+      category,
+      limit: args.limit,
+    });
   }
 
   if (action !== "search") {

@@ -12,7 +12,11 @@
 
 import { registerNodeRoute } from "../rpc/node-request-protocol.ts";
 import { librarySearch } from "./library-search.ts";
-import { type LibrarySearchArgs } from "./library-types.ts";
+import {
+  type LibrarySearchArgs,
+  type ListPluginsArgs,
+} from "./library-types.ts";
+import { listPlugins } from "./list-plugins.ts";
 import { type ListTagsArgs, listTags } from "./list-tags.ts";
 
 /**
@@ -31,5 +35,9 @@ export function registerLibraryRoutes(): void {
 
   registerNodeRoute("library.listTags", async (args) => {
     return await listTags((args as ListTagsArgs | null) ?? {});
+  });
+
+  registerNodeRoute("library.listPlugins", async (args) => {
+    return await listPlugins((args as ListPluginsArgs | null) ?? {});
   });
 }

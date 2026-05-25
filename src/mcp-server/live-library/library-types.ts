@@ -176,3 +176,45 @@ export interface LibraryListTagsResult {
   /** Set when tags is empty due to a discoverable failure (e.g. DB missing). */
   reason?: string;
 }
+
+/** Plugin binary format, derived from the `dev_identifier` URI scheme. */
+export type PluginFormat = "VST" | "VST3" | "AU";
+
+/** Plugin device classification, derived from the `dev_identifier`. */
+export type PluginCategory = "instrument" | "audiofx";
+
+export interface ListPluginsArgs {
+  /** Case-insensitive substring match on the plugin name. */
+  query?: string;
+  /** Case-insensitive substring match on the vendor/manufacturer. */
+  vendor?: string;
+  /** Restrict to a single binary format. */
+  format?: PluginFormat;
+  /** Restrict to a single device classification. */
+  category?: PluginCategory;
+  /** Max plugins to return. */
+  limit?: number;
+}
+
+export interface PluginItem {
+  /** Plugin display name. */
+  name: string;
+  /** Vendor / manufacturer, or null when Live recorded none. */
+  vendor: string | null;
+  /** Version string, or null when Live recorded none. */
+  version: string | null;
+  /** Binary format, or null when it couldn't be derived from dev_identifier. */
+  format: PluginFormat | null;
+  /** Device classification, or null when it couldn't be derived. */
+  category: PluginCategory | null;
+  /** Live's raw plugin identifier URI (e.g. "device:vst3:instr:..."). */
+  dev_identifier: string | null;
+}
+
+export interface ListPluginsResult {
+  plugins: PluginItem[];
+  /** Present when a plugin source DB was consulted; false if none was found. */
+  dbAvailable?: boolean;
+  /** Set when plugins is empty due to a discoverable failure (e.g. DB missing). */
+  reason?: string;
+}
