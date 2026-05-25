@@ -90,7 +90,11 @@ function createGetMock(
       return Array.isArray(override) ? override : [override];
     }
 
-    return getPropertyByType(type, prop, path) ?? [0];
+    // Unknown props (not overridden, no type default) return [] so
+    // getProperty() yields undefined — matching real Live under
+    // noUncheckedIndexedAccess. A [0] default let under-specified tests pass
+    // by reading the index-0 fallback for a property they never registered.
+    return getPropertyByType(type, prop, path) ?? [];
   }) as Mock;
 }
 

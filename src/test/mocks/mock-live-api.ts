@@ -75,7 +75,11 @@ export class LiveAPI {
     } else {
       // Use getters (this.type/this.path) so defaults stay correct after goto
       this.get = vi.fn().mockImplementation((prop: string) => {
-        return getPropertyByType(this.type, prop, this.path) ?? [0];
+        // Unknown/unregistered props return [] (→ getProperty() yields
+        // undefined), mirroring real Live under noUncheckedIndexedAccess.
+        // A [0] default silently passed under-specified tests that forgot to
+        // register a backing property. See mock-registry.createGetMock.
+        return getPropertyByType(this.type, prop, this.path) ?? [];
       }) as Mock;
       this.set = vi.fn() as Mock;
       this.call = vi.fn().mockImplementation((method: string) => {

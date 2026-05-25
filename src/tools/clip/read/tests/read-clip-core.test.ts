@@ -232,6 +232,17 @@ describe("readClip", () => {
         end_marker: 5,
         loop_start: 1,
         loop_end: 5,
+        // Audio/warp props the sample+warp includes read. Registered
+        // explicitly: the mock no longer fills unregistered props with 0,
+        // so a realistic warped sample is set up here rather than relying on
+        // index-0 defaults.
+        gain: 1, // → +24 dB (table max)
+        pitch_coarse: 0,
+        pitch_fine: 0,
+        sample_length: 88200,
+        sample_rate: 44100,
+        warping: 1,
+        warp_mode: 0, // Beats
       },
     });
     const result = readClip({
@@ -252,11 +263,11 @@ describe("readClip", () => {
       end: "2|2", // loop_end (5 beats = 2|2)
       length: "1:0", // 1 bar
       playing: true,
-      gainDb: -70, // gain=0 maps to -70 dB
-      sampleLength: 0,
-      sampleRate: 0,
-      warpMode: "beats",
-      warping: false,
+      gainDb: 24, // gain=1 maps to +24 dB
+      sampleLength: 88200,
+      sampleRate: 44100,
+      warpMode: "beats", // warp_mode=0
+      warping: true,
     });
   });
 
