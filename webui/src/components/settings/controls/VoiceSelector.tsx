@@ -12,6 +12,8 @@ export interface VoiceSelectorProps {
    * If set and different from `voice`, an inline notice explains that the
    * pending change applies on the next session. */
   activeVoice: string | null;
+  /** Provider-appropriate voice options. Defaults to the OpenAI voices. */
+  voices?: readonly { value: string; label: string }[];
 }
 
 /**
@@ -23,14 +25,21 @@ export interface VoiceSelectorProps {
  * @param props.voice - Currently selected voice id
  * @param props.setVoice - Setter for the in-modal voice value
  * @param props.activeVoice - Voice baked into the live session (or null when idle)
+ * @param props.voices - Provider-appropriate voice options (defaults to OpenAI)
  * @returns Voice selector element
  */
 export function VoiceSelector({
   voice,
   setVoice,
   activeVoice,
+  voices = REALTIME_VOICES,
 }: VoiceSelectorProps) {
-  const pendingChange = activeVoice != null && activeVoice !== voice;
+  // The saved voice can belong to the other provider (one shared field); show a
+  // valid option from this provider's list so the dropdown isn't blank/wrong.
+  const selected = voices.some((v) => v.value === voice)
+    ? voice
+    : (voices[0]?.value ?? voice);
+  const pendingChange = activeVoice != null && activeVoice !== selected;
 
   return (
     <div>
@@ -39,12 +48,12 @@ export function VoiceSelector({
       </label>
       <select
         id="voice-select"
-        value={voice}
+        value={selected}
         onChange={(e) => setVoice((e.target as HTMLSelectElement).value)}
         className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
         data-testid="voice-select"
       >
-        {REALTIME_VOICES.map(({ value, label }) => (
+        {voices.map(({ value, label }) => (
           <option key={value} value={value}>
             {label}
           </option>

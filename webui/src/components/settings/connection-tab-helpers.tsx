@@ -6,7 +6,11 @@
 import { DisclosureChevron } from "#webui/components/chat/controls/header/HeaderIcons";
 import { ThinkingStateIcon } from "#webui/components/chat/controls/ThinkingToggle";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
-import { isRealtimeSelection } from "#webui/lib/constants/models";
+import {
+  GEMINI_REALTIME_VOICES,
+  isRealtimeSelection,
+  REALTIME_VOICES,
+} from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
 import { THINKING_LEVELS } from "./controls/thinking-levels";
 import { Tooltip } from "./controls/Tooltip";
@@ -190,6 +194,10 @@ export function VoiceSettings({
   activeVoice,
 }: VoiceSettingsProps) {
   if (!isRealtimeSelection(provider, model)) return null;
+  // Speed + turn-detection map to OpenAI Realtime config that Gemini Live has no
+  // equivalent for, so only the voice picker and (live) volume show for Gemini.
+  const isGemini = provider === "gemini";
+  const voices = isGemini ? GEMINI_REALTIME_VOICES : REALTIME_VOICES;
 
   return (
     <>
@@ -197,6 +205,7 @@ export function VoiceSettings({
         voice={realtimeVoice}
         setVoice={setRealtimeVoice}
         activeVoice={activeVoice}
+        voices={voices}
       />
       <details className="disclosure open:rounded-lg open:border open:border-zinc-300 dark:open:border-zinc-700 open:bg-zinc-200 dark:open:bg-zinc-900 open:p-3">
         <summary className="text-sm cursor-pointer select-none flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">
@@ -205,11 +214,15 @@ export function VoiceSettings({
         </summary>
         <div className="mt-3 space-y-3">
           <VoiceVolumeSlider volume={voiceVolume} setVolume={setVoiceVolume} />
-          <VoiceSpeedSlider speed={voiceSpeed} setSpeed={setVoiceSpeed} />
-          <TurnDetectionControls
-            settings={turnDetection}
-            setSettings={setTurnDetection}
-          />
+          {!isGemini && (
+            <>
+              <VoiceSpeedSlider speed={voiceSpeed} setSpeed={setVoiceSpeed} />
+              <TurnDetectionControls
+                settings={turnDetection}
+                setSettings={setTurnDetection}
+              />
+            </>
+          )}
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Applied on the next session (Stop, then Talk) — except Volume, which
             is live.

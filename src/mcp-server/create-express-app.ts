@@ -19,6 +19,7 @@ import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { isLocalOrigin } from "./helpers/request-origin.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
+import { registerGeminiVoiceTokenRoute } from "./routes/gemini-voice-token-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 
@@ -287,6 +288,7 @@ export function createExpressApp(): Express {
   registerRestApiRoutes(app, () => config, callLiveApi);
 
   registerVoiceTokenRoute(app, () => chatUIEnabled);
+  registerGeminiVoiceTokenRoute(app, () => chatUIEnabled);
 
   return app;
 }

@@ -11,9 +11,11 @@ import { type UseSettingsReturn } from "#webui/types/settings";
 
 export interface PropOverrides {
   apiKey?: string;
-  provider?: "openai" | "anthropic";
+  provider?: "openai" | "anthropic" | "gemini";
   onOpenSettings?: () => void;
   savedRealtimeVoice?: string;
+  /** Override the saved/active model (defaults to the OpenAI realtime model). */
+  model?: string;
 }
 
 /**
@@ -27,14 +29,15 @@ export interface PropOverrides {
 export function makeProps(o: PropOverrides = {}): VoiceAppProps {
   const apiKey = o.apiKey ?? "sk-test";
   const provider = o.provider ?? "openai";
+  const model = o.model ?? "gpt-realtime-2";
 
   return {
     settings: {
       provider,
       savedProvider: provider,
       apiKey,
-      model: "gpt-realtime-2",
-      savedModel: "gpt-realtime-2",
+      model,
+      savedModel: model,
       enabledTools: {},
       savedRealtimeVoice: o.savedRealtimeVoice ?? "marin",
     } as unknown as UseSettingsReturn,

@@ -26,6 +26,46 @@ export const OTHER_MODEL_OPTION = {
 export const OPENAI_REALTIME_MODEL = "gpt-realtime-2";
 
 /**
+ * Gemini's recommended Live API model (audio-to-audio, low latency). Used as
+ * the realtime fallback when the saved Gemini selection isn't itself a realtime
+ * model, mirroring OPENAI_REALTIME_MODEL for the OpenAI side.
+ */
+export const GEMINI_REALTIME_MODEL = "gemini-3.1-flash-live-preview";
+
+/**
+ * Prebuilt voices for the Gemini Live API (distinct from OpenAI's
+ * REALTIME_VOICES). The voice is set in the session config at connect time.
+ */
+export const GEMINI_REALTIME_VOICES = [
+  { value: "Puck", label: "Puck" },
+  { value: "Charon", label: "Charon" },
+  { value: "Kore", label: "Kore" },
+  { value: "Fenrir", label: "Fenrir" },
+  { value: "Aoede", label: "Aoede" },
+  { value: "Leda", label: "Leda" },
+  { value: "Orus", label: "Orus" },
+  { value: "Zephyr", label: "Zephyr" },
+] as const;
+
+export type GeminiRealtimeVoice =
+  (typeof GEMINI_REALTIME_VOICES)[number]["value"];
+
+export const DEFAULT_GEMINI_REALTIME_VOICE: GeminiRealtimeVoice = "Puck";
+
+/**
+ * Validates that a string is a known Gemini realtime voice id. Used when loading
+ * a saved voice to guard against an OpenAI voice id (e.g. "marin") left over
+ * from a provider switch.
+ * @param value - Candidate voice id
+ * @returns True if the value is one of GEMINI_REALTIME_VOICES
+ */
+export function isValidGeminiRealtimeVoice(
+  value: string,
+): value is GeminiRealtimeVoice {
+  return GEMINI_REALTIME_VOICES.some((v) => v.value === value);
+}
+
+/**
  * Voice options accepted by OpenAI's Realtime API. Recommended by OpenAI:
  * `marin` or `cedar` for best audio quality. Once the model has emitted audio
  * in a session, the voice is locked for that session — we can change it
@@ -65,10 +105,15 @@ export const ANTHROPIC_MODELS = [
   OTHER_MODEL_OPTION,
 ];
 
-export const GEMINI_MODELS = [
+export const GEMINI_MODELS: ModelPresetItem[] = [
   { value: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
   { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
   { value: "gemini-3.1-flash-lite", label: "Gemini 3.1 Flash-Lite" },
+  {
+    value: GEMINI_REALTIME_MODEL,
+    label: "Gemini 3.1 Flash Live (Voice)",
+    kind: "realtime",
+  },
   OTHER_MODEL_OPTION,
 ];
 
@@ -177,6 +222,13 @@ export const PROVIDER_MODELS: Partial<
 };
 
 const REALTIME_MODEL_ID = /realtime/i;
+// Gemini's realtime/voice models don't carry "realtime" — they're named with
+// "-live-" (gemini-3.1-flash-live-preview, gemini-2.0-flash-live-001) or
+// "native-audio" (gemini-2.5-flash-native-audio-*). Deliberately excludes
+// "realtime" so a foreign OpenAI id (gpt-realtime-2) under the gemini provider
+// does NOT route to Gemini voice. Lets a free-text "Other..." Gemini live model
+// enable voice without a preset for every id.
+const GEMINI_REALTIME_MODEL_ID = /(-live-|native-audio)/i;
 
 /**
  * Heuristic: does a model id name a realtime (voice) model? OpenAI's realtime
@@ -188,6 +240,19 @@ const REALTIME_MODEL_ID = /realtime/i;
  */
 export function isRealtimeModelId(model: string | null | undefined): boolean {
   return model != null && REALTIME_MODEL_ID.test(model);
+}
+
+/**
+ * Heuristic counterpart to isRealtimeModelId for Gemini's naming (-live- /
+ * native-audio / realtime). Lets a free-text "Other..." Gemini live model route
+ * to voice.
+ * @param model - Candidate model id
+ * @returns True if the id looks like a Gemini realtime model
+ */
+export function isGeminiRealtimeModelId(
+  model: string | null | undefined,
+): boolean {
+  return model != null && GEMINI_REALTIME_MODEL_ID.test(model);
 }
 
 /**
@@ -212,7 +277,11 @@ export function isRealtimeSelection(
       (m) => m.value === model && m.kind === "realtime",
     ) ?? false;
 
-  return isPreset || (provider === "openai" && isRealtimeModelId(model));
+  return (
+    isPreset ||
+    (provider === "openai" && isRealtimeModelId(model)) ||
+    (provider === "gemini" && isGeminiRealtimeModelId(model))
+  );
 }
 
 /**
@@ -229,7 +298,24 @@ export function resolveRealtimeModel(
   model: string | null | undefined,
 ): string {
   // isRealtimeSelection is false for null/undefined, so model is a string here.
-  return isRealtimeSelection(provider, model)
-    ? (model as string)
-    : OPENAI_REALTIME_MODEL;
+  if (isRealtimeSelection(provider, model)) return model as string;
+
+  return provider === "gemini" ? GEMINI_REALTIME_MODEL : OPENAI_REALTIME_MODEL;
+}
+
+/**
+ * Which voice backend a (provider, model) realtime selection runs on. Returns
+ * null when the selection isn't a realtime model at all. Lets the voice-mode
+ * layer pick the OpenAI vs Gemini session hook without re-deriving the rule.
+ * @param provider - The saved provider
+ * @param model - The saved model id
+ * @returns "openai" | "gemini" for a realtime selection, else null
+ */
+export function realtimeProvider(
+  provider: Provider,
+  model: string | null | undefined,
+): "openai" | "gemini" | null {
+  if (!isRealtimeSelection(provider, model)) return null;
+
+  return provider === "gemini" ? "gemini" : "openai";
 }

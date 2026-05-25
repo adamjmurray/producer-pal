@@ -6,36 +6,23 @@
 /**
  * @vitest-environment happy-dom
  */
-import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
+import {
+  callToolMock,
+  fakeMcpClient,
+  listToolsMock,
+  mcpClientHelpersMock,
+  resetMcpClientMocks,
+} from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
-const callToolMock = vi.fn();
-const listToolsMock = vi.fn();
-const closeMock = vi.fn();
-
-const fakeMcpClient = {
-  callTool: callToolMock,
-  listTools: listToolsMock,
-  close: closeMock,
-} as unknown as Client;
-
-vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () => ({
-  createConnectedMcpClient: vi.fn(async () => fakeMcpClient),
-  filterEnabledTools: (
-    tools: McpToolDefinition[],
-    enabledTools?: Record<string, boolean>,
-  ): McpToolDefinition[] =>
-    enabledTools ? tools.filter((t) => enabledTools[t.name] !== false) : tools,
-}));
+vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () =>
+  mcpClientHelpersMock(),
+);
 
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 
-afterEach(() => {
-  callToolMock.mockReset();
-  listToolsMock.mockReset();
-  closeMock.mockReset();
-});
+afterEach(resetMcpClientMocks);
 
 const MCP_URL = "http://localhost:3350/mcp";
 

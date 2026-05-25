@@ -9,6 +9,7 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { VoiceSelector } from "#webui/components/settings/controls/VoiceSelector";
+import { GEMINI_REALTIME_VOICES } from "#webui/lib/constants/models";
 
 describe("VoiceSelector", () => {
   it("renders the saved voice and all options", () => {
@@ -61,5 +62,39 @@ describe("VoiceSelector", () => {
     const notice = screen.getByText(/applies on the next session/i);
 
     expect(notice.textContent).toContain('Active session is using "marin"');
+  });
+
+  it("renders the Gemini voice list when given the Gemini voices", () => {
+    render(
+      <VoiceSelector
+        voice="Puck"
+        setVoice={vi.fn()}
+        activeVoice={null}
+        voices={GEMINI_REALTIME_VOICES}
+      />,
+    );
+
+    const select = screen.getByTestId("voice-select") as HTMLSelectElement;
+
+    expect(select.value).toBe("Puck");
+    expect(screen.getByRole("option", { name: "Charon" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: /Marin/ })).toBeNull();
+  });
+
+  it("falls back to the first option when the saved voice isn't in the list", () => {
+    // A stale OpenAI voice ("marin") under the Gemini list shows the first Gemini
+    // voice instead of a blank/invalid selection.
+    render(
+      <VoiceSelector
+        voice="marin"
+        setVoice={vi.fn()}
+        activeVoice={null}
+        voices={GEMINI_REALTIME_VOICES}
+      />,
+    );
+
+    const select = screen.getByTestId("voice-select") as HTMLSelectElement;
+
+    expect(select.value).toBe(GEMINI_REALTIME_VOICES[0].value);
   });
 });

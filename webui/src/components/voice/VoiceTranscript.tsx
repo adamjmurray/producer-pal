@@ -9,8 +9,10 @@ import { type UIMessage } from "#webui/types/messages";
 interface VoiceTranscriptProps {
   messages: UIMessage[];
   assistantThinking: boolean;
-  firefoxDetected: boolean;
-  hasOpenAiKey: boolean;
+  isUnsupportedBrowser: boolean;
+  hasVoiceKey: boolean;
+  /** Active voice provider name ("OpenAI" | "Gemini") for the key-required copy. */
+  providerName: string;
 }
 
 // Voice transcripts are read-only — the user can't edit past turns or retry
@@ -27,35 +29,40 @@ const noopAsync = async (): Promise<void> => undefined;
  * @param props - component props
  * @param props.messages - Voice transcript rendered as chat UIMessages
  * @param props.assistantThinking - True between response.created and response.done
- * @param props.firefoxDetected - True when the browser is Firefox (unsupported)
- * @param props.hasOpenAiKey - True when an OpenAI API key is configured
+ * @param props.isUnsupportedBrowser - True when the browser can't drive the
+ *   active backend (Firefox + OpenAI WebRTC; Gemini works in Firefox)
+ * @param props.hasVoiceKey - True when the active provider's API key is set
+ * @param props.providerName - Active voice provider name for the key copy
  * @returns Transcript section
  */
 export function VoiceTranscript({
   messages,
   assistantThinking,
-  firefoxDetected,
-  hasOpenAiKey,
+  isUnsupportedBrowser,
+  hasVoiceKey,
+  providerName,
 }: VoiceTranscriptProps) {
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 flex flex-col gap-4">
-      {firefoxDetected && (
+      {isUnsupportedBrowser && (
         <div className="rounded-md border border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-700 p-4 text-sm">
           <p className="font-medium mb-1">
-            Firefox is not supported for voice.
+            Firefox is not supported for this voice provider.
           </p>
           <p>
-            Voice currently works in Chrome (other Chromium browsers like Edge
-            are likely fine but untested). Please open this page in Chrome.
+            OpenAI voice currently works in Chrome (other Chromium browsers like
+            Edge are likely fine but untested). Please open this page in Chrome,
+            or use the Gemini voice provider, which works in Firefox.
           </p>
         </div>
       )}
 
-      {!hasOpenAiKey && (
+      {!hasVoiceKey && (
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-4 text-sm">
-          <p className="font-medium mb-1">OpenAI API key required.</p>
+          <p className="font-medium mb-1">{providerName} API key required.</p>
           <p>
-            Open Settings, select the OpenAI provider, and paste your API key.
+            Open Settings, select the {providerName} provider, and paste your
+            API key.
           </p>
         </div>
       )}

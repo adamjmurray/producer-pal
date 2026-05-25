@@ -9,12 +9,21 @@ import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-tran
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 import { type ViewState } from "#webui/hooks/view-state/use-view-state";
+import { useGeminiVoiceSession } from "#webui/hooks/voice/gemini/use-gemini-voice-session";
 import { realtimeItemsToUIMessages } from "#webui/hooks/voice/realtime-items-to-ui-messages";
 import { useVoiceModeReporting } from "#webui/hooks/voice/use-voice-mode-reporting";
 import { useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
 import { mergeVoiceHistory } from "#webui/hooks/voice/use-voice-persistence-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
-import { resolveRealtimeModel } from "#webui/lib/constants/models";
+import {
+  DEFAULT_GEMINI_REALTIME_VOICE,
+  DEFAULT_REALTIME_VOICE,
+  isGeminiRealtimeModelId,
+  isValidGeminiRealtimeVoice,
+  isValidRealtimeVoice,
+  realtimeProvider,
+  resolveRealtimeModel,
+} from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { isFirefox } from "#webui/utils/browser-detect";
@@ -59,17 +68,46 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     () => mcpUrl.replace(/\/mcp$/, "/voice-token"),
     [mcpUrl],
   );
+  const geminiTokenUrl = useMemo(
+    () => mcpUrl.replace(/\/mcp$/, "/gemini-voice-token"),
+    [mcpUrl],
+  );
+  // Which realtime backend the saved selection runs on. Voice is OpenAI OR
+  // Gemini; the inactive backend's hook stays idle (its key is null below).
+  const backend = realtimeProvider(settings.savedProvider, settings.savedModel);
+  const isGemini = backend === "gemini";
   const openAiKey =
     settings.provider === "openai" && settings.apiKey ? settings.apiKey : null;
+  const geminiKey =
+    settings.provider === "gemini" && settings.apiKey ? settings.apiKey : null;
   // The realtime model the active voice session runs on (the saved selection
-  // when it's realtime, else the default). Threaded into the session, ephemeral
-  // token, saved record, and header lock so a non-default realtime model isn't
-  // mislabeled as the default.
+  // when it's realtime, else the provider default). Threaded into the session,
+  // ephemeral token, saved record, and header lock so a non-default realtime
+  // model isn't mislabeled as the default.
   const realtimeModel = resolveRealtimeModel(
     settings.savedProvider,
     settings.savedModel,
   );
+  // OpenAI and Gemini have disjoint voice sets but share one saved field, so
+  // validate per-provider at the point of use: a voice valid for the active
+  // backend passes through, anything else (a leftover cross-provider id) falls
+  // back to that backend's default. Keeps the wrong voice id from ever reaching
+  // a session (which would error).
+  const openAiVoiceId = isValidRealtimeVoice(settings.savedRealtimeVoice)
+    ? settings.savedRealtimeVoice
+    : DEFAULT_REALTIME_VOICE;
+  const geminiVoiceId = isValidGeminiRealtimeVoice(settings.savedRealtimeVoice)
+    ? settings.savedRealtimeVoice
+    : DEFAULT_GEMINI_REALTIME_VOICE;
+  // The voice the active backend will actually use — drives the header/controls
+  // "pending change" comparison so it reflects the real (validated) voice.
+  const activeVoiceId = isGemini ? geminiVoiceId : openAiVoiceId;
+  // Firefox can't drive OpenAI's WebRTC transport, but Gemini's WebSocket path
+  // works there — so the unsupported-browser block only applies to OpenAI.
   const firefoxDetected = useMemo(() => isFirefox(), []);
+  const isUnsupportedBrowser = firefoxDetected && !isGemini;
+  const voiceKey = isGemini ? geminiKey : openAiKey;
+  const voiceProviderName = isGemini ? "Gemini" : "OpenAI";
   const historyPanelOpen = viewState.historyPanelOpen;
   const setHistoryPanelOpen = useCallback(
     (updater: (open: boolean) => boolean) => {
@@ -78,19 +116,33 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     [historyPanelOpen, setViewState],
   );
 
-  const voice = useVoiceSession({
+  // Both backend hooks are always called (rules of hooks); the inactive one gets
+  // a null key, so its connect() short-circuits and it never opens a socket/mic.
+  // App routes to VoiceApp only for a realtime selection, so `backend` picks the
+  // live one here.
+  const openAiVoice = useVoiceSession({
     mcpUrl,
     voiceTokenUrl,
     openAiKey,
     model: realtimeModel,
     enabledTools: settings.enabledTools,
-    voice: settings.savedRealtimeVoice,
+    voice: openAiVoiceId,
     speed: settings.savedVoiceSpeed,
     // Live (not saved): volume changes take effect during the active session.
     volume: settings.voiceVolume,
     thinking: settings.savedThinking,
     turnDetection: settings.savedTurnDetection,
   });
+  const geminiVoiceSession = useGeminiVoiceSession({
+    mcpUrl,
+    voiceTokenUrl: geminiTokenUrl,
+    geminiKey,
+    model: realtimeModel,
+    enabledTools: settings.enabledTools,
+    voice: geminiVoiceId,
+    volume: settings.voiceVolume,
+  });
+  const voice = isGemini ? geminiVoiceSession : openAiVoice;
 
   // When a Settings bulk delete removes the in-progress live record, tear the
   // session down too (mirrors the sidebar delete-active path) so the deleted
@@ -171,6 +223,11 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
   // session model for a fresh session. The live session still runs on
   // realtimeModel; only the displayed/saved label tracks the record.
   const headerModel = persistence.activeRecordModel ?? realtimeModel;
+  // Derive the brand from the header model itself (not the saved selection) so a
+  // saved Gemini record reads "Google" even if the user later switched provider.
+  const headerProvider = isGeminiRealtimeModelId(headerModel)
+    ? "gemini"
+    : "openai";
 
   const headerInfo = useVoiceModeReporting({
     persistence,
@@ -182,6 +239,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     activeModel: headerModel,
     savedModel: settings.savedModel,
     savedProvider: settings.savedProvider,
+    activeProvider: headerProvider,
   });
 
   return {
@@ -189,8 +247,16 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     persistence,
     transfer,
     messages,
-    openAiKey,
-    firefoxDetected,
+    /** Active backend's API key (OpenAI or Gemini), or null when unconfigured. */
+    voiceKey,
+    /** Name of the active voice provider, for key-required messaging. */
+    voiceProviderName,
+    /** Validated voice id the active backend uses (provider-aware), for the
+     * controls' pending-change comparison. */
+    activeVoiceId,
+    /** True only when the browser can't drive the active backend (Firefox +
+     * OpenAI WebRTC; Gemini's WebSocket works in Firefox). */
+    isUnsupportedBrowser,
     historyPanelOpen,
     setHistoryPanelOpen,
     isConnected,
