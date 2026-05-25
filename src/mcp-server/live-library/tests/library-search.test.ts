@@ -68,16 +68,25 @@ describe("librarySearch", () => {
       ]);
     });
 
-    it("returns only .mid files when kind=midi (excludes Live clips)", async () => {
+    it("returns .mid files plus MIDI Live clips when kind=midi (AJM-335)", async () => {
       const result = await librarySearch({ kind: "midi" });
 
-      expect(result.items.map((i) => i.name)).toStrictEqual(["pack_riff.mid"]);
+      // .mid plus the alcM Live clip (pack_loop.alc), ordered by use_count
+      // (pack_riff 30 > pack_loop 12). The audio Live clip (alcA) is excluded.
+      expect(result.items.map((i) => i.name)).toStrictEqual([
+        "pack_riff.mid",
+        "pack_loop.alc",
+      ]);
     });
 
-    it("returns only .alc files when kind=live-clip", async () => {
+    it("returns all .alc files when kind=live-clip", async () => {
       const result = await librarySearch({ kind: "live-clip" });
 
-      expect(result.items.map((i) => i.name)).toStrictEqual(["pack_loop.alc"]);
+      // Both MIDI and audio Live clips, ordered by use_count (12 > 6).
+      expect(result.items.map((i) => i.name)).toStrictEqual([
+        "pack_loop.alc",
+        "pack_audio.alc",
+      ]);
     });
 
     it("returns only .adg files when kind=device-group (excludes .amxd)", async () => {
@@ -255,6 +264,37 @@ describe("librarySearch", () => {
       expect(mixed.items.map((i) => i.name).sort()).toStrictEqual(
         lower.items.map((i) => i.name).sort(),
       );
+    });
+  });
+
+  describe("live-clip subtype (AJM-335)", () => {
+    it("reports subtype midi/audio on .alc results", async () => {
+      const result = await librarySearch({ kind: "live-clip" });
+      const bySubtype = new Map(result.items.map((i) => [i.name, i.subtype]));
+
+      expect(bySubtype.get("pack_loop.alc")).toBe("midi");
+      expect(bySubtype.get("pack_audio.alc")).toBe("audio");
+    });
+
+    it("surfaces the MIDI Live clip under kind=midi with its subtype + kind", async () => {
+      const result = await librarySearch({ kind: "midi" });
+      const clip = result.items.find((i) => i.name === "pack_loop.alc");
+
+      // Reported as a live-clip (its file format) qualified by subtype: midi.
+      expect(clip?.kind).toBe("live-clip");
+      expect(clip?.subtype).toBe("midi");
+    });
+
+    it("does not surface the audio Live clip under kind=midi", async () => {
+      const result = await librarySearch({ kind: "midi" });
+
+      expect(result.items.map((i) => i.name)).not.toContain("pack_audio.alc");
+    });
+
+    it("omits subtype on non-clip items", async () => {
+      const result = await librarySearch({ query: "user_kick" });
+
+      expect(result.items[0]?.subtype).toBeUndefined();
     });
   });
 

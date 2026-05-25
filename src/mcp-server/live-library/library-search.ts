@@ -17,12 +17,15 @@ import { stat } from "node:fs/promises";
 import { type DatabaseSync } from "node:sqlite";
 import { detectStalenessRisk } from "./db-staleness.ts";
 import {
+  ALC_FILE_TYPE,
+  ALC_MIDI_SUBTYPE,
   allKnownKindFourCCs,
   deriveItemType,
   deviceTypeForKind,
   folderKindsForSource,
   fourCCsForKind,
   keywordsForType,
+  resolveClipSubtype,
   resolveKind,
   resolveSource,
 } from "./library-filters.ts";
@@ -43,6 +46,7 @@ interface SearchRow {
   name: string;
   use_count: number;
   file_type: number;
+  subtype: number | null;
   folder_kind: number | null;
 }
 
@@ -181,8 +185,21 @@ function buildSearchQuery(
     ? fourCCsForKind(args.kind)
     : allKnownKindFourCCs();
 
-  where.push(`f.file_type IN (${fileTypeCodes.map(() => "?").join(",")})`);
-  params.push(...fileTypeCodes);
+  if (args.kind === "midi") {
+    // AJM-335: enrich kind:midi to also surface MIDI Live clips (.alc with the
+    // alcM subtype), not just .mid files — the natural "find MIDI ideas" query
+    // otherwise misses the bulk of a user's MIDI content. kind:audio is left
+    // untouched: it's the loadable-sample bucket, and audio Live clips aren't
+    // samples.
+    where.push(
+      `(f.file_type IN (${fileTypeCodes.map(() => "?").join(",")})
+        OR (f.file_type = ? AND f.subtype = ?))`,
+    );
+    params.push(...fileTypeCodes, ALC_FILE_TYPE, ALC_MIDI_SUBTYPE);
+  } else {
+    where.push(`f.file_type IN (${fileTypeCodes.map(() => "?").join(",")})`);
+    params.push(...fileTypeCodes);
+  }
 
   if (args.deviceKind) {
     where.push("f.device_type = ?");
@@ -258,7 +275,7 @@ function buildSearchQuery(
   params.push(limit);
 
   const sql = `SELECT f.file_id, f.parent_id, f.name, f.use_count, f.file_type,
-                      p.folder_kind AS folder_kind
+                      f.subtype, p.folder_kind AS folder_kind
                FROM files f
                LEFT JOIN places p ON p.file_id = f.place_id
                ${where.length > 0 ? "WHERE " + where.join(" AND ") : ""}
@@ -357,6 +374,12 @@ function buildLibraryItem(
     useCount: row.use_count,
     source: row.folder_kind == null ? null : resolveSource(row.folder_kind),
   };
+
+  const subtype = resolveClipSubtype(row.file_type, row.subtype);
+
+  if (subtype != null) {
+    item.subtype = subtype;
+  }
 
   const type = deriveItemType(tags);
 

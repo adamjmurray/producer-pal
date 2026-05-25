@@ -116,6 +116,13 @@ export interface LibraryItem {
   /** Resolved content kind, or null if file_type didn't map to a known kind */
   kind: LibraryKind | null;
   /**
+   * For Live clips (kind "live-clip", i.e. `.alc`), whether the clip holds MIDI
+   * or audio content. Omitted for non-clip kinds. Disambiguates the otherwise
+   * mixed live-clip bucket, and is why MIDI Live clips also surface under a
+   * kind:midi search.
+   */
+  subtype?: "midi" | "audio";
+  /**
    * Playback type derived from Live's Type tags (loop / oneshot /
    * impulse-response). Omitted when no Type tag applies. Lets the caller
    * distinguish a one-shot kick from a drum loop without scanning `tags`.

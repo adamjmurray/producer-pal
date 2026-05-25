@@ -11,6 +11,7 @@ import {
   fourCC,
   fourCCsForKind,
   keywordsForType,
+  resolveClipSubtype,
   resolveKind,
   resolveSource,
 } from "../library-filters.ts";
@@ -211,6 +212,24 @@ describe("resolveSource", () => {
     expect(resolveSource(8)).toBe("builtin");
     expect(resolveSource(9)).toBe("cloud");
     expect(resolveSource(10)).toBe("plugin");
+  });
+});
+
+describe("resolveClipSubtype", () => {
+  const ALC = fourCC("alc-");
+
+  it("resolves MIDI and audio Live-clip subtypes", () => {
+    expect(resolveClipSubtype(ALC, fourCC("alcM"))).toBe("midi");
+    expect(resolveClipSubtype(ALC, fourCC("alcA"))).toBe("audio");
+  });
+
+  it("returns null for non-.alc file types", () => {
+    expect(resolveClipSubtype(fourCC("wav-"), fourCC("alcM"))).toBeNull();
+  });
+
+  it("returns null for a null or unrecognized subtype", () => {
+    expect(resolveClipSubtype(ALC, null)).toBeNull();
+    expect(resolveClipSubtype(ALC, 12_345)).toBeNull();
   });
 });
 

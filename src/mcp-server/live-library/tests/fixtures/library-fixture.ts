@@ -45,7 +45,8 @@ export function createLibraryFixture(): LibraryFixture {
       use_count INTEGER DEFAULT 0,
       mod_date INTEGER DEFAULT 0,
       device_type INTEGER DEFAULT 0,
-      place_id INTEGER
+      place_id INTEGER,
+      subtype INTEGER
     );
     CREATE TABLE places (
       file_id INTEGER PRIMARY KEY,
@@ -166,8 +167,11 @@ function insertFiles(db: DatabaseSync): void {
   // Pack midi clip
   insert.run(2003, 200, MIDI, 1, "pack_riff.mid", 30, 1_700_000_400, 0, 200);
 
-  // Pack Live clip (.alc) — distinct kind from .mid
+  // Pack Live clips (.alc): one MIDI (alcM), one audio (alcA). The audio clip
+  // has place_id=null so it only surfaces in kind:live-clip (keeps source-filter
+  // tests stable). Subtypes set below via UPDATE. See AJM-335.
   insert.run(2004, 200, ALC, 2, "pack_loop.alc", 12, 1_700_000_450, 0, 200);
+  insert.run(2007, 200, ALC, 2, "pack_audio.alc", 6, 1_700_000_455, 0, null);
 
   // Pack Ableton device group (.adg) — kind=device-group
   insert.run(2005, 200, ADG, 32, "pack_chain.adg", 8, 1_700_000_460, 0, 200);
@@ -228,6 +232,15 @@ function insertFiles(db: DatabaseSync): void {
   insert.run(9004, 1, KEYW, 0, "One Shot", 0, 0, 0, null);
   // SubOnly tag: attached to subfolder_y.wav only, used in inFolder+tags test
   insert.run(9005, 1, KEYW, 0, "SubOnly", 0, 0, 0, null);
+
+  // Live-clip subtypes: pack_loop.alc is MIDI (alcM), pack_audio.alc is audio
+  // (alcA). Set separately so the shared INSERT column list stays unchanged.
+  const setSubtype = db.prepare(
+    "UPDATE files SET subtype = ? WHERE file_id = ?",
+  );
+
+  setSubtype.run(fourCC("alcM"), 2004);
+  setSubtype.run(fourCC("alcA"), 2007);
 }
 
 /**
