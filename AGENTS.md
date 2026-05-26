@@ -136,7 +136,14 @@ web UI architecture.
     with both items present, so the collapse-to-scalar failure is measured, not
     just eyeballed: in the 2026-05-24 snapshot `claude-haiku-4.5` returned
     `{"action":"reverse"}` on all 3 draws — dropping data — while Gemini,
-    GPT-5-nano, and Mistral used the array.)
+    GPT-5-nano, and Mistral used the array.) **Grandfathered exception:**
+    `ppal-live-api`'s `value` param is
+    `z.union([string, number, boolean, array<number>])` because Live property
+    values are genuinely heterogeneous (one property takes a string, another a
+    number, another a number-list). The parameter is per-property-typed at the
+    call site (the LLM picks one branch based on which property it's setting),
+    not a "one-or-many" shape — there is no scalar/array ambiguity for any given
+    property. Don't pattern-match off this for new tools.
   - Anything richer than a primitive MUST have a `smallModelModeConfig` plan:
     either exclude the param (`excludeParams`), or keep it with a
     small-model-tolerant schema. There is no built-in "degrade to a
