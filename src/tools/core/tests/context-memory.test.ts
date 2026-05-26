@@ -88,7 +88,7 @@ describe("context - memory actions", () => {
       expect(() =>
         context({ action: "write", content: "test" }, toolContext),
       ).toThrow(
-        "AI updates are disabled - enable 'Allow AI updates' in settings to let AI modify project context",
+        "AI updates are disabled - enable 'AI can edit memory' on the Context screen to let AI modify project context",
       );
       expect(outlet).not.toHaveBeenCalled();
     });

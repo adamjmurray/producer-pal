@@ -29,6 +29,10 @@ interface ConnectResult {
   liveSet: LiveSetInfo;
   skills?: string;
   memoryContent?: string;
+  /** True when the AI is allowed to write project context via
+   * `ppal-context write`. Surfaced so the model knows up-front whether
+   * writes will succeed instead of discovering it via a write error. */
+  memoryWritable?: boolean;
   nextStep: string;
 }
 
@@ -98,9 +102,15 @@ export function connect(
       "Report the connection status and Live Set overview to the user, then wait for their instructions.",
   };
 
-  // Include memory content if enabled
-  if (context.memory?.enabled && context.memory.content) {
-    result.memoryContent = context.memory.content;
+  // Include memory state if enabled. memoryWritable is surfaced whenever
+  // memory is enabled (even with empty content) so the model doesn't have
+  // to attempt a write to discover the flag.
+  if (context.memory?.enabled) {
+    if (context.memory.content) {
+      result.memoryContent = context.memory.content;
+    }
+
+    result.memoryWritable = context.memory.writable;
   }
 
   return result;

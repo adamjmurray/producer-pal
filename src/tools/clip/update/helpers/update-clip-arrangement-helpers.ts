@@ -11,6 +11,7 @@ import {
 } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { type TilingContext } from "#src/tools/shared/arrangement/arrangement-tiling-helpers.ts";
 import { clearClipAtDuplicateTarget } from "#src/tools/shared/arrangement/arrangement-tiling-workaround.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 
 interface ClipResult {
@@ -60,6 +61,18 @@ export function handleArrangementStartOperation({
   if (!isArrangementClip) {
     console.warn(
       `arrangementStart parameter ignored for session clip (id ${clip.id})`,
+    );
+
+    return clip.id;
+  }
+
+  // duplicate_clip_to_arrangement is a Track-scoped API that always targets
+  // the main lane; on a take-lane clip it would silently move content off the
+  // lane (and the follow-up delete_clip is a no-op for take-lane clips).
+  // Warn and preserve the clip unchanged.
+  if (isTakeLaneClip(clip)) {
+    console.warn(
+      `arrangementStart parameter ignored for take-lane clip (id ${clip.id}); move it in Live's UI`,
     );
 
     return clip.id;

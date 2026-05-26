@@ -48,7 +48,7 @@ export function handleWriteMemory(
 
   if (!memory.writable) {
     throw new Error(
-      "AI updates are disabled - enable 'Allow AI updates' in settings to let AI modify project context",
+      "AI updates are disabled - enable 'AI can edit memory' on the Context screen to let AI modify project context",
     );
   }
 

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import * as console from "#src/shared/v8-max-console.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   handleArrangementLengthening,
   handleArrangementShortening,
@@ -39,6 +40,17 @@ export function handleArrangementLengthOperation({
   if (!isArrangementClip) {
     console.warn(
       `arrangementLength parameter ignored for session clip (id ${clip.id})`,
+    );
+
+    return updatedClips;
+  }
+
+  // The lengthening path uses duplicate_clip_to_arrangement (Track-only) and
+  // the shortening path uses a temp clip overlay that targets the main lane,
+  // so neither works on take-lane clips. Warn and skip.
+  if (isTakeLaneClip(clip)) {
+    console.warn(
+      `arrangementLength parameter ignored for take-lane clip (id ${clip.id}); adjust it in Live's UI`,
     );
 
     return updatedClips;

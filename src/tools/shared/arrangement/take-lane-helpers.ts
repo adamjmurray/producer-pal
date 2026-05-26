@@ -18,6 +18,27 @@
 /** Maximum take lanes per track (soft cap; total non-main lanes). */
 export const MAX_TAKE_LANES = 8;
 
+/** Matches the `take_lanes N` segment inside a clip path. The trailing `\b`
+ * keeps the match anchored to the segment so future paths that happen to
+ * contain the substring "take_lanes" elsewhere don't false-positive. */
+const TAKE_LANE_PATH_RE = / take_lanes \d+\b/;
+
+/**
+ * Whether a clip lives on a take lane rather than the main arrangement lane.
+ * Take-lane clip paths look like `live_set tracks N take_lanes M arrangement_clips K`;
+ * main-lane arrangement clips use `live_set tracks N arrangement_clips K`.
+ *
+ * Use this whenever a tool is about to invoke a `Track`-scoped arrangement API
+ * (`duplicate_clip_to_arrangement`, `delete_clip`) — those APIs silently
+ * no-op on take-lane clips and the caller must warn-and-skip instead.
+ *
+ * @param clip - The clip LiveAPI
+ * @returns true when the clip's path includes a `take_lanes N` segment
+ */
+export function isTakeLaneClip(clip: LiveAPI): boolean {
+  return TAKE_LANE_PATH_RE.test(clip.path);
+}
+
 /** Normalized take lane target: a 1-based lane number, or "new" to append. */
 export type TakeLaneTarget = number | "new";
 

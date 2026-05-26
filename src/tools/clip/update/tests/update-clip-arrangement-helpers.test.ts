@@ -243,6 +243,48 @@ describe("update-clip-arrangement-helpers", () => {
       // Should still increment move count
       expect(tracksWithMovedClips.get(0)).toBe(1);
     });
+
+    it("warns and returns original ID for take-lane clips without calling Track APIs", () => {
+      const trackIndex = 4;
+      const trackMock = registerMockObject(`live_set/tracks/${trackIndex}`, {
+        path: `live_set tracks ${trackIndex}`,
+        methods: {
+          duplicate_clip_to_arrangement: () => ["id", 0],
+        },
+      });
+
+      const mockClip = {
+        id: "777",
+        path: `live_set tracks ${trackIndex} take_lanes 0 arrangement_clips 0`,
+        getProperty: vi.fn((prop) => {
+          if (prop === "is_arrangement_clip") return 1;
+
+          return null;
+        }),
+        trackIndex,
+      };
+
+      const tracksWithMovedClips = new Map<number, number>();
+
+      const result = handleArrangementStartOperation({
+        clip: mockClip as unknown as LiveAPI,
+        arrangementStartBeats: 16,
+        tracksWithMovedClips,
+        isMidiClip: true,
+        context: mockContext,
+      });
+
+      expect(result).toBe("777");
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        "arrangementStart parameter ignored for take-lane clip (id 777); move it in Live's UI",
+      );
+      // Neither duplicate_clip_to_arrangement nor delete_clip should fire —
+      // both are Track-scoped APIs that silently misroute on take-lane clips.
+      expect(trackMock.call).not.toHaveBeenCalled();
+      // Also: do not increment the move count for a skipped take-lane clip.
+      expect(tracksWithMovedClips.get(trackIndex)).toBeUndefined();
+    });
   });
 });
 

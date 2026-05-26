@@ -9,6 +9,7 @@ import {
   type LibraryBatchResult,
   type LibrarySearchArgs,
   type LibrarySearchResult,
+  type StalenessRisk,
 } from "#src/mcp-server/live-library/library-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
@@ -53,6 +54,10 @@ export async function runSearchBatch(
   const results: LibraryBatchEntry[] = [];
   let dbConsulted = false;
   let dbAvailable = true;
+  // Staleness is a single global property of the DB at request time. Capture
+  // the first non-null reading; subsequent queries within the same batch
+  // would re-observe the same WAL state.
+  let stalenessRisk: StalenessRisk | undefined;
 
   for (const [index, q] of capped.entries()) {
     const { label, ...filters } = q;
@@ -61,6 +66,10 @@ export async function runSearchBatch(
     if ("dbAvailable" in searchResult && searchResult.dbAvailable != null) {
       dbConsulted = true;
       dbAvailable &&= searchResult.dbAvailable;
+    }
+
+    if (stalenessRisk == null && searchResult.stalenessRisk != null) {
+      stalenessRisk = searchResult.stalenessRisk;
     }
 
     const entry: LibraryBatchEntry = {
@@ -75,5 +84,11 @@ export async function runSearchBatch(
     );
   }
 
-  return dbConsulted ? { dbAvailable, results } : { results };
+  if (!dbConsulted) {
+    return { results };
+  }
+
+  return stalenessRisk == null
+    ? { dbAvailable, results }
+    : { dbAvailable, stalenessRisk, results };
 }

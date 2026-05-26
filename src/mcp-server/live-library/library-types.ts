@@ -209,6 +209,12 @@ export interface LibraryBatchResult {
   /** Present when the Live DB was consulted; false if it couldn't be found.
    * Omitted when every query bypassed the DB (e.g. all source=sampleFolder). */
   dbAvailable?: boolean;
+  /** Set when any DB-consulting query saw a pending-WAL snapshot. Surfaced at
+   * the batch level (not per entry) because the staleness measurement is a
+   * single global property of Live's DB at request time — repeating it per
+   * entry would add noise without adding signal. Omitted when no risk
+   * detected or no query consulted the DB. */
+  stalenessRisk?: StalenessRisk;
 }
 
 export interface LibraryTag {

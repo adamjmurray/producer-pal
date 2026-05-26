@@ -20,6 +20,7 @@ import {
   performSplitting,
   type SplittingContext,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   parseCommaSeparatedIds,
   parseTimeSignature,
@@ -307,9 +308,22 @@ function applySplittingIfNeeded(
   split: string | undefined,
   context: Partial<ToolContext>,
 ): LiveAPI[] {
-  const arrangementClips = clips.filter(
-    (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
-  );
+  const arrangementClips = clips.filter((clip) => {
+    if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return false;
+
+    // performSplitting uses duplicate_clip_to_arrangement (Track-only) which
+    // can't target take lanes. Warn-and-skip rather than silently misroute
+    // the split onto the main lane.
+    if (isTakeLaneClip(clip)) {
+      console.warn(
+        `split parameter ignored for take-lane clip (id ${clip.id}); split it in Live's UI`,
+      );
+
+      return false;
+    }
+
+    return true;
+  });
   const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
 
   if (split != null && splitPoints != null && arrangementClips.length > 0) {
