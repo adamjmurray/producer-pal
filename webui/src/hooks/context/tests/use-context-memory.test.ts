@@ -289,6 +289,42 @@ describe("useContextMemory", () => {
     );
   });
 
+  it("re-fetches on window focus so device-side toggles surface", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          memoryEnabled: false,
+          memoryContent: "x",
+          memoryWritable: false,
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          memoryEnabled: true,
+          memoryContent: "x",
+          memoryWritable: true,
+        }),
+      );
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.enabled).toBe(false);
+    });
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      // Yield so the focus-triggered fetch can resolve.
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.enabled).toBe(true);
+    });
+
+    expect(result.current.writable).toBe(true);
+  });
+
   it("refresh() re-reads memory", async () => {
     fetchMock
       .mockResolvedValueOnce(

@@ -138,6 +138,23 @@ export function useContextMemory(): UseContextMemoryReturn {
     void refresh();
   }, [refresh]);
 
+  // Re-fetch when the window regains focus so device-side changes
+  // (memoryEnabled/memoryWritable toggles in Max, AI writes that happened
+  // while the tab was elsewhere) surface when the user returns. The editor
+  // doc is uncontrolled and seeded once, so this updates the toggles +
+  // status without clobbering an in-progress draft.
+  useEffect(() => {
+    const handleFocus = (): void => {
+      void refresh();
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [refresh]);
+
   return {
     status,
     enabled,
