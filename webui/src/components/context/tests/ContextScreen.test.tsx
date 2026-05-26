@@ -114,6 +114,29 @@ function buildHookValue() {
   };
 }
 
+/**
+ * Mount a ready ContextScreen, type "draft", fire the debounced save, and
+ * assert the first save fired. Used by tests that explore what happens AFTER
+ * the initial debounced save (retry on failure, unmount cancellation, etc.).
+ * @returns The render result so callers can grab `unmount`.
+ */
+async function mountAndDebounceSave() {
+  mockStatus.kind = "ready";
+  mockStatus.content = "old";
+  const result = render(<ContextScreen />);
+
+  await act(() => {
+    editorChange("draft");
+  });
+  await act(async () => {
+    vi.advanceTimersByTime(800);
+    await Promise.resolve();
+  });
+  expect(saveMock).toHaveBeenCalledTimes(1);
+
+  return result;
+}
+
 describe("ContextScreen", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -407,22 +430,10 @@ describe("ContextScreen", () => {
   });
 
   it("retries the same content on the next flush after a failed save", async () => {
-    mockStatus.kind = "ready";
-    mockStatus.content = "old";
     // First save fails, second succeeds.
     saveMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-    render(<ContextScreen />);
-
-    await act(() => {
-      editorChange("draft");
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(800);
-      await Promise.resolve();
-    });
-
+    await mountAndDebounceSave();
     // The debounced save fired and failed; the marker was rolled back.
-    expect(saveMock).toHaveBeenCalledTimes(1);
     expect(saveMock).toHaveBeenNthCalledWith(1, "draft");
 
     // A later flush (blur) retries the unchanged content rather than skipping
@@ -458,21 +469,9 @@ describe("ContextScreen", () => {
   });
 
   it("auto-retries a failed save after the retry delay", async () => {
-    mockStatus.kind = "ready";
-    mockStatus.content = "old";
     // First save fails, second (retry) succeeds.
     saveMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
-    render(<ContextScreen />);
-
-    await act(() => {
-      editorChange("draft");
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(800);
-      await Promise.resolve();
-    });
-
-    expect(saveMock).toHaveBeenCalledTimes(1);
+    await mountAndDebounceSave();
 
     // Advance past the unattended retry window without any user interaction.
     await act(async () => {
@@ -487,20 +486,8 @@ describe("ContextScreen", () => {
   });
 
   it("clears the retry timer on unmount", async () => {
-    mockStatus.kind = "ready";
-    mockStatus.content = "old";
     saveMock.mockResolvedValueOnce(false);
-    const { unmount } = render(<ContextScreen />);
-
-    await act(() => {
-      editorChange("draft");
-    });
-    await act(async () => {
-      vi.advanceTimersByTime(800);
-      await Promise.resolve();
-    });
-
-    expect(saveMock).toHaveBeenCalledTimes(1);
+    const { unmount } = await mountAndDebounceSave();
 
     unmount();
 
