@@ -6,11 +6,14 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { getConfigUrl } from "#webui/utils/mcp-url";
 
-/** Status of the project context memory */
+/**
+ * Status of the project context memory body. `disabled` is intentionally
+ * absent: the user can always read/edit memory from the webui. The
+ * `enabled` flag (returned separately) only gates whether the AI sees it.
+ */
 export type ContextMemoryStatus =
   | { kind: "loading" }
   | { kind: "ready"; content: string }
-  | { kind: "disabled" }
   | { kind: "error"; message: string };
 
 /** Save lifecycle state */
@@ -18,10 +21,20 @@ export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 interface UseContextMemoryReturn {
   status: ContextMemoryStatus;
+  /** Whether the AI sees project memory (the device's `memoryEnabled` flag). */
+  enabled: boolean;
+  /** Whether the AI is allowed to write to memory (`memoryWritable`). */
+  writable: boolean;
   saveStatus: SaveStatus;
   saveError: string | null;
   /** Write content to memory. Resolves to true on success, false on failure. */
   save: (content: string) => Promise<boolean>;
+  /** Flip the `memoryEnabled` device flag. */
+  setEnabled: (next: boolean) => Promise<boolean>;
+  /** Flip the `memoryWritable` device flag (AI-write permission). */
+  setWritable: (next: boolean) => Promise<boolean>;
+  /** Clear stored memory content. Same channel as save(""). */
+  clear: () => Promise<boolean>;
   /** Re-read memory from the server (e.g. when tab becomes visible). */
   refresh: () => Promise<void>;
 }
@@ -29,6 +42,7 @@ interface UseContextMemoryReturn {
 interface ConfigResponse {
   memoryEnabled?: boolean;
   memoryContent?: string;
+  memoryWritable?: boolean;
   // Other config fields exist but are not relevant to the editor.
   [key: string]: unknown;
 }
@@ -39,52 +53,103 @@ interface ConfigResponse {
  * `memoryWritable` gate (which is intended to control AI write access,
  * not user-driven UI edits) and is the same channel the Max device uses
  * for the inline memory textedit.
- * @returns Memory state plus save/refresh actions
+ * @returns Memory state plus save/refresh/toggle actions
  */
 export function useContextMemory(): UseContextMemoryReturn {
   const [status, setStatus] = useState<ContextMemoryStatus>({
     kind: "loading",
   });
+  const [enabled, setEnabledState] = useState<boolean>(false);
+  const [writable, setWritableState] = useState<boolean>(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  const applyConfig = useCallback((config: ConfigResponse): void => {
+    setStatus({ kind: "ready", content: config.memoryContent ?? "" });
+    setEnabledState(Boolean(config.memoryEnabled));
+    setWritableState(Boolean(config.memoryWritable));
+  }, []);
 
   const refresh = useCallback(async (): Promise<void> => {
     try {
       const config = await fetchConfig();
 
-      setStatus(toStatus(config));
+      applyConfig(config);
     } catch (error: unknown) {
       setStatus({ kind: "error", message: errorMessage(error) });
     }
-  }, []);
+  }, [applyConfig]);
 
-  const save = useCallback(async (content: string): Promise<boolean> => {
-    setSaveStatus("saving");
-    setSaveError(null);
+  const save = useCallback(
+    async (content: string): Promise<boolean> => {
+      setSaveStatus("saving");
+      setSaveError(null);
 
-    try {
-      const config = await postConfig({ memoryContent: content });
+      try {
+        const config = await postConfig({ memoryContent: content });
 
-      setStatus(toStatus(config));
-      setSaveStatus("saved");
+        applyConfig(config);
+        setSaveStatus("saved");
 
-      return true;
-    } catch (error: unknown) {
-      const message = errorMessage(error);
+        return true;
+      } catch (error: unknown) {
+        const message = errorMessage(error);
 
-      setSaveError(message);
-      setSaveStatus("error");
+        setSaveError(message);
+        setSaveStatus("error");
 
-      return false;
-    }
-  }, []);
+        return false;
+      }
+    },
+    [applyConfig],
+  );
+
+  const postFlag = useCallback(
+    async (partial: Partial<ConfigResponse>): Promise<boolean> => {
+      try {
+        const config = await postConfig(partial);
+
+        applyConfig(config);
+
+        return true;
+      } catch (error: unknown) {
+        setSaveError(errorMessage(error));
+
+        return false;
+      }
+    },
+    [applyConfig],
+  );
+
+  const setEnabled = useCallback(
+    (next: boolean): Promise<boolean> => postFlag({ memoryEnabled: next }),
+    [postFlag],
+  );
+
+  const setWritable = useCallback(
+    (next: boolean): Promise<boolean> => postFlag({ memoryWritable: next }),
+    [postFlag],
+  );
+
+  const clear = useCallback((): Promise<boolean> => save(""), [save]);
 
   // Initial load.
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  return { status, saveStatus, saveError, save, refresh };
+  return {
+    status,
+    enabled,
+    writable,
+    saveStatus,
+    saveError,
+    save,
+    setEnabled,
+    setWritable,
+    clear,
+    refresh,
+  };
 }
 
 // --- Helpers below main export ---
@@ -129,20 +194,6 @@ async function postConfig(
   }
 
   return (await response.json()) as ConfigResponse;
-}
-
-/**
- * Convert a config response into a status union.
- * @param config - Config object from the REST endpoint
- * @returns Status union
- */
-function toStatus(config: ConfigResponse): ContextMemoryStatus {
-  if (!config.memoryEnabled) return { kind: "disabled" };
-
-  return {
-    kind: "ready",
-    content: config.memoryContent ?? "",
-  };
 }
 
 /**

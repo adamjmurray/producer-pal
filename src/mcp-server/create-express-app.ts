@@ -49,7 +49,11 @@ interface ProducerPalConfig {
 const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
 const config: ProducerPalConfig = {
-  memoryEnabled: false,
+  // Read of project memory defaults on; the device overrides this on load
+  // from its persisted live.toggle, so the default only takes effect when no
+  // device is connected (e.g. CLI tests). AI-write (memoryWritable) stays off
+  // until the user explicitly opts in from the editor.
+  memoryEnabled: true,
   memoryContent: "",
   memoryWritable: false,
   smallModelMode: false,

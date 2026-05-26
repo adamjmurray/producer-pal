@@ -55,16 +55,21 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
 }));
 
 const mockStatus = {
-  kind: "loading" as "loading" | "ready" | "disabled" | "error",
+  kind: "loading" as "loading" | "ready" | "error",
   content: "",
   message: "",
 };
 
+let mockEnabled = true;
+let mockWritable = false;
 let mockSaveStatus: "idle" | "saving" | "saved" | "error" = "idle";
 let mockSaveError: string | null = null;
 
 const saveMock = vi.fn();
 const refreshMock = vi.fn();
+const setEnabledMock = vi.fn();
+const setWritableMock = vi.fn();
+const clearMock = vi.fn();
 
 vi.mock(import("#webui/hooks/context/use-context-memory"), () => ({
   useContextMemory: () => buildHookValue(),
@@ -80,17 +85,20 @@ function buildHookValue() {
     };
   } else if (mockStatus.kind === "error") {
     status = { kind: "error", message: mockStatus.message };
-  } else if (mockStatus.kind === "disabled") {
-    status = { kind: "disabled" };
   } else {
     status = { kind: "loading" };
   }
 
   return {
     status,
+    enabled: mockEnabled,
+    writable: mockWritable,
     saveStatus: mockSaveStatus,
     saveError: mockSaveError,
     save: saveMock,
+    setEnabled: setEnabledMock,
+    setWritable: setWritableMock,
+    clear: clearMock,
     refresh: refreshMock,
   };
 }
@@ -102,6 +110,12 @@ describe("ContextScreen", () => {
     saveMock.mockResolvedValue(true);
     refreshMock.mockReset();
     refreshMock.mockResolvedValue(undefined);
+    setEnabledMock.mockReset();
+    setEnabledMock.mockResolvedValue(true);
+    setWritableMock.mockReset();
+    setWritableMock.mockResolvedValue(true);
+    clearMock.mockReset();
+    clearMock.mockResolvedValue(true);
     editorChange.mockReset();
     editorFocus.mockReset();
     editorBlur.mockReset();
@@ -109,6 +123,8 @@ describe("ContextScreen", () => {
     mockStatus.kind = "loading";
     mockStatus.content = "";
     mockStatus.message = "";
+    mockEnabled = true;
+    mockWritable = false;
     mockSaveStatus = "idle";
     mockSaveError = null;
   });
@@ -123,13 +139,34 @@ describe("ContextScreen", () => {
     expect(screen.getByText("Loading project context…")).toBeTruthy();
   });
 
-  it("shows disabled message when memory is disabled", () => {
-    mockStatus.kind = "disabled";
+  it("shows the editor (not a dead-end page) even when memory is disabled", () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "user notes";
+    mockEnabled = false;
     render(<ContextScreen />);
 
-    // Both the header indicator and the body explain the disabled state.
-    expect(screen.getByText("Disabled in device settings")).toBeTruthy();
-    expect(screen.getByText(/Project context is disabled/)).toBeTruthy();
+    // Editor is still mounted so the user can read/edit.
+    expect(lastEditorProps?.initialValue).toBe("user notes");
+    // Inline banner explains the disabled state and offers a recovery action.
+    expect(
+      screen.getByText("Project memory is off — Claude won't see this."),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Enable" })).toBeTruthy();
+  });
+
+  it("clicking Enable in the disabled banner calls setEnabled(true)", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "";
+    mockEnabled = false;
+    render(<ContextScreen />);
+
+    const enableBtn = screen.getByRole("button", { name: "Enable" });
+
+    await act(() => {
+      fireEvent.click(enableBtn);
+    });
+
+    expect(setEnabledMock).toHaveBeenCalledWith(true);
   });
 
   it("shows error state when status is error", () => {
@@ -150,6 +187,91 @@ describe("ContextScreen", () => {
 
     expect(lastEditorProps?.initialValue).toBe("# hello");
     expect(lastEditorProps?.readOnly).toBe(false);
+  });
+
+  it("renders the controls strip when memory is ready", () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "x";
+    render(<ContextScreen />);
+
+    expect(screen.getByLabelText("Use project memory")).toBeTruthy();
+    expect(screen.getByLabelText("AI can edit memory")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Clear" })).toBeTruthy();
+  });
+
+  it("hides the controls strip while loading", () => {
+    render(<ContextScreen />);
+
+    expect(screen.queryByLabelText("Use project memory")).toBeNull();
+  });
+
+  it("toggling 'Use project memory' calls setEnabled with the new value", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "x";
+    mockEnabled = true;
+    render(<ContextScreen />);
+
+    const toggle = screen.getByLabelText(
+      "Use project memory",
+    ) as HTMLInputElement;
+
+    await act(() => {
+      fireEvent.click(toggle);
+    });
+
+    expect(setEnabledMock).toHaveBeenCalledWith(false);
+  });
+
+  it("toggling 'AI can edit memory' calls setWritable with the new value", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "x";
+    mockWritable = false;
+    render(<ContextScreen />);
+
+    const toggle = screen.getByLabelText(
+      "AI can edit memory",
+    ) as HTMLInputElement;
+
+    await act(() => {
+      fireEvent.click(toggle);
+    });
+
+    expect(setWritableMock).toHaveBeenCalledWith(true);
+  });
+
+  it("Clear button calls clear() after confirm", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "x";
+    const confirmMock = vi.fn().mockReturnValue(true);
+
+    vi.stubGlobal("confirm", confirmMock);
+
+    render(<ContextScreen />);
+
+    await act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    });
+
+    expect(confirmMock).toHaveBeenCalled();
+    expect(clearMock).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("Clear button is a no-op when the user cancels confirm", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "x";
+    const confirmMock = vi.fn().mockReturnValue(false);
+
+    vi.stubGlobal("confirm", confirmMock);
+
+    render(<ContextScreen />);
+
+    await act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    });
+
+    expect(clearMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it("debounces save after edit", async () => {

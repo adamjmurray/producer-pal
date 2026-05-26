@@ -26,11 +26,12 @@ describe("useContextMemory", () => {
     vi.unstubAllGlobals();
   });
 
-  it("loads memory content on mount", async () => {
+  it("loads memory content on mount and exposes enabled/writable", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         memoryEnabled: true,
         memoryContent: "# hi",
+        memoryWritable: true,
       }),
     );
 
@@ -43,25 +44,34 @@ describe("useContextMemory", () => {
       });
     });
 
+    expect(result.current.enabled).toBe(true);
+    expect(result.current.writable).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(
       CONFIG_URL,
       expect.objectContaining({ cache: "no-store" }),
     );
   });
 
-  it("reports disabled status when memory is off", async () => {
+  it("reports memory disabled via the enabled flag (not status kind)", async () => {
     fetchMock.mockResolvedValueOnce(
       jsonResponse({
         memoryEnabled: false,
-        memoryContent: "ignored",
+        memoryContent: "still readable",
       }),
     );
 
     const { result } = renderHook(() => useContextMemory());
 
     await waitFor(() => {
-      expect(result.current.status).toStrictEqual({ kind: "disabled" });
+      expect(result.current.status).toStrictEqual({
+        kind: "ready",
+        content: "still readable",
+      });
     });
+
+    // Disabled means "AI doesn't see this", not "user can't read it".
+    expect(result.current.enabled).toBe(false);
+    expect(result.current.writable).toBe(false);
   });
 
   it("reports error when fetch fails", async () => {
@@ -155,6 +165,128 @@ describe("useContextMemory", () => {
     expect(saved).toBe(false);
     expect(result.current.saveStatus).toBe("error");
     expect(result.current.saveError).toContain("Config update failed");
+  });
+
+  it("setEnabled() POSTs memoryEnabled and reflects the response", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ memoryEnabled: false, memoryContent: "" }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ memoryEnabled: true, memoryContent: "" }),
+      );
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.enabled).toBe(false);
+    });
+
+    let ok: boolean | undefined;
+
+    await act(async () => {
+      ok = await result.current.setEnabled(true);
+    });
+
+    expect(ok).toBe(true);
+    expect(result.current.enabled).toBe(true);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      CONFIG_URL,
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ memoryEnabled: true }),
+      }),
+    );
+  });
+
+  it("setWritable() POSTs memoryWritable and reflects the response", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          memoryEnabled: true,
+          memoryContent: "",
+          memoryWritable: false,
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          memoryEnabled: true,
+          memoryContent: "",
+          memoryWritable: true,
+        }),
+      );
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.writable).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.setWritable(true);
+    });
+
+    expect(result.current.writable).toBe(true);
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      CONFIG_URL,
+      expect.objectContaining({
+        body: JSON.stringify({ memoryWritable: true }),
+      }),
+    );
+  });
+
+  it("setEnabled() surfaces error from server without changing state", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ memoryEnabled: false, memoryContent: "" }),
+      )
+      .mockResolvedValueOnce(
+        new Response("nope", { status: 500, statusText: "Internal" }),
+      );
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.enabled).toBe(false);
+    });
+
+    let ok: boolean | undefined;
+
+    await act(async () => {
+      ok = await result.current.setEnabled(true);
+    });
+
+    expect(ok).toBe(false);
+    expect(result.current.enabled).toBe(false);
+    expect(result.current.saveError).toContain("Config update failed");
+  });
+
+  it("clear() saves empty content", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ memoryEnabled: true, memoryContent: "old" }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ memoryEnabled: true, memoryContent: "" }),
+      );
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.status).toMatchObject({ content: "old" });
+    });
+
+    await act(async () => {
+      await result.current.clear();
+    });
+
+    expect(result.current.status).toMatchObject({ content: "" });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      CONFIG_URL,
+      expect.objectContaining({
+        body: JSON.stringify({ memoryContent: "" }),
+      }),
+    );
   });
 
   it("refresh() re-reads memory", async () => {
