@@ -19,6 +19,10 @@ import {
 
 /** A non-main take lane with its name and arrangement clips */
 export interface ReadTakeLaneResult {
+  /** 1-based lane number matching the create-clip/duplicate `takeLane` param
+   * (`0` is the main lane). Lets a consumer round-trip a read back to a write
+   * without inferring the index from array position. */
+  takeLane: number;
   name: string;
   clips: ReadClipResult[];
 }
@@ -128,7 +132,9 @@ export function readTakeLanes(
   track: LiveAPI,
   include?: string[],
 ): ReadTakeLaneResult[] {
-  return track.getChildren("take_lanes").map((lane) => {
+  // 1-based to match the write-side `takeLane` param (0 = main lane, which the
+  // take_lanes collection excludes — so the first non-main lane is takeLane:1).
+  return track.getChildren("take_lanes").map((lane, i) => {
     const clips = lane
       .getChildIds("arrangement_clips")
       .map((clipId) => readClip({ clipId, ...(include && { include }) }))
@@ -139,6 +145,7 @@ export function readTakeLanes(
     stripFields(clips, "trackIndex", "view", "type");
 
     return {
+      takeLane: i + 1,
       name: lane.getProperty("name") as string,
       clips,
     };
