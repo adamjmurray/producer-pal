@@ -3,11 +3,9 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
-  assertNoTakeLaneOverlap,
   normalizeTakeLaneTarget,
   resolveTakeLane,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
@@ -83,15 +81,13 @@ export function resolveClipTimingContext(
 /**
  * Resolve the take lane for arrangement clip creation. Returns the TakeLane to
  * create clips on, or null to use the main lane. Warns (and ignores takeLane)
- * for session-only requests; auto-creates lanes and checks for position overlap.
+ * for session-only requests and auto-creates lanes as needed. Like the main
+ * lane, creating over an existing clip replaces/truncates it (no overlap guard).
  * @param takeLane - Raw takeLane argument (0/null = main, 1+ = lane, "new")
  * @param takeLaneName - Name for a newly created lane
  * @param sessionSlotCount - Number of session slots in this request
  * @param arrangementStarts - Parsed arrangement bar|beat positions
  * @param trackIndex - Arrangement track index
- * @param clipLength - Clip length in beats (overlap window)
- * @param songTimeSigNumerator - Song time signature numerator
- * @param songTimeSigDenominator - Song time signature denominator
  * @returns The take lane LiveAPI, or null for the main lane
  */
 export function resolveCreateClipTakeLane(
@@ -100,9 +96,6 @@ export function resolveCreateClipTakeLane(
   sessionSlotCount: number,
   arrangementStarts: string[],
   trackIndex: number | null,
-  clipLength: number,
-  songTimeSigNumerator: number,
-  songTimeSigDenominator: number,
 ): LiveAPI | null {
   const target = normalizeTakeLaneTarget(takeLane);
 
@@ -118,16 +111,6 @@ export function resolveCreateClipTakeLane(
 
   const track = LiveAPI.from(livePath.track(trackIndex));
   const { lane, laneNumber } = resolveTakeLane(track, target, takeLaneName);
-
-  for (const pos of arrangementStarts) {
-    const startBeats = barBeatToAbletonBeats(
-      pos,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-
-    assertNoTakeLaneOverlap(lane, startBeats, clipLength, laneNumber, pos);
-  }
 
   console.warn(
     `createClip: targeting take lane ${laneNumber}. Expand the take-lanes arrow on the track header in Live to see it.`,

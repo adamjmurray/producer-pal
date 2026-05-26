@@ -174,16 +174,14 @@ export async function createClip(
     sessionSlots.length + arrangementStarts.length,
   );
 
-  // Resolve the arrangement take lane (auto-creates lanes, checks overlap)
+  // Resolve the arrangement take lane (auto-creates lanes as needed). Overlap
+  // replaces existing clips, like the main lane.
   const takeLaneCreator = resolveCreateClipTakeLane(
     takeLane,
     takeLaneName,
     sessionSlots.length,
     arrangementStarts,
     trackIndex,
-    initialClipLength,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
   );
 
   // Create session clips first, then arrangement (order gives arrangement focus priority)

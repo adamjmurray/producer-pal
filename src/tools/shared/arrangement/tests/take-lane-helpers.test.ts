@@ -6,16 +6,12 @@
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import {
-  assertNoTakeLaneOverlap,
   isTakeLaneRequested,
   MAX_TAKE_LANES,
   normalizeTakeLaneTarget,
   resolveTakeLane,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
-import {
-  registerTakeLaneTrack,
-  registerTakeLaneWithClips,
-} from "./take-lane-test-helpers.ts";
+import { registerTakeLaneTrack } from "./take-lane-test-helpers.ts";
 
 describe("isTakeLaneRequested", () => {
   it("is false for main-lane values", () => {
@@ -123,34 +119,5 @@ describe("resolveTakeLane", () => {
     expect(() => resolveTakeLane(trackApi, MAX_TAKE_LANES + 1)).toThrow(
       /reached the 8 take lane limit/,
     );
-  });
-});
-
-describe("assertNoTakeLaneOverlap", () => {
-  it("throws when a clip overlaps the target range", () => {
-    registerTakeLaneWithClips(0, 0, [{ start: 0, end: 4 }]);
-    const laneApi = LiveAPI.from(livePath.track(0).takeLane(0));
-
-    expect(() => assertNoTakeLaneOverlap(laneApi, 2, 4, 1, "1|3")).toThrow(
-      /Clip exists at 1\|3 on take lane 1/,
-    );
-  });
-
-  it("does not throw for a non-overlapping position", () => {
-    registerTakeLaneWithClips(0, 0, [{ start: 0, end: 4 }]);
-    const laneApi = LiveAPI.from(livePath.track(0).takeLane(0));
-
-    expect(() =>
-      assertNoTakeLaneOverlap(laneApi, 4, 4, 1, "2|1"),
-    ).not.toThrow();
-  });
-
-  it("does not throw for an empty lane", () => {
-    registerTakeLaneWithClips(0, 0, []);
-    const laneApi = LiveAPI.from(livePath.track(0).takeLane(0));
-
-    expect(() =>
-      assertNoTakeLaneOverlap(laneApi, 0, 4, 1, "1|1"),
-    ).not.toThrow();
   });
 });

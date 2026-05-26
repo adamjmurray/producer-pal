@@ -114,23 +114,24 @@ describe("createClip take lanes", () => {
     expect(lane?.set).toHaveBeenCalledWith("name", "Variation B");
   });
 
-  it("errors when a clip already exists at the target position on the lane", async () => {
+  it("creates over an existing clip on the lane (replace, like the main lane)", async () => {
     registerLiveSet();
     // Pre-populate lane 0 with a clip covering bar 1 (beats 0-4)
-    const track = registerTakeLaneTrack({ initialLanes: 1 });
+    registerTakeLaneTrack({ initialLanes: 1 });
     const lane = lookupMockObject(undefined, livePath.track(0).takeLane(0));
 
     lane?.call("create_midi_clip", 0); // occupy beats 0-4
-    expect(track.id).toBeDefined();
 
-    await expect(
-      createClip({
-        trackIndex: 0,
-        arrangementStart: "1|1",
-        notes: "C3",
-        takeLane: 1,
-      }),
-    ).rejects.toThrow(/Clip exists at 1\|1 on take lane 1/);
+    const result = (await createClip({
+      trackIndex: 0,
+      arrangementStart: "1|1",
+      notes: "C3",
+      takeLane: 1,
+    })) as { id: string; takeLane?: number };
+
+    // No overlap guard: the clip is created on the targeted lane regardless
+    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+    expect(result.takeLane).toBe(1);
   });
 
   it("warns and ignores takeLane for session-only requests", async () => {

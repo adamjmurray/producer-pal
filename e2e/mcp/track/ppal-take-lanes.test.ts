@@ -196,7 +196,7 @@ describe("take lanes", () => {
     expect(master).not.toHaveProperty("takeLaneCount");
   });
 
-  it("errors on an overlapping clip and enforces the 8-lane cap", async () => {
+  it("replaces an overlapping clip and enforces the 8-lane cap", async () => {
     await createOnLane({
       trackIndex: MIDI_TRACK,
       arrangementStart: "1|1",
@@ -204,21 +204,22 @@ describe("take lanes", () => {
       takeLane: 1,
     });
 
-    // A second clip at the same position on the same lane overlaps and errors
-    const overlap = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        trackIndex: MIDI_TRACK,
-        arrangementStart: "1|1",
-        notes: "C3 1|1",
-        takeLane: 1,
-      },
+    // A second clip at the same position on the same lane replaces it, like the
+    // main lane — no overlap error.
+    const replaced = await createOnLane({
+      trackIndex: MIDI_TRACK,
+      arrangementStart: "1|1",
+      notes: "C3 1|1",
+      takeLane: 1,
     });
 
-    expect(isToolError(overlap)).toBe(true);
-    expect(getToolErrorMessage(overlap)).toContain(
-      "Clip exists at 1|1 on take lane 1",
-    );
+    expect(replaced.takeLane).toBe(1);
+
+    await sleep(100);
+    const afterReplace = await readTakeLanes(MIDI_TRACK);
+
+    // Replace (not stack): lane 1 still holds a single clip at the position
+    expect(afterReplace.takeLanes![0]!.clips).toHaveLength(1);
 
     // Targeting lane 8 auto-creates lanes up to the cap
     const lane8 = await createOnLane({

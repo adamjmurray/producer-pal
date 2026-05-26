@@ -138,40 +138,6 @@ export function registerTakeLaneTrack(
 }
 
 /**
- * Register a take lane (under a track) holding clips at given time ranges, for
- * overlap testing. The track itself is not registered here.
- * @param trackIndex - Owning track index
- * @param laneIndex - 0-based lane index
- * @param clips - Clip time ranges in beats
- * @returns The registered take lane mock object
- */
-export function registerTakeLaneWithClips(
-  trackIndex: number,
-  laneIndex: number,
-  clips: Array<{ start: number; end: number }>,
-): RegisteredMockObject {
-  const clipIds = clips.map((clip, i) => {
-    const clipId = `tl_existing_clip_${uid++}`;
-
-    registerMockObject(clipId, {
-      path: String(
-        livePath.track(trackIndex).takeLane(laneIndex).arrangementClip(i),
-      ),
-      type: "Clip",
-      properties: { start_time: clip.start, end_time: clip.end },
-    });
-
-    return clipId;
-  });
-
-  return registerMockObject(`tl_lane_existing_${uid++}`, {
-    path: String(livePath.track(trackIndex).takeLane(laneIndex)),
-    type: "TakeLane",
-    properties: { name: "Lane", arrangement_clips: children(...clipIds) },
-  });
-}
-
-/**
  * Seed pre-existing clips into a lane's arrangement_clips for overlap testing.
  * No-op when the lane index has no seed entry (e.g. lanes created at runtime).
  * @param laneProps - The lane's mutable props object

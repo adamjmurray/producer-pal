@@ -264,13 +264,11 @@ describe("duplicate take lane", () => {
         undefined,
         "new",
         undefined,
-        4,
-        4,
       ),
     ).toThrow("failed to create Arrangement clip");
   });
 
-  it("does not create a take lane when an overlap aborts the duplicate (no leak)", () => {
+  it("re-creates over an existing clip on a populated lane (replace, like the main lane)", () => {
     registerLiveSet();
     registerArrangementSource(true);
     // Existing lane 1 already holds a clip at beats 0-4.
@@ -279,23 +277,23 @@ describe("duplicate take lane", () => {
       initialLaneClips: [[{ start: 0, end: 4 }]],
     });
 
-    expect(() =>
-      duplicateClipsToTakeLane(
-        LiveAPI.from("src_clip"),
-        "src_clip",
-        [0], // beat 0 overlaps the existing clip on lane 1
-        undefined,
-        undefined,
-        1, // target the EXISTING populated lane
-        undefined,
-        4,
-        4,
-      ),
-    ).toThrow(/Clip exists at .* on take lane 1/);
+    const created = duplicateClipsToTakeLane(
+      LiveAPI.from("src_clip"),
+      "src_clip",
+      [0], // beat 0 overlaps the existing clip on lane 1
+      undefined,
+      undefined,
+      1, // target the EXISTING populated lane
+      undefined,
+    );
 
-    // The overlap is only reachable for a pre-existing lane, so the abort
-    // strands nothing: resolveTakeLane created no lane (Live can't delete one).
+    const lane = lookupMockObject(undefined, livePath.track(0).takeLane(0));
+
+    // No overlap guard: the clip is re-created on the populated lane, and no
+    // new lane is created (the target already exists).
+    expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
+    expect(created).toHaveLength(1);
   });
 
   it("throws when the source clip has no track index", () => {
@@ -314,8 +312,6 @@ describe("duplicate take lane", () => {
         undefined,
         "new",
         undefined,
-        4,
-        4,
       ),
     ).toThrow(/no track index for clip id "orphan_clip"/);
   });

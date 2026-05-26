@@ -3,12 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import {
-  assertNoTakeLaneOverlap,
   resolveTakeLane,
   type TakeLaneTarget,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
@@ -33,9 +31,8 @@ import {
  * Take lanes have no `duplicate_clip_to_arrangement`, so this re-creates the
  * clip on the lane via `create_midi_clip` and copies the notes plus loop/marker
  * properties. MIDI only: audio sources warn and are skipped (no v1 take-lane
- * audio support). Overlaps are checked before any clips are created; the check
- * can only throw for a pre-existing target lane, so it never strands a lane
- * auto-created here (those are always fresh/empty) — see resolveTakeLane.
+ * audio support). Like the main lane, re-creating over an existing clip
+ * replaces/truncates it (no overlap guard).
  * @param sourceClip - The clip being duplicated
  * @param id - Source clip ID (for messages)
  * @param positionsInBeats - Target arrangement start positions in Ableton beats
@@ -43,8 +40,6 @@ import {
  * @param color - Base color (comma-separated, cycles)
  * @param target - Normalized take lane target (lane number or "new")
  * @param takeLaneName - Name for a take lane newly created by this call
- * @param songTimeSigNumerator - Song time signature numerator (for labels)
- * @param songTimeSigDenominator - Song time signature denominator (for labels)
  * @returns Array of minimal clip info objects for the created clips
  */
 export function duplicateClipsToTakeLane(
@@ -55,8 +50,6 @@ export function duplicateClipsToTakeLane(
   color: string | undefined,
   target: TakeLaneTarget,
   takeLaneName: string | undefined,
-  songTimeSigNumerator: number,
-  songTimeSigDenominator: number,
 ): object[] {
   if (sourceClip.getProperty("is_midi_clip") !== 1) {
     console.warn(
@@ -77,19 +70,6 @@ export function duplicateClipsToTakeLane(
   const track = LiveAPI.from(livePath.track(trackIndex));
   const length = sourceClip.getProperty("length") as number;
   const { lane, laneNumber } = resolveTakeLane(track, target, takeLaneName);
-
-  // Validate every position before creating clips. A throw here only hits a
-  // pre-existing lane (resolveTakeLane's auto-created lanes are always empty),
-  // so it never strands a newly created lane — see resolveTakeLane's docstring.
-  for (const startBeats of positionsInBeats) {
-    const label = abletonBeatsToBarBeat(
-      startBeats,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-
-    assertNoTakeLaneOverlap(lane, startBeats, length, laneNumber, label);
-  }
 
   const parsedNames = parseCommaSeparatedNames(name, positionsInBeats.length);
   const parsedColors = parseCommaSeparatedColors(

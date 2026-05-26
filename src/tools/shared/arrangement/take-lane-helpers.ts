@@ -82,12 +82,10 @@ export function normalizeTakeLaneTarget(
  * auto-created to fill a gap are left unnamed.
  *
  * NO ROLLBACK: Live has no take-lane delete (see file header), so a lane created
- * here is permanent. Callers run their overlap check AFTER this — that is safe
- * because auto-creation only ever yields a fresh, empty lane (which the overlap
- * check passes), so an overlap error always corresponds to a pre-existing target
- * where nothing was created. The one residual leak is unfixable: if a later clip
- * write fails on a freshly created lane, that empty lane persists. Do all other
- * throwing validation (e.g. invalid takeLane, the MAX cap) before calling this.
+ * here is permanent. The MAX cap is enforced before any lane is created, so it
+ * never strands one. The one residual leak is unfixable: if a later clip write
+ * fails on a freshly created lane, that empty lane persists. Do all other
+ * throwing validation (e.g. invalid takeLane) before calling this.
  * @param track - The regular track LiveAPI to resolve the lane on
  * @param target - Normalized take lane target (lane number or "new")
  * @param takeLaneName - Optional name for a newly created lane
@@ -121,35 +119,4 @@ export function resolveTakeLane(
   }
 
   return { lane, laneNumber: targetCount };
-}
-
-/**
- * Throw a clean error if any clip on the lane overlaps the target time range.
- * No-op for lanes with no conflicting clip (including freshly created lanes).
- * @param lane - The resolved take lane LiveAPI object
- * @param startBeats - New clip start position in Ableton beats
- * @param lengthBeats - New clip length in beats (overlap window width)
- * @param laneNumber - 1-based lane number (for the message)
- * @param positionLabel - bar|beat label of the position (for the message)
- */
-export function assertNoTakeLaneOverlap(
-  lane: LiveAPI,
-  startBeats: number,
-  lengthBeats: number,
-  laneNumber: number,
-  positionLabel: string,
-): void {
-  const newEnd = startBeats + lengthBeats;
-
-  for (const clip of lane.getChildren("arrangement_clips")) {
-    const existingStart = clip.getProperty("start_time") as number;
-    const existingEnd = clip.getProperty("end_time") as number;
-
-    if (existingStart < newEnd && existingEnd > startBeats) {
-      throw new Error(
-        `Clip exists at ${positionLabel} on take lane ${laneNumber}. ` +
-          `Use update-clip to modify, or takeLane: "new" for a fresh lane.`,
-      );
-    }
-  }
 }

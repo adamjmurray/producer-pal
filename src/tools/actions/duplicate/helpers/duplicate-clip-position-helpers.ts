@@ -130,8 +130,6 @@ export async function duplicateClipWithPositions(
         color,
         takeLaneTarget,
         takeLaneName,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
       );
     }
 
