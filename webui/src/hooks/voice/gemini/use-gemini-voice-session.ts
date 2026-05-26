@@ -253,7 +253,10 @@ export function useGeminiVoiceSession(
           },
         });
 
-        if (stale()) return void (await cleanup());
+        // If cleanup() ran during mic.start(), it stopped a partial mic and
+        // didn't see the resources mic.start() set up afterward. Stop the
+        // orphan locally — cleanup() already ran the rest of teardown.
+        if (stale()) return void (await mic.stop());
 
         seedGeminiContext(session, initialHistory);
         setActiveVoice(voice ?? null);

@@ -23,7 +23,16 @@ const h = vi.hoisted(() => {
     connectParams: { model?: string; config?: unknown } | null;
     genaiOptions: unknown;
     onChunk: ((data: string) => void) | null;
-  } = { callbacks: {}, connectParams: null, genaiOptions: null, onChunk: null };
+    /** When set, FakeMic.start awaits this before resolving. Tests use it to
+     * park connect() mid-start so they can interleave teardown. */
+    micStartGate: Promise<void> | null;
+  } = {
+    callbacks: {},
+    connectParams: null,
+    genaiOptions: null,
+    onChunk: null,
+    micStartGate: null,
+  };
 
   const liveConnect = vi.fn(
     async (params: {
@@ -52,6 +61,7 @@ const h = vi.hoisted(() => {
     stop = vi.fn(async () => {});
     start = vi.fn(async (opts: { onChunk: (data: string) => void }) => {
       state.onChunk = opts.onChunk;
+      if (state.micStartGate) await state.micStartGate;
 
       return { sampleRate: 16000 };
     });
@@ -158,6 +168,7 @@ afterEach(() => {
   h.FakePlayer.last = null;
   h.state.callbacks = {};
   h.state.onChunk = null;
+  h.state.micStartGate = null;
 });
 
 describe("useGeminiVoiceSession", () => {
@@ -332,6 +343,46 @@ describe("useGeminiVoiceSession", () => {
       result.current.resetHistory();
     });
     expect(result.current.history).toHaveLength(0);
+  });
+
+  it("stops the orphaned mic when teardown races mic.start()", async () => {
+    let resolveStart!: () => void;
+
+    h.state.micStartGate = new Promise<void>((r) => {
+      resolveStart = r;
+    });
+
+    const view = renderHook((p: typeof PARAMS) => useGeminiVoiceSession(p), {
+      initialProps: PARAMS,
+    });
+    // Kick off connect() — DON'T await; it's parked inside mic.start awaiting
+    // the gate. Wrap in act so React state updates flush as they happen.
+    const connectPromise = act(() => view.result.current.connect());
+
+    // Wait until the mic instance has been constructed and start() has been
+    // called (so it's actually parked on the gate).
+    await vi.waitFor(() => {
+      expect(h.FakeMic.last).not.toBeNull();
+      expect(h.FakeMic.last!.start).toHaveBeenCalled();
+    });
+
+    const mic = h.FakeMic.last!;
+
+    // Tear down WHILE mic.start is still parked. cleanup() captures and
+    // stop()s this same mic; then completes its own work.
+    await act(() => view.result.current.disconnect());
+
+    // First stop() from cleanup.
+    expect(mic.stop).toHaveBeenCalledTimes(1);
+
+    // Now let mic.start resolve. The stale check post-start fires and we
+    // call mic.stop a SECOND time on the now-fully-initialized mic so its
+    // orphaned MediaStream / AudioContext gets closed.
+    resolveStart();
+    await connectPromise;
+
+    expect(mic.stop).toHaveBeenCalledTimes(2);
+    expect(view.result.current.status).toBe("idle");
   });
 
   it("disconnect tears everything down and goes idle", async () => {
