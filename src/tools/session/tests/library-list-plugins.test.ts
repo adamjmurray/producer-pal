@@ -86,7 +86,6 @@ describe("library tool — listPlugins action", () => {
         version: "1.3.6",
         format: "VST",
         category: "instrument",
-        dev_identifier: "device:vst:instr:Serum",
       },
     ]);
 

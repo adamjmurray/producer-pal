@@ -185,7 +185,6 @@ function buildPluginItem(row: PluginRow): PluginItem {
     format: deriveFormat(row.dev_identifier),
     category: deriveCategory(row.dev_identifier),
     subcategories: parseSubcategories(row.subcategories),
-    dev_identifier: row.dev_identifier ?? null,
   };
 }
 

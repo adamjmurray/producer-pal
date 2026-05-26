@@ -289,8 +289,6 @@ export interface PluginItem {
    * occasional vendor name, so treat these as tags, not an enum.
    */
   subcategories: string[];
-  /** Live's raw plugin identifier URI (e.g. "device:vst3:instr:..."). */
-  dev_identifier: string | null;
 }
 
 export interface ListPluginsResult {

@@ -190,7 +190,6 @@ describe("listPlugins — filtering and derivation", () => {
 
     expect(mystery?.format).toBeNull();
     expect(mystery?.category).toBeNull();
-    expect(mystery?.dev_identifier).toBe("garbage-no-scheme");
   });
 
   it("carries through vendor and version, with nulls preserved", async () => {
