@@ -130,4 +130,19 @@ describe("updateClip - transforms array (per-clip cycling)", () => {
       expect.stringContaining("transforms provided but only"),
     );
   });
+
+  it("warns and continues when a single transform entry is malformed", async () => {
+    // Middle transform has invalid syntax; first and third must still apply.
+    await updateClip({
+      ids: "123, 456, 789",
+      transforms: ["velocity = 10", "velocity = !!!bad!!!", "velocity = 30"],
+    });
+
+    expect(addedVelocity(mocks.clip123)).toBe(10);
+    expect(addedVelocity(mocks.clip789)).toBe(30);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("Failed to update clip 456"),
+    );
+  });
 });

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import {
@@ -21,6 +22,7 @@ import {
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
 import {
   parseCommaSeparatedIds,
+  parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
@@ -40,6 +42,7 @@ import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts"
 import { computeNonSurvivorClipIds } from "./helpers/update-clip-arrangement-optimizer.ts";
 import {
   type ClipAudioWarpQuantizeParams,
+  type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
 
@@ -155,6 +158,10 @@ export async function updateClip(
   const { arrangementStartBeats, arrangementLengthBeats } =
     validateAndParseArrangementParams(arrangementStart, arrangementLength);
 
+  // Validate timeSignature up front so format errors throw to the caller
+  // instead of being swallowed by the per-clip warn-and-skip wrapper.
+  if (timeSignature != null) parseTimeSignature(timeSignature);
+
   const parsedToSlot = parseToSlotParam(toSlot);
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
@@ -177,9 +184,7 @@ export async function updateClip(
       break;
     }
 
-    const prevLen = updatedClips.length;
-
-    processSingleClipUpdate({
+    await processClipUpdateStep({
       clip,
       clipIndex: i,
       clipCount: mutableClips.length,
@@ -211,13 +216,8 @@ export async function updateClip(
       context,
       updatedClips,
       tracksWithMovedClips,
+      code: getCycledEntry(code, i),
     });
-
-    await applyCodeExecToNewClips(
-      updatedClips,
-      prevLen,
-      getCycledEntry(code, i),
-    );
   }
 
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
@@ -250,6 +250,26 @@ function parseToSlotParam(
   }
 
   return slots[0] as { trackIndex: number; sceneIndex: number };
+}
+
+/**
+ * Process one clip update + per-clip code-exec, warn-and-continue on failure.
+ * @param params - Per-clip update params plus optional code to apply
+ */
+async function processClipUpdateStep(
+  params: ProcessSingleClipUpdateParams & { code?: string },
+): Promise<void> {
+  const { code, ...processParams } = params;
+  const prevLen = params.updatedClips.length;
+
+  try {
+    processSingleClipUpdate(processParams);
+    await applyCodeExecToNewClips(params.updatedClips, prevLen, code);
+  } catch (error) {
+    console.warn(
+      `Failed to update clip ${params.clip.id}: ${errorMessage(error)}`,
+    );
+  }
 }
 
 /**
