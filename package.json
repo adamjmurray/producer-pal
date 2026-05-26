@@ -137,7 +137,7 @@
     "@tailwindcss/vite": "4.3.0",
     "@testing-library/preact": "3.2.4",
     "@types/express": "5.0.6",
-    "@types/node": "25.8.0",
+    "@types/node": "25.9.0",
     "@typescript-eslint/eslint-plugin": "8.59.4",
     "@typescript-eslint/parser": "8.59.4",
     "@vitest/coverage-v8": "4.1.6",
