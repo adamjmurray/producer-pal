@@ -24,6 +24,24 @@ vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
 import { updateClipMock } from "./setup.ts";
 import * as consoleMock from "#src/shared/v8-max-console.ts";
 
+/**
+ * Set up two-destination session duplication mocks on track 0:
+ * slot 1 (existing) and slot 2 (empty). Used by the multi-copy transform tests.
+ */
+function setupTwoSlotDuplication(): void {
+  registerSessionClipDuplication();
+  registerMockObject("live_set/tracks/0/clip_slots/2", {
+    path: livePath.track(0).clipSlot(2),
+    properties: { has_clip: 0 },
+  });
+  registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
+    path: livePath.track(0).clipSlot(1).clip(),
+  });
+  registerMockObject("live_set/tracks/0/clip_slots/2/clip", {
+    path: livePath.track(0).clipSlot(2).clip(),
+  });
+}
+
 describe("duplicate - transforms/code", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -59,17 +77,7 @@ describe("duplicate - transforms/code", () => {
     });
 
     it("cycles a single-entry transform array across multiple duplicated clips", async () => {
-      registerSessionClipDuplication();
-      registerMockObject("live_set/tracks/0/clip_slots/2", {
-        path: livePath.track(0).clipSlot(2),
-        properties: { has_clip: 0 },
-      });
-      registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-        path: livePath.track(0).clipSlot(1).clip(),
-      });
-      registerMockObject("live_set/tracks/0/clip_slots/2/clip", {
-        path: livePath.track(0).clipSlot(2).clip(),
-      });
+      setupTwoSlotDuplication();
 
       const dest1 = "live_set/tracks/0/clip_slots/1/clip";
       const dest2 = "live_set/tracks/0/clip_slots/2/clip";
@@ -103,17 +111,7 @@ describe("duplicate - transforms/code", () => {
     });
 
     it("applies distinct per-copy transforms when the array matches the copies", async () => {
-      registerSessionClipDuplication();
-      registerMockObject("live_set/tracks/0/clip_slots/2", {
-        path: livePath.track(0).clipSlot(2),
-        properties: { has_clip: 0 },
-      });
-      registerMockObject("live_set/tracks/0/clip_slots/1/clip", {
-        path: livePath.track(0).clipSlot(1).clip(),
-      });
-      registerMockObject("live_set/tracks/0/clip_slots/2/clip", {
-        path: livePath.track(0).clipSlot(2).clip(),
-      });
+      setupTwoSlotDuplication();
 
       const dest1 = "live_set/tracks/0/clip_slots/1/clip";
       const dest2 = "live_set/tracks/0/clip_slots/2/clip";

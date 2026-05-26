@@ -17,6 +17,7 @@ import {
   renderVoicePersistenceWithHistory,
   resetConversationsDb,
   saveVoiceRecord,
+  setupLiveRecordWithDeletionSpy,
   userTextItem,
   userTranscriptItem,
   waitForEffects,
@@ -449,16 +450,9 @@ describe("useVoicePersistence", () => {
   });
 
   it("fires onLiveRecordDeleted when deleteAllConversations removes the live record", async () => {
-    const record = await saveVoiceRecord({
-      voiceHistory: [userTextItem("live")],
-    });
+    const { result, onLiveRecordDeleted } =
+      await setupLiveRecordWithDeletionSpy();
 
-    window.location.hash = record.id;
-    const onLiveRecordDeleted = vi.fn();
-
-    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
-
-    await waitForEffects();
     await act(() => result.current.deleteAllConversations());
 
     expect(onLiveRecordDeleted).toHaveBeenCalledOnce();
@@ -480,34 +474,21 @@ describe("useVoicePersistence", () => {
   });
 
   it("fires onLiveRecordDeleted when deleteUnbookmarked removes an unbookmarked live record", async () => {
-    const record = await saveVoiceRecord({
-      bookmarked: false,
-      voiceHistory: [userTextItem("live")],
-    });
+    const { result, onLiveRecordDeleted } =
+      await setupLiveRecordWithDeletionSpy({ bookmarked: false });
 
-    window.location.hash = record.id;
-    const onLiveRecordDeleted = vi.fn();
-
-    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
-
-    await waitForEffects();
     await act(() => result.current.deleteUnbookmarkedConversations());
 
     expect(onLiveRecordDeleted).toHaveBeenCalledOnce();
   });
 
   it("does not fire onLiveRecordDeleted when the live record is bookmarked", async () => {
-    const record = await saveVoiceRecord({
-      bookmarked: true,
-      voiceHistory: [userTextItem("keep")],
-    });
+    const { result, onLiveRecordDeleted } =
+      await setupLiveRecordWithDeletionSpy({
+        bookmarked: true,
+        voiceHistory: [userTextItem("keep")],
+      });
 
-    window.location.hash = record.id;
-    const onLiveRecordDeleted = vi.fn();
-
-    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
-
-    await waitForEffects();
     await act(() => result.current.deleteUnbookmarkedConversations());
 
     expect(onLiveRecordDeleted).not.toHaveBeenCalled();

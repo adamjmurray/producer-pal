@@ -7,8 +7,10 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   type RegisteredMockObject,
   children,
+  expectValueSet,
   livePath,
   registerMockObject,
+  registerSimplerDevice,
   updateDevice,
 } from "./update-device-test-helpers.ts";
 
@@ -48,13 +50,7 @@ describe("updateDevice - param value conversion", () => {
         params: [{ name: "AEG1 Rel", value: "600" }],
       });
 
-      const setCall = param.set.mock.calls.find(
-        (c: unknown[]) => c[0] === "value",
-      ) as [string, number];
-
-      expect(setCall).toBeDefined();
-
-      const displayValue = 5 * Math.pow(15000 / 5, setCall[1]);
+      const displayValue = 5 * Math.pow(15000 / 5, expectValueSet(param));
 
       expect(displayValue).toBeCloseTo(600, 0);
     });
@@ -62,12 +58,7 @@ describe("updateDevice - param value conversion", () => {
     it("should handle target at min boundary", () => {
       updateDevice({ ids: "dev1", params: [{ name: "AEG1 Rel", value: "5" }] });
 
-      const setCall = param.set.mock.calls.find(
-        (c: unknown[]) => c[0] === "value",
-      ) as [string, number];
-
-      expect(setCall).toBeDefined();
-      expect(setCall[1]).toBeCloseTo(0, 1);
+      expect(expectValueSet(param)).toBeCloseTo(0, 1);
     });
 
     it("should handle target at max boundary", () => {
@@ -76,12 +67,7 @@ describe("updateDevice - param value conversion", () => {
         params: [{ name: "AEG1 Rel", value: "15000" }],
       });
 
-      const setCall = param.set.mock.calls.find(
-        (c: unknown[]) => c[0] === "value",
-      ) as [string, number];
-
-      expect(setCall).toBeDefined();
-      expect(setCall[1]).toBeCloseTo(1, 1);
+      expect(expectValueSet(param)).toBeCloseTo(1, 1);
     });
   });
 
@@ -119,12 +105,7 @@ describe("updateDevice - param value conversion", () => {
     it("should handle s to ms unit normalization during binary search", () => {
       updateDevice({ ids: "dev1", params: [{ name: "Decay", value: "5000" }] });
 
-      const setCall = param.set.mock.calls.find(
-        (c: unknown[]) => c[0] === "value",
-      ) as [string, number];
-
-      expect(setCall).toBeDefined();
-      expect(1 + setCall[1] * 9999).toBeCloseTo(5000, -2);
+      expect(1 + expectValueSet(param) * 9999).toBeCloseTo(5000, -2);
     });
   });
 
@@ -272,15 +253,10 @@ describe("updateDevice - param value conversion", () => {
     it("should converge toward min when mid-range labels parse as NaN", () => {
       updateDevice({ ids: "dev1", params: [{ name: "Flaky", value: "500" }] });
 
-      const setCall = param.set.mock.calls.find(
-        (c: unknown[]) => c[0] === "value",
-      ) as [string, number];
-
-      expect(setCall).toBeDefined();
       // "---" parses as NaN (leading hyphens match the number regex).
       // NaN comparisons always false, so binary search treats it as
       // greater-than-target and converges hi toward lo (near rawMin).
-      expect(setCall[1]).toBeCloseTo(0.01, 1);
+      expect(expectValueSet(param)).toBeCloseTo(0.01, 1);
     });
   });
 
@@ -427,14 +403,9 @@ describe("updateDevice - param value conversion", () => {
         params: [{ name: "NoteParam", value: "500" }],
       });
 
-      const setCall = param.set.mock.calls.find(
-        (c: unknown[]) => c[0] === "value",
-      ) as [string, number];
-
-      expect(setCall).toBeDefined();
       // "C4" parses as { value: "C4", unit: "note" } — a string value.
       // binarySearchRawValue returns mid immediately on string-typed labels.
-      expect(setCall[1]).toBe(0.5);
+      expect(expectValueSet(param)).toBe(0.5);
     });
   });
 
@@ -461,15 +432,7 @@ describe("updateDevice - param value conversion", () => {
 
 describe("updateDevice - sample pseudo-param", () => {
   it("loads a sample on a Simpler device via params", () => {
-    const simpler = registerMockObject("simpler-1", {
-      path: livePath.track(0).device(0),
-      type: "SimplerDevice",
-      properties: {
-        class_display_name: "Simpler",
-        multi_sample_mode: 0,
-        parameters: children(),
-      },
-    });
+    const simpler = registerSimplerDevice();
 
     const result = updateDevice({
       ids: "simpler-1",
@@ -484,15 +447,7 @@ describe("updateDevice - sample pseudo-param", () => {
   });
 
   it("does not look up sample as a DeviceParameter (no 'not found' warning)", () => {
-    registerMockObject("simpler-1", {
-      path: livePath.track(0).device(0),
-      type: "SimplerDevice",
-      properties: {
-        class_display_name: "Simpler",
-        multi_sample_mode: 0,
-        parameters: children(),
-      },
-    });
+    registerSimplerDevice();
 
     updateDevice({
       ids: "simpler-1",
@@ -506,15 +461,7 @@ describe("updateDevice - sample pseudo-param", () => {
   });
 
   it("loads sample alongside regular DeviceParameters in one params block", () => {
-    const simpler = registerMockObject("simpler-1", {
-      path: livePath.track(0).device(0),
-      type: "SimplerDevice",
-      properties: {
-        class_display_name: "Simpler",
-        multi_sample_mode: 0,
-        parameters: children("vol-param"),
-      },
-    });
+    const simpler = registerSimplerDevice("vol-param");
     const param = registerMockObject("vol-param", {
       properties: {
         name: "Volume",
@@ -545,15 +492,7 @@ describe("updateDevice - sample pseudo-param", () => {
 
 describe("updateDevice - actions arg", () => {
   it("dispatches a device action to its specialized handler", () => {
-    const simpler = registerMockObject("simpler-1", {
-      path: livePath.track(0).device(0),
-      type: "SimplerDevice",
-      properties: {
-        class_display_name: "Simpler",
-        multi_sample_mode: 0,
-        parameters: [],
-      },
-    });
+    const simpler = registerSimplerDevice();
 
     const result = updateDevice({ ids: "simpler-1", actions: ["reverse"] });
 
@@ -562,15 +501,7 @@ describe("updateDevice - actions arg", () => {
   });
 
   it("applies actions alongside params in one call", () => {
-    const simpler = registerMockObject("simpler-1", {
-      path: livePath.track(0).device(0),
-      type: "SimplerDevice",
-      properties: {
-        class_display_name: "Simpler",
-        multi_sample_mode: 0,
-        parameters: [],
-      },
-    });
+    const simpler = registerSimplerDevice();
 
     updateDevice({
       ids: "simpler-1",

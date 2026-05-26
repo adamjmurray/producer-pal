@@ -436,10 +436,17 @@ describe("readClip", () => {
     expect(result.start).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 
-  it("surfaces 1-based takeLane for arrangement clips on a take lane", () => {
+  /**
+   * Set up an arrangement MIDI clip + matching live_set time signature.
+   * Shared between the take-lane and main-lane arrangement-clip tests.
+   *
+   * @param clipId - The clip mock id
+   * @param path - The clip's Live API path
+   */
+  function setupArrangementClipFixture(clipId: string, path: string): void {
     setupMidiClipMock({
-      clipId: "take_lane_clip_id",
-      path: livePath.track(3).takeLane(0).arrangementClip(0),
+      clipId,
+      path,
       clipProps: {
         is_arrangement_clip: 1,
         start_time: 0,
@@ -457,6 +464,13 @@ describe("readClip", () => {
       path: "live_set",
       properties: { signature_numerator: 4, signature_denominator: 4 },
     });
+  }
+
+  it("surfaces 1-based takeLane for arrangement clips on a take lane", () => {
+    setupArrangementClipFixture(
+      "take_lane_clip_id",
+      livePath.track(3).takeLane(0).arrangementClip(0),
+    );
 
     const result = readClip({ clipId: "id take_lane_clip_id" });
 
@@ -467,26 +481,10 @@ describe("readClip", () => {
   });
 
   it("omits takeLane for arrangement clips on the main lane", () => {
-    setupMidiClipMock({
-      clipId: "main_lane_clip_id",
-      path: livePath.track(3).arrangementClip(0),
-      clipProps: {
-        is_arrangement_clip: 1,
-        start_time: 0,
-        end_time: 4,
-        signature_numerator: 4,
-        signature_denominator: 4,
-        length: 4,
-        start_marker: 0,
-        end_marker: 4,
-        loop_start: 0,
-        loop_end: 4,
-      },
-    });
-    registerMockObject("live-set", {
-      path: "live_set",
-      properties: { signature_numerator: 4, signature_denominator: 4 },
-    });
+    setupArrangementClipFixture(
+      "main_lane_clip_id",
+      livePath.track(3).arrangementClip(0),
+    );
 
     const result = readClip({ clipId: "id main_lane_clip_id" });
 

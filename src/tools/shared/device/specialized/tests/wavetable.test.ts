@@ -26,6 +26,36 @@ const OSC2_WAVETABLES = ["Square", "Triangle", "Sine"];
 const PARAM_IDS = ["id", "p1", "id", "p2", "id", "p3"];
 
 /**
+ * Register the three standard param mocks referenced by PARAM_IDS.
+ */
+function registerStandardParamMocks(): void {
+  registerMockObject("p1", { properties: { name: "Osc 1 Pos" } });
+  registerMockObject("p2", { properties: { name: "Filter Freq" } });
+  registerMockObject("p3", { properties: { name: "Volume" } });
+}
+
+/**
+ * Assert that no modulation value was written and a warning was emitted.
+ * @param device - The mock device to inspect (the returned LiveAPI from registerWavetable)
+ * @param warningSubstring - Substring expected in the warning message
+ */
+function expectModulationNotSet(
+  device: LiveAPI,
+  warningSubstring: string,
+): void {
+  expect(device.call).not.toHaveBeenCalledWith(
+    "set_modulation_value",
+    expect.anything(),
+    expect.anything(),
+    expect.anything(),
+  );
+  expect(outlet).toHaveBeenCalledWith(
+    1,
+    expect.stringContaining(warningSubstring),
+  );
+}
+
+/**
  * Build mock methods for modulation matrix operations.
  * get_modulation_target_parameter_name returns the name for i < targets.length,
  * numeric sentinel 1 otherwise. get_modulation_value reads from sparse cells map.
@@ -85,9 +115,7 @@ function registerWavetable(
     methods: { ...buildModMethods([], {}, 0), ...methods },
   });
 
-  registerMockObject("p1", { properties: { name: "Osc 1 Pos" } });
-  registerMockObject("p2", { properties: { name: "Filter Freq" } });
-  registerMockObject("p3", { properties: { name: "Volume" } });
+  registerStandardParamMocks();
 
   return LiveAPI.from("id wt-1");
 }
@@ -496,16 +524,7 @@ describe("Wavetable actions — setModulation", () => {
       "updateDevice",
     );
 
-    expect(device.call).not.toHaveBeenCalledWith(
-      "set_modulation_value",
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Nonexistent"),
-    );
+    expectModulationNotSet(device, "Nonexistent");
   });
 
   it("warns on source index out of range (13) and bad amount", () => {
@@ -553,13 +572,7 @@ describe("Wavetable actions — clearModulation", () => {
       "updateDevice",
     );
 
-    expect(device.call).not.toHaveBeenCalledWith(
-      "set_modulation_value",
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("Missing"));
+    expectModulationNotSet(device, "Missing");
   });
 
   it("warns on a source index out of range", () => {
@@ -571,16 +584,7 @@ describe("Wavetable actions — clearModulation", () => {
       "updateDevice",
     );
 
-    expect(device.call).not.toHaveBeenCalledWith(
-      "set_modulation_value",
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("clearModulation source"),
-    );
+    expectModulationNotSet(device, "clearModulation source");
   });
 });
 
@@ -781,9 +785,7 @@ describe("Wavetable via read-device", () => {
       },
     });
 
-    registerMockObject("p1", { properties: { name: "Osc 1 Pos" } });
-    registerMockObject("p2", { properties: { name: "Filter Freq" } });
-    registerMockObject("p3", { properties: { name: "Volume" } });
+    registerStandardParamMocks();
   }
 
   it("includes pseudo-params without the modulation scan when include is params", () => {

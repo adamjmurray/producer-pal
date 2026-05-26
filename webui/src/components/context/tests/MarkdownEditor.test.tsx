@@ -13,31 +13,41 @@ import {
   notifyFocusChange,
 } from "#webui/components/context/MarkdownEditor";
 
+type EditorProps = Partial<{
+  initialValue: string;
+  readOnly: boolean;
+  onChange: (value: string) => void;
+  onFocus: () => void;
+  onBlur: () => void;
+  className: string;
+}>;
+
+function renderEditor(props: EditorProps = {}) {
+  return render(
+    <MarkdownEditor
+      initialValue={props.initialValue ?? "x"}
+      readOnly={props.readOnly ?? false}
+      onChange={props.onChange ?? (() => {})}
+      onFocus={props.onFocus}
+      onBlur={props.onBlur}
+      className={props.className}
+    />,
+  );
+}
+
 describe("MarkdownEditor", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it("renders the initial value", () => {
-    const { container } = render(
-      <MarkdownEditor
-        initialValue="# hello"
-        readOnly={false}
-        onChange={() => {}}
-      />,
-    );
+    const { container } = renderEditor({ initialValue: "# hello" });
 
     expect(container.textContent).toContain("hello");
   });
 
   it("ignores initialValue prop changes after mount (uncontrolled)", () => {
-    const { container, rerender } = render(
-      <MarkdownEditor
-        initialValue="first"
-        readOnly={false}
-        onChange={() => {}}
-      />,
-    );
+    const { container, rerender } = renderEditor({ initialValue: "first" });
 
     expect(container.textContent).toContain("first");
 
@@ -57,13 +67,7 @@ describe("MarkdownEditor", () => {
   });
 
   it("destroys the EditorView on unmount", () => {
-    const { container, unmount } = render(
-      <MarkdownEditor
-        initialValue="bye"
-        readOnly={false}
-        onChange={() => {}}
-      />,
-    );
+    const { container, unmount } = renderEditor({ initialValue: "bye" });
 
     expect(container.querySelector(".cm-editor")).toBeTruthy();
     unmount();
@@ -71,17 +75,13 @@ describe("MarkdownEditor", () => {
   });
 
   it("renders without crashing in read-only mode", () => {
-    const { container } = render(
-      <MarkdownEditor initialValue="x" readOnly={true} onChange={() => {}} />,
-    );
+    const { container } = renderEditor({ readOnly: true });
 
     expect(container.querySelector(".cm-editor")).toBeTruthy();
   });
 
   it("does not crash when toggling readOnly", () => {
-    const { container, rerender } = render(
-      <MarkdownEditor initialValue="x" readOnly={true} onChange={() => {}} />,
-    );
+    const { container, rerender } = renderEditor({ readOnly: true });
 
     rerender(
       <MarkdownEditor initialValue="x" readOnly={false} onChange={() => {}} />,
@@ -91,14 +91,7 @@ describe("MarkdownEditor", () => {
   });
 
   it("attaches a className to the frame element", () => {
-    const { container } = render(
-      <MarkdownEditor
-        initialValue="x"
-        readOnly={false}
-        onChange={() => {}}
-        className="custom-host"
-      />,
-    );
+    const { container } = renderEditor({ className: "custom-host" });
 
     expect(container.querySelector(".custom-host")).toBeTruthy();
   });
@@ -106,15 +99,7 @@ describe("MarkdownEditor", () => {
   it("forwards focus and blur events to callbacks", async () => {
     const onFocus = vi.fn();
     const onBlur = vi.fn();
-    const { container } = render(
-      <MarkdownEditor
-        initialValue="x"
-        readOnly={false}
-        onChange={() => {}}
-        onFocus={onFocus}
-        onBlur={onBlur}
-      />,
-    );
+    const { container } = renderEditor({ onFocus, onBlur });
     const cmContent = container.querySelector(".cm-content") as HTMLElement;
 
     cmContent.focus();
@@ -131,9 +116,7 @@ describe("MarkdownEditor", () => {
 
   it("forwards document changes to onChange", () => {
     const onChange = vi.fn();
-    const { container } = render(
-      <MarkdownEditor initialValue="hi" readOnly={false} onChange={onChange} />,
-    );
+    const { container } = renderEditor({ initialValue: "hi", onChange });
 
     // Trigger a CodeMirror dispatch via the public DOM. CodeMirror reads
     // changes via a "beforeinput" event when the contentEditable receives

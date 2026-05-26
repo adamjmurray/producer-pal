@@ -253,25 +253,10 @@ describe("update-clip-arrangement-helpers", () => {
         },
       });
 
-      const mockClip = {
-        id: "777",
-        path: `live_set tracks ${trackIndex} take_lanes 0 arrangement_clips 0`,
-        getProperty: vi.fn((prop) => {
-          if (prop === "is_arrangement_clip") return 1;
-
-          return null;
-        }),
+      const { result, tracksWithMovedClips } = callArrangementStart({
+        clipId: "777",
         trackIndex,
-      };
-
-      const tracksWithMovedClips = new Map<number, number>();
-
-      const result = handleArrangementStartOperation({
-        clip: mockClip as unknown as LiveAPI,
-        arrangementStartBeats: 16,
-        tracksWithMovedClips,
-        isMidiClip: true,
-        context: mockContext,
+        path: `live_set tracks ${trackIndex} take_lanes 0 arrangement_clips 0`,
       });
 
       expect(result).toBe("777");
@@ -301,16 +286,47 @@ function callWithNonSurvivorClip({ clipExists }: { clipExists: boolean }) {
     path: `live_set tracks ${trackIndex}`,
   });
 
-  const mockClip = {
-    id: "200",
+  const { result, tracksWithMovedClips } = callArrangementStart({
+    clipId: "200",
+    trackIndex,
+    isNonSurvivor: true,
     exists: () => clipExists,
+  });
+
+  return { trackMock, result, tracksWithMovedClips };
+}
+
+interface CallArrangementStartOptions {
+  clipId: string;
+  trackIndex: number;
+  path?: string;
+  exists?: () => boolean;
+  isNonSurvivor?: boolean;
+}
+
+/**
+ * Build a mock arrangement clip and invoke handleArrangementStartOperation.
+ * Shared between the non-survivor and take-lane scenarios.
+ *
+ * @param opts - Options describing the mock clip and call shape
+ * @returns The result and the shared tracksWithMovedClips map
+ */
+function callArrangementStart(opts: CallArrangementStartOptions): {
+  result: string | null;
+  tracksWithMovedClips: Map<number, number>;
+} {
+  const mockClip: Record<string, unknown> = {
+    id: opts.clipId,
     getProperty: vi.fn((prop) => {
       if (prop === "is_arrangement_clip") return 1;
 
       return null;
     }),
-    trackIndex,
+    trackIndex: opts.trackIndex,
   };
+
+  if (opts.path != null) mockClip.path = opts.path;
+  if (opts.exists != null) mockClip.exists = opts.exists;
 
   const tracksWithMovedClips = new Map<number, number>();
 
@@ -320,8 +336,8 @@ function callWithNonSurvivorClip({ clipExists }: { clipExists: boolean }) {
     tracksWithMovedClips,
     isMidiClip: true,
     context: mockContext,
-    isNonSurvivor: true,
+    isNonSurvivor: opts.isNonSurvivor,
   });
 
-  return { trackMock, result, tracksWithMovedClips };
+  return { result, tracksWithMovedClips };
 }

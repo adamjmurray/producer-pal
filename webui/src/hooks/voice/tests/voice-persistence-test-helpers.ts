@@ -5,6 +5,7 @@
 
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { act, renderHook } from "@testing-library/preact";
+import { vi } from "vitest";
 import {
   type UseVoicePersistenceReturn,
   useVoicePersistence,
@@ -125,4 +126,31 @@ export async function saveVoiceRecord(
   await saveConversation(record);
 
   return record;
+}
+
+/**
+ * Save a voice record, point the URL hash at it, render the hook with an
+ * `onLiveRecordDeleted` spy, and wait for the initial effects to settle.
+ * @param overrides - Fields to override on the saved record
+ * @returns The saved record, the spy, and the rendered hook result
+ */
+export async function setupLiveRecordWithDeletionSpy(
+  overrides: Partial<ConversationRecord> = {},
+): Promise<{
+  record: ConversationRecord;
+  onLiveRecordDeleted: ReturnType<typeof vi.fn>;
+  result: ReturnType<typeof renderVoicePersistence>["result"];
+}> {
+  const record = await saveVoiceRecord({
+    voiceHistory: [userTextItem("live")],
+    ...overrides,
+  });
+
+  window.location.hash = record.id;
+  const onLiveRecordDeleted = vi.fn();
+  const { result } = renderVoicePersistence({ onLiveRecordDeleted });
+
+  await waitForEffects();
+
+  return { record, onLiveRecordDeleted, result };
 }

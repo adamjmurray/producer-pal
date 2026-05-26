@@ -29,6 +29,22 @@ interface TestState {
 }
 
 /**
+ * Fetch a URL and assert it serves a non-empty HTML body with no-store caching.
+ *
+ * @param url - The URL to fetch
+ */
+async function expectHtmlNoStoreResponse(url: string): Promise<void> {
+  const response = await fetch(url);
+
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-type")).toContain("html");
+  expect(response.headers.get("cache-control")).toBe("no-store");
+  const html = await response.text();
+
+  expect(html.length).toBeGreaterThan(0);
+}
+
+/**
  * Create a test client and transport, returning cleanup function
  *
  * @param getServerUrl - Function to get server URL
@@ -497,26 +513,11 @@ describe("MCP Express App", () => {
 
     it("should serve chat UI when enabled", async () => {
       // Chat UI is enabled by default
-      const response = await fetch(chatUrl);
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toContain("html");
-      expect(response.headers.get("cache-control")).toBe("no-store");
-      const html = await response.text();
-
-      expect(html).toBeDefined();
-      expect(html.length).toBeGreaterThan(0);
+      await expectHtmlNoStoreResponse(chatUrl);
     });
 
     it("should serve same UI bundle at /context", async () => {
-      const response = await fetch(contextUrl);
-
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toContain("html");
-      expect(response.headers.get("cache-control")).toBe("no-store");
-      const html = await response.text();
-
-      expect(html.length).toBeGreaterThan(0);
+      await expectHtmlNoStoreResponse(contextUrl);
     });
 
     it("should redirect / to /chat with a no-store cache header", async () => {
@@ -545,14 +546,8 @@ describe("MCP Express App", () => {
 
     it("should serve the same HTML at /voice when chat UI is enabled", async () => {
       const voiceUrl = appState.serverUrl.replace("/mcp", "/voice");
-      const response = await fetch(voiceUrl);
 
-      expect(response.status).toBe(200);
-      expect(response.headers.get("content-type")).toContain("html");
-      expect(response.headers.get("cache-control")).toBe("no-store");
-      const html = await response.text();
-
-      expect(html.length).toBeGreaterThan(0);
+      await expectHtmlNoStoreResponse(voiceUrl);
     });
 
     it("should return 403 at /voice when chat UI is disabled", async () => {
