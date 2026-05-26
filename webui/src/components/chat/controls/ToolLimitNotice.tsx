@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 interface ToolLimitNoticeProps {
-  /** Send a follow-up message to resume the task (called with "continue") */
+  /** Send a follow-up message to resume the task. */
   onContinue: () => void;
   /** Whether a response is already in progress (disables the button) */
   disabled?: boolean;
@@ -12,7 +12,8 @@ interface ToolLimitNoticeProps {
 
 /**
  * Notice shown when a response stopped because it reached the tool-call step
- * limit. Offers a Continue button that resumes the task by sending "continue".
+ * limit. Offers a Continue button that resumes the task by sending a
+ * continuation prompt.
  * @param props - Component props
  * @param props.onContinue - Callback to resume the task
  * @param props.disabled - Whether the Continue button is disabled

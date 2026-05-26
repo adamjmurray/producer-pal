@@ -142,7 +142,12 @@ export function ChatScreen(props: ChatScreenProps) {
 
       {toolLimitReached && !isAssistantResponding && (
         <ToolLimitNotice
-          onContinue={() => void handleSend("continue", currentOverrides)}
+          onContinue={() =>
+            void handleSend(
+              "Please continue from where you left off.",
+              currentOverrides,
+            )
+          }
           disabled={isAssistantResponding}
         />
       )}

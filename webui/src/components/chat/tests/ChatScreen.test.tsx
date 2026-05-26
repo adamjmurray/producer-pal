@@ -315,14 +315,14 @@ describe("ChatScreen", () => {
       expect(screen.queryByRole("button", { name: "Continue" })).toBeNull();
     });
 
-    it("sends 'continue' when the Continue button is clicked", () => {
+    it("sends a continuation prompt when the Continue button is clicked", () => {
       mockHandleSend.mockClear();
       render(<ChatScreen {...defaultProps} toolLimitReached={true} />);
 
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
       expect(mockHandleSend).toHaveBeenCalledWith(
-        "continue",
+        "Please continue from where you left off.",
         expect.anything(),
       );
     });
