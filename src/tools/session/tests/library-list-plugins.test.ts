@@ -67,7 +67,12 @@ describe("library tool — listPlugins action", () => {
     );
   });
 
-  it("drops deviceKind=midifx (no plugin-category equivalent)", async () => {
+  it("drops deviceKind=midifx and warns instead of silently dropping it", async () => {
+    const consoleModule = await import("#src/shared/v8-max-console.ts");
+    const warnSpy = vi
+      .spyOn(consoleModule, "warn")
+      .mockImplementation(() => {});
+
     mockPluginsRoute();
 
     await library({ action: "listPlugins", deviceKind: "midifx" });
@@ -76,6 +81,11 @@ describe("library tool — listPlugins action", () => {
       "library.listPlugins",
       expect.objectContaining({ category: undefined }),
     );
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('deviceKind "midifx"'),
+    );
+
+    warnSpy.mockRestore();
   });
 
   it("returns the plugins payload from the route", async () => {

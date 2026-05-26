@@ -22,12 +22,14 @@ import {
   type PluginCategory,
   type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import { runSearchBatch } from "./library-search-batch-helpers.ts";
 import { readSamples } from "./read-samples.ts";
 
 // deviceKind doubles as the plugin category filter for listPlugins. Only the
 // values plugins can actually be (instrument/audiofx) map through; midifx has
-// no plugin-category equivalent and is dropped.
+// no plugin-category equivalent and is dropped (with a warning at the call
+// site so the caller sees why the result wasn't narrowed).
 const PLUGIN_CATEGORIES = new Set<LibraryDeviceKind>(["instrument", "audiofx"]);
 
 interface LibraryArgs {
@@ -102,6 +104,15 @@ export async function library(
   }
 
   if (action === "listPlugins") {
+    // Plugins are classified as instrument or audiofx only — Live's plugin DB
+    // doesn't tag MIDI effects as a separate category. Warn instead of silently
+    // dropping the filter so the caller sees why the result wasn't narrowed.
+    if (args.deviceKind != null && !PLUGIN_CATEGORIES.has(args.deviceKind)) {
+      console.warn(
+        `listPlugins: deviceKind "${args.deviceKind}" is not a plugin category (instrument | audiofx); ignoring the filter`,
+      );
+    }
+
     const category =
       args.deviceKind != null && PLUGIN_CATEGORIES.has(args.deviceKind)
         ? (args.deviceKind as PluginCategory)
