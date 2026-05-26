@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { listTags } from "../list-tags.ts";
 import { setupLibraryFixtureLifecycle } from "./fixtures/library-fixture.ts";
@@ -25,6 +29,25 @@ describe("listTags", () => {
 
     expect(result.dbAvailable).toBe(false);
     expect(result.tags).toHaveLength(0);
+  });
+
+  it("degrades to dbAvailable:false when the DB lacks an expected column", async () => {
+    // Model a Live DB whose schema has drifted (e.g. a future release renames a
+    // selected column); the prepare/SELECT throws and the guard must degrade to
+    // dbAvailable:false rather than surfacing a raw SQLite error to the LLM.
+    const broken = createDbMissingKeywordsTable();
+
+    try {
+      vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(broken.dbPath);
+
+      const result = await listTags();
+
+      expect(result.dbAvailable).toBe(false);
+      expect(result.tags).toHaveLength(0);
+      expect(result.reason).toContain("Failed to read Live database");
+    } finally {
+      broken.cleanup();
+    }
   });
 
   it("returns tags sorted by usage count descending", async () => {
@@ -58,3 +81,33 @@ describe("listTags", () => {
     expect(result.tags.length).toBeGreaterThan(0);
   });
 });
+
+/**
+ * Create a temp Live-files DB that omits the `keywords` table the listTags
+ * SELECT depends on, modeling a schema drift. Preparing the statement throws
+ * "no such table".
+ *
+ * @returns The DB path and a cleanup function removing the temp dir.
+ */
+function createDbMissingKeywordsTable(): {
+  dbPath: string;
+  cleanup: () => void;
+} {
+  const dir = mkdtempSync(join(tmpdir(), "ppal-tags-broken-"));
+  const dbPath = join(dir, "Live-files-11000.db");
+  const db = new DatabaseSync(dbPath);
+
+  // `keywords` deliberately omitted; an unrelated table exists so the DB opens.
+  db.exec(`
+    CREATE TABLE files (
+      file_id INTEGER PRIMARY KEY,
+      name TEXT
+    );
+  `);
+  db.close();
+
+  return {
+    dbPath,
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  };
+}

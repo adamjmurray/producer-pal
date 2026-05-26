@@ -24,6 +24,7 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { detectStalenessRisk } from "./db-staleness.ts";
 import { fourCC } from "./library-filters.ts";
 import {
@@ -71,21 +72,32 @@ export async function listCategories(
   // Best-effort advisory: flag a pending WAL from an unclean Live exit that our
   // immutable read can't see. Omitted from the response when there's no risk.
   const stalenessRisk = await detectStalenessRisk(dbPath);
-  const db = openLiveDb(dbPath);
 
+  // Guard the open + query: Live's DB schema varies across releases, so a future
+  // rename of the metadata/metadata_values tables or columns would throw a raw
+  // SQLite error to the LLM. Degrade to dbAvailable:false. Mirrors librarySearch.
   try {
-    const base = {
-      dbAvailable: true as const,
-      ...(stalenessRisk && { stalenessRisk }),
-    };
+    const db = openLiveDb(dbPath);
 
-    if (args.category != null && args.category !== "") {
-      return { ...base, ...drillIntoCategory(db, args.category, args.limit) };
+    try {
+      const base = {
+        dbAvailable: true as const,
+        ...(stalenessRisk && { stalenessRisk }),
+      };
+
+      if (args.category != null && args.category !== "") {
+        return { ...base, ...drillIntoCategory(db, args.category, args.limit) };
+      }
+
+      return { ...base, categories: listTopCategories(db) };
+    } finally {
+      db.close();
     }
-
-    return { ...base, categories: listTopCategories(db) };
-  } finally {
-    db.close();
+  } catch (error) {
+    return {
+      dbAvailable: false,
+      reason: `Failed to read Live database: ${errorMessage(error)}`,
+    };
   }
 }
 

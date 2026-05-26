@@ -14,6 +14,7 @@
 import { utimesSync, writeFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { librarySearch } from "../library-search.ts";
+import { listCategories } from "../list-categories.ts";
 import { listTags } from "../list-tags.ts";
 import {
   createLibraryFixture,
@@ -124,5 +125,14 @@ describe("library stale-WAL advisory (end-to-end)", () => {
     const result = await listTags();
 
     expect(result.stalenessRisk).toBeUndefined();
+  });
+
+  it("listCategories flags wal-pending alongside the overview payload", async () => {
+    setup({ sizeBytes: 5_000_000, dbSeconds: 1_000, walSeconds: 1_120 });
+
+    const result = await listCategories();
+
+    expect(result.stalenessRisk?.kind).toBe("wal-pending");
+    expect(result.categories?.length).toBeGreaterThan(0);
   });
 });

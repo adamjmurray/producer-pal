@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { listCategories } from "../list-categories.ts";
 import { setupLibraryFixtureLifecycle } from "./fixtures/library-fixture.ts";
@@ -25,6 +29,25 @@ describe("listCategories", () => {
 
     expect(result.dbAvailable).toBe(false);
     expect(result.categories).toBeUndefined();
+  });
+
+  it("degrades to dbAvailable:false when the DB lacks an expected table", async () => {
+    // Model a Live DB whose schema has drifted (e.g. a future release renames a
+    // selected column or table); the prepare/SELECT throws and the guard must
+    // degrade to dbAvailable:false rather than surfacing a raw SQLite error.
+    const broken = createDbMissingMetadataTables();
+
+    try {
+      vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(broken.dbPath);
+
+      const result = await listCategories();
+
+      expect(result.dbAvailable).toBe(false);
+      expect(result.categories).toBeUndefined();
+      expect(result.reason).toContain("Failed to read Live database");
+    } finally {
+      broken.cleanup();
+    }
   });
 
   describe("overview mode (no category)", () => {
@@ -93,3 +116,33 @@ describe("listCategories", () => {
     });
   });
 });
+
+/**
+ * Create a temp Live-files DB without the `metadata` / `metadata_values` tables
+ * the listCategories SELECT depends on, modeling a schema drift. Preparing the
+ * statement throws "no such table".
+ *
+ * @returns The DB path and a cleanup function removing the temp dir.
+ */
+function createDbMissingMetadataTables(): {
+  dbPath: string;
+  cleanup: () => void;
+} {
+  const dir = mkdtempSync(join(tmpdir(), "ppal-cats-broken-"));
+  const dbPath = join(dir, "Live-files-11000.db");
+  const db = new DatabaseSync(dbPath);
+
+  // `metadata` / `metadata_values` deliberately omitted.
+  db.exec(`
+    CREATE TABLE files (
+      file_id INTEGER PRIMARY KEY,
+      name TEXT
+    );
+  `);
+  db.close();
+
+  return {
+    dbPath,
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  };
+}

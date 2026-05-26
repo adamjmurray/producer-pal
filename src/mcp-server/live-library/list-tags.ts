@@ -14,6 +14,7 @@
  * Read-only: SELECT statements only.
  */
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { detectStalenessRisk } from "./db-staleness.ts";
 import {
   clampLibraryLimit,
@@ -55,23 +56,39 @@ export async function listTags(
   // Best-effort advisory: flag a pending WAL from an unclean Live exit that our
   // immutable read can't see. Omitted from the response when there's no risk.
   const stalenessRisk = await detectStalenessRisk(dbPath);
-  const db = openLiveDb(dbPath);
 
+  // Guard the open + query: Live's DB schema varies across releases, so a future
+  // rename of the keywords/files tables or columns would throw a raw SQLite error
+  // to the LLM. Degrade to dbAvailable:false instead. Mirrors librarySearch.
   try {
-    const rows = db
-      .prepare(
-        `SELECT kw.name AS name, COUNT(*) AS cnt
-         FROM keywords k
-         JOIN files kw ON kw.file_id = k.keyw_id
-         GROUP BY k.keyw_id
-         ORDER BY cnt DESC, kw.name ASC
-         LIMIT ?`,
-      )
-      .all(limit) as unknown as TagRow[];
-    const tags = rows.map((r) => ({ name: r.name, count: r.cnt }));
+    const db = openLiveDb(dbPath);
 
-    return { dbAvailable: true, ...(stalenessRisk && { stalenessRisk }), tags };
-  } finally {
-    db.close();
+    try {
+      const rows = db
+        .prepare(
+          `SELECT kw.name AS name, COUNT(*) AS cnt
+           FROM keywords k
+           JOIN files kw ON kw.file_id = k.keyw_id
+           GROUP BY k.keyw_id
+           ORDER BY cnt DESC, kw.name ASC
+           LIMIT ?`,
+        )
+        .all(limit) as unknown as TagRow[];
+      const tags = rows.map((r) => ({ name: r.name, count: r.cnt }));
+
+      return {
+        dbAvailable: true,
+        ...(stalenessRisk && { stalenessRisk }),
+        tags,
+      };
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    return {
+      dbAvailable: false,
+      tags: [],
+      reason: `Failed to read Live database: ${errorMessage(error)}`,
+    };
   }
 }
