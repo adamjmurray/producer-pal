@@ -52,23 +52,41 @@ function setupTestClient(getServerUrl: () => string): TestState {
   return state;
 }
 
+/**
+ * Disable the chat UI, spin up a fresh Express app on a random port so the
+ * disabled flag is picked up, run assertions against its base URL, then
+ * close the server and re-enable the chat UI.
+ *
+ * @param run - Callback receiving the base URL of the temp server
+ */
+async function withChatUIDisabledServer(
+  run: (baseUrl: string) => Promise<void>,
+): Promise<void> {
+  const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
+    input: unknown,
+  ) => void;
+
+  chatUIHandler(0);
+
+  const { createExpressApp } = await import("../../create-express-app.ts");
+  const testApp = createExpressApp();
+  const testServer = await new Promise<Server>((resolve) => {
+    const s = testApp.listen(0, () => resolve(s));
+  });
+  const baseUrl = `http://localhost:${(testServer.address() as AddressInfo).port}`;
+
+  try {
+    await run(baseUrl);
+  } finally {
+    await new Promise<void>((resolve) => testServer.close(() => resolve()));
+    chatUIHandler(1);
+  }
+}
+
 describe("MCP Express App", () => {
   const appState = setupExpressAppServer({
-    beforeStart: () => {
-      // Enable feature-gated tools/params for testing
-      process.env.ENABLE_CODE_EXEC = "true";
-      process.env.ENABLE_DEV_CORS = "true";
-    },
-  });
-
-  beforeAll(async () => {
-    // Live API tool is opt-in via runtime config. Tests below assume it
-    // is registered, so flip it on before any test runs.
-    await fetch(`${appState.baseUrl}/config`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ liveApiEnabled: true }),
-    });
+    enableDevFeatures: true,
+    enableLiveApi: true,
   });
 
   describe("Server Setup", () => {
@@ -509,22 +527,7 @@ describe("MCP Express App", () => {
     });
 
     it("should return 403 when chat UI is disabled", async () => {
-      // The chatUIEnabled variable is module-level - get the handler and disable it
-      const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
-        input: unknown,
-      ) => void;
-
-      chatUIHandler(0);
-
-      // Create a new app instance to use the updated chatUIEnabled value
-      const { createExpressApp } = await import("../../create-express-app.ts");
-      const testApp = createExpressApp();
-      const testServer = await new Promise<Server>((resolve) => {
-        const s = testApp.listen(0, () => resolve(s));
-      });
-      const baseUrl = `http://localhost:${(testServer.address() as AddressInfo).port}`;
-
-      try {
+      await withChatUIDisabledServer(async (baseUrl) => {
         const chatResponse = await fetch(`${baseUrl}/chat`);
 
         expect(chatResponse.status).toBe(403);
@@ -534,11 +537,7 @@ describe("MCP Express App", () => {
 
         expect(contextResponse.status).toBe(403);
         expect(await contextResponse.text()).toBe("Chat UI is disabled");
-      } finally {
-        // Clean up and re-enable for other tests
-        await new Promise<void>((resolve) => testServer.close(() => resolve()));
-        chatUIHandler(1);
-      }
+      });
     });
 
     it("should serve the same HTML at /voice when chat UI is enabled", async () => {
@@ -554,30 +553,14 @@ describe("MCP Express App", () => {
     });
 
     it("should return 403 at /voice when chat UI is disabled", async () => {
-      const chatUIHandler = mockMax.handlers.get("chatUIEnabled") as (
-        input: unknown,
-      ) => void;
-
-      chatUIHandler(0);
-
-      const { createExpressApp } = await import("../../create-express-app.ts");
-      const testApp = createExpressApp();
-      const testServer = await new Promise<Server>((resolve) => {
-        const s = testApp.listen(0, () => resolve(s));
-      });
-      const testVoiceUrl = `http://localhost:${(testServer.address() as AddressInfo).port}/voice`;
-
-      try {
-        const response = await fetch(testVoiceUrl);
+      await withChatUIDisabledServer(async (baseUrl) => {
+        const response = await fetch(`${baseUrl}/voice`);
 
         expect(response.status).toBe(403);
         const text = await response.text();
 
         expect(text).toBe("Chat UI is disabled");
-      } finally {
-        await new Promise<void>((resolve) => testServer.close(() => resolve()));
-        chatUIHandler(1);
-      }
+      });
     });
   });
 });

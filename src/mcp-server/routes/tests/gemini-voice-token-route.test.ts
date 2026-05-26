@@ -4,13 +4,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it } from "vitest";
-import {
-  mockMax,
-  setupExpressAppServer,
-} from "../../tests/express-app-test-helpers.ts";
+import { setupExpressAppServer } from "../../tests/express-app-test-helpers.ts";
 import {
   type PostTokenOptions,
   postTokenRequest,
+  registerSharedTokenAuthTests,
 } from "./voice-token-test-helpers.ts";
 
 const REAL_FETCH = globalThis.fetch;
@@ -41,40 +39,9 @@ describe("gemini-voice-token route", () => {
     globalThis.fetch = REAL_FETCH;
   });
 
-  it("returns 400 when X-Gemini-Key header is missing", async () => {
-    const res = await postGeminiToken(appState.baseUrl, { key: null });
-
-    expect(res.status).toBe(400);
-    const json = (await res.json()) as { error: string };
-
-    expect(json.error.toLowerCase()).toContain("x-gemini-key");
-  });
-
-  it("returns 403 when the chat UI is disabled", async () => {
-    const setChatUIEnabled = mockMax.handlers.get("chatUIEnabled") as (
-      input: unknown,
-    ) => void;
-
-    setChatUIEnabled(0);
-
-    try {
-      const res = await postGeminiToken(appState.baseUrl);
-
-      expect(res.status).toBe(403);
-      const json = (await res.json()) as { error: string };
-
-      expect(json.error).toBe("Chat UI is disabled");
-    } finally {
-      setChatUIEnabled(1);
-    }
-  });
-
-  it("blocks cross-origin requests with 403", async () => {
-    const res = await postGeminiToken(appState.baseUrl, {
-      origin: "https://evil.example.com",
-    });
-
-    expect(res.status).toBe(403);
+  registerSharedTokenAuthTests({
+    post: (overrides) => postGeminiToken(appState.baseUrl, overrides),
+    keyHeaderName: "X-Gemini-Key",
   });
 
   it("returns the key as a non-ephemeral credential (localhost passthrough)", async () => {

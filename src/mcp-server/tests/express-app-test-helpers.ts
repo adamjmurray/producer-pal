@@ -48,10 +48,16 @@ interface ExpressAppTestState {
  *
  * @param options - Setup options
  * @param options.beforeStart - Optional callback to run before starting the server
+ * @param options.enableDevFeatures - Set ENABLE_CODE_EXEC and ENABLE_DEV_CORS env vars before server start
+ * @param options.enableLiveApi - POST /config { liveApiEnabled: true } after server start
  * @returns Test state with server and URL references
  */
 export function setupExpressAppServer(
-  options: { beforeStart?: () => void } = {},
+  options: {
+    beforeStart?: () => void;
+    enableDevFeatures?: boolean;
+    enableLiveApi?: boolean;
+  } = {},
 ): ExpressAppTestState {
   const state: ExpressAppTestState = {
     server: undefined,
@@ -64,6 +70,11 @@ export function setupExpressAppServer(
   };
 
   beforeAll(async () => {
+    if (options.enableDevFeatures) {
+      process.env.ENABLE_CODE_EXEC = "true";
+      process.env.ENABLE_DEV_CORS = "true";
+    }
+
     options.beforeStart?.();
 
     const { createExpressApp } = await import("../create-express-app.ts");
@@ -79,6 +90,10 @@ export function setupExpressAppServer(
     state.serverUrl = `${state.baseUrl}/mcp`;
     state.configUrl = `${state.baseUrl}/config`;
     state.postConfig = makePostConfig(state.configUrl);
+
+    if (options.enableLiveApi) {
+      await state.postConfig({ liveApiEnabled: true });
+    }
   });
 
   afterAll(async () => {

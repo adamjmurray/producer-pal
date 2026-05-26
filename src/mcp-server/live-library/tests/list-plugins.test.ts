@@ -118,22 +118,11 @@ describe("listPlugins — DB selection", () => {
 });
 
 describe("listPlugins — schema variants", () => {
-  it("works against a v1-shaped DB (no ARA columns)", async () => {
-    const fixture = createPluginsDbFixture("v1");
-
-    try {
-      usePluginsDb(fixture.dbPath);
-
-      const result = await listPlugins();
-
-      expect(result.plugins.map((p) => p.name)).toContain("Serum");
-    } finally {
-      fixture.cleanup();
-    }
-  });
-
-  it("works against a v2-shaped DB (with ARA columns)", async () => {
-    const fixture = createPluginsDbFixture("v2");
+  it.each([
+    { version: "v1" as const, label: "v1-shaped DB (no ARA columns)" },
+    { version: "v2" as const, label: "v2-shaped DB (with ARA columns)" },
+  ])("works against a $label", async ({ version }) => {
+    const fixture = createPluginsDbFixture(version);
 
     try {
       usePluginsDb(fixture.dbPath);

@@ -11,21 +11,8 @@ import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
 describe("MCP Express App - Config", () => {
   const appState = setupExpressAppServer({
-    beforeStart: () => {
-      // Enable feature-gated tools/params for testing
-      process.env.ENABLE_CODE_EXEC = "true";
-      process.env.ENABLE_DEV_CORS = "true";
-    },
-  });
-
-  beforeAll(async () => {
-    // Live API tool is opt-in via runtime config. Tests below assume it
-    // is registered, so flip it on before any test runs.
-    await fetch(`${appState.baseUrl}/config`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ liveApiEnabled: true }),
-    });
+    enableDevFeatures: true,
+    enableLiveApi: true,
   });
 
   describe("Config Endpoints", () => {
