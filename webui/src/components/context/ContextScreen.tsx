@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef } from "preact/hooks";
 import {
   type SaveStatus,
   useContextMemory,
@@ -14,17 +14,15 @@ const SAVE_DEBOUNCE_MS = 800;
 
 /**
  * Editor screen for the project context memory. Auto-saves on idle and
- * flushes on blur and beforeunload. Edits are last-write-wins: once the user
- * starts typing, the local draft is authoritative and server-side changes
- * (AI writes, device edits) are not replayed into the editor mid-session.
+ * flushes on blur and beforeunload. The editor is uncontrolled (seeded once
+ * from the server on first ready), so a user's in-progress edits are never
+ * clobbered by a server echo or AI write mid-session — last-write-wins.
  * @returns Screen element
  */
 export function ContextScreen(): preact.JSX.Element {
   const memory = useContextMemory();
-  const [draft, setDraft] = useState<string | null>(null);
   const draftRef = useRef<string | null>(null);
   const lastSavedRef = useRef<string | null>(null);
-  const focusedRef = useRef(false);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const memoryRef = useRef(memory);
 
@@ -33,20 +31,15 @@ export function ContextScreen(): preact.JSX.Element {
     memoryRef.current = memory;
   });
 
-  // Initialize the draft from the server only on first load. Subsequent
-  // server status updates (from saves, AI writes, etc.) do NOT replay
-  // content into the editor — once the user starts editing, the local
-  // draft is authoritative (last-write-wins per spec). Replaying server
-  // content mid-session caused a feedback loop whenever the device
-  // normalized whitespace differently from the user's input.
+  // Seed the draft markers from the server when memory first becomes ready.
+  // Only on first ready: subsequent status updates (save echoes, AI writes,
+  // toggle flips) must not blow away the user's in-progress draft.
   useEffect(() => {
     if (memory.status.kind !== "ready") return;
-    if (draft != null) return;
-
-    setDraft(memory.status.content);
+    if (draftRef.current != null) return;
     draftRef.current = memory.status.content;
     lastSavedRef.current = memory.status.content;
-  }, [memory.status, draft]);
+  }, [memory.status]);
 
   const flushSave = useCallback((): void => {
     if (debounceTimerRef.current) {
@@ -75,7 +68,6 @@ export function ContextScreen(): preact.JSX.Element {
 
   const handleChange = useCallback(
     (value: string): void => {
-      setDraft(value);
       draftRef.current = value;
 
       if (debounceTimerRef.current) {
@@ -87,12 +79,7 @@ export function ContextScreen(): preact.JSX.Element {
     [flushSave],
   );
 
-  const handleFocus = useCallback((): void => {
-    focusedRef.current = true;
-  }, []);
-
   const handleBlur = useCallback((): void => {
-    focusedRef.current = false;
     flushSave();
   }, [flushSave]);
 
@@ -125,9 +112,7 @@ export function ContextScreen(): preact.JSX.Element {
       <div className="flex-1 min-h-0 overflow-hidden">
         <ContextBody
           status={memory.status}
-          draft={draft}
           onChange={handleChange}
-          onFocus={handleFocus}
           onBlur={handleBlur}
         />
       </div>
@@ -215,19 +200,19 @@ function SaveIndicator(props: SaveIndicatorProps): preact.JSX.Element {
 
 interface ContextBodyProps {
   status: ReturnType<typeof useContextMemory>["status"];
-  draft: string | null;
   onChange: (value: string) => void;
-  onFocus: () => void;
   onBlur: () => void;
 }
 
 /**
- * Renders either the editor or a status message depending on memory state.
+ * Renders either the framed editor or a status message depending on memory
+ * state. The editor is mounted once per `ready` session — its content is
+ * seeded from the server then owned by CodeMirror.
  * @param props - Body props
  * @returns Body element
  */
 function ContextBody(props: ContextBodyProps): preact.JSX.Element {
-  const { status, draft, onChange, onFocus, onBlur } = props;
+  const { status, onChange, onBlur } = props;
 
   if (status.kind === "disabled") {
     return (
@@ -246,7 +231,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
     );
   }
 
-  if (status.kind === "loading" || draft == null) {
+  if (status.kind === "loading") {
     return (
       <div className="flex items-center justify-center h-full text-zinc-500">
         Loading project context…
@@ -255,13 +240,14 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
   }
 
   return (
-    <MarkdownEditor
-      value={draft}
-      readOnly={false}
-      onChange={onChange}
-      onFocus={onFocus}
-      onBlur={onBlur}
-      className="h-full overflow-auto"
-    />
+    <div className="h-full p-4 overflow-hidden">
+      <MarkdownEditor
+        initialValue={status.content}
+        readOnly={false}
+        onChange={onChange}
+        onBlur={onBlur}
+        className="h-full"
+      />
+    </div>
   );
 }

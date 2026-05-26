@@ -20,30 +20,49 @@ describe("MarkdownEditor", () => {
 
   it("renders the initial value", () => {
     const { container } = render(
-      <MarkdownEditor value="# hello" readOnly={false} onChange={() => {}} />,
+      <MarkdownEditor
+        initialValue="# hello"
+        readOnly={false}
+        onChange={() => {}}
+      />,
     );
 
     expect(container.textContent).toContain("hello");
   });
 
-  it("updates the editor when value prop changes", () => {
+  it("ignores initialValue prop changes after mount (uncontrolled)", () => {
     const { container, rerender } = render(
-      <MarkdownEditor value="first" readOnly={false} onChange={() => {}} />,
+      <MarkdownEditor
+        initialValue="first"
+        readOnly={false}
+        onChange={() => {}}
+      />,
     );
 
     expect(container.textContent).toContain("first");
 
+    // The editor is uncontrolled — subsequent prop changes are intentionally
+    // ignored so server echoes / AI writes can't clobber an in-progress draft
+    // (and so a normalization mismatch can't trigger a dispatch loop).
     rerender(
-      <MarkdownEditor value="second" readOnly={false} onChange={() => {}} />,
+      <MarkdownEditor
+        initialValue="second"
+        readOnly={false}
+        onChange={() => {}}
+      />,
     );
 
-    expect(container.textContent).toContain("second");
-    expect(container.textContent).not.toContain("first");
+    expect(container.textContent).toContain("first");
+    expect(container.textContent).not.toContain("second");
   });
 
   it("destroys the EditorView on unmount", () => {
     const { container, unmount } = render(
-      <MarkdownEditor value="bye" readOnly={false} onChange={() => {}} />,
+      <MarkdownEditor
+        initialValue="bye"
+        readOnly={false}
+        onChange={() => {}}
+      />,
     );
 
     expect(container.querySelector(".cm-editor")).toBeTruthy();
@@ -53,7 +72,7 @@ describe("MarkdownEditor", () => {
 
   it("renders without crashing in read-only mode", () => {
     const { container } = render(
-      <MarkdownEditor value="x" readOnly={true} onChange={() => {}} />,
+      <MarkdownEditor initialValue="x" readOnly={true} onChange={() => {}} />,
     );
 
     expect(container.querySelector(".cm-editor")).toBeTruthy();
@@ -61,18 +80,20 @@ describe("MarkdownEditor", () => {
 
   it("does not crash when toggling readOnly", () => {
     const { container, rerender } = render(
-      <MarkdownEditor value="x" readOnly={true} onChange={() => {}} />,
+      <MarkdownEditor initialValue="x" readOnly={true} onChange={() => {}} />,
     );
 
-    rerender(<MarkdownEditor value="x" readOnly={false} onChange={() => {}} />);
+    rerender(
+      <MarkdownEditor initialValue="x" readOnly={false} onChange={() => {}} />,
+    );
 
     expect(container.querySelector(".cm-editor")).toBeTruthy();
   });
 
-  it("attaches a className to the host element", () => {
+  it("attaches a className to the frame element", () => {
     const { container } = render(
       <MarkdownEditor
-        value="x"
+        initialValue="x"
         readOnly={false}
         onChange={() => {}}
         className="custom-host"
@@ -87,7 +108,7 @@ describe("MarkdownEditor", () => {
     const onBlur = vi.fn();
     const { container } = render(
       <MarkdownEditor
-        value="x"
+        initialValue="x"
         readOnly={false}
         onChange={() => {}}
         onFocus={onFocus}
@@ -111,7 +132,7 @@ describe("MarkdownEditor", () => {
   it("forwards document changes to onChange", () => {
     const onChange = vi.fn();
     const { container } = render(
-      <MarkdownEditor value="hi" readOnly={false} onChange={onChange} />,
+      <MarkdownEditor initialValue="hi" readOnly={false} onChange={onChange} />,
     );
 
     // Trigger a CodeMirror dispatch via the public DOM. CodeMirror reads

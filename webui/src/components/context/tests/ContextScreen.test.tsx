@@ -21,19 +21,22 @@ const editorChange = vi.fn();
 const editorFocus = vi.fn();
 const editorBlur = vi.fn();
 let lastEditorProps: {
-  value: string;
+  initialValue: string;
   readOnly: boolean;
 } | null = null;
 
 vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
   MarkdownEditor: (props: {
-    value: string;
+    initialValue: string;
     readOnly: boolean;
     onChange: (v: string) => void;
     onFocus?: () => void;
     onBlur?: () => void;
   }) => {
-    lastEditorProps = { value: props.value, readOnly: props.readOnly };
+    lastEditorProps = {
+      initialValue: props.initialValue,
+      readOnly: props.readOnly,
+    };
     editorChange.mockImplementation(props.onChange);
     editorFocus.mockImplementation(() => props.onFocus?.());
     editorBlur.mockImplementation(() => props.onBlur?.());
@@ -41,7 +44,7 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
     return (
       <textarea
         data-testid="editor"
-        value={props.value}
+        defaultValue={props.initialValue}
         readOnly={props.readOnly}
         onInput={(e) => props.onChange((e.target as HTMLTextAreaElement).value)}
         onFocus={() => props.onFocus?.()}
@@ -145,7 +148,7 @@ describe("ContextScreen", () => {
     mockStatus.content = "# hello";
     render(<ContextScreen />);
 
-    expect(lastEditorProps?.value).toBe("# hello");
+    expect(lastEditorProps?.initialValue).toBe("# hello");
     expect(lastEditorProps?.readOnly).toBe(false);
   });
 
@@ -279,23 +282,6 @@ describe("ContextScreen", () => {
     });
 
     expect(saveMock).not.toHaveBeenCalled();
-  });
-
-  it("does not replay server content into the editor after initial load", async () => {
-    mockStatus.kind = "ready";
-    mockStatus.content = "version 1";
-    const { rerender } = render(<ContextScreen />);
-
-    expect(lastEditorProps?.value).toBe("version 1");
-
-    // A subsequent server status change (save echo, AI write, etc.) must
-    // not overwrite the local draft — last-write-wins per spec.
-    mockStatus.content = "version 2";
-    await act(() => {
-      rerender(<ContextScreen />);
-    });
-
-    expect(lastEditorProps?.value).toBe("version 1");
   });
 
   it("resets the debounce timer on consecutive edits", async () => {

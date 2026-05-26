@@ -11,7 +11,12 @@ import { useEffect, useRef } from "preact/hooks";
 import { markdownEditorTheme } from "./markdown-editor-theme";
 
 interface MarkdownEditorProps {
-  value: string;
+  /**
+   * Content used to seed the editor at mount. After mount the editor owns
+   * its own state — changes to this prop are intentionally ignored. To force
+   * a reset (e.g. a "Clear" action), remount the component via a `key` prop.
+   */
+  initialValue: string;
   readOnly: boolean;
   onChange: (value: string) => void;
   onFocus?: () => void;
@@ -20,14 +25,19 @@ interface MarkdownEditorProps {
 }
 
 /**
- * CodeMirror 6 markdown editor. Owns the editor instance and reconciles
- * external `value` updates against the buffer. Refs for callbacks keep the
- * editor instance stable across renders.
+ * Uncontrolled CodeMirror 6 markdown editor. The editor instance owns its
+ * document; the parent reads changes via `onChange` but does NOT feed them
+ * back as props. This deliberately rules out the controlled round-trip that
+ * could otherwise loop (editor change → setState → new value prop → dispatch
+ * → updateListener → setState → …) if any normalization ever diverged.
+ * Wrapped in a card-style frame so the editable region reads as an input,
+ * not page background.
  * @param props - Editor props
  * @returns Editor element
  */
 export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
-  const { value, readOnly, onChange, onFocus, onBlur, className } = props;
+  const { initialValue, readOnly, onChange, onFocus, onBlur, className } =
+    props;
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const readOnlyCompartment = useRef(new Compartment());
@@ -41,7 +51,7 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
     onChangeRef.current = onChange;
     onFocusRef.current = onFocus;
     onBlurRef.current = onBlur;
-  });
+  }, [onChange, onFocus, onBlur]);
 
   useEffect(() => {
     // Ref is set by the rendered <div ref={containerRef} />; always defined
@@ -64,7 +74,7 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
 
     const view = new EditorView({
       state: EditorState.create({
-        doc: value,
+        doc: initialValue,
         extensions: [
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
@@ -84,21 +94,8 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
       view.destroy();
       viewRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- editor is created once; subsequent prop changes flow through the dedicated effects below
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally seed-only: the editor is uncontrolled. To reset, the parent remounts via `key`.
   }, []);
-
-  // Sync external value into the editor (e.g. server refresh after AI write).
-  useEffect(() => {
-    // viewRef is populated by the mount effect, which runs before this one.
-    const view = viewRef.current as EditorView;
-    const current = view.state.doc.toString();
-
-    if (current === value) return;
-
-    view.dispatch({
-      changes: { from: 0, to: current.length, insert: value },
-    });
-  }, [value]);
 
   // Toggle read-only via compartment so we don't recreate the editor.
   useEffect(() => {
@@ -111,12 +108,20 @@ export function MarkdownEditor(props: MarkdownEditorProps): preact.JSX.Element {
     });
   }, [readOnly]);
 
-  // Tailwind text color drives the editor's inherited color (and caret) so
-  // the editor stays visible in both light and dark modes.
-  const extraClass = className ? ` ${className}` : "";
-  const hostClass = `text-zinc-900 dark:text-zinc-200${extraClass}`;
+  // Frame the editable region so it visually reads as an input, not page bg.
+  // Inner host is the CodeMirror parent; outer is the frame + focus ring.
+  const frameClass =
+    "rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 focus-within:ring-2 focus-within:ring-blue-500/40 focus-within:border-blue-500/60 overflow-hidden flex flex-col";
+  const wrapperClass = className ? `${frameClass} ${className}` : frameClass;
 
-  return <div ref={containerRef} className={hostClass} />;
+  return (
+    <div className={wrapperClass}>
+      <div
+        ref={containerRef}
+        className="text-zinc-900 dark:text-zinc-200 flex-1 min-h-0 overflow-auto"
+      />
+    </div>
+  );
 }
 
 // --- Helpers below main export ---
