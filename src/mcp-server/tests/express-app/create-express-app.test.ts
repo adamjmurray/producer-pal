@@ -483,6 +483,7 @@ describe("MCP Express App", () => {
 
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("html");
+      expect(response.headers.get("cache-control")).toBe("no-store");
       const html = await response.text();
 
       expect(html).toBeDefined();
@@ -494,6 +495,7 @@ describe("MCP Express App", () => {
 
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("html");
+      expect(response.headers.get("cache-control")).toBe("no-store");
       const html = await response.text();
 
       expect(html.length).toBeGreaterThan(0);
@@ -545,6 +547,7 @@ describe("MCP Express App", () => {
 
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type")).toContain("html");
+      expect(response.headers.get("cache-control")).toBe("no-store");
       const html = await response.text();
 
       expect(html.length).toBeGreaterThan(0);

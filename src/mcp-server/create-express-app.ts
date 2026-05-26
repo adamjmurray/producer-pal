@@ -161,6 +161,15 @@ const internalError = (message: string): JsonRpcError => ({
 });
 
 /**
+ * Mark a response as never-cache. Used for the UI bundle and config so the
+ * browser can't serve a stale build/config across device rebuilds or updates.
+ * @param res - Express response
+ */
+function setNoStore(res: Response): void {
+  res.set("Cache-Control", "no-store");
+}
+
+/**
  * Creates and configures an Express application for the MCP server
  *
  * @returns Configured Express app
@@ -253,6 +262,10 @@ export function createExpressApp(): Express {
   // The same bundle handles both /chat and /context — main.tsx reads
   // location.pathname to decide which view to render.
   app.get(["/chat", "/context"], (_req: Request, res: Response): void => {
+    // Never cache the UI bundle. It's a single file served from localhost, so
+    // caching saves nothing, but a stale cached build persists across device
+    // rebuilds/updates — which silently reintroduces already-fixed bugs.
+    setNoStore(res);
     res.type("html").send(chatUiHtml);
   });
 
@@ -272,6 +285,8 @@ export function createExpressApp(): Express {
       return;
     }
 
+    // See /chat handler: never cache the UI bundle.
+    setNoStore(res);
     res.type("html").send(chatUiHtml);
   });
 
@@ -279,7 +294,7 @@ export function createExpressApp(): Express {
   app.get("/config", (_req: Request, res: Response): void => {
     // Memory edits in the device or via AI need to surface on the next
     // browser fetch — never serve a cached snapshot.
-    res.set("Cache-Control", "no-store");
+    setNoStore(res);
     res.json(config);
   });
 
