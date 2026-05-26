@@ -519,11 +519,14 @@ describe("MCP Express App", () => {
       expect(html.length).toBeGreaterThan(0);
     });
 
-    it("should redirect / to /chat", async () => {
+    it("should redirect / to /chat with a no-store cache header", async () => {
       const response = await fetch(rootUrl, { redirect: "manual" });
 
       expect(response.status).toBe(302);
       expect(response.headers.get("location")).toBe("/chat");
+      // Match the UI bundle's no-store: a cached 302 would freeze the
+      // redirect target across device rebuilds if it ever moves.
+      expect(response.headers.get("cache-control")).toBe("no-store");
     });
 
     it("should return 403 when chat UI is disabled", async () => {

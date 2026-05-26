@@ -275,6 +275,9 @@ export function createExpressApp(): Express {
 
   // Root redirects to /chat for direct browser visits.
   app.get("/", (_req: Request, res: Response): void => {
+    // Match the UI bundle's no-store stance: a cached 302 would survive a
+    // device rebuild/update, freezing the redirect target if it ever moves.
+    setNoStore(res);
     res.redirect("/chat");
   });
 
