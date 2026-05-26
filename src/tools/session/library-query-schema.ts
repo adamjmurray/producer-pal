@@ -83,6 +83,10 @@ export const batchQuerySchema = z.object({
     .enum(LIBRARY_SOURCE_VALUES)
     .optional()
     .describe("where the file lives"),
+  inFolder: z.coerce
+    .string()
+    .optional()
+    .describe("absolute folder path; immediate children only"),
   sort: z
     .enum(LIBRARY_SORT_VALUES)
     .optional()

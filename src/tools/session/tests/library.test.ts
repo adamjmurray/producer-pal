@@ -303,6 +303,29 @@ describe("library tool — searchBatch action", () => {
     ]);
   });
 
+  it("threads inFolder per query through to the library.search route", async () => {
+    mockSearchByFilter({});
+
+    await library({
+      action: "searchBatch",
+      queries: [
+        { label: "Kicks", tags: "Kick", inFolder: "/L/Drums/Kicks" },
+        { label: "Snares", tags: "Snare" },
+      ],
+    });
+
+    expect(protocolMock.requestNode).toHaveBeenNthCalledWith(
+      1,
+      "library.search",
+      expect.objectContaining({ inFolder: "/L/Drums/Kicks", tags: "Kick" }),
+    );
+    expect(protocolMock.requestNode).toHaveBeenNthCalledWith(
+      2,
+      "library.search",
+      expect.not.objectContaining({ inFolder: expect.anything() }),
+    );
+  });
+
   it("truncates to the first 20 queries and warns", async () => {
     const consoleModule = await import("#src/shared/v8-max-console.ts");
     const warnSpy = vi

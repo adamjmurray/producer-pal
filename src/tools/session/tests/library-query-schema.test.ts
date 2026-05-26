@@ -37,6 +37,20 @@ describe("queriesInputSchema (searchBatch input)", () => {
     ).toStrictEqual([{ query: "808", limit: 3, kind: "audio" }]);
   });
 
+  it("preserves inFolder so a batch query restricts to a folder like a single search", () => {
+    expect(
+      queriesInputSchema.parse([
+        { label: "Inside Kicks", inFolder: "/Library/Drums/Kicks" },
+      ]),
+    ).toStrictEqual([
+      {
+        label: "Inside Kicks",
+        inFolder: "/Library/Drums/Kicks",
+        kind: "audio",
+      },
+    ]);
+  });
+
   it("parses a JSON-stringified array (small-model fallback)", () => {
     expect(
       queriesInputSchema.parse('[{"label":"Snare","tags":"Snare"}]'),

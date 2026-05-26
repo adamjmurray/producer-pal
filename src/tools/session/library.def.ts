@@ -43,7 +43,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       ),
 
     queries: queriesInputSchema.describe(
-      "searchBatch only: array of query objects, each with the same filters as a single search (query, tags, kind, deviceKind, source, sort, limit) plus an optional label; results are returned in order, grouped per query (capped at 20)",
+      "searchBatch only: array of query objects, each with the same filters as a single search (query, tags, kind, type, deviceKind, source, inFolder, sort, limit) plus an optional label; results are returned in order, grouped per query (capped at 20)",
     ),
 
     query: z.coerce
