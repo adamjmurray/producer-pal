@@ -10,7 +10,7 @@
 import "fake-indexeddb/auto";
 import { renderHook, act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
-import { decryptApiKey } from "#webui/lib/api-key-crypto";
+import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 
 describe("useSettings", () => {
@@ -72,16 +72,17 @@ describe("useSettings", () => {
 
     const { result } = renderHook(() => useSettings());
 
-    // Non-apiKey fields are available synchronously; the apiKey is decrypted
-    // (here a legacy cleartext passthrough) by the post-mount effect.
+    // Non-apiKey fields are available synchronously; the apiKey (here a legacy
+    // cleartext passthrough) and the derived hasApiKey settle after the
+    // post-mount decrypt effect.
     expect(result.current).toMatchObject({
       model: "gemini-2.5-pro",
       thinking: "High",
       temperature: 0.7,
       showThoughts: false,
-      hasApiKey: true,
     });
     await waitFor(() => expect(result.current.apiKey).toBe("test-key"));
+    expect(result.current.hasApiKey).toBe(true);
   });
 
   it("loads from new JSON blob format", async () => {
@@ -103,9 +104,9 @@ describe("useSettings", () => {
       thinking: "Max",
       temperature: 1.5,
       showThoughts: false,
-      hasApiKey: true,
     });
     await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
+    expect(result.current.hasApiKey).toBe(true);
   });
 
   it("prefers new format over old format", async () => {
@@ -395,21 +396,38 @@ describe("useSettings", () => {
     expect(result.current.hasApiKey).toBe(false);
   });
 
-  it("hasApiKey returns true when key exists in old format", () => {
+  it("hasApiKey returns true when key exists in old format", async () => {
     localStorage.setItem("gemini_api_key", "test-key");
     const { result } = renderHook(() => useSettings());
 
-    expect(result.current.hasApiKey).toBe(true);
+    // hasApiKey derives from the decrypted in-memory key, which lands after the
+    // post-mount load (legacy cleartext passes through decrypt unchanged).
+    await waitFor(() => expect(result.current.hasApiKey).toBe(true));
   });
 
-  it("hasApiKey returns true when key exists in new format", () => {
+  it("hasApiKey returns true when key exists in new format", async () => {
     localStorage.setItem(
       "producer_pal_provider_gemini",
       JSON.stringify({ apiKey: "test-key" }),
     );
     const { result } = renderHook(() => useSettings());
 
-    expect(result.current.hasApiKey).toBe(true);
+    await waitFor(() => expect(result.current.hasApiKey).toBe(true));
+  });
+
+  it("hasApiKey is false for an undecryptable (orphaned) key", async () => {
+    // A raw envelope is present in localStorage, but it can't be decrypted (e.g.
+    // the IndexedDB crypto key was reset). decryptApiKey fails safe to "", so
+    // hasApiKey must report false rather than trusting the raw envelope.
+    localStorage.setItem(
+      "producer_pal_provider_gemini",
+      JSON.stringify({ apiKey: await forgeUndecryptableEnvelope() }),
+    );
+
+    const { result } = renderHook(() => useSettings());
+
+    await waitFor(() => expect(result.current.apiKey).toBe(""));
+    expect(result.current.hasApiKey).toBe(false);
   });
 
   it("remembers all settings per provider when switching", async () => {
@@ -799,3 +817,19 @@ describe("useSettings", () => {
     localStorage.removeItem("producer_pal_enabled_tools");
   });
 });
+
+/**
+ * Build an `enc:v1:<iv>:<ciphertext>` envelope that cannot be decrypted: a valid
+ * IV from one encryption paired with a ciphertext from another, so AES-GCM
+ * authentication fails and decryptApiKey fails safe to "". Index [2]/[3] are the
+ * IV/ciphertext since encryptApiKey always emits exactly four colon-segments.
+ * @returns {Promise<string>} An undecryptable enc:v1: envelope
+ */
+async function forgeUndecryptableEnvelope(): Promise<string> {
+  const envelopeA = await encryptApiKey("seed-a");
+  const envelopeB = await encryptApiKey("seed-b");
+  const iv = envelopeA.split(":")[2] as string;
+  const ciphertext = envelopeB.split(":")[3] as string;
+
+  return `enc:v1:${iv}:${ciphertext}`;
+}

@@ -255,7 +255,17 @@ export function useSettings(): UseSettingsReturn {
   const setProvider = useCallback((newProvider: Provider) => {
     setProviderState(newProvider);
   }, []);
-  const hasApiKey = checkHasApiKey(provider);
+  // Reconcile presence with the *decrypted* in-memory key. decryptApiKey fails
+  // safe to "" for an orphaned/undecryptable envelope (e.g. the IndexedDB crypto
+  // key was reset while the localStorage envelope persisted), so reading the raw
+  // stored envelope would falsely report a usable key. currentSettings.apiKey is
+  // the decrypted value (blank until the post-mount load lands), so it matches
+  // what requests will actually send. lmstudio/ollama need no key — keep their
+  // "configured at all" signal via checkHasApiKey.
+  const hasApiKey =
+    provider === "lmstudio" || provider === "ollama"
+      ? checkHasApiKey(provider)
+      : Boolean(currentSettings.apiKey);
   const isToolEnabled = useCallback(
     (toolId: string) => enabledTools[toolId] ?? true,
     [enabledTools],
