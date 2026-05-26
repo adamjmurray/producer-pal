@@ -806,4 +806,43 @@ describe("VoiceApp", () => {
       expect(persistence.deleteUnbookmarkedConversations).toHaveBeenCalled();
     });
   });
+
+  describe("provider switch teardown", () => {
+    it("disconnects the previous backend when the active voice provider switches", () => {
+      const openAi = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(openAi);
+      mocks.useGeminiVoiceSession.mockReturnValue(baseSession());
+      const { rerender } = renderVoiceApp();
+
+      expect(openAi.disconnect).not.toHaveBeenCalled();
+
+      // Switching to Gemini in Settings: the OpenAI hook stays mounted and still
+      // reports "connected" (its mic/socket are live), but the controls now
+      // follow the idle Gemini backend — so nothing else would stop it.
+      mocks.useVoiceSession.mockReturnValue(openAi);
+      mocks.useGeminiVoiceSession.mockReturnValue(baseSession());
+      rerender(
+        <VoiceApp
+          {...makeProps({ provider: "gemini", model: GEMINI_REALTIME_MODEL })}
+        />,
+      );
+
+      expect(openAi.disconnect).toHaveBeenCalledOnce();
+    });
+
+    it("does not disconnect when switching models within the same backend", () => {
+      const openAi = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(openAi);
+      const { rerender } = renderVoiceApp({ model: "gpt-realtime-2" });
+
+      mocks.useVoiceSession.mockReturnValue(openAi);
+      rerender(
+        <VoiceApp {...makeProps({ model: "gpt-4o-realtime-preview" })} />,
+      );
+
+      expect(openAi.disconnect).not.toHaveBeenCalled();
+    });
+  });
 });

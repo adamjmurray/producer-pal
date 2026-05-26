@@ -145,6 +145,25 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
   });
   const voice = isGemini ? geminiVoiceSession : openAiVoice;
 
+  // Both backend hooks stay mounted, so switching the active voice provider
+  // (OpenAI ↔ Gemini in Settings) only changes which one `voice` points at — it
+  // does NOT tear down the one left behind. Without this, a session still live
+  // on the previous backend would keep its mic + socket open with no Stop button
+  // (the controls follow the now-active backend, which is idle right after a
+  // switch). On a real backend flip, disconnect whichever hook just went
+  // inactive if it isn't already idle. The hook objects are in the deps (fresh
+  // identity each render), but the prev-backend ref makes the body act only on
+  // the flip — a same-backend model change doesn't tear down the live session.
+  const prevBackendRef = useRef(isGemini);
+
+  useEffect(() => {
+    if (prevBackendRef.current === isGemini) return;
+    prevBackendRef.current = isGemini;
+    const nowInactive = isGemini ? openAiVoice : geminiVoiceSession;
+
+    if (nowInactive.status !== "idle") void nowInactive.disconnect();
+  }, [isGemini, openAiVoice, geminiVoiceSession]);
+
   // When a Settings bulk delete removes the in-progress live record, tear the
   // session down too (mirrors the sidebar delete-active path) so the deleted
   // conversation isn't left streaming on screen and re-saved under a fresh id.
