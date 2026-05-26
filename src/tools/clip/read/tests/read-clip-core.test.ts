@@ -436,6 +436,64 @@ describe("readClip", () => {
     expect(result.start).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 
+  it("surfaces 1-based takeLane for arrangement clips on a take lane", () => {
+    setupMidiClipMock({
+      clipId: "take_lane_clip_id",
+      path: livePath.track(3).takeLane(0).arrangementClip(0),
+      clipProps: {
+        is_arrangement_clip: 1,
+        start_time: 0,
+        end_time: 4,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        end_marker: 4,
+        loop_start: 0,
+        loop_end: 4,
+      },
+    });
+    registerMockObject("live-set", {
+      path: "live_set",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    const result = readClip({ clipId: "id take_lane_clip_id" });
+
+    // take_lanes 0 → 1-based takeLane:1 (main lane is excluded from the collection)
+    expect(result.takeLane).toBe(1);
+    expect(result.view).toBe("arrangement");
+    expect(result.trackIndex).toBe(3);
+  });
+
+  it("omits takeLane for arrangement clips on the main lane", () => {
+    setupMidiClipMock({
+      clipId: "main_lane_clip_id",
+      path: livePath.track(3).arrangementClip(0),
+      clipProps: {
+        is_arrangement_clip: 1,
+        start_time: 0,
+        end_time: 4,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        end_marker: 4,
+        loop_start: 0,
+        loop_end: 4,
+      },
+    });
+    registerMockObject("live-set", {
+      path: "live_set",
+      properties: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    const result = readClip({ clipId: "id main_lane_clip_id" });
+
+    expect(result.takeLane).toBeUndefined();
+    expect(result.view).toBe("arrangement");
+  });
+
   it("includes pitchShift for audio clips with non-zero pitch", () => {
     setupAudioClipMock({
       trackIndex: 0,
