@@ -5,7 +5,7 @@
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import {
   detectCorsBlock,
   getMcpUrl,
@@ -27,6 +27,10 @@ interface UseMcpConnectionReturn {
   checkMcpConnection: () => Promise<void>;
 }
 
+type FetchToolsResult =
+  | { ok: true; tools: McpTool[] }
+  | { ok: false; error: string; corsBlocked: boolean };
+
 /**
  * @returns {UseMcpConnectionReturn} - Hook return value
  */
@@ -34,50 +38,27 @@ export function useMcpConnection(): UseMcpConnectionReturn {
   const [mcpStatus, setMcpStatus] = useState<McpStatus>("connecting");
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpTools, setMcpTools] = useState<McpTool[] | null>(null);
+  const mcpStatusRef = useRef(mcpStatus);
 
-  const checkMcpConnection = useCallback(async () => {
+  // Mirror status into a ref so the focus listener (registered once) can
+  // read the latest value without re-binding on every change.
+  useEffect(() => {
+    mcpStatusRef.current = mcpStatus;
+  }, [mcpStatus]);
+
+  const checkMcpConnection = useCallback(async (): Promise<void> => {
     setMcpStatus("connecting");
     setMcpError(null);
     setMcpTools(null);
 
-    const mcpUrl = getMcpUrl();
-    const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
-    const client = new Client({
-      name: "producer-pal-chat-ui-test",
-      version: "1.0.0",
-    });
+    const result = await fetchToolsFromServer();
 
-    try {
-      await client.connect(transport);
-      const { tools } = await client.listTools();
-
-      setMcpTools(
-        tools.map((tool) => ({
-          id: tool.name,
-          name: (tool as { title?: string }).title ?? tool.name,
-          description: tool.description,
-        })),
-      );
+    if (result.ok) {
+      setMcpTools(result.tools);
       setMcpStatus("connected");
-    } catch (error: unknown) {
+    } else {
       setMcpStatus("error");
-      const message = error instanceof Error ? error.message : "Unknown error";
-
-      if (isViteDevServer() && (await detectCorsBlock(mcpUrl))) {
-        setMcpError(
-          "MCP server is running but blocking cross-origin requests. Rebuild in dev mode.",
-        );
-      } else {
-        setMcpError(message);
-      }
-    } finally {
-      // Always close the client. If connect() succeeded but listTools() threw,
-      // skipping close() leaks the underlying HTTP connection.
-      try {
-        await client.close();
-      } catch {
-        // close() can throw if connect() never succeeded; we don't care here.
-      }
+      setMcpError(result.error);
     }
   }, []);
 
@@ -86,5 +67,75 @@ export function useMcpConnection(): UseMcpConnectionReturn {
     void checkMcpConnection();
   }, [checkMcpConnection]);
 
+  // Re-list tools when the window regains focus so device-side changes
+  // (e.g. toggling liveApiEnabled in the Setup tab adds/removes
+  // ppal-live-api) surface in Settings → Tools without a reload. We
+  // deliberately don't reset status to "connecting" — a transient
+  // refresh failure shouldn't masquerade as a disconnect, and only fires
+  // when already connected so initial mount isn't double-fetched.
+  useEffect(() => {
+    const handleFocus = (): void => {
+      if (mcpStatusRef.current !== "connected") return;
+
+      void (async (): Promise<void> => {
+        const result = await fetchToolsFromServer();
+
+        if (result.ok) {
+          setMcpTools(result.tools);
+        }
+      })();
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, []);
+
   return { mcpStatus, mcpError, mcpTools, checkMcpConnection };
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Connect to the MCP server, list tools, and disconnect. The connect/list
+ * pair is fused so callers can't observe a half-loaded state. Always closes
+ * the client (swallowing close() failures) — leaving the client open after
+ * a thrown listTools() leaks the underlying HTTP connection.
+ * @returns Tools on success, or an error message + CORS-blocked flag on failure
+ */
+async function fetchToolsFromServer(): Promise<FetchToolsResult> {
+  const mcpUrl = getMcpUrl();
+  const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
+  const client = new Client({
+    name: "producer-pal-chat-ui-test",
+    version: "1.0.0",
+  });
+
+  try {
+    await client.connect(transport);
+    const { tools } = await client.listTools();
+    const mapped: McpTool[] = tools.map((tool) => ({
+      id: tool.name,
+      name: (tool as { title?: string }).title ?? tool.name,
+      description: tool.description,
+    }));
+
+    return { ok: true, tools: mapped };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    const corsBlocked = isViteDevServer() && (await detectCorsBlock(mcpUrl));
+    const finalMessage = corsBlocked
+      ? "MCP server is running but blocking cross-origin requests. Rebuild in dev mode."
+      : message;
+
+    return { ok: false, error: finalMessage, corsBlocked };
+  } finally {
+    try {
+      await client.close();
+    } catch {
+      // close() can throw if connect() never succeeded; we don't care here.
+    }
+  }
 }
