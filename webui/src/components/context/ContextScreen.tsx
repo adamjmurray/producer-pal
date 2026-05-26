@@ -12,6 +12,20 @@ import {
 import { MarkdownEditor } from "./MarkdownEditor";
 
 const SAVE_DEBOUNCE_MS = 800;
+const SAVE_RETRY_MS = 5000;
+
+type TimerRef = { current: ReturnType<typeof setTimeout> | null };
+
+/**
+ * Clear a setTimeout ref if armed, and null it out.
+ * @param ref - The timer ref to clear
+ */
+function clearTimer(ref: TimerRef): void {
+  if (ref.current) {
+    clearTimeout(ref.current);
+    ref.current = null;
+  }
+}
 
 interface ContextScreenProps {
   /**
@@ -37,15 +51,11 @@ export function ContextScreen(
   const draftRef = useRef<string | null>(null);
   const lastSavedRef = useRef<string | null>(null);
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const memoryRef = useRef(memory);
   // Bumped on Clear to remount the uncontrolled MarkdownEditor (state, not a
   // ref, because the editor's `key` prop is read during render).
   const [editorKey, setEditorKey] = useState(0);
-
-  // Keep the ref current so callbacks always see the latest hook value.
-  useEffect(() => {
-    memoryRef.current = memory;
-  });
 
   // Seed the draft markers from the server when memory first becomes ready.
   // Only on first ready: subsequent status updates (save echoes, AI writes,
@@ -57,11 +67,15 @@ export function ContextScreen(
     lastSavedRef.current = memory.status.content;
   }, [memory.status]);
 
+  // Ref-indirected so flushSave can schedule a retry via setTimeout(flushSave)
+  // without tripping the no-use-before-defined rule on its own const binding.
+  // null until useEffect installs the actual flushSave below.
+  const flushSaveRef = useRef<(() => void) | null>(null);
   const flushSave = useCallback((): void => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
+    // The retry timer is a fallback for an unattended user; clearing both
+    // here ensures the next failure schedules a fresh retry from this attempt.
+    clearTimer(debounceTimerRef);
+    clearTimer(retryTimerRef);
 
     const value = draftRef.current;
     const current = memoryRef.current;
@@ -73,14 +87,25 @@ export function ContextScreen(
     // Mark optimistically so a concurrent flush (debounce + blur) doesn't
     // dispatch the same content twice. On failure, roll the marker back so the
     // next flush (blur, beforeunload, or further edit) retries — unless the
-    // user has since typed something newer.
+    // user has since typed something newer. Also schedule an unattended retry
+    // so a transient failure doesn't lose edits when the user has walked away.
     lastSavedRef.current = value;
     void current.save(value).then((saved) => {
       if (!saved && lastSavedRef.current === value) {
         lastSavedRef.current = null;
+        retryTimerRef.current = setTimeout(
+          () => flushSaveRef.current?.(),
+          SAVE_RETRY_MS,
+        );
       }
     });
   }, []);
+
+  // Keep refs current so callbacks always see the latest hook value.
+  useEffect(() => {
+    memoryRef.current = memory;
+    flushSaveRef.current = flushSave;
+  });
 
   const handleChange = useCallback(
     (value: string): void => {
@@ -111,10 +136,8 @@ export function ContextScreen(
     draftRef.current = "";
     lastSavedRef.current = "";
 
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-      debounceTimerRef.current = null;
-    }
+    clearTimer(debounceTimerRef);
+    clearTimer(retryTimerRef);
 
     // Bump editorKey only AFTER clear() resolves: the uncontrolled
     // MarkdownEditor seeds from `status.content` at mount, and status doesn't
@@ -138,12 +161,11 @@ export function ContextScreen(
     };
   }, [flushSave]);
 
-  // Cleanup pending debounce on unmount.
+  // Cleanup pending timers on unmount.
   useEffect(
     () => () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      clearTimer(debounceTimerRef);
+      clearTimer(retryTimerRef);
     },
     [],
   );

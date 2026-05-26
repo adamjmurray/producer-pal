@@ -457,6 +457,62 @@ describe("ContextScreen", () => {
     expect(saveMock).not.toHaveBeenCalled();
   });
 
+  it("auto-retries a failed save after the retry delay", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "old";
+    // First save fails, second (retry) succeeds.
+    saveMock.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    render(<ContextScreen />);
+
+    await act(() => {
+      editorChange("draft");
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+      await Promise.resolve();
+    });
+
+    expect(saveMock).toHaveBeenCalledTimes(1);
+
+    // Advance past the unattended retry window without any user interaction.
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(saveMock).toHaveBeenCalledTimes(2);
+    });
+    expect(saveMock).toHaveBeenNthCalledWith(2, "draft");
+  });
+
+  it("clears the retry timer on unmount", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "old";
+    saveMock.mockResolvedValueOnce(false);
+    const { unmount } = render(<ContextScreen />);
+
+    await act(() => {
+      editorChange("draft");
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(800);
+      await Promise.resolve();
+    });
+
+    expect(saveMock).toHaveBeenCalledTimes(1);
+
+    unmount();
+
+    // Past the retry delay — the cleanup should have cancelled it.
+    await act(async () => {
+      vi.advanceTimersByTime(10000);
+      await Promise.resolve();
+    });
+
+    expect(saveMock).toHaveBeenCalledTimes(1);
+  });
+
   it("resets the debounce timer on consecutive edits", async () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";
