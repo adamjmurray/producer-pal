@@ -3,6 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 import { librarySearch } from "../library-search.ts";
 import { setupLibraryFixtureLifecycle } from "./fixtures/library-fixture.ts";
@@ -558,4 +562,67 @@ describe("librarySearch", () => {
       );
     });
   });
+
+  describe("error handling", () => {
+    it("degrades to dbAvailable:false when the DB lacks a selected column", async () => {
+      // Model an older Live DB whose `files` table predates the `subtype` column
+      // we SELECT (AJM-335): preparing the statement throws "no such column", and
+      // the guard must degrade to dbAvailable:false rather than surfacing a raw
+      // SQLite error to the LLM.
+      const broken = createDbMissingSubtypeColumn();
+
+      try {
+        vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(
+          broken.dbPath,
+        );
+
+        const result = await librarySearch();
+
+        expect(result.dbAvailable).toBe(false);
+        expect(result.items).toHaveLength(0);
+        expect(result.reason).toContain("Failed to read Live database");
+      } finally {
+        broken.cleanup();
+      }
+    });
+  });
 });
+
+/**
+ * Create a temp Live-files DB whose `files` table omits the `subtype` column,
+ * modeling an older Live release predating it. The main search SELECT references
+ * `f.subtype`, so preparing the statement throws "no such column".
+ *
+ * @returns The DB path and a cleanup function removing the temp dir.
+ */
+function createDbMissingSubtypeColumn(): {
+  dbPath: string;
+  cleanup: () => void;
+} {
+  const dir = mkdtempSync(join(tmpdir(), "ppal-lib-nosubtype-"));
+  const dbPath = join(dir, "Live-files-11000.db");
+  const db = new DatabaseSync(dbPath);
+
+  // `files` deliberately omits `subtype`; `places` is needed for the LEFT JOIN.
+  db.exec(`
+    CREATE TABLE files (
+      file_id INTEGER PRIMARY KEY,
+      parent_id INTEGER,
+      file_type INTEGER,
+      name TEXT,
+      use_count INTEGER DEFAULT 0,
+      mod_date INTEGER DEFAULT 0,
+      place_id INTEGER
+    );
+    CREATE TABLE places (
+      file_id INTEGER PRIMARY KEY,
+      folder_kind INTEGER
+    );
+  `);
+  db.close();
+
+  return {
+    dbPath,
+    cleanup: () => rmSync(dir, { recursive: true, force: true }),
+  };
+}

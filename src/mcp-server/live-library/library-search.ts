@@ -74,45 +74,61 @@ export async function librarySearch(
   // that our immutable read can't see. Spread into every success return so the
   // signal sits at the top alongside dbAvailable; omitted when there's no risk.
   const stalenessRisk = await detectStalenessRisk(dbPath);
-  const db = openLiveDb(dbPath);
 
+  // Guard the open + query: the f.subtype column (clip subtype, AJM-335) is the
+  // most recently added column we SELECT, and Live's DB schema varies across
+  // releases. An older DB lacking a selected column makes the SELECT throw, so
+  // degrade to dbAvailable:false rather than surfacing a raw SQLite error to the
+  // LLM. Mirrors listPlugins.
   try {
-    const resolvedParent =
-      args.inFolder != null ? resolveParentId(db, args.inFolder) : undefined;
+    const db = openLiveDb(dbPath);
 
-    // inFolder was provided but the path doesn't map to any known folder
-    if (args.inFolder != null && resolvedParent == null) {
+    try {
+      const resolvedParent =
+        args.inFolder != null ? resolveParentId(db, args.inFolder) : undefined;
+
+      // inFolder was provided but the path doesn't map to any known folder
+      if (args.inFolder != null && resolvedParent == null) {
+        return {
+          dbAvailable: true,
+          ...(stalenessRisk && { stalenessRisk }),
+          items: [],
+        };
+      }
+
+      // At this point resolvedParent is either undefined (no inFolder) or a valid number
+      const parentId: number | undefined = resolvedParent ?? undefined;
+      const { sql, params } = buildSearchQuery(args, parentId);
+      // node:sqlite returns `unknown[]`. We trust the SELECT column list to
+      // match SearchRow — the SQL is hand-written and pinned by tests, so a
+      // per-row runtime validator would be dead weight at the cost of
+      // measurable overhead at limit=1000.
+      const rows = db.prepare(sql).all(...params) as unknown as SearchRow[];
+      const fileIds = rows.map((r) => r.file_id);
+      const paths = resolveAbsolutePaths(db, fileIds);
+      const tagsByFile = fetchTagsBulk(db, fileIds);
+      const items = rows.map((row) => buildLibraryItem(row, paths, tagsByFile));
+
+      if (args.verifyPaths) {
+        await verifyItemPaths(items);
+      }
+
       return {
         dbAvailable: true,
         ...(stalenessRisk && { stalenessRisk }),
-        items: [],
+        items,
       };
+    } finally {
+      db.close();
     }
-
-    // At this point resolvedParent is either undefined (no inFolder) or a valid number
-    const parentId: number | undefined = resolvedParent ?? undefined;
-    const { sql, params } = buildSearchQuery(args, parentId);
-    // node:sqlite returns `unknown[]`. We trust the SELECT column list to
-    // match SearchRow — the SQL is hand-written and pinned by tests, so a
-    // per-row runtime validator would be dead weight at the cost of
-    // measurable overhead at limit=1000.
-    const rows = db.prepare(sql).all(...params) as unknown as SearchRow[];
-    const fileIds = rows.map((r) => r.file_id);
-    const paths = resolveAbsolutePaths(db, fileIds);
-    const tagsByFile = fetchTagsBulk(db, fileIds);
-    const items = rows.map((row) => buildLibraryItem(row, paths, tagsByFile));
-
-    if (args.verifyPaths) {
-      await verifyItemPaths(items);
-    }
-
+  } catch (error) {
     return {
-      dbAvailable: true,
-      ...(stalenessRisk && { stalenessRisk }),
-      items,
+      dbAvailable: false,
+      items: [],
+      reason: `Failed to read Live database: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
     };
-  } finally {
-    db.close();
   }
 }
 
