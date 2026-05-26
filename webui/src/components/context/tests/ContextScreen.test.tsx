@@ -13,6 +13,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/preact";
+import { useEffect, useRef } from "preact/hooks";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ContextScreen } from "#webui/components/context/ContextScreen";
 import { type ContextMemoryStatus } from "#webui/hooks/context/use-context-memory";
@@ -24,6 +25,11 @@ let lastEditorProps: {
   initialValue: string;
   readOnly: boolean;
 } | null = null;
+// Captures the `initialValue` snapshot at each MOUNT (not re-render). Mimics
+// the real MarkdownEditor's seed-only contract — without this, the mock would
+// echo every prop change and mask the bug where Clear remounts with stale
+// content.
+const editorMountedValues: string[] = [];
 
 vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
   MarkdownEditor: (props: {
@@ -33,8 +39,13 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
     onFocus?: () => void;
     onBlur?: () => void;
   }) => {
+    const initialRef = useRef(props.initialValue);
+
+    useEffect(() => {
+      editorMountedValues.push(initialRef.current);
+    }, []);
     lastEditorProps = {
-      initialValue: props.initialValue,
+      initialValue: initialRef.current,
       readOnly: props.readOnly,
     };
     editorChange.mockImplementation(props.onChange);
@@ -44,7 +55,7 @@ vi.mock(import("#webui/components/context/MarkdownEditor"), () => ({
     return (
       <textarea
         data-testid="editor"
-        defaultValue={props.initialValue}
+        defaultValue={initialRef.current}
         readOnly={props.readOnly}
         onInput={(e) => props.onChange((e.target as HTMLTextAreaElement).value)}
         onFocus={() => props.onFocus?.()}
@@ -120,6 +131,7 @@ describe("ContextScreen", () => {
     editorFocus.mockReset();
     editorBlur.mockReset();
     lastEditorProps = null;
+    editorMountedValues.length = 0;
     mockStatus.kind = "loading";
     mockStatus.content = "";
     mockStatus.message = "";
@@ -254,6 +266,45 @@ describe("ContextScreen", () => {
 
     expect(confirmMock).toHaveBeenCalled();
     expect(clearMock).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("Clear remounts the editor with cleared content (not the pre-clear stale doc)", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "old content";
+    // Real useContextMemory only flips status.content to "" AFTER the POST
+    // round-trips. Use a controllable promise so we can interleave the editor
+    // remount and the status update the way the bug does in production.
+    let resolveClear: (ok: boolean) => void = () => {};
+
+    clearMock.mockImplementation(
+      () =>
+        new Promise<boolean>((r) => {
+          resolveClear = r;
+        }),
+    );
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+
+    render(<ContextScreen />);
+    expect(editorMountedValues).toStrictEqual(["old content"]);
+
+    await act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    });
+
+    // Pre-fix this is where the editor would remount with the stale doc
+    // because handleClear bumped `editorKey` before clear() resolved.
+    expect(editorMountedValues).toStrictEqual(["old content"]);
+
+    // Server completes the clear: status.content flips, then clear() resolves
+    // and the fixed handler bumps `editorKey` → remount with "".
+    mockStatus.content = "";
+    await act(async () => {
+      resolveClear(true);
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+    });
+
+    expect(editorMountedValues).toStrictEqual(["old content", ""]);
     vi.unstubAllGlobals();
   });
 

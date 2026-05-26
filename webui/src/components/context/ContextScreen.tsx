@@ -106,19 +106,23 @@ export function ContextScreen(
       return;
     }
 
-    // Reset local draft markers and remount the editor so it visually clears.
-    // The editor is uncontrolled — without a remount, CodeMirror keeps the old
-    // doc even after a successful save("").
+    // Reset draft markers so a pending debounced save doesn't echo the old
+    // content back to the server before clear() lands.
     draftRef.current = "";
     lastSavedRef.current = "";
-    setEditorKey((k) => k + 1);
 
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
 
-    void memory.clear();
+    // Bump editorKey only AFTER clear() resolves: the uncontrolled
+    // MarkdownEditor seeds from `status.content` at mount, and status doesn't
+    // update to "" until the POST round-trips. Remounting earlier would
+    // re-seed with the pre-clear content and the next edit would save it back.
+    void memory.clear().then((ok) => {
+      if (ok) setEditorKey((k) => k + 1);
+    });
   }, [memory]);
 
   // Flush on tab close so an in-flight debounce doesn't drop edits.

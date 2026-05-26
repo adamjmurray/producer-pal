@@ -9,7 +9,7 @@
  */
 import "fake-indexeddb/auto";
 import { renderHook, act, waitFor } from "@testing-library/preact";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 
@@ -191,6 +191,8 @@ describe("useSettings", () => {
 
   it("savedProvider only updates on saveSettings, not setProvider", async () => {
     const { result } = renderHook(() => useSettings());
+
+    await flushLoad();
     const initialSavedProvider = result.current.savedProvider;
     const target = initialSavedProvider === "openai" ? "gemini" : "openai";
 
@@ -210,6 +212,8 @@ describe("useSettings", () => {
 
   it("savedThinking only updates on saveSettings, not setThinking", async () => {
     const { result } = renderHook(() => useSettings());
+
+    await flushLoad();
     const initialSavedThinking = result.current.savedThinking;
     const target = initialSavedThinking === "Off" ? "Max" : "Off";
 
@@ -257,9 +261,51 @@ describe("useSettings", () => {
     expect(result.current.showThoughts).toBe(false);
   });
 
+  it("saveSettings before post-mount decrypt does not wipe stored apiKeys", async () => {
+    // Seed two providers with encrypted apiKeys so we can detect a wipe.
+    for (const provider of ["gemini", "openai"] as const) {
+      localStorage.setItem(
+        `producer_pal_provider_${provider}`,
+        JSON.stringify({
+          apiKey: await encryptApiKey(`${provider}-stored`),
+          model: "stored-model",
+          thinking: "Default",
+          temperature: 1.0,
+          showThoughts: true,
+        }),
+      );
+    }
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { result } = renderHook(() => useSettings());
+
+    // Call saveSettings BEFORE flushing the post-mount decrypt: in-memory
+    // apiKeys are still the blank placeholders at this point.
+    await act(() => {
+      result.current.saveSettings();
+    });
+
+    // Race-window save must bail (warn + no persist) so the seeded keys stay.
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("not yet loaded"),
+    );
+
+    for (const provider of ["gemini", "openai"] as const) {
+      const raw = JSON.parse(
+        localStorage.getItem(`producer_pal_provider_${provider}`) ?? "{}",
+      );
+
+      expect(await decryptApiKey(raw.apiKey)).toBe(`${provider}-stored`);
+    }
+
+    warn.mockRestore();
+  });
+
   it("saves settings to new JSON blob format", async () => {
     const { result } = renderHook(() => useSettings());
 
+    await flushLoad();
     await act(() => {
       result.current.setApiKey("new-key");
       result.current.setModel("gemini-3.5-flash");
@@ -328,6 +374,7 @@ describe("useSettings", () => {
     it("saveSettings clears the dirty flag", async () => {
       const { result } = renderHook(() => useSettings());
 
+      await flushLoad();
       await act(() => {
         result.current.setLiveApiEnabled(true);
       });
@@ -608,6 +655,7 @@ describe("useSettings", () => {
 
     expect(result.current.settingsConfigured).toBe(false);
 
+    await flushLoad();
     await act(() => {
       result.current.saveSettings();
     });

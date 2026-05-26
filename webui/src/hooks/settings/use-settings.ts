@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import {
+  type AllProviderSettings,
   buildAllProviderSettings,
   checkHasApiKey,
   DEFAULT_SETTINGS,
@@ -80,6 +81,10 @@ export function useSettings(): UseSettingsReturn {
     useState<Record<string, boolean>>(loadEnabledTools);
   const [smallModelMode, setSmallModelModeState] =
     useState<boolean>(loadSmallModelMode);
+  // False until the post-mount async decrypt has applied the real apiKeys.
+  // saveSettings gates on this — saving the placeholder blanks would wipe
+  // every stored encrypted key.
+  const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false);
   // Modal-local mirror of server config.liveApiEnabled. Synced from
   // useRemoteConfig in App.tsx; not persisted to localStorage because the
   // device Setup-tab toggle can change the value out from under us.
@@ -167,11 +172,16 @@ export function useSettings(): UseSettingsReturn {
   // envelope. Runs once; the synchronous useState initializers above already
   // populated everything except the (async-decrypted) apiKey.
   useEffect(
-    () => applyDecryptedSettings(applyLoadedSettings),
+    () =>
+      applyDecryptedSettings(applyLoadedSettings, () =>
+        setSettingsLoaded(true),
+      ),
     [applyLoadedSettings],
   );
 
   const saveSettings = useCallback(() => {
+    if (!warnIfNotLoaded(settingsLoaded)) return;
+
     const allSettings = buildAllProviderSettings(
       anthropicSettings,
       geminiSettings,
@@ -183,14 +193,7 @@ export function useSettings(): UseSettingsReturn {
       customSettings,
     );
 
-    // apiKey encryption is async; save is user-triggered so fire-and-forget is
-    // fine. Errors are logged, never thrown into render.
-    saveCurrentSettings(provider, enabledTools, allSettings).catch(
-      (err: unknown) => {
-        console.error("Failed to save provider settings", err);
-      },
-    );
-    saveSmallModelMode(smallModelMode);
+    persistAllSettings(provider, enabledTools, allSettings, smallModelMode);
     voiceModeSettings.commit();
     setSavedModel(allSettings[provider].model);
     setSavedProvider(provider);
@@ -198,6 +201,7 @@ export function useSettings(): UseSettingsReturn {
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
   }, [
+    settingsLoaded,
     provider,
     enabledTools,
     smallModelMode,
@@ -325,21 +329,67 @@ export function useSettings(): UseSettingsReturn {
 }
 
 /**
+ * Gate save until the post-mount decrypt has applied real apiKeys. Returns
+ * false (and logs) when still loading so the caller can bail before persisting
+ * blank placeholders that would overwrite stored encrypted keys.
+ * @param {boolean} settingsLoaded - True once decrypted settings have been applied
+ * @returns {boolean} True when save may proceed
+ */
+function warnIfNotLoaded(settingsLoaded: boolean): boolean {
+  if (settingsLoaded) return true;
+  console.warn(
+    "Settings not yet loaded; ignoring save to avoid wiping stored apiKeys",
+  );
+
+  return false;
+}
+
+/**
+ * Persist encrypted provider settings and the small-model-mode flag. Save is
+ * user-triggered and the apiKey encryption is async, so we fire-and-forget and
+ * log on failure rather than throwing into render.
+ * @param {Provider} provider - Currently selected provider
+ * @param {Record<string, boolean>} enabledTools - Tool enabled states
+ * @param {AllProviderSettings} allSettings - Settings for every provider
+ * @param {boolean} smallModelMode - Small-model-mode flag
+ */
+function persistAllSettings(
+  provider: Provider,
+  enabledTools: Record<string, boolean>,
+  allSettings: AllProviderSettings,
+  smallModelMode: boolean,
+): void {
+  saveCurrentSettings(provider, enabledTools, allSettings).catch(
+    (err: unknown) => {
+      console.error("Failed to save provider settings", err);
+    },
+  );
+  saveSmallModelMode(smallModelMode);
+}
+
+/**
  * Load and decrypt all provider settings, then apply them via the given setter.
  * Returns a cleanup callback (for useEffect) that ignores a late-arriving load
  * after unmount. Errors are logged, never thrown into render.
  * @param {ProviderSettingsApplier} apply - Setter that writes loaded settings to state
+ * @param {() => void} onLoaded - Called after the load settles (success OR failure), skipped on unmount. Unlocks save even when decryption is broken (e.g., IndexedDB key reset) so the user can recover by typing fresh keys.
  * @returns {() => void} Cleanup that cancels a pending apply
  */
-function applyDecryptedSettings(apply: ProviderSettingsApplier): () => void {
+function applyDecryptedSettings(
+  apply: ProviderSettingsApplier,
+  onLoaded?: () => void,
+): () => void {
   let cancelled = false;
 
   loadAllProviderSettingsAsync()
     .then((loaded) => {
-      if (!cancelled) apply(loaded);
+      if (cancelled) return;
+      apply(loaded);
+      onLoaded?.();
     })
     .catch((err: unknown) => {
       console.error("Failed to load provider settings", err);
+      if (!cancelled) onLoaded?.();
     });
 
   return () => {

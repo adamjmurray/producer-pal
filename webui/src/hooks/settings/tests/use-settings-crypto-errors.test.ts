@@ -46,6 +46,16 @@ describe("useSettings crypto error handling", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { result } = renderHook(() => useSettings());
 
+    // saveSettings is gated on the post-mount decrypt settling — with the
+    // crypto mock that rejects, the load's catch still unlocks save so the
+    // user can recover. Wait for that settle first.
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        "Failed to load provider settings",
+        expect.any(Error),
+      );
+    });
+
     await act(() => {
       result.current.setApiKey("sk-will-fail-to-encrypt");
     });
