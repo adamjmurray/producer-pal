@@ -276,25 +276,18 @@ describe("useSettings", () => {
       "gemini",
     );
 
-    // The apiKey is encrypted at rest: the raw stored value must NOT be the
-    // cleartext, and must decrypt back to it. Save is async (fire-and-forget),
-    // so wait for the write to land.
+    // Save is async (fire-and-forget); wait for the encrypted envelope to land
+    // before asserting the stored shape. apiKey is encrypted at rest, so the
+    // raw value must NOT equal the cleartext (see expectStored).
     await waitFor(() => {
       const raw = JSON.parse(
         localStorage.getItem("producer_pal_provider_gemini") ?? "{}",
       );
 
-      expect(typeof raw.apiKey).toBe("string");
-      expect(raw.apiKey.startsWith("enc:v1:")).toBe(true);
+      expect(raw.apiKey?.startsWith("enc:v1:")).toBe(true);
     });
 
-    const stored = JSON.parse(
-      localStorage.getItem("producer_pal_provider_gemini") ?? "{}",
-    );
-
-    expect(stored.apiKey).not.toBe("new-key");
-    expect(await decryptApiKey(stored.apiKey)).toBe("new-key");
-    expect(stored).toMatchObject({
+    await expectStored("gemini", "new-key", {
       model: "gemini-3.5-flash",
       thinking: "Max",
       temperature: 0.8,
@@ -501,59 +494,68 @@ describe("useSettings", () => {
   });
 
   it("saves and loads all provider settings separately", async () => {
+    interface ProviderSetup {
+      provider: "gemini" | "openai" | "openrouter" | "mistral";
+      apiKey: string;
+      model: string;
+      thinking?: string;
+      temperature: number;
+    }
+    const setups: ProviderSetup[] = [
+      {
+        provider: "gemini",
+        apiKey: "gemini-key",
+        model: "gemini-2.5-pro",
+        thinking: "Max",
+        temperature: 0.5,
+      },
+      {
+        provider: "openai",
+        apiKey: "openai-key",
+        model: "gpt-5.4-mini",
+        thinking: "Off",
+        temperature: 1.5,
+      },
+      {
+        provider: "openrouter",
+        apiKey: "openrouter-key",
+        model: "minimax/minimax-m2:free",
+        temperature: 0.8,
+      },
+      {
+        provider: "mistral",
+        apiKey: "mistral-key",
+        model: "mistral-small-latest",
+        temperature: 1.2,
+      },
+    ];
+    const last = setups.at(-1)!;
+
     const { result } = renderHook(() => useSettings());
 
     await flushLoad();
 
     // Configure each provider with unique settings
-    await act(() => {
-      result.current.setProvider("gemini");
-    });
-    await act(() => {
-      result.current.setApiKey("gemini-key");
-      result.current.setModel("gemini-2.5-pro");
-      result.current.setThinking("Max");
-      result.current.setTemperature(0.5);
-    });
-
-    await act(() => {
-      result.current.setProvider("openai");
-    });
-    await act(() => {
-      result.current.setApiKey("openai-key");
-      result.current.setModel("gpt-5.4-mini");
-      result.current.setThinking("Off");
-      result.current.setTemperature(1.5);
-    });
-
-    await act(() => {
-      result.current.setProvider("openrouter");
-    });
-    await act(() => {
-      result.current.setApiKey("openrouter-key");
-      result.current.setModel("minimax/minimax-m2:free");
-      result.current.setTemperature(0.8);
-    });
-
-    await act(() => {
-      result.current.setProvider("mistral");
-    });
-    await act(() => {
-      result.current.setApiKey("mistral-key");
-      result.current.setModel("mistral-small-latest");
-      result.current.setTemperature(1.2);
-    });
+    for (const s of setups) {
+      await act(() => result.current.setProvider(s.provider));
+      await act(() => {
+        result.current.setApiKey(s.apiKey);
+        result.current.setModel(s.model);
+        if (s.thinking != null) result.current.setThinking(s.thinking);
+        result.current.setTemperature(s.temperature);
+      });
+    }
 
     // Save all settings (async encrypt + write)
     await act(() => {
       result.current.saveSettings();
     });
 
-    // Wait for the async save to land all four providers' encrypted keys.
+    // Wait for the async save to land every provider's encrypted key.
     await waitFor(() => {
-      for (const p of ["gemini", "openai", "openrouter", "mistral"]) {
+      for (const { provider } of setups) {
         const raw = JSON.parse(
-          localStorage.getItem(`producer_pal_provider_${p}`) ?? "{}",
+          localStorage.getItem(`producer_pal_provider_${provider}`) ?? "{}",
         );
 
         expect(raw.apiKey?.startsWith("enc:v1:")).toBe(true);
@@ -562,65 +564,30 @@ describe("useSettings", () => {
 
     // Verify each provider's settings are saved separately as JSON, with the
     // apiKey encrypted at rest (raw value is NOT the cleartext).
-    await expectStored("gemini", "gemini-key", {
-      model: "gemini-2.5-pro",
-      thinking: "Max",
-      temperature: 0.5,
-    });
-    await expectStored("openai", "openai-key", {
-      model: "gpt-5.4-mini",
-      thinking: "Off",
-      temperature: 1.5,
-    });
-    await expectStored("openrouter", "openrouter-key", {
-      model: "minimax/minimax-m2:free",
-      temperature: 0.8,
-    });
-    await expectStored("mistral", "mistral-key", {
-      model: "mistral-small-latest",
-      temperature: 1.2,
-    });
+    for (const { provider, apiKey, ...rest } of setups) {
+      await expectStored(provider, apiKey, rest);
+    }
 
-    // Clear and reload
+    // Reload (fresh hook) and verify the last selected provider is loaded.
     const { result: result2 } = renderHook(() => useSettings());
 
-    // Verify last selected provider (mistral) is loaded (apiKey decrypted async)
     expect(result2.current).toMatchObject({
-      provider: "mistral",
-      model: "mistral-small-latest",
-      temperature: 1.2,
+      provider: last.provider,
+      model: last.model,
+      temperature: last.temperature,
     });
-    await waitFor(() => expect(result2.current.apiKey).toBe("mistral-key"));
+    await waitFor(() => expect(result2.current.apiKey).toBe(last.apiKey));
 
-    // Switch providers and verify each loads correctly
-    await act(() => {
-      result2.current.setProvider("gemini");
-    });
-    expect(result2.current).toMatchObject({
-      model: "gemini-2.5-pro",
-      thinking: "Max",
-      temperature: 0.5,
-    });
-    await waitFor(() => expect(result2.current.apiKey).toBe("gemini-key"));
-
-    await act(() => {
-      result2.current.setProvider("openai");
-    });
-    expect(result2.current).toMatchObject({
-      model: "gpt-5.4-mini",
-      thinking: "Off",
-      temperature: 1.5,
-    });
-    await waitFor(() => expect(result2.current.apiKey).toBe("openai-key"));
-
-    await act(() => {
-      result2.current.setProvider("openrouter");
-    });
-    expect(result2.current).toMatchObject({
-      model: "minimax/minimax-m2:free",
-      temperature: 0.8,
-    });
-    await waitFor(() => expect(result2.current.apiKey).toBe("openrouter-key"));
+    // Switch through the remaining providers and verify each loads correctly.
+    for (const s of setups.slice(0, -1)) {
+      await act(() => result2.current.setProvider(s.provider));
+      expect(result2.current).toMatchObject({
+        model: s.model,
+        temperature: s.temperature,
+        ...(s.thinking != null ? { thinking: s.thinking } : {}),
+      });
+      await waitFor(() => expect(result2.current.apiKey).toBe(s.apiKey));
+    }
   });
 
   it("settingsConfigured is false by default", () => {
@@ -707,31 +674,7 @@ describe("useSettings", () => {
     expect(result.current.isToolEnabled("unknown-tool")).toBe(true);
   });
 
-  it("setShowThoughts works for mistral provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("mistral");
-    });
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-    expect(result.current.showThoughts).toBe(false);
-  });
-
-  it("setShowThoughts works for openrouter provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("openrouter");
-    });
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-    expect(result.current.showThoughts).toBe(false);
-  });
-
-  it.each(["lmstudio", "ollama", "custom"] as const)(
+  it.each(["mistral", "openrouter", "lmstudio", "ollama", "custom"] as const)(
     "setShowThoughts works for %s provider",
     async (provider) => {
       const { result } = renderHook(() => useSettings());
@@ -772,20 +715,8 @@ describe("useSettings", () => {
     localStorage.removeItem("producer_pal_provider_gemini");
   });
 
-  it("setBaseUrl updates baseUrl for custom provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("custom");
-    });
-    await act(() => {
-      result.current.setBaseUrl!("http://localhost:8080");
-    });
-
-    expect(result.current.baseUrl).toBe("http://localhost:8080");
-  });
-
   it.each([
+    ["custom", "http://localhost:8080"],
     ["ollama", "http://192.168.1.100:11434/v1"],
     ["lmstudio", "http://192.168.1.100:1234/v1"],
   ] as const)(
