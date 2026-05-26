@@ -13,7 +13,7 @@ import {
   StartSensitivity,
 } from "@google/genai";
 import { type RealtimeItem } from "@openai/agents/realtime";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
 import { type GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
@@ -23,7 +23,9 @@ import {
   createGenAIClient,
   type GeminiMessageDeps,
   handleGeminiMessage,
+  MAX_RESUME_ATTEMPTS,
   openResumableGeminiSession,
+  RESUME_BACKOFF_MS,
   type ResumableSessionContext,
   seedGeminiContext,
 } from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
@@ -428,7 +430,7 @@ function makeCtx(
     vad: undefined,
     functionDeclarations: [],
     deps,
-    resumeHandleRef: { current: null },
+    resumeRef: { current: { handle: null, attempts: 0 } },
     isStale: () => false,
     isIntentionalClose: () => false,
     onSession: vi.fn(),
@@ -437,9 +439,41 @@ function makeCtx(
   };
 }
 
-const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+/**
+ * Build a ctx with a stored handle (the common shape across resume tests).
+ * @param ai - The fake GenAI client
+ * @param overrides - Optional extra ctx overrides
+ * @param handle - The stored resumption handle
+ * @returns A ResumableSessionContext seeded for a resume scenario
+ */
+function ctxWithHandle(
+  ai: GoogleGenAI,
+  overrides: Partial<ResumableSessionContext> = {},
+  handle = "h",
+): ResumableSessionContext {
+  return makeCtx(ai, {
+    resumeRef: { current: { handle, attempts: 0 } },
+    ...overrides,
+  });
+}
+
+/**
+ * Drive past the linear resume backoff for attempt N.
+ * @param attempt - 1-based attempt number
+ */
+async function flushBackoff(attempt: number): Promise<void> {
+  await vi.advanceTimersByTimeAsync(attempt * RESUME_BACKOFF_MS);
+}
 
 describe("openResumableGeminiSession", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("opens a session enabling resumption and returns it", async () => {
     const { ai, session, calls } = makeFakeAi();
 
@@ -451,11 +485,11 @@ describe("openResumableGeminiSession", () => {
 
   it("resumes with the stored handle after an unexpected close", async () => {
     const { ai, calls } = makeFakeAi();
-    const ctx = makeCtx(ai, { resumeHandleRef: { current: "h-7" } });
+    const ctx = ctxWithHandle(ai, {}, "h-7");
 
     await openResumableGeminiSession(ctx);
     calls[0]!.callbacks.onclose?.();
-    await tick();
+    await flushBackoff(1);
 
     expect(ai.live.connect).toHaveBeenCalledTimes(2);
     expect(calls[1]!.config.sessionResumption).toStrictEqual({ handle: "h-7" });
@@ -469,7 +503,7 @@ describe("openResumableGeminiSession", () => {
 
     await openResumableGeminiSession(ctx);
     calls[0]!.callbacks.onclose?.();
-    await tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(ai.live.connect).toHaveBeenCalledTimes(1);
     expect(ctx.onDrop).toHaveBeenCalledWith(
@@ -483,19 +517,19 @@ describe("openResumableGeminiSession", () => {
 
     await openResumableGeminiSession(ctx);
     calls[0]!.callbacks.onerror?.(new Error("ws down"));
-    await tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(ctx.onDrop).toHaveBeenCalledWith("ws down");
   });
 
   it("handles a drop once when onerror and onclose both fire", async () => {
     const { ai, calls } = makeFakeAi();
-    const ctx = makeCtx(ai, { resumeHandleRef: { current: "h" } });
+    const ctx = ctxWithHandle(ai);
 
     await openResumableGeminiSession(ctx);
     calls[0]!.callbacks.onerror?.(new Error("x"));
     calls[0]!.callbacks.onclose?.();
-    await tick();
+    await flushBackoff(1);
 
     expect(ai.live.connect).toHaveBeenCalledTimes(2);
     expect(ctx.onSession).toHaveBeenCalledTimes(1);
@@ -503,14 +537,11 @@ describe("openResumableGeminiSession", () => {
 
   it("does not resume after an intentional close", async () => {
     const { ai, calls } = makeFakeAi();
-    const ctx = makeCtx(ai, {
-      resumeHandleRef: { current: "h" },
-      isIntentionalClose: () => true,
-    });
+    const ctx = ctxWithHandle(ai, { isIntentionalClose: () => true });
 
     await openResumableGeminiSession(ctx);
     calls[0]!.callbacks.onclose?.();
-    await tick();
+    await vi.advanceTimersByTimeAsync(0);
 
     expect(ai.live.connect).toHaveBeenCalledTimes(1);
     expect(ctx.onDrop).not.toHaveBeenCalled();
@@ -522,15 +553,14 @@ describe("openResumableGeminiSession", () => {
       throw new Error("already closed");
     });
     let staleChecks = 0;
-    const ctx = makeCtx(ai, {
-      resumeHandleRef: { current: "h" },
-      // false at handleClose entry, true at resumeOrFail's post-await check.
+    const ctx = ctxWithHandle(ai, {
+      // false at handleClose entry, true at resumeOrFail's post-resume check.
       isStale: () => staleChecks++ >= 1,
     });
 
     await openResumableGeminiSession(ctx);
     calls[0]!.callbacks.onclose?.();
-    await tick();
+    await flushBackoff(1);
 
     expect(ctx.onSession).not.toHaveBeenCalled();
     expect(session.close).toHaveBeenCalled();
@@ -554,13 +584,99 @@ describe("openResumableGeminiSession", () => {
       },
     );
     const ai = { live: { connect } } as unknown as GoogleGenAI;
-    const ctx = makeCtx(ai, { resumeHandleRef: { current: "h" } });
+    const ctx = ctxWithHandle(ai);
 
     await openResumableGeminiSession(ctx);
     firstCallbacks.onclose?.();
-    await tick();
+    await flushBackoff(1);
 
     expect(ctx.onDrop).toHaveBeenCalledWith("resume failed");
+  });
+
+  it("waits attempt * RESUME_BACKOFF_MS before retrying", async () => {
+    const { ai, calls } = makeFakeAi();
+    const ctx = ctxWithHandle(ai);
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onclose?.();
+
+    // Not yet enough time for attempt 1's wait.
+    await vi.advanceTimersByTimeAsync(RESUME_BACKOFF_MS - 1);
+    expect(ai.live.connect).toHaveBeenCalledTimes(1);
+
+    // Cross attempt 1's threshold → second connect.
+    await vi.advanceTimersByTimeAsync(1);
+    expect(ai.live.connect).toHaveBeenCalledTimes(2);
+  });
+
+  it("resets the attempt counter when the resumed session delivers a message", async () => {
+    const { ai, calls } = makeFakeAi();
+    const ctx = ctxWithHandle(ai);
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onclose?.();
+    await flushBackoff(1);
+
+    // After the resume, counter is at 1 until the new session emits its first
+    // server message — then it resets to 0.
+    expect(ctx.resumeRef.current.attempts).toBe(1);
+
+    calls[1]!.callbacks.onmessage?.(msg({}));
+
+    expect(ctx.resumeRef.current.attempts).toBe(0);
+  });
+
+  it("stops resuming and reports a drop after MAX_RESUME_ATTEMPTS failures", async () => {
+    // Pre-seed counter at MAX so the next resume attempt hits the cap.
+    const { ai, calls } = makeFakeAi();
+    const ctx = makeCtx(ai, {
+      resumeRef: { current: { handle: "h", attempts: MAX_RESUME_ATTEMPTS } },
+    });
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onclose?.();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(ai.live.connect).toHaveBeenCalledTimes(1);
+    expect(ctx.onDrop).toHaveBeenCalledWith(
+      `Voice connection lost after ${MAX_RESUME_ATTEMPTS} resume attempts. Press Talk to reconnect.`,
+    );
+  });
+
+  it("ignores repeat onmessage calls after the first reset", async () => {
+    // The receivedMessage gate is per-session; only the first message resets.
+    // A later message shouldn't re-reset (counter already 0, but exercise the
+    // branch where `receivedMessage` is true).
+    const { ai, calls } = makeFakeAi();
+    const ctx = ctxWithHandle(ai);
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onclose?.();
+    await flushBackoff(1);
+
+    calls[1]!.callbacks.onmessage?.(msg({}));
+    expect(ctx.resumeRef.current.attempts).toBe(0);
+
+    // Manually bump and re-fire onmessage; the gate should NOT reset it again.
+    ctx.resumeRef.current.attempts = 5;
+    calls[1]!.callbacks.onmessage?.(msg({}));
+    expect(ctx.resumeRef.current.attempts).toBe(5);
+  });
+
+  it("ignores a delayed close on a session we've already replaced", async () => {
+    // Cover the dropHandled guard on the second close: handleClose returns
+    // early so resumeOrFail isn't called again for this session.
+    const { ai, calls } = makeFakeAi();
+    const ctx = ctxWithHandle(ai);
+
+    await openResumableGeminiSession(ctx);
+    calls[0]!.callbacks.onclose?.();
+    await flushBackoff(1);
+    calls[0]!.callbacks.onclose?.();
+    await flushBackoff(2);
+
+    // Only the original close triggered a resume.
+    expect(ai.live.connect).toHaveBeenCalledTimes(2);
   });
 });
 

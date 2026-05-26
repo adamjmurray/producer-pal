@@ -373,7 +373,8 @@ describe("useGeminiVoiceSession", () => {
 
     await act(async () => {
       h.state.callbacks.onclose?.();
-      await new Promise((r) => setTimeout(r, 0));
+      // Wait past openResumableGeminiSession's linear backoff (attempt 1 = 1s).
+      await new Promise((r) => setTimeout(r, 1100));
     });
 
     expect(h.liveConnect).toHaveBeenCalledTimes(2);

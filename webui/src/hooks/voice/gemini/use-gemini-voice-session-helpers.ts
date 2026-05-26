@@ -120,6 +120,20 @@ export function createGenAIClient(
   });
 }
 
+/** Max consecutive failed resume attempts before we give up. */
+export const MAX_RESUME_ATTEMPTS = 3;
+/** Linear backoff base between resume attempts (attempt N waits N * this). */
+export const RESUME_BACKOFF_MS = 1000;
+
+/** Per-connection resumption state: server-issued handle + failed attempts.
+ * `attempts` resets when a resumed session delivers its first message (real
+ * traffic proves the session is alive); the cap stops a dead server from
+ * driving an infinite reconnect loop. */
+export interface ResumeState {
+  handle: string | null;
+  attempts: number;
+}
+
 /** Connection state + lifecycle callbacks openResumableGeminiSession needs. */
 export interface ResumableSessionContext {
   /** The GenAI client (carries the credential and API version). */
@@ -134,8 +148,8 @@ export interface ResumableSessionContext {
   functionDeclarations: FunctionDeclaration[];
   /** Message-handler deps (history builder, player, tool loop, UI setters). */
   deps: GeminiMessageDeps;
-  /** Holds the latest server-issued resumption handle (null before the first). */
-  resumeHandleRef: { current: string | null };
+  /** Server-issued resumption handle + failed attempts counter. */
+  resumeRef: { current: ResumeState };
   /** True once teardown bumped the connect generation. */
   isStale: () => boolean;
   /** True when we initiated the close (disconnect/cleanup). */
@@ -144,6 +158,15 @@ export interface ResumableSessionContext {
   onSession: (session: Session) => void;
   /** Report an unrecoverable drop (no handle, or a failed resume). */
   onDrop: (message: string) => void;
+}
+
+/**
+ * Sleep, injectable for tests.
+ * @param ms - milliseconds to wait
+ * @returns A promise that resolves after the delay
+ */
+function resumeSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -163,6 +186,7 @@ export async function openResumableGeminiSession(
   ctx: ResumableSessionContext,
 ): Promise<Session> {
   let dropHandled = false;
+  let receivedMessage = false;
 
   const handleClose = (fallback: string): void => {
     if (dropHandled || ctx.isIntentionalClose() || ctx.isStale()) return;
@@ -174,7 +198,18 @@ export async function openResumableGeminiSession(
     model: ctx.model,
     callbacks: {
       onopen: () => {},
-      onmessage: (m) => void handleGeminiMessage(m, ctx.deps),
+      onmessage: (m) => {
+        // First server message proves the session is genuinely alive. Reset the
+        // consecutive-failures counter so a long conversation that legitimately
+        // resumes every ~10 min keeps going, while a flaky session that drops
+        // before any traffic accumulates toward MAX_RESUME_ATTEMPTS.
+        if (!receivedMessage) {
+          receivedMessage = true;
+          ctx.resumeRef.current.attempts = 0;
+        }
+
+        void handleGeminiMessage(m, ctx.deps);
+      },
       onerror: (e) =>
         handleClose(extractErrorMessage(e) || "Voice connection error."),
       onclose: () => handleClose("Connection lost. Press Talk to reconnect."),
@@ -183,7 +218,7 @@ export async function openResumableGeminiSession(
       voice: ctx.voice,
       functionDeclarations: ctx.functionDeclarations,
       vad: ctx.vad,
-      resumeHandle: ctx.resumeHandleRef.current ?? undefined,
+      resumeHandle: ctx.resumeRef.current.handle ?? undefined,
     }),
   });
 }
@@ -191,8 +226,12 @@ export async function openResumableGeminiSession(
 /**
  * Resume the session from the stored handle, or report an unrecoverable drop.
  * Without a handle (none issued yet) there is nothing to resume, so the drop is
- * surfaced with the original message. A resume that races teardown closes the
- * fresh session instead of leaking it.
+ * surfaced with the original message. Caps consecutive resume attempts at
+ * MAX_RESUME_ATTEMPTS with linear backoff (attempt N waits N * RESUME_BACKOFF_MS)
+ * so a dead server doesn't drive an infinite reconnect loop. A successful resume
+ * resets the counter so a long session that legitimately drops every ~10 min
+ * keeps going. A resume that races teardown closes the fresh session instead
+ * of leaking it.
  *
  * @param ctx - Connection state and lifecycle callbacks
  * @param fallbackMessage - Drop message used when no handle is available
@@ -201,11 +240,25 @@ async function resumeOrFail(
   ctx: ResumableSessionContext,
   fallbackMessage: string,
 ): Promise<void> {
-  if (!ctx.resumeHandleRef.current) {
+  if (!ctx.resumeRef.current.handle) {
     ctx.onDrop(fallbackMessage);
 
     return;
   }
+
+  const attempt = ctx.resumeRef.current.attempts + 1;
+
+  if (attempt > MAX_RESUME_ATTEMPTS) {
+    ctx.onDrop(
+      `Voice connection lost after ${MAX_RESUME_ATTEMPTS} resume attempts. Press Talk to reconnect.`,
+    );
+
+    return;
+  }
+
+  ctx.resumeRef.current.attempts = attempt;
+
+  await resumeSleep(attempt * RESUME_BACKOFF_MS);
 
   try {
     const session = await openResumableGeminiSession(ctx);

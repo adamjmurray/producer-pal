@@ -19,6 +19,7 @@ import {
   GEMINI_INPUT_MIME_TYPE,
   type GeminiMessageDeps,
   openResumableGeminiSession,
+  type ResumeState,
   seedGeminiContext,
 } from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
 import {
@@ -83,9 +84,8 @@ export function useGeminiVoiceSession(
   const connectGenRef = useRef(0);
   const intentionalCloseRef = useRef(false);
   const isMutedRef = useRef(false);
-  // Latest server-issued resumption handle; reset per fresh connect so a new
-  // Talk starts a new session rather than resuming the previous one.
-  const resumeHandleRef = useRef<string | null>(null);
+  // Resumption handle + consecutive failed-attempts counter, reset per Talk.
+  const resumeRef = useRef<ResumeState>({ handle: null, attempts: 0 });
 
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +157,7 @@ export function useGeminiVoiceSession(
       const stale = (): boolean => connectGenRef.current !== myGen;
 
       intentionalCloseRef.current = false;
-      resumeHandleRef.current = null;
+      resumeRef.current = { handle: null, attempts: 0 };
       setStatus("connecting");
       setError(null);
       setHistory([]);
@@ -199,7 +199,7 @@ export function useGeminiVoiceSession(
           setAssistantThinking,
           setError,
           setResumeHandle: (handle) => {
-            resumeHandleRef.current = handle;
+            resumeRef.current.handle = handle;
           },
         };
 
@@ -220,7 +220,7 @@ export function useGeminiVoiceSession(
           vad: turnDetection,
           functionDeclarations,
           deps,
-          resumeHandleRef,
+          resumeRef,
           isStale: stale,
           isIntentionalClose: () => intentionalCloseRef.current,
           onSession: (s) => {
