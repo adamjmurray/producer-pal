@@ -31,6 +31,7 @@ interface ChatAppProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenContext: () => void;
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
@@ -54,6 +55,7 @@ export function ChatApp(props: ChatAppProps) {
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    onOpenContext,
   } = props;
 
   const { chat, wrappedHandleSend, conversationPanelState, headerInfo } =
@@ -77,6 +79,7 @@ export function ChatApp(props: ChatAppProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenContext={onOpenContext}
       onStop={chat.stopResponse}
       showTimestamps={display.showTimestamps}
       showTokenUsage={display.showTokenUsage}

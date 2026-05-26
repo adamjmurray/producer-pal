@@ -43,6 +43,22 @@ vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));
 
+// ContextScreen wires CodeMirror + a server fetch; stub it so App tests stay
+// focused on the overlay open/close plumbing.
+vi.mock(import("#webui/components/context/ContextScreen"), () => ({
+  ContextScreen: (props: { onClose?: () => void } = {}) => (
+    <div data-testid="context-stub">
+      <button
+        type="button"
+        aria-label="Close project context"
+        onClick={props.onClose}
+      >
+        close
+      </button>
+    </div>
+  ),
+}));
+
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
@@ -437,6 +453,92 @@ describe("App", () => {
       expect(mockSetViewState).toHaveBeenCalledWith({
         settingsTab: "preferences",
       });
+    });
+  });
+
+  describe("context overlay", () => {
+    const setupContextState = (contextOpen: boolean) => {
+      const mockSetViewState = vi.fn();
+
+      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
+        viewState: {
+          historyPanelOpen: false,
+          settingsOpen: false,
+          settingsTab: "connection",
+          contextOpen,
+        },
+        setViewState: mockSetViewState,
+      });
+
+      return mockSetViewState;
+    };
+
+    it("opens the context overlay via the header button", () => {
+      const mockSetViewState = setupContextState(false);
+      const { container } = render(<App />);
+      const btn = container.querySelector(
+        'button[aria-label="Project context"]',
+      );
+
+      if (btn) fireEvent.click(btn);
+      expect(mockSetViewState).toHaveBeenCalledWith({ contextOpen: true });
+    });
+
+    it("closes the context overlay when the close button is clicked", async () => {
+      vi.useFakeTimers();
+      const mockSetViewState = setupContextState(true);
+      const { container } = render(<App />);
+      const close = container.querySelector(
+        'button[aria-label="Close project context"]',
+      );
+
+      if (close) fireEvent.click(close);
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      expect(mockSetViewState).toHaveBeenCalledWith({ contextOpen: false });
+      vi.useRealTimers();
+    });
+
+    it("closes the context overlay on Escape", async () => {
+      vi.useFakeTimers();
+      const mockSetViewState = setupContextState(true);
+
+      render(<App />);
+
+      fireEvent.keyDown(window, { key: "Escape" });
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      expect(mockSetViewState).toHaveBeenCalledWith({ contextOpen: false });
+      vi.useRealTimers();
+    });
+
+    it("ignores non-Escape keys when the overlay is open", () => {
+      const mockSetViewState = setupContextState(true);
+
+      render(<App />);
+
+      fireEvent.keyDown(window, { key: "a" });
+      expect(mockSetViewState).not.toHaveBeenCalled();
+    });
+
+    it("does not close when clicking inside the context view", async () => {
+      vi.useFakeTimers();
+      const mockSetViewState = setupContextState(true);
+      const { container } = render(<App />);
+      const inner = container.querySelector('[data-testid="context-stub"]');
+
+      if (inner) fireEvent.click(inner);
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Backdrop-only dismissal: a click on content shouldn't fire close.
+      expect(mockSetViewState).not.toHaveBeenCalled();
+      vi.useRealTimers();
     });
   });
 

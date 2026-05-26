@@ -27,6 +27,7 @@ interface ChatHeaderProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenContext: () => void;
   onToggleHistory: () => void;
   onNewConversation: () => void;
   onToggleBookmark?: () => void;
@@ -43,6 +44,7 @@ interface ChatHeaderProps {
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onOpenToolsSettings - Callback to open tools settings tab
  * @param props.onOpenConnectionSettings - Callback to open connection settings tab
+ * @param props.onOpenContext - Callback to open the project context view
  * @param props.onToggleHistory - Callback to toggle history panel
  * @param props.onNewConversation - Callback to start new conversation
  * @param props.onToggleBookmark - Callback to toggle bookmark
@@ -57,6 +59,7 @@ export function ChatHeader({
   onOpenSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
+  onOpenContext,
   onToggleHistory,
   onNewConversation,
   onToggleBookmark,
@@ -122,6 +125,7 @@ export function ChatHeader({
         onOpenSettings={onOpenSettings}
         onOpenToolsSettings={onOpenToolsSettings}
         onOpenConnectionSettings={onOpenConnectionSettings}
+        onOpenContext={onOpenContext}
       />
     </header>
   );

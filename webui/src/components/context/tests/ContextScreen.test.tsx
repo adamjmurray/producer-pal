@@ -337,6 +337,19 @@ describe("ContextScreen", () => {
     expect(screen.getByText("Saved")).toBeTruthy();
   });
 
+  it("renders a close button when onClose is provided and calls it on click", () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "x";
+    const onClose = vi.fn();
+
+    render(<ContextScreen onClose={onClose} />);
+
+    const btn = screen.getByLabelText("Close project context");
+
+    fireEvent.click(btn);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
   it("renders 'Save failed' indicator after an error", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "old";

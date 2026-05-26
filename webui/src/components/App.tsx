@@ -30,8 +30,11 @@ import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
 import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
+import { ContextScreen } from "./context/ContextScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
+
+const CONTEXT_ANIMATION_MS = 150;
 
 /**
  * Root component. Owns shared chrome (settings hook, theme, view state, MCP
@@ -144,6 +147,35 @@ export function App() {
     handleCancelSettings,
   });
 
+  // Project context overlay (sibling to Settings). Animation timing mirrors
+  // useSettingsClose; auto-save makes a confirm-on-close flow unnecessary.
+  const contextOpen = viewState.contextOpen;
+  const [contextClosing, setContextClosing] = useState(false);
+  const openContext = useCallback(
+    () => setViewState({ contextOpen: true }),
+    [setViewState],
+  );
+  const closeContext = useCallback(() => {
+    setContextClosing(true);
+    setTimeout(() => {
+      setContextClosing(false);
+      setViewState({ contextOpen: false });
+    }, CONTEXT_ANIMATION_MS);
+  }, [setViewState]);
+
+  // Escape closes the context overlay (consistent with native modal idioms).
+  useEffect(() => {
+    if (!contextOpen) return;
+
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") closeContext();
+    };
+
+    window.addEventListener("keydown", onKey);
+
+    return () => window.removeEventListener("keydown", onKey);
+  }, [contextOpen, closeContext]);
+
   // The active mode reports its conversation lock + delete handlers here via
   // setModeContext so the shared SettingsScreen renders them.
   const [modeContext, setModeContext] =
@@ -174,17 +206,22 @@ export function App() {
     onOpenToolsSettings: () => openSettings("tools"),
     onOpenConnectionSettings: () => openSettings("connection"),
     /* v8 ignore stop */
+    onOpenContext: openContext,
     onForeignRecord,
     clearViewingMode,
     setModeContext,
   };
 
+  // Blur+disable interaction beneath any modal overlay (settings or context).
+  const overlayOpen = showSettings || contextOpen;
+  const overlayClosing = settingsClosing || contextClosing;
+
   return (
     <ToolNamesContext.Provider value={toolNamesMap}>
       <div
         className={
-          showSettings
-            ? `pointer-events-none ${settingsClosing ? "settings-blur-out" : "settings-blur"}`
+          overlayOpen
+            ? `pointer-events-none ${overlayClosing ? "settings-blur-out" : "settings-blur"}`
             : ""
         }
       >
@@ -199,6 +236,18 @@ export function App() {
           />
         )}
       </div>
+      {contextOpen && (
+        <div
+          className={`settings-overlay ${contextClosing ? "settings-closing" : ""}`}
+          onClick={(e) => {
+            // Auto-save makes click-outside-to-close safe; only close on
+            // backdrop hits, not clicks inside the editor.
+            if (e.target === e.currentTarget) closeContext();
+          }}
+        >
+          <ContextScreen onClose={closeContext} />
+        </div>
+      )}
       {showSettings && (
         <div
           className={`settings-overlay ${settingsClosing ? "settings-closing" : ""}`}

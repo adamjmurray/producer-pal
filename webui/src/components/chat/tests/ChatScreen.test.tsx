@@ -51,6 +51,7 @@ describe("ChatScreen", () => {
     onOpenSettings: mockOnOpenSettings,
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
+    onOpenContext: vi.fn(),
     onStop: mockOnStop,
     showTimestamps: true,
     showTokenUsage: false,

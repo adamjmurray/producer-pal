@@ -40,6 +40,7 @@ interface ChatScreenProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenContext: () => void;
   onStop: () => void;
   showTimestamps: boolean;
   showTokenUsage: boolean;
@@ -86,6 +87,7 @@ export function ChatScreen(props: ChatScreenProps) {
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    onOpenContext,
     onStop,
     showTimestamps,
     showTokenUsage,
@@ -105,6 +107,7 @@ export function ChatScreen(props: ChatScreenProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenContext={onOpenContext}
     >
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (

@@ -12,14 +12,26 @@ import { MarkdownEditor } from "./MarkdownEditor";
 
 const SAVE_DEBOUNCE_MS = 800;
 
+interface ContextScreenProps {
+  /**
+   * When provided, renders a close button in the header. Used when the screen
+   * is mounted inside the chat-app overlay; omitted on the standalone
+   * `/context` route where the page itself is the destination.
+   */
+  onClose?: () => void;
+}
+
 /**
  * Editor screen for the project context memory. Auto-saves on idle and
  * flushes on blur and beforeunload. The editor is uncontrolled (seeded once
  * from the server on first ready), so a user's in-progress edits are never
  * clobbered by a server echo or AI write mid-session — last-write-wins.
+ * @param props - Screen props
  * @returns Screen element
  */
-export function ContextScreen(): preact.JSX.Element {
+export function ContextScreen(
+  props: ContextScreenProps = {},
+): preact.JSX.Element {
   const memory = useContextMemory();
   const draftRef = useRef<string | null>(null);
   const lastSavedRef = useRef<string | null>(null);
@@ -108,7 +120,11 @@ export function ContextScreen(): preact.JSX.Element {
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
-      <ContextHeader status={memory.status} saveStatus={memory.saveStatus} />
+      <ContextHeader
+        status={memory.status}
+        saveStatus={memory.saveStatus}
+        onClose={props.onClose}
+      />
       <div className="flex-1 min-h-0 overflow-hidden">
         <ContextBody
           status={memory.status}
@@ -125,20 +141,45 @@ export function ContextScreen(): preact.JSX.Element {
 interface ContextHeaderProps {
   status: ReturnType<typeof useContextMemory>["status"];
   saveStatus: SaveStatus;
+  onClose?: () => void;
 }
 
 /**
- * Header strip showing the title and current save indicator.
+ * Header strip showing the title, save indicator, and (when mounted inside
+ * the chat-app overlay) a close button.
  * @param props - Header props
  * @returns Header element
  */
 function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
-  const { status, saveStatus } = props;
+  const { status, saveStatus, onClose } = props;
 
   return (
     <header className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
       <h1 className="text-base font-semibold">Project Context</h1>
-      <SaveIndicator status={status} saveStatus={saveStatus} />
+      <div className="flex items-center gap-3">
+        <SaveIndicator status={status} saveStatus={saveStatus} />
+        {onClose != null && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close project context"
+            title="Close (Esc)"
+            className="p-1 -mr-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 18 18"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            >
+              <path d="M4 4L14 14M14 4L4 14" />
+            </svg>
+          </button>
+        )}
+      </div>
     </header>
   );
 }

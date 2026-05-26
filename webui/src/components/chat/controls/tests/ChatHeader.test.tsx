@@ -42,6 +42,7 @@ describe("ChatHeader", () => {
     onOpenSettings: vi.fn(),
     onOpenToolsSettings: vi.fn(),
     onOpenConnectionSettings: vi.fn(),
+    onOpenContext: vi.fn(),
     onToggleHistory: vi.fn(),
     onNewConversation: vi.fn(),
   };

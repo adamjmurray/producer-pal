@@ -32,6 +32,7 @@ export interface VoiceAppProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenContext: () => void;
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
@@ -51,6 +52,7 @@ export function VoiceApp(props: VoiceAppProps) {
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    onOpenContext,
     clearViewingMode,
   } = props;
 
@@ -95,6 +97,7 @@ export function VoiceApp(props: VoiceAppProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenContext={onOpenContext}
     >
       <VoiceTranscript
         messages={messages}

@@ -29,6 +29,7 @@ interface AppShellProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenContext: () => void;
   children: ComponentChildren;
 }
 
@@ -43,6 +44,7 @@ interface AppShellProps {
  * @param props.onOpenSettings - Open the settings modal on the default tab
  * @param props.onOpenToolsSettings - Open settings on the tools tab
  * @param props.onOpenConnectionSettings - Open settings on the connection tab
+ * @param props.onOpenContext - Open the project context view
  * @param props.children - Content rendered inside the card body
  * @returns App shell element wrapping `children`
  */
@@ -53,6 +55,7 @@ export function AppShell({
   onOpenSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
+  onOpenContext,
   children,
 }: AppShellProps) {
   const latestVersion = useUpdateCheck();
@@ -74,6 +77,7 @@ export function AppShell({
         onOpenSettings={onOpenSettings}
         onOpenToolsSettings={onOpenToolsSettings}
         onOpenConnectionSettings={onOpenConnectionSettings}
+        onOpenContext={onOpenContext}
         onToggleHistory={conversationPanel.onToggle}
         onNewConversation={conversationPanel.onNew}
         onToggleBookmark={
