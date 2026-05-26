@@ -6,7 +6,10 @@
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { mergeVoiceHistory } from "#webui/hooks/voice/use-voice-persistence-helpers";
-import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
+import {
+  isGeminiRealtimeModelId,
+  OPENAI_REALTIME_MODEL,
+} from "#webui/lib/constants/models";
 import {
   type ConversationRecord,
   type ConversationSummary,
@@ -426,10 +429,14 @@ async function saveVoiceRecord(
     createdAt: existing?.createdAt ?? ctx.createdAt ?? now,
     updatedAt: now,
     bookmarked: existing?.bookmarked ?? ctx.bookmarked,
-    provider: "openai",
-    // First-write-wins (like createdAt/bookmarked): a record keeps the model it
-    // was created with. Continuing it (Stop → Talk) under different current
-    // settings must not silently overwrite the original model/label.
+    // First-write-wins (like createdAt/bookmarked): a record keeps the provider
+    // and model it was created with. Provider is derived from the model id (the
+    // active backend) so a Gemini voice record isn't mislabeled "OpenAI" in the
+    // sidebar/export; continuing it (Stop → Talk) under different current
+    // settings must not silently re-stamp the original provider/model/label.
+    provider:
+      existing?.provider ??
+      (isGeminiRealtimeModelId(ctx.model) ? "gemini" : "openai"),
     model: existing?.model ?? ctx.model,
     modelLabel: existing?.modelLabel ?? ctx.model,
     thinking: null,

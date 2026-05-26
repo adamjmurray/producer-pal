@@ -9,6 +9,7 @@ import "fake-indexeddb/auto";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GEMINI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import {
@@ -105,6 +106,47 @@ describe("useVoicePersistence", () => {
 
     expect(loaded?.model).toBe("gpt-realtime-original");
     expect(loaded?.modelLabel).toBe("gpt-realtime-original");
+  });
+
+  it("stamps the gemini provider on records saved with a Gemini realtime model", async () => {
+    const { result, rerender } = renderVoicePersistenceWithHistory({
+      model: GEMINI_REALTIME_MODEL,
+    });
+
+    await waitForEffects();
+    rerender([userTextItem("hey")]);
+    await waitForEffects(800);
+
+    const loaded = await loadConversation(
+      result.current.activeConversationId as string,
+    );
+
+    expect(loaded?.provider).toBe("gemini");
+    expect(loaded?.model).toBe(GEMINI_REALTIME_MODEL);
+  });
+
+  it("preserves an existing record's provider when continued under a different backend", async () => {
+    const record = await saveVoiceRecord({
+      provider: "openai",
+      model: "gpt-realtime-original",
+      voiceHistory: [userTextItem("first turn")],
+    });
+
+    window.location.hash = record.id;
+
+    const { result, rerender } = renderVoicePersistenceWithHistory({
+      model: GEMINI_REALTIME_MODEL,
+    });
+
+    await waitForEffects();
+    rerender([userTextItem("first turn"), userTextItem("second turn")]);
+    await waitForEffects(800);
+
+    expect(result.current.activeConversationId).toBe(record.id);
+
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.provider).toBe("openai");
   });
 
   it("exposes the loaded record's model via activeRecordModel (hash load)", async () => {
