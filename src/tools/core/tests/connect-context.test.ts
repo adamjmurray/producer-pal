@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
@@ -16,16 +17,12 @@ vi.mock(
 );
 
 describe("connect", () => {
-  it("includes memory when enabled", () => {
+  it("includes memory content when non-empty", () => {
     setupConnectMocks({ liveSetName: "Project with Notes" });
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const context: Partial<ToolContext> = {
-      memory: {
-        enabled: true,
-        writable: false,
-        content: "Working on a house track with heavy bass",
-      },
+      memory: { content: "Working on a house track with heavy bass" },
     };
 
     const result = connect({}, context);
@@ -33,60 +30,19 @@ describe("connect", () => {
     expect(result.memoryContent).toStrictEqual(
       "Working on a house track with heavy bass",
     );
-    expect(result.memoryWritable).toBe(false);
   });
 
-  it("surfaces memoryWritable=true when AI writes are enabled", () => {
-    setupConnectMocks({ liveSetName: "Project with Notes" });
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const context: Partial<ToolContext> = {
-      memory: {
-        enabled: true,
-        writable: true,
-        content: "draft notes",
-      },
-    };
-
-    const result = connect({}, context);
-
-    expect(result.memoryWritable).toBe(true);
-  });
-
-  it("surfaces memoryWritable even with empty content", () => {
+  it("excludes memory when content is empty", () => {
     setupConnectMocks({ liveSetName: "Empty Memory Project" });
     vi.mocked(getHostTrackIndex).mockReturnValue(0);
 
     const context: Partial<ToolContext> = {
-      memory: {
-        enabled: true,
-        writable: true,
-        content: "",
-      },
+      memory: { content: "" },
     };
 
     const result = connect({}, context);
 
     expect(result.memoryContent).toBeUndefined();
-    expect(result.memoryWritable).toBe(true);
-  });
-
-  it("excludes memory when context is disabled", () => {
-    setupConnectMocks({ liveSetName: "Project without Notes" });
-    vi.mocked(getHostTrackIndex).mockReturnValue(0);
-
-    const context: Partial<ToolContext> = {
-      memory: {
-        enabled: false,
-        writable: false,
-        content: "Should not be included",
-      },
-    };
-
-    const result = connect({}, context);
-
-    expect(result.memoryContent).toBeUndefined();
-    expect(result.memoryWritable).toBeUndefined();
   });
 
   it("handles missing context gracefully", () => {
@@ -96,7 +52,6 @@ describe("connect", () => {
     const result = connect();
 
     expect(result.memoryContent).toBeUndefined();
-    expect(result.memoryWritable).toBeUndefined();
   });
 
   it("returns standard skills by default", () => {

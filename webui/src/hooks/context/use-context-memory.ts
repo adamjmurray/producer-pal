@@ -6,11 +6,7 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { getConfigUrl } from "#webui/utils/mcp-url";
 
-/**
- * Status of the project context memory body. `disabled` is intentionally
- * absent: the user can always read/edit memory from the webui. The
- * `enabled` flag (returned separately) only gates whether the AI sees it.
- */
+/** Status of the project context memory body. */
 export type ContextMemoryStatus =
   | { kind: "loading" }
   | { kind: "ready"; content: string }
@@ -21,18 +17,10 @@ export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export interface UseContextMemoryReturn {
   status: ContextMemoryStatus;
-  /** Whether the AI sees project memory (the device's `memoryEnabled` flag). */
-  enabled: boolean;
-  /** Whether the AI is allowed to write to memory (`memoryWritable`). */
-  writable: boolean;
   saveStatus: SaveStatus;
   saveError: string | null;
   /** Write content to memory. Resolves to true on success, false on failure. */
   save: (content: string) => Promise<boolean>;
-  /** Flip the `memoryEnabled` device flag. */
-  setEnabled: (next: boolean) => Promise<boolean>;
-  /** Flip the `memoryWritable` device flag (AI-write permission). */
-  setWritable: (next: boolean) => Promise<boolean>;
   /** Clear stored memory content. Same channel as save(""). */
   clear: () => Promise<boolean>;
   /** Re-read memory from the server (e.g. when tab becomes visible). */
@@ -40,34 +28,26 @@ export interface UseContextMemoryReturn {
 }
 
 interface ConfigResponse {
-  memoryEnabled?: boolean;
   memoryContent?: string;
-  memoryWritable?: boolean;
   // Other config fields exist but are not relevant to the editor.
   [key: string]: unknown;
 }
 
 /**
  * Read and write the project context memory blob via the device's
- * `/config` REST endpoint. This bypasses the `ppal-context` tool's
- * `memoryWritable` gate (which is intended to control AI write access,
- * not user-driven UI edits) and is the same channel the Max device uses
- * for the inline memory textedit.
- * @returns Memory state plus save/refresh/toggle actions
+ * `/config` REST endpoint. The same channel the Max device uses for the
+ * inline memory textedit.
+ * @returns Memory state plus save/refresh actions
  */
 export function useContextMemory(): UseContextMemoryReturn {
   const [status, setStatus] = useState<ContextMemoryStatus>({
     kind: "loading",
   });
-  const [enabled, setEnabledState] = useState<boolean>(false);
-  const [writable, setWritableState] = useState<boolean>(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const applyConfig = useCallback((config: ConfigResponse): void => {
     setStatus({ kind: "ready", content: config.memoryContent ?? "" });
-    setEnabledState(Boolean(config.memoryEnabled));
-    setWritableState(Boolean(config.memoryWritable));
   }, []);
 
   const refresh = useCallback(async (): Promise<void> => {
@@ -104,38 +84,6 @@ export function useContextMemory(): UseContextMemoryReturn {
     [applyConfig],
   );
 
-  const postFlag = useCallback(
-    async (partial: Partial<ConfigResponse>): Promise<boolean> => {
-      setSaveStatus("saving");
-      setSaveError(null);
-
-      try {
-        const config = await postConfig(partial);
-
-        applyConfig(config);
-        setSaveStatus("saved");
-
-        return true;
-      } catch (error: unknown) {
-        setSaveError(errorMessage(error));
-        setSaveStatus("error");
-
-        return false;
-      }
-    },
-    [applyConfig],
-  );
-
-  const setEnabled = useCallback(
-    (next: boolean): Promise<boolean> => postFlag({ memoryEnabled: next }),
-    [postFlag],
-  );
-
-  const setWritable = useCallback(
-    (next: boolean): Promise<boolean> => postFlag({ memoryWritable: next }),
-    [postFlag],
-  );
-
   const clear = useCallback((): Promise<boolean> => save(""), [save]);
 
   // Initial load.
@@ -143,11 +91,10 @@ export function useContextMemory(): UseContextMemoryReturn {
     void refresh();
   }, [refresh]);
 
-  // Re-fetch when the window regains focus so device-side changes
-  // (memoryEnabled/memoryWritable toggles in Max, AI writes that happened
-  // while the tab was elsewhere) surface when the user returns. The editor
-  // doc is uncontrolled and seeded once, so this updates the toggles +
-  // status without clobbering an in-progress draft.
+  // Re-fetch when the window regains focus so device/AI writes that
+  // happened while the tab was elsewhere surface when the user returns.
+  // The editor doc is uncontrolled and seeded once, so this updates status
+  // without clobbering an in-progress draft.
   useEffect(() => {
     const handleFocus = (): void => {
       void refresh();
@@ -162,13 +109,9 @@ export function useContextMemory(): UseContextMemoryReturn {
 
   return {
     status,
-    enabled,
-    writable,
     saveStatus,
     saveError,
     save,
-    setEnabled,
-    setWritable,
     clear,
     refresh,
   };

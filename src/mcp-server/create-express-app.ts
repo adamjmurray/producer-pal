@@ -26,9 +26,7 @@ import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 
 interface ProducerPalConfig {
-  memoryEnabled: boolean;
   memoryContent: string;
-  memoryWritable: boolean;
   smallModelMode: boolean;
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
@@ -49,13 +47,7 @@ interface ProducerPalConfig {
 const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
 const config: ProducerPalConfig = {
-  // Read of project memory defaults on; the device overrides this on load
-  // from its persisted live.toggle, so the default only takes effect when no
-  // device is connected (e.g. CLI tests). AI-write (memoryWritable) stays off
-  // until the user explicitly opts in from the editor.
-  memoryEnabled: true,
   memoryContent: "",
-  memoryWritable: false,
   smallModelMode: false,
   jsonOutput: false,
   sampleFolder: "",
@@ -77,19 +69,11 @@ Max.addHandler("smallModelMode", (enabled: unknown) => {
   config.smallModelMode = Boolean(enabled);
 });
 
-Max.addHandler("memoryEnabled", (enabled: unknown) => {
-  config.memoryEnabled = Boolean(enabled);
-});
-
 Max.addHandler("memoryContent", (content: unknown) => {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
   config.memoryContent = value;
-});
-
-Max.addHandler("memoryWritable", (writable: unknown) => {
-  config.memoryWritable = Boolean(writable);
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
@@ -361,24 +345,10 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   const incoming = req.body as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
-  if (incoming.memoryEnabled !== undefined) {
-    config.memoryEnabled = Boolean(incoming.memoryEnabled);
-    outlets.push(() =>
-      Max.outlet("config", "memoryEnabled", config.memoryEnabled),
-    );
-  }
-
   if (incoming.memoryContent !== undefined) {
     config.memoryContent = incoming.memoryContent ?? "";
     outlets.push(() =>
       Max.outlet("config", "memoryContent", config.memoryContent),
-    );
-  }
-
-  if (incoming.memoryWritable !== undefined) {
-    config.memoryWritable = Boolean(incoming.memoryWritable);
-    outlets.push(() =>
-      Max.outlet("config", "memoryWritable", config.memoryWritable),
     );
   }
 

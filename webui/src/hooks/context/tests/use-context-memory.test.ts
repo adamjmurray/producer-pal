@@ -46,24 +46,8 @@ describe("useContextMemory", () => {
     return ok;
   }
 
-  async function renderAndAwaitDisabled(): Promise<
-    ReturnType<typeof renderHook<ReturnType<typeof useContextMemory>, unknown>>
-  > {
-    const rendered = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(rendered.result.current.enabled).toBe(false);
-    });
-
-    return rendered;
-  }
-
-  it("loads memory content on mount and exposes enabled/writable", async () => {
-    mockResponses({
-      memoryEnabled: true,
-      memoryContent: "# hi",
-      memoryWritable: true,
-    });
+  it("loads memory content on mount", async () => {
+    mockResponses({ memoryContent: "# hi" });
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -74,32 +58,10 @@ describe("useContextMemory", () => {
       });
     });
 
-    expect(result.current.enabled).toBe(true);
-    expect(result.current.writable).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(
       CONFIG_URL,
       expect.objectContaining({ cache: "no-store" }),
     );
-  });
-
-  it("reports memory disabled via the enabled flag (not status kind)", async () => {
-    mockResponses({
-      memoryEnabled: false,
-      memoryContent: "still readable",
-    });
-
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.status).toStrictEqual({
-        kind: "ready",
-        content: "still readable",
-      });
-    });
-
-    // Disabled means "AI doesn't see this", not "user can't read it".
-    expect(result.current.enabled).toBe(false);
-    expect(result.current.writable).toBe(false);
   });
 
   it("reports error when fetch fails", async () => {
@@ -131,10 +93,7 @@ describe("useContextMemory", () => {
   });
 
   it("save() posts content and updates status", async () => {
-    mockResponses(
-      { memoryEnabled: true, memoryContent: "old" },
-      { memoryEnabled: true, memoryContent: "new" },
-    );
+    mockResponses({ memoryContent: "old" }, { memoryContent: "new" });
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -161,7 +120,7 @@ describe("useContextMemory", () => {
 
   it("save() surfaces error from server", async () => {
     mockResponses(
-      { memoryEnabled: true, memoryContent: "" },
+      { memoryContent: "" },
       new Response("forbidden", { status: 403, statusText: "Forbidden" }),
     );
 
@@ -178,112 +137,8 @@ describe("useContextMemory", () => {
     expect(result.current.saveError).toContain("Config update failed");
   });
 
-  it("setEnabled() POSTs memoryEnabled and reflects the response", async () => {
-    mockResponses(
-      { memoryEnabled: false, memoryContent: "" },
-      { memoryEnabled: true, memoryContent: "" },
-    );
-
-    const { result } = await renderAndAwaitDisabled();
-    const ok = await callAndCapture(() => result.current.setEnabled(true));
-
-    expect(ok).toBe(true);
-    expect(result.current.enabled).toBe(true);
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      CONFIG_URL,
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ memoryEnabled: true }),
-      }),
-    );
-  });
-
-  it("setWritable() POSTs memoryWritable and reflects the response", async () => {
-    mockResponses(
-      { memoryEnabled: true, memoryContent: "", memoryWritable: false },
-      { memoryEnabled: true, memoryContent: "", memoryWritable: true },
-    );
-
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.writable).toBe(false);
-    });
-
-    await act(async () => {
-      await result.current.setWritable(true);
-    });
-
-    expect(result.current.writable).toBe(true);
-    expect(fetchMock).toHaveBeenLastCalledWith(
-      CONFIG_URL,
-      expect.objectContaining({
-        body: JSON.stringify({ memoryWritable: true }),
-      }),
-    );
-  });
-
-  it("setEnabled() surfaces error from server without changing state", async () => {
-    mockResponses(
-      { memoryEnabled: false, memoryContent: "" },
-      new Response("nope", { status: 500, statusText: "Internal" }),
-    );
-
-    const { result } = await renderAndAwaitDisabled();
-    const ok = await callAndCapture(() => result.current.setEnabled(true));
-
-    expect(ok).toBe(false);
-    expect(result.current.enabled).toBe(false);
-    expect(result.current.saveError).toContain("Config update failed");
-    // saveStatus must transition to "error" so the SaveIndicator surfaces the
-    // failed toggle — otherwise the indicator keeps showing the prior "saved"
-    // state and the user has no feedback that the flag didn't flip.
-    expect(result.current.saveStatus).toBe("error");
-  });
-
-  it("setEnabled() transitions saveStatus through saving → saved on success", async () => {
-    mockResponses(
-      { memoryEnabled: false, memoryContent: "" },
-      { memoryEnabled: true, memoryContent: "" },
-    );
-
-    const { result } = await renderAndAwaitDisabled();
-
-    expect(result.current.saveStatus).toBe("idle");
-
-    await act(async () => {
-      await result.current.setEnabled(true);
-    });
-
-    expect(result.current.saveStatus).toBe("saved");
-    expect(result.current.saveError).toBe(null);
-  });
-
-  it("setWritable() surfaces error via saveStatus", async () => {
-    mockResponses(
-      { memoryEnabled: true, memoryContent: "", memoryWritable: false },
-      new Response("nope", { status: 500, statusText: "Internal" }),
-    );
-
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.writable).toBe(false);
-    });
-
-    const ok = await callAndCapture(() => result.current.setWritable(true));
-
-    expect(ok).toBe(false);
-    expect(result.current.writable).toBe(false);
-    expect(result.current.saveStatus).toBe("error");
-    expect(result.current.saveError).toContain("Config update failed");
-  });
-
   it("clear() saves empty content", async () => {
-    mockResponses(
-      { memoryEnabled: true, memoryContent: "old" },
-      { memoryEnabled: true, memoryContent: "" },
-    );
+    mockResponses({ memoryContent: "old" }, { memoryContent: "" });
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -304,16 +159,13 @@ describe("useContextMemory", () => {
     );
   });
 
-  it("re-fetches on window focus so device-side toggles surface", async () => {
-    mockResponses(
-      { memoryEnabled: false, memoryContent: "x", memoryWritable: false },
-      { memoryEnabled: true, memoryContent: "x", memoryWritable: true },
-    );
+  it("re-fetches on window focus so external writes surface", async () => {
+    mockResponses({ memoryContent: "old" }, { memoryContent: "new" });
 
     const { result } = renderHook(() => useContextMemory());
 
     await waitFor(() => {
-      expect(result.current.enabled).toBe(false);
+      expect(result.current.status).toMatchObject({ content: "old" });
     });
 
     await act(async () => {
@@ -323,17 +175,12 @@ describe("useContextMemory", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.enabled).toBe(true);
+      expect(result.current.status).toMatchObject({ content: "new" });
     });
-
-    expect(result.current.writable).toBe(true);
   });
 
   it("refresh() re-reads memory", async () => {
-    mockResponses(
-      { memoryEnabled: true, memoryContent: "v1" },
-      { memoryEnabled: true, memoryContent: "v2" },
-    );
+    mockResponses({ memoryContent: "v1" }, { memoryContent: "v2" });
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -349,7 +196,7 @@ describe("useContextMemory", () => {
   });
 
   it("falls back to empty string when memoryContent is missing", async () => {
-    mockResponses({ memoryEnabled: true });
+    mockResponses({});
 
     const { result } = renderHook(() => useContextMemory());
 

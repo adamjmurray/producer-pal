@@ -45,19 +45,13 @@ export function ContextScreen(
       />
       <ContextControls
         status={memory.status}
-        enabled={memory.enabled}
-        writable={memory.writable}
-        onEnabledChange={memory.setEnabled}
-        onWritableChange={memory.setWritable}
         onClear={() => void editor.handleClear()}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
         <ContextBody
           status={memory.status}
-          enabled={memory.enabled}
           editorKey={editor.editorKey}
           externalUpdate={editor.externalUpdate}
-          onEnable={() => void memory.setEnabled(true)}
           onReload={editor.handleReload}
           onChange={editor.handleChange}
           onBlur={editor.handleBlur}
@@ -117,56 +111,25 @@ function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
 
 interface ContextControlsProps {
   status: ContextMemoryStatus;
-  enabled: boolean;
-  writable: boolean;
-  onEnabledChange: (next: boolean) => Promise<boolean>;
-  onWritableChange: (next: boolean) => Promise<boolean>;
   onClear: () => void;
 }
 
 /**
- * Controls strip below the header: toggles for AI read and AI-write access
- * plus a destructive clear action. Hidden until memory has loaded so we
- * don't flash a control whose state we haven't fetched yet.
+ * Controls strip below the header with a destructive clear action. Hidden
+ * until memory has loaded so we don't flash a control whose state we
+ * haven't fetched yet.
  * @param props - Controls props
  * @returns Controls element (or null while loading)
  */
 function ContextControls(
   props: ContextControlsProps,
 ): preact.JSX.Element | null {
-  const {
-    status,
-    enabled,
-    writable,
-    onEnabledChange,
-    onWritableChange,
-    onClear,
-  } = props;
+  const { status, onClear } = props;
 
   if (status.kind !== "ready") return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm">
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={(e) =>
-            void onEnabledChange((e.target as HTMLInputElement).checked)
-          }
-        />
-        Use project memory
-      </label>
-      <label className="flex items-center gap-2 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={writable}
-          onChange={(e) =>
-            void onWritableChange((e.target as HTMLInputElement).checked)
-          }
-        />
-        AI can edit memory
-      </label>
+    <div className="flex items-center px-4 py-2 border-b border-zinc-200 dark:border-zinc-700 text-sm">
       <button
         type="button"
         onClick={onClear}
@@ -227,35 +190,24 @@ function SaveIndicator(props: SaveIndicatorProps): preact.JSX.Element {
 
 interface ContextBodyProps {
   status: ContextMemoryStatus;
-  enabled: boolean;
   editorKey: number;
   externalUpdate: boolean;
-  onEnable: () => void;
   onReload: () => void;
   onChange: (value: string) => void;
   onBlur: () => void;
 }
 
 /**
- * Renders either the framed editor (with an inline "AI won't see this"
- * banner when memory is disabled, plus an external-update banner when the
- * server has changed under us) or a status message for loading/error.
+ * Renders either the framed editor (with an external-update banner when
+ * the server has changed under us) or a status message for loading/error.
  * The editor is mounted once per `ready` session; bumping `editorKey`
  * forces a remount (used by Clear and Reload).
  * @param props - Body props
  * @returns Body element
  */
 function ContextBody(props: ContextBodyProps): preact.JSX.Element {
-  const {
-    status,
-    enabled,
-    editorKey,
-    externalUpdate,
-    onEnable,
-    onReload,
-    onChange,
-    onBlur,
-  } = props;
+  const { status, editorKey, externalUpdate, onReload, onChange, onBlur } =
+    props;
 
   if (status.kind === "error") {
     return (
@@ -275,7 +227,6 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
 
   return (
     <div className="flex flex-col h-full p-4 gap-3 overflow-hidden">
-      {!enabled && <DisabledBanner onEnable={onEnable} />}
       {externalUpdate && <ExternalUpdateBanner onReload={onReload} />}
       <MarkdownEditor
         key={editorKey}
@@ -285,29 +236,6 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
         onBlur={onBlur}
         className="flex-1 min-h-0"
       />
-    </div>
-  );
-}
-
-/**
- * Inline banner shown above the editor when project memory is disabled.
- * Replaces the old dead-end "Disabled in device settings" page so the user
- * can still read/edit their notes and re-enable AI access from here.
- * @param props - Banner props
- * @param props.onEnable - Click handler for the Enable button
- * @returns Banner element
- */
-function DisabledBanner(props: { onEnable: () => void }): preact.JSX.Element {
-  return (
-    <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700/60 text-amber-800 dark:text-amber-200 text-sm">
-      <span>Project memory is off — Claude won't see this.</span>
-      <button
-        type="button"
-        onClick={props.onEnable}
-        className="px-2 py-1 rounded bg-amber-200 dark:bg-amber-800/70 hover:bg-amber-300 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 text-xs font-medium transition-colors"
-      >
-        Enable
-      </button>
     </div>
   );
 }

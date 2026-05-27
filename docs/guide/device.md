@@ -31,11 +31,10 @@ error message.
 <img src="/img/device-context-tab.png" alt="Context tab" width="500"/>
 
 Project memory helps AI understand your creative goals and preferences. Memory
-is saved with your Ableton Live Set file.
+is saved with your Ableton Live Set file. To stop AI from reading your memory,
+clear the text area; to stop AI from writing to it, disable the `ppal-context`
+tool on the Setup tab.
 
-- **Use memory** - Include this memory in the AI's context
-- **AI can edit memory** - Let the AI update memory to remember info across
-  sessions
 - **Memory text area** - Your project-specific instructions and preferences
 
 Example notes:

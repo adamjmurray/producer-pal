@@ -29,9 +29,7 @@ describe("MCP Express App - Config", () => {
       const config = await response.json();
 
       expect(config).toMatchObject({
-        memoryEnabled: expect.any(Boolean),
         memoryContent: expect.any(String),
-        memoryWritable: expect.any(Boolean),
         smallModelMode: expect.any(Boolean),
         jsonOutput: expect.any(Boolean),
         sampleFolder: expect.any(String),
@@ -76,17 +74,17 @@ describe("MCP Express App - Config", () => {
       const getResponse = await fetch(configUrl);
       const before = await getResponse.json();
 
-      // Only update memoryEnabled
+      // Only update sampleFolder
       const response = await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryEnabled: true }),
+        body: JSON.stringify({ sampleFolder: "/tmp/partial-test" }),
       });
 
       expect(response.status).toBe(200);
       const after = await response.json();
 
-      expect(after.memoryEnabled).toBe(true);
+      expect(after.sampleFolder).toBe("/tmp/partial-test");
       // Other values should remain unchanged
       expect(after.smallModelMode).toBe(before.smallModelMode);
       expect(after.jsonOutput).toBe(before.jsonOutput);
@@ -95,7 +93,7 @@ describe("MCP Express App - Config", () => {
       await fetch(configUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryEnabled: false }),
+        body: JSON.stringify({ sampleFolder: before.sampleFolder }),
       });
     });
 
@@ -118,26 +116,6 @@ describe("MCP Express App - Config", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ memoryContent: "" }),
-      });
-    });
-
-    it("should update memoryWritable", async () => {
-      const response = await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryWritable: true }),
-      });
-
-      expect(response.status).toBe(200);
-      const config = await response.json();
-
-      expect(config.memoryWritable).toBe(true);
-
-      // Restore
-      await fetch(configUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memoryWritable: false }),
       });
     });
 
@@ -237,7 +215,7 @@ describe("MCP Express App - Config", () => {
           "Content-Type": "application/json",
           Origin: "https://evil.example.com",
         },
-        body: JSON.stringify({ memoryEnabled: true }),
+        body: JSON.stringify({ memoryContent: "blocked" }),
       });
 
       expect(response.status).toBe(403);
@@ -253,7 +231,7 @@ describe("MCP Express App - Config", () => {
           "Content-Type": "application/json",
           Origin: "http://localhost:9999",
         },
-        body: JSON.stringify({ memoryEnabled: false }),
+        body: JSON.stringify({ memoryContent: "" }),
       });
 
       expect(response.status).toBe(200);

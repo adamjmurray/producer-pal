@@ -16,9 +16,7 @@ export const CONFIG_URL = MCP_URL.replace("/mcp", "/config");
  * Configuration options that can be set via the /config endpoint
  */
 export interface ConfigOptions {
-  memoryEnabled?: boolean;
   memoryContent?: string;
-  memoryWritable?: boolean;
   smallModelMode?: boolean;
   jsonOutput?: boolean;
   sampleFolder?: string;
@@ -49,9 +47,7 @@ export async function setConfig(options: ConfigOptions): Promise<void> {
 export async function resetConfig(): Promise<void> {
   await setConfig({
     smallModelMode: false,
-    memoryEnabled: false,
     memoryContent: "",
-    memoryWritable: false,
     jsonOutput: true,
     sampleFolder: "",
     tools: [...TOOL_NAMES],

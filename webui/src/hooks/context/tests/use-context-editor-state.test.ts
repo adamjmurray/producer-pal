@@ -34,22 +34,10 @@ function makeMemory(overrides: MemoryOverrides = {}): UseContextMemoryReturn {
   // return type; cast each one to the field's expected shape.
   return {
     status: overrides.status ?? { kind: "ready", content: "" },
-    enabled: true,
-    writable: false,
     saveStatus: overrides.saveStatus ?? "idle",
     saveError: null,
     save: (overrides.save ??
       vi.fn().mockResolvedValue(true)) as UseContextMemoryReturn["save"],
-    setEnabled: vi
-      .fn()
-      .mockResolvedValue(
-        true,
-      ) as unknown as UseContextMemoryReturn["setEnabled"],
-    setWritable: vi
-      .fn()
-      .mockResolvedValue(
-        true,
-      ) as unknown as UseContextMemoryReturn["setWritable"],
     clear: (overrides.clear ??
       vi.fn().mockResolvedValue(true)) as UseContextMemoryReturn["clear"],
     refresh: vi
