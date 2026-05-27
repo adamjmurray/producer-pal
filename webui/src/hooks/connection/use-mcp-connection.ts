@@ -39,6 +39,7 @@ export function useMcpConnection(): UseMcpConnectionReturn {
   const [mcpError, setMcpError] = useState<string | null>(null);
   const [mcpTools, setMcpTools] = useState<McpTool[] | null>(null);
   const mcpStatusRef = useRef(mcpStatus);
+  const fetchSeqRef = useRef(0);
 
   // Mirror status into a ref so the focus listener (registered once) can
   // read the latest value without re-binding on every change.
@@ -78,7 +79,13 @@ export function useMcpConnection(): UseMcpConnectionReturn {
       if (mcpStatusRef.current !== "connected") return;
 
       void (async (): Promise<void> => {
+        // Monotonic seq guards against slow-then-fast resolution: if the
+        // user thrashes focus and an earlier fetch resolves after a later
+        // one, the stale result would otherwise stomp the fresh tool list.
+        const mySeq = ++fetchSeqRef.current;
         const result = await fetchToolsFromServer();
+
+        if (mySeq !== fetchSeqRef.current) return;
 
         if (result.ok) {
           setMcpTools(result.tools);

@@ -325,6 +325,74 @@ describe("useMcpConnection", () => {
     expect(result.current.mcpTools).toStrictEqual(priorTools);
   });
 
+  it("discards a stale focus-refresh result when a later refresh resolves first", async () => {
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("connected");
+    });
+
+    const initialTools = result.current.mcpTools;
+
+    // Two focus events fire in quick succession. The first listTools call
+    // resolves AFTER the second (slow-then-fast). Without the seq guard, the
+    // first response would stomp the fresh second one.
+    let resolveSlow: (value: { tools: unknown[] }) => void = () => {};
+    let resolveFast: (value: { tools: unknown[] }) => void = () => {};
+
+    mockListTools
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSlow = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFast = resolve;
+          }),
+      );
+
+    await act(async () => {
+      window.dispatchEvent(new Event("focus"));
+      window.dispatchEvent(new Event("focus"));
+    });
+
+    // Wait until both focus-triggered listTools calls have started (mount
+    // was the first call; the two focuses bring the total to 3) so both
+    // mockImplementationOnce slots have been claimed.
+    await waitFor(() => {
+      expect(mockListTools).toHaveBeenCalledTimes(3);
+    });
+
+    // Resolve the second (fast) refresh first — this is the fresh result.
+    await act(async () => {
+      resolveFast({
+        tools: [
+          { name: "ppal-connect", title: "Connect to Ableton" },
+          { name: "ppal-read-live-set", title: "Read Live Set" },
+          { name: "ppal-live-api", title: "Live API" },
+        ],
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.mcpTools).toHaveLength(3);
+    });
+
+    // Now resolve the first (slow) refresh with a STALE tool list. The seq
+    // guard must discard this; tools must remain at the fresh count.
+    await act(async () => {
+      resolveSlow({
+        tools: [{ name: "ppal-connect", title: "Connect to Ableton" }],
+      });
+    });
+
+    expect(result.current.mcpTools).toHaveLength(3);
+    expect(result.current.mcpTools).not.toStrictEqual(initialTools);
+  });
+
   it("removes the focus listener on unmount", async () => {
     const { result, unmount } = renderHook(() => useMcpConnection());
 
