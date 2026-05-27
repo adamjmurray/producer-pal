@@ -259,6 +259,65 @@ describe("useContextMemory", () => {
     expect(ok).toBe(false);
     expect(result.current.enabled).toBe(false);
     expect(result.current.saveError).toContain("Config update failed");
+    // saveStatus must transition to "error" so the SaveIndicator surfaces the
+    // failed toggle — otherwise the indicator keeps showing the prior "saved"
+    // state and the user has no feedback that the flag didn't flip.
+    expect(result.current.saveStatus).toBe("error");
+  });
+
+  it("setEnabled() transitions saveStatus through saving → saved on success", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ memoryEnabled: false, memoryContent: "" }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ memoryEnabled: true, memoryContent: "" }),
+      );
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.enabled).toBe(false);
+    });
+    expect(result.current.saveStatus).toBe("idle");
+
+    await act(async () => {
+      await result.current.setEnabled(true);
+    });
+
+    expect(result.current.saveStatus).toBe("saved");
+    expect(result.current.saveError).toBe(null);
+  });
+
+  it("setWritable() surfaces error via saveStatus", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({
+          memoryEnabled: true,
+          memoryContent: "",
+          memoryWritable: false,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response("nope", { status: 500, statusText: "Internal" }),
+      );
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.writable).toBe(false);
+    });
+
+    let ok: boolean | undefined;
+
+    await act(async () => {
+      ok = await result.current.setWritable(true);
+    });
+
+    expect(ok).toBe(false);
+    expect(result.current.writable).toBe(false);
+    expect(result.current.saveStatus).toBe("error");
+    expect(result.current.saveError).toContain("Config update failed");
   });
 
   it("clear() saves empty content", async () => {

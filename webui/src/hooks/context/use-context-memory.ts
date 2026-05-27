@@ -106,14 +106,19 @@ export function useContextMemory(): UseContextMemoryReturn {
 
   const postFlag = useCallback(
     async (partial: Partial<ConfigResponse>): Promise<boolean> => {
+      setSaveStatus("saving");
+      setSaveError(null);
+
       try {
         const config = await postConfig(partial);
 
         applyConfig(config);
+        setSaveStatus("saved");
 
         return true;
       } catch (error: unknown) {
         setSaveError(errorMessage(error));
+        setSaveStatus("error");
 
         return false;
       }
