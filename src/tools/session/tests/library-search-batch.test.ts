@@ -325,4 +325,64 @@ describe("library tool — searchBatch action", () => {
     if (!("results" in result)) throw new Error("expected results");
     expect("stalenessRisk" in result).toBe(false);
   });
+
+  it("preserves entries from other queries when a single query throws (per-query graceful degrade)", async () => {
+    vi.mocked(protocolMock.requestNode)
+      .mockResolvedValueOnce({
+        success: true,
+        result: { dbAvailable: true, items: [dbItem("kick.wav")] },
+      })
+      .mockRejectedValueOnce(new Error("boom"))
+      .mockResolvedValueOnce({
+        success: true,
+        result: { dbAvailable: true, items: [dbItem("hat.wav")] },
+      });
+
+    const result = await library({
+      action: "searchBatch",
+      queries: [
+        { label: "Kicks", tags: "Kick" },
+        { label: "Snares", tags: "Snare" },
+        { label: "Hats", tags: "Hat" },
+      ],
+    });
+
+    if (!("results" in result)) throw new Error("expected results");
+    expect(result.results.map((r) => r.label)).toStrictEqual([
+      "Kicks",
+      "Snares",
+      "Hats",
+    ]);
+    expect(result.results[0]?.items.map((i) => i.name)).toStrictEqual([
+      "kick.wav",
+    ]);
+    expect(result.results[1]?.items).toStrictEqual([]);
+    expect(result.results[1]?.reason).toBe("boom");
+    expect(result.results[2]?.items.map((i) => i.name)).toStrictEqual([
+      "hat.wav",
+    ]);
+  });
+
+  it("threads verifyPaths per query so only flagged entries get pathExists wiring", async () => {
+    mockSearchByFilter({});
+
+    await library({
+      action: "searchBatch",
+      queries: [
+        { label: "Kicks", tags: "Kick", verifyPaths: true },
+        { label: "Snares", tags: "Snare" },
+      ],
+    });
+
+    expect(protocolMock.requestNode).toHaveBeenNthCalledWith(
+      1,
+      "library.search",
+      expect.objectContaining({ tags: "Kick", verifyPaths: true }),
+    );
+    expect(protocolMock.requestNode).toHaveBeenNthCalledWith(
+      2,
+      "library.search",
+      expect.not.objectContaining({ verifyPaths: expect.anything() }),
+    );
+  });
 });

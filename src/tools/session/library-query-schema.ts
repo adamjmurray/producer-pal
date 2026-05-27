@@ -91,6 +91,12 @@ export const batchQuerySchema = z.object({
     .enum(LIBRARY_SORT_VALUES)
     .optional()
     .describe("sort order; defaults to use_count desc"),
+  verifyPaths: z
+    .boolean()
+    .optional()
+    .describe(
+      "stat each result's path and add pathExists (true/false) so you can skip files moved/deleted since Live last indexed",
+    ),
   limit: z.coerce.number().optional().describe("max results; defaults to 50"),
 });
 

@@ -37,6 +37,18 @@ describe("queriesInputSchema (searchBatch input)", () => {
     ).toStrictEqual([{ query: "808", limit: 3, kind: "audio" }]);
   });
 
+  it("accepts verifyPaths per query so a batch can verify each query's results independently", () => {
+    expect(
+      queriesInputSchema.parse([
+        { label: "Kicks", tags: "Kick", verifyPaths: true },
+        { label: "Snares", tags: "Snare" },
+      ]),
+    ).toStrictEqual([
+      { label: "Kicks", tags: "Kick", verifyPaths: true, kind: "audio" },
+      { label: "Snares", tags: "Snare", kind: "audio" },
+    ]);
+  });
+
   it("preserves inFolder so a batch query restricts to a folder like a single search", () => {
     expect(
       queriesInputSchema.parse([

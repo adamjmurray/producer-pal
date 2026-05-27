@@ -11,6 +11,7 @@ import {
   type LibrarySearchResult,
   type StalenessRisk,
 } from "#src/mcp-server/live-library/library-types.ts";
+import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 /** Hard cap on queries per searchBatch call. Internal — not a user param.
@@ -61,7 +62,24 @@ export async function runSearchBatch(
 
   for (const [index, q] of capped.entries()) {
     const { label, ...filters } = q;
-    const searchResult = await runSearch(filters, ctx);
+    const resolvedLabel = label ?? String(index);
+    // Guard each query independently: a thrown error in one query (envelope
+    // failure, a runSearch impl that doesn't honor the graceful dbAvailable:false
+    // contract, etc.) must not discard the entries that already succeeded. The
+    // promise on this function — every query yields an entry, never dropped —
+    // is the load-bearing one for the LLM's batch-results contract.
+    let searchResult: LibrarySearchResult;
+
+    try {
+      searchResult = await runSearch(filters, ctx);
+    } catch (err) {
+      results.push({
+        label: resolvedLabel,
+        items: [],
+        reason: errorMessage(err),
+      });
+      continue;
+    }
 
     if ("dbAvailable" in searchResult && searchResult.dbAvailable != null) {
       dbConsulted = true;
@@ -73,7 +91,7 @@ export async function runSearchBatch(
     }
 
     const entry: LibraryBatchEntry = {
-      label: label ?? String(index),
+      label: resolvedLabel,
       items: searchResult.items,
     };
 
