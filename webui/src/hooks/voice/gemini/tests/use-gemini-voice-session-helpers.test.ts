@@ -8,66 +8,27 @@ import {
   EndSensitivity,
   GoogleGenAI,
   type LiveConnectConfig,
-  type LiveServerMessage,
   type Session,
   StartSensitivity,
 } from "@google/genai";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
-import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
-import { type GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
+import { handleGeminiMessage } from "#webui/hooks/voice/gemini/gemini-message-handler";
+import {
+  makeMessageDeps,
+  msg,
+} from "#webui/hooks/voice/gemini/tests/gemini-message-handler-test-helpers";
 import {
   buildGeminiConfig,
   closeQuietly,
   createGenAIClient,
-  type GeminiMessageDeps,
-  handleGeminiMessage,
   MAX_RESUME_ATTEMPTS,
   openResumableGeminiSession,
   RESUME_BACKOFF_MS,
   type ResumableSessionContext,
   seedGeminiContext,
 } from "#webui/hooks/voice/gemini/use-gemini-voice-session-helpers";
-
-/**
- * Build message-handler deps with spy-able fakes (a real history builder, a fake
- * player, and an injectable session/tool dispatcher).
- * @param overrides - Partial deps to override
- * @returns The deps plus the fakes for assertions
- */
-function makeDeps(overrides: Partial<GeminiMessageDeps> = {}) {
-  const player = {
-    flush: vi.fn(),
-    enqueueBase64: vi.fn(),
-  } as unknown as GeminiPcmPlayer;
-  const sendToolResponse = vi.fn();
-  const session = { sendToolResponse } as unknown as Session;
-  const deps: GeminiMessageDeps = {
-    builder: new GeminiHistoryBuilder(),
-    player,
-    getSession: () => session,
-    executeTool: vi.fn(async () => "tool-output"),
-    publishHistory: vi.fn(),
-    setAssistantSpeaking: vi.fn(),
-    setAssistantThinking: vi.fn(),
-    setError: vi.fn(),
-    setResumeHandle: vi.fn(),
-    ...overrides,
-  };
-
-  return { deps, player, sendToolResponse, session };
-}
-
-/**
- * Cast a partial message literal to LiveServerMessage (a class with text/data
- * getters that plain object literals can't satisfy structurally).
- * @param partial - The message fields under test
- * @returns The same value typed as LiveServerMessage
- */
-function msg(partial: Partial<LiveServerMessage>): LiveServerMessage {
-  return partial as LiveServerMessage;
-}
 
 describe("buildGeminiConfig", () => {
   it("sets audio modality, voice, tools, and transcription", () => {
@@ -196,7 +157,7 @@ describe("createGenAIClient", () => {
 
 describe("handleGeminiMessage", () => {
   it("appends input transcription to history", async () => {
-    const { deps } = makeDeps();
+    const { deps } = makeMessageDeps();
 
     await handleGeminiMessage(
       msg({ serverContent: { inputTranscription: { text: "hello" } } }),
@@ -208,7 +169,7 @@ describe("handleGeminiMessage", () => {
   });
 
   it("appends output transcription and enqueues audio", async () => {
-    const { deps, player } = makeDeps();
+    const { deps, player } = makeMessageDeps();
 
     await handleGeminiMessage(
       msg({
@@ -228,7 +189,7 @@ describe("handleGeminiMessage", () => {
   });
 
   it("ignores model-turn parts that carry no audio data", async () => {
-    const { deps, player } = makeDeps();
+    const { deps, player } = makeMessageDeps();
 
     await handleGeminiMessage(
       msg({ serverContent: { modelTurn: { parts: [{ text: "no audio" }] } } }),
@@ -239,7 +200,7 @@ describe("handleGeminiMessage", () => {
   });
 
   it("flushes playback and stops speaking on interruption", async () => {
-    const { deps, player } = makeDeps();
+    const { deps, player } = makeMessageDeps();
 
     await handleGeminiMessage(
       msg({ serverContent: { interrupted: true } }),
@@ -251,7 +212,7 @@ describe("handleGeminiMessage", () => {
   });
 
   it("stops speaking on turnComplete", async () => {
-    const { deps } = makeDeps();
+    const { deps } = makeMessageDeps();
 
     await handleGeminiMessage(
       msg({ serverContent: { turnComplete: true } }),
@@ -263,7 +224,7 @@ describe("handleGeminiMessage", () => {
   });
 
   it("ignores a message with no serverContent or toolCall", async () => {
-    const { deps } = makeDeps();
+    const { deps } = makeMessageDeps();
 
     await handleGeminiMessage(msg({ setupComplete: {} }), deps);
 
@@ -271,7 +232,7 @@ describe("handleGeminiMessage", () => {
   });
 
   it("stores a resumable session-resumption handle", async () => {
-    const { deps } = makeDeps();
+    const { deps } = makeMessageDeps();
 
     await handleGeminiMessage(
       msg({ sessionResumptionUpdate: { resumable: true, newHandle: "h-1" } }),
@@ -282,7 +243,7 @@ describe("handleGeminiMessage", () => {
   });
 
   it("ignores a non-resumable update and one with no handle", async () => {
-    const { deps } = makeDeps();
+    const { deps } = makeMessageDeps();
 
     await handleGeminiMessage(
       msg({ sessionResumptionUpdate: { resumable: false } }),
@@ -298,7 +259,7 @@ describe("handleGeminiMessage", () => {
 
   it("runs a tool call and sends the response with matching id", async () => {
     const executeTool = vi.fn(async () => "Tempo updated.");
-    const { deps, sendToolResponse } = makeDeps({ executeTool });
+    const { deps, sendToolResponse } = makeMessageDeps({ executeTool });
 
     const message = msg({
       toolCall: {
@@ -327,7 +288,7 @@ describe("handleGeminiMessage", () => {
   });
 
   it("falls back to the tool name as id when none is provided", async () => {
-    const { deps, sendToolResponse } = makeDeps();
+    const { deps, sendToolResponse } = makeMessageDeps();
 
     await handleGeminiMessage(
       msg({ toolCall: { functionCalls: [{ name: "ppal-x" }] } }),
@@ -343,7 +304,7 @@ describe("handleGeminiMessage", () => {
 
   it("tolerates a function call with no name (empty-string fallbacks)", async () => {
     const executeTool = vi.fn(async () => "ok");
-    const { deps, sendToolResponse } = makeDeps({ executeTool });
+    const { deps, sendToolResponse } = makeMessageDeps({ executeTool });
 
     await handleGeminiMessage(msg({ toolCall: { functionCalls: [{}] } }), deps);
 
@@ -352,7 +313,7 @@ describe("handleGeminiMessage", () => {
   });
 
   it("surfaces a sendToolResponse failure via setError", async () => {
-    const { deps } = makeDeps({
+    const { deps } = makeMessageDeps({
       getSession: () =>
         ({
           sendToolResponse: () => {
@@ -370,7 +331,7 @@ describe("handleGeminiMessage", () => {
   });
 
   it("skips sendToolResponse when the session is gone", async () => {
-    const { deps } = makeDeps({ getSession: () => null });
+    const { deps } = makeMessageDeps({ getSession: () => null });
 
     await handleGeminiMessage(
       msg({ toolCall: { functionCalls: [{ id: "c", name: "ppal-x" }] } }),
@@ -421,7 +382,7 @@ function makeCtx(
   ai: GoogleGenAI,
   over: Partial<ResumableSessionContext> = {},
 ): ResumableSessionContext {
-  const { deps } = makeDeps();
+  const { deps } = makeMessageDeps();
 
   return {
     ai,

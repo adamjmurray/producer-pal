@@ -9,7 +9,6 @@ import {
   type FunctionDeclaration,
   GoogleGenAI,
   type LiveConnectConfig,
-  type LiveServerMessage,
   Modality,
   type RealtimeInputConfig,
   type Session,
@@ -17,8 +16,10 @@ import {
 } from "@google/genai";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
-import { type GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
-import { type GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
+import {
+  type GeminiMessageDeps,
+  handleGeminiMessage,
+} from "#webui/hooks/voice/gemini/gemini-message-handler";
 import { type GeminiVoiceCredential } from "#webui/hooks/voice/gemini/gemini-voice-token";
 import { extractErrorMessage } from "#webui/hooks/voice/use-voice-session-helpers";
 import { DEFAULT_GEMINI_REALTIME_VOICE } from "#webui/lib/constants/models";
@@ -299,125 +300,6 @@ export function closeQuietly(session: Session): void {
   } catch {
     // best-effort
   }
-}
-
-/** Dependencies handleGeminiMessage needs from the hook. */
-export interface GeminiMessageDeps {
-  builder: GeminiHistoryBuilder;
-  player: GeminiPcmPlayer;
-  /** The live session (for sendToolResponse); null after teardown. */
-  getSession: () => Session | null;
-  executeTool: (name: string, args: Record<string, unknown>) => Promise<string>;
-  /** Push the builder's current items to React state. */
-  publishHistory: () => void;
-  setAssistantSpeaking: (value: boolean) => void;
-  setAssistantThinking: (value: boolean) => void;
-  setError: (value: string | null) => void;
-  /** Store the latest server-issued session-resumption handle. */
-  setResumeHandle: (handle: string) => void;
-}
-
-/**
- * Translate one Live server message into transcript/audio/tool side effects.
- * The WebSocket transport hands us raw deltas — transcripts, audio chunks, tool
- * calls, and turn/interrupt signals — which we fold into the history builder,
- * the gapless player, and the UI flags. The OpenAI SDK did all of this
- * internally; here it is explicit.
- *
- * @param message - The Live server message
- * @param deps - Builder, player, tool dispatcher, and UI setters
- */
-export async function handleGeminiMessage(
-  message: LiveServerMessage,
-  deps: GeminiMessageDeps,
-): Promise<void> {
-  const resumption = message.sessionResumptionUpdate;
-
-  if (resumption?.resumable && resumption.newHandle) {
-    deps.setResumeHandle(resumption.newHandle);
-  }
-
-  const sc = message.serverContent;
-
-  if (sc) {
-    if (sc.interrupted) {
-      // Barge-in: drop queued audio and close the open model turn.
-      deps.player.flush();
-      deps.builder.completeTurn();
-      deps.setAssistantSpeaking(false);
-      deps.publishHistory();
-    }
-
-    if (sc.inputTranscription?.text) {
-      deps.builder.addUserTranscript(sc.inputTranscription.text);
-      deps.publishHistory();
-    }
-
-    if (sc.outputTranscription?.text) {
-      deps.builder.addAssistantTranscript(sc.outputTranscription.text);
-      deps.publishHistory();
-    }
-
-    for (const part of sc.modelTurn?.parts ?? []) {
-      const data = part.inlineData?.data;
-
-      if (data) {
-        deps.player.enqueueBase64(data);
-        deps.setAssistantSpeaking(true);
-      }
-    }
-
-    if (sc.turnComplete) {
-      deps.builder.completeTurn();
-      deps.setAssistantSpeaking(false);
-      deps.publishHistory();
-    }
-  }
-
-  if (message.toolCall) {
-    await handleGeminiToolCall(message.toolCall, deps);
-  }
-}
-
-/**
- * Run each function call the model requested through the MCP dispatcher and send
- * the results back with matching ids. Errors come back from executeTool as a
- * string (never a throw), so a failing tool is reported to the model as output
- * it can recover from rather than wedging the session.
- *
- * @param toolCall - The server tool-call message
- * @param deps - Builder, tool dispatcher, session accessor, and UI setters
- */
-async function handleGeminiToolCall(
-  toolCall: NonNullable<LiveServerMessage["toolCall"]>,
-  deps: GeminiMessageDeps,
-): Promise<void> {
-  deps.setAssistantThinking(true);
-
-  const functionResponses = [];
-
-  for (const fc of toolCall.functionCalls ?? []) {
-    const name = fc.name ?? "";
-    const id = fc.id ?? name;
-    const args = fc.args ?? {};
-
-    deps.builder.addToolCall(id, name, args);
-    deps.publishHistory();
-
-    const output = await deps.executeTool(name, args);
-
-    deps.builder.setToolOutput(id, output);
-    deps.publishHistory();
-    functionResponses.push({ id: fc.id, name, response: { output } });
-  }
-
-  try {
-    deps.getSession()?.sendToolResponse({ functionResponses });
-  } catch (err) {
-    deps.setError(extractErrorMessage(err));
-  }
-
-  deps.setAssistantThinking(false);
 }
 
 /**

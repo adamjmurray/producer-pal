@@ -1,0 +1,181 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import { describe, expect, it, vi } from "vitest";
+import {
+  beginGeminiHalfDuplexMute,
+  endGeminiHalfDuplexMute,
+} from "#webui/hooks/voice/gemini/gemini-half-duplex-helpers";
+import { handleGeminiMessage } from "#webui/hooks/voice/gemini/gemini-message-handler";
+import {
+  makeMessageDeps,
+  msg,
+} from "#webui/hooks/voice/gemini/tests/gemini-message-handler-test-helpers";
+
+/**
+ * Build a modelTurn message carrying one inlineData audio part.
+ * @param data - The base64 audio payload
+ * @returns A LiveServerMessage with one audio chunk
+ */
+const audioChunk = (data: string) =>
+  msg({ serverContent: { modelTurn: { parts: [{ inlineData: { data } }] } } });
+
+/** A turnComplete server-content message. */
+const turnDone = msg({ serverContent: { turnComplete: true } });
+
+/** An interrupted server-content message. */
+const interrupted = msg({ serverContent: { interrupted: true } });
+
+describe("handleGeminiMessage half-duplex behavior", () => {
+  it("auto-mutes the mic on first audio chunk when half-duplex is on", async () => {
+    const { deps, mic } = makeMessageDeps({ halfDuplex: true });
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+
+    expect(mic.setMuted).toHaveBeenCalledTimes(1);
+    expect(mic.setMuted).toHaveBeenCalledWith(true);
+    expect(deps.autoMutedRef.current).toBe(true);
+  });
+
+  it("does not auto-mute additional chunks within the same turn", async () => {
+    const { deps, mic } = makeMessageDeps({ halfDuplex: true });
+
+    await handleGeminiMessage(
+      msg({
+        serverContent: {
+          modelTurn: {
+            parts: [
+              { inlineData: { data: "A" } },
+              { inlineData: { data: "B" } },
+            ],
+          },
+        },
+      }),
+      deps,
+    );
+
+    expect(mic.setMuted).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the mic alone when half-duplex is off", async () => {
+    const { deps, mic } = makeMessageDeps({ halfDuplex: false });
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(turnDone, deps);
+
+    expect(mic.setMuted).not.toHaveBeenCalled();
+    expect(deps.autoMutedRef.current).toBe(false);
+  });
+
+  it("restores the user's manual mute state on turnComplete", async () => {
+    const { deps, mic } = makeMessageDeps({ halfDuplex: true });
+
+    // User had manually muted before the turn started.
+    deps.isMutedRef.current = true;
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(turnDone, deps);
+
+    expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
+    // Restored to the user's manual mute state, not naively false.
+    expect(mic.setMuted).toHaveBeenNthCalledWith(2, true);
+    expect(deps.autoMutedRef.current).toBe(false);
+  });
+
+  it("lifts the auto-mute on interruption", async () => {
+    const { deps, mic } = makeMessageDeps({ halfDuplex: true });
+
+    await handleGeminiMessage(audioChunk("A"), deps);
+    await handleGeminiMessage(interrupted, deps);
+
+    expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
+    expect(deps.autoMutedRef.current).toBe(false);
+  });
+
+  it("turnComplete with no active auto-mute leaves the mic alone", async () => {
+    const { deps, mic } = makeMessageDeps({ halfDuplex: true });
+
+    await handleGeminiMessage(turnDone, deps);
+
+    expect(mic.setMuted).not.toHaveBeenCalled();
+  });
+});
+
+describe("beginGeminiHalfDuplexMute", () => {
+  it("no-ops when half-duplex is off", () => {
+    const mic = { setMuted: vi.fn() };
+    const autoMutedRef = { current: false };
+
+    beginGeminiHalfDuplexMute(mic, autoMutedRef, false);
+
+    expect(mic.setMuted).not.toHaveBeenCalled();
+    expect(autoMutedRef.current).toBe(false);
+  });
+
+  it("no-ops when an auto-mute is already active", () => {
+    const mic = { setMuted: vi.fn() };
+    const autoMutedRef = { current: true };
+
+    beginGeminiHalfDuplexMute(mic, autoMutedRef, true);
+
+    expect(mic.setMuted).not.toHaveBeenCalled();
+  });
+
+  it("no-ops when the mic is gone (post-teardown)", () => {
+    const autoMutedRef = { current: false };
+
+    beginGeminiHalfDuplexMute(null, autoMutedRef, true);
+
+    expect(autoMutedRef.current).toBe(false);
+  });
+
+  it("mutes and sets the flag when half-duplex is on", () => {
+    const mic = { setMuted: vi.fn() };
+    const autoMutedRef = { current: false };
+
+    beginGeminiHalfDuplexMute(mic, autoMutedRef, true);
+
+    expect(mic.setMuted).toHaveBeenCalledWith(true);
+    expect(autoMutedRef.current).toBe(true);
+  });
+});
+
+describe("endGeminiHalfDuplexMute", () => {
+  it("no-ops when no auto-mute is active", () => {
+    const mic = { setMuted: vi.fn() };
+
+    endGeminiHalfDuplexMute(mic, { current: false }, { current: false });
+
+    expect(mic.setMuted).not.toHaveBeenCalled();
+  });
+
+  it("restores the user's manual state (false) and clears the flag", () => {
+    const mic = { setMuted: vi.fn() };
+    const autoMutedRef = { current: true };
+
+    endGeminiHalfDuplexMute(mic, autoMutedRef, { current: false });
+
+    expect(mic.setMuted).toHaveBeenCalledWith(false);
+    expect(autoMutedRef.current).toBe(false);
+  });
+
+  it("restores the user's manual state (true) and clears the flag", () => {
+    const mic = { setMuted: vi.fn() };
+    const autoMutedRef = { current: true };
+
+    endGeminiHalfDuplexMute(mic, autoMutedRef, { current: true });
+
+    expect(mic.setMuted).toHaveBeenCalledWith(true);
+    expect(autoMutedRef.current).toBe(false);
+  });
+
+  it("clears the flag even when the mic is gone (post-teardown)", () => {
+    const autoMutedRef = { current: true };
+
+    endGeminiHalfDuplexMute(null, autoMutedRef, { current: false });
+
+    expect(autoMutedRef.current).toBe(false);
+  });
+});

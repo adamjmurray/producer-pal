@@ -9,6 +9,7 @@ import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { createGeminiMcpTools } from "#webui/hooks/voice/gemini/gemini-mcp-tools";
+import { buildGeminiMessageDeps } from "#webui/hooks/voice/gemini/gemini-message-handler";
 import { GeminiMicCapture } from "#webui/hooks/voice/gemini/gemini-mic-capture";
 import { GeminiPcmPlayer } from "#webui/hooks/voice/gemini/gemini-pcm-player";
 import { GeminiHistoryBuilder } from "#webui/hooks/voice/gemini/gemini-realtime-items";
@@ -17,7 +18,6 @@ import {
   closeQuietly,
   createGenAIClient,
   GEMINI_INPUT_MIME_TYPE,
-  type GeminiMessageDeps,
   openResumableGeminiSession,
   type ResumeState,
   seedGeminiContext,
@@ -84,6 +84,10 @@ export function useGeminiVoiceSession(
   const connectGenRef = useRef(0);
   const intentionalCloseRef = useRef(false);
   const isMutedRef = useRef(false);
+  // True while a half-duplex (barge-in disabled) response has the mic
+  // auto-muted, so the next turn-end / interruption knows to lift it back to
+  // the user's manual state.
+  const autoMutedRef = useRef(false);
   // Resumption handle + consecutive failed-attempts counter, reset per Talk.
   const resumeRef = useRef<ResumeState>({ handle: null, attempts: 0 });
   // Per-session generation counter shared across the recursive
@@ -117,24 +121,14 @@ export function useGeminiVoiceSession(
 
     await mic?.stop();
     await player?.close();
-
-    try {
-      session?.close();
-    } catch {
-      // best-effort
-    }
-
-    try {
-      await mcp?.close();
-    } catch {
-      // best-effort
-    }
+    await closeSessionAndMcp(session, mcp);
 
     setAssistantSpeaking(false);
     setAssistantThinking(false);
     setActiveVoice(null);
     setIsMuted(false);
     isMutedRef.current = false;
+    autoMutedRef.current = false;
   }, []);
 
   const connect = useCallback(
@@ -194,22 +188,26 @@ export function useGeminiVoiceSession(
         await player.resume();
         if (stale()) return void (await cleanup());
 
-        const deps: GeminiMessageDeps = {
+        // turn-detection is fixed for the session (changes apply on the next
+        // Stop → Talk), so the half-duplex flag is too — mirrors the OpenAI hook.
+        const deps = buildGeminiMessageDeps({
           builder,
+          builderRef,
           player,
           getSession: () => sessionRef.current,
           executeTool,
-          publishHistory: () => {
-            if (builderRef.current === builder)
-              setHistory(builder.toRealtimeItems());
-          },
+          setHistory,
           setAssistantSpeaking,
           setAssistantThinking,
           setError,
-          setResumeHandle: (handle) => {
+          setResumeHandle: (handle: string) => {
             resumeRef.current.handle = handle;
           },
-        };
+          halfDuplex: turnDetection?.interruptResponse === false,
+          getMic: () => micRef.current,
+          autoMutedRef,
+          isMutedRef,
+        });
 
         const handleDrop = (message: string): void => {
           if (intentionalCloseRef.current) return;
@@ -359,4 +357,29 @@ export function useGeminiVoiceSession(
     resetHistory,
     activeVoice,
   };
+}
+
+/**
+ * Best-effort teardown of the live session + MCP client. A close that throws
+ * shouldn't stall the rest of cleanup (the refs are already nulled), so each is
+ * swallowed individually.
+ *
+ * @param session - The live session, or null
+ * @param mcp - The MCP client, or null
+ */
+async function closeSessionAndMcp(
+  session: Session | null,
+  mcp: Client | null,
+): Promise<void> {
+  try {
+    session?.close();
+  } catch {
+    // best-effort
+  }
+
+  try {
+    await mcp?.close();
+  } catch {
+    // best-effort
+  }
 }

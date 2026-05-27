@@ -123,6 +123,19 @@ const h = vi.hoisted(() => {
 vi.mock(import("@google/genai"), () => ({
   GoogleGenAI: h.FakeGoogleGenAI as never,
   Modality: { AUDIO: "AUDIO" } as never,
+  // buildRealtimeInputConfig reads these by name; mirror real string values.
+  ActivityHandling: {
+    START_OF_ACTIVITY_INTERRUPTS: "START_OF_ACTIVITY_INTERRUPTS",
+    NO_INTERRUPTION: "NO_INTERRUPTION",
+  } as never,
+  StartSensitivity: {
+    START_SENSITIVITY_HIGH: "START_SENSITIVITY_HIGH",
+    START_SENSITIVITY_LOW: "START_SENSITIVITY_LOW",
+  } as never,
+  EndSensitivity: {
+    END_SENSITIVITY_HIGH: "END_SENSITIVITY_HIGH",
+    END_SENSITIVITY_LOW: "END_SENSITIVITY_LOW",
+  } as never,
 }));
 vi.mock(import("#webui/hooks/voice/gemini/gemini-mic-capture"), () => ({
   GeminiMicCapture: h.FakeMic as never,
@@ -137,9 +150,13 @@ vi.mock(import("#webui/hooks/voice/gemini/gemini-voice-token"), () => ({
   fetchGeminiToken: h.fetchGeminiToken as never,
 }));
 
-import { useGeminiVoiceSession } from "#webui/hooks/voice/gemini/use-gemini-voice-session";
+import { type GeminiVadSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import {
+  useGeminiVoiceSession,
+  type UseGeminiVoiceSessionParams,
+} from "#webui/hooks/voice/gemini/use-gemini-voice-session";
 
-const PARAMS = {
+const PARAMS: UseGeminiVoiceSessionParams = {
   mcpUrl: "http://localhost:3350/mcp",
   voiceTokenUrl: "http://localhost:3350/gemini-voice-token",
   geminiKey: "gem-key" as string | null,
@@ -148,15 +165,27 @@ const PARAMS = {
   volume: 1,
 };
 
+/** Half-duplex (barge-in disabled) VAD shape used by the half-duplex tests. */
+const HALF_DUPLEX_VAD: GeminiVadSettings = {
+  startSensitivity: "high",
+  endSensitivity: "high",
+  silenceDurationMs: 500,
+  prefixPaddingMs: 100,
+  interruptResponse: false,
+};
+
 /**
  * Render the hook and run a successful connect().
  * @param overrides - Param overrides
  * @returns The renderHook result
  */
-async function renderConnected(overrides: Partial<typeof PARAMS> = {}) {
-  const view = renderHook((p: typeof PARAMS) => useGeminiVoiceSession(p), {
-    initialProps: { ...PARAMS, ...overrides },
-  });
+async function renderConnected(
+  overrides: Partial<UseGeminiVoiceSessionParams> = {},
+) {
+  const view = renderHook(
+    (p: UseGeminiVoiceSessionParams) => useGeminiVoiceSession(p),
+    { initialProps: { ...PARAMS, ...overrides } },
+  );
 
   await act(async () => {
     await view.result.current.connect();
@@ -550,6 +579,81 @@ describe("useGeminiVoiceSession", () => {
     view.rerender({ ...PARAMS, volume: 0.5 });
 
     expect(player.setVolume).toHaveBeenCalledWith(0.5);
+  });
+
+  it("half-duplex (interruptResponse=false): auto-mutes mic during assistant turn", async () => {
+    await renderConnected({ turnDetection: HALF_DUPLEX_VAD });
+    const mic = h.FakeMic.last!;
+
+    // Manual setMuted from mic.start(false) at connect, then nothing yet.
+    mic.setMuted.mockClear();
+
+    await act(async () => {
+      h.state.callbacks.onmessage?.({
+        serverContent: {
+          modelTurn: { parts: [{ inlineData: { data: "AUDIO1" } }] },
+        },
+      });
+    });
+    expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
+
+    await act(async () => {
+      h.state.callbacks.onmessage?.({
+        serverContent: { turnComplete: true },
+      });
+    });
+    // Restored to the user's manual state (unmuted → false).
+    expect(mic.setMuted).toHaveBeenNthCalledWith(2, false);
+  });
+
+  it("full-duplex (interruptResponse=true): no auto-mute around assistant audio", async () => {
+    await renderConnected({
+      turnDetection: { ...HALF_DUPLEX_VAD, interruptResponse: true },
+    });
+    const mic = h.FakeMic.last!;
+
+    mic.setMuted.mockClear();
+
+    await act(async () => {
+      h.state.callbacks.onmessage?.({
+        serverContent: {
+          modelTurn: { parts: [{ inlineData: { data: "AUDIO" } }] },
+        },
+      });
+      h.state.callbacks.onmessage?.({
+        serverContent: { turnComplete: true },
+      });
+    });
+
+    expect(mic.setMuted).not.toHaveBeenCalled();
+  });
+
+  it("half-duplex: a manual mute survives an auto-mute / unmute cycle", async () => {
+    const { result } = await renderConnected({
+      turnDetection: HALF_DUPLEX_VAD,
+    });
+    const mic = h.FakeMic.last!;
+
+    await act(async () => {
+      await result.current.toggleMute();
+    });
+    expect(result.current.isMuted).toBe(true);
+    mic.setMuted.mockClear();
+
+    await act(async () => {
+      h.state.callbacks.onmessage?.({
+        serverContent: {
+          modelTurn: { parts: [{ inlineData: { data: "A" } }] },
+        },
+      });
+      h.state.callbacks.onmessage?.({
+        serverContent: { turnComplete: true },
+      });
+    });
+
+    // Both calls should be `true`: auto-mute (true), then restore-to-manual (true).
+    expect(mic.setMuted).toHaveBeenNthCalledWith(1, true);
+    expect(mic.setMuted).toHaveBeenNthCalledWith(2, true);
   });
 
   it("bails and closes the session if torn down during connect", async () => {
