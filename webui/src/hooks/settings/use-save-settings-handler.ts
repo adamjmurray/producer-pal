@@ -79,15 +79,21 @@ export function useSaveSettingsHandler(
         );
       }
 
-      settings.saveSettings();
-      remoteConfig.postSmallModelMode(settings.smallModelMode);
-      savePreferencesSettings(display);
+      // Persist must resolve before postSmallModelMode / postLiveApiEnabled
+      // fire — those RPCs assume localStorage and the encrypted apiKey envelope
+      // already reflect the save. Preferences and the liveApi POST chain still
+      // run from inside the `then` so a slow encrypt doesn't strand the user
+      // mid-save.
+      void settings.saveSettings().then(() => {
+        remoteConfig.postSmallModelMode(settings.smallModelMode);
+        savePreferencesSettings(display);
 
-      if (liveApiChanged) {
-        void remoteConfig
-          .postLiveApiEnabled(settings.liveApiEnabled)
-          .then(checkMcpConnection);
-      }
+        if (liveApiChanged) {
+          void remoteConfig
+            .postLiveApiEnabled(settings.liveApiEnabled)
+            .then(checkMcpConnection);
+        }
+      });
     });
   }, [
     settings,

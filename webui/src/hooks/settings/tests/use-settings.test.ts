@@ -183,8 +183,8 @@ describe("useSettings", () => {
     expect(result.current.model).toBe("gemini-3.5-flash");
     expect(result.current.savedModel).toBe(initialSavedModel);
 
-    await act(() => {
-      result.current.saveSettings();
+    await act(async () => {
+      await result.current.saveSettings();
     });
     expect(result.current.savedModel).toBe("gemini-3.5-flash");
   });
@@ -204,8 +204,8 @@ describe("useSettings", () => {
     expect(result.current.provider).toBe(target);
     expect(result.current.savedProvider).toBe(initialSavedProvider);
 
-    await act(() => {
-      result.current.saveSettings();
+    await act(async () => {
+      await result.current.saveSettings();
     });
     expect(result.current.savedProvider).toBe(target);
   });
@@ -225,8 +225,8 @@ describe("useSettings", () => {
     expect(result.current.thinking).toBe(target);
     expect(result.current.savedThinking).toBe(initialSavedThinking);
 
-    await act(() => {
-      result.current.saveSettings();
+    await act(async () => {
+      await result.current.saveSettings();
     });
     expect(result.current.savedThinking).toBe(target);
   });
@@ -282,8 +282,8 @@ describe("useSettings", () => {
 
     // Call saveSettings BEFORE flushing the post-mount decrypt: in-memory
     // apiKeys are still the blank placeholders at this point.
-    await act(() => {
-      result.current.saveSettings();
+    await act(async () => {
+      await result.current.saveSettings();
     });
 
     // Race-window save must bail (warn + no persist) so the seeded keys stay.
@@ -314,8 +314,8 @@ describe("useSettings", () => {
       result.current.setShowThoughts(false);
     });
 
-    await act(() => {
-      result.current.saveSettings();
+    await act(async () => {
+      await result.current.saveSettings();
     });
 
     expect(localStorage.getItem("producer_pal_current_provider")).toBe(
@@ -380,8 +380,8 @@ describe("useSettings", () => {
       });
       expect(result.current.liveApiEnabledDirty).toBe(true);
 
-      await act(() => {
-        result.current.saveSettings();
+      await act(async () => {
+        await result.current.saveSettings();
       });
       expect(result.current.liveApiEnabledDirty).toBe(false);
     });
@@ -399,6 +399,44 @@ describe("useSettings", () => {
       });
       expect(result.current.liveApiEnabledDirty).toBe(false);
     });
+  });
+
+  it("cancelSettings re-arms settingsLoaded so a subsequent Save persists", async () => {
+    // Reproduces the cancel-during-initial-load case: the first decrypt-load's
+    // onLoaded was previously dropped (StrictMode cleanup, fast cancel-then-
+    // reopen) and cancelSettings called applyDecryptedSettings without an
+    // onLoaded — leaving settingsLoaded false and turning the next saveSettings
+    // into a silent no-op (the warn path). After the fix, cancelSettings's own
+    // decrypt-load wires up setSettingsLoaded → save proceeds normally.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { result } = renderHook(() => useSettings());
+
+    // Cancel before the post-mount decrypt-load has flushed (the scenario the
+    // bug occurs in). cancelSettings kicks off its own decrypt-load.
+    await act(() => {
+      result.current.cancelSettings();
+    });
+
+    // Let both in-flight decrypt-loads settle.
+    await flushLoad();
+
+    await act(() => {
+      result.current.setApiKey("post-cancel-key");
+    });
+    await act(async () => {
+      await result.current.saveSettings();
+    });
+
+    // Save proceeded — not the "ignoring save" warn path.
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("not yet loaded"),
+    );
+    expect(localStorage.getItem("producer_pal_settings_configured")).toBe(
+      "true",
+    );
+
+    warn.mockRestore();
   });
 
   it("reverts to saved settings on cancel", async () => {
@@ -594,8 +632,8 @@ describe("useSettings", () => {
     }
 
     // Save all settings (async encrypt + write)
-    await act(() => {
-      result.current.saveSettings();
+    await act(async () => {
+      await result.current.saveSettings();
     });
 
     // Wait for the async save to land every provider's encrypted key.
@@ -656,8 +694,8 @@ describe("useSettings", () => {
     expect(result.current.settingsConfigured).toBe(false);
 
     await flushLoad();
-    await act(() => {
-      result.current.saveSettings();
+    await act(async () => {
+      await result.current.saveSettings();
     });
 
     expect(result.current.settingsConfigured).toBe(true);

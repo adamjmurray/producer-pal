@@ -59,7 +59,11 @@ export interface UseSettingsReturn {
   setTemperature: (temp: number) => void;
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
-  saveSettings: () => void;
+  /** Persists in-modal settings and resolves only after the at-rest envelope
+   * has landed. Callers (e.g. use-save-settings-handler) await this before
+   * firing post-save RPCs so the encryption write isn't racing with downstream
+   * calls. */
+  saveSettings: () => Promise<void>;
   cancelSettings: () => void;
   hasApiKey: boolean;
   settingsConfigured: boolean;

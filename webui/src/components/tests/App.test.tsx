@@ -256,7 +256,7 @@ describe("App", () => {
   describe("settings interactions", () => {
     it("calls saveSettings when save button is clicked in settings screen", async () => {
       vi.useFakeTimers();
-      const mockSaveSettings = vi.fn();
+      const mockSaveSettings = vi.fn().mockResolvedValue(undefined);
 
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,

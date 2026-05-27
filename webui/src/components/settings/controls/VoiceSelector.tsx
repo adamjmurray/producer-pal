@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { useEffect } from "preact/hooks";
 import { REALTIME_VOICES } from "#webui/lib/constants/models";
 
 export interface VoiceSelectorProps {
@@ -39,6 +40,15 @@ export function VoiceSelector({
   const selected = voices.some((v) => v.value === voice)
     ? voice
     : (voices[0]?.value ?? voice);
+
+  // Commit the displayed default back into state when the saved voice isn't in
+  // this provider's list (typical after a mid-modal provider switch). Without
+  // this, a Save without touching the dropdown would persist the stale
+  // cross-provider voice — the dropdown displays voices[0] but never fires
+  // setVoice, so the in-modal state still holds the old id.
+  useEffect(() => {
+    if (selected !== voice) setVoice(selected);
+  }, [selected, voice, setVoice]);
   const pendingChange = activeVoice != null && activeVoice !== selected;
 
   return (

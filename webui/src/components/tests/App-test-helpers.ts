@@ -49,7 +49,7 @@ export const mockSettingsHook = {
   setEnabledTools: vi.fn(),
   resetBehaviorToDefaults: vi.fn(),
 
-  saveSettings: vi.fn(),
+  saveSettings: vi.fn().mockResolvedValue(undefined),
   cancelSettings: vi.fn(),
   settingsConfigured: true,
 

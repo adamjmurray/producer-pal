@@ -97,4 +97,32 @@ describe("VoiceSelector", () => {
 
     expect(select.value).toBe(GEMINI_REALTIME_VOICES[0].value);
   });
+
+  it("commits the validated voice via setVoice when the saved voice isn't in the list", () => {
+    // The dropdown displays voices[0] when the saved voice belongs to the other
+    // provider, but without commit-back the in-modal state still holds the
+    // stale id — a Save without touching the dropdown would persist it.
+    const setVoice = vi.fn();
+
+    render(
+      <VoiceSelector
+        voice="marin"
+        setVoice={setVoice}
+        activeVoice={null}
+        voices={GEMINI_REALTIME_VOICES}
+      />,
+    );
+
+    expect(setVoice).toHaveBeenCalledWith(GEMINI_REALTIME_VOICES[0].value);
+  });
+
+  it("does not call setVoice when the saved voice is already in the list", () => {
+    const setVoice = vi.fn();
+
+    render(
+      <VoiceSelector voice="marin" setVoice={setVoice} activeVoice={null} />,
+    );
+
+    expect(setVoice).not.toHaveBeenCalled();
+  });
 });

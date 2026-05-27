@@ -26,6 +26,7 @@ vi.mock(import("#webui/hooks/use-preferences-settings"), () => ({
  * @param overrides.liveApiEnabled - In-modal Live API toggle value
  * @param overrides.liveApiEnabledDirty - Whether the toggle was changed in-modal
  * @param overrides.viewingMode - Foreign-record view override (defaults to null)
+ * @param overrides.saveSettings - Override the saveSettings spy (useful for staging an unresolved Promise)
  * @returns Args plus the inner spies used to assert
  */
 function makeArgs(
@@ -37,14 +38,18 @@ function makeArgs(
     liveApiEnabled?: boolean;
     liveApiEnabledDirty?: boolean;
     viewingMode?: "chat" | "voice" | null;
+    saveSettings?: ReturnType<typeof vi.fn>;
   } = {},
 ): {
   args: Parameters<typeof useSaveSettingsHandler>[0];
   saveSettings: ReturnType<typeof vi.fn>;
+  postSmallModelMode: ReturnType<typeof vi.fn>;
   postLiveApiEnabled: ReturnType<typeof vi.fn>;
   checkMcpConnection: ReturnType<typeof vi.fn>;
 } {
-  const saveSettings = vi.fn();
+  const saveSettings =
+    overrides.saveSettings ?? vi.fn().mockResolvedValue(undefined);
+  const postSmallModelMode = vi.fn();
   const postLiveApiEnabled = vi.fn().mockResolvedValue(undefined);
   const checkMcpConnection = vi.fn().mockResolvedValue(undefined);
   const args = {
@@ -61,7 +66,7 @@ function makeArgs(
     } as unknown as Parameters<typeof useSaveSettingsHandler>[0]["settings"],
     display: {} as Parameters<typeof useSaveSettingsHandler>[0]["display"],
     remoteConfig: {
-      postSmallModelMode: vi.fn(),
+      postSmallModelMode,
       postLiveApiEnabled,
     } as unknown as Parameters<
       typeof useSaveSettingsHandler
@@ -73,7 +78,13 @@ function makeArgs(
     viewingMode: overrides.viewingMode ?? null,
   };
 
-  return { args, saveSettings, postLiveApiEnabled, checkMcpConnection };
+  return {
+    args,
+    saveSettings,
+    postSmallModelMode,
+    postLiveApiEnabled,
+    checkMcpConnection,
+  };
 }
 
 describe("useSaveSettingsHandler", () => {
@@ -147,7 +158,10 @@ describe("useSaveSettingsHandler", () => {
 
     result.current();
 
-    expect(postLiveApiEnabled).toHaveBeenCalledWith(true);
+    // The handler chains postLiveApiEnabled inside saveSettings().then(...), so
+    // it lands a microtask later than the synchronous-fire pattern this test
+    // used pre-AJM-418.
+    await waitFor(() => expect(postLiveApiEnabled).toHaveBeenCalledWith(true));
     // checkMcpConnection runs only after the POST resolves (the server exposes
     // ppal-live-api based on the flag, so listTools must follow the POST).
     await waitFor(() => expect(checkMcpConnection).toHaveBeenCalledTimes(1));
@@ -163,5 +177,38 @@ describe("useSaveSettingsHandler", () => {
 
     expect(postLiveApiEnabled).not.toHaveBeenCalled();
     expect(checkMcpConnection).not.toHaveBeenCalled();
+  });
+
+  it("awaits saveSettings before firing the post-save RPCs", async () => {
+    // Encryption + localStorage writes are async; the RPCs must wait so the
+    // server sees a fully persisted state (and the modal-close "Save" promise
+    // really means saved).
+    let resolveSave: () => void = () => {};
+    const savePromise = new Promise<void>((resolve) => {
+      resolveSave = resolve;
+    });
+    const saveSettings = vi.fn().mockReturnValue(savePromise);
+    const { args, postSmallModelMode, postLiveApiEnabled, checkMcpConnection } =
+      makeArgs({
+        liveApiEnabled: true,
+        liveApiEnabledDirty: true,
+        saveSettings,
+      });
+    const { result } = renderHook(() => useSaveSettingsHandler(args));
+
+    result.current();
+
+    // saveSettings is called immediately but its promise is in flight; the
+    // downstream RPCs must NOT have fired yet.
+    expect(saveSettings).toHaveBeenCalledTimes(1);
+    expect(postSmallModelMode).not.toHaveBeenCalled();
+    expect(postLiveApiEnabled).not.toHaveBeenCalled();
+
+    resolveSave();
+    await waitFor(() => {
+      expect(postSmallModelMode).toHaveBeenCalledTimes(1);
+      expect(postLiveApiEnabled).toHaveBeenCalledWith(true);
+    });
+    await waitFor(() => expect(checkMcpConnection).toHaveBeenCalledTimes(1));
   });
 });

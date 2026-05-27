@@ -59,8 +59,8 @@ describe("useSettings crypto error handling", () => {
     await act(() => {
       result.current.setApiKey("sk-will-fail-to-encrypt");
     });
-    await act(() => {
-      result.current.saveSettings();
+    await act(async () => {
+      await result.current.saveSettings();
     });
 
     await waitFor(() => {

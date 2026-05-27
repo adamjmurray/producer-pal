@@ -179,7 +179,7 @@ export function useSettings(): UseSettingsReturn {
     [applyLoadedSettings],
   );
 
-  const saveSettings = useCallback(() => {
+  const saveSettings = useCallback(async (): Promise<void> => {
     if (!warnIfNotLoaded(settingsLoaded)) return;
 
     const allSettings = buildAllProviderSettings(
@@ -193,13 +193,24 @@ export function useSettings(): UseSettingsReturn {
       customSettings,
     );
 
-    persistAllSettings(provider, enabledTools, allSettings, smallModelMode);
+    // Update saved* snapshots and configured flag synchronously so the modal
+    // close + downstream routing reflect the user's choice immediately. The
+    // encryption write is awaited last so the returned promise resolves only
+    // after the at-rest envelope lands — callers (e.g. use-save-settings-handler)
+    // gate post-save RPCs on this, so "Save" really means "saved" by the time
+    // the modal close animation runs and the RPCs fire.
     voiceModeSettings.commit();
     setSavedModel(allSettings[provider].model);
     setSavedProvider(provider);
     setSavedThinking(allSettings[provider].thinking);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
+    await persistAllSettings(
+      provider,
+      enabledTools,
+      allSettings,
+      smallModelMode,
+    );
   }, [
     settingsLoaded,
     provider,
@@ -222,8 +233,11 @@ export function useSettings(): UseSettingsReturn {
     setSmallModelModeState(loadSmallModelMode());
     voiceModeSettings.revert();
     // Re-decrypt and restore saved provider settings (async; the apiKey lands a
-    // tick later, mirroring the post-mount load).
-    applyDecryptedSettings(applyLoadedSettings);
+    // tick later, mirroring the post-mount load). Pass the same onLoaded as the
+    // post-mount effect so a cancel-during-initial-load (StrictMode remount,
+    // fast cancel-then-reopen) still settles settingsLoaded → true — otherwise
+    // the next Save would silently no-op via warnIfNotLoaded.
+    applyDecryptedSettings(applyLoadedSettings, () => setSettingsLoaded(true));
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);
@@ -353,18 +367,19 @@ function warnIfNotLoaded(settingsLoaded: boolean): boolean {
  * @param {AllProviderSettings} allSettings - Settings for every provider
  * @param {boolean} smallModelMode - Small-model-mode flag
  */
-function persistAllSettings(
+async function persistAllSettings(
   provider: Provider,
   enabledTools: Record<string, boolean>,
   allSettings: AllProviderSettings,
   smallModelMode: boolean,
-): void {
-  saveCurrentSettings(provider, enabledTools, allSettings).catch(
-    (err: unknown) => {
-      console.error("Failed to save provider settings", err);
-    },
-  );
+): Promise<void> {
   saveSmallModelMode(smallModelMode);
+
+  try {
+    await saveCurrentSettings(provider, enabledTools, allSettings);
+  } catch (err) {
+    console.error("Failed to save provider settings", err);
+  }
 }
 
 /**
