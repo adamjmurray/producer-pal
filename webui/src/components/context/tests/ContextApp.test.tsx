@@ -7,11 +7,19 @@
  * @vitest-environment happy-dom
  */
 import { render, screen } from "@testing-library/preact";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ContextApp } from "#webui/components/context/ContextApp";
 
 vi.mock(import("#webui/components/context/ContextScreen"), () => ({
-  ContextScreen: () => <div data-testid="context-screen" />,
+  ContextScreen: (props: { onClose?: () => void } = {}) => (
+    <div data-testid="context-screen">
+      {props.onClose && (
+        <button data-testid="close-button" onClick={props.onClose}>
+          Close
+        </button>
+      )}
+    </div>
+  ),
 }));
 
 vi.mock(import("#webui/hooks/theme/use-theme"), () => ({
@@ -19,9 +27,24 @@ vi.mock(import("#webui/hooks/theme/use-theme"), () => ({
 }));
 
 describe("ContextApp", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("renders the ContextScreen", () => {
     render(<ContextApp />);
 
     expect(screen.getByTestId("context-screen")).toBeTruthy();
+  });
+
+  it("close navigates to /", () => {
+    const assign = vi.fn();
+
+    vi.stubGlobal("location", { assign });
+
+    render(<ContextApp />);
+    screen.getByTestId("close-button").click();
+
+    expect(assign).toHaveBeenCalledWith("/");
   });
 });

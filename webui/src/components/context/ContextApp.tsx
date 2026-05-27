@@ -15,5 +15,8 @@ export function ContextApp(): preact.JSX.Element {
   // Activates theme effect (reads localStorage, toggles `dark` class on <html>).
   useTheme();
 
-  return <ContextScreen />;
+  // Close on this standalone route means "leave the editor" — navigate to the
+  // chat. Full navigation (vs. SPA) is fine: main.tsx only reads pathname at
+  // startup, and a clean reload guarantees the chat mounts fresh.
+  return <ContextScreen onClose={() => window.location.assign("/")} />;
 }
