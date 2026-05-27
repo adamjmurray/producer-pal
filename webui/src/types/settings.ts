@@ -36,6 +36,14 @@ export interface UseSettingsReturn {
   setProvider: (provider: Provider) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
+  /** Decrypted OpenAI provider key, independent of the active `provider`. Lets
+   * voice mode resume a saved OpenAI record while current settings select a
+   * different provider — without this, the Talk button would falsely report
+   * "key required" because `apiKey` only reflects the active provider's key. */
+  openaiApiKey: string;
+  /** Decrypted Gemini provider key, independent of the active `provider`. Same
+   * rationale as `openaiApiKey` but for record-aware Gemini Live routing. */
+  geminiApiKey: string;
   baseUrl?: string; // For custom, lmstudio, and ollama providers
   setBaseUrl?: (url: string) => void;
   model: string;

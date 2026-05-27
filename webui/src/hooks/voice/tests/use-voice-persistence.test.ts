@@ -162,6 +162,42 @@ describe("useVoicePersistence", () => {
     expect(result.current.activeRecordModel).toBe("gpt-realtime-original");
   });
 
+  it("exposes the loaded record's provider via activeRecordProvider (hash load)", async () => {
+    // Drives record-aware backend routing in use-voice-mode-state — without
+    // this a saved Gemini record would silently resume on the OpenAI backend
+    // (or vice versa) when current settings select the other provider.
+    const record = await saveVoiceRecord({
+      provider: "gemini",
+      model: GEMINI_REALTIME_MODEL,
+    });
+
+    window.location.hash = record.id;
+
+    const { result } = renderVoicePersistence();
+
+    await waitForEffects();
+
+    expect(result.current.activeRecordProvider).toBe("gemini");
+  });
+
+  it("tracks activeRecordProvider across switch and clears it on a new conversation", async () => {
+    const record = await saveVoiceRecord({
+      provider: "openai",
+      model: "gpt-realtime-2",
+    });
+
+    const { result } = renderVoicePersistence();
+
+    await waitForEffects();
+    expect(result.current.activeRecordProvider).toBeNull();
+
+    await act(() => result.current.switchConversation(record.id));
+    expect(result.current.activeRecordProvider).toBe("openai");
+
+    await act(() => result.current.startNewConversation());
+    expect(result.current.activeRecordProvider).toBeNull();
+  });
+
   it("tracks activeRecordModel across switch and clears it on a new conversation", async () => {
     const record = await saveVoiceRecord({ model: "gpt-realtime-original" });
 

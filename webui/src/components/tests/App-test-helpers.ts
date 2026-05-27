@@ -32,6 +32,8 @@ export const mockSettingsHook = {
 
   apiKey: "test-key",
   setApiKey: vi.fn(),
+  openaiApiKey: "",
+  geminiApiKey: "",
   baseUrl: "",
   setBaseUrl: vi.fn(),
   model: "gemini-1.5-flash",

@@ -53,6 +53,11 @@ export interface UseVoicePersistenceReturn {
    * recorded with rather than the current-settings model when viewing or
    * continuing a saved conversation. */
   activeRecordModel: string | null;
+  /** Provider stored on the currently-loaded saved record, or null for a fresh
+   * session. Drives record-aware voice routing — a loaded Gemini record resumes
+   * on the Gemini backend even when current settings select OpenAI (and vice
+   * versa), instead of mounting the wrong backend with a missing-key state. */
+  activeRecordProvider: string | null;
   /** Items to render when no live session is producing transcript (saved record). */
   savedItems: RealtimeItem[];
   refreshList: () => Promise<void>;
@@ -92,6 +97,9 @@ export function useVoicePersistence(
   const [activeRecordModel, setActiveRecordModel] = useState<string | null>(
     null,
   );
+  const [activeRecordProvider, setActiveRecordProvider] = useState<
+    string | null
+  >(null);
   const activeIdRef = useRef(activeConversationId);
   const createdAtRef = useRef<number | null>(null);
   const bookmarkedRef = useRef(false);
@@ -160,6 +168,7 @@ export function useVoicePersistence(
       bookmarkedRef.current = record.bookmarked;
       titleRef.current = record.title;
       setActiveRecordModel(record.model ?? null);
+      setActiveRecordProvider(record.provider ?? null);
       const items = (record.voiceHistory ?? []) as RealtimeItem[];
 
       priorItemsRef.current = items;
@@ -222,6 +231,7 @@ export function useVoicePersistence(
         setActiveId(null);
         setSavedItems([]);
         setActiveRecordModel(null);
+        setActiveRecordProvider(null);
         priorItemsRef.current = [];
 
         return;
@@ -245,6 +255,7 @@ export function useVoicePersistence(
       bookmarkedRef.current = record.bookmarked;
       titleRef.current = record.title;
       setActiveRecordModel(record.model ?? null);
+      setActiveRecordProvider(record.provider ?? null);
       const items = (record.voiceHistory ?? []) as RealtimeItem[];
 
       priorItemsRef.current = items;
@@ -262,6 +273,7 @@ export function useVoicePersistence(
     pendingNewIdRef.current = null;
     setSavedItems([]);
     setActiveRecordModel(null);
+    setActiveRecordProvider(null);
     setActiveId(null);
   }, [setActiveId]);
 
@@ -357,6 +369,7 @@ export function useVoicePersistence(
     conversations,
     activeConversationId,
     activeRecordModel,
+    activeRecordProvider,
     savedItems,
     refreshList,
     switchConversation,

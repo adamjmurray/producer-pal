@@ -831,6 +831,27 @@ describe("VoiceApp", () => {
       expect(openAi.disconnect).toHaveBeenCalledOnce();
     });
 
+    it("disconnects a still-connected Gemini session when the user switches to OpenAI", () => {
+      // Mirror of the openai→gemini case above. The teardown is direction-
+      // agnostic but the ternary's other branch is otherwise unexercised.
+      const gemini = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+      mocks.useGeminiVoiceSession.mockReturnValue(gemini);
+      const { rerender } = renderVoiceApp({
+        provider: "gemini",
+        model: GEMINI_REALTIME_MODEL,
+      });
+
+      expect(gemini.disconnect).not.toHaveBeenCalled();
+
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+      mocks.useGeminiVoiceSession.mockReturnValue(gemini);
+      rerender(<VoiceApp {...makeProps({ provider: "openai" })} />);
+
+      expect(gemini.disconnect).toHaveBeenCalledOnce();
+    });
+
     it("does not disconnect when switching models within the same backend", () => {
       const openAi = baseSession({ status: "connected" });
 

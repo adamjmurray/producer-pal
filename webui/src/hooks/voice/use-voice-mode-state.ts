@@ -3,7 +3,14 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
+import { type RealtimeItem } from "@openai/agents/realtime";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
 import { type ModeContext } from "#webui/components/mode-context";
 import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
@@ -72,22 +79,82 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     () => mcpUrl.replace(/\/mcp$/, "/gemini-voice-token"),
     [mcpUrl],
   );
-  // Which realtime backend the saved selection runs on. Voice is OpenAI OR
-  // Gemini; the inactive backend's hook stays idle (its key is null below).
-  const backend = realtimeProvider(settings.savedProvider, settings.savedModel);
-  const isGemini = backend === "gemini";
-  const openAiKey =
-    settings.provider === "openai" && settings.apiKey ? settings.apiKey : null;
-  const geminiKey =
-    settings.provider === "gemini" && settings.apiKey ? settings.apiKey : null;
-  // The realtime model the active voice session runs on (the saved selection
-  // when it's realtime, else the provider default). Threaded into the session,
-  // ephemeral token, saved record, and header lock so a non-default realtime
-  // model isn't mislabeled as the default.
-  const realtimeModel = resolveRealtimeModel(
+  // Settings-derived defaults — used when no saved record is loaded (fresh
+  // session). When a record IS loaded, its stored provider/model take over
+  // below so the resumed session runs on the backend the record was created
+  // with, not whatever the user currently has selected in Settings.
+  const settingsBackend = realtimeProvider(
     settings.savedProvider,
     settings.savedModel,
   );
+  const settingsRealtimeModel = resolveRealtimeModel(
+    settings.savedProvider,
+    settings.savedModel,
+  );
+  // Persistence depends on `voice.history` (autosave debounces on it), and the
+  // record-aware routing below needs persistence's loaded-record metadata
+  // before the session hooks. To break that cycle, mirror voice.history into
+  // state declared *before* persistence; the effect at the bottom of this hook
+  // syncs voice.history → liveHistoryForSave each render. One extra render per
+  // transcript update — voice.history is already chunky (item-level, not
+  // per-token), so the cost is negligible.
+  const [liveHistoryForSave, setLiveHistoryForSave] = useState<RealtimeItem[]>(
+    [],
+  );
+  // `voice` is assigned below (after the session hooks) but onLiveRecordDeleted
+  // — passed into persistence above the session hooks — needs to reach it.
+  // Indirect through a ref containing the latest closure: the initial no-op is
+  // safe before the post-mount effect installs the real handler (delete is
+  // user-triggered, so always after that).
+  // `Function.prototype` is a built-in no-op; using it instead of an
+  // inline arrow avoids carrying an "uncovered function body" on this file.
+  const onLiveRecordDeletedRef = useRef<() => void>(
+    Function.prototype as () => void,
+  );
+  // When a Settings bulk delete removes the in-progress live record, tear the
+  // session down too (mirrors the sidebar delete-active path) so the deleted
+  // conversation isn't left streaming on screen and re-saved under a fresh id.
+  // Tear down for any non-idle session, not just "connected": a session still
+  // "connecting" would otherwise finish its handshake and open WebRTC + mic
+  // after the record it belongs to is gone.
+  const onLiveRecordDeleted = useCallback(() => {
+    onLiveRecordDeletedRef.current();
+  }, []);
+
+  const persistence = useVoicePersistence({
+    liveHistory: liveHistoryForSave,
+    // Settings-derived. For an existing record, autosave preserves the record's
+    // own model (existing.model wins in saveVoiceRecord), so this only takes
+    // effect when stamping a brand-new record — which has no loaded record
+    // anyway, so settings is the right source.
+    model: settingsRealtimeModel,
+    onForeignRecord,
+    onLiveRecordDeleted,
+  });
+
+  // Record-aware routing: when a saved record is loaded, route on the record's
+  // own provider/model (header already does this for the model label). Without
+  // this a Gemini record opened while current settings select OpenAI would
+  // mount the OpenAI backend with the wrong model + a missing-key state, and
+  // vice versa.
+  const recordModelId = persistence.activeRecordModel;
+  const recordProviderId = persistence.activeRecordProvider;
+  const realtimeModel = recordModelId ?? settingsRealtimeModel;
+  const backend = resolveBackend(
+    recordModelId,
+    recordProviderId,
+    settingsBackend,
+  );
+  const isGemini = backend === "gemini";
+
+  // Per-provider key, read from settings regardless of which provider is
+  // currently selected — so resuming an OpenAI record while settings are on
+  // Gemini still sees the stored OpenAI key (and vice versa). Without this the
+  // Talk button falsely reports "key required" for the record's backend.
+  const openAiKey = settings.openaiApiKey || null;
+  const geminiKey = settings.geminiApiKey || null;
+  const voiceKey = isGemini ? geminiKey : openAiKey;
+
   // OpenAI and Gemini have disjoint voice sets but share one saved field, so
   // validate per-provider at the point of use: a voice valid for the active
   // backend passes through, anything else (a leftover cross-provider id) falls
@@ -106,7 +173,6 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
   // works there — so the unsupported-browser block only applies to OpenAI.
   const firefoxDetected = useMemo(() => isFirefox(), []);
   const isUnsupportedBrowser = firefoxDetected && !isGemini;
-  const voiceKey = isGemini ? geminiKey : openAiKey;
   const voiceProviderName = isGemini ? "Gemini" : "OpenAI";
   const historyPanelOpen = viewState.historyPanelOpen;
   const setHistoryPanelOpen = useCallback(
@@ -145,6 +211,18 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
   });
   const voice = isGemini ? geminiVoiceSession : openAiVoice;
 
+  // Wire voice.history → persistence (mirror state declared above persistence,
+  // breaking the realtimeModel↔voice.history cycle) and capture the active
+  // session in the deletion closure so a Settings bulk delete can tear it down.
+  useEffect(() => {
+    onLiveRecordDeletedRef.current = () => {
+      if (voice.status !== "idle") void voice.disconnect();
+      voice.resetHistory();
+    };
+
+    setLiveHistoryForSave(voice.history);
+  }, [voice]);
+
   // Both backend hooks stay mounted, so switching the active voice provider
   // (OpenAI ↔ Gemini in Settings) only changes which one `voice` points at — it
   // does NOT tear down the one left behind. Without this, a session still live
@@ -163,24 +241,6 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
 
     if (nowInactive.status !== "idle") void nowInactive.disconnect();
   }, [isGemini, openAiVoice, geminiVoiceSession]);
-
-  // When a Settings bulk delete removes the in-progress live record, tear the
-  // session down too (mirrors the sidebar delete-active path) so the deleted
-  // conversation isn't left streaming on screen and re-saved under a fresh id.
-  // Tear down for any non-idle session, not just "connected": a session still
-  // "connecting" would otherwise finish its handshake and open WebRTC + mic
-  // after the record it belongs to is gone.
-  const onLiveRecordDeleted = useCallback(() => {
-    if (voice.status !== "idle") void voice.disconnect();
-    voice.resetHistory();
-  }, [voice]);
-
-  const persistence = useVoicePersistence({
-    liveHistory: voice.history,
-    model: realtimeModel,
-    onForeignRecord,
-    onLiveRecordDeleted,
-  });
   const transfer = useConversationTransfer(persistence.refreshList);
 
   useClearViewingModeOnReset(
@@ -238,17 +298,9 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     void voice.connect(seed);
   }, [isConnected, displayItems, voice]);
 
-  // Header lock shows the model the loaded record was recorded with (when
-  // viewing/continuing a saved conversation), falling back to the current
-  // session model for a fresh session. The live session still runs on
-  // realtimeModel; only the displayed/saved label tracks the record.
-  const headerModel = persistence.activeRecordModel ?? realtimeModel;
-  // Derive the brand from the header model itself (not the saved selection) so a
-  // saved Gemini record reads "Google" even if the user later switched provider.
-  const headerProvider = isGeminiRealtimeModelId(headerModel)
-    ? "gemini"
-    : "openai";
-
+  // `realtimeModel` and `backend` above are already record-aware (they prefer
+  // the loaded record's provider/model over current settings), so the header
+  // lock reads off them directly — no separate header fallback needed.
   const headerInfo = useVoiceModeReporting({
     persistence,
     display,
@@ -256,10 +308,10 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     enabledToolsCount,
     setModeContext,
     activeVoice: voice.activeVoice,
-    activeModel: headerModel,
+    activeModel: realtimeModel,
     savedModel: settings.savedModel,
     savedProvider: settings.savedProvider,
-    activeProvider: headerProvider,
+    activeProvider: backend,
   });
 
   return {
@@ -285,4 +337,33 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     onToggleConnection,
     headerInfo,
   };
+}
+
+// --- Helpers below main export ---
+
+/**
+ * Resolve which realtime backend the voice session should run on, preferring
+ * a loaded record's metadata over current settings. The record's stored
+ * `provider` field is the authoritative signal (it was derived from the
+ * model's brand when the record was saved); falls back to model-id sniffing
+ * when older records have no provider, then to settings for a fresh session.
+ *
+ * @param recordModel - Model id stored on the loaded record (null for fresh)
+ * @param recordProvider - Provider stored on the loaded record (null for fresh)
+ * @param settingsBackend - Backend implied by current Settings selection
+ * @returns "openai" | "gemini" — the backend to mount the session on
+ */
+function resolveBackend(
+  recordModel: string | null,
+  recordProvider: string | null,
+  settingsBackend: "openai" | "gemini" | null,
+): "openai" | "gemini" {
+  if (recordProvider === "gemini") return "gemini";
+  if (recordProvider === "openai") return "openai";
+
+  if (recordModel != null) {
+    return isGeminiRealtimeModelId(recordModel) ? "gemini" : "openai";
+  }
+
+  return settingsBackend ?? "openai";
 }

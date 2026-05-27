@@ -17,6 +17,11 @@ export interface PropOverrides {
   savedRealtimeVoice?: string;
   /** Override the saved/active model (defaults to the OpenAI realtime model). */
   model?: string;
+  /** Per-provider keys (defaults derive from apiKey + provider). Set both
+   * explicitly to simulate "user has saved both keys, now loading a record
+   * from the other provider" for record-aware routing tests. */
+  openaiApiKey?: string;
+  geminiApiKey?: string;
 }
 
 /**
@@ -31,12 +36,20 @@ export function makeProps(o: PropOverrides = {}): VoiceAppProps {
   const apiKey = o.apiKey ?? "sk-test";
   const provider = o.provider ?? "openai";
   const model = o.model ?? "gpt-realtime-2";
+  // Default the per-provider keys to match the current provider's apiKey so
+  // pre-existing tests (which only set `apiKey + provider`) behave unchanged.
+  // Tests that exercise record-aware routing (both keys saved, current provider
+  // is the other one) override openaiApiKey / geminiApiKey directly.
+  const openaiApiKey = o.openaiApiKey ?? (provider === "openai" ? apiKey : "");
+  const geminiApiKey = o.geminiApiKey ?? (provider === "gemini" ? apiKey : "");
 
   return {
     settings: {
       provider,
       savedProvider: provider,
       apiKey,
+      openaiApiKey,
+      geminiApiKey,
       model,
       savedModel: model,
       enabledTools: {},
@@ -117,6 +130,7 @@ export interface PersistenceStub {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
   activeRecordModel: string | null;
+  activeRecordProvider: string | null;
   savedItems: RealtimeItem[];
   refreshList: ReturnType<typeof vi.fn>;
   switchConversation: ReturnType<typeof vi.fn>;
@@ -140,6 +154,7 @@ export function basePersistence(
     conversations: [],
     activeConversationId: null,
     activeRecordModel: null,
+    activeRecordProvider: null,
     savedItems: [],
     refreshList: vi.fn(),
     switchConversation: vi.fn(),

@@ -28,21 +28,37 @@ type ProviderStateSetters = Record<
 >;
 
 /**
- * Create a setter function for a specific provider setting
+ * Build the per-key setter bag (apiKey/model/baseUrl/...) that mutates the
+ * currently selected provider's slice. Extracted so the main useSettings hook
+ * stays under its function-length limit.
  *
- * @param {Provider} provider - The provider to update
- * @param {ProviderStateSetters} setters - Map of provider state setters
- * @param {K} key - The setting key to update
- * @returns {(value: ProviderSettings[K]) => void} Setter function
+ * @param {Provider} provider - Currently selected provider
+ * @param {ProviderStateSetters} providerStateSetters - Map of provider state setters
+ * @returns Setter bag for the active provider's fields
  */
-function createProviderSetter<K extends keyof ProviderSettings>(
+function useProviderSetters(
   provider: Provider,
-  setters: ProviderStateSetters,
-  key: K,
+  providerStateSetters: ProviderStateSetters,
 ) {
-  return (value: ProviderSettings[K]) => {
-    setters[provider]((prev) => ({ ...prev, [key]: value }));
-  };
+  return useMemo(() => {
+    const createSetter =
+      <K extends keyof ProviderSettings>(key: K) =>
+      (value: ProviderSettings[K]) => {
+        providerStateSetters[provider]((prev) => ({ ...prev, [key]: value }));
+      };
+
+    const hasBaseUrl =
+      provider === "custom" || provider === "lmstudio" || provider === "ollama";
+
+    return {
+      setApiKey: createSetter("apiKey"),
+      setModel: createSetter("model"),
+      setBaseUrl: hasBaseUrl ? createSetter("baseUrl") : undefined,
+      setThinking: createSetter("thinking"),
+      setTemperature: createSetter("temperature"),
+      setShowThoughts: createSetter("showThoughts"),
+    };
+  }, [provider, providerStateSetters]);
 }
 
 // Hook manages state for 8 providers with individual setters and orchestration logic
@@ -243,25 +259,6 @@ export function useSettings(): UseSettingsReturn {
     setLiveApiEnabledDirty(false);
   }, [applyLoadedSettings, voiceModeSettings]);
 
-  // Individual setters that update the current provider's settings
-  const setters = useMemo(() => {
-    const createSetter =
-      <K extends keyof ProviderSettings>(key: K) =>
-      (value: ProviderSettings[K]) =>
-        createProviderSetter(provider, providerStateSetters, key)(value);
-
-    const hasBaseUrl =
-      provider === "custom" || provider === "lmstudio" || provider === "ollama";
-
-    return {
-      setApiKey: createSetter("apiKey"),
-      setModel: createSetter("model"),
-      setBaseUrl: hasBaseUrl ? createSetter("baseUrl") : undefined,
-      setThinking: createSetter("thinking"),
-      setTemperature: createSetter("temperature"),
-      setShowThoughts: createSetter("showThoughts"),
-    };
-  }, [provider, providerStateSetters]);
   const {
     setApiKey,
     setModel,
@@ -269,7 +266,7 @@ export function useSettings(): UseSettingsReturn {
     setThinking,
     setTemperature,
     setShowThoughts,
-  } = setters;
+  } = useProviderSetters(provider, providerStateSetters);
   const setProvider = useCallback((newProvider: Provider) => {
     setProviderState(newProvider);
   }, []);
@@ -301,6 +298,12 @@ export function useSettings(): UseSettingsReturn {
     setProvider,
     apiKey: currentSettings.apiKey,
     setApiKey,
+    // Voice routing needs both voice-provider keys regardless of which provider
+    // is active in Settings, so it can resume a saved OpenAI record while
+    // current settings are Gemini (and vice versa) instead of falsely showing
+    // "key required". `currentSettings.apiKey` only reflects the active one.
+    openaiApiKey: openaiSettings.apiKey,
+    geminiApiKey: geminiSettings.apiKey,
     baseUrl: hasBaseUrl ? currentSettings.baseUrl : undefined,
     setBaseUrl: hasBaseUrl ? setBaseUrl : undefined,
     model: currentSettings.model,
