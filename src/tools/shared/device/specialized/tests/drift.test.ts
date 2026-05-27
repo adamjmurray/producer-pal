@@ -131,6 +131,20 @@ describe("Drift pseudo-params", () => {
         expect(names).not.toContain(paramName);
       },
     );
+
+    it("omits a free-slot source when target index is out of range (AJM-422)", () => {
+      // TARGETS has 12 labels (indices 0-11). Index 99 returns undefined from
+      // readEnumByIndex — without the `== null` guard, the source would emit as
+      // a phantom active route even though the target field is omitted.
+      const device = registerDrift({
+        mod_matrix_source_1_index: 2,
+        mod_matrix_target_1_index: 99,
+      });
+
+      const names = readSpecializedParams(device).map((p) => p.name);
+
+      expect(names).not.toContain("mod1Source");
+    });
   });
 
   describe("read target slots", () => {

@@ -712,7 +712,12 @@ Oscillator engines + wavetables:
 - `osc1Category`, `osc2Category` — wavetable category (string from the shared
   catalog list)
 - `osc1Wavetable`, `osc2Wavetable` — selected wavetable within the
-  per-oscillator category-dependent list
+  per-oscillator category-dependent list. **Order-dependent with `oscNCategory`
+  in the same `update-device` call:** writing the category first re-populates
+  the per-osc wavetable list, and a same-call wavetable write resolves against
+  the new list. If the same wavetable name happens to exist in the new category,
+  the write succeeds — but it's a different waveform. When changing category,
+  apply category and wavetable in separate calls (AJM-422).
 
 **Modulation matrix writes via the `actions: string[]` arg:**
 

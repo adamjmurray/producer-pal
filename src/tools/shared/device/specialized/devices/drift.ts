@@ -73,9 +73,11 @@ function enumParam(
 
 /**
  * Build a source pseudo-param for one of the 3 free mod-matrix slots. Reads are
- * omitted when the paired target is "None" (the slot is disabled) — otherwise a
- * source value implies an active route that isn't there (AJM-391). Writes still
- * set the source independently, so a source can be staged before its target.
+ * omitted when the paired target is "None" (the slot is disabled) or when the
+ * target index is out of range (returns undefined from the labels lookup) —
+ * otherwise a source value implies an active route that isn't there (AJM-391,
+ * AJM-422). Writes still set the source independently, so a source can be
+ * staged before its target.
  * @param name - Camel-case param name
  * @param sourceProperty - The source `_index` property for this slot
  * @param targetProperty - The paired target `_index` property for this slot
@@ -90,7 +92,13 @@ function freeSlotSourceParam(
     name,
     options: SOURCES,
     read: (device) => {
-      if (readEnumByIndex(device, targetProperty, TARGETS) === "None") {
+      const targetLabel = readEnumByIndex(device, targetProperty, TARGETS);
+
+      // Omit when the slot is disabled (None) or the index is out of range
+      // (undefined). Without the undefined guard, an out-of-range target index
+      // emits the source as a phantom active route. Dual of the raw-index
+      // guards added in 93ddd434.
+      if (targetLabel == null || targetLabel === "None") {
         return;
       }
 

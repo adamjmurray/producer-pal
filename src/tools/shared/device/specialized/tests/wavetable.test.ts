@@ -460,9 +460,10 @@ describe("Wavetable pseudo-params — write", () => {
 });
 
 describe("Wavetable actions — setModulation", () => {
-  it("resolves a target past the first slot and a source by name", () => {
+  it("resolves a case-mangled target past the first slot and a source by name", () => {
     // Second-slot target exercises the resolve loop's continue path; the
-    // case-insensitive source name "lfo 1" resolves to column index 3.
+    // case-insensitive target name "FILTER freq" and source "lfo 1" both
+    // resolve (target matches "Filter Freq", source → column index 3).
     const device = registerWavetable(
       {},
       buildModMethods(["Osc 1 Pos", "Filter Freq"]),
@@ -470,7 +471,7 @@ describe("Wavetable actions — setModulation", () => {
 
     applySpecializedActions(
       device,
-      ["setModulation('Filter Freq', lfo 1, 0.5)"],
+      ["setModulation('FILTER freq', lfo 1, 0.5)"],
       "updateDevice",
     );
 
@@ -515,38 +516,32 @@ describe("Wavetable actions — setModulation", () => {
     );
   });
 
-  it("warns and skips when target param cannot be found", () => {
-    const device = registerWavetable({}, buildModMethods([]));
+  it.each([
+    ["param missing", "Nonexistent", 1, "Nonexistent"],
+    // is_parameter_modulatable returns 0: param exists but mod isn't supported.
+    ["param not modulatable", "Osc 1 Pos", 0, "not modulatable"],
+  ])("warns and skips setModulation when %s", (_, target, mod, msg) => {
+    const device = registerWavetable({}, buildModMethods([], {}, mod as 0 | 1));
 
     applySpecializedActions(
       device,
-      ["setModulation('Nonexistent', 0, 0.5)"],
+      [`setModulation('${target}', 0, 0.5)`],
       "updateDevice",
     );
 
-    expectModulationNotSet(device, "Nonexistent");
+    expectModulationNotSet(device, msg);
   });
 
-  it("warns on source index out of range (13) and bad amount", () => {
-    const device1 = registerWavetable({}, buildModMethods(["Volume"]));
+  it.each([
+    ["source 13 out of range", "('Volume', 13, 0.5)", "source"],
+    ["amount NaN", "('Volume', 0, 'notanumber')", "amount"],
+    ["amount > 1", "('Volume', 0, 5)", "amount must be in -1..1"],
+    ["amount < -1", "('Volume', 0, -2)", "amount must be in -1..1"],
+  ])("warns and skips invalid setModulation: %s", (_, args, msg) => {
+    const device = registerWavetable({}, buildModMethods(["Volume"]));
 
-    applySpecializedActions(
-      device1,
-      ["setModulation('Volume', 13, 0.5)"],
-      "updateDevice",
-    );
-
-    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("source"));
-
-    const device2 = registerWavetable({}, buildModMethods(["Volume"]));
-
-    applySpecializedActions(
-      device2,
-      ["setModulation('Volume', 0, 'notanumber')"],
-      "updateDevice",
-    );
-
-    expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("amount"));
+    applySpecializedActions(device, [`setModulation${args}`], "updateDevice");
+    expectModulationNotSet(device, msg);
   });
 });
 
@@ -604,24 +599,31 @@ describe("Wavetable actions — addModulationTarget", () => {
     );
   });
 
-  it("warns and skips when param is not found", () => {
-    const device = registerWavetable({}, buildModMethods([]));
+  it.each([
+    ["not found", "Unknown Param", 1, "Unknown Param"],
+    // is_parameter_modulatable returns 0: param exists but mod isn't supported.
+    ["not modulatable", "Osc 1 Pos", 0, "not modulatable"],
+  ])(
+    "warns and skips addModulationTarget when param is %s",
+    (_, name, mod, msg) => {
+      const device = registerWavetable(
+        {},
+        buildModMethods([], {}, mod as 0 | 1),
+      );
 
-    applySpecializedActions(
-      device,
-      ["addModulationTarget('Unknown Param')"],
-      "updateDevice",
-    );
+      applySpecializedActions(
+        device,
+        [`addModulationTarget('${name}')`],
+        "updateDevice",
+      );
 
-    expect(device.call).not.toHaveBeenCalledWith(
-      "add_parameter_to_modulation_matrix",
-      expect.anything(),
-    );
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("Unknown Param"),
-    );
-  });
+      expect(device.call).not.toHaveBeenCalledWith(
+        "add_parameter_to_modulation_matrix",
+        expect.anything(),
+      );
+      expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining(msg));
+    },
+  );
 });
 
 describe("Wavetable actions — argument validation", () => {

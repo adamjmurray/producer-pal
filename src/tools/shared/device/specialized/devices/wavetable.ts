@@ -81,6 +81,15 @@ function readUnisonVoiceCount(device: LiveAPI): number | undefined {
  * The category is indexed into the shared `oscillator_wavetable_categories`
  * list; the wavetable is indexed into the per-oscillator `${oscListProp}` list.
  * DRY: osc1 and osc2 category/wavetable params are structurally identical.
+ *
+ * Order dependence: the wavetable list is category-scoped, so writing
+ * `oscNCategory` first re-populates `${oscListProp}` and a same-call
+ * `oscNWavetable` write reads from the NEW list. Staging both in one
+ * `update-device` params batch will use whichever wavetable name happens to
+ * exist in the new category — which may not be the wavetable the caller meant.
+ * Apply category and wavetable in separate calls when the category is changing.
+ * (AJM-422 — docs-only mitigation; snapshot-validate left out of scope.)
+ *
  * @param paramPrefix - Pseudo-param name prefix ("osc1" or "osc2")
  * @param categoryProp - Live API property for the category index
  * @param wavetableIndexProp - Live API property for the wavetable index
