@@ -6,6 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
+  isTakeLaneRequested,
   normalizeTakeLaneTarget,
   resolveTakeLane,
 } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
@@ -97,6 +98,19 @@ export function resolveCreateClipTakeLane(
   arrangementStarts: string[],
   trackIndex: number | null,
 ): LiveAPI | null {
+  // No arrangement positions to target: warn-and-ignore without validating the
+  // value. Mirrors duplicate.ts's gate (takeLane is normalized only when it can
+  // apply) so an LLM passing garbage on a session-only create doesn't throw.
+  if (arrangementStarts.length === 0 || trackIndex == null) {
+    if (isTakeLaneRequested(takeLane)) {
+      console.warn(
+        "createClip: takeLane ignored for session clips (arrangement-only)",
+      );
+    }
+
+    return null;
+  }
+
   const target = normalizeTakeLaneTarget(takeLane);
 
   if (target == null) return null;
@@ -106,8 +120,6 @@ export function resolveCreateClipTakeLane(
       "createClip: takeLane ignored for session clips (arrangement-only)",
     );
   }
-
-  if (arrangementStarts.length === 0 || trackIndex == null) return null;
 
   const track = LiveAPI.from(livePath.track(trackIndex));
   const { lane, laneNumber } = resolveTakeLane(track, target, takeLaneName);

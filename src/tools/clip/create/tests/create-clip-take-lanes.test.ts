@@ -151,4 +151,29 @@ describe("createClip take lanes", () => {
       expect.stringContaining("takeLane ignored for session clips"),
     );
   });
+
+  it("warns-and-ignores an invalid takeLane for session-only requests (does not throw)", async () => {
+    registerLiveSet();
+    registerMockObject("clip-slot-0-0", {
+      path: livePath.track(0).clipSlot(0),
+      properties: { has_clip: 0 },
+    });
+    registerMockObject("session-clip", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      properties: { length: 4 },
+    });
+
+    // "garbage" would throw if normalized; for session-only it must be dropped
+    // (this await would reject if the value were still validated).
+    const result = await createClip({
+      slot: "0/0",
+      notes: "C3",
+      takeLane: "garbage",
+    });
+
+    expect(result).toBeDefined();
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("takeLane ignored for session clips"),
+    );
+  });
 });

@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
@@ -79,16 +80,31 @@ export function duplicateClipsToTakeLane(
 
   warnExtraNames(parsedNames, positionsInBeats.length, "duplicate");
 
-  const created = positionsInBeats.map((startBeats, i) =>
-    copyMidiClipToTakeLane(
-      sourceClip,
-      lane,
-      startBeats,
-      length,
-      getNameForIndex(name, i, parsedNames),
-      getColorForIndex(color, i, parsedColors),
-    ),
-  );
+  // Warn-and-continue on per-position failures: take lanes are append-only in
+  // Live (no delete), so abandoning earlier successful clips on a hard throw
+  // would leave them silently stranded. Mirrors create-clip-loop-helpers.ts.
+  const created: MinimalClipInfo[] = [];
+
+  for (let i = 0; i < positionsInBeats.length; i++) {
+    const startBeats = positionsInBeats[i] as number;
+
+    try {
+      created.push(
+        copyMidiClipToTakeLane(
+          sourceClip,
+          lane,
+          startBeats,
+          length,
+          getNameForIndex(name, i, parsedNames),
+          getColorForIndex(color, i, parsedColors),
+        ),
+      );
+    } catch (error) {
+      console.warn(
+        `duplicate: failed to create take-lane clip at beat ${startBeats}: ${errorMessage(error)}`,
+      );
+    }
+  }
 
   console.warn(
     `duplicate: created on take lane ${laneNumber}. Expand the take-lanes arrow on the track header in Live to see it.`,

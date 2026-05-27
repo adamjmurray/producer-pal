@@ -250,22 +250,64 @@ describe("duplicate take lane", () => {
     );
   });
 
-  it("throws if Live fails to create the take-lane clip", () => {
+  it("warns and skips when Live fails to create a take-lane clip (single position)", () => {
     registerLiveSet();
     registerArrangementSource(true);
     registerTakeLaneTrack({ initialLanes: 0, clipCreationFails: true });
 
-    expect(() =>
-      duplicateClipsToTakeLane(
-        LiveAPI.from("src_clip"),
-        "src_clip",
-        [0],
-        undefined,
-        undefined,
-        "new",
-        undefined,
-      ),
-    ).toThrow("failed to create Arrangement clip");
+    const created = duplicateClipsToTakeLane(
+      LiveAPI.from("src_clip"),
+      "src_clip",
+      [0],
+      undefined,
+      undefined,
+      "new",
+      undefined,
+    );
+
+    expect(created).toStrictEqual([]);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("failed to create take-lane clip at beat 0"),
+    );
+  });
+
+  it("warns and continues when only some positions fail (partial success)", () => {
+    registerLiveSet();
+    registerArrangementSource(true);
+    // Pre-create one lane so we can intercept its create_midi_clip mock.
+    registerTakeLaneTrack({ initialLanes: 1 });
+
+    const lane = lookupMockObject(undefined, livePath.track(0).takeLane(0));
+
+    expect(lane).toBeDefined();
+
+    // Fail the 2nd create_midi_clip call; forward all others to the original mock.
+    let callCount = 0;
+    const original = lane!.call.getMockImplementation();
+
+    lane!.call.mockImplementation((method: string, ...args: unknown[]) => {
+      if (method === "create_midi_clip") {
+        callCount += 1;
+        if (callCount === 2) return ["id", "0"];
+      }
+
+      return original?.(method, ...args);
+    });
+
+    const created = duplicateClipsToTakeLane(
+      LiveAPI.from("src_clip"),
+      "src_clip",
+      [0, 4, 8],
+      undefined,
+      undefined,
+      1,
+      undefined,
+    );
+
+    expect(created).toHaveLength(2);
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("failed to create take-lane clip at beat 4"),
+    );
   });
 
   it("re-creates over an existing clip on a populated lane (replace, like the main lane)", () => {
@@ -294,6 +336,33 @@ describe("duplicate take lane", () => {
     expect(lane?.call).toHaveBeenCalledWith("create_midi_clip", 0, 4);
     expect(track.call).not.toHaveBeenCalledWith("create_take_lane");
     expect(created).toHaveLength(1);
+  });
+
+  it("warns and skips when source is a take-lane clip and no takeLane param is given (main-lane destination)", async () => {
+    registerLiveSet();
+    // Register a source clip whose path includes a take_lanes segment.
+    registerMockObject("tl_src_clip", {
+      path: livePath.track(0).takeLane(0).arrangementClip(0),
+      type: "Clip",
+      properties: {
+        is_midi_clip: 1,
+        is_arrangement_clip: 1,
+        length: 4,
+      },
+    });
+
+    const result = await duplicate({
+      type: "clip",
+      id: "tl_src_clip",
+      arrangementStart: "5|1",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'source clip "tl_src_clip" is on a take lane; promoting to the main lane is not yet supported',
+      ),
+    );
+    expect(result).toStrictEqual([]);
   });
 
   it("throws when the source clip has no track index", () => {

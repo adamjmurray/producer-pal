@@ -6,7 +6,10 @@
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import { type TakeLaneTarget } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import {
+  isTakeLaneClip,
+  type TakeLaneTarget,
+} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import {
   getColorForIndex,
@@ -131,6 +134,18 @@ export async function duplicateClipWithPositions(
         takeLaneTarget,
         takeLaneName,
       );
+    }
+
+    // Main-lane destination with a take-lane source: Track.duplicate_clip_to_arrangement
+    // behavior is unverified for take-lane source IDs (see take-lane-helpers.ts
+    // header — Track-scoped APIs silently no-op on take-lane clips). Warn and skip
+    // until promote-via-recreate is implemented as a follow-up.
+    if (isTakeLaneClip(object)) {
+      console.warn(
+        `duplicate: source clip "${id}" is on a take lane; promoting to the main lane is not yet supported`,
+      );
+
+      return [];
     }
 
     const parsedNames = parseCommaSeparatedNames(name, positionsInBeats.length);
