@@ -54,8 +54,10 @@ import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 import {
   basePersistence,
   baseSession,
+  installVoiceAppMockDefaults,
   makeProps,
   type PropOverrides,
+  resetVoiceAppMocks,
 } from "./voice-app-test-helpers";
 import { VoiceApp } from "./VoiceApp";
 
@@ -106,31 +108,8 @@ function grabOnLiveRecordDeleted(): (() => void) | undefined {
   return params?.onLiveRecordDeleted;
 }
 
-beforeEach(() => {
-  mocks.getMcpUrl.mockReturnValue("http://localhost:3350/mcp");
-  mocks.isFirefox.mockReturnValue(false);
-  mocks.useUpdateCheck.mockReturnValue(null);
-  mocks.useVoiceSession.mockReturnValue(baseSession());
-  mocks.useGeminiVoiceSession.mockReturnValue(baseSession());
-  mocks.useVoicePersistence.mockReturnValue(basePersistence());
-  mocks.useConversationTransfer.mockReturnValue({
-    notification: null,
-    dismissNotification: vi.fn(),
-    handleExport: vi.fn(),
-    handleExportOne: vi.fn(),
-    handleImport: vi.fn(),
-  });
-});
-
-afterEach(() => {
-  mocks.getMcpUrl.mockReset();
-  mocks.useVoiceSession.mockReset();
-  mocks.useGeminiVoiceSession.mockReset();
-  mocks.isFirefox.mockReset();
-  mocks.useUpdateCheck.mockReset();
-  mocks.useVoicePersistence.mockReset();
-  mocks.useConversationTransfer.mockReset();
-});
+beforeEach(() => installVoiceAppMockDefaults(mocks));
+afterEach(() => resetVoiceAppMocks(mocks));
 
 describe("VoiceApp", () => {
   it("shows the OpenAI-key-required banner when key is missing", () => {

@@ -50,37 +50,15 @@ vi.mock(import("#webui/hooks/chat/use-conversation-transfer"), () => ({
 import { GEMINI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import {
   basePersistence,
-  baseSession,
+  installVoiceAppMockDefaults,
   makeProps,
   type PropOverrides,
+  resetVoiceAppMocks,
 } from "./voice-app-test-helpers";
 import { VoiceApp } from "./VoiceApp";
 
-beforeEach(() => {
-  mocks.getMcpUrl.mockReturnValue("http://localhost:3350/mcp");
-  mocks.isFirefox.mockReturnValue(false);
-  mocks.useUpdateCheck.mockReturnValue(null);
-  mocks.useVoiceSession.mockReturnValue(baseSession());
-  mocks.useGeminiVoiceSession.mockReturnValue(baseSession());
-  mocks.useVoicePersistence.mockReturnValue(basePersistence());
-  mocks.useConversationTransfer.mockReturnValue({
-    notification: null,
-    dismissNotification: vi.fn(),
-    handleExport: vi.fn(),
-    handleExportOne: vi.fn(),
-    handleImport: vi.fn(),
-  });
-});
-
-afterEach(() => {
-  mocks.getMcpUrl.mockReset();
-  mocks.useVoiceSession.mockReset();
-  mocks.useGeminiVoiceSession.mockReset();
-  mocks.isFirefox.mockReset();
-  mocks.useUpdateCheck.mockReset();
-  mocks.useVoicePersistence.mockReset();
-  mocks.useConversationTransfer.mockReset();
-});
+beforeEach(() => installVoiceAppMockDefaults(mocks));
+afterEach(() => resetVoiceAppMocks(mocks));
 
 /**
  * Render VoiceApp with a saved record loaded into persistence.
