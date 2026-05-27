@@ -431,6 +431,7 @@ function makeCtx(
     functionDeclarations: [],
     deps,
     resumeRef: { current: { handle: null, attempts: 0 } },
+    sessionGenRef: { current: 0 },
     isStale: () => false,
     isIntentionalClose: () => false,
     onSession: vi.fn(),
@@ -677,6 +678,60 @@ describe("openResumableGeminiSession", () => {
 
     // Only the original close triggered a resume.
     expect(ai.live.connect).toHaveBeenCalledTimes(2);
+  });
+
+  it("per-session sentinel blocks a stale onclose from kicking off a second resume", async () => {
+    // Open session 1, then open session 2 directly (this bumps sessionGenRef).
+    // Now session 1's onclose fires fresh — its closure-local dropHandled is
+    // still false, so without the sentinel handleClose would proceed and call
+    // resumeOrFail, opening a third session on top of the live second one.
+    const { ai, calls } = makeFakeAi();
+    const ctx = ctxWithHandle(ai);
+
+    await openResumableGeminiSession(ctx);
+    await openResumableGeminiSession(ctx);
+
+    expect(ai.live.connect).toHaveBeenCalledTimes(2);
+    expect(ctx.sessionGenRef.current).toBe(2);
+
+    calls[0]!.callbacks.onclose?.();
+    await flushBackoff(1);
+    await flushBackoff(2);
+
+    expect(ai.live.connect).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not call onDrop when a resume fails after intentional close", async () => {
+    // The user clicks Stop during a failing resume. Without the catch-side
+    // stale/intentional check, onDrop fires with "Connection lost" → status
+    // ends at error instead of the expected idle.
+    const session = { close: vi.fn() } as unknown as Session;
+    let firstCallbacks!: Record<string, (arg?: unknown) => void>;
+    let intentional = false;
+    let n = 0;
+    const connect = vi.fn(
+      async (p: { callbacks: Record<string, (arg?: unknown) => void> }) => {
+        n++;
+
+        if (n === 1) {
+          firstCallbacks = p.callbacks;
+
+          return session;
+        }
+
+        // Simulate the user clicking Stop while live.connect was rejecting.
+        intentional = true;
+        throw new Error("resume failed");
+      },
+    );
+    const ai = { live: { connect } } as unknown as GoogleGenAI;
+    const ctx = ctxWithHandle(ai, { isIntentionalClose: () => intentional });
+
+    await openResumableGeminiSession(ctx);
+    firstCallbacks.onclose?.();
+    await flushBackoff(1);
+
+    expect(ctx.onDrop).not.toHaveBeenCalled();
   });
 });
 

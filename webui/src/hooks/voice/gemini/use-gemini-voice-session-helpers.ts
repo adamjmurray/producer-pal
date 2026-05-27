@@ -150,6 +150,11 @@ export interface ResumableSessionContext {
   deps: GeminiMessageDeps;
   /** Server-issued resumption handle + failed attempts counter. */
   resumeRef: { current: ResumeState };
+  /** Per-session generation counter. openResumableGeminiSession bumps this and
+   * captures the value; a late callback from a session whose id is no longer
+   * current is ignored, so a delayed onclose from an already-replaced session
+   * can't drive a second resume on top of the live one. */
+  sessionGenRef: { current: number };
   /** True once teardown bumped the connect generation. */
   isStale: () => boolean;
   /** True when we initiated the close (disconnect/cleanup). */
@@ -187,8 +192,13 @@ export async function openResumableGeminiSession(
 ): Promise<Session> {
   let dropHandled = false;
   let receivedMessage = false;
+  // Bump and capture: a late callback from this closure whose id no longer
+  // matches the current generation belongs to a session that's already been
+  // replaced — ignore it so it can't kick off a second concurrent resume.
+  const mySessionId = ++ctx.sessionGenRef.current;
 
   const handleClose = (fallback: string): void => {
+    if (ctx.sessionGenRef.current !== mySessionId) return;
     if (dropHandled || ctx.isIntentionalClose() || ctx.isStale()) return;
     dropHandled = true;
     void resumeOrFail(ctx, fallback);
@@ -271,6 +281,10 @@ async function resumeOrFail(
 
     ctx.onSession(session);
   } catch (err) {
+    // Mirror the success-path stale/intentional check: if the user clicked Stop
+    // while live.connect() was rejecting, surfacing "Connection lost." would
+    // override the disconnect and land the UI on error instead of idle.
+    if (ctx.isStale() || ctx.isIntentionalClose()) return;
     ctx.onDrop(extractErrorMessage(err));
   }
 }

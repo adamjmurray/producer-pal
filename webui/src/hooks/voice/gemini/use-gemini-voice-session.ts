@@ -86,6 +86,10 @@ export function useGeminiVoiceSession(
   const isMutedRef = useRef(false);
   // Resumption handle + consecutive failed-attempts counter, reset per Talk.
   const resumeRef = useRef<ResumeState>({ handle: null, attempts: 0 });
+  // Per-session generation counter shared across the recursive
+  // openResumableGeminiSession calls; lets a stale session's late onclose
+  // recognize it's been replaced and bail before triggering another resume.
+  const sessionGenRef = useRef(0);
 
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -183,8 +187,12 @@ export function useGeminiVoiceSession(
         const player = new GeminiPcmPlayer();
 
         player.setVolume(volume ?? 1);
-        await player.resume();
+        // Assign BEFORE the await: a teardown that races resume() must be able
+        // to see this player and close its AudioContext. Browsers cap at ~4–6
+        // contexts and an orphan would also keep the tab alive across HMR.
         playerRef.current = player;
+        await player.resume();
+        if (stale()) return void (await cleanup());
 
         const deps: GeminiMessageDeps = {
           builder,
@@ -221,10 +229,17 @@ export function useGeminiVoiceSession(
           functionDeclarations,
           deps,
           resumeRef,
+          sessionGenRef,
           isStale: stale,
           isIntentionalClose: () => intentionalCloseRef.current,
           onSession: (s) => {
             sessionRef.current = s;
+            // intentionalCloseRef tracks active user intent; the per-session
+            // sentinel (sessionGenRef) governs stale callbacks. Clearing it
+            // here keeps the flag from carrying a stale "true" across a
+            // successful resume (it can only be true here if a prior failed
+            // resume set it, but the next resume succeeds).
+            intentionalCloseRef.current = false;
           },
           onDrop: handleDrop,
         });
@@ -315,7 +330,10 @@ export function useGeminiVoiceSession(
   const retryResponse = useCallback(() => setError(null), []);
 
   const resetHistory = useCallback(() => {
-    builderRef.current = sessionRef.current ? new GeminiHistoryBuilder() : null;
+    // Mutate in place rather than replace: handleGeminiToolCall closes over the
+    // builder, and replacing the ref would route in-flight tool output to an
+    // orphan that publishHistory's identity check drops, hiding it from the UI.
+    builderRef.current?.reset();
     setHistory([]);
   }, []);
 

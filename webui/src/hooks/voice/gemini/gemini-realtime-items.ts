@@ -105,6 +105,14 @@ export class GeminiHistoryBuilder {
     this.closeAssistant();
   }
 
+  /** Clear all accumulated turns. Mutates in place so closed-over references
+   * (e.g. an in-flight tool-call handler) keep writing into the live builder
+   * instead of an orphaned instance that publishHistory's identity check would
+   * drop. */
+  reset(): void {
+    this.turns = [];
+  }
+
   /**
    * Snapshot the accumulated turns as fresh RealtimeItem objects.
    * @returns The synthesized history items

@@ -26,12 +26,16 @@ const h = vi.hoisted(() => {
     /** When set, FakeMic.start awaits this before resolving. Tests use it to
      * park connect() mid-start so they can interleave teardown. */
     micStartGate: Promise<void> | null;
+    /** When set, FakePlayer.resume awaits this before resolving. Tests use it
+     * to park connect() mid-resume so they can interleave teardown. */
+    playerResumeGate: Promise<void> | null;
   } = {
     callbacks: {},
     connectParams: null,
     genaiOptions: null,
     onChunk: null,
     micStartGate: null,
+    playerResumeGate: null,
   };
 
   const liveConnect = vi.fn(
@@ -74,7 +78,10 @@ const h = vi.hoisted(() => {
   class FakePlayer {
     static last: FakePlayer | null = null;
     setVolume = vi.fn();
-    resume = vi.fn(async () => {});
+    resume = vi.fn(async () => {
+      if (state.playerResumeGate) await state.playerResumeGate;
+    });
+
     flush = vi.fn();
     enqueueBase64 = vi.fn();
     close = vi.fn(async () => {});
@@ -169,6 +176,7 @@ afterEach(() => {
   h.state.callbacks = {};
   h.state.onChunk = null;
   h.state.micStartGate = null;
+  h.state.playerResumeGate = null;
 });
 
 describe("useGeminiVoiceSession", () => {
@@ -343,6 +351,72 @@ describe("useGeminiVoiceSession", () => {
       result.current.resetHistory();
     });
     expect(result.current.history).toHaveLength(0);
+  });
+
+  it("closes the orphaned player when teardown races player.resume()", async () => {
+    // Park player.resume so we can interleave teardown. cleanup() must capture
+    // the player ref BEFORE the await; otherwise the AudioContext leaks.
+    let resolveResume!: () => void;
+
+    h.state.playerResumeGate = new Promise<void>((r) => {
+      resolveResume = r;
+    });
+
+    const view = renderHook((p: typeof PARAMS) => useGeminiVoiceSession(p), {
+      initialProps: PARAMS,
+    });
+    const connectPromise = act(() => view.result.current.connect());
+
+    // Wait until the player has been constructed and resume() is parked.
+    await vi.waitFor(() => {
+      expect(h.FakePlayer.last).not.toBeNull();
+      expect(h.FakePlayer.last!.resume).toHaveBeenCalled();
+    });
+
+    const player = h.FakePlayer.last!;
+
+    // Tear down WHILE player.resume is parked. cleanup() must see this player
+    // via playerRef and close it; otherwise the AudioContext leaks.
+    await act(() => view.result.current.disconnect());
+
+    expect(player.close).toHaveBeenCalledTimes(1);
+
+    // Let resume() resolve and the parked connect() unwind.
+    resolveResume();
+    await connectPromise;
+
+    expect(view.result.current.status).toBe("idle");
+  });
+
+  it("clearing the chat keeps later messages flowing into history", async () => {
+    // Bug: resetHistory used to replace builderRef with a brand-new builder,
+    // but handleGeminiMessage closes over the original — so publishHistory's
+    // identity check (builderRef.current === closed-over builder) failed and
+    // dropped every subsequent update. Mutating in place keeps the same
+    // instance live so the UI stays current after a reset.
+    const { result } = await renderConnected();
+
+    await act(async () => {
+      h.state.callbacks.onmessage?.({
+        serverContent: { inputTranscription: { text: "hello" } },
+      });
+    });
+    expect(result.current.history).toHaveLength(1);
+
+    await act(async () => {
+      result.current.resetHistory();
+    });
+    expect(result.current.history).toHaveLength(0);
+
+    await act(async () => {
+      h.state.callbacks.onmessage?.({
+        serverContent: { inputTranscription: { text: "world" } },
+      });
+    });
+    expect(result.current.history).toHaveLength(1);
+    expect(result.current.history[0]).toMatchObject({
+      content: [{ transcript: "world" }],
+    });
   });
 
   it("stops the orphaned mic when teardown races mic.start()", async () => {
