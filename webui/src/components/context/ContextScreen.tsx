@@ -3,29 +3,13 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import { useContextEditorState } from "#webui/hooks/context/use-context-editor-state";
 import {
   type ContextMemoryStatus,
   type SaveStatus,
   useContextMemory,
 } from "#webui/hooks/context/use-context-memory";
 import { MarkdownEditor } from "./MarkdownEditor";
-
-const SAVE_DEBOUNCE_MS = 800;
-const SAVE_RETRY_MS = 5000;
-
-type TimerRef = { current: ReturnType<typeof setTimeout> | null };
-
-/**
- * Clear a setTimeout ref if armed, and null it out.
- * @param ref - The timer ref to clear
- */
-function clearTimer(ref: TimerRef): void {
-  if (ref.current) {
-    clearTimeout(ref.current);
-    ref.current = null;
-  }
-}
 
 interface ContextScreenProps {
   /**
@@ -41,6 +25,8 @@ interface ContextScreenProps {
  * flushes on blur and beforeunload. The editor is uncontrolled (seeded once
  * from the server on first ready), so a user's in-progress edits are never
  * clobbered by a server echo or AI write mid-session — last-write-wins.
+ * Surfaces a Reload banner when the server has changed and the draft is
+ * clean, so external writes aren't silently discarded.
  * @param props - Screen props
  * @returns Screen element
  */
@@ -48,127 +34,7 @@ export function ContextScreen(
   props: ContextScreenProps = {},
 ): preact.JSX.Element {
   const memory = useContextMemory();
-  const draftRef = useRef<string | null>(null);
-  const lastSavedRef = useRef<string | null>(null);
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const memoryRef = useRef(memory);
-  // Bumped on Clear to remount the uncontrolled MarkdownEditor (state, not a
-  // ref, because the editor's `key` prop is read during render).
-  const [editorKey, setEditorKey] = useState(0);
-
-  // Seed the draft markers from the server when memory first becomes ready.
-  // Only on first ready: subsequent status updates (save echoes, AI writes,
-  // toggle flips) must not blow away the user's in-progress draft.
-  useEffect(() => {
-    if (memory.status.kind !== "ready") return;
-    if (draftRef.current != null) return;
-    draftRef.current = memory.status.content;
-    lastSavedRef.current = memory.status.content;
-  }, [memory.status]);
-
-  // Ref-indirected so flushSave can schedule a retry via setTimeout(flushSave)
-  // without tripping the no-use-before-defined rule on its own const binding.
-  // null until useEffect installs the actual flushSave below.
-  const flushSaveRef = useRef<(() => void) | null>(null);
-  const flushSave = useCallback((): void => {
-    // The retry timer is a fallback for an unattended user; clearing both
-    // here ensures the next failure schedules a fresh retry from this attempt.
-    clearTimer(debounceTimerRef);
-    clearTimer(retryTimerRef);
-
-    const value = draftRef.current;
-    const current = memoryRef.current;
-
-    if (value == null) return;
-    if (current.status.kind !== "ready") return;
-    if (value === lastSavedRef.current) return;
-
-    // Mark optimistically so a concurrent flush (debounce + blur) doesn't
-    // dispatch the same content twice. On failure, roll the marker back so the
-    // next flush (blur, beforeunload, or further edit) retries — unless the
-    // user has since typed something newer. Also schedule an unattended retry
-    // so a transient failure doesn't lose edits when the user has walked away.
-    lastSavedRef.current = value;
-    void current.save(value).then((saved) => {
-      if (!saved && lastSavedRef.current === value) {
-        lastSavedRef.current = null;
-        retryTimerRef.current = setTimeout(
-          () => flushSaveRef.current?.(),
-          SAVE_RETRY_MS,
-        );
-      }
-    });
-  }, []);
-
-  // Keep refs current so callbacks always see the latest hook value.
-  useEffect(() => {
-    memoryRef.current = memory;
-    flushSaveRef.current = flushSave;
-  });
-
-  const handleChange = useCallback(
-    (value: string): void => {
-      draftRef.current = value;
-
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-
-      debounceTimerRef.current = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
-    },
-    [flushSave],
-  );
-
-  const handleBlur = useCallback((): void => {
-    flushSave();
-  }, [flushSave]);
-
-  const handleClear = useCallback((): void => {
-    if (memory.status.kind !== "ready") return;
-
-    if (!window.confirm("Clear all project memory? This cannot be undone.")) {
-      return;
-    }
-
-    // Reset draft markers so a pending debounced save doesn't echo the old
-    // content back to the server before clear() lands.
-    draftRef.current = "";
-    lastSavedRef.current = "";
-
-    clearTimer(debounceTimerRef);
-    clearTimer(retryTimerRef);
-
-    // Bump editorKey only AFTER clear() resolves: the uncontrolled
-    // MarkdownEditor seeds from `status.content` at mount, and status doesn't
-    // update to "" until the POST round-trips. Remounting earlier would
-    // re-seed with the pre-clear content and the next edit would save it back.
-    void memory.clear().then((ok) => {
-      if (ok) setEditorKey((k) => k + 1);
-    });
-  }, [memory]);
-
-  // Flush on tab close so an in-flight debounce doesn't drop edits.
-  useEffect(() => {
-    const onBeforeUnload = (): void => {
-      flushSave();
-    };
-
-    window.addEventListener("beforeunload", onBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", onBeforeUnload);
-    };
-  }, [flushSave]);
-
-  // Cleanup pending timers on unmount.
-  useEffect(
-    () => () => {
-      clearTimer(debounceTimerRef);
-      clearTimer(retryTimerRef);
-    },
-    [],
-  );
+  const editor = useContextEditorState(memory);
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200">
@@ -183,16 +49,18 @@ export function ContextScreen(
         writable={memory.writable}
         onEnabledChange={memory.setEnabled}
         onWritableChange={memory.setWritable}
-        onClear={handleClear}
+        onClear={() => void editor.handleClear()}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
         <ContextBody
           status={memory.status}
           enabled={memory.enabled}
-          editorKey={editorKey}
+          editorKey={editor.editorKey}
+          externalUpdate={editor.externalUpdate}
           onEnable={() => void memory.setEnabled(true)}
-          onChange={handleChange}
-          onBlur={handleBlur}
+          onReload={editor.handleReload}
+          onChange={editor.handleChange}
+          onBlur={editor.handleBlur}
         />
       </div>
     </div>
@@ -361,21 +229,33 @@ interface ContextBodyProps {
   status: ContextMemoryStatus;
   enabled: boolean;
   editorKey: number;
+  externalUpdate: boolean;
   onEnable: () => void;
+  onReload: () => void;
   onChange: (value: string) => void;
   onBlur: () => void;
 }
 
 /**
  * Renders either the framed editor (with an inline "AI won't see this"
- * banner when memory is disabled) or a status message for loading/error.
+ * banner when memory is disabled, plus an external-update banner when the
+ * server has changed under us) or a status message for loading/error.
  * The editor is mounted once per `ready` session; bumping `editorKey`
- * forces a remount (used by Clear).
+ * forces a remount (used by Clear and Reload).
  * @param props - Body props
  * @returns Body element
  */
 function ContextBody(props: ContextBodyProps): preact.JSX.Element {
-  const { status, enabled, editorKey, onEnable, onChange, onBlur } = props;
+  const {
+    status,
+    enabled,
+    editorKey,
+    externalUpdate,
+    onEnable,
+    onReload,
+    onChange,
+    onBlur,
+  } = props;
 
   if (status.kind === "error") {
     return (
@@ -396,6 +276,7 @@ function ContextBody(props: ContextBodyProps): preact.JSX.Element {
   return (
     <div className="flex flex-col h-full p-4 gap-3 overflow-hidden">
       {!enabled && <DisabledBanner onEnable={onEnable} />}
+      {externalUpdate && <ExternalUpdateBanner onReload={onReload} />}
       <MarkdownEditor
         key={editorKey}
         initialValue={status.content}
@@ -426,6 +307,32 @@ function DisabledBanner(props: { onEnable: () => void }): preact.JSX.Element {
         className="px-2 py-1 rounded bg-amber-200 dark:bg-amber-800/70 hover:bg-amber-300 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 text-xs font-medium transition-colors"
       >
         Enable
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Inline banner shown above the editor when the server-side memory content
+ * has changed externally (AI write, Max device button) and the user has no
+ * in-progress draft. Clicking Reload adopts the server's content as the new
+ * baseline and remounts the editor.
+ * @param props - Banner props
+ * @param props.onReload - Click handler for the Reload button
+ * @returns Banner element
+ */
+function ExternalUpdateBanner(props: {
+  onReload: () => void;
+}): preact.JSX.Element {
+  return (
+    <div className="flex items-center justify-between gap-3 px-3 py-2 rounded-md bg-sky-50 dark:bg-sky-950/40 border border-sky-300 dark:border-sky-700/60 text-sky-800 dark:text-sky-200 text-sm">
+      <span>Memory was updated outside the editor.</span>
+      <button
+        type="button"
+        onClick={props.onReload}
+        className="px-2 py-1 rounded bg-sky-200 dark:bg-sky-800/70 hover:bg-sky-300 dark:hover:bg-sky-700 text-sky-900 dark:text-sky-100 text-xs font-medium transition-colors"
+      >
+        Reload
       </button>
     </div>
   );

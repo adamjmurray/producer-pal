@@ -575,4 +575,31 @@ describe("ContextScreen", () => {
 
     expect(screen.getByText("Save failed")).toBeTruthy();
   });
+
+  it("surfaces the external-update banner when the server content changes while the draft is clean", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "old";
+    const { rerender } = render(<ContextScreen />);
+
+    // Pre-fix this banner did not exist — the user would never know an
+    // AI/device write happened, and their next keystroke would clobber it.
+    expect(screen.queryByText("Memory was updated outside the editor.")).toBe(
+      null,
+    );
+
+    // Status flips because focus refresh fetched the server's new content.
+    await act(async () => {
+      mockStatus.content = "from-ai";
+      rerender(<ContextScreen />);
+    });
+
+    expect(
+      screen.getByText("Memory was updated outside the editor."),
+    ).toBeTruthy();
+    // Clicking Reload remounts the editor with the new content as initialValue.
+    await act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    });
+    expect(editorMountedValues).toStrictEqual(["old", "from-ai"]);
+  });
 });

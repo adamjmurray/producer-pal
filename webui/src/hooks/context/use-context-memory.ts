@@ -19,7 +19,7 @@ export type ContextMemoryStatus =
 /** Save lifecycle state */
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
-interface UseContextMemoryReturn {
+export interface UseContextMemoryReturn {
   status: ContextMemoryStatus;
   /** Whether the AI sees project memory (the device's `memoryEnabled` flag). */
   enabled: boolean;
