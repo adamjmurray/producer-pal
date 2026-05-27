@@ -253,6 +253,17 @@ describe("librarySearch", () => {
       ]);
     });
 
+    it("dedupes mixed-case duplicate tags after lowercasing (no false empty)", async () => {
+      // Regression: deduping before lowercasing would require COUNT=2 distinct
+      // lowercase tags but there's only "kick", returning 0 rows.
+      const result = await librarySearch({ tags: "Kick,kick" });
+
+      expect(result.items.map((i) => i.name).sort()).toStrictEqual([
+        "pack_kick.wav",
+        "user_kick.aif",
+      ]);
+    });
+
     it("matches tags case-insensitively (canonical casing not required)", async () => {
       const lower = await librarySearch({ tags: "kick" });
       const upper = await librarySearch({ tags: "KICK" });

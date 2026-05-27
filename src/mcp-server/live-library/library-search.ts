@@ -277,14 +277,17 @@ function buildSearchQuery(
   if (tagNames.length > 0) {
     // Match tags case-insensitively (lowercase both sides) so callers
     // can pass "kick" or "KICK" — listTags returns canonical casing
-    // but the LLM may not echo it exactly.
+    // but the LLM may not echo it exactly. Dedupe AFTER lowercasing so
+    // mixed-case duplicates (e.g. "Kick,kick") collapse to one tag and the
+    // HAVING count matches; deduping before would require COUNT=2 against a
+    // single distinct lowercase tag and return false empty results.
     //
     // Unicode caveat: JS `.toLowerCase()` is Unicode-aware, but SQLite's
     // built-in `LOWER()` is ASCII-only (no ICU). A tag like "Café" stored
     // with mixed casing won't match user input that differs only in the
     // accented byte's case. Factory tags are ASCII so this is uncommon;
     // bringing in SQLite's ICU extension would be overkill.
-    const lowerTagNames = tagNames.map((t) => t.toLowerCase());
+    const lowerTagNames = [...new Set(tagNames.map((t) => t.toLowerCase()))];
 
     where.push(`(
       SELECT COUNT(DISTINCT LOWER(kw.name)) FROM keywords k

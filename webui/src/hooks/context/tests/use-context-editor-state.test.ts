@@ -331,4 +331,29 @@ describe("useContextEditorState", () => {
       expect(clear).not.toHaveBeenCalled();
     });
   });
+
+  describe("unmount flushes pending save", () => {
+    it("flushes a debounced save when the editor unmounts mid-debounce (Esc close after typing)", async () => {
+      // Regression: cleanup only cleared timers without flushing, so typing
+      // then Esc inside the 800ms debounce window dropped the edit.
+      const save = vi.fn().mockResolvedValue(true);
+      const memory = makeMemory({
+        status: { kind: "ready", content: "old" },
+        save,
+      });
+      const { result, unmount } = renderHook(() =>
+        useContextEditorState(memory),
+      );
+
+      await act(() => {
+        result.current.handleChange("typed-but-not-yet-saved");
+      });
+
+      // Unmount BEFORE the 800ms debounce fires — simulates Esc closing the
+      // context overlay shortly after the user typed.
+      unmount();
+
+      expect(save).toHaveBeenCalledWith("typed-but-not-yet-saved");
+    });
+  });
 });

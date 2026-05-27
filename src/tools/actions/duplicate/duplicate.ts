@@ -5,10 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
-import {
-  isTakeLaneRequested,
-  normalizeTakeLaneTarget,
-} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
+import { resolveTakeLaneForDuplicate } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
@@ -154,16 +151,15 @@ export async function duplicate(
     );
   }
 
-  // takeLane only applies to clips; for other types warn-and-ignore without
-  // validating it (don't throw on a value we're going to drop anyway).
-  const takeLaneTarget =
-    type === "clip" ? normalizeTakeLaneTarget(takeLane) : null;
-
-  if (type !== "clip" && isTakeLaneRequested(takeLane)) {
-    console.warn(
-      `takeLane ignored: only supported when duplicating clips (type "${type}")`,
-    );
-  }
+  // takeLane only applies to arrangement-destination clips; the helper warns
+  // and returns null for non-clip types and session-destination clips so a
+  // malformed value doesn't throw before the warn-and-ignore path.
+  const takeLaneTarget = resolveTakeLaneForDuplicate(
+    type,
+    destination,
+    takeLane,
+    console.warn,
+  );
 
   // Handle device duplication (supports comma-separated toPath for multiple destinations)
   if (type === "device") {

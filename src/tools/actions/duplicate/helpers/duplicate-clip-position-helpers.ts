@@ -63,12 +63,9 @@ export async function duplicateClipWithPositions(
   const createdObjects: object[] = [];
 
   if (destination === "session") {
-    if (takeLaneTarget != null) {
-      console.warn(
-        "duplicate: takeLane ignored for session destination (arrangement-only)",
-      );
-    }
-
+    // takeLane is normalized to null for session destinations in duplicate.ts
+    // (warning emitted there before normalization, so a malformed takeLane on a
+    // session duplicate warns instead of throwing).
     const slots = parseSlotList(toSlot);
     const trackIndex = object.trackIndex;
     const sourceSceneIndex = object.sceneIndex;

@@ -115,6 +115,19 @@ describe("listPlugins — DB selection", () => {
       fixture.cleanup();
     }
   });
+
+  it("degrades to dbAvailable:false when the files DB probe throws", async () => {
+    // Regression: selectPluginDb used to run outside the guard, so a corrupt
+    // or inaccessible files DB (openLiveDb throws on table probe) would crash
+    // listPlugins instead of returning dbAvailable:false with a reason.
+    useFilesDb("/nonexistent/path/to/Live-files.db");
+
+    const result = await listPlugins();
+
+    expect(result.dbAvailable).toBe(false);
+    expect(result.plugins).toHaveLength(0);
+    expect(result.reason).toContain("Failed to read Live plugin database");
+  });
 });
 
 describe("listPlugins — schema variants", () => {

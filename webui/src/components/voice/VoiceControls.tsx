@@ -102,7 +102,12 @@ export function VoiceControls({
             <button
               type="button"
               onClick={onToggleConnection}
-              disabled={isBusy || !voiceKey || isUnsupportedBrowser}
+              // Only require a key to START a session — once connected, Stop
+              // must stay enabled even if the user clears or switches the active
+              // provider key, so they can always tear the mic/socket down.
+              disabled={
+                isBusy || isUnsupportedBrowser || (!isConnected && !voiceKey)
+              }
               className={`px-6 py-2 rounded-lg text-base font-semibold transition-colors shadow disabled:opacity-40 disabled:cursor-not-allowed ${
                 isConnected
                   ? "bg-red-600 hover:bg-red-700 text-white"

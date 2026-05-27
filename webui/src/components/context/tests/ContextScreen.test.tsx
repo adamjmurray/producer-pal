@@ -448,7 +448,10 @@ describe("ContextScreen", () => {
     expect(saveMock).toHaveBeenNthCalledWith(2, "draft");
   });
 
-  it("clears any pending debounce timer when unmounted", async () => {
+  it("flushes a pending debounced save on unmount (Esc close mid-debounce)", async () => {
+    // Regression: cleanup used to only clear timers, so typing then closing
+    // the editor inside the 800ms debounce window dropped the edit. Now the
+    // cleanup flushes first so the in-progress edit is dispatched.
     mockStatus.kind = "ready";
     mockStatus.content = "old";
     const { unmount } = render(<ContextScreen />);
@@ -459,13 +462,15 @@ describe("ContextScreen", () => {
 
     unmount();
 
-    // Advance past the debounce window — the timer should have been cleared.
+    // The flush ran synchronously in cleanup; advancing time should NOT
+    // produce any additional saves (the debounce timer was cleared by flush).
     await act(async () => {
       vi.advanceTimersByTime(2000);
       await Promise.resolve();
     });
 
-    expect(saveMock).not.toHaveBeenCalled();
+    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(saveMock).toHaveBeenCalledWith("typed");
   });
 
   it("auto-retries a failed save after the retry delay", async () => {
@@ -485,19 +490,31 @@ describe("ContextScreen", () => {
     expect(saveMock).toHaveBeenNthCalledWith(2, "draft");
   });
 
-  it("clears the retry timer on unmount", async () => {
+  it("flushes on unmount instead of waiting for the retry timer after a failed save", async () => {
+    // First save fails (lastSavedRef rolls back to null, retry timer armed).
+    // Unmount cleanup flushes — since draftRef still differs from
+    // lastSavedRef, the flush retries the save synchronously instead of
+    // waiting on the unattended-retry timer (which is also cleared so it
+    // never fires post-unmount). Subsequent saves succeed.
     saveMock.mockResolvedValueOnce(false);
     const { unmount } = await mountAndDebounceSave();
 
     unmount();
 
-    // Past the retry delay — the cleanup should have cancelled it.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(saveMock).toHaveBeenCalledTimes(2);
+    expect(saveMock).toHaveBeenNthCalledWith(2, "draft");
+
+    // Past the retry delay — the cleanup cancelled it, so no further saves.
     await act(async () => {
       vi.advanceTimersByTime(10000);
       await Promise.resolve();
     });
 
-    expect(saveMock).toHaveBeenCalledTimes(1);
+    expect(saveMock).toHaveBeenCalledTimes(2);
   });
 
   it("resets the debounce timer on consecutive edits", async () => {

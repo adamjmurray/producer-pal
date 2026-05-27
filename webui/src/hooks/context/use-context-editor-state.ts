@@ -243,9 +243,14 @@ export function useContextEditorState(
     };
   }, [flushSave]);
 
-  // Cleanup pending timers on unmount.
+  // Flush any pending debounced save on unmount before clearing timers, so a
+  // fast type → Esc (which unmounts the editor inside the debounce window)
+  // doesn't drop edits. flushSave clears its own timers, so the explicit
+  // clearTimer calls below are belt-and-suspenders for the bail-out paths
+  // (no draft yet, no changes, status not ready).
   useEffect(
     () => () => {
+      flushSaveRef.current?.();
       clearTimer(debounceTimerRef);
       clearTimer(retryTimerRef);
     },

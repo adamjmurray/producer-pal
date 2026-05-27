@@ -42,6 +42,46 @@ export function isTakeLaneClip(clip: LiveAPI): boolean {
 /** Normalized take lane target: a 1-based lane number, or "new" to append. */
 export type TakeLaneTarget = number | "new";
 
+/**
+ * Resolve a takeLane argument for `duplicate`: warn-and-ignore for any non
+ * arrangement-clip duplicate (so a malformed takeLane on a session duplicate or
+ * non-clip type warns instead of throwing inside normalizeTakeLaneTarget), else
+ * normalize via the standard validator.
+ * @param type - The duplicate target type ("clip", "track", etc.)
+ * @param destination - "session" | "arrangement" | undefined
+ * @param takeLane - Raw takeLane value from the tool args
+ * @param warn - console.warn binding (Max-aware in V8, native in tests)
+ * @returns Normalized take lane target, or null when ignored or main lane
+ */
+export function resolveTakeLaneForDuplicate(
+  type: string,
+  destination: string | undefined,
+  takeLane: number | string | null | undefined,
+  warn: (...args: unknown[]) => void,
+): TakeLaneTarget | null {
+  if (type !== "clip") {
+    if (isTakeLaneRequested(takeLane)) {
+      warn(
+        `takeLane ignored: only supported when duplicating clips (type "${type}")`,
+      );
+    }
+
+    return null;
+  }
+
+  if (destination === "session") {
+    if (isTakeLaneRequested(takeLane)) {
+      warn(
+        "duplicate: takeLane ignored for session destination (arrangement-only)",
+      );
+    }
+
+    return null;
+  }
+
+  return normalizeTakeLaneTarget(takeLane);
+}
+
 export interface ResolvedTakeLane {
   /** The resolved TakeLane LiveAPI object. */
   lane: LiveAPI;

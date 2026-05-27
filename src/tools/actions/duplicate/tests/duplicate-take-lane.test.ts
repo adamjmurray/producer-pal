@@ -231,6 +231,24 @@ describe("duplicate take lane", () => {
     );
   });
 
+  it("ignores (does not validate) an invalid takeLane for a session-clip destination", async () => {
+    // Regression: previously normalizeTakeLaneTarget ran for any clip type, so
+    // a malformed takeLane on a session duplicate threw before the
+    // warn-and-ignore path could fire. The skip path warns instead.
+    registerSessionClipDuplication({ destClipProperties: {} });
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      toSlot: "0/1",
+      takeLane: "garbage",
+    });
+
+    expect(consoleMock.warn).toHaveBeenCalledWith(
+      expect.stringContaining("takeLane ignored for session destination"),
+    );
+  });
+
   it("ignores (does not validate) an invalid takeLane for non-clip types", async () => {
     registerMockObject("track1", { path: livePath.track(0) });
     registerMockObject("live_set", { path: livePath.liveSet });
