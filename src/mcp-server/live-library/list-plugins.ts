@@ -34,6 +34,7 @@
  */
 
 import { type DatabaseSync } from "node:sqlite";
+import { detectStalenessRisk } from "./db-staleness.ts";
 import {
   clampLibraryLimit,
   DEFAULT_LIBRARY_LIMIT,
@@ -81,6 +82,12 @@ export async function listPlugins(
     };
   }
 
+  // Best-effort advisory: flag when an unclean Live exit left a pending WAL
+  // that our immutable read can't see. Spread into every success return so the
+  // signal sits at the top alongside dbAvailable; omitted when there's no risk.
+  // Mirrors librarySearch / listTags / listCategories.
+  const stalenessRisk = await detectStalenessRisk(source);
+
   // Guard the open + query: the plugin schema is the least-verified part of the
   // library cluster (one real install) and the Live 11 / 12.0–12.1 fallback is
   // untestable, so a renamed/missing column degrades to dbAvailable:false rather
@@ -107,7 +114,11 @@ export async function listPlugins(
         .filter((item) => matchesFilters(item, args))
         .slice(0, limit);
 
-      return { dbAvailable: true, plugins };
+      return {
+        dbAvailable: true,
+        ...(stalenessRisk && { stalenessRisk }),
+        plugins,
+      };
     } finally {
       db.close();
     }

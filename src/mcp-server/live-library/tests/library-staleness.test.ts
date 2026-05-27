@@ -15,11 +15,16 @@ import { utimesSync, writeFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { librarySearch } from "../library-search.ts";
 import { listCategories } from "../list-categories.ts";
+import { listPlugins } from "../list-plugins.ts";
 import { listTags } from "../list-tags.ts";
 import {
   createLibraryFixture,
   type LibraryFixture,
 } from "./fixtures/library-fixture.ts";
+import {
+  createPluginsDbFixture,
+  type PluginsFixture,
+} from "./fixtures/plugins-fixture.ts";
 
 vi.mock(import("../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
@@ -134,5 +139,68 @@ describe("library stale-WAL advisory (end-to-end)", () => {
 
     expect(result.stalenessRisk?.kind).toBe("wal-pending");
     expect(result.categories?.length).toBeGreaterThan(0);
+  });
+
+  describe("listPlugins parity", () => {
+    let pluginsFixture: PluginsFixture | undefined;
+
+    afterEach(() => {
+      pluginsFixture?.cleanup();
+      pluginsFixture = undefined;
+    });
+
+    /**
+     * Point findLivePluginsDbPath at a plugins DB and write a `-wal` sidecar
+     * next to it so detectStalenessRisk has a real file to stat.
+     *
+     * @param wal - WAL setup, or null to leave no sidecar
+     * @param wal.sizeBytes - WAL file size in bytes
+     * @param wal.dbSeconds - .db mtime in epoch seconds
+     * @param wal.walSeconds - WAL mtime in epoch seconds
+     */
+    function setupPlugins(
+      wal: { sizeBytes: number; dbSeconds: number; walSeconds: number } | null,
+    ): void {
+      pluginsFixture = createPluginsDbFixture("v2");
+      vi.mocked(dbPathMod.findLivePluginsDbPath).mockResolvedValue(
+        pluginsFixture.dbPath,
+      );
+      vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);
+
+      if (wal) {
+        const walPath = `${pluginsFixture.dbPath}-wal`;
+
+        writeFileSync(walPath, Buffer.alloc(wal.sizeBytes));
+        utimesSync(pluginsFixture.dbPath, wal.dbSeconds, wal.dbSeconds);
+        utimesSync(walPath, wal.walSeconds, wal.walSeconds);
+      }
+    }
+
+    it("flags wal-pending with the full payload", async () => {
+      setupPlugins({
+        sizeBytes: 4_200_000,
+        dbSeconds: 1_000,
+        walSeconds: 1_600,
+      });
+
+      const result = await listPlugins();
+
+      expect(result.stalenessRisk).toStrictEqual({
+        kind: "wal-pending",
+        dbMtime: 1_000_000,
+        walMtime: 1_600_000,
+        walSizeMb: 4.2,
+        ageSeconds: 600,
+      });
+      expect(result.plugins.length).toBeGreaterThan(0);
+    });
+
+    it("omits the flag when there is no -wal sidecar", async () => {
+      setupPlugins(null);
+
+      const result = await listPlugins();
+
+      expect(result.stalenessRisk).toBeUndefined();
+    });
   });
 });

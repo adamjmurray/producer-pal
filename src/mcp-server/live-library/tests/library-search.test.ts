@@ -540,13 +540,19 @@ describe("librarySearch", () => {
       ]);
     });
 
-    it("returns empty results for an unresolvable path", async () => {
+    it("returns empty results with a reason for an unresolvable path", async () => {
+      // The reason field lets the LLM distinguish "no matches under this
+      // folder" from "this folder doesn't exist" — without it the empty
+      // result is silently ambiguous.
       const result = await librarySearch({
         inFolder: "/Users/test/Music/Ableton/NonExistentFolder",
       });
 
       expect(result.dbAvailable).toBe(true);
       expect(result.items).toHaveLength(0);
+      expect(result.reason).toBe(
+        "inFolder path not found: /Users/test/Music/Ableton/NonExistentFolder",
+      );
     });
 
     it("normalizes trailing slash (with and without produce the same results)", async () => {
@@ -560,6 +566,37 @@ describe("librarySearch", () => {
       expect(withSlash.items.map((i) => i.name).sort()).toStrictEqual(
         withoutSlash.items.map((i) => i.name).sort(),
       );
+    });
+
+    it('treats inFolder="" as no folder filter (does not collapse to root children)', async () => {
+      // Empty string is a least-surprise: previously `inFolder != null` was
+      // true for "", so resolveParentId("") returned the root row and the
+      // search silently filtered to direct children of "/".
+      const empty = await librarySearch({ inFolder: "", kind: "audio" });
+      const unset = await librarySearch({ kind: "audio" });
+
+      expect(empty.items.map((i) => i.name).sort()).toStrictEqual(
+        unset.items.map((i) => i.name).sort(),
+      );
+      // Crucially, results include items deeper than the root level.
+      expect(empty.items.map((i) => i.name)).toContain("user_kick.aif");
+      expect(empty.reason).toBeUndefined();
+    });
+
+    it("resolves segments case-insensitively (COLLATE NOCASE)", async () => {
+      // An LLM that lowercases a path segment ("/users/..." vs "/Users/...")
+      // still gets a match on case-insensitive macOS/Windows filesystems.
+      const lower = await librarySearch({
+        inFolder: "/users/test/music/ableton/factory packs/pack one/suba",
+      });
+      const canonical = await librarySearch({
+        inFolder: "/Users/test/Music/Ableton/Factory Packs/Pack One/SubA",
+      });
+
+      expect(lower.items.map((i) => i.name).sort()).toStrictEqual(
+        canonical.items.map((i) => i.name).sort(),
+      );
+      expect(lower.items.length).toBeGreaterThan(0);
     });
   });
 

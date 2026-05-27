@@ -301,6 +301,9 @@ export interface ListPluginsResult {
   plugins: PluginItem[];
   /** Present when a plugin source DB was consulted; false if none was found. */
   dbAvailable?: boolean;
+  /** Set when the served snapshot may be stale (unclean Live exit left a
+   * pending WAL). Omitted when there's no detectable risk. */
+  stalenessRisk?: StalenessRisk;
   /** Set when plugins is empty due to a discoverable failure (e.g. DB missing). */
   reason?: string;
 }

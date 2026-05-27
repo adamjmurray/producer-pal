@@ -84,15 +84,25 @@ export async function librarySearch(
     const db = openLiveDb(dbPath);
 
     try {
+      // Treat inFolder="" as "no folder filter" (least-surprise): an empty
+      // string would otherwise resolve to the DB's root row and silently
+      // collapse the search to "immediate children of /".
+      const inFolder =
+        args.inFolder != null && args.inFolder !== "" ? args.inFolder : null;
       const resolvedParent =
-        args.inFolder != null ? resolveParentId(db, args.inFolder) : undefined;
+        inFolder != null ? resolveParentId(db, inFolder) : undefined;
 
-      // inFolder was provided but the path doesn't map to any known folder
-      if (args.inFolder != null && resolvedParent == null) {
+      // inFolder was provided but the path doesn't map to any known folder.
+      // Set a reason so the LLM can distinguish "no matches under this folder"
+      // from "this folder doesn't exist". Note: segment lookups are
+      // case-insensitive (COLLATE NOCASE), so a path with bad casing still
+      // resolves on case-insensitive filesystems.
+      if (inFolder != null && resolvedParent == null) {
         return {
           dbAvailable: true,
           ...(stalenessRisk && { stalenessRisk }),
           items: [],
+          reason: `inFolder path not found: ${inFolder}`,
         };
       }
 
@@ -425,6 +435,11 @@ function buildLibraryItem(
  * Algorithm: start from the root row (parent_id = 0, name = "/" or a Windows
  * drive letter like "C:"), then walk each path segment as a child lookup.
  *
+ * Case sensitivity: segment lookups use `COLLATE NOCASE` so an LLM passing
+ * "/users/..." on a case-insensitive macOS/Windows FS still resolves the
+ * same row as "/Users/...". The ASCII-only restriction of SQLite's NOCASE
+ * collation is fine here — Live's library paths are ASCII in practice.
+ *
  * @param db - Open database handle
  * @param folderPath - Absolute path to resolve, with or without trailing slash
  * @returns file_id of the folder, or null if unresolvable
@@ -444,7 +459,7 @@ function resolveParentId(db: DatabaseSync, folderPath: string): number | null {
   const rootName = segments[0] === "" ? "/" : (segments[0] as string);
   const rootRow = db
     .prepare(
-      "SELECT file_id FROM files WHERE parent_id = 0 AND name = ? LIMIT 1",
+      "SELECT file_id FROM files WHERE parent_id = 0 AND name = ? COLLATE NOCASE LIMIT 1",
     )
     .get(rootName) as { file_id: number } | undefined;
 
@@ -461,7 +476,7 @@ function resolveParentId(db: DatabaseSync, folderPath: string): number | null {
     if (seg === "") continue;
     const row = db
       .prepare(
-        "SELECT file_id FROM files WHERE parent_id = ? AND name = ? LIMIT 1",
+        "SELECT file_id FROM files WHERE parent_id = ? AND name = ? COLLATE NOCASE LIMIT 1",
       )
       .get(currentId, seg) as { file_id: number } | undefined;
 

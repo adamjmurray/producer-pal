@@ -119,7 +119,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .string()
       .optional()
       .describe(
-        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Unresolvable paths return no results.",
+        "absolute folder path; returns only immediate children of that folder (search only). Composes with other filters. Case-insensitive (ASCII). Unresolvable paths return no results with a `reason` explaining the path wasn't found.",
       ),
 
     sort: z
