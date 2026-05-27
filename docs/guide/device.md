@@ -36,6 +36,7 @@ clear the text area; to stop AI from writing to it, disable the `ppal-context`
 tool on the Setup tab.
 
 - **Memory text area** - Your project-specific instructions and preferences
+- **Open Editor** - Open the memory editor in a larger view in your web browser
 
 Example notes:
 

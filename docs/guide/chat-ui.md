@@ -35,6 +35,8 @@ The header is organized into two areas:
 - **Provider & Model** - Click to open connection settings
 - **Tools count** - Click to open tools settings
 - **Model size** - Shows "large model" or "small model" mode
+- **Project context** - Open the project memory editor in a larger view. Press
+  the close (✕) button to return to the chat
 - **Settings gear** - Open settings dialog
 - **Help (?)** - Link to documentation
 
