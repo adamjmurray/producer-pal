@@ -167,9 +167,16 @@ export async function runSearch(
           verifyPaths: args.verifyPaths,
         });
 
-  const folderPaths = new Set(folderScan.items.map((i) => i.path));
+  // Case-insensitive dedup: V8-in-Max only runs on macOS/Windows, whose
+  // default filesystems (APFS, NTFS) are case-insensitive — so the same file
+  // can surface with different casing from the folder scan vs Live's DB
+  // (which records paths as written at index time). Mirrors the SQL side's
+  // `COLLATE NOCASE` on inFolder.
+  const folderPaths = new Set(
+    folderScan.items.map((i) => i.path.toLowerCase()),
+  );
   const dbItems = (dbResult?.items ?? []).filter(
-    (i) => !folderPaths.has(i.path),
+    (i) => !folderPaths.has(i.path.toLowerCase()),
   );
   const merged = sortItems([...folderScan.items, ...dbItems], args.sort);
   const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
