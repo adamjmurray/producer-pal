@@ -234,6 +234,12 @@ export async function saveProviderSettings(
     key,
     JSON.stringify({ ...settings, apiKey: encryptedApiKey }),
   );
+
+  // Drop the pre-multi-provider plaintext Gemini key once the encrypted
+  // envelope is in place, so the cleartext doesn't linger after migration.
+  if (provider === "gemini") {
+    localStorage.removeItem("gemini_api_key");
+  }
 }
 
 /**

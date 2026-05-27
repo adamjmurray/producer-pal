@@ -89,6 +89,39 @@ describe("settings-helpers", () => {
       expect(loaded.apiKey).toBe("sk-legacy-cleartext");
     });
 
+    it("removes the legacy plaintext gemini_api_key after a Gemini save", async () => {
+      localStorage.setItem("gemini_api_key", "AIza-old-cleartext");
+
+      await saveProviderSettings("gemini", {
+        apiKey: "AIza-new",
+        model: "gemini-2.5-flash",
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
+
+      expect(localStorage.getItem("gemini_api_key")).toBeNull();
+      const raw = JSON.parse(
+        localStorage.getItem("producer_pal_provider_gemini") ?? "{}",
+      );
+
+      expect(isEncrypted(raw.apiKey)).toBe(true);
+    });
+
+    it("leaves the legacy gemini_api_key alone when saving a non-Gemini provider", async () => {
+      localStorage.setItem("gemini_api_key", "AIza-old-cleartext");
+
+      await saveProviderSettings("anthropic", {
+        apiKey: "sk-ant-secret",
+        model: "claude-sonnet-4-6",
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
+
+      expect(localStorage.getItem("gemini_api_key")).toBe("AIza-old-cleartext");
+    });
+
     it("save with empty apiKey stores empty (nothing to encrypt)", async () => {
       await saveProviderSettings("openai", {
         apiKey: "",
