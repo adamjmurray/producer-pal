@@ -256,7 +256,7 @@ describe("App", () => {
   describe("settings interactions", () => {
     it("calls saveSettings when save button is clicked in settings screen", async () => {
       vi.useFakeTimers();
-      const mockSaveSettings = vi.fn().mockResolvedValue(undefined);
+      const mockSaveSettings = vi.fn().mockResolvedValue(true);
 
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
@@ -274,8 +274,12 @@ describe("App", () => {
         fireEvent.click(saveButton);
       }
 
-      await act(() => {
-        vi.advanceTimersByTime(SETTINGS_ANIMATION_MS);
+      // saveSettings is async (returns Promise<boolean>); the close-animation
+      // setTimeout is now scheduled inside its .then. Flush microtasks first
+      // so the setTimeout is queued, then advance through the animation so the
+      // afterClose (post-save RPCs + savePreferencesSettings) actually runs.
+      await act(async () => {
+        await vi.runAllTimersAsync();
       });
 
       expect(mockSaveSettings).toHaveBeenCalledOnce();

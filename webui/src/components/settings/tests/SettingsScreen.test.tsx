@@ -134,6 +134,7 @@ describe("SettingsScreen", () => {
     cancelSettings: vi.fn(),
     hasApiKey: false,
     settingsConfigured: false,
+    saveError: null,
     enabledTools: {} as Record<string, boolean>,
     setEnabledTools: vi.fn(),
     resetBehaviorToDefaults: vi.fn(),

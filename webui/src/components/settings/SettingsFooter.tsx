@@ -9,6 +9,10 @@ interface SettingsFooterProps {
   cancelSettings: () => void;
   pulse: boolean;
   hasUnsavedChanges: boolean;
+  /** Message from the last failed saveSettings(), or null. When set, the
+   * modal stayed open after Save because durable persistence failed; render
+   * it above the buttons so the user sees what went wrong. */
+  saveError: string | null;
 }
 
 /**
@@ -19,6 +23,7 @@ interface SettingsFooterProps {
  * @param {Function} props.cancelSettings - Function to cancel settings changes
  * @param {boolean} props.pulse - Whether to pulse buttons to draw attention
  * @param {boolean} props.hasUnsavedChanges - Whether there are unsaved changes
+ * @param {string | null} props.saveError - Error from the last failed save
  * @returns {JSX.Element} Settings footer component
  */
 export function SettingsFooter({
@@ -27,6 +32,7 @@ export function SettingsFooter({
   cancelSettings,
   pulse,
   hasUnsavedChanges,
+  saveError,
 }: SettingsFooterProps) {
   const pulseClass = pulse ? " settings-button-pulse" : "";
 
@@ -38,13 +44,21 @@ export function SettingsFooter({
         </p>
       )}
 
-      {hasUnsavedChanges && (
+      {hasUnsavedChanges && !saveError && (
         <p className="text-xs text-red-600 dark:text-red-400 mt-4">
           You have unsaved changes. Save or cancel to dismiss.
         </p>
       )}
 
-      <div className={`flex gap-2 ${hasUnsavedChanges ? "mt-2" : "mt-4"}`}>
+      {saveError && (
+        <p className="text-xs text-red-600 dark:text-red-400 mt-4" role="alert">
+          Failed to save settings: {saveError}
+        </p>
+      )}
+
+      <div
+        className={`flex gap-2 ${hasUnsavedChanges || saveError ? "mt-2" : "mt-4"}`}
+      >
         {settingsConfigured && (
           <button
             onClick={cancelSettings}

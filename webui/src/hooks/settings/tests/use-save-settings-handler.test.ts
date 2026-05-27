@@ -48,7 +48,7 @@ function makeArgs(
   checkMcpConnection: ReturnType<typeof vi.fn>;
 } {
   const saveSettings =
-    overrides.saveSettings ?? vi.fn().mockResolvedValue(undefined);
+    overrides.saveSettings ?? vi.fn().mockResolvedValue(true);
   const postSmallModelMode = vi.fn();
   const postLiveApiEnabled = vi.fn().mockResolvedValue(undefined);
   const checkMcpConnection = vi.fn().mockResolvedValue(undefined);
@@ -92,7 +92,7 @@ describe("useSaveSettingsHandler", () => {
     window.location.hash = "";
   });
 
-  it("preserves the URL hash when the saved mode (voice/chat) does not change", () => {
+  it("preserves the URL hash when the saved mode (voice/chat) does not change", async () => {
     window.location.hash = "conv-123";
     const { args, saveSettings } = makeArgs({
       model: "gemini-2.5-pro",
@@ -102,11 +102,14 @@ describe("useSaveSettingsHandler", () => {
 
     result.current();
 
-    expect(saveSettings).toHaveBeenCalled();
+    // Hash mutation now lives inside closeSettings's afterClose, which only
+    // runs after saveSettings resolves (a failed persist must keep the modal
+    // and hash untouched), so the assertion needs to wait for the microtask.
+    await waitFor(() => expect(saveSettings).toHaveBeenCalled());
     expect(window.location.hash).toBe("#conv-123");
   });
 
-  it("clears the URL hash when saving flips chat → voice", () => {
+  it("clears the URL hash when saving flips chat → voice", async () => {
     window.location.hash = "chat-conv-1";
     const { args } = makeArgs({
       model: "gpt-realtime-2",
@@ -116,10 +119,10 @@ describe("useSaveSettingsHandler", () => {
 
     result.current();
 
-    expect(window.location.hash).toBe("");
+    await waitFor(() => expect(window.location.hash).toBe(""));
   });
 
-  it("clears the URL hash when saving flips voice → chat", () => {
+  it("clears the URL hash when saving flips voice → chat", async () => {
     window.location.hash = "voice-conv-1";
     const { args } = makeArgs({
       model: "gemini-1.5-flash",
@@ -129,15 +132,15 @@ describe("useSaveSettingsHandler", () => {
 
     result.current();
 
-    expect(window.location.hash).toBe("");
+    await waitFor(() => expect(window.location.hash).toBe(""));
   });
 
-  it("preserves the URL hash on a mode-flip save when a foreign record is pinned", () => {
+  it("preserves the URL hash on a mode-flip save when a foreign record is pinned", async () => {
     // A voice record is being viewed (viewingMode="voice") while the saved
     // model is a chat model; the save flips the saved mode to voice. The screen
     // won't remount, so wiping the hash here would lose the displayed record.
     window.location.hash = "voice-conv-1";
-    const { args } = makeArgs({
+    const { args, saveSettings } = makeArgs({
       model: "gpt-realtime-2",
       savedModel: "gemini-1.5-flash",
       viewingMode: "voice",
@@ -146,6 +149,7 @@ describe("useSaveSettingsHandler", () => {
 
     result.current();
 
+    await waitFor(() => expect(saveSettings).toHaveBeenCalled());
     expect(window.location.hash).toBe("#voice-conv-1");
   });
 
@@ -183,8 +187,8 @@ describe("useSaveSettingsHandler", () => {
     // Encryption + localStorage writes are async; the RPCs must wait so the
     // server sees a fully persisted state (and the modal-close "Save" promise
     // really means saved).
-    let resolveSave: () => void = () => {};
-    const savePromise = new Promise<void>((resolve) => {
+    let resolveSave: (value: boolean) => void = () => {};
+    const savePromise = new Promise<boolean>((resolve) => {
       resolveSave = resolve;
     });
     const saveSettings = vi.fn().mockReturnValue(savePromise);
@@ -204,11 +208,46 @@ describe("useSaveSettingsHandler", () => {
     expect(postSmallModelMode).not.toHaveBeenCalled();
     expect(postLiveApiEnabled).not.toHaveBeenCalled();
 
-    resolveSave();
+    resolveSave(true);
     await waitFor(() => {
       expect(postSmallModelMode).toHaveBeenCalledTimes(1);
       expect(postLiveApiEnabled).toHaveBeenCalledWith(true);
     });
     await waitFor(() => expect(checkMcpConnection).toHaveBeenCalledTimes(1));
+  });
+
+  it("skips closeSettings + post-save RPCs when saveSettings reports failure", async () => {
+    // A failed persist (returns false) must keep the modal open and not fire
+    // any post-save side effects — those would route the app off settings
+    // that aren't actually saved (the silent-data-loss bug this fix targets).
+    const closeSettings = vi.fn((afterClose: () => void) => afterClose());
+    const saveSettings = vi.fn().mockResolvedValue(false);
+    const { args, postSmallModelMode, postLiveApiEnabled, checkMcpConnection } =
+      makeArgs({
+        liveApiEnabled: true,
+        liveApiEnabledDirty: true,
+        saveSettings,
+      });
+
+    args.closeSettings = closeSettings;
+    window.location.hash = "chat-conv-1";
+    args.settings.model = "gpt-realtime-2";
+    args.settings.savedModel = "gemini-1.5-flash";
+
+    const { result } = renderHook(() => useSaveSettingsHandler(args));
+
+    result.current();
+
+    await waitFor(() => expect(saveSettings).toHaveBeenCalledTimes(1));
+    // Give any stray microtasks a chance to land before asserting "did not".
+    await Promise.resolve();
+
+    expect(closeSettings).not.toHaveBeenCalled();
+    expect(postSmallModelMode).not.toHaveBeenCalled();
+    expect(postLiveApiEnabled).not.toHaveBeenCalled();
+    expect(checkMcpConnection).not.toHaveBeenCalled();
+    // Hash mode-flip clearing lives in closeSettings's afterClose, so a failed
+    // save must also leave the hash intact.
+    expect(window.location.hash).toBe("#chat-conv-1");
   });
 });

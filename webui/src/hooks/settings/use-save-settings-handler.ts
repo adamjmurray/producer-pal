@@ -70,21 +70,23 @@ export function useSaveSettingsHandler(
       isRealtimeSelection(settings.savedProvider, settings.savedModel) !==
       isRealtimeSelection(settings.provider, settings.model);
 
-    closeSettings(() => {
-      if (modeWillChange && viewingMode == null) {
-        history.replaceState(
-          null,
-          "",
-          window.location.pathname + window.location.search,
-        );
-      }
+    // Persist BEFORE closing the modal: a failed encryption/IndexedDB write
+    // keeps the modal open so the user sees saveError and can retry instead
+    // of the modal closing with silent data loss. Post-save effects (URL hash
+    // mode-flip, preferences write, liveApi POST + tool re-list, smallModelMode
+    // POST) only fire on durable success — running them against an unpersisted
+    // state would route the app off settings that aren't actually saved.
+    void settings.saveSettings().then((ok) => {
+      if (!ok) return;
+      closeSettings(() => {
+        if (modeWillChange && viewingMode == null) {
+          history.replaceState(
+            null,
+            "",
+            window.location.pathname + window.location.search,
+          );
+        }
 
-      // Persist must resolve before postSmallModelMode / postLiveApiEnabled
-      // fire — those RPCs assume localStorage and the encrypted apiKey envelope
-      // already reflect the save. Preferences and the liveApi POST chain still
-      // run from inside the `then` so a slow encrypt doesn't strand the user
-      // mid-save.
-      void settings.saveSettings().then(() => {
         remoteConfig.postSmallModelMode(settings.smallModelMode);
         savePreferencesSettings(display);
 

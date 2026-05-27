@@ -68,13 +68,18 @@ export interface UseSettingsReturn {
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
   /** Persists in-modal settings and resolves only after the at-rest envelope
-   * has landed. Callers (e.g. use-save-settings-handler) await this before
-   * firing post-save RPCs so the encryption write isn't racing with downstream
-   * calls. */
-  saveSettings: () => Promise<void>;
+   * has landed. Returns true on durable success, false on failure (saveError
+   * is set in that case). Callers (e.g. use-save-settings-handler) gate the
+   * modal close and post-save RPCs on this so a failed persist keeps the
+   * modal open with the error visible instead of committing silently. */
+  saveSettings: () => Promise<boolean>;
   cancelSettings: () => void;
   hasApiKey: boolean;
   settingsConfigured: boolean;
+  /** Message from the last failed saveSettings(), or null. Cleared on the
+   * next save attempt and on cancelSettings. The SettingsFooter renders it
+   * so the user sees what went wrong instead of closing the modal silently. */
+  saveError: string | null;
   // Tool toggles
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;

@@ -42,7 +42,7 @@ describe("useSettings crypto error handling", () => {
     });
   });
 
-  it("logs (does not throw) when saving with a failing encrypt", async () => {
+  it("surfaces a saveError and leaves saved* unchanged when encrypt fails", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     const { result } = renderHook(() => useSettings());
 
@@ -56,13 +56,28 @@ describe("useSettings crypto error handling", () => {
       );
     });
 
+    const initialSavedModel = result.current.savedModel;
+    const initialSettingsConfigured = result.current.settingsConfigured;
+
     await act(() => {
       result.current.setApiKey("sk-will-fail-to-encrypt");
-    });
-    await act(async () => {
-      await result.current.saveSettings();
+      result.current.setModel("gemini-3.5-flash");
     });
 
+    let saved: boolean | undefined;
+
+    await act(async () => {
+      saved = await result.current.saveSettings();
+    });
+
+    // Failed persist returns false so the handler can keep the modal open,
+    // and the in-memory saved* snapshots stay at their pre-save values
+    // (committing them would route the app off settings that never landed
+    // at rest — the silent-data-loss bug this fix addresses).
+    expect(saved).toBe(false);
+    expect(result.current.saveError).toMatch(/encrypt boom/);
+    expect(result.current.savedModel).toBe(initialSavedModel);
+    expect(result.current.settingsConfigured).toBe(initialSettingsConfigured);
     await waitFor(() => {
       expect(errorSpy).toHaveBeenCalledWith(
         "Failed to save provider settings",

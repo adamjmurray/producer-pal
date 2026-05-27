@@ -109,6 +109,11 @@ export function useSettings(): UseSettingsReturn {
   const [liveApiEnabled, setLiveApiEnabledState] = useState<boolean>(false);
   const [liveApiEnabledDirty, setLiveApiEnabledDirty] =
     useState<boolean>(false);
+  // Surfaced after a failed persist so the modal can stay open with a visible
+  // error instead of closing with silent data loss (previously persistAllSettings
+  // swallowed errors and the saved* snapshots were committed before the
+  // encrypted write completed).
+  const [saveError, setSaveError] = useState<string | null>(null);
   // In-modal voice settings vs. persisted/applied values. Same split as
   // `model`/`savedModel` — saveSettings/cancelSettings synchronize them, but
   // the live voice session reads the `saved*` snapshots so mid-edit changes
@@ -195,8 +200,8 @@ export function useSettings(): UseSettingsReturn {
     [applyLoadedSettings],
   );
 
-  const saveSettings = useCallback(async (): Promise<void> => {
-    if (!warnIfNotLoaded(settingsLoaded)) return;
+  const saveSettings = useCallback(async (): Promise<boolean> => {
+    if (!warnIfNotLoaded(settingsLoaded)) return false;
 
     const allSettings = buildAllProviderSettings(
       anthropicSettings,
@@ -209,24 +214,36 @@ export function useSettings(): UseSettingsReturn {
       customSettings,
     );
 
-    // Update saved* snapshots and configured flag synchronously so the modal
-    // close + downstream routing reflect the user's choice immediately. The
-    // encryption write is awaited last so the returned promise resolves only
-    // after the at-rest envelope lands — callers (e.g. use-save-settings-handler)
-    // gate post-save RPCs on this, so "Save" really means "saved" by the time
-    // the modal close animation runs and the RPCs fire.
+    setSaveError(null);
+
+    // Persist FIRST and only commit the in-memory saved* snapshots after the
+    // encrypted write lands. The previous order (commit synchronously, then
+    // await persist) treated the modal as closed and routed off the new saved*
+    // values even when encryption/IndexedDB failed — the user saw silent data
+    // loss only on the next reload. Now a failed persist returns false, the
+    // modal stays open, and saveError surfaces it.
+    try {
+      await persistAllSettings(
+        provider,
+        enabledTools,
+        allSettings,
+        smallModelMode,
+      );
+    } catch (err) {
+      console.error("Failed to save provider settings", err);
+      setSaveError(errorMessage(err));
+
+      return false;
+    }
+
     voiceModeSettings.commit();
     setSavedModel(allSettings[provider].model);
     setSavedProvider(provider);
     setSavedThinking(allSettings[provider].thinking);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
-    await persistAllSettings(
-      provider,
-      enabledTools,
-      allSettings,
-      smallModelMode,
-    );
+
+    return true;
   }, [
     settingsLoaded,
     provider,
@@ -257,6 +274,7 @@ export function useSettings(): UseSettingsReturn {
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);
+    setSaveError(null);
   }, [applyLoadedSettings, voiceModeSettings]);
 
   const {
@@ -327,6 +345,7 @@ export function useSettings(): UseSettingsReturn {
     isToolEnabled,
     smallModelMode,
     setSmallModelMode: setSmallModelModeState,
+    saveError,
     liveApiEnabled,
     liveApiEnabledDirty,
     setLiveApiEnabled,
@@ -362,9 +381,10 @@ function warnIfNotLoaded(settingsLoaded: boolean): boolean {
 }
 
 /**
- * Persist encrypted provider settings and the small-model-mode flag. Save is
- * user-triggered and the apiKey encryption is async, so we fire-and-forget and
- * log on failure rather than throwing into render.
+ * Persist encrypted provider settings and the small-model-mode flag. Rejects
+ * when the encrypted write fails so saveSettings can keep the modal open and
+ * surface the error instead of committing the in-memory saved* snapshots
+ * against an empty at-rest envelope.
  * @param {Provider} provider - Currently selected provider
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {AllProviderSettings} allSettings - Settings for every provider
@@ -377,12 +397,16 @@ async function persistAllSettings(
   smallModelMode: boolean,
 ): Promise<void> {
   saveSmallModelMode(smallModelMode);
+  await saveCurrentSettings(provider, enabledTools, allSettings);
+}
 
-  try {
-    await saveCurrentSettings(provider, enabledTools, allSettings);
-  } catch (err) {
-    console.error("Failed to save provider settings", err);
-  }
+/**
+ * Extract a string error message from an unknown thrown value.
+ * @param {unknown} error - Caught value
+ * @returns {string} Message string
+ */
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**
