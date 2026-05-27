@@ -112,4 +112,49 @@ describe("useSettingsDismiss", () => {
 
     expect(handleCancel).not.toHaveBeenCalled();
   });
+
+  it("does not handle Escape when blockEscape is true (yields to the context overlay)", async () => {
+    const handleCancel = vi.fn();
+
+    renderHook(() =>
+      useSettingsDismiss({
+        ...defaultOptions,
+        handleCancelSettings: handleCancel,
+        blockEscape: true,
+      }),
+    );
+
+    await act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+
+    expect(handleCancel).not.toHaveBeenCalled();
+  });
+
+  it("re-binds the Escape handler when blockEscape flips back to false", async () => {
+    const handleCancel = vi.fn();
+    const { rerender } = renderHook((props) => useSettingsDismiss(props), {
+      initialProps: {
+        ...defaultOptions,
+        handleCancelSettings: handleCancel,
+        blockEscape: true,
+      },
+    });
+
+    await act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(handleCancel).not.toHaveBeenCalled();
+
+    rerender({
+      ...defaultOptions,
+      handleCancelSettings: handleCancel,
+      blockEscape: false,
+    });
+
+    await act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(handleCancel).toHaveBeenCalledOnce();
+  });
 });

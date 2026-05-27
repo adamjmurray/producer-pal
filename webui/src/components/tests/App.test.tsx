@@ -540,6 +540,51 @@ describe("App", () => {
       expect(mockSetViewState).not.toHaveBeenCalled();
       vi.useRealTimers();
     });
+
+    it("Esc closes Context first when both overlays are open, leaving Settings up", async () => {
+      // Both overlays open with settings configured + no unsaved changes —
+      // user manually opened Settings while Context was up. Pre-fix, both
+      // Esc handlers fire (Settings dismisses AND Context closes in the same
+      // tick). With the fix, Settings yields the Esc to Context: Context
+      // closes, Settings stays up, and a subsequent Esc dismisses Settings.
+      vi.useFakeTimers();
+      const mockSetViewState = vi.fn();
+
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: true,
+      });
+      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
+        viewState: {
+          historyPanelOpen: false,
+          settingsOpen: true,
+          settingsTab: "connection",
+          contextOpen: true,
+        },
+        setViewState: mockSetViewState,
+      });
+
+      render(<App />);
+      // Both overlays mounted.
+      expect(document.body.textContent).toContain("Provider");
+      expect(document.querySelector('[data-testid="context-stub"]')).not.toBe(
+        null,
+      );
+
+      // Real keydown events bubble document → window, so dispatching once is
+      // enough to exercise both potential listeners.
+      fireEvent.keyDown(document, { key: "Escape" });
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Only one viewState mutation: closing Context. Settings stays put —
+      // no settingsOpen:false was emitted.
+      const calls = mockSetViewState.mock.calls;
+
+      expect(calls).toStrictEqual([[{ contextOpen: false }]]);
+      vi.useRealTimers();
+    });
   });
 
   // Helper to get the AI SDK useChat call's extraParams

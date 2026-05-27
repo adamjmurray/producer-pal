@@ -139,17 +139,23 @@ export function App() {
     });
   }, [closeSettings, settings, setTheme, display]);
 
+  // Project context overlay (sibling to Settings). Animation timing mirrors
+  // useSettingsClose; auto-save makes a confirm-on-close flow unnecessary.
+  const contextOpen = viewState.contextOpen;
   const { shake, clearShake, handleSettingsDismiss } = useSettingsDismiss({
     showSettings,
     settingsConfigured: settings.settingsConfigured,
     settingsClosing,
     hasUnsavedChanges,
     handleCancelSettings,
+    // Defer Esc to the Context overlay when both are open. Settings renders
+    // above Context in the DOM, but the Context overlay is the one with an
+    // unconditional Esc-dismiss path (Settings won't dismiss when
+    // !settingsConfigured) — without this, both handlers fire and either
+    // Settings refuses to close OR both close at once.
+    blockEscape: contextOpen,
   });
 
-  // Project context overlay (sibling to Settings). Animation timing mirrors
-  // useSettingsClose; auto-save makes a confirm-on-close flow unnecessary.
-  const contextOpen = viewState.contextOpen;
   const [contextClosing, setContextClosing] = useState(false);
   const openContext = useCallback(
     () => setViewState({ contextOpen: true }),
