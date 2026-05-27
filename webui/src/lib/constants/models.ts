@@ -286,9 +286,10 @@ export function isGeminiRealtimeModelId(
  * Returns true when the selected model is a realtime (voice) model under the
  * selected provider. A model qualifies as a realtime preset listed for the
  * provider, or as a free-text realtime id entered via "Other..." — the latter
- * only under the openai provider. Provider scoping is the point: voice is
- * OpenAI-only (no key/transport elsewhere), so a non-openai endpoint reusing a
- * realtime id routes to text chat rather than a voice UI it can't drive.
+ * only under the openai or gemini providers. Provider scoping is the point:
+ * voice routes through OpenAI Realtime or Gemini Live (no key/transport
+ * elsewhere), so a non-voice-capable endpoint reusing a realtime id routes to
+ * text chat rather than a voice UI it can't drive.
  * @param provider - The selected provider
  * @param model - The selected model id
  * @returns True if the model is a realtime model for this provider

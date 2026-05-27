@@ -25,7 +25,7 @@ export interface UseVoiceModeSettingsReturn {
   voiceSpeed: number;
   setVoiceSpeed: (speed: number) => void;
   savedVoiceSpeed: number;
-  /** Output playback volume (0.0–1.0). Live: changes drive the active session's
+  /** Output playback volume (0.0–1.25). Live: changes drive the active session's
    * loudness immediately (no Stop → Talk), unlike voice/speed/turn detection.
    * commit/revert still persist it like the others. */
   voiceVolume: number;

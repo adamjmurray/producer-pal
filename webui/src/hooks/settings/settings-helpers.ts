@@ -100,7 +100,7 @@ export function loadVoiceVolume(): number {
 
 /**
  * Persists the output playback volume to localStorage.
- * @param volume - The volume (0.0–1.0) to persist
+ * @param volume - The volume (0.0–1.25) to persist
  */
 export function saveVoiceVolume(volume: number): void {
   localStorage.setItem(VOICE_VOLUME_KEY, String(volume));

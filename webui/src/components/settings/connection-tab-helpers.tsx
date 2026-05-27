@@ -173,7 +173,7 @@ interface VoiceSettingsProps {
  * @param props.model - Current model id
  * @param props.realtimeVoice - In-modal voice id
  * @param props.setRealtimeVoice - Voice setter callback
- * @param props.voiceVolume - In-modal output volume (0.0–1.0)
+ * @param props.voiceVolume - In-modal output volume (0.0–1.25)
  * @param props.setVoiceVolume - Volume setter callback
  * @param props.voiceSpeed - In-modal playback speed
  * @param props.setVoiceSpeed - Speed setter callback

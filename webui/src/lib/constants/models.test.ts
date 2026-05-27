@@ -77,9 +77,9 @@ describe("isRealtimeSelection", () => {
     expect(isRealtimeSelection("openai", "gpt-realtime")).toBe(true);
   });
 
-  it("does not treat a free-text realtime id under a non-openai provider as realtime", () => {
-    // Voice is OpenAI-only; an openrouter/custom realtime-looking id stays in
-    // chat (no key/transport for it).
+  it("does not treat a free-text realtime id under a non-voice provider as realtime", () => {
+    // Voice routes only through OpenAI Realtime or Gemini Live; an
+    // openrouter/custom realtime-looking id stays in chat (no key/transport).
     expect(isRealtimeSelection("openrouter", "openai/gpt-realtime")).toBe(
       false,
     );

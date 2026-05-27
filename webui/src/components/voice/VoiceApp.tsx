@@ -39,9 +39,10 @@ export interface VoiceAppProps {
 }
 
 /**
- * Voice mode: OpenAI Realtime API voice UI. The voice hook graph lives in
- * `useVoiceModeState`; this component is just the JSX shell wrapped in
- * AppShell.
+ * Voice mode UI. Backed by OpenAI Realtime or Gemini Live depending on the
+ * saved provider/model — `realtimeProvider()` picks the active backend. The
+ * voice hook graph lives in `useVoiceModeState`; this component is just the
+ * JSX shell wrapped in AppShell.
  *
  * @param props - VoiceAppProps
  * @returns Voice screen wrapped in AppShell
