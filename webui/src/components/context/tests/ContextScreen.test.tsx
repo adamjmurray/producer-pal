@@ -490,6 +490,59 @@ describe("ContextScreen", () => {
     expect(screen.getByText("Saved")).toBeTruthy();
   });
 
+  it("shows 'Editing…' (not 'Saved') as soon as the user types after a successful save", async () => {
+    // Regression: after the first save, 'Saved' lingered through the
+    // debounce window of the next edit because the indicator only looked at
+    // saveStatus. Now the dirty flag from the editor state hook drives an
+    // 'Editing…' state until the next save lands.
+    mockStatus.kind = "ready";
+    mockStatus.content = "old";
+    mockSaveStatus = "saved";
+    render(<ContextScreen />);
+
+    expect(screen.getByText("Saved")).toBeTruthy();
+
+    await act(() => {
+      editorChange("typed");
+    });
+
+    expect(screen.getByText("Editing…")).toBeTruthy();
+  });
+
+  it("clears 'Editing…' when the user reverts the draft to the last-saved value", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "old";
+    mockSaveStatus = "saved";
+    render(<ContextScreen />);
+
+    await act(() => {
+      editorChange("typed");
+    });
+    expect(screen.getByText("Editing…")).toBeTruthy();
+
+    // Undo back to the saved value — should drop the dirty flag without
+    // requiring another save round-trip.
+    await act(() => {
+      editorChange("old");
+    });
+
+    expect(screen.getByText("Saved")).toBeTruthy();
+  });
+
+  it("'Save failed' takes precedence over 'Editing…'", async () => {
+    mockStatus.kind = "ready";
+    mockStatus.content = "old";
+    saveMock.mockResolvedValue(false);
+    mockSaveStatus = "error";
+    render(<ContextScreen />);
+
+    await act(() => {
+      editorChange("typed");
+    });
+
+    expect(screen.getByText("Save failed")).toBeTruthy();
+  });
+
   it("renders a close button when onClose is provided and calls it on click", () => {
     mockStatus.kind = "ready";
     mockStatus.content = "x";

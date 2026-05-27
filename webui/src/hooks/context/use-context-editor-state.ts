@@ -34,6 +34,12 @@ export interface UseContextEditorStateReturn {
    * surfaces a "Reload" banner so the user can adopt the server's content.
    */
   externalUpdate: boolean;
+  /**
+   * `true` when the draft has unsaved changes (typed since the last
+   * successful save). Drives the "Editing…" indicator so "Saved" doesn't
+   * linger after the user has typed more.
+   */
+  dirty: boolean;
   /** Editor `onChange` handler — updates the draft and debounces a save. */
   handleChange: (value: string) => void;
   /** Editor `onBlur` handler — flushes any pending save immediately. */
@@ -70,6 +76,10 @@ export function useContextEditorState(
   // True when the server's content diverges from what the editor last saw
   // (AI/device wrote externally) AND the user has no in-progress draft.
   const [externalUpdate, setExternalUpdate] = useState(false);
+  // True when the draft differs from the last successfully-saved value.
+  // Drives the "Editing…" indicator so "Saved" doesn't linger after the
+  // user has typed more in the debounce window between save and re-save.
+  const [dirty, setDirty] = useState(false);
 
   // Seed the draft markers from the server when memory first becomes ready.
   // Only on first ready: subsequent status updates (save echoes, AI writes,
@@ -91,6 +101,7 @@ export function useContextEditorState(
     draftRef.current = null;
     lastSavedRef.current = null;
     setExternalUpdate(false);
+    setDirty(false);
   }, [memory.status]);
 
   // Surface an "external update" banner when an AI/device write changes
@@ -146,7 +157,13 @@ export function useContextEditorState(
         inFlightSaveRef.current = null;
       }
 
-      if (!saved && lastSavedRef.current === value) {
+      if (saved) {
+        // Only clear dirty if the user hasn't typed past the saved value
+        // during the in-flight save — otherwise more edits are still pending.
+        if (draftRef.current === lastSavedRef.current) {
+          setDirty(false);
+        }
+      } else if (lastSavedRef.current === value) {
         lastSavedRef.current = null;
         retryTimerRef.current = setTimeout(
           () => flushSaveRef.current?.(),
@@ -165,6 +182,11 @@ export function useContextEditorState(
   const handleChange = useCallback(
     (value: string): void => {
       draftRef.current = value;
+      // Compare against lastSavedRef so reverting to the saved value clears
+      // the dirty flag (covers undo-back-to-saved). lastSavedRef is null
+      // briefly after a failed save (rolled back for retry), in which case
+      // any new content is considered dirty.
+      setDirty(value !== lastSavedRef.current);
       // Typing dismisses the external-update banner: the user has chosen to
       // keep editing, which under last-write-wins implicitly overrides the
       // server's external content on the next save.
@@ -195,6 +217,7 @@ export function useContextEditorState(
     draftRef.current = "";
     lastSavedRef.current = "";
     setExternalUpdate(false);
+    setDirty(false);
 
     clearTimer(debounceTimerRef);
     clearTimer(retryTimerRef);
@@ -225,6 +248,7 @@ export function useContextEditorState(
     draftRef.current = memory.status.content;
     lastSavedRef.current = memory.status.content;
     setExternalUpdate(false);
+    setDirty(false);
     clearTimer(debounceTimerRef);
     clearTimer(retryTimerRef);
     setEditorKey((k) => k + 1);
@@ -260,6 +284,7 @@ export function useContextEditorState(
   return {
     editorKey,
     externalUpdate,
+    dirty,
     handleChange,
     handleBlur,
     handleClear,

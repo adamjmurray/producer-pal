@@ -289,6 +289,96 @@ describe("useContextEditorState", () => {
     });
   });
 
+  describe("dirty flag", () => {
+    it("starts false, flips true on edit, flips false after a successful save", async () => {
+      const save = vi.fn().mockResolvedValue(true);
+      const { result } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, save }),
+      );
+
+      expect(result.current.dirty).toBe(false);
+
+      await act(() => {
+        result.current.handleChange("typed");
+      });
+      expect(result.current.dirty).toBe(true);
+
+      await act(async () => {
+        vi.advanceTimersByTime(800);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(result.current.dirty).toBe(false);
+    });
+
+    it("stays true when the user keeps typing during an in-flight save", async () => {
+      // The save() promise is held until we explicitly resolve it. During the
+      // in-flight save, the user types more — draftRef advances past the
+      // value being saved, so the save's resolution must NOT clear dirty.
+      let resolveSave: (saved: boolean) => void = () => {};
+      const save = vi.fn().mockImplementation(
+        () =>
+          new Promise<boolean>((resolve) => {
+            resolveSave = resolve;
+          }),
+      );
+      const { result } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, save }),
+      );
+
+      await act(() => {
+        result.current.handleChange("first");
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(800);
+        await Promise.resolve();
+      });
+      expect(result.current.dirty).toBe(true);
+
+      // User types more before the save responds.
+      await act(() => {
+        result.current.handleChange("second");
+      });
+
+      // Save of "first" resolves. draftRef="second" != lastSavedRef="first",
+      // so dirty must stay true.
+      await act(async () => {
+        resolveSave(true);
+        for (let i = 0; i < 3; i++) await Promise.resolve();
+      });
+
+      expect(result.current.dirty).toBe(true);
+    });
+
+    it("clears on Reload", async () => {
+      const { result, setMemory } = renderEditor(makeReady("old"));
+
+      await act(() => {
+        result.current.handleChange("typed");
+      });
+      // Server externally changes; banner appears (clean-draft path requires
+      // draftRef===lastSavedRef, but here it doesn't — so simulate the clean
+      // path by reverting the draft first).
+      await act(() => {
+        result.current.handleChange("old");
+      });
+      expect(result.current.dirty).toBe(false);
+
+      setMemory(makeReady("from-ai"));
+      // Make the draft dirty again, then Reload should drop it.
+      await act(() => {
+        result.current.handleChange("typed-again");
+      });
+      expect(result.current.dirty).toBe(true);
+
+      await act(() => {
+        result.current.handleReload();
+      });
+      expect(result.current.dirty).toBe(false);
+    });
+  });
+
   describe("unmount flushes pending save", () => {
     it("flushes a debounced save when the editor unmounts mid-debounce (Esc close after typing)", async () => {
       // Regression: cleanup only cleared timers without flushing, so typing

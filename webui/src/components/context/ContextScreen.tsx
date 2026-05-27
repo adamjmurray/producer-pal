@@ -41,6 +41,7 @@ export function ContextScreen(
       <ContextHeader
         status={memory.status}
         saveStatus={memory.saveStatus}
+        dirty={editor.dirty}
         onClose={props.onClose}
       />
       <ContextControls
@@ -66,6 +67,7 @@ export function ContextScreen(
 interface ContextHeaderProps {
   status: ContextMemoryStatus;
   saveStatus: SaveStatus;
+  dirty: boolean;
   onClose?: () => void;
 }
 
@@ -76,13 +78,13 @@ interface ContextHeaderProps {
  * @returns Header element
  */
 function ContextHeader(props: ContextHeaderProps): preact.JSX.Element {
-  const { status, saveStatus, onClose } = props;
+  const { status, saveStatus, dirty, onClose } = props;
 
   return (
     <header className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
       <h1 className="text-base font-semibold">Project Context</h1>
       <div className="flex items-center gap-3">
-        <SaveIndicator status={status} saveStatus={saveStatus} />
+        <SaveIndicator status={status} saveStatus={saveStatus} dirty={dirty} />
         {onClose != null && (
           <button
             type="button"
@@ -144,6 +146,7 @@ function ContextControls(
 interface SaveIndicatorProps {
   status: ContextMemoryStatus;
   saveStatus: SaveStatus;
+  dirty: boolean;
 }
 
 /**
@@ -153,7 +156,7 @@ interface SaveIndicatorProps {
  * @returns Indicator element
  */
 function SaveIndicator(props: SaveIndicatorProps): preact.JSX.Element {
-  const { status, saveStatus } = props;
+  const { status, saveStatus, dirty } = props;
 
   if (status.kind === "loading") {
     return <span className="text-xs text-zinc-500">Loading…</span>;
@@ -171,17 +174,23 @@ function SaveIndicator(props: SaveIndicatorProps): preact.JSX.Element {
     return <span className="text-xs text-zinc-500">Saving…</span>;
   }
 
-  if (saveStatus === "saved") {
-    return (
-      <span className="text-xs text-green-600 dark:text-green-400">Saved</span>
-    );
-  }
-
   if (saveStatus === "error") {
     return (
       <span className="text-xs text-red-600 dark:text-red-400">
         Save failed
       </span>
+    );
+  }
+
+  // "Editing…" beats "Saved" when the user has typed more since the last
+  // save — otherwise "Saved" would linger through the debounce window.
+  if (dirty) {
+    return <span className="text-xs text-zinc-500">Editing…</span>;
+  }
+
+  if (saveStatus === "saved") {
+    return (
+      <span className="text-xs text-green-600 dark:text-green-400">Saved</span>
     );
   }
 
