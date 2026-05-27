@@ -18,6 +18,8 @@ import {
 } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 
+export { fireHashChange } from "#webui/test-utils/dom-test-helpers";
+
 /**
  * Flush pending effects/timers inside act(). Defaults to 30ms; pass ~800ms to
  * let the autosave debounce fire.
@@ -126,6 +128,31 @@ export async function saveVoiceRecord(
   await saveConversation(record);
 
   return record;
+}
+
+/**
+ * Persist a text-mode ConversationRecord and render the voice-persistence hook
+ * with an `onForeignRecord` spy attached.
+ * @param overrides - Fields to override on the persisted record
+ * @returns The saved record, the spy, and the rendered hook result
+ */
+export async function setupForeignTextRecord(
+  overrides: Partial<ConversationRecord> = {},
+): Promise<{
+  textRecord: ConversationRecord;
+  onForeignRecord: ReturnType<typeof vi.fn>;
+  result: ReturnType<typeof renderVoicePersistence>["result"];
+}> {
+  const textRecord = createTestRecord({ sessionType: "text", ...overrides });
+
+  await saveConversation(textRecord);
+
+  const onForeignRecord = vi.fn();
+  const { result } = renderVoicePersistence({ onForeignRecord });
+
+  await waitForEffects();
+
+  return { textRecord, onForeignRecord, result };
 }
 
 /**

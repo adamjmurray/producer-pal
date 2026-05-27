@@ -13,6 +13,8 @@ import {
   fakeMcpClient,
   listToolsMock,
   mcpClientHelpersMock,
+  mockCallToolText,
+  mockListBareTools,
   resetMcpClientMocks,
 } from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
@@ -96,13 +98,7 @@ describe("createRealtimeMcpTools", () => {
   });
 
   it("filters tools using the enabledTools map", async () => {
-    listToolsMock.mockResolvedValueOnce({
-      tools: [
-        { name: "ppal-a", description: "", inputSchema: { properties: {} } },
-        { name: "ppal-b", description: "", inputSchema: { properties: {} } },
-        { name: "ppal-c", description: "", inputSchema: { properties: {} } },
-      ],
-    });
+    mockListBareTools("ppal-a", "ppal-b", "ppal-c");
 
     const { tools } = await createRealtimeMcpTools(
       "http://localhost:3350/mcp",
@@ -113,23 +109,8 @@ describe("createRealtimeMcpTools", () => {
   });
 
   it("execute() forwards args to mcpClient.callTool and returns text content", async () => {
-    listToolsMock.mockResolvedValueOnce({
-      tools: [
-        {
-          name: "ppal-read-live-set",
-          description: "",
-          inputSchema: { properties: {} },
-        },
-      ],
-    });
-
-    callToolMock.mockResolvedValueOnce({
-      isError: false,
-      content: [
-        { type: "text", text: "Track 1: Drums" },
-        { type: "text", text: "Track 2: Bass" },
-      ],
-    });
+    mockListBareTools("ppal-read-live-set");
+    mockCallToolText("Track 1: Drums", "Track 2: Bass");
 
     const { tools } = await createRealtimeMcpTools("http://localhost:3350/mcp");
     const out = await runTool(tools[0]!, { foo: "bar" });

@@ -13,10 +13,12 @@ import { GEMINI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import {
+  fireHashChange,
   renderVoicePersistence,
   renderVoicePersistenceWithHistory,
   resetConversationsDb,
   saveVoiceRecord,
+  setupForeignTextRecord,
   setupLiveRecordWithDeletionSpy,
   userTextItem,
   userTranscriptItem,
@@ -363,14 +365,8 @@ describe("useVoicePersistence", () => {
   });
 
   it("switchConversation invokes onForeignRecord for text records", async () => {
-    const textRecord = createTestRecord({ sessionType: "text" });
-
-    await saveConversation(textRecord);
-    const onForeignRecord = vi.fn();
-
-    const { result } = renderVoicePersistence({ onForeignRecord });
-
-    await waitForEffects();
+    const { textRecord, onForeignRecord, result } =
+      await setupForeignTextRecord();
 
     await act(() => result.current.switchConversation(textRecord.id));
 
@@ -732,10 +728,7 @@ describe("useVoicePersistence", () => {
       expect(result.current.activeConversationId).toBeNull();
 
       window.location.hash = record.id;
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       expect(result.current.activeConversationId).toBe(record.id);
       expect(result.current.savedItems).toHaveLength(1);
@@ -754,29 +747,17 @@ describe("useVoicePersistence", () => {
       expect(result.current.activeConversationId).toBe(record.id);
 
       history.replaceState(null, "", window.location.pathname);
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       expect(result.current.activeConversationId).toBeNull();
     });
 
     it("hands a foreign chat record back to App when navigated to via history", async () => {
-      const textRecord = createTestRecord({ sessionType: "text" });
-
-      await saveConversation(textRecord);
-
-      const onForeignRecord = vi.fn();
-      const { result } = renderVoicePersistence({ onForeignRecord });
-
-      await waitForEffects();
+      const { textRecord, onForeignRecord, result } =
+        await setupForeignTextRecord();
 
       window.location.hash = textRecord.id;
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       expect(onForeignRecord).toHaveBeenCalledWith(
         expect.objectContaining({ id: textRecord.id }),

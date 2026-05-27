@@ -49,3 +49,30 @@ export function resetMcpClientMocks(): void {
   listToolsMock.mockReset();
   closeMock.mockReset();
 }
+
+/**
+ * Queue a `listTools()` response that returns the named bare tools (no input
+ * schema beyond `{ properties: {} }`).
+ * @param names - Tool names to expose
+ */
+export function mockListBareTools(...names: string[]): void {
+  listToolsMock.mockResolvedValueOnce({
+    tools: names.map((name) => ({
+      name,
+      description: "",
+      inputSchema: { properties: {} },
+    })),
+  });
+}
+
+/**
+ * Queue a successful `callTool()` response of text segments that will flatten
+ * into the joined string when the bridge stringifies them.
+ * @param texts - Text segments
+ */
+export function mockCallToolText(...texts: string[]): void {
+  callToolMock.mockResolvedValueOnce({
+    isError: false,
+    content: texts.map((text) => ({ type: "text", text })),
+  });
+}

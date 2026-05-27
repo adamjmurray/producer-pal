@@ -26,14 +26,44 @@ describe("useContextMemory", () => {
     vi.unstubAllGlobals();
   });
 
+  function mockResponses(...responses: Array<object | Response>): void {
+    for (const r of responses) {
+      fetchMock.mockResolvedValueOnce(
+        r instanceof Response ? r : jsonResponse(r),
+      );
+    }
+  }
+
+  async function callAndCapture(
+    fn: () => Promise<boolean>,
+  ): Promise<boolean | undefined> {
+    let ok: boolean | undefined;
+
+    await act(async () => {
+      ok = await fn();
+    });
+
+    return ok;
+  }
+
+  async function renderAndAwaitDisabled(): Promise<
+    ReturnType<typeof renderHook<ReturnType<typeof useContextMemory>, unknown>>
+  > {
+    const rendered = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(rendered.result.current.enabled).toBe(false);
+    });
+
+    return rendered;
+  }
+
   it("loads memory content on mount and exposes enabled/writable", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({
-        memoryEnabled: true,
-        memoryContent: "# hi",
-        memoryWritable: true,
-      }),
-    );
+    mockResponses({
+      memoryEnabled: true,
+      memoryContent: "# hi",
+      memoryWritable: true,
+    });
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -53,12 +83,10 @@ describe("useContextMemory", () => {
   });
 
   it("reports memory disabled via the enabled flag (not status kind)", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({
-        memoryEnabled: false,
-        memoryContent: "still readable",
-      }),
-    );
+    mockResponses({
+      memoryEnabled: false,
+      memoryContent: "still readable",
+    });
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -88,7 +116,7 @@ describe("useContextMemory", () => {
   });
 
   it("reports error when HTTP response is not ok", async () => {
-    fetchMock.mockResolvedValueOnce(
+    mockResponses(
       new Response("server boom", {
         status: 500,
         statusText: "Internal Server Error",
@@ -103,13 +131,10 @@ describe("useContextMemory", () => {
   });
 
   it("save() posts content and updates status", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: true, memoryContent: "old" }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: true, memoryContent: "new" }),
-      );
+    mockResponses(
+      { memoryEnabled: true, memoryContent: "old" },
+      { memoryEnabled: true, memoryContent: "new" },
+    );
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -117,11 +142,7 @@ describe("useContextMemory", () => {
       expect(result.current.status).toMatchObject({ content: "old" });
     });
 
-    let saved: boolean | undefined;
-
-    await act(async () => {
-      saved = await result.current.save("new");
-    });
+    const saved = await callAndCapture(() => result.current.save("new"));
 
     expect(saved).toBe(true);
     expect(result.current.saveStatus).toBe("saved");
@@ -139,16 +160,10 @@ describe("useContextMemory", () => {
   });
 
   it("save() surfaces error from server", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: true, memoryContent: "" }),
-      )
-      .mockResolvedValueOnce(
-        new Response("forbidden", {
-          status: 403,
-          statusText: "Forbidden",
-        }),
-      );
+    mockResponses(
+      { memoryEnabled: true, memoryContent: "" },
+      new Response("forbidden", { status: 403, statusText: "Forbidden" }),
+    );
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -156,11 +171,7 @@ describe("useContextMemory", () => {
       expect(result.current.status.kind).toBe("ready");
     });
 
-    let saved: boolean | undefined;
-
-    await act(async () => {
-      saved = await result.current.save("attempt");
-    });
+    const saved = await callAndCapture(() => result.current.save("attempt"));
 
     expect(saved).toBe(false);
     expect(result.current.saveStatus).toBe("error");
@@ -168,25 +179,13 @@ describe("useContextMemory", () => {
   });
 
   it("setEnabled() POSTs memoryEnabled and reflects the response", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: false, memoryContent: "" }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: true, memoryContent: "" }),
-      );
+    mockResponses(
+      { memoryEnabled: false, memoryContent: "" },
+      { memoryEnabled: true, memoryContent: "" },
+    );
 
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.enabled).toBe(false);
-    });
-
-    let ok: boolean | undefined;
-
-    await act(async () => {
-      ok = await result.current.setEnabled(true);
-    });
+    const { result } = await renderAndAwaitDisabled();
+    const ok = await callAndCapture(() => result.current.setEnabled(true));
 
     expect(ok).toBe(true);
     expect(result.current.enabled).toBe(true);
@@ -200,21 +199,10 @@ describe("useContextMemory", () => {
   });
 
   it("setWritable() POSTs memoryWritable and reflects the response", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({
-          memoryEnabled: true,
-          memoryContent: "",
-          memoryWritable: false,
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          memoryEnabled: true,
-          memoryContent: "",
-          memoryWritable: true,
-        }),
-      );
+    mockResponses(
+      { memoryEnabled: true, memoryContent: "", memoryWritable: false },
+      { memoryEnabled: true, memoryContent: "", memoryWritable: true },
+    );
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -236,25 +224,13 @@ describe("useContextMemory", () => {
   });
 
   it("setEnabled() surfaces error from server without changing state", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: false, memoryContent: "" }),
-      )
-      .mockResolvedValueOnce(
-        new Response("nope", { status: 500, statusText: "Internal" }),
-      );
+    mockResponses(
+      { memoryEnabled: false, memoryContent: "" },
+      new Response("nope", { status: 500, statusText: "Internal" }),
+    );
 
-    const { result } = renderHook(() => useContextMemory());
-
-    await waitFor(() => {
-      expect(result.current.enabled).toBe(false);
-    });
-
-    let ok: boolean | undefined;
-
-    await act(async () => {
-      ok = await result.current.setEnabled(true);
-    });
+    const { result } = await renderAndAwaitDisabled();
+    const ok = await callAndCapture(() => result.current.setEnabled(true));
 
     expect(ok).toBe(false);
     expect(result.current.enabled).toBe(false);
@@ -266,19 +242,13 @@ describe("useContextMemory", () => {
   });
 
   it("setEnabled() transitions saveStatus through saving → saved on success", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: false, memoryContent: "" }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: true, memoryContent: "" }),
-      );
+    mockResponses(
+      { memoryEnabled: false, memoryContent: "" },
+      { memoryEnabled: true, memoryContent: "" },
+    );
 
-    const { result } = renderHook(() => useContextMemory());
+    const { result } = await renderAndAwaitDisabled();
 
-    await waitFor(() => {
-      expect(result.current.enabled).toBe(false);
-    });
     expect(result.current.saveStatus).toBe("idle");
 
     await act(async () => {
@@ -290,17 +260,10 @@ describe("useContextMemory", () => {
   });
 
   it("setWritable() surfaces error via saveStatus", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({
-          memoryEnabled: true,
-          memoryContent: "",
-          memoryWritable: false,
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response("nope", { status: 500, statusText: "Internal" }),
-      );
+    mockResponses(
+      { memoryEnabled: true, memoryContent: "", memoryWritable: false },
+      new Response("nope", { status: 500, statusText: "Internal" }),
+    );
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -308,11 +271,7 @@ describe("useContextMemory", () => {
       expect(result.current.writable).toBe(false);
     });
 
-    let ok: boolean | undefined;
-
-    await act(async () => {
-      ok = await result.current.setWritable(true);
-    });
+    const ok = await callAndCapture(() => result.current.setWritable(true));
 
     expect(ok).toBe(false);
     expect(result.current.writable).toBe(false);
@@ -321,13 +280,10 @@ describe("useContextMemory", () => {
   });
 
   it("clear() saves empty content", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: true, memoryContent: "old" }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: true, memoryContent: "" }),
-      );
+    mockResponses(
+      { memoryEnabled: true, memoryContent: "old" },
+      { memoryEnabled: true, memoryContent: "" },
+    );
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -349,21 +305,10 @@ describe("useContextMemory", () => {
   });
 
   it("re-fetches on window focus so device-side toggles surface", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({
-          memoryEnabled: false,
-          memoryContent: "x",
-          memoryWritable: false,
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          memoryEnabled: true,
-          memoryContent: "x",
-          memoryWritable: true,
-        }),
-      );
+    mockResponses(
+      { memoryEnabled: false, memoryContent: "x", memoryWritable: false },
+      { memoryEnabled: true, memoryContent: "x", memoryWritable: true },
+    );
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -385,13 +330,10 @@ describe("useContextMemory", () => {
   });
 
   it("refresh() re-reads memory", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: true, memoryContent: "v1" }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({ memoryEnabled: true, memoryContent: "v2" }),
-      );
+    mockResponses(
+      { memoryEnabled: true, memoryContent: "v1" },
+      { memoryEnabled: true, memoryContent: "v2" },
+    );
 
     const { result } = renderHook(() => useContextMemory());
 
@@ -407,11 +349,7 @@ describe("useContextMemory", () => {
   });
 
   it("falls back to empty string when memoryContent is missing", async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse({
-        memoryEnabled: true,
-      }),
-    );
+    mockResponses({ memoryEnabled: true });
 
     const { result } = renderHook(() => useContextMemory());
 

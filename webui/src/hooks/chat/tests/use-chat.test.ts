@@ -287,24 +287,18 @@ describe("useChat", () => {
     });
 
     it("reflects toolLimitReached from the client after a stream", async () => {
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: createToolLimitAdapter() }),
-      );
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
+      const result = await renderAndSend({
+        ...defaultProps,
+        adapter: createToolLimitAdapter(),
       });
 
       expect(result.current.toolLimitReached).toBe(true);
     });
 
     it("clears toolLimitReached on clearConversation", async () => {
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: createToolLimitAdapter() }),
-      );
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
+      const result = await renderAndSend({
+        ...defaultProps,
+        adapter: createToolLimitAdapter(),
       });
 
       expect(result.current.toolLimitReached).toBe(true);

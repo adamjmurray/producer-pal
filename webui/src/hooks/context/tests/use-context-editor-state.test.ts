@@ -60,6 +60,22 @@ function makeMemory(overrides: MemoryOverrides = {}): UseContextMemoryReturn {
   };
 }
 
+function renderEditor(memory: UseContextMemoryReturn) {
+  const { result, rerender, unmount } = renderHook(
+    ({ memory: m }) => useContextEditorState(m),
+    { initialProps: { memory } },
+  );
+
+  return {
+    result,
+    unmount,
+    setMemory: (next: UseContextMemoryReturn) => rerender({ memory: next }),
+  };
+}
+
+const makeReady = (content: string): UseContextMemoryReturn =>
+  makeMemory({ status: { kind: "ready", content } });
+
 describe("useContextEditorState", () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -76,13 +92,8 @@ describe("useContextEditorState", () => {
       // never fired (timer cleared on status change in real life). Refs end
       // up as draftRef="draft", lastSavedRef="old".
       const save = vi.fn().mockResolvedValue(true);
-      let memory = makeMemory({
-        status: { kind: "ready", content: "old" },
-        save,
-      });
-      const { result, rerender } = renderHook(
-        ({ memory: m }) => useContextEditorState(m),
-        { initialProps: { memory } },
+      const { result, setMemory } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, save }),
       );
 
       // User types — populates draftRef. Don't advance the debounce timer.
@@ -92,18 +103,14 @@ describe("useContextEditorState", () => {
 
       // Status flips to error. Editor unmounts in the real UI. Refs should
       // be nulled by the new effect.
-      memory = makeMemory({
-        status: { kind: "error", message: "boom" },
-        save,
-      });
-      rerender({ memory });
+      setMemory(
+        makeMemory({ status: { kind: "error", message: "boom" }, save }),
+      );
 
       // Server externally moves to "fresh"; status recovers to ready.
-      memory = makeMemory({
-        status: { kind: "ready", content: "fresh" },
-        save,
-      });
-      rerender({ memory });
+      setMemory(
+        makeMemory({ status: { kind: "ready", content: "fresh" }, save }),
+      );
 
       // beforeunload fires. With the fix, the seed effect re-ran on recovery
       // (refs were null) so draftRef=lastSavedRef="fresh" and flushSave bails
@@ -117,25 +124,16 @@ describe("useContextEditorState", () => {
 
     it("still allows a fresh save after error → ready when the user makes new edits", async () => {
       const save = vi.fn().mockResolvedValue(true);
-      let memory = makeMemory({
-        status: { kind: "ready", content: "old" },
-        save,
-      });
-      const { result, rerender } = renderHook(
-        ({ memory: m }) => useContextEditorState(m),
-        { initialProps: { memory } },
+      const { result, setMemory } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, save }),
       );
 
-      memory = makeMemory({
-        status: { kind: "error", message: "boom" },
-        save,
-      });
-      rerender({ memory });
-      memory = makeMemory({
-        status: { kind: "ready", content: "fresh" },
-        save,
-      });
-      rerender({ memory });
+      setMemory(
+        makeMemory({ status: { kind: "error", message: "boom" }, save }),
+      );
+      setMemory(
+        makeMemory({ status: { kind: "ready", content: "fresh" }, save }),
+      );
 
       await act(() => {
         result.current.handleChange("post-recovery edit");
@@ -151,48 +149,33 @@ describe("useContextEditorState", () => {
 
   describe("external-update detection", () => {
     it("does NOT surface the banner when the user has an in-progress draft", async () => {
-      let memory = makeMemory({ status: { kind: "ready", content: "old" } });
-      const { result, rerender } = renderHook(
-        ({ memory: m }) => useContextEditorState(m),
-        { initialProps: { memory } },
-      );
+      const { result, setMemory } = renderEditor(makeReady("old"));
 
       await act(() => {
         result.current.handleChange("typing");
       });
 
-      memory = makeMemory({ status: { kind: "ready", content: "from-ai" } });
-      rerender({ memory });
+      setMemory(makeReady("from-ai"));
 
       expect(result.current.externalUpdate).toBe(false);
     });
 
     it("surfaces the banner when server content changes while the draft is clean", async () => {
-      let memory = makeMemory({ status: { kind: "ready", content: "old" } });
-      const { result, rerender } = renderHook(
-        ({ memory: m }) => useContextEditorState(m),
-        { initialProps: { memory } },
-      );
+      const { result, setMemory } = renderEditor(makeReady("old"));
 
       // Mount-time seed: draftRef=lastSavedRef="old". No typing.
       expect(result.current.externalUpdate).toBe(false);
 
       // Server-side write lands via the focus refresh → status updates.
-      memory = makeMemory({ status: { kind: "ready", content: "from-ai" } });
-      rerender({ memory });
+      setMemory(makeReady("from-ai"));
 
       expect(result.current.externalUpdate).toBe(true);
     });
 
     it("hides the banner on the user's first keystroke (last-write-wins)", async () => {
-      let memory = makeMemory({ status: { kind: "ready", content: "old" } });
-      const { result, rerender } = renderHook(
-        ({ memory: m }) => useContextEditorState(m),
-        { initialProps: { memory } },
-      );
+      const { result, setMemory } = renderEditor(makeReady("old"));
 
-      memory = makeMemory({ status: { kind: "ready", content: "from-ai" } });
-      rerender({ memory });
+      setMemory(makeReady("from-ai"));
       expect(result.current.externalUpdate).toBe(true);
 
       await act(() => {
@@ -203,15 +186,10 @@ describe("useContextEditorState", () => {
     });
 
     it("handleReload adopts the server's content as the new baseline and remounts the editor", async () => {
-      let memory = makeMemory({ status: { kind: "ready", content: "old" } });
-      const { result, rerender } = renderHook(
-        ({ memory: m }) => useContextEditorState(m),
-        { initialProps: { memory } },
-      );
+      const { result, setMemory } = renderEditor(makeReady("old"));
       const startingKey = result.current.editorKey;
 
-      memory = makeMemory({ status: { kind: "ready", content: "from-ai" } });
-      rerender({ memory });
+      setMemory(makeReady("from-ai"));
       expect(result.current.externalUpdate).toBe(true);
 
       await act(() => {
@@ -225,20 +203,14 @@ describe("useContextEditorState", () => {
     });
 
     it("clears the banner when the server content matches the editor baseline again", async () => {
-      let memory = makeMemory({ status: { kind: "ready", content: "old" } });
-      const { result, rerender } = renderHook(
-        ({ memory: m }) => useContextEditorState(m),
-        { initialProps: { memory } },
-      );
+      const { result, setMemory } = renderEditor(makeReady("old"));
 
-      memory = makeMemory({ status: { kind: "ready", content: "from-ai" } });
-      rerender({ memory });
+      setMemory(makeReady("from-ai"));
       expect(result.current.externalUpdate).toBe(true);
 
       // External writer reverts to the baseline (or the editor was reseeded
       // out-of-band): the banner should drop.
-      memory = makeMemory({ status: { kind: "ready", content: "old" } });
-      rerender({ memory });
+      setMemory(makeReady("old"));
       expect(result.current.externalUpdate).toBe(false);
     });
   });
@@ -257,12 +229,13 @@ describe("useContextEditorState", () => {
           }),
       );
       const clear = vi.fn().mockResolvedValue(true);
-      const memory = makeMemory({
-        status: { kind: "ready", content: "old" },
-        save,
-        clear,
-      });
-      const { result } = renderHook(() => useContextEditorState(memory));
+      const { result } = renderEditor(
+        makeMemory({
+          status: { kind: "ready", content: "old" },
+          save,
+          clear,
+        }),
+      );
 
       vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
 
@@ -299,11 +272,9 @@ describe("useContextEditorState", () => {
 
     it("handleClear works when no save is in flight", async () => {
       const clear = vi.fn().mockResolvedValue(true);
-      const memory = makeMemory({
-        status: { kind: "ready", content: "old" },
-        clear,
-      });
-      const { result } = renderHook(() => useContextEditorState(memory));
+      const { result } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, clear }),
+      );
 
       vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
 
@@ -316,11 +287,9 @@ describe("useContextEditorState", () => {
 
     it("handleClear is a no-op when the user cancels confirm", async () => {
       const clear = vi.fn().mockResolvedValue(true);
-      const memory = makeMemory({
-        status: { kind: "ready", content: "old" },
-        clear,
-      });
-      const { result } = renderHook(() => useContextEditorState(memory));
+      const { result } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, clear }),
+      );
 
       vi.stubGlobal("confirm", vi.fn().mockReturnValue(false));
 
@@ -337,12 +306,8 @@ describe("useContextEditorState", () => {
       // Regression: cleanup only cleared timers without flushing, so typing
       // then Esc inside the 800ms debounce window dropped the edit.
       const save = vi.fn().mockResolvedValue(true);
-      const memory = makeMemory({
-        status: { kind: "ready", content: "old" },
-        save,
-      });
-      const { result, unmount } = renderHook(() =>
-        useContextEditorState(memory),
+      const { result, unmount } = renderEditor(
+        makeMemory({ status: { kind: "ready", content: "old" }, save }),
       );
 
       await act(() => {
