@@ -116,7 +116,7 @@ async function fetchToolsFromServer(): Promise<FetchToolsResult> {
   const mcpUrl = getMcpUrl();
   const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
   const client = new Client({
-    name: "producer-pal-chat-ui-test",
+    name: "producer-pal-chat-ui",
     version: "1.0.0",
   });
 
