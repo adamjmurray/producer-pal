@@ -39,7 +39,7 @@ export interface ASTElement {
   velocity?: number;
   velocityMin?: number;
   velocityMax?: number;
-  duration?: number | string;
+  duration?: number;
   probability?: number;
   pitch?: number;
   bar?: number;

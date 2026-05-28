@@ -120,7 +120,7 @@ describe("readClip", () => {
       end: "2|2", // end_marker (5 beats = 2|2)
       length: "1:0",
       triggered: true,
-      notes: "t/4 C1 1|1,3 v90 D1 1|2,4",
+      notes: "t/16 C1 1|1,3 v90 D1 1|2,4",
     });
   });
 

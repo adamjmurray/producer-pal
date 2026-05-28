@@ -4,18 +4,16 @@
 
 import { applyV0Deletions } from "#src/notation/barbeat/barbeat-apply-v0-deletions.ts";
 import {
-  DEFAULT_DURATION,
   DEFAULT_PROBABILITY,
   DEFAULT_TIME,
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
+  defaultDurationMusicalBeats,
+  wholeNoteFractionToMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import { type ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
-import {
-  barBeatDurationToMusicalBeats,
-  parseBeatsPerBar,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { parseBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -87,24 +85,22 @@ function processVelocityRangeUpdate(
 }
 
 /**
- * Process a duration update
+ * Process a duration update.
+ * The grammar emits the duration as a fraction of a whole note (e.g., 1/4 for
+ * a quarter); convert to musical beats based on the time signature denominator.
  * @param element - AST element with duration value
  * @param state - Interpreter state
- * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
  */
 function processDurationUpdate(
   element: ASTElement,
   state: InterpreterState,
-  timeSigNumerator: number | undefined,
+  timeSigDenominator: number | undefined,
 ): void {
-  if (typeof element.duration === "string") {
-    state.currentDuration = barBeatDurationToMusicalBeats(
-      element.duration,
-      timeSigNumerator,
-    );
-  } else {
-    state.currentDuration = element.duration as number;
-  }
+  state.currentDuration = wholeNoteFractionToMusicalBeats(
+    element.duration as number,
+    timeSigDenominator,
+  );
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
     pitchState.duration = state.currentDuration;
@@ -197,6 +193,7 @@ function processTimePosition(
     element as TimeElement,
     state,
     beatsPerBar,
+    timeSigDenominator,
   );
 
   handlePitchEmission(
@@ -219,7 +216,6 @@ function processTimePosition(
  * @param element - AST element to process
  * @param state - Interpreter state
  * @param beatsPerBar - Beats per bar
- * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param notesByBar - Notes by bar cache
  * @param events - Output events array
@@ -228,7 +224,6 @@ function processElementInLoop(
   element: ASTElement,
   state: InterpreterState,
   beatsPerBar: number,
-  timeSigNumerator: number | undefined,
   timeSigDenominator: number | undefined,
   notesByBar: Map<number, BarCopyNote[]>,
   events: NoteEvent[],
@@ -286,7 +281,7 @@ function processElementInLoop(
   ) {
     processVelocityRangeUpdate(element, state);
   } else if (element.duration !== undefined) {
-    processDurationUpdate(element, state, timeSigNumerator);
+    processDurationUpdate(element, state, timeSigDenominator);
   } else if (element.probability !== undefined) {
     processProbabilityUpdate(element, state);
   }
@@ -306,7 +301,7 @@ export function interpretNotation(
     return [];
   }
 
-  const { timeSigNumerator, timeSigDenominator } = options;
+  const { timeSigDenominator } = options;
   const beatsPerBar = parseBeatsPerBar(options);
 
   try {
@@ -319,7 +314,7 @@ export function interpretNotation(
     const state: InterpreterState = {
       currentTime: DEFAULT_TIME,
       currentVelocity: DEFAULT_VELOCITY,
-      currentDuration: DEFAULT_DURATION,
+      currentDuration: defaultDurationMusicalBeats(timeSigDenominator),
       currentProbability: DEFAULT_PROBABILITY,
       currentVelocityMin: null,
       currentVelocityMax: null,
@@ -335,7 +330,6 @@ export function interpretNotation(
         element,
         state,
         beatsPerBar,
-        timeSigNumerator,
         timeSigDenominator,
         notesByBar,
         events,

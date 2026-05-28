@@ -78,13 +78,14 @@ describe("formatNotation() core", () => {
   });
 
   it("formats notes with duration changes", () => {
+    // 0.5 quarter = 1/8 whole → t/8; 2 quarter = 1/2 whole → t/2
     const notes = [
       createNote({ duration: 0.5 }),
       createNote({ pitch: 62, duration: 2.0 }),
       createNote({ pitch: 64, duration: 2.0 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("t/2 C3 t2 D3 E3 1|1");
+    expect(formatNotation(notes)).toBe("t/8 C3 t/2 D3 E3 1|1");
   });
 
   it("formats sub-beat timing", () => {
@@ -258,7 +259,7 @@ describe("formatNotation() core", () => {
 
     expect(parsed).toStrictEqual(
       interpretNotation(
-        "t0.25 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1 D1 v100 p0.9 Gb1 1|2",
+        "t/16 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1 D1 v100 p0.9 Gb1 1|2",
       ),
     );
   });
@@ -286,11 +287,12 @@ describe("formatNotation() per-note state in chords", () => {
   });
 
   it("emits per-note state for mixed properties", () => {
+    // 2 quarter = 1/2 whole → t/2; 1 quarter → t/4
     const notes = [
       createNote({ velocity: 80, duration: 2 }),
       createNote({ pitch: 64, velocity: 80, duration: 1 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v80 t2 C3 t1 E3 1|1");
+    expect(formatNotation(notes)).toBe("v80 t/2 C3 t/4 E3 1|1");
   });
 });

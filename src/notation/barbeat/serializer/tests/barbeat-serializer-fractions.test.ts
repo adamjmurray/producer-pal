@@ -5,9 +5,9 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  formatAbsoluteDuration,
   formatBeatPosition,
   formatDecimal,
-  formatUnsignedValue,
 } from "../helpers/barbeat-serializer-fractions.ts";
 
 describe("formatBeatPosition", () => {
@@ -81,47 +81,46 @@ describe("formatBeatPosition", () => {
   });
 });
 
-describe("formatUnsignedValue", () => {
-  it("formats integers as-is", () => {
-    expect(formatUnsignedValue(0)).toBe("0");
-    expect(formatUnsignedValue(1)).toBe("1");
-    expect(formatUnsignedValue(4)).toBe("4");
+describe("formatAbsoluteDuration", () => {
+  it("formats common note values with /den shorthand", () => {
+    expect(formatAbsoluteDuration(1)).toBe("/1"); // whole
+    expect(formatAbsoluteDuration(1 / 2)).toBe("/2"); // half
+    expect(formatAbsoluteDuration(1 / 4)).toBe("/4"); // quarter
+    expect(formatAbsoluteDuration(1 / 8)).toBe("/8"); // eighth
+    expect(formatAbsoluteDuration(1 / 16)).toBe("/16"); // sixteenth
+    expect(formatAbsoluteDuration(1 / 32)).toBe("/32"); // thirty-second
   });
 
-  it("formats common sub-beat durations with /den shorthand", () => {
-    expect(formatUnsignedValue(0.25)).toBe("/4");
-    expect(formatUnsignedValue(0.5)).toBe("/2");
-    expect(formatUnsignedValue(1 / 3)).toBe("/3");
-    expect(formatUnsignedValue(1 / 6)).toBe("/6");
-    expect(formatUnsignedValue(0.125)).toBe("/8");
-    expect(formatUnsignedValue(1 / 16)).toBe("/16");
-    expect(formatUnsignedValue(1 / 12)).toBe("/12");
+  it("formats triplet/tuplet denominators", () => {
+    expect(formatAbsoluteDuration(1 / 3)).toBe("/3"); // half-note triplet
+    expect(formatAbsoluteDuration(1 / 6)).toBe("/6"); // quarter-note triplet
+    expect(formatAbsoluteDuration(1 / 12)).toBe("/12"); // eighth-note triplet
+    expect(formatAbsoluteDuration(1 / 24)).toBe("/24"); // sixteenth-note triplet
+    expect(formatAbsoluteDuration(1 / 20)).toBe("/20"); // sixteenth quintuplet
   });
 
-  it("formats non-unit fractions < 1", () => {
-    expect(formatUnsignedValue(0.75)).toBe("3/4");
-    expect(formatUnsignedValue(2 / 3)).toBe("2/3");
-    expect(formatUnsignedValue(3 / 8)).toBe("3/8");
-    expect(formatUnsignedValue(5 / 6)).toBe("5/6");
+  it("formats non-unit numerators", () => {
+    expect(formatAbsoluteDuration(3 / 8)).toBe("3/8"); // dotted quarter
+    expect(formatAbsoluteDuration(3 / 4)).toBe("3/4"); // dotted half / 3 quarters
+    expect(formatAbsoluteDuration(3 / 16)).toBe("3/16"); // dotted eighth
+    expect(formatAbsoluteDuration(2 / 3)).toBe("2/3"); // 2 half-note triplets
+    expect(formatAbsoluteDuration(5 / 4)).toBe("5/4"); // 5 quarter notes (5/4 bar)
+    expect(formatAbsoluteDuration(5 / 8)).toBe("5/8"); // 5 eighth notes
   });
 
-  it("uses fraction for mixed number durations when lossy or equal", () => {
-    // 1+1/3 — 1/3 is lossy → fraction required
-    expect(formatUnsignedValue(1 + 1 / 3)).toBe("1+1/3");
-    // 2+2/3 — 2/3 is lossy → fraction required
-    expect(formatUnsignedValue(2 + 2 / 3)).toBe("2+2/3");
+  it("formats values >= 1 (multi-whole-note durations)", () => {
+    expect(formatAbsoluteDuration(2)).toBe("2/1"); // 2 whole notes
+    expect(formatAbsoluteDuration(4)).toBe("4/1"); // 4 whole notes
   });
 
-  it("prefers decimal when shorter and lossless for >= 1 values", () => {
-    // 1.5 (3 chars) < 1+1/2 (5 chars) and lossless → decimal
-    expect(formatUnsignedValue(1.5)).toBe("1.5");
-    // 2.25 (4 chars) < 2+1/4 (5 chars) and lossless → decimal
-    expect(formatUnsignedValue(2.25)).toBe("2.25");
+  it("prefers smallest denominator", () => {
+    // 1/2 reduces from 2/4, 4/8, etc. — should always pick the smallest
+    expect(formatAbsoluteDuration(0.5)).toBe("/2");
+    expect(formatAbsoluteDuration(0.25)).toBe("/4");
   });
 
-  it("falls back to decimal for non-fraction values", () => {
-    expect(formatUnsignedValue(0.123)).toBe("0.123");
-    expect(formatUnsignedValue(1.789)).toBe("1.789");
+  it("formats zero", () => {
+    expect(formatAbsoluteDuration(0)).toBe("0/1");
   });
 });
 

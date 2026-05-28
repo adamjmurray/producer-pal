@@ -126,8 +126,9 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       });
 
       it("preserves note properties in tiled copy", () => {
+        // t/8 = eighth = 0.5; t/16 = sixteenth = 0.25
         const result = interpretNotation(
-          "v80 t0.5 p0.8 C3 1|1 v90 t0.25 p0.9 D3 2|1 @3-6=1-2",
+          "v80 t/8 p0.8 C3 1|1 v90 t/16 p0.9 D3 2|1 @3-6=1-2",
         );
 
         // Bar 3 should have C3 with original properties
@@ -152,6 +153,7 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       });
 
       it("handles tiling with different time signatures", () => {
+        // Default duration is a quarter note regardless of meter — 1 Ableton beat in 6/8
         const result = interpretNotation("C3 1|1 D3 2|1 @3-4=1-2", {
           timeSigNumerator: 6,
           timeSigDenominator: 8,
@@ -161,11 +163,11 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
         expect(result).toHaveLength(4);
         // Bar 3: C3 at 6.0 beats
         expect(result[2]).toStrictEqual(
-          createNote({ start_time: 6.0, duration: 0.5 }),
+          createNote({ start_time: 6.0, duration: 1 }),
         );
         // Bar 4: D3 at 9.0 beats
         expect(result[3]).toStrictEqual(
-          createNote({ pitch: 62, start_time: 9.0, duration: 0.5 }),
+          createNote({ pitch: 62, start_time: 9.0, duration: 1 }),
         );
       });
     });

@@ -54,14 +54,19 @@ beatList "beat list"
   }
 
 beatSpec "beat specification"
-  = start:oneOrMoreFloat "x" times:oneOrMoreInt step:("@" unsignedFloat)? {
-      const stepValue = step ? step[1] : null;
-      if (stepValue === 0) {
+  = start:oneOrMoreFloat "x" times:oneOrMoreInt step:stepInterval? {
+      if (step === 0) {
         throw new Error("Repeat step size must be greater than 0");
       }
-      return { start, times, step: stepValue };
+      return { start, times, step: step ?? null };
     }
   / oneOrMoreFloat
+
+stepInterval
+  = "@" frac:unsignedFraction { return frac; }
+  / "@" bad:badAbsoluteValue {
+      throw new Error(`step intervals need a denominator: @/4 = quarter, @/8 = eighth, @/12 = eighth triplet. Got @${bad}`);
+    }
 
 probability "probability value"
   = "p" val:unsignedDecimal {
@@ -89,12 +94,18 @@ velocity "velocity value"
   }
 
 duration "duration value"
-  = "t" bars:unsignedInt ":" beats:unsignedFloat {
-    return { duration: `${bars}:${beats}` };  // String for bar:beat format
+  = "t" frac:unsignedFraction {
+    return { duration: frac };  // Fraction of a whole note (e.g., 1/4 = quarter)
   }
-  / "t" val:unsignedFloat {
-    return { duration: val };  // Number for beat-only (existing)
+  / "t" bad:badAbsoluteValue {
+    throw new Error(`durations need a denominator: t/4 = quarter, t/8 = eighth, t/12 = eighth triplet. Got t${bad}`);
   }
+
+// Matches values that LOOK like a duration/step but lack the required denominator.
+// Used only to produce a targeted error message — never returns a value.
+badAbsoluteValue
+  = unsignedMixedNumber { return text(); }
+  / unsignedDecimal { return text(); }
 
 pitch "note pitch"
   = pitchClass:pitchClass octave:signedInt {

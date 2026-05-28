@@ -50,7 +50,7 @@ describe("createClip - advanced features", () => {
 
     await createClip({
       slot: "0/0",
-      notes: "t2 C3 1|1 t3 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
+      notes: "t/2 C3 1|1 t3/4 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
     });
 
     expectClipCreated(clipSlot, 4);

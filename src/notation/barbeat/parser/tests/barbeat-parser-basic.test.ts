@@ -21,10 +21,10 @@ describe("BarBeatScript Parser - basic tests", () => {
     });
 
     it("parses mixed elements (state + notes)", () => {
-      expect(parser.parse("1|1 v100 t0.5 p0.8 C3 D3")).toStrictEqual([
+      expect(parser.parse("1|1 v100 t/2 p0.8 C3 D3")).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 100 },
-        { duration: 0.5 },
+        { duration: 1 / 2 },
         { probability: 0.8 },
         { pitch: 60 },
         { pitch: 62 },
@@ -32,10 +32,10 @@ describe("BarBeatScript Parser - basic tests", () => {
     });
 
     it("parses state-only input", () => {
-      expect(parser.parse("2|3 v80 t0.25 p0.9")).toStrictEqual([
+      expect(parser.parse("2|3 v80 t/16 p0.9")).toStrictEqual([
         { bar: 2, beat: 3 },
         { velocity: 80 },
-        { duration: 0.25 },
+        { duration: 1 / 16 },
         { probability: 0.9 },
       ]);
     });

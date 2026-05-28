@@ -6,14 +6,15 @@
 import { type NoteEvent } from "#src/notation/types.ts";
 import { midiToNoteName } from "#src/shared/pitch.ts";
 import {
-  DEFAULT_DURATION,
   DEFAULT_PROBABILITY,
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
+  defaultDurationMusicalBeats,
+  musicalBeatsToWholeNoteFraction,
 } from "../../barbeat-config.ts";
 import {
+  formatAbsoluteDuration,
   formatDecimal,
-  formatUnsignedValue,
 } from "./barbeat-serializer-fractions.ts";
 import { type TimeGroup } from "./barbeat-serializer-grouping.ts";
 
@@ -26,14 +27,18 @@ export interface SerializerState {
 }
 
 /**
- * Create initial serializer state with default values
+ * Create initial serializer state with default values.
+ * The default duration depends on time signature (quarter note in any meter).
+ * @param timeSigDenominator - Time signature denominator
  * @returns Fresh serializer state
  */
-export function createInitialState(): SerializerState {
+export function createInitialState(
+  timeSigDenominator: number | undefined,
+): SerializerState {
   return {
     velocity: DEFAULT_VELOCITY,
     velocityDeviation: DEFAULT_VELOCITY_DEVIATION,
-    duration: DEFAULT_DURATION,
+    duration: defaultDurationMusicalBeats(timeSigDenominator),
     probability: DEFAULT_PROBABILITY,
   };
 }
@@ -168,9 +173,10 @@ function emitVelocityChange(
 
 /**
  * Emit duration change if different from current state.
- * Converts Ableton beats to notation beats when time signature is specified.
+ * Converts Ableton beats (quarter notes) into notation's musical beats for
+ * change detection, and into a whole-note fraction for emission (e.g., /4).
  * @param note - Note to check
- * @param state - Current state (mutated, tracks notation beats)
+ * @param state - Current state (mutated, tracks notation in musical beats)
  * @param elements - Output array
  * @param timeSigDenominator - Time signature denominator for conversion
  */
@@ -180,15 +186,21 @@ function emitDurationChange(
   elements: string[],
   timeSigDenominator: number | undefined,
 ): void {
-  // Convert from Ableton beats to notation beats
-  const notationDuration =
+  // Convert Ableton beats (= quarter notes) to musical beats for state tracking
+  const musicalBeats =
     timeSigDenominator != null
       ? note.duration * (timeSigDenominator / 4)
       : note.duration;
 
-  if (Math.abs(notationDuration - state.duration) > 0.001) {
-    elements.push(`t${formatUnsignedValue(notationDuration)}`);
-    state.duration = notationDuration;
+  if (Math.abs(musicalBeats - state.duration) > 0.001) {
+    // Emit as an absolute note value (fraction of a whole note)
+    const wholeNoteFraction = musicalBeatsToWholeNoteFraction(
+      musicalBeats,
+      timeSigDenominator,
+    );
+
+    elements.push(`t${formatAbsoluteDuration(wholeNoteFraction)}`);
+    state.duration = musicalBeats;
   }
 }
 

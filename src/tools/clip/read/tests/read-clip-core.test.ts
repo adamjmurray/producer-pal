@@ -40,7 +40,9 @@ describe("readClip", () => {
       expectedStart: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
       expectedEnd: "2|5", // end_marker (5 beats = 2|5 in 6/8)
       expectedLength: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
-      expectedNotes: "t2 C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8 (t2 = duration in 8th-note beats)
+      // Notes default to 1 Ableton beat = a quarter note. The new notation
+      // default is also a quarter (`t/4`), so no `t` prefix is emitted.
+      expectedNotes: "C3 1|1 D3 1|3 E3 1|5",
     },
   ])(
     "returns clip information when a valid MIDI clip exists ($timeSig time)",
@@ -150,9 +152,10 @@ describe("readClip", () => {
 
     expectGetNotesExtendedCall(clip, 3);
 
-    // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
-    // t2 emitted because 1 Ableton beat = 2 eighth-note beats (notation default is 1)
-    expect(result.notes).toBe("t2 C3 1|1 D3 2|1 E3 2|2");
+    // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1.
+    // Notes have default duration of 1 Ableton beat (= a quarter note), which
+    // matches the new notation default (`t/4`), so no `t` prefix is emitted.
+    expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("6/8");
     expect(result).toHaveLength("1:0"); // 3 Ableton beats = 1 bar in 6/8
   });

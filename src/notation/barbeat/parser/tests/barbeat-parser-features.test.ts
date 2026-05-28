@@ -129,8 +129,8 @@ describe("BarBeatScript Parser - parser features", () => {
       expect(() => parser.parse("t")).toThrow();
     });
 
-    it("handles zero values correctly", () => {
-      expect(parser.parse("1|1 v0 p0.0 t0.0 C0")).toStrictEqual([
+    it("handles zero values correctly (duration via 0/1 fraction)", () => {
+      expect(parser.parse("1|1 v0 p0.0 t0/1 C0")).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 0 },
         { probability: 0.0 },
@@ -140,11 +140,11 @@ describe("BarBeatScript Parser - parser features", () => {
     });
 
     it("handles maximum values correctly", () => {
-      expect(parser.parse("999|999.999 v127 p1.0 t999.999 G8")).toStrictEqual([
+      expect(parser.parse("999|999.999 v127 p1.0 t999/1 G8")).toStrictEqual([
         { bar: 999, beat: 999.999 },
         { velocity: 127 },
         { probability: 1.0 },
-        { duration: 999.999 },
+        { duration: 999 },
         { pitch: 127 },
       ]);
     });
@@ -153,7 +153,7 @@ describe("BarBeatScript Parser - parser features", () => {
   describe("integration", () => {
     it("handles real-world drum pattern example with probability and velocity range", () => {
       const input = `
-        1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
+        1|1 v100 t/16 p1.0 C1 v80-100 p0.8 Gb1
         1|1.5 p0.6 Gb1
         2|2 v90 p1.0 D1
         v100 p0.9 Gb1
@@ -162,7 +162,7 @@ describe("BarBeatScript Parser - parser features", () => {
       expect(parser.parse(input)).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 100 },
-        { duration: 0.25 },
+        { duration: 1 / 16 },
         { probability: 1.0 },
         { pitch: 36 },
         { velocityMin: 80, velocityMax: 100 },
