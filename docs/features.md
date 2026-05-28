@@ -306,7 +306,8 @@ positions in Ableton Live clips and the arrangement timeline.
 Apply complex changes to clips using math expressions via
 [Create Clip](#ppal-create-clip), [Update Clip](#ppal-update-clip), and
 [Duplicate](#ppal-duplicate). When updating or duplicating multiple clips at
-once, each clip or copy can get its own transform:
+once, one transform string broadcasts across every clip/copy — use `clip.index`
+arithmetic or `clipseq()` inside the string for per-clip variation:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift

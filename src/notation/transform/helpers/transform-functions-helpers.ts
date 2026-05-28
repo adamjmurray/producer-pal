@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import * as console from "#src/shared/v8-max-console.ts";
 import { type ExpressionNode } from "../parser/transform-parser.ts";
 import { type EvaluateExpressionFn } from "../transform-functions.ts";
 import * as waveforms from "../transform-waveforms.ts";
@@ -163,45 +164,71 @@ export function evaluateChoose(
 }
 
 /**
- * Evaluate seq function (cycle through values based on note/clip index)
- * @param args - Function arguments (at least 1)
- * @param position - Note position in beats
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @param timeRange - Active time range
- * @param noteProperties - Note properties for variable access (index, clip:index)
- * @param evaluateExpression - Expression evaluator function
- * @returns Value at current sequence position
+ * Build an indexed-sequence evaluator (shared body for seq() and clipseq()).
+ * Each picks values from args by a single axis key with no fallback — when the
+ * axis is missing, warns and returns the first value (per AJM-454).
+ * @param fnName - Function name for errors/warnings
+ * @param axisKey - NoteProperties key supplying the cycle index
+ * @param axisDisplay - User-facing variable name for the axis (e.g. "note.index")
+ * @param alternativeHint - Sibling function name to point users at when the axis is missing
+ * @returns Evaluator with the standard transform-function signature
  */
-export function evaluateSeq(
-  args: ExpressionNode[],
-  position: number,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-  timeRange: TimeRange,
-  noteProperties: NoteProperties,
-  evaluateExpression: EvaluateExpressionFn,
-): number {
-  if (args.length === 0) {
-    throw new Error("Function seq() requires at least 1 argument");
-  }
-
-  // MIDI transforms set noteProperties.index (per-note, resets per clip).
-  // Audio transforms set noteProperties["clip:index"] (per-clip, sequential).
-  // The ?? chain auto-selects the right one; 0 fallback for edge cases.
-  const index = noteProperties.index ?? noteProperties["clip:index"] ?? 0;
-  const selectedIndex = index % args.length;
-
-  // Only evaluate the selected argument (lazy evaluation)
-  return evaluateExpression(
-    args[selectedIndex] as ExpressionNode,
+function buildIndexedSeq(
+  fnName: string,
+  axisKey: string,
+  axisDisplay: string,
+  alternativeHint: string,
+): typeof evaluateRand {
+  return function evaluate(
+    args,
     position,
     timeSigNumerator,
     timeSigDenominator,
     timeRange,
     noteProperties,
-  );
+    evaluateExpression,
+  ) {
+    if (args.length === 0) {
+      throw new Error(`Function ${fnName}() requires at least 1 argument`);
+    }
+
+    const rawIndex = noteProperties[axisKey];
+    const missing = rawIndex == null;
+
+    if (missing) {
+      console.warn(
+        `${fnName}() needs ${axisDisplay} — did you mean ${alternativeHint}? Returning first value.`,
+      );
+    }
+
+    const pick = missing ? 0 : rawIndex % args.length;
+
+    return evaluateExpression(
+      args[pick] as ExpressionNode,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
+    );
+  };
 }
+
+/** seq(a, b, ...) — cycle by note.index (per-note, MIDI). */
+export const evaluateSeq = buildIndexedSeq(
+  "seq",
+  "index",
+  "note.index",
+  "clipseq()",
+);
+
+/** clipseq(a, b, ...) — cycle by clip.index (per-clip across the batch). */
+export const evaluateClipSeq = buildIndexedSeq(
+  "clipseq",
+  "clip:index",
+  "clip.index",
+  "seq()",
+);
 
 /**
  * Evaluate curve function

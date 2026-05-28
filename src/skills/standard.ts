@@ -7,16 +7,16 @@ const codeTransformsSkills = `
 
 ### Code Transforms
 
-For complex logic beyond transforms, use the \`code\` parameter with JavaScript. Each \`code\` value is the function body only. It runs as:
+For complex logic beyond transforms, use the \`code\` parameter with JavaScript. \`code\` is a single string (function body only), broadcast across every clip/copy. It runs as:
 \`(function(notes, context) { <code> })(notes, context)\`
 
-Shape matches \`transforms\`: create-clip takes a string; update-clip/duplicate take an array (one entry per clip/copy, cycles).
+For per-clip variation, branch on \`context.clip.index\` (0-based) and \`context.clip.count\` (batch size). For structurally-distinct edits per clip, make separate tool calls.
 
-Example \`code\` value (one array entry):
+Example \`code\`:
 \`\`\`javascript
 return notes.filter(n => n.pitch >= 60).map(n => ({
   ...n,
-  velocity: Math.min(127, n.velocity + 20)
+  velocity: Math.min(127, n.velocity + 20 + context.clip.index * 5)
 }));
 \`\`\`
 
@@ -30,7 +30,7 @@ return notes.filter(n => n.pitch >= 60).map(n => ({
 
 **Context properties:**
 - \`track\`: { index, name, type, color }
-- \`clip\`: { id, name, length, timeSignature, looping }
+- \`clip\`: { id, name, length, timeSignature, looping, index, count }
 - \`location\`: { view, slot?, arrangementStart? }
 - \`liveSet\`: { tempo, scale?, timeSignature }
 - \`beatsPerBar\`: number
@@ -120,9 +120,9 @@ v0 C1 13|3 v100 D1 13|3 // replace kick with snare in bar 13
 
 Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 
-**Shape:** create-clip takes a single string. update-clip/duplicate take an array — one entry per clip/copy (cycles if fewer entries than clips), each entry holding that clip's expressions (newline-separated for multiple). One transform for all clips = a 1-element array.
+**Shape:** a single string, broadcast across every clip/copy. Multiple expressions: newline-separated. Per-clip variation: \`clip.index\` arithmetic or \`clipseq()\` inside the string (below). Structurally-distinct edits per clip → separate tool calls.
 
-**Syntax:** \`[selector:] parameter operator expression\` (one per line within an entry)
+**Syntax:** \`[selector:] parameter operator expression\` (one per line)
 - **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
 - **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
 - **Time filter:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
@@ -137,7 +137,8 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 - \`cos(period)\`, \`square(period)\` - start at peak (1.0); \`sin(period)\`, \`tri(period)\`, \`saw(period)\` - start at zero, rise to peak
   - All accept optional phase offset: \`cos(1t, 0.25)\`. square adds pulse width (3rd arg): \`square(1t, 0, 0.75)\` (phase=0, 75% duty cycle)
 - \`rand([min], [max])\` - random value (no args: -1 to 1, one arg: 0 to max, two: min to max)
-- \`seq(a, b, ...)\` - cycle through values by note.index (MIDI) or clip.index (audio)
+- \`seq(a, b, ...)\` - cycle by \`note.index\` (per note within a clip; MIDI only — audio has no notes, use \`clipseq()\` there)
+- \`clipseq(a, b, ...)\` - cycle by \`clip.index\` across the batch of clips (enumerated per-clip variation, e.g. \`pitch += clipseq(0, 5, 7)\`)
 - \`choose(a, b, ...)\` - random selection from arguments
 - \`ramp(start, end)\` - linear interpolation; reaches end value at time range end (or clip end)
 - \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
@@ -157,8 +158,9 @@ velocity += 20 * cos(4:0t, sync) // continuous across clips
 1|1-4|4.75: velocity = ramp(40, 127) // crescendo over 4 bars (16th grid)
 C1-C2: velocity += 30            // accent bass notes
 1|1-2|4: velocity = 100          // forte in bars 1-2
-velocity = seq(100, 60, 80, 60)  // cycle accents per note
+velocity = seq(100, 60, 80, 60)  // cycle accents per note (MIDI)
 Gb1: pitch = seq(Gb1, Gb1, Gb1, Gb1, Ab1) // every 5th closed hat → open hat
+pitch += clipseq(0, 5, 7)        // copy 0 unchanged, copy 1 +5, copy 2 +7 (per-clip)
 gain = audio.gain - 6            // reduce audio clip by 6 dB
 pitch = snap(note.pitch + 7) // transpose up fifth, snap to scale
 pitch = step(note.pitch, sin(4t) * 7) // oscillate ±7 scale steps smoothly
@@ -174,7 +176,7 @@ swing() auto-quantizes to the swing grid, so changing swing amount is always saf
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in. Don't re-apply earlier transforms.
 MIDI params ignored for audio clips, vice versa.
-On duplicate, transforms/code apply per-copy (not the source). With multiple copies, \`clip.index\`/\`clip.count\` span the copies — use \`seq()\` for variations (e.g. transpose each copy differently). The transforms/code array cycles per copy, so you can also give each copy distinct expressions directly: \`["pitch += 0", "pitch += 12"]\`.
+On update-clip and duplicate, transforms/code is one string broadcast across every clip/copy. \`clip.index\`/\`clip.count\` span the full batch — use \`clip.index\` arithmetic (e.g. \`pitch += clip.index * 12\`) or \`clipseq()\` (e.g. \`pitch += clipseq(0, 5, 7)\`) inside the string for per-clip variation. For structurally-distinct edits per clip (different operations, not just different values), make separate tool calls.
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Finding Library Content
 

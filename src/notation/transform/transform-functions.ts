@@ -11,6 +11,7 @@ import {
   computePhase,
   evaluateArgs,
   evaluateChoose,
+  evaluateClipSeq,
   evaluateCurve,
   evaluateMathFunction,
   evaluateMinMax,
@@ -44,6 +45,7 @@ export type EvaluateExpressionFn = (
 const standardFnDispatch: Record<string, typeof evaluateRand | undefined> = {
   rand: evaluateRand,
   seq: evaluateSeq,
+  clipseq: evaluateClipSeq,
   choose: evaluateChoose,
   snap: evaluateSnap,
   quant: evaluateQuant,

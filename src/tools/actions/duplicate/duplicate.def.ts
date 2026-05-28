@@ -84,18 +84,19 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       ),
 
     transforms: z
-      .array(z.string())
+      .string()
       .optional()
       .describe(
-        "transform expressions per duplicate (cycles across copies; clips only); each entry is one copy's expressions, newline-separated for multiple",
+        "transform expressions (broadcast across copies; clips only); newline-separated for multiple. Use clip.index / clipseq() for per-copy variation",
       ),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
           code: z
-            .array(z.string().max(MAX_CODE_LENGTH))
+            .string()
+            .max(MAX_CODE_LENGTH)
             .optional()
             .describe(
-              "JS function body per duplicate (cycles across copies; clips only): receives (notes, context), returns notes array",
+              "JS function body (broadcast across copies; clips only): receives (notes, context), returns notes array. context.clip.{index,count} for per-copy variation",
             ),
         }
       : {}),

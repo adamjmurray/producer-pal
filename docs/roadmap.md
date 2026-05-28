@@ -26,8 +26,8 @@ MIDI transforms: math expressions for transforming note properties
 
 - Ramps, curves, and LFO shapes (arrangement-relative or clip-relative)
 - Randomization with arbitrary ranges, or choose from a set of values
-- Helpers: `swing()`, `quant()`, `legato()`, `seq()`, `step()`, `wrap()`,
-  `reflect()`
+- Helpers: `swing()`, `quant()`, `legato()`, `seq()`, `clipseq()`, `step()`,
+  `wrap()`, `reflect()`
 - Context variables like note index and clip position in the arrangement
 
 REST API and agent skills:
@@ -50,9 +50,10 @@ New tools and broader Live API coverage:
 Other improvements:
 
 - Split arrangement clips at specified positions
-- Multi-object create / update / duplicate operations, including per-clip
-  `transforms`/`code` on update-clip and duplicate (breaking change: these are
-  now arrays — one entry per clip/copy, cycled — instead of a single string)
+- Multi-object create / update / duplicate operations. `transforms`/`code` on
+  update-clip and duplicate are single strings broadcast across every clip/copy
+  — use `clip.index` arithmetic or `clipseq()` inside the string for per-clip
+  variation, or make separate calls for structurally-distinct edits.
 - Per-project notes: improved UI, now always enabled by default (disable the
   `ppal-context` tool to prevent AI edits)
 - Configurable Ollama and LM Studio URLs for remote hosting

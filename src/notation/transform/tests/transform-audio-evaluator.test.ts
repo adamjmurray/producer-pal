@@ -2,7 +2,8 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/v8-max-console.ts";
 import { applyAudioTransform } from "../transform-audio-evaluator.ts";
 
 // Mock console.warn to capture warnings
@@ -411,9 +412,9 @@ describe("Audio Transform Evaluator", () => {
     });
   });
 
-  describe("seq function", () => {
+  describe("clipseq function (audio)", () => {
     it("selects value based on clip.index", () => {
-      const result0 = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+      const result0 = applyAudioTransform(0, 0, "gain = clipseq(-3, -6, -9)", {
         clipDuration: 8,
         clipIndex: 0,
         clipCount: 3,
@@ -422,7 +423,7 @@ describe("Audio Transform Evaluator", () => {
 
       expect(result0.gain).toBe(-3);
 
-      const result1 = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+      const result1 = applyAudioTransform(0, 0, "gain = clipseq(-3, -6, -9)", {
         clipDuration: 8,
         clipIndex: 1,
         clipCount: 3,
@@ -431,7 +432,7 @@ describe("Audio Transform Evaluator", () => {
 
       expect(result1.gain).toBe(-6);
 
-      const result2 = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+      const result2 = applyAudioTransform(0, 0, "gain = clipseq(-3, -6, -9)", {
         clipDuration: 8,
         clipIndex: 2,
         clipCount: 3,
@@ -442,7 +443,7 @@ describe("Audio Transform Evaluator", () => {
     });
 
     it("wraps around when clip.index exceeds args count", () => {
-      const result = applyAudioTransform(0, 0, "gain = seq(-3, -6)", {
+      const result = applyAudioTransform(0, 0, "gain = clipseq(-3, -6)", {
         clipDuration: 8,
         clipIndex: 3,
         clipCount: 4,
@@ -452,12 +453,27 @@ describe("Audio Transform Evaluator", () => {
       // 3 % 2 = 1 → -6
       expect(result.gain).toBe(-6);
     });
+  });
 
-    it("defaults to first value without clipContext", () => {
-      const result = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)");
+  describe("seq function (audio) — de-overloaded per AJM-454", () => {
+    beforeEach(() => {
+      vi.mocked(console.warn).mockClear();
+    });
 
-      // No clipContext, index defaults to 0
+    it("warns and returns first value (use clipseq() instead)", () => {
+      const result = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+        clipDuration: 8,
+        clipIndex: 2,
+        clipCount: 3,
+        barDuration: 4,
+      });
+
+      // Old behavior would have returned -9 via the clip:index fallback.
+      // New behavior: warn + return first value; clipseq() is the audio path.
       expect(result.gain).toBe(-3);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("seq() needs note.index"),
+      );
     });
   });
 });

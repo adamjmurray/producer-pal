@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 import {
   applyTransforms,
@@ -15,6 +15,10 @@ import {
 } from "./transform-evaluator-test-helpers.ts";
 
 describe("Transform - seq function", () => {
+  beforeEach(() => {
+    vi.mocked(outlet).mockClear();
+  });
+
   describe("parser", () => {
     it("parses seq with multiple arguments", () => {
       const result = parser.parse("velocity = seq(60, 80, 100)");
@@ -35,7 +39,9 @@ describe("Transform - seq function", () => {
 
   describe("evaluator", () => {
     it("evaluates seq with single value", () => {
-      const result = evaluateTransform("velocity = seq(42)", createContext());
+      const result = evaluateTransform("velocity = seq(42)", createContext(), {
+        index: 0,
+      });
 
       expect(result.velocity!.value).toBe(42);
     });
@@ -102,23 +108,34 @@ describe("Transform - seq function", () => {
       expect(result2.velocity!.value).toBe(99);
     });
 
-    it("defaults to index 0 when no note properties", () => {
+    it("warns and returns first value when note.index is missing", () => {
       const result = evaluateTransform(
         "velocity = seq(60, 80, 100)",
         createContext(),
       );
 
       expect(result.velocity!.value).toBe(60);
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("seq() needs note.index"),
+      );
     });
 
-    it("uses clip.index when note.index is not available", () => {
+    it("does not fall back to clip.index (use clipseq() instead)", () => {
+      // Previously seq() fell back to clip:index on audio. That overload is gone
+      // (AJM-454) — clip-axis sequencing now lives in clipseq(). seq() with only
+      // clip:index in scope must warn and return the first value.
       const result = evaluateTransform(
         "velocity = seq(10, 20, 30)",
         createContext(),
         { "clip:index": 2, "clip:count": 3 },
       );
 
-      expect(result.velocity!.value).toBe(30);
+      expect(result.velocity!.value).toBe(10);
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("clipseq()"),
+      );
     });
   });
 
@@ -227,6 +244,144 @@ describe("Transform - seq function", () => {
       expect(notes[4]!.pitch).toBe(42); // Gb1
       expect(notes[5]!.pitch).toBe(44); // Ab1 (index 5)
       expect(notes[6]!.pitch).toBe(42); // Gb1
+    });
+  });
+});
+
+describe("Transform - clipseq function", () => {
+  beforeEach(() => {
+    vi.mocked(outlet).mockClear();
+  });
+
+  describe("parser", () => {
+    it("parses clipseq with multiple arguments", () => {
+      const result = parser.parse("pitch += clipseq(0, 5, 7)");
+
+      expect(result[0]!.expression).toStrictEqual({
+        type: "function",
+        name: "clipseq",
+        args: [0, 5, 7],
+        sync: false,
+        raw: false,
+      });
+    });
+
+    it("rejects sync on clipseq", () => {
+      expect(() => parser.parse("pitch += clipseq(1, 2, sync)")).toThrow();
+    });
+  });
+
+  describe("evaluator", () => {
+    it("cycles through values based on clip.index", () => {
+      const expected = [10, 20, 30, 10, 20];
+
+      for (let i = 0; i < expected.length; i++) {
+        const result = evaluateTransform(
+          "velocity = clipseq(10, 20, 30)",
+          createContext(),
+          { "clip:index": i, "clip:count": 5 },
+        );
+
+        expect(result.velocity!.value).toBe(expected[i]);
+      }
+    });
+
+    it("ignores note.index — uses clip.index axis only", () => {
+      // Both axes in scope (typical MIDI scenario): clipseq must still pick
+      // by clip:index, not by note.index. Otherwise it would just be seq().
+      const result = evaluateTransform(
+        "velocity = clipseq(10, 20, 30)",
+        createContext(),
+        { index: 0, "clip:index": 2, "clip:count": 3 },
+      );
+
+      expect(result.velocity!.value).toBe(30);
+    });
+
+    it("wraps around with modulo", () => {
+      const result = evaluateTransform(
+        "velocity = clipseq(10, 20)",
+        createContext(),
+        { "clip:index": 5, "clip:count": 6 },
+      );
+
+      expect(result.velocity!.value).toBe(20); // 5 % 2 = 1
+    });
+
+    it("warns and returns first value when clip.index is missing", () => {
+      const result = evaluateTransform(
+        "velocity = clipseq(60, 80, 100)",
+        createContext(),
+      );
+
+      expect(result.velocity!.value).toBe(60);
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("clipseq() needs clip.index"),
+      );
+    });
+
+    it("does not fall back to note.index (use seq() instead)", () => {
+      const result = evaluateTransform(
+        "velocity = clipseq(10, 20, 30)",
+        createContext(),
+        { index: 2, count: 3 },
+      );
+
+      expect(result.velocity!.value).toBe(10);
+      expect(outlet).toHaveBeenCalledWith(1, expect.stringContaining("seq()"));
+    });
+
+    it("warns when called with no arguments (via applyTransforms catch)", () => {
+      const notes = createTestNotes([{ pitch: 60, start_time: 0 }]);
+
+      applyTransforms(notes, "velocity = clipseq()", 4, 4, {
+        clipIndex: 0,
+        clipCount: 1,
+        clipDuration: 4,
+        barDuration: 4,
+      });
+
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("clipseq() requires at least 1 argument"),
+      );
+    });
+  });
+
+  describe("integrated with applyTransforms (MIDI per-clip variation)", () => {
+    it("varies notes across clips by clip.index", () => {
+      const notes = createTestNotes([{ pitch: 60, start_time: 0 }]);
+
+      // clip 1 of 3 → +5 semitones
+      applyTransforms(notes, "pitch += clipseq(0, 5, 7)", 4, 4, {
+        clipIndex: 1,
+        clipCount: 3,
+        clipDuration: 4,
+        barDuration: 4,
+      });
+
+      expect(notes[0]!.pitch).toBe(65);
+    });
+
+    it("applies the same value to every note in a clip (per-clip, not per-note)", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 0 },
+        { pitch: 62, start_time: 1 },
+        { pitch: 64, start_time: 2 },
+      ]);
+
+      // clip.index = 2 picks the third value (7) regardless of how many notes
+      applyTransforms(notes, "pitch += clipseq(0, 5, 7)", 4, 4, {
+        clipIndex: 2,
+        clipCount: 3,
+        clipDuration: 4,
+        barDuration: 4,
+      });
+
+      expect(notes[0]!.pitch).toBe(67);
+      expect(notes[1]!.pitch).toBe(69);
+      expect(notes[2]!.pitch).toBe(71);
     });
   });
 });

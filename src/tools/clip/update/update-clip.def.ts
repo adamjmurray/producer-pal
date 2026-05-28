@@ -104,10 +104,10 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s) - MIDI clips only",
       ),
     transforms: z
-      .array(z.string())
+      .string()
       .optional()
       .describe(
-        "transform expressions per clip (cycles if fewer than ids); each entry is one clip's expressions, newline-separated for multiple",
+        "transform expressions (broadcast across ids); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation",
       ),
     noteUpdateMode: z
       .enum(["replace", "merge"])
@@ -119,10 +119,11 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
           code: z
-            .array(z.string().max(MAX_CODE_LENGTH))
+            .string()
+            .max(MAX_CODE_LENGTH)
             .optional()
             .describe(
-              "JS function body per clip (cycles if fewer than ids): receives (notes, context), returns notes array (see Skills for properties)",
+              "JS function body (broadcast across ids): receives (notes, context), returns notes array. context.clip.{index,count} for per-clip variation (see Skills for properties)",
             ),
         }
       : {}),

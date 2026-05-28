@@ -136,6 +136,8 @@ export function handleCodeExecResult(
  * @param clip - LiveAPI clip object
  * @param userCode - User-provided JavaScript code body
  * @param view - Session or arrangement view
+ * @param clipIndex - 0-based position in the current batch (for clip.index in user code)
+ * @param clipCount - Total clips in the current batch (for clip.count in user code)
  * @param sceneIndex - Scene index (session only)
  * @param arrangementStartBeats - Arrangement start position (arrangement only)
  * @returns Promise resolving to validated CodeExecutionResult
@@ -144,6 +146,8 @@ export async function executeNoteCode(
   clip: LiveAPI,
   userCode: string,
   view: "session" | "arrangement",
+  clipIndex: number,
+  clipCount: number,
   sceneIndex?: number,
   arrangementStartBeats?: number,
 ): Promise<CodeExecutionResult> {
@@ -151,6 +155,8 @@ export async function executeNoteCode(
   const context = buildCodeExecutionContext(
     clip,
     view,
+    clipIndex,
+    clipCount,
     sceneIndex,
     arrangementStartBeats,
   );

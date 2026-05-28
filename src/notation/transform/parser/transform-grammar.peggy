@@ -219,6 +219,7 @@ otherFunctionName
   / "min" { return "min"; }
   / "max" { return "max"; }
   / "rand" { return "rand"; }
+  / "clipseq" { return "clipseq"; }
   / "seq" { return "seq"; }
   / "choose" { return "choose"; }
   / "ramp" { return "ramp"; }

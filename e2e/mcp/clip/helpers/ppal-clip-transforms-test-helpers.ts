@@ -112,7 +112,7 @@ export async function applyTransform(
 ): Promise<unknown> {
   const result = await ctx.client!.callTool({
     name: "ppal-update-clip",
-    arguments: { ids: clipId, transforms: [transform] },
+    arguments: { ids: clipId, transforms: transform },
   });
 
   await sleep(100);

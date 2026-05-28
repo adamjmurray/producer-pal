@@ -40,6 +40,8 @@ export interface CodeClipContext {
   length: number; // beats
   timeSignature: string; // e.g., "4/4"
   looping: boolean;
+  index: number; // 0-based position in the batch (matches transforms' clip.index)
+  count: number; // total clips in the batch (matches transforms' clip.count)
 }
 
 /**

@@ -19,7 +19,12 @@ describe("applyCodeToSingleClip", () => {
   it("returns null when clip does not exist", async () => {
     mockNonExistentObjects();
 
-    const result = await applyCodeToSingleClip("nonexistent-clip", "return []");
+    const result = await applyCodeToSingleClip(
+      "nonexistent-clip",
+      "return []",
+      0,
+      1,
+    );
 
     expect(result).toBeNull();
   });

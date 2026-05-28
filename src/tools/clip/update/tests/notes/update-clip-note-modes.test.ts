@@ -230,7 +230,7 @@ describe("updateClip - Note update modes", () => {
 
     const result = await updateClip({
       ids: "123",
-      transforms: ["velocity = 50"],
+      transforms: "velocity = 50",
       // No notes param, no noteUpdateMode
     });
 

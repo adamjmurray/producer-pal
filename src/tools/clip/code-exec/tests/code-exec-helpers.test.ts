@@ -271,6 +271,8 @@ describe("code-exec-helpers", () => {
         const result = buildCodeExecutionContext(
           mockClip as unknown as LiveAPI,
           "session",
+          1,
+          3,
           2,
         );
 
@@ -286,6 +288,8 @@ describe("code-exec-helpers", () => {
           length: 16,
           timeSignature: "4/4",
           looping: true,
+          index: 1,
+          count: 3,
         });
         expect(result.location).toStrictEqual({
           view: "session",
@@ -358,6 +362,8 @@ describe("code-exec-helpers", () => {
         const result = buildCodeExecutionContext(
           mockClip as unknown as LiveAPI,
           "arrangement",
+          0,
+          1,
           undefined,
           32,
         );
@@ -365,6 +371,8 @@ describe("code-exec-helpers", () => {
         expect(result.track.type).toBe("audio");
         expect(result.track.color).toBeNull();
         expect(result.clip.looping).toBe(false);
+        expect(result.clip.index).toBe(0);
+        expect(result.clip.count).toBe(1);
         expect(result.location).toStrictEqual({
           view: "arrangement",
           arrangementStart: 32,

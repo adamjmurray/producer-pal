@@ -53,8 +53,8 @@ interface DuplicateArgs {
   focus?: boolean;
   toSlot?: string;
   toPath?: string;
-  transforms?: string[];
-  code?: string[];
+  transforms?: string;
+  code?: string;
   takeLane?: number | string;
   takeLaneName?: string;
 }
@@ -85,8 +85,8 @@ interface DuplicateParams {
  * @param args.focus - Focus duplicated clip/scene
  * @param args.toSlot - Destination clip slot(s)
  * @param args.toPath - Destination path
- * @param args.transforms - Transform expressions per duplicate (cycled across copies)
- * @param args.code - JavaScript function body per duplicate (cycled across copies)
+ * @param args.transforms - Transform expressions broadcast across all copies
+ * @param args.code - JavaScript function body broadcast across all copies
  * @param args.takeLane - Arrangement take lane target for clips (0/omitted = main, 1+, "new")
  * @param args.takeLaneName - Name for a take lane newly created by this call
  * @param context - Context object

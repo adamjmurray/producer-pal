@@ -91,7 +91,7 @@ describe("ppal-clip-transforms (context variables)", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: `${clipId1},${clipId2}`,
-        transforms: ["pitch += clip.index * 7"],
+        transforms: "pitch += clip.index * 7",
       },
     });
     await sleep(100);
@@ -131,7 +131,7 @@ describe("ppal-clip-transforms (context variables)", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: `${clipId1},${clipId2}`,
-        transforms: ["velocity = clip.count * 30"],
+        transforms: "velocity = clip.count * 30",
       },
     });
     await sleep(100);

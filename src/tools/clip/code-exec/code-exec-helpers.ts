@@ -65,6 +65,8 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
  *
  * @param clip - LiveAPI clip object
  * @param view - Session or arrangement view
+ * @param clipIndex - 0-based position in the current batch (matches transforms' clip.index)
+ * @param clipCount - Total clips in the current batch (matches transforms' clip.count)
  * @param sceneIndex - Scene index (session only)
  * @param arrangementStartBeats - Arrangement start position (arrangement only)
  * @returns Context object for code execution
@@ -72,11 +74,13 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
 export function buildCodeExecutionContext(
   clip: LiveAPI,
   view: "session" | "arrangement",
+  clipIndex: number,
+  clipCount: number,
   sceneIndex?: number,
   arrangementStartBeats?: number,
 ): CodeExecutionContext {
   const track = buildTrackContext(clip);
-  const clipContext = buildClipContext(clip);
+  const clipContext = buildClipContext(clip, clipIndex, clipCount);
   const location = buildLocationContext(
     view,
     clip.trackIndex as number,
@@ -258,7 +262,11 @@ function buildTrackContext(clip: LiveAPI): CodeTrackContext {
   };
 }
 
-function buildClipContext(clip: LiveAPI): CodeClipContext {
+function buildClipContext(
+  clip: LiveAPI,
+  index: number,
+  count: number,
+): CodeClipContext {
   const id = clip.id;
   const name = clip.getProperty("name") as string | null;
   const length = clip.getProperty("length") as number;
@@ -272,6 +280,8 @@ function buildClipContext(clip: LiveAPI): CodeClipContext {
     length,
     timeSignature: `${sigNum}/${sigDenom}`,
     looping,
+    index,
+    count,
   };
 }
 

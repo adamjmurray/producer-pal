@@ -189,7 +189,7 @@ describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
     // Apply transform to both clips
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: `${clip1.id},${clip2.id}`, transforms: ["gain = -9"] },
+      arguments: { ids: `${clip1.id},${clip2.id}`, transforms: "gain = -9" },
     });
     await sleep(100);
 
@@ -904,12 +904,12 @@ describe("ppal-clip-transforms (seq)", () => {
 
     await sleep(100);
 
-    // Apply seq(-6, -12) to both clips: clip 0 → -6, clip 1 → -12
+    // Apply clipseq(-6, -12) to both clips: clip 0 → -6, clip 1 → -12
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
         ids: `${clip0.id},${clip1.id}`,
-        transforms: ["gain = seq(-6, -12)"],
+        transforms: "gain = clipseq(-6, -12)",
       },
     });
 

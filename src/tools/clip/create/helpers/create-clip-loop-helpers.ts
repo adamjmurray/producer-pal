@@ -161,7 +161,7 @@ export async function createClips(
       const clipId = code != null ? (clipResult as { id?: string }).id : null;
 
       if (clipId != null && code != null) {
-        const noteCount = await applyCodeToSingleClip(clipId, code);
+        const noteCount = await applyCodeToSingleClip(clipId, code, i, count);
 
         if (noteCount != null) {
           (clipResult as { noteCount?: number }).noteCount = noteCount;
