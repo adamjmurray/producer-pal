@@ -11,7 +11,13 @@ import { describe, expect, it, vi } from "vitest";
 import {
   SmallModelToggle,
   ThinkingSelector,
+  VoiceSettings,
 } from "#webui/components/settings/connection-tab-helpers";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
+import {
+  GEMINI_REALTIME_MODEL,
+  OPENAI_REALTIME_MODEL,
+} from "#webui/lib/constants/models";
 
 describe("ThinkingSelector", () => {
   it("calls setThinking when a new option is selected", () => {
@@ -68,5 +74,71 @@ describe("SmallModelToggle", () => {
     fireEvent.change(checkbox, { target: { checked: false } });
 
     expect(setSmallModelMode).toHaveBeenCalledWith(false);
+  });
+});
+
+describe("VoiceSettings", () => {
+  const realtimeProps = {
+    provider: "openai" as const,
+    model: OPENAI_REALTIME_MODEL,
+    realtimeVoice: "marin",
+    setRealtimeVoice: vi.fn(),
+    voiceVolume: 1.0,
+    setVoiceVolume: vi.fn(),
+    voiceSpeed: 1.0,
+    setVoiceSpeed: vi.fn(),
+    turnDetection: DEFAULT_TURN_DETECTION,
+    setTurnDetection: vi.fn(),
+    activeVoice: null as string | null,
+  };
+
+  it("renders nothing for a non-realtime selection", () => {
+    const { container } = render(
+      <VoiceSettings
+        {...realtimeProps}
+        provider="gemini"
+        model="gemini-2.5-pro"
+      />,
+    );
+
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("keeps the voice selector outside the 'Voice Settings' disclosure", () => {
+    render(<VoiceSettings {...realtimeProps} />);
+
+    expect(screen.getByText("Voice Settings")).toBeTruthy();
+    expect(screen.queryByText("Advanced")).toBeNull();
+    expect(screen.getByTestId("voice-select").closest("details")).toBeNull();
+  });
+
+  it("tucks the volume, speed, and turn detection inside the disclosure", () => {
+    render(<VoiceSettings {...realtimeProps} />);
+
+    expect(
+      screen.getByTestId("voice-volume-slider").closest("details"),
+    ).not.toBeNull();
+    expect(
+      screen.getByTestId("voice-speed-slider").closest("details"),
+    ).not.toBeNull();
+    expect(
+      screen.getByTestId("turn-detection-mode").closest("details"),
+    ).not.toBeNull();
+  });
+
+  it("shows Gemini VAD controls, not OpenAI speed/turn detection, for a Gemini realtime model", () => {
+    render(
+      <VoiceSettings
+        {...realtimeProps}
+        provider="gemini"
+        model={GEMINI_REALTIME_MODEL}
+        realtimeVoice="Puck"
+      />,
+    );
+
+    expect(screen.getByTestId("gemini-start-sensitivity")).toBeTruthy();
+    expect(screen.getByTestId("gemini-barge-in")).toBeTruthy();
+    expect(screen.queryByTestId("voice-speed-slider")).toBeNull();
+    expect(screen.queryByTestId("turn-detection-mode")).toBeNull();
   });
 });

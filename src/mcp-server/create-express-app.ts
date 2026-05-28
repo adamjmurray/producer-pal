@@ -14,29 +14,48 @@ import express, {
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
 import { errorMessage } from "#src/shared/error-utils.ts";
+import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
+import { isLocalOrigin } from "./helpers/request-origin.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
-import { registerRestApiRoutes } from "./rest-api-routes.ts";
+import { registerGeminiVoiceTokenRoute } from "./routes/gemini-voice-token-route.ts";
+import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
+import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
+
+const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 
 interface ProducerPalConfig {
-  memoryEnabled: boolean;
   memoryContent: string;
-  memoryWritable: boolean;
   smallModelMode: boolean;
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
+  liveApiEnabled: boolean;
+  liveApiForcedOn: boolean;
   tools: string[];
 }
 
+// ENABLE_LIVE_API=true forces the Live API tool on for dev builds
+// (npm run dev:debug / build:debug). When set, the device Setup-tab toggle
+// cannot disable it — the Max handler at "liveApiEnabled" ignores
+// device-side `false` updates and re-emits the forced value.
+//
+// Asymmetry: POST /config remains authoritative in both directions even
+// when the env var is set. This is intentional so e2e tests can exercise
+// the disabled-state code paths without rebuilding. Production deployments
+// don't set ENABLE_LIVE_API, so the asymmetry is dev-only.
+const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
+
 const config: ProducerPalConfig = {
-  memoryEnabled: false,
   memoryContent: "",
-  memoryWritable: false,
   smallModelMode: false,
   jsonOutput: false,
   sampleFolder: "",
-  tools: [...TOOL_NAMES],
+  liveApiEnabled: liveApiForcedOn,
+  liveApiForcedOn,
+  tools: liveApiForcedOn
+    ? [...TOOL_NAMES, toolDefLiveApi.toolName]
+    : [...TOOL_NAMES],
 };
 
 let chatUIEnabled = true; // default
@@ -50,19 +69,11 @@ Max.addHandler("smallModelMode", (enabled: unknown) => {
   config.smallModelMode = Boolean(enabled);
 });
 
-Max.addHandler("memoryEnabled", (enabled: unknown) => {
-  config.memoryEnabled = Boolean(enabled);
-});
-
 Max.addHandler("memoryContent", (content: unknown) => {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
   config.memoryContent = value;
-});
-
-Max.addHandler("memoryWritable", (writable: unknown) => {
-  config.memoryWritable = Boolean(writable);
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
@@ -75,6 +86,40 @@ Max.addHandler("sampleFolder", (path: unknown) => {
 
   config.sampleFolder = value;
 });
+
+Max.addHandler("liveApiEnabled", (enabled: unknown) => {
+  const next = Boolean(enabled);
+
+  if (liveApiForcedOn && !next) {
+    // Env var forces this on — re-emit the current value so the device
+    // toggle UI snaps back to its forced state.
+    void Max.outlet("config", "liveApiEnabled", config.liveApiEnabled);
+
+    return;
+  }
+
+  applyLiveApiEnabled(next);
+});
+
+/**
+ * Apply a liveApiEnabled change to runtime config and the tools whitelist.
+ * Keeps config.tools symmetric with config.liveApiEnabled so the tool name
+ * never lingers in the whitelist while the flag is off (which would silently
+ * drop on a later validateTools call).
+ *
+ * @param next - The new value of liveApiEnabled
+ */
+function applyLiveApiEnabled(next: boolean): void {
+  config.liveApiEnabled = next;
+
+  const has = config.tools.includes(LIVE_API_TOOL_NAME);
+
+  if (next && !has) {
+    config.tools = [...config.tools, LIVE_API_TOOL_NAME];
+  } else if (!next && has) {
+    config.tools = config.tools.filter((t) => t !== LIVE_API_TOOL_NAME);
+  }
+}
 
 interface JsonRpcError {
   jsonrpc: string;
@@ -102,6 +147,15 @@ const internalError = (message: string): JsonRpcError => ({
   },
   id: null,
 });
+
+/**
+ * Mark a response as never-cache. Used for the UI bundle and config so the
+ * browser can't serve a stale build/config across device rebuilds or updates.
+ * @param res - Express response
+ */
+function setNoStore(res: Response): void {
+  res.set("Cache-Control", "no-store");
+}
 
 /**
  * Creates and configures an Express application for the MCP server
@@ -147,6 +201,7 @@ export function createExpressApp(): Express {
 
       const server = createMcpServer(callLiveApi, {
         smallModelMode: config.smallModelMode,
+        liveApiEnabled: config.liveApiEnabled,
         tools: config.tools,
       });
       const transport = new StreamableHTTPServerTransport({
@@ -178,23 +233,59 @@ export function createExpressApp(): Express {
   });
 
   // Allow chat UI to be disabled for security
-  app.use("/chat", (_req: Request, res: Response, next: NextFunction): void => {
+  app.use(
+    ["/chat", "/context"],
+    (_req: Request, res: Response, next: NextFunction): void => {
+      if (!chatUIEnabled) {
+        res.status(403).send("Chat UI is disabled");
+
+        return;
+      }
+
+      next();
+    },
+  );
+
+  // Serve the chat UI (inlined for frozen .amxd builds).
+  // The same bundle handles both /chat and /context — main.tsx reads
+  // location.pathname to decide which view to render.
+  app.get(["/chat", "/context"], (_req: Request, res: Response): void => {
+    // Never cache the UI bundle. It's a single file served from localhost, so
+    // caching saves nothing, but a stale cached build persists across device
+    // rebuilds/updates — which silently reintroduces already-fixed bugs.
+    setNoStore(res);
+    res.type("html").send(chatUiHtml);
+  });
+
+  // Root redirects to /chat for direct browser visits.
+  app.get("/", (_req: Request, res: Response): void => {
+    // Match the UI bundle's no-store stance: a cached 302 would survive a
+    // device rebuild/update, freezing the redirect target if it ever moves.
+    setNoStore(res);
+    res.redirect("/chat");
+  });
+
+  // /voice is an alias that serves the same single-page bundle as /chat. The
+  // app picks chat vs. voice from the saved model (App.tsx), not the URL path,
+  // so this just lets users open/bookmark /voice. Honor the chatUIEnabled
+  // toggle since the voice view shares the same settings and OpenAI key.
+  app.get("/voice", (_req: Request, res: Response): void => {
     if (!chatUIEnabled) {
       res.status(403).send("Chat UI is disabled");
 
       return;
     }
 
-    next();
-  });
-
-  // Serve the chat UI (inlined for frozen .amxd builds)
-  app.get("/chat", (_req: Request, res: Response): void => {
+    // See /chat handler: never cache the UI bundle.
+    setNoStore(res);
     res.type("html").send(chatUiHtml);
   });
 
   // Config endpoints for device UI settings
   app.get("/config", (_req: Request, res: Response): void => {
+    // Memory edits in the device or via AI need to surface on the next
+    // browser fetch — never serve a cached snapshot.
+    setNoStore(res);
     res.json(config);
   });
 
@@ -202,10 +293,35 @@ export function createExpressApp(): Express {
 
   registerRestApiRoutes(app, () => config, callLiveApi);
 
+  registerVoiceTokenRoute(app, () => chatUIEnabled);
+  registerGeminiVoiceTokenRoute(app, () => chatUIEnabled);
+
   return app;
 }
 
 const VALID_TOOL_SET = new Set<string>(TOOL_NAMES);
+
+/**
+ * Build the set of valid tool names, including ppal-live-api when enabled.
+ * @param liveApiEnabled - Current value of config.liveApiEnabled
+ * @returns Set of valid tool names
+ */
+function getValidToolSet(liveApiEnabled: boolean): Set<string> {
+  if (!liveApiEnabled) return VALID_TOOL_SET;
+
+  return new Set<string>([...VALID_TOOL_SET, LIVE_API_TOOL_NAME]);
+}
+
+/**
+ * Build the list of valid tool names for error responses.
+ * @param liveApiEnabled - Current value of config.liveApiEnabled
+ * @returns Sorted list of valid tool names
+ */
+function getValidToolNames(liveApiEnabled: boolean): string[] {
+  if (!liveApiEnabled) return [...TOOL_NAMES];
+
+  return [...TOOL_NAMES, LIVE_API_TOOL_NAME];
+}
 
 /**
  * Handle POST /config requests to update device UI settings
@@ -229,24 +345,10 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   const incoming = req.body as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
-  if (incoming.memoryEnabled !== undefined) {
-    config.memoryEnabled = Boolean(incoming.memoryEnabled);
-    outlets.push(() =>
-      Max.outlet("config", "memoryEnabled", config.memoryEnabled),
-    );
-  }
-
   if (incoming.memoryContent !== undefined) {
     config.memoryContent = incoming.memoryContent ?? "";
     outlets.push(() =>
       Max.outlet("config", "memoryContent", config.memoryContent),
-    );
-  }
-
-  if (incoming.memoryWritable !== undefined) {
-    config.memoryWritable = Boolean(incoming.memoryWritable);
-    outlets.push(() =>
-      Max.outlet("config", "memoryWritable", config.memoryWritable),
     );
   }
 
@@ -271,8 +373,28 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
     );
   }
 
+  if (incoming.liveApiEnabled !== undefined) {
+    const next = Boolean(incoming.liveApiEnabled);
+    const beforeTools = config.tools;
+
+    applyLiveApiEnabled(next);
+
+    if (config.tools !== beforeTools) {
+      outlets.push(() =>
+        Max.outlet("config", "tools", JSON.stringify(config.tools)),
+      );
+    }
+
+    outlets.push(() =>
+      Max.outlet("config", "liveApiEnabled", config.liveApiEnabled),
+    );
+  }
+
   if (incoming.tools !== undefined) {
-    const validationError = validateTools(incoming.tools);
+    const validationError = validateTools(
+      incoming.tools,
+      config.liveApiEnabled,
+    );
 
     if (validationError) {
       res.status(400).json(validationError);
@@ -299,25 +421,30 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
  * Returns an error object if invalid, or null if valid.
  *
  * @param tools - The tools value from the request body
+ * @param liveApiEnabled - Whether ppal-live-api is an accepted tool name
  * @returns Error response body or null
  */
 function validateTools(
   tools: unknown,
+  liveApiEnabled: boolean,
 ): { error: string; validToolNames: string[] } | null {
+  const validToolNames = getValidToolNames(liveApiEnabled);
+  const validToolSet = getValidToolSet(liveApiEnabled);
+
   if (!Array.isArray(tools)) {
     return {
       error: "tools must be an array of tool names",
-      validToolNames: [...TOOL_NAMES],
+      validToolNames,
     };
   }
 
   const list = tools.map(String);
-  const invalid = list.filter((name) => !VALID_TOOL_SET.has(name));
+  const invalid = list.filter((name) => !validToolSet.has(name));
 
   if (invalid.length > 0) {
     return {
       error: `Invalid tool name(s): ${invalid.join(", ")}`,
-      validToolNames: [...TOOL_NAMES],
+      validToolNames,
     };
   }
 
@@ -325,29 +452,9 @@ function validateTools(
     return {
       error:
         "ppal-connect must be included in tools (it is the required entry point)",
-      validToolNames: [...TOOL_NAMES],
+      validToolNames,
     };
   }
 
   return null;
-}
-
-/**
- * Check whether an Origin header value points to localhost.
- *
- * @param origin - Origin header value
- * @returns true if origin hostname is localhost/127.0.0.1/[::1]
- */
-function isLocalOrigin(origin: string): boolean {
-  try {
-    const { hostname } = new URL(origin);
-
-    return (
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname === "[::1]"
-    );
-  } catch {
-    return false;
-  }
 }

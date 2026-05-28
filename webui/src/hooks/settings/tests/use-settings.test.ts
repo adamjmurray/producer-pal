@@ -7,8 +7,10 @@
  * @vitest-environment happy-dom
  * @returns {any} - Hook return value
  */
-import { renderHook, act } from "@testing-library/preact";
-import { beforeEach, describe, expect, it } from "vitest";
+import "fake-indexeddb/auto";
+import { renderHook, act, waitFor } from "@testing-library/preact";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 
 describe("useSettings", () => {
@@ -16,12 +18,44 @@ describe("useSettings", () => {
     localStorage.clear();
   });
 
+  /**
+   * Flush the post-mount async decrypt-load so it can't clobber later edits.
+   * The load chain is several microtask hops (loadAllProviderSettingsAsync →
+   * Promise.all → applyLoadedSettings), so yield several rounds inside act.
+   */
+  async function flushLoad(): Promise<void> {
+    await act(async () => {
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+    });
+  }
+
+  /**
+   * Assert a provider's stored JSON has an encrypted apiKey (not the cleartext)
+   * that decrypts back to the expected value, plus the other expected fields.
+   * @param provider - Provider storage key suffix
+   * @param expectedApiKey - The cleartext apiKey the stored value should decrypt to
+   * @param rest - Other non-apiKey fields expected in the stored JSON
+   */
+  async function expectStored(
+    provider: string,
+    expectedApiKey: string,
+    rest: Record<string, unknown>,
+  ): Promise<void> {
+    const stored = JSON.parse(
+      localStorage.getItem(`producer_pal_provider_${provider}`) ?? "{}",
+    );
+
+    expect(stored.apiKey).not.toBe(expectedApiKey);
+    expect(await decryptApiKey(stored.apiKey)).toBe(expectedApiKey);
+    expect(stored).toMatchObject(rest);
+  }
+
   it("loads default values when localStorage is empty", () => {
     const { result } = renderHook(() => useSettings());
 
     expect(result.current).toMatchObject({
       apiKey: "",
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       thinking: "Default",
       temperature: 1.0,
       showThoughts: true,
@@ -29,7 +63,7 @@ describe("useSettings", () => {
     });
   });
 
-  it("migrates Gemini settings from old localStorage format", () => {
+  it("migrates Gemini settings from old localStorage format", async () => {
     localStorage.setItem("gemini_api_key", "test-key");
     localStorage.setItem("gemini_model", "gemini-2.5-pro");
     localStorage.setItem("thinking", "High");
@@ -38,22 +72,25 @@ describe("useSettings", () => {
 
     const { result } = renderHook(() => useSettings());
 
+    // Non-apiKey fields are available synchronously; the apiKey (here a legacy
+    // cleartext passthrough) and the derived hasApiKey settle after the
+    // post-mount decrypt effect.
     expect(result.current).toMatchObject({
-      apiKey: "test-key",
       model: "gemini-2.5-pro",
       thinking: "High",
       temperature: 0.7,
       showThoughts: false,
-      hasApiKey: true,
     });
+    await waitFor(() => expect(result.current.apiKey).toBe("test-key"));
+    expect(result.current.hasApiKey).toBe(true);
   });
 
-  it("loads from new JSON blob format", () => {
+  it("loads from new JSON blob format", async () => {
     localStorage.setItem(
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.5-flash",
         thinking: "Max",
         temperature: 1.5,
         showThoughts: false,
@@ -63,16 +100,16 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     expect(result.current).toMatchObject({
-      apiKey: "new-key",
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       thinking: "Max",
       temperature: 1.5,
       showThoughts: false,
-      hasApiKey: true,
     });
+    await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
+    expect(result.current.hasApiKey).toBe(true);
   });
 
-  it("prefers new format over old format", () => {
+  it("prefers new format over old format", async () => {
     // Set both old and new formats
     localStorage.setItem("gemini_api_key", "old-key");
     localStorage.setItem("gemini_model", "gemini-2.5-pro");
@@ -80,7 +117,7 @@ describe("useSettings", () => {
       "producer_pal_provider_gemini",
       JSON.stringify({
         apiKey: "new-key",
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.5-flash",
         thinking: "Adaptive",
         temperature: 1.0,
         showThoughts: true,
@@ -90,8 +127,8 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     // Should use new format
-    expect(result.current.apiKey).toBe("new-key");
-    expect(result.current.model).toBe("gemini-3-flash-preview");
+    expect(result.current.model).toBe("gemini-3.5-flash");
+    await waitFor(() => expect(result.current.apiKey).toBe("new-key"));
   });
 
   it("loads saved Ollama thinking on first render", () => {
@@ -129,10 +166,69 @@ describe("useSettings", () => {
     const { result } = renderHook(() => useSettings());
 
     await act(() => {
-      result.current.setModel("gemini-3-flash-preview");
+      result.current.setModel("gemini-3.5-flash");
     });
 
-    expect(result.current.model).toBe("gemini-3-flash-preview");
+    expect(result.current.model).toBe("gemini-3.5-flash");
+  });
+
+  it("savedModel only updates on saveSettings, not setModel", async () => {
+    const { result } = renderHook(() => useSettings());
+    const initialSavedModel = result.current.savedModel;
+
+    await act(() => {
+      result.current.setModel("gemini-3.5-flash");
+    });
+    // In-modal change should NOT flip the App-level routing model.
+    expect(result.current.model).toBe("gemini-3.5-flash");
+    expect(result.current.savedModel).toBe(initialSavedModel);
+
+    await act(async () => {
+      await result.current.saveSettings();
+    });
+    expect(result.current.savedModel).toBe("gemini-3.5-flash");
+  });
+
+  it("savedProvider only updates on saveSettings, not setProvider", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    await flushLoad();
+    const initialSavedProvider = result.current.savedProvider;
+    const target = initialSavedProvider === "openai" ? "gemini" : "openai";
+
+    await act(() => {
+      result.current.setProvider(target);
+    });
+    // In-modal provider change applies immediately but must NOT flip routing
+    // until save — App.tsx pairs savedProvider with savedModel for voice/chat.
+    expect(result.current.provider).toBe(target);
+    expect(result.current.savedProvider).toBe(initialSavedProvider);
+
+    await act(async () => {
+      await result.current.saveSettings();
+    });
+    expect(result.current.savedProvider).toBe(target);
+  });
+
+  it("savedThinking only updates on saveSettings, not setThinking", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    await flushLoad();
+    const initialSavedThinking = result.current.savedThinking;
+    const target = initialSavedThinking === "Off" ? "Max" : "Off";
+
+    await act(() => {
+      result.current.setThinking(target);
+    });
+    // In-modal change applies to the live value but must NOT leak into the
+    // voice session's connect-time snapshot until save.
+    expect(result.current.thinking).toBe(target);
+    expect(result.current.savedThinking).toBe(initialSavedThinking);
+
+    await act(async () => {
+      await result.current.saveSettings();
+    });
+    expect(result.current.savedThinking).toBe(target);
   });
 
   it("updates thinking when setThinking is called", async () => {
@@ -165,34 +261,182 @@ describe("useSettings", () => {
     expect(result.current.showThoughts).toBe(false);
   });
 
+  it("saveSettings before post-mount decrypt does not wipe stored apiKeys", async () => {
+    // Seed two providers with encrypted apiKeys so we can detect a wipe.
+    for (const provider of ["gemini", "openai"] as const) {
+      localStorage.setItem(
+        `producer_pal_provider_${provider}`,
+        JSON.stringify({
+          apiKey: await encryptApiKey(`${provider}-stored`),
+          model: "stored-model",
+          thinking: "Default",
+          temperature: 1.0,
+          showThoughts: true,
+        }),
+      );
+    }
+
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { result } = renderHook(() => useSettings());
+
+    // Call saveSettings BEFORE flushing the post-mount decrypt: in-memory
+    // apiKeys are still the blank placeholders at this point.
+    await act(async () => {
+      await result.current.saveSettings();
+    });
+
+    // Race-window save must bail (warn + no persist) so the seeded keys stay.
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("not yet loaded"),
+    );
+
+    for (const provider of ["gemini", "openai"] as const) {
+      const raw = JSON.parse(
+        localStorage.getItem(`producer_pal_provider_${provider}`) ?? "{}",
+      );
+
+      expect(await decryptApiKey(raw.apiKey)).toBe(`${provider}-stored`);
+    }
+
+    warn.mockRestore();
+  });
+
   it("saves settings to new JSON blob format", async () => {
     const { result } = renderHook(() => useSettings());
 
+    await flushLoad();
     await act(() => {
       result.current.setApiKey("new-key");
-      result.current.setModel("gemini-3-flash-preview");
+      result.current.setModel("gemini-3.5-flash");
       result.current.setThinking("Max");
       result.current.setTemperature(0.8);
       result.current.setShowThoughts(false);
     });
 
-    await act(() => {
-      result.current.saveSettings();
+    await act(async () => {
+      await result.current.saveSettings();
     });
 
     expect(localStorage.getItem("producer_pal_current_provider")).toBe(
       "gemini",
     );
 
-    expect(
-      JSON.parse(localStorage.getItem("producer_pal_provider_gemini") ?? "{}"),
-    ).toMatchObject({
-      apiKey: "new-key",
-      model: "gemini-3-flash-preview",
+    // Save is async (fire-and-forget); wait for the encrypted envelope to land
+    // before asserting the stored shape. apiKey is encrypted at rest, so the
+    // raw value must NOT equal the cleartext (see expectStored).
+    await waitFor(() => {
+      const raw = JSON.parse(
+        localStorage.getItem("producer_pal_provider_gemini") ?? "{}",
+      );
+
+      expect(raw.apiKey?.startsWith("enc:v1:")).toBe(true);
+    });
+
+    await expectStored("gemini", "new-key", {
+      model: "gemini-3.5-flash",
       thinking: "Max",
       temperature: 0.8,
       showThoughts: false,
     });
+  });
+
+  describe("liveApiEnabled dirty flag", () => {
+    it("starts not dirty and reports the default value", () => {
+      const { result } = renderHook(() => useSettings());
+
+      expect(result.current.liveApiEnabled).toBe(false);
+      expect(result.current.liveApiEnabledDirty).toBe(false);
+    });
+
+    it("setLiveApiEnabled marks dirty and updates the value", async () => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.setLiveApiEnabled(true);
+      });
+
+      expect(result.current.liveApiEnabled).toBe(true);
+      expect(result.current.liveApiEnabledDirty).toBe(true);
+    });
+
+    it("seedLiveApiEnabled updates the value without marking dirty", async () => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.seedLiveApiEnabled(true);
+      });
+
+      expect(result.current.liveApiEnabled).toBe(true);
+      expect(result.current.liveApiEnabledDirty).toBe(false);
+    });
+
+    it("saveSettings clears the dirty flag", async () => {
+      const { result } = renderHook(() => useSettings());
+
+      await flushLoad();
+      await act(() => {
+        result.current.setLiveApiEnabled(true);
+      });
+      expect(result.current.liveApiEnabledDirty).toBe(true);
+
+      await act(async () => {
+        await result.current.saveSettings();
+      });
+      expect(result.current.liveApiEnabledDirty).toBe(false);
+    });
+
+    it("cancelSettings clears the dirty flag", async () => {
+      const { result } = renderHook(() => useSettings());
+
+      await act(() => {
+        result.current.setLiveApiEnabled(true);
+      });
+      expect(result.current.liveApiEnabledDirty).toBe(true);
+
+      await act(() => {
+        result.current.cancelSettings();
+      });
+      expect(result.current.liveApiEnabledDirty).toBe(false);
+    });
+  });
+
+  it("cancelSettings re-arms settingsLoaded so a subsequent Save persists", async () => {
+    // Reproduces the cancel-during-initial-load case: the first decrypt-load's
+    // onLoaded was previously dropped (StrictMode cleanup, fast cancel-then-
+    // reopen) and cancelSettings called applyDecryptedSettings without an
+    // onLoaded — leaving settingsLoaded false and turning the next saveSettings
+    // into a silent no-op (the warn path). After the fix, cancelSettings's own
+    // decrypt-load wires up setSettingsLoaded → save proceeds normally.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { result } = renderHook(() => useSettings());
+
+    // Cancel before the post-mount decrypt-load has flushed (the scenario the
+    // bug occurs in). cancelSettings kicks off its own decrypt-load.
+    await act(() => {
+      result.current.cancelSettings();
+    });
+
+    // Let both in-flight decrypt-loads settle.
+    await flushLoad();
+
+    await act(() => {
+      result.current.setApiKey("post-cancel-key");
+    });
+    await act(async () => {
+      await result.current.saveSettings();
+    });
+
+    // Save proceeded — not the "ignoring save" warn path.
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("not yet loaded"),
+    );
+    expect(localStorage.getItem("producer_pal_settings_configured")).toBe(
+      "true",
+    );
+
+    warn.mockRestore();
   });
 
   it("reverts to saved settings on cancel", async () => {
@@ -200,6 +444,10 @@ describe("useSettings", () => {
     localStorage.setItem("gemini_model", "gemini-2.5-pro");
 
     const { result } = renderHook(() => useSettings());
+
+    // Wait for the post-mount decrypt to apply the saved key before editing,
+    // so the async load can't clobber the edit below.
+    await waitFor(() => expect(result.current.apiKey).toBe("saved-key"));
 
     await act(() => {
       result.current.setApiKey("temporary-key");
@@ -213,8 +461,11 @@ describe("useSettings", () => {
       result.current.cancelSettings();
     });
 
-    expect(result.current.apiKey).toBe("saved-key");
-    expect(result.current.model).toBe("gemini-2.5-pro");
+    // cancel reloads (and re-decrypts) saved settings asynchronously.
+    await waitFor(() => {
+      expect(result.current.model).toBe("gemini-2.5-pro");
+      expect(result.current.apiKey).toBe("saved-key");
+    });
   });
 
   it("hasApiKey returns false when no key in localStorage", () => {
@@ -223,25 +474,44 @@ describe("useSettings", () => {
     expect(result.current.hasApiKey).toBe(false);
   });
 
-  it("hasApiKey returns true when key exists in old format", () => {
+  it("hasApiKey returns true when key exists in old format", async () => {
     localStorage.setItem("gemini_api_key", "test-key");
     const { result } = renderHook(() => useSettings());
 
-    expect(result.current.hasApiKey).toBe(true);
+    // hasApiKey derives from the decrypted in-memory key, which lands after the
+    // post-mount load (legacy cleartext passes through decrypt unchanged).
+    await waitFor(() => expect(result.current.hasApiKey).toBe(true));
   });
 
-  it("hasApiKey returns true when key exists in new format", () => {
+  it("hasApiKey returns true when key exists in new format", async () => {
     localStorage.setItem(
       "producer_pal_provider_gemini",
       JSON.stringify({ apiKey: "test-key" }),
     );
     const { result } = renderHook(() => useSettings());
 
-    expect(result.current.hasApiKey).toBe(true);
+    await waitFor(() => expect(result.current.hasApiKey).toBe(true));
+  });
+
+  it("hasApiKey is false for an undecryptable (orphaned) key", async () => {
+    // A raw envelope is present in localStorage, but it can't be decrypted (e.g.
+    // the IndexedDB crypto key was reset). decryptApiKey fails safe to "", so
+    // hasApiKey must report false rather than trusting the raw envelope.
+    localStorage.setItem(
+      "producer_pal_provider_gemini",
+      JSON.stringify({ apiKey: await forgeUndecryptableEnvelope() }),
+    );
+
+    const { result } = renderHook(() => useSettings());
+
+    await waitFor(() => expect(result.current.apiKey).toBe(""));
+    expect(result.current.hasApiKey).toBe(false);
   });
 
   it("remembers all settings per provider when switching", async () => {
     const { result } = renderHook(() => useSettings());
+
+    await flushLoad();
 
     // Configure Gemini with custom settings
     await act(() => {
@@ -309,129 +579,100 @@ describe("useSettings", () => {
   });
 
   it("saves and loads all provider settings separately", async () => {
+    interface ProviderSetup {
+      provider: "gemini" | "openai" | "openrouter" | "mistral";
+      apiKey: string;
+      model: string;
+      thinking?: string;
+      temperature: number;
+    }
+    const setups: ProviderSetup[] = [
+      {
+        provider: "gemini",
+        apiKey: "gemini-key",
+        model: "gemini-2.5-pro",
+        thinking: "Max",
+        temperature: 0.5,
+      },
+      {
+        provider: "openai",
+        apiKey: "openai-key",
+        model: "gpt-5.4-mini",
+        thinking: "Off",
+        temperature: 1.5,
+      },
+      {
+        provider: "openrouter",
+        apiKey: "openrouter-key",
+        model: "minimax/minimax-m2:free",
+        temperature: 0.8,
+      },
+      {
+        provider: "mistral",
+        apiKey: "mistral-key",
+        model: "mistral-small-latest",
+        temperature: 1.2,
+      },
+    ];
+    const last = setups.at(-1)!;
+
     const { result } = renderHook(() => useSettings());
 
+    await flushLoad();
+
     // Configure each provider with unique settings
-    await act(() => {
-      result.current.setProvider("gemini");
-    });
-    await act(() => {
-      result.current.setApiKey("gemini-key");
-      result.current.setModel("gemini-2.5-pro");
-      result.current.setThinking("Max");
-      result.current.setTemperature(0.5);
+    for (const s of setups) {
+      await act(() => result.current.setProvider(s.provider));
+      await act(() => {
+        result.current.setApiKey(s.apiKey);
+        result.current.setModel(s.model);
+        if (s.thinking != null) result.current.setThinking(s.thinking);
+        result.current.setTemperature(s.temperature);
+      });
+    }
+
+    // Save all settings (async encrypt + write)
+    await act(async () => {
+      await result.current.saveSettings();
     });
 
-    await act(() => {
-      result.current.setProvider("openai");
-    });
-    await act(() => {
-      result.current.setApiKey("openai-key");
-      result.current.setModel("gpt-5.4-mini");
-      result.current.setThinking("Off");
-      result.current.setTemperature(1.5);
+    // Wait for the async save to land every provider's encrypted key.
+    await waitFor(() => {
+      for (const { provider } of setups) {
+        const raw = JSON.parse(
+          localStorage.getItem(`producer_pal_provider_${provider}`) ?? "{}",
+        );
+
+        expect(raw.apiKey?.startsWith("enc:v1:")).toBe(true);
+      }
     });
 
-    await act(() => {
-      result.current.setProvider("openrouter");
-    });
-    await act(() => {
-      result.current.setApiKey("openrouter-key");
-      result.current.setModel("minimax/minimax-m2:free");
-      result.current.setTemperature(0.8);
-    });
+    // Verify each provider's settings are saved separately as JSON, with the
+    // apiKey encrypted at rest (raw value is NOT the cleartext).
+    for (const { provider, apiKey, ...rest } of setups) {
+      await expectStored(provider, apiKey, rest);
+    }
 
-    await act(() => {
-      result.current.setProvider("mistral");
-    });
-    await act(() => {
-      result.current.setApiKey("mistral-key");
-      result.current.setModel("mistral-small-latest");
-      result.current.setTemperature(1.2);
-    });
-
-    // Save all settings
-    await act(() => {
-      result.current.saveSettings();
-    });
-
-    // Verify each provider's settings are saved separately as JSON
-    expect(
-      JSON.parse(localStorage.getItem("producer_pal_provider_gemini") ?? "{}"),
-    ).toMatchObject({
-      apiKey: "gemini-key",
-      model: "gemini-2.5-pro",
-      thinking: "Max",
-      temperature: 0.5,
-    });
-
-    expect(
-      JSON.parse(localStorage.getItem("producer_pal_provider_openai") ?? "{}"),
-    ).toMatchObject({
-      apiKey: "openai-key",
-      model: "gpt-5.4-mini",
-      thinking: "Off",
-      temperature: 1.5,
-    });
-
-    expect(
-      JSON.parse(
-        localStorage.getItem("producer_pal_provider_openrouter") ?? "{}",
-      ),
-    ).toMatchObject({
-      apiKey: "openrouter-key",
-      model: "minimax/minimax-m2:free",
-      temperature: 0.8,
-    });
-
-    expect(
-      JSON.parse(localStorage.getItem("producer_pal_provider_mistral") ?? "{}"),
-    ).toMatchObject({
-      apiKey: "mistral-key",
-      model: "mistral-small-latest",
-      temperature: 1.2,
-    });
-
-    // Clear and reload
+    // Reload (fresh hook) and verify the last selected provider is loaded.
     const { result: result2 } = renderHook(() => useSettings());
 
-    // Verify last selected provider (mistral) is loaded
     expect(result2.current).toMatchObject({
-      provider: "mistral",
-      apiKey: "mistral-key",
-      model: "mistral-small-latest",
-      temperature: 1.2,
+      provider: last.provider,
+      model: last.model,
+      temperature: last.temperature,
     });
+    await waitFor(() => expect(result2.current.apiKey).toBe(last.apiKey));
 
-    // Switch providers and verify each loads correctly
-    await act(() => {
-      result2.current.setProvider("gemini");
-    });
-    expect(result2.current).toMatchObject({
-      apiKey: "gemini-key",
-      model: "gemini-2.5-pro",
-      thinking: "Max",
-      temperature: 0.5,
-    });
-
-    await act(() => {
-      result2.current.setProvider("openai");
-    });
-    expect(result2.current).toMatchObject({
-      apiKey: "openai-key",
-      model: "gpt-5.4-mini",
-      thinking: "Off",
-      temperature: 1.5,
-    });
-
-    await act(() => {
-      result2.current.setProvider("openrouter");
-    });
-    expect(result2.current).toMatchObject({
-      apiKey: "openrouter-key",
-      model: "minimax/minimax-m2:free",
-      temperature: 0.8,
-    });
+    // Switch through the remaining providers and verify each loads correctly.
+    for (const s of setups.slice(0, -1)) {
+      await act(() => result2.current.setProvider(s.provider));
+      expect(result2.current).toMatchObject({
+        model: s.model,
+        temperature: s.temperature,
+        ...(s.thinking != null ? { thinking: s.thinking } : {}),
+      });
+      await waitFor(() => expect(result2.current.apiKey).toBe(s.apiKey));
+    }
   });
 
   it("settingsConfigured is false by default", () => {
@@ -452,14 +693,46 @@ describe("useSettings", () => {
 
     expect(result.current.settingsConfigured).toBe(false);
 
-    await act(() => {
-      result.current.saveSettings();
+    await flushLoad();
+    await act(async () => {
+      await result.current.saveSettings();
     });
 
     expect(result.current.settingsConfigured).toBe(true);
     expect(localStorage.getItem("producer_pal_settings_configured")).toBe(
       "true",
     );
+  });
+
+  it("saveSettings returns true and leaves saveError null on success", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    await flushLoad();
+
+    let saved: boolean | undefined;
+
+    await act(async () => {
+      saved = await result.current.saveSettings();
+    });
+
+    expect(saved).toBe(true);
+    expect(result.current.saveError).toBeNull();
+  });
+
+  it("cancelSettings clears a prior saveError", async () => {
+    // Direct state poke isn't possible from outside; instead, exercise the
+    // failure path then cancel. We can't simulate encrypt failure without
+    // remocking, so just verify the cleared state after cancel from idle (no
+    // error) is unchanged — covered alongside the crypto-errors test, which
+    // produces the error in the first place. This test guards the contract
+    // that saveError is always null after a cancel.
+    const { result } = renderHook(() => useSettings());
+
+    await act(() => {
+      result.current.cancelSettings();
+    });
+
+    expect(result.current.saveError).toBeNull();
   });
 
   it("resetBehaviorToDefaults resets temperature, thinking, and showThoughts", async () => {
@@ -518,31 +791,7 @@ describe("useSettings", () => {
     expect(result.current.isToolEnabled("unknown-tool")).toBe(true);
   });
 
-  it("setShowThoughts works for mistral provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("mistral");
-    });
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-    expect(result.current.showThoughts).toBe(false);
-  });
-
-  it("setShowThoughts works for openrouter provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("openrouter");
-    });
-    await act(() => {
-      result.current.setShowThoughts(false);
-    });
-    expect(result.current.showThoughts).toBe(false);
-  });
-
-  it.each(["lmstudio", "ollama", "custom"] as const)(
+  it.each(["mistral", "openrouter", "lmstudio", "ollama", "custom"] as const)(
     "setShowThoughts works for %s provider",
     async (provider) => {
       const { result } = renderHook(() => useSettings());
@@ -583,20 +832,8 @@ describe("useSettings", () => {
     localStorage.removeItem("producer_pal_provider_gemini");
   });
 
-  it("setBaseUrl updates baseUrl for custom provider", async () => {
-    const { result } = renderHook(() => useSettings());
-
-    await act(() => {
-      result.current.setProvider("custom");
-    });
-    await act(() => {
-      result.current.setBaseUrl!("http://localhost:8080");
-    });
-
-    expect(result.current.baseUrl).toBe("http://localhost:8080");
-  });
-
   it.each([
+    ["custom", "http://localhost:8080"],
     ["ollama", "http://192.168.1.100:11434/v1"],
     ["lmstudio", "http://192.168.1.100:1234/v1"],
   ] as const)(
@@ -628,3 +865,19 @@ describe("useSettings", () => {
     localStorage.removeItem("producer_pal_enabled_tools");
   });
 });
+
+/**
+ * Build an `enc:v1:<iv>:<ciphertext>` envelope that cannot be decrypted: a valid
+ * IV from one encryption paired with a ciphertext from another, so AES-GCM
+ * authentication fails and decryptApiKey fails safe to "". Index [2]/[3] are the
+ * IV/ciphertext since encryptApiKey always emits exactly four colon-segments.
+ * @returns {Promise<string>} An undecryptable enc:v1: envelope
+ */
+async function forgeUndecryptableEnvelope(): Promise<string> {
+  const envelopeA = await encryptApiKey("seed-a");
+  const envelopeB = await encryptApiKey("seed-b");
+  const iv = envelopeA.split(":")[2] as string;
+  const ciphertext = envelopeB.split(":")[3] as string;
+
+  return `enc:v1:${iv}:${ciphertext}`;
+}

@@ -94,9 +94,13 @@ Requires [Node.js](https://nodejs.org) (recommended v24 or higher)
 5. Drag and drop `claude-desktop-extension/Producer_Pal.mcpb` to Claude Desktop
    → Settings → Extension
 
-**Note**: For development and testing, use `npm run build:debug` to include
-debugging tools like `ppal-raw-live-api`. Use `npm run build:dev` for a normal
-build with CORS enabled (for `npm run ui:dev`).
+**Note**: For development and testing, use `npm run build:debug` to enable
+debug-only flags (`ENABLE_LIVE_API`, `ENABLE_CODE_EXEC`, `ENABLE_DEV_CORS`).
+`ENABLE_LIVE_API=true` forces the runtime `liveApiEnabled` flag on so the Direct
+Live API tool (`ppal-live-api`) is always available — the Setup-tab toggle
+cannot disable it in this build. `POST /config { liveApiEnabled }` still works
+in either direction so e2e tests can exercise both states. Use
+`npm run build:dev` for a normal build with CORS enabled (for `npm run ui:dev`).
 
 ## Core Development Scripts
 
@@ -257,7 +261,7 @@ Quick commands:
 must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
 cached tool definitions.
 
-See [Development-Tools](dev/Development-Tools.md) for the CLI tool, Raw Live API
+See [Development-Tools](dev/Development-Tools.md) for the CLI tool, Live API
 tool, MCP Inspector setup, debugging tips, and testing workflows.
 
 ### Portal Script (Internal Testing)

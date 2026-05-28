@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -29,7 +30,7 @@ export const ANTHROPIC_CONFIG: ProviderConfig = {
 export const GEMINI_CONFIG: ProviderConfig = {
   apiKeyEnvVar: "GEMINI_KEY",
   providerName: "Gemini",
-  defaultModel: "gemini-3-flash-preview",
+  defaultModel: "gemini-3.5-flash",
 };
 
 /** OpenAI provider configuration */

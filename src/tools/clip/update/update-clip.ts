@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { applyCodeToSingleClip } from "#src/tools/clip/code-exec/apply-code-to-clip.ts";
 import {
@@ -13,20 +14,26 @@ import {
   computeLoopDeadline,
   isDeadlineExceeded,
 } from "#src/tools/clip/helpers/loop-deadline.ts";
-import { select } from "#src/tools/control/select.ts";
+import { select } from "#src/tools/session/select.ts";
 import {
   prepareSplitParams,
   performSplitting,
   type SplittingContext,
 } from "#src/tools/shared/arrangement/arrangement-splitting.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   parseCommaSeparatedIds,
+  parseTimeSignature,
   unwrapSingleResult,
 } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
 } from "#src/tools/shared/validation/color-utils.ts";
+import {
+  getCycledEntry,
+  warnExtraEntries,
+} from "#src/tools/shared/validation/cycle-utils.ts";
 import { validateIdTypes } from "#src/tools/shared/validation/id-validation.ts";
 import {
   getNameForIndex,
@@ -36,13 +43,14 @@ import { parseSlotList } from "#src/tools/shared/validation/position-parsing.ts"
 import { computeNonSurvivorClipIds } from "./helpers/update-clip-arrangement-optimizer.ts";
 import {
   type ClipAudioWarpQuantizeParams,
+  type ProcessSingleClipUpdateParams,
   processSingleClipUpdate,
 } from "./helpers/update-clip-helpers.ts";
 
 interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   ids?: string;
   notes?: string;
-  transforms?: string;
+  transforms?: string[];
   noteUpdateMode?: string;
   name?: string;
   color?: string;
@@ -55,7 +63,7 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   arrangementLength?: string;
   toSlot?: string;
   split?: string;
-  code?: string;
+  code?: string[];
   focus?: boolean;
 }
 
@@ -70,7 +78,7 @@ interface ClipResult {
  * @param args - The clip parameters
  * @param args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param args.notes - Musical notation string
- * @param args.transforms - Transform expressions (parameter: expression per line)
+ * @param args.transforms - Per-clip transform expressions (cycled across ids)
  * @param args.noteUpdateMode - How to handle existing notes: 'replace' or 'merge'
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
@@ -94,7 +102,7 @@ interface ClipResult {
  * @param args.quantize - Quantization strength 0-1 (MIDI clips only)
  * @param args.quantizeGrid - Note grid for quantization
  * @param args.quantizePitch - Limit quantization to specific pitch
- * @param args.code - JavaScript code to transform notes
+ * @param args.code - Per-clip JavaScript code to transform notes (cycled across ids)
  * @param args.focus - Select the clip and show clip detail view
  * @param context - Tool execution context with holding area settings
  * @returns Single clip object or array of clip objects
@@ -103,7 +111,7 @@ export async function updateClip(
   {
     ids,
     notes: notationString,
-    transforms: transformString,
+    transforms,
     noteUpdateMode = "merge",
     name,
     color,
@@ -151,12 +159,19 @@ export async function updateClip(
   const { arrangementStartBeats, arrangementLengthBeats } =
     validateAndParseArrangementParams(arrangementStart, arrangementLength);
 
+  // Validate timeSignature up front so format errors throw to the caller
+  // instead of being swallowed by the per-clip warn-and-skip wrapper.
+  if (timeSignature != null) parseTimeSignature(timeSignature);
+
   const parsedToSlot = parseToSlotParam(toSlot);
   // prettier-ignore
   const nonSurvivorClipIds = computeNonSurvivorClipIds(mutableClips, arrangementStartBeats, arrangementLengthBeats);
 
   const parsedNames = parseNames(name, mutableClips.length, "updateClip");
   const parsedColors = parseCommaSeparatedColors(color, mutableClips.length);
+
+  warnExtraEntries(transforms, mutableClips.length, "updateClip", "transforms");
+  warnExtraEntries(code, mutableClips.length, "updateClip", "code");
   const updatedClips: ClipResult[] = [];
   const tracksWithMovedClips = new Map<number, number>();
 
@@ -170,14 +185,12 @@ export async function updateClip(
       break;
     }
 
-    const prevLen = updatedClips.length;
-
-    processSingleClipUpdate({
+    await processClipUpdateStep({
       clip,
       clipIndex: i,
       clipCount: mutableClips.length,
       notationString,
-      transformString,
+      transformString: getCycledEntry(transforms, i),
       noteUpdateMode,
       name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
@@ -204,9 +217,8 @@ export async function updateClip(
       context,
       updatedClips,
       tracksWithMovedClips,
+      code: getCycledEntry(code, i),
     });
-
-    await applyCodeExecToNewClips(updatedClips, prevLen, code);
   }
 
   emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
@@ -239,6 +251,26 @@ function parseToSlotParam(
   }
 
   return slots[0] as { trackIndex: number; sceneIndex: number };
+}
+
+/**
+ * Process one clip update + per-clip code-exec, warn-and-continue on failure.
+ * @param params - Per-clip update params plus optional code to apply
+ */
+async function processClipUpdateStep(
+  params: ProcessSingleClipUpdateParams & { code?: string },
+): Promise<void> {
+  const { code, ...processParams } = params;
+  const prevLen = params.updatedClips.length;
+
+  try {
+    processSingleClipUpdate(processParams);
+    await applyCodeExecToNewClips(params.updatedClips, prevLen, code);
+  } catch (error) {
+    console.warn(
+      `Failed to update clip ${params.clip.id}: ${errorMessage(error)}`,
+    );
+  }
 }
 
 /**
@@ -276,9 +308,22 @@ function applySplittingIfNeeded(
   split: string | undefined,
   context: Partial<ToolContext>,
 ): LiveAPI[] {
-  const arrangementClips = clips.filter(
-    (clip) => (clip.getProperty("is_arrangement_clip") as number) > 0,
-  );
+  const arrangementClips = clips.filter((clip) => {
+    if ((clip.getProperty("is_arrangement_clip") as number) <= 0) return false;
+
+    // performSplitting uses duplicate_clip_to_arrangement (Track-only) which
+    // can't target take lanes. Warn-and-skip rather than silently misroute
+    // the split onto the main lane.
+    if (isTakeLaneClip(clip)) {
+      console.warn(
+        `split parameter ignored for take-lane clip (id ${clip.id}); split it in Live's UI`,
+      );
+
+      return false;
+    }
+
+    return true;
+  });
   const splitPoints = prepareSplitParams(split, arrangementClips, new Set());
 
   if (split != null && splitPoints != null && arrangementClips.length > 0) {

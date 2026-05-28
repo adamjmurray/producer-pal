@@ -1,0 +1,363 @@
+// Producer Pal
+// Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
+import { listPlugins } from "../list-plugins.ts";
+import {
+  createFilesDbWithoutPluginsFixture,
+  createFilesDbWithPluginsFixture,
+  createPluginsDbFixture,
+  type PluginsFixture,
+} from "./fixtures/plugins-fixture.ts";
+
+vi.mock(import("../live-db-path.ts"), () => ({
+  findLiveFilesDbPath: vi.fn(),
+  findLivePluginsDbPath: vi.fn(),
+  liveDatabaseDir: vi.fn(),
+}));
+
+const dbPathMod = await import("../live-db-path.ts");
+
+/**
+ * Point findLivePluginsDbPath at a path and findLiveFilesDbPath at null.
+ *
+ * @param path - Path the separate plugins DB finder should return
+ */
+function usePluginsDb(path: string): void {
+  vi.mocked(dbPathMod.findLivePluginsDbPath).mockResolvedValue(path);
+  vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);
+}
+
+/**
+ * Point findLivePluginsDbPath at null and findLiveFilesDbPath at a path
+ * (the Live 11 / 12.0–12.1 fallback scenario).
+ *
+ * @param path - Path the files DB finder should return
+ */
+function useFilesDb(path: string | null): void {
+  vi.mocked(dbPathMod.findLivePluginsDbPath).mockResolvedValue(null);
+  vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(path);
+}
+
+afterEach(() => {
+  vi.clearAllMocks();
+});
+
+describe("listPlugins — DB selection", () => {
+  let pluginsV2: PluginsFixture;
+
+  beforeAll(() => {
+    pluginsV2 = createPluginsDbFixture("v2");
+  });
+
+  afterAll(() => {
+    pluginsV2.cleanup();
+  });
+
+  it("returns dbAvailable: false with a reason when no plugin source exists", async () => {
+    vi.mocked(dbPathMod.findLivePluginsDbPath).mockResolvedValue(null);
+    vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);
+
+    const result = await listPlugins();
+
+    expect(result.dbAvailable).toBe(false);
+    expect(result.plugins).toHaveLength(0);
+    expect(result.reason).toContain("Live plugin database not found");
+  });
+
+  it("reads from a separate Live-plugins DB when present", async () => {
+    usePluginsDb(pluginsV2.dbPath);
+
+    const result = await listPlugins();
+
+    expect(result.dbAvailable).toBe(true);
+    expect(result.plugins.map((p) => p.name)).toContain("Massive");
+    // Should NOT have consulted the files DB.
+    expect(dbPathMod.findLiveFilesDbPath).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the files DB when it carries the plugins table", async () => {
+    const fixture = createFilesDbWithPluginsFixture();
+
+    try {
+      useFilesDb(fixture.dbPath);
+
+      const result = await listPlugins();
+
+      expect(result.dbAvailable).toBe(true);
+      expect(result.plugins.map((p) => p.name)).toContain("Massive");
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it("returns dbAvailable: false when the files DB lacks a plugins table", async () => {
+    const fixture = createFilesDbWithoutPluginsFixture();
+
+    try {
+      useFilesDb(fixture.dbPath);
+
+      const result = await listPlugins();
+
+      expect(result.dbAvailable).toBe(false);
+      expect(result.plugins).toHaveLength(0);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+
+  it("degrades to dbAvailable:false when the files DB probe throws", async () => {
+    // Regression: selectPluginDb used to run outside the guard, so a corrupt
+    // or inaccessible files DB (openLiveDb throws on table probe) would crash
+    // listPlugins instead of returning dbAvailable:false with a reason.
+    useFilesDb("/nonexistent/path/to/Live-files.db");
+
+    const result = await listPlugins();
+
+    expect(result.dbAvailable).toBe(false);
+    expect(result.plugins).toHaveLength(0);
+    expect(result.reason).toContain("Failed to read Live plugin database");
+  });
+});
+
+describe("listPlugins — schema variants", () => {
+  it.each([
+    { version: "v1" as const, label: "v1-shaped DB (no ARA columns)" },
+    { version: "v2" as const, label: "v2-shaped DB (with ARA columns)" },
+  ])("works against a $label", async ({ version }) => {
+    const fixture = createPluginsDbFixture(version);
+
+    try {
+      usePluginsDb(fixture.dbPath);
+
+      const result = await listPlugins();
+
+      expect(result.plugins.map((p) => p.name)).toContain("Serum");
+    } finally {
+      fixture.cleanup();
+    }
+  });
+});
+
+describe("listPlugins — filtering and derivation", () => {
+  let fixture: PluginsFixture;
+
+  beforeAll(() => {
+    fixture = createPluginsDbFixture("v2");
+  });
+
+  afterAll(() => {
+    fixture.cleanup();
+  });
+
+  it("excludes disabled (enabled=0) rows", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins();
+
+    expect(result.plugins.map((p) => p.name)).not.toContain("Old Reverb");
+  });
+
+  it("derives format and category from dev_identifier", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins();
+    const byName = new Map(result.plugins.map((p) => [p.name, p]));
+
+    expect(byName.get("Massive")?.format).toBe("VST3");
+    expect(byName.get("Massive")?.category).toBe("instrument");
+    expect(byName.get("FabFilter Pro-Q 3")?.format).toBe("VST3");
+    expect(byName.get("FabFilter Pro-Q 3")?.category).toBe("audiofx");
+    expect(byName.get("Serum")?.format).toBe("VST");
+    expect(byName.get("Serum")?.category).toBe("instrument");
+    expect(byName.get("ValhallaRoom")?.format).toBe("AU");
+    expect(byName.get("ValhallaRoom")?.category).toBe("audiofx");
+  });
+
+  it("returns null format/category for an unparseable dev_identifier", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins();
+    const mystery = result.plugins.find((p) => p.name === "Mystery Box");
+
+    expect(mystery?.format).toBeNull();
+    expect(mystery?.category).toBeNull();
+  });
+
+  it("carries through vendor and version, with nulls preserved", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins();
+    const byName = new Map(result.plugins.map((p) => [p.name, p]));
+
+    expect(byName.get("Serum")?.vendor).toBe("Xfer Records");
+    expect(byName.get("Serum")?.version).toBe("1.3.6");
+    expect(byName.get("Mystery Box")?.version).toBeNull();
+  });
+
+  it("filters by name substring (case-insensitive)", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins({ query: "valhalla" });
+
+    expect(result.plugins.map((p) => p.name)).toStrictEqual(["ValhallaRoom"]);
+  });
+
+  it("filters by vendor substring (case-insensitive)", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins({ vendor: "fabfilter" });
+
+    expect(result.plugins.map((p) => p.name)).toStrictEqual([
+      "FabFilter Pro-Q 3",
+    ]);
+  });
+
+  it("filters by format", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins({ format: "AU" });
+
+    expect(result.plugins.map((p) => p.name)).toStrictEqual(["ValhallaRoom"]);
+  });
+
+  it("filters by category", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins({ category: "instrument" });
+
+    expect(result.plugins.map((p) => p.name).sort()).toStrictEqual([
+      "Massive",
+      "Serum",
+    ]);
+  });
+
+  it("filters by subcategory substring (case-insensitive, any element)", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    // "Fx|Reverb" → ["Reverb"]; uppercase query proves case-insensitivity.
+    const reverb = await listPlugins({ subcategory: "REVERB" });
+
+    expect(reverb.plugins.map((p) => p.name)).toStrictEqual(["ValhallaRoom"]);
+
+    // "Instrument|Synth|Bass" → ["Synth","Bass"]; matches a non-leading element.
+    const bass = await listPlugins({ subcategory: "bass" });
+
+    expect(bass.plugins.map((p) => p.name)).toStrictEqual(["Massive"]);
+  });
+
+  it("returns plugins sorted by name (case-insensitive)", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins();
+    const names = result.plugins.map((p) => p.name);
+    const sorted = [...names].sort((a, b) =>
+      a.toLowerCase().localeCompare(b.toLowerCase()),
+    );
+
+    expect(names).toStrictEqual(sorted);
+  });
+
+  it("respects the limit", async () => {
+    usePluginsDb(fixture.dbPath);
+
+    const result = await listPlugins({ limit: 2 });
+
+    expect(result.plugins).toHaveLength(2);
+  });
+});
+
+describe("listPlugins — subcategories parsing", () => {
+  it("splits on |, drops the redundant category prefix, handles empty/null", async () => {
+    const fixture = createPluginsDbFixture("v2", [
+      pluginSeed("Multi", "device:vst3:instr:Multi", "Instrument|Synth|Bass"),
+      pluginSeed("Single", "device:vst3:audiofx:Single", "Fx|EQ"),
+      pluginSeed("CategoryOnly", "device:vst3:audiofx:CatOnly", "Fx"),
+      pluginSeed("Empty", "device:vst:instr:Empty", ""),
+      pluginSeed("NullSubs", "device:vst3:instr:NullSubs", null),
+      // No recognized category prefix → keep every segment.
+      pluginSeed("NoPrefix", "device:vst3:audiofx:NoPrefix", "Reverb|Delay"),
+    ]);
+
+    try {
+      usePluginsDb(fixture.dbPath);
+
+      const result = await listPlugins();
+      const subs = new Map(
+        result.plugins.map((p) => [p.name, p.subcategories]),
+      );
+
+      expect(subs.get("Multi")).toStrictEqual(["Synth", "Bass"]);
+      expect(subs.get("Single")).toStrictEqual(["EQ"]);
+      expect(subs.get("CategoryOnly")).toStrictEqual([]);
+      expect(subs.get("Empty")).toStrictEqual([]);
+      expect(subs.get("NullSubs")).toStrictEqual([]);
+      expect(subs.get("NoPrefix")).toStrictEqual(["Reverb", "Delay"]);
+    } finally {
+      fixture.cleanup();
+    }
+  });
+});
+
+describe("listPlugins — error handling", () => {
+  it("degrades to dbAvailable:false when the plugins DB lacks the schema", async () => {
+    // A DB with no `plugins` table, pointed at via the PRIMARY plugins-DB
+    // finder (which does NOT probe for the table) so the SELECT throws and the
+    // guard catches it — modeling a renamed/missing column on an untested Live.
+    const fixture = createFilesDbWithoutPluginsFixture();
+
+    try {
+      usePluginsDb(fixture.dbPath);
+
+      const result = await listPlugins();
+
+      expect(result.dbAvailable).toBe(false);
+      expect(result.plugins).toHaveLength(0);
+      expect(result.reason).toContain("Failed to read Live plugin database");
+    } finally {
+      fixture.cleanup();
+    }
+  });
+});
+
+/**
+ * Build a minimal enabled PluginSeed for subcategory-parsing tests.
+ *
+ * @param name - Plugin display name
+ * @param devIdentifier - dev_identifier URI
+ * @param subcategories - Raw pipe-delimited subcategories column value (or null)
+ * @returns A PluginSeed-shaped object for createPluginsDbFixture
+ */
+function pluginSeed(
+  name: string,
+  devIdentifier: string,
+  subcategories: string | null,
+): {
+  name: string;
+  vendor: string | null;
+  version: string | null;
+  scanstate: number | null;
+  enabled: number;
+  subcategories: string | null;
+  dev_identifier: string | null;
+} {
+  return {
+    name,
+    vendor: null,
+    version: null,
+    scanstate: 1,
+    enabled: 1,
+    subcategories,
+    dev_identifier: devIdentifier,
+  };
+}

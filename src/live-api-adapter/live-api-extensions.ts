@@ -5,7 +5,9 @@
 
 /* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic property handling requires any */
+import { errorMessage } from "#src/shared/error-utils.ts";
 import { type PathLike } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import { parseIdOrPath } from "./live-api-path-utils.ts";
 
 if (typeof LiveAPI !== "undefined") {
@@ -66,7 +68,10 @@ if (typeof LiveAPI !== "undefined") {
             const parsed = JSON.parse(rawValue[0] as string);
 
             return parsed[property];
-          } catch {
+          } catch (error) {
+            console.warn(
+              `LiveAPI getProperty: failed to parse "${property}" response: ${errorMessage(error)}`,
+            );
             return null;
           }
         }
@@ -78,6 +83,22 @@ if (typeof LiveAPI !== "undefined") {
         return result?.[0];
       }
     }
+  };
+
+  /**
+   * Get a Live API list-valued property as a full array. Unlike getProperty,
+   * which unwraps to the first element for scalar ergonomics, this returns the
+   * entire array — use for list properties (e.g. wavetable catalogs, IR lists).
+   * @param property - Property name to get
+   * @returns The property value as an array (empty when unset)
+   */
+  LiveAPI.prototype.getPropertyList = function (
+    this: LiveAPI,
+    property: string,
+  ): unknown[] {
+    const result = this.get(property);
+
+    return Array.isArray(result) ? result : [];
   };
 
   /**
@@ -285,6 +306,17 @@ if (typeof LiveAPI !== "undefined") {
 
         // Also try scene path (clip slot index is the scene index in session view)
         match = this.path.match(/live_set scenes (\d+)/);
+        return match ? Number(match[1]) : null;
+      },
+    });
+  }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "takeLaneIndex")
+  ) {
+    Object.defineProperty(LiveAPI.prototype, "takeLaneIndex", {
+      get: function (this: LiveAPI) {
+        const match = this.path.match(/take_lanes (\d+)/);
         return match ? Number(match[1]) : null;
       },
     });

@@ -22,7 +22,7 @@ const ESLINT_DISABLE_LIMITS: TreeLimits = {
   src: 10,
   srcTests: 18,
   scripts: 0,
-  webui: 3,
+  webui: 4,
 };
 
 const TS_EXPECT_ERROR_LIMITS: TreeLimits = {

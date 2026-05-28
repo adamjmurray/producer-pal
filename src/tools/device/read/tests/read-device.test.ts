@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -90,6 +91,30 @@ describe("readDevice", () => {
     });
   });
 
+  it('include: ["actions"] lists a specialized device\'s actions', () => {
+    setupBasicDeviceMock({ class_display_name: "Simpler", type: 1 });
+    const result = readDevice({
+      deviceId: "device-123",
+      include: ["actions"],
+    });
+
+    expect(result.actions).toContainEqual({
+      name: "warpAs",
+      signature: "warpAs(beats)",
+      description: "Warp the active region to span the given number of beats",
+    });
+  });
+
+  it('include: ["actions"] omits the field for a device with no actions', () => {
+    setupBasicDeviceMock({ class_display_name: "Operator", type: 1 });
+    const result = readDevice({
+      deviceId: "device-123",
+      include: ["actions"],
+    });
+
+    expect(result).not.toHaveProperty("actions");
+  });
+
   it("should handle deactivated devices", () => {
     setupBasicDeviceMock({
       class_display_name: "EQ Eight",
@@ -155,7 +180,7 @@ describe("readDevice", () => {
   // Path-based tests are in read-device-path.test.js
 
   describe("Simpler sample reading", () => {
-    it("should include sample path for Simpler device with loaded sample", () => {
+    it("should expose the sample file path as a flat top-level field for a loaded Simpler", () => {
       setupBasicDeviceMock({
         class_display_name: "Simpler",
         type: 1,
@@ -166,11 +191,12 @@ describe("readDevice", () => {
         include: ["sample"],
       });
 
+      // Focused discovery view: just the sample path. gainDb and multi-sample
+      // state live in the full `params` view, not here.
       expect(result).toStrictEqual({
         id: "device-123",
         type: "instrument: Simpler",
         sample: "/path/to/sample.wav",
-        gainDb: -70, // Mock returns 0 for gain → liveGainToDb(0) = -70
       });
     });
 
@@ -198,6 +224,23 @@ describe("readDevice", () => {
       expect(result).toStrictEqual({
         id: "device-123",
         type: "instrument: Operator",
+      });
+    });
+
+    it('include: ["*"] emits both the top-level sample field and the sample param entry', () => {
+      setupBasicDeviceMock({
+        class_display_name: "Simpler",
+        type: 1,
+        sample: "/path/to/sample.wav",
+      });
+      const result = readDevice({ deviceId: "device-123", include: ["*"] });
+
+      // "*" sets both params and sample includes. They are independent, so the
+      // flat top-level `sample` is emitted alongside the `sample` param entry.
+      expect(result.sample).toBe("/path/to/sample.wav");
+      expect(result.parameters as Record<string, unknown>[]).toContainEqual({
+        name: "sample",
+        value: "/path/to/sample.wav",
       });
     });
   });

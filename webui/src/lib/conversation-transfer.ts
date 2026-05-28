@@ -153,6 +153,12 @@ function normalizeRecord(record: Record<string, unknown>): ConversationRecord {
     totalUsage:
       (record.totalUsage as ConversationRecord["totalUsage"] | undefined) ??
       null,
+    sessionType:
+      (record.sessionType as ConversationRecord["sessionType"] | undefined) ??
+      "text",
     messages: record.messages as ConversationRecord["messages"],
+    voiceHistory:
+      (record.voiceHistory as ConversationRecord["voiceHistory"] | undefined) ??
+      null,
   };
 }

@@ -90,6 +90,8 @@ export interface ClipResultObject {
   slot?: string;
   trackIndex?: number;
   arrangementStart?: string | null;
+  /** 1-based take lane number, present only for clips on a take lane */
+  takeLane?: number;
   noteCount?: number;
   transformed?: number;
   length?: string;
@@ -135,6 +137,13 @@ export function buildClipResult(
   } else {
     clipResult.trackIndex = trackIndex;
     clipResult.arrangementStart = arrangementStart;
+
+    // Surface the take lane (1-based) when the clip landed on one
+    const takeLaneIndex = clip.takeLaneIndex;
+
+    if (takeLaneIndex != null) {
+      clipResult.takeLane = takeLaneIndex + 1;
+    }
   }
 
   // For MIDI clips: include noteCount if notes were provided

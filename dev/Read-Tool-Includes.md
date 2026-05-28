@@ -487,13 +487,40 @@ display value, value items for quantized params).
 
 ### Include: `"sample"`
 
-Adds Simpler sample info. No effect on non-Simpler devices.
+A focused discovery view: adds just the Simpler sample file path as a flat
+top-level field, optimized for scanning many devices at once (e.g. every pad in
+a drum rack). No effect on non-Simpler devices. `gainDb`, multi-sample state
+(`multiSampleMode`), and the other Simpler sample params are not in this view —
+use `include: ["params"]` for the full set.
 
-| Field         | Type     | Description                              |
-| ------------- | -------- | ---------------------------------------- |
-| `sample`      | `string` | File path (omitted if no sample loaded)  |
-| `multisample` | `true`   | Only present for multisample instruments |
-| `gainDb`      | `number` | Gain in dB                               |
+| Field    | Type     | Description                                    |
+| -------- | -------- | ---------------------------------------------- |
+| `sample` | `string` | File path (omitted if no single sample loaded) |
+
+### Include: `"actions"`
+
+Adds the device-specific actions available on `ppal-update-device` for the
+device's specialized class (e.g. Simpler's `warpAs`, Wavetable's
+`setModulation`). Lets the model discover what it can do to a device at runtime
+instead of relying on the skills prompt. Devices with no actions (most
+specialized classes and all generic devices) omit the field.
+
+| Field     | Type       | Description                             |
+| --------- | ---------- | --------------------------------------- |
+| `actions` | `Action[]` | Each `{ name, signature, description }` |
+
+### Include: `"options"`
+
+Adds dynamic per-state/per-install catalogs for specialized devices (IR files,
+sidechain sources, current-category wavetables, `modulatableParameters`) plus
+Wavetable's current mod-matrix routes (`modulations`). Opt-in because the scan
+can be expensive. Only devices that contribute add anything; others omit the
+field. See `dev/Specialized-Devices.md` for per-device contents.
+
+| Field         | Type       | Description                                  |
+| ------------- | ---------- | -------------------------------------------- |
+| `options`     | `object`   | Per-device catalogs (omitted when none)      |
+| `modulations` | `object[]` | Wavetable only: `{ target, source, amount }` |
 
 ### `maxDepth` arg
 

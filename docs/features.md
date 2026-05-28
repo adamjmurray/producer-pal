@@ -2,7 +2,7 @@
 title: Features
 description:
   Full feature list for Producer Pal, the Ableton MCP server that brings AI to
-  Ableton Live — 23 tools for tracks, MIDI/audio clips, devices, arrangements,
+  Ableton Live — 26 tools for tracks, MIDI/audio clips, devices, arrangements,
   and computer-use runbooks.
 ---
 
@@ -10,7 +10,7 @@ description:
 
 Producer Pal is an AI-powered music production assistant for Ableton Live — an
 Ableton MCP server that lets any AI read, create, and modify your Live Set. Tell
-the AI what you want and it uses 23 specialized tools to read, create, and
+the AI what you want and it uses 26 specialized tools to read, create, and
 modify tracks, clips, devices, and to drive Live's UI-only workflows (Export,
 Record, Max-for-Live device loading) via computer-use runbooks.
 
@@ -38,11 +38,10 @@ It works with virtually any AI, including its
 
 - Read and write project memory — persistent notes that help the AI understand
   your goals across conversations
-- Search configured sample folder for audio files by filename or path
 
 <!--@include: ./_generated/ppal-context-schema.md-->
 
-## Transport Tools
+## Session Tools
 
 ### 🔧 Playback (`ppal-playback`) {#ppal-playback}
 
@@ -55,6 +54,65 @@ It works with virtually any AI, including its
 - Stop all clips or specific track clips
 
 <!--@include: ./_generated/ppal-playback-schema.md-->
+
+### 🔧 Library (`ppal-library`) {#ppal-library}
+
+- Search Live's browser library by name, tags, content kind, device kind, or
+  source category (User Library, Pack, Built-in, Cloud, Plugin)
+- Also includes the user-configured sample folder when set, with results merged
+  and de-duplicated against Live's library
+- Sort by `use_count` (Live's persistent usage counter — surfaces what you
+  actually use most), `mod_date`, or `name`
+- Enumerate available tags with `action: "listTags"` so the AI can discover the
+  tag vocabulary on your machine
+
+<!--@include: ./_generated/ppal-library-schema.md-->
+
+### 🔧 Select (`ppal-select`) {#ppal-select}
+
+- Read current selection and view state (when no arguments)
+  - Returns only non-null fields: selected track, scene, clip, device
+  - Rich object shapes with IDs, types, and context (slot, path, etc.)
+- Update selection and returns only relevant fields
+  - Select any object by ID (auto-detects track/scene/clip/device)
+  - Select tracks by index/category, scenes by index
+  - Select clips by slot position (e.g., `0/3`)
+  - Select devices by path (e.g., `t0/d1`)
+  - Switch between Session and Arrangement views
+  - Auto-switches to session view for scene/clipSlot selection
+  - Detail views auto-managed: clip detail opens on clip selection, device
+    detail on device selection
+
+<!--@include: ./_generated/ppal-select-schema.md-->
+
+## Action Tools
+
+### 🔧 Delete (`ppal-delete`) {#ppal-delete}
+
+- Remove tracks, return tracks, scenes, clips, or devices
+- Bulk delete multiple objects
+
+<!--@include: ./_generated/ppal-delete-schema.md-->
+
+### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
+
+- Copy tracks, scenes, clips, or devices
+- Create multiple copies at once
+- Copy clips anywhere in the Session, Arrangement, or from Session to
+  Arrangement
+  - Position in the Arrangement by bar|beat or locator
+  - Auto-tile clips to fill longer arrangement durations
+- Apply [transforms](#transforms) to each duplicated clip (e.g. transpose
+  copies, vary velocities) without a separate update step
+- Stack MIDI variations on [take lanes](#take-lanes) with `takeLane: "new"` +
+  transforms — audition alternates at the same arrangement position
+- Copy devices to any track, return track, or rack chain
+- Route duplicated tracks to source instrument for MIDI layering
+
+Note: Return tracks and devices on return tracks cannot be duplicated (Live API
+limitation).
+
+<!--@include: ./_generated/ppal-duplicate-schema.md-->
 
 ## Live Set Tools
 
@@ -89,6 +147,8 @@ It works with virtually any AI, including its
 
 - Get detailed track information
 - View all clips in Session and Arrangement
+- List [take lanes](#take-lanes) and their clips (with the `arrangement-clips`
+  include)
 - See devices, routing options, and drum pad mappings
 - Check track states (muted, soloed, armed)
 - View mixer properties: gain, pan, panning mode, and send levels
@@ -130,6 +190,41 @@ It works with virtually any AI, including its
 
 <!--@include: ./_generated/ppal-update-scene-schema.md-->
 
+## Clip Tools
+
+### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
+
+- Generate MIDI clips with notes, velocities, and timing using
+  [custom notation](#custom-music-notation)
+- Place clips in Session slots or Arrangement timeline
+- Place arrangement clips on [take lanes](#take-lanes) with `takeLane`
+- Support for probability, velocity ranges, and complex rhythms
+- Apply [transforms](#transforms) to shape notes with math expressions
+- Auto-create scenes as needed
+
+<!--@include: ./_generated/ppal-create-clip-schema.md-->
+
+### 🔧 Read Clip (`ppal-read-clip`) {#ppal-read-clip}
+
+- Get detailed info about any clip in Session or Arrangement
+- Read MIDI notes in [custom notation](#custom-music-notation) (C3, D#4, etc.)
+- Get audio clip gain, pitch, warp settings, and sample info
+
+<!--@include: ./_generated/ppal-read-clip-schema.md-->
+
+### 🔧 Update Clip (`ppal-update-clip`) {#ppal-update-clip}
+
+- Change clip name, color, and loop settings
+- Add/remove MIDI notes using [custom notation](#custom-music-notation)
+- Apply [transforms](#transforms) to modify existing notes and audio properties
+  (a different transform per clip when updating multiple)
+- Change audio clip gain, pitch shift, and warp settings
+- Move clips and change their length in the Arrangement
+- Split arrangement clips at specified positions
+- Update multiple clips at once
+
+<!--@include: ./_generated/ppal-update-clip-schema.md-->
+
 ## Device Tools
 
 ### 🔧 Create Device (`ppal-create-device`) {#ppal-create-device}
@@ -139,6 +234,9 @@ It works with virtually any AI, including its
 - Position devices at a specific index in the device chain
 - Create devices inside rack chains or drum pads using path notation
 - List the native Live devices
+- Load a sample into a Simpler instrument via
+  `params: [{name: "sample", value: "<path>"}]`, and set its level with
+  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
 
 <!--@include: ./_generated/ppal-create-device-schema.md-->
 
@@ -161,83 +259,31 @@ It works with virtually any AI, including its
 - A/B Compare with supported devices
 - Control chain and drum pad mute and solo state
 - Change the choke group and output MIDI note of drum chains
+- Load a sample into a Simpler instrument via
+  `params: [{name: "sample", value: "<path>"}]`, and set its level with
+  `{name: "gainDb", value: <dB>}` (new in Live 12.4)
 
 <!--@include: ./_generated/ppal-update-device-schema.md-->
 
-## Clip Tools
+## Advanced Tools
 
-### 🔧 Create Clip (`ppal-create-clip`) {#ppal-create-clip}
+### 🔧 Live API (`ppal-live-api`) {#ppal-live-api}
 
-- Generate MIDI clips with notes, velocities, and timing using
-  [custom notation](#custom-music-notation)
-- Place clips in Session slots or Arrangement timeline
-- Support for probability, velocity ranges, and complex rhythms
-- Apply [transforms](#transforms) to shape notes with math expressions
-- Auto-create scenes as needed
+Direct access to the
+[Ableton Live Object Model](https://docs.cycling74.com/apiref/lom/) for
+scripting and debugging.
 
-<!--@include: ./_generated/ppal-create-clip-schema.md-->
+**Off by default.** Producer Pal's specialized tools are tuned for reliable
+results across most models. The raw Live API is low-level and can give weaker
+results out of the box, so it's hidden rather than competing with the focused
+tools. It's a powerful escape hatch for scripting and advanced workflows,
+especially with capable coding agents. Enable it on the **Setup** tab of the
+Producer Pal Max for Live device. When disabled, MCP clients and the
+[REST API](/guide/rest-api) both stop seeing the tool. See the
+[REST API Live API section](/guide/rest-api#live-api) for the full operation
+reference and examples.
 
-### 🔧 Read Clip (`ppal-read-clip`) {#ppal-read-clip}
-
-- Get detailed info about any clip in Session or Arrangement
-- Read MIDI notes in [custom notation](#custom-music-notation) (C3, D#4, etc.)
-- Get audio clip gain, pitch, warp settings, and sample info
-
-<!--@include: ./_generated/ppal-read-clip-schema.md-->
-
-### 🔧 Update Clip (`ppal-update-clip`) {#ppal-update-clip}
-
-- Change clip name, color, and loop settings
-- Add/remove MIDI notes using [custom notation](#custom-music-notation)
-- Apply [transforms](#transforms) to modify existing notes and audio properties
-- Change audio clip gain, pitch shift, and warp settings
-- Move clips and change their length in the Arrangement
-- Split arrangement clips at specified positions
-- Update multiple clips at once
-
-<!--@include: ./_generated/ppal-update-clip-schema.md-->
-
-## Action Tools
-
-### 🔧 Delete (`ppal-delete`) {#ppal-delete}
-
-- Remove tracks, return tracks, scenes, clips, or devices
-- Bulk delete multiple objects
-
-<!--@include: ./_generated/ppal-delete-schema.md-->
-
-### 🔧 Duplicate (`ppal-duplicate`) {#ppal-duplicate}
-
-- Copy tracks, scenes, clips, or devices
-- Create multiple copies at once
-- Copy clips anywhere in the Session, Arrangement, or from Session to
-  Arrangement
-  - Position in the Arrangement by bar|beat or locator
-  - Auto-tile clips to fill longer arrangement durations
-- Copy devices to any track, return track, or rack chain
-- Route duplicated tracks to source instrument for MIDI layering
-
-Note: Return tracks and devices on return tracks cannot be duplicated (Live API
-limitation).
-
-<!--@include: ./_generated/ppal-duplicate-schema.md-->
-
-### 🔧 Select (`ppal-select`) {#ppal-select}
-
-- Read current selection and view state (when no arguments)
-  - Returns only non-null fields: selected track, scene, clip, device
-  - Rich object shapes with IDs, types, and context (slot, path, etc.)
-- Update selection and returns only relevant fields
-  - Select any object by ID (auto-detects track/scene/clip/device)
-  - Select tracks by index/category, scenes by index
-  - Select clips by slot position (e.g., `0/3`)
-  - Select devices by path (e.g., `t0/d1`)
-  - Switch between Session and Arrangement views
-  - Auto-switches to session view for scene/clipSlot selection
-  - Detail views auto-managed: clip detail opens on clip selection, device
-    detail on device selection
-
-<!--@include: ./_generated/ppal-select-schema.md-->
+<!--@include: ./_generated/ppal-live-api-schema.md-->
 
 ## Runbook Tools {#runbook-tools}
 
@@ -434,7 +480,9 @@ positions in Ableton Live clips and the arrangement timeline.
 ## Transforms {#transforms}
 
 Apply complex changes to clips using math expressions via
-[Create Clip](#ppal-create-clip) and [Update Clip](#ppal-update-clip):
+[Create Clip](#ppal-create-clip), [Update Clip](#ppal-update-clip), and
+[Duplicate](#ppal-duplicate). When updating or duplicating multiple clips at
+once, each clip or copy can get its own transform:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
@@ -447,11 +495,42 @@ Apply complex changes to clips using math expressions via
   ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
   `1|1-2|4 C3:`)
 
+## Take Lanes {#take-lanes}
+
+Live's take lanes stack alternate versions of an arrangement clip at the same
+position — only the active take plays. They're the natural way to audition
+variations side by side without cluttering the timeline.
+
+- Target a lane with `takeLane` on [Create Clip](#ppal-create-clip) and
+  [Duplicate](#ppal-duplicate): `0` (or omit) = main lane, `1+` = that lane
+  (auto-created up to it), `"new"` = append a fresh lane.
+- Generate variations with a few [Duplicate](#ppal-duplicate) calls using
+  `takeLane: "new"` plus [transforms](#transforms) to vary each copy.
+- Name a newly created lane with `takeLaneName`.
+- [Read Track](#ppal-read-track) lists take lanes (with the `arrangement-clips`
+  include).
+- Limits: 8 take lanes per track. Duplicating to a take lane is MIDI-only and
+  recreates the clip from notes, so envelope automation isn't preserved. Once
+  placed, take-lane clips are append-only — they can't be split, moved, resized,
+  deleted, or promoted back to the main lane through tools, and Producer Pal
+  can't pick the active take. All of that stays in Live's UI. Expand the
+  take-lane arrow on a track header to see them.
+
 ## Network Control
 
 Control Ableton Live from another computer on your local network, no extra setup
 required. For fully remote control, use
 [web tunnels](/installation/web-tunnels).
+
+## Limitations
+
+- **Automation and envelopes are not supported.** Producer Pal cannot read,
+  create, or edit arrangement automation or clip envelopes — parameter values
+  that change over time. Track and device parameters like volume, pan, sends,
+  and knobs can be set to static values, but not automated.
+- **One Drum Rack per track.** Drum Racks work in nested structures, but tracks
+  with multiple Drum Racks only use the first one's drum map. Use one Drum Rack
+  per track for predictable results.
 
 ## Small Model Mode {#small-model-mode}
 

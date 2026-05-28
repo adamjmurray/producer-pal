@@ -127,6 +127,29 @@ describe("readLiveSet - inclusion", () => {
     expect(result.returnTracks).toBeUndefined();
   });
 
+  it("includes takeLaneCount per track when tracks are listed", () => {
+    // Minimal track objects: the count path only reads take_lanes; other track
+    // properties fall back to mock defaults.
+    setupLiveSetPathMappedMocks({
+      liveSetId: "live_set",
+      objects: {
+        LiveSet: { name: "Take Lane Count Test", tracks: children("a", "b") },
+        [String(livePath.track(0))]: {
+          name: "Has Lanes",
+          take_lanes: children("lane1", "lane2"),
+        },
+        [String(livePath.track(1))]: { name: "No Lanes" },
+        [String(livePath.masterTrack())]: { name: "Master" },
+      },
+    });
+
+    const result = readLiveSet({ include: ["tracks"] });
+    const tracks = result.tracks as Array<Record<string, unknown>>;
+
+    expect(tracks[0]!.takeLaneCount).toBe(2);
+    expect(tracks[1]).not.toHaveProperty("takeLaneCount");
+  });
+
   it("omits name property when Live Set name is empty string", () => {
     setupLiveSetPathMappedMocks({
       liveSetId: "live_set",

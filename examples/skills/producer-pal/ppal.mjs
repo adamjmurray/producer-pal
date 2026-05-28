@@ -125,7 +125,9 @@ async function main(argv) {
 
 // Run main() when invoked as CLI (not when imported as a library)
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main(process.argv.slice(2)).catch((err) => {
+  try {
+    await main(process.argv.slice(2));
+  } catch (err) {
     if (err.cause?.code === "ECONNREFUSED") {
       console.error(
         "Could not connect to Producer Pal. Is Ableton Live running with the Producer Pal device?",
@@ -134,5 +136,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       console.error(err.message ?? err);
     }
     process.exit(1);
-  });
+  }
 }

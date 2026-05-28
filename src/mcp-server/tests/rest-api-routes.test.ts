@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import Max from "max-api";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { MAX_ERROR_DELIMITER } from "#src/shared/mcp-response-utils.ts";
 import { TOOL_NAMES } from "../create-mcp-server.ts";
 import { setupExpressAppServer } from "./express-app-test-helpers.ts";
@@ -58,12 +58,17 @@ function stubMaxOutlet(payload: Record<string, unknown>): {
   return holder;
 }
 
+/**
+ * Stub Max.outlet so it accepts the request but never sends a response,
+ * forcing the adapter's timeout path to fire. Used to exercise the REST
+ * route's timeout → HTTP 504 mapping end-to-end through the real adapter.
+ */
+function stubMaxOutletNeverResponds(): void {
+  Max.outlet = ((): Promise<void> => Promise.resolve()) as typeof Max.outlet;
+}
+
 describe("REST API Routes", () => {
-  const appState = setupExpressAppServer({
-    beforeStart: () => {
-      process.env.ENABLE_RAW_LIVE_API = "true";
-    },
-  });
+  const appState = setupExpressAppServer();
 
   async function setEnabledTools(tools: string[]): Promise<void> {
     await fetch(`${appState.baseUrl}/config`, {
@@ -73,8 +78,22 @@ describe("REST API Routes", () => {
     });
   }
 
+  async function setLiveApiEnabled(enabled: boolean): Promise<void> {
+    await fetch(`${appState.baseUrl}/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ liveApiEnabled: enabled }),
+    });
+  }
+
+  beforeAll(async () => {
+    // Most tests assume the Live API tool is enabled and whitelisted.
+    await setLiveApiEnabled(true);
+  });
+
   afterEach(async () => {
-    await setEnabledTools([...TOOL_NAMES]);
+    await setLiveApiEnabled(true);
+    await setEnabledTools([...TOOL_NAMES, "ppal-live-api"]);
   });
 
   async function callTool(
@@ -88,6 +107,17 @@ describe("REST API Routes", () => {
     });
   }
 
+  async function callToolWithQuery(
+    name: string,
+    query: string,
+  ): Promise<Response> {
+    return await fetch(`${appState.baseUrl}/api/tools/${name}?${query}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+  }
+
   describe("GET /api/tools", () => {
     it("should return all enabled tools with correct structure", async () => {
       const response = await fetch(`${appState.baseUrl}/api/tools`);
@@ -97,7 +127,7 @@ describe("REST API Routes", () => {
       const body = await response.json();
 
       expect(body.tools).toBeInstanceOf(Array);
-      // +1 for ppal-raw-live-api which is always included in REST
+      // STANDARD_TOOL_DEFS + ppal-live-api (auto-added when liveApiEnabled flips on)
       expect(body.tools).toHaveLength(TOOL_NAMES.length + 1);
 
       const tool = body.tools[0];
@@ -114,32 +144,43 @@ describe("REST API Routes", () => {
       const response = await fetch(`${appState.baseUrl}/api/tools`);
       const body = await response.json();
 
-      // ppal-connect + ppal-raw-live-api (always included)
-      expect(body.tools).toHaveLength(2);
+      expect(body.tools).toHaveLength(1);
 
       const names = body.tools.map((t: { name: string }) => t.name);
 
-      expect(names).toContain("ppal-connect");
-      expect(names).toContain("ppal-raw-live-api");
+      expect(names).toStrictEqual(["ppal-connect"]);
     });
   });
 
-  describe("ppal-raw-live-api (always available)", () => {
-    it("should always include raw tool in tool list", async () => {
+  describe("ppal-live-api gating", () => {
+    it("appears in tool list when liveApiEnabled and whitelisted", async () => {
       const response = await fetch(`${appState.baseUrl}/api/tools`);
       const body = await response.json();
       const names = body.tools.map((t: { name: string }) => t.name);
 
-      expect(names).toContain("ppal-raw-live-api");
+      expect(names).toContain("ppal-live-api");
     });
 
-    it("should allow calling raw tool even when not in enabled config", async () => {
-      await setEnabledTools(["ppal-connect"]);
+    it("returns 404 when removed from the tools whitelist", async () => {
+      await setEnabledTools([...TOOL_NAMES]); // omit ppal-live-api
 
-      // Raw tool should still be callable (returns 400 for missing input, not 404)
-      const response = await callTool("ppal-raw-live-api");
+      const response = await callTool("ppal-live-api");
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(404);
+    });
+
+    it("disappears from tool list and returns 404 when liveApiEnabled is false", async () => {
+      await setLiveApiEnabled(false);
+
+      const listRes = await fetch(`${appState.baseUrl}/api/tools`);
+      const listBody = await listRes.json();
+      const names = listBody.tools.map((t: { name: string }) => t.name);
+
+      expect(names).not.toContain("ppal-live-api");
+
+      const callRes = await callTool("ppal-live-api");
+
+      expect(callRes.status).toBe(404);
     });
   });
 
@@ -358,17 +399,6 @@ describe("REST API Routes", () => {
   });
 
   describe("?timeoutMs query param", () => {
-    async function callToolWithQuery(
-      name: string,
-      query: string,
-    ): Promise<Response> {
-      return await fetch(`${appState.baseUrl}/api/tools/${name}?${query}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
-      });
-    }
-
     it("should pass timeoutMs into context when provided", async () => {
       const holder = stubMaxOutlet({
         content: [{ type: "text", text: "ok" }],
@@ -423,6 +453,57 @@ describe("REST API Routes", () => {
       );
 
       expect(response.status).toBe(400);
+    });
+  });
+
+  describe("tool-call timeout", () => {
+    it("should return HTTP 504 when the tool call times out", async () => {
+      // Max accepts the request but never responds, so the adapter's real
+      // timeout path fires and tags the response with errorCode: "timeout".
+      stubMaxOutletNeverResponds();
+
+      const response = await callToolWithQuery("ppal-connect", "timeoutMs=1");
+
+      expect(response.status).toBe(504);
+
+      const body = await response.json();
+
+      expect(body.errorCode).toBe("timeout");
+      expect(body.error).toContain("timed out");
+    });
+
+    it("should keep returning HTTP 200 for an ordinary (non-timeout) tool error", async () => {
+      // An ordinary error carries isError but no timeout discriminator, so the
+      // legacy 200 + isError contract is preserved.
+      stubMaxOutlet({
+        content: [{ type: "text", text: "something went wrong" }],
+        isError: true,
+      });
+
+      const response = await callTool("ppal-connect");
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+
+      expect(body.isError).toBe(true);
+      expect(body.result).toBe("something went wrong");
+      expect(body.errorCode).toBeUndefined();
+    });
+
+    it("should keep returning HTTP 200 on success", async () => {
+      stubMaxOutlet({
+        content: [{ type: "text", text: "ok" }],
+      });
+
+      const response = await callTool("ppal-connect");
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+
+      expect(body.isError).toBe(false);
+      expect(body.result).toBe("ok");
     });
   });
 });

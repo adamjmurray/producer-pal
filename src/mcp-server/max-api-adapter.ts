@@ -11,14 +11,19 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
+  type McpErrorCode,
 } from "#src/shared/mcp-response-utils.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
+import { type RequestOverrides } from "./helpers/request-overrides.ts";
 import * as console from "./node-for-max-logger.ts";
-import { type RequestOverrides } from "./request-overrides.ts";
+import { handleNodeRequest } from "./rpc/node-request-protocol.ts";
 
 // Re-export for convenience so existing consumers can keep importing from here
-export { MAX_TIMEOUT_MS, type RequestOverrides } from "./request-overrides.ts";
+export {
+  MAX_TIMEOUT_MS,
+  type RequestOverrides,
+} from "./helpers/request-overrides.ts";
 
 export interface McpResponseContent {
   type: string;
@@ -28,6 +33,12 @@ export interface McpResponseContent {
 export interface McpResponse {
   content: McpResponseContent[];
   isError?: boolean;
+  /**
+   * Structured error category. Set only at specific error origins (currently
+   * just the tool-call timeout) so transports can distinguish a timeout from
+   * an ordinary tool error without string-matching the message.
+   */
+  errorCode?: McpErrorCode;
 }
 
 interface PendingRequest {
@@ -112,10 +123,13 @@ function callLiveApi(
       timeout: setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          // Always resolve (not reject) with the standard error format
+          // Always resolve (not reject) with the standard error format.
+          // Tag with the "timeout" discriminator so the REST route can map it
+          // to HTTP 504 (other formatErrorResponse calls stay untagged).
           resolve(
             formatErrorResponse(
               `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms`,
+              "timeout",
             ),
           );
         }
@@ -212,6 +226,15 @@ Max.addHandler("code_exec_request", (...args: unknown[]) => {
 
   handleCodeExecRequest(requestId, requestJson).catch((error) => {
     console.error(`Error handling code_exec_request: ${String(error)}`);
+  });
+});
+
+// Handler for generic node_request RPC calls from V8
+Max.addHandler("node_request", (...args: unknown[]) => {
+  const [requestId, requestJson] = args as [string, string];
+
+  handleNodeRequest(requestId, requestJson).catch((error) => {
+    console.error(`Error handling node_request: ${String(error)}`);
   });
 });
 

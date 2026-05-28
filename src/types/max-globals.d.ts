@@ -14,8 +14,6 @@
  */
 interface ToolContext {
   memory: {
-    enabled: boolean;
-    writable: boolean;
     content: string;
   };
   smallModelMode: boolean;

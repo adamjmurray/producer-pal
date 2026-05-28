@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { z } from "zod";
@@ -103,9 +104,11 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s) - MIDI clips only",
       ),
     transforms: z
-      .string()
+      .array(z.string())
       .optional()
-      .describe("transform expressions (parameter: expression per line)"),
+      .describe(
+        "transform expressions per clip (cycles if fewer than ids); each entry is one clip's expressions, newline-separated for multiple",
+      ),
     noteUpdateMode: z
       .enum(["replace", "merge"])
       .optional()
@@ -116,11 +119,10 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
           code: z
-            .string()
-            .max(MAX_CODE_LENGTH)
+            .array(z.string().max(MAX_CODE_LENGTH))
             .optional()
             .describe(
-              "JS function body: receives (notes, context), returns notes array (see Skills for properties)",
+              "JS function body per clip (cycles if fewer than ids): receives (notes, context), returns notes array (see Skills for properties)",
             ),
         }
       : {}),

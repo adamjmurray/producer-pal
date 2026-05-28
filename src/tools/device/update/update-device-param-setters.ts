@@ -5,34 +5,61 @@
 
 import { noteNameToMidi, isValidNoteName } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
 import {
   isDivisionLabel,
   isPanLabel,
   parseLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
-import { parseParamLines } from "./update-device-param-parser.ts";
+import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
+import { normalizeParamValue } from "./update-device-param-parser.ts";
 
 const BINARY_SEARCH_ITERATIONS = 40;
 
 /**
- * Set parameter values from name=value lines
+ * Set parameter values from an array of {name, value} entries. Specialized-device
+ * pseudo-params (e.g. `sample` for Simpler, `routingMode` for Roar) are
+ * dispatched via the specialized-device registry before falling through to
+ * DeviceParameter resolution. Entries with an empty name or value are skipped.
  * @param device - LiveAPI device object to update
- * @param paramsInput - Multiline name=value string
+ * @param params - Array of {name, value} param entries
+ * @param toolName - Calling tool name for warning prefix (defaults to "updateDevice")
  */
-export function setParamValues(device: LiveAPI, paramsInput: string): void {
-  const paramEntries = parseParamLines(paramsInput);
+export function setParamValues(
+  device: LiveAPI,
+  params: ParamEntry[],
+  toolName: string = "updateDevice",
+): void {
+  for (const entry of params) {
+    const key = entry.name.trim();
+    const rawValue = String(entry.value).trim();
 
-  for (const [key, inputValue] of paramEntries) {
+    if (key === "") {
+      console.warn(`${toolName}: skipping param with empty name`);
+      continue;
+    }
+
+    if (rawValue === "") {
+      console.warn(`${toolName}: skipping param "${key}" with empty value`);
+      continue;
+    }
+
+    const inputValue = normalizeParamValue(rawValue);
+
+    if (applySpecializedParamWrite(device, key, inputValue, toolName)) {
+      continue;
+    }
+
     const param =
       resolveParamByName(device, key) ??
       (/^\d+$/.test(key) ? resolveParamForDevice(device, key) : null);
 
     if (!param?.exists()) {
-      console.warn(`updateDevice: param "${key}" not found on device`);
+      console.warn(`${toolName}: param "${key}" not found on device`);
       continue;
     }
 
-    setParamValue(param, inputValue);
+    setParamValue(param, inputValue, toolName);
   }
 }
 
@@ -51,7 +78,7 @@ function resolveParamForDevice(
   const match = paramId.match(/parameters (\d+)$/);
 
   if (match) {
-    return LiveAPI.from(`${device.path} parameters ${match[1]}`);
+    return device.child("parameters", match[1] as string);
   }
 
   // Default: use absolute ID resolution (backward compatible for single-device updates)
@@ -94,8 +121,13 @@ function resolveParamByName(device: LiveAPI, name: string): LiveAPI | null {
  * Set a parameter value with type-appropriate handling
  * @param param - Parameter to set
  * @param inputValue - Value to set
+ * @param toolName - Calling tool name for warning prefix
  */
-function setParamValue(param: LiveAPI, inputValue: string | number): void {
+function setParamValue(
+  param: LiveAPI,
+  inputValue: string | number,
+  toolName: string,
+): void {
   const isQuantized = (param.getProperty("is_quantized") as number) > 0;
 
   // 1. Enum - string input with quantized param
@@ -105,7 +137,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
 
     if (index === -1) {
       console.warn(
-        `updateDevice: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
+        `${toolName}: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
       );
 
       return;
@@ -121,7 +153,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
     const midi = noteNameToMidi(inputValue);
 
     if (midi == null) {
-      console.warn(`updateDevice: invalid note name "${inputValue}"`);
+      console.warn(`${toolName}: invalid note name "${inputValue}"`);
 
       return;
     }
@@ -158,7 +190,7 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
       param.set("value", rawValue);
     } else {
       console.warn(
-        `updateDevice: "${inputValue}" is not a valid division option`,
+        `${toolName}: "${inputValue}" is not a valid division option`,
       );
     }
 
@@ -181,8 +213,14 @@ function setParamValue(param: LiveAPI, inputValue: string | number): void {
     return;
   }
 
-  // 6. String fallback
-  param.set("value", inputValue);
+  // 6. Uninterpretable string — Live silently rejects string writes to numeric
+  // params, so warn rather than pretending the update succeeded.
+  const paramName = param.getProperty("name") as string;
+  const inputStr = String(inputValue);
+
+  console.warn(
+    `${toolName}: could not interpret "${inputStr}" as a value for param "${paramName}" — expected a number (a unit suffix like Hz/kHz/ms/s/dB/% is optional)`,
+  );
 }
 
 /**

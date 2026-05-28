@@ -79,7 +79,7 @@ describe("ppal-update-device", () => {
       name: "ppal-update-device",
       arguments: {
         ids: deviceId,
-        params: `${ratioParam!.name} = ${newRatio}`,
+        params: [{ name: ratioParam!.name, value: String(newRatio) }],
       },
     });
 

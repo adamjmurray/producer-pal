@@ -7,10 +7,12 @@ const codeTransformsSkills = `
 
 ### Code Transforms
 
-For complex logic beyond transforms, use the \`code\` parameter with JavaScript. The \`code\` value is the function body only. It runs as:
+For complex logic beyond transforms, use the \`code\` parameter with JavaScript. Each \`code\` value is the function body only. It runs as:
 \`(function(notes, context) { <code> })(notes, context)\`
 
-Example \`code\` value:
+Shape matches \`transforms\`: create-clip takes a string; update-clip/duplicate take an array (one entry per clip/copy, cycles).
+
+Example \`code\` value (one array entry):
 \`\`\`javascript
 return notes.filter(n => n.pitch >= 60).map(n => ({
   ...n,
@@ -116,9 +118,11 @@ v0 C1 13|3 v100 D1 13|3 // replace kick with snare in bar 13
 
 ### Transforms
 
-Add \`transforms\` parameter to create-clip or update-clip.
+Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 
-**Syntax:** \`[selector:] parameter operator expression\` (one per line)
+**Shape:** create-clip takes a single string. update-clip/duplicate take an array — one entry per clip/copy (cycles if fewer entries than clips), each entry holding that clip's expressions (newline-separated for multiple). One transform for all clips = a 1-element array.
+
+**Syntax:** \`[selector:] parameter operator expression\` (one per line within an entry)
 - **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
 - **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
 - **Time filter:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time)
@@ -170,7 +174,26 @@ swing() auto-quantizes to the swing grid, so changing swing amount is always saf
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in. Don't re-apply earlier transforms.
 MIDI params ignored for audio clips, vice versa.
+On duplicate, transforms/code apply per-copy (not the source). With multiple copies, \`clip.index\`/\`clip.count\` span the copies — use \`seq()\` for variations (e.g. transpose each copy differently). The transforms/code array cycles per copy, so you can also give each copy distinct expressions directly: \`["pitch += 0", "pitch += 12"]\`.
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
+## Finding Library Content
+
+Use \`ppal-library\` to search Live's browser library and the user's configured sample folder.
+
+- Defaults to audio samples (the only kind loadable into clips/Simpler today). Other \`kind\` values are discovery-only.
+- \`query\` is a name substring; use \`*\` as a multi-character wildcard (e.g., \`kick*acoustic\`).
+- \`tags\` is comma-separated; results must match ALL listed tags. Use \`action: "listTags"\` to discover available tags, or \`action: "listCategories"\` to browse Live's category taxonomy (Sounds, Drums, Genres, …) and \`category: "Drums"\` to list a category's tags.
+- \`type\` filters by playback type: \`loop\` (loops), \`oneshot\` (one-shots, e.g. a kick), \`impulse-response\` (convolution IRs). Each result also reports \`type\`, so you can tell a one-shot kick from a drum loop — prefer \`oneshot\` for hits and \`loop\` for grooves.
+- \`kind: "midi"\` covers ALL MIDI content — both \`.mid\` files and MIDI Live clips (\`.alc\`) — so it's the right kind for melody/chord ideas. \`kind: "live-clip"\` returns every \`.alc\` (MIDI and audio); \`.alc\` results carry \`subtype\` (\`midi\`/\`audio\`) to disambiguate.
+- \`source\`: filter where the file lives. \`sampleFolder\` is the user-configured sample folder on disk (bypasses Live's DB); \`user\`, \`pack\`, \`builtin\`, \`cloud\`, \`plugin\` query Live's DB.
+- \`inFolder\` restricts a search to immediate children of one absolute folder path (composes with the other filters).
+- \`verifyPaths: true\` stats each result and adds \`pathExists\` so you can skip files moved/deleted since Live last indexed (off by default; adds one filesystem check per result).
+- \`action: "searchBatch"\` runs many filtered searches in one call. Pass \`queries\` as an array of objects each carrying the same filters as a single search plus an optional \`label\`; results come back grouped per query (capped at 20).
+- \`action: "listPlugins"\` enumerates installed VST/AU/etc. from Live's plugin DB. Filter with \`query\` (name substring), \`vendor\`, \`format\` (VST/VST3/AU), \`deviceKind\` (\`instrument\` / \`audiofx\` — \`midifx\` has no plugin equivalent), or \`subcategory\`.
+- Items from the user's sample folder appear before Live's library items in results.
+- Each result includes \`folder\` (its immediate parent folder name). Use it to sanity-check tag hits: Live's tags are noisy, so a \`Kick\`-tagged file under an \`IR Library\` folder is probably a reverb impulse, not a drum.
+- Pass an absolute \`path\` from a result to \`ppal-create-clip\` / \`ppal-update-clip\` (audio clips) or \`ppal-create-device\` / \`ppal-update-device\` (Simpler \`sample\`).
+
 ## Working with Ableton Live
 
 **Views and Playback:**
@@ -209,8 +232,40 @@ Slash-separated segments: \`t\`=track, \`rt\`=return, \`mt\`=master, \`d\`=devic
 
 Chains are auto-created when referenced (e.g., \`c0\` on an empty rack creates a chain). Up to 16 chains.
 
+**Simpler sample:** Load a sample with \`params: [{name: "sample", value: "<absolute file path>"}]\` on ppal-create-device or ppal-update-device; set its level with \`{name: "gainDb", value: <dB>}\` (0 = unity). \`sample\` is always a \`params\` entry — there is no top-level \`sample\` argument. Read-device: \`include: ["sample"]\` returns just the sample file path as a flat top-level \`sample\` field (ideal for scanning every pad's sample in a drum rack); \`include: ["params"]\` returns the full set including \`sample\`, \`gainDb\`, and \`multiSampleMode\`. Writes are skipped with a warning on non-Simpler devices and on Simpler in multi-sample mode.
+
+**Build a Drum Rack:** Create the rack (\`deviceName="Drum Rack"\`), then one ppal-create-device call per pad: \`deviceName="Simpler" path="t0/d0/p<Note>/d0" name="<PadName>" params=[{name: "sample", value: "<abs path>"}]\`. The note name addresses the pad (\`pC1\`, \`pF#1\`); its chain auto-creates, and the \`sample\` param loads the sample into the Simpler in the same call — no separate sample step. One call per pad (each takes a different sample). Standard layout: 16 pads chromatically from C1 up to D#2/Eb2. Get paths from \`ppal-library\`; to match an existing kit's pad notes, read the track with \`drum-map\` first.
+
+### Specialized Device Controls
+
+Some native devices expose class-level controls beyond their DeviceParameters, through two surfaces: **pseudo-params** (set via \`params\` {name, value} entries, read back in \`parameters\`) and **\`actions\`** (function-call strings on update-device). Discover a device's surface at runtime rather than guessing values: read-device \`include: ["params"]\` lists its pseudo-params, \`include: ["actions"]\` lists action signatures, and \`include: ["options"]\` returns the valid values for each pseudo-param (\`paramOptions\`) plus dynamic catalogs (wavetables, IR files, sidechain sources) and Wavetable mod routes/sources. Invalid enum values warn-and-skip and list the valid options. The bullets below give each device's pseudo-params and non-obvious behavior — read options for accepted values.
+
+Instruments:
+
+- **Drift** mod matrix. Fixed-target source slots \`filterMod1Source\` \`filterMod2Source\` \`lfoSource\` \`pitchMod1Source\` \`pitchMod2Source\` \`shapeSource\`; three free slots pair \`mod1Source\`/\`mod2Source\`/\`mod3Source\` with \`mod1Target\`/\`mod2Target\`/\`mod3Target\` (target None disables the slot). For each active free slot also set its matching amount DeviceParameter (e.g. \`Mod Matrix Amt 1\`). Plus \`voiceMode\` (Poly/Mono/Stereo/Unison), \`voiceCount\`, \`pitchBendRange\`.
+- **Wavetable** \`filterRouting\`, \`monoPoly\`, \`polyVoices\`, \`unisonMode\`, \`unisonVoiceCount\`, \`osc1Engine\`/\`osc2Engine\`. For \`osc1Category\`/\`osc2Category\` + \`osc1Wavetable\`/\`osc2Wavetable\`, set category first (options \`oscWavetableCategories\`, then \`osc1Wavetables\`/\`osc2Wavetables\` list the selected category's tables). Mod matrix via actions; options returns current routes (\`modulations\`), \`modulatableParameters\`, and \`modulationSources\`.
+- **Meld** \`monoPoly\`, \`polyVoices\`, \`unisonVoices\`.
+- **Simpler** \`sample\` (file path), \`gainDb\` (sample level, 0 = unity), \`playbackMode\` (classic/one-shot/slicing), \`slicingPlaybackMode\`, \`retrigger\`, \`voices\`; read-only \`multiSampleMode\`, \`estimatedPlaybackLength\`. Sample-editing actions operate on the active region — set the \`S Start\`/\`S Length\` DeviceParameters first to target a sub-range.
+
+Audio effects:
+
+- **Compressor** sidechain: \`sidechainSourceTrackId\` (a trackId, or null for No Input), then \`sidechainChannel\` — set the source first, as the valid channels vary by source. options lists \`sidechainSourceTrackIds\` and the current source's \`sidechainChannels\`.
+- **EQ Eight** \`globalMode\` (stereo / L/R / M/S), \`oversample\`. In L/R the A bands process Left and B bands Right; in M/S, A = Mid and B = Side. Set \`globalMode\`, then write the A-/B-suffix band DeviceParameters (e.g. \`5 Frequency B\`).
+- **Hybrid Reverb** \`irCategory\`, \`irFile\` (set category first; options \`irCategoryList\`, then \`irFileList\` lists the selected category's files), \`irAttackTime\`, \`irDecayTime\`, \`irSizeFactor\`, \`irTimeShapingOn\`.
+- **Roar** \`routingMode\`, \`envListen\`.
+- **Spectral Resonator** \`midiGate\`, \`monoPoly\`, \`pitchBendRange\`, \`modMode\`, \`pitchMode\`, \`polyphony\`.
+
 ### Moving Clips
 
 \`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, e.g., "2/3") moves session clips. Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions.
+
+### Take Lanes (Arrangement Variations)
+
+Stack alternate takes of an arrangement clip at the same position; only the active take plays (the user auditions/comps in Live's UI).
+
+- \`takeLane\` on create-clip + duplicate (arrangement only; duplicate is MIDI-only): omit/\`0\` = main lane; \`1+\` = that lane (auto-created up to it); \`"new"\` = append a fresh lane. \`takeLaneName\` names a lane this call creates.
+- Variation workflow: a few duplicate calls with \`takeLane: "new"\` + \`transforms\` to vary each copy. read-track \`arrangement-clips\` include lists \`takeLanes\` — each entry carries \`takeLane\` (1-based, matching the write param) and its \`name\`, so you can round-trip a read back to a write directly.
+- 8 lanes/track max; creating over an existing clip replaces it (like the main lane). One-way: Producer Pal can't delete or comp take lanes — that's done in Live (expand the track's take-lane arrow to see them).
+- Take-lane clips are append-only: \`update-clip\` (\`split\`, \`arrangementStart\`, \`arrangementLength\`) and \`ppal-delete\` warn+skip on them. Main→take duplicate recreates the clip from notes and drops envelope automation; take→main promote isn't supported. For any of these, ask the user to do it in Live's UI.
 `;

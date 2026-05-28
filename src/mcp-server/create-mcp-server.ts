@@ -5,19 +5,19 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "#src/shared/version.ts";
+import { toolDefDelete } from "#src/tools/actions/delete/delete.def.ts";
+import { toolDefDuplicate } from "#src/tools/actions/duplicate/duplicate.def.ts";
+import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { toolDefCreateClip } from "#src/tools/clip/create/create-clip.def.ts";
 import { toolDefReadClip } from "#src/tools/clip/read/read-clip.def.ts";
 import { toolDefUpdateClip } from "#src/tools/clip/update/update-clip.def.ts";
-import { toolDefPlayback } from "#src/tools/control/playback.def.ts";
-import { toolDefRawLiveApi } from "#src/tools/control/raw-live-api.def.ts";
-import { toolDefSelect } from "#src/tools/control/select.def.ts";
+import { toolDefConnect } from "#src/tools/core/connect.def.ts";
+import { toolDefContext } from "#src/tools/core/context.def.ts";
 import { toolDefCreateDevice } from "#src/tools/device/create/create-device.def.ts";
 import { toolDefReadDevice } from "#src/tools/device/read/read-device.def.ts";
 import { toolDefUpdateDevice } from "#src/tools/device/update/update-device.def.ts";
 import { toolDefReadLiveSet } from "#src/tools/live-set/read-live-set.def.ts";
 import { toolDefUpdateLiveSet } from "#src/tools/live-set/update-live-set.def.ts";
-import { toolDefDelete } from "#src/tools/operations/delete/delete.def.ts";
-import { toolDefDuplicate } from "#src/tools/operations/duplicate/duplicate.def.ts";
 import { toolDefLoadM4lDevice } from "#src/tools/runbook/load-m4l-device.def.ts";
 import { toolDefOpenDeviceWindow } from "#src/tools/runbook/open-device-window.def.ts";
 import { toolDefRecordArrangement } from "#src/tools/runbook/record-arrangement.def.ts";
@@ -25,13 +25,14 @@ import { toolDefRenderExport } from "#src/tools/runbook/render-export.def.ts";
 import { toolDefCreateScene } from "#src/tools/scene/create-scene.def.ts";
 import { toolDefReadScene } from "#src/tools/scene/read-scene.def.ts";
 import { toolDefUpdateScene } from "#src/tools/scene/update-scene.def.ts";
+import { toolDefLibrary } from "#src/tools/session/library.def.ts";
+import { toolDefPlayback } from "#src/tools/session/playback.def.ts";
+import { toolDefSelect } from "#src/tools/session/select.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 import { toolDefCreateTrack } from "#src/tools/track/create/create-track.def.ts";
 import { toolDefReadTrack } from "#src/tools/track/read/read-track.def.ts";
 import { toolDefUpdateTrack } from "#src/tools/track/update/update-track.def.ts";
-import { toolDefConnect } from "#src/tools/workflow/connect.def.ts";
-import { toolDefContext } from "#src/tools/workflow/context.def.ts";
-import { type RequestOverrides } from "./request-overrides.ts";
+import { type RequestOverrides } from "./helpers/request-overrides.ts";
 
 export type CallLiveApiFunction = (
   tool: string,
@@ -60,19 +61,21 @@ export const STANDARD_TOOL_DEFS: ToolDefFunction[] = [
   toolDefDuplicate,
   toolDefSelect,
   toolDefPlayback,
+  toolDefLibrary,
   toolDefRenderExport,
   toolDefRecordArrangement,
   toolDefLoadM4lDevice,
   toolDefOpenDeviceWindow,
 ];
 
-/** All standard tool names (frozen). Does not include dev-only tools like ppal-raw-live-api. */
+/** All standard tool names (frozen). Opt-in tools like ppal-live-api are not included. */
 export const TOOL_NAMES: readonly string[] = Object.freeze(
   STANDARD_TOOL_DEFS.map((td) => td.toolName),
 );
 
 interface CreateMcpServerOptions {
   smallModelMode?: boolean;
+  liveApiEnabled?: boolean;
   tools?: string[];
 }
 
@@ -87,7 +90,7 @@ export function createMcpServer(
   callLiveApi: CallLiveApiFunction,
   options: CreateMcpServerOptions = {},
 ): McpServer {
-  const { smallModelMode = false, tools } = options;
+  const { smallModelMode = false, liveApiEnabled = false, tools } = options;
   const includedSet = tools ? new Set(tools) : null;
 
   const server = new McpServer({
@@ -100,9 +103,15 @@ export function createMcpServer(
     toolDef(server, callLiveApi, { smallModelMode });
   }
 
-  // Dev-only tool: bypasses the tools whitelist, gated by env var
-  if (process.env.ENABLE_RAW_LIVE_API === "true" && !smallModelMode) {
-    toolDefRawLiveApi(server, callLiveApi, { smallModelMode });
+  // Live API: opt-in via device Setup tab. Goes through the same
+  // tools whitelist as standard tools. Excluded under smallModelMode
+  // because its schema is too large to be useful with small models.
+  if (
+    liveApiEnabled &&
+    !smallModelMode &&
+    (!includedSet || includedSet.has(toolDefLiveApi.toolName))
+  ) {
+    toolDefLiveApi(server, callLiveApi, { smallModelMode });
   }
 
   return server;

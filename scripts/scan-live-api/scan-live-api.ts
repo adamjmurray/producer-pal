@@ -10,8 +10,9 @@
  *
  * Usage: node scripts/scan-live-api/scan-live-api.ts [output-file] [--url=http://...]
  *
- * The REST endpoint for ppal-raw-live-api is always available regardless of
- * build configuration. Output defaults to dev/live-api-scan.txt.
+ * Requires the `ppal-live-api` tool to be available, which means either a
+ * `npm run build:debug` build (sets ENABLE_LIVE_API=true) or the Live API
+ * toggle enabled on the device Setup tab. Output defaults to dev/live-api-scan.txt.
  */
 
 import { writeFileSync } from "node:fs";

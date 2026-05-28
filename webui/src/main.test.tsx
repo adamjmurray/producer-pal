@@ -19,6 +19,11 @@ vi.mock(import("./components/App"), () => ({
   App: () => <div>App</div>,
 }));
 
+// Mock ContextApp component
+vi.mock(import("./components/context/ContextApp"), () => ({
+  ContextApp: () => <div>ContextApp</div>,
+}));
+
 // Mock DemoMode component
 vi.mock(import("./demo/DemoMode"), () => ({
   DemoMode: () => <div>DemoMode</div>,
@@ -38,6 +43,9 @@ describe("main", () => {
     if (existingApp) {
       existingApp.remove();
     }
+
+    // Reset pathname between tests
+    window.history.replaceState({}, "", "/chat");
   });
 
   it("calls render with App component when #app element exists", async () => {
@@ -75,6 +83,19 @@ describe("main", () => {
       // Restore search params for subsequent tests
       window.location.search = "";
     }
+  });
+
+  it("renders ContextApp when path is /context", async () => {
+    const appElement = document.createElement("div");
+
+    appElement.id = "app";
+    document.body.appendChild(appElement);
+
+    window.history.replaceState({}, "", "/context");
+
+    await import("./main.js");
+
+    expect(mockRender).toHaveBeenCalled();
   });
 
   it("throws error when #app element does not exist", async () => {

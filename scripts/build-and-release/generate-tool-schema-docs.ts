@@ -11,6 +11,7 @@ import { toJSONSchema, z } from "zod";
 import { STANDARD_TOOL_DEFS } from "#src/mcp-server/create-mcp-server.ts";
 import { skills as basicSkills } from "#src/skills/basic.ts";
 import { skills as standardSkills } from "#src/skills/standard.ts";
+import { toolDefLiveApi } from "#src/tools/advanced/live-api.def.ts";
 import { type ToolDefFunction } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -243,7 +244,14 @@ async function main(): Promise<void> {
 
   let count = 0;
 
-  for (const toolDef of STANDARD_TOOL_DEFS) {
+  // Standard tools plus the opt-in ppal-live-api tool, which is documented on
+  // the features page even though it isn't part of the default toolset.
+  const allToolDefs: ToolDefFunction[] = [
+    ...STANDARD_TOOL_DEFS,
+    toolDefLiveApi,
+  ];
+
+  for (const toolDef of allToolDefs) {
     const content = generateToolPartial(toolDef);
     const filename = `${toolDef.toolName}-schema.md`;
 

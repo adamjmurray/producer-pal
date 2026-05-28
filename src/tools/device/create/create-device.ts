@@ -5,7 +5,9 @@
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { ALL_VALID_DEVICES, VALID_DEVICES } from "#src/tools/constants.ts";
-import { select } from "#src/tools/control/select.ts";
+import { type ParamEntry } from "#src/tools/device/update/device-params-schema.ts";
+import { setParamValues } from "#src/tools/device/update/update-device-param-setters.ts";
+import { select } from "#src/tools/session/select.ts";
 import { resolveInsertionPath } from "#src/tools/shared/device/helpers/path/device-path-helpers.ts";
 import {
   parseCommaSeparatedIds,
@@ -21,6 +23,7 @@ interface CreateDeviceArgs {
   deviceName?: string;
   path?: string;
   name?: string;
+  params?: ParamEntry[];
   focus?: boolean;
 }
 
@@ -54,12 +57,13 @@ function validateDeviceName(deviceName: string): void {
  * @param args.deviceName - Device name, omit to list available devices
  * @param args.path - Device path(s), comma-separated for multiple (required when deviceName provided)
  * @param args.name - Name for all, or comma-separated for each
+ * @param args.params - {name, value} entries applied to each created device (e.g. Simpler: {name:"sample", value:"<file path>"})
  * @param args.focus - Select the device and show device detail view
  * @param _context - Internal context object (unused)
  * @returns Device list, or object(s) with deviceId and deviceIndex
  */
 export function createDevice(
-  { deviceName, path, name, focus }: CreateDeviceArgs = {},
+  { deviceName, path, name, params, focus }: CreateDeviceArgs = {},
   _context: Partial<ToolContext> = {},
 ): typeof VALID_DEVICES | CreateDeviceResult | CreateDeviceResult[] {
   // List mode: return valid devices when deviceName is omitted
@@ -81,7 +85,13 @@ export function createDevice(
 
   warnExtraNames(parsedNames, paths.length, "createDevice");
 
-  const results = createDevicesAtPaths(deviceName, paths, name, parsedNames);
+  const results = createDevicesAtPaths(
+    deviceName,
+    paths,
+    name,
+    parsedNames,
+    params,
+  );
 
   if (focus && results.length > 0) {
     const lastResult = results.at(-1) as CreateDeviceResult;
@@ -98,6 +108,7 @@ export function createDevice(
  * @param paths - Array of device paths
  * @param baseName - Base display name
  * @param parsedNames - Comma-separated display names, or null
+ * @param params - {name, value} entries applied to each created device
  * @returns Array of results for successfully created devices
  */
 function createDevicesAtPaths(
@@ -105,6 +116,7 @@ function createDevicesAtPaths(
   paths: string[],
   baseName: string | undefined,
   parsedNames: string[] | null,
+  params: ParamEntry[] | undefined,
 ): CreateDeviceResult[] {
   const results: CreateDeviceResult[] = [];
 
@@ -113,14 +125,15 @@ function createDevicesAtPaths(
 
     try {
       const result = createDeviceAtPath(deviceName, p);
+      const device = LiveAPI.from(`id ${result.id}`);
       const displayName = getNameForIndex(baseName, i, parsedNames);
 
-      if (displayName != null) {
-        const device = LiveAPI.from(`id ${result.id}`);
+      if (displayName != null && device.exists()) {
+        device.set("name", displayName);
+      }
 
-        if (device.exists()) {
-          device.set("name", displayName);
-        }
+      if (params != null && device.exists()) {
+        setParamValues(device, params, "createDevice");
       }
 
       results.push(result);

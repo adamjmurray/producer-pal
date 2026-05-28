@@ -81,9 +81,9 @@ export class StdioHttpBridge {
     )._registeredTools;
 
     for (const [name, toolInfo] of Object.entries(registeredTools)) {
-      if (name === "ppal-raw-live-api") {
+      if (name === "ppal-live-api") {
         continue;
-      } // Skip development-only tool
+      } // Skip opt-in low-level tool from offline fallback list
 
       tools.push({
         name: name,

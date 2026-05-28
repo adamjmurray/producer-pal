@@ -6,7 +6,7 @@
 import { CHAT_UI_DOCS_URL, getModelName } from "#webui/lib/config";
 import { type Provider } from "#webui/types/settings";
 import { getProviderName } from "./header-helpers";
-import { SettingsIcon } from "./HeaderIcons";
+import { ContextIcon, SettingsIcon } from "./HeaderIcons";
 import { SmallModelIndicator } from "./SmallModelIndicator";
 import { ToolsIndicator } from "./ToolsIndicator";
 
@@ -34,15 +34,17 @@ export interface HeaderActionsProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenContext: () => void;
 }
 
 /**
- * Right-side header actions: model display, tool/small-model indicators, settings, help
+ * Right-side header actions: model display, tool/small-model indicators, project context, settings, help
  * @param props - HeaderActionsProps
  * @param props.headerInfo - Header display state
  * @param props.onOpenSettings - Callback to open settings
  * @param props.onOpenToolsSettings - Callback to open tools settings tab
  * @param props.onOpenConnectionSettings - Callback to open connection settings tab
+ * @param props.onOpenContext - Callback to open the project context view
  * @returns Header actions element
  */
 export function HeaderActions({
@@ -50,6 +52,7 @@ export function HeaderActions({
   onOpenSettings,
   onOpenToolsSettings,
   onOpenConnectionSettings,
+  onOpenContext,
 }: HeaderActionsProps) {
   const {
     activeModel,
@@ -111,6 +114,15 @@ export function HeaderActions({
           active={smallModelMode}
           diverges={smallModelDiverges}
         />
+      </button>
+
+      <button
+        onClick={onOpenContext}
+        className={iconBtn}
+        aria-label="Project context"
+        title="Project context"
+      >
+        <ContextIcon />
       </button>
 
       <button

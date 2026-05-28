@@ -38,14 +38,14 @@ jobs:
         run: npm ci
 
       - name: Guard against dev-only env vars in CI
-        # These flags enable raw Live API access and arbitrary code execution.
+        # These flags enable Live API access and arbitrary code execution.
         # They must never be baked into release artifacts.
         run: |
-          if [ "${ENABLE_RAW_LIVE_API:-}" = "true" ] || \
+          if [ "${ENABLE_LIVE_API:-}" = "true" ] || \
              [ "${ENABLE_CODE_EXEC:-}" = "true" ] || \
              [ "${ENABLE_DEV_CORS:-}" = "true" ]; then
             echo "::error::Dev-only env vars must not be set in CI builds:"
-            echo "  ENABLE_RAW_LIVE_API=${ENABLE_RAW_LIVE_API:-}"
+            echo "  ENABLE_LIVE_API=${ENABLE_LIVE_API:-}"
             echo "  ENABLE_CODE_EXEC=${ENABLE_CODE_EXEC:-}"
             echo "  ENABLE_DEV_CORS=${ENABLE_DEV_CORS:-}"
             exit 1

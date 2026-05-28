@@ -12,25 +12,10 @@ import {
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
-import { getPlayableNoteCount } from "#src/tools/shared/clip-notes.ts";
-
-/**
- * Convert a raw note from the Live API to a NoteEvent for add_new_notes.
- * The Live API returns extra properties (note_id, mute, release_velocity)
- * that must be stripped before passing to add_new_notes.
- * @param rawNote - Note object from get_notes_extended
- * @returns NoteEvent compatible with add_new_notes
- */
-function toNoteEvent(rawNote: Record<string, unknown>): NoteEvent {
-  return {
-    pitch: rawNote.pitch as number,
-    start_time: rawNote.start_time as number,
-    duration: rawNote.duration as number,
-    velocity: rawNote.velocity as number,
-    probability: rawNote.probability as number,
-    velocity_deviation: rawNote.velocity_deviation as number,
-  };
-}
+import {
+  getPlayableNoteCount,
+  rawNotesToNoteEvents,
+} from "#src/tools/shared/clip-notes.ts";
 
 /**
  * Apply transforms to existing notes without changing the notes themselves.
@@ -64,7 +49,7 @@ export function applyTransformsToExistingNotes(
   }
 
   // Convert raw notes to NoteEvent format (strips extra Live API properties)
-  const notes: NoteEvent[] = rawNotes.map(toNoteEvent);
+  const notes: NoteEvent[] = rawNotesToNoteEvents(rawNotes);
 
   const transformed = applyTransforms(
     notes,

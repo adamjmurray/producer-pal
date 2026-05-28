@@ -10,16 +10,20 @@ import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations
  * Creates stable callback wrappers for conversation manager methods.
  * @param manager - Conversation manager from useConversations
  * @param stopResponse - Stops the current AI response stream
+ * @param clearViewingMode - Clears any foreign-mode view override so the next
+ *   fresh session honors the user's saved mode
  * @returns Stable callback handlers for conversation operations
  */
 export function useConversationHandlers(
   manager: UseConversationsReturn,
   stopResponse: () => void,
+  clearViewingMode: () => void,
 ) {
   const handleNew = useCallback(() => {
     stopResponse();
     manager.startNewConversation();
-  }, [manager, stopResponse]);
+    clearViewingMode();
+  }, [manager, stopResponse, clearViewingMode]);
   const handleSelect = useCallback(
     (id: string) => {
       stopResponse();

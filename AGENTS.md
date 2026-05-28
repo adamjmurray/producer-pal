@@ -65,6 +65,12 @@ web UI architecture.
   assistance line already exists, append additional tools as a comma-separated
   list (e.g., `// AI assistance: Gemini (Google), Claude (Anthropic)`).
 
+  **Exception: `examples/**`** — files under `examples/` are intentionally
+  exempt from SPDX/copyright headers. They are reference snippets meant to be
+  copied freely into user projects, and the headers would add friction and
+  potentially confuse users about licensing. Do not add SPDX headers to files in
+  this directory.
+
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
   other files use kebab-case (e.g., `use-chat.ts`, `live-api-adapter.ts`)
 
@@ -95,15 +101,56 @@ web UI architecture.
 - **No barrel files**: Do not create index.ts or other files that only re-export
   from other modules. Import directly from the source file instead.
 
-- **Testing builds**: Always use `npm run build:debug` for development (includes
-  debugging tools like `ppal-raw-live-api`)
+- **Testing builds**: Always use `npm run build:debug` for development. It sets
+  `ENABLE_LIVE_API=true` (forces the runtime `liveApiEnabled` flag on so the
+  Direct Live API tool is always available — the Setup-tab toggle cannot disable
+  it in this build), `ENABLE_CODE_EXEC=true`, and `ENABLE_DEV_CORS=true`.
+  `POST /config { liveApiEnabled }` still works in either direction (used by e2e
+  tests to exercise the disabled state).
 
 - **Exact dependency versions**: All versions in package.json must be exact (no
   `^`, `~`, or ranges). `.npmrc` enforces this for `npm install`. A test in
   `src/test/package-json-versions.test.ts` validates it.
 
-- **Zod limitations**: Use only primitive types and enums in tool input schemas.
-  For list-like inputs, use comma-separated strings
+- **Tool input schema shapes**: Rich JSON Schema shapes (arrays, nested objects)
+  are safe to use — accepted and filled by every model the probe tried.
+  (`ppal-live-api` already ships `z.array(z.object(...))`; the
+  `evals/schema-compat/` probe spot-checks one model per provider across 3 draws
+  at provider-default temperature, with a checked-in results snapshot in
+  `evals/schema-compat/README.md` — corroboration, not exhaustive proof.) Choose
+  the shape by the data:
+  - **Flat scalar list** (ids, note names, paths) → comma-separated string.
+    Still the default: natural for LLMs, token-cheap, no reason to change
+    existing ones.
+  - **List of structured records** (e.g. per-item fields) →
+    `z.array(z.object())`. Prefer this over inventing a string mini-DSL
+    (`a=1|b=2,...`) that has to be taught and parsed.
+  - **Values that can contain the list delimiter** (e.g. function-call args with
+    commas) → `z.array(z.string())`, not a comma-separated string. See `actions`
+    in `update-device.def.ts`.
+  - **"One or many"** → always use an array (a single-element array is fine). Do
+    NOT use `string | array` (`z.union` → JSON Schema `anyOf`): it is accepted
+    everywhere but mis-filled — Claude collapses to the scalar and drops data;
+    some small models JSON-stringify the array into the string slot. (The
+    probe's `string-or-array-union` check now asserts the lossless array branch
+    with both items present, so the collapse-to-scalar failure is measured, not
+    just eyeballed: in the 2026-05-24 snapshot `claude-haiku-4.5` returned
+    `{"action":"reverse"}` on all 3 draws — dropping data — while Gemini,
+    GPT-5-nano, and Mistral used the array.) **Grandfathered exception:**
+    `ppal-live-api`'s `value` param is
+    `z.union([string, number, boolean, array<number>])` because Live property
+    values are genuinely heterogeneous (one property takes a string, another a
+    number, another a number-list). The parameter is per-property-typed at the
+    call site (the LLM picks one branch based on which property it's setting),
+    not a "one-or-many" shape — there is no scalar/array ambiguity for any given
+    property. Don't pattern-match off this for new tools.
+  - Anything richer than a primitive MUST have a `smallModelModeConfig` plan:
+    either exclude the param (`excludeParams`), or keep it with a
+    small-model-tolerant schema. There is no built-in "degrade to a
+    comma-separated string" switch — the tolerance lives in the schema. Example:
+    the `params` array in `device-params-schema.ts` adds a `preprocess` that
+    also accepts a JSON-stringified array (absorbing the small-model habit of
+    stringifying structured args) alongside a `descriptionOverrides` entry.
 
 - **Tool schema coercion**: Use `z.coerce.string()` instead of `z.string()` for
   ID parameters in tool input schemas (e.g., `ids`, `trackId`, `clipId`,
@@ -145,7 +192,7 @@ web UI architecture.
   - Example: `console.warn("quantize parameter ignored for audio clip")`
 
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
-  in `src/tools/workflow/connect.ts`. It needs to be adjusted after changes to
+  in `src/tools/core/connect.ts`. It needs to be adjusted after changes to
   bar|beat notation and when changing behavior that invalidates any of its
   instructions.
 
@@ -359,4 +406,6 @@ Rules:
   deployment
 - `dev/Read-Tool-Includes.md` - Read tool include parameter system and
   conventions
+- `dev/Specialized-Devices.md` - Specialized device LOM classes, pseudo-param
+  mappings, and the probe-against-Live verification discipline
 - `DEVELOPERS.md` - Development setup and testing

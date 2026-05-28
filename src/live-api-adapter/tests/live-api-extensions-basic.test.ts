@@ -269,6 +269,23 @@ describe("LiveAPI extensions - basic methods", () => {
     });
   });
 
+  describe("getPropertyList", () => {
+    it("returns the full array from LiveAPI get()", () => {
+      const list = ["Basics", "Collection", "Complex"];
+
+      api.get = vi.fn().mockReturnValue(list);
+      expect(
+        api.getPropertyList("oscillator_wavetable_categories"),
+      ).toStrictEqual(list);
+      expect(api.get).toHaveBeenCalledWith("oscillator_wavetable_categories");
+    });
+
+    it("returns an empty array when get() returns a non-array", () => {
+      api.get = vi.fn().mockReturnValue(undefined);
+      expect(api.getPropertyList("missing")).toStrictEqual([]);
+    });
+  });
+
   describe("getChildIds", () => {
     it("parses id pairs from LiveAPI response", () => {
       api.get = vi.fn().mockReturnValue(["id", "1", "id", "2", "id", "3"]);

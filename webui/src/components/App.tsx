@@ -3,144 +3,69 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useMemo, useRef } from "preact/hooks";
-import { chatAdapter } from "#webui/hooks/chat/adapter";
-import { useConversationHandlers } from "#webui/hooks/chat/helpers/use-conversation-handlers";
-import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
-import { useConversationPanelState } from "#webui/hooks/chat/helpers/use-conversation-panel-state";
-import { useChat } from "#webui/hooks/chat/use-chat";
-import { useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
-import { useConversations } from "#webui/hooks/chat/use-conversations";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "preact/hooks";
+import { ChatApp } from "#webui/components/ChatApp";
+import {
+  DEFAULT_MODE_CONTEXT,
+  type ModeContext,
+} from "#webui/components/mode-context";
+import { VoiceApp } from "#webui/components/voice/VoiceApp";
 import { ToolNamesContext } from "#webui/hooks/connection/tool-names-context";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
-import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
+import { useSyncLiveApiEnabled } from "#webui/hooks/connection/use-sync-live-api-enabled";
 import { useHasUnsavedChanges } from "#webui/hooks/settings/use-has-unsaved-changes";
+import { useSaveSettingsHandler } from "#webui/hooks/settings/use-save-settings-handler";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
 import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
-import {
-  usePreferencesSettings,
-  savePreferencesSettings,
-} from "#webui/hooks/use-preferences-settings";
-import { useViewState } from "#webui/hooks/use-view-state";
-import { getBaseUrl, LOCAL_PROVIDER_API_KEY } from "#webui/utils/provider-url";
-import { ChatScreen } from "./chat/ChatScreen";
+import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
+import { useViewState } from "#webui/hooks/view-state/use-view-state";
+import { isRealtimeSelection } from "#webui/lib/constants/models";
+import { type ConversationRecord } from "#webui/lib/conversation-db";
+import { ContextScreen } from "./context/ContextScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
 
+const CONTEXT_ANIMATION_MS = 150;
+
 /**
- * @returns {JSX.Element} - React component
+ * Root component. Owns shared chrome (settings hook, theme, view state, MCP
+ * connection, settings modal) and routes the body to either the chat or voice
+ * mode based on the current settings.model. Each mode component owns its own
+ * conversation/session hooks and reports its delete handlers + conversation
+ * lock back here so the shared SettingsScreen can act on the active mode.
+ *
+ * @returns App element with mode-routed body and shared settings modal
  */
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
   const { viewState, setViewState } = useViewState();
-  const openSettings = (settingsTab?: TabId) =>
-    setViewState(
-      settingsTab
-        ? { settingsOpen: true, settingsTab }
-        : { settingsOpen: true },
-    );
   const display = usePreferencesSettings();
+  const openSettings = useCallback(
+    (settingsTab?: TabId) =>
+      setViewState(
+        settingsTab
+          ? { settingsOpen: true, settingsTab }
+          : { settingsOpen: true },
+      ),
+    [setViewState],
+  );
   const { mcpStatus, mcpError, mcpTools, checkMcpConnection } =
     useMcpConnection();
   const toolNamesMap = useMemo(
     () => Object.fromEntries(mcpTools?.map((t) => [t.id, t.name]) ?? []),
     [mcpTools],
   );
-  const { serverSmallModelMode, postSmallModelMode } =
-    useRemoteConfig(mcpStatus);
-  const baseUrl = getBaseUrl(settings.provider, settings.baseUrl);
-
-  const autoSaveRef = useRef<(() => void) | null>(null);
-
-  const aiSdkChat = useChat({
-    provider: settings.provider,
-    apiKey:
-      settings.provider === "lmstudio" || settings.provider === "ollama"
-        ? settings.apiKey || LOCAL_PROVIDER_API_KEY
-        : settings.apiKey,
-    model: settings.model,
-    thinking: settings.thinking,
-    temperature: settings.temperature,
-    enabledTools: settings.enabledTools,
-    smallModelMode: settings.smallModelMode,
-    mcpStatus,
-    mcpError,
-    checkMcpConnection,
-    adapter: chatAdapter,
-    extraParams: {
-      baseUrl,
-      showThoughts: settings.showThoughts,
-      provider: settings.provider,
-      apiKey:
-        settings.provider === "lmstudio" || settings.provider === "ollama"
-          ? settings.apiKey || LOCAL_PROVIDER_API_KEY
-          : settings.apiKey,
-    },
-    autoSaveRef,
-  });
-
-  const { chat, wrappedHandleSend, wrappedClearConversation } =
-    useConversationLock({ chat: aiSdkChat });
-
-  // Sync smallModelMode: seed from server when no active lock, post to server when lock changes
-  useSyncSmallModelMode(
-    serverSmallModelMode,
-    chat.activeSmallModelMode,
-    settings.setSmallModelMode,
-    postSmallModelMode,
-  );
-
-  const conversationManager = useConversations({
-    getChatHistory: chat.getChatHistory,
-    restoreChatHistory: chat.restoreChatHistory,
-    clearConversation: wrappedClearConversation,
-    activeModel: chat.activeModel,
-    activeProvider: chat.activeProvider,
-    activeThinking: chat.activeThinking,
-    activeTemperature: chat.activeTemperature,
-    activeShowThoughts: chat.activeShowThoughts,
-    activeSmallModelMode: chat.activeSmallModelMode,
-  });
-
-  // Auto-save on user message sent (called from useChat on first stream yield)
-  useEffect(() => {
-    /* v8 ignore start -- auto-save ref: only invoked during streaming */
-    autoSaveRef.current = () =>
-      void conversationManager.saveCurrentConversation(Date.now());
-    /* v8 ignore stop */
-  }, [conversationManager]);
-
-  const transfer = useConversationTransfer(conversationManager.refreshList);
-  const conversationHandlers = useConversationHandlers(
-    conversationManager,
-    chat.stopResponse,
-  );
-  const { handleDeleteAll, handleDeleteUnbookmarked } = conversationHandlers;
-
-  const conversationPanelState = useConversationPanelState({
-    conversationManager,
-    transfer,
-    viewState,
-    setViewState,
-    handlers: conversationHandlers,
-  });
-
-  // Auto-save when streaming completes — covers tool results and follow-up
-  // text merged into existing UIMessages
-  const prevRespondingRef = useRef(false);
-
-  useEffect(() => {
-    if (!chat.isAssistantResponding && prevRespondingRef.current) {
-      void conversationManager.saveCurrentConversation(Date.now());
-    }
-
-    prevRespondingRef.current = chat.isAssistantResponding;
-  }, [chat.isAssistantResponding, conversationManager]);
-
+  const remoteConfig = useRemoteConfig(mcpStatus);
   const totalToolsCount = mcpTools?.length ?? 0;
   const enabledToolsCount = mcpTools
     ? mcpTools.filter((t) => settings.enabledTools[t.id] !== false).length
@@ -149,12 +74,17 @@ export function App() {
   const showSettings = viewState.settingsOpen || !settings.settingsConfigured;
   const { settingsClosing, closeSettings } = useSettingsClose(setViewState);
 
+  useSyncLiveApiEnabled(
+    remoteConfig.serverLiveApiEnabled,
+    settings.liveApiEnabledDirty,
+    settings.seedLiveApiEnabled,
+  );
+
   // Track original appearance settings when settings opened (for cancel)
   const originalThemeRef = useRef(theme);
   const originalDisplayRef = useRef(display);
   const prevShowSettingsRef = useRef(showSettings);
 
-  // Save originals only when settings transitions from closed to open
   useEffect(() => {
     if (showSettings && !prevShowSettingsRef.current) {
       originalThemeRef.current = theme;
@@ -176,13 +106,26 @@ export function App() {
     showSettings,
   );
 
-  const handleSaveSettings = () => {
-    closeSettings(() => {
-      settings.saveSettings();
-      postSmallModelMode(settings.smallModelMode);
-      savePreferencesSettings(display);
-    });
-  };
+  // Override the mode-routing decision so a foreign-mode conversation (e.g. a
+  // voice record opened while saved is a chat model) renders in its native UI
+  // without mutating the user's saved settings. null = follow savedModel.
+  // Cleared by "New conversation" so the next fresh session uses savedModel.
+  const [viewingMode, setViewingMode] = useState<"chat" | "voice" | null>(null);
+  const onForeignRecord = useCallback((record: ConversationRecord) => {
+    setViewingMode(record.sessionType === "voice" ? "voice" : "chat");
+  }, []);
+  const clearViewingMode = useCallback(() => {
+    setViewingMode(null);
+  }, []);
+
+  const handleSaveSettings = useSaveSettingsHandler({
+    settings,
+    display,
+    remoteConfig,
+    checkMcpConnection,
+    closeSettings,
+    viewingMode,
+  });
 
   const handleCancelSettings = useCallback(() => {
     closeSettings(() => {
@@ -196,58 +139,121 @@ export function App() {
     });
   }, [closeSettings, settings, setTheme, display]);
 
+  // Project context overlay (sibling to Settings). Animation timing mirrors
+  // useSettingsClose; auto-save makes a confirm-on-close flow unnecessary.
+  const contextOpen = viewState.contextOpen;
   const { shake, clearShake, handleSettingsDismiss } = useSettingsDismiss({
     showSettings,
     settingsConfigured: settings.settingsConfigured,
     settingsClosing,
     hasUnsavedChanges,
     handleCancelSettings,
+    // Defer Esc to the Context overlay when both are open. Settings renders
+    // above Context in the DOM, but the Context overlay is the one with an
+    // unconditional Esc-dismiss path (Settings won't dismiss when
+    // !settingsConfigured) — without this, both handlers fire and either
+    // Settings refuses to close OR both close at once.
+    blockEscape: contextOpen,
   });
+
+  const [contextClosing, setContextClosing] = useState(false);
+  const openContext = useCallback(
+    () => setViewState({ contextOpen: true }),
+    [setViewState],
+  );
+  const closeContext = useCallback(() => {
+    setContextClosing(true);
+    setTimeout(() => {
+      setContextClosing(false);
+      setViewState({ contextOpen: false });
+    }, CONTEXT_ANIMATION_MS);
+  }, [setViewState]);
+
+  // Escape closes the context overlay (consistent with native modal idioms).
+  useEffect(() => {
+    if (!contextOpen) return;
+
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") closeContext();
+    };
+
+    window.addEventListener("keydown", onKey);
+
+    return () => window.removeEventListener("keydown", onKey);
+  }, [contextOpen, closeContext]);
+
+  // The active mode reports its conversation lock + delete handlers here via
+  // setModeContext so the shared SettingsScreen renders them.
+  const [modeContext, setModeContext] =
+    useState<ModeContext>(DEFAULT_MODE_CONTEXT);
+
+  // Mode is derived from the saved provider+model (only updates on save), not
+  // the in-modal `provider`/`model`. This prevents the underlying chat or voice
+  // screen from re-mounting mid-modal whenever the user explores the dropdowns.
+  // Pairing the saved provider with the saved model also keeps voice routing to
+  // providers that actually have a voice backend (OpenAI today): a foreign
+  // provider reusing a realtime model id stays in chat. viewingMode overrides
+  // the route while a foreign-mode conversation is being viewed.
+  const isVoiceMode =
+    viewingMode != null
+      ? viewingMode === "voice"
+      : isRealtimeSelection(settings.savedProvider, settings.savedModel);
+
+  const sharedModeProps = {
+    settings,
+    display,
+    viewState,
+    setViewState,
+    mcpStatus,
+    totalToolsCount,
+    enabledToolsCount,
+    onOpenSettings: () => openSettings(),
+    /* v8 ignore start -- inline settings tab navigation */
+    onOpenToolsSettings: () => openSettings("tools"),
+    onOpenConnectionSettings: () => openSettings("connection"),
+    /* v8 ignore stop */
+    onOpenContext: openContext,
+    onForeignRecord,
+    clearViewingMode,
+    setModeContext,
+  };
+
+  // Blur+disable interaction beneath any modal overlay (settings or context).
+  const overlayOpen = showSettings || contextOpen;
+  const overlayClosing = settingsClosing || contextClosing;
 
   return (
     <ToolNamesContext.Provider value={toolNamesMap}>
       <div
         className={
-          showSettings
-            ? `pointer-events-none ${settingsClosing ? "settings-blur-out" : "settings-blur"}`
+          overlayOpen
+            ? `pointer-events-none ${overlayClosing ? "settings-blur-out" : "settings-blur"}`
             : ""
         }
       >
-        <ChatScreen
-          messages={chat.messages}
-          isAssistantResponding={chat.isAssistantResponding}
-          rateLimitState={chat.rateLimitState}
-          handleSend={wrappedHandleSend}
-          handleRetry={chat.handleRetry}
-          handleEdit={chat.handleEdit}
-          headerInfo={{
-            activeModel: chat.activeModel,
-            activeProvider: chat.activeProvider,
-            model: settings.model,
-            provider: settings.provider,
-            enabledToolsCount,
-            totalToolsCount,
-            smallModelMode:
-              chat.activeSmallModelMode ?? settings.smallModelMode,
-            defaultSmallModelMode: settings.smallModelMode,
-            showHelpLinks: display.showHelpLinks,
-          }}
-          activeThinking={chat.activeThinking}
-          defaultThinking={settings.thinking}
-          mcpStatus={mcpStatus}
-          mcpError={mcpError}
-          checkMcpConnection={checkMcpConnection}
-          onOpenSettings={() => openSettings()}
-          /* v8 ignore start -- inline settings tab navigation */
-          onOpenToolsSettings={() => openSettings("tools")}
-          onOpenConnectionSettings={() => openSettings("connection")}
-          /* v8 ignore stop */
-          onStop={chat.stopResponse}
-          showTimestamps={display.showTimestamps}
-          showTokenUsage={display.showTokenUsage}
-          conversationPanel={conversationPanelState}
-        />
+        {isVoiceMode ? (
+          <VoiceApp {...sharedModeProps} />
+        ) : (
+          <ChatApp
+            {...sharedModeProps}
+            mcpError={mcpError}
+            checkMcpConnection={checkMcpConnection}
+            remoteConfig={remoteConfig}
+          />
+        )}
       </div>
+      {contextOpen && (
+        <div
+          className={`settings-overlay ${contextClosing ? "settings-closing" : ""}`}
+          onClick={(e) => {
+            // Auto-save makes click-outside-to-close safe; only close on
+            // backdrop hits, not clicks inside the editor.
+            if (e.target === e.currentTarget) closeContext();
+          }}
+        >
+          <ContextScreen onClose={closeContext} />
+        </div>
+      )}
       {showSettings && (
         <div
           className={`settings-overlay ${settingsClosing ? "settings-closing" : ""}`}
@@ -267,13 +273,13 @@ export function App() {
             shake={shake}
             onShakeEnd={clearShake}
             hasUnsavedChanges={hasUnsavedChanges}
-            onDeleteAllConversations={handleDeleteAll}
-            onDeleteUnbookmarkedConversations={handleDeleteUnbookmarked}
-            conversationLock={{
-              activeModel: chat.activeModel,
-              activeProvider: chat.activeProvider,
-              activeSmallModelMode: chat.activeSmallModelMode,
-            }}
+            onDeleteAllConversations={modeContext.onDeleteAllConversations}
+            onDeleteUnbookmarkedConversations={
+              modeContext.onDeleteUnbookmarkedConversations
+            }
+            conversationLock={modeContext.conversationLock}
+            liveApiForcedOn={remoteConfig.serverLiveApiForcedOn}
+            activeVoice={modeContext.activeVoice}
           />
         </div>
       )}

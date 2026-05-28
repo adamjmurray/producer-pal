@@ -67,6 +67,9 @@ export interface ReadClipResult {
   // Location properties
   slot?: string;
   trackIndex?: number | null;
+  /** 1-based lane number matching the create-clip/duplicate `takeLane` param
+   * (`0` is the main lane). Only present for clips on a non-main take lane. */
+  takeLane?: number;
   arrangementStart?: string;
   arrangementLength?: string;
 
@@ -351,6 +354,12 @@ function addClipLocationProperties(
 ): void {
   if (isArrangementClip) {
     result.trackIndex = clip.trackIndex;
+    const takeLaneIndex = clip.takeLaneIndex;
+
+    if (takeLaneIndex != null) {
+      result.takeLane = takeLaneIndex + 1;
+    }
+
     const startTimeBeats = clip.getProperty("start_time") as number;
 
     const liveSet = LiveAPI.from("live_set");

@@ -4,7 +4,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.ts";
-import { select } from "#src/tools/control/select.ts";
+import { select } from "#src/tools/session/select.ts";
 import {
   getColorForIndex,
   parseCommaSeparatedColors,
