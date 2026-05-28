@@ -18,7 +18,7 @@ C3 1|1 D3 1|2 E3 1|3 F#3 1|4
 G3 2|1 A3 2|2 G#3 2|3 E3 2|4
 \`\`\`
 
-### Chords (set duration with t, t/1 = whole note = 4 quarters)
+### Chords (set duration with t, t/1 = 4 quarters)
 \`\`\`
 t/1
 C3 E3 G3 1|1

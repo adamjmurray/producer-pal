@@ -262,7 +262,7 @@ operations.
 
 ```
 1|4x4@/16        // four 16ths on beat 4: 4, 17/4, 18/4, 19/4
-1|1x16@/16       // 16 sixteenths spanning one quarter note
+1|1x16@/16       // 16 sixteenths = 4 quarters (a full bar in 4/4)
 ```
 
 **Eighth notes:**
@@ -577,7 +577,7 @@ t/12 C3 1|1x3@/12            // eighth-note triplets (3 per quarter)
 t/12 C3 1|1x3 1|2x3          // step defaults to t, two sets of triplets
 
 // Repeat patterns - 16th notes
-t/16 Gb1 1|1x16@/16    // 16 sixteenths spanning a quarter note
+t/16 Gb1 1|1x16@/16    // 16 sixteenths = 4 quarters (a full bar in 4/4)
 t/16 Gb1 1|1x16        // same — step defaults to t value
 
 // Repeat patterns - mixed with regular beats
