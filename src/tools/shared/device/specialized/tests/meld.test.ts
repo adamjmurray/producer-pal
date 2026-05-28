@@ -268,14 +268,17 @@ describe("Meld via read-device", () => {
     expect(result.modulations).toBeUndefined();
   });
 
-  it("omits the options field when the device contributes no catalogs", () => {
+  it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableMeld();
 
-    const result = readDevice({
-      deviceId: "meld-1",
-      include: ["params", "options"],
-    });
+    const result = readDevice({ deviceId: "meld-1", include: ["options"] });
 
-    expect(result.options).toBeUndefined();
+    expect(
+      (result.options as Record<string, unknown>).paramOptions,
+    ).toStrictEqual({
+      monoPoly: ["mono", "poly"],
+      polyVoices: "1-6",
+      unisonVoices: "0-2",
+    });
   });
 });

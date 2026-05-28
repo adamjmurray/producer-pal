@@ -76,6 +76,32 @@ function installTrackingTask(scheduleCalls: number[]): () => void {
   };
 }
 
+/**
+ * Install a Task on globalThis that captures the callback so the test can
+ * invoke it manually to simulate a fired timeout.
+ *
+ * @param captured - Single-element array that receives the latest callback
+ * @returns Restore function that puts the original globalThis.Task back
+ */
+function installCapturingTask(captured: Array<() => void>): () => void {
+  class CapturingTask {
+    schedule = (_ms: number): void => {};
+
+    constructor(callback: () => void) {
+      captured.push(callback);
+    }
+  }
+
+  const g = globalThis as Record<string, unknown>;
+  const originalTask = g.Task;
+
+  g.Task = CapturingTask;
+
+  return () => {
+    g.Task = originalTask;
+  };
+}
+
 describe("node-request-v8-protocol", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -257,6 +283,57 @@ describe("node-request-v8-protocol", () => {
     expect(respA).toStrictEqual({ success: true, result: { tag: "a" } });
     expect(respB).toStrictEqual({ success: true, result: { tag: "b" } });
     expect(respC).toStrictEqual({ success: false, error: "c failed" });
+  });
+
+  it("resolves with a timeout error when the timeout callback fires", async () => {
+    const captured: Array<() => void> = [];
+    const restoreTask = installCapturingTask(captured);
+
+    try {
+      const promise = requestNode("test.timeout");
+
+      expect(captured).toHaveLength(1);
+
+      // Fire the captured timeout callback to simulate elapsed time.
+      captured[0]!();
+
+      const response = await promise;
+
+      expect(response.success).toBe(false);
+      expect(response.error).toMatch(/test\.timeout.*timed out/);
+
+      // After timeout, a late response for the same id is ignored — the
+      // pending entry was deleted by the timeout path.
+      const requestId = latestRequestId();
+
+      handleNodeResponse(
+        requestId,
+        JSON.stringify({ success: true, result: "late" }),
+      );
+    } finally {
+      restoreTask();
+    }
+  });
+
+  it("ignores a second timeout callback firing for the same request", async () => {
+    const captured: Array<() => void> = [];
+    const restoreTask = installCapturingTask(captured);
+
+    try {
+      const promise = requestNode("test.timeout-twice");
+
+      captured[0]!();
+      // Second invocation must hit the `pendingNodeRequests.has(...)` guard
+      // and do nothing — calling resolve() twice on the same Promise would
+      // be a silent no-op, but we want to confirm the guard is exercised.
+      expect(() => captured[0]!()).not.toThrow();
+
+      const response = await promise;
+
+      expect(response.success).toBe(false);
+    } finally {
+      restoreTask();
+    }
   });
 
   it("cancels the timeout task after a successful response", async () => {

@@ -98,8 +98,7 @@ export function connect(
       "Report the connection status and Live Set overview to the user, then wait for their instructions.",
   };
 
-  // Include memory content if enabled
-  if (context.memory?.enabled && context.memory.content) {
+  if (context.memory?.content) {
     result.memoryContent = context.memory.content;
   }
 

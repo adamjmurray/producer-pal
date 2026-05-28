@@ -27,7 +27,57 @@ vi.mock(import("#webui/utils/mcp-url"), () => ({
 }));
 
 import { streamText } from "ai";
-import { ChatSdkClient } from "#webui/chat/sdk/client";
+import { ChatSdkClient, detectToolLimitReached } from "#webui/chat/sdk/client";
+
+const MAX_TOOL_STEPS = 10;
+
+/**
+ * Send a message through a new client with mocked stream parts and return the
+ * client (so callers can inspect post-stream state like toolLimitReached).
+ * @param parts - Stream parts to emit
+ * @returns The client after the stream is fully consumed
+ */
+async function sendAndGetClient(
+  parts: Record<string, unknown>[],
+): Promise<ChatSdkClient> {
+  async function* iterate(): AsyncIterable<Record<string, unknown>> {
+    for (const p of parts) yield p;
+  }
+
+  (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+    fullStream: iterate(),
+  });
+
+  const client = new ChatSdkClient("key", createConfig());
+
+  for await (const _ of client.sendMessage("Hello")) {
+    /* consume */
+  }
+
+  return client;
+}
+
+/**
+ * Build a stream that completes the given number of steps and ends with the
+ * given overall finishReason.
+ * @param steps - Number of finish-step parts to emit
+ * @param finishReason - finishReason for the final finish part
+ * @returns Stream parts array
+ */
+function buildSteppedStream(
+  steps: number,
+  finishReason: string,
+): Record<string, unknown>[] {
+  const parts: Record<string, unknown>[] = [];
+
+  for (let i = 0; i < steps; i++) {
+    parts.push({ type: "finish-step" });
+  }
+
+  parts.push({ type: "finish", finishReason });
+
+  return parts;
+}
 
 /**
  * Create a mock config.
@@ -561,5 +611,91 @@ describe("ChatSdkClient", () => {
       expect(user?.thinkingOverride).toBe("Off");
       expect(user?.showThoughtsOverride).toBeUndefined();
     });
+  });
+
+  describe("toolLimitReached flag", () => {
+    it("is true when the step limit is hit while wanting tools", async () => {
+      const client = await sendAndGetClient(
+        buildSteppedStream(MAX_TOOL_STEPS, "tool-calls"),
+      );
+
+      expect(client.toolLimitReached).toBe(true);
+    });
+
+    it("is false on a clean stop at the step limit", async () => {
+      const client = await sendAndGetClient(
+        buildSteppedStream(MAX_TOOL_STEPS, "stop"),
+      );
+
+      expect(client.toolLimitReached).toBe(false);
+    });
+
+    it("is false when fewer than the limit of steps complete", async () => {
+      const client = await sendAndGetClient(
+        buildSteppedStream(2, "tool-calls"),
+      );
+
+      expect(client.toolLimitReached).toBe(false);
+    });
+
+    it("is false when there is no finish part (e.g. aborted/error)", async () => {
+      const client = await sendAndGetClient([
+        { type: "finish-step" },
+        { type: "finish-step" },
+      ]);
+
+      expect(client.toolLimitReached).toBe(false);
+    });
+
+    it("resets to false on a subsequent clean message", async () => {
+      const client = await sendAndGetClient(
+        buildSteppedStream(MAX_TOOL_STEPS, "tool-calls"),
+      );
+
+      expect(client.toolLimitReached).toBe(true);
+
+      async function* clean(): AsyncIterable<Record<string, unknown>> {
+        yield { type: "text-delta", text: "Done" };
+        yield { type: "finish", finishReason: "stop" };
+      }
+
+      (streamText as ReturnType<typeof vi.fn>).mockReturnValue({
+        fullStream: clean(),
+      });
+
+      for await (const _ of client.sendMessage("again")) {
+        /* consume */
+      }
+
+      expect(client.toolLimitReached).toBe(false);
+    });
+  });
+});
+
+describe("detectToolLimitReached", () => {
+  it("returns true at the step limit with a tool-calls finishReason", () => {
+    expect(detectToolLimitReached(MAX_TOOL_STEPS, "tool-calls")).toBe(true);
+  });
+
+  it("returns true above the step limit with tool-calls", () => {
+    expect(detectToolLimitReached(MAX_TOOL_STEPS + 1, "tool-calls")).toBe(true);
+  });
+
+  it("returns false for a clean stop", () => {
+    expect(detectToolLimitReached(MAX_TOOL_STEPS, "stop")).toBe(false);
+  });
+
+  it("returns false below the step limit", () => {
+    expect(detectToolLimitReached(MAX_TOOL_STEPS - 1, "tool-calls")).toBe(
+      false,
+    );
+  });
+
+  it("returns false when finishReason is undefined (abort/error)", () => {
+    expect(detectToolLimitReached(MAX_TOOL_STEPS, undefined)).toBe(false);
+  });
+
+  it("returns false for an error finishReason at the limit", () => {
+    expect(detectToolLimitReached(MAX_TOOL_STEPS, "error")).toBe(false);
   });
 });

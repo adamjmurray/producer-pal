@@ -11,6 +11,7 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
+  type McpErrorCode,
 } from "#src/shared/mcp-response-utils.ts";
 import { ensureSilenceWav } from "#src/shared/silent-wav-generator.ts";
 import { handleCodeExecRequest } from "./code-exec-protocol.ts";
@@ -32,6 +33,12 @@ export interface McpResponseContent {
 export interface McpResponse {
   content: McpResponseContent[];
   isError?: boolean;
+  /**
+   * Structured error category. Set only at specific error origins (currently
+   * just the tool-call timeout) so transports can distinguish a timeout from
+   * an ordinary tool error without string-matching the message.
+   */
+  errorCode?: McpErrorCode;
 }
 
 interface PendingRequest {
@@ -116,10 +123,13 @@ function callLiveApi(
       timeout: setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          // Always resolve (not reject) with the standard error format
+          // Always resolve (not reject) with the standard error format.
+          // Tag with the "timeout" discriminator so the REST route can map it
+          // to HTTP 504 (other formatErrorResponse calls stay untagged).
           resolve(
             formatErrorResponse(
               `Tool call '${tool}' timed out after ${effectiveTimeoutMs}ms`,
+              "timeout",
             ),
           );
         }

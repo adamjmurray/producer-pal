@@ -94,12 +94,15 @@ describe("mock-registry", () => {
       expect(mock.get("is_midi_clip")).toStrictEqual([1]);
     });
 
-    it("should return [0] for unknown properties with no type default", () => {
+    it("should return [] for unknown properties with no type default", () => {
       const mock = registerMockObject("123", {
         path: livePath.track(0),
       });
 
-      expect(mock.get("nonexistent_property")).toStrictEqual([0]);
+      // [] (→ getProperty() yields undefined) mirrors real Live under
+      // noUncheckedIndexedAccess. A [0] default silently passed tests that
+      // read a property they never registered.
+      expect(mock.get("nonexistent_property")).toStrictEqual([]);
     });
 
     it("should support MockSequence for sequential values", () => {

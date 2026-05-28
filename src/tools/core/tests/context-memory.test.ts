@@ -11,91 +11,30 @@ describe("context - memory actions", () => {
 
   beforeEach(() => {
     toolContext = {
-      memory: {
-        enabled: false,
-        writable: false,
-        content: "",
-      },
+      memory: { content: "" },
     };
   });
 
   describe("read action", () => {
-    it("returns enabled: false when project context is disabled", () => {
-      toolContext.memory!.enabled = false;
+    it("returns current content", () => {
+      toolContext.memory!.content = "test content";
+
       const result = context({ action: "read" }, toolContext);
 
-      expect(result).toStrictEqual({ enabled: false });
+      expect(result).toStrictEqual({ content: "test content" });
       expect(outlet).not.toHaveBeenCalled();
     });
 
-    it("returns enabled: false when memory is missing", () => {
+    it("returns empty string when memory is missing", () => {
       const result = context({ action: "read" }, {});
 
-      expect(result).toStrictEqual({ enabled: false });
-      expect(outlet).not.toHaveBeenCalled();
-    });
-
-    it("returns full context when project context is enabled", () => {
-      toolContext.memory!.enabled = true;
-      toolContext.memory!.writable = true;
-      toolContext.memory!.content = "test content";
-
-      const result = context({ action: "read" }, toolContext);
-
-      expect(result).toStrictEqual({
-        enabled: true,
-        writable: true,
-        content: "test content",
-      });
-      expect(outlet).not.toHaveBeenCalled();
-    });
-
-    it("returns full context with writable false when not writable", () => {
-      toolContext.memory!.enabled = true;
-      toolContext.memory!.writable = false;
-      toolContext.memory!.content = "test content";
-
-      const result = context({ action: "read" }, toolContext);
-
-      expect(result).toStrictEqual({
-        enabled: true,
-        writable: false,
-        content: "test content",
-      });
+      expect(result).toStrictEqual({ content: "" });
       expect(outlet).not.toHaveBeenCalled();
     });
   });
 
   describe("write action", () => {
-    it("throws error when project context is disabled", () => {
-      toolContext.memory!.enabled = false;
-      expect(() =>
-        context({ action: "write", content: "test" }, toolContext),
-      ).toThrow("Project context is disabled");
-      expect(outlet).not.toHaveBeenCalled();
-    });
-
-    it("throws error when memory is missing", () => {
-      expect(() => context({ action: "write", content: "test" }, {})).toThrow(
-        "Project context is disabled",
-      );
-      expect(outlet).not.toHaveBeenCalled();
-    });
-
-    it("throws error when project context is not writable", () => {
-      toolContext.memory!.enabled = true;
-      toolContext.memory!.writable = false;
-      expect(() =>
-        context({ action: "write", content: "test" }, toolContext),
-      ).toThrow(
-        "AI updates are disabled - enable 'Allow AI updates' in settings to let AI modify project context",
-      );
-      expect(outlet).not.toHaveBeenCalled();
-    });
-
     it("throws error when content is missing", () => {
-      toolContext.memory!.enabled = true;
-      toolContext.memory!.writable = true;
       expect(() => context({ action: "write" }, toolContext)).toThrow(
         "Content required for write action",
       );
@@ -103,8 +42,6 @@ describe("context - memory actions", () => {
     });
 
     it("throws error when content is empty string", () => {
-      toolContext.memory!.enabled = true;
-      toolContext.memory!.writable = true;
       expect(() =>
         context({ action: "write", content: "" }, toolContext),
       ).toThrow("Content required for write action");
@@ -112,11 +49,9 @@ describe("context - memory actions", () => {
     });
 
     it.each([
-      ["updates content when all conditions are met", ""],
+      ["updates content when memory is present", ""],
       ["overwrites existing content", "old content"],
     ])("%s", (_, initialContent) => {
-      toolContext.memory!.enabled = true;
-      toolContext.memory!.writable = true;
       if (initialContent) toolContext.memory!.content = initialContent;
 
       const result = context(
@@ -125,12 +60,15 @@ describe("context - memory actions", () => {
       );
 
       expect(toolContext.memory!.content).toBe("new content");
-      expect(result).toStrictEqual({
-        enabled: true,
-        writable: true,
-        content: "new content",
-      });
+      expect(result).toStrictEqual({ content: "new content" });
       expect(outlet).toHaveBeenCalledWith(0, "update_memory", "new content");
+    });
+
+    it("writes content via outlet even when memory context is missing", () => {
+      const result = context({ action: "write", content: "fresh" }, {});
+
+      expect(result).toStrictEqual({ content: "fresh" });
+      expect(outlet).toHaveBeenCalledWith(0, "update_memory", "fresh");
     });
   });
 

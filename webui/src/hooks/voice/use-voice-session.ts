@@ -12,23 +12,25 @@ import {
   type TransportEvent,
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import {
-  mapThinkingToRealtimeEffort,
-  mapTurnDetectionToConfig,
-} from "#webui/hooks/settings/config-builders";
-import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
 import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 import {
+  applyLiveVolume,
+  bailIfStale,
+  buildSessionOptions,
   createPlaybackAudioElement,
   extractErrorMessage,
   fetchEphemeralToken,
   handleTransportEvent,
-  setAudioVolume,
+  seedInitialHistory,
   teardownAudioElement,
-  toSeedableHistory,
+  type TransportEventDeps,
 } from "#webui/hooks/voice/use-voice-session-helpers";
-import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
+import {
+  createVoiceAudioGraph,
+  teardownVoiceAudioGraph,
+  type VoiceAudioGraph,
+} from "#webui/hooks/voice/voice-audio-graph";
 
 const AGENT_INSTRUCTIONS = [
   "You are Producer Pal, an AI music production assistant working with the user in Ableton Live.",
@@ -48,15 +50,19 @@ interface UseVoiceSessionParams {
   mcpUrl: string;
   voiceTokenUrl: string;
   openAiKey: string | null;
+  /** Realtime model id for the session + ephemeral token. Defaults to
+   * OPENAI_REALTIME_MODEL when undefined. */
+  model?: string;
   enabledTools?: Record<string, boolean>;
   /** Voice id baked into the RealtimeAgent at connect time. The session locks
    * the voice once the model emits audio; if undefined, OpenAI picks a default. */
   voice?: string;
   /** Output playback speed (audio.output.speed). Defaults to 1.0 when undefined. */
   speed?: number;
-  /** Output playback volume (0.0–1.0) applied to our own <audio> element.
-   * Unlike speed, this is live: changing it updates the active session's
-   * loudness immediately. Defaults to 1.0 (unity) when undefined. */
+  /** Output playback volume (0.0–1.25, 1.0 = unity) applied via a Web Audio
+   * GainNode (so it can boost above unity). Unlike speed, this is live: changing
+   * it updates the active session's loudness immediately. Defaults to 1.0 when
+   * undefined. */
   volume?: number;
   /** Thinking UI level ("Default" | "Max" | "Off"). Mapped to
    * reasoning.effort at connect time. */
@@ -66,7 +72,7 @@ interface UseVoiceSessionParams {
   turnDetection?: TurnDetectionSettings;
 }
 
-interface UseVoiceSessionReturn {
+export interface UseVoiceSessionReturn {
   status: VoiceStatus;
   error: string | null;
   history: RealtimeItem[];
@@ -128,6 +134,7 @@ export function useVoiceSession(
     mcpUrl,
     voiceTokenUrl,
     openAiKey,
+    model,
     enabledTools,
     voice,
     speed,
@@ -140,6 +147,11 @@ export function useVoiceSession(
   // Our own playback element (we supply it to the WebRTC transport) so output
   // volume is under our control. Null while idle.
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
+  // Web Audio graph (source → gain → destination) built from the element's
+  // remote stream after connect, so volume can boost above unity. Null until
+  // built (or when Web Audio is unavailable — then we fall back to element
+  // .volume, capped at 1.0).
+  const audioGraphRef = useRef<VoiceAudioGraph | null>(null);
   const mcpClientRef = useRef<Client | null>(null);
   // Set synchronously at the start of connect() so a second call during the
   // await window (token fetch, MCP-tool setup) can't create a second session +
@@ -186,6 +198,10 @@ export function useVoiceSession(
     sessionRef.current = null;
     mcpClientRef.current = null;
     connectingRef.current = false;
+    // Tear the Web Audio graph down before the element so no AudioContext or
+    // audio routing lingers after Stop / a reconnect.
+    teardownVoiceAudioGraph(audioGraphRef.current);
+    audioGraphRef.current = null;
     teardownAudioElement(audioElementRef.current);
     audioElementRef.current = null;
     // Invalidate any connect() still suspended on an await: when it resumes it
@@ -289,12 +305,13 @@ export function useVoiceSession(
 
         const session = new RealtimeSession(
           agent,
-          buildSessionOptions(transport, { turnDetection, speed, thinking }),
+          buildSessionOptions(transport, {
+            turnDetection,
+            speed,
+            thinking,
+            model,
+          }),
         );
-
-        session.on("history_updated", (next: RealtimeItem[]) => {
-          setHistory([...next]);
-        });
 
         // Barge-in disabled (interrupt_response off, the default) → run
         // half-duplex: handleTransportEvent mutes the mic for the duration of
@@ -303,28 +320,24 @@ export function useVoiceSession(
         // for the session (changes apply on the next Stop → Talk).
         const halfDuplex = turnDetection?.interruptResponse === false;
 
-        session.on("transport_event", (event: TransportEvent) =>
-          handleTransportEvent(event, {
-            halfDuplex,
-            session,
-            autoMutedRef,
-            isMutedRef,
-            setAssistantThinking,
-            setAssistantSpeaking,
-            setError,
-            setRateLimitedUntil,
-          }),
-        );
-
-        session.on("error", (err: { type: "error"; error: unknown }) => {
-          console.error("RealtimeSession error", err.error);
-          setError(extractErrorMessage(err.error));
+        wireSessionEvents(session, setHistory, {
+          halfDuplex,
+          autoMutedRef,
+          isMutedRef,
+          setAssistantThinking,
+          setAssistantSpeaking,
+          setError,
+          setRateLimitedUntil,
         });
 
         // eslint-disable-next-line require-atomic-updates -- ref is not subject to React batching
         sessionRef.current = session;
 
-        const token = await fetchEphemeralToken(voiceTokenUrl, openAiKey);
+        const token = await fetchEphemeralToken(
+          voiceTokenUrl,
+          openAiKey,
+          model,
+        );
 
         // Torn down during the token fetch? Bail before session.connect() opens
         // the mic (cleanup() already closed the stored session).
@@ -344,18 +357,14 @@ export function useVoiceSession(
         )
           return;
 
+        // The WebRTC transport has attached the remote stream to our element by
+        // now; route it through a GainNode so volume can boost above unity. Null
+        // (no Web Audio / no stream yet) falls back to element .volume (capped).
+        const graph = createVoiceAudioGraph(audioElementRef.current, volume);
+
+        audioGraphRef.current = graph;
         setActiveVoice(voice ?? null);
-
-        if (initialHistory && initialHistory.length > 0) {
-          // The SDK's resetHistory only echoes "message" items back to the
-          // server — function_call/mcp_call items are dropped. Audio items are
-          // also rejected server-side without real audio bytes, so we replace
-          // them with text content carrying the saved transcript.
-          const primable = toSeedableHistory(initialHistory);
-
-          if (primable.length > 0) session.updateHistory(primable);
-        }
-
+        seedInitialHistory(session, initialHistory);
         setStatus("connected");
       } catch (err) {
         setStatus("error");
@@ -367,6 +376,7 @@ export function useVoiceSession(
       mcpUrl,
       voiceTokenUrl,
       openAiKey,
+      model,
       enabledTools,
       voice,
       speed,
@@ -434,15 +444,16 @@ export function useVoiceSession(
     }
   }, []);
 
-  // Push live volume changes to the active playback element so the slider
-  // adjusts loudness mid-session (no Stop → Talk needed, unlike speed).
-  useEffect(() => setAudioVolume(audioElementRef.current, volume), [volume]);
+  // Push live volume changes mid-session (no Stop → Talk needed, unlike speed):
+  // drive the GainNode (active path, can boost above unity) and keep element
+  // .volume in sync for the no-Web-Audio fallback (capped at 1.0).
+  useEffect(
+    () =>
+      applyLiveVolume(audioGraphRef.current, audioElementRef.current, volume),
+    [volume],
+  );
 
-  useEffect(() => {
-    return () => {
-      void cleanup();
-    };
-  }, [cleanup]);
+  useEffect(() => () => void cleanup(), [cleanup]);
 
   return {
     status,
@@ -463,77 +474,29 @@ export function useVoiceSession(
 }
 
 /**
- * Build the RealtimeSession options (model, transport, audio + reasoning config)
- * from the user's settings. Extracted so the hook's connect() stays focused; the
- * mapping is covered by use-voice-session-config tests.
+ * Wire the realtime session's history, transport-event, and error listeners.
+ * Extracted from useVoiceSession to keep the hook within its line budget.
  *
- * @param transport - The WebRTC transport instance
- * @param opts - Session-shaping settings
- * @param opts.turnDetection - VAD settings, or undefined for server default
- * @param opts.speed - Output playback speed (defaults to VOICE_SPEED_DEFAULT)
- * @param opts.thinking - Thinking UI level, mapped to reasoning.effort
- * @returns The RealtimeSession constructor options
+ * @param session - The realtime session to attach listeners to
+ * @param setHistory - State setter for the transcript history
+ * @param transportDeps - The half-duplex flag, mute refs, and UI setters
+ *   handleTransportEvent needs (every TransportEventDeps field but `session`)
  */
-function buildSessionOptions(
-  transport: OpenAIRealtimeWebRTC,
-  opts: {
-    turnDetection?: TurnDetectionSettings;
-    speed?: number;
-    thinking?: string;
-  },
-): ConstructorParameters<typeof RealtimeSession>[1] {
-  const reasoningEffort = mapThinkingToRealtimeEffort(opts.thinking ?? "");
+function wireSessionEvents(
+  session: RealtimeSession,
+  setHistory: (items: RealtimeItem[]) => void,
+  transportDeps: Omit<TransportEventDeps, "session">,
+): void {
+  session.on("history_updated", (next: RealtimeItem[]) => {
+    setHistory([...next]);
+  });
 
-  return {
-    model: OPENAI_REALTIME_MODEL,
-    transport,
-    config: {
-      audio: {
-        ...(opts.turnDetection
-          ? {
-              input: {
-                turnDetection: mapTurnDetectionToConfig(opts.turnDetection),
-              },
-            }
-          : {}),
-        output: { speed: opts.speed ?? VOICE_SPEED_DEFAULT },
-      },
-      ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),
-    },
-  };
-}
+  session.on("transport_event", (event: TransportEvent) =>
+    handleTransportEvent(event, { session, ...transportDeps }),
+  );
 
-/**
- * Abort a connect() that went stale across one of its awaits — cleanup() bumped
- * the generation, so this attempt's resources must not be published or opened.
- * cleanup() closes whatever's been stored on the refs; the caller returns before
- * opening (or after re-populating) the session + mic.
- *
- * @param isStale - Whether cleanup() ran since this connect() started
- * @param cleanup - Tears down the stored session + MCP client
- * @param session - The just-opened session, if the await being guarded was
- *   session.connect(). The stale teardown's cleanup() closed the stored ref,
- *   but that close may have been a no-op before the handshake completed, so we
- *   close this resolved session directly to avoid leaking a live peer
- *   connection + mic. Omitted for checks that run before any connection exists.
- * @returns True if stale (caller should return); false to continue
- */
-async function bailIfStale(
-  isStale: boolean,
-  cleanup: () => Promise<void>,
-  session?: RealtimeSession,
-): Promise<boolean> {
-  if (!isStale) return false;
-
-  if (session) {
-    try {
-      session.close();
-    } catch {
-      // swallow — best-effort teardown
-    }
-  }
-
-  await cleanup();
-
-  return true;
+  session.on("error", (err: { type: "error"; error: unknown }) => {
+    console.error("RealtimeSession error", err.error);
+    transportDeps.setError(extractErrorMessage(err.error));
+  });
 }

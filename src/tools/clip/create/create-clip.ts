@@ -6,10 +6,7 @@
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import { computeLoopDeadline } from "#src/tools/clip/helpers/loop-deadline.ts";
 import { select } from "#src/tools/session/select.ts";
-import {
-  parseTimeSignature,
-  unwrapSingleResult,
-} from "#src/tools/shared/utils.ts";
+import { unwrapSingleResult } from "#src/tools/shared/utils.ts";
 import { parseCommaSeparatedColors } from "#src/tools/shared/validation/color-utils.ts";
 import {
   parseCommaSeparatedNames,
@@ -18,12 +15,16 @@ import {
 import {
   parseArrangementStartList,
   parseSlotList,
+  type SlotPosition,
 } from "#src/tools/shared/validation/position-parsing.ts";
-import { convertTimingParameters } from "./helpers/create-clip-helpers.ts";
 import {
   createClips,
   prepareClipData,
 } from "./helpers/create-clip-loop-helpers.ts";
+import {
+  resolveClipTimingContext,
+  resolveCreateClipTakeLane,
+} from "./helpers/create-clip-prep-helpers.ts";
 import {
   handleAutoPlayback,
   validateCreateClipParams,
@@ -64,6 +65,10 @@ export interface CreateClipArgs {
   focus?: boolean;
   /** JavaScript code to generate notes (MIDI clips only) */
   code?: string | null;
+  /** Arrangement take lane target: 0/omitted = main lane, 1+ = that lane, "new" = append */
+  takeLane?: number | string | null;
+  /** Name for a take lane newly created by this call */
+  takeLaneName?: string | null;
 }
 
 /**
@@ -85,6 +90,8 @@ export interface CreateClipArgs {
  * @param args.auto - Automatic playback action
  * @param args.focus - Select the created clip and show clip detail view
  * @param args.code - JavaScript code to generate notes (MIDI clips only)
+ * @param args.takeLane - Arrangement take lane target (0/omitted = main, 1+ = lane, "new")
+ * @param args.takeLaneName - Name for a take lane newly created by this call
  * @param _context - Internal context object (unused)
  * @returns Single clip object when one position, array when multiple positions
  */
@@ -106,6 +113,8 @@ export async function createClip(
     auto = null,
     focus,
     code = null,
+    takeLane = null,
+    takeLaneName = null,
   }: CreateClipArgs,
   _context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
@@ -125,32 +134,23 @@ export async function createClip(
 
   const liveSet = LiveAPI.from(livePath.liveSet);
 
-  // Get song time signature for arrangementStart conversion
-  const songTimeSigNumerator = liveSet.getProperty(
-    "signature_numerator",
-  ) as number;
-  const songTimeSigDenominator = liveSet.getProperty(
-    "signature_denominator",
-  ) as number;
-
-  // Determine clip time signature (custom or from song)
-  const { timeSigNumerator, timeSigDenominator } = resolveTimeSignature(
-    timeSignature,
+  // Resolve time signatures and convert timing parameters to Ableton beats
+  // (arrangementStart is converted per-position later)
+  const {
     songTimeSigNumerator,
     songTimeSigDenominator,
-  );
-
-  // Convert timing parameters to Ableton beats (excluding arrangementStart, done per-position)
-  const { startBeats, firstStartBeats, endBeats } = convertTimingParameters(
-    null, // arrangementStart converted per-position
+    timeSigNumerator,
+    timeSigDenominator,
+    startBeats,
+    firstStartBeats,
+    endBeats,
+  } = resolveClipTimingContext(
+    liveSet,
+    timeSignature,
     start,
     firstStart,
     length,
     looping,
-    timeSigNumerator,
-    timeSigDenominator,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
   );
 
   // Parse notation and determine clip length
@@ -174,6 +174,16 @@ export async function createClip(
     sessionSlots.length + arrangementStarts.length,
   );
 
+  // Resolve the arrangement take lane (auto-creates lanes as needed). Overlap
+  // replaces existing clips, like the main lane.
+  const takeLaneCreator = resolveCreateClipTakeLane(
+    takeLane,
+    takeLaneName,
+    sessionSlots.length,
+    arrangementStarts,
+    trackIndex,
+  );
+
   // Create session clips first, then arrangement (order gives arrangement focus priority)
   const clipsForView = (
     view: "session" | "arrangement",
@@ -182,6 +192,7 @@ export async function createClip(
     createClips({
       view,
       trackIndex: trackIndex ?? 0,
+      takeLane: takeLaneCreator,
       sessionSlots,
       arrangementStarts,
       baseName: name,
@@ -215,11 +226,28 @@ export async function createClip(
   );
   const createdClips = [...sessionClips, ...arrangementClips];
 
+  return finalizeCreatedClips(createdClips, auto, sessionSlots, focus);
+}
+
+/**
+ * Handle auto-playback and focus for the created clips, then unwrap the result.
+ * @param createdClips - All created clip result objects
+ * @param auto - Automatic playback action
+ * @param sessionSlots - Parsed session slot positions
+ * @param focus - Whether to select the last created clip
+ * @returns Single clip object when one, array when multiple
+ */
+function finalizeCreatedClips(
+  createdClips: object[],
+  auto: string | null,
+  sessionSlots: SlotPosition[],
+  focus: boolean | undefined,
+): object | object[] {
   // Handle automatic playback (session clips only, guard inside handles no-op)
   handleAutoPlayback(auto, "session", sessionSlots);
 
-  // Focus last created clip: arrangement clips are after session clips,
-  // so arrangement gets priority (the arrangement is where the final song lives)
+  // Focus last created clip: arrangement clips are after session clips, so
+  // arrangement gets priority (the arrangement is where the final song lives)
   if (focus && createdClips.length > 0) {
     const lastClip = createdClips.at(-1) as { id: string };
 
@@ -253,33 +281,6 @@ function parseMultiClipParams(
   warnExtraNames(parsedNames, totalPositionCount, "createClip");
 
   return { parsedNames, parsedColors };
-}
-
-/**
- * Resolve clip time signature from parameter or song defaults
- * @param timeSignature - Custom time signature string (e.g. "4/4"), or null
- * @param songTimeSigNumerator - Song time signature numerator
- * @param songTimeSigDenominator - Song time signature denominator
- * @returns Resolved numerator and denominator
- */
-function resolveTimeSignature(
-  timeSignature: string | null,
-  songTimeSigNumerator: number,
-  songTimeSigDenominator: number,
-): { timeSigNumerator: number; timeSigDenominator: number } {
-  if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
-
-    return {
-      timeSigNumerator: parsed.numerator,
-      timeSigDenominator: parsed.denominator,
-    };
-  }
-
-  return {
-    timeSigNumerator: songTimeSigNumerator,
-    timeSigDenominator: songTimeSigDenominator,
-  };
 }
 
 /**

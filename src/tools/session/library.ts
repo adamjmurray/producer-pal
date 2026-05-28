@@ -7,15 +7,30 @@ import { requestNode } from "#src/live-api-adapter/node-request-v8-protocol.ts";
 import {
   clampLibraryLimit,
   DEFAULT_LIBRARY_LIMIT,
+  type LibraryBatchQuery,
+  type LibraryBatchResult,
   type LibraryDeviceKind,
   type LibraryItem,
+  type LibraryItemType,
   type LibraryKind,
+  type LibraryListCategoriesResult,
   type LibraryListTagsResult,
   type LibrarySearchResult,
   type LibrarySort,
   type LibrarySource,
+  type ListPluginsResult,
+  type PluginCategory,
+  type PluginFormat,
 } from "#src/mcp-server/live-library/library-types.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import { runSearchBatch } from "./library-search-batch-helpers.ts";
 import { readSamples } from "./read-samples.ts";
+
+// deviceKind doubles as the plugin category filter for listPlugins. Only the
+// values plugins can actually be (instrument/audiofx) map through; midifx has
+// no plugin-category equivalent and is dropped (with a warning at the call
+// site so the caller sees why the result wasn't narrowed).
+const PLUGIN_CATEGORIES = new Set<LibraryDeviceKind>(["instrument", "audiofx"]);
 
 interface LibraryArgs {
   // Typed as plain string (not the enum) so the runtime "Unknown action"
@@ -25,13 +40,31 @@ interface LibraryArgs {
   query?: string;
   tags?: string;
   kind?: LibraryKind;
+  type?: LibraryItemType;
   deviceKind?: LibraryDeviceKind;
   source?: LibrarySource;
+  inFolder?: string;
   sort?: LibrarySort;
   limit?: number;
+  verifyPaths?: boolean;
+  /** listCategories only: top-level category to drill into. */
+  category?: string;
+  /** searchBatch only: per-query filter sets (see runSearchBatch). */
+  queries?: LibraryBatchQuery[];
+  /** listPlugins only: vendor/manufacturer substring filter. */
+  vendor?: string;
+  /** listPlugins only: restrict to a single plugin format. */
+  format?: PluginFormat;
+  /** listPlugins only: subcategory substring filter (case-insensitive). */
+  subcategory?: string;
 }
 
-type LibraryResult = LibrarySearchResult | LibraryListTagsResult;
+type LibraryResult =
+  | LibrarySearchResult
+  | LibraryListTagsResult
+  | LibraryListCategoriesResult
+  | LibraryBatchResult
+  | ListPluginsResult;
 
 /**
  * Search Live's browser library or enumerate available tags.
@@ -59,6 +92,42 @@ export async function library(
     });
   }
 
+  if (action === "listCategories") {
+    return await callRoute<LibraryListCategoriesResult>(
+      "library.listCategories",
+      { category: args.category, limit: args.limit },
+    );
+  }
+
+  if (action === "searchBatch") {
+    return await runSearchBatch(args.queries ?? [], toolContext, runSearch);
+  }
+
+  if (action === "listPlugins") {
+    // Plugins are classified as instrument or audiofx only — Live's plugin DB
+    // doesn't tag MIDI effects as a separate category. Warn instead of silently
+    // dropping the filter so the caller sees why the result wasn't narrowed.
+    if (args.deviceKind != null && !PLUGIN_CATEGORIES.has(args.deviceKind)) {
+      console.warn(
+        `listPlugins: deviceKind "${args.deviceKind}" is not a plugin category (instrument | audiofx); ignoring the filter`,
+      );
+    }
+
+    const category =
+      args.deviceKind != null && PLUGIN_CATEGORIES.has(args.deviceKind)
+        ? (args.deviceKind as PluginCategory)
+        : undefined;
+
+    return await callRoute<ListPluginsResult>("library.listPlugins", {
+      query: args.query,
+      vendor: args.vendor,
+      format: args.format,
+      category,
+      subcategory: args.subcategory,
+      limit: args.limit,
+    });
+  }
+
   if (action !== "search") {
     throw new Error(`Unknown action: ${action}`);
   }
@@ -68,13 +137,14 @@ export async function library(
 
 /**
  * Run a structured search against the configured folder + Live's DB,
- * merging results.
+ * merging results. Exported so searchBatch can reuse the exact
+ * single-search path (filters, folder-scan dedup, limit) per query.
  *
  * @param args - Tool arguments
  * @param ctx - Per-request context
  * @returns Merged LibrarySearchResult
  */
-async function runSearch(
+export async function runSearch(
   args: LibraryArgs,
   ctx: Partial<ToolContext>,
 ): Promise<LibrarySearchResult> {
@@ -88,15 +158,25 @@ async function runSearch(
           query: args.query,
           tags: args.tags,
           kind: args.kind,
+          type: args.type,
           deviceKind: args.deviceKind,
           source: args.source,
+          inFolder: args.inFolder,
           sort: args.sort,
           limit: args.limit,
+          verifyPaths: args.verifyPaths,
         });
 
-  const folderPaths = new Set(folderScan.items.map((i) => i.path));
+  // Case-insensitive dedup: V8-in-Max only runs on macOS/Windows, whose
+  // default filesystems (APFS, NTFS) are case-insensitive — so the same file
+  // can surface with different casing from the folder scan vs Live's DB
+  // (which records paths as written at index time). Mirrors the SQL side's
+  // `COLLATE NOCASE` on inFolder.
+  const folderPaths = new Set(
+    folderScan.items.map((i) => i.path.toLowerCase()),
+  );
   const dbItems = (dbResult?.items ?? []).filter(
-    (i) => !folderPaths.has(i.path),
+    (i) => !folderPaths.has(i.path.toLowerCase()),
   );
   const merged = sortItems([...folderScan.items, ...dbItems], args.sort);
   const limit = clampLibraryLimit(args.limit, DEFAULT_LIBRARY_LIMIT);
@@ -109,6 +189,8 @@ async function runSearch(
 
   const base: LibrarySearchResult = {
     dbAvailable: dbResult.dbAvailable,
+    // Propagate the stale-WAL advisory from the DB layer; omitted when absent.
+    ...(dbResult.stalenessRisk && { stalenessRisk: dbResult.stalenessRisk }),
     items,
   };
 
@@ -159,11 +241,20 @@ function scanFolderItems(
     return { items: [] };
   }
 
+  // The folder scan has no tag data, so it can't honor a Type-tag filter.
+  if (args.type) {
+    return { items: [] };
+  }
+
   if (args.kind && args.kind !== "audio") {
     return { items: [] };
   }
 
   if (args.deviceKind) {
+    return { items: [] };
+  }
+
+  if (args.inFolder) {
     return { items: [] };
   }
 
@@ -186,6 +277,9 @@ function scanFolderItems(
     useCount: 0,
     source: "sampleFolder",
     folder: parentFolder(rel, result.sampleFolder),
+    // These came from a live filesystem scan, so they exist by construction —
+    // mark them without a redundant re-stat when the caller wants pathExists.
+    ...(args.verifyPaths ? { pathExists: true } : {}),
   }));
 
   return { items };

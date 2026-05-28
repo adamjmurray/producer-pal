@@ -5,6 +5,7 @@
 
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
+import { resolveTakeLaneForDuplicate } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.ts";
 import {
   getColorForIndex,
@@ -52,8 +53,10 @@ interface DuplicateArgs {
   focus?: boolean;
   toSlot?: string;
   toPath?: string;
-  transforms?: string;
-  code?: string;
+  transforms?: string[];
+  code?: string[];
+  takeLane?: number | string;
+  takeLaneName?: string;
 }
 
 interface DuplicateParams {
@@ -82,8 +85,10 @@ interface DuplicateParams {
  * @param args.focus - Focus duplicated clip/scene
  * @param args.toSlot - Destination clip slot(s)
  * @param args.toPath - Destination path
- * @param args.transforms - Transform expressions applied per duplicated clip
- * @param args.code - JavaScript function body applied per duplicated clip
+ * @param args.transforms - Transform expressions per duplicate (cycled across copies)
+ * @param args.code - JavaScript function body per duplicate (cycled across copies)
+ * @param args.takeLane - Arrangement take lane target for clips (0/omitted = main, 1+, "new")
+ * @param args.takeLaneName - Name for a take lane newly created by this call
  * @param context - Context object
  * @returns Result object(s)
  */
@@ -105,6 +110,8 @@ export async function duplicate(
     toPath,
     transforms,
     code,
+    takeLane,
+    takeLaneName,
   }: DuplicateArgs,
   context: Partial<ToolContext> = {},
 ): Promise<object | object[]> {
@@ -144,6 +151,16 @@ export async function duplicate(
     );
   }
 
+  // takeLane only applies to arrangement-destination clips; the helper warns
+  // and returns null for non-clip types and session-destination clips so a
+  // malformed value doesn't throw before the warn-and-ignore path.
+  const takeLaneTarget = resolveTakeLaneForDuplicate(
+    type,
+    destination,
+    takeLane,
+    console.warn,
+  );
+
   // Handle device duplication (supports comma-separated toPath for multiple destinations)
   if (type === "device") {
     return duplicateDeviceWithPaths(object, toPath, name, count);
@@ -161,6 +178,8 @@ export async function duplicate(
         arrangementStart,
         locator,
         arrangementLength,
+        takeLaneTarget,
+        takeLaneName,
         context,
       )
     : duplicateTrackOrSceneWithCount(

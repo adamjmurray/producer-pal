@@ -21,6 +21,7 @@ import {
 import { extractDevicePath } from "./helpers/path/device-path-helpers.ts";
 import { probeSimplerSample } from "./simpler-sample.ts";
 import {
+  readSpecializedActions,
   readSpecializedModulations,
   readSpecializedOptions,
   readSpecializedParams,
@@ -34,6 +35,7 @@ export interface ReadDeviceOptions {
   includeParamValues?: boolean;
   includeSample?: boolean;
   includeOptions?: boolean;
+  includeActions?: boolean;
   paramSearch?: string;
   depth?: number;
   maxDepth?: number;
@@ -205,6 +207,7 @@ export function readDevice(
     includeParamValues = false,
     includeSample = false,
     includeOptions = false,
+    includeActions = false,
     paramSearch,
     depth = 0,
     maxDepth = 4,
@@ -266,6 +269,7 @@ export function readDevice(
     includeParamValues,
     includeSample,
     includeOptions,
+    includeActions,
     paramSearch,
   });
 
@@ -278,6 +282,7 @@ interface DeviceDetailOptions {
   includeParamValues: boolean;
   includeSample: boolean;
   includeOptions: boolean;
+  includeActions: boolean;
   paramSearch: string | undefined;
 }
 
@@ -325,6 +330,15 @@ function appendDeviceDetails(
   // Dynamic catalogs (opt-in; only devices that contribute add anything).
   if (opts.includeOptions) {
     appendOptions(device, deviceInfo);
+  }
+
+  // Available actions for the device's specialized class (opt-in discovery).
+  if (opts.includeActions) {
+    const actions = readSpecializedActions(device);
+
+    if (actions.length > 0) {
+      deviceInfo.actions = actions;
+    }
   }
 }
 

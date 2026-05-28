@@ -7,6 +7,7 @@ import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.ts";
+import { isTakeLaneClip } from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,
@@ -192,6 +193,16 @@ function deleteSceneObject(id: string, object: LiveAPI): boolean {
  * @returns true if deleted, false if skipped with warning
  */
 function deleteClipObject(id: string, object: LiveAPI): boolean {
+  // Take-lane clips cannot be removed via the API (delete_clip is a no-op for
+  // them and there is no delete_take_lane) — the user must delete in Live's UI.
+  if (isTakeLaneClip(object)) {
+    console.warn(
+      `delete: cannot delete take-lane clip "${id}" via the API; remove it in Live's UI`,
+    );
+
+    return false;
+  }
+
   const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
 
   if (!trackIndex) {

@@ -111,10 +111,29 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .enum(["play-scene", "play-clip"])
       .optional()
       .describe("auto-play session clips (play-scene keeps scene in sync)"),
+
+    takeLane: z.coerce
+      .string()
+      .optional()
+      .describe(
+        'arrangement take lane: omit/0 = main lane, 1+ = that lane (auto-created), "new" = append a fresh lane (for variations)',
+      ),
+
+    takeLaneName: z
+      .string()
+      .optional()
+      .describe("name for a take lane newly created by this call"),
   },
 
   smallModelModeConfig: {
-    excludeParams: ["transforms", "code", "firstStart", "auto"],
+    excludeParams: [
+      "transforms",
+      "code",
+      "firstStart",
+      "auto",
+      "takeLane",
+      "takeLaneName",
+    ],
     descriptionOverrides: {
       slot: "session clip slot(s): trackIndex/sceneIndex (e.g., '0/0')",
       arrangementStart: "arrangement clip bar|beat position (e.g., '1|1')",

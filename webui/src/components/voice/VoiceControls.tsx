@@ -10,7 +10,8 @@ type VoiceSessionState = ReturnType<typeof useVoiceSession>;
 
 interface VoiceControlsProps {
   voice: VoiceSessionState;
-  openAiKey: string | null;
+  /** Active provider's API key (OpenAI or Gemini); null disables Talk. */
+  voiceKey: string | null;
   isBusy: boolean;
   isConnected: boolean;
   isUnsupportedBrowser: boolean;
@@ -28,11 +29,12 @@ interface VoiceControlsProps {
  * is a contextual inline button next to the primary action when connected.
  *
  * @param props - component props
- * @param props.voice - The useVoiceSession hook return value
- * @param props.openAiKey - User's OpenAI API key (controls disabled state)
+ * @param props.voice - The voice session hook return value (OpenAI or Gemini)
+ * @param props.voiceKey - Active provider's API key (controls disabled state)
  * @param props.isBusy - True during connecting/disconnecting transitions
  * @param props.isConnected - True when the realtime session is live
- * @param props.isUnsupportedBrowser - True when the browser is known broken (Firefox)
+ * @param props.isUnsupportedBrowser - True when the browser can't drive the
+ *   active backend (Firefox + OpenAI WebRTC)
  * @param props.onToggleConnection - Toggle connect/disconnect
  * @param props.savedVoice - User's saved realtime voice preference (post-save)
  * @param props.thinking - Current thinking level
@@ -41,7 +43,7 @@ interface VoiceControlsProps {
  */
 export function VoiceControls({
   voice,
-  openAiKey,
+  voiceKey,
   isBusy,
   isConnected,
   isUnsupportedBrowser,
@@ -100,7 +102,12 @@ export function VoiceControls({
             <button
               type="button"
               onClick={onToggleConnection}
-              disabled={isBusy || !openAiKey || isUnsupportedBrowser}
+              // Only require a key to START a session — once connected, Stop
+              // must stay enabled even if the user clears or switches the active
+              // provider key, so they can always tear the mic/socket down.
+              disabled={
+                isBusy || isUnsupportedBrowser || (!isConnected && !voiceKey)
+              }
               className={`px-6 py-2 rounded-lg text-base font-semibold transition-colors shadow disabled:opacity-40 disabled:cursor-not-allowed ${
                 isConnected
                   ? "bg-red-600 hover:bg-red-700 text-white"

@@ -103,6 +103,8 @@ It works with virtually any AI, including its
   - Auto-tile clips to fill longer arrangement durations
 - Apply [transforms](#transforms) to each duplicated clip (e.g. transpose
   copies, vary velocities) without a separate update step
+- Stack MIDI variations on [take lanes](#take-lanes) with `takeLane: "new"` +
+  transforms — audition alternates at the same arrangement position
 - Copy devices to any track, return track, or rack chain
 - Route duplicated tracks to source instrument for MIDI layering
 
@@ -144,6 +146,8 @@ limitation).
 
 - Get detailed track information
 - View all clips in Session and Arrangement
+- List [take lanes](#take-lanes) and their clips (with the `arrangement-clips`
+  include)
 - See devices, routing options, and drum pad mappings
 - Check track states (muted, soloed, armed)
 - View mixer properties: gain, pan, panning mode, and send levels
@@ -192,6 +196,7 @@ limitation).
 - Generate MIDI clips with notes, velocities, and timing using
   [custom notation](#custom-music-notation)
 - Place clips in Session slots or Arrangement timeline
+- Place arrangement clips on [take lanes](#take-lanes) with `takeLane`
 - Support for probability, velocity ranges, and complex rhythms
 - Apply [transforms](#transforms) to shape notes with math expressions
 - Auto-create scenes as needed
@@ -211,6 +216,7 @@ limitation).
 - Change clip name, color, and loop settings
 - Add/remove MIDI notes using [custom notation](#custom-music-notation)
 - Apply [transforms](#transforms) to modify existing notes and audio properties
+  (a different transform per clip when updating multiple)
 - Change audio clip gain, pitch shift, and warp settings
 - Move clips and change their length in the Arrangement
 - Split arrangement clips at specified positions
@@ -299,7 +305,8 @@ positions in Ableton Live clips and the arrangement timeline.
 
 Apply complex changes to clips using math expressions via
 [Create Clip](#ppal-create-clip), [Update Clip](#ppal-update-clip), and
-[Duplicate](#ppal-duplicate) (applied to each copy):
+[Duplicate](#ppal-duplicate). When updating or duplicating multiple clips at
+once, each clip or copy can get its own transform:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift
@@ -311,6 +318,27 @@ Apply complex changes to clips using math expressions via
 - **Selectors**: Target specific pitch ranges (e.g., `C3:`, `C3-C5:`) or time
   ranges (e.g., `1|1-2|4:`), or both in either order (e.g., `C3 1|1-2|4:` or
   `1|1-2|4 C3:`)
+
+## Take Lanes {#take-lanes}
+
+Live's take lanes stack alternate versions of an arrangement clip at the same
+position — only the active take plays. They're the natural way to audition
+variations side by side without cluttering the timeline.
+
+- Target a lane with `takeLane` on [Create Clip](#ppal-create-clip) and
+  [Duplicate](#ppal-duplicate): `0` (or omit) = main lane, `1+` = that lane
+  (auto-created up to it), `"new"` = append a fresh lane.
+- Generate variations with a few [Duplicate](#ppal-duplicate) calls using
+  `takeLane: "new"` plus [transforms](#transforms) to vary each copy.
+- Name a newly created lane with `takeLaneName`.
+- [Read Track](#ppal-read-track) lists take lanes (with the `arrangement-clips`
+  include).
+- Limits: 8 take lanes per track. Duplicating to a take lane is MIDI-only and
+  recreates the clip from notes, so envelope automation isn't preserved. Once
+  placed, take-lane clips are append-only — they can't be split, moved, resized,
+  deleted, or promoted back to the main lane through tools, and Producer Pal
+  can't pick the active take. All of that stays in Live's UI. Expand the
+  take-lane arrow on a track header to see them.
 
 ## Network Control
 

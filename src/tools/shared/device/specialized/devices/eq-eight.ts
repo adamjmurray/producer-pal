@@ -30,6 +30,7 @@ export const eqEightSpec: SpecializedDeviceSpec = {
   params: [
     {
       name: "globalMode",
+      options: GLOBAL_MODES,
       read: (device) => readEnumByIndex(device, "global_mode", GLOBAL_MODES),
       write: (device, value, toolName) =>
         writeEnumByIndex(

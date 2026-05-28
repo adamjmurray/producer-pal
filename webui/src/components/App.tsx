@@ -27,11 +27,14 @@ import { useSettingsClose } from "#webui/hooks/settings/use-settings-close";
 import { useSettingsDismiss } from "#webui/hooks/settings/use-settings-dismiss";
 import { useTheme } from "#webui/hooks/theme/use-theme";
 import { usePreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { useViewState } from "#webui/hooks/use-view-state";
+import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { isRealtimeSelection } from "#webui/lib/constants/models";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
+import { ContextScreen } from "./context/ContextScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 import { type TabId } from "./settings/SettingsTabs";
+
+const CONTEXT_ANIMATION_MS = 150;
 
 /**
  * Root component. Owns shared chrome (settings hook, theme, view state, MCP
@@ -103,12 +106,25 @@ export function App() {
     showSettings,
   );
 
+  // Override the mode-routing decision so a foreign-mode conversation (e.g. a
+  // voice record opened while saved is a chat model) renders in its native UI
+  // without mutating the user's saved settings. null = follow savedModel.
+  // Cleared by "New conversation" so the next fresh session uses savedModel.
+  const [viewingMode, setViewingMode] = useState<"chat" | "voice" | null>(null);
+  const onForeignRecord = useCallback((record: ConversationRecord) => {
+    setViewingMode(record.sessionType === "voice" ? "voice" : "chat");
+  }, []);
+  const clearViewingMode = useCallback(() => {
+    setViewingMode(null);
+  }, []);
+
   const handleSaveSettings = useSaveSettingsHandler({
     settings,
     display,
     remoteConfig,
     checkMcpConnection,
     closeSettings,
+    viewingMode,
   });
 
   const handleCancelSettings = useCallback(() => {
@@ -123,30 +139,53 @@ export function App() {
     });
   }, [closeSettings, settings, setTheme, display]);
 
+  // Project context overlay (sibling to Settings). Animation timing mirrors
+  // useSettingsClose; auto-save makes a confirm-on-close flow unnecessary.
+  const contextOpen = viewState.contextOpen;
   const { shake, clearShake, handleSettingsDismiss } = useSettingsDismiss({
     showSettings,
     settingsConfigured: settings.settingsConfigured,
     settingsClosing,
     hasUnsavedChanges,
     handleCancelSettings,
+    // Defer Esc to the Context overlay when both are open. Settings renders
+    // above Context in the DOM, but the Context overlay is the one with an
+    // unconditional Esc-dismiss path (Settings won't dismiss when
+    // !settingsConfigured) — without this, both handlers fire and either
+    // Settings refuses to close OR both close at once.
+    blockEscape: contextOpen,
   });
+
+  const [contextClosing, setContextClosing] = useState(false);
+  const openContext = useCallback(
+    () => setViewState({ contextOpen: true }),
+    [setViewState],
+  );
+  const closeContext = useCallback(() => {
+    setContextClosing(true);
+    setTimeout(() => {
+      setContextClosing(false);
+      setViewState({ contextOpen: false });
+    }, CONTEXT_ANIMATION_MS);
+  }, [setViewState]);
+
+  // Escape closes the context overlay (consistent with native modal idioms).
+  useEffect(() => {
+    if (!contextOpen) return;
+
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === "Escape") closeContext();
+    };
+
+    window.addEventListener("keydown", onKey);
+
+    return () => window.removeEventListener("keydown", onKey);
+  }, [contextOpen, closeContext]);
 
   // The active mode reports its conversation lock + delete handlers here via
   // setModeContext so the shared SettingsScreen renders them.
   const [modeContext, setModeContext] =
     useState<ModeContext>(DEFAULT_MODE_CONTEXT);
-
-  // Override the mode-routing decision so a foreign-mode conversation (e.g. a
-  // voice record opened while saved is a chat model) renders in its native UI
-  // without mutating the user's saved settings. null = follow savedModel.
-  // Cleared by "New conversation" so the next fresh session uses savedModel.
-  const [viewingMode, setViewingMode] = useState<"chat" | "voice" | null>(null);
-  const onForeignRecord = useCallback((record: ConversationRecord) => {
-    setViewingMode(record.sessionType === "voice" ? "voice" : "chat");
-  }, []);
-  const clearViewingMode = useCallback(() => {
-    setViewingMode(null);
-  }, []);
 
   // Mode is derived from the saved provider+model (only updates on save), not
   // the in-modal `provider`/`model`. This prevents the underlying chat or voice
@@ -173,17 +212,22 @@ export function App() {
     onOpenToolsSettings: () => openSettings("tools"),
     onOpenConnectionSettings: () => openSettings("connection"),
     /* v8 ignore stop */
+    onOpenContext: openContext,
     onForeignRecord,
     clearViewingMode,
     setModeContext,
   };
 
+  // Blur+disable interaction beneath any modal overlay (settings or context).
+  const overlayOpen = showSettings || contextOpen;
+  const overlayClosing = settingsClosing || contextClosing;
+
   return (
     <ToolNamesContext.Provider value={toolNamesMap}>
       <div
         className={
-          showSettings
-            ? `pointer-events-none ${settingsClosing ? "settings-blur-out" : "settings-blur"}`
+          overlayOpen
+            ? `pointer-events-none ${overlayClosing ? "settings-blur-out" : "settings-blur"}`
             : ""
         }
       >
@@ -198,6 +242,18 @@ export function App() {
           />
         )}
       </div>
+      {contextOpen && (
+        <div
+          className={`settings-overlay ${contextClosing ? "settings-closing" : ""}`}
+          onClick={(e) => {
+            // Auto-save makes click-outside-to-close safe; only close on
+            // backdrop hits, not clicks inside the editor.
+            if (e.target === e.currentTarget) closeContext();
+          }}
+        >
+          <ContextScreen onClose={closeContext} />
+        </div>
+      )}
       {showSettings && (
         <div
           className={`settings-overlay ${settingsClosing ? "settings-closing" : ""}`}

@@ -47,6 +47,7 @@ export const meldSpec: SpecializedDeviceSpec = {
   params: [
     {
       name: "monoPoly",
+      options: MONO_POLY_LABELS,
       read: (device) => readEnumByIndex(device, "mono_poly", MONO_POLY_LABELS),
       write: (device, value, toolName) =>
         writeEnumByIndex(
@@ -60,6 +61,7 @@ export const meldSpec: SpecializedDeviceSpec = {
     },
     {
       name: "polyVoices",
+      options: "1-6",
       read: readPolyVoices,
       write: (device, value, toolName) =>
         writeIntInRange(
@@ -74,6 +76,7 @@ export const meldSpec: SpecializedDeviceSpec = {
     },
     {
       name: "unisonVoices",
+      options: "0-2",
       read: readUnisonVoices,
       write: (device, value, toolName) =>
         writeIntInRange(

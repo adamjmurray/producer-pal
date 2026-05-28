@@ -8,9 +8,10 @@ import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useRemoteConfig } from "#webui/hooks/connection/use-remote-config";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
-import { useViewState } from "#webui/hooks/use-view-state";
+import { useViewState } from "#webui/hooks/view-state/use-view-state";
 
 export const mockChatHook = {
   messages: [],
@@ -31,6 +32,8 @@ export const mockSettingsHook = {
 
   apiKey: "test-key",
   setApiKey: vi.fn(),
+  openaiApiKey: "",
+  geminiApiKey: "",
   baseUrl: "",
   setBaseUrl: vi.fn(),
   model: "gemini-1.5-flash",
@@ -48,9 +51,10 @@ export const mockSettingsHook = {
   setEnabledTools: vi.fn(),
   resetBehaviorToDefaults: vi.fn(),
 
-  saveSettings: vi.fn(),
+  saveSettings: vi.fn().mockResolvedValue(true),
   cancelSettings: vi.fn(),
   settingsConfigured: true,
+  saveError: null,
 
   smallModelMode: false,
   setSmallModelMode: vi.fn(),
@@ -59,6 +63,8 @@ export const mockSettingsHook = {
   liveApiEnabledDirty: false,
   setLiveApiEnabled: vi.fn(),
   seedLiveApiEnabled: vi.fn(),
+
+  savedTurnDetection: DEFAULT_TURN_DETECTION,
 };
 
 /**
@@ -96,6 +102,7 @@ export function setupDefaultMocks(): void {
       historyPanelOpen: false,
       settingsOpen: false,
       settingsTab: "connection",
+      contextOpen: false,
     },
     setViewState: vi.fn(),
   });

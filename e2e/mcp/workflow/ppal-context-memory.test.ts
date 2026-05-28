@@ -33,100 +33,57 @@ async function callMemoryTool(
 }
 
 describe("ppal-context (memory actions)", () => {
-  describe("disabled state", () => {
-    it("returns enabled: false when memory is disabled", async () => {
-      await setConfig({ memoryEnabled: false, memoryContent: "" });
-      const result = await callMemoryTool("read");
-      const parsed = parseToolResult<MemoryResult>(result);
+  it("reads current content", async () => {
+    const TEST_CONTENT = "Read-only memory content for e2e testing";
 
-      expect(parsed).toStrictEqual({ enabled: false });
-    });
+    await setConfig({ memoryContent: TEST_CONTENT });
+
+    const readResult = parseToolResult<MemoryResult>(
+      await callMemoryTool("read"),
+    );
+
+    expect(readResult.content).toBe(TEST_CONTENT);
   });
 
-  describe("read-only state", () => {
-    it("reads content but rejects writes when not writable", async () => {
-      const TEST_CONTENT = "Read-only memory content for e2e testing";
+  it("reads empty content when memory has been cleared", async () => {
+    await setConfig({ memoryContent: "" });
 
-      await setConfig({
-        memoryEnabled: true,
-        memoryContent: TEST_CONTENT,
-        memoryWritable: false,
-      });
+    const readResult = parseToolResult<MemoryResult>(
+      await callMemoryTool("read"),
+    );
 
-      // Read should work
-      const readResult = parseToolResult<MemoryResult>(
-        await callMemoryTool("read"),
-      );
-
-      expect(readResult.enabled).toBe(true);
-      expect(readResult.writable).toBe(false);
-      expect(readResult.content).toBe(TEST_CONTENT);
-
-      // Write should fail with descriptive error
-      const writeResponse = extractToolResultText(
-        await callMemoryTool("write", "New content"),
-      );
-
-      expect(writeResponse).toContain("AI updates are disabled");
-      expect(writeResponse).toContain("Allow AI updates");
-    });
+    expect(readResult.content).toBe("");
   });
 
-  describe("writable state", () => {
-    it("reads and writes content when fully enabled", async () => {
-      const INITIAL_CONTENT = "Initial content for write test";
-      const UPDATED_CONTENT = "Updated content from e2e test";
+  it("writes content and round-trips through read", async () => {
+    const INITIAL_CONTENT = "Initial content for write test";
+    const UPDATED_CONTENT = "Updated content from e2e test";
 
-      await setConfig({
-        memoryEnabled: true,
-        memoryContent: INITIAL_CONTENT,
-        memoryWritable: true,
-      });
+    await setConfig({ memoryContent: INITIAL_CONTENT });
 
-      // Read initial content
-      const readResult = parseToolResult<MemoryResult>(
-        await callMemoryTool("read"),
-      );
+    const writeResult = parseToolResult<MemoryResult>(
+      await callMemoryTool("write", UPDATED_CONTENT),
+    );
 
-      expect(readResult.enabled).toBe(true);
-      expect(readResult.writable).toBe(true);
-      expect(readResult.content).toBe(INITIAL_CONTENT);
+    expect(writeResult.content).toBe(UPDATED_CONTENT);
 
-      // Write new content
-      const writeResult = parseToolResult<MemoryResult>(
-        await callMemoryTool("write", UPDATED_CONTENT),
-      );
+    const verifyResult = parseToolResult<MemoryResult>(
+      await callMemoryTool("read"),
+    );
 
-      expect(writeResult.enabled).toBe(true);
-      expect(writeResult.writable).toBe(true);
-      expect(writeResult.content).toBe(UPDATED_CONTENT);
+    expect(verifyResult.content).toBe(UPDATED_CONTENT);
+  });
 
-      // Verify read returns updated content
-      const verifyResult = parseToolResult<MemoryResult>(
-        await callMemoryTool("read"),
-      );
+  it("requires content for write action", async () => {
+    await setConfig({ memoryContent: "Some content" });
 
-      expect(verifyResult.content).toBe(UPDATED_CONTENT);
-    });
+    const response = extractToolResultText(await callMemoryTool("write"));
 
-    it("requires content for write action", async () => {
-      await setConfig({
-        memoryEnabled: true,
-        memoryContent: "Some content",
-        memoryWritable: true,
-      });
-
-      // Write without content should fail
-      const response = extractToolResultText(await callMemoryTool("write"));
-
-      expect(response).toContain("Content required for write action");
-    });
+    expect(response).toContain("Content required for write action");
   });
 });
 
 /** Matches MemoryResult from context-helpers.ts */
 interface MemoryResult {
-  enabled: boolean;
-  writable?: boolean;
-  content?: string;
+  content: string;
 }

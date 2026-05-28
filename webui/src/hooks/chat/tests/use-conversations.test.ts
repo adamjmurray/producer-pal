@@ -14,6 +14,7 @@ import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
 import {
   createConversationsProps as createProps,
+  fireHashChange,
   waitForEffects,
   setupConversationsHook as setupHook,
   saveWithMessage,
@@ -536,10 +537,7 @@ describe("useConversations", () => {
 
       // Simulate browser back/forward by setting hash and dispatching event
       window.location.hash = existingId;
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       expect(result.current.activeConversationId).toBe(existingId);
       expect(props.restoreChatHistory).toHaveBeenCalledWith(
@@ -564,10 +562,7 @@ describe("useConversations", () => {
 
       // Simulate browser back to empty hash
       history.replaceState(null, "", window.location.pathname);
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       expect(result.current.activeConversationId).toBeNull();
       expect(props.clearConversation).toHaveBeenCalled();
@@ -587,18 +582,12 @@ describe("useConversations", () => {
 
       // Navigate to first conversation via hashchange
       window.location.hash = existingId;
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       // switchConversation calls setActiveId with same hash — guard must not stall
       // Now navigate to second conversation — this should NOT be swallowed
       window.location.hash = secondId;
-      await act(async () => {
-        window.dispatchEvent(new HashChangeEvent("hashchange"));
-        await new Promise((r) => setTimeout(r, 50));
-      });
+      await fireHashChange();
 
       expect(props.restoreChatHistory).toHaveBeenCalledWith(
         [{ role: "user", content: "second" }],

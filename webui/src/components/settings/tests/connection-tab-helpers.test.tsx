@@ -14,7 +14,10 @@ import {
   VoiceSettings,
 } from "#webui/components/settings/connection-tab-helpers";
 import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
-import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
+import {
+  GEMINI_REALTIME_MODEL,
+  OPENAI_REALTIME_MODEL,
+} from "#webui/lib/constants/models";
 
 describe("ThinkingSelector", () => {
   it("calls setThinking when a new option is selected", () => {
@@ -121,5 +124,21 @@ describe("VoiceSettings", () => {
     expect(
       screen.getByTestId("turn-detection-mode").closest("details"),
     ).not.toBeNull();
+  });
+
+  it("shows Gemini VAD controls, not OpenAI speed/turn detection, for a Gemini realtime model", () => {
+    render(
+      <VoiceSettings
+        {...realtimeProps}
+        provider="gemini"
+        model={GEMINI_REALTIME_MODEL}
+        realtimeVoice="Puck"
+      />,
+    );
+
+    expect(screen.getByTestId("gemini-start-sensitivity")).toBeTruthy();
+    expect(screen.getByTestId("gemini-barge-in")).toBeTruthy();
+    expect(screen.queryByTestId("voice-speed-slider")).toBeNull();
+    expect(screen.queryByTestId("turn-detection-mode")).toBeNull();
   });
 });

@@ -46,6 +46,8 @@ export async function waitForEffects(): Promise<void> {
   });
 }
 
+export { fireHashChange } from "#webui/test-utils/dom-test-helpers";
+
 /**
  * Create props, render hook, and wait for init.
  * @returns Props, state, and hook result

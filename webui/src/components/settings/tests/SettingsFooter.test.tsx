@@ -17,6 +17,7 @@ describe("SettingsFooter", () => {
     cancelSettings: vi.fn(),
     pulse: false,
     hasUnsavedChanges: false,
+    saveError: null,
   };
 
   it("renders Save button", () => {
@@ -69,6 +70,36 @@ describe("SettingsFooter", () => {
         "You have unsaved changes. Save or cancel to dismiss.",
       ),
     ).toBeNull();
+  });
+
+  it("renders the saveError message when set", () => {
+    render(<SettingsFooter {...defaultProps} saveError="encrypt boom" />);
+
+    expect(
+      screen.getByText("Failed to save settings: encrypt boom"),
+    ).toBeTruthy();
+  });
+
+  it("does not render the unsaved-changes notice when saveError is set", () => {
+    // After a failed save, hasUnsavedChanges is still true (edits weren't
+    // persisted), but the error is the more useful surface — showing both
+    // would be noisy and the user already knows the changes are unsaved.
+    render(
+      <SettingsFooter
+        {...defaultProps}
+        hasUnsavedChanges={true}
+        saveError="encrypt boom"
+      />,
+    );
+
+    expect(
+      screen.queryByText(
+        "You have unsaved changes. Save or cancel to dismiss.",
+      ),
+    ).toBeNull();
+    expect(
+      screen.getByText("Failed to save settings: encrypt boom"),
+    ).toBeTruthy();
   });
 
   it("calls saveSettings when Save is clicked", () => {

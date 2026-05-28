@@ -5,6 +5,7 @@
 
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { act, renderHook } from "@testing-library/preact";
+import { vi } from "vitest";
 import {
   type UseVoicePersistenceReturn,
   useVoicePersistence,
@@ -16,6 +17,8 @@ import {
   saveConversation,
 } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
+
+export { fireHashChange } from "#webui/test-utils/dom-test-helpers";
 
 /**
  * Flush pending effects/timers inside act(). Defaults to 30ms; pass ~800ms to
@@ -89,12 +92,15 @@ export interface VoicePersistenceHistoryView {
 /**
  * Render useVoicePersistence with a mutable live history so a test can simulate
  * incoming transcript turns. `rerender(history)` swaps the live history.
+ * @param options - onForeignRecord / onLiveRecordDeleted callbacks
  * @returns The renderHook result plus a history-only rerender shortcut
  */
-export function renderVoicePersistenceWithHistory(): VoicePersistenceHistoryView {
+export function renderVoicePersistenceWithHistory(
+  options: VoicePersistenceOptions = {},
+): VoicePersistenceHistoryView {
   const { result, rerender } = renderHook(
     ({ history }: { history: RealtimeItem[] }) =>
-      useVoicePersistence({ liveHistory: history }),
+      useVoicePersistence({ liveHistory: history, ...options }),
     { initialProps: { history: [] as RealtimeItem[] } },
   );
 
@@ -122,4 +128,56 @@ export async function saveVoiceRecord(
   await saveConversation(record);
 
   return record;
+}
+
+/**
+ * Persist a text-mode ConversationRecord and render the voice-persistence hook
+ * with an `onForeignRecord` spy attached.
+ * @param overrides - Fields to override on the persisted record
+ * @returns The saved record, the spy, and the rendered hook result
+ */
+export async function setupForeignTextRecord(
+  overrides: Partial<ConversationRecord> = {},
+): Promise<{
+  textRecord: ConversationRecord;
+  onForeignRecord: ReturnType<typeof vi.fn>;
+  result: ReturnType<typeof renderVoicePersistence>["result"];
+}> {
+  const textRecord = createTestRecord({ sessionType: "text", ...overrides });
+
+  await saveConversation(textRecord);
+
+  const onForeignRecord = vi.fn();
+  const { result } = renderVoicePersistence({ onForeignRecord });
+
+  await waitForEffects();
+
+  return { textRecord, onForeignRecord, result };
+}
+
+/**
+ * Save a voice record, point the URL hash at it, render the hook with an
+ * `onLiveRecordDeleted` spy, and wait for the initial effects to settle.
+ * @param overrides - Fields to override on the saved record
+ * @returns The saved record, the spy, and the rendered hook result
+ */
+export async function setupLiveRecordWithDeletionSpy(
+  overrides: Partial<ConversationRecord> = {},
+): Promise<{
+  record: ConversationRecord;
+  onLiveRecordDeleted: ReturnType<typeof vi.fn>;
+  result: ReturnType<typeof renderVoicePersistence>["result"];
+}> {
+  const record = await saveVoiceRecord({
+    voiceHistory: [userTextItem("live")],
+    ...overrides,
+  });
+
+  window.location.hash = record.id;
+  const onLiveRecordDeleted = vi.fn();
+  const { result } = renderVoicePersistence({ onLiveRecordDeleted });
+
+  await waitForEffects();
+
+  return { record, onLiveRecordDeleted, result };
 }

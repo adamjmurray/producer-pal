@@ -6,36 +6,25 @@
 /**
  * @vitest-environment happy-dom
  */
-import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { type McpToolDefinition } from "#webui/chat/helpers/mcp-client-helpers";
+import {
+  callToolMock,
+  fakeMcpClient,
+  listToolsMock,
+  mcpClientHelpersMock,
+  mockCallToolText,
+  mockListBareTools,
+  resetMcpClientMocks,
+} from "#webui/hooks/voice/gemini/tests/mcp-bridge-test-helpers";
 
-const callToolMock = vi.fn();
-const listToolsMock = vi.fn();
-const closeMock = vi.fn();
-
-const fakeMcpClient = {
-  callTool: callToolMock,
-  listTools: listToolsMock,
-  close: closeMock,
-} as unknown as Client;
-
-vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () => ({
-  createConnectedMcpClient: vi.fn(async () => fakeMcpClient),
-  filterEnabledTools: (
-    tools: McpToolDefinition[],
-    enabledTools?: Record<string, boolean>,
-  ): McpToolDefinition[] =>
-    enabledTools ? tools.filter((t) => enabledTools[t.name] !== false) : tools,
-}));
+vi.mock(import("#webui/chat/helpers/mcp-client-helpers"), () =>
+  mcpClientHelpersMock(),
+);
 
 import { createRealtimeMcpTools } from "#webui/hooks/voice/realtime-mcp-tools";
 
-afterEach(() => {
-  callToolMock.mockReset();
-  listToolsMock.mockReset();
-  closeMock.mockReset();
-});
+afterEach(resetMcpClientMocks);
 
 const MCP_URL = "http://localhost:3350/mcp";
 
@@ -109,13 +98,7 @@ describe("createRealtimeMcpTools", () => {
   });
 
   it("filters tools using the enabledTools map", async () => {
-    listToolsMock.mockResolvedValueOnce({
-      tools: [
-        { name: "ppal-a", description: "", inputSchema: { properties: {} } },
-        { name: "ppal-b", description: "", inputSchema: { properties: {} } },
-        { name: "ppal-c", description: "", inputSchema: { properties: {} } },
-      ],
-    });
+    mockListBareTools("ppal-a", "ppal-b", "ppal-c");
 
     const { tools } = await createRealtimeMcpTools(
       "http://localhost:3350/mcp",
@@ -126,23 +109,8 @@ describe("createRealtimeMcpTools", () => {
   });
 
   it("execute() forwards args to mcpClient.callTool and returns text content", async () => {
-    listToolsMock.mockResolvedValueOnce({
-      tools: [
-        {
-          name: "ppal-read-live-set",
-          description: "",
-          inputSchema: { properties: {} },
-        },
-      ],
-    });
-
-    callToolMock.mockResolvedValueOnce({
-      isError: false,
-      content: [
-        { type: "text", text: "Track 1: Drums" },
-        { type: "text", text: "Track 2: Bass" },
-      ],
-    });
+    mockListBareTools("ppal-read-live-set");
+    mockCallToolText("Track 1: Drums", "Track 2: Bass");
 
     const { tools } = await createRealtimeMcpTools("http://localhost:3350/mcp");
     const out = await runTool(tools[0]!, { foo: "bar" });

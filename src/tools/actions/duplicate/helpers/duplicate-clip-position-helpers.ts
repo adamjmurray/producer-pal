@@ -5,6 +5,11 @@
 
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import * as console from "#src/shared/v8-max-console.ts";
+import {
+  isTakeLaneClip,
+  type TakeLaneTarget,
+} from "#src/tools/shared/arrangement/take-lane-helpers.ts";
 import { resolveLocatorRefListToBeats } from "#src/tools/shared/locator/locator-helpers.ts";
 import {
   getColorForIndex,
@@ -23,6 +28,7 @@ import {
   duplicateClipSlot,
   duplicateClipToArrangement,
 } from "./duplicate-helpers.ts";
+import { duplicateClipsToTakeLane } from "./duplicate-take-lane-helpers.ts";
 
 /**
  * Duplicates a clip to explicit positions
@@ -35,6 +41,8 @@ import {
  * @param arrangementStart - Comma-separated bar|beat positions for arrangement
  * @param locator - Arrangement locator ID(s) or name(s) for position
  * @param arrangementLength - Duration in bar|beat format
+ * @param takeLaneTarget - Normalized take lane target for arrangement clips, or null for main lane
+ * @param takeLaneName - Name for a take lane newly created by this call
  * @param context - Context object with holdingAreaStartBeats
  * @returns Array of result objects
  */
@@ -48,11 +56,16 @@ export async function duplicateClipWithPositions(
   arrangementStart: string | undefined,
   locator: string | undefined,
   arrangementLength: string | undefined,
+  takeLaneTarget: TakeLaneTarget | null,
+  takeLaneName: string | undefined,
   context: Partial<ToolContext>,
 ): Promise<object[]> {
   const createdObjects: object[] = [];
 
   if (destination === "session") {
+    // takeLane is normalized to null for session destinations in duplicate.ts
+    // (warning emitted there before normalization, so a malformed takeLane on a
+    // session duplicate warns instead of throwing).
     const slots = parseSlotList(toSlot);
     const trackIndex = object.trackIndex;
     const sourceSceneIndex = object.sceneIndex;
@@ -100,6 +113,37 @@ export async function duplicateClipWithPositions(
       songTimeSigNumerator,
       songTimeSigDenominator,
     );
+
+    // Take lane targeting: re-create on the lane (no duplicate API for lanes)
+    if (takeLaneTarget != null) {
+      if (arrangementLength != null) {
+        console.warn(
+          "duplicate: arrangementLength ignored for take-lane duplication (the copy uses the source clip's length)",
+        );
+      }
+
+      return duplicateClipsToTakeLane(
+        object,
+        id,
+        positionsInBeats,
+        name,
+        color,
+        takeLaneTarget,
+        takeLaneName,
+      );
+    }
+
+    // Main-lane destination with a take-lane source: Track.duplicate_clip_to_arrangement
+    // behavior is unverified for take-lane source IDs (see take-lane-helpers.ts
+    // header — Track-scoped APIs silently no-op on take-lane clips). Warn and skip
+    // until promote-via-recreate is implemented as a follow-up.
+    if (isTakeLaneClip(object)) {
+      console.warn(
+        `duplicate: source clip "${id}" is on a take lane; promoting to the main lane is not yet supported`,
+      );
+
+      return [];
+    }
 
     const parsedNames = parseCommaSeparatedNames(name, positionsInBeats.length);
     const parsedColors = parseCommaSeparatedColors(

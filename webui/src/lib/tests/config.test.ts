@@ -34,8 +34,8 @@ describe("config", () => {
     });
 
     it("strips [Paid] tag from OpenRouter model labels", () => {
-      expect(getModelName("google/gemini-3-flash-preview")).toBe(
-        "Google Gemini 3 Flash",
+      expect(getModelName("google/gemini-3.5-flash")).toBe(
+        "Google Gemini 3.5 Flash",
       );
     });
 

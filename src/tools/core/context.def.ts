@@ -8,7 +8,10 @@ import { defineTool } from "#src/tools/shared/tool-framework/define-tool.ts";
 
 export const toolDefContext = defineTool("ppal-context", {
   title: "Context",
-  description: "Read or write project memory.",
+  description:
+    "Read or write project memory.\n" +
+    "CRITICAL: Writes replace the entire memory. " +
+    "Always read first because the user may have edited memory out-of-band, and unread changes will be silently lost.",
 
   annotations: {
     readOnlyHint: false,
@@ -18,7 +21,7 @@ export const toolDefContext = defineTool("ppal-context", {
   inputSchema: {
     action: z
       .enum(["read", "write"])
-      .describe("read: view memory | write: update memory"),
+      .describe("read: view memory | write: replace memory"),
 
     content: z
       .string()

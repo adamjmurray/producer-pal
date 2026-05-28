@@ -9,13 +9,17 @@ import "fake-indexeddb/auto";
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { GEMINI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import { loadConversation, saveConversation } from "#webui/lib/conversation-db";
 import { createTestRecord } from "#webui/test-utils/conversation-test-helpers";
 import {
+  fireHashChange,
   renderVoicePersistence,
   renderVoicePersistenceWithHistory,
   resetConversationsDb,
   saveVoiceRecord,
+  setupForeignTextRecord,
+  setupLiveRecordWithDeletionSpy,
   userTextItem,
   userTranscriptItem,
   waitForEffects,
@@ -60,6 +64,155 @@ describe("useVoicePersistence", () => {
     expect(loaded?.sessionType).toBe("voice");
     expect(loaded?.title).toBe("hi pal");
     expect(loaded?.voiceHistory ?? []).toHaveLength(1);
+  });
+
+  it("stamps the configured realtime model on saved records", async () => {
+    const { result, rerender } = renderVoicePersistenceWithHistory({
+      model: "gpt-4o-realtime-preview",
+    });
+
+    await waitForEffects();
+    rerender([userTextItem("hey")]);
+    await waitForEffects(800);
+
+    const loaded = await loadConversation(
+      result.current.activeConversationId as string,
+    );
+
+    expect(loaded?.model).toBe("gpt-4o-realtime-preview");
+    expect(loaded?.modelLabel).toBe("gpt-4o-realtime-preview");
+  });
+
+  it("preserves an existing record's model when continued under different settings", async () => {
+    // A record created with one realtime model, then continued (Stop → Talk)
+    // while current settings point at a different realtime model, must keep its
+    // original model/label rather than being silently re-stamped.
+    const record = await saveVoiceRecord({
+      model: "gpt-realtime-original",
+      modelLabel: "gpt-realtime-original",
+      voiceHistory: [userTextItem("first turn")],
+    });
+
+    window.location.hash = record.id;
+
+    const { result, rerender } = renderVoicePersistenceWithHistory({
+      model: "gpt-realtime-current",
+    });
+
+    await waitForEffects();
+    rerender([userTextItem("first turn"), userTextItem("second turn")]);
+    await waitForEffects(800);
+
+    expect(result.current.activeConversationId).toBe(record.id);
+
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.model).toBe("gpt-realtime-original");
+    expect(loaded?.modelLabel).toBe("gpt-realtime-original");
+  });
+
+  it("stamps the gemini provider on records saved with a Gemini realtime model", async () => {
+    const { result, rerender } = renderVoicePersistenceWithHistory({
+      model: GEMINI_REALTIME_MODEL,
+    });
+
+    await waitForEffects();
+    rerender([userTextItem("hey")]);
+    await waitForEffects(800);
+
+    const loaded = await loadConversation(
+      result.current.activeConversationId as string,
+    );
+
+    expect(loaded?.provider).toBe("gemini");
+    expect(loaded?.model).toBe(GEMINI_REALTIME_MODEL);
+  });
+
+  it("preserves an existing record's provider when continued under a different backend", async () => {
+    const record = await saveVoiceRecord({
+      provider: "openai",
+      model: "gpt-realtime-original",
+      voiceHistory: [userTextItem("first turn")],
+    });
+
+    window.location.hash = record.id;
+
+    const { result, rerender } = renderVoicePersistenceWithHistory({
+      model: GEMINI_REALTIME_MODEL,
+    });
+
+    await waitForEffects();
+    rerender([userTextItem("first turn"), userTextItem("second turn")]);
+    await waitForEffects(800);
+
+    expect(result.current.activeConversationId).toBe(record.id);
+
+    const loaded = await loadConversation(record.id);
+
+    expect(loaded?.provider).toBe("openai");
+  });
+
+  it("exposes the loaded record's model via activeRecordModel (hash load)", async () => {
+    const record = await saveVoiceRecord({ model: "gpt-realtime-original" });
+
+    window.location.hash = record.id;
+
+    const { result } = renderVoicePersistence();
+
+    await waitForEffects();
+
+    expect(result.current.activeRecordModel).toBe("gpt-realtime-original");
+  });
+
+  it("exposes the loaded record's provider via activeRecordProvider (hash load)", async () => {
+    // Drives record-aware backend routing in use-voice-mode-state — without
+    // this a saved Gemini record would silently resume on the OpenAI backend
+    // (or vice versa) when current settings select the other provider.
+    const record = await saveVoiceRecord({
+      provider: "gemini",
+      model: GEMINI_REALTIME_MODEL,
+    });
+
+    window.location.hash = record.id;
+
+    const { result } = renderVoicePersistence();
+
+    await waitForEffects();
+
+    expect(result.current.activeRecordProvider).toBe("gemini");
+  });
+
+  it("tracks activeRecordProvider across switch and clears it on a new conversation", async () => {
+    const record = await saveVoiceRecord({
+      provider: "openai",
+      model: "gpt-realtime-2",
+    });
+
+    const { result } = renderVoicePersistence();
+
+    await waitForEffects();
+    expect(result.current.activeRecordProvider).toBeNull();
+
+    await act(() => result.current.switchConversation(record.id));
+    expect(result.current.activeRecordProvider).toBe("openai");
+
+    await act(() => result.current.startNewConversation());
+    expect(result.current.activeRecordProvider).toBeNull();
+  });
+
+  it("tracks activeRecordModel across switch and clears it on a new conversation", async () => {
+    const record = await saveVoiceRecord({ model: "gpt-realtime-original" });
+
+    const { result } = renderVoicePersistence();
+
+    await waitForEffects();
+    expect(result.current.activeRecordModel).toBeNull();
+
+    await act(() => result.current.switchConversation(record.id));
+    expect(result.current.activeRecordModel).toBe("gpt-realtime-original");
+
+    await act(() => result.current.startNewConversation());
+    expect(result.current.activeRecordModel).toBeNull();
   });
 
   it("reuses one reserved id across rapid updates, creating a single record", async () => {
@@ -212,14 +365,8 @@ describe("useVoicePersistence", () => {
   });
 
   it("switchConversation invokes onForeignRecord for text records", async () => {
-    const textRecord = createTestRecord({ sessionType: "text" });
-
-    await saveConversation(textRecord);
-    const onForeignRecord = vi.fn();
-
-    const { result } = renderVoicePersistence({ onForeignRecord });
-
-    await waitForEffects();
+    const { textRecord, onForeignRecord, result } =
+      await setupForeignTextRecord();
 
     await act(() => result.current.switchConversation(textRecord.id));
 
@@ -335,16 +482,9 @@ describe("useVoicePersistence", () => {
   });
 
   it("fires onLiveRecordDeleted when deleteAllConversations removes the live record", async () => {
-    const record = await saveVoiceRecord({
-      voiceHistory: [userTextItem("live")],
-    });
+    const { result, onLiveRecordDeleted } =
+      await setupLiveRecordWithDeletionSpy();
 
-    window.location.hash = record.id;
-    const onLiveRecordDeleted = vi.fn();
-
-    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
-
-    await waitForEffects();
     await act(() => result.current.deleteAllConversations());
 
     expect(onLiveRecordDeleted).toHaveBeenCalledOnce();
@@ -366,34 +506,21 @@ describe("useVoicePersistence", () => {
   });
 
   it("fires onLiveRecordDeleted when deleteUnbookmarked removes an unbookmarked live record", async () => {
-    const record = await saveVoiceRecord({
-      bookmarked: false,
-      voiceHistory: [userTextItem("live")],
-    });
+    const { result, onLiveRecordDeleted } =
+      await setupLiveRecordWithDeletionSpy({ bookmarked: false });
 
-    window.location.hash = record.id;
-    const onLiveRecordDeleted = vi.fn();
-
-    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
-
-    await waitForEffects();
     await act(() => result.current.deleteUnbookmarkedConversations());
 
     expect(onLiveRecordDeleted).toHaveBeenCalledOnce();
   });
 
   it("does not fire onLiveRecordDeleted when the live record is bookmarked", async () => {
-    const record = await saveVoiceRecord({
-      bookmarked: true,
-      voiceHistory: [userTextItem("keep")],
-    });
+    const { result, onLiveRecordDeleted } =
+      await setupLiveRecordWithDeletionSpy({
+        bookmarked: true,
+        voiceHistory: [userTextItem("keep")],
+      });
 
-    window.location.hash = record.id;
-    const onLiveRecordDeleted = vi.fn();
-
-    const { result } = renderVoicePersistence({ onLiveRecordDeleted });
-
-    await waitForEffects();
     await act(() => result.current.deleteUnbookmarkedConversations());
 
     expect(onLiveRecordDeleted).not.toHaveBeenCalled();
@@ -587,5 +714,55 @@ describe("useVoicePersistence", () => {
     await act(() => result.current.toggleBookmark("missing"));
     // unknown id is a no-op — list is unchanged
     expect(result.current.conversations).toHaveLength(1);
+  });
+
+  describe("hashchange navigation (browser back/forward)", () => {
+    it("switches to a voice conversation when the hash changes to its id", async () => {
+      const record = await saveVoiceRecord({
+        voiceHistory: [userTextItem("from history")],
+      });
+
+      const { result } = renderVoicePersistence();
+
+      await waitForEffects();
+      expect(result.current.activeConversationId).toBeNull();
+
+      window.location.hash = record.id;
+      await fireHashChange();
+
+      expect(result.current.activeConversationId).toBe(record.id);
+      expect(result.current.savedItems).toHaveLength(1);
+    });
+
+    it("starts a fresh session when the hash is cleared by back", async () => {
+      const record = await saveVoiceRecord({
+        voiceHistory: [userTextItem("seed")],
+      });
+
+      window.location.hash = record.id;
+
+      const { result } = renderVoicePersistence();
+
+      await waitForEffects();
+      expect(result.current.activeConversationId).toBe(record.id);
+
+      history.replaceState(null, "", window.location.pathname);
+      await fireHashChange();
+
+      expect(result.current.activeConversationId).toBeNull();
+    });
+
+    it("hands a foreign chat record back to App when navigated to via history", async () => {
+      const { textRecord, onForeignRecord, result } =
+        await setupForeignTextRecord();
+
+      window.location.hash = textRecord.id;
+      await fireHashChange();
+
+      expect(onForeignRecord).toHaveBeenCalledWith(
+        expect.objectContaining({ id: textRecord.id }),
+      );
+      expect(result.current.activeConversationId).toBe(textRecord.id);
+    });
   });
 });

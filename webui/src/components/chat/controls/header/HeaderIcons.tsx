@@ -161,6 +161,22 @@ export function ImportIcon() {
 }
 
 /**
+ * Lined-document icon for the project context view
+ * @returns SVG element
+ */
+export function ContextIcon() {
+  return (
+    <Icon20 strokeWidth="1.6">
+      <path d="M4.5 2.5h7L15.5 6.5v11a1 1 0 01-1 1H4.5a1 1 0 01-1-1V3.5a1 1 0 011-1z" />
+      <path d="M11.5 2.5V6.5h4" />
+      <line x1="6" y1="10" x2="13" y2="10" />
+      <line x1="6" y1="13" x2="13" y2="13" />
+      <line x1="6" y1="16" x2="11" y2="16" />
+    </Icon20>
+  );
+}
+
+/**
  * Gear/cog icon for settings
  * @returns SVG element
  */

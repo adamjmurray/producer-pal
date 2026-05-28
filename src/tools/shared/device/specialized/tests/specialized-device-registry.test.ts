@@ -11,6 +11,7 @@ import {
   applySpecializedActions,
   applySpecializedParamWrite,
   getSpecForDevice,
+  readSpecializedActions,
   readSpecializedModulations,
   readSpecializedOptions,
   readSpecializedParams,
@@ -149,11 +150,75 @@ describe("applySpecializedActions", () => {
   });
 });
 
-describe("readSpecializedOptions", () => {
-  it("returns an empty object for a device without dynamic catalogs", () => {
+describe("readSpecializedActions", () => {
+  it("returns Simpler actions with signature and description", () => {
+    const device = registerDevice("Simpler");
+    const actions = readSpecializedActions(device);
+
+    expect(actions.map((a) => a.name)).toStrictEqual([
+      "reverse",
+      "crop",
+      "warpDouble",
+      "warpHalf",
+      "warpAs",
+    ]);
+    expect(actions).toContainEqual({
+      name: "warpAs",
+      signature: "warpAs(beats)",
+      description: "Warp the active region to span the given number of beats",
+    });
+  });
+
+  it("returns Wavetable mod-matrix actions", () => {
+    const device = registerDevice("Wavetable");
+
+    expect(readSpecializedActions(device).map((a) => a.name)).toStrictEqual([
+      "setModulation",
+      "clearModulation",
+      "addModulationTarget",
+    ]);
+  });
+
+  it("returns an empty array for a specialized device with no actions", () => {
     const device = registerDevice("Roar", { routing_mode_index: 0 });
 
-    expect(readSpecializedOptions(device)).toStrictEqual({});
+    expect(readSpecializedActions(device)).toStrictEqual([]);
+  });
+
+  it("returns an empty array for a generic device", () => {
+    const device = registerDevice("Operator");
+
+    expect(readSpecializedActions(device)).toStrictEqual([]);
+  });
+});
+
+describe("readSpecializedOptions", () => {
+  it("returns paramOptions (static valid values) for a device with no dynamic catalogs", () => {
+    const device = registerDevice("Roar", { routing_mode_index: 0 });
+
+    expect(readSpecializedOptions(device)).toStrictEqual({
+      paramOptions: {
+        routingMode: [
+          "single",
+          "serial",
+          "parallel",
+          "multi-band",
+          "mid-side",
+          "feedback",
+          "delay",
+        ],
+      },
+    });
+  });
+
+  it("omits booleans and other option-less params from paramOptions", () => {
+    // Roar's envListen is a boolean with no `options`, so it must not appear.
+    const device = registerDevice("Roar", { routing_mode_index: 0 });
+    const { paramOptions } = readSpecializedOptions(device) as {
+      paramOptions: Record<string, unknown>;
+    };
+
+    expect(paramOptions).not.toHaveProperty("envListen");
   });
 
   it("returns an empty object for a generic device", () => {

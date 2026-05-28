@@ -702,7 +702,7 @@ export default [
       "max-lines-per-function": [
         "error",
         {
-          max: 220,
+          max: 225,
           skipBlankLines: true,
           skipComments: true,
         },

@@ -26,6 +26,16 @@ export interface PseudoParam {
   /** Canonical camelCase name (e.g. "routingMode", "voiceCount"). */
   name: string;
   /**
+   * Valid values for a writable param, surfaced under `paramOptions` by
+   * `ppal-read-device include: ["options"]` so the model can discover the
+   * accepted values without a failed write. An array lists discrete choices
+   * (enum labels or a fixed numeric set); a string states a constraint (e.g.
+   * "0-12"). Reuse the same constant passed to `read`/`write` so the catalog
+   * can't drift from validation. Omit for booleans, free-form values, read-only
+   * params, and params whose choices are dynamic (those come from `readOptions`).
+   */
+  options?: readonly (string | number)[] | string;
+  /**
    * Read the current value. Return `undefined` to omit the entry from the
    * `parameters` output (e.g. a value that doesn't apply in the current
    * device state).
@@ -52,6 +62,20 @@ export type ActionHandler = (
 ) => void;
 
 /**
+ * A named action's full definition: the handler plus the discovery metadata
+ * surfaced by `ppal-read-device include: ["actions"]`. Co-located with the
+ * handler so the docs can't drift from the implementation.
+ */
+export interface ActionDef {
+  /** The action implementation. */
+  handler: ActionHandler;
+  /** Call form shown to the model, e.g. `warpAs(beats)` or `reverse`. */
+  signature: string;
+  /** One-line description of what the action does. */
+  description: string;
+}
+
+/**
  * The full contribution a specialized device makes to the tool surface.
  * Dispatched by `class_display_name` (consistent with the existing Simpler
  * `sample` handling — display names are stable English device names).
@@ -59,10 +83,10 @@ export type ActionHandler = (
 export interface SpecializedDeviceSpec {
   /** `class_display_name` value(s) this spec handles (e.g. ["Roar"]). */
   displayNames: string[];
-  /** Writable / read-only pseudo-params. */
-  params?: PseudoParam[];
-  /** Action handlers, keyed by action name (matched case-insensitively). */
-  actions?: Record<string, ActionHandler>;
+  /** Writable / read-only pseudo-params (empty array if the device has none). */
+  params: PseudoParam[];
+  /** Action definitions, keyed by action name (matched case-insensitively). */
+  actions?: Record<string, ActionDef>;
   /** Dynamic catalogs for the `options` include. */
   readOptions?: (device: LiveAPI) => Record<string, unknown>;
   /** Structured modulation-matrix state (Wavetable). */

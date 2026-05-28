@@ -32,6 +32,8 @@ import {
   readArrangementClips,
   readMixerProperties,
   readSessionClips,
+  readTakeLanes,
+  type ReadTakeLaneResult,
 } from "./helpers/read-track-helpers.ts";
 
 interface ReadTrackArgs {
@@ -58,6 +60,11 @@ interface SessionClipsResult {
 interface ArrangementClipsResult {
   arrangementClips?: ReadClipResult[];
   arrangementClipCount?: number;
+}
+
+interface TakeLanesResult {
+  takeLanes?: ReadTakeLaneResult[];
+  takeLaneCount?: number;
 }
 
 /**
@@ -176,6 +183,40 @@ function processArrangementClips(
 }
 
 /**
+ * Process non-main take lanes for a track. Returns the full take lane list
+ * (with clips) when arrangement clips are included, otherwise just a count.
+ * The field is omitted entirely when the track has no take lanes.
+ * @param track - Track object
+ * @param isGroup - Whether the track is a group
+ * @param category - Track category (regular, return, or master)
+ * @param includeArrangementClips - Whether to include full take lane clip details
+ * @param include - Include array for nested reads
+ * @returns Object with takeLanes array, takeLaneCount, or empty
+ */
+function processTakeLanes(
+  track: LiveAPI,
+  isGroup: boolean,
+  category: string,
+  includeArrangementClips: boolean,
+  include: string[] | undefined,
+): TakeLanesResult {
+  // Take lanes are arrangement-only and only exist on non-group regular tracks
+  if (isGroup || category !== "regular") {
+    return {};
+  }
+
+  const count = track.getChildIds("take_lanes").length;
+
+  if (count === 0) {
+    return {};
+  }
+
+  return includeArrangementClips
+    ? { takeLanes: readTakeLanes(track, include) }
+    : { takeLaneCount: count };
+}
+
+/**
  * Add drum map to result from categorized device structure
  * @param result - Result object to add drum map to
  * @param categorizedDevices - Categorized device structure with chains for drum detection
@@ -283,6 +324,18 @@ export function readTrackGeneric({
   Object.assign(
     result,
     processArrangementClips(
+      track,
+      isGroup,
+      category,
+      includeArrangementClips,
+      include,
+    ),
+  );
+
+  // Take lanes (non-main arrangement lanes used for comping/variations)
+  Object.assign(
+    result,
+    processTakeLanes(
       track,
       isGroup,
       category,

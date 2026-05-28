@@ -18,6 +18,7 @@ import {
 import {
   addModulationTargetAction,
   clearModulationAction,
+  MOD_SOURCES,
   readModulations,
   setModulationAction,
 } from "./wavetable-modulation-helpers.ts";
@@ -80,6 +81,15 @@ function readUnisonVoiceCount(device: LiveAPI): number | undefined {
  * The category is indexed into the shared `oscillator_wavetable_categories`
  * list; the wavetable is indexed into the per-oscillator `${oscListProp}` list.
  * DRY: osc1 and osc2 category/wavetable params are structurally identical.
+ *
+ * Order dependence: the wavetable list is category-scoped, so writing
+ * `oscNCategory` first re-populates `${oscListProp}` and a same-call
+ * `oscNWavetable` write reads from the NEW list. Staging both in one
+ * `update-device` params batch will use whichever wavetable name happens to
+ * exist in the new category — which may not be the wavetable the caller meant.
+ * Apply category and wavetable in separate calls when the category is changing.
+ * (AJM-422 — docs-only mitigation; snapshot-validate left out of scope.)
+ *
  * @param paramPrefix - Pseudo-param name prefix ("osc1" or "osc2")
  * @param categoryProp - Live API property for the category index
  * @param wavetableIndexProp - Live API property for the wavetable index
@@ -170,6 +180,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
   params: [
     {
       name: "filterRouting",
+      options: FILTER_ROUTING,
       read: (device) =>
         readEnumByIndex(device, "filter_routing", FILTER_ROUTING),
       write: (device, value, toolName) =>
@@ -184,6 +195,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "monoPoly",
+      options: MONO_POLY,
       read: (device) => readEnumByIndex(device, "mono_poly", MONO_POLY),
       write: (device, value, toolName) =>
         writeEnumByIndex(
@@ -197,6 +209,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "polyVoices",
+      options: POLY_VOICES,
       read: readPolyVoices,
       write: (device, value, toolName) =>
         writeIntFromSet(
@@ -211,6 +224,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "unisonMode",
+      options: UNISON_MODES,
       read: (device) => readEnumByIndex(device, "unison_mode", UNISON_MODES),
       write: (device, value, toolName) =>
         writeEnumByIndex(
@@ -224,6 +238,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "unisonVoiceCount",
+      options: "2-8",
       read: readUnisonVoiceCount,
       write: (device, value, toolName) =>
         writeIntInRange(
@@ -238,6 +253,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "osc1Engine",
+      options: OSC_ENGINES,
       read: (device) =>
         readEnumByIndex(device, "oscillator_1_effect_mode", OSC_ENGINES),
       write: (device, value, toolName) =>
@@ -252,6 +268,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     },
     {
       name: "osc2Engine",
+      options: OSC_ENGINES,
       read: (device) =>
         readEnumByIndex(device, "oscillator_2_effect_mode", OSC_ENGINES),
       write: (device, value, toolName) =>
@@ -271,9 +288,23 @@ export const wavetableSpec: SpecializedDeviceSpec = {
   ],
 
   actions: {
-    setModulation: setModulationAction,
-    clearModulation: clearModulationAction,
-    addModulationTarget: addModulationTargetAction,
+    setModulation: {
+      handler: setModulationAction,
+      signature:
+        "setModulation('<targetParamName>', '<source>', <amount -1..1>)",
+      description:
+        "Set a mod-matrix amount routing a source to a target parameter",
+    },
+    clearModulation: {
+      handler: clearModulationAction,
+      signature: "clearModulation('<targetParamName>', '<source>')",
+      description: "Clear a mod-matrix routing from a source to a target",
+    },
+    addModulationTarget: {
+      handler: addModulationTargetAction,
+      signature: "addModulationTarget('<paramName>')",
+      description: "Add a parameter as a modulation target so it can be routed",
+    },
   },
 
   readModulations,
@@ -307,6 +338,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
     }
 
     return {
+      modulationSources: MOD_SOURCES,
       modulatableParameters,
       oscWavetableCategories,
       osc1Wavetables,

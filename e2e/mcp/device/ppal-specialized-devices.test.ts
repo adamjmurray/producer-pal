@@ -11,7 +11,10 @@
  * catch a wrong LOM property name or a reordered enum vs real Live (mocks have
  * masked exactly those bugs). These read+write round-trips exercise each
  * specialized device class against a running Live, and assert raw `_index`
- * values for Drift's mod matrix so a future Live reordering is caught.
+ * values for the hardcoded enums on the no-_list devices (Drift's mod matrix +
+ * voice config, Roar's routing mode) so a future Live reordering is caught.
+ * Roar additionally exposes a routing_mode_list, so its catalog is checked
+ * against Live's authoritative list (a non-circular guard). See AJM-397.
  *
  * Run with: npm run e2e:mcp -- ppal-specialized-devices
  */
@@ -30,12 +33,19 @@ interface PseudoParam {
   id?: string;
   name: string;
   value: unknown;
+  unit?: string;
 }
 
 interface ModulationRoute {
   target: string;
   source: string;
   amount: number;
+}
+
+interface ActionInfo {
+  name: string;
+  signature: string;
+  description: string;
 }
 
 interface ReadDeviceResult {
@@ -45,6 +55,7 @@ interface ReadDeviceResult {
   parameters?: PseudoParam[];
   options?: Record<string, unknown>;
   modulations?: ModulationRoute[];
+  actions?: ActionInfo[];
 }
 
 // Reuse one Live session across the suite (each test makes its own fresh
@@ -194,14 +205,47 @@ describe("specialized devices: Drift", () => {
     ).toBe(12);
   });
 
-  it("round-trips voiceCount (index-mapped catalog value)", async () => {
+  it("round-trips voiceMode + voiceCount and asserts their raw indices", async () => {
+    await setConfig({ liveApiEnabled: true });
+    await sleep(50);
+
     const id = await createInstrument("Drift");
 
-    await updateDevice(id, { params: [{ name: "voiceCount", value: "16" }] });
+    await updateDevice(id, {
+      params: [
+        { name: "voiceMode", value: "Stereo" },
+        { name: "voiceCount", value: "16" },
+      ],
+    });
 
-    expect(
-      paramValue(await readDevice(id, ["params"], "voiceCount"), "voiceCount"),
-    ).toBe(16);
+    const after = await readDevice(id, ["params"]);
+
+    expect(paramValue(after, "voiceMode")).toBe("Stereo");
+    expect(paramValue(after, "voiceCount")).toBe(16);
+
+    // Drift has no queryable _list for these enums, so we can't compare against
+    // Live's authoritative order the way Roar's routing_mode_list check does.
+    // These raw-index asserts pin the property name and OUR catalog's position
+    // (VOICE_MODES[2]="Stereo", VOICE_COUNTS[2]=16; verified vs Live 12.4
+    // 2026-05-25): they catch a renamed property or an accidental edit to our
+    // catalog order, but NOT Live silently reordering its own enum — write and
+    // read both use this same catalog, so that drift stays invisible to CI and
+    // is only caught by re-running the manual probe-vs-Live. See AJM-397.
+    const raw = parseToolResult<{ results: Array<{ result: number }> }>(
+      await ctx.client!.callTool({
+        name: "ppal-live-api",
+        arguments: {
+          path: `id ${id}`,
+          operations: [
+            { type: "getProperty", property: "voice_mode_index" },
+            { type: "getProperty", property: "voice_count_index" },
+          ],
+        },
+      }),
+    );
+
+    expect(raw.results[0]!.result).toBe(2);
+    expect(raw.results[1]!.result).toBe(2);
   });
 });
 
@@ -241,6 +285,35 @@ describe("specialized devices: Wavetable", () => {
     expect(
       cleared.some((r) => r.target === "Flt 1 Freq" && r.source === "LFO 1"),
     ).toBe(false);
+  });
+
+  it('lists mod-matrix actions via include: ["actions"]', async () => {
+    const id = await createInstrument("Wavetable");
+    const { actions } = await readDevice(id, ["actions"]);
+
+    expect((actions ?? []).map((a) => a.name)).toStrictEqual(
+      expect.arrayContaining([
+        "setModulation",
+        "clearModulation",
+        "addModulationTarget",
+      ]),
+    );
+
+    const setMod = actions?.find((a) => a.name === "setModulation");
+
+    expect(setMod?.signature).toContain("setModulation(");
+    expect(setMod?.description.length).toBeGreaterThan(0);
+  });
+
+  it("surfaces the degrees unit on a Phase Offset param (param-values)", async () => {
+    const id = await createInstrument("Wavetable");
+    const device = await readDevice(id, ["param-values"], "Phase Offset");
+    const phaseParam = device.parameters?.find((p) =>
+      p.name.includes("Phase Offset"),
+    );
+
+    expect(phaseParam).toBeDefined();
+    expect(phaseParam?.unit).toBe("degrees");
   });
 
   it("round-trips osc category + wavetable (category scopes the list)", async () => {
@@ -424,6 +497,24 @@ describe("specialized devices: Simpler", () => {
     expect(paramValue(after, "retrigger")).toBe(false);
   });
 
+  it('lists sample-editing actions via include: ["actions"]', async () => {
+    const id = await createInstrument("Simpler");
+    const { actions } = await readDevice(id, ["actions"]);
+
+    expect((actions ?? []).map((a) => a.name)).toStrictEqual(
+      expect.arrayContaining([
+        "reverse",
+        "crop",
+        "warpDouble",
+        "warpHalf",
+        "warpAs",
+      ]),
+    );
+    expect(actions?.find((a) => a.name === "warpAs")?.signature).toBe(
+      "warpAs(beats)",
+    );
+  });
+
   it('include: ["sample"] returns the sample as a flat top-level field, not in params', async () => {
     const id = await createInstrument("Simpler");
 
@@ -497,7 +588,10 @@ describe("specialized devices: EQ Eight", () => {
 });
 
 describe("specialized devices: Roar", () => {
-  it("round-trips routingMode and envListen", async () => {
+  it("round-trips routingMode/envListen and guards the routing_mode catalog", async () => {
+    await setConfig({ liveApiEnabled: true });
+    await sleep(50);
+
     const id = await createEffect("Roar");
 
     await updateDevice(id, {
@@ -511,6 +605,41 @@ describe("specialized devices: Roar", () => {
 
     expect(paramValue(after, "routingMode")).toBe("parallel");
     expect(paramValue(after, "envListen")).toBe(true);
+
+    // Roar exposes a read-only routing_mode_list, so unlike Drift this guard is
+    // non-circular: assert (a) the write landed at the expected raw index and
+    // (b) our hardcoded ROUTING_MODES order matches Live's authoritative catalog
+    // (lowercased/hyphenated), so a future Live reorder is caught. Read the list
+    // with the raw `get` op — `getProperty` returns only its first element.
+    // Verified vs Live 12.4 2026-05-25. See AJM-397.
+    const raw = parseToolResult<{ results: Array<{ result: unknown }> }>(
+      await ctx.client!.callTool({
+        name: "ppal-live-api",
+        arguments: {
+          path: `id ${id}`,
+          operations: [
+            { type: "getProperty", property: "routing_mode_index" },
+            { type: "get", property: "routing_mode_list" },
+          ],
+        },
+      }),
+    );
+
+    expect(raw.results[0]!.result).toBe(2);
+
+    const catalog = (raw.results[1]!.result as string[]).map((label) =>
+      label.toLowerCase().replace(/ /g, "-"),
+    );
+
+    expect(catalog).toStrictEqual([
+      "single",
+      "serial",
+      "parallel",
+      "multi-band",
+      "mid-side",
+      "feedback",
+      "delay",
+    ]);
   });
 });
 

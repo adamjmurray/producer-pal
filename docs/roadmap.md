@@ -2,10 +2,6 @@
 
 ## Upcoming
 
-### 1.4.x
-
-- Take lane support
-
 ### 1.5 - Personalization and Extensibility
 
 - Global context: add your own reference material and custom instructions across
@@ -42,20 +38,29 @@ REST API and agent skills:
 
 New tools and broader Live API coverage:
 
-- `ppal-library` for searching the Live Library (samples)
+- `ppal-library` for searching the Live Library: samples, MIDI clips, and
+  installed plugins (filterable by category, type, and folder)
 - `ppal-live-api` for direct Live API access to cover gaps in specialized tools
 - Simpler sample loading via `ppal-update-device` (requires Live 12.4+)
 - Device-specific parameter control for 9 native devices (Drift, Wavetable,
-  Simpler, Meld, Compressor, EQ Eight, Hybrid Reverb, Roar, Spectral Resonator)
+  Simpler, Meld, Compressor, EQ Eight, Hybrid Reverb, Roar, Spectral Resonator),
+  with auto-discovered device-specific actions and degree (°) unit display
+- Take lane support
 
 Other improvements:
 
 - Split arrangement clips at specified positions
-- Multi-object create / update / duplicate operations
+- Multi-object create / update / duplicate operations, including per-clip
+  `transforms`/`code` on update-clip and duplicate (breaking change: these are
+  now arrays — one entry per clip/copy, cycled — instead of a single string)
+- Per-project notes: improved UI, now always enabled by default (disable the
+  `ppal-context` tool to prevent AI edits)
 - Configurable Ollama and LM Studio URLs for remote hosting
-- Experimental voice control in the chat UI (OpenAI realtime)
+- Experimental voice control in the chat UI (OpenAI realtime and Google Gemini
+  Live), with adjustable voice volume up to 125%
 - Many built-in chat UI improvements: conversation history, token usage
-  reporting, grouped tool calls, message editing, and more
+  reporting, grouped tool calls, message editing, encrypted API keys, a
+  "Continue" button to resume long tasks, and more
 
 ### 1.3 - Device Control (January 2026)
 

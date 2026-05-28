@@ -76,6 +76,21 @@ describe("device-display-helpers", () => {
         expect(parseLabel("100 %")).toStrictEqual({ value: 100, unit: "%" });
         expect(parseLabel("-50 %")).toStrictEqual({ value: -50, unit: "%" });
       });
+
+      it("parses 'percent' word as %", () => {
+        expect(parseLabel("50 percent")).toStrictEqual({
+          value: 50,
+          unit: "%",
+        });
+        expect(parseLabel("100percent")).toStrictEqual({
+          value: 100,
+          unit: "%",
+        });
+        expect(parseLabel("25 PERCENT")).toStrictEqual({
+          value: 25,
+          unit: "%",
+        });
+      });
     });
 
     describe("semitones (st)", () => {
@@ -95,6 +110,70 @@ describe("device-display-helpers", () => {
         expect(parseLabel("7 st")).toStrictEqual({
           value: 7,
           unit: "semitones",
+        });
+      });
+
+      it("parses 'semitones', 'semitone', 'semi', 'semis' as st", () => {
+        expect(parseLabel("12 semitones")).toStrictEqual({
+          value: 12,
+          unit: "semitones",
+        });
+        expect(parseLabel("1 semitone")).toStrictEqual({
+          value: 1,
+          unit: "semitones",
+        });
+        expect(parseLabel("+5 semi")).toStrictEqual({
+          value: 5,
+          unit: "semitones",
+        });
+        expect(parseLabel("-7 semis")).toStrictEqual({
+          value: -7,
+          unit: "semitones",
+        });
+        expect(parseLabel("12SEMITONES")).toStrictEqual({
+          value: 12,
+          unit: "semitones",
+        });
+      });
+    });
+
+    describe("degrees (°)", () => {
+      it("parses degree values", () => {
+        expect(parseLabel("300°")).toStrictEqual({
+          value: 300,
+          unit: "degrees",
+        });
+        expect(parseLabel("0°")).toStrictEqual({ value: 0, unit: "degrees" });
+        expect(parseLabel("180 °")).toStrictEqual({
+          value: 180,
+          unit: "degrees",
+        });
+        expect(parseLabel("-90°")).toStrictEqual({
+          value: -90,
+          unit: "degrees",
+        });
+      });
+
+      it("parses 'degrees', 'degree', and 'deg' as °", () => {
+        expect(parseLabel("180 degrees")).toStrictEqual({
+          value: 180,
+          unit: "degrees",
+        });
+        expect(parseLabel("1 degree")).toStrictEqual({
+          value: 1,
+          unit: "degrees",
+        });
+        expect(parseLabel("90 deg")).toStrictEqual({
+          value: 90,
+          unit: "degrees",
+        });
+        expect(parseLabel("180DEGREES")).toStrictEqual({
+          value: 180,
+          unit: "degrees",
+        });
+        expect(parseLabel("-45deg")).toStrictEqual({
+          value: -45,
+          unit: "degrees",
         });
       });
     });

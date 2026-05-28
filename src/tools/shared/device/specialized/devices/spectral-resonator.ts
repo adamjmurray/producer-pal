@@ -64,6 +64,7 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
     },
     {
       name: "monoPoly",
+      options: MONO_POLY_LABELS,
       read: (device) => readEnumByIndex(device, "mono_poly", MONO_POLY_LABELS),
       write: (device, value, toolName) =>
         writeEnumByIndex(
@@ -77,6 +78,7 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
     },
     {
       name: "pitchBendRange",
+      options: "0-24",
       read: readPitchBendRange,
       write: (device, value, toolName) =>
         writeIntInRange(
@@ -91,6 +93,7 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
     },
     {
       name: "modMode",
+      options: MOD_MODES,
       read: (device) => readEnumByIndex(device, "mod_mode", MOD_MODES),
       write: (device, value, toolName) =>
         writeEnumByIndex(
@@ -104,6 +107,7 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
     },
     {
       name: "pitchMode",
+      options: PITCH_MODES,
       read: (device) => readEnumByIndex(device, "pitch_mode", PITCH_MODES),
       write: (device, value, toolName) =>
         writeEnumByIndex(
@@ -117,6 +121,7 @@ export const spectralResonatorSpec: SpecializedDeviceSpec = {
     },
     {
       name: "polyphony",
+      options: POLYPHONY_COUNTS,
       read: readPolyphony,
       write: (device, value, toolName) =>
         writeIntFromSet(

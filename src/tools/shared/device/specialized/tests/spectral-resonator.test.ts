@@ -429,14 +429,22 @@ describe("Spectral Resonator via read-device", () => {
     expect(result.modulations).toBeUndefined();
   });
 
-  it("omits the options field when the device contributes no catalogs", () => {
+  it("surfaces pseudo-param valid values under options.paramOptions", () => {
     registerReadableSpectralResonator();
 
     const result = readDevice({
       deviceId: "spectral-resonator-1",
-      include: ["params", "options"],
+      include: ["options"],
     });
 
-    expect(result.options).toBeUndefined();
+    expect(
+      (result.options as Record<string, unknown>).paramOptions,
+    ).toStrictEqual({
+      monoPoly: ["mono", "poly"],
+      pitchBendRange: "0-24",
+      modMode: ["None", "Chorus", "Wander", "Granular"],
+      pitchMode: ["Hertz", "MIDI Note"],
+      polyphony: [2, 4, 8, 16],
+    });
   });
 });

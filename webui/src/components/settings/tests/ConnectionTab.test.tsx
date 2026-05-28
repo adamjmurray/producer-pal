@@ -159,6 +159,13 @@ describe("ConnectionTab", () => {
 
       expect(input.type).toBe("password");
     });
+
+    it("shows the at-rest encryption transparency note", () => {
+      render(<ConnectionTab {...defaultProps} />);
+      expect(
+        screen.getByText(/encrypted at rest in your browser/i),
+      ).toBeDefined();
+    });
   });
 
   describe("API key links", () => {

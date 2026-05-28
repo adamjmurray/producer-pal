@@ -4,10 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
-import { setupExpressAppServer } from "./express-app-test-helpers.ts";
+import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
 // Mock createMcpServer to throw, triggering the catch block in create-express-app
-vi.mock(import("../create-mcp-server.ts"), async (importOriginal) => {
+vi.mock(import("../../create-mcp-server.ts"), async (importOriginal) => {
   const actual = await importOriginal();
 
   return {

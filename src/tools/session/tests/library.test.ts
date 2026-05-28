@@ -87,6 +87,48 @@ describe("library tool — action dispatch", () => {
     );
   });
 
+  it("passes inFolder through to the library.search route", async () => {
+    mockSearchRoute([]);
+
+    await library({ inFolder: "/some/folder" });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ inFolder: "/some/folder" }),
+    );
+  });
+
+  it("passes verifyPaths through to the library.search route", async () => {
+    mockSearchRoute([]);
+
+    await library({ query: "kick", verifyPaths: true });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.search",
+      expect.objectContaining({ verifyPaths: true }),
+    );
+  });
+
+  it("propagates the stale-WAL advisory from the search route", async () => {
+    const stalenessRisk = {
+      kind: "wal-pending" as const,
+      dbMtime: 1_000_000,
+      walMtime: 4_600_000,
+      walSizeMb: 18,
+      ageSeconds: 3_600,
+    };
+
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: { dbAvailable: true, stalenessRisk, items: [] },
+    });
+
+    const result = await library({ query: "kick" });
+
+    if (!("items" in result)) throw new Error("expected items");
+    expect(result.stalenessRisk).toStrictEqual(stalenessRisk);
+  });
+
   it("dispatches listTags action to library.listTags route", async () => {
     vi.mocked(protocolMock.requestNode).mockResolvedValue({
       success: true,
@@ -98,6 +140,20 @@ describe("library tool — action dispatch", () => {
     expect(protocolMock.requestNode).toHaveBeenCalledWith("library.listTags", {
       limit: 50,
     });
+  });
+
+  it("dispatches listCategories action, forwarding category + limit", async () => {
+    vi.mocked(protocolMock.requestNode).mockResolvedValue({
+      success: true,
+      result: { dbAvailable: true, category: "Drums", tags: [] },
+    });
+
+    await library({ action: "listCategories", category: "Drums", limit: 5 });
+
+    expect(protocolMock.requestNode).toHaveBeenCalledWith(
+      "library.listCategories",
+      { category: "Drums", limit: 5 },
+    );
   });
 
   it("throws with a clean message when the route returns failure", async () => {
@@ -156,6 +212,23 @@ describe("library tool — folder scan integration", () => {
     expect(result.items.find((i) => i.name === "kick.wav")?.source).toBe(
       "sampleFolder",
     );
+  });
+
+  it("marks sampleFolder items pathExists: true when verifyPaths is set", async () => {
+    mockSampleFolder("kick.wav");
+    mockSearchRoute([]);
+
+    const result = await library(
+      { query: "", verifyPaths: true },
+      { sampleFolder: "/samples/" },
+    );
+
+    if (!("items" in result)) throw new Error("expected items");
+    const kick = result.items.find((i) => i.source === "sampleFolder");
+
+    // Folder-scan items came from a live filesystem enumeration, so they're
+    // reported as existing without a redundant re-stat.
+    expect(kick?.pathExists).toBe(true);
   });
 
   it("dedupes folder hits against DB hits by absolute path", async () => {
@@ -229,6 +302,11 @@ describe("library tool — folder scan integration", () => {
     await expectFolderScanSkipped({ tags: "Kick" });
   });
 
+  it("skips folder scan when type filter is set (folder has no tag info)", async () => {
+    // Playback type derives from DB Type-tags; the folder scan has none.
+    await expectFolderScanSkipped({ type: "loop" });
+  });
+
   it("skips folder scan when kind is non-audio", async () => {
     // Folder scan only knows about audio; any non-audio kind must bypass it.
     await expectFolderScanSkipped({ kind: "plugin" });
@@ -237,6 +315,11 @@ describe("library tool — folder scan integration", () => {
   it("skips folder scan when deviceKind is set", async () => {
     // deviceKind is DB-only metadata; the scan can't satisfy it.
     await expectFolderScanSkipped({ deviceKind: "instrument" });
+  });
+
+  it("skips folder scan when inFolder is set (DB-only path resolution)", async () => {
+    // inFolder resolves against the DB's file hierarchy, not the filesystem.
+    await expectFolderScanSkipped({ inFolder: "/some/folder" });
   });
 
   it("invokes the folder scan for audio-compatible filters (positive control)", async () => {

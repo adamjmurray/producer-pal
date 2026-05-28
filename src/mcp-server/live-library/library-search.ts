@@ -13,12 +13,19 @@
  * Read-only: SELECT statements only. Never write SQL, never ATTACH.
  */
 
+import { stat } from "node:fs/promises";
 import { type DatabaseSync } from "node:sqlite";
+import { detectStalenessRisk } from "./db-staleness.ts";
 import {
+  ALC_FILE_TYPE,
+  ALC_MIDI_SUBTYPE,
   allKnownKindFourCCs,
+  deriveItemType,
   deviceTypeForKind,
   folderKindsForSource,
   fourCCsForKind,
+  keywordsForType,
+  resolveClipSubtype,
   resolveKind,
   resolveSource,
 } from "./library-filters.ts";
@@ -39,6 +46,7 @@ interface SearchRow {
   name: string;
   use_count: number;
   file_type: number;
+  subtype: number | null;
   folder_kind: number | null;
 }
 
@@ -62,23 +70,118 @@ export async function librarySearch(
     };
   }
 
-  const db = openLiveDb(dbPath);
+  // Best-effort advisory: flag when an unclean Live exit left a pending WAL
+  // that our immutable read can't see. Spread into every success return so the
+  // signal sits at the top alongside dbAvailable; omitted when there's no risk.
+  const stalenessRisk = await detectStalenessRisk(dbPath);
 
+  // Guard the open + query: the f.subtype column (clip subtype, AJM-335) is the
+  // most recently added column we SELECT, and Live's DB schema varies across
+  // releases. An older DB lacking a selected column makes the SELECT throw, so
+  // degrade to dbAvailable:false rather than surfacing a raw SQLite error to the
+  // LLM. Mirrors listPlugins.
   try {
-    const { sql, params } = buildSearchQuery(args);
-    // node:sqlite returns `unknown[]`. We trust the SELECT column list to
-    // match SearchRow — the SQL is hand-written and pinned by tests, so a
-    // per-row runtime validator would be dead weight at the cost of
-    // measurable overhead at limit=1000.
-    const rows = db.prepare(sql).all(...params) as unknown as SearchRow[];
-    const fileIds = rows.map((r) => r.file_id);
-    const paths = resolveAbsolutePaths(db, fileIds);
-    const tagsByFile = fetchTagsBulk(db, fileIds);
-    const items = rows.map((row) => buildLibraryItem(row, paths, tagsByFile));
+    const db = openLiveDb(dbPath);
 
-    return { dbAvailable: true, items };
-  } finally {
-    db.close();
+    try {
+      // Treat inFolder="" as "no folder filter" (least-surprise): an empty
+      // string would otherwise resolve to the DB's root row and silently
+      // collapse the search to "immediate children of /".
+      const inFolder =
+        args.inFolder != null && args.inFolder !== "" ? args.inFolder : null;
+      const resolvedParent =
+        inFolder != null ? resolveParentId(db, inFolder) : undefined;
+
+      // inFolder was provided but the path doesn't map to any known folder.
+      // Set a reason so the LLM can distinguish "no matches under this folder"
+      // from "this folder doesn't exist". Note: segment lookups are
+      // case-insensitive (COLLATE NOCASE), so a path with bad casing still
+      // resolves on case-insensitive filesystems.
+      if (inFolder != null && resolvedParent == null) {
+        return {
+          dbAvailable: true,
+          ...(stalenessRisk && { stalenessRisk }),
+          items: [],
+          reason: `inFolder path not found: ${inFolder}`,
+        };
+      }
+
+      // At this point resolvedParent is either undefined (no inFolder) or a valid number
+      const parentId: number | undefined = resolvedParent ?? undefined;
+      const { sql, params } = buildSearchQuery(args, parentId);
+      // node:sqlite returns `unknown[]`. We trust the SELECT column list to
+      // match SearchRow — the SQL is hand-written and pinned by tests, so a
+      // per-row runtime validator would be dead weight at the cost of
+      // measurable overhead at limit=1000.
+      const rows = db.prepare(sql).all(...params) as unknown as SearchRow[];
+      const fileIds = rows.map((r) => r.file_id);
+      const paths = resolveAbsolutePaths(db, fileIds);
+      const tagsByFile = fetchTagsBulk(db, fileIds);
+      const items = rows.map((row) => buildLibraryItem(row, paths, tagsByFile));
+
+      if (args.verifyPaths) {
+        await verifyItemPaths(items);
+      }
+
+      return {
+        dbAvailable: true,
+        ...(stalenessRisk && { stalenessRisk }),
+        items,
+      };
+    } finally {
+      db.close();
+    }
+  } catch (error) {
+    return {
+      dbAvailable: false,
+      items: [],
+      reason: `Failed to read Live database: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    };
+  }
+}
+
+/**
+ * Stat each item's path and set `pathExists` so the caller can drop stale
+ * entries. Runs in parallel — a warm-cache stat is sub-millisecond, so even a
+ * full limit=1000 result set stays well under a second. Truncated paths are
+ * skipped (their missing leading segments would always stat as not-found).
+ *
+ * @param items - Items to verify in place
+ */
+async function verifyItemPaths(items: LibraryItem[]): Promise<void> {
+  // Resolve every stat first, then assign synchronously. Mutating each item
+  // directly inside the async map trips require-atomic-updates (a false
+  // positive here — items are distinct — but cheap to sidestep).
+  const exists = await Promise.all(
+    items.map((item) =>
+      item.pathTruncated ? Promise.resolve(null) : pathExistsOnDisk(item.path),
+    ),
+  );
+
+  for (const [i, item] of items.entries()) {
+    const result = exists[i];
+
+    if (result != null) item.pathExists = result;
+  }
+}
+
+/**
+ * Check whether a path exists on disk. Any stat error (ENOENT, EACCES, a
+ * disconnected drive) is treated as "does not exist" — the point is whether
+ * the caller can use the path, not why it can't.
+ *
+ * @param path - Absolute filesystem path
+ * @returns true if stat succeeds, false on any error
+ */
+async function pathExistsOnDisk(path: string): Promise<boolean> {
+  try {
+    await stat(path);
+
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -91,9 +194,13 @@ interface QueryPieces {
  * Compose the search SQL and its positional parameters from filter args.
  *
  * @param args - Filter parameters
+ * @param parentId - Resolved file_id for the inFolder constraint, when present
  * @returns SQL string and parameter array for prepared statement binding
  */
-function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
+function buildSearchQuery(
+  args: LibrarySearchArgs,
+  parentId?: number,
+): QueryPieces {
   const where: string[] = [];
   const params: Array<string | number> = [];
 
@@ -104,8 +211,21 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
     ? fourCCsForKind(args.kind)
     : allKnownKindFourCCs();
 
-  where.push(`f.file_type IN (${fileTypeCodes.map(() => "?").join(",")})`);
-  params.push(...fileTypeCodes);
+  if (args.kind === "midi") {
+    // AJM-335: enrich kind:midi to also surface MIDI Live clips (.alc with the
+    // alcM subtype), not just .mid files — the natural "find MIDI ideas" query
+    // otherwise misses the bulk of a user's MIDI content. kind:audio is left
+    // untouched: it's the loadable-sample bucket, and audio Live clips aren't
+    // samples.
+    where.push(
+      `(f.file_type IN (${fileTypeCodes.map(() => "?").join(",")})
+        OR (f.file_type = ? AND f.subtype = ?))`,
+    );
+    params.push(...fileTypeCodes, ALC_FILE_TYPE, ALC_MIDI_SUBTYPE);
+  } else {
+    where.push(`f.file_type IN (${fileTypeCodes.map(() => "?").join(",")})`);
+    params.push(...fileTypeCodes);
+  }
 
   if (args.deviceKind) {
     where.push("f.device_type = ?");
@@ -127,9 +247,29 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
     }
   }
 
+  if (parentId != null) {
+    where.push("f.parent_id = ?");
+    params.push(parentId);
+  }
+
   if (args.query) {
     where.push("f.name LIKE ? ESCAPE '\\'");
     params.push(buildLikePattern(args.query));
+  }
+
+  if (args.type) {
+    // Playback-type filter: match files carrying any of the type's Live
+    // keywords. EXISTS (OR over names) rather than the AND-all tags subquery
+    // above, since "loop" covers both "Loop" and "Looping".
+    const typeNames = keywordsForType(args.type);
+
+    where.push(`EXISTS (
+      SELECT 1 FROM keywords kt
+      JOIN files kwt ON kwt.file_id = kt.keyw_id
+      WHERE kt.file_id = f.file_id
+        AND kwt.name IN (${typeNames.map(() => "?").join(",")})
+    )`);
+    params.push(...typeNames);
   }
 
   const tagNames = parseTags(args.tags);
@@ -137,14 +277,17 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
   if (tagNames.length > 0) {
     // Match tags case-insensitively (lowercase both sides) so callers
     // can pass "kick" or "KICK" — listTags returns canonical casing
-    // but the LLM may not echo it exactly.
+    // but the LLM may not echo it exactly. Dedupe AFTER lowercasing so
+    // mixed-case duplicates (e.g. "Kick,kick") collapse to one tag and the
+    // HAVING count matches; deduping before would require COUNT=2 against a
+    // single distinct lowercase tag and return false empty results.
     //
     // Unicode caveat: JS `.toLowerCase()` is Unicode-aware, but SQLite's
     // built-in `LOWER()` is ASCII-only (no ICU). A tag like "Café" stored
     // with mixed casing won't match user input that differs only in the
     // accented byte's case. Factory tags are ASCII so this is uncommon;
     // bringing in SQLite's ICU extension would be overkill.
-    const lowerTagNames = tagNames.map((t) => t.toLowerCase());
+    const lowerTagNames = [...new Set(tagNames.map((t) => t.toLowerCase()))];
 
     where.push(`(
       SELECT COUNT(DISTINCT LOWER(kw.name)) FROM keywords k
@@ -161,7 +304,7 @@ function buildSearchQuery(args: LibrarySearchArgs): QueryPieces {
   params.push(limit);
 
   const sql = `SELECT f.file_id, f.parent_id, f.name, f.use_count, f.file_type,
-                      p.folder_kind AS folder_kind
+                      f.subtype, p.folder_kind AS folder_kind
                FROM files f
                LEFT JOIN places p ON p.file_id = f.place_id
                ${where.length > 0 ? "WHERE " + where.join(" AND ") : ""}
@@ -251,14 +394,27 @@ function buildLibraryItem(
   tagsByFile: Map<number, string[]>,
 ): LibraryItem {
   const resolved = paths.get(row.file_id);
+  const tags = tagsByFile.get(row.file_id) ?? [];
   const item: LibraryItem = {
     name: row.name,
     path: resolved?.path ?? `/${row.name}`,
     kind: resolveKind(row.file_type),
-    tags: tagsByFile.get(row.file_id) ?? [],
+    tags,
     useCount: row.use_count,
     source: row.folder_kind == null ? null : resolveSource(row.folder_kind),
   };
+
+  const subtype = resolveClipSubtype(row.file_type, row.subtype);
+
+  if (subtype != null) {
+    item.subtype = subtype;
+  }
+
+  const type = deriveItemType(tags);
+
+  if (type != null) {
+    item.type = type;
+  }
 
   if (resolved?.folder != null) {
     item.folder = resolved.folder;
@@ -269,6 +425,72 @@ function buildLibraryItem(
   }
 
   return item;
+}
+
+/**
+ * Resolve an absolute folder path to the file_id of the matching folder row
+ * by walking the path segments through the files table hierarchy. Returns
+ * null when any segment in the path is not found.
+ *
+ * Path normalization: leading and trailing slashes are stripped before
+ * splitting so "/Users/Ableton/" and "/Users/Ableton" resolve identically.
+ *
+ * Algorithm: start from the root row (parent_id = 0, name = "/" or a Windows
+ * drive letter like "C:"), then walk each path segment as a child lookup.
+ *
+ * Case sensitivity: segment lookups use `COLLATE NOCASE` so an LLM passing
+ * "/users/..." on a case-insensitive macOS/Windows FS still resolves the
+ * same row as "/Users/...". The ASCII-only restriction of SQLite's NOCASE
+ * collation is fine here — Live's library paths are ASCII in practice.
+ *
+ * @param db - Open database handle
+ * @param folderPath - Absolute path to resolve, with or without trailing slash
+ * @returns file_id of the folder, or null if unresolvable
+ */
+function resolveParentId(db: DatabaseSync, folderPath: string): number | null {
+  const normalized = folderPath.endsWith("/")
+    ? folderPath.slice(0, -1)
+    : folderPath;
+
+  // Split into segments. For a POSIX path "/Users/Ableton/User Library":
+  //   split("/") → ["", "Users", "Ableton", "User Library"]
+  // The empty first element corresponds to the root row ("/").
+  const segments = normalized.split("/");
+
+  // Find the root row — parent_id = 0, matching the first segment.
+  // POSIX root is stored as "/"; Windows drive root as "C:" (or "C:\").
+  const rootName = segments[0] === "" ? "/" : (segments[0] as string);
+  const rootRow = db
+    .prepare(
+      "SELECT file_id FROM files WHERE parent_id = 0 AND name = ? COLLATE NOCASE LIMIT 1",
+    )
+    .get(rootName) as { file_id: number } | undefined;
+
+  if (!rootRow) {
+    return null;
+  }
+
+  // Walk remaining segments down the hierarchy, skipping the root element
+  // (the empty string for POSIX "/..." paths, or the drive letter for Windows).
+  const childSegments = segments.slice(1);
+  let currentId = rootRow.file_id;
+
+  for (const seg of childSegments) {
+    if (seg === "") continue;
+    const row = db
+      .prepare(
+        "SELECT file_id FROM files WHERE parent_id = ? AND name = ? COLLATE NOCASE LIMIT 1",
+      )
+      .get(currentId, seg) as { file_id: number } | undefined;
+
+    if (!row) {
+      return null;
+    }
+
+    currentId = row.file_id;
+  }
+
+  return currentId;
 }
 
 /**

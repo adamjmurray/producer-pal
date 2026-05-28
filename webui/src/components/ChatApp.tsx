@@ -12,7 +12,7 @@ import {
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { type ViewState } from "#webui/hooks/use-view-state";
+import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
 import { type UseSettingsReturn } from "#webui/types/settings";
 
@@ -31,6 +31,7 @@ interface ChatAppProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenContext: () => void;
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
@@ -54,6 +55,7 @@ export function ChatApp(props: ChatAppProps) {
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    onOpenContext,
   } = props;
 
   const { chat, wrappedHandleSend, conversationPanelState, headerInfo } =
@@ -64,6 +66,7 @@ export function ChatApp(props: ChatAppProps) {
       messages={chat.messages}
       isAssistantResponding={chat.isAssistantResponding}
       rateLimitState={chat.rateLimitState}
+      toolLimitReached={chat.toolLimitReached}
       handleSend={wrappedHandleSend}
       handleRetry={chat.handleRetry}
       handleEdit={chat.handleEdit}
@@ -76,6 +79,7 @@ export function ChatApp(props: ChatAppProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenContext={onOpenContext}
       onStop={chat.stopResponse}
       showTimestamps={display.showTimestamps}
       showTokenUsage={display.showTokenUsage}

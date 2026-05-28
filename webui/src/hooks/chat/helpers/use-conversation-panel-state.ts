@@ -6,7 +6,7 @@
 import { useMemo } from "preact/hooks";
 import { type ConversationPanelState } from "#webui/components/AppShell";
 import { type UseConversationsReturn } from "#webui/hooks/chat/use-conversations";
-import { type ViewState } from "#webui/hooks/use-view-state";
+import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { isMobile } from "#webui/utils/is-mobile";
 
 interface ConversationPanelDeps {

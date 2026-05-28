@@ -27,13 +27,13 @@ vi.mock(import("#webui/hooks/theme/use-theme"), () => ({ useTheme: vi.fn() }));
 vi.mock(import("#webui/hooks/use-update-check"), () => ({
   useUpdateCheck: () => null,
 }));
-vi.mock(import("#webui/hooks/use-view-state"), () => ({
+vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
   useViewState: vi.fn(),
 }));
 
 import { useChat } from "#webui/hooks/chat/use-chat";
 import { useConversations } from "#webui/hooks/chat/use-conversations";
-import { useViewState } from "#webui/hooks/use-view-state";
+import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { mockChatHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 

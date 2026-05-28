@@ -4,16 +4,70 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type RealtimeItem } from "@openai/agents/realtime";
-import { vi } from "vitest";
+import { type Mock, vi } from "vitest";
 import { type VoiceAppProps } from "#webui/components/voice/VoiceApp";
+import { DEFAULT_TURN_DETECTION } from "#webui/hooks/settings/turn-detection-helpers";
 import { type ConversationSummary } from "#webui/lib/conversation-db";
 import { type UseSettingsReturn } from "#webui/types/settings";
 
+export interface VoiceAppMocks {
+  getMcpUrl: Mock;
+  useVoiceSession: Mock;
+  useGeminiVoiceSession: Mock;
+  isFirefox: Mock;
+  useUpdateCheck: Mock;
+  useVoicePersistence: Mock;
+  useConversationTransfer: Mock;
+}
+
+/**
+ * Wire default return values into the VoiceApp mock bag. Use from `beforeEach`.
+ *
+ * @param mocks - The hoisted mock bag from the test file
+ */
+export function installVoiceAppMockDefaults(mocks: VoiceAppMocks): void {
+  mocks.getMcpUrl.mockReturnValue("http://localhost:3350/mcp");
+  mocks.isFirefox.mockReturnValue(false);
+  mocks.useUpdateCheck.mockReturnValue(null);
+  mocks.useVoiceSession.mockReturnValue(baseSession());
+  mocks.useGeminiVoiceSession.mockReturnValue(baseSession());
+  mocks.useVoicePersistence.mockReturnValue(basePersistence());
+  mocks.useConversationTransfer.mockReturnValue({
+    notification: null,
+    dismissNotification: vi.fn(),
+    handleExport: vi.fn(),
+    handleExportOne: vi.fn(),
+    handleImport: vi.fn(),
+  });
+}
+
+/**
+ * Reset every entry in the VoiceApp mock bag. Use from `afterEach`.
+ *
+ * @param mocks - The hoisted mock bag from the test file
+ */
+export function resetVoiceAppMocks(mocks: VoiceAppMocks): void {
+  mocks.getMcpUrl.mockReset();
+  mocks.useVoiceSession.mockReset();
+  mocks.useGeminiVoiceSession.mockReset();
+  mocks.isFirefox.mockReset();
+  mocks.useUpdateCheck.mockReset();
+  mocks.useVoicePersistence.mockReset();
+  mocks.useConversationTransfer.mockReset();
+}
+
 export interface PropOverrides {
   apiKey?: string;
-  provider?: "openai" | "anthropic";
+  provider?: "openai" | "anthropic" | "gemini";
   onOpenSettings?: () => void;
   savedRealtimeVoice?: string;
+  /** Override the saved/active model (defaults to the OpenAI realtime model). */
+  model?: string;
+  /** Per-provider keys (defaults derive from apiKey + provider). Set both
+   * explicitly to simulate "user has saved both keys, now loading a record
+   * from the other provider" for record-aware routing tests. */
+  openaiApiKey?: string;
+  geminiApiKey?: string;
 }
 
 /**
@@ -27,16 +81,26 @@ export interface PropOverrides {
 export function makeProps(o: PropOverrides = {}): VoiceAppProps {
   const apiKey = o.apiKey ?? "sk-test";
   const provider = o.provider ?? "openai";
+  const model = o.model ?? "gpt-realtime-2";
+  // Default the per-provider keys to match the current provider's apiKey so
+  // pre-existing tests (which only set `apiKey + provider`) behave unchanged.
+  // Tests that exercise record-aware routing (both keys saved, current provider
+  // is the other one) override openaiApiKey / geminiApiKey directly.
+  const openaiApiKey = o.openaiApiKey ?? (provider === "openai" ? apiKey : "");
+  const geminiApiKey = o.geminiApiKey ?? (provider === "gemini" ? apiKey : "");
 
   return {
     settings: {
       provider,
       savedProvider: provider,
       apiKey,
-      model: "gpt-realtime-2",
-      savedModel: "gpt-realtime-2",
+      openaiApiKey,
+      geminiApiKey,
+      model,
+      savedModel: model,
       enabledTools: {},
       savedRealtimeVoice: o.savedRealtimeVoice ?? "marin",
+      savedTurnDetection: DEFAULT_TURN_DETECTION,
     } as unknown as UseSettingsReturn,
     display: {
       showTimestamps: false,
@@ -111,6 +175,8 @@ export function baseSession(
 export interface PersistenceStub {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
+  activeRecordModel: string | null;
+  activeRecordProvider: string | null;
   savedItems: RealtimeItem[];
   refreshList: ReturnType<typeof vi.fn>;
   switchConversation: ReturnType<typeof vi.fn>;
@@ -133,6 +199,8 @@ export function basePersistence(
   return {
     conversations: [],
     activeConversationId: null,
+    activeRecordModel: null,
+    activeRecordProvider: null,
     savedItems: [],
     refreshList: vi.fn(),
     switchConversation: vi.fn(),

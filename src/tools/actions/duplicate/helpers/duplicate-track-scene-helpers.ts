@@ -42,7 +42,7 @@ function forEachClipInScene(
     );
 
     if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-      const clip = LiveAPI.from(`${clipSlot.path} clip`);
+      const clip = clipSlot.child("clip");
 
       if (clip.exists()) {
         callback(clip, clipSlot, trackIndex);
@@ -169,7 +169,7 @@ function collectSessionClips(
     const clipSlot = LiveAPI.from(clipSlotId);
 
     if (clipSlot.getProperty("has_clip")) {
-      const clip = LiveAPI.from(`${clipSlot.path} clip`);
+      const clip = clipSlot.child("clip");
 
       duplicatedClips.push(getMinimalClipInfo(clip));
     }

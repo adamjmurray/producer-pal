@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getMcpUrl: vi.fn(),
   useVoiceSession: vi.fn(),
+  useGeminiVoiceSession: vi.fn(),
   isFirefox: vi.fn(),
   useUpdateCheck: vi.fn(),
   useVoicePersistence: vi.fn(),
@@ -31,6 +32,10 @@ vi.mock(import("#webui/hooks/voice/use-voice-session"), () => ({
   useVoiceSession: mocks.useVoiceSession,
 }));
 
+vi.mock(import("#webui/hooks/voice/gemini/use-gemini-voice-session"), () => ({
+  useGeminiVoiceSession: mocks.useGeminiVoiceSession,
+}));
+
 vi.mock(import("#webui/hooks/use-update-check"), () => ({
   useUpdateCheck: mocks.useUpdateCheck,
 }));
@@ -44,12 +49,15 @@ vi.mock(import("#webui/hooks/chat/use-conversation-transfer"), () => ({
 }));
 
 import { type ModeContext } from "#webui/components/mode-context";
+import { GEMINI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import { createTestSummary } from "#webui/test-utils/conversation-test-helpers";
 import {
   basePersistence,
   baseSession,
+  installVoiceAppMockDefaults,
   makeProps,
   type PropOverrides,
+  resetVoiceAppMocks,
 } from "./voice-app-test-helpers";
 import { VoiceApp } from "./VoiceApp";
 
@@ -100,29 +108,8 @@ function grabOnLiveRecordDeleted(): (() => void) | undefined {
   return params?.onLiveRecordDeleted;
 }
 
-beforeEach(() => {
-  mocks.getMcpUrl.mockReturnValue("http://localhost:3350/mcp");
-  mocks.isFirefox.mockReturnValue(false);
-  mocks.useUpdateCheck.mockReturnValue(null);
-  mocks.useVoiceSession.mockReturnValue(baseSession());
-  mocks.useVoicePersistence.mockReturnValue(basePersistence());
-  mocks.useConversationTransfer.mockReturnValue({
-    notification: null,
-    dismissNotification: vi.fn(),
-    handleExport: vi.fn(),
-    handleExportOne: vi.fn(),
-    handleImport: vi.fn(),
-  });
-});
-
-afterEach(() => {
-  mocks.getMcpUrl.mockReset();
-  mocks.useVoiceSession.mockReset();
-  mocks.isFirefox.mockReset();
-  mocks.useUpdateCheck.mockReset();
-  mocks.useVoicePersistence.mockReset();
-  mocks.useConversationTransfer.mockReset();
-});
+beforeEach(() => installVoiceAppMockDefaults(mocks));
+afterEach(() => resetVoiceAppMocks(mocks));
 
 describe("VoiceApp", () => {
   it("shows the OpenAI-key-required banner when key is missing", () => {
@@ -141,6 +128,28 @@ describe("VoiceApp", () => {
     renderVoiceApp({ provider: "anthropic", apiKey: "sk-ant" });
 
     expect(screen.getByText(/openai api key required/i)).toBeDefined();
+  });
+
+  it("shows a Gemini-key-required banner for a Gemini realtime selection with no key", () => {
+    renderVoiceApp({
+      provider: "gemini",
+      apiKey: "",
+      model: GEMINI_REALTIME_MODEL,
+    });
+
+    expect(screen.getByText(/gemini api key required/i)).toBeDefined();
+    expect(screen.queryByText(/openai api key required/i)).toBeNull();
+  });
+
+  it("hides the banner for a Gemini selection with a key and a Gemini voice", () => {
+    renderVoiceApp({
+      provider: "gemini",
+      apiKey: "gem-key",
+      model: GEMINI_REALTIME_MODEL,
+      savedRealtimeVoice: "Puck",
+    });
+
+    expect(screen.queryByText(/api key required/i)).toBeNull();
   });
 
   it("renders the Talk button when idle and clicking it calls connect()", () => {
@@ -774,6 +783,66 @@ describe("VoiceApp", () => {
       expect(persistence.deleteAllConversations).toHaveBeenCalled();
       ctx?.onDeleteUnbookmarkedConversations();
       expect(persistence.deleteUnbookmarkedConversations).toHaveBeenCalled();
+    });
+  });
+
+  describe("provider switch teardown", () => {
+    it("disconnects the previous backend when the active voice provider switches", () => {
+      const openAi = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(openAi);
+      mocks.useGeminiVoiceSession.mockReturnValue(baseSession());
+      const { rerender } = renderVoiceApp();
+
+      expect(openAi.disconnect).not.toHaveBeenCalled();
+
+      // Switching to Gemini in Settings: the OpenAI hook stays mounted and still
+      // reports "connected" (its mic/socket are live), but the controls now
+      // follow the idle Gemini backend — so nothing else would stop it.
+      mocks.useVoiceSession.mockReturnValue(openAi);
+      mocks.useGeminiVoiceSession.mockReturnValue(baseSession());
+      rerender(
+        <VoiceApp
+          {...makeProps({ provider: "gemini", model: GEMINI_REALTIME_MODEL })}
+        />,
+      );
+
+      expect(openAi.disconnect).toHaveBeenCalledOnce();
+    });
+
+    it("disconnects a still-connected Gemini session when the user switches to OpenAI", () => {
+      // Mirror of the openai→gemini case above. The teardown is direction-
+      // agnostic but the ternary's other branch is otherwise unexercised.
+      const gemini = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+      mocks.useGeminiVoiceSession.mockReturnValue(gemini);
+      const { rerender } = renderVoiceApp({
+        provider: "gemini",
+        model: GEMINI_REALTIME_MODEL,
+      });
+
+      expect(gemini.disconnect).not.toHaveBeenCalled();
+
+      mocks.useVoiceSession.mockReturnValue(baseSession());
+      mocks.useGeminiVoiceSession.mockReturnValue(gemini);
+      rerender(<VoiceApp {...makeProps({ provider: "openai" })} />);
+
+      expect(gemini.disconnect).toHaveBeenCalledOnce();
+    });
+
+    it("does not disconnect when switching models within the same backend", () => {
+      const openAi = baseSession({ status: "connected" });
+
+      mocks.useVoiceSession.mockReturnValue(openAi);
+      const { rerender } = renderVoiceApp({ model: "gpt-realtime-2" });
+
+      mocks.useVoiceSession.mockReturnValue(openAi);
+      rerender(
+        <VoiceApp {...makeProps({ model: "gpt-4o-realtime-preview" })} />,
+      );
+
+      expect(openAi.disconnect).not.toHaveBeenCalled();
     });
   });
 });

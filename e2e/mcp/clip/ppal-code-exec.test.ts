@@ -87,7 +87,7 @@ describe("ppal-code-exec", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        code: "return notes.filter(n => n.pitch >= 62)",
+        code: ["return notes.filter(n => n.pitch >= 62)"],
       },
     });
 
@@ -110,7 +110,7 @@ describe("ppal-code-exec", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        code: "return notes.map(n => ({...n, velocity: 127}))",
+        code: ["return notes.map(n => ({...n, velocity: 127}))"],
       },
     });
 
@@ -129,7 +129,7 @@ describe("ppal-code-exec", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        code: "return []",
+        code: ["return []"],
       },
     });
 
@@ -231,7 +231,7 @@ describe("ppal-code-exec", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: "1",
-        code: tooLongCode,
+        code: [tooLongCode],
       },
     });
 

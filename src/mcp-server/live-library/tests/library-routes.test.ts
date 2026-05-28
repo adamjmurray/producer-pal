@@ -17,6 +17,12 @@ vi.mock(import("../library-search.ts"), () => ({
 vi.mock(import("../list-tags.ts"), () => ({
   listTags: vi.fn(),
 }));
+vi.mock(import("../list-categories.ts"), () => ({
+  listCategories: vi.fn(),
+}));
+vi.mock(import("../list-plugins.ts"), () => ({
+  listPlugins: vi.fn(),
+}));
 vi.mock(import("../../node-for-max-logger.ts"), () => ({
   log: vi.fn(),
   info: vi.fn(),
@@ -26,6 +32,8 @@ vi.mock(import("../../node-for-max-logger.ts"), () => ({
 
 const searchMod = await import("../library-search.ts");
 const tagsMod = await import("../list-tags.ts");
+const categoriesMod = await import("../list-categories.ts");
+const pluginsMod = await import("../list-plugins.ts");
 
 describe("registerLibraryRoutes", () => {
   beforeEach(() => {
@@ -104,5 +112,72 @@ describe("registerLibraryRoutes", () => {
     );
 
     expect(tagsMod.listTags).toHaveBeenCalledWith({});
+  });
+
+  it("registers library.listCategories and dispatches with parsed args", async () => {
+    vi.mocked(categoriesMod.listCategories).mockResolvedValue({
+      dbAvailable: true,
+      category: "Drums",
+      tags: [{ name: "Kick", count: 2 }],
+    });
+
+    await handleNodeRequest(
+      "req-cat",
+      JSON.stringify({
+        route: "library.listCategories",
+        args: { category: "Drums" },
+      }),
+    );
+
+    expect(categoriesMod.listCategories).toHaveBeenCalledWith({
+      category: "Drums",
+    });
+  });
+
+  it("library.listCategories defaults to empty args when null", async () => {
+    vi.mocked(categoriesMod.listCategories).mockResolvedValue({
+      dbAvailable: false,
+    });
+
+    await handleNodeRequest(
+      "req-cat-null",
+      JSON.stringify({ route: "library.listCategories", args: null }),
+    );
+
+    expect(categoriesMod.listCategories).toHaveBeenCalledWith({});
+  });
+
+  it("registers library.listPlugins and dispatches with parsed args", async () => {
+    vi.mocked(pluginsMod.listPlugins).mockResolvedValue({
+      dbAvailable: true,
+      plugins: [],
+    });
+
+    await handleNodeRequest(
+      "req-5",
+      JSON.stringify({
+        route: "library.listPlugins",
+        args: { format: "VST3", limit: 10 },
+      }),
+    );
+
+    expect(pluginsMod.listPlugins).toHaveBeenCalledWith({
+      format: "VST3",
+      limit: 10,
+    });
+  });
+
+  it("library.listPlugins defaults to empty args when null", async () => {
+    vi.mocked(pluginsMod.listPlugins).mockResolvedValue({
+      dbAvailable: false,
+      plugins: [],
+    });
+
+    await handleNodeRequest(
+      "req-6",
+      JSON.stringify({ route: "library.listPlugins", args: null }),
+    );
+
+    expect(pluginsMod.listPlugins).toHaveBeenCalledWith({});
   });
 });

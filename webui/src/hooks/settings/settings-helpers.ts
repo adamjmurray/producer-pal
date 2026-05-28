@@ -1,11 +1,14 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { THINKING_LEVELS } from "#webui/components/settings/controls/thinking-levels";
+import { decryptApiKey, encryptApiKey } from "#webui/lib/api-key-crypto";
 import {
   DEFAULT_MODELS,
   DEFAULT_REALTIME_VOICE,
+  isValidGeminiRealtimeVoice,
   isValidRealtimeVoice,
 } from "#webui/lib/constants/models";
 import { type Provider } from "#webui/types/settings";
@@ -18,22 +21,30 @@ export const VOICE_SPEED_MIN = 0.5;
 export const VOICE_SPEED_MAX = 1.5;
 export const VOICE_SPEED_DEFAULT = 1.0;
 
-// Output playback gain as an HTMLMediaElement.volume value (0.0–1.0). Capped at
-// unity because plain element volume can't boost above 1.0 — boost above unity
-// is a follow-up (Web Audio GainNode).
+// Output playback gain (1.0 = unity). Driven through a Web Audio GainNode, which
+// can boost above unity — so the range extends to 1.25 (125%). The plain
+// <audio> element is muted and the remote stream is routed source → gain →
+// destination; element .volume alone is hard-capped at 1.0 by the HTML spec.
 export const VOICE_VOLUME_MIN = 0;
-export const VOICE_VOLUME_MAX = 1;
+export const VOICE_VOLUME_MAX = 1.25;
 export const VOICE_VOLUME_DEFAULT = 1.0;
 
 /**
  * Loads the saved realtime voice from localStorage, falling back to the
- * default voice when missing or invalid.
+ * default voice when missing or invalid. Accepts either an OpenAI or a Gemini
+ * voice id (the two providers share this one field); the consuming hook
+ * re-validates per active provider, so storing the other provider's voice here
+ * is harmless and lets a chosen Gemini voice survive a reload.
  * @returns A known realtime voice id
  */
 export function loadRealtimeVoice(): string {
   const stored = localStorage.getItem(REALTIME_VOICE_KEY);
 
-  if (stored && isValidRealtimeVoice(stored)) return stored;
+  if (
+    stored &&
+    (isValidRealtimeVoice(stored) || isValidGeminiRealtimeVoice(stored))
+  )
+    return stored;
 
   return DEFAULT_REALTIME_VOICE;
 }
@@ -89,7 +100,7 @@ export function loadVoiceVolume(): number {
 
 /**
  * Persists the output playback volume to localStorage.
- * @param volume - The volume (0.0–1.0) to persist
+ * @param volume - The volume (0.0–1.25) to persist
  */
 export function saveVoiceVolume(volume: number): void {
   localStorage.setItem(VOICE_VOLUME_KEY, String(volume));
@@ -169,12 +180,76 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   },
 };
 
+// Every provider, derived from DEFAULT_SETTINGS so the list can't drift.
+const PROVIDERS = Object.keys(DEFAULT_SETTINGS) as Provider[];
+
 /**
- * Loads provider settings from localStorage with backward compatibility
+ * Loads provider settings SYNCHRONOUSLY for state initialization. The apiKey is
+ * a stored value (possibly an `enc:v1:` envelope) — to avoid flashing ciphertext
+ * in React state, callers should treat this as a placeholder and apply the
+ * decrypted key via {@link loadProviderSettingsAsync} a tick later.
  * @param {Provider} provider - Provider to load settings for
- * @returns {any} - Hook return value
+ * @returns {ProviderSettings} Settings with apiKey blanked (placeholder)
  */
 export function loadProviderSettings(provider: Provider): ProviderSettings {
+  const settings = readStoredProviderSettings(provider);
+
+  // Blank the apiKey: the stored value may be an encrypted envelope, and
+  // decryption is async. The real key is applied post-mount via the async load.
+  return { ...settings, apiKey: "" };
+}
+
+/**
+ * Loads provider settings and decrypts the apiKey. Use this for the post-mount
+ * effect that applies the real key after the synchronous placeholder load.
+ * @param {Provider} provider - Provider to load settings for
+ * @returns {Promise<ProviderSettings>} Settings with the decrypted apiKey
+ */
+export async function loadProviderSettingsAsync(
+  provider: Provider,
+): Promise<ProviderSettings> {
+  const settings = readStoredProviderSettings(provider);
+
+  settings.apiKey = await decryptApiKey(settings.apiKey);
+
+  return settings;
+}
+
+/**
+ * Saves provider settings to localStorage, encrypting the apiKey at rest.
+ * Saving is user-triggered, so this is awaited where possible but errors are
+ * caught (never thrown into render).
+ * @param {Provider} provider - Provider to save settings for
+ * @param {ProviderSettings} settings - Settings to save (apiKey in cleartext)
+ * @returns {Promise<void>}
+ */
+export async function saveProviderSettings(
+  provider: Provider,
+  settings: ProviderSettings,
+): Promise<void> {
+  const key = `producer_pal_provider_${provider}`;
+  const encryptedApiKey = await encryptApiKey(settings.apiKey);
+
+  localStorage.setItem(
+    key,
+    JSON.stringify({ ...settings, apiKey: encryptedApiKey }),
+  );
+
+  // Drop the pre-multi-provider plaintext Gemini key once the encrypted
+  // envelope is in place, so the cleartext doesn't linger after migration.
+  if (provider === "gemini") {
+    localStorage.removeItem("gemini_api_key");
+  }
+}
+
+/**
+ * Reads raw provider settings from localStorage with backward compatibility.
+ * The returned apiKey is the stored value verbatim (encrypted envelope or
+ * legacy cleartext) — callers decide whether to decrypt or blank it.
+ * @param {Provider} provider - Provider to read settings for
+ * @returns {ProviderSettings} Settings with the stored (possibly encrypted) apiKey
+ */
+function readStoredProviderSettings(provider: Provider): ProviderSettings {
   const newFormatKey = `producer_pal_provider_${provider}`;
   const newFormatData = localStorage.getItem(newFormatKey);
 
@@ -202,59 +277,51 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
 
   // Backward compatibility: only for Gemini provider
   if (provider === "gemini") {
-    const legacySettings: Partial<ProviderSettings> = {};
-
-    const apiKey = localStorage.getItem("gemini_api_key");
-
-    if (apiKey) legacySettings.apiKey = apiKey;
-
-    const model =
-      localStorage.getItem("gemini_model") ?? localStorage.getItem("model");
-
-    if (model) legacySettings.model = model;
-
-    const thinking =
-      localStorage.getItem("thinking") ??
-      localStorage.getItem("gemini_thinking");
-
-    if (thinking) legacySettings.thinking = thinking;
-
-    const temperature =
-      localStorage.getItem("temperature") ??
-      localStorage.getItem("gemini_temperature");
-
-    if (temperature != null) {
-      legacySettings.temperature = Number.parseFloat(temperature);
-    }
-
-    const showThoughts =
-      localStorage.getItem("showThoughts") ??
-      localStorage.getItem("gemini_showThoughts");
-
-    if (showThoughts != null) {
-      legacySettings.showThoughts = showThoughts === "true";
-    }
-
-    return { ...DEFAULT_SETTINGS.gemini, ...legacySettings };
+    return readLegacyGeminiSettings();
   }
 
   // For non-Gemini providers, just use defaults
-  return DEFAULT_SETTINGS[provider];
+  return { ...DEFAULT_SETTINGS[provider] };
 }
 
 /**
- * Saves provider settings to localStorage
- * @param {Provider} provider - Provider to save settings for
- * @param {ProviderSettings} settings - Settings to save
- * @returns {any} - Hook return value
+ * Reads pre-multi-provider Gemini settings from their old localStorage keys.
+ * @returns {ProviderSettings} Gemini settings merged over defaults
  */
-export function saveProviderSettings(
-  provider: Provider,
-  settings: ProviderSettings,
-) {
-  const key = `producer_pal_provider_${provider}`;
+function readLegacyGeminiSettings(): ProviderSettings {
+  const legacySettings: Partial<ProviderSettings> = {};
 
-  localStorage.setItem(key, JSON.stringify(settings));
+  const apiKey = localStorage.getItem("gemini_api_key");
+
+  if (apiKey) legacySettings.apiKey = apiKey;
+
+  const model =
+    localStorage.getItem("gemini_model") ?? localStorage.getItem("model");
+
+  if (model) legacySettings.model = model;
+
+  const thinking =
+    localStorage.getItem("thinking") ?? localStorage.getItem("gemini_thinking");
+
+  if (thinking) legacySettings.thinking = thinking;
+
+  const temperature =
+    localStorage.getItem("temperature") ??
+    localStorage.getItem("gemini_temperature");
+
+  if (temperature != null) {
+    legacySettings.temperature = Number.parseFloat(temperature);
+  }
+
+  const showThoughts =
+    localStorage.getItem("showThoughts") ??
+    localStorage.getItem("gemini_showThoughts");
+
+  if (showThoughts != null) {
+    legacySettings.showThoughts = showThoughts === "true";
+  }
+
+  return { ...DEFAULT_SETTINGS.gemini, ...legacySettings };
 }
 
 /**
@@ -299,36 +366,28 @@ export interface AllProviderSettings {
 }
 
 /**
- * Loads settings for all providers
- * @returns {any} - Hook return value
+ * Loads settings for all providers with decrypted apiKeys.
+ * @returns {Promise<AllProviderSettings>} All provider settings, keys decrypted
  */
-export function loadAllProviderSettings(): AllProviderSettings {
-  return {
-    anthropic: loadProviderSettings("anthropic"),
-    gemini: loadProviderSettings("gemini"),
-    openai: loadProviderSettings("openai"),
-    mistral: loadProviderSettings("mistral"),
-    openrouter: loadProviderSettings("openrouter"),
-    lmstudio: loadProviderSettings("lmstudio"),
-    ollama: loadProviderSettings("ollama"),
-    custom: loadProviderSettings("custom"),
-  };
+export async function loadAllProviderSettingsAsync(): Promise<AllProviderSettings> {
+  const entries = await Promise.all(
+    PROVIDERS.map(
+      async (p) => [p, await loadProviderSettingsAsync(p)] as const,
+    ),
+  );
+
+  return Object.fromEntries(entries) as unknown as AllProviderSettings;
 }
 
 /**
- * Saves settings for all providers
+ * Saves settings for all providers, encrypting each apiKey at rest.
  * @param {AllProviderSettings} settings - All provider settings to save
- * @returns {any} - Hook return value
+ * @returns {Promise<void>}
  */
-export function saveAllProviderSettings(settings: AllProviderSettings) {
-  saveProviderSettings("anthropic", settings.anthropic);
-  saveProviderSettings("gemini", settings.gemini);
-  saveProviderSettings("openai", settings.openai);
-  saveProviderSettings("mistral", settings.mistral);
-  saveProviderSettings("openrouter", settings.openrouter);
-  saveProviderSettings("lmstudio", settings.lmstudio);
-  saveProviderSettings("ollama", settings.ollama);
-  saveProviderSettings("custom", settings.custom);
+export async function saveAllProviderSettings(
+  settings: AllProviderSettings,
+): Promise<void> {
+  await Promise.all(PROVIDERS.map((p) => saveProviderSettings(p, settings[p])));
 }
 
 /**
@@ -364,24 +423,26 @@ export function loadEnabledTools(): Record<string, boolean> {
 }
 
 /**
- * Saves the current provider, enabled tools, and all provider settings to localStorage
+ * Saves the current provider, enabled tools, and all provider settings to
+ * localStorage. Provider settings (with encrypted apiKeys) are written
+ * asynchronously; the rest are written synchronously up front.
  * @param {Provider} provider - Current provider
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {AllProviderSettings} allSettings - All provider settings
- * @returns {any} - Hook return value
+ * @returns {Promise<void>}
  */
-export function saveCurrentSettings(
+export async function saveCurrentSettings(
   provider: Provider,
   enabledTools: Record<string, boolean>,
   allSettings: AllProviderSettings,
-): void {
+): Promise<void> {
   localStorage.setItem("producer_pal_current_provider", provider);
   localStorage.setItem("producer_pal_settings_configured", "true");
   localStorage.setItem(
     "producer_pal_enabled_tools",
     JSON.stringify(enabledTools),
   );
-  saveAllProviderSettings(allSettings);
+  await saveAllProviderSettings(allSettings);
 }
 
 /**

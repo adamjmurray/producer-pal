@@ -15,12 +15,13 @@ export interface VoiceVolumeSliderProps {
 }
 
 /**
- * Slider for the OpenAI Realtime output playback volume (1.0 = unity). Applied
- * to our own playback `<audio>` element, so it adjusts loudness live during a
- * session — useful for balancing the assistant against the music from Ableton.
+ * Slider for the voice playback volume (1.0 = unity, up to 1.25). Client-side
+ * gain via a Web Audio GainNode so it can boost above unity, and adjusts
+ * loudness live during a session — useful for balancing the assistant against
+ * the music from Ableton. Applies to both OpenAI Realtime and Gemini Live.
  *
  * @param props - Component props
- * @param props.volume - Current volume (0.0–1.0)
+ * @param props.volume - Current volume (0.0–1.25)
  * @param props.setVolume - Setter for the in-modal volume value
  * @returns Voice volume slider element
  */

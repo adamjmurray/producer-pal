@@ -114,6 +114,7 @@ export const simplerSpec: SpecializedDeviceSpec = {
     },
     {
       name: "playbackMode",
+      options: PLAYBACK_MODES,
       read: (device) =>
         readEnumByIndex(device, "playback_mode", PLAYBACK_MODES),
       write: (device, value, toolName) =>
@@ -128,6 +129,7 @@ export const simplerSpec: SpecializedDeviceSpec = {
     },
     {
       name: "slicingPlaybackMode",
+      options: SLICING_PLAYBACK_MODES,
       read: (device) =>
         readEnumByIndex(
           device,
@@ -152,6 +154,7 @@ export const simplerSpec: SpecializedDeviceSpec = {
     },
     {
       name: "voices",
+      options: VOICES,
       read: readVoices,
       write: (device, value, toolName) =>
         writeIntFromSet(device, "voices", value, VOICES, toolName, "voices"),
@@ -169,20 +172,40 @@ export const simplerSpec: SpecializedDeviceSpec = {
   actions: {
     // Destructive sample edits. Warp/crop operate on the active region
     // (S Start .. S Start + S Length), not the whole sample.
-    reverse: sampleAction("reverse"),
-    crop: sampleAction("crop"),
-    warpDouble: sampleAction("warp_double"),
-    warpHalf: sampleAction("warp_half"),
-    warpAs: (device, args, toolName) => {
-      const beats = Number(args[0]);
+    reverse: {
+      handler: sampleAction("reverse"),
+      signature: "reverse",
+      description: "Reverse the active sample region",
+    },
+    crop: {
+      handler: sampleAction("crop"),
+      signature: "crop",
+      description: "Crop the sample to the active region",
+    },
+    warpDouble: {
+      handler: sampleAction("warp_double"),
+      signature: "warpDouble",
+      description: "Double the warp tempo (Sample tab ✻2)",
+    },
+    warpHalf: {
+      handler: sampleAction("warp_half"),
+      signature: "warpHalf",
+      description: "Halve the warp tempo (Sample tab ÷2)",
+    },
+    warpAs: {
+      handler: (device, args, toolName) => {
+        const beats = Number(args[0]);
 
-      if (!Number.isFinite(beats)) {
-        console.warn(`${toolName}: warpAs requires a numeric beats argument`);
+        if (!Number.isFinite(beats)) {
+          console.warn(`${toolName}: warpAs requires a numeric beats argument`);
 
-        return;
-      }
+          return;
+        }
 
-      device.call("warp_as", beats);
+        device.call("warp_as", beats);
+      },
+      signature: "warpAs(beats)",
+      description: "Warp the active region to span the given number of beats",
     },
   },
 };

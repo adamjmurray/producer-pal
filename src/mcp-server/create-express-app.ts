@@ -19,15 +19,14 @@ import { TOOL_NAMES, createMcpServer } from "./create-mcp-server.ts";
 import { isLocalOrigin } from "./helpers/request-origin.ts";
 import { callLiveApi } from "./max-api-adapter.ts";
 import * as console from "./node-for-max-logger.ts";
+import { registerGeminiVoiceTokenRoute } from "./routes/gemini-voice-token-route.ts";
 import { registerRestApiRoutes } from "./routes/rest-api-routes.ts";
 import { registerVoiceTokenRoute } from "./routes/voice-token-route.ts";
 
 const LIVE_API_TOOL_NAME = toolDefLiveApi.toolName;
 
 interface ProducerPalConfig {
-  memoryEnabled: boolean;
   memoryContent: string;
-  memoryWritable: boolean;
   smallModelMode: boolean;
   jsonOutput: boolean; // true = JSON, false = compact (default)
   sampleFolder: string;
@@ -48,9 +47,7 @@ interface ProducerPalConfig {
 const liveApiForcedOn = process.env.ENABLE_LIVE_API === "true";
 
 const config: ProducerPalConfig = {
-  memoryEnabled: false,
   memoryContent: "",
-  memoryWritable: false,
   smallModelMode: false,
   jsonOutput: false,
   sampleFolder: "",
@@ -72,19 +69,11 @@ Max.addHandler("smallModelMode", (enabled: unknown) => {
   config.smallModelMode = Boolean(enabled);
 });
 
-Max.addHandler("memoryEnabled", (enabled: unknown) => {
-  config.memoryEnabled = Boolean(enabled);
-});
-
 Max.addHandler("memoryContent", (content: unknown) => {
   // an idiosyncrasy of Max's textedit is it routes bang for empty string:
   const value = content === "bang" ? "" : String(content ?? "");
 
   config.memoryContent = value;
-});
-
-Max.addHandler("memoryWritable", (writable: unknown) => {
-  config.memoryWritable = Boolean(writable);
 });
 
 Max.addHandler("compactOutput", (enabled: unknown) => {
@@ -158,6 +147,15 @@ const internalError = (message: string): JsonRpcError => ({
   },
   id: null,
 });
+
+/**
+ * Mark a response as never-cache. Used for the UI bundle and config so the
+ * browser can't serve a stale build/config across device rebuilds or updates.
+ * @param res - Express response
+ */
+function setNoStore(res: Response): void {
+  res.set("Cache-Control", "no-store");
+}
 
 /**
  * Creates and configures an Express application for the MCP server
@@ -235,19 +233,36 @@ export function createExpressApp(): Express {
   });
 
   // Allow chat UI to be disabled for security
-  app.use("/chat", (_req: Request, res: Response, next: NextFunction): void => {
-    if (!chatUIEnabled) {
-      res.status(403).send("Chat UI is disabled");
+  app.use(
+    ["/chat", "/context"],
+    (_req: Request, res: Response, next: NextFunction): void => {
+      if (!chatUIEnabled) {
+        res.status(403).send("Chat UI is disabled");
 
-      return;
-    }
+        return;
+      }
 
-    next();
+      next();
+    },
+  );
+
+  // Serve the chat UI (inlined for frozen .amxd builds).
+  // The same bundle handles both /chat and /context — main.tsx reads
+  // location.pathname to decide which view to render.
+  app.get(["/chat", "/context"], (_req: Request, res: Response): void => {
+    // Never cache the UI bundle. It's a single file served from localhost, so
+    // caching saves nothing, but a stale cached build persists across device
+    // rebuilds/updates — which silently reintroduces already-fixed bugs.
+    setNoStore(res);
+    res.type("html").send(chatUiHtml);
   });
 
-  // Serve the chat UI (inlined for frozen .amxd builds)
-  app.get("/chat", (_req: Request, res: Response): void => {
-    res.type("html").send(chatUiHtml);
+  // Root redirects to /chat for direct browser visits.
+  app.get("/", (_req: Request, res: Response): void => {
+    // Match the UI bundle's no-store stance: a cached 302 would survive a
+    // device rebuild/update, freezing the redirect target if it ever moves.
+    setNoStore(res);
+    res.redirect("/chat");
   });
 
   // /voice is an alias that serves the same single-page bundle as /chat. The
@@ -261,11 +276,16 @@ export function createExpressApp(): Express {
       return;
     }
 
+    // See /chat handler: never cache the UI bundle.
+    setNoStore(res);
     res.type("html").send(chatUiHtml);
   });
 
   // Config endpoints for device UI settings
   app.get("/config", (_req: Request, res: Response): void => {
+    // Memory edits in the device or via AI need to surface on the next
+    // browser fetch — never serve a cached snapshot.
+    setNoStore(res);
     res.json(config);
   });
 
@@ -274,6 +294,7 @@ export function createExpressApp(): Express {
   registerRestApiRoutes(app, () => config, callLiveApi);
 
   registerVoiceTokenRoute(app, () => chatUIEnabled);
+  registerGeminiVoiceTokenRoute(app, () => chatUIEnabled);
 
   return app;
 }
@@ -324,24 +345,10 @@ async function handleConfigUpdate(req: Request, res: Response): Promise<void> {
   const incoming = req.body as Partial<ProducerPalConfig>;
   const outlets: Array<() => Promise<void>> = [];
 
-  if (incoming.memoryEnabled !== undefined) {
-    config.memoryEnabled = Boolean(incoming.memoryEnabled);
-    outlets.push(() =>
-      Max.outlet("config", "memoryEnabled", config.memoryEnabled),
-    );
-  }
-
   if (incoming.memoryContent !== undefined) {
     config.memoryContent = incoming.memoryContent ?? "";
     outlets.push(() =>
       Max.outlet("config", "memoryContent", config.memoryContent),
-    );
-  }
-
-  if (incoming.memoryWritable !== undefined) {
-    config.memoryWritable = Boolean(incoming.memoryWritable);
-    outlets.push(() =>
-      Max.outlet("config", "memoryWritable", config.memoryWritable),
     );
   }
 

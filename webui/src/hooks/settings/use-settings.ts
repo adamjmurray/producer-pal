@@ -6,15 +6,17 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { type Provider, type UseSettingsReturn } from "#webui/types/settings";
 import {
+  type AllProviderSettings,
   buildAllProviderSettings,
   checkHasApiKey,
   DEFAULT_SETTINGS,
-  loadAllProviderSettings,
+  loadAllProviderSettingsAsync,
   loadCurrentProvider,
   loadEnabledTools,
   loadProviderSettings,
   loadSmallModelMode,
   type ProviderSettings,
+  type ProviderSettingsApplier,
   saveCurrentSettings,
   saveSmallModelMode,
 } from "./settings-helpers";
@@ -26,21 +28,37 @@ type ProviderStateSetters = Record<
 >;
 
 /**
- * Create a setter function for a specific provider setting
+ * Build the per-key setter bag (apiKey/model/baseUrl/...) that mutates the
+ * currently selected provider's slice. Extracted so the main useSettings hook
+ * stays under its function-length limit.
  *
- * @param {Provider} provider - The provider to update
- * @param {ProviderStateSetters} setters - Map of provider state setters
- * @param {K} key - The setting key to update
- * @returns {(value: ProviderSettings[K]) => void} Setter function
+ * @param {Provider} provider - Currently selected provider
+ * @param {ProviderStateSetters} providerStateSetters - Map of provider state setters
+ * @returns Setter bag for the active provider's fields
  */
-function createProviderSetter<K extends keyof ProviderSettings>(
+function useProviderSetters(
   provider: Provider,
-  setters: ProviderStateSetters,
-  key: K,
+  providerStateSetters: ProviderStateSetters,
 ) {
-  return (value: ProviderSettings[K]) => {
-    setters[provider]((prev) => ({ ...prev, [key]: value }));
-  };
+  return useMemo(() => {
+    const createSetter =
+      <K extends keyof ProviderSettings>(key: K) =>
+      (value: ProviderSettings[K]) => {
+        providerStateSetters[provider]((prev) => ({ ...prev, [key]: value }));
+      };
+
+    const hasBaseUrl =
+      provider === "custom" || provider === "lmstudio" || provider === "ollama";
+
+    return {
+      setApiKey: createSetter("apiKey"),
+      setModel: createSetter("model"),
+      setBaseUrl: hasBaseUrl ? createSetter("baseUrl") : undefined,
+      setThinking: createSetter("thinking"),
+      setTemperature: createSetter("temperature"),
+      setShowThoughts: createSetter("showThoughts"),
+    };
+  }, [provider, providerStateSetters]);
 }
 
 // Hook manages state for 8 providers with individual setters and orchestration logic
@@ -79,6 +97,10 @@ export function useSettings(): UseSettingsReturn {
     useState<Record<string, boolean>>(loadEnabledTools);
   const [smallModelMode, setSmallModelModeState] =
     useState<boolean>(loadSmallModelMode);
+  // False until the post-mount async decrypt has applied the real apiKeys.
+  // saveSettings gates on this — saving the placeholder blanks would wipe
+  // every stored encrypted key.
+  const [settingsLoaded, setSettingsLoaded] = useState<boolean>(false);
   // Modal-local mirror of server config.liveApiEnabled. Synced from
   // useRemoteConfig in App.tsx; not persisted to localStorage because the
   // device Setup-tab toggle can change the value out from under us.
@@ -87,6 +109,11 @@ export function useSettings(): UseSettingsReturn {
   const [liveApiEnabled, setLiveApiEnabledState] = useState<boolean>(false);
   const [liveApiEnabledDirty, setLiveApiEnabledDirty] =
     useState<boolean>(false);
+  // Surfaced after a failed persist so the modal can stay open with a visible
+  // error instead of closing with silent data loss (previously persistAllSettings
+  // swallowed errors and the saved* snapshots were committed before the
+  // encrypted write completed).
+  const [saveError, setSaveError] = useState<string | null>(null);
   // In-modal voice settings vs. persisted/applied values. Same split as
   // `model`/`savedModel` — saveSettings/cancelSettings synchronize them, but
   // the live voice session reads the `saved*` snapshots so mid-edit changes
@@ -154,23 +181,28 @@ export function useSettings(): UseSettingsReturn {
 
   const applyLoadedSettings = useCallback(
     (allSettings: typeof DEFAULT_SETTINGS) => {
-      setAnthropicSettings(allSettings.anthropic);
-      setGeminiSettings(allSettings.gemini);
-      setOpenaiSettings(allSettings.openai);
-      setMistralSettings(allSettings.mistral);
-      setOpenrouterSettings(allSettings.openrouter);
-      setLmstudioSettings(allSettings.lmstudio);
-      setOllamaSettings(allSettings.ollama);
-      setCustomSettings(allSettings.custom);
+      for (const p of Object.keys(allSettings) as Provider[]) {
+        providerStateSetters[p](() => allSettings[p]);
+      }
     },
-    [],
+    [providerStateSetters],
   );
 
-  useEffect(() => {
-    applyLoadedSettings(loadAllProviderSettings());
-  }, [applyLoadedSettings]);
+  // Post-mount: replace the synchronous placeholder settings (apiKey blanked)
+  // with the real values, decrypting each provider's apiKey from its at-rest
+  // envelope. Runs once; the synchronous useState initializers above already
+  // populated everything except the (async-decrypted) apiKey.
+  useEffect(
+    () =>
+      applyDecryptedSettings(applyLoadedSettings, () =>
+        setSettingsLoaded(true),
+      ),
+    [applyLoadedSettings],
+  );
 
-  const saveSettings = useCallback(() => {
+  const saveSettings = useCallback(async (): Promise<boolean> => {
+    if (!warnIfNotLoaded(settingsLoaded)) return false;
+
     const allSettings = buildAllProviderSettings(
       anthropicSettings,
       geminiSettings,
@@ -182,15 +214,38 @@ export function useSettings(): UseSettingsReturn {
       customSettings,
     );
 
-    saveCurrentSettings(provider, enabledTools, allSettings);
-    saveSmallModelMode(smallModelMode);
+    setSaveError(null);
+
+    // Persist FIRST and only commit the in-memory saved* snapshots after the
+    // encrypted write lands. The previous order (commit synchronously, then
+    // await persist) treated the modal as closed and routed off the new saved*
+    // values even when encryption/IndexedDB failed — the user saw silent data
+    // loss only on the next reload. Now a failed persist returns false, the
+    // modal stays open, and saveError surfaces it.
+    try {
+      await persistAllSettings(
+        provider,
+        enabledTools,
+        allSettings,
+        smallModelMode,
+      );
+    } catch (err) {
+      console.error("Failed to save provider settings", err);
+      setSaveError(errorMessage(err));
+
+      return false;
+    }
+
     voiceModeSettings.commit();
     setSavedModel(allSettings[provider].model);
     setSavedProvider(provider);
     setSavedThinking(allSettings[provider].thinking);
     setSettingsConfigured(true);
     setLiveApiEnabledDirty(false);
+
+    return true;
   }, [
+    settingsLoaded,
     provider,
     enabledTools,
     smallModelMode,
@@ -210,31 +265,18 @@ export function useSettings(): UseSettingsReturn {
     setEnabledToolsState(loadEnabledTools());
     setSmallModelModeState(loadSmallModelMode());
     voiceModeSettings.revert();
-    applyLoadedSettings(loadAllProviderSettings());
+    // Re-decrypt and restore saved provider settings (async; the apiKey lands a
+    // tick later, mirroring the post-mount load). Pass the same onLoaded as the
+    // post-mount effect so a cancel-during-initial-load (StrictMode remount,
+    // fast cancel-then-reopen) still settles settingsLoaded → true — otherwise
+    // the next Save would silently no-op via warnIfNotLoaded.
+    applyDecryptedSettings(applyLoadedSettings, () => setSettingsLoaded(true));
     // Clear dirty so the next sync from server re-seeds local state
     // (the user-toggle-then-cancel case otherwise leaves a stale value).
     setLiveApiEnabledDirty(false);
+    setSaveError(null);
   }, [applyLoadedSettings, voiceModeSettings]);
 
-  // Individual setters that update the current provider's settings
-  const setters = useMemo(() => {
-    const createSetter =
-      <K extends keyof ProviderSettings>(key: K) =>
-      (value: ProviderSettings[K]) =>
-        createProviderSetter(provider, providerStateSetters, key)(value);
-
-    const hasBaseUrl =
-      provider === "custom" || provider === "lmstudio" || provider === "ollama";
-
-    return {
-      setApiKey: createSetter("apiKey"),
-      setModel: createSetter("model"),
-      setBaseUrl: hasBaseUrl ? createSetter("baseUrl") : undefined,
-      setThinking: createSetter("thinking"),
-      setTemperature: createSetter("temperature"),
-      setShowThoughts: createSetter("showThoughts"),
-    };
-  }, [provider, providerStateSetters]);
   const {
     setApiKey,
     setModel,
@@ -242,11 +284,21 @@ export function useSettings(): UseSettingsReturn {
     setThinking,
     setTemperature,
     setShowThoughts,
-  } = setters;
+  } = useProviderSetters(provider, providerStateSetters);
   const setProvider = useCallback((newProvider: Provider) => {
     setProviderState(newProvider);
   }, []);
-  const hasApiKey = checkHasApiKey(provider);
+  // Reconcile presence with the *decrypted* in-memory key. decryptApiKey fails
+  // safe to "" for an orphaned/undecryptable envelope (e.g. the IndexedDB crypto
+  // key was reset while the localStorage envelope persisted), so reading the raw
+  // stored envelope would falsely report a usable key. currentSettings.apiKey is
+  // the decrypted value (blank until the post-mount load lands), so it matches
+  // what requests will actually send. lmstudio/ollama need no key — keep their
+  // "configured at all" signal via checkHasApiKey.
+  const hasApiKey =
+    provider === "lmstudio" || provider === "ollama"
+      ? checkHasApiKey(provider)
+      : Boolean(currentSettings.apiKey);
   const isToolEnabled = useCallback(
     (toolId: string) => enabledTools[toolId] ?? true,
     [enabledTools],
@@ -264,6 +316,12 @@ export function useSettings(): UseSettingsReturn {
     setProvider,
     apiKey: currentSettings.apiKey,
     setApiKey,
+    // Voice routing needs both voice-provider keys regardless of which provider
+    // is active in Settings, so it can resume a saved OpenAI record while
+    // current settings are Gemini (and vice versa) instead of falsely showing
+    // "key required". `currentSettings.apiKey` only reflects the active one.
+    openaiApiKey: openaiSettings.apiKey,
+    geminiApiKey: geminiSettings.apiKey,
     baseUrl: hasBaseUrl ? currentSettings.baseUrl : undefined,
     setBaseUrl: hasBaseUrl ? setBaseUrl : undefined,
     model: currentSettings.model,
@@ -287,6 +345,7 @@ export function useSettings(): UseSettingsReturn {
     isToolEnabled,
     smallModelMode,
     setSmallModelMode: setSmallModelModeState,
+    saveError,
     liveApiEnabled,
     liveApiEnabledDirty,
     setLiveApiEnabled,
@@ -302,5 +361,80 @@ export function useSettings(): UseSettingsReturn {
     turnDetection: voiceModeSettings.turnDetection,
     setTurnDetection: voiceModeSettings.setTurnDetection,
     savedTurnDetection: voiceModeSettings.savedTurnDetection,
+  };
+}
+
+/**
+ * Gate save until the post-mount decrypt has applied real apiKeys. Returns
+ * false (and logs) when still loading so the caller can bail before persisting
+ * blank placeholders that would overwrite stored encrypted keys.
+ * @param {boolean} settingsLoaded - True once decrypted settings have been applied
+ * @returns {boolean} True when save may proceed
+ */
+function warnIfNotLoaded(settingsLoaded: boolean): boolean {
+  if (settingsLoaded) return true;
+  console.warn(
+    "Settings not yet loaded; ignoring save to avoid wiping stored apiKeys",
+  );
+
+  return false;
+}
+
+/**
+ * Persist encrypted provider settings and the small-model-mode flag. Rejects
+ * when the encrypted write fails so saveSettings can keep the modal open and
+ * surface the error instead of committing the in-memory saved* snapshots
+ * against an empty at-rest envelope.
+ * @param {Provider} provider - Currently selected provider
+ * @param {Record<string, boolean>} enabledTools - Tool enabled states
+ * @param {AllProviderSettings} allSettings - Settings for every provider
+ * @param {boolean} smallModelMode - Small-model-mode flag
+ */
+async function persistAllSettings(
+  provider: Provider,
+  enabledTools: Record<string, boolean>,
+  allSettings: AllProviderSettings,
+  smallModelMode: boolean,
+): Promise<void> {
+  saveSmallModelMode(smallModelMode);
+  await saveCurrentSettings(provider, enabledTools, allSettings);
+}
+
+/**
+ * Extract a string error message from an unknown thrown value.
+ * @param {unknown} error - Caught value
+ * @returns {string} Message string
+ */
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Load and decrypt all provider settings, then apply them via the given setter.
+ * Returns a cleanup callback (for useEffect) that ignores a late-arriving load
+ * after unmount. Errors are logged, never thrown into render.
+ * @param {ProviderSettingsApplier} apply - Setter that writes loaded settings to state
+ * @param {() => void} onLoaded - Called after the load settles (success OR failure), skipped on unmount. Unlocks save even when decryption is broken (e.g., IndexedDB key reset) so the user can recover by typing fresh keys.
+ * @returns {() => void} Cleanup that cancels a pending apply
+ */
+function applyDecryptedSettings(
+  apply: ProviderSettingsApplier,
+  onLoaded?: () => void,
+): () => void {
+  let cancelled = false;
+
+  loadAllProviderSettingsAsync()
+    .then((loaded) => {
+      if (cancelled) return;
+      apply(loaded);
+      onLoaded?.();
+    })
+    .catch((err: unknown) => {
+      console.error("Failed to load provider settings", err);
+      if (!cancelled) onLoaded?.();
+    });
+
+  return () => {
+    cancelled = true;
   };
 }

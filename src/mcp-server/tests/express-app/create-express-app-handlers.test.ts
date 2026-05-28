@@ -5,7 +5,7 @@
 
 import Max from "max-api";
 import { describe, expect, it } from "vitest";
-import { setupExpressAppServer } from "./express-app-test-helpers.ts";
+import { setupExpressAppServer } from "../express-app-test-helpers.ts";
 
 // Type for mock Max module with test-specific properties
 type MockMax = typeof Max & {
@@ -54,16 +54,6 @@ describe("Handler Registration", () => {
     smallModelHandler(false);
   });
 
-  it("should set memoryEnabled with various inputs", () => {
-    const handler = mockMax.handlers.get("memoryEnabled") as (
-      input: unknown,
-    ) => void;
-
-    expect(handler).toBeDefined();
-    handler(1);
-    handler(0);
-  });
-
   it("should set memoryContent and coerce bang/null/undefined to empty", async () => {
     const handler = mockMax.handlers.get("memoryContent") as (
       input: unknown,
@@ -86,16 +76,6 @@ describe("Handler Registration", () => {
 
     handler(undefined);
     expect(await getConfigField("memoryContent")).toBe("");
-  });
-
-  it("should set memoryWritable with various inputs", () => {
-    const handler = mockMax.handlers.get("memoryWritable") as (
-      input: unknown,
-    ) => void;
-
-    expect(handler).toBeDefined();
-    handler(1);
-    handler(0);
   });
 
   it("should set compactOutput with various inputs", () => {

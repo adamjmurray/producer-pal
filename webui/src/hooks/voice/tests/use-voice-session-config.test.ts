@@ -57,8 +57,12 @@ vi.mock(import("#webui/hooks/voice/realtime-mcp-tools"), () => ({
 
 import { mapThinkingToRealtimeEffort } from "#webui/hooks/settings/config-builders";
 import { VOICE_SPEED_DEFAULT } from "#webui/hooks/settings/settings-helpers";
-import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import {
+  DEFAULT_TURN_DETECTION,
+  type TurnDetectionSettings,
+} from "#webui/hooks/settings/turn-detection-helpers";
 import { useVoiceSession } from "#webui/hooks/voice/use-voice-session";
+import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 
 const ORIGINAL_FETCH = globalThis.fetch;
 
@@ -113,6 +117,7 @@ async function connectAndReadAudio(
 describe("useVoiceSession turn-detection config", () => {
   it("maps server_vad turnDetection into audio.input", async () => {
     const turnDetection: TurnDetectionSettings = {
+      ...DEFAULT_TURN_DETECTION,
       mode: "server_vad",
       threshold: 0.7,
       silenceDurationMs: 350,
@@ -179,5 +184,28 @@ describe("useVoiceSession session config wiring", () => {
     const agentOptions = realtime.agents[0]!.options as { voice?: string };
 
     expect(agentOptions.voice).toBe("cedar");
+  });
+
+  it("threads the selected model into the session config", async () => {
+    await connectAndReadAudio({ ...PARAMS, model: "gpt-4o-realtime-preview" });
+    const { model } = realtime.constructed[0]!.options as { model?: string };
+
+    expect(model).toBe("gpt-4o-realtime-preview");
+  });
+
+  it("defaults the session model when none is provided", async () => {
+    await connectAndReadAudio(PARAMS);
+    const { model } = realtime.constructed[0]!.options as { model?: string };
+
+    expect(model).toBe(OPENAI_REALTIME_MODEL);
+  });
+
+  it("threads the selected model into the /voice-token request body", async () => {
+    await connectAndReadAudio({ ...PARAMS, model: "gpt-4o-realtime-preview" });
+    const tokenBody = JSON.parse(
+      (realtime.fetchSpy.mock.calls[0]![1] as { body: string }).body,
+    ) as { model: string };
+
+    expect(tokenBody.model).toBe("gpt-4o-realtime-preview");
   });
 });

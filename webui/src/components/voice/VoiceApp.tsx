@@ -14,7 +14,7 @@ import { VoiceTranscript } from "#webui/components/voice/VoiceTranscript";
 import { type useConversationTransfer } from "#webui/hooks/chat/use-conversation-transfer";
 import { type McpStatus } from "#webui/hooks/connection/use-mcp-connection";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { type ViewState } from "#webui/hooks/use-view-state";
+import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { useVoiceModeState } from "#webui/hooks/voice/use-voice-mode-state";
 import { type useVoicePersistence } from "#webui/hooks/voice/use-voice-persistence";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
@@ -32,15 +32,17 @@ export interface VoiceAppProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenContext: () => void;
   onForeignRecord: (record: ConversationRecord) => void;
   clearViewingMode: () => void;
   setModeContext: (ctx: ModeContext) => void;
 }
 
 /**
- * Voice mode: OpenAI Realtime API voice UI. The voice hook graph lives in
- * `useVoiceModeState`; this component is just the JSX shell wrapped in
- * AppShell.
+ * Voice mode UI. Backed by OpenAI Realtime or Gemini Live depending on the
+ * saved provider/model — `realtimeProvider()` picks the active backend. The
+ * voice hook graph lives in `useVoiceModeState`; this component is just the
+ * JSX shell wrapped in AppShell.
  *
  * @param props - VoiceAppProps
  * @returns Voice screen wrapped in AppShell
@@ -51,6 +53,7 @@ export function VoiceApp(props: VoiceAppProps) {
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    onOpenContext,
     clearViewingMode,
   } = props;
 
@@ -59,8 +62,10 @@ export function VoiceApp(props: VoiceAppProps) {
     persistence,
     transfer,
     messages,
-    openAiKey,
-    firefoxDetected,
+    voiceKey,
+    voiceProviderName,
+    isUnsupportedBrowser,
+    activeVoiceId,
     historyPanelOpen,
     setHistoryPanelOpen,
     isConnected,
@@ -70,7 +75,9 @@ export function VoiceApp(props: VoiceAppProps) {
     headerInfo,
   } = useVoiceModeState(props);
 
-  const savedVoice = props.settings.savedRealtimeVoice;
+  // The validated voice the active backend will use (provider-aware), not the
+  // raw shared saved field — so the controls' pending-change notice is accurate.
+  const savedVoice = activeVoiceId;
 
   const conversationPanel = buildConversationPanel({
     isOpen: historyPanelOpen,
@@ -91,12 +98,14 @@ export function VoiceApp(props: VoiceAppProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenContext={onOpenContext}
     >
       <VoiceTranscript
         messages={messages}
         assistantThinking={voice.assistantThinking}
-        firefoxDetected={firefoxDetected}
-        hasOpenAiKey={openAiKey != null}
+        isUnsupportedBrowser={isUnsupportedBrowser}
+        hasVoiceKey={voiceKey != null}
+        providerName={voiceProviderName}
       />
 
       {voice.error && (
@@ -116,10 +125,10 @@ export function VoiceApp(props: VoiceAppProps) {
 
       <VoiceControls
         voice={voice}
-        openAiKey={openAiKey}
+        voiceKey={voiceKey}
         isBusy={isBusy}
         isConnected={isConnected}
-        isUnsupportedBrowser={firefoxDetected}
+        isUnsupportedBrowser={isUnsupportedBrowser}
         onToggleConnection={onToggleConnection}
         savedVoice={savedVoice}
         thinking={props.settings.thinking}

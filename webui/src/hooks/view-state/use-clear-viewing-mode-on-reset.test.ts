@@ -8,7 +8,7 @@
  */
 import { renderHook } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { useClearViewingModeOnReset } from "#webui/hooks/use-clear-viewing-mode-on-reset";
+import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
 
 describe("useClearViewingModeOnReset", () => {
   it("clears when the active id transitions from set to null (delete reset)", () => {

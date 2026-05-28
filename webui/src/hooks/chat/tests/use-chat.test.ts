@@ -25,6 +25,21 @@ vi.mock(import("#webui/hooks/chat/helpers/streaming-helpers"), async () => {
 const mockAdapter = createMockAdapter();
 
 /**
+ * Build an adapter whose client sets toolLimitReached after streaming once.
+ * @returns Adapter that simulates hitting the tool-call limit
+ */
+function createToolLimitAdapter() {
+  return createScriptedAdapter(mockAdapter, (client) => {
+    client.toolLimitReached = true;
+
+    return async function* send(message: string) {
+      client.chatHistory.push({ role: "user", content: message });
+      yield [...client.chatHistory];
+    };
+  });
+}
+
+/**
  * Render useChat with default props, send "Hello", and return the result.
  * @param props - Optional props override
  * @returns Hook result ref after sending a message
@@ -263,6 +278,36 @@ describe("useChat", () => {
 
       expect(firstPart).toHaveProperty("content");
       expect((firstPart as { content: string }).content).toBe("Hello");
+    });
+
+    it("defaults toolLimitReached to false", async () => {
+      const result = await renderAndSend();
+
+      expect(result.current.toolLimitReached).toBe(false);
+    });
+
+    it("reflects toolLimitReached from the client after a stream", async () => {
+      const result = await renderAndSend({
+        ...defaultProps,
+        adapter: createToolLimitAdapter(),
+      });
+
+      expect(result.current.toolLimitReached).toBe(true);
+    });
+
+    it("clears toolLimitReached on clearConversation", async () => {
+      const result = await renderAndSend({
+        ...defaultProps,
+        adapter: createToolLimitAdapter(),
+      });
+
+      expect(result.current.toolLimitReached).toBe(true);
+
+      await act(() => {
+        result.current.clearConversation();
+      });
+
+      expect(result.current.toolLimitReached).toBe(false);
     });
 
     it("covers getChatHistory callback when sendMessage throws non-rate-limit error", async () => {

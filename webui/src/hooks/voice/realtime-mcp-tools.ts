@@ -10,18 +10,13 @@ import {
   createConnectedMcpClient,
   filterEnabledTools,
 } from "#webui/chat/helpers/mcp-client-helpers";
+import { callMcpToolToString } from "#webui/hooks/voice/voice-mcp-call";
 
 /** Result of creating Realtime SDK tools from MCP */
 export interface RealtimeMcpTools {
   tools: Tool[];
   mcpClient: Client;
 }
-
-// Cap how long a voice tool call can run. The MCP SDK's default is 60s; a stuck
-// Live operation would otherwise block the voice turn that long with no
-// feedback. On timeout the SDK rejects with an McpError, which is caught below
-// and returned to the model as a normal tool-error string so it can recover.
-const VOICE_TOOL_TIMEOUT_MS = 30_000;
 
 /**
  * Build OpenAI Realtime SDK tools from a Producer Pal MCP server. Each tool's
@@ -50,59 +45,16 @@ export async function createRealtimeMcpTools(
       // OpenAI's strict-mode JSON schema does not accept.
       parameters: normalizeJsonSchema(t.inputSchema),
       strict: false,
-      execute: async (args: unknown) => {
-        try {
-          const result = await mcpClient.callTool(
-            {
-              name: t.name,
-              arguments: args as Record<string, unknown>,
-            },
-            undefined,
-            { timeout: VOICE_TOOL_TIMEOUT_MS },
-          );
-
-          const content = result.content as Array<{
-            type: string;
-            text?: string;
-          }>;
-
-          const text = extractMcpText(content);
-
-          // Return MCP errors as a normal tool output (prefixed) instead of
-          // throwing. The Realtime SDK's default error-handling can leave the
-          // voice session in a broken state — returning the error text as the
-          // function output lets the model see it and respond naturally.
-          if (result.isError) {
-            return `Error from ${t.name}: ${text}`;
-          }
-
-          return text;
-        } catch (err) {
-          // Same rationale for transport/network errors raised by the MCP client.
-          const message = err instanceof Error ? err.message : String(err);
-
-          return `Error calling ${t.name}: ${message}`;
-        }
-      },
+      execute: async (args: unknown) =>
+        await callMcpToolToString(
+          mcpClient,
+          t.name,
+          (args ?? {}) as Record<string, unknown>,
+        ),
     }),
   );
 
   return { tools, mcpClient };
-}
-
-/**
- * Extract text content from an MCP content array.
- *
- * @param content - MCP content items (text, image, etc.)
- * @returns Concatenated text from all text content items
- */
-function extractMcpText(
-  content: Array<{ type: string; text?: string }>,
-): string {
-  return content
-    .filter((c): c is { type: "text"; text: string } => c.type === "text")
-    .map((c) => c.text)
-    .join("\n");
 }
 
 type JsonObjectSchemaNonStrict = {

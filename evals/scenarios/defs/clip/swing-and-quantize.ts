@@ -41,7 +41,9 @@ export const swingAndQuantize: EvalScenario = {
       turn: 2,
       args: expect.objectContaining({
         ids: expect.any(String),
-        transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
+        transforms: expect.arrayContaining([
+          expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
+        ]),
       }) as Record<string, unknown>,
     },
 
@@ -52,7 +54,9 @@ export const swingAndQuantize: EvalScenario = {
       turn: 3,
       args: expect.objectContaining({
         ids: expect.any(String),
-        transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
+        transforms: expect.arrayContaining([
+          expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
+        ]),
       }) as Record<string, unknown>,
     },
 
@@ -102,9 +106,9 @@ export const swingAndQuantize: EvalScenario = {
       turn: 4,
       args: expect.objectContaining({
         ids: expect.any(String),
-        transforms: expect.stringMatching(
-          /Ab1: timing = quant\((1\/4t|0\.25)\)/,
-        ),
+        transforms: expect.arrayContaining([
+          expect.stringMatching(/Ab1: timing = quant\((1\/4t|0\.25)\)/),
+        ]),
       }) as Record<string, unknown>,
     },
   ],

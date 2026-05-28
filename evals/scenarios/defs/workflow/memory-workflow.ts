@@ -18,11 +18,8 @@ export const memoryWorkflow: EvalScenario = {
   kind: "regression",
   liveSet: "basic-midi-4-track",
 
-  // Enable memory feature for this scenario
   config: {
-    memoryEnabled: true,
     memoryContent: "",
-    memoryWritable: true,
   },
 
   messages: [

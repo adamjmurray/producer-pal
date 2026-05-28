@@ -17,6 +17,7 @@ import { ChatStart } from "./ChatStart";
 import { ChatInput } from "./controls/ChatInput";
 import { type HeaderInfo } from "./controls/header/HeaderActions";
 import { RateLimitIndicator } from "./controls/RateLimitIndicator";
+import { ToolLimitNotice } from "./controls/ToolLimitNotice";
 import { MessageList } from "./MessageList";
 
 /**
@@ -26,6 +27,7 @@ interface ChatScreenProps {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   rateLimitState: RateLimitState | null;
+  toolLimitReached: boolean;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (messageIndex: number) => Promise<void>;
   handleEdit: (messageIndex: number, newMessage: string) => Promise<void>;
@@ -38,6 +40,7 @@ interface ChatScreenProps {
   onOpenSettings: () => void;
   onOpenToolsSettings: () => void;
   onOpenConnectionSettings: () => void;
+  onOpenContext: () => void;
   onStop: () => void;
   showTimestamps: boolean;
   showTokenUsage: boolean;
@@ -50,6 +53,7 @@ interface ChatScreenProps {
  * @param props.messages - Chat messages
  * @param props.isAssistantResponding - Whether assistant is currently responding
  * @param props.rateLimitState - Rate limit retry state
+ * @param props.toolLimitReached - Whether the last response hit the tool-call limit
  * @param props.handleSend - Send message handler
  * @param props.handleRetry - Retry message handler
  * @param props.handleEdit - Edit message handler
@@ -72,6 +76,7 @@ export function ChatScreen(props: ChatScreenProps) {
     messages,
     isAssistantResponding,
     rateLimitState,
+    toolLimitReached,
     handleSend,
     handleRetry,
     handleEdit,
@@ -82,6 +87,7 @@ export function ChatScreen(props: ChatScreenProps) {
     onOpenSettings,
     onOpenToolsSettings,
     onOpenConnectionSettings,
+    onOpenContext,
     onStop,
     showTimestamps,
     showTokenUsage,
@@ -101,6 +107,7 @@ export function ChatScreen(props: ChatScreenProps) {
       onOpenSettings={onOpenSettings}
       onOpenToolsSettings={onOpenToolsSettings}
       onOpenConnectionSettings={onOpenConnectionSettings}
+      onOpenContext={onOpenContext}
     >
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
@@ -130,6 +137,18 @@ export function ChatScreen(props: ChatScreenProps) {
           maxAttempts={rateLimitState.maxAttempts}
           retryDelayMs={rateLimitState.delayMs}
           onCancel={onStop}
+        />
+      )}
+
+      {toolLimitReached && !isAssistantResponding && (
+        <ToolLimitNotice
+          onContinue={() =>
+            void handleSend(
+              "Please continue from where you left off.",
+              currentOverrides,
+            )
+          }
+          disabled={isAssistantResponding}
         />
       )}
 

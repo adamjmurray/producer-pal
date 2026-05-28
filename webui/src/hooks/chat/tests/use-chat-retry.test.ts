@@ -105,6 +105,25 @@ function createSendMessageFailingAdapter(
 
 const defaultProps = createDefaultProps(mockAdapter);
 
+/**
+ * Render useChat with a given adapter override and call handleSend once.
+ * @param adapter - Adapter override for the props
+ * @param message - The message to send (default "Hello")
+ * @returns The renderHook result
+ */
+async function sendWithAdapter(
+  adapter: typeof mockAdapter,
+  message = "Hello",
+): Promise<ReturnType<typeof renderHook<ReturnType<typeof useChat>, unknown>>> {
+  const rendered = renderHook(() => useChat({ ...defaultProps, adapter }));
+
+  await act(async () => {
+    await rendered.result.current.handleSend(message);
+  });
+
+  return rendered;
+}
+
 describe("useChat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -597,13 +616,7 @@ describe("useChat", () => {
           },
       );
 
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
-      );
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
-      });
+      await sendWithAdapter(rateLimitAdapter);
 
       expect(receivedMessages).toStrictEqual(["Hello", "Hello"]);
     });
@@ -642,13 +655,7 @@ describe("useChat", () => {
           },
       );
 
-      const { result } = renderHook(() =>
-        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
-      );
-
-      await act(async () => {
-        await result.current.handleSend("Hello");
-      });
+      await sendWithAdapter(rateLimitAdapter);
 
       // First call should have original message, retry should have "continue"
       expect(receivedMessages).toStrictEqual(["Hello", "continue"]);

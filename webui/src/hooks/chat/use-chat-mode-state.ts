@@ -19,9 +19,9 @@ import {
 } from "#webui/hooks/connection/use-mcp-connection";
 import { type UseRemoteConfigReturn } from "#webui/hooks/connection/use-remote-config";
 import { useSyncSmallModelMode } from "#webui/hooks/connection/use-sync-small-model-mode";
-import { useClearViewingModeOnReset } from "#webui/hooks/use-clear-viewing-mode-on-reset";
 import { type PreferencesSettings } from "#webui/hooks/use-preferences-settings";
-import { type ViewState } from "#webui/hooks/use-view-state";
+import { useClearViewingModeOnReset } from "#webui/hooks/view-state/use-clear-viewing-mode-on-reset";
+import { type ViewState } from "#webui/hooks/view-state/use-view-state";
 import { type ConversationRecord } from "#webui/lib/conversation-db";
 import { type UseSettingsReturn } from "#webui/types/settings";
 import { getBaseUrl, LOCAL_PROVIDER_API_KEY } from "#webui/utils/provider-url";

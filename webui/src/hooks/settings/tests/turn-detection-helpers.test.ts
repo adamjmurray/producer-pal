@@ -8,7 +8,11 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  DEFAULT_GEMINI_VAD,
   DEFAULT_TURN_DETECTION,
+  GEMINI_VAD_PREFIX_MAX,
+  GEMINI_VAD_SILENCE_MAX,
+  GEMINI_VAD_SILENCE_MIN,
   loadTurnDetection,
   saveTurnDetection,
   TURN_DETECTION_SILENCE_MAX,
@@ -32,6 +36,7 @@ describe("turn-detection-helpers", () => {
 
     it("round-trips a valid settings object", () => {
       const settings: TurnDetectionSettings = {
+        ...DEFAULT_TURN_DETECTION,
         mode: "semantic_vad",
         threshold: 0.7,
         silenceDurationMs: 400,
@@ -104,6 +109,77 @@ describe("turn-detection-helpers", () => {
       expect(loaded.silenceDurationMs).toBe(
         DEFAULT_TURN_DETECTION.silenceDurationMs,
       );
+    });
+  });
+
+  describe("Gemini VAD", () => {
+    it("defaults the gemini block when absent", () => {
+      expect(loadTurnDetection().gemini).toStrictEqual(DEFAULT_GEMINI_VAD);
+    });
+
+    it("round-trips a valid gemini block", () => {
+      const gemini = {
+        startSensitivity: "high" as const,
+        endSensitivity: "high" as const,
+        silenceDurationMs: 500,
+        prefixPaddingMs: 100,
+        interruptResponse: false,
+      };
+
+      saveTurnDetection({ ...DEFAULT_TURN_DETECTION, gemini });
+      expect(loadTurnDetection().gemini).toStrictEqual(gemini);
+    });
+
+    it("falls back to defaults for unknown sensitivity values", () => {
+      localStorage.setItem(
+        KEY,
+        JSON.stringify({
+          gemini: { startSensitivity: "ludicrous", endSensitivity: 42 },
+        }),
+      );
+
+      const { gemini } = loadTurnDetection();
+
+      expect(gemini.startSensitivity).toBe(DEFAULT_GEMINI_VAD.startSensitivity);
+      expect(gemini.endSensitivity).toBe(DEFAULT_GEMINI_VAD.endSensitivity);
+    });
+
+    it("defaults gemini barge-in on, ignoring a non-boolean stored value", () => {
+      expect(loadTurnDetection().gemini.interruptResponse).toBe(true);
+
+      localStorage.setItem(
+        KEY,
+        JSON.stringify({ gemini: { interruptResponse: "nope" } }),
+      );
+      expect(loadTurnDetection().gemini.interruptResponse).toBe(true);
+    });
+
+    it("clamps gemini silence and prefix padding to their bounds", () => {
+      localStorage.setItem(
+        KEY,
+        JSON.stringify({
+          gemini: { silenceDurationMs: 99999, prefixPaddingMs: -5 },
+        }),
+      );
+
+      const { gemini } = loadTurnDetection();
+
+      expect(gemini.silenceDurationMs).toBe(GEMINI_VAD_SILENCE_MAX);
+      expect(gemini.prefixPaddingMs).toBe(0);
+    });
+
+    it("clamps a too-low gemini silence up to the min", () => {
+      localStorage.setItem(
+        KEY,
+        JSON.stringify({
+          gemini: { silenceDurationMs: -1, prefixPaddingMs: 99999 },
+        }),
+      );
+
+      const { gemini } = loadTurnDetection();
+
+      expect(gemini.silenceDurationMs).toBe(GEMINI_VAD_SILENCE_MIN);
+      expect(gemini.prefixPaddingMs).toBe(GEMINI_VAD_PREFIX_MAX);
     });
   });
 });

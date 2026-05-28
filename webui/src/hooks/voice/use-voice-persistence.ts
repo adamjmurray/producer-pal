@@ -6,7 +6,10 @@
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { mergeVoiceHistory } from "#webui/hooks/voice/use-voice-persistence-helpers";
-import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
+import {
+  isGeminiRealtimeModelId,
+  OPENAI_REALTIME_MODEL,
+} from "#webui/lib/constants/models";
 import {
   type ConversationRecord,
   type ConversationSummary,
@@ -25,6 +28,9 @@ const AUTOSAVE_DEBOUNCE_MS = 600;
 interface UseVoicePersistenceParams {
   /** Current live voice transcript from useVoiceSession (drives auto-save). */
   liveHistory: RealtimeItem[];
+  /** Realtime model id to stamp on saved voice records. Defaults to
+   * OPENAI_REALTIME_MODEL. */
+  model?: string;
   /** Invoked when a non-voice (chat) record is encountered. The parent (App.tsx)
    * switches modes via viewingMode so the chat hook can pick up the conversation
    * from the URL hash. When omitted, the hook falls back to clearing the active
@@ -42,6 +48,16 @@ interface UseVoicePersistenceParams {
 export interface UseVoicePersistenceReturn {
   conversations: ConversationSummary[];
   activeConversationId: string | null;
+  /** Realtime model of the currently-loaded saved record, or null for a fresh
+   * (unsaved) session. Lets the header lock show the model the conversation was
+   * recorded with rather than the current-settings model when viewing or
+   * continuing a saved conversation. */
+  activeRecordModel: string | null;
+  /** Provider stored on the currently-loaded saved record, or null for a fresh
+   * session. Drives record-aware voice routing — a loaded Gemini record resumes
+   * on the Gemini backend even when current settings select OpenAI (and vice
+   * versa), instead of mounting the wrong backend with a missing-key state. */
+  activeRecordProvider: string | null;
   /** Items to render when no live session is producing transcript (saved record). */
   savedItems: RealtimeItem[];
   refreshList: () => Promise<void>;
@@ -67,12 +83,23 @@ export interface UseVoicePersistenceReturn {
 export function useVoicePersistence(
   params: UseVoicePersistenceParams,
 ): UseVoicePersistenceReturn {
-  const { liveHistory, onForeignRecord, onLiveRecordDeleted } = params;
+  const {
+    liveHistory,
+    model = OPENAI_REALTIME_MODEL,
+    onForeignRecord,
+    onLiveRecordDeleted,
+  } = params;
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(() => getHashId());
   const [savedItems, setSavedItems] = useState<RealtimeItem[]>([]);
+  const [activeRecordModel, setActiveRecordModel] = useState<string | null>(
+    null,
+  );
+  const [activeRecordProvider, setActiveRecordProvider] = useState<
+    string | null
+  >(null);
   const activeIdRef = useRef(activeConversationId);
   const createdAtRef = useRef<number | null>(null);
   const bookmarkedRef = useRef(false);
@@ -140,6 +167,8 @@ export function useVoicePersistence(
       createdAtRef.current = record.createdAt;
       bookmarkedRef.current = record.bookmarked;
       titleRef.current = record.title;
+      setActiveRecordModel(record.model ?? null);
+      setActiveRecordProvider(record.provider ?? null);
       const items = (record.voiceHistory ?? []) as RealtimeItem[];
 
       priorItemsRef.current = items;
@@ -162,6 +191,7 @@ export function useVoicePersistence(
           createdAt: createdAtRef.current,
           bookmarked: bookmarkedRef.current,
           title: titleRef.current,
+          model,
         },
         () => canceledIdsRef.current.has(id),
       ).then((record) => {
@@ -173,13 +203,24 @@ export function useVoicePersistence(
         if (canceledIdsRef.current.has(id)) return;
         createdAtRef.current = record.createdAt;
         titleRef.current = record.title;
-        if (activeIdRef.current !== id) setActiveId(id);
+
+        // Adopt the freshly-reserved id only if we're still on this pending-new
+        // conversation. If the user clicked New or selected a foreign record
+        // while this first save was in flight, navigation cleared/replaced
+        // pendingNewIdRef (and set activeId to null or the foreign id) — re-
+        // asserting `id` here would point the hash at an abandoned record while
+        // the screen shows another. The plain `activeIdRef.current !== id`
+        // check couldn't tell adoption from that stale-id race.
+        if (activeIdRef.current == null && pendingNewIdRef.current === id) {
+          setActiveId(id);
+        }
+
         void refreshList();
       });
     }, AUTOSAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(timer);
-  }, [liveHistory, refreshList, setActiveId]);
+  }, [liveHistory, model, refreshList, setActiveId]);
 
   const switchConversation = useCallback(
     async (id: string) => {
@@ -189,6 +230,8 @@ export function useVoicePersistence(
       if (!record) {
         setActiveId(null);
         setSavedItems([]);
+        setActiveRecordModel(null);
+        setActiveRecordProvider(null);
         priorItemsRef.current = [];
 
         return;
@@ -211,6 +254,8 @@ export function useVoicePersistence(
       createdAtRef.current = record.createdAt;
       bookmarkedRef.current = record.bookmarked;
       titleRef.current = record.title;
+      setActiveRecordModel(record.model ?? null);
+      setActiveRecordProvider(record.provider ?? null);
       const items = (record.voiceHistory ?? []) as RealtimeItem[];
 
       priorItemsRef.current = items;
@@ -227,6 +272,8 @@ export function useVoicePersistence(
     priorItemsRef.current = [];
     pendingNewIdRef.current = null;
     setSavedItems([]);
+    setActiveRecordModel(null);
+    setActiveRecordProvider(null);
     setActiveId(null);
   }, [setActiveId]);
 
@@ -297,9 +344,32 @@ export function useVoicePersistence(
     [conversations, refreshList],
   );
 
+  // Handle browser Back/Forward: re-route to whatever conversation the URL hash
+  // now points at. Without this the voice page ignores history navigation, so a
+  // chat→voice handoff left a hash entry that desynced from the screen on Back.
+  // setHashId() uses replaceState (which fires no hashchange), so every event
+  // here is a genuine user navigation — no programmatic-set guard is needed
+  // (unlike the chat hook). switchConversation already hands foreign (chat)
+  // records back to App via onForeignRecord.
+  useEffect(() => {
+    const handler = () => {
+      const hashId = getHashId();
+
+      if (hashId === activeIdRef.current) return;
+      if (hashId) void switchConversation(hashId);
+      else startNewConversation();
+    };
+
+    window.addEventListener("hashchange", handler);
+
+    return () => window.removeEventListener("hashchange", handler);
+  }, [switchConversation, startNewConversation]);
+
   return {
     conversations,
     activeConversationId,
+    activeRecordModel,
+    activeRecordProvider,
     savedItems,
     refreshList,
     switchConversation,
@@ -346,13 +416,14 @@ interface SaveContext {
   createdAt: number | null;
   bookmarked: boolean;
   title: string | null;
+  model: string;
 }
 
 /**
  * Persist the current live voice transcript under the given conversation id.
  * @param id - Conversation id (existing or freshly generated)
  * @param items - Live RealtimeItem history
- * @param ctx - Snapshot of metadata refs (createdAt, bookmarked, manual title)
+ * @param ctx - Snapshot of metadata refs (createdAt, bookmarked, title, model)
  * @param isCanceled - Returns true if the record was deleted; bail before writing
  * @returns The saved record, or null if the save was canceled
  */
@@ -371,9 +442,16 @@ async function saveVoiceRecord(
     createdAt: existing?.createdAt ?? ctx.createdAt ?? now,
     updatedAt: now,
     bookmarked: existing?.bookmarked ?? ctx.bookmarked,
-    provider: "openai",
-    model: OPENAI_REALTIME_MODEL,
-    modelLabel: OPENAI_REALTIME_MODEL,
+    // First-write-wins (like createdAt/bookmarked): a record keeps the provider
+    // and model it was created with. Provider is derived from the model id (the
+    // active backend) so a Gemini voice record isn't mislabeled "OpenAI" in the
+    // sidebar/export; continuing it (Stop → Talk) under different current
+    // settings must not silently re-stamp the original provider/model/label.
+    provider:
+      existing?.provider ??
+      (isGeminiRealtimeModelId(ctx.model) ? "gemini" : "openai"),
+    model: existing?.model ?? ctx.model,
+    modelLabel: existing?.modelLabel ?? ctx.model,
     thinking: null,
     temperature: null,
     showThoughts: null,

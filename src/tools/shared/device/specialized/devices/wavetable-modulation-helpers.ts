@@ -49,12 +49,16 @@ const MAX_TARGETS = 512;
 /**
  * Resolve the target index for a named parameter in the modulation matrix.
  * Iterates `get_modulation_target_parameter_name` until the sentinel (number)
- * is returned. Returns -1 when the target is not found.
+ * is returned. Matching is case-insensitive and trims surrounding whitespace
+ * (mirroring source resolution); LLMs case-mangle param names. Returns -1 when
+ * the target is not found.
  * @param device - LiveAPI device object
  * @param target - Parameter name to find
  * @returns Target index (0-based), or -1 if not found
  */
 export function resolveTargetIndex(device: LiveAPI, target: string): number {
+  const needle = target.trim().toLowerCase();
+
   for (let i = 0; i < MAX_TARGETS; i++) {
     const name = device.call("get_modulation_target_parameter_name", i);
 
@@ -63,7 +67,7 @@ export function resolveTargetIndex(device: LiveAPI, target: string): number {
       break;
     }
 
-    if (name === target) {
+    if (typeof name === "string" && name.toLowerCase() === needle) {
       return i;
     }
   }
@@ -73,6 +77,7 @@ export function resolveTargetIndex(device: LiveAPI, target: string): number {
 
 /**
  * Find a DeviceParameter child by name (checks getProperty("name") on each).
+ * Matching is case-insensitive and trims surrounding whitespace.
  * @param device - LiveAPI device object
  * @param name - Parameter name to find
  * @returns The matching LiveAPI parameter, or undefined
@@ -81,9 +86,12 @@ export function findParamChild(
   device: LiveAPI,
   name: string,
 ): LiveAPI | undefined {
+  const needle = name.trim().toLowerCase();
   const children = device.getChildren("parameters");
 
-  return children.find((p) => p.getProperty("name") === name);
+  return children.find(
+    (p) => String(p.getProperty("name")).toLowerCase() === needle,
+  );
 }
 
 /**
@@ -126,6 +134,16 @@ export function setModulationAction(
   if (!Number.isFinite(a)) {
     console.warn(
       `${toolName}: setModulation amount must be a finite number (got "${String(args[2])}")`,
+    );
+
+    return;
+  }
+
+  // Enforce documented -1..1 contract. Live may clamp internally, but writing
+  // an out-of-range amount means the request didn't say what the caller meant.
+  if (Math.abs(a) > 1) {
+    console.warn(
+      `${toolName}: setModulation amount must be in -1..1 (got ${a})`,
     );
 
     return;
@@ -218,6 +236,14 @@ export function addModulationTargetAction(
     return;
   }
 
+  if (!isParameterModulatable(device, param)) {
+    console.warn(
+      `${toolName}: addModulationTarget "${name}" — parameter is not modulatable`,
+    );
+
+    return;
+  }
+
   device.call("add_parameter_to_modulation_matrix", toLiveApiId(param.id));
 }
 
@@ -305,6 +331,14 @@ function ensureModulationTarget(
     return -1;
   }
 
+  if (!isParameterModulatable(device, param)) {
+    console.warn(
+      `${toolName}: setModulation target "${target}" — parameter is not modulatable`,
+    );
+
+    return -1;
+  }
+
   device.call("add_parameter_to_modulation_matrix", toLiveApiId(param.id));
   targetIndex = resolveTargetIndex(device, target);
 
@@ -315,4 +349,17 @@ function ensureModulationTarget(
   }
 
   return targetIndex;
+}
+
+/**
+ * Whether the device's `is_parameter_modulatable` returns 1 for this child.
+ * Pre-check before `add_parameter_to_modulation_matrix` so we don't smuggle a
+ * non-modulatable param into the matrix (mirrors the read-side filter in
+ * `readOptions.modulatableParameters`).
+ * @param device - LiveAPI device object
+ * @param param - DeviceParameter child to test
+ * @returns true when modulatable
+ */
+function isParameterModulatable(device: LiveAPI, param: LiveAPI): boolean {
+  return device.call("is_parameter_modulatable", toLiveApiId(param.id)) === 1;
 }

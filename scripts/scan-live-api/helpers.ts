@@ -91,11 +91,13 @@ export async function getProperty(
 }
 
 /**
- * Get a property value, extracted and prefix-stripped
+ * Get a property value as a string. Reads the first element of the
+ * `result:[...]` array that `get` operations return — strings come back
+ * unquoted, scalars (numbers/bools) are stringified.
  * @param baseUrl - Base URL
  * @param path - Live API path
  * @param property - Property name
- * @returns The property value (without the leading property name), or null
+ * @returns The first array element, or null if the result couldn't be parsed
  */
 export async function getPropertyValue(
   baseUrl: string,
@@ -106,20 +108,15 @@ export async function getPropertyValue(
 
   if (!raw) return null;
 
-  const match = /result:"((?:[^"\\]|\\.)*)"/.exec(raw);
+  const match = /result:\[(?:"((?:[^"\\]|\\.)*)"|([^,\]]+))/.exec(raw);
 
   if (!match) return null;
 
-  const unescaped = (match[1] as string)
-    .replaceAll("\\n", "\n")
-    .replaceAll("\\\\", "\\");
+  const value = match[1] ?? match[2];
 
-  // `get` returns "<property> <value>" — strip the property prefix
-  const prefix = `${property} `;
+  if (value == null) return null;
 
-  return unescaped.startsWith(prefix)
-    ? unescaped.slice(prefix.length)
-    : unescaped;
+  return value.replaceAll("\\n", "\n").replaceAll("\\\\", "\\");
 }
 
 /**

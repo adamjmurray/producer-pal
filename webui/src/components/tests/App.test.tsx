@@ -39,8 +39,24 @@ vi.mock(import("#webui/hooks/use-update-check"), () => ({
   useUpdateCheck: () => null,
 }));
 
-vi.mock(import("#webui/hooks/use-view-state"), () => ({
+vi.mock(import("#webui/hooks/view-state/use-view-state"), () => ({
   useViewState: vi.fn(),
+}));
+
+// ContextScreen wires CodeMirror + a server fetch; stub it so App tests stay
+// focused on the overlay open/close plumbing.
+vi.mock(import("#webui/components/context/ContextScreen"), () => ({
+  ContextScreen: (props: { onClose?: () => void } = {}) => (
+    <div data-testid="context-stub">
+      <button
+        type="button"
+        aria-label="Close project context"
+        onClick={props.onClose}
+      >
+        close
+      </button>
+    </div>
+  ),
 }));
 
 import { useChat } from "#webui/hooks/chat/use-chat";
@@ -48,7 +64,7 @@ import { useConversations } from "#webui/hooks/chat/use-conversations";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
-import { useViewState } from "#webui/hooks/use-view-state";
+import { useViewState } from "#webui/hooks/view-state/use-view-state";
 import { mockSettingsHook, setupDefaultMocks } from "./App-test-helpers";
 import { App } from "#webui/components/App";
 
@@ -240,7 +256,7 @@ describe("App", () => {
   describe("settings interactions", () => {
     it("calls saveSettings when save button is clicked in settings screen", async () => {
       vi.useFakeTimers();
-      const mockSaveSettings = vi.fn();
+      const mockSaveSettings = vi.fn().mockResolvedValue(true);
 
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
@@ -258,8 +274,12 @@ describe("App", () => {
         fireEvent.click(saveButton);
       }
 
-      await act(() => {
-        vi.advanceTimersByTime(SETTINGS_ANIMATION_MS);
+      // saveSettings is async (returns Promise<boolean>); the close-animation
+      // setTimeout is now scheduled inside its .then. Flush microtasks first
+      // so the setTimeout is queued, then advance through the animation so the
+      // afterClose (post-save RPCs + savePreferencesSettings) actually runs.
+      await act(async () => {
+        await vi.runAllTimersAsync();
       });
 
       expect(mockSaveSettings).toHaveBeenCalledOnce();
@@ -437,6 +457,137 @@ describe("App", () => {
       expect(mockSetViewState).toHaveBeenCalledWith({
         settingsTab: "preferences",
       });
+    });
+  });
+
+  describe("context overlay", () => {
+    const setupContextState = (contextOpen: boolean) => {
+      const mockSetViewState = vi.fn();
+
+      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
+        viewState: {
+          historyPanelOpen: false,
+          settingsOpen: false,
+          settingsTab: "connection",
+          contextOpen,
+        },
+        setViewState: mockSetViewState,
+      });
+
+      return mockSetViewState;
+    };
+
+    it("opens the context overlay via the header button", () => {
+      const mockSetViewState = setupContextState(false);
+      const { container } = render(<App />);
+      const btn = container.querySelector(
+        'button[aria-label="Project context"]',
+      );
+
+      if (btn) fireEvent.click(btn);
+      expect(mockSetViewState).toHaveBeenCalledWith({ contextOpen: true });
+    });
+
+    it("closes the context overlay when the close button is clicked", async () => {
+      vi.useFakeTimers();
+      const mockSetViewState = setupContextState(true);
+      const { container } = render(<App />);
+      const close = container.querySelector(
+        'button[aria-label="Close project context"]',
+      );
+
+      if (close) fireEvent.click(close);
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      expect(mockSetViewState).toHaveBeenCalledWith({ contextOpen: false });
+      vi.useRealTimers();
+    });
+
+    it("closes the context overlay on Escape", async () => {
+      vi.useFakeTimers();
+      const mockSetViewState = setupContextState(true);
+
+      render(<App />);
+
+      fireEvent.keyDown(window, { key: "Escape" });
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      expect(mockSetViewState).toHaveBeenCalledWith({ contextOpen: false });
+      vi.useRealTimers();
+    });
+
+    it("ignores non-Escape keys when the overlay is open", () => {
+      const mockSetViewState = setupContextState(true);
+
+      render(<App />);
+
+      fireEvent.keyDown(window, { key: "a" });
+      expect(mockSetViewState).not.toHaveBeenCalled();
+    });
+
+    it("does not close when clicking inside the context view", async () => {
+      vi.useFakeTimers();
+      const mockSetViewState = setupContextState(true);
+      const { container } = render(<App />);
+      const inner = container.querySelector('[data-testid="context-stub"]');
+
+      if (inner) fireEvent.click(inner);
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Backdrop-only dismissal: a click on content shouldn't fire close.
+      expect(mockSetViewState).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("Esc closes Context first when both overlays are open, leaving Settings up", async () => {
+      // Both overlays open with settings configured + no unsaved changes —
+      // user manually opened Settings while Context was up. Pre-fix, both
+      // Esc handlers fire (Settings dismisses AND Context closes in the same
+      // tick). With the fix, Settings yields the Esc to Context: Context
+      // closes, Settings stays up, and a subsequent Esc dismisses Settings.
+      vi.useFakeTimers();
+      const mockSetViewState = vi.fn();
+
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: true,
+      });
+      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
+        viewState: {
+          historyPanelOpen: false,
+          settingsOpen: true,
+          settingsTab: "connection",
+          contextOpen: true,
+        },
+        setViewState: mockSetViewState,
+      });
+
+      render(<App />);
+      // Both overlays mounted.
+      expect(document.body.textContent).toContain("Provider");
+      expect(document.querySelector('[data-testid="context-stub"]')).not.toBe(
+        null,
+      );
+
+      // Real keydown events bubble document → window, so dispatching once is
+      // enough to exercise both potential listeners.
+      fireEvent.keyDown(document, { key: "Escape" });
+      await act(() => {
+        vi.advanceTimersByTime(200);
+      });
+
+      // Only one viewState mutation: closing Context. Settings stays put —
+      // no settingsOpen:false was emitted.
+      const calls = mockSetViewState.mock.calls;
+
+      expect(calls).toStrictEqual([[{ contextOpen: false }]]);
+      vi.useRealTimers();
     });
   });
 

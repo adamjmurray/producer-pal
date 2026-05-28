@@ -36,6 +36,14 @@ export interface UseSettingsReturn {
   setProvider: (provider: Provider) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
+  /** Decrypted OpenAI provider key, independent of the active `provider`. Lets
+   * voice mode resume a saved OpenAI record while current settings select a
+   * different provider — without this, the Talk button would falsely report
+   * "key required" because `apiKey` only reflects the active provider's key. */
+  openaiApiKey: string;
+  /** Decrypted Gemini provider key, independent of the active `provider`. Same
+   * rationale as `openaiApiKey` but for record-aware Gemini Live routing. */
+  geminiApiKey: string;
   baseUrl?: string; // For custom, lmstudio, and ollama providers
   setBaseUrl?: (url: string) => void;
   model: string;
@@ -59,10 +67,19 @@ export interface UseSettingsReturn {
   setTemperature: (temp: number) => void;
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
-  saveSettings: () => void;
+  /** Persists in-modal settings and resolves only after the at-rest envelope
+   * has landed. Returns true on durable success, false on failure (saveError
+   * is set in that case). Callers (e.g. use-save-settings-handler) gate the
+   * modal close and post-save RPCs on this so a failed persist keeps the
+   * modal open with the error visible instead of committing silently. */
+  saveSettings: () => Promise<boolean>;
   cancelSettings: () => void;
   hasApiKey: boolean;
   settingsConfigured: boolean;
+  /** Message from the last failed saveSettings(), or null. Cleared on the
+   * next save attempt and on cancelSettings. The SettingsFooter renders it
+   * so the user sees what went wrong instead of closing the modal silently. */
+  saveError: string | null;
   // Tool toggles
   enabledTools: Record<string, boolean>;
   setEnabledTools: (tools: Record<string, boolean>) => void;
@@ -102,9 +119,10 @@ export interface UseSettingsReturn {
   /** Persisted voice speed (last save). Read by useVoiceSession at connect time. */
   savedVoiceSpeed: number;
 
-  /** Output playback volume (0.0–1.0) for the OpenAI Realtime API. Unlike the
-   * other voice settings, this is applied live — useVoiceSession reads this
-   * value directly and a mid-session change updates loudness immediately. */
+  /** Client-side playback volume (0.0–1.25, applied via a Web Audio GainNode
+   * so it can boost above unity). Unlike the other voice settings, this is
+   * applied live — useVoiceSession reads this value directly and a mid-session
+   * change updates loudness immediately. */
   voiceVolume: number;
   setVoiceVolume: (volume: number) => void;
 

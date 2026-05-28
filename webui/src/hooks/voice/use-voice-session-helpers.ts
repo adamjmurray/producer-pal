@@ -4,28 +4,47 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  type OpenAIRealtimeWebRTC,
   type RealtimeItem,
   type RealtimeMessageItem,
   type RealtimeSession,
   type TransportEvent,
 } from "@openai/agents/realtime";
 import {
+  mapThinkingToRealtimeEffort,
+  mapTurnDetectionToConfig,
+} from "#webui/hooks/settings/config-builders";
+import {
+  VOICE_SPEED_DEFAULT,
   VOICE_VOLUME_DEFAULT,
-  VOICE_VOLUME_MAX,
   VOICE_VOLUME_MIN,
 } from "#webui/hooks/settings/settings-helpers";
+import { type TurnDetectionSettings } from "#webui/hooks/settings/turn-detection-helpers";
+import {
+  setGraphGain,
+  type VoiceAudioGraph,
+} from "#webui/hooks/voice/voice-audio-graph";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
+
+// The <audio> element's .volume is hard-capped at unity by the HTML spec — it
+// can attenuate but not boost. Boost above unity goes through the Web Audio
+// GainNode (see voice-audio-graph.ts), so this element-only clamp stays at 1.0
+// even though the slider/GainNode range extends to VOICE_VOLUME_MAX (1.25).
+const ELEMENT_VOLUME_MAX = 1;
 
 /**
  * Fetch an ephemeral `ek_...` token from the backend proxy.
  *
  * @param voiceTokenUrl - URL of the /voice-token endpoint
  * @param openAiKey - User's OpenAI API key (sent in X-OpenAI-Key header)
+ * @param model - Realtime model id to mint the token for (defaults to
+ *   OPENAI_REALTIME_MODEL)
  * @returns The ephemeral client secret value
  */
 export async function fetchEphemeralToken(
   voiceTokenUrl: string,
   openAiKey: string,
+  model: string = OPENAI_REALTIME_MODEL,
 ): Promise<string> {
   const response = await fetch(voiceTokenUrl, {
     method: "POST",
@@ -33,7 +52,7 @@ export async function fetchEphemeralToken(
       "Content-Type": "application/json",
       "X-OpenAI-Key": openAiKey,
     },
-    body: JSON.stringify({ model: OPENAI_REALTIME_MODEL }),
+    body: JSON.stringify({ model }),
   });
 
   if (!response.ok) {
@@ -383,24 +402,27 @@ export function extractErrorMessage(value: unknown): string {
 
 /**
  * Clamp a volume to the element-playback range, defaulting an undefined/invalid
- * value to unity.
+ * value to unity. Capped at unity (ELEMENT_VOLUME_MAX) because element .volume
+ * can't boost; values above unity are realized by the GainNode, not here.
  *
- * @param volume - Desired volume (0.0–1.0), or undefined
- * @returns A finite volume in [VOICE_VOLUME_MIN, VOICE_VOLUME_MAX]
+ * @param volume - Desired volume (0.0–1.25), or undefined
+ * @returns A finite volume in [VOICE_VOLUME_MIN, ELEMENT_VOLUME_MAX]
  */
 function clampVolume(volume: number | undefined): number {
   if (volume == null || !Number.isFinite(volume)) return VOICE_VOLUME_DEFAULT;
 
-  return Math.min(VOICE_VOLUME_MAX, Math.max(VOICE_VOLUME_MIN, volume));
+  return Math.min(ELEMENT_VOLUME_MAX, Math.max(VOICE_VOLUME_MIN, volume));
 }
 
 /**
  * Create the `<audio>` element the WebRTC transport plays remote audio through.
- * Supplying our own (instead of letting the SDK create one) lets us control
- * output volume. The SDK sets autoplay + srcObject on it when the remote track
- * arrives; setting volume here makes the initial level take effect immediately.
+ * Supplying our own (instead of letting the SDK create one) lets us reach the
+ * remote stream for the Web Audio GainNode. The SDK sets autoplay + srcObject on
+ * it when the remote track arrives. Once the gain graph is built the element is
+ * muted; the initial .volume set here is the fallback used when Web Audio is
+ * unavailable (capped at unity).
  *
- * @param volume - Initial output volume (0.0–1.0)
+ * @param volume - Initial output volume (0.0–1.25; element clamps to 1.0)
  * @returns A configured, detached audio element
  */
 export function createPlaybackAudioElement(
@@ -415,17 +437,36 @@ export function createPlaybackAudioElement(
 }
 
 /**
- * Apply a live volume change to the active playback element. No-op when there is
- * no element (idle session), letting the slider adjust loudness mid-session.
+ * Apply a live volume change to the playback element (the no-Web-Audio fallback
+ * path; capped at unity). No-op when there is no element (idle session). The
+ * GainNode is the primary live-volume path — see setGraphGain.
  *
  * @param audioElement - The active playback element, or null
- * @param volume - Desired volume (0.0–1.0)
+ * @param volume - Desired volume (0.0–1.25; element clamps to 1.0)
  */
 export function setAudioVolume(
   audioElement: HTMLAudioElement | null,
   volume: number | undefined,
 ): void {
   if (audioElement != null) audioElement.volume = clampVolume(volume);
+}
+
+/**
+ * Apply a live volume change to both paths: the GainNode (the active path, can
+ * boost above unity) and the element .volume (the no-Web-Audio fallback, capped
+ * at unity). Either may be null when idle or when the graph wasn't built.
+ *
+ * @param graph - The active Web Audio graph, or null
+ * @param audioElement - The active playback element, or null
+ * @param volume - Desired volume (0.0–1.25)
+ */
+export function applyLiveVolume(
+  graph: VoiceAudioGraph | null,
+  audioElement: HTMLAudioElement | null,
+  volume: number | undefined,
+): void {
+  setGraphGain(graph, volume);
+  setAudioVolume(audioElement, volume);
 }
 
 /**
@@ -440,4 +481,102 @@ export function teardownAudioElement(
   if (audioElement == null) return;
   audioElement.pause();
   audioElement.srcObject = null;
+}
+
+/**
+ * Build the RealtimeSession options (model, transport, audio + reasoning config)
+ * from the user's settings. Extracted so the hook's connect() stays focused; the
+ * mapping is covered by use-voice-session-config tests.
+ *
+ * @param transport - The WebRTC transport instance
+ * @param opts - Session-shaping settings
+ * @param opts.turnDetection - VAD settings, or undefined for server default
+ * @param opts.speed - Output playback speed (defaults to VOICE_SPEED_DEFAULT)
+ * @param opts.thinking - Thinking UI level, mapped to reasoning.effort
+ * @param opts.model - Realtime model id (defaults to OPENAI_REALTIME_MODEL)
+ * @returns The RealtimeSession constructor options
+ */
+export function buildSessionOptions(
+  transport: OpenAIRealtimeWebRTC,
+  opts: {
+    turnDetection?: TurnDetectionSettings;
+    speed?: number;
+    thinking?: string;
+    model?: string;
+  },
+): ConstructorParameters<typeof RealtimeSession>[1] {
+  const reasoningEffort = mapThinkingToRealtimeEffort(opts.thinking ?? "");
+
+  return {
+    model: opts.model ?? OPENAI_REALTIME_MODEL,
+    transport,
+    config: {
+      audio: {
+        ...(opts.turnDetection
+          ? {
+              input: {
+                turnDetection: mapTurnDetectionToConfig(opts.turnDetection),
+              },
+            }
+          : {}),
+        output: { speed: opts.speed ?? VOICE_SPEED_DEFAULT },
+      },
+      ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),
+    },
+  };
+}
+
+/**
+ * Abort a connect() that went stale across one of its awaits — cleanup() bumped
+ * the generation, so this attempt's resources must not be published or opened.
+ * cleanup() closes whatever's been stored on the refs; the caller returns before
+ * opening (or after re-populating) the session + mic.
+ *
+ * @param isStale - Whether cleanup() ran since this connect() started
+ * @param cleanup - Tears down the stored session + MCP client
+ * @param session - The just-opened session, if the await being guarded was
+ *   session.connect(). The stale teardown's cleanup() closed the stored ref,
+ *   but that close may have been a no-op before the handshake completed, so we
+ *   close this resolved session directly to avoid leaking a live peer
+ *   connection + mic. Omitted for checks that run before any connection exists.
+ * @returns True if stale (caller should return); false to continue
+ */
+export async function bailIfStale(
+  isStale: boolean,
+  cleanup: () => Promise<void>,
+  session?: RealtimeSession,
+): Promise<boolean> {
+  if (!isStale) return false;
+
+  if (session) {
+    try {
+      session.close();
+    } catch {
+      // swallow — best-effort teardown
+    }
+  }
+
+  await cleanup();
+
+  return true;
+}
+
+/**
+ * Seed prior conversation context onto a freshly connected session. The SDK's
+ * updateHistory only echoes "message" items back to the server (function/MCP
+ * calls are dropped) and rejects audio items without bytes, so the history is
+ * first rewritten to text-only via toSeedableHistory. No-op for an empty/omitted
+ * history or when nothing seedable remains.
+ *
+ * @param session - The connected realtime session
+ * @param initialHistory - Saved history to seed, or undefined
+ */
+export function seedInitialHistory(
+  session: Pick<RealtimeSession, "updateHistory">,
+  initialHistory: RealtimeItem[] | undefined,
+): void {
+  if (!initialHistory || initialHistory.length === 0) return;
+  const primable = toSeedableHistory(initialHistory);
+
+  if (primable.length > 0) session.updateHistory(primable);
 }

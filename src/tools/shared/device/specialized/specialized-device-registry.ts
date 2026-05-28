@@ -15,7 +15,7 @@ import { spectralResonatorSpec } from "./devices/spectral-resonator.ts";
 import { wavetableSpec } from "./devices/wavetable.ts";
 import { parseAction } from "./specialized-device-action-parser.ts";
 import {
-  type ActionHandler,
+  type ActionDef,
   type PseudoParam,
   type SpecializedDeviceSpec,
 } from "./specialized-device-types.ts";
@@ -135,21 +135,48 @@ export function applySpecializedActions(
       continue;
     }
 
-    const handler = findAction(spec, parsed.name);
+    const action = findAction(spec, parsed.name);
 
-    if (!handler) {
+    if (!action) {
       console.warn(
         `${toolName}: unknown action "${parsed.name}" for this device`,
       );
       continue;
     }
 
-    handler(device, parsed.args, toolName);
+    action.handler(device, parsed.args, toolName);
   }
 }
 
 /**
- * Read the dynamic `options` catalogs for a device (for `include: ["options"]`).
+ * Read the available actions for a device's specialized class (for
+ * `include: ["actions"]`). Lets the model discover what it can do to a device
+ * at runtime instead of relying on the skills prompt.
+ * @param device - LiveAPI device object
+ * @returns Array of {name, signature, description} entries (empty when none)
+ */
+export function readSpecializedActions(
+  device: LiveAPI,
+): Record<string, unknown>[] {
+  const spec = getSpecForDevice(device);
+
+  if (!spec?.actions) {
+    return [];
+  }
+
+  return Object.entries(spec.actions).map(([name, def]) => ({
+    name,
+    signature: def.signature,
+    description: def.description,
+  }));
+}
+
+/**
+ * Read the `options` catalogs for a device (for `include: ["options"]`):
+ * `paramOptions` (each writable pseudo-param's static valid values) plus any
+ * dynamic catalogs the device contributes via `readOptions` (IR files,
+ * wavetables, sidechain sources). Lets the model discover accepted values
+ * without a failed write.
  * @param device - LiveAPI device object
  * @returns Catalog object (empty when the device contributes none)
  */
@@ -158,7 +185,39 @@ export function readSpecializedOptions(
 ): Record<string, unknown> {
   const spec = getSpecForDevice(device);
 
-  return spec?.readOptions ? spec.readOptions(device) : {};
+  if (!spec) {
+    return {};
+  }
+
+  const dynamic = spec.readOptions ? spec.readOptions(device) : {};
+  const paramOptions = collectParamOptions(spec);
+
+  // paramOptions first (the valid-values reference), then dynamic catalogs.
+  return Object.keys(paramOptions).length > 0
+    ? { paramOptions, ...dynamic }
+    : dynamic;
+}
+
+/**
+ * Build the static `paramOptions` catalog: each writable pseudo-param's declared
+ * valid values, keyed by param name. State-independent — it lists what a param
+ * accepts, not its current value. Params without `options` (booleans, free-form
+ * values, read-only, or dynamic-choice params) are omitted.
+ * @param spec - Device spec
+ * @returns Map of param name → valid values (array or constraint string)
+ */
+function collectParamOptions(
+  spec: SpecializedDeviceSpec,
+): Record<string, readonly (string | number)[] | string> {
+  const result: Record<string, readonly (string | number)[] | string> = {};
+
+  for (const param of spec.params) {
+    if (param.options != null) {
+      result[param.name] = param.options;
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -229,15 +288,15 @@ function findParam(
 }
 
 /**
- * Find an action handler by name (case-insensitive).
+ * Find an action definition by name (case-insensitive).
  * @param spec - Device spec
  * @param name - Action name to find
- * @returns The matching handler, or undefined
+ * @returns The matching action definition, or undefined
  */
 function findAction(
   spec: SpecializedDeviceSpec | undefined,
   name: string,
-): ActionHandler | undefined {
+): ActionDef | undefined {
   if (!spec?.actions) {
     return undefined;
   }

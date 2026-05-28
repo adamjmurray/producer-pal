@@ -38,6 +38,7 @@ export const roarSpec: SpecializedDeviceSpec = {
   params: [
     {
       name: "routingMode",
+      options: ROUTING_MODES,
       read: (device) =>
         readEnumByIndex(device, "routing_mode_index", ROUTING_MODES),
       write: (device, value, toolName) =>

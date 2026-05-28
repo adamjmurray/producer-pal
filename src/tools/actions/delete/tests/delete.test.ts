@@ -118,6 +118,33 @@ describe("deleteObject", () => {
     ]);
   });
 
+  it("should warn and skip take-lane clips (cannot delete via API)", () => {
+    const consoleWarnSpy = vi.spyOn(console, "warn");
+
+    registerMockObject("take_lane_clip", {
+      path: livePath.track(0).takeLane(0).arrangementClip(0),
+      type: "Clip",
+    });
+    const track0 = registerMockObject("live_set/tracks/0", {
+      path: livePath.track(0),
+    });
+
+    const result = deleteObject({ ids: "take_lane_clip", type: "clip" });
+
+    expect(track0.call).not.toHaveBeenCalledWith(
+      "delete_clip",
+      expect.anything(),
+    );
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("cannot delete take-lane clip"),
+    );
+    expect(result).toStrictEqual({
+      id: "take_lane_clip",
+      type: "clip",
+      deleted: false,
+    });
+  });
+
   it("should throw an error when neither ids nor path is provided", () => {
     const expectedError = "delete failed: ids or path is required";
 

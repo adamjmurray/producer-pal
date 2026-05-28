@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
  * @returns The preflight response
  */
 async function getPreflightResponse(): Promise<Response> {
-  const { createExpressApp } = await import("../create-express-app.ts");
+  const { createExpressApp } = await import("../../create-express-app.ts");
   const app = createExpressApp();
   const server = await new Promise<Server>((resolve) => {
     const s = app.listen(0, () => resolve(s));

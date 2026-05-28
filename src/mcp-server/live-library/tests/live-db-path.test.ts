@@ -32,6 +32,27 @@ function setPlatform(platform: NodeJS.Platform): void {
   Object.defineProperty(process, "platform", { value: platform });
 }
 
+type ReaddirResult = Awaited<ReturnType<typeof fsMock.readdir>>;
+type StatResult = Awaited<ReturnType<typeof fsMock.stat>>;
+
+function mockReaddir(...names: string[]): void {
+  vi.mocked(fsMock.readdir).mockResolvedValue(
+    names as unknown as ReaddirResult,
+  );
+}
+
+function mockStatMtime(mtimeMs: number): void {
+  vi.mocked(fsMock.stat).mockResolvedValue({
+    mtimeMs,
+  } as unknown as StatResult);
+}
+
+function mockStatMtimeOnce(mtimeMs: number): void {
+  vi.mocked(fsMock.stat).mockResolvedValueOnce({
+    mtimeMs,
+  } as unknown as StatResult);
+}
+
 describe("liveDatabaseDir", () => {
   afterEach(() => {
     setPlatform(originalPlatform);
@@ -96,24 +117,19 @@ describe("findLiveFilesDbPath", () => {
   });
 
   it("returns null when no matching files are found", async () => {
-    vi.mocked(fsMock.readdir).mockResolvedValue([
-      "Live-plugins-1.db",
-      "other.txt",
-    ] as unknown as Awaited<ReturnType<typeof fsMock.readdir>>);
+    mockReaddir("Live-plugins-1.db", "other.txt");
 
     expect(await findLiveFilesDbPath()).toBeNull();
   });
 
   it("picks the highest schema version", async () => {
-    vi.mocked(fsMock.readdir).mockResolvedValue([
+    mockReaddir(
       "Live-files-53.db",
       "Live-files-1218.db",
       "Live-files-12300.db",
       "Live-files-1200.db",
-    ] as unknown as Awaited<ReturnType<typeof fsMock.readdir>>);
-    vi.mocked(fsMock.stat).mockResolvedValue({
-      mtimeMs: 1_000,
-    } as unknown as Awaited<ReturnType<typeof fsMock.stat>>);
+    );
+    mockStatMtime(1_000);
 
     const result = await findLiveFilesDbPath();
 
@@ -121,16 +137,9 @@ describe("findLiveFilesDbPath", () => {
   });
 
   it("breaks ties by most recent mtime", async () => {
-    vi.mocked(fsMock.readdir).mockResolvedValue([
-      "Live-files-12300.db",
-      "Live-files-12300.db",
-    ] as unknown as Awaited<ReturnType<typeof fsMock.readdir>>);
-    vi.mocked(fsMock.stat).mockResolvedValueOnce({
-      mtimeMs: 1_000,
-    } as unknown as Awaited<ReturnType<typeof fsMock.stat>>);
-    vi.mocked(fsMock.stat).mockResolvedValueOnce({
-      mtimeMs: 2_000,
-    } as unknown as Awaited<ReturnType<typeof fsMock.stat>>);
+    mockReaddir("Live-files-12300.db", "Live-files-12300.db");
+    mockStatMtimeOnce(1_000);
+    mockStatMtimeOnce(2_000);
 
     const result = await findLiveFilesDbPath();
 
@@ -138,14 +147,8 @@ describe("findLiveFilesDbPath", () => {
   });
 
   it("ignores entries that do not match the pattern", async () => {
-    vi.mocked(fsMock.readdir).mockResolvedValue([
-      "Live-files-bogus.db",
-      "Live-files-12300.db",
-      "random.db",
-    ] as unknown as Awaited<ReturnType<typeof fsMock.readdir>>);
-    vi.mocked(fsMock.stat).mockResolvedValue({
-      mtimeMs: 1_000,
-    } as unknown as Awaited<ReturnType<typeof fsMock.stat>>);
+    mockReaddir("Live-files-bogus.db", "Live-files-12300.db", "random.db");
+    mockStatMtime(1_000);
 
     const result = await findLiveFilesDbPath();
 
@@ -153,14 +156,9 @@ describe("findLiveFilesDbPath", () => {
   });
 
   it("skips entries whose stat fails", async () => {
-    vi.mocked(fsMock.readdir).mockResolvedValue([
-      "Live-files-12300.db",
-      "Live-files-1218.db",
-    ] as unknown as Awaited<ReturnType<typeof fsMock.readdir>>);
+    mockReaddir("Live-files-12300.db", "Live-files-1218.db");
     vi.mocked(fsMock.stat).mockRejectedValueOnce(new Error("EACCES"));
-    vi.mocked(fsMock.stat).mockResolvedValueOnce({
-      mtimeMs: 1_000,
-    } as unknown as Awaited<ReturnType<typeof fsMock.stat>>);
+    mockStatMtimeOnce(1_000);
 
     const result = await findLiveFilesDbPath();
 
@@ -179,9 +177,7 @@ describe("findLivePluginsDbPath", () => {
   });
 
   it("returns null when no matching files exist", async () => {
-    vi.mocked(fsMock.readdir).mockResolvedValue([
-      "Live-files-12300.db",
-    ] as unknown as Awaited<ReturnType<typeof fsMock.readdir>>);
+    mockReaddir("Live-files-12300.db");
 
     expect(await findLivePluginsDbPath()).toBeNull();
   });
@@ -193,16 +189,9 @@ describe("findLivePluginsDbPath", () => {
   });
 
   it("picks by mtime (ignores version number)", async () => {
-    vi.mocked(fsMock.readdir).mockResolvedValue([
-      "Live-plugins-1.db",
-      "Live-plugins-2.db",
-    ] as unknown as Awaited<ReturnType<typeof fsMock.readdir>>);
-    vi.mocked(fsMock.stat).mockResolvedValueOnce({
-      mtimeMs: 9_000,
-    } as unknown as Awaited<ReturnType<typeof fsMock.stat>>);
-    vi.mocked(fsMock.stat).mockResolvedValueOnce({
-      mtimeMs: 1_000,
-    } as unknown as Awaited<ReturnType<typeof fsMock.stat>>);
+    mockReaddir("Live-plugins-1.db", "Live-plugins-2.db");
+    mockStatMtimeOnce(9_000);
+    mockStatMtimeOnce(1_000);
 
     const result = await findLivePluginsDbPath();
 
@@ -210,14 +199,9 @@ describe("findLivePluginsDbPath", () => {
   });
 
   it("skips entries whose stat fails", async () => {
-    vi.mocked(fsMock.readdir).mockResolvedValue([
-      "Live-plugins-1.db",
-      "Live-plugins-2.db",
-    ] as unknown as Awaited<ReturnType<typeof fsMock.readdir>>);
+    mockReaddir("Live-plugins-1.db", "Live-plugins-2.db");
     vi.mocked(fsMock.stat).mockRejectedValueOnce(new Error("EACCES"));
-    vi.mocked(fsMock.stat).mockResolvedValueOnce({
-      mtimeMs: 1_000,
-    } as unknown as Awaited<ReturnType<typeof fsMock.stat>>);
+    mockStatMtimeOnce(1_000);
 
     const result = await findLivePluginsDbPath();
 

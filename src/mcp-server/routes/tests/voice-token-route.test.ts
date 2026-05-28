@@ -4,10 +4,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { setupExpressAppServer } from "../../tests/express-app-test-helpers.ts";
 import {
-  mockMax,
-  setupExpressAppServer,
-} from "../../tests/express-app-test-helpers.ts";
+  type PostTokenOptions,
+  postTokenRequest,
+  registerSharedTokenAuthTests,
+} from "./voice-token-test-helpers.ts";
 
 const REAL_FETCH = globalThis.fetch;
 
@@ -72,33 +74,22 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 /**
- * Issue a POST to the local /voice-token endpoint with sane defaults so each
+ * Issue a POST to the local /voice-token endpoint with OpenAI defaults so each
  * test only needs to specify the bits it cares about.
  *
  * @param baseUrl - Base URL of the test Express server
- * @param opts - Optional overrides
- * @param opts.key - OpenAI API key header value; `null` to omit the header
- * @param opts.body - Request body (object stringified, string passed through)
- * @param opts.origin - Optional Origin header for cross-origin testing
+ * @param opts - Key/body/origin overrides
  * @returns The fetch Response
  */
 async function postVoiceToken(
   baseUrl: string,
-  opts: { key?: string | null; body?: unknown; origin?: string } = {},
+  opts: Pick<PostTokenOptions, "key" | "body" | "origin"> = {},
 ): Promise<Response> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (opts.key !== null) headers["X-OpenAI-Key"] = opts.key ?? "sk-test";
-  if (opts.origin) headers.Origin = opts.origin;
-  const body =
-    typeof opts.body === "string" ? opts.body : JSON.stringify(opts.body ?? {});
-
-  return await fetch(`${baseUrl}/voice-token`, {
-    method: "POST",
-    headers,
-    body,
+  return await postTokenRequest(baseUrl, {
+    path: "/voice-token",
+    keyHeader: "X-OpenAI-Key",
+    defaultKey: "sk-test",
+    ...opts,
   });
 }
 
@@ -109,40 +100,9 @@ describe("voice-token route", () => {
     globalThis.fetch = REAL_FETCH;
   });
 
-  it("returns 400 when X-OpenAI-Key header is missing", async () => {
-    const res = await postVoiceToken(appState.baseUrl, { key: null });
-
-    expect(res.status).toBe(400);
-    const json = (await res.json()) as { error: string };
-
-    expect(json.error.toLowerCase()).toContain("x-openai-key");
-  });
-
-  it("returns 403 when the chat UI is disabled", async () => {
-    const setChatUIEnabled = mockMax.handlers.get("chatUIEnabled") as (
-      input: unknown,
-    ) => void;
-
-    setChatUIEnabled(0);
-
-    try {
-      const res = await postVoiceToken(appState.baseUrl);
-
-      expect(res.status).toBe(403);
-      const json = (await res.json()) as { error: string };
-
-      expect(json.error).toBe("Chat UI is disabled");
-    } finally {
-      setChatUIEnabled(1);
-    }
-  });
-
-  it("blocks cross-origin requests with 403", async () => {
-    const res = await postVoiceToken(appState.baseUrl, {
-      origin: "https://evil.example.com",
-    });
-
-    expect(res.status).toBe(403);
+  registerSharedTokenAuthTests({
+    post: (overrides) => postVoiceToken(appState.baseUrl, overrides),
+    keyHeaderName: "X-OpenAI-Key",
   });
 
   it("forwards to OpenAI server-to-server and returns only ephemeral token", async () => {

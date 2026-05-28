@@ -110,6 +110,7 @@ export function SettingsScreen(props: SettingsScreenProps) {
           cancelSettings={cancelSettings}
           pulse={shake}
           hasUnsavedChanges={hasUnsavedChanges}
+          saveError={settings.saveError}
         />
       </div>
     </div>

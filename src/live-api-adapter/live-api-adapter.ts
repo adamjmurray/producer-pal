@@ -54,15 +54,13 @@ setoutletassist(1, "tool call warnings");
  * sampleFolder; per-request contexts snapshot from it.
  */
 interface SessionState {
-  memory: { enabled: boolean; writable: boolean; content: string };
+  memory: { content: string };
   smallModelMode: boolean;
   sampleFolder: string | null;
 }
 
 const sessionState: SessionState = {
   memory: {
-    enabled: false,
-    writable: false,
     content: "",
   },
   smallModelMode: false,
@@ -180,24 +178,6 @@ export function compactOutput(enabled: unknown): void {
  */
 export function smallModelMode(enabled: unknown): void {
   sessionState.smallModelMode = Boolean(enabled);
-}
-
-/**
- * Enable or disable memory feature
- *
- * @param enabled - Whether to enable memory
- */
-export function memoryEnabled(enabled: unknown): void {
-  sessionState.memory.enabled = Boolean(enabled);
-}
-
-/**
- * Set whether memory is writable
- *
- * @param writable - Whether memory should be writable
- */
-export function memoryWritable(writable: unknown): void {
-  sessionState.memory.writable = Boolean(writable);
 }
 
 /**
