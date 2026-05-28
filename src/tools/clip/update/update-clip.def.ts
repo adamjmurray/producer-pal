@@ -107,7 +107,13 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "transform expressions (broadcast across ids); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation",
+        "transform expressions applied AFTER merging notes (broadcast across ids); newline-separated for multiple. Use clip.index / clipseq() for per-clip variation",
+      ),
+    preTransforms: z
+      .string()
+      .optional()
+      .describe(
+        "transform expressions applied to EXISTING notes BEFORE the merge (broadcast across ids); use to clear or modify a region you're about to rewrite (e.g. '1|1-2|1: velocity = 0'). Merge mode + notes only — ignored otherwise",
       ),
     noteUpdateMode: z
       .enum(["replace", "merge"])
@@ -194,6 +200,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "quantizePitch",
       "firstStart",
       "transforms",
+      "preTransforms",
       "split",
       "code",
     ],

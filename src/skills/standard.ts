@@ -177,6 +177,8 @@ swing() auto-quantizes to the swing grid, so changing swing amount is always saf
 Transforms modify notes in place — previous transforms are already baked in. Don't re-apply earlier transforms.
 MIDI params ignored for audio clips, vice versa.
 On update-clip and duplicate, transforms/code is one string broadcast across every clip/copy. \`clip.index\`/\`clip.count\` span the full batch — use \`clip.index\` arithmetic (e.g. \`pitch += clip.index * 12\`) or \`clipseq()\` (e.g. \`pitch += clipseq(0, 5, 7)\`) inside the string for per-clip variation. For structurally-distinct edits per clip (different operations, not just different values), make separate tool calls.
+
+**update-clip pipeline:** \`preTransforms → notes (merge) → transforms\`. \`transforms\` mutates the final result (after the merge). \`preTransforms\` mutates the existing notes BEFORE new \`notes\` land — use it to clear or modify a region you're about to rewrite in one call (e.g. \`preTransforms: "1|1-1|4: velocity = 0"\` with \`notes:\` to swap out bar 1). preTransforms is ignored without \`notes\`, in \`replace\` mode, or on audio clips. Same syntax as transforms.
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Finding Library Content
 

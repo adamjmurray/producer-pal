@@ -7,11 +7,15 @@ import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 import { noteNameToMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
-import { getPlayableNoteCount } from "#src/tools/shared/clip-notes.ts";
+import {
+  getPlayableNoteCount,
+  rawNotesToNoteEvents,
+} from "#src/tools/shared/clip-notes.ts";
 import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
 
 /**
@@ -41,7 +45,8 @@ interface QuantizationOptions {
  * Handle note updates (merge or replace)
  * @param clip - The clip to update
  * @param notationString - The notation string to apply
- * @param transformString - Transform expressions to apply to notes
+ * @param transformString - Transform expressions to apply AFTER merge
+ * @param preTransformString - Transform expressions to apply to existing notes BEFORE merge
  * @param noteUpdateMode - 'merge' or 'replace'
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -52,13 +57,34 @@ export function handleNoteUpdates(
   clip: LiveAPI,
   notationString: string | undefined,
   transformString: string | undefined,
+  preTransformString: string | undefined,
   noteUpdateMode: string,
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext: ClipContext,
 ): NoteUpdateResult | null {
-  // Only skip if BOTH are null
-  if (notationString == null && transformString == null) {
+  // preTransforms requires notes + merge mode; warn and ignore otherwise.
+  // (replace mode clears existing notes; transforms-only path has no merge.)
+  if (preTransformString != null) {
+    if (notationString == null) {
+      console.warn(
+        "preTransforms ignored: notes parameter is required (use transforms to mutate existing notes without merging)",
+      );
+      preTransformString = undefined;
+    } else if (noteUpdateMode !== "merge") {
+      console.warn(
+        "preTransforms ignored: only meaningful in merge mode (replace clears existing notes first)",
+      );
+      preTransformString = undefined;
+    }
+  }
+
+  // Skip if nothing meaningful to do
+  if (
+    notationString == null &&
+    transformString == null &&
+    preTransformString == null
+  ) {
     return null;
   }
 
@@ -81,7 +107,17 @@ export function handleNoteUpdates(
     const existingNotesResult = JSON.parse(
       clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS) as string,
     );
-    const existingNotes = existingNotesResult?.notes ?? [];
+    const rawExistingNotes = (existingNotesResult?.notes ?? []) as Record<
+      string,
+      unknown
+    >[];
+    const existingNotes = applyPreTransformsToExisting(
+      rawNotesToNoteEvents(rawExistingNotes),
+      preTransformString,
+      timeSigNumerator,
+      timeSigDenominator,
+      clipContext,
+    );
 
     if (existingNotes.length > 0) {
       const existingNotationString = formatNotation(existingNotes, {
@@ -115,6 +151,38 @@ export function handleNoteUpdates(
   }
 
   return { noteCount: getPlayableNoteCount(clip), transformed };
+}
+
+/**
+ * Apply preTransforms to existing notes in-place (mutates and filters v=0/d=0).
+ * Returns the surviving notes; no-ops when preTransformString is missing.
+ * @param existingNotes - Existing notes as NoteEvents
+ * @param preTransformString - Transform expressions, or undefined to skip
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @param clipContext - Clip-level context for transform variables
+ * @returns The (possibly filtered) existing notes
+ */
+function applyPreTransformsToExisting(
+  existingNotes: NoteEvent[],
+  preTransformString: string | undefined,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+  clipContext: ClipContext,
+): NoteEvent[] {
+  if (preTransformString == null || existingNotes.length === 0) {
+    return existingNotes;
+  }
+
+  applyTransforms(
+    existingNotes,
+    preTransformString,
+    timeSigNumerator,
+    timeSigDenominator,
+    clipContext,
+  );
+
+  return existingNotes;
 }
 
 /**
