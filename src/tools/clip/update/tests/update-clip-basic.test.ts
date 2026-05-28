@@ -169,7 +169,8 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({
       ids: "123",
-      notes: "v80 t2 C4 1|1 v120 t1 D4 1|3",
+      // t/2 = half = 2 quarters; t/4 = quarter
+      notes: "v80 t/2 C4 1|1 v120 t/4 D4 1|3",
       noteUpdateMode: "replace",
     });
 
@@ -200,11 +201,12 @@ describe("updateClip - Basic operations", () => {
       noteUpdateMode: "replace",
     });
 
-    // In 6/8 time, bar 2 beat 1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
+    // In 6/8 time, bar 2 beat 1 = 3 Ableton beats (6 musical beats * 4/8).
+    // Default duration is a quarter note regardless of meter (1 Ableton beat).
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
       notes: [
-        createNote({ duration: 0.5 }),
-        createNote({ pitch: 62, start_time: 3, duration: 0.5 }),
+        createNote({ duration: 1 }),
+        createNote({ pitch: 62, start_time: 3, duration: 1 }),
       ],
     });
 
@@ -241,7 +243,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({
       ids: "123",
       notes:
-        "v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1.0 D1 v100 p0.9 Gb1 1|2",
+        "v100 t/16 p1.0 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1.0 D1 v100 p0.9 Gb1 1|2",
       noteUpdateMode: "replace",
     });
 

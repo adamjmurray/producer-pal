@@ -29,34 +29,44 @@ export function formatBeatPosition(value: number): string {
 }
 
 /**
- * Format an unsigned value for durations and repeat steps.
- * Can be < 1 (parser: unsignedFloat). Supports /4 shorthand (numerator=1 implied).
- * Fractions are required when decimal representation is lossy (e.g., 1/3 → 0.333).
- * @param value - Duration or step value (>= 0)
- * @returns Formatted value string
+ * Format an absolute duration/step value as a `<num>/<den>` fraction of a whole note.
+ * Used for `t` durations and `@step` intervals in bar|beat notation.
+ * Always emits the fraction form (numerator omitted when 1).
+ * @param wholeNoteFraction - Value as a fraction of a whole note (e.g., 1/4 = quarter)
+ * @returns Formatted value string (e.g., "/4", "3/8", "/12", "5/4")
  */
-export function formatUnsignedValue(value: number): string {
-  if (value % 1 === 0) return value.toString();
+export function formatAbsoluteDuration(wholeNoteFraction: number): string {
+  if (wholeNoteFraction === 0) return "0/1";
 
-  if (value < 1) {
-    const fraction = findFraction(value);
+  // Try musically clean denominators first (powers of 2), then triplet family,
+  // then less common tuplets. Smallest matching denominator wins.
+  for (const den of ABSOLUTE_DURATION_DENOMINATORS) {
+    const num = wholeNoteFraction * den;
 
-    if (fraction) {
-      // Use /den shorthand when numerator is 1
-      const fractionStr =
-        fraction.num === 1
-          ? `/${fraction.den}`
-          : `${fraction.num}/${fraction.den}`;
+    if (Math.abs(num - Math.round(num)) < EPSILON && Math.round(num) > 0) {
+      const numRounded = Math.round(num);
 
-      return preferFractionOrDecimal(fractionStr, value);
+      return numRounded === 1 ? `/${den}` : `${numRounded}/${den}`;
     }
-
-    return formatDecimal(value);
   }
 
-  // value >= 1 with fractional part
-  return formatMixedNumber(value) ?? formatDecimal(value);
+  // Fallback: any value we couldn't reduce to a clean fraction (unusual).
+  // Use a high-resolution denominator and accept slight rounding.
+  const fallbackDen = 64;
+  const fallbackNum = Math.max(1, Math.round(wholeNoteFraction * fallbackDen));
+
+  return fallbackNum === 1
+    ? `/${fallbackDen}`
+    : `${fallbackNum}/${fallbackDen}`;
 }
+
+/**
+ * Denominators tried when reducing an absolute duration to a fraction.
+ * Order: powers of 2 (most common note values), triplets, then quintuplets.
+ */
+const ABSOLUTE_DURATION_DENOMINATORS = [
+  1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 5, 10, 20,
+];
 
 /**
  * Choose between a fraction string and decimal, preferring decimal when it's

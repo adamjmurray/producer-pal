@@ -45,7 +45,7 @@ export function formatNotation(
 
   const timeGroups = groupNotesByTime(sortedNotes, config);
   const batches = findMergeBatches(timeGroups);
-  const state = createInitialState();
+  const state = createInitialState(config.timeSigDenominator);
   const elements: string[] = [];
 
   for (const batch of batches) {

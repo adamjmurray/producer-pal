@@ -110,9 +110,9 @@ describe("BarBeatScript Parser - beat lists", () => {
       ]);
     });
 
-    it("parses mixed fractional and decimal notation throughout", () => {
+    it("parses mixed fractional and decimal notation throughout (positions stay decimal/mixed)", () => {
       expect(
-        parser.parse("t1/4 C3 1|1,5/4,3/2,7/4 t0.5 D3 1|2,2.5,3,3.5"),
+        parser.parse("t1/4 C3 1|1,5/4,3/2,7/4 t/2 D3 1|2,2.5,3,3.5"),
       ).toStrictEqual([
         { duration: 1 / 4 },
         { pitch: 60 },
@@ -120,7 +120,7 @@ describe("BarBeatScript Parser - beat lists", () => {
         { bar: 1, beat: 5 / 4 },
         { bar: 1, beat: 3 / 2 },
         { bar: 1, beat: 7 / 4 },
-        { duration: 0.5 },
+        { duration: 1 / 2 },
         { pitch: 62 },
         { bar: 1, beat: 2 },
         { bar: 1, beat: 2.5 },

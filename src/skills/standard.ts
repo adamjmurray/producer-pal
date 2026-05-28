@@ -42,9 +42,9 @@ export const skills = `# Producer Pal Skills
 
 ## Time in Ableton Live
 
-- Positions: bar|beat (1-indexed). Examples: 1|1, 2|3.5, 1|2+1/3
-- Durations: beats (2.5, 3/4, /4) or bar:beat (1:2, 4:0)
-- Fractional beats: decimals (2.5), fractions (5/2), mixed (2+1/3). Numerator defaults to 1 (/4 = 1/4)
+- Positions: bar|beat (1-indexed, meter-relative). Examples: 1|1, 2|3.5, 1|2+1/3
+- Durations and \`@step\` intervals: absolute note values (denominator mandatory). \`t/4\` = quarter, \`t/8\` = eighth, \`t/16\` = sixteenth, \`t/12\` = eighth triplet (3 in a quarter), \`t3/8\` = dotted quarter (3 eighths). A quarter is a quarter in any meter
+- Clip \`length\` and arrangement durations use a separate bar:beat format (e.g., "4:0" = 4 bars) and are NOT absolute note values
 
 ## MIDI Syntax
 
@@ -57,12 +57,12 @@ Create MIDI clips using the bar|beat notation syntax:
   - time positions are relative to clip start
   - the beat in bar|beat can be a comma-separated (no whitespace) list or repeat pattern
   - **Repeat patterns**: \`{bar|beat}x{count}[@{step}]\` generates sequences. count = how many notes
-    - step (in beats) defaults to duration (legato). step > duration = gaps; step < duration = overlap
-    - \`1|1x4@1\` → beats 1,2,3,4; \`t0.5 1|1x4\` → 1, 1.5, 2, 2.5 (step defaults to t value)
-    - \`1|1x3@/3\` → triplets; \`t/4 1|1x16\` → 16 notes at 16th-note spacing (x16 = count, t/4 = spacing)
+    - \`@step\` is an absolute note value (same form as \`t\`). Defaults to the current duration (legato)
+    - \`1|1x4@/4\` → 4 notes a quarter apart; \`t/8 1|1x4\` → 4 eighths (step defaults to t value)
+    - \`1|1x3@/12\` → eighth-note triplets (3 in a quarter); \`t/16 1|1x16\` → 16 sixteenths spanning 4 quarters (a full bar in 4/4)
 - v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
-- t<duration>: Note length (default: 1.0). Beats: t2.5, t3/4, t/4. Bar:beat: t2:1.5, t1:/4
+- t<duration>: Note length as an absolute note value. Default: \`t/4\` (quarter). REQUIRES denominator — \`t1\`, \`t2.5\`, \`t0.5\` are invalid; write \`t/4\`, \`t5/8\`, \`t/8\` instead. \`t/12\` = eighth triplet (3 in a quarter), \`t/6\` = quarter triplet (3 in a half)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
 - **Stateful**: v/t/p and pitch persist until changed — set once, applies to all following notes
@@ -82,9 +82,9 @@ Audio params ignored when updating MIDI clips.
 C#3 F3 G#3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1,3 2|1,2,3 // same pitch across bars (NOT 1|1,3,2|1,2,3)
-t0.25 C3 1|1.75 // 16th note at beat 1.75
-t1/3 C3 1|1x3 // triplets: 3 notes across 1 beat (step = duration)
-t/4 Gb1 1|1x16 // full bar of 16th note hi-hats
+t/16 C3 1|1.75 // 16th note at beat 1.75
+t/12 C3 1|1x3 // eighth-note triplets: 3 notes filling one quarter (step = duration)
+t/16 Gb1 1|1x16 // 16 sixteenths = 4 quarters, a full bar in 4/4 (1|1x16@/16 is the same)
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
 v90-110 C1 1|1,3 D1 1|2,4 // humanized drum pattern

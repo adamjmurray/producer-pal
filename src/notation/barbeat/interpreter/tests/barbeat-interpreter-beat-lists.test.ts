@@ -43,7 +43,8 @@ describe("bar|beat interpretNotation() - comma-separated beat lists", () => {
   });
 
   it("applies state to all emitted notes in beat list", () => {
-    const result = interpretNotation("v80 t0.25 p0.8 C1 1|1,2,3,4");
+    // t/16 = sixteenth = 0.25 quarter
+    const result = interpretNotation("v80 t/16 p0.8 C1 1|1,2,3,4");
     const stateOverrides = { duration: 0.25, velocity: 80, probability: 0.8 };
 
     expect(result).toStrictEqual(

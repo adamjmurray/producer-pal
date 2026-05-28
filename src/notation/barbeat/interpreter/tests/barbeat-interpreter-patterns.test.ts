@@ -8,8 +8,8 @@ import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-int
 
 describe("bar|beat interpretNotation() - pattern features", () => {
   describe("repeat patterns (x{times}@{step})", () => {
-    it("expands basic repeat pattern with whole step", () => {
-      const result = interpretNotation("C1 1|1x4@1");
+    it("expands basic repeat pattern with quarter-note step (@/4)", () => {
+      const result = interpretNotation("C1 1|1x4@/4");
 
       expect(result).toStrictEqual([
         createNote({ pitch: 36 }),
@@ -19,8 +19,8 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       ]);
     });
 
-    it("expands repeat pattern with fractional step (triplets)", () => {
-      const result = interpretNotation("C3 1|1x3@1/3", {
+    it("expands repeat pattern with eighth-triplet step (@/12)", () => {
+      const result = interpretNotation("C3 1|1x3@/12", {
         timeSigNumerator: 4,
         timeSigDenominator: 4,
       });
@@ -31,8 +31,8 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result[2]!.start_time).toBeCloseTo(2 / 3, 10);
     });
 
-    it("expands repeat pattern with decimal step", () => {
-      const result = interpretNotation("Gb1 1|1x8@0.5");
+    it("expands repeat pattern with eighth-note step (@/8)", () => {
+      const result = interpretNotation("Gb1 1|1x8@/8");
 
       expect(result).toHaveLength(8);
       expect(result[0]!.start_time).toBeCloseTo(0, 10);
@@ -40,8 +40,9 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result[7]!.start_time).toBeCloseTo(3.5, 10);
     });
 
-    it("expands repeat pattern with mixed number step", () => {
-      const result = interpretNotation("C1 1|1x4@1+1/2");
+    it("expands repeat pattern with dotted-quarter step (@3/8)", () => {
+      // 3/8 of a whole note = 1.5 quarter notes (dotted quarter)
+      const result = interpretNotation("C1 1|1x4@3/8");
 
       expect(result).toHaveLength(4);
       expect(result[0]!.start_time).toBeCloseTo(0, 10);
@@ -50,8 +51,8 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result[3]!.start_time).toBeCloseTo(4.5, 10);
     });
 
-    it("expands repeat pattern with mixed number start", () => {
-      const result = interpretNotation("C3 1|2+1/3x3@1/3", {
+    it("expands repeat pattern with mixed-number start (positions still meter-relative)", () => {
+      const result = interpretNotation("C3 1|2+1/3x3@/12", {
         timeSigNumerator: 4,
         timeSigDenominator: 4,
       });
@@ -63,7 +64,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("handles repeat pattern overflowing into next bar", () => {
-      const result = interpretNotation("C1 1|3x6@1");
+      const result = interpretNotation("C1 1|3x6@/4");
 
       expect(result).toHaveLength(6);
       expect(result[0]!.start_time).toBe(2); // bar 1, beat 3
@@ -75,7 +76,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("handles repeat pattern with explicit bar", () => {
-      const result = interpretNotation("C1 1|1 D1 1|2x2@1");
+      const result = interpretNotation("C1 1|1 D1 1|2x2@/4");
 
       expect(result).toHaveLength(3);
       expect(result[0]!.pitch).toBe(36); // C1 at 1|1
@@ -84,7 +85,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("emits multiple pitches at each expanded position", () => {
-      const result = interpretNotation("C3 D3 E3 1|1x4@1");
+      const result = interpretNotation("C3 D3 E3 1|1x4@/4");
 
       expect(result).toHaveLength(12); // 3 pitches × 4 positions
       // Check first position (beat 1)
@@ -98,7 +99,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("applies state changes to all expanded positions", () => {
-      const result = interpretNotation("v80 t0.5 C1 1|1x4@1");
+      const result = interpretNotation("v80 t/8 C1 1|1x4@/4");
 
       expect(result).toHaveLength(4);
       expect(result.every((note) => note.velocity === 80)).toBe(true);
@@ -106,7 +107,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("uses current duration when step is omitted", () => {
-      const result = interpretNotation("t0.5 C1 1|1x4");
+      const result = interpretNotation("t/8 C1 1|1x4");
 
       expect(result).toHaveLength(4);
       expect(result[0]!.start_time).toBe(0); // 1|1
@@ -116,7 +117,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result.every((note) => note.duration === 0.5)).toBe(true);
     });
 
-    it("uses default duration when step is omitted and no duration set", () => {
+    it("uses default duration (quarter) when step is omitted and no duration set", () => {
       const result = interpretNotation("C1 1|1x3");
 
       expect(result).toHaveLength(3);
@@ -127,7 +128,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("handles repeat pattern mixed with regular beats", () => {
-      const result = interpretNotation("C1 1|1x2@1,3.5");
+      const result = interpretNotation("C1 1|1x2@/4,3.5");
 
       expect(result).toHaveLength(3);
       expect(result[0]!.start_time).toBe(0); // 1|1
@@ -136,7 +137,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("handles multiple repeat patterns in same beat list", () => {
-      const result = interpretNotation("C1 1|1x2@1,3x2@0.5");
+      const result = interpretNotation("C1 1|1x2@/4,3x2@/8");
 
       expect(result).toHaveLength(4);
       expect(result[0]!.start_time).toBe(0); // 1|1
@@ -146,7 +147,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("works with bar copy operations", () => {
-      const result = interpretNotation("C1 1|1x4@1 @2=1");
+      const result = interpretNotation("C1 1|1x4@/4 @2=1");
 
       expect(result).toHaveLength(8);
       // Bar 1
@@ -158,7 +159,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("emits warning for excessive repeat times", () => {
-      interpretNotation("C1 1|1x101@1");
+      interpretNotation("C1 1|1x101@/4");
       expect(outlet).toHaveBeenCalledWith(
         1,
         expect.stringContaining("101 notes, which may be excessive"),
@@ -166,7 +167,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("does not warn about buffered pitches when emitted via repeat pattern", () => {
-      const result = interpretNotation("t.5 C1 1|1x8");
+      const result = interpretNotation("t/8 C1 1|1x8");
 
       // Should emit 8 notes
       expect(result).toHaveLength(8);
@@ -181,7 +182,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("does not warn about buffered pitches when emitted then bar copied", () => {
-      const result = interpretNotation("t.5 C1 1|1x8 @2=");
+      const result = interpretNotation("t/8 C1 1|1x8 @2=");
 
       // Should emit 8 notes in bar 1 and copy to bar 2 (16 total)
       expect(result).toHaveLength(16);
@@ -299,13 +300,13 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("v0 deletions work with different time signatures", () => {
+      // Default duration is a quarter note regardless of meter — in 6/8 that's 1 Ableton beat
       const result = interpretNotation("C3 D3 1|1 v0 C3 1|1", {
         timeSigNumerator: 6,
         timeSigDenominator: 8,
       });
 
-      // In 6/8 time, each beat is an 8th note, so beats are 0.5 apart in Ableton beats
-      expect(result).toStrictEqual([createNote({ pitch: 62, duration: 0.5 })]);
+      expect(result).toStrictEqual([createNote({ pitch: 62, duration: 1 })]);
     });
 
     it("complex scenario: v0 deletions with bar copies and multiple notes", () => {
@@ -340,7 +341,8 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("v0 preserves note properties like duration, probability", () => {
-      const result = interpretNotation("t2 p0.8 C3 1|1 t0.5 p1.0 v0 C3 1|1");
+      // t/2 = half = 2 quarters; t/8 = eighth = 0.5
+      const result = interpretNotation("t/2 p0.8 C3 1|1 t/8 p1.0 v0 C3 1|1");
 
       expect(result).toStrictEqual([]);
     });
