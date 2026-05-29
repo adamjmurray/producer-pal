@@ -44,30 +44,26 @@ describe("buildGeminiConfig", () => {
     expect(config.tools).toStrictEqual([
       { functionDeclarations: [{ name: "ppal-x" }] },
     ]);
-    expect(config.inputAudioTranscription).toStrictEqual({
-      languageCodes: ["en-US"],
-    });
-    expect(config.outputAudioTranscription).toStrictEqual({
-      languageCodes: ["en-US"],
-    });
+    // Transcription is enabled with empty configs: the Developer API rejects
+    // languageCodes, so it must never appear (regression guard for the throw).
+    expect(config.inputAudioTranscription).toStrictEqual({});
+    expect(config.outputAudioTranscription).toStrictEqual({});
+    expect(config.inputAudioTranscription).not.toHaveProperty("languageCodes");
     expect(config.systemInstruction).toContain("ENGLISH");
   });
 
-  it("locks a non-English language in transcription codes and instructions", () => {
+  it("locks a non-English language via the system instruction", () => {
     const config = buildGeminiConfig({
       voice: "Puck",
       functionDeclarations: [],
       language: "es",
     });
 
-    expect(config.inputAudioTranscription).toStrictEqual({
-      languageCodes: ["es-ES"],
-    });
-    expect(config.outputAudioTranscription).toStrictEqual({
-      languageCodes: ["es-ES"],
-    });
+    // System instruction is the only Gemini language-control path now.
     expect(config.systemInstruction).toContain("SPANISH");
     expect(config.systemInstruction).toContain("Respond only in Spanish.");
+    expect(config.inputAudioTranscription).toStrictEqual({});
+    expect(config.outputAudioTranscription).toStrictEqual({});
   });
 
   it("falls back to English for an unknown language code", () => {
@@ -77,9 +73,6 @@ describe("buildGeminiConfig", () => {
       language: "xx",
     });
 
-    expect(config.inputAudioTranscription).toStrictEqual({
-      languageCodes: ["en-US"],
-    });
     expect(config.systemInstruction).toContain("ENGLISH");
   });
 

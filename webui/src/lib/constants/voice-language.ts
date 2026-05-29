@@ -9,22 +9,21 @@
  * context. The language is user-selectable (a dropdown in Voice settings);
  * English is the default.
  *
- * Two independent levers (per provider):
- *   - Output language — enforced via agent instructions (the only lever that
- *     governs the spoken response language on both backends).
- *   - Input transcription language — a parallel ASR side-channel that only
- *     shapes the transcript text (UI/logs/tool-call inputs), not how the
- *     speech-to-speech model hears or responds. Pinned so short/noisy
- *     utterances aren't misclassified.
+ * Spoken-output language is enforced via agent instructions on both providers —
+ * the only lever that governs the response language. The providers differ on the
+ * ASR (transcript) side-channel:
+ *   - OpenAI additionally accepts audio.input.transcription.language, pinned to
+ *     the chosen language so short/noisy utterances aren't misclassified. This
+ *     shapes the transcript text only, not how the model hears or responds.
+ *   - Gemini (Developer API) has transcription enabled but takes no language
+ *     code — AudioTranscriptionConfig.languageCodes is rejected in this mode and
+ *     the native-audio model detects language automatically.
  */
 
 export interface VoiceLanguage {
   /** ISO-639-1 code. Canonical key (localStorage) + OpenAI
    * audio.input.transcription.language. */
   code: string;
-  /** BCP-47 code for the Gemini ASR side-channel
-   * (AudioTranscriptionConfig.languageCodes). */
-  bcp47: string;
   /** Language name woven into the agent instructions ("Respond only in X"). */
   name: string;
   /** Dropdown label. */
@@ -32,32 +31,27 @@ export interface VoiceLanguage {
 }
 
 /**
- * Common languages offered in Voice settings. Each pairs the ISO-639-1 code
- * (OpenAI Whisper / canonical key) with the matching Gemini Live BCP-47 code.
- * English is first (the default). Trim or extend freely — the lock is driven by
- * `name` (instructions) and the codes (ASR hints).
+ * Common languages offered in Voice settings, keyed by ISO-639-1 code (OpenAI
+ * transcription / canonical localStorage key). English is first (the default).
+ * Trim or extend freely — the lock is driven by `name` (instructions) and, on
+ * OpenAI, the `code` (ASR hint).
  */
 export const VOICE_LANGUAGES: readonly VoiceLanguage[] = [
-  { code: "en", bcp47: "en-US", name: "English", label: "English" },
-  { code: "es", bcp47: "es-ES", name: "Spanish", label: "Spanish (Español)" },
-  { code: "fr", bcp47: "fr-FR", name: "French", label: "French (Français)" },
-  { code: "de", bcp47: "de-DE", name: "German", label: "German (Deutsch)" },
-  { code: "it", bcp47: "it-IT", name: "Italian", label: "Italian (Italiano)" },
-  {
-    code: "pt",
-    bcp47: "pt-BR",
-    name: "Portuguese",
-    label: "Portuguese (Português)",
-  },
-  { code: "nl", bcp47: "nl-NL", name: "Dutch", label: "Dutch (Nederlands)" },
-  { code: "pl", bcp47: "pl-PL", name: "Polish", label: "Polish (Polski)" },
-  { code: "ru", bcp47: "ru-RU", name: "Russian", label: "Russian (Русский)" },
-  { code: "tr", bcp47: "tr-TR", name: "Turkish", label: "Turkish (Türkçe)" },
-  { code: "ja", bcp47: "ja-JP", name: "Japanese", label: "Japanese (日本語)" },
-  { code: "ko", bcp47: "ko-KR", name: "Korean", label: "Korean (한국어)" },
-  { code: "zh", bcp47: "cmn-CN", name: "Chinese", label: "Chinese (中文)" },
-  { code: "hi", bcp47: "hi-IN", name: "Hindi", label: "Hindi (हिन्दी)" },
-  { code: "ar", bcp47: "ar-XA", name: "Arabic", label: "Arabic (العربية)" },
+  { code: "en", name: "English", label: "English" },
+  { code: "es", name: "Spanish", label: "Spanish (Español)" },
+  { code: "fr", name: "French", label: "French (Français)" },
+  { code: "de", name: "German", label: "German (Deutsch)" },
+  { code: "it", name: "Italian", label: "Italian (Italiano)" },
+  { code: "pt", name: "Portuguese", label: "Portuguese (Português)" },
+  { code: "nl", name: "Dutch", label: "Dutch (Nederlands)" },
+  { code: "pl", name: "Polish", label: "Polish (Polski)" },
+  { code: "ru", name: "Russian", label: "Russian (Русский)" },
+  { code: "tr", name: "Turkish", label: "Turkish (Türkçe)" },
+  { code: "ja", name: "Japanese", label: "Japanese (日本語)" },
+  { code: "ko", name: "Korean", label: "Korean (한국어)" },
+  { code: "zh", name: "Chinese", label: "Chinese (中文)" },
+  { code: "hi", name: "Hindi", label: "Hindi (हिन्दी)" },
+  { code: "ar", name: "Arabic", label: "Arabic (العربية)" },
 ] as const;
 
 /** ISO-639-1 code of the default voice language (English). */

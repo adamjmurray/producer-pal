@@ -67,11 +67,13 @@ export function buildGeminiConfig(opts: {
         },
       },
     },
-    // Pin the ASR side-channel language (BCP-47). The native-audio model ignores
-    // speechConfig.languageCode, so output language is locked via the system
-    // instruction; these hints only improve transcript accuracy.
-    inputAudioTranscription: { languageCodes: [language.bcp47] },
-    outputAudioTranscription: { languageCodes: [language.bcp47] },
+    // Enable transcription so the UI can render the transcript (off by default
+    // on Gemini). We send empty configs intentionally: the Developer API rejects
+    // AudioTranscriptionConfig.languageCodes (the SDK throws for it in this
+    // mode), and the native-audio model picks language automatically anyway. The
+    // spoken-output language is locked via the system instruction below.
+    inputAudioTranscription: {},
+    outputAudioTranscription: {},
     sessionResumption: opts.resumeHandle ? { handle: opts.resumeHandle } : {},
   };
 

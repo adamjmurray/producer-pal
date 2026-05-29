@@ -21,10 +21,9 @@ describe("voice-language", () => {
     expect(OPENAI_TRANSCRIPTION_MODEL).toBe("gpt-realtime-whisper");
   });
 
-  it("pairs each language with an ISO code, BCP-47 code, name, and label", () => {
+  it("pairs each language with an ISO code, name, and label", () => {
     for (const lang of VOICE_LANGUAGES) {
       expect(lang.code).toMatch(/^[a-z]{2}$/);
-      expect(lang.bcp47.length).toBeGreaterThan(0);
       expect(lang.name.length).toBeGreaterThan(0);
       expect(lang.label.length).toBeGreaterThan(0);
     }
@@ -41,7 +40,6 @@ describe("voice-language", () => {
     it("resolves a known code to its record", () => {
       expect(getVoiceLanguage("es")).toMatchObject({
         code: "es",
-        bcp47: "es-ES",
         name: "Spanish",
       });
     });
