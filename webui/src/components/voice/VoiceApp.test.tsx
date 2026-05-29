@@ -555,17 +555,23 @@ describe("VoiceApp", () => {
       // A conversation started and continued in one sitting never populates
       // savedItems (autosave doesn't refresh it), but the previous session's
       // transcript is retained in voice.history after Stop. Reconnecting must
-      // seed from that so prior context isn't lost.
+      // seed from that — and promote it into persistence's prior snapshot — so
+      // prior context (incl. historical tool calls the reseed drops) survives.
       const retainedHistory = [userMsg("u1", "earlier turn")];
 
       const session = baseSession({ status: "idle", history: retainedHistory });
+      const persistence = basePersistence();
 
       mocks.useVoiceSession.mockReturnValue(session);
+      mocks.useVoicePersistence.mockReturnValue(persistence);
 
       renderVoiceApp();
       fireEvent.click(screen.getByRole("button", { name: "Talk" }));
 
       expect(session.connect).toHaveBeenCalledWith(retainedHistory);
+      expect(persistence.retainPriorHistory).toHaveBeenCalledWith(
+        retainedHistory,
+      );
     });
 
     it("merges saved record with live history so historical tool calls stay visible mid-session", () => {

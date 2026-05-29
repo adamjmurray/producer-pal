@@ -39,3 +39,23 @@ export function mergeVoiceHistory(
 
   return [...prior, ...additions];
 }
+
+/**
+ * Derive a title from the first user transcript item.
+ * @param items - Live RealtimeItem history
+ * @returns First user utterance (truncated), or null if none yet
+ */
+export function deriveVoiceTitle(items: RealtimeItem[]): string | null {
+  for (const item of items) {
+    if (item.type !== "message" || item.role !== "user") continue;
+    const text = item.content
+      .map((c) => (c.type === "input_text" ? c.text : (c.transcript ?? "")))
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    if (text) return text.slice(0, 80);
+  }
+
+  return null;
+}

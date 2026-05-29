@@ -295,10 +295,18 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     // savedItems, so a conversation started and continued in one sitting
     // (Stop → Talk) would otherwise reconnect with no prior context.
     // displayItems already merges and dedupes the two sources.
+    //
+    // Promote that transcript into persistence's prior snapshot *before*
+    // reconnecting: the reseed drops function_call items (the SDK refuses to
+    // re-add them), so without this the post-reconnect autosave would merge
+    // against an empty prior and overwrite the saved record's historical tool
+    // calls — and they'd vanish from the transcript too. A no-op when empty
+    // (a truly fresh Talk) since prior/savedItems are already empty.
+    persistence.retainPriorHistory(displayItems);
     const seed = displayItems.length > 0 ? displayItems : undefined;
 
     void voice.connect(seed);
-  }, [isConnected, displayItems, voice]);
+  }, [isConnected, displayItems, voice, persistence]);
 
   // `realtimeModel` and `backend` above are already record-aware (they prefer
   // the loaded record's provider/model over current settings), so the header
