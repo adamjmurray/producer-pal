@@ -42,7 +42,8 @@ function extractVelocities(notes: string): number[] {
   return [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
 }
 
-// All waveforms use: velocity = 64 + 50 * waveform(4t)
+// All waveforms use: velocity = 64 + 50 * waveform(n/1)
+// n/1 = whole note = 4 beats = one cycle per bar in 4/4
 // 4 notes at phases 0, 0.25, 0.5, 0.75
 
 describe("ppal-clip-transforms-waveforms", () => {
@@ -53,7 +54,7 @@ describe("ppal-clip-transforms-waveforms", () => {
     // velocity: 114, 64, 14, 64
     const notes = await applyAndReadNotes(
       clipId,
-      "velocity = 64 + 50 * cos(4t)",
+      "velocity = 64 + 50 * cos(n/1)",
     );
 
     // Beats 2 and 4 share v64, comma-merged
@@ -74,7 +75,7 @@ describe("ppal-clip-transforms-waveforms", () => {
 
       const notes = await applyAndReadNotes(
         clipId,
-        `velocity = 64 + 50 * ${waveform}(4t)`,
+        `velocity = 64 + 50 * ${waveform}(n/1)`,
       );
 
       // Beats 1 and 3 share v64, comma-merged
@@ -90,7 +91,7 @@ describe("ppal-clip-transforms-waveforms", () => {
     // saw: phase 0→0, 0.25→0.5, 0.5→-1, 0.75→-0.5
     // velocity: 64, 89, 14, 39
     const velocities = extractVelocities(
-      await applyAndReadNotes(clipId, "velocity = 64 + 50 * saw(4t)"),
+      await applyAndReadNotes(clipId, "velocity = 64 + 50 * saw(n/1)"),
     );
 
     expect(velocities).toHaveLength(4);
@@ -109,7 +110,7 @@ describe("ppal-clip-transforms-waveforms", () => {
     // velocities aren't repeated. Check pattern instead of counting v markers.
     const notes = await applyAndReadNotes(
       clipId,
-      "velocity = 64 + 50 * square(4t)",
+      "velocity = 64 + 50 * square(n/1)",
     );
 
     // First two notes at v114 (high), last two at v14 (low)

@@ -33,7 +33,7 @@ export async function createMidiClip(
     arguments: {
       slot: `${emptyMidiTrack}/${sceneIndex}`,
       notes,
-      length: "2:0.0",
+      length: "2bar",
     },
   });
   const clip = parseToolResult<CreateClipResult>(result);
@@ -48,7 +48,7 @@ export async function createMidiClip(
  * @param ctx - MCP test context with client
  * @param arrangementStart - Bar|beat position for clip start
  * @param notes - Notation string for notes
- * @param length - Bar:beat duration for clip length
+ * @param length - Clip length as a duration (e.g. "1bar", "n/4", "1bar+n/4")
  * @returns Clip ID
  */
 export async function createArrangementClip(

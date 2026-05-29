@@ -89,7 +89,7 @@ describe("ppal-clip-transforms (swing)", () => {
   });
 
   it("offsets off-beat 8th notes", async () => {
-    const clipId = await createMidiClip(61, "n/2 C3 1|1x8");
+    const clipId = await createMidiClip(61, "n/8 C3 1|1x8");
 
     await applyTransform(clipId, "timing = swing(0.1)");
     const notes = await readClipNotes(clipId);
@@ -111,9 +111,9 @@ describe("ppal-clip-transforms (swing)", () => {
   });
 
   it("applies 16th-note swing with custom grid", async () => {
-    const clipId = await createMidiClip(62, "n/4 C3 1|1x16");
+    const clipId = await createMidiClip(62, "n/16 C3 1|1x16");
 
-    await applyTransform(clipId, "timing = swing(0.05, 1/4t)");
+    await applyTransform(clipId, "timing = swing(0.05, n/16)");
     const notes = await readClipNotes(clipId);
     const starts = extractStartBeats(notes);
 
@@ -129,7 +129,7 @@ describe("ppal-clip-transforms (swing)", () => {
   });
 
   it("auto-quantizes so re-applying swing is safe", async () => {
-    const clipId = await createMidiClip(63, "n/2 C3 1|1x8");
+    const clipId = await createMidiClip(63, "n/8 C3 1|1x8");
 
     // Use small swing amounts that stay within the quantize grid (grid/8=0.0625)
     await applyTransform(clipId, "timing = swing(0.04)");
@@ -145,7 +145,7 @@ describe("ppal-clip-transforms (swing)", () => {
   });
 
   it("raw keyword skips auto-quantize", async () => {
-    const clipId = await createMidiClip(64, "n/2 C3 1|1x4");
+    const clipId = await createMidiClip(64, "n/8 C3 1|1x4");
 
     await applyTransform(clipId, "timing = swing(0.1)");
     const afterFirstSwing = extractStartBeats(await readClipNotes(clipId));
@@ -161,7 +161,7 @@ describe("ppal-clip-transforms (swing)", () => {
   });
 
   it("swing(0) is a no-op", async () => {
-    const clipId = await createMidiClip(65, "n/2 C3 1|1x8");
+    const clipId = await createMidiClip(65, "n/8 C3 1|1x8");
 
     await applyTransform(clipId, "timing = swing(0)");
     const notes = await readClipNotes(clipId);
@@ -185,7 +185,7 @@ describe("ppal-clip-transforms (quant)", () => {
     // Create notes at slightly off-grid positions
     const clipId = await createMidiClip(67, "C3 1|1 C3 1|1.6 C3 1|2.4 C3 1|3");
 
-    await applyTransform(clipId, "timing = quant(1/2t)");
+    await applyTransform(clipId, "timing = quant(n/8)");
     const notes = await readClipNotes(clipId);
     const starts = extractStartBeats(notes);
 
@@ -206,7 +206,7 @@ describe("ppal-clip-transforms (quant)", () => {
       "C3 1|1 C3 1|1.3 C3 1|1.6 C3 1|2.1",
     );
 
-    await applyTransform(clipId, "timing = quant(1/4t)");
+    await applyTransform(clipId, "timing = quant(n/16)");
     const notes = await readClipNotes(clipId);
     const starts = extractStartBeats(notes);
 
@@ -219,7 +219,7 @@ describe("ppal-clip-transforms (quant)", () => {
   });
 
   it("undoes swing when applied after", async () => {
-    const clipId = await createMidiClip(69, "n/2 C3 1|1x8");
+    const clipId = await createMidiClip(69, "n/8 C3 1|1x8");
 
     // Apply swing, then quantize back to grid
     await applyTransform(clipId, "timing = swing(0.1)");
@@ -230,7 +230,7 @@ describe("ppal-clip-transforms (quant)", () => {
     expect(starts[1]).toBeCloseTo(0.6, 1); // Off-beat swung
 
     // Quantize to 8th-note grid should undo the swing
-    await applyTransform(clipId, "timing = quant(1/2t)");
+    await applyTransform(clipId, "timing = quant(n/8)");
     starts = extractStartBeats(await readClipNotes(clipId));
 
     expect(starts).toHaveLength(8);
@@ -240,7 +240,7 @@ describe("ppal-clip-transforms (quant)", () => {
     }
   });
 
-  it("works with numeric period (0.5 = 1/2t)", async () => {
+  it("works with numeric period (0.5 beats = n/8 grid)", async () => {
     const clipId = await createMidiClip(70, "C3 1|1 C3 1|1.6");
 
     await applyTransform(clipId, "timing = quant(0.5)");
