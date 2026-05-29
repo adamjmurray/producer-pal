@@ -220,6 +220,111 @@ describe("useContextMemory", () => {
       });
     });
   });
+
+  // A focus/poll refresh GET can read content older than a concurrent save's
+  // POST. Without sequencing, if the stale GET resolves after the save echo it
+  // clobbers status.content with pre-save content (AJM-431). These tests pin
+  // each overlap ordering: the save's echo must always win.
+  it("does not let an in-flight save's stale focus GET clobber the echo", async () => {
+    mockResponses({ memoryContent: "old" });
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.status).toMatchObject({ content: "old" });
+    });
+
+    const post = deferred<Response>();
+    const staleGet = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(post.promise); // save POST
+    fetchMock.mockReturnValueOnce(staleGet.promise); // refresh GET (pre-save read)
+
+    await act(async () => {
+      const savePromise = result.current.save("new");
+      // refresh() is issued while the save is still in flight.
+      const refreshPromise = result.current.refresh();
+
+      // The save echo lands first and sets "new".
+      post.resolve(jsonResponse({ memoryContent: "new" }));
+      await savePromise;
+
+      // The stale GET resolves last; the guard must drop it.
+      staleGet.resolve(jsonResponse({ memoryContent: "old" }));
+      await refreshPromise;
+    });
+
+    expect(result.current.status).toStrictEqual({
+      kind: "ready",
+      content: "new",
+    });
+  });
+
+  it("defers to a save that starts mid-refresh", async () => {
+    mockResponses({ memoryContent: "old" });
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.status).toMatchObject({ content: "old" });
+    });
+
+    const staleGet = deferred<Response>();
+    const post = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(staleGet.promise); // refresh GET (issued first)
+    fetchMock.mockReturnValueOnce(post.promise); // save POST (starts during window)
+
+    await act(async () => {
+      const refreshPromise = result.current.refresh();
+      // Save begins after the GET is in flight, so no save is counted at the
+      // refresh's start — only the started-during-window guard catches it.
+      const savePromise = result.current.save("new");
+
+      post.resolve(jsonResponse({ memoryContent: "new" }));
+      await savePromise;
+
+      staleGet.resolve(jsonResponse({ memoryContent: "old" }));
+      await refreshPromise;
+    });
+
+    expect(result.current.status).toStrictEqual({
+      kind: "ready",
+      content: "new",
+    });
+  });
+
+  it("does not let a superseded refresh error override an in-flight save", async () => {
+    mockResponses({ memoryContent: "old" });
+
+    const { result } = renderHook(() => useContextMemory());
+
+    await waitFor(() => {
+      expect(result.current.status).toMatchObject({ content: "old" });
+    });
+
+    const post = deferred<Response>();
+    const failingGet = deferred<Response>();
+
+    fetchMock.mockReturnValueOnce(post.promise); // save POST
+    fetchMock.mockReturnValueOnce(failingGet.promise); // refresh GET (will reject)
+
+    await act(async () => {
+      const savePromise = result.current.save("new");
+      const refreshPromise = result.current.refresh();
+
+      post.resolve(jsonResponse({ memoryContent: "new" }));
+      await savePromise;
+
+      failingGet.reject(new Error("network down"));
+      await refreshPromise;
+    });
+
+    expect(result.current.status).toStrictEqual({
+      kind: "ready",
+      content: "new",
+    });
+  });
 });
 
 function jsonResponse(body: unknown): Response {
@@ -227,4 +332,27 @@ function jsonResponse(body: unknown): Response {
     status: 200,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+interface Deferred<T> {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+  reject: (reason: unknown) => void;
+}
+
+/**
+ * Externally-resolvable promise, so a test can pin the resolution order of a
+ * concurrent save POST and refresh GET independent of issue order.
+ * @returns A promise plus its resolve/reject handles
+ */
+function deferred<T>(): Deferred<T> {
+  // The executor runs synchronously, so all three fields are set before return.
+  const box: Partial<Deferred<T>> = {};
+
+  box.promise = new Promise<T>((resolve, reject) => {
+    box.resolve = resolve;
+    box.reject = reject;
+  });
+
+  return box as Deferred<T>;
 }

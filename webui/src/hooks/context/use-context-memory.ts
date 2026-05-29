@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { getConfigUrl } from "#webui/utils/mcp-url";
 
 /** Status of the project context memory body. */
@@ -45,23 +45,43 @@ export function useContextMemory(): UseContextMemoryReturn {
   });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Coordinate refresh() reads against in-flight save() writes. A focus/poll
+  // GET can read content older than a concurrent save's POST and, if it
+  // resolves last, clobber the save's echo with pre-save content. saveCountRef
+  // counts currently-running saves; saveGenRef counts saves ever started. A
+  // refresh trusts its result only if no save overlapped its GET round-trip.
+  const saveCountRef = useRef(0);
+  const saveGenRef = useRef(0);
 
   const applyConfig = useCallback((config: ConfigResponse): void => {
     setStatus({ kind: "ready", content: config.memoryContent ?? "" });
   }, []);
 
   const refresh = useCallback(async (): Promise<void> => {
+    const saveInFlightAtStart = saveCountRef.current;
+    const saveGenAtStart = saveGenRef.current;
+    // The GET's result is only authoritative if no save overlapped its
+    // round-trip; otherwise the save's echo wins (see saveCountRef comment).
+    const supersededBySave = (): boolean =>
+      saveInFlightAtStart > 0 || saveGenRef.current !== saveGenAtStart;
+
     try {
       const config = await fetchConfig();
 
+      if (supersededBySave()) return;
+
       applyConfig(config);
     } catch (error: unknown) {
+      if (supersededBySave()) return;
+
       setStatus({ kind: "error", message: errorMessage(error) });
     }
   }, [applyConfig]);
 
   const save = useCallback(
     async (content: string): Promise<boolean> => {
+      saveCountRef.current++;
+      saveGenRef.current++;
       setSaveStatus("saving");
       setSaveError(null);
 
@@ -79,6 +99,8 @@ export function useContextMemory(): UseContextMemoryReturn {
         setSaveStatus("error");
 
         return false;
+      } finally {
+        saveCountRef.current--;
       }
     },
     [applyConfig],
