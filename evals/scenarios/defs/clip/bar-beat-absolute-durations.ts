@@ -6,7 +6,7 @@
 /**
  * AJM-443 scenarios: bar|beat absolute-duration semantics.
  *
- * Run on `dev` and `main` and compare. Headline invariant: `t/4` is one quarter
+ * Run on `dev` and `main` and compare. Headline invariant: `n/4` is one quarter
  * note in any meter. Metrics: parse-error rate (expected to rise on dev) and
  * final-correctness (must rise on dev).
  *
@@ -93,14 +93,14 @@ function assertNoteCount(
 }
 
 /**
- * Triplet durations: eighth-note triplets (t/12) and quarter-note triplets
- * (t/6) are the model's weakest prior. This is the single scenario most
+ * Triplet durations: eighth-note triplets (n/12) and quarter-note triplets
+ * (n/6) are the model's weakest prior. This is the single scenario most
  * likely to expose meter-relative-vs-absolute confusion.
  */
 export const barBeatTriplets: EvalScenario = {
   id: "bar-beat-triplets",
   description:
-    "Triplet durations (t/12, t/6) — most likely failure mode for absolute notation",
+    "Triplet durations (n/12, n/6) — most likely failure mode for absolute notation",
   kind: "capability",
   liveSet: LIVE_SET,
 
@@ -126,7 +126,7 @@ export const barBeatTriplets: EvalScenario = {
       prompt: `Evaluate if the assistant:
 1. Created a 1-bar clip with eighth-note triplets (12 kicks spanning the bar)
 2. Created a second 1-bar clip with quarter-note triplets (6 kicks spanning the bar)
-3. Used an appropriate triplet duration (e.g. t/12 and t/6 in the new absolute notation, or equivalent expressions)
+3. Used an appropriate triplet duration (e.g. n/12 and n/6 in the new absolute notation, or equivalent expressions)
 4. Did NOT produce a clip with the wrong number of notes`,
     },
 
@@ -136,14 +136,14 @@ export const barBeatTriplets: EvalScenario = {
 
 /**
  * Meter-fill as quarter counts. In 5/4, the bar is 5 quarter notes; one note
- * filling the bar has duration t5/4. In 6/8, the bar is 3 quarter notes; the
- * filling note is t3/4. Tests whether "teach quarter-counting, not
+ * filling the bar has duration n5/4. In 6/8, the bar is 3 quarter notes; the
+ * filling note is n3/4. Tests whether "teach quarter-counting, not
  * meter-matching" survived into model behavior.
  */
 export const barBeatMeterFill: EvalScenario = {
   id: "bar-beat-meter-fill",
   description:
-    "Bar-filling note duration in 5/4 and 6/8 (t5/4, t3/4) — quarter-counting test",
+    "Bar-filling note duration in 5/4 and 6/8 (n5/4, n3/4) — quarter-counting test",
   kind: "capability",
   liveSet: LIVE_SET,
 
@@ -201,9 +201,9 @@ export const barBeatMeterFill: EvalScenario = {
     {
       type: "llm_judge",
       prompt: `Evaluate if the assistant:
-1. Created a 5/4 clip with one kick whose duration spans the full bar (would be t5/4 in absolute notation = 5 quarter notes)
-2. Created a 6/8 clip with one kick whose duration spans the full bar (would be t3/4 in absolute notation = 3 quarter notes, since 6 eighths = 3 quarters)
-3. Did NOT default the duration to a meter-relative "1 bar" assumption (e.g. t1 meaning the whole bar regardless of meter)`,
+1. Created a 5/4 clip with one kick whose duration spans the full bar (would be n5/4 in absolute notation = 5 quarter notes)
+2. Created a 6/8 clip with one kick whose duration spans the full bar (would be n3/4 in absolute notation = 3 quarter notes, since 6 eighths = 3 quarters)
+3. Did NOT default the duration to a meter-relative "1 bar" assumption (e.g. n1 meaning the whole bar regardless of meter)`,
     },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
@@ -218,7 +218,7 @@ export const barBeatMeterFill: EvalScenario = {
 export const barBeatAbsoluteDurationUniformity: EvalScenario = {
   id: "bar-beat-absolute-duration-uniformity",
   description:
-    "Same `t` fraction across meters — quarter notes filling 4/4, 6/8, 5/4",
+    "Same `n` fraction across meters — quarter notes filling 4/4, 6/8, 5/4",
   kind: "capability",
   liveSet: LIVE_SET,
 
@@ -314,7 +314,7 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
    - 4/4: 4 kicks
    - 6/8: 3 kicks (since 6 eighths = 3 quarters)
    - 5/4: 5 kicks
-3. Used absolute-duration syntax (t/4) consistently across all three meters — NOT meter-relative durations that produce different numeric values per meter`,
+3. Used absolute-duration syntax (n/4) consistently across all three meters — NOT meter-relative durations that produce different numeric values per meter`,
     },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },

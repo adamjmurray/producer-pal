@@ -126,9 +126,9 @@ describe("bar|beat interpretNotation() - advanced bar copy", () => {
       });
 
       it("preserves note properties in tiled copy", () => {
-        // t/8 = eighth = 0.5; t/16 = sixteenth = 0.25
+        // n/8 = eighth = 0.5; n/16 = sixteenth = 0.25
         const result = interpretNotation(
-          "v80 t/8 p0.8 C3 1|1 v90 t/16 p0.9 D3 2|1 @3-6=1-2",
+          "v80 n/8 p0.8 C3 1|1 v90 n/16 p0.9 D3 2|1 @3-6=1-2",
         );
 
         // Bar 3 should have C3 with original properties

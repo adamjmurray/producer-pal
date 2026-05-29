@@ -40,9 +40,9 @@ export interface FunctionNode {
   raw: boolean;
 }
 
-/** Absolute duration value (e.g., t/4 = quarter note). Resolved to musical beats at evaluation time. */
-export interface TDurationNode {
-  type: "tDuration";
+/** Absolute duration value (e.g., n/4 = quarter note). Resolved to musical beats at evaluation time. */
+export interface NDurationNode {
+  type: "nDuration";
   wholeNoteFraction: number;
 }
 
@@ -52,7 +52,7 @@ export type ExpressionNode =
   | VariableNode
   | BinaryOpNode
   | FunctionNode
-  | TDurationNode;
+  | NDurationNode;
 
 /** Pitch range filter */
 export interface PitchRange {

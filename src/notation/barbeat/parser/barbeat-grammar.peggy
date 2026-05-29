@@ -94,11 +94,11 @@ velocity "velocity value"
   }
 
 duration "duration value"
-  = "t" frac:unsignedFraction {
+  = "n" frac:unsignedFraction {
     return { duration: frac };  // Fraction of a whole note (e.g., 1/4 = quarter)
   }
-  / "t" bad:badAbsoluteValue {
-    throw new Error(`durations need a denominator: t/4 = quarter, t/8 = eighth, t/12 = eighth triplet. Got t${bad}`);
+  / "n" bad:badAbsoluteValue {
+    throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet. Got n${bad}`);
   }
 
 // Matches values that LOOK like a duration/step but lack the required denominator.

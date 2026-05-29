@@ -88,8 +88,8 @@ describe("bar|beat interpretNotation() - timing features", () => {
     });
 
     it("handles duration updates after time", () => {
-      // Default = quarter (1); t/8 = eighth (0.5); t/16 = sixteenth (0.25)
-      const result = interpretNotation("C4 1|1 t/8 1|2 t/16 1|3");
+      // Default = quarter (1); n/8 = eighth (0.5); n/16 = sixteenth (0.25)
+      const result = interpretNotation("C4 1|1 n/8 1|2 n/16 1|3");
 
       expect(result).toHaveLength(3);
       expect(result[0]!.duration).toBe(1);

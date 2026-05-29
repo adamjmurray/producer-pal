@@ -78,8 +78,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   });
 
   it("handles duration state changes (absolute note values)", () => {
-    // t/8 = eighth note = 0.5 quarter; t/2 = half note = 2 quarters (Ableton beats)
-    const result = interpretNotation("t/8 C3 t/2 D3 E3 1|1");
+    // n/8 = eighth note = 0.5 quarter; n/2 = half note = 2 quarters (Ableton beats)
+    const result = interpretNotation("n/8 C3 n/2 D3 E3 1|1");
 
     expect(result).toStrictEqual([
       createNote({ duration: 0.5 }),
@@ -89,17 +89,17 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   });
 
   it("handles whole-note family durations in 4/4", () => {
-    const result = interpretNotation("t/1 C3 1|1", {
+    const result = interpretNotation("n/1 C3 1|1", {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
 
-    // t/1 = whole note = 4 quarters
+    // n/1 = whole note = 4 quarters
     expect(result).toStrictEqual([createNote({ duration: 4 })]);
   });
 
-  it("handles multi-whole-note durations (t5/4 in 4/4 = 5 quarters)", () => {
-    const result = interpretNotation("t5/4 C3 1|1", {
+  it("handles multi-whole-note durations (n5/4 in 4/4 = 5 quarters)", () => {
+    const result = interpretNotation("n5/4 C3 1|1", {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
@@ -107,8 +107,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     expect(result).toStrictEqual([createNote({ duration: 5 })]);
   });
 
-  it("handles fractional sub-quarter durations (t3/16 = dotted eighth)", () => {
-    const result = interpretNotation("t3/16 C3 1|1", {
+  it("handles fractional sub-quarter durations (n3/16 = dotted eighth)", () => {
+    const result = interpretNotation("n3/16 C3 1|1", {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
@@ -117,18 +117,18 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     expect(result).toStrictEqual([createNote({ duration: 0.75 })]);
   });
 
-  it("treats t/4 as a quarter regardless of meter (6/8)", () => {
-    const result = interpretNotation("t/4 C3 1|1", {
+  it("treats n/4 as a quarter regardless of meter (6/8)", () => {
+    const result = interpretNotation("n/4 C3 1|1", {
       timeSigNumerator: 6,
       timeSigDenominator: 8,
     });
 
-    // t/4 always = 1 quarter note = 1 Ableton beat, even in 6/8
+    // n/4 always = 1 quarter note = 1 Ableton beat, even in 6/8
     expect(result).toStrictEqual([createNote({ duration: 1 })]);
   });
 
-  it("meter-fill: t3/4 fills a 6/8 bar (6 eighths = 3 quarters)", () => {
-    const result = interpretNotation("t3/4 C3 1|1", {
+  it("meter-fill: n3/4 fills a 6/8 bar (6 eighths = 3 quarters)", () => {
+    const result = interpretNotation("n3/4 C3 1|1", {
       timeSigNumerator: 6,
       timeSigDenominator: 8,
     });
@@ -136,13 +136,13 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     expect(result).toStrictEqual([createNote({ duration: 3 })]);
   });
 
-  it("triplet durations: t/12 = eighth-note triplet, t/6 = quarter-note triplet", () => {
-    const result = interpretNotation("t/12 C3 1|1 t/6 D3 1|2", {
+  it("triplet durations: n/12 = eighth-note triplet, n/6 = quarter-note triplet", () => {
+    const result = interpretNotation("n/12 C3 1|1 n/6 D3 1|2", {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
 
-    // t/12 = 1/3 quarter, t/6 = 2/3 quarter
+    // n/12 = 1/3 quarter, n/6 = 2/3 quarter
     expect(result).toHaveLength(2);
     expect(result[0]!.duration).toBeCloseTo(1 / 3, 10);
     expect(result[1]!.duration).toBeCloseTo(2 / 3, 10);
@@ -174,8 +174,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   });
 
   it("handles changing durations across notes", () => {
-    // t2/1 = 2 whole = 8 quarters; t3/8 = dotted quarter = 1.5 quarters; t3/16 = dotted eighth = 0.75
-    const result = interpretNotation("t2/1 C3 1|1 t3/8 D3 1|2 t3/16 E3 1|3", {
+    // n2/1 = 2 whole = 8 quarters; n3/8 = dotted quarter = 1.5 quarters; n3/16 = dotted eighth = 0.75
+    const result = interpretNotation("n2/1 C3 1|1 n3/8 D3 1|2 n3/16 E3 1|3", {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
@@ -195,9 +195,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   });
 
   it("handles complex state combinations", () => {
-    // t/16 = sixteenth = 0.25; t/4 = quarter = 1
+    // n/16 = sixteenth = 0.25; n/4 = quarter = 1
     const result = interpretNotation(
-      "v100 t/16 p0.9 C3 D3 1|1 v80-120 t/4 p0.7 E3 F3 1|2",
+      "v100 n/16 p0.9 C3 D3 1|1 v80-120 n/4 p0.7 E3 F3 1|2",
     );
 
     expect(result).toStrictEqual([
@@ -226,8 +226,8 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     expect(result).toStrictEqual(drumPatternNotes);
   });
   it("maintains state across multiple bar boundaries", () => {
-    // t/8 = eighth = 0.5 quarter
-    const result = interpretNotation("v80 t/8 p0.8 C3 1|1 D3 3|2 E3 5|1");
+    // n/8 = eighth = 0.5 quarter
+    const result = interpretNotation("v80 n/8 p0.8 C3 1|1 D3 3|2 E3 5|1");
 
     expect(result).toStrictEqual([
       createNote({ duration: 0.5, velocity: 80, probability: 0.8 }), // bar 1, beat 1
@@ -273,9 +273,9 @@ describe("bar|beat interpretNotation() - core functionality", () => {
   });
 
   it("handles mixed order of state changes", () => {
-    // t/8 = eighth = 0.5; t/4 = quarter = 1.0
+    // n/8 = eighth = 0.5; n/4 = quarter = 1.0
     const result = interpretNotation(
-      "t/8 v80 p0.7 C3 1|1 v100 t/4 p1.0 D3 2|1",
+      "n/8 v80 p0.7 C3 1|1 v100 n/4 p1.0 D3 2|1",
     );
 
     expect(result).toStrictEqual([

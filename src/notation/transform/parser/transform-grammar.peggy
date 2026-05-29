@@ -49,7 +49,7 @@ assignment "parameter assignment"
 
 // The right-hand side of an assignment, after any optional range selector.
 // Full form: `parameter operator expression`. Shorthand: bar|beat-style tokens
-// (v/p/t + bare-pitch) that desugar to the same { parameter, operator, expression }.
+// (v/p/n + bare-pitch) that desugar to the same { parameter, operator, expression }.
 assignmentBody
   = parameter:parameter _ operator:operator _ expression:expression {
       if (operator === "subtract") {
@@ -73,7 +73,7 @@ shorthand "shorthand assignment"
   / "p" value:unsignedDecimal {
       return { parameter: "probability", operator: "set", expression: value };
     }
-  / expression:tDuration {
+  / expression:nDuration {
       return { parameter: "duration", operator: "set", expression };
     }
   / pitch:pitchLiteral {
@@ -169,17 +169,17 @@ multiplicative
 primary
   = functionCall
   / variable
-  / tDuration
+  / nDuration
   / pitchLiteral
   / number
   / "(" _ expr:expression _ ")" { return expr; }
 
-tDuration "absolute duration value"
-  = "t" frac:unsignedFraction {
-    return { type: "tDuration", wholeNoteFraction: frac };
+nDuration "absolute duration value"
+  = "n" frac:unsignedFraction {
+    return { type: "nDuration", wholeNoteFraction: frac };
   }
-  / "t" bad:badAbsoluteValue {
-    throw new Error(`durations need a denominator: t/4 = quarter, t/8 = eighth, t/12 = eighth triplet. Got t${bad}`);
+  / "n" bad:badAbsoluteValue {
+    throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet. Got n${bad}`);
   }
 
 // Matches values that LOOK like a duration but lack the required denominator.

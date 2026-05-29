@@ -38,7 +38,7 @@ describe("bar|beat formatNotation() re-export shim", () => {
     ] as NoteEvent[];
 
     expect(formatNotation(notes)).toBe(
-      "v80 t/8 p0.8 C3 1|1 v120 t/2 p0.6 D3 1|2",
+      "v80 n/8 p0.8 C3 1|1 v120 n/2 p0.6 D3 1|2",
     );
   });
 
@@ -47,8 +47,8 @@ describe("bar|beat formatNotation() re-export shim", () => {
   });
 
   it("round-trips with interpretNotation", () => {
-    // t/8 = eighth; t/2 = half
-    const original = "1|1 p0.8 v80-120 t/8 C3 D3 1|2.25 v120 p1.0 t/2 E3 F3";
+    // n/8 = eighth; n/2 = half
+    const original = "1|1 p0.8 v80-120 n/8 C3 D3 1|2.25 v120 p1.0 n/2 E3 F3";
     const parsed = interpretNotation(original);
     const formatted = formatNotation(parsed);
     const reparsed = interpretNotation(formatted);

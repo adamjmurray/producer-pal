@@ -34,8 +34,8 @@ describe("bar|beat interpretNotation() - bar copy range operations", () => {
       ]);
     });
     it("preserves note properties in range copy", () => {
-      // t/8 = eighth = 0.5 quarter
-      const result = interpretNotation("v80 t/8 p0.8 C3 1|1 @2-3=");
+      // n/8 = eighth = 0.5 quarter
+      const result = interpretNotation("v80 n/8 p0.8 C3 1|1 @2-3=");
 
       expect(result).toStrictEqual([
         createNote({ duration: 0.5, velocity: 80, probability: 0.8 }),

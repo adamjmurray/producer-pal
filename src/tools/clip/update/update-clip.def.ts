@@ -103,7 +103,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s) - MIDI clips only",
+        "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [n<dur>] [p0-1] note(s) - MIDI clips only",
       ),
     transforms: z
       .string()

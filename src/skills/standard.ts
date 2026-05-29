@@ -43,33 +43,33 @@ export const skills = `# Producer Pal Skills
 ## Time in Ableton Live
 
 - Positions: bar|beat (1-indexed, meter-relative). Examples: 1|1, 2|3.5, 1|2+1/3
-- Durations and \`@step\` intervals: absolute note values (denominator mandatory). \`t/4\` = quarter, \`t/8\` = eighth, \`t/16\` = sixteenth, \`t/12\` = eighth triplet (3 in a quarter), \`t3/8\` = dotted quarter (3 eighths). A quarter is a quarter in any meter
-- Clip \`length\` and arrangement durations: \`Nbar\` (meter-aware, e.g. \`4bar\`), \`N/D\` whole-note fraction (e.g. \`1/4\` = quarter, \`/8\` = eighth), or \`Nbar+N/D\` mixed (e.g. \`1bar+1/4\`). Same fraction grammar as \`t\`. No bare integers/decimals
+- Durations and \`@step\` intervals: absolute note values (denominator mandatory). \`n/4\` = quarter, \`n/8\` = eighth, \`n/16\` = sixteenth, \`n/12\` = eighth triplet (3 in a quarter), \`n3/8\` = dotted quarter (3 eighths). A quarter is a quarter in any meter
+- Clip \`length\` and arrangement durations: \`Nbar\` (meter-aware, e.g. \`4bar\`), \`N/D\` whole-note fraction (e.g. \`1/4\` = quarter, \`/8\` = eighth), or \`Nbar+N/D\` mixed (e.g. \`1bar+1/4\`). Same fraction grammar as \`n\`. No bare integers/decimals
 
 ## MIDI Syntax
 
 Create MIDI clips using the bar|beat notation syntax:
 
-\`[v0-127] [t<duration>] [p0-1] note(s) bar|beat\`
+\`[v0-127] [n<duration>] [p0-1] note(s) bar|beat\`
 
-- Parameters (v/t/p), pitches, and positions can appear in any order and be interspersed
+- Parameters (v/n/p), pitches, and positions can appear in any order and be interspersed
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start
   - the beat in bar|beat can be a comma-separated (no whitespace) list or repeat pattern
   - **Repeat patterns**: \`{bar|beat}x{count}[@{step}]\` generates sequences. count = how many notes
-    - \`@step\` is an absolute note value (same form as \`t\`). Defaults to the current duration (legato)
-    - \`1|1x4@/4\` → 4 notes a quarter apart; \`t/8 1|1x4\` → 4 eighths (step defaults to t value)
-    - \`1|1x3@/12\` → eighth-note triplets (3 in a quarter); \`t/16 1|1x16\` → 16 sixteenths spanning 4 quarters (a full bar in 4/4)
+    - \`@step\` is an absolute note value (same form as \`n\`). Defaults to the current duration (legato)
+    - \`1|1x4@/4\` → 4 notes a quarter apart; \`n/8 1|1x4\` → 4 eighths (step defaults to n value)
+    - \`1|1x3@/12\` → eighth-note triplets (3 in a quarter); \`n/16 1|1x16\` → 16 sixteenths spanning 4 quarters (a full bar in 4/4)
 - v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
-- t<duration>: Note length as an absolute note value. Default: \`t/4\` (quarter). REQUIRES denominator — \`t1\`, \`t2.5\`, \`t0.5\` are invalid; write \`t/4\`, \`t5/8\`, \`t/8\` instead. \`t/12\` = eighth triplet (3 in a quarter), \`t/6\` = quarter triplet (3 in a half)
+- n<duration>: Note length as an absolute note value. Default: \`n/4\` (quarter). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\` instead. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
-- **Stateful**: v/t/p and pitch persist until changed — set once, applies to all following notes
+- **Stateful**: v/n/p and pitch persist until changed — set once, applies to all following notes
 - copying bars (**MERGES** - use v0 to clear unwanted notes):
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
-  - Copies capture each note's v/t/p at the time it was written, not the current state
+  - Copies capture each note's v/n/p at the time it was written, not the current state
 - **update-clip** overlays \`notes\` onto existing notes (v0 deletes earlier notes); use \`preTransforms\` to clear or modify existing notes first (see Transforms)
 
 ## Audio Clips
@@ -82,9 +82,9 @@ Audio params ignored when updating MIDI clips.
 C#3 F3 G#3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1,3 2|1,2,3 // same pitch across bars (NOT 1|1,3,2|1,2,3)
-t/16 C3 1|1.75 // 16th note at beat 1.75
-t/12 C3 1|1x3 // eighth-note triplets: 3 notes filling one quarter (step = duration)
-t/16 Gb1 1|1x16 // 16 sixteenths = 4 quarters, a full bar in 4/4 (1|1x16@/16 is the same)
+n/16 C3 1|1.75 // 16th note at beat 1.75
+n/12 C3 1|1x3 // eighth-note triplets: 3 notes filling one quarter (step = duration)
+n/16 Gb1 1|1x16 // 16 sixteenths = 4 quarters, a full bar in 4/4 (1|1x16@/16 is the same)
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
 v90-110 C1 1|1,3 D1 1|2,4 // humanized drum pattern
@@ -129,7 +129,7 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 - **MIDI parameters:** velocity (1-127; <=0 deletes note), pitch (0-127), timing (beats), duration (beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
-- **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, current values, and \`t<dur>\` absolute durations (e.g. \`t/4\` = a quarter note in any meter; same fraction grammar as bar|beat \`t\`). \`t<dur>\` evaluates to a number of musical beats and composes in any math expression
+- **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, current values, and \`n<dur>\` absolute durations (e.g. \`n/4\` = a quarter note in any meter; same fraction grammar as bar|beat \`n\`). \`n<dur>\` evaluates to a number of musical beats and composes in any math expression
 - **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), wrap(val,min,max) (wrap to inclusive range), reflect(val,min,max) (bounce within inclusive range), min(a,b,...), max(a,b,...), pow(base,exp), snap(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms), legato([tolerance]) (set duration to reach next note's start time; optional tolerance in beats groups nearby starts as chords, e.g. legato(0.1) after humanizing)
 - **Timing functions:** swing(amount [, grid] [, raw]) (auto-quantizes to grid then applies swing; amount=delay in beats: 0.02=subtle, 0.05=medium, 0.1=heavy; grid: default 1/2t=8th-note swing, 1/4t=16th-note swing; raw: skip auto-quantize), quant(grid) (snap to nearest grid point). Grid ref for both: 1t=quarter, 1/2t=8th, 1/4t=16th, 1/3t=triplet. Both return absolute positions — use \`timing =\`, not \`timing +=\`
 
@@ -167,8 +167,8 @@ pitch = step(note.pitch, sin(4t) * 7) // oscillate ±7 scale steps smoothly
 pitch = wrap(note.pitch + 5, C3, C5) // transpose up 5, wrap within C3-C5
 velocity *= 0.5                  // halve all velocities
 C1-C2: duration /= 2             // halve duration of bass notes
-duration = t/8                   // every note → an eighth note (meter-aware)
-duration += t/16                 // lengthen every note by a sixteenth
+duration = n/8                   // every note → an eighth note (meter-aware)
+duration += n/16                 // lengthen every note by a sixteenth
 duration = legato()              // extend each note to reach the next
 duration = legato(0.1)           // legato with tolerance (after humanizing timing)
 \`\`\`

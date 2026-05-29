@@ -35,7 +35,7 @@ describe("BarBeatScript Parser - edge cases", () => {
     });
 
     it("handles various float formats", () => {
-      expect(parser.parse("p0.5 t5/16 v64")).toStrictEqual([
+      expect(parser.parse("p0.5 n5/16 v64")).toStrictEqual([
         { probability: 0.5 },
         { duration: 5 / 16 },
         { velocity: 64 },

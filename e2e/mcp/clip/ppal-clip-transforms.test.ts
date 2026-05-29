@@ -256,15 +256,15 @@ describe("ppal-clip-transforms (midi timing and duration)", () => {
     notes = await readClipNotes(clipId);
     expect(notes).toContain("1|1.25");
 
-    // Duration: set to 2 beats
+    // Duration: set to 2 beats (half note = n/2)
     await applyTransform(clipId, "duration = 2");
     notes = await readClipNotes(clipId);
-    expect(notes).toContain("t2");
+    expect(notes).toContain("n/2");
 
     // Duration: multiply (set to 0.5)
     await applyTransform(clipId, "duration = 0.5");
     notes = await readClipNotes(clipId);
-    expect(notes).toContain("t/2");
+    expect(notes).toContain("n/2");
 
     // Duration below 0 deletes the note
     await applyTransform(clipId, "duration = -1");
@@ -796,7 +796,7 @@ describe("ppal-clip-transforms (rand, choose, curve)", () => {
 
   it("ramp() reaches end value on last 16th note with N|4.75 endpoint", async () => {
     // 16 sixteenth notes across 1 bar
-    const clipId = await createMidiClip(41, "t/4 C3 1|1x16");
+    const clipId = await createMidiClip(41, "n/4 C3 1|1x16");
 
     // Time filter ends on the last 16th note's start position (1|4.75)
     await applyTransform(clipId, "1|1-1|4.75: velocity = ramp(20, 127)");
@@ -813,7 +813,7 @@ describe("ppal-clip-transforms (rand, choose, curve)", () => {
 
   it("curve() reaches end value on last 16th note with N|4.75 endpoint", async () => {
     // 16 sixteenth notes across 1 bar
-    const clipId = await createMidiClip(42, "t/4 C3 1|1x16");
+    const clipId = await createMidiClip(42, "n/4 C3 1|1x16");
 
     // Time filter ends on the last 16th note's start position (1|4.75)
     await applyTransform(clipId, "1|1-1|4.75: velocity = curve(20, 127, 2)");
@@ -856,7 +856,7 @@ describe("ppal-clip-transforms (seq)", () => {
 
     // Repeated velocity groups are comma-merged; last note keeps full duration
     expect(notes).toBe(
-      "v60 t/2 C3 1|1,2.5 v80 C3 1|1.5,3 v100 C3 1|2 t1 C3 1|3.5",
+      "v60 n/2 C3 1|1,2.5 v80 C3 1|1.5,3 v100 C3 1|2 n1 C3 1|3.5",
     );
   });
 

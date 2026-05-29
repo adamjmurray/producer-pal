@@ -8,7 +8,7 @@ import * as parser from "../barbeat-parser.ts";
 
 describe("BarBeatScript Parser - duration", () => {
   it("parses fractional durations (numerator + denominator)", () => {
-    expect(parser.parse("t1/4 C3 t3/8 D3 t5/4 E3")).toStrictEqual([
+    expect(parser.parse("n1/4 C3 n3/8 D3 n5/4 E3")).toStrictEqual([
       { duration: 1 / 4 },
       { pitch: 60 },
       { duration: 3 / 8 },
@@ -19,7 +19,7 @@ describe("BarBeatScript Parser - duration", () => {
   });
 
   it("parses fractional duration with optional numerator (defaults to 1)", () => {
-    expect(parser.parse("t/4 C3 t/8 D3 t/16 E3")).toStrictEqual([
+    expect(parser.parse("n/4 C3 n/8 D3 n/16 E3")).toStrictEqual([
       { duration: 1 / 4 },
       { pitch: 60 },
       { duration: 1 / 8 },
@@ -30,7 +30,7 @@ describe("BarBeatScript Parser - duration", () => {
   });
 
   it("parses triplet/tuplet denominators", () => {
-    expect(parser.parse("t/3 C3 t/6 D3 t/12 E3 t/20 F3")).toStrictEqual([
+    expect(parser.parse("n/3 C3 n/6 D3 n/12 E3 n/20 F3")).toStrictEqual([
       { duration: 1 / 3 },
       { pitch: 60 },
       { duration: 1 / 6 },
@@ -43,14 +43,14 @@ describe("BarBeatScript Parser - duration", () => {
   });
 
   it("parses zero numerator", () => {
-    expect(parser.parse("t0/1 C3")).toStrictEqual([
+    expect(parser.parse("n0/1 C3")).toStrictEqual([
       { duration: 0 },
       { pitch: 60 },
     ]);
   });
 
   it("parses whole-note family", () => {
-    expect(parser.parse("t/1 C3 t/2 D3 t/4 E3 t/8 F3 t/16 G3")).toStrictEqual([
+    expect(parser.parse("n/1 C3 n/2 D3 n/4 E3 n/8 F3 n/16 G3")).toStrictEqual([
       { duration: 1 },
       { pitch: 60 },
       { duration: 1 / 2 },
@@ -65,34 +65,34 @@ describe("BarBeatScript Parser - duration", () => {
   });
 
   it("rejects bare-integer durations with denominator-required error", () => {
-    expect(() => parser.parse("t1 C3")).toThrow(
-      /durations need a denominator.*Got t1/,
+    expect(() => parser.parse("n1 C3")).toThrow(
+      /durations need a denominator.*Got n1/,
     );
-    expect(() => parser.parse("t4 C3")).toThrow(
-      /durations need a denominator.*Got t4/,
+    expect(() => parser.parse("n4 C3")).toThrow(
+      /durations need a denominator.*Got n4/,
     );
   });
 
   it("rejects decimal durations with denominator-required error", () => {
-    expect(() => parser.parse("t0.5 C3")).toThrow(
-      /durations need a denominator.*Got t0\.5/,
+    expect(() => parser.parse("n0.5 C3")).toThrow(
+      /durations need a denominator.*Got n0\.5/,
     );
-    expect(() => parser.parse("t2.5 C3")).toThrow(
-      /durations need a denominator.*Got t2\.5/,
+    expect(() => parser.parse("n2.5 C3")).toThrow(
+      /durations need a denominator.*Got n2\.5/,
     );
-    expect(() => parser.parse("t.25 C3")).toThrow(
-      /durations need a denominator.*Got t\.25/,
+    expect(() => parser.parse("n.25 C3")).toThrow(
+      /durations need a denominator.*Got n\.25/,
     );
   });
 
   it("rejects mixed-number durations with denominator-required error", () => {
-    expect(() => parser.parse("t1+1/2 C3")).toThrow(
-      /durations need a denominator.*Got t1\+1\/2/,
+    expect(() => parser.parse("n1+1/2 C3")).toThrow(
+      /durations need a denominator.*Got n1\+1\/2/,
     );
   });
 
   it("rejects bar:beat duration form", () => {
-    expect(() => parser.parse("t2:1.5 C3")).toThrow();
-    expect(() => parser.parse("t1:0 C3")).toThrow();
+    expect(() => parser.parse("n2:1.5 C3")).toThrow();
+    expect(() => parser.parse("n1:0 C3")).toThrow();
   });
 });

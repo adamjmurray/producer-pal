@@ -348,8 +348,8 @@ export function evaluateExpression(
     return node;
   }
 
-  // Absolute duration (t/4, t/8, etc.) — resolves to musical beats based on meter
-  if (node.type === "tDuration") {
+  // Absolute duration (n/4, n/8, etc.) — resolves to musical beats based on meter
+  if (node.type === "nDuration") {
     return wholeNoteFractionToMusicalBeats(
       node.wholeNoteFraction,
       timeSigDenominator,

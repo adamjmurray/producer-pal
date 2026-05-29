@@ -167,8 +167,8 @@ describe("updateClip - Basic operations", () => {
 
     const result = await updateClip({
       ids: "123",
-      // t/2 = half = 2 quarters; t/4 = quarter
-      notes: "v80 t/2 C4 1|1 v120 t/4 D4 1|3",
+      // n/2 = half = 2 quarters; n/4 = quarter
+      notes: "v80 n/2 C4 1|1 v120 n/4 D4 1|3",
     });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith(
@@ -238,7 +238,7 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({
       ids: "123",
       notes:
-        "v100 t/16 p1.0 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1.0 D1 v100 p0.9 Gb1 1|2",
+        "v100 n/16 p1.0 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1.0 D1 v100 p0.9 Gb1 1|2",
     });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {

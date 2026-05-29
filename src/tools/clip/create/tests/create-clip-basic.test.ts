@@ -122,7 +122,7 @@ describe("createClip - basic validation and time signatures", () => {
 
     await createClip({
       slot: "0/0",
-      notes: "t/2 C3 1|1 t3/8 D3 1|4", // Last note starts at beat 3 (0-based), rounds up to 1 bar = 4 beats
+      notes: "n/2 C3 1|1 n3/8 D3 1|4", // Last note starts at beat 3 (0-based), rounds up to 1 bar = 4 beats
     });
 
     expectClipCreated(clipSlot, 4);
@@ -133,11 +133,11 @@ describe("createClip - basic validation and time signatures", () => {
       liveSet: { signature_numerator: 6, signature_denominator: 8 },
     });
 
-    // t/2 = half note = 2 quarters; t3/8 = dotted quarter = 1.5 quarters.
+    // n/2 = half note = 2 quarters; n3/8 = dotted quarter = 1.5 quarters.
     // Durations are absolute (meter-independent) under new semantics.
     await createClip({
       slot: "0/0",
-      notes: "t/2 C3 1|1 t3/8 D3 1|2", // Last note starts at beat 1 (0.5 Ableton beats), rounds up to 1 bar
+      notes: "n/2 C3 1|1 n3/8 D3 1|2", // Last note starts at beat 1 (0.5 Ableton beats), rounds up to 1 bar
     });
 
     expectClipCreated(clipSlot, 3); // 1 bar in 6/8 = 3 Ableton beats

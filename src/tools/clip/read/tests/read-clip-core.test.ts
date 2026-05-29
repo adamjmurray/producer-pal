@@ -41,7 +41,7 @@ describe("readClip", () => {
       expectedEnd: "2|5", // end_marker (5 beats = 2|5 in 6/8)
       expectedLength: "1bar+1/4", // 4 Ableton beats in 6/8 = 1 bar + 1 quarter
       // Notes default to 1 Ableton beat = a quarter note. The new notation
-      // default is also a quarter (`t/4`), so no `t` prefix is emitted.
+      // default is also a quarter (`n/4`), so no `n` prefix is emitted.
       expectedNotes: "C3 1|1 D3 1|3 E3 1|5",
     },
   ])(
@@ -154,7 +154,7 @@ describe("readClip", () => {
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1.
     // Notes have default duration of 1 Ableton beat (= a quarter note), which
-    // matches the new notation default (`t/4`), so no `t` prefix is emitted.
+    // matches the new notation default (`n/4`), so no `n` prefix is emitted.
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("6/8");
     expect(result).toHaveLength("1bar"); // 3 Ableton beats = 1 bar in 6/8

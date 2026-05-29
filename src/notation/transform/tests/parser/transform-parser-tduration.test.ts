@@ -6,106 +6,106 @@
 import { describe, expect, it } from "vitest";
 import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 
-describe("Transform Parser - tDuration", () => {
+describe("Transform Parser - nDuration", () => {
   it("parses t<fraction> with explicit numerator", () => {
-    const result = parser.parse("duration = t1/4");
+    const result = parser.parse("duration = n1/4");
 
     expect(result[0]!.expression).toStrictEqual({
-      type: "tDuration",
+      type: "nDuration",
       wholeNoteFraction: 0.25,
     });
   });
 
-  it("parses t/<denominator> with implicit numerator of 1", () => {
-    const result = parser.parse("duration = t/8");
+  it("parses n/<denominator> with implicit numerator of 1", () => {
+    const result = parser.parse("duration = n/8");
 
     expect(result[0]!.expression).toStrictEqual({
-      type: "tDuration",
+      type: "nDuration",
       wholeNoteFraction: 0.125,
     });
   });
 
-  it("parses dotted-quarter t3/8", () => {
-    const result = parser.parse("duration = t3/8");
+  it("parses dotted-quarter n3/8", () => {
+    const result = parser.parse("duration = n3/8");
 
     expect(result[0]!.expression).toStrictEqual({
-      type: "tDuration",
+      type: "nDuration",
       wholeNoteFraction: 0.375,
     });
   });
 
-  it("parses triplet t/12", () => {
-    const result = parser.parse("duration = t/12");
+  it("parses triplet n/12", () => {
+    const result = parser.parse("duration = n/12");
 
     expect(result[0]!.expression).toStrictEqual({
-      type: "tDuration",
+      type: "nDuration",
       wholeNoteFraction: 1 / 12,
     });
   });
 
-  it("parses tDuration in additive expression", () => {
-    const result = parser.parse("duration = t/4 + t/8");
+  it("parses nDuration in additive expression", () => {
+    const result = parser.parse("duration = n/4 + n/8");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "add",
-      left: { type: "tDuration", wholeNoteFraction: 0.25 },
-      right: { type: "tDuration", wholeNoteFraction: 0.125 },
+      left: { type: "nDuration", wholeNoteFraction: 0.25 },
+      right: { type: "nDuration", wholeNoteFraction: 0.125 },
     });
   });
 
-  it("parses tDuration in multiplicative expression", () => {
-    const result = parser.parse("duration = 2 * t/8");
+  it("parses nDuration in multiplicative expression", () => {
+    const result = parser.parse("duration = 2 * n/8");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "multiply",
       left: 2,
-      right: { type: "tDuration", wholeNoteFraction: 0.125 },
+      right: { type: "nDuration", wholeNoteFraction: 0.125 },
     });
   });
 
-  it("parses tDuration with += operator", () => {
-    const result = parser.parse("timing += t/16");
+  it("parses nDuration with += operator", () => {
+    const result = parser.parse("timing += n/16");
 
     expect(result[0]!.operator).toBe("add");
     expect(result[0]!.expression).toStrictEqual({
-      type: "tDuration",
+      type: "nDuration",
       wholeNoteFraction: 0.0625,
     });
   });
 
-  it("parses tDuration mixed with variable", () => {
-    const result = parser.parse("duration = note.duration + t/8");
+  it("parses nDuration mixed with variable", () => {
+    const result = parser.parse("duration = note.duration + n/8");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "add",
       left: { type: "variable", namespace: "note", name: "duration" },
-      right: { type: "tDuration", wholeNoteFraction: 0.125 },
+      right: { type: "nDuration", wholeNoteFraction: 0.125 },
     });
   });
 
-  it("parses tDuration inside parentheses", () => {
-    const result = parser.parse("duration = (t/4 + t/8) * 2");
+  it("parses nDuration inside parentheses", () => {
+    const result = parser.parse("duration = (n/4 + n/8) * 2");
 
     expect(result[0]!.expression).toStrictEqual({
       type: "multiply",
       left: {
         type: "add",
-        left: { type: "tDuration", wholeNoteFraction: 0.25 },
-        right: { type: "tDuration", wholeNoteFraction: 0.125 },
+        left: { type: "nDuration", wholeNoteFraction: 0.25 },
+        right: { type: "nDuration", wholeNoteFraction: 0.125 },
       },
       right: 2,
     });
   });
 
-  it("throws on bare integer after t (missing denominator)", () => {
-    expect(() => parser.parse("duration = t4")).toThrow(/denominator/);
+  it("throws on bare integer after n (missing denominator)", () => {
+    expect(() => parser.parse("duration = n4")).toThrow(/denominator/);
   });
 
-  it("throws on bare decimal after t (missing denominator)", () => {
-    expect(() => parser.parse("duration = t0.5")).toThrow(/denominator/);
+  it("throws on bare decimal after n (missing denominator)", () => {
+    expect(() => parser.parse("duration = n0.5")).toThrow(/denominator/);
   });
 
-  it("throws on mixed-number after t (missing denominator)", () => {
-    expect(() => parser.parse("duration = t1+1/4")).toThrow(/denominator/);
+  it("throws on mixed-number after n (missing denominator)", () => {
+    expect(() => parser.parse("duration = n1+1/4")).toThrow(/denominator/);
   });
 });

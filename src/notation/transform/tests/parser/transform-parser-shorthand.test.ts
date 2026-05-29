@@ -13,8 +13,8 @@ describe("Transform Parser - shorthand", () => {
       ["v0", "velocity = 0"],
       ["p0.5", "probability = 0.5"],
       ["p1", "probability = 1"],
-      ["t/4", "duration = t/4"],
-      ["t3/8", "duration = t3/8"],
+      ["n/4", "duration = n/4"],
+      ["n3/8", "duration = n3/8"],
       ["C4", "pitch = C4"],
       ["C#3", "pitch = C#3"],
     ])("%s desugars to %s", (shorthand, fullForm) => {
@@ -63,20 +63,20 @@ describe("Transform Parser - shorthand", () => {
   });
 
   describe("duration shorthand", () => {
-    it("desugars t/4 to duration set with tDuration node", () => {
-      expect(parser.parse("t/4")).toStrictEqual([
+    it("desugars n/4 to duration set with nDuration node", () => {
+      expect(parser.parse("n/4")).toStrictEqual([
         {
           pitchRange: null,
           timeRange: null,
           parameter: "duration",
           operator: "set",
-          expression: { type: "tDuration", wholeNoteFraction: 0.25 },
+          expression: { type: "nDuration", wholeNoteFraction: 0.25 },
         },
       ]);
     });
 
-    it("throws denominator error on bare integer (t4)", () => {
-      expect(() => parser.parse("t4")).toThrow(/denominator/);
+    it("throws denominator error on bare integer (n4)", () => {
+      expect(() => parser.parse("n4")).toThrow(/denominator/);
     });
   });
 
@@ -130,12 +130,12 @@ describe("Transform Parser - shorthand", () => {
     });
 
     it("applies time selector to duration shorthand", () => {
-      expect(parser.parse("1|1-2|1: t/8")[0]).toStrictEqual({
+      expect(parser.parse("1|1-2|1: n/8")[0]).toStrictEqual({
         pitchRange: null,
         timeRange: { startBar: 1, startBeat: 1, endBar: 2, endBeat: 1 },
         parameter: "duration",
         operator: "set",
-        expression: { type: "tDuration", wholeNoteFraction: 0.125 },
+        expression: { type: "nDuration", wholeNoteFraction: 0.125 },
       });
     });
   });

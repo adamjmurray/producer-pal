@@ -10,7 +10,7 @@ export const DEFAULT_PROBABILITY = 1.0;
 export const DEFAULT_VELOCITY_DEVIATION = 0;
 
 /**
- * Default `t` duration as a fraction of a whole note (quarter note = 1/4).
+ * Default `n` duration as a fraction of a whole note (quarter note = 1/4).
  * Under the absolute-note-value semantics, the default is always a quarter
  * note regardless of meter.
  */

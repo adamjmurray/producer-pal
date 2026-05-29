@@ -199,7 +199,7 @@ function emitDurationChange(
       timeSigDenominator,
     );
 
-    elements.push(`t${formatAbsoluteDuration(wholeNoteFraction)}`);
+    elements.push(`n${formatAbsoluteDuration(wholeNoteFraction)}`);
     state.duration = musicalBeats;
   }
 }

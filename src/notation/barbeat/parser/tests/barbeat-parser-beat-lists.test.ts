@@ -83,7 +83,7 @@ describe("BarBeatScript Parser - beat lists", () => {
     });
 
     it("parses fractional durations with fractional beat positions", () => {
-      expect(parser.parse("t1/3 C3 1|1,4/3,5/3")).toStrictEqual([
+      expect(parser.parse("n1/3 C3 1|1,4/3,5/3")).toStrictEqual([
         { duration: 1 / 3 },
         { pitch: 60 },
         { bar: 1, beat: 1 },
@@ -96,7 +96,7 @@ describe("BarBeatScript Parser - beat lists", () => {
   describe("integration - fractional notation", () => {
     it("parses triplet pattern with fractional durations and positions", () => {
       expect(
-        parser.parse("t1/3 C3 1|1 1|4/3 1|5/3 D3 1|2 1|7/3 1|8/3"),
+        parser.parse("n1/3 C3 1|1 1|4/3 1|5/3 D3 1|2 1|7/3 1|8/3"),
       ).toStrictEqual([
         { duration: 1 / 3 },
         { pitch: 60 },
@@ -112,7 +112,7 @@ describe("BarBeatScript Parser - beat lists", () => {
 
     it("parses mixed fractional and decimal notation throughout (positions stay decimal/mixed)", () => {
       expect(
-        parser.parse("t1/4 C3 1|1,5/4,3/2,7/4 t/2 D3 1|2,2.5,3,3.5"),
+        parser.parse("n1/4 C3 1|1,5/4,3/2,7/4 n/2 D3 1|2,2.5,3,3.5"),
       ).toStrictEqual([
         { duration: 1 / 4 },
         { pitch: 60 },

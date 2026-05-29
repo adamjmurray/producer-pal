@@ -99,7 +99,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("applies state changes to all expanded positions", () => {
-      const result = interpretNotation("v80 t/8 C1 1|1x4@/4");
+      const result = interpretNotation("v80 n/8 C1 1|1x4@/4");
 
       expect(result).toHaveLength(4);
       expect(result.every((note) => note.velocity === 80)).toBe(true);
@@ -107,7 +107,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("uses current duration when step is omitted", () => {
-      const result = interpretNotation("t/8 C1 1|1x4");
+      const result = interpretNotation("n/8 C1 1|1x4");
 
       expect(result).toHaveLength(4);
       expect(result[0]!.start_time).toBe(0); // 1|1
@@ -167,7 +167,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("does not warn about buffered pitches when emitted via repeat pattern", () => {
-      const result = interpretNotation("t/8 C1 1|1x8");
+      const result = interpretNotation("n/8 C1 1|1x8");
 
       // Should emit 8 notes
       expect(result).toHaveLength(8);
@@ -182,7 +182,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("does not warn about buffered pitches when emitted then bar copied", () => {
-      const result = interpretNotation("t/8 C1 1|1x8 @2=");
+      const result = interpretNotation("n/8 C1 1|1x8 @2=");
 
       // Should emit 8 notes in bar 1 and copy to bar 2 (16 total)
       expect(result).toHaveLength(16);
@@ -341,8 +341,8 @@ describe("bar|beat interpretNotation() - pattern features", () => {
     });
 
     it("v0 preserves note properties like duration, probability", () => {
-      // t/2 = half = 2 quarters; t/8 = eighth = 0.5
-      const result = interpretNotation("t/2 p0.8 C3 1|1 t/8 p1.0 v0 C3 1|1");
+      // n/2 = half = 2 quarters; n/8 = eighth = 0.5
+      const result = interpretNotation("n/2 p0.8 C3 1|1 n/8 p1.0 v0 C3 1|1");
 
       expect(result).toStrictEqual([]);
     });

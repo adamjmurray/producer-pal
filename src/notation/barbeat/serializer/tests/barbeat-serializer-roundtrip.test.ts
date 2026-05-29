@@ -181,8 +181,8 @@ describe("round-trip: serialize → parse → interpret", () => {
   });
 
   it("round-trips from notation string", () => {
-    // t/2 = half note; t2/1 = 2 whole notes
-    const original = "v80-120 t/2 C3 D3 1|2.25 v120 p0.8 t2/1 E3 F3 1|3";
+    // n/2 = half note; n2/1 = 2 whole notes
+    const original = "v80-120 n/2 C3 D3 1|2.25 v120 p0.8 n2/1 E3 F3 1|3";
     const parsed = interpretNotation(original);
     const formatted = formatNotation(parsed);
     const reparsed = interpretNotation(formatted);

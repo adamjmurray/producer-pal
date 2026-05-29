@@ -252,23 +252,23 @@ const CTX_6_8 = { position: 0, timeSig: { numerator: 6, denominator: 8 } };
 const CTX_3_2 = { position: 0, timeSig: { numerator: 3, denominator: 2 } };
 const CTX_3_4 = { position: 0, timeSig: { numerator: 3, denominator: 4 } };
 
-describe("Transform Evaluator - tDuration", () => {
+describe("Transform Evaluator - nDuration", () => {
   describe("in 4/4 (musical beats = quarter beats)", () => {
     it.each([
-      ["t/4", 1, "quarter = 1 beat"],
-      ["t/8", 0.5, "eighth = 0.5 beats"],
-      ["t/16", 0.25, "sixteenth = 0.25 beats"],
-      ["t/2", 2, "half = 2 beats"],
-      ["t/1", 4, "whole = 4 beats"],
-      ["t3/8", 1.5, "dotted quarter = 1.5 beats"],
+      ["n/4", 1, "quarter = 1 beat"],
+      ["n/8", 0.5, "eighth = 0.5 beats"],
+      ["n/16", 0.25, "sixteenth = 0.25 beats"],
+      ["n/2", 2, "half = 2 beats"],
+      ["n/1", 4, "whole = 4 beats"],
+      ["n3/8", 1.5, "dotted quarter = 1.5 beats"],
     ])("duration = %s → %d (%s)", (expr, expected) => {
       const result = evaluateTransform(`duration = ${expr}`, CTX);
 
       expect(result.duration!.value).toBe(expected);
     });
 
-    it("triplet t/12 evaluates to 1/3", () => {
-      const result = evaluateTransform("duration = t/12", CTX);
+    it("triplet n/12 evaluates to 1/3", () => {
+      const result = evaluateTransform("duration = n/12", CTX);
 
       expect(result.duration!.value).toBeCloseTo(1 / 3, 10);
     });
@@ -276,11 +276,11 @@ describe("Transform Evaluator - tDuration", () => {
 
   describe("in 6/8 (musical beats = eighth notes)", () => {
     it.each([
-      ["t/4", 2, "quarter = 2 eighths"],
-      ["t/8", 1, "eighth = 1 musical beat"],
-      ["t/16", 0.5, "sixteenth = 0.5 musical beats"],
-      ["t/2", 4, "half = 4 eighths"],
-      ["t3/8", 3, "dotted quarter = 3 eighths"],
+      ["n/4", 2, "quarter = 2 eighths"],
+      ["n/8", 1, "eighth = 1 musical beat"],
+      ["n/16", 0.5, "sixteenth = 0.5 musical beats"],
+      ["n/2", 4, "half = 4 eighths"],
+      ["n3/8", 3, "dotted quarter = 3 eighths"],
     ])("duration = %s → %d (%s)", (expr, expected) => {
       const result = evaluateTransform(`duration = ${expr}`, CTX_6_8);
 
@@ -290,10 +290,10 @@ describe("Transform Evaluator - tDuration", () => {
 
   describe("in 3/2 (musical beats = half notes)", () => {
     it.each([
-      ["t/4", 0.5, "quarter = 0.5 half-notes"],
-      ["t/2", 1, "half = 1 musical beat"],
-      ["t/1", 2, "whole = 2 half-notes"],
-      ["t/8", 0.25, "eighth = 0.25 half-notes"],
+      ["n/4", 0.5, "quarter = 0.5 half-notes"],
+      ["n/2", 1, "half = 1 musical beat"],
+      ["n/1", 2, "whole = 2 half-notes"],
+      ["n/8", 0.25, "eighth = 0.25 half-notes"],
     ])("duration = %s → %d (%s)", (expr, expected) => {
       const result = evaluateTransform(`duration = ${expr}`, CTX_3_2);
 
@@ -302,58 +302,58 @@ describe("Transform Evaluator - tDuration", () => {
   });
 
   describe("in 3/4 (musical beats = quarter notes)", () => {
-    it("t/4 = 1 musical beat", () => {
-      const result = evaluateTransform("duration = t/4", CTX_3_4);
+    it("n/4 = 1 musical beat", () => {
+      const result = evaluateTransform("duration = n/4", CTX_3_4);
 
       expect(result.duration!.value).toBe(1);
     });
   });
 
   describe("composes with arithmetic", () => {
-    it("t/4 + t/8 in 4/4 → 1.5", () => {
-      const result = evaluateTransform("duration = t/4 + t/8", CTX);
+    it("n/4 + n/8 in 4/4 → 1.5", () => {
+      const result = evaluateTransform("duration = n/4 + n/8", CTX);
 
       expect(result.duration!.value).toBe(1.5);
     });
 
-    it("2 * t/8 in 4/4 → 1", () => {
-      const result = evaluateTransform("duration = 2 * t/8", CTX);
+    it("2 * n/8 in 4/4 → 1", () => {
+      const result = evaluateTransform("duration = 2 * n/8", CTX);
 
       expect(result.duration!.value).toBe(1);
     });
 
-    it("t/4 - t/16 in 4/4 → 0.75", () => {
-      const result = evaluateTransform("duration = t/4 - t/16", CTX);
+    it("n/4 - n/16 in 4/4 → 0.75", () => {
+      const result = evaluateTransform("duration = n/4 - n/16", CTX);
 
       expect(result.duration!.value).toBe(0.75);
     });
 
-    it("(t/4 + t/8) * 2 in 4/4 → 3", () => {
-      const result = evaluateTransform("duration = (t/4 + t/8) * 2", CTX);
+    it("(n/4 + n/8) * 2 in 4/4 → 3", () => {
+      const result = evaluateTransform("duration = (n/4 + n/8) * 2", CTX);
 
       expect(result.duration!.value).toBe(3);
     });
   });
 
   describe("composes with variables (musical-beat semantics)", () => {
-    it("duration = note.duration + t/8 in 4/4: 1 + 0.5 = 1.5", () => {
-      const result = evaluateTransform("duration = note.duration + t/8", CTX, {
+    it("duration = note.duration + n/8 in 4/4: 1 + 0.5 = 1.5", () => {
+      const result = evaluateTransform("duration = note.duration + n/8", CTX, {
         duration: 1,
       });
 
       expect(result.duration!.value).toBe(1.5);
     });
 
-    it("duration += t/16 in 4/4 adds 0.25 musical beats", () => {
-      const result = evaluateTransform("duration += t/16", CTX);
+    it("duration += n/16 in 4/4 adds 0.25 musical beats", () => {
+      const result = evaluateTransform("duration += n/16", CTX);
 
       expect(result.duration!.value).toBe(0.25);
     });
   });
 
   describe("works with timing parameter", () => {
-    it("timing = t/16 in 4/4 → 0.25", () => {
-      const result = evaluateTransform("timing = t/16", CTX);
+    it("timing = n/16 in 4/4 → 0.25", () => {
+      const result = evaluateTransform("timing = n/16", CTX);
 
       expect(result.timing!.value).toBe(0.25);
     });

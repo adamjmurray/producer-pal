@@ -30,7 +30,7 @@ export function formatBeatPosition(value: number): string {
 
 /**
  * Format an absolute duration/step value as a `<num>/<den>` fraction of a whole note.
- * Used for `t` durations and `@step` intervals in bar|beat notation.
+ * Used for `n` durations and `@step` intervals in bar|beat notation.
  * Always emits the fraction form (numerator omitted when 1).
  * @param wholeNoteFraction - Value as a fraction of a whole note (e.g., 1/4 = quarter)
  * @returns Formatted value string (e.g., "/4", "3/8", "/12", "5/4")
