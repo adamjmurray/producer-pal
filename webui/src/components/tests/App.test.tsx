@@ -461,37 +461,33 @@ describe("App", () => {
   });
 
   describe("context overlay", () => {
-    const setupContextState = (contextOpen: boolean) => {
-      const mockSetViewState = vi.fn();
+    // contextOpen is local component state (intentionally not persisted), so
+    // these tests drive the overlay through the UI and assert on the DOM rather
+    // than mocking view state.
+    const contextStub = () =>
+      document.querySelector('[data-testid="context-stub"]');
 
-      (useViewState as ReturnType<typeof vi.fn>).mockReturnValue({
-        viewState: {
-          historyPanelOpen: false,
-          settingsOpen: false,
-          settingsTab: "connection",
-          contextOpen,
-        },
-        setViewState: mockSetViewState,
-      });
-
-      return mockSetViewState;
-    };
-
-    it("opens the context overlay via the header button", () => {
-      const mockSetViewState = setupContextState(false);
-      const { container } = render(<App />);
+    const openContext = (container: ParentNode) => {
       const btn = container.querySelector(
         'button[aria-label="Project context"]',
       );
 
       if (btn) fireEvent.click(btn);
-      expect(mockSetViewState).toHaveBeenCalledWith({ contextOpen: true });
+    };
+
+    it("opens the context overlay via the header button", () => {
+      const { container } = render(<App />);
+
+      expect(contextStub()).toBe(null);
+      openContext(container);
+      expect(contextStub()).not.toBe(null);
     });
 
     it("closes the context overlay when the close button is clicked", async () => {
       vi.useFakeTimers();
-      const mockSetViewState = setupContextState(true);
       const { container } = render(<App />);
+
+      openContext(container);
       const close = container.querySelector(
         'button[aria-label="Close project context"]',
       );
@@ -501,39 +497,38 @@ describe("App", () => {
         vi.advanceTimersByTime(200);
       });
 
-      expect(mockSetViewState).toHaveBeenCalledWith({ contextOpen: false });
+      expect(contextStub()).toBe(null);
       vi.useRealTimers();
     });
 
     it("closes the context overlay on Escape", async () => {
       vi.useFakeTimers();
-      const mockSetViewState = setupContextState(true);
+      const { container } = render(<App />);
 
-      render(<App />);
-
+      openContext(container);
       fireEvent.keyDown(window, { key: "Escape" });
       await act(() => {
         vi.advanceTimersByTime(200);
       });
 
-      expect(mockSetViewState).toHaveBeenCalledWith({ contextOpen: false });
+      expect(contextStub()).toBe(null);
       vi.useRealTimers();
     });
 
     it("ignores non-Escape keys when the overlay is open", () => {
-      const mockSetViewState = setupContextState(true);
+      const { container } = render(<App />);
 
-      render(<App />);
-
+      openContext(container);
       fireEvent.keyDown(window, { key: "a" });
-      expect(mockSetViewState).not.toHaveBeenCalled();
+      expect(contextStub()).not.toBe(null);
     });
 
     it("does not close when clicking inside the context view", async () => {
       vi.useFakeTimers();
-      const mockSetViewState = setupContextState(true);
       const { container } = render(<App />);
-      const inner = container.querySelector('[data-testid="context-stub"]');
+
+      openContext(container);
+      const inner = contextStub();
 
       if (inner) fireEvent.click(inner);
       await act(() => {
@@ -541,7 +536,7 @@ describe("App", () => {
       });
 
       // Backdrop-only dismissal: a click on content shouldn't fire close.
-      expect(mockSetViewState).not.toHaveBeenCalled();
+      expect(contextStub()).not.toBe(null);
       vi.useRealTimers();
     });
 
@@ -563,17 +558,16 @@ describe("App", () => {
           historyPanelOpen: false,
           settingsOpen: true,
           settingsTab: "connection",
-          contextOpen: true,
         },
         setViewState: mockSetViewState,
       });
 
-      render(<App />);
+      const { container } = render(<App />);
+
+      openContext(container);
       // Both overlays mounted.
       expect(document.body.textContent).toContain("Provider");
-      expect(document.querySelector('[data-testid="context-stub"]')).not.toBe(
-        null,
-      );
+      expect(contextStub()).not.toBe(null);
 
       // Real keydown events bubble document → window, so dispatching once is
       // enough to exercise both potential listeners.
@@ -582,11 +576,12 @@ describe("App", () => {
         vi.advanceTimersByTime(200);
       });
 
-      // Only one viewState mutation: closing Context. Settings stays put —
-      // no settingsOpen:false was emitted.
-      const calls = mockSetViewState.mock.calls;
-
-      expect(calls).toStrictEqual([[{ contextOpen: false }]]);
+      // Context closes; Settings stays up — no settingsOpen:false was emitted.
+      expect(contextStub()).toBe(null);
+      expect(document.body.textContent).toContain("Provider");
+      expect(mockSetViewState).not.toHaveBeenCalledWith({
+        settingsOpen: false,
+      });
       vi.useRealTimers();
     });
   });

@@ -24,7 +24,6 @@ describe("useViewState", () => {
       historyPanelOpen: false,
       settingsOpen: false,
       settingsTab: "connection",
-      contextOpen: false,
     });
   });
 
@@ -66,7 +65,6 @@ describe("useViewState", () => {
       historyPanelOpen: false,
       settingsOpen: false,
       settingsTab: "connection",
-      contextOpen: false,
     });
   });
 

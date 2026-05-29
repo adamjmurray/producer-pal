@@ -13,14 +13,12 @@ export interface ViewState {
   historyPanelOpen: boolean;
   settingsOpen: boolean;
   settingsTab: TabId;
-  contextOpen: boolean;
 }
 
 const DEFAULT_VIEW_STATE: ViewState = {
   historyPanelOpen: false,
   settingsOpen: false,
   settingsTab: "connection",
-  contextOpen: false,
 };
 
 /**
