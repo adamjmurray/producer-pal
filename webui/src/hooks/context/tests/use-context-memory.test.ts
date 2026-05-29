@@ -325,6 +325,82 @@ describe("useContextMemory", () => {
       content: "new",
     });
   });
+
+  // AJM-436: while the editor is open AND the window is focused, poll so
+  // external writes (ppal-context tool, Max textedit) surface without a manual
+  // refocus. Fake timers + a stubbed document.hasFocus drive the cases.
+  describe("focus-gated polling", () => {
+    const POLL_MS = 5000; // mirrors POLL_INTERVAL_MS in the hook
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    // Flush the mount-time load (a microtask chain, not a timer).
+    async function flushInitialLoad(): Promise<void> {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+    }
+
+    it("re-reads memory each interval while focused", async () => {
+      vi.spyOn(document, "hasFocus").mockReturnValue(true);
+      mockResponses({ memoryContent: "old" }, { memoryContent: "external" });
+
+      const { result } = renderHook(() => useContextMemory());
+
+      await flushInitialLoad();
+      expect(result.current.status).toMatchObject({ content: "old" });
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(POLL_MS);
+      });
+
+      expect(result.current.status).toMatchObject({ content: "external" });
+    });
+
+    it("does not poll while the window is unfocused", async () => {
+      vi.spyOn(document, "hasFocus").mockReturnValue(false);
+      mockResponses({ memoryContent: "old" });
+
+      const { result } = renderHook(() => useContextMemory());
+
+      await flushInitialLoad();
+      expect(result.current.status).toMatchObject({ content: "old" });
+
+      // The mount load (not focus-gated) already fired; nothing should fetch
+      // again while blurred.
+      fetchMock.mockClear();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(POLL_MS * 3);
+      });
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("stops polling after the editor unmounts", async () => {
+      vi.spyOn(document, "hasFocus").mockReturnValue(true);
+      mockResponses({ memoryContent: "old" });
+
+      const { result, unmount } = renderHook(() => useContextMemory());
+
+      await flushInitialLoad();
+      expect(result.current.status).toMatchObject({ content: "old" });
+
+      unmount();
+      fetchMock.mockClear();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(POLL_MS * 3);
+      });
+
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
 });
 
 function jsonResponse(body: unknown): Response {

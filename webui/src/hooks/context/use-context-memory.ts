@@ -6,6 +6,9 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { getConfigUrl } from "#webui/utils/mcp-url";
 
+/** How often to re-read memory while the editor is open and the window is focused. */
+const POLL_INTERVAL_MS = 5000;
+
 /** Status of the project context memory body. */
 export type ContextMemoryStatus =
   | { kind: "loading" }
@@ -126,6 +129,24 @@ export function useContextMemory(): UseContextMemoryReturn {
 
     return () => {
       window.removeEventListener("focus", handleFocus);
+    };
+  }, [refresh]);
+
+  // Poll while the editor is open and the window is focused so external writes
+  // (ppal-context tool, Max device textedit) surface within a few seconds
+  // without a manual refocus/reload. Focus-gated to avoid idle background
+  // traffic — the focus listener above catches the user up immediately on
+  // return, so the poll only needs to cover the already-focused case. refresh()
+  // defers to in-flight saves, so a tick mid-save can't clobber the echo. The
+  // hook lives only while ContextScreen is mounted, so cleanup ends polling
+  // when the editor closes.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.hasFocus()) void refresh();
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      clearInterval(id);
     };
   }, [refresh]);
 
