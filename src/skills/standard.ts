@@ -131,11 +131,11 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, current values, and \`n<dur>\` absolute durations (e.g. \`n/4\` = a quarter note in any meter; same fraction grammar as bar|beat \`n\`). \`n<dur>\` evaluates to a number of musical beats and composes in any math expression
 - **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), wrap(val,min,max) (wrap to inclusive range), reflect(val,min,max) (bounce within inclusive range), min(a,b,...), max(a,b,...), pow(base,exp), snap(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms), legato([tolerance]) (set duration to reach next note's start time; optional tolerance in beats groups nearby starts as chords, e.g. legato(0.1) after humanizing)
-- **Timing functions:** swing(amount [, grid] [, raw]) (auto-quantizes to grid then applies swing; amount=delay in beats: 0.02=subtle, 0.05=medium, 0.1=heavy; grid: default 1/2t=8th-note swing, 1/4t=16th-note swing; raw: skip auto-quantize), quant(grid) (snap to nearest grid point). Grid ref for both: 1t=quarter, 1/2t=8th, 1/4t=16th, 1/3t=triplet. Both return absolute positions — use \`timing =\`, not \`timing +=\`
+- **Timing functions:** swing(amount [, grid] [, raw]) (auto-quantizes to grid then applies swing; amount=delay in beats: 0.02=subtle, 0.05=medium, 0.1=heavy; grid: default n/8=8th-note swing, n/16=16th-note swing; raw: skip auto-quantize), quant(grid) (snap to nearest grid point). Grid ref for both: n/4=quarter, n/8=8th, n/16=16th, n/12=triplet. Both return absolute positions — use \`timing =\`, not \`timing +=\`
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
 - \`cos(period)\`, \`square(period)\` - start at peak (1.0); \`sin(period)\`, \`tri(period)\`, \`saw(period)\` - start at zero, rise to peak
-  - All accept optional phase offset: \`cos(1t, 0.25)\`. square adds pulse width (3rd arg): \`square(1t, 0, 0.75)\` (phase=0, 75% duty cycle)
+  - All accept optional phase offset: \`cos(n/4, 0.25)\`. square adds pulse width (3rd arg): \`square(n/4, 0, 0.75)\` (phase=0, 75% duty cycle)
 - \`rand([min], [max])\` - random value (no args: -1 to 1, one arg: 0 to max, two: min to max)
 - \`seq(a, b, ...)\` - cycle by \`note.index\` (per note within a clip; MIDI only — audio has no notes, use \`clipseq()\` there)
 - \`clipseq(a, b, ...)\` - cycle by \`clip.index\` across the batch of clips (enumerated per-clip variation, e.g. \`pitch += clipseq(0, 5, 7)\`)
@@ -143,18 +143,18 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 - \`ramp(start, end)\` - linear interpolation; reaches end value at time range end (or clip end)
 - \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
 - For ramp/curve, end the time filter on the last note's beat position so it reaches its end value. In 4/4: last 8th=N|4.5, last 16th=N|4.75
-- Waveform period: \`1t\` = 1 beat cycle, \`1:0t\` = 1 bar cycle, \`0:2t\` = 2 beat cycle
+- Waveform period is a note value: \`n/4\` = quarter-note cycle, \`n/1\` = whole-note cycle, \`n/2\` = half-note cycle. For a meter-aware bar-length cycle use \`clip.barDuration\` (e.g. \`cos(clip.barDuration)\`). Same \`n\` fraction grammar as everywhere; bare numbers are beats
 - \`sync\` keyword (last arg on periodic waves) syncs phase to arrangement timeline instead of clip start
 
 **Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`next.pitch\`, \`next.velocity\`, \`next.start\`, \`next.duration\` (next distinct-start note; skips chords; warns on last note), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only), \`clip.barDuration\` (all clips)
 
 \`\`\`
 timing = swing(0.05)             // swing (auto-quantizes). Use swing() alone unless asked for a specific grid
-timing = quant(1/2t)             // snap to 8th-note grid (half a beat)
-timing = quant(1/4t)             // snap to 16th-note grid (quarter beat)
+timing = quant(n/8)              // snap to 8th-note grid
+timing = quant(n/16)             // snap to 16th-note grid
 timing += 0.05 * rand()          // humanize timing
-velocity += 20 * cos(2t)         // cycle every 2 beats
-velocity += 20 * cos(4:0t, sync) // continuous across clips
+velocity += 20 * cos(n/2)        // cycle every half note (2 beats in 4/4)
+velocity += 20 * cos(clip.barDuration, sync) // bar-length cycle, continuous across clips
 1|1-4|4.75: velocity = ramp(40, 127) // crescendo over 4 bars (16th grid)
 C1-C2: velocity += 30            // accent bass notes
 1|1-2|4: velocity = 100          // forte in bars 1-2
@@ -163,7 +163,7 @@ Gb1: pitch = seq(Gb1, Gb1, Gb1, Gb1, Ab1) // every 5th closed hat → open hat
 pitch += clipseq(0, 5, 7)        // copy 0 unchanged, copy 1 +5, copy 2 +7 (per-clip)
 gain = audio.gain - 6            // reduce audio clip by 6 dB
 pitch = snap(note.pitch + 7) // transpose up fifth, snap to scale
-pitch = step(note.pitch, sin(4t) * 7) // oscillate ±7 scale steps smoothly
+pitch = step(note.pitch, sin(n/1) * 7) // oscillate ±7 scale steps smoothly
 pitch = wrap(note.pitch + 5, C3, C5) // transpose up 5, wrap within C3-C5
 velocity *= 0.5                  // halve all velocities
 C1-C2: duration /= 2             // halve duration of bass notes

@@ -16,6 +16,11 @@
     "B": 11,
   };
 
+  // Targeted error for the removed synced-period syntax (Nt, N:Nt).
+  function oldPeriodError(matched) {
+    return `Period syntax "${matched}" is no longer supported. Use a note-value period with the "sync" keyword, e.g. sin(n/4, sync) for a quarter-note cycle, or cos(clip.barDuration, sync) for a bar-length cycle.`;
+  }
+
   // Maps transform parameters to their note/audio variable for *= and /= desugaring.
   // timing uses note.start (absolute position) since there is no note.timing offset variable.
   const PARAM_TO_VARIABLE = {
@@ -171,6 +176,7 @@ primary
   / variable
   / nDuration
   / pitchLiteral
+  / badPeriod
   / number
   / "(" _ expr:expression _ ")" { return expr; }
 
@@ -187,6 +193,12 @@ nDuration "absolute duration value"
 badAbsoluteValue
   = unsignedMixedNumber { return text(); }
   / unsignedDecimal { return text(); }
+
+// Matches the removed synced-period syntax (Nt, N:Nt) to throw a targeted error.
+// Synced periods are now note-value expressions gated by the `sync` keyword.
+badPeriod
+  = unsignedInt ":" unsignedFloat "t" { throw new Error(oldPeriodError(text())); }
+  / unsignedFloat "t" { throw new Error(oldPeriodError(text())); }
 
 variable
   = "audio." name:audioPropertyName {
@@ -302,15 +314,7 @@ argumentList
   }
 
 argument
-  = period / expression
-
-period
-  = bars:unsignedInt ":" beats:unsignedFloat "t" {
-    return { type: "period", bars, beats };
-  }
-  / beats:unsignedFloat "t" {
-    return { type: "period", bars: 0, beats };
-  }
+  = expression
 
 number
   = signedDecimal

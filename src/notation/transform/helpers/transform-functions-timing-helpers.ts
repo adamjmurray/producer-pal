@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type ExpressionNode } from "../parser/transform-parser.ts";
-import { type PeriodObject } from "../transform-frequency.ts";
 import {
   type EvaluateExpressionFn,
   parsePeriod,
@@ -52,12 +51,12 @@ export function evaluateSwing(
     noteProperties,
   );
 
-  // Default grid is 0.5 beats (8th-note swing, same as quant(1/2t))
+  // Default grid is 0.5 beats (8th-note swing, same as quant(n/8))
   let grid = 0.5;
 
   if (args.length === 2) {
     grid = parsePeriod(
-      args[1] as ExpressionNode | PeriodObject,
+      args[1] as ExpressionNode,
       position,
       timeSigNumerator,
       timeSigDenominator,
@@ -118,7 +117,7 @@ export function evaluateQuant(
   }
 
   const grid = parsePeriod(
-    args[0] as ExpressionNode | PeriodObject,
+    args[0] as ExpressionNode,
     position,
     timeSigNumerator,
     timeSigDenominator,

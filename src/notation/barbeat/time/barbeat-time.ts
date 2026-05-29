@@ -82,7 +82,7 @@ export function barBeatToBeats(barBeat: string, beatsPerBar: number): number {
 
   const bar = Number.parseInt(match[1] as string);
   const beatStr = match[2] as string;
-  const beat = parseBeatValue(beatStr, barBeat, "bar|beat");
+  const beat = parseBeatValue(beatStr, barBeat);
 
   if (bar < 1) {
     throw new Error(`Bar number must be 1 or greater, got: ${bar}`);
@@ -259,26 +259,19 @@ export function durationToAbletonBeats(
 }
 
 /**
- * Parse a beat value string (supports fractions and mixed numbers)
+ * Parse a beat value string (supports fractions and mixed numbers).
+ * Callers pre-validate the string shape with a regex, so the numeric parts are
+ * always digit sequences here — only division-by-zero needs guarding.
  * @param beatsStr - Beat value string
  * @param context - Original string for error messages
- * @param formatType - Type of format for error messages (e.g., "duration", "bar|beat")
  * @returns Parsed beat value
  */
-function parseBeatValue(
-  beatsStr: string,
-  context: string,
-  formatType = "duration",
-): number {
+function parseBeatValue(beatsStr: string, context: string): number {
   if (beatsStr.includes("+")) {
     const plusParts = beatsStr.split("+");
     const intPart = plusParts[0] as string;
     const fracPart = plusParts[1] as string;
     const num = Number.parseInt(intPart);
-
-    if (Number.isNaN(num)) {
-      throw new Error(`Invalid ${formatType} format: "${context}"`);
-    }
 
     const slashParts = fracPart.split("/");
     const numerator = slashParts[0] as string;
@@ -288,12 +281,8 @@ function parseBeatValue(
 
     if (fracDen === 0) {
       throw new Error(
-        `Invalid ${formatType} format: division by zero in "${context}"`,
+        `Invalid bar|beat format: division by zero in "${context}"`,
       );
-    }
-
-    if (Number.isNaN(fracNum) || Number.isNaN(fracDen)) {
-      throw new Error(`Invalid ${formatType} format: "${context}"`);
     }
 
     return num + fracNum / fracDen;
@@ -308,98 +297,14 @@ function parseBeatValue(
 
     if (den === 0) {
       throw new Error(
-        `Invalid ${formatType} format: division by zero in "${context}"`,
+        `Invalid bar|beat format: division by zero in "${context}"`,
       );
-    }
-
-    if (Number.isNaN(num) || Number.isNaN(den)) {
-      throw new Error(`Invalid ${formatType} format: "${context}"`);
     }
 
     return num / den;
   }
 
-  const beats = Number.parseFloat(beatsStr);
-
-  if (Number.isNaN(beats)) {
-    throw new Error(`Invalid ${formatType} format: "${context}"`);
-  }
-
-  return beats;
-}
-
-/**
- * Parse bar:beat format and return musical beats
- * @param barBeatDuration - Bar:beat duration string
- * @param timeSigNumerator - Time signature numerator
- * @returns Musical beats
- */
-function parseBarBeatFormat(
-  barBeatDuration: string,
-  timeSigNumerator: number,
-): number {
-  const match = barBeatDuration.match(
-    /^(-?\d+):((-?\d+)(?:\+\d+\/\d+|\.\d+|\/\d+)?)$/,
-  );
-
-  if (!match) {
-    throw new Error(
-      `Invalid bar:beat duration format: "${barBeatDuration}". Expected "{int}:{float}" like "1:2" or "2:1.5" or "{int}:{int}/{int}" like "0:4/3" or "{int}:{int}+{int}/{int}" like "1:2+1/3"`,
-    );
-  }
-
-  const bars = Number.parseInt(match[1] as string);
-  const beatsStr = match[2] as string;
-  const beats = parseBeatValue(beatsStr, barBeatDuration);
-
-  if (bars < 0) {
-    throw new Error(`Bars in duration must be 0 or greater, got: ${bars}`);
-  }
-
-  if (beats < 0) {
-    throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
-  }
-
-  const musicalBeatsPerBar = timeSigNumerator;
-
-  return bars * musicalBeatsPerBar + beats;
-}
-
-/**
- * Convert bar:beat or beat-only duration to musical beats
- * @param barBeatDuration - Bar:beat duration string or beat-only string
- * @param timeSigNumerator - Time signature numerator (required for bar:beat format)
- * @returns Musical beats
- */
-export function barBeatDurationToMusicalBeats(
-  barBeatDuration: string,
-  timeSigNumerator: number | undefined,
-): number {
-  // Check if it's bar:beat format or beat-only
-  if (barBeatDuration.includes(":")) {
-    if (timeSigNumerator == null) {
-      throw new Error(
-        `Time signature numerator required for bar:beat duration format: "${barBeatDuration}"`,
-      );
-    }
-
-    return parseBarBeatFormat(barBeatDuration, timeSigNumerator);
-  }
-
-  // Beat-only format (decimal, fraction, or integer+fraction)
-  if (barBeatDuration.includes("|")) {
-    throw new Error(
-      `Invalid duration format: "${barBeatDuration}". Use ":" for bar:beat format, not "|"`,
-    );
-  }
-
-  const beats = parseBeatValue(barBeatDuration, barBeatDuration);
-
-  if (beats < 0) {
-    throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
-  }
-
-  return beats;
+  return Number.parseFloat(beatsStr);
 }
 
 /**

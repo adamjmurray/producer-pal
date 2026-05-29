@@ -219,7 +219,7 @@ describe("Audio Transform Evaluator", () => {
   describe("waveform functions", () => {
     it("evaluates cos function", () => {
       // cos at position 0 with any period returns 1.0
-      const result = applyAudioTransform(0, 0, "gain = -12 + 6 * cos(4t)");
+      const result = applyAudioTransform(0, 0, "gain = -12 + 6 * cos(n/1)");
 
       // cos(0) = 1.0, so -12 + 6 * 1 = -6
       expect(result.gain).toBe(-6);

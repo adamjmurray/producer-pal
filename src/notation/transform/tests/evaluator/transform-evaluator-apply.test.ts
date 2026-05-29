@@ -184,24 +184,24 @@ probability += -0.2`;
     it("handles 4/4 time signature", () => {
       const notes = createTestNote();
 
-      // In 4/4, 1 Ableton beat = 1 musical beat, so cos(1t) at position 0 = 1
-      applyTransforms(notes, "velocity += 20 * cos(1t)", 4, 4);
+      // n/4 is a quarter-note cycle; at position 0 phase = 0, cos = 1
+      applyTransforms(notes, "velocity += 20 * cos(n/4)", 4, 4);
       expect(notes[0]!.velocity).toBeCloseTo(120, 5);
     });
 
     it("handles 3/4 time signature", () => {
       const notes = createTestNote();
 
-      // In 3/4, 1 Ableton beat = 1 musical beat
-      applyTransforms(notes, "velocity += 20 * cos(1t)", 3, 4);
+      // Quarter-note cycle is meter-invariant; at position 0, cos = 1
+      applyTransforms(notes, "velocity += 20 * cos(n/4)", 3, 4);
       expect(notes[0]!.velocity).toBeCloseTo(120, 5);
     });
 
     it("handles 6/8 time signature", () => {
       const notes = createTestNote();
 
-      // In 6/8, 1 Ableton beat = 2 musical beats (denominator/4 = 8/4 = 2)
-      applyTransforms(notes, "velocity += 20 * cos(1t)", 6, 8);
+      // In 6/8 a quarter is 2 eighth-note beats, but at position 0 cos = 1
+      applyTransforms(notes, "velocity += 20 * cos(n/4)", 6, 8);
       expect(notes[0]!.velocity).toBeCloseTo(120, 5);
     });
 
@@ -212,8 +212,8 @@ probability += -0.2`;
         { pitch: 60, start_time: 1 },
       ]);
 
-      // cos(1t) completes one cycle per beat: 0→1, 0.5→-1, 1→1
-      applyTransforms(notes, "velocity += 20 * cos(1t)", 4, 4);
+      // cos(n/4) completes one cycle per beat: 0→1, 0.5→-1, 1→1
+      applyTransforms(notes, "velocity += 20 * cos(n/4)", 4, 4);
       expect(notes[0]!.velocity).toBeCloseTo(120, 5); // cos(0) = 1
       expect(notes[1]!.velocity).toBeCloseTo(80, 5); // cos(0.5) ≈ -1
       expect(notes[2]!.velocity).toBeCloseTo(120, 5); // cos(1) = 1
@@ -376,7 +376,7 @@ probability += -0.2`;
     it("combines note variables with waveforms", () => {
       const notes = createTestNote({ velocity_deviation: 0 });
 
-      applyTransforms(notes, "velocity = note.velocity * cos(1t)", 4, 4);
+      applyTransforms(notes, "velocity = note.velocity * cos(n/4)", 4, 4);
       expect(notes[0]!.velocity).toBeCloseTo(100, 5); // 100 * cos(0) = 100 * 1
     });
   });

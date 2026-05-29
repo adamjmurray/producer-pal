@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
@@ -165,6 +166,13 @@ function evaluateAudioExpression(
   // Base case: number literal
   if (typeof node === "number") {
     return node;
+  }
+
+  // Absolute duration (n/4, n/8, ...) — e.g. a waveform period. Audio function
+  // evaluation assumes 4/4 (see the hardcoded denominator passed to
+  // evaluateFunction), so resolve note values against a denominator of 4.
+  if (node.type === "nDuration") {
+    return wholeNoteFractionToMusicalBeats(node.wholeNoteFraction, 4);
   }
 
   // Variable lookup

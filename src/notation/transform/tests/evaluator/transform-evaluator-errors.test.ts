@@ -73,14 +73,14 @@ describe("Transform Evaluator Error Handling", () => {
     it("throws on unknown function name", () => {
       // unknown_func is a parse error (not in grammar's function name lists)
       expect(() =>
-        evaluateTransform("velocity += unknown_func(1t)", DEFAULT_CONTEXT),
+        evaluateTransform("velocity += unknown_func(1)", DEFAULT_CONTEXT),
       ).toThrow(/transform syntax error/);
     });
 
     it("throws on typo in waveform name", () => {
       // coss is a parse error (not in grammar's function name lists)
       expect(() =>
-        evaluateTransform("velocity += coss(1t)", DEFAULT_CONTEXT),
+        evaluateTransform("velocity += coss(1)", DEFAULT_CONTEXT),
       ).toThrow(/transform syntax error/);
     });
   });

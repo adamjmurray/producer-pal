@@ -12,85 +12,85 @@ import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 
 describe("Transform Parser - Expressions", () => {
   describe("function calls", () => {
-    it("parses cos with frequency", () => {
-      const result = parser.parse("velocity += cos(1t)");
+    it("parses cos with period", () => {
+      const result = parser.parse("velocity += cos(n/4)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "cos",
-        args: [{ type: "period", bars: 0, beats: 1 }],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.25 }],
         sync: false,
         raw: false,
       });
     });
 
-    it("parses cos with frequency and phase", () => {
-      const result = parser.parse("velocity += cos(1t, 0.5)");
+    it("parses cos with period and phase", () => {
+      const result = parser.parse("velocity += cos(n/4, 0.5)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "cos",
-        args: [{ type: "period", bars: 0, beats: 1 }, 0.5],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.25 }, 0.5],
         sync: false,
         raw: false,
       });
     });
 
-    it("parses tri with frequency", () => {
-      const result = parser.parse("velocity += tri(2t)");
+    it("parses tri with period", () => {
+      const result = parser.parse("velocity += tri(n/2)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "tri",
-        args: [{ type: "period", bars: 0, beats: 2 }],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.5 }],
         sync: false,
         raw: false,
       });
     });
 
-    it("parses saw with frequency and phase", () => {
-      const result = parser.parse("velocity += saw(0.5t, 0.25)");
+    it("parses saw with period and phase", () => {
+      const result = parser.parse("velocity += saw(n/8, 0.25)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "saw",
-        args: [{ type: "period", bars: 0, beats: 0.5 }, 0.25],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.125 }, 0.25],
         sync: false,
         raw: false,
       });
     });
 
-    it("parses square with frequency", () => {
-      const result = parser.parse("velocity += square(4t)");
+    it("parses square with period", () => {
+      const result = parser.parse("velocity += square(n/1)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "square",
-        args: [{ type: "period", bars: 0, beats: 4 }],
+        args: [{ type: "nDuration", wholeNoteFraction: 1 }],
         sync: false,
         raw: false,
       });
     });
 
-    it("parses square with frequency and phase", () => {
-      const result = parser.parse("velocity += square(1t, 0.25)");
+    it("parses square with period and phase", () => {
+      const result = parser.parse("velocity += square(n/4, 0.25)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "square",
-        args: [{ type: "period", bars: 0, beats: 1 }, 0.25],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.25 }, 0.25],
         sync: false,
         raw: false,
       });
     });
 
-    it("parses square with frequency, phase, and pulseWidth", () => {
-      const result = parser.parse("velocity += square(2t, 0, 0.75)");
+    it("parses square with period, phase, and pulseWidth", () => {
+      const result = parser.parse("velocity += square(n/2, 0, 0.75)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "square",
-        args: [{ type: "period", bars: 0, beats: 2 }, 0, 0.75],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.5 }, 0, 0.75],
         sync: false,
         raw: false,
       });
@@ -157,125 +157,85 @@ describe("Transform Parser - Expressions", () => {
     });
   });
 
-  describe("frequency parameters", () => {
-    it("parses beat-only frequency (1t)", () => {
-      const result = parser.parse("velocity += cos(1t)");
+  describe("period parameters", () => {
+    it("parses note-value period (n/4)", () => {
+      const result = parser.parse("velocity += cos(n/4)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 0,
-        beats: 1,
+        type: "nDuration",
+        wholeNoteFraction: 0.25,
       });
     });
 
-    it("parses beat-only frequency with decimal (0.5t)", () => {
-      const result = parser.parse("velocity += cos(0.5t)");
+    it("parses note-value period with explicit numerator (n1/4)", () => {
+      const result = parser.parse("velocity += cos(n1/4)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 0,
-        beats: 0.5,
+        type: "nDuration",
+        wholeNoteFraction: 0.25,
       });
     });
 
-    it("parses beat-only frequency with fraction (1/3t)", () => {
-      const result = parser.parse("velocity += cos(1/3t)");
+    it("parses eighth-note period (n/8)", () => {
+      const result = parser.parse("velocity += cos(n/8)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 0,
-        beats: 1 / 3,
+        type: "nDuration",
+        wholeNoteFraction: 0.125,
       });
     });
 
-    it("parses beat-only frequency with fraction (optional numerator /3t)", () => {
-      const result = parser.parse("velocity += cos(/3t)");
+    it("parses triplet period (n/12)", () => {
+      const result = parser.parse("velocity += cos(n/12)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 0,
-        beats: 1 / 3,
+        type: "nDuration",
+        wholeNoteFraction: 1 / 12,
       });
     });
 
-    it("parses beat-only frequency with fraction (optional numerator /4t)", () => {
-      const result = parser.parse("velocity += cos(/4t)");
+    it("parses dotted-quarter period (n3/8)", () => {
+      const result = parser.parse("velocity += cos(n3/8)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 0,
-        beats: 1 / 4,
+        type: "nDuration",
+        wholeNoteFraction: 0.375,
       });
     });
 
-    it("parses bar:beat frequency (1:0t)", () => {
-      const result = parser.parse("velocity += cos(1:0t)");
+    it("parses whole-note period (n/1)", () => {
+      const result = parser.parse("velocity += cos(n/1)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 1,
-        beats: 0,
+        type: "nDuration",
+        wholeNoteFraction: 1,
       });
     });
 
-    it("parses bar:beat frequency (0:1t)", () => {
-      const result = parser.parse("velocity += cos(0:1t)");
+    it("parses a numeric expression period (beats)", () => {
+      const result = parser.parse("velocity += cos(2)");
+
+      expect((result[0]!.expression as FunctionNode).args[0]).toBe(2);
+    });
+
+    it("parses a variable period (clip.barDuration)", () => {
+      const result = parser.parse("velocity += cos(clip.barDuration)");
 
       expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 0,
-        beats: 1,
+        type: "variable",
+        namespace: "clip",
+        name: "barDuration",
       });
     });
 
-    it("parses bar:beat frequency with decimal beats (2:1.5t)", () => {
-      const result = parser.parse("velocity += cos(2:1.5t)");
-
-      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 2,
-        beats: 1.5,
-      });
-    });
-
-    it("parses bar:beat frequency with fraction beats (1:1/2t)", () => {
-      const result = parser.parse("velocity += cos(1:1/2t)");
-
-      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 1,
-        beats: 0.5,
-      });
-    });
-
-    it("parses bar:beat frequency with fraction beats (optional numerator 1:/2t)", () => {
-      const result = parser.parse("velocity += cos(1:/2t)");
-
-      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 1,
-        beats: 0.5,
-      });
-    });
-
-    it("parses bar:beat frequency with fraction beats (optional numerator 2:/3t)", () => {
-      const result = parser.parse("velocity += cos(2:/3t)");
-
-      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 2,
-        beats: 1 / 3,
-      });
-    });
-
-    it("parses large bar:beat frequency (4:0t)", () => {
-      const result = parser.parse("velocity += cos(4:0t)");
-
-      expect((result[0]!.expression as FunctionNode).args[0]).toStrictEqual({
-        type: "period",
-        bars: 4,
-        beats: 0,
-      });
+    it.each([
+      "velocity += cos(1t)",
+      "velocity += cos(0.5t)",
+      "velocity += cos(1/3t)",
+      "velocity += cos(1:0t)",
+      "velocity += cos(4:0t)",
+    ])("rejects removed period syntax: %s", (expr) => {
+      expect(() => parser.parse(expr)).toThrow("no longer supported");
     });
   });
 
@@ -399,7 +359,7 @@ describe("Transform Parser - Expressions", () => {
 
   describe("complex expressions", () => {
     it("parses function with arithmetic", () => {
-      const result = parser.parse("velocity += 20 * cos(1:0t)");
+      const result = parser.parse("velocity += 20 * cos(n/1)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
@@ -407,7 +367,7 @@ describe("Transform Parser - Expressions", () => {
         right: {
           type: "function",
           name: "cos",
-          args: [{ type: "period", bars: 1, beats: 0 }],
+          args: [{ type: "nDuration", wholeNoteFraction: 1 }],
           sync: false,
           raw: false,
         },
@@ -415,7 +375,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses multiple functions combined", () => {
-      const result = parser.parse("velocity += 20 * cos(4:0t) + 10 * rand()");
+      const result = parser.parse("velocity += 20 * cos(n4/1) + 10 * rand()");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "add",
@@ -425,7 +385,7 @@ describe("Transform Parser - Expressions", () => {
           right: {
             type: "function",
             name: "cos",
-            args: [{ type: "period", bars: 4, beats: 0 }],
+            args: [{ type: "nDuration", wholeNoteFraction: 4 }],
             sync: false,
             raw: false,
           },
@@ -445,7 +405,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses unipolar envelope (offset + transform)", () => {
-      const result = parser.parse("velocity += 20 + 20 * cos(2:0t)");
+      const result = parser.parse("velocity += 20 + 20 * cos(n2/1)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "add",
@@ -456,7 +416,7 @@ describe("Transform Parser - Expressions", () => {
           right: {
             type: "function",
             name: "cos",
-            args: [{ type: "period", bars: 2, beats: 0 }],
+            args: [{ type: "nDuration", wholeNoteFraction: 2 }],
             sync: false,
             raw: false,
           },
@@ -465,7 +425,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses amplitude transform", () => {
-      const result = parser.parse("velocity += 30 * cos(4:0t) * cos(1t)");
+      const result = parser.parse("velocity += 30 * cos(n4/1) * cos(n/4)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
@@ -475,14 +435,14 @@ describe("Transform Parser - Expressions", () => {
           left: {
             type: "function",
             name: "cos",
-            args: [{ type: "period", bars: 4, beats: 0 }],
+            args: [{ type: "nDuration", wholeNoteFraction: 4 }],
             sync: false,
             raw: false,
           },
           right: {
             type: "function",
             name: "cos",
-            args: [{ type: "period", bars: 0, beats: 1 }],
+            args: [{ type: "nDuration", wholeNoteFraction: 0.25 }],
             sync: false,
             raw: false,
           },
@@ -491,7 +451,7 @@ describe("Transform Parser - Expressions", () => {
     });
 
     it("parses swing timing with subtraction", () => {
-      const result = parser.parse("timing += 0.05 * (cos(1t) - 1)");
+      const result = parser.parse("timing += 0.05 * (cos(n/4) - 1)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
@@ -501,7 +461,7 @@ describe("Transform Parser - Expressions", () => {
           left: {
             type: "function",
             name: "cos",
-            args: [{ type: "period", bars: 0, beats: 1 }],
+            args: [{ type: "nDuration", wholeNoteFraction: 0.25 }],
             sync: false,
             raw: false,
           },

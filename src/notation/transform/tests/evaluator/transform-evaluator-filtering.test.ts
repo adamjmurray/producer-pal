@@ -341,7 +341,7 @@ G4-G5: velocity += 20`;
 
     it("uses variables with functions", () => {
       const result = evaluateTransform(
-        "velocity += note.velocity * cos(1t)",
+        "velocity += note.velocity * cos(n/4)",
         createContext(),
         noteProps,
       );
@@ -424,7 +424,7 @@ G4-G5: velocity += 20`;
 
     it("handles variables in waveform phase offset", () => {
       const result = evaluateTransform(
-        "velocity += cos(1t, note.probability)",
+        "velocity += cos(n/4, note.probability)",
         createContext(),
         noteProps,
       );

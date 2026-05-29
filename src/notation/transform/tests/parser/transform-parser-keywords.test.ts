@@ -9,49 +9,49 @@ import * as parser from "#src/notation/transform/parser/transform-parser.ts";
 
 describe("Transform Parser - Function Keywords", () => {
   describe("sync keyword", () => {
-    it("parses cos with frequency and sync", () => {
-      const result = parser.parse("velocity += cos(1t, sync)");
+    it("parses cos with note-value period and sync", () => {
+      const result = parser.parse("velocity += cos(n/4, sync)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "cos",
-        args: [{ type: "period", bars: 0, beats: 1 }],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.25 }],
         sync: true,
         raw: false,
       });
     });
 
-    it("parses tri with frequency, phase, and sync", () => {
-      const result = parser.parse("velocity += tri(2t, 0.5, sync)");
+    it("parses tri with period, phase, and sync", () => {
+      const result = parser.parse("velocity += tri(n/2, 0.5, sync)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "tri",
-        args: [{ type: "period", bars: 0, beats: 2 }, 0.5],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.5 }, 0.5],
         sync: true,
         raw: false,
       });
     });
 
     it("parses square with all args and sync", () => {
-      const result = parser.parse("velocity += square(2t, 0, 0.75, sync)");
+      const result = parser.parse("velocity += square(n/2, 0, 0.75, sync)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "square",
-        args: [{ type: "period", bars: 0, beats: 2 }, 0, 0.75],
+        args: [{ type: "nDuration", wholeNoteFraction: 0.5 }, 0, 0.75],
         sync: true,
         raw: false,
       });
     });
 
-    it("parses saw with sync", () => {
-      const result = parser.parse("velocity += saw(4:0t, sync)");
+    it("parses saw with a bar-length period and sync", () => {
+      const result = parser.parse("velocity += saw(clip.barDuration, sync)");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "function",
         name: "saw",
-        args: [{ type: "period", bars: 4, beats: 0 }],
+        args: [{ type: "variable", namespace: "clip", name: "barDuration" }],
         sync: true,
         raw: false,
       });
@@ -78,18 +78,32 @@ describe("Transform Parser - Function Keywords", () => {
     });
   });
 
+  describe("removed period syntax (Nt, N:Nt)", () => {
+    it.each([
+      "velocity += cos(1t)",
+      "velocity += cos(4t, sync)",
+      "velocity += cos(1:0t)",
+      "velocity += cos(4:0t, sync)",
+      "velocity += cos(1/2t)",
+      "timing = quant(1/4t)",
+      "timing = swing(0.05, 1/2t)",
+    ])("rejects %s", (expr) => {
+      expect(() => parser.parse(expr)).toThrow("no longer supported");
+    });
+  });
+
   describe("raw keyword", () => {
     it.each([
       ["swing(0.05, raw)", [0.05], true],
       [
-        "swing(0.03, 1/2t, raw)",
-        [0.03, { type: "period", bars: 0, beats: 0.5 }],
+        "swing(0.03, n/8, raw)",
+        [0.03, { type: "nDuration", wholeNoteFraction: 0.125 }],
         true,
       ],
       ["swing(0.05)", [0.05], false],
       [
-        "swing(0.05, 1/2t)",
-        [0.05, { type: "period", bars: 0, beats: 0.5 }],
+        "swing(0.05, n/8)",
+        [0.05, { type: "nDuration", wholeNoteFraction: 0.125 }],
         false,
       ],
     ] as const)("parses %s", (expr, expectedArgs, expectedRaw) => {
@@ -103,7 +117,7 @@ describe("Transform Parser - Function Keywords", () => {
 
     it("rejects raw on non-swing functions", () => {
       expect(() => parser.parse("velocity += rand(raw)")).toThrow();
-      expect(() => parser.parse("velocity += cos(1t, raw)")).toThrow();
+      expect(() => parser.parse("velocity += cos(n/4, raw)")).toThrow();
     });
   });
 });

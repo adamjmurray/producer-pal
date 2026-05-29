@@ -346,12 +346,12 @@ describe("Transform Parser", () => {
     });
 
     it("throws on invalid function name", () => {
-      expect(() => parser.parse("velocity += invalid(1t)")).toThrow();
+      expect(() => parser.parse("velocity += invalid(1)")).toThrow();
     });
 
     it("accepts plain number as function argument", () => {
       // Plain numbers are valid (e.g., for phase or pulseWidth)
-      const result = parser.parse("velocity += cos(1t, 0.5)");
+      const result = parser.parse("velocity += cos(n/4, 0.5)");
       const expr = result[0]!.expression as FunctionNode;
 
       expect(expr.args[1]).toBe(0.5);
@@ -378,7 +378,7 @@ describe("Transform Parser", () => {
 
   describe("real-world examples from spec", () => {
     it("parses basic envelope", () => {
-      const result = parser.parse("velocity += 20 * cos(1:0t)");
+      const result = parser.parse("velocity += 20 * cos(n/1)");
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(result[0]!.parameter).toBe("velocity");
@@ -386,7 +386,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses phase-shifted envelope", () => {
-      const result = parser.parse("velocity += 20 * cos(1:0t, 0.5)");
+      const result = parser.parse("velocity += 20 * cos(n/1, 0.5)");
       const expr = result[0]!.expression as BinaryOpNode;
       const fn = expr.right as FunctionNode;
 
@@ -395,7 +395,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses pulse width transform", () => {
-      const result = parser.parse("velocity += 20 * square(2t, 0, 0.25)");
+      const result = parser.parse("velocity += 20 * square(n/2, 0, 0.25)");
       const expr = result[0]!.expression as BinaryOpNode;
       const fn = expr.right as FunctionNode;
 
@@ -406,7 +406,7 @@ describe("Transform Parser", () => {
 
     it("parses multi-parameter transform", () => {
       const result = parser.parse(
-        "velocity += 20 * cos(1:0t) + 10 * rand()\ntiming += 0.03 * rand()\nprobability += 0.2 * cos(0:2t)",
+        "velocity += 20 * cos(n/1) + 10 * rand()\ntiming += 0.03 * rand()\nprobability += 0.2 * cos(n/2)",
       );
 
       expect(result).toHaveLength(3);
