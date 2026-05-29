@@ -16,11 +16,11 @@ import {
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
-} from "../mcp-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
 import {
   createClipTransformHelpers,
   parseNotationDuration,
-} from "./helpers/ppal-clip-transforms-test-helpers.ts";
+} from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 const { createMidiClip, applyTransform, readClipNotes } =

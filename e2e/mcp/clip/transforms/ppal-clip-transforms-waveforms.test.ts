@@ -12,8 +12,8 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-waveforms
  */
 import { describe, expect, it } from "vitest";
-import { setupMcpTestContext } from "../mcp-test-helpers.ts";
-import { createClipTransformHelpers } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+import { setupMcpTestContext } from "../../mcp-test-helpers.ts";
+import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 const { createMidiClip, applyTransform, readClipNotes } =

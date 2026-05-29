@@ -12,13 +12,16 @@
  * Run with: npm run e2e:mcp -- ppal-clip-transforms-sync
  */
 import { describe, expect, it } from "vitest";
-import { getToolWarnings, setupMcpTestContext } from "../mcp-test-helpers.ts";
+import {
+  getToolWarnings,
+  setupMcpTestContext,
+} from "../../mcp-test-helpers.ts";
 import {
   applyTransform as applyTransformHelper,
   createArrangementClip as createArrangementClipHelper,
   createMidiClip as createMidiClipHelper,
   readClipNotes as readClipNotesHelper,
-} from "./helpers/ppal-clip-transforms-test-helpers.ts";
+} from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 

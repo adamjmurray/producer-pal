@@ -16,8 +16,8 @@ import {
   getToolWarnings,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers.ts";
-import { createClipTransformHelpers } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
+import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 const { createMidiClip, createArrangementClip, readClipNotes, applyTransform } =
