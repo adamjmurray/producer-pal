@@ -10,6 +10,19 @@
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalTurnResult } from "../../types.ts";
 
+/** Connect tool name (turn-0 connect assertion). */
+export const TOOL_CONNECT = "ppal-connect";
+
+/** update-clip tool name. */
+export const TOOL_UPDATE_CLIP = "ppal-update-clip";
+
+/** Standard turn-0 message that opens a connection to Live. */
+export const MSG_CONNECT = "Connect to Ableton Live";
+
+/** Standard message to read the drum clip in scene 1 (drum scenarios). */
+export const READ_DRUM_NOTES =
+  "Find the drum clip in the first scene and read its notes";
+
 /**
  * Create a custom assertion that verifies clips were found and notes were read.
  * Checks that only ppal-read-* tools were called and at least one read included

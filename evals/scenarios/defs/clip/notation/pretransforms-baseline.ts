@@ -25,20 +25,21 @@
  * "clear", or "preTransforms".
  */
 
-import { getToolCalls } from "../../assertions/index.ts";
+import { getToolCalls } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
-} from "../../types.ts";
-import { assertNotesRead } from "./clip-scenario-helpers.ts";
+} from "../../../types.ts";
+import {
+  assertNotesRead,
+  MSG_CONNECT,
+  READ_DRUM_NOTES,
+  TOOL_CONNECT,
+  TOOL_UPDATE_CLIP,
+} from "../clip-scenario-helpers.ts";
 
-const TOOL_UPDATE_CLIP = "ppal-update-clip";
-const TOOL_CONNECT = "ppal-connect";
 const LIVE_SET = "basic-with-drum-and-lead-clips";
-const MSG_CONNECT = "Connect to Ableton Live";
-const READ_DRUM_NOTES =
-  "Find the drum clip in the first scene and read its notes";
 
 interface FallbackClassification {
   path: "preTransforms-reach" | "v0-per-note" | "two-call" | "unrecognized";

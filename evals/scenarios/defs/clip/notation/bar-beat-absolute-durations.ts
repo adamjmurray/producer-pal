@@ -15,12 +15,12 @@
  * 5/4 test sets would tighten the signal — see the eval validation tracker.
  */
 
-import { getToolCalls } from "../../assertions/index.ts";
+import { getToolCalls } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
-} from "../../types.ts";
+} from "../../../types.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_CONNECT = "ppal-connect";
