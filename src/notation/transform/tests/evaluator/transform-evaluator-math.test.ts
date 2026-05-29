@@ -232,6 +232,20 @@ describe("Transform Evaluator - Math Functions", () => {
     });
   });
 
+  describe("negative literals and unary minus", () => {
+    it("subtracting a negative literal adds (note.velocity - -1)", () => {
+      const result = evaluateTransform("velocity = note.velocity - -1", CTX, {
+        velocity: 10,
+      });
+
+      expect(result.velocity!.value).toBe(11);
+    });
+
+    it("leading negative literal in a subtraction chain (-1 - 1 = -2)", () => {
+      expectVelocityEquals("-1 - 1", -2);
+    });
+  });
+
   describe("nested functions", () => {
     it("round(12 * rand()) returns integer in range", () => {
       for (let i = 0; i < 10; i++) {
@@ -371,6 +385,19 @@ describe("Transform Evaluator - nDuration", () => {
       const result = evaluateTransform("duration += n/16", CTX);
 
       expect(result.duration!.value).toBe(0.25);
+    });
+  });
+
+  // The load-bearing distinction: n<fraction> is an absolute note value, a bare
+  // fraction is plain beats. "make it a quarter" → n/4 (correct), not 1/4.
+  describe("n-fraction vs bare fraction", () => {
+    it("n/4 is a quarter note (1 beat in 4/4); bare 1/4 is a quarter of a beat", () => {
+      const noteValue = evaluateTransform("duration = n/4", CTX);
+      const bareFraction = evaluateTransform("duration = 1/4", CTX);
+
+      expect(noteValue.duration!.value).toBe(1); // quarter note = 1 beat in 4/4
+      expect(bareFraction.duration!.value).toBe(0.25); // 1/4 beat = a 16th in 4/4
+      expect(noteValue.duration!.value).not.toBe(bareFraction.duration!.value);
     });
   });
 

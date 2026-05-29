@@ -51,8 +51,9 @@ export function assertNotesRead(turn: number): EvalAssertion {
 
 /**
  * Extract the transforms expressions from a ppal-update-clip call in the given
- * turn. transforms is a per-clip array; entries are joined with newlines so
- * selector/expression parsing in callers sees the raw expression text.
+ * turn. transforms is now a single newline-separated string; a legacy array
+ * value is still tolerated and joined with newlines so selector/expression
+ * parsing in callers sees the raw expression text.
  * Throws descriptive errors if the tool call or transforms parameter is missing.
  *
  * @param turns - All turn results

@@ -95,4 +95,10 @@ describe("BarBeatScript Parser - duration", () => {
     expect(() => parser.parse("n2:1.5 C3")).toThrow();
     expect(() => parser.parse("n1:0 C3")).toThrow();
   });
+
+  it("rejects malformed denominators (zero or missing)", () => {
+    expect(() => parser.parse("n/0 C3")).toThrow();
+    expect(() => parser.parse("n//4 C3")).toThrow();
+    expect(() => parser.parse("n3/0 C3")).toThrow(/denominator/);
+  });
 });
