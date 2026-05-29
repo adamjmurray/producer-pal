@@ -45,7 +45,7 @@ n/16 Gb1 1|1.5x4@/4 2|1.5x4@/4 3|1.5x4@/4 4|1.5x4@/4  # hats (4 per bar, quarter
 Here a bar|beat range SELECTS existing notes (a filter); in \`notes\` a bar|beat PLACES a note.
 
 Example — swap bar 1's snare, keep everything else:
-\`preTransforms: "E1 1|1-2|1: v0"\` (clear old snares) with \`notes: "E1 1|2,4"\` (new snares)
+\`preTransforms: "D1 1|1-2|1: v0"\` (clear old snares) with \`notes: "D1 1|2,4"\` (new snares)
 
 ## Rules
 - Set clip lengths explicitly: \`4bar\` for 4 bars, \`n/4\` for a quarter, \`1bar+n/4\` for mixed

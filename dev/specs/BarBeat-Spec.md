@@ -220,7 +220,7 @@ All components are stateful:
 - **Probability**: Set with `p<value>`, applies to following notes until changed
 - **Velocity**: Set with `v<value>` or `v<min>-<max>`, applies to following
   notes until changed
-- **Duration**: Set with `t<value>`, applies to following notes until changed
+- **Duration**: Set with `n<value>`, applies to following notes until changed
 
 ---
 
@@ -700,6 +700,13 @@ grammar AST to return an array of note events:
   (meter-independent); the interpreter then converts to Ableton beats (= quarter
   notes). A `n/4` becomes `1.0` in any meter; `n/8` becomes `0.5`; a `n3/8`
   (dotted quarter) becomes `1.5`
+  - **Beat unit (cross-layer note)**: these numbers are **Ableton beats**
+    (quarter-note beats — the unit of parsed-note output). The transforms layer
+    instead measures in meter-relative **musical beats** (scaled by the
+    time-signature denominator), so the same `n/4` evaluates to a different
+    number there (1 in 4/4, 2 in 6/8). Both describe the identical physical
+    quarter note — only the measuring unit differs. See `Transforms-Spec.md` →
+    "Units and Time Signatures".
 - **velocity**: Base velocity (0-127)
   - `v0` notes appear in output with `velocity: 0` for deletion purposes
   - Tools filter v0 notes before sending to Live API (see Note Deletion section)

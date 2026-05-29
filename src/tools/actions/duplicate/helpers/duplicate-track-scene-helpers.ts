@@ -338,7 +338,7 @@ function assignNamesToClips(clips: MinimalClipInfo[], name: string): void {
  * @param arrangementStartBeats - Start position in beats
  * @param name - Optional name for the duplicated clips
  * @param withoutClips - Whether to exclude clips when duplicating
- * @param arrangementLength - Optional length in bar:beat format
+ * @param arrangementLength - Optional length (Nbar, n<fraction>, or Nbar+n<fraction>)
  * @param songTimeSigNumerator - Song time signature numerator
  * @param songTimeSigDenominator - Song time signature denominator
  * @param context - Context object with holdingAreaStartBeats and silenceWavPath

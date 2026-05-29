@@ -80,11 +80,11 @@ interface ClipResult {
  * @param args.color - Optional clip color (CSS format: hex)
  * @param args.timeSignature - Time signature in format "4/4"
  * @param args.start - Bar|beat position where loop/clip region begins
- * @param args.length - Duration in bar:beat format. end = start + length
+ * @param args.length - Duration: Nbar, n<fraction> note value, or Nbar+n<fraction>. end = start + length
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
  * @param args.arrangementStart - Bar|beat position to move arrangement clip
- * @param args.arrangementLength - Bar:beat duration for arrangement span
+ * @param args.arrangementLength - Duration for arrangement span: Nbar, n<fraction>, or Nbar+n<fraction>
  * @param args.toSlot - Session clip destination slot (trackIndex/sceneIndex)
  * @param args.split - Comma-separated bar|beat positions to split clip
  * @param args.gainDb - Audio clip gain in decibels (-70 to 24)

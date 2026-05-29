@@ -5,6 +5,7 @@
 
 import {
   abletonBeatsToBarBeat,
+  abletonBeatsToDuration,
   durationToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
@@ -254,18 +255,20 @@ async function lengthenClipAndCollectInfo(
   context: Partial<ToolContext & TilingContext>,
   duplicatedClips: MinimalClipInfo[],
 ): Promise<void> {
-  // Convert beats to bar:beat format using clip's time signature
+  // Format the target length in the clip's time signature using the shared
+  // duration grammar (Nbar / n<fraction>) that updateClip's parser accepts.
   const timeSigNum = sourceClip.getProperty("signature_numerator") as number;
   const timeSigDenom = sourceClip.getProperty(
     "signature_denominator",
   ) as number;
-  const beatsPerBar = 4 * (timeSigNum / timeSigDenom);
-  const bars = Math.floor(targetBeats / beatsPerBar);
-  const remainingBeats = targetBeats - bars * beatsPerBar;
-  const arrangementLengthBarBeat = `${bars}:${remainingBeats.toFixed(3)}`;
+  const arrangementLength = abletonBeatsToDuration(
+    targetBeats,
+    timeSigNum,
+    timeSigDenom,
+  );
 
   const updateResult = await updateClip(
-    { ids: newClipId, arrangementLength: arrangementLengthBarBeat, name },
+    { ids: newClipId, arrangementLength, name },
     context,
   );
 
@@ -352,7 +355,7 @@ export function duplicateClipSlot(
  * @param arrangementStartBeats - Start position in beats
  * @param name - Optional name for the duplicated clip(s)
  * @param color - Optional color for the duplicated clip(s)
- * @param arrangementLength - Optional length in bar:beat format
+ * @param arrangementLength - Optional length (Nbar, n<fraction>, or Nbar+n<fraction>)
  * @param _songTimeSigNumerator - Song time signature numerator (unused but kept for API compat)
  * @param _songTimeSigDenominator - Song time signature denominator (unused but kept for API compat)
  * @param context - Context object with holdingAreaStartBeats and silenceWavPath

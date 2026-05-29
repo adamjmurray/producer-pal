@@ -174,7 +174,7 @@ describe("Transform Evaluator Error Handling", () => {
           expression: {
             type: "function" as const,
             name: "unknown_func",
-            args: [{ type: "period" as const, bars: 0, beats: 1 }],
+            args: [1],
             sync: false,
             raw: false,
           },

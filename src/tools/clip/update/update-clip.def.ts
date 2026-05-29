@@ -136,6 +136,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .max(1)
       .optional()
       .describe("quantization strength 0-1 (MIDI clips only)"),
+    // NOTE: intentionally Live's native quantize-grid vocabulary (incl. "T"
+    // triplet forms), NOT the n/N note-value notation used elsewhere. These map
+    // directly to Live's quantize API constants. Do not migrate to n/N.
     quantizeGrid: z
       .enum([
         "1/4",

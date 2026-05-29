@@ -244,6 +244,13 @@ This ensures that `timing += 1` always adds one beat in the current time
 signature. Note-value periods like `n/4` instead behave consistently in absolute
 time across meters (see Absolute Durations below).
 
+> **Beat unit (cross-layer note):** "musical beats" here are the _transforms
+> layer's_ unit — meter-relative, scaled by the time-signature denominator. This
+> is **not** the unit `bar|beat` notation reports: a parsed note's `duration` is
+> in **Ableton (quarter-note) beats**, where `n/4` = `1.0` in any meter. So the
+> same `n/4` reads as `1.0` in parsed-note output but as "1 in 4/4, 2 in 6/8"
+> here. Same physical duration; different unit (see `BarBeat-Spec.md`).
+
 ### Examples by Time Signature
 
 **In 4/4 time**:

@@ -53,7 +53,7 @@ export interface CreateClipArgs {
   timeSignature?: string | null;
   /** Bar|beat position where loop/clip region begins */
   start?: string | null;
-  /** Clip length in bar:beat duration format */
+  /** Clip length: Nbar, n<fraction> note value, or Nbar+n<fraction> */
   length?: string | null;
   /** Bar|beat position for initial playback start */
   firstStart?: string | null;
@@ -84,7 +84,7 @@ export interface CreateClipArgs {
  * @param args.color - Color in #RRGGBB hex format
  * @param args.timeSignature - Time signature in format "4/4"
  * @param args.start - Bar|beat position where loop/clip region begins
- * @param args.length - Clip length in bar:beat duration format
+ * @param args.length - Clip length: Nbar, n<fraction> note value, or Nbar+n<fraction>
  * @param args.firstStart - Bar|beat position for initial playback start
  * @param args.looping - Enable looping for the clip
  * @param args.auto - Automatic playback action

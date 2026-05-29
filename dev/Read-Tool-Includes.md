@@ -236,7 +236,7 @@ Adds timing/loop information. For arrangement clips, also adds
 | `looping`           | `boolean` | Whether looping is enabled                           |
 | `start`             | `string`  | Active start position (bar\|beat)                    |
 | `end`               | `string`  | Active end position (bar\|beat)                      |
-| `length`            | `string`  | Active length (bar:beat duration)                    |
+| `length`            | `string`  | Active length (`4bar`, `n/4`, or `1bar+n/4`)         |
 | `firstStart`        | `string`  | Start marker position, only if different from active |
 | `arrangementLength` | `string`  | Arrangement clips only: total length                 |
 
@@ -325,8 +325,8 @@ Result:
   "looping": true,
   "start": "1|1",
   "end": "5|1",
-  "length": "4:0",
-  "notes": "1|1 C1 1:0\n2|1 D1 1:0\n3|1 E1 0:2\n3|3 E1 0:2"
+  "length": "4bar",
+  "notes": "1|1 C1 n/1\n2|1 D1 n/1\n3|1 E1 n/2\n3|3 E1 n/2"
 }
 ```
 
@@ -379,8 +379,8 @@ MIDI clip result:
   "looping": true,
   "start": "1|1",
   "end": "5|1",
-  "length": "4:0",
-  "notes": "1|1 C1 1:0\n2|1 D1 1:0\n3|1 E1 0:2\n3|3 E1 0:2"
+  "length": "4bar",
+  "notes": "1|1 C1 n/1\n2|1 D1 n/1\n3|1 E1 n/2\n3|3 E1 n/2"
 }
 ```
 
@@ -400,7 +400,7 @@ Audio clip result:
   "looping": true,
   "start": "1|1",
   "end": "9|1",
-  "length": "8:0",
+  "length": "8bar",
   "sampleLength": 441000,
   "sampleRate": 44100,
   "warping": true,
