@@ -70,7 +70,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
   - Copies capture each note's v/n/p at the time it was written, not the current state
-- **update-clip** overlays \`notes\` onto existing notes (v0 deletes earlier notes); use \`preTransforms\` to clear or modify existing notes first (see Transforms)
+- **Editing existing clip notes** (update-clip): **prefer \`preTransforms\`** to delete or change notes already in the clip — clear a region (\`1|1-2|1: v0\`), a lane (\`C1: v0\`), everything (\`v0\`), or remap a drum lane (\`C1: C4\`); see Transforms. \`notes\` still overlays existing notes (v0-in-notes deletes at matching pitch/time), but reserve v0-in-notes for sculpting notes built **within the same \`notes\` string** — e.g. trimming after a bar copy, or in create-clip where nothing pre-exists
 
 ## Audio Clips
 \`ppal-read-clip\` \`sample\` include: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). \`warp\` include: \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.
@@ -180,7 +180,7 @@ Transforms modify notes in place — previous transforms are already baked in. D
 MIDI params ignored for audio clips, vice versa.
 On update-clip and duplicate, transforms/code is one string broadcast across every clip/copy. \`clip.index\`/\`clip.count\` span the full batch — use \`clip.index\` arithmetic (e.g. \`pitch += clip.index * 12\`) or \`clipseq()\` (e.g. \`pitch += clipseq(0, 5, 7)\`) inside the string for per-clip variation. For structurally-distinct edits per clip (different operations, not just different values), make separate tool calls.
 
-**update-clip pipeline:** \`preTransforms → notes (merge) → transforms\`. \`transforms\` mutates the final result (after the merge). \`preTransforms\` mutates the existing notes BEFORE new \`notes\` land — use it to clear or modify a region you're about to rewrite in one call (e.g. \`preTransforms: "1|1-1|4: velocity = 0"\` with \`notes:\` to swap out bar 1). preTransforms is ignored without \`notes\` or on audio clips. Same syntax as transforms.
+**update-clip pipeline:** \`preTransforms → notes (merge) → transforms\`. \`transforms\` mutates the final result (after the merge). \`preTransforms\` mutates the existing notes BEFORE new \`notes\` land — use it to clear or modify a region you're about to rewrite in one call (e.g. \`preTransforms: "1|1-1|4: velocity = 0"\` with \`notes:\` to swap out bar 1). preTransforms is ignored without \`notes\` or on audio clips. Same syntax as transforms. **Default to \`preTransforms\` for any delete/edit of notes already in the clip** (a region, a lane, or everything) instead of rebuilding \`notes\` or scattering \`v0\`s.
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Finding Library Content
 
