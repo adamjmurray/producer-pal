@@ -30,7 +30,7 @@ const emptyMidiTrack = 8;
  * Create an arrangement clip and return its ID.
  * @param trackIndex - Track to create on
  * @param arrangementStart - Bar|beat position
- * @param length - Clip length in bar:beat format
+ * @param length - Clip length in absolute note-value format (e.g. "1bar", "n/2")
  * @returns Clip ID
  */
 async function createArrangementClip(
@@ -75,14 +75,14 @@ function parseUpdateResults(result: unknown): {
 describe("ppal-update-clip arrangement multistart", () => {
   it("moves clip to position with existing clip without crashing", async () => {
     // Existing clip at target position
-    await createArrangementClip(emptyMidiTrack, "101|1", "1:0");
+    await createArrangementClip(emptyMidiTrack, "101|1", "1bar");
     await sleep(200);
 
     // Another clip to move there
     const movingId = await createArrangementClip(
       emptyMidiTrack,
       "105|1",
-      "2:0",
+      "2bar",
     );
 
     await sleep(200);
@@ -108,9 +108,9 @@ describe("ppal-update-clip arrangement multistart", () => {
   it("deletes non-survivors and keeps survivors", async () => {
     // A(4 beats), B(8 beats), C(2 beats)
     // Backwards: C(2)>0 survives, B(8)>2 survives, A(4)<=8 non-survivor
-    const idA = await createArrangementClip(emptyMidiTrack, "151|1", "1:0");
-    const idB = await createArrangementClip(emptyMidiTrack, "155|1", "2:0");
-    const idC = await createArrangementClip(emptyMidiTrack, "159|1", "0:2");
+    const idA = await createArrangementClip(emptyMidiTrack, "151|1", "1bar");
+    const idB = await createArrangementClip(emptyMidiTrack, "155|1", "2bar");
+    const idC = await createArrangementClip(emptyMidiTrack, "159|1", "n/2");
 
     await sleep(200);
 
@@ -140,9 +140,9 @@ describe("ppal-update-clip arrangement multistart", () => {
 
   it("only last clip survives when all have same length", async () => {
     // 3 clips of 4 beats (1 bar) each
-    const id1 = await createArrangementClip(emptyMidiTrack, "201|1", "1:0");
-    const id2 = await createArrangementClip(emptyMidiTrack, "205|1", "1:0");
-    const id3 = await createArrangementClip(emptyMidiTrack, "209|1", "1:0");
+    const id1 = await createArrangementClip(emptyMidiTrack, "201|1", "1bar");
+    const id2 = await createArrangementClip(emptyMidiTrack, "205|1", "1bar");
+    const id3 = await createArrangementClip(emptyMidiTrack, "209|1", "1bar");
 
     await sleep(200);
 
@@ -167,14 +167,14 @@ describe("ppal-update-clip arrangement multistart", () => {
 
     expect(finalClips).toHaveLength(1);
     expect(finalClips[0]!.arrangementStart).toBe("220|1");
-    expect(finalClips[0]!.arrangementLength).toBe("1:0");
+    expect(finalClips[0]!.arrangementLength).toBe("1bar");
   });
 
   it("all clips survive when in descending length order", async () => {
     // A(8 beats), B(4 beats), C(2 beats) — descending order
-    const idA = await createArrangementClip(emptyMidiTrack, "251|1", "2:0");
-    const idB = await createArrangementClip(emptyMidiTrack, "255|1", "1:0");
-    const idC = await createArrangementClip(emptyMidiTrack, "259|1", "0:2");
+    const idA = await createArrangementClip(emptyMidiTrack, "251|1", "2bar");
+    const idB = await createArrangementClip(emptyMidiTrack, "255|1", "1bar");
+    const idC = await createArrangementClip(emptyMidiTrack, "259|1", "n/2");
 
     await sleep(200);
 

@@ -71,7 +71,7 @@ describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
         arguments: {
           slot: `${emptyMidiTrack}/1`,
           notes: "C3 D3 E3 1|1",
-          length: "2:0.0",
+          length: "2bar",
         },
       });
       const clip = parseToolResult<CreateClipResult>(createResult);

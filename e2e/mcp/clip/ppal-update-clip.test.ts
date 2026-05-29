@@ -35,7 +35,7 @@ describe("ppal-update-clip", () => {
         slot: `${emptyMidiTrack}/0`,
         notes: "C3 D3 1|1",
         looping: true,
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
@@ -90,7 +90,7 @@ describe("ppal-update-clip", () => {
     // Test 4: Update start and length
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, start: "1|2", length: "1:0.0" },
+      arguments: { ids: clip.id, start: "1|2", length: "1bar" },
     });
 
     await sleep(100);
@@ -101,7 +101,7 @@ describe("ppal-update-clip", () => {
     const startLengthClip = parseToolResult<ReadClipResult>(verifyStartLength);
 
     expect(startLengthClip.start).toBe("1|2");
-    expect(startLengthClip.length).toBe("1:0");
+    expect(startLengthClip.length).toBe("1bar");
   });
 
   it("updates MIDI clip notes", async () => {
@@ -111,7 +111,7 @@ describe("ppal-update-clip", () => {
       arguments: {
         slot: `${emptyMidiTrack}/1`,
         notes: "C3 D3 1|1",
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
@@ -196,7 +196,7 @@ describe("ppal-update-clip", () => {
         trackIndex: emptyMidiTrack,
         arrangementStart: "41|1",
         notes: "C3 1|1",
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const arrClip = parseToolResult<{ id: string }>(arrCreateResult);
@@ -225,7 +225,7 @@ describe("ppal-update-clip", () => {
     // Test 2: Update arrangement clip length
     const lengthUpdateResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: movedClip.id, arrangementLength: "4:0.0" },
+      arguments: { ids: movedClip.id, arrangementLength: "4bar" },
     });
 
     // arrangementLength can return multiple clips if it tiles
