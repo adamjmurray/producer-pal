@@ -18,10 +18,16 @@ import {
 } from "#src/tools/shared/clip-notes.ts";
 
 /**
- * Apply transforms to existing notes without changing the notes themselves.
- * Used when transforms param is provided but notes param is omitted.
+ * Apply transforms to existing notes without merging new notes.
+ * Used when the notes param is omitted: preTransforms and/or transforms mutate
+ * the clip's existing notes in place. With no merge between them, preTransforms
+ * simply runs as the first pass and transforms as the second — the same ordering
+ * as the merge path, so preTransforms fully resolves (including v0 deletions)
+ * before transforms runs. Either string may be omitted; bare `preTransforms: "v0"`
+ * is how you clear a clip without rewriting it.
  * @param clip - The clip to update
- * @param transformString - Transform expressions to apply
+ * @param preTransformString - Transform expressions to apply first, or undefined
+ * @param transformString - Transform expressions to apply second, or undefined
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables
@@ -29,7 +35,8 @@ import {
  */
 export function applyTransformsToExistingNotes(
   clip: LiveAPI,
-  transformString: string,
+  preTransformString: string | undefined,
+  transformString: string | undefined,
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext?: ClipContext,
@@ -51,7 +58,15 @@ export function applyTransformsToExistingNotes(
   // Convert raw notes to NoteEvent format (strips extra Live API properties)
   const notes: NoteEvent[] = rawNotesToNoteEvents(rawNotes);
 
-  const transformed = applyTransforms(
+  // applyTransforms mutates notes in place (and no-ops on an undefined string).
+  const preCount = applyTransforms(
+    notes,
+    preTransformString,
+    timeSigNumerator,
+    timeSigDenominator,
+    clipContext,
+  );
+  const postCount = applyTransforms(
     notes,
     transformString,
     timeSigNumerator,
@@ -65,7 +80,10 @@ export function applyTransformsToExistingNotes(
     clip.call("add_new_notes", { notes });
   }
 
-  return { noteCount: getPlayableNoteCount(clip), transformed };
+  return {
+    noteCount: getPlayableNoteCount(clip),
+    transformed: postCount ?? preCount,
+  };
 }
 
 /**

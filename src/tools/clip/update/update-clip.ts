@@ -75,7 +75,7 @@ interface ClipResult {
  * @param args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param args.notes - Musical notation string
  * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all ids
- * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merge (requires notes)
+ * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merging new notes (works with or without notes; bare "v0" clears the clip)
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
  * @param args.timeSignature - Time signature in format "4/4"

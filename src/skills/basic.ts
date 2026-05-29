@@ -36,7 +36,7 @@ n/16 Gb1 1|1.5x4@/4 2|1.5x4@/4 3|1.5x4@/4 4|1.5x4@/4  # hats (4 per bar, quarter
 
 ## Editing existing notes: preTransforms (update-clip)
 
-\`preTransforms\` edits notes already in the clip BEFORE your new \`notes\` are added (requires \`notes\`). Same v/n/p/pitch tokens as above, with an optional range:
+\`preTransforms\` edits or clears notes already in the clip — on its own, or before adding new \`notes\` in the same call. Same v/n/p/pitch tokens as above, with an optional range:
 - \`[range]: <change>\` — omit the range to affect all notes
 - changes: \`v0\` delete · \`v1-127\` set velocity · \`n/4\` set duration · \`p0-1\` set probability · \`C4\` move notes to a pitch (drum-lane remap)
 - range: \`C1\` or \`C1-C5\` (pitch), \`1|1-2|1\` (bar|beat time span)

@@ -149,26 +149,38 @@ describe("updateClip - preTransforms", () => {
     expect(clip456Final).toStrictEqual([69, 81]); // bar 2 A3 + new bar 1 A4
   });
 
-  it("warns and ignores preTransforms when notes param is missing", async () => {
+  it("clears the whole clip with bare preTransforms and no notes", async () => {
     mockMergeNoteTracking(mocks.clip123, [note(60, 0), note(62, 1)]);
 
     await updateClip({
       ids: "123",
-      preTransforms: "velocity = 0", // would wipe everything if applied
+      preTransforms: "v0", // clear everything, no new notes
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("preTransforms ignored"),
-    );
-    // Without notes the path short-circuits: nothing should have been removed
-    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
+    // Existing notes removed and nothing re-added: the clip ends up empty
+    expect(mocks.clip123.call).toHaveBeenCalledWith(
       "remove_notes_extended",
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
-      expect.anything(),
+      0,
+      128,
+      0,
+      expect.any(Number),
     );
+    expect(addedNotes(mocks.clip123)).toStrictEqual([]);
+  });
+
+  it("edits existing notes with preTransforms and no notes (no merge)", async () => {
+    mockMergeNoteTracking(mocks.clip123, [note(60, 0, 100), note(62, 1, 100)]);
+
+    await updateClip({
+      ids: "123",
+      preTransforms: "velocity = 50", // no range, no new notes → edit all in place
+    });
+
+    const finalNotes = addedNotes(mocks.clip123);
+    const byPitch = new Map(finalNotes.map((n) => [n.pitch, n.velocity]));
+
+    expect(byPitch.get(60)).toBe(50);
+    expect(byPitch.get(62)).toBe(50);
   });
 
   it("warns and ignores preTransforms on audio clips", async () => {

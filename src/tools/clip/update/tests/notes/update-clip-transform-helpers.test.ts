@@ -121,6 +121,7 @@ describe("update-clip-transform-helpers", () => {
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        undefined,
         "velocity = 50",
         4,
         4,
@@ -170,6 +171,7 @@ describe("update-clip-transform-helpers", () => {
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        undefined,
         "velocity = 50",
         4,
         4,
@@ -204,6 +206,7 @@ describe("update-clip-transform-helpers", () => {
 
       const result = applyTransformsToExistingNotes(
         mockClip as unknown as LiveAPI,
+        undefined,
         "velocity = 50",
         4,
         4,

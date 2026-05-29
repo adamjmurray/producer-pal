@@ -115,7 +115,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "transform expressions applied to EXISTING notes BEFORE the merge (broadcast across ids); use to clear or modify a region you're about to rewrite (e.g. '1|1-2|1: velocity = 0'). Requires notes — ignored otherwise",
+        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across ids); clear or edit notes already in the clip — a region (e.g. '1|1-2|1: velocity = 0') or everything ('velocity = 0'). Works with or without notes",
       ),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
@@ -202,7 +202,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       name: "clip name",
       color: "#RRGGBB",
       preTransforms:
-        "clear/edit existing notes in a range before new notes land — requires notes. Shorthand only (see Skills): `1|1-2|1: v0` clears a region, `v0` clears all, `C1: C4` remaps a drum lane",
+        "clear/edit notes already in the clip. Shorthand only (see Skills): `1|1-2|1: v0` clears a region, `v0` clears all, `C1: C4` remaps a drum lane",
     },
   },
 });

@@ -61,15 +61,6 @@ export function handleNoteUpdates(
   timeSigDenominator: number,
   clipContext: ClipContext,
 ): NoteUpdateResult | null {
-  // preTransforms requires notes; warn and ignore otherwise.
-  // (the transforms-only path mutates existing notes directly, no merge to pre-empt.)
-  if (preTransformString != null && notationString == null) {
-    console.warn(
-      "preTransforms ignored: notes parameter is required (use transforms to mutate existing notes without merging)",
-    );
-    preTransformString = undefined;
-  }
-
   // Skip if nothing meaningful to do
   if (
     notationString == null &&
@@ -79,12 +70,14 @@ export function handleNoteUpdates(
     return null;
   }
 
-  // Handle transforms-only case (no notes parameter provided)
+  // No new notes to merge: apply preTransforms then transforms directly to the
+  // existing notes. This is how a clip's notes are cleared/edited without
+  // rewriting them — e.g. bare preTransforms "v0" clears everything.
   if (notationString == null) {
-    // transformString must be defined here (we returned above if both are null)
     return applyTransformsToExistingNotes(
       clip,
-      transformString as string,
+      preTransformString,
+      transformString,
       timeSigNumerator,
       timeSigDenominator,
       clipContext,
