@@ -32,12 +32,6 @@ const ctx = setupMcpTestContext();
 const { createMidiClip, readClipNotes, applyTransform } =
   createClipTransformHelpers(ctx);
 
-// NOTE: The audio-clip tests below are `.skip`-ped pending a product fix.
-// Creating/reading an audio clip whose sample-derived length is not a clean
-// whole-note fraction makes abletonBeatsToDuration throw ("Cannot represent
-// N Ableton beats as a whole-note fraction") — a v1.4.11 regression tracked
-// separately. Re-enable once abletonBeatsToDuration handles non-grid durations.
-
 /** Creates an audio track with a clip for testing. */
 async function createAudioTrackWithClip(trackName: string): Promise<{
   trackIndex: number;
@@ -88,8 +82,7 @@ const readClipPitchShift = (clipId: string): Promise<number> =>
 // Audio Transform Tests (update-clip)
 // =============================================================================
 
-// SKIP: audio clip length serialization throws on non-grid lengths (see note above)
-describe.skip("ppal-clip-transforms (audio gain)", () => {
+describe("ppal-clip-transforms (audio gain)", () => {
   it("applies gain transforms with expressions and clamping", async () => {
     const { clipId } = await createAudioTrackWithClip("Gain Comprehensive");
 
@@ -130,8 +123,7 @@ describe.skip("ppal-clip-transforms (audio gain)", () => {
   });
 });
 
-// SKIP: audio clip length serialization throws on non-grid lengths (see note above)
-describe.skip("ppal-clip-transforms (audio pitchShift)", () => {
+describe("ppal-clip-transforms (audio pitchShift)", () => {
   it("applies pitchShift transforms with expressions and clamping", async () => {
     const { clipId } = await createAudioTrackWithClip(
       "PitchShift Comprehensive",
@@ -163,8 +155,7 @@ describe.skip("ppal-clip-transforms (audio pitchShift)", () => {
   });
 });
 
-// SKIP: audio clip length serialization throws on non-grid lengths (see note above)
-describe.skip("ppal-clip-transforms (audio multi-clip and combined)", () => {
+describe("ppal-clip-transforms (audio multi-clip and combined)", () => {
   it("applies transforms to multiple clips and combined params", async () => {
     const trackResult = await ctx.client!.callTool({
       name: "ppal-create-track",
@@ -484,8 +475,7 @@ describe("ppal-clip-transforms (math functions)", () => {
     expect(notes).toContain("v75"); // bounds sorted, clamp(75, 50, 100) = 75
   });
 
-  // SKIP: audio clip length serialization throws on non-grid lengths (see note above)
-  it.skip("uses modulo operator", async () => {
+  it("uses modulo operator", async () => {
     const { clipId } = await createAudioTrackWithClip("Modulo Pattern");
 
     // Basic modulo patterns
@@ -510,8 +500,7 @@ describe("ppal-clip-transforms (math functions)", () => {
 // =============================================================================
 
 describe("ppal-clip-transforms (cross-type handling)", () => {
-  // SKIP: audio clip length serialization throws on non-grid lengths (see note above)
-  it.skip("ignores MIDI transforms on audio clips with warnings", async () => {
+  it("ignores MIDI transforms on audio clips with warnings", async () => {
     const { clipId } = await createAudioTrackWithClip("Audio Ignore MIDI");
 
     await applyTransform(clipId, "gain = -6");
@@ -559,8 +548,7 @@ describe("ppal-clip-transforms (cross-type handling)", () => {
     expect(notes).toContain("C3");
   });
 
-  // SKIP: audio clip length serialization throws on non-grid lengths (see note above)
-  it.skip("ignores note.* variables in audio context with warnings", async () => {
+  it("ignores note.* variables in audio context with warnings", async () => {
     const { clipId } = await createAudioTrackWithClip("Audio Note Var");
 
     await applyTransform(clipId, "gain = -6");
@@ -890,8 +878,7 @@ describe("ppal-clip-transforms (seq)", () => {
     expect(notes).toContain("v120 C3 1|2,4");
   });
 
-  // SKIP: audio clip length serialization throws on non-grid lengths (see note above)
-  it.skip("seq() selects gain based on clip.index in multi-clip audio update", async () => {
+  it("seq() selects gain based on clip.index in multi-clip audio update", async () => {
     // Create audio track with 2 clips
     const trackResult = await ctx.client!.callTool({
       name: "ppal-create-track",

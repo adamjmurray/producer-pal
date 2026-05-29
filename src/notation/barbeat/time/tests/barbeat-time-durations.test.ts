@@ -97,6 +97,33 @@ describe("abletonBeatsToDuration", () => {
     expect(abletonBeatsToDuration(4 / 3, 4, 4)).toBe("n/3"); // half triplet
   });
 
+  describe("off-grid (sample-derived) lengths", () => {
+    it("emits bare beats instead of throwing for sub-bar non-grid values", () => {
+      // Sample-derived length that is no clean note-value fraction (the
+      // AJM-461 regression: this used to throw).
+      expect(abletonBeatsToDuration(1.963754995004995, 4, 4)).toBe("1.9638");
+      expect(abletonBeatsToDuration(0.123456, 4, 4)).toBe("0.1235");
+    });
+
+    it("emits the whole value as bare beats when the off-grid part spans bars", () => {
+      // bars present, but the remainder is off-grid → no Nbar+<note-value>
+      // form exists, so the entire value is emitted as bare beats.
+      expect(abletonBeatsToDuration(5.987654, 4, 4)).toBe("5.9877");
+    });
+
+    it("strips trailing zeros from bare-beats output", () => {
+      // Off-grid by 0.00001 (just past the note-value tolerance) → bare beats,
+      // then toFixed(4) "1.2500" has its trailing zeros stripped to "1.25".
+      expect(abletonBeatsToDuration(1.25001, 4, 4)).toBe("1.25");
+    });
+
+    it("never throws for arbitrary positive lengths", () => {
+      for (const beats of [0.001, 1.111, 7.777, 13.3137]) {
+        expect(() => abletonBeatsToDuration(beats, 4, 4)).not.toThrow();
+      }
+    });
+  });
+
   it("throws error for negative durations", () => {
     expect(() => abletonBeatsToDuration(-1, 4, 4)).toThrow(
       "Duration cannot be negative, got: -1",
@@ -183,16 +210,16 @@ describe("durationToAbletonBeats", () => {
     );
   });
 
-  it("throws on bare integers/decimals (no silent-magnitude rule)", () => {
-    expect(() => durationToAbletonBeats("4", 4, 4)).toThrow(
-      "Invalid duration format",
-    );
-    expect(() => durationToAbletonBeats("1.5", 4, 4)).toThrow(
-      "Invalid duration format",
-    );
-    expect(() => durationToAbletonBeats("0", 4, 4)).toThrow(
-      "Invalid duration format",
-    );
+  it("parses bare numbers as Ableton beats (off-grid round-trip form)", () => {
+    expect(durationToAbletonBeats("4", 4, 4)).toBe(4); // 4 quarters = 1 bar in 4/4
+    expect(durationToAbletonBeats("1.5", 4, 4)).toBe(1.5);
+    expect(durationToAbletonBeats("0", 4, 4)).toBe(0);
+    expect(durationToAbletonBeats("1.9638", 4, 4)).toBe(1.9638);
+  });
+
+  it("treats bare beats as meter-independent quarter notes", () => {
+    expect(durationToAbletonBeats("3", 6, 8)).toBe(3); // 3 quarters regardless of meter
+    expect(durationToAbletonBeats("4", 3, 4)).toBe(4);
   });
 
   it("throws on bar:beat duration glyph (retired)", () => {
@@ -272,4 +299,12 @@ describe("duration round-trip consistency", () => {
       }
     });
   }
+
+  it("off-grid lengths round-trip approximately via bare beats", () => {
+    const beats = 1.963754995004995;
+    const str = abletonBeatsToDuration(beats, 4, 4);
+
+    expect(str).toBe("1.9638");
+    expect(durationToAbletonBeats(str, 4, 4)).toBeCloseTo(beats, 3);
+  });
 });
