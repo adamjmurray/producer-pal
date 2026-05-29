@@ -17,8 +17,80 @@ describe("Transform Parser - shorthand", () => {
       ["n3/8", "duration = n3/8"],
       ["C4", "pitch = C4"],
       ["C#3", "pitch = C#3"],
+      ["v+10", "velocity += 10"],
+      ["v-10", "velocity -= 10"],
+      ["p+0.1", "probability += 0.1"],
+      ["p-0.1", "probability -= 0.1"],
     ])("%s desugars to %s", (shorthand, fullForm) => {
       expect(parser.parse(shorthand)).toStrictEqual(parser.parse(fullForm));
+    });
+  });
+
+  describe("additive operator shorthand (v±N, p±N)", () => {
+    it("desugars v+10 to velocity add", () => {
+      expect(parser.parse("v+10")).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "velocity",
+          operator: "add",
+          expression: 10,
+        },
+      ]);
+    });
+
+    it("desugars v-10 to add-of-negation (matches -=)", () => {
+      expect(parser.parse("v-10")).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "velocity",
+          operator: "add",
+          expression: { type: "subtract", left: 0, right: 10 },
+        },
+      ]);
+    });
+
+    it("desugars p+0.1 to probability add", () => {
+      expect(parser.parse("p+0.1")).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "probability",
+          operator: "add",
+          expression: 0.1,
+        },
+      ]);
+    });
+
+    it("desugars p-0.1 to add-of-negation (matches -=)", () => {
+      expect(parser.parse("p-0.1")).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "probability",
+          operator: "add",
+          expression: { type: "subtract", left: 0, right: 0.1 },
+        },
+      ]);
+    });
+
+    it("applies a selector to additive shorthand (C1: v-10)", () => {
+      expect(parser.parse("C1: v-10")[0]).toStrictEqual({
+        pitchRange: { startPitch: 36, endPitch: 36 },
+        timeRange: null,
+        parameter: "velocity",
+        operator: "add",
+        expression: { type: "subtract", left: 0, right: 10 },
+      });
+    });
+
+    it("rejects additive shorthand for duration (n/4+1)", () => {
+      expect(() => parser.parse("n/4+1")).toThrow();
+    });
+
+    it("rejects additive shorthand for pitch (C4+5)", () => {
+      expect(() => parser.parse("C4+5")).toThrow();
     });
   });
 

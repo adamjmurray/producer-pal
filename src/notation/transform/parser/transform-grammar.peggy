@@ -21,6 +21,15 @@
     return `Period syntax "${matched}" is no longer supported. Use a note-value period with the "sync" keyword, e.g. sin(n/4, sync) for a quarter-note cycle, or cos(clip.barDuration, sync) for a bar-length cycle.`;
   }
 
+  // Desugars a shorthand additive op (v±N, p±N) to the same shape the full form
+  // produces in assignmentBody: subtract becomes add-of-negation, add stays add.
+  function shorthandAdditive(parameter, operator, value) {
+    if (operator === "subtract") {
+      return { parameter, operator: "add", expression: { type: "subtract", left: 0, right: value } };
+    }
+    return { parameter, operator, expression: value };
+  }
+
   // Maps transform parameters to their note/audio variable for *= and /= desugaring.
   // timing uses note.start (absolute position) since there is no note.timing offset variable.
   const PARAM_TO_VARIABLE = {
@@ -70,10 +79,18 @@ assignmentBody
   / shorthand
 
 // Shorthand assignment sugar reusing bar|beat property tokens. Each desugars to
-// an absolute `set`. Single value only (no ranges); single change per line.
+// the same { parameter, operator, expression } shape as the full forms; single
+// change per line. velocity/probability also accept additive ops (v±N, p±N) —
+// safe because both domains are non-negative, so a leading sign is unambiguous.
 shorthand "shorthand assignment"
-  = "v" value:unsignedInt {
+  = "v" operator:shorthandAddOp value:unsignedInt {
+      return shorthandAdditive("velocity", operator, value);
+    }
+  / "v" value:unsignedInt {
       return { parameter: "velocity", operator: "set", expression: value };
+    }
+  / "p" operator:shorthandAddOp value:unsignedDecimal {
+      return shorthandAdditive("probability", operator, value);
     }
   / "p" value:unsignedDecimal {
       return { parameter: "probability", operator: "set", expression: value };
@@ -84,6 +101,10 @@ shorthand "shorthand assignment"
   / pitch:pitchLiteral {
       return { parameter: "pitch", operator: "set", expression: pitch };
     }
+
+shorthandAddOp
+  = "+" { return "add"; }
+  / "-" { return "subtract"; }
 
 pitchRange "pitch range"
   = startPitch:pitch "-" endPitch:pitch {
