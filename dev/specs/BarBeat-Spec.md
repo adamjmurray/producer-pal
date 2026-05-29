@@ -55,12 +55,14 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Meter-independent: `n/4` is always one quarter note, in 4/4, 6/8, 5/4, etc.
   - Default: `n/4` (one quarter note)
   - Requires whitespace separation from following elements
-  - NOTE: clip `length` and arrangement durations use the related but distinct
-    `[Nbar+]<fraction>` grammar elsewhere in the tool API: `Nbar` (meter-aware,
-    e.g. `4bar`), `N/D` whole-note fraction (same fraction grammar as `n`, e.g.
-    `1/4` quarter, `/8` eighth, `1bar+1/4` mixed). No bare integers/decimals
-    (`4`, `1.5` are invalid). Distinguishes from `n` only by the bar prefix —
-    `length: 4bar` is meter-aware; `n/4` is not
+  - NOTE: clip `length` and arrangement durations use the same `n<fraction>`
+    note-value grammar, plus a meter-aware bar term: `Nbar` (meter-aware, e.g.
+    `4bar`), `n<fraction>` note value (e.g. `n/4` quarter, `n/8` eighth, `n3/8`
+    dotted quarter), or `Nbar+n<fraction>` mixed (e.g. `1bar+n/4`). Bare
+    fractions (`1/4`), integers (`4`), and decimals (`1.5`) are all invalid in
+    duration args — the `n` prefix marks a note value everywhere, and a bare
+    fraction means beats (transforms), never a note value. The `bar` token is
+    itself the type marker for the meter-aware term, so `4bar` stays bare
 
 - **Note (`C4`, `Eb2`, `F#3`, etc.)**
   - Note names follow standard pitch notation using:

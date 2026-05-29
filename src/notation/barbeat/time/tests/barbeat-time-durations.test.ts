@@ -34,20 +34,20 @@ describe("abletonBeatsToDuration", () => {
     });
 
     it("emits whole-note fractions for sub-bar values", () => {
-      expect(abletonBeatsToDuration(1, 4, 4)).toBe("1/4"); // quarter note
-      expect(abletonBeatsToDuration(2, 4, 4)).toBe("1/2"); // half note
-      expect(abletonBeatsToDuration(3, 4, 4)).toBe("3/4"); // dotted half
-      expect(abletonBeatsToDuration(0.5, 4, 4)).toBe("1/8"); // eighth
-      expect(abletonBeatsToDuration(0.25, 4, 4)).toBe("1/16"); // sixteenth
-      expect(abletonBeatsToDuration(1.5, 4, 4)).toBe("3/8"); // dotted quarter
+      expect(abletonBeatsToDuration(1, 4, 4)).toBe("n/4"); // quarter note
+      expect(abletonBeatsToDuration(2, 4, 4)).toBe("n/2"); // half note
+      expect(abletonBeatsToDuration(3, 4, 4)).toBe("n3/4"); // dotted half
+      expect(abletonBeatsToDuration(0.5, 4, 4)).toBe("n/8"); // eighth
+      expect(abletonBeatsToDuration(0.25, 4, 4)).toBe("n/16"); // sixteenth
+      expect(abletonBeatsToDuration(1.5, 4, 4)).toBe("n3/8"); // dotted quarter
     });
 
-    it("emits Nbar+N/D for mixed durations", () => {
-      expect(abletonBeatsToDuration(5, 4, 4)).toBe("1bar+1/4");
-      expect(abletonBeatsToDuration(6, 4, 4)).toBe("1bar+1/2");
-      expect(abletonBeatsToDuration(7, 4, 4)).toBe("1bar+3/4");
-      expect(abletonBeatsToDuration(9, 4, 4)).toBe("2bar+1/4");
-      expect(abletonBeatsToDuration(4.5, 4, 4)).toBe("1bar+1/8");
+    it("emits Nbar+n<fraction> for mixed durations", () => {
+      expect(abletonBeatsToDuration(5, 4, 4)).toBe("1bar+n/4");
+      expect(abletonBeatsToDuration(6, 4, 4)).toBe("1bar+n/2");
+      expect(abletonBeatsToDuration(7, 4, 4)).toBe("1bar+n3/4");
+      expect(abletonBeatsToDuration(9, 4, 4)).toBe("2bar+n/4");
+      expect(abletonBeatsToDuration(4.5, 4, 4)).toBe("1bar+n/8");
     });
   });
 
@@ -59,10 +59,10 @@ describe("abletonBeatsToDuration", () => {
     });
 
     it("handles sub-bar and mixed values", () => {
-      expect(abletonBeatsToDuration(0.5, 6, 8)).toBe("1/8");
-      expect(abletonBeatsToDuration(1, 6, 8)).toBe("1/4");
-      expect(abletonBeatsToDuration(1.5, 6, 8)).toBe("3/8");
-      expect(abletonBeatsToDuration(3.5, 6, 8)).toBe("1bar+1/8");
+      expect(abletonBeatsToDuration(0.5, 6, 8)).toBe("n/8");
+      expect(abletonBeatsToDuration(1, 6, 8)).toBe("n/4");
+      expect(abletonBeatsToDuration(1.5, 6, 8)).toBe("n3/8");
+      expect(abletonBeatsToDuration(3.5, 6, 8)).toBe("1bar+n/8");
     });
   });
 
@@ -73,8 +73,8 @@ describe("abletonBeatsToDuration", () => {
     });
 
     it("handles sub-bar values", () => {
-      expect(abletonBeatsToDuration(2, 2, 2)).toBe("1/2");
-      expect(abletonBeatsToDuration(1, 2, 2)).toBe("1/4");
+      expect(abletonBeatsToDuration(2, 2, 2)).toBe("n/2");
+      expect(abletonBeatsToDuration(1, 2, 2)).toBe("n/4");
     });
   });
 
@@ -85,16 +85,16 @@ describe("abletonBeatsToDuration", () => {
     });
 
     it("handles sub-bar values and mixed durations", () => {
-      expect(abletonBeatsToDuration(1, 3, 4)).toBe("1/4");
-      expect(abletonBeatsToDuration(2, 3, 4)).toBe("1/2");
-      expect(abletonBeatsToDuration(4, 3, 4)).toBe("1bar+1/4");
+      expect(abletonBeatsToDuration(1, 3, 4)).toBe("n/4");
+      expect(abletonBeatsToDuration(2, 3, 4)).toBe("n/2");
+      expect(abletonBeatsToDuration(4, 3, 4)).toBe("1bar+n/4");
     });
   });
 
   it("emits triplet fractions when needed", () => {
-    expect(abletonBeatsToDuration(1 / 3, 4, 4)).toBe("1/12"); // eighth triplet
-    expect(abletonBeatsToDuration(2 / 3, 4, 4)).toBe("1/6"); // quarter triplet
-    expect(abletonBeatsToDuration(4 / 3, 4, 4)).toBe("1/3"); // half triplet
+    expect(abletonBeatsToDuration(1 / 3, 4, 4)).toBe("n/12"); // eighth triplet
+    expect(abletonBeatsToDuration(2 / 3, 4, 4)).toBe("n/6"); // quarter triplet
+    expect(abletonBeatsToDuration(4 / 3, 4, 4)).toBe("n/3"); // half triplet
   });
 
   it("throws error for negative durations", () => {
@@ -121,51 +121,66 @@ describe("durationToAbletonBeats", () => {
     });
   });
 
-  describe("N/D fraction form (whole-note based)", () => {
+  describe("n<fraction> form (whole-note based)", () => {
     it("parses standard binary fractions", () => {
-      expect(durationToAbletonBeats("1/4", 4, 4)).toBe(1); // quarter
-      expect(durationToAbletonBeats("1/8", 4, 4)).toBe(0.5); // eighth
-      expect(durationToAbletonBeats("1/16", 4, 4)).toBe(0.25); // sixteenth
-      expect(durationToAbletonBeats("1/2", 4, 4)).toBe(2); // half
-      expect(durationToAbletonBeats("3/4", 4, 4)).toBe(3); // dotted half
-      expect(durationToAbletonBeats("3/8", 4, 4)).toBe(1.5); // dotted quarter
+      expect(durationToAbletonBeats("n1/4", 4, 4)).toBe(1); // quarter
+      expect(durationToAbletonBeats("n1/8", 4, 4)).toBe(0.5); // eighth
+      expect(durationToAbletonBeats("n1/16", 4, 4)).toBe(0.25); // sixteenth
+      expect(durationToAbletonBeats("n1/2", 4, 4)).toBe(2); // half
+      expect(durationToAbletonBeats("n3/4", 4, 4)).toBe(3); // dotted half
+      expect(durationToAbletonBeats("n3/8", 4, 4)).toBe(1.5); // dotted quarter
     });
 
     it("parses triplet fractions", () => {
-      expect(durationToAbletonBeats("1/12", 4, 4)).toBeCloseTo(1 / 3, 10);
-      expect(durationToAbletonBeats("1/6", 4, 4)).toBeCloseTo(2 / 3, 10);
-      expect(durationToAbletonBeats("1/3", 4, 4)).toBeCloseTo(4 / 3, 10);
+      expect(durationToAbletonBeats("n1/12", 4, 4)).toBeCloseTo(1 / 3, 10);
+      expect(durationToAbletonBeats("n1/6", 4, 4)).toBeCloseTo(2 / 3, 10);
+      expect(durationToAbletonBeats("n1/3", 4, 4)).toBeCloseTo(4 / 3, 10);
     });
 
     it("treats empty numerator as 1", () => {
-      expect(durationToAbletonBeats("/4", 4, 4)).toBe(1);
-      expect(durationToAbletonBeats("/8", 4, 4)).toBe(0.5);
-      expect(durationToAbletonBeats("/12", 4, 4)).toBeCloseTo(1 / 3, 10);
+      expect(durationToAbletonBeats("n/4", 4, 4)).toBe(1);
+      expect(durationToAbletonBeats("n/8", 4, 4)).toBe(0.5);
+      expect(durationToAbletonBeats("n/12", 4, 4)).toBeCloseTo(1 / 3, 10);
     });
 
     it("is meter-agnostic (fractions are absolute)", () => {
-      expect(durationToAbletonBeats("1/4", 6, 8)).toBe(1);
-      expect(durationToAbletonBeats("1/4", 2, 2)).toBe(1);
-      expect(durationToAbletonBeats("1/8", 3, 4)).toBe(0.5);
+      expect(durationToAbletonBeats("n1/4", 6, 8)).toBe(1);
+      expect(durationToAbletonBeats("n1/4", 2, 2)).toBe(1);
+      expect(durationToAbletonBeats("n1/8", 3, 4)).toBe(0.5);
     });
   });
 
-  describe("Nbar+N/D mixed form", () => {
+  describe("Nbar+n<fraction> mixed form", () => {
     it("parses mixed durations", () => {
-      expect(durationToAbletonBeats("1bar+1/4", 4, 4)).toBe(5);
-      expect(durationToAbletonBeats("1bar+1/8", 4, 4)).toBe(4.5);
-      expect(durationToAbletonBeats("2bar+3/4", 4, 4)).toBe(11);
+      expect(durationToAbletonBeats("1bar+n1/4", 4, 4)).toBe(5);
+      expect(durationToAbletonBeats("1bar+n1/8", 4, 4)).toBe(4.5);
+      expect(durationToAbletonBeats("2bar+n3/4", 4, 4)).toBe(11);
     });
 
     it("treats empty numerator as 1 in mixed form", () => {
-      expect(durationToAbletonBeats("1bar+/4", 4, 4)).toBe(5);
-      expect(durationToAbletonBeats("2bar+/8", 4, 4)).toBe(8.5);
+      expect(durationToAbletonBeats("1bar+n/4", 4, 4)).toBe(5);
+      expect(durationToAbletonBeats("2bar+n/8", 4, 4)).toBe(8.5);
     });
 
     it("respects meter for the bar component only", () => {
-      expect(durationToAbletonBeats("1bar+1/4", 6, 8)).toBe(4); // 3 + 1
-      expect(durationToAbletonBeats("1bar+1/8", 3, 4)).toBe(3.5); // 3 + 0.5
+      expect(durationToAbletonBeats("1bar+n1/4", 6, 8)).toBe(4); // 3 + 1
+      expect(durationToAbletonBeats("1bar+n1/8", 3, 4)).toBe(3.5); // 3 + 0.5
     });
+  });
+
+  it("rejects bare fractions (n prefix required for note values)", () => {
+    expect(() => durationToAbletonBeats("1/4", 4, 4)).toThrow(
+      "Invalid duration format",
+    );
+    expect(() => durationToAbletonBeats("/4", 4, 4)).toThrow(
+      "Invalid duration format",
+    );
+    expect(() => durationToAbletonBeats("1bar+1/4", 4, 4)).toThrow(
+      "Invalid duration format",
+    );
+    expect(() => durationToAbletonBeats("1bar+/4", 4, 4)).toThrow(
+      "Invalid duration format",
+    );
   });
 
   it("throws on bare integers/decimals (no silent-magnitude rule)", () => {

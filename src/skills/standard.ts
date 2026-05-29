@@ -44,7 +44,7 @@ export const skills = `# Producer Pal Skills
 
 - Positions: bar|beat (1-indexed, meter-relative). Examples: 1|1, 2|3.5, 1|2+1/3
 - Durations and \`@step\` intervals: absolute note values (denominator mandatory). \`n/4\` = quarter, \`n/8\` = eighth, \`n/16\` = sixteenth, \`n/12\` = eighth triplet (3 in a quarter), \`n3/8\` = dotted quarter (3 eighths). A quarter is a quarter in any meter
-- Clip \`length\` and arrangement durations: \`Nbar\` (meter-aware, e.g. \`4bar\`), \`N/D\` whole-note fraction (e.g. \`1/4\` = quarter, \`/8\` = eighth), or \`Nbar+N/D\` mixed (e.g. \`1bar+1/4\`). Same fraction grammar as \`n\`. No bare integers/decimals
+- Clip \`length\` and arrangement durations: \`Nbar\` (meter-aware, e.g. \`4bar\`), \`n<fraction>\` note value (e.g. \`n/4\` = quarter, \`n/8\` = eighth), or \`Nbar+n<fraction>\` mixed (e.g. \`1bar+n/4\`). Same \`n\` fraction grammar everywhere. No bare fractions/integers/decimals
 
 ## MIDI Syntax
 

@@ -59,7 +59,7 @@ describe("Unlooped warped audio clips - arrangementLength extension via loop_end
       const { mockCreate, sessionSlot } = setupSessionTilingMock(20.0);
 
       const result = await updateClip(
-        { ids: clipId, arrangementLength: "3bar+1/2" },
+        { ids: clipId, arrangementLength: "3bar+n/2" },
         mockContext,
       );
 

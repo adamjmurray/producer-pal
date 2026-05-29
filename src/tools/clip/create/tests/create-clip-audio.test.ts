@@ -376,7 +376,7 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
         slot: "0/0",
-        length: "3bar+1/8", // 12.5 beats in 4/4 = 3bar + 0.5 quarter (1/8 whole)
+        length: "3bar+n/8", // 12.5 beats in 4/4 = 3bar + 0.5 quarter (1/8 whole)
       });
     });
 

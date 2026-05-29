@@ -78,7 +78,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     const result = await updateClip({
       ids: "789",
-      arrangementLength: "1/4", // 1 beat
+      arrangementLength: "n/4", // 1 beat
     });
 
     // Should create temp clip at beat 1 with length 15

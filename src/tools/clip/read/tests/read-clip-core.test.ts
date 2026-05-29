@@ -39,7 +39,7 @@ describe("readClip", () => {
       denominator: 8,
       expectedStart: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
       expectedEnd: "2|5", // end_marker (5 beats = 2|5 in 6/8)
-      expectedLength: "1bar+1/4", // 4 Ableton beats in 6/8 = 1 bar + 1 quarter
+      expectedLength: "1bar+n/4", // 4 Ableton beats in 6/8 = 1 bar + 1 quarter
       // Notes default to 1 Ableton beat = a quarter note. The new notation
       // default is also a quarter (`n/4`), so no `n` prefix is emitted.
       expectedNotes: "C3 1|1 D3 1|3 E3 1|5",
@@ -119,7 +119,7 @@ describe("readClip", () => {
     // In 3/4 time, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("3/4");
-    expect(result).toHaveLength("1bar+1/4"); // 4 Ableton beats in 3/4 = 1 bar + 1 quarter
+    expect(result).toHaveLength("1bar+n/4"); // 4 Ableton beats in 3/4 = 1 bar + 1 quarter
   });
 
   it("should format notes using clip's time signature with Ableton quarter-note conversion", () => {
@@ -435,7 +435,7 @@ describe("readClip", () => {
     expect(result.arrangementLength).toBe("1bar");
     // But clip properties use clip time signature (6/8)
     expect(result.timeSignature).toBe("6/8");
-    expect(result).toHaveLength("1bar+1/4"); // 4 Ableton beats in 6/8 = 1 bar + 1 quarter
+    expect(result).toHaveLength("1bar+n/4"); // 4 Ableton beats in 6/8 = 1 bar + 1 quarter
     expect(result.start).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 

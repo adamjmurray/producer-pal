@@ -94,7 +94,7 @@ describe("createClip - basic validation and time signatures", () => {
 
     await createClip({
       slot: "0/0",
-      length: "1bar+3/4",
+      length: "1bar+n3/4",
       looping: false,
     });
 

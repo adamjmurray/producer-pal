@@ -61,7 +61,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "duration: Nbar (e.g., '4bar'), N/D fraction (e.g., '1/4'), or Nbar+N/D (e.g., '1bar+1/4'). Auto-fills with loops",
+        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Auto-fills with loops",
       ),
     toSlot: z.coerce
       .string()

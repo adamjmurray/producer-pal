@@ -237,15 +237,21 @@ describe("duplicate-helpers", () => {
       expect(result).toBe(16); // 4 bars in 4/4 = 16 beats
     });
 
-    it("parses Nbar+fraction durations", () => {
-      const result = parseArrangementLength("2bar+5/8", 4, 4);
+    it("parses Nbar+n<fraction> durations", () => {
+      const result = parseArrangementLength("2bar+n5/8", 4, 4);
 
-      expect(result).toBe(10.5); // 2 bars (8 beats) + 5/8 whole note (2.5 beats)
+      expect(result).toBe(10.5); // 2 bars (8 beats) + n5/8 whole note (2.5 beats)
     });
 
-    it("parses fraction-only durations", () => {
-      expect(parseArrangementLength("1/4", 4, 4)).toBe(1); // quarter note
-      expect(parseArrangementLength("/8", 4, 4)).toBe(0.5); // implicit numerator
+    it("parses note-value-only durations", () => {
+      expect(parseArrangementLength("n1/4", 4, 4)).toBe(1); // quarter note
+      expect(parseArrangementLength("n/8", 4, 4)).toBe(0.5); // implicit numerator
+    });
+
+    it("rejects bare fractions (n prefix required)", () => {
+      expect(() => parseArrangementLength("1/4", 4, 4)).toThrow(
+        /Invalid duration format/,
+      );
     });
 
     it("throws error for zero length", () => {

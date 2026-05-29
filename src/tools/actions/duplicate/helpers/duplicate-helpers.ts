@@ -21,7 +21,7 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 /**
- * Parse arrangementLength from `[Nbar+]<fraction>` duration format to absolute beats
+ * Parse arrangementLength from `[Nbar+]n<fraction>` duration format to absolute beats
  * @param arrangementLength - Duration string (e.g. "2bar" for exactly two bars)
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator

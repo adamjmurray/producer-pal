@@ -94,7 +94,7 @@ describe("duplicate - arrangementLength functionality", () => {
       id: "clip1",
 
       arrangementStart: "5|1",
-      arrangementLength: "1bar+1/2", // 6 beats - longer than original 4 beats
+      arrangementLength: "1bar+n/2", // 6 beats - longer than original 4 beats
     });
 
     // New implementation first duplicates the clip
@@ -138,7 +138,7 @@ describe("duplicate - arrangementLength functionality", () => {
       id: "clip1",
 
       arrangementStart: "5|1",
-      arrangementLength: "1bar+1/2", // 6 beats - longer than original 4 beats
+      arrangementLength: "1bar+n/2", // 6 beats - longer than original 4 beats
     });
 
     expect(result).toStrictEqual({
