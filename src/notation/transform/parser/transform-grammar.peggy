@@ -41,19 +41,44 @@ rangeSelector "range selector"
   / timeRange:timeRange _ pitchRange:pitchRange? { return { pitchRange: pitchRange ?? null, timeRange }; }
 
 assignment "parameter assignment"
-  = ranges:(rangeSelector _ ":" _)? parameter:parameter _ operator:operator _ expression:expression {
+  = ranges:(rangeSelector _ ":" _)? body:assignmentBody {
     const pitchRange = ranges?.[0]?.pitchRange ?? null;
     const timeRange = ranges?.[0]?.timeRange ?? null;
-    if (operator === "subtract") {
-      return { pitchRange, timeRange, parameter, operator: "add", expression: { type: "subtract", left: 0, right: expression } };
-    }
-    if (operator === "multiply" || operator === "divide") {
-      const varInfo = PARAM_TO_VARIABLE[parameter];
-      const currentValue = { type: "variable", namespace: varInfo.namespace, name: varInfo.name };
-      return { pitchRange, timeRange, parameter, operator: "set", expression: { type: operator, left: currentValue, right: expression } };
-    }
-    return { pitchRange, timeRange, parameter, operator, expression };
+    return { pitchRange, timeRange, ...body };
   }
+
+// The right-hand side of an assignment, after any optional range selector.
+// Full form: `parameter operator expression`. Shorthand: bar|beat-style tokens
+// (v/p/t + bare-pitch) that desugar to the same { parameter, operator, expression }.
+assignmentBody
+  = parameter:parameter _ operator:operator _ expression:expression {
+      if (operator === "subtract") {
+        return { parameter, operator: "add", expression: { type: "subtract", left: 0, right: expression } };
+      }
+      if (operator === "multiply" || operator === "divide") {
+        const varInfo = PARAM_TO_VARIABLE[parameter];
+        const currentValue = { type: "variable", namespace: varInfo.namespace, name: varInfo.name };
+        return { parameter, operator: "set", expression: { type: operator, left: currentValue, right: expression } };
+      }
+      return { parameter, operator, expression };
+    }
+  / shorthand
+
+// Shorthand assignment sugar reusing bar|beat property tokens. Each desugars to
+// an absolute `set`. Single value only (no ranges); single change per line.
+shorthand "shorthand assignment"
+  = "v" value:unsignedInt {
+      return { parameter: "velocity", operator: "set", expression: value };
+    }
+  / "p" value:unsignedDecimal {
+      return { parameter: "probability", operator: "set", expression: value };
+    }
+  / expression:tDuration {
+      return { parameter: "duration", operator: "set", expression };
+    }
+  / pitch:pitchLiteral {
+      return { parameter: "pitch", operator: "set", expression: pitch };
+    }
 
 pitchRange "pitch range"
   = startPitch:pitch "-" endPitch:pitch {
