@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -39,12 +40,19 @@ export interface FunctionNode {
   raw: boolean;
 }
 
+/** Absolute duration value (e.g., t/4 = quarter note). Resolved to musical beats at evaluation time. */
+export interface TDurationNode {
+  type: "tDuration";
+  wholeNoteFraction: number;
+}
+
 /** Expression AST node */
 export type ExpressionNode =
   | number
   | VariableNode
   | BinaryOpNode
-  | FunctionNode;
+  | FunctionNode
+  | TDurationNode;
 
 /** Pitch range filter */
 export interface PitchRange {

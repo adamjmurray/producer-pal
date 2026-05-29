@@ -258,6 +258,31 @@ time signatures.
 - `duration = 2` sets to 2 half notes (1 bar)
 - `cos(1t)` completes one cycle per half note
 
+### Absolute Durations (`t<dur>`)
+
+For meter-independent durations, use the same `t<fraction>` notation as bar|beat
+notes — a fraction of a whole note that evaluates to a number of musical beats:
+
+- `t/4` = a quarter note (1 musical beat in 4/4, 2 in 6/8, 0.5 in 2/2)
+- `t/8` = an eighth note
+- `t/16` = a sixteenth note
+- `t/12` = an eighth-note triplet
+- `t3/8` = a dotted quarter
+- `t/1` = a whole note
+
+`t<dur>` evaluates to a number and composes in any expression:
+
+```javascript
+duration = t / 8; // every note → an eighth note (any meter)
+duration += t / 16; // lengthen each note by a sixteenth
+duration = (2 * t) / 8; // a quarter (2 eighths)
+duration = note.duration + t / 16;
+duration = t / 4 + t / 8; // a dotted quarter
+```
+
+The denominator is required (`t1`, `t0.5` are parse errors); same rule as in
+bar|beat notation.
+
 ### Note Property Units
 
 All note properties are exposed in musical beats:

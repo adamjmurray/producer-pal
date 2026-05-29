@@ -144,9 +144,24 @@ multiplicative
 primary
   = functionCall
   / variable
+  / tDuration
   / pitchLiteral
   / number
   / "(" _ expr:expression _ ")" { return expr; }
+
+tDuration "absolute duration value"
+  = "t" frac:unsignedFraction {
+    return { type: "tDuration", wholeNoteFraction: frac };
+  }
+  / "t" bad:badAbsoluteValue {
+    throw new Error(`durations need a denominator: t/4 = quarter, t/8 = eighth, t/12 = eighth triplet. Got t${bad}`);
+  }
+
+// Matches values that LOOK like a duration but lack the required denominator.
+// Used only to produce a targeted error message — never returns a value.
+badAbsoluteValue
+  = unsignedMixedNumber { return text(); }
+  / unsignedDecimal { return text(); }
 
 variable
   = "audio." name:audioPropertyName {

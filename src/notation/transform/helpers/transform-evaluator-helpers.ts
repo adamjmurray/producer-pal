@@ -1,7 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { barBeatToBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -344,6 +346,14 @@ export function evaluateExpression(
   // Base case: number literal
   if (typeof node === "number") {
     return node;
+  }
+
+  // Absolute duration (t/4, t/8, etc.) — resolves to musical beats based on meter
+  if (node.type === "tDuration") {
+    return wholeNoteFractionToMusicalBeats(
+      node.wholeNoteFraction,
+      timeSigDenominator,
+    );
   }
 
   // Variable lookup

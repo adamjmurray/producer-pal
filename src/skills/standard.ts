@@ -129,7 +129,7 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 - **MIDI parameters:** velocity (1-127; <=0 deletes note), pitch (0-127), timing (beats), duration (beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
-- **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, and current values
+- **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, current values, and \`t<dur>\` absolute durations (e.g. \`t/4\` = a quarter note in any meter; same fraction grammar as bar|beat \`t\`). \`t<dur>\` evaluates to a number of musical beats and composes in any math expression
 - **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), wrap(val,min,max) (wrap to inclusive range), reflect(val,min,max) (bounce within inclusive range), min(a,b,...), max(a,b,...), pow(base,exp), snap(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms), legato([tolerance]) (set duration to reach next note's start time; optional tolerance in beats groups nearby starts as chords, e.g. legato(0.1) after humanizing)
 - **Timing functions:** swing(amount [, grid] [, raw]) (auto-quantizes to grid then applies swing; amount=delay in beats: 0.02=subtle, 0.05=medium, 0.1=heavy; grid: default 1/2t=8th-note swing, 1/4t=16th-note swing; raw: skip auto-quantize), quant(grid) (snap to nearest grid point). Grid ref for both: 1t=quarter, 1/2t=8th, 1/4t=16th, 1/3t=triplet. Both return absolute positions — use \`timing =\`, not \`timing +=\`
 
@@ -167,6 +167,8 @@ pitch = step(note.pitch, sin(4t) * 7) // oscillate ±7 scale steps smoothly
 pitch = wrap(note.pitch + 5, C3, C5) // transpose up 5, wrap within C3-C5
 velocity *= 0.5                  // halve all velocities
 C1-C2: duration /= 2             // halve duration of bass notes
+duration = t/8                   // every note → an eighth note (meter-aware)
+duration += t/16                 // lengthen every note by a sixteenth
 duration = legato()              // extend each note to reach the next
 duration = legato(0.1)           // legato with tolerance (after humanizing timing)
 \`\`\`
