@@ -10,12 +10,18 @@
 import {
   arrangementClipWorkflow,
   audioSampleWorkflow,
+  barBeatAbsoluteDurationUniformity,
+  barBeatMeterFill,
+  barBeatTriplets,
   connectToAbleton,
   createAndEditClip,
   drumTransforms,
   duplicate,
   legatoTransforms,
   melodyTransforms,
+  pretransformsHatFillsBaseline,
+  pretransformsMelodyReplaceBaseline,
+  pretransformsSnareSwapBaseline,
   swingAndQuantize,
   memoryWorkflow,
   negativeCases,
@@ -43,6 +49,12 @@ const allScenarios: EvalScenario[] = [
   audioSampleWorkflow,
   sceneAndPlayback,
   updateLiveSet,
+  barBeatTriplets,
+  barBeatMeterFill,
+  barBeatAbsoluteDurationUniformity,
+  pretransformsMelodyReplaceBaseline,
+  pretransformsHatFillsBaseline,
+  pretransformsSnareSwapBaseline,
 ];
 
 export interface LoadScenariosOptions {
