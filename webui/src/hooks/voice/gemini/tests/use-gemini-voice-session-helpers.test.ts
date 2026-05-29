@@ -44,9 +44,13 @@ describe("buildGeminiConfig", () => {
     expect(config.tools).toStrictEqual([
       { functionDeclarations: [{ name: "ppal-x" }] },
     ]);
-    expect(config.inputAudioTranscription).toStrictEqual({});
-    expect(config.outputAudioTranscription).toStrictEqual({});
-    expect(typeof config.systemInstruction).toBe("string");
+    expect(config.inputAudioTranscription).toStrictEqual({
+      languageCodes: ["en-US"],
+    });
+    expect(config.outputAudioTranscription).toStrictEqual({
+      languageCodes: ["en-US"],
+    });
+    expect(config.systemInstruction).toContain("ENGLISH");
   });
 
   it("falls back to the default voice when none is given", () => {

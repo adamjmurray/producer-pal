@@ -25,6 +25,10 @@ import {
   type VoiceAudioGraph,
 } from "#webui/hooks/voice/voice-audio-graph";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
+import {
+  OPENAI_TRANSCRIPTION_MODEL,
+  VOICE_LANGUAGE_ISO,
+} from "#webui/lib/constants/voice-language";
 
 // The <audio> element's .volume is hard-capped at unity by the HTML spec — it
 // can attenuate but not boost. Boost above unity goes through the Web Audio
@@ -512,13 +516,18 @@ export function buildSessionOptions(
     transport,
     config: {
       audio: {
-        ...(opts.turnDetection
-          ? {
-              input: {
-                turnDetection: mapTurnDetectionToConfig(opts.turnDetection),
-              },
-            }
-          : {}),
+        // Pin the ASR side-channel language so short/noisy utterances aren't
+        // misclassified. This shapes the transcript text only (UI/logs/tool-call
+        // inputs); output language is locked separately via agent instructions.
+        input: {
+          transcription: {
+            model: OPENAI_TRANSCRIPTION_MODEL,
+            language: VOICE_LANGUAGE_ISO,
+          },
+          ...(opts.turnDetection
+            ? { turnDetection: mapTurnDetectionToConfig(opts.turnDetection) }
+            : {}),
+        },
         output: { speed: opts.speed ?? VOICE_SPEED_DEFAULT },
       },
       ...(reasoningEffort ? { reasoning: { effort: reasoningEffort } } : {}),

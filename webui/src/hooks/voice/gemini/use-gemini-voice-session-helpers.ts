@@ -23,16 +23,13 @@ import {
 import { type GeminiVoiceCredential } from "#webui/hooks/voice/gemini/gemini-voice-token";
 import { extractErrorMessage } from "#webui/hooks/voice/use-voice-session-helpers";
 import { DEFAULT_GEMINI_REALTIME_VOICE } from "#webui/lib/constants/models";
+import {
+  GEMINI_VOICE_INSTRUCTIONS,
+  VOICE_LANGUAGE_BCP47,
+} from "#webui/lib/constants/voice-language";
 
 /** Mic input format Gemini Live expects (raw 16-bit PCM, 16 kHz, mono, LE). */
 export const GEMINI_INPUT_MIME_TYPE = "audio/pcm;rate=16000";
-
-export const GEMINI_AGENT_INSTRUCTIONS = [
-  "You are Producer Pal, an AI music production assistant working with the user in Ableton Live.",
-  "Always speak and respond in English. Interpret all user audio as English, even if a short utterance sounds ambiguous.",
-  "Before responding to the user's first request, call the ppal-connect tool to load the latest Producer Pal skills and current project context.",
-  "Keep voice responses brief and conversational. When tool calls take a moment, you may narrate what you are doing so the user knows you are working.",
-].join(" ");
 
 /**
  * Build the Live API session config: audio-out, the system instruction, the
@@ -57,7 +54,7 @@ export function buildGeminiConfig(opts: {
 }): LiveConnectConfig {
   const config: LiveConnectConfig = {
     responseModalities: [Modality.AUDIO],
-    systemInstruction: GEMINI_AGENT_INSTRUCTIONS,
+    systemInstruction: GEMINI_VOICE_INSTRUCTIONS,
     tools: [{ functionDeclarations: opts.functionDeclarations }],
     speechConfig: {
       voiceConfig: {
@@ -66,8 +63,11 @@ export function buildGeminiConfig(opts: {
         },
       },
     },
-    inputAudioTranscription: {},
-    outputAudioTranscription: {},
+    // Pin the ASR side-channel language (BCP-47). The native-audio model ignores
+    // speechConfig.languageCode, so output language is locked via the system
+    // instruction; these hints only improve transcript accuracy.
+    inputAudioTranscription: { languageCodes: [VOICE_LANGUAGE_BCP47] },
+    outputAudioTranscription: { languageCodes: [VOICE_LANGUAGE_BCP47] },
     sessionResumption: opts.resumeHandle ? { handle: opts.resumeHandle } : {},
   };
 

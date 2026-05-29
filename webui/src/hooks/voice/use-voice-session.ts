@@ -31,13 +31,7 @@ import {
   teardownVoiceAudioGraph,
   type VoiceAudioGraph,
 } from "#webui/hooks/voice/voice-audio-graph";
-
-const AGENT_INSTRUCTIONS = [
-  "You are Producer Pal, an AI music production assistant working with the user in Ableton Live.",
-  "Always speak and respond in English. Interpret all user audio as English, even if a short utterance sounds ambiguous.",
-  "Before responding to the user's first request, call the ppal-connect tool to load the latest Producer Pal skills and current project context.",
-  "Keep voice responses brief and conversational. When tool calls take a moment, you may narrate what you are doing so the user knows you are working.",
-].join(" ");
+import { OPENAI_VOICE_INSTRUCTIONS } from "#webui/lib/constants/voice-language";
 
 export type VoiceStatus =
   | "idle"
@@ -271,7 +265,7 @@ export function useVoiceSession(
 
         const agent = new RealtimeAgent({
           name: "Producer Pal Voice",
-          instructions: AGENT_INSTRUCTIONS,
+          instructions: OPENAI_VOICE_INSTRUCTIONS,
           tools,
           voice,
         });
