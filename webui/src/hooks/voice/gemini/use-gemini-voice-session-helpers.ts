@@ -24,8 +24,8 @@ import { type GeminiVoiceCredential } from "#webui/hooks/voice/gemini/gemini-voi
 import { extractErrorMessage } from "#webui/hooks/voice/use-voice-session-helpers";
 import { DEFAULT_GEMINI_REALTIME_VOICE } from "#webui/lib/constants/models";
 import {
-  GEMINI_VOICE_INSTRUCTIONS,
-  VOICE_LANGUAGE_BCP47,
+  buildGeminiVoiceInstructions,
+  getVoiceLanguage,
 } from "#webui/lib/constants/voice-language";
 
 /** Mic input format Gemini Live expects (raw 16-bit PCM, 16 kHz, mono, LE). */
@@ -42,6 +42,8 @@ export const GEMINI_INPUT_MIME_TYPE = "audio/pcm;rate=16000";
  * @param opts.voice - Prebuilt Gemini voice name (defaults to Puck)
  * @param opts.functionDeclarations - MCP tools as Gemini declarations
  * @param opts.vad - Gemini VAD settings; when omitted, Live API defaults apply
+ * @param opts.language - Locked voice language (ISO-639-1 code); defaults to
+ *   English
  * @param opts.resumeHandle - Prior session's resumption handle; omit for a fresh
  *   session (still enables resumption so the server starts issuing handles)
  * @returns The LiveConnectConfig
@@ -50,11 +52,13 @@ export function buildGeminiConfig(opts: {
   voice: string | undefined;
   functionDeclarations: FunctionDeclaration[];
   vad?: GeminiVadSettings;
+  language?: string;
   resumeHandle?: string;
 }): LiveConnectConfig {
+  const language = getVoiceLanguage(opts.language);
   const config: LiveConnectConfig = {
     responseModalities: [Modality.AUDIO],
-    systemInstruction: GEMINI_VOICE_INSTRUCTIONS,
+    systemInstruction: buildGeminiVoiceInstructions(language),
     tools: [{ functionDeclarations: opts.functionDeclarations }],
     speechConfig: {
       voiceConfig: {
@@ -66,8 +70,8 @@ export function buildGeminiConfig(opts: {
     // Pin the ASR side-channel language (BCP-47). The native-audio model ignores
     // speechConfig.languageCode, so output language is locked via the system
     // instruction; these hints only improve transcript accuracy.
-    inputAudioTranscription: { languageCodes: [VOICE_LANGUAGE_BCP47] },
-    outputAudioTranscription: { languageCodes: [VOICE_LANGUAGE_BCP47] },
+    inputAudioTranscription: { languageCodes: [language.bcp47] },
+    outputAudioTranscription: { languageCodes: [language.bcp47] },
     sessionResumption: opts.resumeHandle ? { handle: opts.resumeHandle } : {},
   };
 
@@ -145,6 +149,8 @@ export interface ResumableSessionContext {
   voice: string | undefined;
   /** VAD/turn-detection settings, or undefined for Live API defaults. */
   vad: GeminiVadSettings | undefined;
+  /** Locked voice language (ISO-639-1 code), or undefined for English. */
+  language: string | undefined;
   /** MCP tools exposed to the model. */
   functionDeclarations: FunctionDeclaration[];
   /** Message-handler deps (history builder, player, tool loop, UI setters). */
@@ -229,6 +235,7 @@ export async function openResumableGeminiSession(
       voice: ctx.voice,
       functionDeclarations: ctx.functionDeclarations,
       vad: ctx.vad,
+      language: ctx.language,
       resumeHandle: ctx.resumeRef.current.handle ?? undefined,
     }),
   });

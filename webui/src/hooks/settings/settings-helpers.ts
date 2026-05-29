@@ -11,11 +11,16 @@ import {
   isValidGeminiRealtimeVoice,
   isValidRealtimeVoice,
 } from "#webui/lib/constants/models";
+import {
+  DEFAULT_VOICE_LANGUAGE,
+  isValidVoiceLanguage,
+} from "#webui/lib/constants/voice-language";
 import { type Provider } from "#webui/types/settings";
 
 const REALTIME_VOICE_KEY = "producer_pal_realtime_voice";
 const VOICE_SPEED_KEY = "producer_pal_voice_speed";
 const VOICE_VOLUME_KEY = "producer_pal_voice_volume";
+const VOICE_LANGUAGE_KEY = "producer_pal_voice_language";
 
 export const VOICE_SPEED_MIN = 0.5;
 export const VOICE_SPEED_MAX = 1.5;
@@ -104,6 +109,27 @@ export function loadVoiceVolume(): number {
  */
 export function saveVoiceVolume(volume: number): void {
   localStorage.setItem(VOICE_VOLUME_KEY, String(volume));
+}
+
+/**
+ * Loads the saved voice-chat language (ISO-639-1 code) from localStorage,
+ * falling back to English when missing or unknown.
+ * @returns A valid voice-language code
+ */
+export function loadVoiceLanguage(): string {
+  const stored = localStorage.getItem(VOICE_LANGUAGE_KEY);
+
+  if (stored && isValidVoiceLanguage(stored)) return stored;
+
+  return DEFAULT_VOICE_LANGUAGE;
+}
+
+/**
+ * Persists the voice-chat language selection to localStorage.
+ * @param language - The ISO-639-1 language code to persist
+ */
+export function saveVoiceLanguage(language: string): void {
+  localStorage.setItem(VOICE_LANGUAGE_KEY, language);
 }
 
 const VALID_THINKING_LEVELS: readonly string[] = THINKING_LEVELS;

@@ -26,8 +26,8 @@ import {
 } from "#webui/hooks/voice/voice-audio-graph";
 import { OPENAI_REALTIME_MODEL } from "#webui/lib/constants/models";
 import {
+  DEFAULT_VOICE_LANGUAGE,
   OPENAI_TRANSCRIPTION_MODEL,
-  VOICE_LANGUAGE_ISO,
 } from "#webui/lib/constants/voice-language";
 
 // The <audio> element's .volume is hard-capped at unity by the HTML spec — it
@@ -498,6 +498,8 @@ export function teardownAudioElement(
  * @param opts.speed - Output playback speed (defaults to VOICE_SPEED_DEFAULT)
  * @param opts.thinking - Thinking UI level, mapped to reasoning.effort
  * @param opts.model - Realtime model id (defaults to OPENAI_REALTIME_MODEL)
+ * @param opts.transcriptionLanguage - ISO-639-1 code for the ASR side-channel
+ *   (defaults to English)
  * @returns The RealtimeSession constructor options
  */
 export function buildSessionOptions(
@@ -507,6 +509,7 @@ export function buildSessionOptions(
     speed?: number;
     thinking?: string;
     model?: string;
+    transcriptionLanguage?: string;
   },
 ): ConstructorParameters<typeof RealtimeSession>[1] {
   const reasoningEffort = mapThinkingToRealtimeEffort(opts.thinking ?? "");
@@ -522,7 +525,7 @@ export function buildSessionOptions(
         input: {
           transcription: {
             model: OPENAI_TRANSCRIPTION_MODEL,
-            language: VOICE_LANGUAGE_ISO,
+            language: opts.transcriptionLanguage ?? DEFAULT_VOICE_LANGUAGE,
           },
           ...(opts.turnDetection
             ? { turnDetection: mapTurnDetectionToConfig(opts.turnDetection) }

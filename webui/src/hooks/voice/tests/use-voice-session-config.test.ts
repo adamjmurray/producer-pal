@@ -163,6 +163,20 @@ describe("useVoiceSession turn-detection config", () => {
     });
     expect(audio.input?.turnDetection).toBeDefined();
   });
+
+  it("threads a selected language into transcription and agent instructions", async () => {
+    const audio = await connectAndReadAudio({ ...PARAMS, language: "es" });
+
+    expect(audio.input?.transcription).toStrictEqual({
+      model: "gpt-realtime-whisper",
+      language: "es",
+    });
+    const agentOptions = realtime.agents[0]!.options as {
+      instructions?: string;
+    };
+
+    expect(agentOptions.instructions).toContain("Respond only in Spanish.");
+  });
 });
 
 describe("useVoiceSession session config wiring", () => {

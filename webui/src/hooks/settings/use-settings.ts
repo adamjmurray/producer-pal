@@ -361,6 +361,9 @@ export function useSettings(): UseSettingsReturn {
     turnDetection: voiceModeSettings.turnDetection,
     setTurnDetection: voiceModeSettings.setTurnDetection,
     savedTurnDetection: voiceModeSettings.savedTurnDetection,
+    voiceLanguage: voiceModeSettings.voiceLanguage,
+    setVoiceLanguage: voiceModeSettings.setVoiceLanguage,
+    savedVoiceLanguage: voiceModeSettings.savedVoiceLanguage,
   };
 }
 

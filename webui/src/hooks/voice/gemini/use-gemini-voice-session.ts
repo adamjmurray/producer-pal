@@ -42,6 +42,10 @@ export interface UseGeminiVoiceSessionParams {
   volume?: number;
   /** Gemini VAD/turn-detection settings; read at connect (next Stop → Talk). */
   turnDetection?: GeminiVadSettings;
+  /** Locked voice language (ISO-639-1 code). Drives the system instruction and
+   * the ASR transcription language; defaults to English. Read at connect (next
+   * Stop → Talk). */
+  language?: string;
 }
 
 /**
@@ -73,6 +77,7 @@ export function useGeminiVoiceSession(
     voice,
     volume,
     turnDetection,
+    language,
   } = params;
 
   const sessionRef = useRef<Session | null>(null);
@@ -224,6 +229,7 @@ export function useGeminiVoiceSession(
           model,
           voice,
           vad: turnDetection,
+          language,
           functionDeclarations,
           deps,
           resumeRef,
@@ -289,6 +295,7 @@ export function useGeminiVoiceSession(
       voice,
       volume,
       turnDetection,
+      language,
       cleanup,
     ],
   );

@@ -156,6 +156,9 @@ describe("SettingsScreen", () => {
     turnDetection: DEFAULT_TURN_DETECTION,
     setTurnDetection: vi.fn(),
     savedTurnDetection: DEFAULT_TURN_DETECTION,
+    voiceLanguage: "en",
+    setVoiceLanguage: vi.fn(),
+    savedVoiceLanguage: "en",
   };
 
   const defaultDisplay = {

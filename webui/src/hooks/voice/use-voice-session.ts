@@ -31,7 +31,10 @@ import {
   teardownVoiceAudioGraph,
   type VoiceAudioGraph,
 } from "#webui/hooks/voice/voice-audio-graph";
-import { OPENAI_VOICE_INSTRUCTIONS } from "#webui/lib/constants/voice-language";
+import {
+  buildOpenAIVoiceInstructions,
+  getVoiceLanguage,
+} from "#webui/lib/constants/voice-language";
 
 export type VoiceStatus =
   | "idle"
@@ -64,6 +67,10 @@ interface UseVoiceSessionParams {
   /** Turn-detection (VAD) settings, applied to audio.input.turnDetection at
    * connect time. When undefined, the server uses its default endpointing. */
   turnDetection?: TurnDetectionSettings;
+  /** Locked voice language (ISO-639-1 code). Drives the agent instructions and
+   * the ASR transcription language. Defaults to English when undefined. Locked
+   * at connect time (applied on the next Stop → Talk). */
+  language?: string;
 }
 
 export interface UseVoiceSessionReturn {
@@ -135,6 +142,7 @@ export function useVoiceSession(
     volume,
     thinking,
     turnDetection,
+    language,
   } = params;
 
   const sessionRef = useRef<RealtimeSession | null>(null);
@@ -263,9 +271,10 @@ export function useVoiceSession(
         // before building the session so we never open a peer connection + mic.
         if (await bailIfStale(connectGenRef.current !== myGen, cleanup)) return;
 
+        const voiceLanguage = getVoiceLanguage(language);
         const agent = new RealtimeAgent({
           name: "Producer Pal Voice",
-          instructions: OPENAI_VOICE_INSTRUCTIONS,
+          instructions: buildOpenAIVoiceInstructions(voiceLanguage),
           tools,
           voice,
         });
@@ -304,6 +313,7 @@ export function useVoiceSession(
             speed,
             thinking,
             model,
+            transcriptionLanguage: voiceLanguage.code,
           }),
         );
 
@@ -377,6 +387,7 @@ export function useVoiceSession(
       volume,
       thinking,
       turnDetection,
+      language,
       cleanup,
     ],
   );

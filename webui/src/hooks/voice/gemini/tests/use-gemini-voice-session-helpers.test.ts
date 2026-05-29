@@ -53,6 +53,36 @@ describe("buildGeminiConfig", () => {
     expect(config.systemInstruction).toContain("ENGLISH");
   });
 
+  it("locks a non-English language in transcription codes and instructions", () => {
+    const config = buildGeminiConfig({
+      voice: "Puck",
+      functionDeclarations: [],
+      language: "es",
+    });
+
+    expect(config.inputAudioTranscription).toStrictEqual({
+      languageCodes: ["es-ES"],
+    });
+    expect(config.outputAudioTranscription).toStrictEqual({
+      languageCodes: ["es-ES"],
+    });
+    expect(config.systemInstruction).toContain("SPANISH");
+    expect(config.systemInstruction).toContain("Respond only in Spanish.");
+  });
+
+  it("falls back to English for an unknown language code", () => {
+    const config = buildGeminiConfig({
+      voice: "Puck",
+      functionDeclarations: [],
+      language: "xx",
+    });
+
+    expect(config.inputAudioTranscription).toStrictEqual({
+      languageCodes: ["en-US"],
+    });
+    expect(config.systemInstruction).toContain("ENGLISH");
+  });
+
   it("falls back to the default voice when none is given", () => {
     const config = buildGeminiConfig({
       voice: undefined,
@@ -393,6 +423,7 @@ function makeCtx(
     model: "gemini-x",
     voice: "Puck",
     vad: undefined,
+    language: undefined,
     functionDeclarations: [],
     deps,
     resumeRef: { current: { handle: null, attempts: 0 } },

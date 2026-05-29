@@ -198,6 +198,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     volume: settings.voiceVolume,
     thinking: settings.savedThinking,
     turnDetection: settings.savedTurnDetection,
+    language: settings.savedVoiceLanguage,
   });
   const geminiVoiceSession = useGeminiVoiceSession({
     mcpUrl,
@@ -208,6 +209,7 @@ export function useVoiceModeState(params: UseVoiceModeStateParams) {
     voice: geminiVoiceId,
     volume: settings.voiceVolume,
     turnDetection: settings.savedTurnDetection.gemini,
+    language: settings.savedVoiceLanguage,
   });
   const voice = isGemini ? geminiVoiceSession : openAiVoice;
 
