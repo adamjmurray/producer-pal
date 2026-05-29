@@ -308,17 +308,31 @@ describe("Transform Parser - Expressions", () => {
       });
     });
 
-    it("parses right-to-left for same precedence (addition)", () => {
+    it.each([
+      ["velocity += 8 / 4 / 2", "divide"],
+      ["velocity += 8 - 4 - 2", "subtract"],
+    ])("folds non-associative chains left-to-right: %s", (input, type) => {
+      const result = parser.parse(input);
+
+      // (8 op 4) op 2, not 8 op (4 op 2) — regression for AJM-458
+      expect(result[0]!.expression).toStrictEqual({
+        type,
+        left: { type, left: 8, right: 4 },
+        right: 2,
+      });
+    });
+
+    it("parses left-to-right for same precedence (addition)", () => {
       const result = parser.parse("velocity += 5 + 3 + 2");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "add",
-        left: 5,
-        right: {
+        left: {
           type: "add",
-          left: 3,
-          right: 2,
+          left: 5,
+          right: 3,
         },
+        right: 2,
       });
     });
   });
@@ -429,23 +443,23 @@ describe("Transform Parser - Expressions", () => {
 
       expect(result[0]!.expression).toStrictEqual({
         type: "multiply",
-        left: 30,
-        right: {
+        left: {
           type: "multiply",
-          left: {
+          left: 30,
+          right: {
             type: "function",
             name: "cos",
             args: [{ type: "nDuration", wholeNoteFraction: 4 }],
             sync: false,
             raw: false,
           },
-          right: {
-            type: "function",
-            name: "cos",
-            args: [{ type: "nDuration", wholeNoteFraction: 0.25 }],
-            sync: false,
-            raw: false,
-          },
+        },
+        right: {
+          type: "function",
+          name: "cos",
+          args: [{ type: "nDuration", wholeNoteFraction: 0.25 }],
+          sync: false,
+          raw: false,
         },
       });
     });
@@ -594,17 +608,17 @@ describe("Transform Parser - Expressions", () => {
       });
     });
 
-    it("parses chained modulo right-to-left", () => {
+    it("parses chained modulo left-to-right", () => {
       const result = parser.parse("velocity += 10 % 7 % 3");
 
       expect(result[0]!.expression).toStrictEqual({
         type: "modulo",
-        left: 10,
-        right: {
+        left: {
           type: "modulo",
-          left: 7,
-          right: 3,
+          left: 10,
+          right: 7,
         },
+        right: 3,
       });
     });
   });

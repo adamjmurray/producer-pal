@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -206,6 +207,28 @@ describe("Transform Evaluator - Math Functions", () => {
       );
 
       expect(result.velocity!.value).toBe(9);
+    });
+  });
+
+  describe("left-associative chained operators (AJM-458)", () => {
+    it.each([
+      ["8 / 4 / 2", 1, "division chain quarters down to 1, not 4"],
+      ["8 - 4 - 2", 2, "subtraction chain yields 2, not 6"],
+      ["23 % 7 % 5", 2, "modulo chain: (23%7)%5 = 2, not 23%(7%5) = 1"],
+    ])("evaluates %s = %d (%s)", (expr, expected) => {
+      expectVelocityEquals(expr, expected);
+    });
+
+    it("quarters note.duration with /2/2", () => {
+      const result = evaluateTransform(
+        "duration = note.duration / 2 / 2",
+        CTX,
+        {
+          duration: 4,
+        },
+      );
+
+      expect(result.duration!.value).toBe(1);
     });
   });
 

@@ -16,6 +16,9 @@
     "B": 11,
   };
 
+  // Maps a multiplicative operator character to its AST node type.
+  const MULTIPLICATIVE_OP_TYPES = { "*": "multiply", "/": "divide", "%": "modulo" };
+
   // Targeted error for the removed synced-period syntax (Nt, N:Nt).
   function oldPeriodError(matched) {
     return `Period syntax "${matched}" is no longer supported. Use a note-value period with the "sync" keyword, e.g. sin(n/4, sync) for a quarter-note cycle, or cos(clip.barDuration, sync) for a bar-length cycle.`;
@@ -171,26 +174,24 @@ parameter "parameter name"
 expression "expression"
   = additive
 
+// Left-associative: fold a head term with a list of (op, term) tails so
+// `8/4/2` parses as `(8/4)/2`, not `8/(4/2)`. Matters for the non-associative
+// ops (`-`, `/`, `%`); `+`/`*` give the same value either way.
 additive
-  = left:multiplicative _ "+" _ right:additive {
-    return { type: "add", left, right };
+  = head:multiplicative tail:(_ op:[+\-] _ right:multiplicative { return { op, right }; })* {
+    return tail.reduce(
+      (left, { op, right }) => ({ type: op === "+" ? "add" : "subtract", left, right }),
+      head,
+    );
   }
-  / left:multiplicative _ "-" _ right:additive {
-    return { type: "subtract", left, right };
-  }
-  / multiplicative
 
 multiplicative
-  = left:primary _ "*" _ right:multiplicative {
-    return { type: "multiply", left, right };
+  = head:primary tail:(_ op:[*/%] _ right:primary { return { op, right }; })* {
+    return tail.reduce(
+      (left, { op, right }) => ({ type: MULTIPLICATIVE_OP_TYPES[op], left, right }),
+      head,
+    );
   }
-  / left:primary _ "/" _ right:multiplicative {
-    return { type: "divide", left, right };
-  }
-  / left:primary _ "%" _ right:multiplicative {
-    return { type: "modulo", left, right };
-  }
-  / primary
 
 primary
   = functionCall
