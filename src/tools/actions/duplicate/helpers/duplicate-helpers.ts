@@ -5,7 +5,7 @@
 
 import {
   abletonBeatsToBarBeat,
-  barBeatDurationToAbletonBeats,
+  durationToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
@@ -21,8 +21,8 @@ import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 /**
- * Parse arrangementLength from bar:beat duration format to absolute beats
- * @param arrangementLength - Length in bar:beat duration format (e.g. "2:0" for exactly two bars)
+ * Parse arrangementLength from `[Nbar+]<fraction>` duration format to absolute beats
+ * @param arrangementLength - Duration string (e.g. "2bar" for exactly two bars)
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @returns Length in Ableton beats
@@ -33,7 +33,7 @@ export function parseArrangementLength(
   timeSigDenominator: number,
 ): number {
   try {
-    const arrangementLengthBeats = barBeatDurationToAbletonBeats(
+    const arrangementLengthBeats = durationToAbletonBeats(
       arrangementLength,
       timeSigNumerator,
       timeSigDenominator,
@@ -49,15 +49,8 @@ export function parseArrangementLength(
   } catch (error) {
     const msg = errorMessage(error);
 
-    if (msg.includes("Invalid bar:beat duration format")) {
+    if (msg.includes("Invalid duration format")) {
       throw new Error(`duplicate failed: ${msg}`, { cause: error });
-    }
-
-    if (msg.includes("must be 0 or greater")) {
-      throw new Error(
-        `duplicate failed: arrangementLength ${msg.replace("in duration ", "")}`,
-        { cause: error },
-      );
     }
 
     throw error;

@@ -118,7 +118,7 @@ describe("readClip", () => {
       looping: false,
       start: "1|2",
       end: "2|2", // end_marker (5 beats = 2|2)
-      length: "1:0",
+      length: "1bar",
       triggered: true,
       notes: "t/16 C1 1|1,3 v90 D1 1|2,4",
     });
@@ -337,7 +337,7 @@ describe("readClip", () => {
       looping: false,
       start: "1|1", // start_marker (0 = 1|1)
       end: "2|1", // end_marker (4 = 2|1)
-      length: "1:0",
+      length: "1bar",
       notes: "G8 1|1",
     });
   });

@@ -58,7 +58,7 @@ describe("duplicate - arrangementLength functionality", () => {
       id: "clip1",
 
       arrangementStart: "5|1",
-      arrangementLength: "1:0", // 4 beats - shorter than original 8 beats
+      arrangementLength: "1bar", // 4 beats - shorter than original 8 beats
     });
 
     expect(result).toStrictEqual({
@@ -94,7 +94,7 @@ describe("duplicate - arrangementLength functionality", () => {
       id: "clip1",
 
       arrangementStart: "5|1",
-      arrangementLength: "1:2", // 6 beats - longer than original 4 beats
+      arrangementLength: "1bar+1/2", // 6 beats - longer than original 4 beats
     });
 
     // New implementation first duplicates the clip
@@ -138,7 +138,7 @@ describe("duplicate - arrangementLength functionality", () => {
       id: "clip1",
 
       arrangementStart: "5|1",
-      arrangementLength: "1:2", // 6 beats - longer than original 4 beats
+      arrangementLength: "1bar+1/2", // 6 beats - longer than original 4 beats
     });
 
     expect(result).toStrictEqual({
@@ -166,7 +166,7 @@ describe("duplicate - arrangementLength functionality", () => {
       id: "clip1",
 
       arrangementStart: "5|1",
-      arrangementLength: "2:0", // 8 beats - longer than original 4 beats
+      arrangementLength: "2bar", // 8 beats - longer than original 4 beats
     });
 
     // New implementation duplicates then uses updateClip for lengthening
@@ -223,7 +223,7 @@ describe("duplicate - arrangementLength functionality", () => {
         id: "clip1",
 
         arrangementStart: "1|1",
-        arrangementLength: "1:0",
+        arrangementLength: "1bar",
       });
 
       expect(result).toStrictEqual({
@@ -247,10 +247,10 @@ describe("duplicate - arrangementLength functionality", () => {
         id: "clip1",
 
         arrangementStart: "5|1",
-        arrangementLength: "0:0", // 0 bars + 0 beats = 0 total
+        arrangementLength: "0bar", // 0 bars + 0 beats = 0 total
       }),
     ).rejects.toThrow(
-      'duplicate failed: arrangementLength must be positive, got "0:0"',
+      'duplicate failed: arrangementLength must be positive, got "0bar"',
     );
   });
 

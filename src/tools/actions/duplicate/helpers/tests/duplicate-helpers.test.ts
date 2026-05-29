@@ -231,44 +231,49 @@ describe("duplicate-helpers", () => {
   });
 
   describe("parseArrangementLength", () => {
-    it("parses valid bar:beat duration to beats", () => {
-      const result = parseArrangementLength("4:0", 4, 4);
+    it("parses Nbar duration to beats", () => {
+      const result = parseArrangementLength("4bar", 4, 4);
 
       expect(result).toBe(16); // 4 bars in 4/4 = 16 beats
     });
 
-    it("parses fractional beats correctly", () => {
-      const result = parseArrangementLength("2:2.5", 4, 4);
+    it("parses Nbar+fraction durations", () => {
+      const result = parseArrangementLength("2bar+5/8", 4, 4);
 
-      expect(result).toBe(10.5); // 2 bars (8 beats) + 2.5 beats
+      expect(result).toBe(10.5); // 2 bars (8 beats) + 5/8 whole note (2.5 beats)
+    });
+
+    it("parses fraction-only durations", () => {
+      expect(parseArrangementLength("1/4", 4, 4)).toBe(1); // quarter note
+      expect(parseArrangementLength("/8", 4, 4)).toBe(0.5); // implicit numerator
     });
 
     it("throws error for zero length", () => {
-      expect(() => parseArrangementLength("0:0", 4, 4)).toThrow(
+      expect(() => parseArrangementLength("0bar", 4, 4)).toThrow(
         "duplicate failed: arrangementLength must be positive",
       );
     });
 
-    it("throws error for negative beats", () => {
-      expect(() => parseArrangementLength("1:-1", 4, 4)).toThrow(
-        "duplicate failed: arrangementLength Beats must be 0 or greater, got: -1",
-      );
-    });
-
     it("throws error for invalid format", () => {
-      expect(() => parseArrangementLength("abc:def", 4, 4)).toThrow(
-        /Invalid bar:beat duration format/,
+      expect(() => parseArrangementLength("abc", 4, 4)).toThrow(
+        /Invalid duration format/,
       );
     });
 
-    it("throws error for negative bars", () => {
-      expect(() => parseArrangementLength("-1:0", 4, 4)).toThrow(
-        "duplicate failed: arrangementLength Bars must be 0 or greater, got: -1",
+    it("throws error for bare integers (no silent-magnitude)", () => {
+      expect(() => parseArrangementLength("4", 4, 4)).toThrow(
+        /Invalid duration format/,
+      );
+    });
+
+    it("throws error for retired bar:beat glyph", () => {
+      expect(() => parseArrangementLength("1:0", 4, 4)).toThrow(
+        /Invalid duration format/,
       );
     });
 
     it("handles different time signatures", () => {
-      const result = parseArrangementLength("2:0", 3, 4);
+      const result = parseArrangementLength("2bar", 3, 4);
 
       expect(result).toBe(6); // 2 bars in 3/4 = 6 beats
     });

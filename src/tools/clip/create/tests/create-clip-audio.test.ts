@@ -75,7 +75,7 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
         slot: "0/0",
-        length: "4:0", // 16 beats = 4 bars in 4/4
+        length: "4bar", // 16 beats = 4 bars in 4/4
       });
     });
 
@@ -98,7 +98,7 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
         slot: "0/0",
-        length: "2:0",
+        length: "2bar",
       });
     });
 
@@ -127,12 +127,12 @@ describe("createClip - audio clips", () => {
         {
           id: "audio_clip_0_0",
           slot: "0/0",
-          length: "1:0",
+          length: "1bar",
         },
         {
           id: "audio_clip_0_1",
           slot: "0/1",
-          length: "1:0",
+          length: "1bar",
         },
       ]);
     });
@@ -229,7 +229,7 @@ describe("createClip - audio clips", () => {
         id: "arrangement_audio_clip",
         trackIndex: 0,
         arrangementStart: "1|1",
-        length: "2:0",
+        length: "2bar",
       });
     });
 
@@ -251,7 +251,7 @@ describe("createClip - audio clips", () => {
         id: "arrangement_audio_clip",
         trackIndex: 0,
         arrangementStart: "5|1",
-        length: "4:0",
+        length: "4bar",
       });
     });
 
@@ -287,19 +287,19 @@ describe("createClip - audio clips", () => {
           id: "arrangement_audio_clip_0",
           trackIndex: 0,
           arrangementStart: "1|1",
-          length: "1:0",
+          length: "1bar",
         },
         {
           id: "arrangement_audio_clip_1",
           trackIndex: 0,
           arrangementStart: "2|1",
-          length: "1:0",
+          length: "1bar",
         },
         {
           id: "arrangement_audio_clip_2",
           trackIndex: 0,
           arrangementStart: "3|1",
-          length: "1:0",
+          length: "1bar",
         },
       ]);
     });
@@ -376,7 +376,7 @@ describe("createClip - audio clips", () => {
       expect(result).toStrictEqual({
         id: "audio_clip_0_0",
         slot: "0/0",
-        length: "3:0.5", // 12.5 beats in 4/4 = 3 bars + 0.5 beats
+        length: "3bar+1/8", // 12.5 beats in 4/4 = 3bar + 0.5 quarter (1/8 whole)
       });
     });
 
@@ -393,12 +393,12 @@ describe("createClip - audio clips", () => {
         {
           id: "audio_clip_0_0",
           slot: "0/0",
-          length: "2:0",
+          length: "2bar",
         },
         {
           id: "audio_clip_0_1",
           slot: "0/1",
-          length: "2:0",
+          length: "2bar",
         },
       ]);
     });
@@ -412,7 +412,7 @@ describe("createClip - audio clips", () => {
         slot: "0/0",
         sampleFile: "/path/to/audio.wav",
         start: "1|1",
-        length: "2:0",
+        length: "2bar",
         looping: true,
         firstStart: "1|2",
       });

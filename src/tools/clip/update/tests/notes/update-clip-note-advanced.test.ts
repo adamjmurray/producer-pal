@@ -234,7 +234,7 @@ describe("updateClip - Advanced note operations", () => {
       ids: "123",
       notes: "C3 1|1 D3 2|1 E3 3|1", // Notes in bars 1, 2, 3
       noteUpdateMode: "replace",
-      length: "2:0", // Clip length = 2 bars (8 beats)
+      length: "2bar", // Clip length = 2 bars (8 beats)
     });
 
     // Should have added 3 notes total

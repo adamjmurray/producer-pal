@@ -104,7 +104,7 @@ describe("updateClip - Basic operations", () => {
       ids: "789",
       name: "Arrangement Clip",
       start: "1|3", // 2 beats = bar 1 beat 3 in 4/4
-      length: "1:0", // 4 beats = 1 bar
+      length: "1bar", // 4 beats = 1 bar
     });
 
     expect(mocks.clip789.set).toHaveBeenCalledWith("name", "Arrangement Clip");

@@ -53,7 +53,7 @@ function warpedAudioOpts(
  * @param sourceEndTime - End time for the source clip
  * @param name - Clip name
  * @param fileBoundary - File content boundary for session tiling mock
- * @param arrangementLength - Target arrangement length (bar:beat notation)
+ * @param arrangementLength - Target arrangement length ([Nbar+]<fraction> notation)
  * @returns clip mock, updateClip result, mockCreate spy, and sessionSlot mock
  */
 async function runWarpedAudioLengthening(
@@ -100,7 +100,7 @@ describe("Unlooped warped audio clips - skip when no additional content", () => 
         sourceEndTime as number,
         name as string,
         8.0,
-        "3:2",
+        "3bar+1/2",
       );
 
       // Source clip NOT modified (no end_marker extension)
@@ -135,7 +135,7 @@ describe("Unlooped warped audio clips - cap when file partially sufficient", () 
         sourceEndTime as number,
         name as string,
         8.0,
-        "3:2",
+        "3bar+1/2",
       );
 
       // Source clip loop_end set: loopStart(0) + effectiveTarget(8) = 8.0
@@ -160,7 +160,7 @@ describe("Unlooped warped audio clips - extend when file has sufficient content"
       8.0,
       "Audio Sufficient Content",
       20.0,
-      "3:2",
+      "3bar+1/2",
     );
 
     // Source clip loop_end set: loopStart(0) + target(14) = 14.0
@@ -192,7 +192,7 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     const { mockCreate } = setupSessionTilingMock(40.0);
 
     const result = await updateClip(
-      { ids: clipId, arrangementLength: "3:2" },
+      { ids: clipId, arrangementLength: "3bar+1/2" },
       mockContext,
     );
 
@@ -221,7 +221,7 @@ describe("Unlooped warped audio clips - defensive guards", () => {
     );
 
     const result = await updateClip(
-      { ids: clipId, arrangementLength: "3:2" },
+      { ids: clipId, arrangementLength: "3bar+1/2" },
       mockContext,
     );
 

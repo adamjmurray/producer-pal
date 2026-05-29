@@ -3,11 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
-import {
-  abletonBeatsToBarBeatDuration,
-  barBeatDurationToAbletonBeats,
-  barBeatDurationToMusicalBeats,
-} from "../barbeat-time.ts";
+import { barBeatDurationToMusicalBeats } from "../barbeat-time.ts";
 
 describe("barBeatDurationToMusicalBeats", () => {
   describe("beat-only format (NEW)", () => {
@@ -125,40 +121,4 @@ describe("barBeatDurationToMusicalBeats", () => {
       ).toThrow("Time signature numerator required for bar:beat duration");
     });
   });
-});
-
-describe("duration function round-trip consistency", () => {
-  const testCases = [
-    {
-      timeSig: [4, 4],
-      abletonBeats: [0, 1, 2, 3, 4, 5, 8, 12, 1.5, 2.25, 4.5, 7.75],
-    },
-    {
-      timeSig: [6, 8],
-      abletonBeats: [0, 0.5, 1, 1.5, 3, 3.5, 6, 9, 0.25, 1.75, 2.5],
-    },
-    { timeSig: [2, 2], abletonBeats: [0, 2, 4, 6, 8, 1, 3, 5, 7] },
-    { timeSig: [3, 4], abletonBeats: [0, 1, 2, 3, 4, 6, 9, 1.5, 2.5] },
-  ];
-
-  for (const { timeSig, abletonBeats } of testCases) {
-    describe(`${timeSig[0]}/${timeSig[1]} time signature`, () => {
-      for (const beats of abletonBeats) {
-        it(`round-trip consistency for ${beats} Ableton beats`, () => {
-          const duration = abletonBeatsToBarBeatDuration(
-            beats,
-            timeSig[0]!,
-            timeSig[1]!,
-          );
-          const converted = barBeatDurationToAbletonBeats(
-            duration,
-            timeSig[0]!,
-            timeSig[1]!,
-          );
-
-          expect(converted).toBeCloseTo(beats, 10); // High precision due to floating point
-        });
-      }
-    });
-  }
 });

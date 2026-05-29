@@ -31,7 +31,7 @@ describe("createClip - arrangement view", () => {
       trackIndex: 0,
       arrangementStart: "3|1",
       noteCount: 3,
-      length: "1:0",
+      length: "1bar",
     });
   });
 
@@ -56,21 +56,21 @@ describe("createClip - arrangement view", () => {
         trackIndex: 0,
         arrangementStart: "3|1",
         noteCount: 2,
-        length: "1:0",
+        length: "1bar",
       },
       {
         id: "arrangement_clip",
         trackIndex: 0,
         arrangementStart: "4|1",
         noteCount: 2,
-        length: "1:0",
+        length: "1bar",
       },
       {
         id: "arrangement_clip",
         trackIndex: 0,
         arrangementStart: "5|1",
         noteCount: 2,
-        length: "1:0",
+        length: "1bar",
       },
     ]);
   });

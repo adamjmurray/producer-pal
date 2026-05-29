@@ -21,12 +21,12 @@ vi.mock(import("#src/notation/barbeat/time/barbeat-time.ts"), () => ({
 
     return 0;
   }),
-  barBeatDurationToAbletonBeats: vi.fn((dur) => {
-    // Simple mock: "1:0" = 4 beats, "0:2" = 2 beats, "0:0" = 0
-    if (dur === "1:0") return 4;
-    if (dur === "0:2") return 2;
-    if (dur === "0:0") return 0;
-    if (dur === "-1:0") return -4;
+  durationToAbletonBeats: vi.fn((dur) => {
+    // Simple mock: "1bar" = 4 beats, "1/2" = 2 beats, "0bar" = 0, "-1bar" = -4
+    if (dur === "1bar") return 4;
+    if (dur === "1/2") return 2;
+    if (dur === "0bar") return 0;
+    if (dur === "-1bar") return -4;
 
     return 0;
   }),
@@ -69,7 +69,7 @@ describe("clip-result-helpers", () => {
     });
 
     it("parses arrangementLength when provided", () => {
-      const result = validateAndParseArrangementParams(undefined, "1:0");
+      const result = validateAndParseArrangementParams(undefined, "1bar");
 
       expect(result.songTimeSigNumerator).toBe(4);
       expect(result.songTimeSigDenominator).toBe(4);
@@ -78,21 +78,21 @@ describe("clip-result-helpers", () => {
     });
 
     it("parses both params when provided", () => {
-      const result = validateAndParseArrangementParams("1|1", "0:2");
+      const result = validateAndParseArrangementParams("1|1", "1/2");
 
       expect(result.arrangementStartBeats).toBe(0);
       expect(result.arrangementLengthBeats).toBe(2);
     });
 
     it("throws when arrangementLength is zero", () => {
-      expect(() => validateAndParseArrangementParams(undefined, "0:0")).toThrow(
-        "arrangementLength must be greater than 0",
-      );
+      expect(() =>
+        validateAndParseArrangementParams(undefined, "0bar"),
+      ).toThrow("arrangementLength must be greater than 0");
     });
 
     it("throws when arrangementLength is negative", () => {
       expect(() =>
-        validateAndParseArrangementParams(undefined, "-1:0"),
+        validateAndParseArrangementParams(undefined, "-1bar"),
       ).toThrow("arrangementLength must be greater than 0");
     });
   });

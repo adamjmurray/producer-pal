@@ -55,9 +55,12 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Meter-independent: `t/4` is always one quarter note, in 4/4, 6/8, 5/4, etc.
   - Default: `t/4` (one quarter note)
   - Requires whitespace separation from following elements
-  - NOTE: clip `length` and arrangement durations use a separate `bar:beat`
-    format (e.g., `"4:0"` = 4 bars) elsewhere in the tool API — that format is
-    NOT this one, and is unchanged
+  - NOTE: clip `length` and arrangement durations use the related but distinct
+    `[Nbar+]<fraction>` grammar elsewhere in the tool API: `Nbar` (meter-aware,
+    e.g. `4bar`), `N/D` whole-note fraction (same fraction grammar as `t`, e.g.
+    `1/4` quarter, `/8` eighth, `1bar+1/4` mixed). No bare integers/decimals
+    (`4`, `1.5` are invalid). Distinguishes from `t` only by the bar prefix —
+    `length: 4bar` is meter-aware; `t/4` is not
 
 - **Note (`C4`, `Eb2`, `F#3`, etc.)**
   - Note names follow standard pitch notation using:

@@ -6,7 +6,7 @@
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import {
   abletonBeatsToBarBeat,
-  abletonBeatsToBarBeatDuration,
+  abletonBeatsToDuration,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
@@ -229,7 +229,7 @@ function addTimingProperties(result: ReadClipResult, clip: LiveAPI): void {
     timeSigNumerator,
     timeSigDenominator,
   );
-  result.length = abletonBeatsToBarBeatDuration(
+  result.length = abletonBeatsToDuration(
     endBeats - startBeats,
     timeSigNumerator,
     timeSigDenominator,
@@ -379,7 +379,7 @@ function addClipLocationProperties(
     if (includeTiming) {
       const endTimeBeats = clip.getProperty("end_time") as number;
 
-      result.arrangementLength = abletonBeatsToBarBeatDuration(
+      result.arrangementLength = abletonBeatsToDuration(
         endTimeBeats - startTimeBeats,
         songTimeSigNumerator,
         songTimeSigDenominator,

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
+  durationToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { parseTimeSignature } from "#src/tools/shared/utils.ts";
@@ -98,7 +98,7 @@ export function calculateBeatPositions({
 
   // Calculate end from start + length
   if (length != null) {
-    const lengthBeats = barBeatDurationToAbletonBeats(
+    const lengthBeats = durationToAbletonBeats(
       length,
       timeSigNumerator,
       timeSigDenominator,

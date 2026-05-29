@@ -44,7 +44,7 @@ describe("updateClip - arrangementLength (expose hidden content)", () => {
 
     const result = await updateClip({
       ids: "789",
-      arrangementLength: "1:2.5", // 6.5 beats - extend to reveal 2.5 beats of hidden content
+      arrangementLength: "1bar+5/8", // 6.5 beats - extend to reveal 2.5 beats of hidden content
     });
 
     // Should tile the content (note: updateClip doesn't actually do this yet, this tests the intent)

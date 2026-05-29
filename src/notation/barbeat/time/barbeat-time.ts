@@ -4,6 +4,15 @@
 
 import { DEFAULT_BEATS_PER_BAR } from "#src/notation/barbeat/barbeat-config.ts";
 
+const DURATION_EPSILON = 1e-9;
+const DURATION_FRACTION_TOLERANCE = 1e-6;
+// Denominators tried (smallest first) when converting Ableton beats back to a
+// whole-note fraction. Covers binary (4..256), triplet/sextuplet families (3,
+// 6, 12, 24, 48, 96), and quintuplet/septuplet families (5, 10, 20, 7, 14).
+const DURATION_DENOMINATOR_CANDIDATES = [
+  4, 8, 16, 32, 64, 128, 256, 3, 6, 12, 24, 48, 96, 5, 10, 20, 7, 14,
+];
+
 interface BeatsPerBarOptions {
   beatsPerBar?: number;
   timeSigNumerator?: number;
@@ -136,13 +145,21 @@ export function barBeatToAbletonBeats(
 }
 
 /**
- * Convert Ableton beats (quarter notes) to bar:beat duration format using musical beats
+ * Convert Ableton beats (quarter notes) to a duration string in the
+ * `[Nbar+]<fraction>` grammar. Fractions are whole-note based (`/4` = quarter,
+ * `/8` = eighth, `/12` = eighth triplet). The bar component is meter-aware.
+ *
+ * Output shapes:
+ *  - `Nbar` (multiple of one bar)
+ *  - `N/D` (sub-bar, e.g. `1/4`)
+ *  - `Nbar+N/D` (mixed, e.g. `1bar+1/4`)
+ *  - `0bar` (zero duration)
  * @param abletonBeats - Ableton beats (quarter notes)
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
- * @returns Formatted bar:beat duration string
+ * @returns Formatted duration string
  */
-export function abletonBeatsToBarBeatDuration(
+export function abletonBeatsToDuration(
   abletonBeats: number,
   timeSigNumerator: number,
   timeSigDenominator: number,
@@ -151,21 +168,84 @@ export function abletonBeatsToBarBeatDuration(
     throw new Error(`Duration cannot be negative, got: ${abletonBeats}`);
   }
 
-  // Convert Ableton beats to musical beats
-  const musicalBeats = abletonBeats * (timeSigDenominator / 4);
-  const musicalBeatsPerBar = timeSigNumerator;
+  const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 
-  // Calculate bars and remaining beats (0-based for duration)
-  const bars = Math.floor(musicalBeats / musicalBeatsPerBar);
-  const remainingBeats = musicalBeats % musicalBeatsPerBar;
+  const bars = Math.floor(abletonBeats / abletonBeatsPerBar + DURATION_EPSILON);
+  const remaining = abletonBeats - bars * abletonBeatsPerBar;
 
-  // Format remaining beats - avoid unnecessary decimals
-  const beatsFormatted =
-    remainingBeats % 1 === 0
-      ? remainingBeats.toString()
-      : remainingBeats.toFixed(3).replace(/\.?0+$/, "");
+  if (Math.abs(remaining) < DURATION_EPSILON) {
+    return `${bars}bar`;
+  }
 
-  return `${bars}:${beatsFormatted}`;
+  const frac = abletonBeatsToWholeNoteFraction(remaining);
+
+  if (frac == null) {
+    throw new Error(
+      `Cannot represent ${remaining} Ableton beats as a whole-note fraction`,
+    );
+  }
+
+  const fracStr = `${frac.numerator}/${frac.denominator}`;
+
+  return bars > 0 ? `${bars}bar+${fracStr}` : fracStr;
+}
+
+/**
+ * Convert a `[Nbar+]<fraction>` duration string to Ableton beats (quarter notes).
+ *
+ * Accepted shapes:
+ *  - `Nbar` — N bars (meter-aware)
+ *  - `N/D` — whole-note fraction (e.g. `1/4` = quarter, `/4` shorthand for `1/4`)
+ *  - `Nbar+N/D` — bars plus sub-bar fraction
+ * @param duration - Duration string
+ * @param timeSigNumerator - Time signature numerator
+ * @param timeSigDenominator - Time signature denominator
+ * @returns Ableton beats (quarter notes)
+ */
+export function durationToAbletonBeats(
+  duration: string,
+  timeSigNumerator: number,
+  timeSigDenominator: number,
+): number {
+  const match = duration.match(
+    /^(?:(\d+)bar(?:\+(\d*)\/(\d+))?|(\d*)\/(\d+))$/,
+  );
+
+  if (!match) {
+    throw new Error(
+      `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "N/D" (e.g. "1/4" or "/4"), or "Nbar+N/D" (e.g. "1bar+1/4")`,
+    );
+  }
+
+  const bars = match[1] != null ? Number.parseInt(match[1]) : 0;
+  let numerator = 0;
+  let denominator = 1;
+
+  if (match[3] != null) {
+    // Nbar+N/D form (numerator defaults to 1 when empty)
+    numerator = match[2] === "" ? 1 : Number.parseInt(match[2] as string);
+    denominator = Number.parseInt(match[3]);
+  } else if (match[5] != null) {
+    // N/D only (numerator defaults to 1 when empty)
+    numerator = match[4] === "" ? 1 : Number.parseInt(match[4] as string);
+    denominator = Number.parseInt(match[5]);
+  }
+
+  if (denominator === 0) {
+    throw new Error(`Invalid duration: division by zero in "${duration}"`);
+  }
+
+  const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+  // Whole-note fraction → quarter notes (Ableton beats): (n/d) * 4
+  const fractionBeats = (numerator / denominator) * 4;
+
+  return bars * abletonBeatsPerBar + fractionBeats;
 }
 
 /**
@@ -313,21 +393,50 @@ export function barBeatDurationToMusicalBeats(
 }
 
 /**
- * Convert bar:beat or beat-only duration to Ableton beats (quarter notes)
- * @param barBeatDuration - Bar:beat duration string or beat-only string
- * @param timeSigNumerator - Time signature numerator
- * @param timeSigDenominator - Time signature denominator
- * @returns Ableton beats (quarter notes)
+ * Express remaining Ableton beats as a reduced whole-note fraction.
+ * Returns null when no candidate denominator yields a near-integer numerator.
+ * @param abletonBeats - Sub-bar Ableton beats (quarter notes)
+ * @returns Reduced fraction or null
  */
-export function barBeatDurationToAbletonBeats(
-  barBeatDuration: string,
-  timeSigNumerator: number,
-  timeSigDenominator: number,
-): number {
-  const musicalBeats = barBeatDurationToMusicalBeats(
-    barBeatDuration,
-    timeSigNumerator,
-  );
+function abletonBeatsToWholeNoteFraction(
+  abletonBeats: number,
+): { numerator: number; denominator: number } | null {
+  // Whole-note fraction = abletonBeats / 4 (since 1 whole note = 4 quarters)
+  const target = abletonBeats / 4;
 
-  return musicalBeats * (4 / timeSigDenominator);
+  for (const denominator of DURATION_DENOMINATOR_CANDIDATES) {
+    const scaled = target * denominator;
+    const rounded = Math.round(scaled);
+
+    if (
+      Math.abs(scaled - rounded) < DURATION_FRACTION_TOLERANCE &&
+      rounded > 0
+    ) {
+      const divisor = gcd(rounded, denominator);
+
+      return {
+        numerator: rounded / divisor,
+        denominator: denominator / divisor,
+      };
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Greatest common divisor.
+ * @param a - First integer
+ * @param b - Second integer
+ * @returns GCD of |a| and |b|
+ */
+function gcd(a: number, b: number): number {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+
+  while (y !== 0) {
+    [x, y] = [y, x % y];
+  }
+
+  return x;
 }

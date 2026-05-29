@@ -66,7 +66,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "duration in bar:beat (e.g., '4:0' = 4 bars), default: next full bar after latest note",
+        "duration: Nbar (e.g., '4bar'), N/D whole-note fraction (e.g., '1/4'), or Nbar+N/D (e.g., '1bar+1/4'). Default: next full bar after latest note",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),

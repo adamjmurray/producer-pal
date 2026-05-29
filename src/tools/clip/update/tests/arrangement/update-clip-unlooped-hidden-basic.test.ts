@@ -43,7 +43,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     });
 
     const result = await updateClip(
-      { ids: clipId, arrangementLength: "3:2" }, // 14 beats
+      { ids: clipId, arrangementLength: "3bar+1/2" }, // 14 beats
       mockContext,
     );
 
@@ -75,7 +75,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     });
 
     const result = await updateClip(
-      { ids: clipId, arrangementLength: "3:2" }, // 14 beats
+      { ids: clipId, arrangementLength: "3bar+1/2" }, // 14 beats
       mockContext,
     );
 
@@ -107,7 +107,7 @@ describe("arrangementLength (unlooped MIDI clips extension via loop_end)", () =>
     });
 
     const result = await updateClip(
-      { ids: clipId, arrangementLength: "3:2" }, // 14 beats
+      { ids: clipId, arrangementLength: "3bar+1/2" }, // 14 beats
       mockContext,
     );
 

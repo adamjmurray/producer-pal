@@ -142,7 +142,7 @@ describe("duplicate take lane", () => {
   });
 
   it("warns and ignores arrangementLength for take-lane duplication", async () => {
-    await duplicateToFreshLane({ arrangementLength: "2:0" });
+    await duplicateToFreshLane({ arrangementLength: "2bar" });
 
     expect(consoleMock.warn).toHaveBeenCalledWith(
       expect.stringContaining("arrangementLength ignored for take-lane"),

@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
+  durationToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -75,7 +75,7 @@ export function validateAndParseArrangementParams(
   }
 
   if (arrangementLength != null) {
-    const lengthBeats = barBeatDurationToAbletonBeats(
+    const lengthBeats = durationToAbletonBeats(
       arrangementLength,
       numerator,
       denominator,

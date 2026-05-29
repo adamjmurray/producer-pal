@@ -57,7 +57,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     const result = await updateClip({
       ids: "789",
-      arrangementLength: "2:0", // 2 bars = 8 beats (50% of 4 bars)
+      arrangementLength: "2bar", // 2 bars = 8 beats (50% of 4 bars)
     });
 
     // Should create temp clip at beat 8 with length 8
@@ -78,7 +78,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     const result = await updateClip({
       ids: "789",
-      arrangementLength: "0:1", // 1 beat
+      arrangementLength: "1/4", // 1 beat
     });
 
     // Should create temp clip at beat 1 with length 15
@@ -106,7 +106,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     const result = await updateClip({
       ids: "123",
-      arrangementLength: "2:0",
+      arrangementLength: "2bar",
     });
 
     expect(outlet).toHaveBeenCalledWith(
@@ -125,7 +125,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     await expect(
       updateClip({
         ids: "789",
-        arrangementLength: "0:0",
+        arrangementLength: "0bar",
       }),
     ).rejects.toThrow("arrangementLength must be greater than 0");
   });
@@ -137,7 +137,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     const result = await updateClip({
       ids: "789",
-      arrangementLength: "4:0", // Same as current length
+      arrangementLength: "4bar", // Same as current length
     });
 
     // Should not create temp clip (no-op)
@@ -193,7 +193,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
 
     const result = await updateClip({
       ids: "789",
-      arrangementLength: "2:0", // Shorten to 2 bars
+      arrangementLength: "2bar", // Shorten to 2 bars
       arrangementStart: "9|1", // Move to bar 9
     });
 
@@ -283,7 +283,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     await updateClip(
       {
         ids: "789",
-        arrangementLength: "2:0", // Shorten to 2 bars (8 beats)
+        arrangementLength: "2bar", // Shorten to 2 bars (8 beats)
       },
       { silenceWavPath },
     );

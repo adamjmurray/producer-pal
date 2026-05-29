@@ -35,7 +35,7 @@ t/16 Gb1 1|1.5x4@/4 2|1.5x4@/4 3|1.5x4@/4 4|1.5x4@/4  # hats (4 per bar, quarter
 \`\`\`
 
 ## Rules
-- Set clip lengths explicitly (e.g., 4:0 for 4 bars)
-- Positions use | (bar|beat). \`t\` durations and \`@step\` intervals are absolute note values (a quarter is a quarter in any meter)
+- Set clip lengths explicitly: \`4bar\` for 4 bars, \`1/4\` for a quarter, \`1bar+1/4\` for mixed
+- Positions use | (bar|beat). \`t\` durations, \`@step\` intervals, and clip \`length\` fractions are absolute note values (a quarter is a quarter in any meter)
 - If the user references a track, get its trackIndex and id - never guess
 `;

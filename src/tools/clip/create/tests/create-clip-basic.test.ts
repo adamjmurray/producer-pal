@@ -51,7 +51,7 @@ describe("createClip - basic validation and time signatures", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       slot: "0/0",
       noteCount: 2,
-      length: "2:0",
+      length: "2bar",
     });
 
     // Verify the parsed notes were correctly added to the clip
@@ -94,7 +94,7 @@ describe("createClip - basic validation and time signatures", () => {
 
     await createClip({
       slot: "0/0",
-      length: "1:3",
+      length: "1bar+3/4",
       looping: false,
     });
 
@@ -108,7 +108,7 @@ describe("createClip - basic validation and time signatures", () => {
 
     await createClip({
       slot: "0/0",
-      length: "2:0",
+      length: "2bar",
       looping: true,
     });
 
