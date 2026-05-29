@@ -118,7 +118,7 @@ describe("ppal-update-clip", () => {
 
     await sleep(100);
 
-    // Test 1: Add notes with merge mode (verify notes increase)
+    // Test 1: Add notes (merges with existing, verify notes increase)
     const beforeMerge = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { clipId: clip.id, include: ["notes"] },
@@ -129,7 +129,7 @@ describe("ppal-update-clip", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, notes: "G3 A3 1|3", noteUpdateMode: "merge" },
+      arguments: { ids: clip.id, notes: "G3 A3 1|3" },
     });
 
     await sleep(100);
@@ -142,10 +142,10 @@ describe("ppal-update-clip", () => {
     // After merging G3 A3 into C3 D3, notes should contain all four
     expect(mergedClip.notes).toContain("G3");
 
-    // Test 2: Replace notes with noteUpdateMode: "replace"
+    // Test 2: Clear all existing notes (preTransforms v0) then write new ones
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, notes: "C4 1|1", noteUpdateMode: "replace" },
+      arguments: { ids: clip.id, preTransforms: "v0", notes: "C4 1|1" },
     });
 
     await sleep(100);
@@ -156,15 +156,17 @@ describe("ppal-update-clip", () => {
     const replacedClip = parseToolResult<ReadClipResult>(verifyReplace);
 
     expect(replacedClip.notes).toContain("C4");
+    // The cleared notes (e.g. the G3 merged in above) should be gone
+    expect(replacedClip.notes).not.toContain("G3");
 
     // Test 3: Quantize notes
-    // First add some off-grid notes
+    // First clear and add some off-grid notes
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
+        preTransforms: "v0",
         notes: "1|1.25 C3\n1|2.75 D3",
-        noteUpdateMode: "replace",
       },
     });
 

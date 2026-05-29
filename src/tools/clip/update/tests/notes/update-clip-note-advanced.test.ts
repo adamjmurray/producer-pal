@@ -54,7 +54,7 @@ describe("updateClip - Advanced note operations", () => {
     expect(mocks.clip123.set).toHaveBeenCalledWith("loop_start", 2);
   });
 
-  it("should delete specific notes with v0 when noteUpdateMode is 'merge'", async () => {
+  it("should delete specific notes with v0", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in the clip
@@ -75,7 +75,6 @@ describe("updateClip - Advanced note operations", () => {
     const result = await updateClip({
       ids: "123",
       notes: "v0 C3 v100 F3 1|1", // Delete C3 at 1|1, add F3 at 1|1
-      noteUpdateMode: "merge",
     });
 
     // Should call get_notes_extended to read existing notes
@@ -129,14 +128,13 @@ describe("updateClip - Advanced note operations", () => {
     await updateClip({
       ids: "123",
       notes: "v0 C3 1|1", // Try to delete C3 at 1|1 (doesn't exist)
-      noteUpdateMode: "merge",
     });
 
     // Should still read existing notes and remove/add them back
     expectNoteUpdateCalls(mocks.clip123, [note(62, 1, { velocity: 80 })]); // Original note preserved
   });
 
-  it("should call get_notes_extended in merge mode to format existing notes", async () => {
+  it("should call get_notes_extended to format existing notes", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes
@@ -151,14 +149,13 @@ describe("updateClip - Advanced note operations", () => {
     await updateClip({
       ids: "123",
       notes: "v100 C3 1|1",
-      noteUpdateMode: "merge",
     });
 
-    // Should call get_notes_extended in merge mode
+    // Should call get_notes_extended to merge with existing notes
     expectNoteUpdateCalls(mocks.clip123, [note(60, 0)]);
   });
 
-  it("should support bar copy with existing notes in merge mode", async () => {
+  it("should support bar copy with existing notes", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in bar 1, then return added notes after add_new_notes
@@ -185,7 +182,6 @@ describe("updateClip - Advanced note operations", () => {
     const result = await updateClip({
       ids: "123",
       notes: "@2=1", // Copy bar 1 to bar 2
-      noteUpdateMode: "merge",
     });
 
     // Should add existing notes + copied notes
@@ -216,7 +212,7 @@ describe("updateClip - Advanced note operations", () => {
 
           allAddedNotes = arg?.notes ?? [];
         } else if (method === "get_notes_extended") {
-          // First call returns empty (replace mode), second call filters by length
+          // First call reads existing notes (empty here), second filters by length
           const startBeat = (args[2] as number | undefined) ?? 0;
           const endBeat = (args[3] as number | undefined) ?? Infinity;
           const notesInRange = allAddedNotes.filter(
@@ -233,7 +229,6 @@ describe("updateClip - Advanced note operations", () => {
     const result = await updateClip({
       ids: "123",
       notes: "C3 1|1 D3 2|1 E3 3|1", // Notes in bars 1, 2, 3
-      noteUpdateMode: "replace",
       length: "2bar", // Clip length = 2 bars (8 beats)
     });
 
@@ -255,7 +250,7 @@ describe("updateClip - Advanced note operations", () => {
     );
   });
 
-  it("should support bar copy with v0 deletions in merge mode", async () => {
+  it("should support bar copy with v0 deletions", async () => {
     setupMidiClipMock(mocks.clip123);
 
     // Mock existing notes in bar 1
@@ -275,7 +270,6 @@ describe("updateClip - Advanced note operations", () => {
     const result = await updateClip({
       ids: "123",
       notes: "v0 C3 1|1 @2=1", // Delete C3 at 1|1, then copy bar 1 (now only E3) to bar 2
-      noteUpdateMode: "merge",
     });
 
     // Should have E3 in bar 1 and E3 copied to bar 2 (C3 deleted by v0)

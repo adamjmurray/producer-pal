@@ -148,8 +148,8 @@ When a `v0` note is encountered during interpretation:
 3. **Kept in output**: The `v0` note itself remains in the interpreter output so
    that tools such as update-clip can make use of the data (to delete notes in
    existing clips, a separate process from notation interpretation)
-4. **Filtered by tools**: `create-clip` filters out v0 notes; `update-clip`
-   merge mode uses them to delete existing clip notes
+4. **Filtered by tools**: `create-clip` filters out v0 notes; `update-clip` uses
+   them to delete existing clip notes
 
 ### Examples
 
@@ -196,8 +196,8 @@ C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
 
 - **Refining copied patterns**: Copy a bar, then remove specific notes
 - **Creating variations**: Build on existing patterns by deleting and adding
-- **Merge mode editing**: In `update-clip` with `noteUpdateMode` (defaults to
-  `"merge"`), selectively delete notes from existing clips
+- **Merge editing**: In `update-clip`, new notes overlay (merge with) the clip's
+  existing notes, so you can selectively delete notes from existing clips
 
 ### Technical Details
 
@@ -206,8 +206,7 @@ C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
 - **Output format**: v0 notes appear in interpreter output with `velocity: 0`
 - **Tool behavior**:
   - `create-clip`: Filters out v0 notes (can't create v0 notes in Live)
-  - `update-clip` replace mode: Filters out v0 notes
-  - `update-clip` merge mode: Uses v0 notes to delete matching clip notes, then
+  - `update-clip`: Uses v0 notes to delete matching existing clip notes, then
     filters them out
 
 ---

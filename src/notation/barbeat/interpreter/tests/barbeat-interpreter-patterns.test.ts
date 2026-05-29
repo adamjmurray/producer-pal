@@ -326,7 +326,7 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       ]);
     });
 
-    it("v0 notes are kept in the result for update-clip merge mode", () => {
+    it("v0 notes are kept in the result for update-clip", () => {
       const result = interpretNotation("C3 D3 1|1 v0 C3 1|2");
       // Check that v0 note is NOT in the result (filtered out by applyV0Deletions)
       const v0Notes = result.filter((note) => note.velocity === 0);

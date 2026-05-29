@@ -11,10 +11,8 @@
  *
  *   - **preTransforms-reach**: single update-clip with preTransforms (clear)
  *     + notes (rewrite) — the path preTransforms is meant to enable
- *   - **replace-rebuild**: single call with noteUpdateMode "replace" + the
- *     full new contents
  *   - **two-call**: separate clear call followed by an add call
- *   - **v0-per-note**: merge mode with v0 deletes inline with new notes
+ *   - **v0-per-note**: single update-clip with v0 deletes inline with new notes
  *   - **unrecognized**: model produced no recognizable rewrite (fails)
  *
  * Baseline: run on `main` (or on `dev` with preTransforms excluded from the
@@ -24,7 +22,7 @@
  * discoverability, not capability.
  *
  * Prompts are deliberately underspecified: no mention of "replace",
- * "preTransforms", or "noteUpdateMode".
+ * "clear", or "preTransforms".
  */
 
 import { getToolCalls } from "../../assertions/index.ts";
@@ -43,12 +41,7 @@ const READ_DRUM_NOTES =
   "Find the drum clip in the first scene and read its notes";
 
 interface FallbackClassification {
-  path:
-    | "preTransforms-reach"
-    | "replace-rebuild"
-    | "v0-per-note"
-    | "two-call"
-    | "unrecognized";
+  path: "preTransforms-reach" | "v0-per-note" | "two-call" | "unrecognized";
   updateCalls: number;
   evidence: string;
 }
@@ -107,15 +100,6 @@ function classifyFallback(
   }
 
   const onlyCall = calls[0] as (typeof calls)[number];
-
-  if (onlyCall.args.noteUpdateMode === "replace") {
-    return {
-      path: "replace-rebuild",
-      updateCalls: 1,
-      evidence: `single call, noteUpdateMode="replace"`,
-    };
-  }
-
   const notes = String(onlyCall.args.notes ?? "");
 
   if (/(^|\s)v0(\s|$)/.test(notes)) {

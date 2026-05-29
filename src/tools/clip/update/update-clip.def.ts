@@ -115,14 +115,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "transform expressions applied to EXISTING notes BEFORE the merge (broadcast across ids); use to clear or modify a region you're about to rewrite (e.g. '1|1-2|1: velocity = 0'). Merge mode + notes only — ignored otherwise",
-      ),
-    noteUpdateMode: z
-      .enum(["replace", "merge"])
-      .optional()
-      .default("merge")
-      .describe(
-        '"replace" (clear all notes first) or "merge" (overlay notes, v0 deletes)',
+        "transform expressions applied to EXISTING notes BEFORE the merge (broadcast across ids); use to clear or modify a region you're about to rewrite (e.g. '1|1-2|1: velocity = 0'). Requires notes — ignored otherwise",
       ),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {

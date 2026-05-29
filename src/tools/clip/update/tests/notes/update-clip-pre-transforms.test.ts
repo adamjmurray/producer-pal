@@ -171,24 +171,6 @@ describe("updateClip - preTransforms", () => {
     );
   });
 
-  it("warns and ignores preTransforms in replace mode", async () => {
-    mockMergeNoteTracking(mocks.clip123, [note(60, 0), note(62, 1)]);
-
-    await updateClip({
-      ids: "123",
-      preTransforms: "1|1-1|4: velocity = 0",
-      notes: "C4 1|1",
-      noteUpdateMode: "replace",
-    });
-
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("preTransforms ignored"),
-    );
-    // Replace mode: only the new note exists; existing notes were not pre-mutated
-    expect(addedNotes(mocks.clip123).map((n) => n.pitch)).toStrictEqual([72]);
-  });
-
   it("warns and ignores preTransforms on audio clips", async () => {
     setupAudioClipMock(mocks.clip123, { length: 8 });
 

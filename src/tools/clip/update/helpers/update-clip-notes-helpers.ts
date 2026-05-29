@@ -42,12 +42,11 @@ interface QuantizationOptions {
 }
 
 /**
- * Handle note updates (merge or replace)
+ * Handle note updates: overlay new notes onto existing notes (v0 deletes).
  * @param clip - The clip to update
  * @param notationString - The notation string to apply
  * @param transformString - Transform expressions to apply AFTER merge
  * @param preTransformString - Transform expressions to apply to existing notes BEFORE merge
- * @param noteUpdateMode - 'merge' or 'replace'
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables
@@ -58,25 +57,17 @@ export function handleNoteUpdates(
   notationString: string | undefined,
   transformString: string | undefined,
   preTransformString: string | undefined,
-  noteUpdateMode: string,
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext: ClipContext,
 ): NoteUpdateResult | null {
-  // preTransforms requires notes + merge mode; warn and ignore otherwise.
-  // (replace mode clears existing notes; transforms-only path has no merge.)
-  if (preTransformString != null) {
-    if (notationString == null) {
-      console.warn(
-        "preTransforms ignored: notes parameter is required (use transforms to mutate existing notes without merging)",
-      );
-      preTransformString = undefined;
-    } else if (noteUpdateMode !== "merge") {
-      console.warn(
-        "preTransforms ignored: only meaningful in merge mode (replace clears existing notes first)",
-      );
-      preTransformString = undefined;
-    }
+  // preTransforms requires notes; warn and ignore otherwise.
+  // (the transforms-only path mutates existing notes directly, no merge to pre-empt.)
+  if (preTransformString != null && notationString == null) {
+    console.warn(
+      "preTransforms ignored: notes parameter is required (use transforms to mutate existing notes without merging)",
+    );
+    preTransformString = undefined;
   }
 
   // Skip if nothing meaningful to do
@@ -100,33 +91,32 @@ export function handleNoteUpdates(
     );
   }
 
+  // Overlay new notes onto existing ones: prepend existing notes (with any
+  // preTransforms applied) as bar|beat notation, so v0 in the new notation can
+  // delete overlapping existing notes during interpretation.
   let combinedNotationString = notationString;
+  const existingNotesResult = JSON.parse(
+    clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS) as string,
+  );
+  const rawExistingNotes = (existingNotesResult?.notes ?? []) as Record<
+    string,
+    unknown
+  >[];
+  const existingNotes = applyPreTransformsToExisting(
+    rawNotesToNoteEvents(rawExistingNotes),
+    preTransformString,
+    timeSigNumerator,
+    timeSigDenominator,
+    clipContext,
+  );
 
-  if (noteUpdateMode === "merge") {
-    // In merge mode, prepend existing notes as bar|beat notation
-    const existingNotesResult = JSON.parse(
-      clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS) as string,
-    );
-    const rawExistingNotes = (existingNotesResult?.notes ?? []) as Record<
-      string,
-      unknown
-    >[];
-    const existingNotes = applyPreTransformsToExisting(
-      rawNotesToNoteEvents(rawExistingNotes),
-      preTransformString,
+  if (existingNotes.length > 0) {
+    const existingNotationString = formatNotation(existingNotes, {
       timeSigNumerator,
       timeSigDenominator,
-      clipContext,
-    );
+    });
 
-    if (existingNotes.length > 0) {
-      const existingNotationString = formatNotation(existingNotes, {
-        timeSigNumerator,
-        timeSigDenominator,
-      });
-
-      combinedNotationString = `${existingNotationString} ${notationString}`;
-    }
+    combinedNotationString = `${existingNotationString} ${notationString}`;
   }
 
   const notes = interpretNotation(combinedNotationString, {

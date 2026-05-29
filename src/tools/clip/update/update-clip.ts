@@ -48,7 +48,6 @@ interface UpdateClipArgs extends ClipAudioWarpQuantizeParams {
   notes?: string;
   transforms?: string;
   preTransforms?: string;
-  noteUpdateMode?: string;
   name?: string;
   color?: string;
   timeSignature?: string;
@@ -76,8 +75,7 @@ interface ClipResult {
  * @param args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param args.notes - Musical notation string
  * @param args.transforms - Transform expressions applied AFTER merge, broadcast across all ids
- * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merge (merge mode + notes only)
- * @param args.noteUpdateMode - How to handle existing notes: 'replace' or 'merge'
+ * @param args.preTransforms - Transform expressions applied to existing notes BEFORE merge (requires notes)
  * @param args.name - Optional clip name
  * @param args.color - Optional clip color (CSS format: hex)
  * @param args.timeSignature - Time signature in format "4/4"
@@ -111,7 +109,6 @@ export async function updateClip(
     notes: notationString,
     transforms,
     preTransforms,
-    noteUpdateMode = "merge",
     name,
     color,
     timeSignature,
@@ -189,7 +186,6 @@ export async function updateClip(
       notationString,
       transformString: transforms,
       preTransformString: preTransforms,
-      noteUpdateMode,
       name: getNameForIndex(name, i, parsedNames),
       color: getColorForIndex(color, i, parsedColors),
       timeSignature,

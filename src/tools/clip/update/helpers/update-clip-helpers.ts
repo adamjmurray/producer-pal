@@ -50,7 +50,6 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   notationString?: string;
   transformString?: string;
   preTransformString?: string;
-  noteUpdateMode: string;
   name?: string;
   color?: string;
   timeSignature?: string;
@@ -74,7 +73,6 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
  * @param params.notationString - Musical notation string
  * @param params.transformString - Transform expressions to apply after merge
  * @param params.preTransformString - Transform expressions to apply to existing notes before merge
- * @param params.noteUpdateMode - Note update mode (merge or replace)
  * @param params.name - Clip name
  * @param params.color - Clip color
  * @param params.timeSignature - Time signature
@@ -109,7 +107,6 @@ export function processSingleClipUpdate(
     notationString,
     transformString,
     preTransformString,
-    noteUpdateMode,
     name,
     color,
     timeSignature,
@@ -193,7 +190,6 @@ export function processSingleClipUpdate(
     notationString,
     isAudioClip ? undefined : transformString,
     isAudioClip ? undefined : preTransformString,
-    noteUpdateMode,
     timeSigNumerator,
     timeSigDenominator,
     clipContext,

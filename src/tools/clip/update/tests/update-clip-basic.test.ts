@@ -35,7 +35,7 @@ describe("updateClip - Basic operations", () => {
     expect(outlet).toHaveBeenCalledWith(1, "updateClip: ids is required");
   });
 
-  it("should default to merge mode when noteUpdateMode not provided", async () => {
+  it("should overlay new notes onto existing notes", async () => {
     setupMidiClipMock(mocks.clip123, {
       length: 4,
     });
@@ -43,13 +43,12 @@ describe("updateClip - Basic operations", () => {
     // Mock existing notes, then return added notes on subsequent calls
     mockMergeNoteTracking(mocks.clip123, [createNote()]);
 
-    // Should default to merge mode when noteUpdateMode not specified
     const result = await updateClip({
       ids: "123",
       notes: "D3 1|2",
     });
 
-    // Should call get_notes_extended (merge mode behavior)
+    // Should call get_notes_extended to read existing notes for the merge
     expect(mocks.clip123.call).toHaveBeenCalledWith(
       "get_notes_extended",
       0,
@@ -67,7 +66,6 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({
       ids: "nonexistent",
       notes: "1|1 60",
-      noteUpdateMode: "replace",
     });
 
     expect(result).toStrictEqual([]);
@@ -164,14 +162,13 @@ describe("updateClip - Basic operations", () => {
     expect(result).toStrictEqual({ id: "123" });
   });
 
-  it("should replace existing notes with real bar|beat parsing in 4/4 time", async () => {
+  it("should write notes with real bar|beat parsing in 4/4 time", async () => {
     setupMidiClipMock(mocks.clip123);
 
     const result = await updateClip({
       ids: "123",
       // t/2 = half = 2 quarters; t/4 = quarter
       notes: "v80 t/2 C4 1|1 v120 t/4 D4 1|3",
-      noteUpdateMode: "replace",
     });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith(
@@ -198,7 +195,6 @@ describe("updateClip - Basic operations", () => {
       ids: "123",
       timeSignature: "6/8",
       notes: "C3 1|1 D3 2|1",
-      noteUpdateMode: "replace",
     });
 
     // In 6/8 time, bar 2 beat 1 = 3 Ableton beats (6 musical beats * 4/8).
@@ -224,7 +220,6 @@ describe("updateClip - Basic operations", () => {
     const result = await updateClip({
       ids: "123",
       notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar
-      noteUpdateMode: "replace",
     });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {
@@ -244,7 +239,6 @@ describe("updateClip - Basic operations", () => {
       ids: "123",
       notes:
         "v100 t/16 p1.0 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1.0 D1 v100 p0.9 Gb1 1|2",
-      noteUpdateMode: "replace",
     });
 
     expect(mocks.clip123.call).toHaveBeenCalledWith("add_new_notes", {

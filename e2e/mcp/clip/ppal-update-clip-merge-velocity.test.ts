@@ -59,7 +59,6 @@ describe("ppal-update-clip velocity merge", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        noteUpdateMode: "merge",
         notes: "C1 1|1",
         transforms: "8|1-8|4 Gb1: velocity += ramp(40, 127)",
       },
@@ -115,7 +114,6 @@ describe("ppal-update-clip velocity merge", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        noteUpdateMode: "merge",
         notes: "F3 2|1",
       },
     });
@@ -158,7 +156,6 @@ describe("ppal-update-clip velocity merge", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
-        noteUpdateMode: "merge",
         notes: "D3 2|1",
         transforms: "C3: velocity += 5",
       },
