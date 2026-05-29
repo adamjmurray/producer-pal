@@ -57,9 +57,9 @@ Create MIDI clips using the bar|beat notation syntax:
   - time positions are relative to clip start
   - the beat in bar|beat can be a comma-separated (no whitespace) list or repeat pattern
   - **Repeat patterns**: \`{bar|beat}x{count}[@{step}]\` generates sequences. count = how many notes
-    - \`@step\` is an absolute note value (same form as \`n\`). Defaults to the current duration (legato)
-    - \`1|1x4@/4\` → 4 notes a quarter apart; \`n/8 1|1x4\` → 4 eighths (step defaults to n value)
-    - \`1|1x3@/12\` → eighth-note triplets (3 in a quarter); \`n/16 1|1x16\` → 16 sixteenths spanning 4 quarters (a full bar in 4/4)
+    - \`@step\` uses the same note-value form as \`n\` — \`@n/4\`, \`@1bar\` (bare \`@/4\` or \`@1\` is invalid). Defaults to the current duration (legato)
+    - \`1|1x4@n/4\` → 4 notes a quarter apart; \`n/8 1|1x4\` → 4 eighths (step defaults to n value)
+    - \`1|1x3@n/12\` → eighth-note triplets (3 in a quarter); \`n/16 1|1x16\` → 16 sixteenths spanning 4 quarters (a full bar in 4/4)
 - v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - n<duration>: Note length as an absolute note value. Default: \`n/4\` (quarter). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\` instead. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
@@ -84,7 +84,7 @@ C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1,3 2|1,2,3 // same pitch across bars (NOT 1|1,3,2|1,2,3)
 n/16 C3 1|1.75 // 16th note at beat 1.75
 n/12 C3 1|1x3 // eighth-note triplets: 3 notes filling one quarter (step = duration)
-n/16 Gb1 1|1x16 // 16 sixteenths = 4 quarters, a full bar in 4/4 (1|1x16@/16 is the same)
+n/16 Gb1 1|1x16 // 16 sixteenths = 4 quarters, a full bar in 4/4 (1|1x16@n/16 is the same)
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
 v90-110 C1 1|1,3 D1 1|2,4 // humanized drum pattern

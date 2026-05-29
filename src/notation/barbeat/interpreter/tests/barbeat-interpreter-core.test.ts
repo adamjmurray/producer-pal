@@ -331,7 +331,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
   it("warns when repeat time position has no pitches", () => {
     // Repeat pattern with no pitches (multiple positions)
-    interpretNotation("1|1x3@/4");
+    interpretNotation("1|1x3@n/4");
 
     expect(outlet).toHaveBeenCalledWith(
       1,

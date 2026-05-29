@@ -17,10 +17,14 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - `beat` – 1-based beat number within bar, **meter-relative** (float for
     sub-beat precision)
   - **Repeat patterns**: `beat x times @ step` generates multiple positions.
-    `step` is an absolute note value with the same form as `n` (see Duration).
-    - Example: `1|1x4@/4` → 4 positions a quarter note apart: beats 1,2,3,4 in
+    `step` uses the same note-value duration grammar as `n` (see Duration):
+    `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar+n<fraction>`
+    mixed. A bare `@/4` (note value with no `n`) and a bare `@1` (beats) are
+    both rejected — authoring stays note-value-only.
+    - Example: `1|1x4@n/4` → 4 positions a quarter note apart: beats 1,2,3,4 in
       4/4
-    - Example: `1|1x3@/12` → eighth-note triplets at beats 1, 4/3, 5/3 in 4/4
+    - Example: `1|1x3@n/12` → eighth-note triplets at beats 1, 4/3, 5/3 in 4/4
+    - Example: `1|1x4@1bar` → 4 positions one bar apart
   - Notes are emitted ONLY at time positions
   - Buffered pitches persist and re-emit at subsequent time positions
   - Requires whitespace separation from following elements
@@ -53,16 +57,30 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     triplet, `n/24` sixteenth triplet (denominator = how many fit in a whole
     note)
   - Meter-independent: `n/4` is always one quarter note, in 4/4, 6/8, 5/4, etc.
+  - **Bar durations**: `Nbar` (meter-aware, e.g. `1bar` = hold one bar in any
+    meter) and `Nbar+n<fraction>` mixed (e.g. `1bar+n3/4`) are also valid inline
+    durations. The `bar` term never wears an `n`; the note-value tail keeps its
+    own `n`. So `n1bar` is invalid — write `1bar`
   - Default: `n/4` (one quarter note)
   - Requires whitespace separation from following elements
-  - NOTE: clip `length` and arrangement durations use the same `n<fraction>`
-    note-value grammar, plus a meter-aware bar term: `Nbar` (meter-aware, e.g.
-    `4bar`), `n<fraction>` note value (e.g. `n/4` quarter, `n/8` eighth, `n3/8`
-    dotted quarter), or `Nbar+n<fraction>` mixed (e.g. `1bar+n/4`). Bare
-    fractions (`1/4`), integers (`4`), and decimals (`1.5`) are all invalid in
-    duration args — the `n` prefix marks a note value everywhere, and a bare
-    fraction means beats (transforms), never a note value. The `bar` token is
-    itself the type marker for the meter-aware term, so `4bar` stays bare
+  - NOTE: clip `length` and arrangement durations use this same duration
+    grammar: `Nbar` (meter-aware, e.g. `4bar`), `n<fraction>` note value (e.g.
+    `n/4` quarter, `n/8` eighth, `n3/8` dotted quarter), or `Nbar+n<fraction>`
+    mixed (e.g. `1bar+n/4`). Plus, **only in length/arrangement args**, a bare
+    number = Ableton beats (quarter notes), for off-grid values that have no
+    note-value form (sample-derived audio lengths). `1` == `n/4` == one quarter
+    in any meter. This is distinct from the beat field of a `bar|beat`
+    _position_, which is meter-relative — positions and durations are different
+    types, marked by `|`. Bare beats are the canonical spelling for arbitrary
+    lengths: the serializer emits them for measured lengths and the parser
+    accepts them on input for round-trip, but they are not a general authoring
+    form. Bare _fractions_ (`1/4`) and decimals as authored durations stay
+    invalid — the `n` prefix marks a note value everywhere
+  - NOTE (read contract): when a clip is serialized back to notation, MIDI note
+    durations round to the nearest representable note value (absorbing float
+    epsilon and humanized timing). A clip/arrangement `length` emits an exact
+    `n<fraction>`/`Nbar` when it lands on the grid (within ~1e-6), otherwise
+    bare beats at fixed precision (trailing zeros stripped)
 
 - **Note (`C4`, `Eb2`, `F#3`, etc.)**
   - Note names follow standard pitch notation using:
@@ -238,10 +256,12 @@ bar|{start}x{times}@{step}
 - **start**: Starting beat position (meter-relative; supports decimals,
   fractions, and mixed numbers)
 - **times**: Number of repetitions (positive integer)
-- **step**: Interval between repetitions, **same form as `n`** — absolute note
-  value as a fraction of a whole note, denominator mandatory, numerator defaults
-  to 1 (`@/4` == `@1/4`). Bare integers (`@1`), decimals (`@0.5`), and mixed
-  numbers (`@1+1/2`) are invalid and raise a parser error
+- **step**: Interval between repetitions, **same note-value duration grammar as
+  `n`** — `@n<fraction>` note value (denominator mandatory, numerator defaults
+  to 1, so `@n/4` == `@n1/4`), `@Nbar` meter-aware bars (`@1bar`), or
+  `@Nbar+n<fraction>` mixed (`@1bar+n/4`). Bare fractions (`@/4`), bare integers
+  (`@1`), decimals (`@0.5`), and mixed numbers (`@1+1/2`) are invalid and raise
+  a parser error — the `n` prefix marks a note value, bars use `Nbar`
 
 The `@` symbol reads as "at intervals" and semantically connects to bar copy
 operations.
@@ -251,34 +271,34 @@ operations.
 **Quarter notes:**
 
 ```
-1|1x4@/4         // 4 positions a quarter apart: beats 1,2,3,4 in 4/4
+1|1x4@n/4         // 4 positions a quarter apart: beats 1,2,3,4 in 4/4
 ```
 
 **Triplets:**
 
 ```
-1|1x3@/12        // eighth-note triplet (3 in a quarter): beats 1, 4/3, 5/3 in 4/4
-1|1x3@/6         // quarter-note triplet (3 in a half): beats 1, 5/3, 7/3 in 4/4
-1|3x3@/12        // eighth-note triplet starting at beat 3
+1|1x3@n/12        // eighth-note triplet (3 in a quarter): beats 1, 4/3, 5/3 in 4/4
+1|1x3@n/6         // quarter-note triplet (3 in a half): beats 1, 5/3, 7/3 in 4/4
+1|3x3@n/12        // eighth-note triplet starting at beat 3
 ```
 
 **16th notes:**
 
 ```
-1|4x4@/16        // four 16ths on beat 4: 4, 17/4, 18/4, 19/4
-1|1x16@/16       // 16 sixteenths = 4 quarters (a full bar in 4/4)
+1|4x4@n/16        // four 16ths on beat 4: 4, 17/4, 18/4, 19/4
+1|1x16@n/16       // 16 sixteenths = 4 quarters (a full bar in 4/4)
 ```
 
 **Eighth notes:**
 
 ```
-1|1x8@/8         // eight 8ths: 1, 3/2, 2, 5/2, ..., 9/2 in 4/4
+1|1x8@n/8         // eight 8ths: 1, 3/2, 2, 5/2, ..., 9/2 in 4/4
 ```
 
 **Mixed-number starts (positions stay meter-relative):**
 
 ```
-1|2+1/3x3@/12    // start at 2+1/3, three eighth-note-triplet steps
+1|2+1/3x3@n/12    // start at 2+1/3, three eighth-note-triplet steps
 ```
 
 **Step omitted** (defaults to the current duration):
@@ -292,19 +312,19 @@ n/8 C1 1|1x4     // 4 eighths starting at 1|1 (step defaults to n value)
 **Bar overflow**: Patterns naturally overflow into subsequent bars:
 
 ```
-1|3x6@/4         // 3,4,5,6,7,8 → 1|3, 1|4, 2|1, 2|2, 2|3, 2|4 in 4/4
+1|3x6@n/4         // 3,4,5,6,7,8 → 1|3, 1|4, 2|1, 2|2, 2|3, 2|4 in 4/4
 ```
 
 **Mixing with regular beats**: Combine repeat patterns with explicit beats:
 
 ```
-C1 1|1x4@/4,3.5  // Beats 1,2,3,4,3.5 (beat 3.5 listed explicitly)
+C1 1|1x4@n/4,3.5  // Beats 1,2,3,4,3.5 (beat 3.5 listed explicitly)
 ```
 
 **Multiple patterns**: Use multiple repeat patterns in one beat list:
 
 ```
-C1 1|1x2@/4,3x2@/8  // Beats 1,2,3,3.5 in 4/4
+C1 1|1x2@n/4,3x2@n/8  // Beats 1,2,3,3.5 in 4/4
 ```
 
 ### Interaction with Other Features
@@ -312,19 +332,19 @@ C1 1|1x2@/4,3x2@/8  // Beats 1,2,3,3.5 in 4/4
 **Pitch buffering**: All buffered pitches emit at each expanded position:
 
 ```
-C3 D3 E3 1|1x4@/4   // C3, D3, E3 at each of beats 1,2,3,4
+C3 D3 E3 1|1x4@n/4   // C3, D3, E3 at each of beats 1,2,3,4
 ```
 
 **State parameters**: Velocity, duration, probability apply to all positions:
 
 ```
-v80 n/8 C1 1|1x4@/4 // All four notes have v80 and an eighth-note duration
+v80 n/8 C1 1|1x4@n/4 // All four notes have v80 and an eighth-note duration
 ```
 
 **Bar copy**: Repeat patterns work with bar copy operations:
 
 ```
-C1 1|1x4@/4         // Bar 1: kick on every beat
+C1 1|1x4@n/4         // Bar 1: kick on every beat
 @2=1                // Bar 2: copy of bar 1
 ```
 
@@ -573,22 +593,22 @@ n2/1 C3 1|1      // 2 whole notes (8 quarters)
 n5/4 C3 1|1      // 5 quarter notes (e.g. fills a 5/4 bar)
 
 // Repeat patterns - quarter-note step
-C1 1|1x4@/4    // Kick on every beat (repeat syntax)
+C1 1|1x4@n/4    // Kick on every beat (repeat syntax)
 C1 1|1,2,3,4   // Same as above (comma-separated beats still supported)
 
 // Repeat patterns - triplets
-n/12 C3 1|1x3@/12            // eighth-note triplets (3 per quarter)
+n/12 C3 1|1x3@n/12            // eighth-note triplets (3 per quarter)
 n/12 C3 1|1x3 1|2x3          // step defaults to n, two sets of triplets
 
 // Repeat patterns - 16th notes
-n/16 Gb1 1|1x16@/16    // 16 sixteenths = 4 quarters (a full bar in 4/4)
+n/16 Gb1 1|1x16@n/16    // 16 sixteenths = 4 quarters (a full bar in 4/4)
 n/16 Gb1 1|1x16        // same — step defaults to n value
 
 // Repeat patterns - mixed with regular beats
-C1 1|1x4@/4 D1 1|2,4   // Kick on all beats, snare on 2 & 4
+C1 1|1x4@n/4 D1 1|2,4   // Kick on all beats, snare on 2 & 4
 
 // Repeat patterns - bar overflow
-C3 1|3x6@/4  // Starts beat 3, overflows into bar 2 in 4/4
+C3 1|3x6@n/4  // Starts beat 3, overflows into bar 2 in 4/4
 
 // Drum pattern with probability and velocity variation
 v100 n/16 p1.0 C1 v80-100 p0.8 Gb1 1|1
@@ -645,7 +665,7 @@ type Element =
   | { bar: number, beat: number | RepeatPattern }                    // Time position
   | { velocity: number }                                             // Single velocity (0-127)
   | { velocityMin: number, velocityMax: number }                     // Velocity range (0-127)
-  | { duration: number }                                             // Duration as a fraction of a whole note (e.g., 1/4 = quarter)
+  | { duration: number, bars?: number }                              // Duration: whole-note fraction (e.g. 1/4 = quarter); meter-aware `bars` present for Nbar / Nbar+nA/B
   | { probability: number }                                          // Probability (0.0-1.0)
   | { barCopy: number, sourcePrevious: true }                        // @N= (copy previous)
   | { barCopy: number, sourceBar: number }                           // @N=M (copy bar M)
@@ -656,9 +676,10 @@ type Element =
   | { clearBuffer: true }                                            // @clear (clear copy buffer)
 
 type RepeatPattern = {
-  start: number,   // Starting beat position (meter-relative)
-  times: number,   // Number of repetitions (integer)
-  step: number     // Step size as a fraction of a whole note (null when @step omitted)
+  start: number,      // Starting beat position (meter-relative)
+  times: number,      // Number of repetitions (integer)
+  step: number | null, // Step size as a fraction of a whole note (null when @step omitted)
+  stepBars?: number   // Meter-aware bar component of the step (present only for @Nbar forms)
 }
 ```
 

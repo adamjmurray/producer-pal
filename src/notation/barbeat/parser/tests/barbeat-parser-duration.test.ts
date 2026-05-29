@@ -64,6 +64,30 @@ describe("BarBeatScript Parser - duration", () => {
     ]);
   });
 
+  it("parses inline bar durations (Nbar, meter-aware)", () => {
+    expect(parser.parse("1bar C3 2bar D3")).toStrictEqual([
+      { bars: 1, duration: 0 },
+      { pitch: 60 },
+      { bars: 2, duration: 0 },
+      { pitch: 62 },
+    ]);
+  });
+
+  it("parses inline mixed bar+note-value durations (Nbar+nA/B)", () => {
+    expect(parser.parse("1bar+n3/4 C3 2bar+n/8 D3")).toStrictEqual([
+      { bars: 1, duration: 3 / 4 },
+      { pitch: 60 },
+      { bars: 2, duration: 1 / 8 },
+      { pitch: 62 },
+    ]);
+  });
+
+  it("rejects the n-prefixed bar form (bars never wear an n)", () => {
+    expect(() => parser.parse("n1bar C3")).toThrow(
+      /durations need a denominator/,
+    );
+  });
+
   it("rejects bare-integer durations with denominator-required error", () => {
     expect(() => parser.parse("n1 C3")).toThrow(
       /durations need a denominator.*Got n1/,

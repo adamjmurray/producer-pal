@@ -86,21 +86,28 @@ function processVelocityRangeUpdate(
 
 /**
  * Process a duration update.
- * The grammar emits the duration as a fraction of a whole note (e.g., 1/4 for
- * a quarter); convert to musical beats based on the time signature denominator.
+ * The grammar emits the sub-bar part as a fraction of a whole note (e.g., 1/4
+ * for a quarter) and an optional meter-aware `bars` count (`1bar`, `1bar+n3/4`).
+ * Convert both to musical beats: the fraction scales by the time-signature
+ * denominator, the bars by beatsPerBar.
  * @param element - AST element with duration value
  * @param state - Interpreter state
+ * @param beatsPerBar - Beats per bar (musical beats; for the bar component)
  * @param timeSigDenominator - Time signature denominator
  */
 function processDurationUpdate(
   element: ASTElement,
   state: InterpreterState,
+  beatsPerBar: number,
   timeSigDenominator: number | undefined,
 ): void {
-  state.currentDuration = wholeNoteFractionToMusicalBeats(
-    element.duration as number,
+  const fractionBeats = wholeNoteFractionToMusicalBeats(
+    element.duration ?? 0,
     timeSigDenominator,
   );
+  const barBeats = (element.bars ?? 0) * beatsPerBar;
+
+  state.currentDuration = barBeats + fractionBeats;
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
     pitchState.duration = state.currentDuration;
@@ -281,7 +288,7 @@ function processElementInLoop(
   ) {
     processVelocityRangeUpdate(element, state);
   } else if (element.duration !== undefined) {
-    processDurationUpdate(element, state, timeSigDenominator);
+    processDurationUpdate(element, state, beatsPerBar, timeSigDenominator);
   } else if (element.probability !== undefined) {
     processProbabilityUpdate(element, state);
   }

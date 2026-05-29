@@ -16,6 +16,7 @@ export interface RepeatPattern {
   start: number;
   times: number;
   step?: number | null;
+  stepBars?: number;
 }
 
 export interface TimeElement {
@@ -41,11 +42,15 @@ function expandRepeatPattern(
   currentDuration: number,
   timeSigDenominator: number | undefined,
 ): TimePosition[] {
-  const { start, times, step: stepValue } = pattern;
+  const { start, times, step: stepValue, stepBars } = pattern;
+  // @step omitted (null) defaults to the current duration (legato). Otherwise
+  // combine the whole-note fraction (scaled by the denominator) with the
+  // meter-aware bar component (@1bar) scaled by beatsPerBar.
   const step =
     stepValue == null
       ? currentDuration
-      : wholeNoteFractionToMusicalBeats(stepValue, timeSigDenominator);
+      : wholeNoteFractionToMusicalBeats(stepValue, timeSigDenominator) +
+        (stepBars ?? 0) * beatsPerBar;
 
   if (times > 100) {
     console.warn(

@@ -252,8 +252,8 @@ function formatRepeatLength(
 ): number {
   const startStr = `${start.bar}|${formatBeatPosition(start.beat)}`;
 
-  // bar|beatx{count}@{step} or bar|beatx{count}
-  return startStr.length + 1 + count.toString().length + 1 + stepStr.length;
+  // bar|beatx{count}@n{step} or bar|beatx{count} (the "@n" sigil is 2 chars)
+  return startStr.length + 1 + count.toString().length + 2 + stepStr.length;
 }
 
 /**
@@ -261,7 +261,7 @@ function formatRepeatLength(
  * @param repeat - Repeat info
  * @param currentDuration - Current duration in musical beats (omit @step if equal)
  * @param start - Start position
- * @returns Repeat pattern string like "1|1x8@/4"
+ * @returns Repeat pattern string like "1|1x8@n/4"
  */
 function formatRepeat(
   repeat: RepeatInfo,
@@ -272,7 +272,7 @@ function formatRepeat(
   const stepSuffix =
     Math.abs(repeat.step - currentDuration) <= 0.001
       ? ""
-      : `@${repeat.stepStr}`;
+      : `@n${repeat.stepStr}`;
 
   return `${startStr}x${repeat.count}${stepSuffix}`;
 }

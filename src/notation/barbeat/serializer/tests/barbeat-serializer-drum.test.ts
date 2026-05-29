@@ -129,7 +129,7 @@ describe("drum mode serializer", () => {
     const result = formatNotation(notes, { drumMode: true });
 
     // Duration 0.25 quarter = /16; step 2 quarters = /2
-    expect(result).toBe("n/16 C1 1|1x8@/2");
+    expect(result).toBe("n/16 C1 1|1x8@n/2");
   });
 
   it("splits into state runs when velocity changes", () => {

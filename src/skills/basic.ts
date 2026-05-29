@@ -31,7 +31,7 @@ F3 A3 C4 4|1
 \`\`\`
 C1 1|1,3 2|1,3 3|1,3 4|1,3  # kick
 D1 1|2,4 2|2,4 3|2,4 4|2,4  # snare
-n/16 Gb1 1|1.5x4@/4 2|1.5x4@/4 3|1.5x4@/4 4|1.5x4@/4  # hats (4 per bar, quarter-note step)
+n/16 Gb1 1|1.5x4@n/4 2|1.5x4@n/4 3|1.5x4@n/4 4|1.5x4@n/4  # hats (4 per bar, quarter-note step)
 \`\`\`
 
 ## Editing existing notes: preTransforms (update-clip)

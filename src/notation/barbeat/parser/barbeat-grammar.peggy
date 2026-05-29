@@ -55,18 +55,46 @@ beatList "beat list"
 
 beatSpec "beat specification"
   = start:oneOrMoreFloat "x" times:oneOrMoreInt step:stepInterval? {
-      if (step === 0) {
+      if (step != null && step.fraction === 0 && step.bars === 0) {
         throw new Error("Repeat step size must be greater than 0");
       }
-      return { start, times, step: step ?? null };
+      if (step == null) {
+        return { start, times, step: null };
+      }
+      // step.fraction is a whole-note fraction; step.bars is meter-aware.
+      return step.bars > 0
+        ? { start, times, step: step.fraction, stepBars: step.bars }
+        : { start, times, step: step.fraction };
     }
   / oneOrMoreFloat
 
+// Repeat step: the note-value duration grammar, prefixed by `@`.
+//   @n<fraction>  note value (@n/4 = quarter, @n/12 = eighth triplet)
+//   @Nbar         meter-aware bars (@1bar = one bar)
+//   @Nbar+n<frac> mixed
+// Bare beats (@1) and bare fractions (@/4) are rejected — authoring stays
+// note-value-only; off-grid bare beats are a length-field concept only.
 stepInterval
-  = "@" frac:unsignedFraction { return frac; }
-  / "@" bad:badAbsoluteValue {
-      throw new Error(`step intervals need a denominator: @/4 = quarter, @/8 = eighth, @/12 = eighth triplet. Got @${bad}`);
+  = "@" bars:oneOrMoreInt "bar" frac:durationBarFraction? {
+      return { bars, fraction: frac ?? 0 };
     }
+  / "@" "n" frac:unsignedFraction {
+      return { bars: 0, fraction: frac };
+    }
+  / "@" bad:badStepValue {
+      throw new Error(`step intervals use the note-value form: @n/4 = quarter, @n/8 = eighth, @n/12 = eighth triplet, @1bar = one bar. Got @${bad} — note values need the n prefix (@n/4, not @/4); bars use Nbar (@1bar).`);
+    }
+
+// Tail of a mixed duration: "+nA/B" (the note-value fraction wears its own `n`).
+durationBarFraction
+  = "+" "n" frac:unsignedFraction { return frac; }
+
+// Values that look like a step/duration but use a now-invalid bare form.
+// Used only to raise a targeted error — never returns a usable value.
+badStepValue
+  = unsignedMixedNumber { return text(); }
+  / unsignedFraction { return text(); }
+  / unsignedDecimal { return text(); }
 
 probability "probability value"
   = "p" val:unsignedDecimal {
@@ -94,11 +122,16 @@ velocity "velocity value"
   }
 
 duration "duration value"
-  = "n" frac:unsignedFraction {
+  = bars:oneOrMoreInt "bar" frac:durationBarFraction? {
+    // Nbar (e.g. 1bar) or Nbar+nA/B (e.g. 1bar+n3/4). `bar` is meter-aware and
+    // never wears an `n`; the interpreter resolves it against beatsPerBar.
+    return { bars, duration: frac ?? 0 };
+  }
+  / "n" frac:unsignedFraction {
     return { duration: frac };  // Fraction of a whole note (e.g., 1/4 = quarter)
   }
   / "n" bad:badAbsoluteValue {
-    throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet. Got n${bad}`);
+    throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet, or a bar form like 1bar or 1bar+n/4. Got n${bad}`);
   }
 
 // Matches values that LOOK like a duration/step but lack the required denominator.
