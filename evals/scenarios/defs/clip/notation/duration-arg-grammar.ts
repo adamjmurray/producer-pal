@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * AJM-447/456 scenarios: the create-clip `length` duration-argument grammar.
+ * Scenarios for the create-clip `length` duration-argument grammar.
  *
  * RUN PENDING: needs Ableton (agentic — drives a live model against Live).
  *

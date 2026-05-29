@@ -95,7 +95,7 @@ describe("updateClip - preTransforms", () => {
   it("can mutate existing notes (not just delete) before merge", async () => {
     mockMergeNoteTracking(mocks.clip123, [note(60, 0, 100), note(62, 1, 100)]);
 
-    await updateClip({
+    const result = await updateClip({
       ids: "123",
       preTransforms: "velocity = 60", // no range → all notes
       notes: "v110 G3 1|3", // new note at start_time 2, pitch 67
@@ -107,6 +107,8 @@ describe("updateClip - preTransforms", () => {
     expect(byPitch.get(60)).toBe(60); // existing C3, pre-mutated
     expect(byPitch.get(62)).toBe(60); // existing D3, pre-mutated
     expect(byPitch.get(67)).toBe(110); // new G3 unchanged by preTransforms
+    // With no transforms string, the result reports the preTransform match count
+    expect((result as { transformed?: number }).transformed).toBe(2);
   });
 
   it("applies preTransforms BEFORE transforms (so post-merge transforms see all notes)", async () => {

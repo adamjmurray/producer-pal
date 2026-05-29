@@ -210,7 +210,7 @@ describe("Transform Evaluator - Math Functions", () => {
     });
   });
 
-  describe("left-associative chained operators (AJM-458)", () => {
+  describe("left-associative chained operators", () => {
     it.each([
       ["8 / 4 / 2", 1, "division chain quarters down to 1, not 4"],
       ["8 - 4 - 2", 2, "subtraction chain yields 2, not 6"],

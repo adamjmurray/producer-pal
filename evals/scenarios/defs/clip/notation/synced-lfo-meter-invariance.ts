@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * AJM-459 §3 scenario: synced-LFO note-value period syntax.
+ * Scenario for synced-LFO note-value period syntax.
  *
  * RUN PENDING: needs Ableton (agentic — drives a live model against Live).
  *

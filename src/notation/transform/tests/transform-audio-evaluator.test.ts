@@ -455,7 +455,7 @@ describe("Audio Transform Evaluator", () => {
     });
   });
 
-  describe("seq function (audio) — de-overloaded per AJM-454", () => {
+  describe("seq function (audio) — de-overloaded", () => {
     beforeEach(() => {
       vi.mocked(console.warn).mockClear();
     });

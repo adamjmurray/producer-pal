@@ -314,7 +314,7 @@ describe("Transform Parser - Expressions", () => {
     ])("folds non-associative chains left-to-right: %s", (input, type) => {
       const result = parser.parse(input);
 
-      // (8 op 4) op 2, not 8 op (4 op 2) — regression for AJM-458
+      // (8 op 4) op 2, not 8 op (4 op 2) — guards left-associativity
       expect(result[0]!.expression).toStrictEqual({
         type,
         left: { type, left: 8, right: 4 },

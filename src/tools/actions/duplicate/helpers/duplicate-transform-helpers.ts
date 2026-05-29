@@ -17,7 +17,7 @@ interface NestedClipResult {
  * Delegates to updateClip so the duplicated clips reuse the exact transform DSL
  * and code-exec behavior as ppal-update-clip. transforms/code are single strings
  * broadcast across every duplicated clip — per-copy variation is expressed with
- * clip.index arithmetic and clipseq() inside the string (AJM-453/AJM-454). The
+ * clip.index arithmetic and clipseq() inside the string. The
  * single updateClip call also keeps clip.index/clip.count spanning the whole
  * batch. Resulting noteCount and transformed counts are merged back into the
  * duplicate result objects.

@@ -166,7 +166,7 @@ export function evaluateChoose(
 /**
  * Build an indexed-sequence evaluator (shared body for seq() and clipseq()).
  * Each picks values from args by a single axis key with no fallback — when the
- * axis is missing, warns and returns the first value (per AJM-454).
+ * axis is missing, warns and returns the first value.
  * @param fnName - Function name for errors/warnings
  * @param axisKey - NoteProperties key supplying the cycle index
  * @param axisDisplay - User-facing variable name for the axis (e.g. "note.index")

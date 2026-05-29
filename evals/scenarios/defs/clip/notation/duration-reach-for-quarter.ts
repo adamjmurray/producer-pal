@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * AJM-448 scenario: the `n/N`-vs-bare-`1/N` "make it a quarter note" reach-for
+ * Scenario for the `n/N`-vs-bare-`1/N` "make it a quarter note" reach-for
  * split. This is the single most important behavioral metric of the v1.4.11
  * duration overhaul.
  *

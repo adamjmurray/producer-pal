@@ -223,7 +223,7 @@ describe("useContextMemory", () => {
 
   // A focus/poll refresh GET can read content older than a concurrent save's
   // POST. Without sequencing, if the stale GET resolves after the save echo it
-  // clobbers status.content with pre-save content (AJM-431). These tests pin
+  // clobbers status.content with pre-save content. These tests pin
   // each overlap ordering: the save's echo must always win.
   it("does not let an in-flight save's stale focus GET clobber the echo", async () => {
     mockResponses({ memoryContent: "old" });
@@ -326,7 +326,7 @@ describe("useContextMemory", () => {
     });
   });
 
-  // AJM-436: while the editor is open AND the window is focused, poll so
+  // While the editor is open AND the window is focused, poll so
   // external writes (ppal-context tool, Max textedit) surface without a manual
   // refocus. Fake timers + a stubbed document.hasFocus drive the cases.
   describe("focus-gated polling", () => {

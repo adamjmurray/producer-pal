@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * AJM-443 scenarios: bar|beat absolute-duration semantics.
+ * Scenarios for bar|beat absolute-duration semantics.
  *
  * Run on `dev` and `main` and compare. Headline invariant: `n/4` is one quarter
  * note in any meter. Metrics: parse-error rate (expected to rise on dev) and

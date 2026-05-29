@@ -164,7 +164,7 @@ const READ_CLIP_RESULT = {
   looping: true,
   start: "1|1",
   end: "2|1",
-  length: "1:0",
+  length: "1bar",
   notes: "v127 n/4 C1 1|1,3 v113 D1 1|2 v99 D1 1|4",
 };
 

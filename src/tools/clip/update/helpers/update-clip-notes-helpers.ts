@@ -95,13 +95,14 @@ export function handleNoteUpdates(
     string,
     unknown
   >[];
-  const existingNotes = applyPreTransformsToExisting(
-    rawNotesToNoteEvents(rawExistingNotes),
-    preTransformString,
-    timeSigNumerator,
-    timeSigDenominator,
-    clipContext,
-  );
+  const { notes: existingNotes, matchCount: preTransformCount } =
+    applyPreTransformsToExisting(
+      rawNotesToNoteEvents(rawExistingNotes),
+      preTransformString,
+      timeSigNumerator,
+      timeSigDenominator,
+      clipContext,
+    );
 
   if (existingNotes.length > 0) {
     const existingNotationString = formatNotation(existingNotes, {
@@ -133,18 +134,24 @@ export function handleNoteUpdates(
     clip.call("add_new_notes", { notes });
   }
 
-  return { noteCount: getPlayableNoteCount(clip), transformed };
+  // Fall back to the preTransform match count when there's no transforms string,
+  // so a notes + preTransforms update still reports a count (not undefined).
+  return {
+    noteCount: getPlayableNoteCount(clip),
+    transformed: transformed ?? preTransformCount,
+  };
 }
 
 /**
  * Apply preTransforms to existing notes in-place (mutates and filters v=0/d=0).
- * Returns the surviving notes; no-ops when preTransformString is missing.
+ * Returns the surviving notes plus the preTransform match count (undefined when
+ * no preTransformString); no-ops when preTransformString is missing.
  * @param existingNotes - Existing notes as NoteEvents
  * @param preTransformString - Transform expressions, or undefined to skip
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param clipContext - Clip-level context for transform variables
- * @returns The (possibly filtered) existing notes
+ * @returns The (possibly filtered) existing notes and the match count
  */
 function applyPreTransformsToExisting(
   existingNotes: NoteEvent[],
@@ -152,12 +159,12 @@ function applyPreTransformsToExisting(
   timeSigNumerator: number,
   timeSigDenominator: number,
   clipContext: ClipContext,
-): NoteEvent[] {
+): { notes: NoteEvent[]; matchCount: number | undefined } {
   if (preTransformString == null || existingNotes.length === 0) {
-    return existingNotes;
+    return { notes: existingNotes, matchCount: undefined };
   }
 
-  applyTransforms(
+  const matchCount = applyTransforms(
     existingNotes,
     preTransformString,
     timeSigNumerator,
@@ -165,7 +172,7 @@ function applyPreTransformsToExisting(
     clipContext,
   );
 
-  return existingNotes;
+  return { notes: existingNotes, matchCount };
 }
 
 /**

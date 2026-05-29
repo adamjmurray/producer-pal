@@ -123,7 +123,7 @@ describe("Transform - seq function", () => {
 
     it("does not fall back to clip.index (use clipseq() instead)", () => {
       // Previously seq() fell back to clip:index on audio. That overload is gone
-      // (AJM-454) — clip-axis sequencing now lives in clipseq(). seq() with only
+      // — clip-axis sequencing now lives in clipseq(). seq() with only
       // clip:index in scope must warn and return the first value.
       const result = evaluateTransform(
         "velocity = seq(10, 20, 30)",

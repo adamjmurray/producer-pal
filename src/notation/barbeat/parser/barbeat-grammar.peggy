@@ -174,9 +174,6 @@ oneOrMoreFraction
     return result;
   }
 
-unsignedFloat
-  = unsignedMixedNumber / unsignedFraction / unsignedDecimal
-
 unsignedMixedNumber
   = wholeNumber:unsignedInt "+" fraction:unsignedFraction {
     return wholeNumber + fraction;

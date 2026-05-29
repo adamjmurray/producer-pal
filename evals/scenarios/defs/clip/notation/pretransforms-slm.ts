@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * AJM-451 scenarios: preTransforms reach-for in SMALL MODEL MODE.
+ * Scenarios for preTransforms reach-for in SMALL MODEL MODE.
  *
  * RUN PENDING: needs Ableton (agentic — drives a live model against Live).
  *
