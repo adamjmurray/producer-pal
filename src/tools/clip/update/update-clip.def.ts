@@ -195,13 +195,14 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       "quantizePitch",
       "firstStart",
       "transforms",
-      "preTransforms",
       "split",
       "code",
     ],
     descriptionOverrides: {
       name: "clip name",
       color: "#RRGGBB",
+      preTransforms:
+        "clear/edit existing notes in a range before new notes land — requires notes. Shorthand only (see Skills): `1|1-2|1: v0` clears a region, `v0` clears all, `C1: C4` remaps a drum lane",
     },
   },
 });
