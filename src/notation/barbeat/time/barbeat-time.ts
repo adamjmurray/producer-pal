@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { DEFAULT_BEATS_PER_BAR } from "#src/notation/barbeat/barbeat-config.ts";
+import { formatBeatPosition } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 const DURATION_EPSILON = 1e-9;
@@ -47,28 +48,38 @@ export function parseBeatsPerBar(options: BeatsPerBarOptions = {}): number {
 }
 
 /**
- * Convert beats to bar|beat format.
+ * Convert (musical) beats to bar|beat format.
+ *
+ * The beat field is serialized by {@link formatBeatPosition}, the single
+ * canonical formatter shared with the note serializer: an integer or dyadic
+ * sub-beat renders as a plain decimal (`1|2`, `1|1.5`), while a non-dyadic
+ * (tuplet) position renders as an exact `base±n<fraction>` note-value offset
+ * (`1|1+n/12` = beat 1 + an eighth triplet) so it round-trips losslessly —
+ * `toFixed(3)` would round `1/3` to `0.333` and break the round-trip. The
+ * offset's note-value unit is `timeSigDenominator`-relative, so it must be
+ * threaded through (it defaults to 4 — quarter-note beats — when omitted).
+ *
  * TODO: rename the non-duration-based functions in here (i.e. not the last two) to clearly indicate we are handling bar|beat positions
- * @param beats - Number of beats
+ * @param beats - Number of (musical) beats
  * @param beatsPerBar - Beats per bar
+ * @param timeSigDenominator - Time signature denominator (the `±n` offset unit)
  * @returns Formatted bar|beat string
  */
-export function beatsToBarBeat(beats: number, beatsPerBar: number): string {
+export function beatsToBarBeat(
+  beats: number,
+  beatsPerBar: number,
+  timeSigDenominator?: number,
+): string {
   // Pin the bar floor at 1 so a negative position (a note before the clip
-  // start, e.g. `1|1-n/12` → -⅓ beats) serializes as a sub-1 beat in bar 1
-  // (`1|0.667`) rather than bar 0 (`0|…`, which would re-parse to a different
-  // value). This keeps negative positions round-trippable through
-  // barBeatToBeats. For beats >= 0 the result is identical to the old
-  // floor()+1 / (beats % beatsPerBar) form.
+  // start, e.g. `1|1-n/12` → -⅓ beats) serializes within bar 1 (`1|1-n/12`)
+  // rather than bar 0 (`0|…`, which would re-parse to a different value). This
+  // keeps negative positions round-trippable through barBeatToBeats. For beats
+  // >= 0 the bar/beat split is identical to the old floor()+1 form;
+  // formatBeatPosition handles the sub-1/negative beat as a `1-n<fraction>`.
   const bar = Math.max(1, Math.floor(beats / beatsPerBar) + 1);
   const beat = beats - (bar - 1) * beatsPerBar + 1;
 
-  // Format beat - avoid unnecessary decimals
-
-  const beatFormatted =
-    beat % 1 === 0 ? beat.toString() : beat.toFixed(3).replace(/\.?0+$/, "");
-
-  return `${bar}|${beatFormatted}`;
+  return `${bar}|${formatBeatPosition(beat, timeSigDenominator)}`;
 }
 
 /**
@@ -149,7 +160,7 @@ export function abletonBeatsToBarBeat(
   const musicalBeatsPerBar = timeSigNumerator;
   const musicalBeats = abletonBeats * (timeSigDenominator / 4);
 
-  return beatsToBarBeat(musicalBeats, musicalBeatsPerBar);
+  return beatsToBarBeat(musicalBeats, musicalBeatsPerBar, timeSigDenominator);
 }
 
 /**

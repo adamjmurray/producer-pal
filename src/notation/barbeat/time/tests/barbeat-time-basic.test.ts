@@ -59,18 +59,24 @@ describe("barbeat-time utilities", () => {
     });
 
     it("handles precise floating point formatting", () => {
+      // A clean tuplet position serializes to its exact note-value offset
+      // (0.666667 ≈ ⅔ beat = an n/6 offset), not a rounded 3-decimal that
+      // would not round-trip. Genuinely off-grid floats (not within EPSILON of
+      // any note value) still fall back to a decimal.
       expect(beatsToBarBeat(0.333, 4)).toBe("1|1.333");
-      expect(beatsToBarBeat(0.666667, 4)).toBe("1|1.667");
+      expect(beatsToBarBeat(0.666667, 4)).toBe("1|1+n/6");
       expect(beatsToBarBeat(1.123456, 4)).toBe("1|2.123");
     });
 
     it("pins the bar floor at 1 for positions before 1|1", () => {
-      // A note before the clip start (negative time) serializes as a sub-1
-      // beat in bar 1, never bar 0 — so it round-trips through barBeatToBeats.
-      expect(beatsToBarBeat(-0.5, 4)).toBe("1|0.5");
-      expect(beatsToBarBeat(-1, 4)).toBe("1|0");
-      expect(beatsToBarBeat(-2, 4)).toBe("1|-1");
-      expect(beatsToBarBeat(-5, 4)).toBe("1|-4");
+      // A note before the clip start (negative time) serializes within bar 1
+      // as a `1-n<fraction>` offset, never bar 0 and never a bare sub-1/negative
+      // beat — the canonical form the note serializer uses, round-trippable
+      // through barBeatToBeats.
+      expect(beatsToBarBeat(-0.5, 4)).toBe("1|1-n/8");
+      expect(beatsToBarBeat(-1, 4)).toBe("1|1-n/4");
+      expect(beatsToBarBeat(-2, 4)).toBe("1|1-n/2");
+      expect(beatsToBarBeat(-5, 4)).toBe("1|1-n5/4");
     });
   });
 
@@ -517,6 +523,66 @@ describe("barbeat-time utilities", () => {
       expect(abletonBeatsToBarBeat(0, 15, 8)).toBe("1|1");
       expect(abletonBeatsToBarBeat(7.5, 15, 8)).toBe("2|1");
       expect(barBeatToAbletonBeats("2|1", 15, 8)).toBe(7.5);
+    });
+  });
+
+  describe("sub-beat positions: decimal vs ±n offset", () => {
+    it("the two forms coincide in x/4 meters", () => {
+      // 4/4: `1|1.5` (+0.5 musical beat) and `1|1+n/8` ((1/8)·4 = +0.5 musical
+      // beat) both land on the same 0.5 Ableton beat.
+      expect(barBeatToAbletonBeats("1|1.5", 4, 4)).toBe(0.5);
+      expect(barBeatToAbletonBeats("1|1+n/8", 4, 4)).toBeCloseTo(0.5, 10);
+    });
+
+    it("the two forms DIFFER in compound/odd meters (the decimal is meter-relative, ±n is absolute)", () => {
+      // 6/8: the decimal `1|1.5` is half a *musical* (eighth) beat = 0.25
+      // Ableton beats; the offset `1|1+n/8` is an absolute eighth note =
+      // (1/8)·8 = +1 eighth beat = 0.5 Ableton beats. Off by a factor of 2.
+      const decimal = barBeatToAbletonBeats("1|1.5", 6, 8);
+      const offset = barBeatToAbletonBeats("1|1+n/8", 6, 8);
+
+      expect(decimal).toBe(0.25);
+      expect(offset).toBeCloseTo(0.5, 10);
+      expect(offset).not.toBeCloseTo(decimal, 10);
+    });
+
+    it("serializes a non-dyadic (tuplet) position to the exact ±n offset, not a rounded decimal", () => {
+      // ⅓ of an Ableton beat is an eighth triplet: the canonical form is the
+      // exact note-value offset, which round-trips losslessly (a `1.333`
+      // decimal would not).
+      expect(abletonBeatsToBarBeat(1 / 3, 4, 4)).toBe("1|1+n/12");
+      expect(barBeatToAbletonBeats("1|1+n/12", 4, 4)).toBeCloseTo(1 / 3, 10);
+
+      // Same eighth-triplet displacement is spelled n/12 in 6/8 too (the
+      // denominator anchors it to the eighth beat).
+      expect(abletonBeatsToBarBeat(1 / 3, 6, 8)).toBe("1|1+n/12");
+      expect(barBeatToAbletonBeats("1|1+n/12", 6, 8)).toBeCloseTo(1 / 3, 10);
+    });
+
+    it("serializes a negative tuplet position within bar 1 as a 1-n offset", () => {
+      // A triplet before the clip start round-trips through the canonical form.
+      expect(abletonBeatsToBarBeat(-1 / 3, 4, 4)).toBe("1|1-n/12");
+      expect(barBeatToAbletonBeats("1|1-n/12", 4, 4)).toBeCloseTo(-1 / 3, 10);
+    });
+
+    it("is a fixed point under read → re-author → read for tuplet positions", () => {
+      for (const [num, den] of [
+        [4, 4],
+        [3, 4],
+        [6, 8],
+        [9, 8],
+      ] as const) {
+        for (const abletonBeats of [1 / 3, 2 / 3, 5 / 3, -1 / 3]) {
+          const once = abletonBeatsToBarBeat(abletonBeats, num, den);
+          const twice = abletonBeatsToBarBeat(
+            barBeatToAbletonBeats(once, num, den),
+            num,
+            den,
+          );
+
+          expect(twice).toBe(once);
+        }
+      }
     });
   });
 });

@@ -42,7 +42,7 @@ export const skills = `# Producer Pal Skills
 
 ## Time in Ableton Live
 
-- Positions: bar|beat (1-indexed, meter-relative). Sub-beat: a decimal (2|3.5) or a ±n note-value offset off the grid beat — \`1|1+n/12\` = beat 1 + an eighth triplet, \`1|2-n/24\` nudges just behind beat 2. Same \`n\` grammar as durations; no bare fractions
+- Positions: bar|beat (1-indexed, meter-relative). Two sub-beat forms — a decimal (\`2|3.5\`, a fraction of a *musical beat*) and a \`±n\` absolute note-value offset off the grid beat (\`1|1+n/12\` = beat 1 + an eighth triplet, \`1|2-n/24\` nudges behind beat 2). They coincide only in x/4 meters; in compound/odd meters they differ (6/8: \`1|1.5\` = half an eighth, \`1|1+n/8\` = a full eighth). Serialized output uses the exact \`±n\` form for tuplet positions. Same \`n\` grammar as durations; no bare fractions
 - Durations and \`@step\` intervals: absolute note values (denominator mandatory). \`n/4\` = quarter, \`n/8\` = eighth, \`n/16\` = sixteenth, \`n/12\` = eighth triplet (3 in a quarter), \`n3/8\` = dotted quarter (3 eighths). A quarter is a quarter in any meter
 - Clip \`length\` and arrangement durations: \`Nbar\` (meter-aware, e.g. \`4bar\`), \`n<fraction>\` note value (e.g. \`n/4\` = quarter, \`n/8\` = eighth), or \`Nbar+n<fraction>\` mixed (e.g. \`1bar+n/4\`). Same \`n\` fraction grammar everywhere. No bare fractions/integers/decimals
 

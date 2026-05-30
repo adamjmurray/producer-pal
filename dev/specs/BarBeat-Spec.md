@@ -27,22 +27,43 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 - **Start Time (`bar|beat`)** Time position that emits buffered notes.
   - `bar` – 1-based bar number (integer, required)
   - `beat` – 1-based beat number within bar, **meter-relative**. Sub-beat
-    positions are a decimal (`2|3.5`) or a grid beat plus a `±n` **note-value
-    offset** — `1|1+n/12` = beat 1 + an eighth triplet, `1|2-n/24` nudges just
-    behind beat 2. The offset is a whole-note fraction (same `n` grammar as
-    Duration), so — like any note value — it is **meter-invariant** in absolute
-    time: `n/12` is always an eighth triplet. Its size measured _in the local
-    beat unit_ changes only because the beat unit itself changes (1/3 of a
-    quarter-beat in 4/4, 2/3 of an eighth-beat in 6/8 — the same musical
-    duration). The grid beat it displaces, by contrast, **is** meter-relative.
+    positions take one of two forms:
+    - a **decimal** (`2|3.5`) — a fraction of a _musical beat_, so the decimal
+      itself is **meter-relative** (`2|3.5` is "half a beat past beat 3", and a
+      beat is whatever the meter says);
+    - a grid beat plus a `±n` **note-value offset** — `1|1+n/12` = beat 1 + an
+      eighth triplet, `1|2-n/24` nudges just behind beat 2. The offset is a
+      whole-note fraction (same `n` grammar as Duration), so — like any note
+      value — it is **meter-invariant** in absolute time: `n/12` is always an
+      eighth triplet. Its size measured _in the local beat unit_ changes only
+      because the beat unit itself changes (1/3 of a quarter-beat in 4/4, 2/3 of
+      an eighth-beat in 6/8 — the same musical duration). The grid beat it
+      displaces, by contrast, **is** meter-relative.
+
+    **The two forms are NOT interchangeable.** The decimal is meter-relative and
+    the `±n` offset is absolute, so they denote the same time **only in `x/4`
+    meters**. In compound/odd meters they diverge: in 6/8, `1|1.5` is half a
+    musical (eighth) beat = 0.25 quarter, while `1|1+n/8` is a full eighth note
+    = 0.5 quarter — off by a factor of 2. Reach for the decimal when you mean "a
+    fraction of the beat" and the `±n` offset when you mean an exact note value.
+
     Bare fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`) are rejected
     — note values always wear the `n`. A `-n` offset may pull a position earlier
     than its bar's downbeat — `2|1-n/12` is "an eighth triplet before the bar-2
     downbeat" and resolves into bar 1 (beat 4⅔ in 4/4) by borrowing across the
     bar line. A pull before `1|1` is allowed too: it resolves to negative time
     (a note before the clip start, which Live accepts). Authoring warns once
-    when a note lands before the clip start. Such notes round-trip on read,
-    serialized as a sub-1 beat in bar 1 (e.g. `1|0.667`).
+    when a note lands before the clip start.
+
+    **Canonical serialization.** On output a position is spelled by a single
+    canonical formatter (shared with note serialization): an integer or
+    **dyadic** sub-beat as a plain decimal (`1|2`, `1|1.5`); a **non-dyadic
+    (tuplet)** position as its exact `±n` offset (`1|1+n/12`, never the lossy
+    `1|1.333`); and a position before the clip start, within bar 1, as a
+    `1-n<fraction>` offset (e.g. `1|1-n/12`). This makes read → re-author → read
+    a fixed point for tuplet and negative positions; only genuinely off-grid
+    (sample-derived) values fall back to a rounded decimal.
+
   - **Repeat patterns**: `beat x times @ step` generates multiple positions.
     `step` uses the same note-value duration grammar as `n` (see Duration):
     `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar+n<fraction>`
