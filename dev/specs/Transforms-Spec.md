@@ -4,18 +4,26 @@
 
 ```
 // Waveforms (sync is an optional trailing keyword, not an expression)
-cos(frequency, [phase], [sync]); // cosine wave
-tri(frequency, [phase], [sync]); // triangle wave
-saw(frequency, [phase], [sync]); // sawtooth wave
-square(frequency, [phase], [pulseWidth], [sync]); // square wave
+cos(frequency, [phase], [sync]); // cosine wave — phase 0 starts at peak (1.0)
+sin(frequency, [phase], [sync]); // sine wave — phase 0 starts at zero, rising
+tri(frequency, [phase], [sync]); // triangle wave — phase 0 starts at zero, rising
+saw(frequency, [phase], [sync]); // sawtooth wave — phase 0 starts at zero, rising
+square(frequency, [phase], [pulseWidth], [sync]); // square wave — phase 0 starts high
 rand([min], [max]); // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
 choose(a, b, ...); // random pick from arguments (at least 1)
+seq(a, b, ...); // cycle through arguments by note.index (per note; MIDI only)
+clipseq(a, b, ...); // cycle through arguments by clip.index (per clip across a batch)
 ramp(start, end); // linear ramp over clip/time range
 curve(start, end, exponent); // exponential ramp over clip/time range
 
 // Timing functions
 swing(amount, [grid], [raw]); // swing: delay off-beat notes (grid default: half the meter's beat — 8th-note in 4/4, 16th in 6/8)
 quant(grid); // quantize: snap to nearest grid point
+legato([tolerance]); // set duration to reach the next note's start time
+
+// Scale functions (use the Live Set scale; pass-through if no scale is set)
+snap(pitch); // snap pitch to the nearest in-scale pitch
+step(basePitch, offset); // move basePitch by offset scale steps
 
 // Math functions
 round(value); // round to nearest integer
@@ -174,12 +182,16 @@ C3-C5: duration = legato()       // legato for melody notes only
 
 ## Waveform Behavior
 
-**Period-based waveforms** (cos, tri, saw, square) at phase 0 start at peak
-(1.0) and descend:
+**Period-based waveforms** (cos, sin, tri, saw, square) at phase 0. `cos` and
+`square` start at peak; `sin`, `tri`, and `saw` start at zero and rise:
 
 - **cos(n/4, 0)**: starts at 1.0, descends to -1.0, returns to 1.0
-- **tri(n/4, 0)**: starts at 1.0, descends linearly to -1.0, returns to 1.0
-- **saw(n/4, 0)**: starts at 1.0, descends linearly to -1.0, jumps back to 1.0
+- **sin(n/4, 0)**: starts at 0.0, rises to 1.0, back through 0.0 to -1.0,
+  returns to 0.0
+- **tri(n/4, 0)**: starts at 0.0, rises linearly to 1.0, descends to -1.0,
+  returns to 0.0
+- **saw(n/4, 0)**: starts at 0.0, rises linearly to 1.0, jumps to -1.0, rises
+  back to 0.0
 - **square(n/4, 0)**: starts high (1.0) for first half, low (-1.0) for second
   half
 - **rand()**: random value between -1.0 and 1.0 per note (or rand(max) for 0 to

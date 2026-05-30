@@ -322,8 +322,10 @@ Repeat patterns generate sequences of beat positions using the syntax
 bar|{start}x{times}@{step}
 ```
 
-- **start**: Starting beat position (meter-relative; supports decimals,
-  fractions, and mixed numbers)
+- **start**: Starting beat position — the same dialect as note positions: a
+  whole beat, a decimal sub-beat (`1.5`), or a `±n` note-value offset
+  (`1+n/12`). Bare fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`)
+  are rejected
 - **times**: Number of repetitions (positive integer)
 - **step**: Interval between repetitions, **same note-value duration grammar as
   `n`** — `@n<fraction>` note value (denominator mandatory, numerator defaults
