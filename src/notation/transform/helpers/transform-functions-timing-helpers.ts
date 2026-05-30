@@ -52,7 +52,10 @@ export function evaluateSwing(
     noteProperties,
   );
 
-  // Default grid is 0.5 beats (8th-note swing, same as quant(n/8))
+  // Default grid is half a musical beat — the off-beat between the meter's
+  // beats: an 8th note in x/4, a 16th in x/8, etc. (the natural swing
+  // subdivision per meter). NOT a fixed n/8 — that coincides only in x/4.
+  // Pass an explicit grid arg to override.
   let grid = 0.5;
 
   if (args.length === 2) {

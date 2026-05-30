@@ -62,6 +62,34 @@ describe("Transform Evaluator - swing()", () => {
     });
   });
 
+  describe("default grid is half the meter's beat (meter-aware)", () => {
+    // The default grid is half the meter's beat, not a fixed n/8. In 6/8 that
+    // is a 16th note, so the off-beat 16ths (0.5, 1.5, ...) swing while the
+    // eighth-note beats (1.0, 2.0, ...) stay on the grid. (Under a fixed-n/8
+    // default the beat itself would swing and position 0.5 would not move.)
+    it("swings the 16th off-beat in 6/8 (position 0.5)", () => {
+      const ctx = createContext({
+        position: 0.5,
+        numerator: 6,
+        denominator: 8,
+      });
+      const result = evaluateTransform("timing = swing(0.05)", ctx);
+
+      expect(result.timing!.value).toBeCloseTo(0.55, 10);
+    });
+
+    it("leaves the eighth-note beat on the grid in 6/8 (position 1.0)", () => {
+      const ctx = createContext({
+        position: 1.0,
+        numerator: 6,
+        denominator: 8,
+      });
+      const result = evaluateTransform("timing = swing(0.05)", ctx);
+
+      expect(result.timing!.value).toBeCloseTo(1.0, 10);
+    });
+  });
+
   describe("16th-note swing (custom grid)", () => {
     it("does not offset on-beat of n/16 grid (position 0)", () => {
       const ctx = createContext({ position: 0 });
