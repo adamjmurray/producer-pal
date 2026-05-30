@@ -282,22 +282,45 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     ]);
   });
 
-  it("handles velocity range validation", () => {
-    expect(() => interpretNotation("v128-130 C3")).toThrow(
-      "Invalid velocity range 128-130",
+  it("clamps out-of-range velocity and warns instead of throwing", () => {
+    const result = interpretNotation("v128-130 C3 1|1");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.velocity).toBe(127);
+    expect(result[0]!.velocity_deviation).toBe(0);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("outside valid range 0-127; clamped to 127"),
     );
+    // Malformed syntax (negative velocity) is still a fatal parse error.
     expect(() => interpretNotation("v-1-100 C3")).toThrow();
   });
 
-  it("handles probability range validation", () => {
-    expect(() => interpretNotation("p1.5 C3")).toThrow(
-      "Note probability 1.5 outside valid range 0.0-1.0",
+  it("clamps out-of-range probability and warns instead of throwing", () => {
+    const result = interpretNotation("p1.5 C3 1|1");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.probability).toBe(1);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("outside valid range 0.0-1.0; clamped to 1"),
     );
   });
 
-  it("handles pitch range validation", () => {
-    expect(() => interpretNotation("C-3")).toThrow(/outside valid range/);
-    expect(() => interpretNotation("C9")).toThrow(/outside valid range/);
+  it("skips out-of-range pitch and warns instead of throwing", () => {
+    expect(interpretNotation("C-3 1|1")).toStrictEqual([]);
+    expect(interpretNotation("C9 1|1")).toStrictEqual([]);
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("note skipped"),
+    );
+  });
+
+  it("skips only the out-of-range pitch in a chord", () => {
+    const result = interpretNotation("C9 E3 1|1");
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.pitch).toBe(64);
   });
 
   it("provides helpful error messages for syntax errors", () => {

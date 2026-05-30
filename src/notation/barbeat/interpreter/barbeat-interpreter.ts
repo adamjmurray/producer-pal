@@ -37,6 +37,11 @@ import {
   handlePitchEmission,
   type TimeElement,
 } from "./helpers/barbeat-interpreter-pitch-helpers.ts";
+import {
+  acceptPitch,
+  clampProbability,
+  clampVelocity,
+} from "./helpers/barbeat-interpreter-range-helpers.ts";
 
 interface InterpretOptions {
   beatsPerBar?: number;
@@ -53,12 +58,14 @@ function processVelocityUpdate(
   element: ASTElement,
   state: InterpreterState,
 ): void {
-  state.currentVelocity = element.velocity ?? null;
+  const velocity = clampVelocity(element.velocity as number, "velocity");
+
+  state.currentVelocity = velocity;
   state.currentVelocityMin = null;
   state.currentVelocityMax = null;
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.velocity = element.velocity as number;
+    pitchState.velocity = velocity;
     pitchState.velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
   });
 }
@@ -72,12 +79,18 @@ function processVelocityRangeUpdate(
   element: ASTElement,
   state: InterpreterState,
 ): void {
-  state.currentVelocityMin = element.velocityMin ?? null;
-  state.currentVelocityMax = element.velocityMax ?? null;
-  state.currentVelocity = null;
+  const velocityMin = clampVelocity(
+    element.velocityMin ?? 0,
+    "velocity range min",
+  );
+  const velocityMax = clampVelocity(
+    element.velocityMax ?? 0,
+    "velocity range max",
+  );
 
-  const velocityMin = element.velocityMin ?? 0;
-  const velocityMax = element.velocityMax ?? 0;
+  state.currentVelocityMin = velocityMin;
+  state.currentVelocityMax = velocityMax;
+  state.currentVelocity = null;
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
     pitchState.velocity = velocityMin;
@@ -124,10 +137,12 @@ function processProbabilityUpdate(
   element: ASTElement,
   state: InterpreterState,
 ): void {
-  state.currentProbability = element.probability;
+  const probability = clampProbability(element.probability as number);
+
+  state.currentProbability = probability;
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.probability = element.probability;
+    pitchState.probability = probability;
   });
 }
 
@@ -145,6 +160,12 @@ function processPitchElement(
     state.pitchGroupStarted = true;
     state.pitchesEmitted = false;
     state.stateChangedAfterEmission = false;
+  }
+
+  // Out-of-range pitch is skipped (other pitches in the same chord/group still
+  // emit); range no longer aborts the parse.
+  if (!acceptPitch(element.pitch as number)) {
+    return;
   }
 
   let velocity: number;

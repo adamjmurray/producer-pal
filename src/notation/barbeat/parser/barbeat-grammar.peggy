@@ -123,29 +123,25 @@ badStepValue
   / unsignedFraction { return text(); }
   / unsignedDecimal { return text(); }
 
+// Value-range enforcement lives in the interpreter (per-note, recoverable:
+// velocity/probability clamp + warn, out-of-range pitch is skipped + warned),
+// NOT here. The grammar accepts any numeric value so one bad token never aborts
+// the whole clip's notation. Malformed *syntax* still throws (see the bad*
+// rules below) — that is unrecoverable and correctly fatal.
 probability "probability value"
   = "p" val:unsignedDecimal {
-    if (val >= 0.0 && val <= 1.0) {
-      return { probability: val };
-    }
-    else throw new Error(`Note probability ${val} outside valid range 0.0-1.0`);
+    return { probability: val };
   }
 
 velocity "velocity value"
   = "v" start:unsignedInt "-" end:unsignedInt {
-    if (start >= 0 && start <= 127 && end >= 0 && end <= 127) {
-      return {
-        velocityMin: Math.min(start, end),
-        velocityMax: Math.max(start, end),
-      };
-    }
-    else throw new Error(`Invalid velocity range ${start}-${end}`);
+    return {
+      velocityMin: Math.min(start, end),
+      velocityMax: Math.max(start, end),
+    };
   }
   / "v" val:unsignedInt {
-    if (val >= 0 && val <= 127) {
-      return { velocity: val };
-    }
-    else throw new Error(`MIDI velocity ${val} outside valid range 0-127`);
+    return { velocity: val };
   }
 
 duration "duration value"
@@ -169,12 +165,9 @@ badAbsoluteValue
 
 pitch "note pitch"
   = pitchClass:pitchClass octave:signedInt {
-    const name = `${pitchClass.name}${octave}`;
-    const pitch = (octave + 2) * 12 + pitchClass.value;
-    if (pitch >= 0 && pitch <= 127) {
-      return { pitch };
-    }
-    else throw new Error(`MIDI pitch ${pitch} (${name}) outside valid range 0-127`);
+    // Range is enforced in the interpreter (out-of-range pitch is skipped +
+    // warned), so emit whatever the note name computes to.
+    return { pitch: (octave + 2) * 12 + pitchClass.value };
   }
 
 pitchClass

@@ -225,16 +225,12 @@ function emitProbabilityChange(
 }
 
 /**
- * Get the pitch name for a MIDI note number
+ * Get the pitch name for a MIDI note number. The read path filters out-of-range
+ * pitches before serializing (see `dropUnnameablePitches`), so a valid pitch is
+ * expected here; the fallback keeps this total (never throws) for any caller.
  * @param pitch - MIDI pitch (0-127)
- * @returns Note name string (e.g., "C3")
+ * @returns Note name string (e.g., "C3"), or `?<pitch>` if unnameable
  */
 export function pitchName(pitch: number): string {
-  const name = midiToNoteName(pitch);
-
-  if (name == null) {
-    throw new Error(`Invalid MIDI pitch: ${pitch}`);
-  }
-
-  return name;
+  return midiToNoteName(pitch) ?? `?${pitch}`;
 }

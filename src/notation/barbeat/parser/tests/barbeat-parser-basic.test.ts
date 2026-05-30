@@ -42,9 +42,9 @@ describe("BarBeatScript Parser - basic tests", () => {
   });
 
   describe("pitch", () => {
-    it("rejects out-of-range MIDI pitch", () => {
-      expect(() => parser.parse("C-3")).toThrow(/outside valid range/);
-      expect(() => parser.parse("C9")).toThrow(/outside valid range/);
+    it("parses out-of-range MIDI pitch (range enforced in interpreter)", () => {
+      expect(parser.parse("C-3")).toStrictEqual([{ pitch: -12 }]);
+      expect(parser.parse("C9")).toStrictEqual([{ pitch: 132 }]);
     });
 
     it("handles enharmonic spellings", () => {
@@ -77,10 +77,11 @@ describe("BarBeatScript Parser - basic tests", () => {
       ]);
     });
 
-    it("rejects out-of-range probability", () => {
-      expect(() => parser.parse("p1.5 C3")).toThrow(
-        "Note probability 1.5 outside valid range 0.0-1.0",
-      );
+    it("parses out-of-range probability (range enforced in interpreter)", () => {
+      expect(parser.parse("p1.5 C3")).toStrictEqual([
+        { probability: 1.5 },
+        { pitch: 60 },
+      ]);
     });
   });
 
@@ -103,22 +104,25 @@ describe("BarBeatScript Parser - basic tests", () => {
       ]);
     });
 
-    it("rejects out-of-range velocity", () => {
-      expect(() => parser.parse("v128 C3")).toThrow(
-        "MIDI velocity 128 outside valid range 0-127",
-      );
+    it("parses out-of-range velocity (range enforced in interpreter)", () => {
+      expect(parser.parse("v128 C3")).toStrictEqual([
+        { velocity: 128 },
+        { pitch: 60 },
+      ]);
     });
 
-    it("rejects invalid velocity ranges", () => {
-      expect(() => parser.parse("v128-130 C3")).toThrow(
-        "Invalid velocity range 128-130",
-      );
-      expect(() => parser.parse("v0-128 C3")).toThrow(
-        "Invalid velocity range 0-128",
-      );
+    it("parses out-of-range velocity ranges (range enforced in interpreter)", () => {
+      expect(parser.parse("v128-130 C3")).toStrictEqual([
+        { velocityMin: 128, velocityMax: 130 },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("v0-128 C3")).toStrictEqual([
+        { velocityMin: 0, velocityMax: 128 },
+        { pitch: 60 },
+      ]);
     });
 
-    it("rejects negative velocity", () => {
+    it("rejects negative velocity (malformed syntax)", () => {
       expect(() => parser.parse("v-1 C3")).toThrow();
     });
   });

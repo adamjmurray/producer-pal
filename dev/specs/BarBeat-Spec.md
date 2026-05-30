@@ -137,7 +137,11 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     - Invalid: `Cb`, `B#`, `Fb`, `E#` (not supported)
   - Octave is a signed integer (e.g., `C3`, `A#-1`)
   - MIDI pitch is computed as `(octave + 2) * 12 + pitchClassValue`
-  - Result must be in valid MIDI range: 0–127
+  - Valid MIDI range is 0–127. Range is **not** enforced by the parser — an
+    out-of-range pitch (e.g. `C9`, `C-3`) parses successfully and the
+    interpreter **skips the note and warns** (it does not clamp: fabricating a
+    nearby pitch for a typo would invent music). One bad note never aborts the
+    rest of the clip.
 
 - **Bar Copy (`@N=`, `@N=M`, `@N=M-P`, `@N-M=`, `@N-M=P`, `@N-M=P-Q`)**
   - Duplicates bars of notes to other positions
@@ -192,6 +196,14 @@ The parser warns about incomplete or inefficient notation:
 - Pitches buffered but no time position to emit them
 - Time positions with no pitches
 - State changes after pitches but before time positions (wasted state)
+
+The interpreter also warns (without throwing) on out-of-range values, matching
+the transforms and code-exec paths:
+
+- Velocity / velocity-range / probability outside their valid range are
+  **clamped + warned** (velocity to 0–127, probability to 0.0–1.0)
+- An out-of-range pitch is **skipped + warned** (the note is dropped, not
+  clamped)
 
 These are console warnings, not errors - parsing completes successfully.
 
@@ -732,8 +744,9 @@ type RepeatPattern = {
 
 ### Notes
 
-- The grammar computes a `name` variable (e.g., "C3") but only uses it for error
-  messages - it's not included in the AST
+- The grammar emits raw values without range enforcement (an out-of-range
+  velocity/probability/pitch parses fine); the interpreter clamps or skips them.
+  Pitch is computed as a number and the note name is not retained in the AST
 - Each element is a simple object with one or two properties
 - The AST is stateless - no context about what came before
 

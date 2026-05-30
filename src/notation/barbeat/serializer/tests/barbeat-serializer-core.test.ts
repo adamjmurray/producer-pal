@@ -8,6 +8,7 @@ import { createNote } from "#src/test/test-data-builders.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { drumPatternNotes } from "../../barbeat-test-fixtures.ts";
 import { formatNotation } from "../barbeat-serializer.ts";
+import { pitchName } from "../helpers/barbeat-serializer-state.ts";
 import { interpretNotation } from "../../interpreter/barbeat-interpreter.ts";
 
 describe("formatNotation() core", () => {
@@ -209,10 +210,25 @@ describe("formatNotation() core", () => {
     expect(formatNotation(notes)).toBe("p0.8 C3 p1 E3 1|1");
   });
 
-  it("throws error for invalid MIDI pitch", () => {
-    expect(() =>
-      formatNotation([createNote({ pitch: -1 })] as NoteEvent[]),
-    ).toThrow("Invalid MIDI pitch: -1");
+  it("skips out-of-range MIDI pitch and warns instead of throwing", () => {
+    expect(formatNotation([createNote({ pitch: -1 })] as NoteEvent[])).toBe("");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("MIDI pitch outside valid range 0-127"),
+    );
+  });
+
+  it("serializes valid notes while skipping an out-of-range one", () => {
+    const notes = [
+      createNote({ pitch: 60 }),
+      createNote({ pitch: 200 }),
+    ] as NoteEvent[];
+
+    expect(formatNotation(notes)).toBe("C3 1|1");
+  });
+
+  it("pitchName returns a fallback for an unnameable pitch (never throws)", () => {
+    expect(pitchName(-1)).toBe("?-1");
   });
 
   it("clamps velocity ranges to MIDI maximum 127", () => {
