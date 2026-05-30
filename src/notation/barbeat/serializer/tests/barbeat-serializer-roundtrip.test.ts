@@ -21,6 +21,16 @@ describe("round-trip: serialize → parse → interpret", () => {
     ] as NoteEvent[]);
   });
 
+  it("round-trips a note before the clip start (negative time)", () => {
+    // A pickup before 1|1 must serialize as a sub-1 beat in bar 1 (not bar 0)
+    // so it parses back to the same negative start_time.
+    expectRoundTrip([
+      createNote({ pitch: 60, start_time: -1 / 3 }),
+      createNote({ pitch: 62, start_time: 0 }),
+      createNote({ pitch: 64, start_time: 2 }),
+    ] as NoteEvent[]);
+  });
+
   it("round-trips chord", () => {
     expectRoundTrip([
       createNote(),

@@ -223,7 +223,7 @@ export function calculatePositions(
 function warnIfBeforeClipStart(absoluteBeats: number): void {
   if (absoluteBeats < 0) {
     console.warn(
-      "Note position resolves before the clip start (negative time); it sits before 1|1 and won't appear when reading the clip back.",
+      "Note position resolves before the clip start (negative time): it sits before 1|1.",
     );
   }
 }

@@ -75,8 +75,12 @@ export function calculateBarBeat(
     adjustedTime = adjustedTime * (timeSigDenominator / 4);
   }
 
-  const bar = Math.floor(adjustedTime / beatsPerBar) + 1;
-  const beat = (adjustedTime % beatsPerBar) + 1;
+  // Pin the bar floor at 1 so a negative position (a note before the clip
+  // start) serializes as a sub-1 beat in bar 1 rather than bar 0, which would
+  // re-parse to a different value. Matches beatsToBarBeat; identical output for
+  // adjustedTime >= 0.
+  const bar = Math.max(1, Math.floor(adjustedTime / beatsPerBar) + 1);
+  const beat = adjustedTime - (bar - 1) * beatsPerBar + 1;
 
   return { bar, beat };
 }

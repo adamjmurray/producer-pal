@@ -13,9 +13,11 @@ const EPSILON = 0.0005;
  * offset. Dyadic sub-beats use a plain decimal (`1.5`); non-dyadic (tuplet)
  * positions use a `base+n<fraction>` offset (`1+n/12` = beat 1 + an eighth
  * triplet), where the fraction is whole-note based — the same `n` grammar as
- * durations. Falls back to a decimal for genuinely off-grid values.
- * Beat positions are always >= 1 (parser constraint).
- * @param value - Beat position value (must be >= 1)
+ * durations. Falls back to a decimal for genuinely off-grid values. A beat
+ * below the downbeat (value < 1, a note before the clip start / negative time)
+ * is emitted as beat 1 minus an offset (`1-n/12`), since the grammar has no
+ * bare sub-1 beat.
+ * @param value - Beat position value
  * @param timeSigDenominator - Time signature denominator (for the offset unit)
  * @returns Formatted beat position string
  */
@@ -23,6 +25,23 @@ export function formatBeatPosition(
   value: number,
   timeSigDenominator: number | undefined,
 ): string {
+  if (value < 1) {
+    // A beat below the downbeat (negative time, a note before the clip start)
+    // can't be a bare sub-1 beat — the grammar requires a 1-based grid beat.
+    // Express it as beat 1 minus a note-value offset (`1-n/12`), the authoring
+    // form the parser round-trips.
+    const offsetBeats = 1 - value; // musical beats below the downbeat
+    const wholeNoteFraction = musicalBeatsToWholeNoteFraction(
+      offsetBeats,
+      timeSigDenominator,
+    );
+    const offsetFraction =
+      formatBeatOffsetFraction(wholeNoteFraction) ??
+      formatAbsoluteDuration(wholeNoteFraction);
+
+    return `1-n${offsetFraction}`;
+  }
+
   if (value % 1 === 0) return value.toString();
 
   const base = Math.floor(value);
