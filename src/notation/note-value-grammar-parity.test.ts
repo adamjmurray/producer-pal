@@ -14,7 +14,7 @@
 //     3. transform nDuration/barDuration (transform-grammar.peggy)
 //
 //   `±n` beat-offset sites (a `bar|beat` beat field → absolute musical beats)
-//     4. parseBeatValue / barBeatToBeats (regex, barbeat-time.ts)
+//     4. parseBeatValue / barBeatToMusicalBeats (regex, barbeat-time.ts)
 //     5. barbeat `beatValue` rule        (barbeat-grammar.peggy)
 //     6. transform `beatValue` rule      (transform-grammar.peggy, in timeRange)
 //
@@ -36,7 +36,7 @@
 import { describe, expect, it } from "vitest";
 import { parse as parseBarbeat } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import {
-  barBeatToBeats,
+  barBeatToMusicalBeats,
   durationToAbletonBeats,
   timeSigToAbletonBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -139,7 +139,7 @@ function containsNoteValueNode(expr: unknown): boolean {
 // ---- Offset sites: a `bar|beat` beat field → absolute musical beats ----
 
 function offsetViaRegex(beat: string, num: number, den: number): number {
-  return barBeatToBeats(`1|${beat}`, num, den);
+  return barBeatToMusicalBeats(`1|${beat}`, num, den);
 }
 
 function offsetViaBarbeat(beat: string, num: number, den: number): number {
@@ -171,7 +171,7 @@ function offsetViaTransform(beat: string, num: number, den: number): number {
 }
 
 const OFFSET_SITES = [
-  { name: "barBeatToBeats / parseBeatValue", fn: offsetViaRegex },
+  { name: "barBeatToMusicalBeats / parseBeatValue", fn: offsetViaRegex },
   { name: "barbeat beatValue rule", fn: offsetViaBarbeat },
   { name: "transform beatValue rule", fn: offsetViaTransform },
 ] as const;

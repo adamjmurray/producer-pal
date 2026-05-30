@@ -289,7 +289,7 @@ function buildNoteContext(
   // positions as `±n` offset forms (`1|1+n/12`) that a decimal-only regex cannot
   // read, which would drop bar/beat to undefined and make calculateActiveTimeRange
   // skip time-range filtering entirely (the note would match every selector). The
-  // numeric split round-trips exactly through barBeatToBeats, including negative
+  // numeric split round-trips exactly through barBeatToMusicalBeats, including negative
   // time (a note before 1|1, where bar can be 0 and beat > beatsPerBar).
   const musicalBeatsPerBar = timeSigNumerator;
   const bar = Math.floor(musicalBeats / musicalBeatsPerBar) + 1;

@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
-import { parseBeatsPerBar } from "../../time/barbeat-time.ts";
+import {
+  parseBeatsPerBar,
+  splitMusicalBeatsToBarBeat,
+} from "../../time/barbeat-time.ts";
 
 /** A group of notes occurring at the same bar|beat position */
 export interface TimeGroup {
@@ -75,14 +78,10 @@ export function calculateBarBeat(
     adjustedTime = adjustedTime * (timeSigDenominator / 4);
   }
 
-  // Pin the bar floor at 1 so a negative position (a note before the clip
-  // start) serializes as a sub-1 beat in bar 1 rather than bar 0, which would
-  // re-parse to a different value. Matches beatsToBarBeat; identical output for
-  // adjustedTime >= 0.
-  const bar = Math.max(1, Math.floor(adjustedTime / beatsPerBar) + 1);
-  const beat = adjustedTime - (bar - 1) * beatsPerBar + 1;
-
-  return { bar, beat };
+  // Delegate the bar/beat split (incl. the bar-floor-at-1 rule that keeps a
+  // negative position in bar 1 rather than bar 0) to the shared helper, so this
+  // stays in lockstep with musicalBeatsToBarBeat's serialization.
+  return splitMusicalBeatsToBarBeat(adjustedTime, beatsPerBar);
 }
 
 /**

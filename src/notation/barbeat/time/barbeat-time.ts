@@ -55,7 +55,32 @@ export function parseBeatsPerBar(options: BeatsPerBarOptions = {}): number {
 }
 
 /**
- * Convert (musical) beats to bar|beat format.
+ * Split a musical-beat position into 1-based bar and beat numbers — the bar/beat
+ * arithmetic, without formatting the beat field.
+ *
+ * Pin the bar floor at 1 so a negative position (a note before the clip start,
+ * e.g. -⅓ beats) lands within bar 1 as a sub-1/negative beat rather than bar 0
+ * (`0|…`, which would re-parse to a different value). This keeps negative
+ * positions round-trippable through {@link barBeatToMusicalBeats}. For beats
+ * >= 0 the split is the plain floor()+1 form. Shared by
+ * {@link musicalBeatsToBarBeat} (which formats the beat) and the serializer's
+ * `calculateBarBeat` (which needs the raw numeric split for time grouping).
+ * @param musicalBeats - Position in musical beats
+ * @param beatsPerBar - Beats per bar
+ * @returns 1-based bar and beat
+ */
+export function splitMusicalBeatsToBarBeat(
+  musicalBeats: number,
+  beatsPerBar: number,
+): { bar: number; beat: number } {
+  const bar = Math.max(1, Math.floor(musicalBeats / beatsPerBar) + 1);
+  const beat = musicalBeats - (bar - 1) * beatsPerBar + 1;
+
+  return { bar, beat };
+}
+
+/**
+ * Convert musical beats to bar|beat format.
  *
  * The beat field is serialized by {@link formatBeatPosition}, the single
  * canonical formatter shared with the note serializer: an integer or dyadic
@@ -65,26 +90,17 @@ export function parseBeatsPerBar(options: BeatsPerBarOptions = {}): number {
  * `toFixed(3)` would round `1/3` to `0.333` and break the round-trip. The
  * offset's note-value unit is `timeSigDenominator`-relative, so it must be
  * threaded through (it defaults to 4 — quarter-note beats — when omitted).
- *
- * TODO: rename the non-duration-based functions in here (i.e. not the last two) to clearly indicate we are handling bar|beat positions
- * @param beats - Number of (musical) beats
+ * @param beats - Number of musical beats
  * @param beatsPerBar - Beats per bar
  * @param timeSigDenominator - Time signature denominator (the `±n` offset unit)
  * @returns Formatted bar|beat string
  */
-export function beatsToBarBeat(
+export function musicalBeatsToBarBeat(
   beats: number,
   beatsPerBar: number,
   timeSigDenominator?: number,
 ): string {
-  // Pin the bar floor at 1 so a negative position (a note before the clip
-  // start, e.g. `1|1-n/12` → -⅓ beats) serializes within bar 1 (`1|1-n/12`)
-  // rather than bar 0 (`0|…`, which would re-parse to a different value). This
-  // keeps negative positions round-trippable through barBeatToBeats. For beats
-  // >= 0 the bar/beat split is identical to the old floor()+1 form;
-  // formatBeatPosition handles the sub-1/negative beat as a `1-n<fraction>`.
-  const bar = Math.max(1, Math.floor(beats / beatsPerBar) + 1);
-  const beat = beats - (bar - 1) * beatsPerBar + 1;
+  const { bar, beat } = splitMusicalBeatsToBarBeat(beats, beatsPerBar);
 
   return `${bar}|${formatBeatPosition(beat, timeSigDenominator)}`;
 }
@@ -103,7 +119,7 @@ export function beatsToBarBeat(
  * @param timeSigDenominator - Time signature denominator (for the `±n` offset unit)
  * @returns Number of beats
  */
-export function barBeatToBeats(
+export function barBeatToMusicalBeats(
   barBeat: string,
   beatsPerBar: number,
   timeSigDenominator?: number,
@@ -169,7 +185,11 @@ export function abletonBeatsToBarBeat(
   const musicalBeatsPerBar = timeSigNumerator;
   const musicalBeats = abletonBeats * (timeSigDenominator / 4);
 
-  return beatsToBarBeat(musicalBeats, musicalBeatsPerBar, timeSigDenominator);
+  return musicalBeatsToBarBeat(
+    musicalBeats,
+    musicalBeatsPerBar,
+    timeSigDenominator,
+  );
 }
 
 /**
@@ -185,7 +205,7 @@ export function barBeatToAbletonBeats(
   timeSigDenominator: number,
 ): number {
   const musicalBeatsPerBar = timeSigNumerator;
-  const musicalBeats = barBeatToBeats(
+  const musicalBeats = barBeatToMusicalBeats(
     barBeat,
     musicalBeatsPerBar,
     timeSigDenominator,
@@ -363,7 +383,7 @@ function parseBeatValue(
   // Grid beat ± a note-value offset: `1+n/12`, `2-n1/24` (numerator omitted = 1),
   // or the off-grid escape `1-n0.7/4` (decimal numerator). Denominator is a
   // no-leading-zero integer (`0|[1-9]\d*`); a lone `0` reaches the division-by-
-  // zero guard. Kept consistent with the outer barBeatToBeats regex so a denom
+  // zero guard. Kept consistent with the outer barBeatToMusicalBeats regex so a denom
   // the outer accepts never silently mis-parses here.
   const offsetMatch = beatsStr.match(
     /^(-?\d+)([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)$/,

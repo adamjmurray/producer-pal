@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
-import { barBeatToBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { barBeatToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
@@ -252,13 +252,16 @@ export function calculateActiveTimeRange(
     // instead of silently matching the whole clip.
     const noteBeats =
       bar != null && beat != null
-        ? barBeatToBeats(`${bar}|${beat}`, musicalBeatsPerBar)
+        ? barBeatToMusicalBeats(`${bar}|${beat}`, musicalBeatsPerBar)
         : position;
-    const startBeats = barBeatToBeats(
+    const startBeats = barBeatToMusicalBeats(
       `${startBar}|${startBeat}`,
       musicalBeatsPerBar,
     );
-    const endBeats = barBeatToBeats(`${endBar}|${endBeat}`, musicalBeatsPerBar);
+    const endBeats = barBeatToMusicalBeats(
+      `${endBar}|${endBeat}`,
+      musicalBeatsPerBar,
+    );
 
     if (noteBeats < startBeats || noteBeats > endBeats) {
       return { skip: true }; // Skip this assignment - note outside time range
