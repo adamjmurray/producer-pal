@@ -22,13 +22,16 @@
 // the same language and compute matching values where they overlap. It is the
 // single source of truth that keeps the sites from silently diverging again
 // (the intent stated in skills/standard.ts: "same `n` fraction grammar
-// everywhere"), and it pins the two deliberate, documented divergences:
+// everywhere"), and it pins the deliberate, documented rules:
 //   - `Nbar` is a note value on every surface (closed by allowing it in the
 //     transform grammar);
-//   - a bare number / bare fraction is never a note-value duration; and
-//   - the decimal-numerator off-grid escape (`n1.9638/4`) is read-back-only —
-//     emitted and re-read by durationToAbletonBeats but rejected by the two
-//     authoring grammars.
+//   - a bare number / bare fraction is never a note-value duration;
+//   - the decimal-numerator off-grid escape (`n1.9638/4`) is a lingua franca —
+//     accepted (and value-matched) on every duration AND `±n`-offset site, so
+//     off-grid durations/positions round-trip losslessly; and
+//   - the denominator is a no-leading-zero integer everywhere: the grammars use
+//     `[1-9][0-9]*`, the regexes `0|[1-9]\d*` (a lone `0` is a division-by-zero,
+//     `08` is rejected outright), so `n/08` parses on no site.
 
 import { describe, expect, it } from "vitest";
 import { parse as parseBarbeat } from "#src/notation/barbeat/parser/barbeat-parser.ts";
@@ -227,23 +230,55 @@ describe("note-value grammar parity across all parse sites", () => {
     }
   });
 
-  describe("the decimal-numerator off-grid escape is duration-read-only", () => {
-    // `n<beats>/4` is the sample-derived length escape abletonBeatsToDuration
-    // emits; only its own reader (durationToAbletonBeats) accepts a decimal
-    // numerator. The two authoring grammars reject it by design.
+  describe("the decimal-numerator off-grid escape is accepted on every site", () => {
+    // `n<beats>/4` (e.g. n1.9638/4 = 1.9638 Ableton beats) is the off-grid escape
+    // the length/duration serializer emits for a sample-derived value with no
+    // clean note-value fraction. It is a lingua franca now: every duration site
+    // reads it back to the same beats, and every `±n`-offset site accepts the
+    // same decimal numerator (scaled into musical beats by the meter).
     const token = "n1.9638/4";
 
-    it("durationToAbletonBeats reads it back (the off-grid escape)", () => {
-      expect(durationViaRegex(token, 4, 4)).toBeCloseTo(1.9638, 9);
-    });
+    for (const [num, den] of METERS) {
+      it(`durations agree on "${token}" in ${num}/${den}`, () => {
+        const ref = durationViaRegex(token, num, den);
 
-    it("the barbeat duration grammar rejects it", () => {
-      expect(() => durationViaBarbeat(token, 4, 4)).toThrow();
-    });
+        expect(ref).toBeCloseTo(1.9638, 9);
 
-    it("the transform duration grammar rejects it", () => {
-      expect(() => durationViaTransform(token, 4, 4)).toThrow();
-    });
+        for (const site of DURATION_SITES) {
+          expect(site.fn(token, num, den)).toBeCloseTo(ref, 9);
+        }
+      });
+
+      it(`offsets agree on "1+${token}" in ${num}/${den}`, () => {
+        const beat = `1+${token}`; // 1|1+n1.9638/4
+        const ref = offsetViaRegex(beat, num, den);
+
+        for (const site of OFFSET_SITES) {
+          expect(site.fn(beat, num, den)).toBeCloseTo(ref, 9);
+        }
+      });
+    }
+  });
+
+  describe("leading-zero denominators are rejected as note values (F7)", () => {
+    // The grammars' denominator is `[1-9][0-9]*`; the regexes match it with
+    // `0|[1-9]\d*`. A leading-zero denominator (`n/08`) parses on no site. (A lone
+    // `n/0` is a division-by-zero — rejected too, see barbeat-time-basic tests.)
+    for (const token of ["n/08", "n/016", "n1/08"]) {
+      it(`duration "${token}" is rejected by every duration site`, () => {
+        for (const site of DURATION_SITES) {
+          expect(() => site.fn(token, 4, 4)).toThrow();
+        }
+      });
+    }
+
+    for (const beat of ["1+n/08", "1-n/016", "1+n1/08"]) {
+      it(`offset "1|${beat}" is rejected by every offset site`, () => {
+        for (const site of OFFSET_SITES) {
+          expect(() => site.fn(beat, 4, 4)).toThrow();
+        }
+      });
+    }
   });
 
   describe("±n beat offsets agree across all offset sites", () => {

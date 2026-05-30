@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { DEFAULT_BEATS_PER_BAR } from "#src/notation/barbeat/barbeat-config.ts";
-import { formatBeatPosition } from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
+import {
+  formatBeatPosition,
+  formatOffGridBeats,
+} from "#src/notation/barbeat/serializer/helpers/barbeat-serializer-fractions.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 
 const DURATION_EPSILON = 1e-9;
@@ -105,7 +108,9 @@ export function barBeatToBeats(
   beatsPerBar: number,
   timeSigDenominator?: number,
 ): number {
-  const match = barBeat.match(/^(-?\d+)\|((-?\d+)(?:[+-]n\d*\/\d+|\.\d+)?)$/);
+  const match = barBeat.match(
+    /^(-?\d+)\|((-?\d+)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*)|\.\d+)?)$/,
+  );
 
   if (!match) {
     throw new Error(
@@ -198,12 +203,15 @@ export function barBeatToAbletonBeats(
  * This function is **total**: it never throws for a length/duration value. A
  * negative value (which a transform can produce before its own clamp catches
  * it) warns and is treated as 0 rather than throwing.
- * On-grid values get an exact note-value spelling; off-grid values (only ever
- * produced by *measuring* a sample-derived length, never by authoring) fall
- * back to a decimal-numerator note value pinned to `/4` (`n<beats>/4`), where
- * the numerator reads directly as the beat count (`n1.9638/4` == 1.9638
- * Ableton beats). This keeps the off-grid escape under the `n` sigil and
- * round-trips back through `durationToAbletonBeats`.
+ * On-grid values get an exact note-value spelling; off-grid values (no clean
+ * note-value fraction at any canonical denominator — most often a *measured*
+ * sample-derived length, but any computed off-grid beat count too) fall back to
+ * a decimal-numerator note value pinned to `/4` (`n<beats>/4`), where the
+ * numerator reads directly as the beat count (`n1.9638/4` == 1.9638 Ableton
+ * beats). This keeps the off-grid escape under the `n` sigil and round-trips
+ * back through `durationToAbletonBeats`. The same escape (via the shared
+ * `formatOffGridBeats`) spells off-grid note durations, `@step` intervals, and
+ * pre-downbeat positions — the widened note-value grammars accept it everywhere.
  *
  * Output shapes:
  *  - `0bar` (zero duration)
@@ -244,7 +252,7 @@ export function abletonBeatsToDuration(
   const frac = abletonBeatsToWholeNoteFraction(remaining);
 
   if (frac == null) {
-    // Off-grid (sample-derived) length: no exact note-value fraction exists.
+    // Off-grid length (no exact note-value fraction; typically sample-derived).
     // Spell the whole value as a decimal-numerator note value pinned to `/4`
     // (`n<beats>/4` == <beats> Ableton beats, since `n<x>/4` = x quarters),
     // keeping the escape under the `n` sigil so the duration vocabulary stays
@@ -290,9 +298,13 @@ export function durationToAbletonBeats(
   timeSigDenominator: number,
 ): number {
   // Numerator may be empty (→ 1), an integer, or a decimal (the `n<beats>/4`
-  // off-grid escape, e.g. `n1.9638/4`). Denominator is always an integer.
+  // off-grid escape, e.g. `n1.9638/4`). Denominator is a no-leading-zero integer
+  // (`0|[1-9]\d*`): a lone `0` flows to the division-by-zero guard, while `08`
+  // (leading zero) is rejected outright, matching the peggy grammars' denominator
+  // (`[1-9][0-9]*`). Bars stay `\d+` so `0bar` parses to 0 (rejected downstream
+  // as non-positive, not as a format error).
   const match = duration.match(
-    /^(?:(\d+)bar(?:\+n(\d+\.\d+|\d*)\/(\d+))?|n(\d+\.\d+|\d*)\/(\d+))$/,
+    /^(?:(\d+)bar(?:\+n(\d+\.\d+|\d*)\/(0|[1-9]\d*))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*))$/,
   );
 
   if (!match) {
@@ -348,8 +360,14 @@ function parseBeatValue(
   context: string,
   timeSigDenominator: number | undefined,
 ): number {
-  // Grid beat ± a note-value offset: `1+n/12`, `2-n1/24` (numerator omitted = 1).
-  const offsetMatch = beatsStr.match(/^(-?\d+)([+-])n(\d*)\/(\d+)$/);
+  // Grid beat ± a note-value offset: `1+n/12`, `2-n1/24` (numerator omitted = 1),
+  // or the off-grid escape `1-n0.7/4` (decimal numerator). Denominator is a
+  // no-leading-zero integer (`0|[1-9]\d*`); a lone `0` reaches the division-by-
+  // zero guard. Kept consistent with the outer barBeatToBeats regex so a denom
+  // the outer accepts never silently mis-parses here.
+  const offsetMatch = beatsStr.match(
+    /^(-?\d+)([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)$/,
+  );
 
   if (offsetMatch) {
     const base = Number.parseInt(offsetMatch[1] as string);
@@ -434,21 +452,6 @@ function abletonBeatsToWholeNoteFraction(
   }
 
   return null;
-}
-
-/**
- * Format an off-grid length as the decimal numerator of an `n<beats>/4` note
- * value: fixed precision with trailing zeros (and a bare trailing dot)
- * stripped. Integers render without a decimal.
- * @param beats - Ableton beats (quarter notes)
- * @returns Numerator string (e.g. "1.9638", "2")
- */
-function formatOffGridBeats(beats: number): string {
-  if (Number.isInteger(beats)) {
-    return beats.toString();
-  }
-
-  return beats.toFixed(4).replace(/\.?0+$/, "");
 }
 
 /**

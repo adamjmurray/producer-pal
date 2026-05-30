@@ -282,4 +282,16 @@ describe("round-trip: serialize → parse → interpret", () => {
       createNote({ pitch: 67, start_time: 0 }),
     ] as NoteEvent[]);
   });
+
+  it("round-trips off-grid (sample-derived) durations and pre-downbeat positions via the decimal escape", () => {
+    // Genuinely off-grid values (no clean note-value fraction) now spell with the
+    // lossless decimal-numerator escape `n<beats>/4` on BOTH the duration surface
+    // (F2) and the sub-1 `±n` offset surface (the F5 pre-downbeat tail) — was a
+    // bounded /256 / decimal-beat round before. Values are exact at the escape's
+    // 4-decimal precision so they round-trip within tolerance.
+    expectRoundTrip([
+      createNote({ pitch: 60, start_time: -0.1234, duration: 0.1234 }), // 1|1-n0.1234/4, n0.1234/4
+      createNote({ pitch: 62, start_time: 0, duration: 0.5 }),
+    ] as NoteEvent[]);
+  });
 });

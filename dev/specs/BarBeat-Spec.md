@@ -61,8 +61,11 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     (tuplet)** position as its exact `±n` offset (`1|1+n/12`, never the lossy
     `1|1.333`); and a position before the clip start, within bar 1, as a
     `1-n<fraction>` offset (e.g. `1|1-n/12`). This makes read → re-author → read
-    a fixed point for tuplet and negative positions; only genuinely off-grid
-    (sample-derived) values fall back to a rounded decimal.
+    a fixed point for tuplet and negative positions. A genuinely off-grid
+    position ≥ 1 falls back to a bare decimal beat (`1|2.789`); a genuinely
+    off-grid position **before** the downbeat (no bare sub-1 decimal beat
+    exists) falls back to the `1-n<beats>/4` decimal-numerator escape, so it
+    round-trips losslessly too.
 
   - **Repeat patterns**: `beat x times @ step` generates multiple positions.
     `step` uses the same note-value duration grammar as `n` (see Duration):
@@ -97,8 +100,11 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Sets duration for following notes until changed
   - **Absolute note value**: written as a fraction of a whole note,
     `n<numerator>/<denominator>`. Numerator defaults to 1 (`n/4` == `n1/4`).
-    Denominator is **mandatory** — bare integers (`n1`), decimals (`n0.5`), and
-    mixed numbers (`n1+1/2`) are invalid and raise a parser error
+    Denominator is **mandatory** — bare integers (`n1`), bare decimals (`n0.5`),
+    and mixed numbers (`n1+1/2`) are invalid and raise a parser error. A
+    _decimal_ numerator is valid only with a denominator present — it is the
+    off-grid escape `n<beats>/4` (see the read contract below), not something
+    you author by hand
   - Common values: `n/1` whole, `n/2` half, `n/4` quarter, `n/8` eighth, `n/16`
     sixteenth, `n3/8` dotted quarter, `n5/4` five quarter notes
   - Tuplets: `n/3` half-note triplet, `n/6` quarter triplet, `n/12` eighth
@@ -123,11 +129,15 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     **invalid** as durations — a duration is always a bar count or an
     `n`-prefixed note value, never a bare scalar; the `n` prefix marks a note
     value everywhere
-  - NOTE (read contract): when a clip is serialized back to notation, MIDI note
-    durations round to the nearest representable note value (absorbing float
-    epsilon and humanized timing). A clip/arrangement `length` emits an exact
-    `n<fraction>`/`Nbar` when it lands on the grid (within ~1e-6), otherwise the
-    `n<beats>/4` escape at fixed precision (trailing zeros stripped)
+  - NOTE (read contract): when a clip is serialized back to notation, a MIDI
+    note duration that lands on a representable note value (within float
+    epsilon) emits that exact `n<fraction>`; a genuinely off-grid duration (e.g.
+    a sample-derived or computed length with no clean note value) emits the same
+    `n<beats>/4` decimal-numerator escape, so it round-trips losslessly rather
+    than snapping to a wrong note value. A clip/arrangement `length` behaves
+    identically: exact `n<fraction>`/`Nbar` on the grid (within ~1e-6),
+    otherwise the `n<beats>/4` escape at fixed precision (trailing zeros
+    stripped). `@step` intervals share the same formatter
 
 - **Note (`C4`, `Eb2`, `F#3`, etc.)**
   - Note names follow standard pitch notation using:

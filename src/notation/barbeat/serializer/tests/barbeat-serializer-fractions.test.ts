@@ -8,6 +8,7 @@ import {
   formatAbsoluteDuration,
   formatBeatPosition,
   formatDecimal,
+  formatOffGridBeats,
 } from "../helpers/barbeat-serializer-fractions.ts";
 
 describe("formatBeatPosition", () => {
@@ -58,6 +59,15 @@ describe("formatBeatPosition", () => {
   it("falls back to decimal for genuinely off-grid values", () => {
     expect(formatBeatPosition(1.123, 4)).toBe("1.123");
     expect(formatBeatPosition(2.789, 4)).toBe("2.789");
+  });
+
+  it("uses the decimal-numerator escape for off-grid pre-downbeat positions (F5)", () => {
+    // A genuinely off-grid sub-1 (pre-downbeat) position has no clean note-value
+    // offset and no bare sub-1 decimal beat to fall back to. It now spells with
+    // the lossless `1-n<beats>/4` escape (delegated to formatAbsoluteDuration),
+    // which the widened `±n`-offset grammars parse back exactly. (Off-grid
+    // positions ≥ 1 keep the shorter bare decimal beat — see the case above.)
+    expect(formatBeatPosition(0.8766, 4)).toBe("1-n0.1234/4");
   });
 
   it("scales the offset note value by meter (denominator-aware)", () => {
@@ -123,12 +133,28 @@ describe("formatAbsoluteDuration", () => {
     expect(formatAbsoluteDuration(1 / 40)).toBe("/40"); // quintuplet 32nd
   });
 
-  it("rounds genuinely off-grid values to the finest denominator (256)", () => {
+  it("spells genuinely off-grid values with the lossless decimal escape", () => {
     // A value with no exact note-value fraction at any canonical denominator
-    // (only ever produced by measuring a sample-derived length) rounds to /256,
-    // bounding the residual at half of 1/256 of a whole note. 1/9 has no clean
-    // note-value spelling, so it approximates at 1/256 resolution.
-    expect(formatAbsoluteDuration(1 / 9)).toBe("28/256");
+    // (only ever produced by measuring a sample-derived length) uses the
+    // decimal-numerator escape `<beats>/4` instead of snapping to a wrong note
+    // value. 1/9 whole note = 4/9 Ableton beats ≈ 0.4444, so it spells as
+    // "0.4444/4" (the caller prepends `n` → `n0.4444/4`), which the widened
+    // note/`@step`/offset grammars parse back losslessly.
+    expect(formatAbsoluteDuration(1 / 9)).toBe("0.4444/4");
+  });
+});
+
+describe("formatOffGridBeats", () => {
+  it("renders integers without a decimal point", () => {
+    expect(formatOffGridBeats(0)).toBe("0");
+    expect(formatOffGridBeats(2)).toBe("2");
+  });
+
+  it("keeps a decimal to 4-place precision, trimming trailing zeros", () => {
+    expect(formatOffGridBeats(1.9638)).toBe("1.9638");
+    expect(formatOffGridBeats(0.5)).toBe("0.5");
+    expect(formatOffGridBeats(1.25)).toBe("1.25");
+    expect(formatOffGridBeats(4 / 9)).toBe("0.4444"); // 0.4444… → 0.4444
   });
 });
 

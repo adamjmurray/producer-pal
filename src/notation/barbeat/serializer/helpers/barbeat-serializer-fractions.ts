@@ -33,12 +33,9 @@ export function formatBeatPosition(
     // can't be a bare sub-1 beat — the grammar requires a 1-based grid beat.
     // Express it as beat 1 minus a note-value offset (`1-n/12`), the authoring
     // form the parser round-trips. A clean tuplet/dyadic offset is exact; a
-    // genuinely off-grid sub-1 position rounds to the finest representable
-    // offset (via formatAbsoluteDuration's fallback). The value≥1 branch can
-    // fall back to a bare decimal beat (`1|2.96`, lossless), but there is no
-    // bare sub-1 decimal beat, so off-grid pre-downbeat positions keep that
-    // bounded residual until the decimal-numerator offset escape lands with the
-    // off-grid-escape decision (F2).
+    // genuinely off-grid sub-1 position falls through to formatAbsoluteDuration's
+    // decimal-numerator escape (`1-n0.7/4`), which the `±n`-offset grammars now
+    // accept — so it round-trips losslessly too, with no bare-sub-1-decimal gap.
     const offsetBeats = 1 - value; // musical beats below the downbeat
     const wholeNoteFraction = musicalBeatsToWholeNoteFraction(
       offsetBeats,
@@ -106,11 +103,13 @@ export const BEAT_OFFSET_DENOMINATORS = [
 ];
 
 /**
- * Format an absolute duration/step value as a `<num>/<den>` fraction of a whole note.
- * Used for `n` durations and `@step` intervals in bar|beat notation.
- * Always emits the fraction form (numerator omitted when 1).
+ * Format an absolute duration/step value as a `<num>/<den>` fraction of a whole
+ * note. Used for `n` durations and `@step` intervals in bar|beat notation. Emits
+ * the clean note-value fraction (numerator omitted when 1) when one exists, or
+ * the lossless decimal-numerator off-grid escape `<beats>/4` for a genuinely
+ * off-grid (sample-derived) value.
  * @param wholeNoteFraction - Value as a fraction of a whole note (e.g., 1/4 = quarter)
- * @returns Formatted value string (e.g., "/4", "3/8", "/12", "5/4")
+ * @returns Formatted value string (e.g., "/4", "3/8", "/12", "5/4", "1.9638/4")
  */
 export function formatAbsoluteDuration(wholeNoteFraction: number): string {
   if (wholeNoteFraction === 0) return "0/1";
@@ -129,18 +128,14 @@ export function formatAbsoluteDuration(wholeNoteFraction: number): string {
 
   // Fallback: a genuinely off-grid value (no exact note-value fraction at any
   // canonical denominator — only ever produced by *measuring* a sample-derived
-  // length, never by authoring). Round to the finest representable denominator
-  // so the residual error is bounded (≤ half of 1/256 of a whole note ≈ 0.0078
-  // Ableton beats) and the token stays grammar-valid. A lossless off-grid
-  // spelling would need the decimal-numerator escape (`n<beats>/4`), which the
-  // note/`@step` grammars currently reject — see the off-grid-escape discussion
-  // (F2) for that cross-channel decision.
-  const fallbackDen = OFF_GRID_FALLBACK_DENOMINATOR;
-  const fallbackNum = Math.max(1, Math.round(wholeNoteFraction * fallbackDen));
-
-  return fallbackNum === 1
-    ? `/${fallbackDen}`
-    : `${fallbackNum}/${fallbackDen}`;
+  // length, never by authoring). Spell it losslessly with the decimal-numerator
+  // escape `<beats>/4` (the caller prepends `n`, giving `n<beats>/4`): the `/4`
+  // denominator makes the numerator read as Ableton beats, so the value is
+  // `wholeNoteFraction * 4` quarters. The note/`@step`/`±n`-offset grammars all
+  // accept this escape (locked by note-value-grammar-parity.test.ts) — it is the
+  // same form abletonBeatsToDuration emits for off-grid lengths, fixed precision,
+  // never a silent round to a wrong note value.
+  return `${formatOffGridBeats(wholeNoteFraction * 4)}/4`;
 }
 
 /**
@@ -152,8 +147,23 @@ export function formatAbsoluteDuration(wholeNoteFraction: number): string {
  */
 const ABSOLUTE_DURATION_DENOMINATORS = NOTE_VALUE_DENOMINATORS;
 
-/** Finest representable denominator — the off-grid rounding floor. */
-const OFF_GRID_FALLBACK_DENOMINATOR = Math.max(...NOTE_VALUE_DENOMINATORS);
+/**
+ * Format an off-grid value as the decimal numerator of an `n<beats>/4` note
+ * value: fixed 4-place precision with trailing zeros (and a bare trailing dot)
+ * stripped; integers render without a decimal. Shared by both off-grid escapes —
+ * `formatAbsoluteDuration` (durations/`@step`/sub-1 offsets) here and
+ * `abletonBeatsToDuration` (lengths) in barbeat-time.ts — so the two stay
+ * byte-identical.
+ * @param beats - Value in Ableton beats (quarter notes)
+ * @returns Numerator string (e.g. "1.9638", "2")
+ */
+export function formatOffGridBeats(beats: number): string {
+  if (Number.isInteger(beats)) {
+    return beats.toString();
+  }
+
+  return beats.toFixed(4).replace(/\.?0+$/, "");
+}
 
 /**
  * Check if a value can be represented losslessly with 3 decimal places.

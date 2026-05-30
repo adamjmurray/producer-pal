@@ -221,9 +221,14 @@ unsignedMixedNumber
   }
 
 unsignedFraction
-  = num:[0-9]* "/" den:[1-9] [0-9]* {
+  = num:([0-9]+ "." [0-9]+ / [0-9]*) "/" den:[1-9] [0-9]* {
+    // Numerator may be empty (→ 1), an integer, or a DECIMAL: the off-grid escape
+    // `n<beats>/4` (e.g. `n1.9638/4`) the length/duration serializer emits for a
+    // sample-derived value with no clean note-value fraction. The denominator
+    // stays a no-leading-zero integer. Kept in parity with the TS regexes in
+    // barbeat-time.ts by note-value-grammar-parity.test.ts.
     const parts = text().split('/');
-    const numerator = parts[0] === '' ? 1 : Number.parseInt(parts[0]);
+    const numerator = parts[0] === '' ? 1 : Number.parseFloat(parts[0]);
     const denominator = Number.parseInt(parts[1]);
     return numerator / denominator;
   }
