@@ -19,6 +19,10 @@ export interface ModelSpec {
   model: string;
 }
 
+/** Suffix appended to model-related CLI errors pointing at --list-models. */
+export const LIST_MODELS_HINT =
+  "Use --list-models [provider] to list available models.";
+
 /**
  * Parse a model argument into provider and model
  *
@@ -35,6 +39,10 @@ export function parseModelArg(arg: string): ModelSpec {
     const model = arg.slice(slashIndex + 1);
 
     validateProvider(provider);
+
+    if (model === "") {
+      throw new Error(`Missing model after "${provider}/". Specify a model.`);
+    }
 
     return { provider: provider as EvalProvider, model };
   }

@@ -12,7 +12,7 @@ import {
   type EvalScenarioResult,
   type EvalTurnResult,
 } from "../../types.ts";
-import { type SimpleJudgeResult } from "../judge-response-parser.ts";
+import { type SimpleJudgeResult } from "../judge/judge-response-parser.ts";
 import { assertionLabel } from "./assertion-label.ts";
 import {
   type JsonChecks,

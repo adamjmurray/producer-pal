@@ -6,7 +6,10 @@
 
 import { Command } from "commander";
 import { listModels } from "#evals/shared/list-models.ts";
-import { parseModelArg } from "#evals/shared/parse-model-arg.ts";
+import {
+  LIST_MODELS_HINT,
+  parseModelArg,
+} from "#evals/shared/parse-model-arg.ts";
 import { SYSTEM_INSTRUCTION } from "#webui/lib/system-instruction.ts";
 import { runChat } from "./chat.ts";
 import { collapseStdoutNewlines } from "./shared/collapse-stdout-newlines.ts";
@@ -87,8 +90,7 @@ program
 
     if (!modelArg) {
       program.error(
-        "required option '-m, --model <model>' not specified. " +
-          "Use --list-models [provider] to list available models.",
+        `required option '-m, --model <model>' not specified. ${LIST_MODELS_HINT}`,
       );
     }
 
@@ -102,9 +104,7 @@ program
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
 
-      program.error(
-        `${message} Use --list-models [provider] to list available models.`,
-      );
+      program.error(`${message} ${LIST_MODELS_HINT}`);
 
       return;
     }

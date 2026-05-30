@@ -11,12 +11,9 @@
 import { styleText } from "node:util";
 import { Command } from "commander";
 import { collapseStdoutNewlines } from "#evals/chat/shared/collapse-stdout-newlines.ts";
-import {
-  WAVEFORM_UNIT,
-  efficiencyColor,
-} from "#evals/chat/shared/formatting.ts";
 import { listModels } from "#evals/shared/list-models.ts";
 import {
+  LIST_MODELS_HINT,
   parseModelArg,
   type ModelSpec,
 } from "#evals/shared/parse-model-arg.ts";
@@ -30,14 +27,10 @@ import { generateRunId } from "./helpers/json-results/run-id.ts";
 import { type JsonEvalResult } from "./helpers/json-results/types.ts";
 import { writeJsonResult } from "./helpers/json-results/writer.ts";
 import { setQuietMode } from "./helpers/output-config.ts";
-import {
-  printResultsTable,
-  type ResultsByScenario,
-} from "./helpers/report-table.ts";
+import { type ResultsByScenario } from "./helpers/report-table.ts";
 import { printResultBlock } from "./helpers/result-printer.ts";
+import { printSummary } from "./helpers/summary-printer.ts";
 import {
-  buildMultiTrialParts,
-  formatParts,
   parseRepeatCount,
   printTrialSummary,
 } from "./helpers/trial-helpers.ts";
@@ -146,8 +139,7 @@ async function runEvaluation(options: CliOptions): Promise<void> {
 
   if (options.model.length === 0) {
     program.error(
-      "-m, --model is required when running tests. " +
-        "Use --list-models [provider] to list available models.",
+      `-m, --model is required when running tests. ${LIST_MODELS_HINT}`,
     );
   }
 
@@ -159,8 +151,21 @@ async function runEvaluation(options: CliOptions): Promise<void> {
     program.error("--all and --test cannot be used together");
   }
 
+  let modelSpecs: ModelSpec[];
+  let judgeOverride: ModelSpec;
+
   try {
-    const modelSpecs = options.model.map(parseModelArg);
+    modelSpecs = options.model.map(parseModelArg);
+    judgeOverride = parseModelArg(options.judge ?? GEMINI_CONFIG.defaultModel);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    program.error(`${message} ${LIST_MODELS_HINT}`);
+
+    return;
+  }
+
+  try {
     const configProfiles = loadConfigProfiles(
       options.config.length > 0 ? options.config : undefined,
     );
@@ -173,10 +178,6 @@ async function runEvaluation(options: CliOptions): Promise<void> {
       console.error("No scenarios to run.");
       process.exit(1);
     }
-
-    const judgeOverride = parseModelArg(
-      options.judge ?? GEMINI_CONFIG.defaultModel,
-    );
 
     const repeatCount = parseRepeatCount(options.repeat);
     const totalRuns =
@@ -328,126 +329,4 @@ async function runTrials(
   }
 
   return results;
-}
-
-/**
- * Print summary of all results
- *
- * @param resultsByScenario - 3D results map
- * @param modelSpecs - All model specs tested
- * @param configProfiles - All config profiles tested
- */
-function printSummary(
-  resultsByScenario: ResultsByScenario,
-  modelSpecs: ModelSpec[],
-  configProfiles: ConfigProfile[],
-): void {
-  // Use table for multi-model or multi-config runs
-  if (modelSpecs.length > 1 || configProfiles.length > 1) {
-    printResultsTable(resultsByScenario, modelSpecs, configProfiles);
-
-    return;
-  }
-
-  // Single model + single config - use simple summary
-  const allResultGroups = [...resultsByScenario.values()].flatMap((modelMap) =>
-    [...modelMap.values()].flatMap((configMap) => [...configMap.values()]),
-  );
-
-  const modelLabel = modelSpecs[0]
-    ? modelSpecs[0].model
-      ? `${modelSpecs[0].provider}/${modelSpecs[0].model}`
-      : modelSpecs[0].provider
-    : "";
-
-  const waveform = WAVEFORM_UNIT.repeat(Math.ceil(72 / WAVEFORM_UNIT.length));
-
-  console.log("\n" + styleText("gray", waveform) + "\n");
-  console.log(styleText("bold", `Summary: ${modelLabel}`) + "\n");
-
-  let passCount = 0;
-  let failCount = 0;
-
-  for (const results of allResultGroups) {
-    const passed = results.filter((r) => r.result === "pass").length;
-
-    passCount += passed;
-    failCount += results.length - passed;
-
-    // Show summary for the last trial (or only trial)
-    const lastResult = results.at(-1) as JsonEvalResult;
-
-    console.log("  " + formatSummaryLine(lastResult, results));
-
-    if (lastResult.error) {
-      console.log("    " + styleText("red", "Error: " + lastResult.error));
-    }
-  }
-
-  const totalRuns = passCount + failCount;
-
-  console.log(`\n  ${totalRuns} run(s): ${passCount} pass, ${failCount} fail`);
-}
-
-/**
- * Format a single scenario line for the multi-scenario summary.
- * When multiple trial results are provided, shows trial pass rate.
- *
- * @param result - Scenario result (last trial when repeating)
- * @param allTrials - All trial results for this scenario/model/config
- * @returns Formatted summary line
- */
-function formatSummaryLine(
-  result: JsonEvalResult,
-  allTrials: JsonEvalResult[],
-): string {
-  // Multi-trial: aggregate stats across all trials
-  if (allTrials.length > 1) {
-    const statsText = formatParts(buildMultiTrialParts(allTrials));
-    const allPassed = allTrials.every((t) => t.result === "pass");
-    const overallColor = allPassed ? "green" : "red";
-
-    return `${styleText(overallColor, result.scenarioId + ":")} ${statsText}`;
-  }
-
-  // Single trial: show individual check/efficiency/judge details
-  return formatSingleTrialLine(result);
-}
-
-/**
- * Format a single-trial summary line with detailed check/efficiency/judge info
- *
- * @param result - Single trial result
- * @returns Formatted summary line
- */
-function formatSingleTrialLine(result: JsonEvalResult): string {
-  const { checks } = result;
-  const passed = checks.results.filter((c) => c.pass).length;
-  const total = checks.results.length;
-  const checksColor = checks.pass ? "green" : "red";
-  const parts = ["checks " + styleText(checksColor, `${passed}/${total}`)];
-
-  if (result.efficiency) {
-    const effColor = efficiencyColor(result.efficiency.percentage);
-
-    parts.push(
-      "efficiency " + styleText(effColor, `${result.efficiency.percentage}%`),
-    );
-  }
-
-  if (result.judge) {
-    const judgeColor = result.judge.pass ? "green" : "red";
-    const judgeText = result.judge.pass ? "pass" : "fail";
-    const issueSuffix =
-      result.judge.issues.length > 0
-        ? ` (${result.judge.issues.length} issue(s))`
-        : "";
-
-    parts.push("judge " + styleText(judgeColor, judgeText + issueSuffix));
-  }
-
-  const overallColor = result.result === "pass" ? "green" : "red";
-  const id = styleText(overallColor, result.scenarioId + ":");
-
-  return `${id} ${parts.join(" | ")}`;
 }

@@ -52,7 +52,16 @@ export async function listModels(
     return 1;
   }
 
-  const allModels = await fetchModelsForProvider(arg, options);
+  let allModels: string[];
+
+  try {
+    allModels = await fetchModelsForProvider(arg, options);
+  } catch (error) {
+    console.error(`Failed to list models for ${arg}: ${describeError(error)}`);
+
+    return 1;
+  }
+
   const cap = arg === "openrouter" ? OPENROUTER_MODEL_CAP : null;
   const shown = cap != null ? allModels.slice(0, cap) : allModels;
   const countLabel =
@@ -81,6 +90,55 @@ export function formatProviderList(): string {
 
     return `  ${provider}${suffix}`;
   }).join("\n");
+}
+
+/**
+ * Describe an error for CLI output, unwrapping a `fetch failed` cause
+ * (e.g. "connect ECONNREFUSED") so network errors are actionable.
+ *
+ * @param error - Caught error value
+ * @returns Human-readable message (no stack trace)
+ */
+function describeError(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return String(error);
+  }
+
+  const detail = causeDetail((error as { cause?: unknown }).cause);
+
+  return detail ? `${error.message} (${detail})` : error.message;
+}
+
+/**
+ * Extract an actionable detail from an error's cause. `fetch failed` wraps the
+ * underlying connection error in an AggregateError whose own message is empty,
+ * so fall back to its first sub-error or its error code.
+ *
+ * @param cause - The `.cause` of a caught error
+ * @returns A short detail string, or "" when none is available
+ */
+function causeDetail(cause: unknown): string {
+  if (!(cause instanceof Error)) {
+    return "";
+  }
+
+  if (cause.message) {
+    return cause.message;
+  }
+
+  const errors = (cause as { errors?: unknown }).errors;
+
+  if (Array.isArray(errors)) {
+    const sub = errors.find((e) => e instanceof Error && e.message);
+
+    if (sub instanceof Error) {
+      return sub.message;
+    }
+  }
+
+  const code = (cause as { code?: unknown }).code;
+
+  return typeof code === "string" ? code : "";
 }
 
 /**

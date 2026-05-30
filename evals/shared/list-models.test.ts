@@ -105,7 +105,7 @@ describe("listModels", () => {
     expect(output).not.toContain("models/gemini");
   });
 
-  it("throws a readable error on a non-OK response", async () => {
+  it("returns 1 and reports a non-OK response without a stack trace", async () => {
     process.env.OPENAI_KEY = "test-key";
     vi.stubGlobal(
       "fetch",
@@ -115,7 +115,83 @@ describe("listModels", () => {
         statusText: "Unauthorized",
       }),
     );
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
 
-    await expect(listModels("openai")).rejects.toThrow("401");
+    const code = await listModels("openai");
+
+    expect(code).toBe(1);
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to list models for openai: "),
+    );
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("401"));
+  });
+
+  it("returns 1 and unwraps a fetch-failed cause for network errors", async () => {
+    process.env.OPENAI_KEY = "test-key";
+    const fetchError = new TypeError("fetch failed");
+
+    fetchError.cause = new Error("connect ECONNREFUSED 127.0.0.1:11434");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(fetchError));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const code = await listModels("openai");
+
+    expect(code).toBe(1);
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("fetch failed (connect ECONNREFUSED"),
+    );
+  });
+
+  it("unwraps an AggregateError cause via its sub-errors", async () => {
+    process.env.OPENAI_KEY = "test-key";
+    const fetchError = new TypeError("fetch failed");
+    // Undici's `fetch failed` wraps connection attempts in an AggregateError
+    // whose own message is empty.
+    const aggregate = new AggregateError(
+      [new Error("connect ECONNREFUSED ::1:11434")],
+      "",
+    );
+
+    fetchError.cause = aggregate;
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(fetchError));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const code = await listModels("openai");
+
+    expect(code).toBe(1);
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("fetch failed (connect ECONNREFUSED ::1:11434)"),
+    );
+  });
+
+  it("falls back to a cause error code when no message is available", async () => {
+    process.env.OPENAI_KEY = "test-key";
+    const fetchError = new TypeError("fetch failed");
+    const cause = new Error("");
+
+    (cause as Error & { code?: string }).code = "ENOTFOUND";
+    fetchError.cause = cause;
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(fetchError));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const code = await listModels("openai");
+
+    expect(code).toBe(1);
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("fetch failed (ENOTFOUND)"),
+    );
+  });
+
+  it("returns 1 and stringifies a non-Error rejection", async () => {
+    process.env.OPENAI_KEY = "test-key";
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue("boom"));
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const code = await listModels("openai");
+
+    expect(code).toBe(1);
+    expect(error).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to list models for openai: boom"),
+    );
   });
 });
