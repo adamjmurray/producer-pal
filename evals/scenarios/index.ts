@@ -15,12 +15,13 @@ import {
   WAVEFORM_UNIT,
   efficiencyColor,
 } from "#evals/chat/shared/formatting.ts";
+import { listModels } from "#evals/shared/list-models.ts";
 import {
   parseModelArg,
   type ModelSpec,
 } from "#evals/shared/parse-model-arg.ts";
 import { GEMINI_CONFIG } from "#evals/shared/provider-configs.ts";
-import { loadConfigProfiles, listConfigProfileIds } from "./config-profiles.ts";
+import { loadConfigProfiles } from "./config-profiles.ts";
 import {
   toJsonResult,
   type TrialInfo,
@@ -40,7 +41,7 @@ import {
   parseRepeatCount,
   printTrialSummary,
 } from "./helpers/trial-helpers.ts";
-import { loadScenarios, listScenarioSummaries } from "./load-scenarios.ts";
+import { loadScenarios, printList } from "./load-scenarios.ts";
 import { runScenario } from "./run-scenario.ts";
 import { type ConfigProfile } from "./types.ts";
 
@@ -55,6 +56,7 @@ interface CliOptions {
   judge?: string;
   repeat?: string;
   list?: boolean;
+  listModels?: string | boolean;
   all?: boolean;
   skipSetup?: boolean;
   quiet?: boolean;
@@ -107,6 +109,10 @@ program
   )
   .option("-l, --list", "List available scenarios and config profiles")
   .option(
+    "--list-models [provider]",
+    "List models for a provider (omit to list providers), then exit",
+  )
+  .option(
     "-s, --skip-setup",
     "Skip Live Set setup (use existing MCP connection)",
   )
@@ -115,6 +121,10 @@ program
   .option("--no-json", "Skip writing JSON result files to disk")
   .option("-a, --all", "Run all scenarios")
   .action(async (options: CliOptions) => {
+    if (options.listModels != null) {
+      process.exit(await listModels(options.listModels));
+    }
+
     if (options.list) {
       printList();
 
@@ -127,25 +137,6 @@ program
 program.parse();
 
 /**
- * Print available scenarios and config profiles
- */
-function printList(): void {
-  console.log("Available scenarios:");
-
-  for (const { id, kind } of listScenarioSummaries()) {
-    const kindLabel = styleText("gray", `[${kind}]`);
-
-    console.log(`  - ${id} ${kindLabel}`);
-  }
-
-  console.log("\nAvailable config profiles:");
-
-  for (const id of listConfigProfileIds()) {
-    console.log(`  - ${id}`);
-  }
-}
-
-/**
  * Run the evaluation with given options
  *
  * @param options - CLI options
@@ -154,7 +145,10 @@ async function runEvaluation(options: CliOptions): Promise<void> {
   setQuietMode(options.quiet ?? false);
 
   if (options.model.length === 0) {
-    program.error("-m, --model is required when running tests");
+    program.error(
+      "-m, --model is required when running tests. " +
+        "Use --list-models [provider] to list available models.",
+    );
   }
 
   if (!options.all && options.test.length === 0) {

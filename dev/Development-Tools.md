@@ -4,6 +4,20 @@ Essential tools for testing, debugging, and validating Producer Pal
 functionality. Claude Code should use these tools to ensure quality and
 investigate issues.
 
+## Chat & Eval CLIs
+
+`scripts/chat` (interactive chat against the MCP tools) and `scripts/eval` (run
+eval scenarios) select a model with `-m provider/model`. Discover models with
+`--list-models <provider>` (lists a provider's models live) or `--list-models`
+with no value (lists the providers); listing always prints and exits without
+starting a chat or run.
+
+```bash
+scripts/chat --list-models            # list providers
+scripts/chat --list-models openai     # list one provider's models
+scripts/chat -m claude-sonnet-4-5     # start a chat
+```
+
 ## CLI Tool
 
 **Purpose:** Direct MCP server interaction for end-to-end testing. Claude Code

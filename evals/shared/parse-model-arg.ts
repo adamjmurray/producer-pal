@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -11,19 +12,12 @@
  */
 
 import { type EvalProvider } from "#evals/scenarios/types.ts";
+import { PROVIDERS } from "#evals/shared/provider-configs.ts";
 
 export interface ModelSpec {
   provider: EvalProvider;
   model: string;
 }
-
-const VALID_PROVIDERS: EvalProvider[] = [
-  "anthropic",
-  "google",
-  "local",
-  "openai",
-  "openrouter",
-];
 
 /**
  * Parse a model argument into provider and model
@@ -70,7 +64,7 @@ function inferProviderFromModel(model: string): ModelSpec {
   }
 
   // Check if it's a provider-only input (error)
-  if (VALID_PROVIDERS.includes(model as EvalProvider)) {
+  if (PROVIDERS.includes(model as EvalProvider)) {
     throw new Error(`Provider-only not allowed: "${model}". Specify a model.`);
   }
 
@@ -86,9 +80,9 @@ function inferProviderFromModel(model: string): ModelSpec {
  * @throws Error if provider is not valid
  */
 function validateProvider(provider: string): void {
-  if (!VALID_PROVIDERS.includes(provider as EvalProvider)) {
+  if (!PROVIDERS.includes(provider as EvalProvider)) {
     throw new Error(
-      `Unknown provider: ${provider}. Valid: ${VALID_PROVIDERS.join(", ")}`,
+      `Unknown provider: ${provider}. Valid: ${PROVIDERS.join(", ")}`,
     );
   }
 }
