@@ -157,9 +157,11 @@ timeRange "time range"
 // A range-bound beat position. Same dialect as bar|beat note positions
 // (`beatValue` in barbeat-grammar.peggy): a 1-based grid beat optionally
 // displaced by an absolute note-value offset (`+n/12` = plus an eighth triplet,
-// `-n/24` = minus a 32nd triplet). The offset is a whole-note fraction
-// (meter-aware, like durations); `options.timeSigDenominator` converts it to
-// musical beats. Dyadic sub-beats may use a plain decimal (`1.5`). Bare
+// `-n/24` = minus a 32nd triplet). The offset is a whole-note fraction — a note
+// value, so it is meter-INVARIANT in absolute time; `options.timeSigDenominator`
+// only multiplies it into musical beats (the grid's unit) to add to the grid
+// beat, a factor that cancels when musical beats convert to Ableton beats.
+// Dyadic sub-beats may use a plain decimal (`1.5`). Bare
 // fractions (`4/3`) and mixed numbers (`1+1/3`) are intentionally rejected so a
 // beat reads the same in a range bound as in a note position.
 //

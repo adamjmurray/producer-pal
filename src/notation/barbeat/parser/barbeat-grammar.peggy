@@ -158,9 +158,13 @@ pitchClass
 
 // A beat position: a 1-based grid beat, optionally displaced by an absolute
 // note-value offset (`+n/12` = plus an eighth triplet, `-n/24` = minus a
-// 32nd-note triplet). The offset is a fraction of a whole note (meter-aware,
-// like durations and `@step`); `options.timeSigDenominator` converts it to
-// musical beats. Dyadic sub-beats may use a plain decimal (`1.5`). Bare
+// 32nd-note triplet). The offset is a fraction of a whole note — a note value,
+// so it is meter-INVARIANT in absolute time (`n/12` is always an eighth
+// triplet, in every meter). `options.timeSigDenominator` only multiplies it
+// into musical beats (the grid's unit) so it can be added to the grid beat;
+// that factor cancels when musical beats convert to Ableton beats, so the note
+// value's musical meaning never depends on the meter. (Contrast `Nbar`, which
+// IS meter-relative.) Dyadic sub-beats may use a plain decimal (`1.5`). Bare
 // fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`) are intentionally
 // rejected so note values always wear the `n` sigil.
 beatValue

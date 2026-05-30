@@ -2,6 +2,18 @@
 
 A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
+> **Meter-invariant vs meter-relative.** Two kinds of time quantity run through
+> this notation. **Note values** (anything wearing the `n` sigil: `n/4`, the
+> `±n` beat offset, `@n/12` steps) are a fraction of a whole note and are
+> **meter-invariant** — `n/12` is an eighth triplet in every time signature.
+> **Bars and grid beats** (`Nbar`, `@Nbar`, the integer in `bar|beat`) are
+> **meter-relative** — they scale with the time signature. Everything resolves
+> through "musical beats" (denominator-beats); the time-signature denominator
+> only appears as a basis change to express a note value in that unit, and it
+> cancels out, so it never alters a note value's musical meaning. A bare number
+> or bare fraction is never a note value (it's beats / arithmetic) — the `n`
+> sigil is the sole marker of the meter-invariant side.
+
 ---
 
 ## Core Syntax
@@ -18,9 +30,13 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     positions are a decimal (`2|3.5`) or a grid beat plus a `±n` **note-value
     offset** — `1|1+n/12` = beat 1 + an eighth triplet, `1|2-n/24` nudges just
     behind beat 2. The offset is a whole-note fraction (same `n` grammar as
-    Duration), so it is meter-aware: `n/12` displaces by 1/3 of a beat in 4/4
-    but 2/3 of an eighth-beat in 6/8. Bare fractions (`4/3`) and bar-relative
-    mixed numbers (`1+1/3`) are rejected — note values always wear the `n`.
+    Duration), so — like any note value — it is **meter-invariant** in absolute
+    time: `n/12` is always an eighth triplet. Its size measured _in the local
+    beat unit_ changes only because the beat unit itself changes (1/3 of a
+    quarter-beat in 4/4, 2/3 of an eighth-beat in 6/8 — the same musical
+    duration). The grid beat it displaces, by contrast, **is** meter-relative.
+    Bare fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`) are rejected
+    — note values always wear the `n`.
   - **Repeat patterns**: `beat x times @ step` generates multiple positions.
     `step` uses the same note-value duration grammar as `n` (see Duration):
     `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar+n<fraction>`
