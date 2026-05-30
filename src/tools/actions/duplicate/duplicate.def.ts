@@ -49,7 +49,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "arrangement bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1')",
+        "arrangement bar|beat position(s) for clips/scenes, comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|1'). Song meter",
       ),
     locator: z.coerce
       .string()
@@ -61,7 +61,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .string()
       .optional()
       .describe(
-        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Auto-fills with loops",
+        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Auto-fills with loops; song meter",
       ),
     toSlot: z.coerce
       .string()
@@ -131,7 +131,8 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     descriptionOverrides: {
       name: "name",
       color: "#RRGGBB",
-      arrangementStart: "arrangement bar|beat position (e.g., '1|1')",
+      arrangementStart:
+        "arrangement bar|beat position (e.g., '1|1'). Song meter",
       toSlot:
         "session destination clip slot, trackIndex/sceneIndex (e.g., '0/1')",
       toPath: "device destination path (e.g., 't1/d0')",

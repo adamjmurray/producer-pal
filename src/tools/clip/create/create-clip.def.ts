@@ -35,7 +35,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "arrangement clip bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')",
+        "arrangement clip bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3'). Song meter",
       ),
 
     name: z
@@ -136,7 +136,8 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     ],
     descriptionOverrides: {
       slot: "session clip slot(s): trackIndex/sceneIndex (e.g., '0/0')",
-      arrangementStart: "arrangement clip bar|beat position (e.g., '1|1')",
+      arrangementStart:
+        "arrangement clip bar|beat position (e.g., '1|1'). Song meter",
       name: "clip name",
       color: "#RRGGBB",
     },
