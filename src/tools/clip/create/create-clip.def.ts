@@ -60,13 +60,13 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     start: z
       .string()
       .optional()
-      .describe("bar|beat position where loop/clip region begins"),
+      .describe("bar|beat position where loop/clip region begins (clip meter)"),
 
     length: z
       .string()
       .optional()
       .describe(
-        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Default: next full bar after latest note",
+        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4'), or Nbar+n<fraction> (e.g., '1bar+n/4'). Clip meter. Default: next full bar after latest note",
       ),
 
     looping: z.boolean().optional().describe("enable looping for the clip"),
@@ -75,7 +75,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "bar|beat playback start (looping clips, when different from start)",
+        "bar|beat playback start (looping clips, when different from start; clip meter)",
       ),
 
     notes: z

@@ -37,19 +37,19 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     start: z
       .string()
       .optional()
-      .describe("bar|beat position where loop/clip region begins"),
+      .describe("bar|beat position where loop/clip region begins (clip meter)"),
     length: z
       .string()
       .optional()
       .describe(
-        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or Nbar+n<fraction> (e.g., '1bar+n/4')",
+        "duration: Nbar (e.g., '4bar'), n<fraction> note value (e.g., 'n/4' = quarter), or Nbar+n<fraction> (e.g., '1bar+n/4'); clip meter",
       ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
     firstStart: z
       .string()
       .optional()
       .describe(
-        "bar|beat playback start (looping clips, when different from start)",
+        "bar|beat playback start (looping clips, when different from start; clip meter)",
       ),
     arrangementStart: z
       .string()
