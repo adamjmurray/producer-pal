@@ -252,14 +252,13 @@ export function abletonBeatsToDuration(
  *    1.9638 quarters), the off-grid escape `abletonBeatsToDuration` emits.
  *  - `Nbar+n<fraction>` — bars plus sub-bar note value (e.g. `1bar+n/4`); the
  *    tail numerator may likewise be a decimal.
- *  - bare number — Ableton beats (quarter notes), e.g. `1.9638`. A legacy
- *    round-trip form (`abletonBeatsToDuration` now emits `n<beats>/4` instead),
- *    still accepted on input. `1` == one quarter in any meter. NOT a general
- *    authoring form.
  *
- * Bare *fractions* (`1/4`) are still rejected: in notation a bare fraction means
- * beats (transforms-as-arithmetic), never a note value. The `n` prefix keeps
- * that invariant — `n<fraction>` is a note value everywhere.
+ * Bare numbers (`5`, `1.9638`) and bare *fractions* (`1/4`) are both rejected: a
+ * duration is always a bar count or an `n`-prefixed note value, never a bare
+ * scalar. (A bare fraction would read as beats — transforms-as-arithmetic — not
+ * a note value; the `n` prefix keeps "note value" unambiguous on every surface.)
+ * Off-grid lengths use the decimal-numerator escape `n<beats>/4` that
+ * `abletonBeatsToDuration` emits, so round-trips need no bare-number support.
  * @param duration - Duration string
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -273,18 +272,13 @@ export function durationToAbletonBeats(
   // Numerator may be empty (→ 1), an integer, or a decimal (the `n<beats>/4`
   // off-grid escape, e.g. `n1.9638/4`). Denominator is always an integer.
   const match = duration.match(
-    /^(?:(\d+)bar(?:\+n(\d+\.\d+|\d*)\/(\d+))?|n(\d+\.\d+|\d*)\/(\d+)|(\d+(?:\.\d+)?))$/,
+    /^(?:(\d+)bar(?:\+n(\d+\.\d+|\d*)\/(\d+))?|n(\d+\.\d+|\d*)\/(\d+))$/,
   );
 
   if (!match) {
     throw new Error(
-      `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4", "n1/4", or off-grid "n1.9638/4"), or "Nbar+n<fraction>" (e.g. "1bar+n/4"). Note-value fractions require the "n" prefix; a bare fraction means beats, not a note value.`,
+      `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4", "n1/4", or off-grid "n1.9638/4"), or "Nbar+n<fraction>" (e.g. "1bar+n/4"). Note values require the "n" prefix; a bare number or bare fraction is not a duration.`,
     );
-  }
-
-  // Bare number = Ableton beats (quarter notes), already in the target unit.
-  if (match[6] != null) {
-    return Number.parseFloat(match[6]);
   }
 
   const bars = match[1] != null ? Number.parseInt(match[1]) : 0;

@@ -266,11 +266,15 @@ describe("duplicate-helpers", () => {
       );
     });
 
-    it("accepts a bare number as Ableton beats (legacy round-trip form)", () => {
-      // abletonBeatsToDuration now emits the off-grid escape as n<beats>/4, but
-      // bare numbers remain accepted for backwards compatibility.
-      expect(parseArrangementLength("4", 4, 4)).toBe(4); // 4 quarters = 1 bar in 4/4
-      expect(parseArrangementLength("5.9877", 4, 4)).toBeCloseTo(5.9877, 6);
+    it("rejects bare numbers; off-grid lengths use the n<beats>/4 escape", () => {
+      // A duration is never a bare scalar. Off-grid lengths must use the
+      // decimal-numerator escape abletonBeatsToDuration emits (n<beats>/4).
+      expect(() => parseArrangementLength("4", 4, 4)).toThrow(
+        /Invalid duration format/,
+      );
+      expect(() => parseArrangementLength("5.9877", 4, 4)).toThrow(
+        /Invalid duration format/,
+      );
       expect(parseArrangementLength("n5.9877/4", 4, 4)).toBeCloseTo(5.9877, 6);
     });
 

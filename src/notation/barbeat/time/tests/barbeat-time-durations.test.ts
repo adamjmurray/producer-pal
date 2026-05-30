@@ -234,18 +234,22 @@ describe("durationToAbletonBeats", () => {
     );
   });
 
-  it("still parses bare numbers as Ableton beats (legacy round-trip form)", () => {
-    // abletonBeatsToDuration now emits n<beats>/4 for off-grid lengths, but bare
-    // numbers remain accepted on input for backwards compatibility.
-    expect(durationToAbletonBeats("4", 4, 4)).toBe(4); // 4 quarters = 1 bar in 4/4
-    expect(durationToAbletonBeats("1.5", 4, 4)).toBe(1.5);
-    expect(durationToAbletonBeats("0", 4, 4)).toBe(0);
-    expect(durationToAbletonBeats("1.9638", 4, 4)).toBe(1.9638);
-  });
-
-  it("treats bare beats as meter-independent quarter notes", () => {
-    expect(durationToAbletonBeats("3", 6, 8)).toBe(3); // 3 quarters regardless of meter
-    expect(durationToAbletonBeats("4", 3, 4)).toBe(4);
+  it("rejects bare numbers (a duration is never a bare scalar)", () => {
+    // The serializer emits the n<beats>/4 escape for off-grid lengths, so bare
+    // numbers are no longer a round-trip form — they are rejected on input,
+    // matching the authoring grammar. Off-grid values must use n<beats>/4.
+    expect(() => durationToAbletonBeats("4", 4, 4)).toThrow(
+      "Invalid duration format",
+    );
+    expect(() => durationToAbletonBeats("1.5", 4, 4)).toThrow(
+      "Invalid duration format",
+    );
+    expect(() => durationToAbletonBeats("0", 4, 4)).toThrow(
+      "Invalid duration format",
+    );
+    expect(() => durationToAbletonBeats("1.9638", 4, 4)).toThrow(
+      "Invalid duration format",
+    );
   });
 
   it("throws on bar:beat duration glyph (retired)", () => {

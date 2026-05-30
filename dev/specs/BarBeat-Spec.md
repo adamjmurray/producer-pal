@@ -97,10 +97,11 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     (sample-derived audio lengths) use a **decimal-numerator escape pinned to
     `/4`**: `n<beats>/4` == `<beats>` Ableton beats (`n1.9638/4` = 1.9638
     quarters, since `n<x>/4` = x quarters). This keeps the escape under the `n`
-    sigil so the duration vocabulary stays uniform. A bare number (e.g.
-    `1.9638`) is also **accepted on input** as a legacy round-trip form, but is
-    no longer emitted. Bare _fractions_ (`1/4`) and decimals (`0.5`) as authored
-    durations stay invalid — the `n` prefix marks a note value everywhere
+    sigil so the duration vocabulary stays uniform. Bare numbers (e.g.
+    `1.9638`), bare _fractions_ (`1/4`), and bare decimals (`0.5`) are all
+    **invalid** as durations — a duration is always a bar count or an
+    `n`-prefixed note value, never a bare scalar; the `n` prefix marks a note
+    value everywhere
   - NOTE (read contract): when a clip is serialized back to notation, MIDI note
     durations round to the nearest representable note value (absorbing float
     epsilon and humanized timing). A clip/arrangement `length` emits an exact
