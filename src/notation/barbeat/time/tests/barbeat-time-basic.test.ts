@@ -110,22 +110,13 @@ describe("barbeat-time utilities", () => {
       expect(() => barBeatToBeats("a:b", 4)).toThrow("Invalid bar|beat format");
     });
 
-    it("throws error for bar number less than 1", () => {
-      expect(() => barBeatToBeats("0|1", 4)).toThrow(
-        "Bar number must be 1 or greater",
-      );
-      expect(() => barBeatToBeats("-1|1", 4)).toThrow(
-        "Bar number must be 1 or greater",
-      );
-    });
-
-    it("throws when a beat resolves before the start of the timeline", () => {
-      expect(() => barBeatToBeats("1|0", 4)).toThrow(
-        "before the start of the timeline",
-      );
-      expect(() => barBeatToBeats("1|-1", 3)).toThrow(
-        "before the start of the timeline",
-      );
+    it("returns negative time for explicit positions before 1|1 (no throw)", () => {
+      // Live accepts notes before the clip start, so a position that resolves
+      // before 1|1 yields negative time instead of throwing.
+      expect(barBeatToBeats("0|1", 4)).toBe(-4);
+      expect(barBeatToBeats("-1|1", 4)).toBe(-8);
+      expect(barBeatToBeats("1|0", 4)).toBe(-1);
+      expect(barBeatToBeats("1|-1", 3)).toBe(-2);
     });
 
     it("handles ±n note-value offset and decimal beat notation", () => {
@@ -183,16 +174,12 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToBeats("2|1-n/2", 4, 4)).toBeCloseTo(2, 10);
     });
 
-    it("throws when a -n offset reaches before the start of the timeline", () => {
-      expect(() => barBeatToBeats("1|1-n/4", 4, 4)).toThrow(
-        "before the start of the timeline",
-      ); // beat 0, no bar 0 to borrow from
-      expect(() => barBeatToBeats("1|1-n/8", 4, 4)).toThrow(
-        "before the start of the timeline",
-      ); // beat 0.5
-      expect(() => barBeatToBeats("1|1-n/12", 4, 4)).toThrow(
-        "before the start of the timeline",
-      ); // beat 2/3
+    it("returns negative time when a -n offset reaches before 1|1 (no throw)", () => {
+      // No bar to borrow from, so these resolve before the clip start. Allowed
+      // (Live accepts notes at negative time) rather than rejected.
+      expect(barBeatToBeats("1|1-n/4", 4, 4)).toBeCloseTo(-1, 10); // beat 0
+      expect(barBeatToBeats("1|1-n/8", 4, 4)).toBeCloseTo(-0.5, 10); // beat 0.5
+      expect(barBeatToBeats("1|1-n/12", 4, 4)).toBeCloseTo(-1 / 3, 10); // beat 2/3
     });
 
     it("rejects bare-fraction and mixed beat positions", () => {

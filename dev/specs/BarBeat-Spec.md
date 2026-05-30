@@ -39,7 +39,10 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     — note values always wear the `n`. A `-n` offset may pull a position earlier
     than its bar's downbeat — `2|1-n/12` is "an eighth triplet before the bar-2
     downbeat" and resolves into bar 1 (beat 4⅔ in 4/4) by borrowing across the
-    bar line. Only a position that reaches before `1|1` is rejected.
+    bar line. A pull before `1|1` is allowed too: it resolves to negative time
+    (a note before the clip start, which Live accepts). Authoring warns once
+    when a note lands before the clip start, since reads start at time 0 and
+    won't show it.
   - **Repeat patterns**: `beat x times @ step` generates multiple positions.
     `step` uses the same note-value duration grammar as `n` (see Duration):
     `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar+n<fraction>`

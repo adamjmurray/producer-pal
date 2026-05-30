@@ -63,6 +63,8 @@ function expandRepeatPattern(
   // Convert starting position to absolute beats (0-based)
   const startBeats = (currentBar - 1) * beatsPerBar + (start - 1);
 
+  warnIfBeforeClipStart(startBeats);
+
   for (let i = 0; i < times; i++) {
     const absoluteBeats = startBeats + i * step;
     const bar = Math.floor(absoluteBeats / beatsPerBar) + 1;
@@ -206,7 +208,24 @@ export function calculatePositions(
 
   const beat = element.beat as number;
 
+  warnIfBeforeClipStart((bar - 1) * beatsPerBar + (beat - 1));
+
   return [{ bar, beat }];
+}
+
+/**
+ * Warn (once per position) when a resolved position lands before the clip start
+ * (negative absolute beats). A `-n` offset can pull a note before 1|1; Live
+ * accepts notes at negative time, but they won't appear when reading the clip
+ * back (reads start at time 0), so flag it without throwing.
+ * @param absoluteBeats - Resolved position in absolute musical beats (0-based)
+ */
+function warnIfBeforeClipStart(absoluteBeats: number): void {
+  if (absoluteBeats < 0) {
+    console.warn(
+      "Note position resolves before the clip start (negative time); it sits before 1|1 and won't appear when reading the clip back.",
+    );
+  }
 }
 
 /**

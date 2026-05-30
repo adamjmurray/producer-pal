@@ -17,14 +17,13 @@
   // Borrow across bar lines so a `-n` beat offset can pull a position earlier
   // than beat 1 of its bar (e.g. `2|1-n/12` → bar 1, beat 4⅔ in 4/4). The
   // offset already produced a sub-1 `beat`; wrap it up into the previous bar(s)
-  // using beatsPerBar. Reaching before 1|1 is an error (there is no bar 0).
+  // using beatsPerBar. A pull before `1|1` is allowed: the bar goes to 0 /
+  // negative and the position resolves to negative time (Live accepts notes
+  // before the clip start). Never throws — negative time is a valid result.
   function borrowBars(bar, beat, beatsPerBar) {
     while (beat < 1) {
       beat += beatsPerBar;
       bar -= 1;
-    }
-    if (bar < 1) {
-      throw new Error("beat position resolves before the start of the timeline (before 1|1)");
     }
     return { bar, beat };
   }
@@ -197,9 +196,9 @@ pitchClass
 // rejected so note values always wear the `n` sigil.
 //
 // A `-n` offset may resolve below beat 1 (e.g. `2|1-n/12`, "just before the
-// downbeat"); `timePoints` borrows across the bar line to canonicalize it (and
-// rejects anything that reaches before 1|1). So this rule returns the raw beat
-// even when it is < 1.
+// downbeat"); `timePoints` borrows across the bar line to canonicalize it. A
+// pull before `1|1` is allowed and resolves to negative time (a note before the
+// clip start). So this rule returns the raw beat even when it is < 1.
 beatValue
   = base:oneOrMoreInt sign:("+" / "-") "n" frac:unsignedFraction {
       const offsetBeats = frac * (options.timeSigDenominator ?? 4);

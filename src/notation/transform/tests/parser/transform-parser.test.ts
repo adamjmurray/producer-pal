@@ -250,10 +250,15 @@ describe("Transform Parser", () => {
       expect(result[0]!.timeRange!.endBeat).toBe(1);
     });
 
-    it("rejects a -n bound that reaches before the start of the timeline", () => {
-      expect(() => parser.parse("1|1-n/2-2|1: velocity += 10")).toThrow(
-        /before the start of the timeline/,
-      );
+    it("resolves a -n bound before 1|1 to a pre-clip-start position (no throw)", () => {
+      // `1|1-n/2` = bar 1 minus a half note → bar 0, beat 3 (negative time when
+      // resolved). Allowed, not rejected.
+      const result = parser.parse("1|1-n/2-2|1: velocity += 10");
+
+      expect(result[0]!.timeRange!.startBar).toBe(0);
+      expect(result[0]!.timeRange!.startBeat).toBe(3);
+      expect(result[0]!.timeRange!.endBar).toBe(2);
+      expect(result[0]!.timeRange!.endBeat).toBe(1);
     });
   });
 

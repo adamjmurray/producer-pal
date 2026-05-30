@@ -225,9 +225,9 @@ C3-C5: duration = legato()       // legato for melody notes only
   just behind beat 2). The offset is a note value (meter-invariant), so a bound
   resolves to the same musical position as a note written that way. A `-n` bound
   may sit just before a downbeat — `2|1-n/12` borrows across the bar line into
-  bar 1 — and only a bound reaching before `1|1` is rejected. Bare fractions
-  (`1|4/3`) and mixed numbers (`1|1+1/3`) are rejected — write the grid+offset
-  form instead.
+  bar 1 — and a bound reaching before `1|1` resolves to negative time (before
+  the clip start) rather than being rejected. Bare fractions (`1|4/3`) and mixed
+  numbers (`1|1+1/3`) are rejected — write the grid+offset form instead.
 - **Range clamping**: Applied after modulation:
   - velocity: 1-127
   - timing: unclamped (can shift notes before/after original position)

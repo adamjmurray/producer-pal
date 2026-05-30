@@ -195,13 +195,16 @@ describe("bar|beat interpretNotation() - core functionality", () => {
 
     expect(in68[0]!.start_time).toBeCloseTo(3 - 1 / 3, 10);
 
-    // Reaching before 1|1 has no bar to borrow from and is rejected.
-    expect(() =>
-      interpretNotation("C3 1|1-n/12", {
-        timeSigNumerator: 4,
-        timeSigDenominator: 4,
-      }),
-    ).toThrow("before the start of the timeline");
+    // Reaching before 1|1 has no bar to borrow from, so it resolves to negative
+    // time (a note before the clip start) — allowed, not rejected. Live accepts
+    // notes at negative start_time.
+    const before11 = interpretNotation("C3 1|1-n/12", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+
+    expect(before11).toHaveLength(1);
+    expect(before11[0]!.start_time).toBeCloseTo(-1 / 3, 10);
   });
 
   it("handles changing durations across notes", () => {

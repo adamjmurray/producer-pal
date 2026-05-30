@@ -22,14 +22,12 @@
   // Borrow across bar lines so a `-n` range-bound offset can pull a position
   // earlier than beat 1 of its bar (e.g. `2|1-n/12` → bar 1, beat 4⅔ in 4/4).
   // The offset already produced a sub-1 `beat`; wrap it up into the previous
-  // bar(s) using beatsPerBar. Reaching before 1|1 is an error (no bar 0).
+  // bar(s) using beatsPerBar. A pull before `1|1` is allowed: the bar goes to
+  // 0 / negative and the bound resolves to negative time. Never throws.
   function borrowBars(bar, beat, beatsPerBar) {
     while (beat < 1) {
       beat += beatsPerBar;
       bar -= 1;
-    }
-    if (bar < 1) {
-      throw new Error("time range bound resolves before the start of the timeline (before 1|1)");
     }
     return { bar, beat };
   }
@@ -183,7 +181,8 @@ timeRange "time range"
 // fractions (`4/3`) and mixed numbers (`1+1/3`) are intentionally rejected so a
 // beat reads the same in a range bound as in a note position. A `-n` offset may
 // resolve below beat 1 ("just before the downbeat"); `timeRange` borrows across
-// the bar line to canonicalize it, rejecting only what reaches before 1|1.
+// the bar line to canonicalize it, and a pull before 1|1 resolves to negative
+// time (the bound sits before the clip start).
 //
 // The sign branches are split (unlike barbeat's combined `("+"/"-")`) because a
 // range's `-` separator collides with a `-` offset sign: `1|1-2|1` is the
@@ -199,8 +198,8 @@ beatValue
     }
   / base:oneOrMoreInt "-n" frac:unsignedFraction {
       // May resolve below beat 1 (e.g. `2|1-n/12`, "just before the downbeat");
-      // `timeRange` borrows across the bar line to canonicalize it (and rejects
-      // anything that reaches before 1|1). So return the raw beat even when < 1.
+      // `timeRange` borrows across the bar line to canonicalize it. A pull
+      // before 1|1 resolves to negative time. So return the raw beat even < 1.
       return base - frac * (options.timeSigDenominator ?? 4);
     }
   / oneOrMoreInt "+" bad:badBeatOffset {

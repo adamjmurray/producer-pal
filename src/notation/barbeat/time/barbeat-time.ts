@@ -69,9 +69,10 @@ export function beatsToBarBeat(beats: number, beatsPerBar: number): string {
  * optionally a decimal (`2|3.5`) or displaced by an absolute note-value offset
  * (`1|1+n/12` = beat 1 + an eighth triplet, `2|2-n/24`). A `-n` offset may pull
  * the position before its bar's downbeat (`2|1-n/12`); the bar is borrowed
- * automatically and only a result before `1|1` is rejected. Bare fractions
- * (`4/3`) and bar-relative mixed numbers (`1+1/3`) are not accepted — note
- * values wear the `n` sigil everywhere.
+ * automatically. A position before `1|1` resolves to negative time (a note
+ * before the clip start) — allowed, never throws. Bare fractions (`4/3`) and
+ * bar-relative mixed numbers (`1+1/3`) are not accepted — note values wear the
+ * `n` sigil everywhere.
  * @param barBeat - Bar|beat string like "1|2", "2|3.5", or "1|1+n/12"
  * @param beatsPerBar - Beats per bar
  * @param timeSigDenominator - Time signature denominator (for the `±n` offset unit)
@@ -94,23 +95,13 @@ export function barBeatToBeats(
   const beatStr = match[2] as string;
   const beat = parseBeatValue(beatStr, barBeat, timeSigDenominator);
 
-  if (bar < 1) {
-    throw new Error(`Bar number must be 1 or greater, got: ${bar}`);
-  }
-
-  // A `-n` offset may pull the beat below 1 ("just before the downbeat", e.g.
-  // `2|1-n/12`); the formula borrows from the bar automatically. Validate the
-  // resolved absolute position instead of the bare beat: only a position before
-  // 1|1 (the start of the timeline) is rejected.
-  const beats = (bar - 1) * beatsPerBar + (beat - 1);
-
-  if (beats < 0) {
-    throw new Error(
-      `Position resolves before the start of the timeline (before 1|1): "${barBeat}"`,
-    );
-  }
-
-  return beats;
+  // A `-n` offset (or an explicit position below 1|1) may resolve to negative
+  // time. This is allowed and never throws — Live accepts notes before the clip
+  // start. The formula borrows from the bar automatically (`2|1-n/12` → 3⅔ in
+  // 4/4; `1|1-n/12` → -⅓). Authoring warns once at interpret time; this
+  // low-level conversion stays silent because it runs per-note in transform
+  // timeRange checks (a warning here would spam).
+  return (bar - 1) * beatsPerBar + (beat - 1);
 }
 
 /**

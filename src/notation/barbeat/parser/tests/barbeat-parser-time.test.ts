@@ -183,18 +183,22 @@ describe("BarBeatScript Parser - time declarations", () => {
     ]);
   });
 
-  it("rejects a -n offset that reaches before the start of the timeline", () => {
-    // 1 - n/4 = beat 0; 1 - n/8 = beat 0.5; 1 - n/12 = beat 2/3 — all in bar 1,
-    // so there is no earlier bar to borrow from.
-    expect(() => parser.parse("1|1-n/4 C3")).toThrow(
-      "before the start of the timeline",
-    );
-    expect(() => parser.parse("1|1-n/8 C3")).toThrow(
-      "before the start of the timeline",
-    );
-    expect(() => parser.parse("1|1-n/12 C3")).toThrow(
-      "before the start of the timeline",
-    );
+  it("resolves a -n offset before 1|1 to a pre-clip-start position (no throw)", () => {
+    // No earlier bar to borrow from: the bar goes to 0 and the position resolves
+    // to negative time when interpreted (a note before the clip start). Allowed,
+    // not rejected — Live accepts notes at negative time.
+    expect(parser.parse("1|1-n/4 C3")).toStrictEqual([
+      { bar: 0, beat: 4 },
+      { pitch: 60 },
+    ]);
+    expect(parser.parse("1|1-n/8 C3")).toStrictEqual([
+      { bar: 0, beat: 4.5 },
+      { pitch: 60 },
+    ]);
+    expect(parser.parse("1|1-n/12 C3")).toStrictEqual([
+      { bar: 0, beat: 1 - (1 / 12) * 4 + 4 },
+      { pitch: 60 },
+    ]);
   });
 
   it("rejects bare-fraction beat positions with a targeted error", () => {
