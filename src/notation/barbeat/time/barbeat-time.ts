@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { DEFAULT_BEATS_PER_BAR } from "#src/notation/barbeat/barbeat-config.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 
 const DURATION_EPSILON = 1e-9;
 const DURATION_FRACTION_TOLERANCE = 1e-6;
@@ -95,12 +96,22 @@ export function barBeatToBeats(
   const beatStr = match[2] as string;
   const beat = parseBeatValue(beatStr, barBeat, timeSigDenominator);
 
+  // Beats are 1-based, so beat == beatsPerBar+1 is the downbeat of the next bar
+  // (still "within reach" of this bar's end via a sub-beat/`+n` offset); anything
+  // beyond that silently overflows multiple beats into a later, meter-dependent
+  // bar and is almost certainly a mistake.
+  if (beat > beatsPerBar + 1) {
+    console.warn(
+      `Beat ${beat} exceeds the bar (beatsPerBar=${beatsPerBar}); it will land in a later bar — did you mean a higher bar number?`,
+    );
+  }
+
   // A `-n` offset (or an explicit position below 1|1) may resolve to negative
   // time. This is allowed and never throws — Live accepts notes before the clip
   // start. The formula borrows from the bar automatically (`2|1-n/12` → 3⅔ in
   // 4/4; `1|1-n/12` → -⅓). Authoring warns once at interpret time; this
-  // low-level conversion stays silent because it runs per-note in transform
-  // timeRange checks (a warning here would spam).
+  // low-level conversion stays otherwise silent because it runs per-note in
+  // transform timeRange checks (a warning here would spam).
   return (bar - 1) * beatsPerBar + (beat - 1);
 }
 

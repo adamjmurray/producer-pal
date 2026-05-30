@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -293,6 +294,30 @@ describe("Audio Transform Evaluator", () => {
 
       expect(result.gain).toBeNull();
       expect(result.pitchShift).toBeNull();
+    });
+  });
+
+  describe("timeRange selector handling", () => {
+    beforeEach(() => {
+      vi.mocked(console.warn).mockClear();
+    });
+
+    it("warns when a timeRange selector is used on an audio transform", () => {
+      const result = applyAudioTransform(0, 0, "1|1-2|1: gain += 3");
+
+      // Still applies to the whole clip
+      expect(result.gain).toBe(3);
+      expect(console.warn).toHaveBeenCalledWith(
+        "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+      );
+    });
+
+    it("does not warn when no timeRange selector is present", () => {
+      applyAudioTransform(0, 0, "gain += 3");
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+      );
     });
   });
 

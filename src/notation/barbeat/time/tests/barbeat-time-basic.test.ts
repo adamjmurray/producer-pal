@@ -3,13 +3,21 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
   barBeatToBeats,
   beatsToBarBeat,
 } from "../barbeat-time.ts";
+
+// Mock console.warn to capture out-of-range beat warnings
+vi.mock(import("#src/shared/v8-max-console.ts"), () => ({
+  warn: vi.fn(),
+  log: vi.fn(),
+  error: vi.fn(),
+}));
 
 describe("barbeat-time utilities", () => {
   describe("beatsToBarBeat", () => {
@@ -95,6 +103,37 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToBeats("2|10.5", 4)).toBe(13.5);
       expect(barBeatToBeats("1|10.5", 3)).toBe(9.5);
       expect(barBeatToBeats("2|10.5", 3)).toBe(12.5);
+    });
+
+    describe("out-of-range beat warning", () => {
+      beforeEach(() => {
+        vi.mocked(console.warn).mockClear();
+      });
+
+      it("warns when a beat overflows past the next bar's downbeat", () => {
+        barBeatToBeats("1|9", 4);
+
+        expect(console.warn).toHaveBeenCalledWith(
+          "Beat 9 exceeds the bar (beatsPerBar=4); it will land in a later bar — did you mean a higher bar number?",
+        );
+      });
+
+      it("warns relative to the meter's beats per bar", () => {
+        // beat 5 is fine in 4/4 but overflows in 3/4
+        barBeatToBeats("1|5", 3);
+
+        expect(console.warn).toHaveBeenCalledWith(
+          "Beat 5 exceeds the bar (beatsPerBar=3); it will land in a later bar — did you mean a higher bar number?",
+        );
+      });
+
+      it("does not warn for beats within the bar or on the next downbeat", () => {
+        barBeatToBeats("1|4", 4); // within bar
+        barBeatToBeats("1|4.5", 4); // sub-beat within bar
+        barBeatToBeats("1|5", 4); // next bar's downbeat (beatsPerBar+1)
+
+        expect(console.warn).not.toHaveBeenCalled();
+      });
     });
 
     it("throws error for invalid format", () => {

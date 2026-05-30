@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
@@ -75,14 +76,7 @@ export function applyAudioTransform(
     return { gain: null, pitchShift: null };
   }
 
-  // Check for MIDI parameters and warn
-  const hasMidiParams = ast.some((a) => MIDI_PARAMETERS.has(a.parameter));
-
-  if (hasMidiParams) {
-    console.warn(
-      "MIDI parameters (velocity, timing, duration, probability, deviation, pitch) ignored for audio clips",
-    );
-  }
+  warnIncompatibleAudioSelectors(ast);
 
   // Filter to audio-only assignments (gain and pitchShift)
   const audioAssignments = ast.filter(
@@ -146,6 +140,32 @@ export function applyAudioTransform(
       ? Math.max(MIN_PITCH_SHIFT, Math.min(MAX_PITCH_SHIFT, newPitchShift))
       : null,
   };
+}
+
+/**
+ * Warn about transform selectors/parameters that have no effect on audio clips.
+ * MIDI-only parameters and timeRange selectors are dropped (audio transforms
+ * apply to the whole clip), so warn rather than silently ignoring them.
+ * @param ast - Parsed transform assignments
+ */
+function warnIncompatibleAudioSelectors(ast: TransformAssignment[]): void {
+  if (ast.some((a) => MIDI_PARAMETERS.has(a.parameter))) {
+    console.warn(
+      "MIDI parameters (velocity, timing, duration, probability, deviation, pitch) ignored for audio clips",
+    );
+  }
+
+  const hasAudioTimeRange = ast.some(
+    (a) =>
+      (a.parameter === "gain" || a.parameter === "pitchShift") &&
+      a.timeRange != null,
+  );
+
+  if (hasAudioTimeRange) {
+    console.warn(
+      "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+    );
+  }
 }
 
 type BinaryOpNode = {
