@@ -200,6 +200,27 @@ G4-G5: velocity += 20`;
       expect(atEnd.velocity!.value).toBe(10);
     });
 
+    // Regression: when a caller supplies only `position` (no bar/beat) — as the
+    // exported evaluateTransform() permits — a time-range selector must still be
+    // enforced from `position`, not silently fall through to the whole clip.
+    describe("enforces selectors from position when bar/beat absent", () => {
+      it("skips a note whose position is outside the range", () => {
+        const result = evaluateTransform("2|1-3|1: velocity += 20", {
+          ...createContext({ position: 0 }), // bar 1 — before the 2|1-3|1 range
+        });
+
+        expect(result).toStrictEqual({});
+      });
+
+      it("applies to a note whose position is inside the range", () => {
+        const result = evaluateTransform("2|1-3|1: velocity += 20", {
+          ...createContext({ position: 5 }), // bar 2, beat 2 — inside the range
+        });
+
+        expect(result.velocity!.value).toBe(20);
+      });
+    });
+
     // range bounds use the same bar|beat dialect as note positions,
     // including ±n note-value offsets resolved meter-relative to the denominator.
     describe("n-offset bounds (meter-relative)", () => {

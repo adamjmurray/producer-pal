@@ -231,7 +231,7 @@ export function calculateActiveTimeRange(
   clipTimeRange: TimeRange | undefined,
   position: number,
 ): TimeRangeResult {
-  if (assignment.timeRange && bar != null && beat != null) {
+  if (assignment.timeRange) {
     const { startBar, startBeat, endBar, endBeat } = assignment.timeRange;
 
     // Normalize the note's bar|beat AND both range bounds to absolute musical
@@ -244,7 +244,15 @@ export function calculateActiveTimeRange(
     // gate and the normalization in lockstep, and subsumes the cross-bar case.
     // Musical beats per bar = the numerator (each beat is a denominator note).
     const musicalBeatsPerBar = numerator;
-    const noteBeats = barBeatToBeats(`${bar}|${beat}`, musicalBeatsPerBar);
+    // Note's absolute musical beats. Prefer the bar|beat fields when present
+    // (production always supplies them via buildNoteContext); otherwise fall back
+    // to `position` — the same value — so a caller that provides only `position`
+    // (e.g. the exported evaluateTransform()) still gets selectors enforced
+    // instead of silently matching the whole clip.
+    const noteBeats =
+      bar != null && beat != null
+        ? barBeatToBeats(`${bar}|${beat}`, musicalBeatsPerBar)
+        : position;
     const startBeats = barBeatToBeats(
       `${startBar}|${startBeat}`,
       musicalBeatsPerBar,
