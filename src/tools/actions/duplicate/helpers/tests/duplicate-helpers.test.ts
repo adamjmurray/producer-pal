@@ -266,11 +266,12 @@ describe("duplicate-helpers", () => {
       );
     });
 
-    it("accepts a bare number as Ableton beats (off-grid round-trip form)", () => {
-      // Bare beats are how abletonBeatsToDuration emits a measured (off-grid)
-      // arrangement span, so parseArrangementLength must round-trip them.
+    it("accepts a bare number as Ableton beats (legacy round-trip form)", () => {
+      // abletonBeatsToDuration now emits the off-grid escape as n<beats>/4, but
+      // bare numbers remain accepted for backwards compatibility.
       expect(parseArrangementLength("4", 4, 4)).toBe(4); // 4 quarters = 1 bar in 4/4
       expect(parseArrangementLength("5.9877", 4, 4)).toBeCloseTo(5.9877, 6);
+      expect(parseArrangementLength("n5.9877/4", 4, 4)).toBeCloseTo(5.9877, 6);
     });
 
     it("throws error for retired bar:beat glyph", () => {

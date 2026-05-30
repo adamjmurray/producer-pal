@@ -98,23 +98,25 @@ describe("abletonBeatsToDuration", () => {
   });
 
   describe("off-grid (sample-derived) lengths", () => {
-    it("emits bare beats instead of throwing for sub-bar non-grid values", () => {
+    it("emits n<beats>/4 instead of throwing for sub-bar non-grid values", () => {
       // Sample-derived length that is no clean note-value fraction (the
-      // AJM-461 regression: this used to throw).
-      expect(abletonBeatsToDuration(1.963754995004995, 4, 4)).toBe("1.9638");
-      expect(abletonBeatsToDuration(0.123456, 4, 4)).toBe("0.1235");
+      // AJM-461 regression: this used to throw). The off-grid escape wears the
+      // `n` sigil with a `/4` denominator, so the numerator reads as the beat
+      // count.
+      expect(abletonBeatsToDuration(1.963754995004995, 4, 4)).toBe("n1.9638/4");
+      expect(abletonBeatsToDuration(0.123456, 4, 4)).toBe("n0.1235/4");
     });
 
-    it("emits the whole value as bare beats when the off-grid part spans bars", () => {
+    it("emits the whole value as n<beats>/4 when the off-grid part spans bars", () => {
       // bars present, but the remainder is off-grid → no Nbar+<note-value>
-      // form exists, so the entire value is emitted as bare beats.
-      expect(abletonBeatsToDuration(5.987654, 4, 4)).toBe("5.9877");
+      // form exists, so the entire value is emitted as one n<beats>/4 escape.
+      expect(abletonBeatsToDuration(5.987654, 4, 4)).toBe("n5.9877/4");
     });
 
-    it("strips trailing zeros from bare-beats output", () => {
-      // Off-grid by 0.00001 (just past the note-value tolerance) → bare beats,
+    it("strips trailing zeros from the off-grid numerator", () => {
+      // Off-grid by 0.00001 (just past the note-value tolerance) → n<beats>/4,
       // then toFixed(4) "1.2500" has its trailing zeros stripped to "1.25".
-      expect(abletonBeatsToDuration(1.25001, 4, 4)).toBe("1.25");
+      expect(abletonBeatsToDuration(1.25001, 4, 4)).toBe("n1.25/4");
     });
 
     it("never throws for arbitrary positive lengths", () => {
@@ -177,6 +179,28 @@ describe("durationToAbletonBeats", () => {
     });
   });
 
+  describe("n<decimal>/<int> off-grid escape form", () => {
+    it("accepts a decimal numerator (n<beats>/4 == <beats> Ableton beats)", () => {
+      expect(durationToAbletonBeats("n1.9638/4", 4, 4)).toBeCloseTo(1.9638, 6);
+      expect(durationToAbletonBeats("n5.9877/4", 4, 4)).toBeCloseTo(5.9877, 6);
+      expect(durationToAbletonBeats("n0.1235/4", 4, 4)).toBeCloseTo(0.1235, 6);
+    });
+
+    it("is meter-independent (the escape is absolute beats)", () => {
+      expect(durationToAbletonBeats("n1.5/4", 6, 8)).toBeCloseTo(1.5, 6);
+      expect(durationToAbletonBeats("n1.5/4", 3, 4)).toBeCloseTo(1.5, 6);
+    });
+
+    it("accepts a decimal numerator over any denominator", () => {
+      // n<x>/d = (x/d) whole notes = (x/d)*4 quarters.
+      expect(durationToAbletonBeats("n1.5/8", 4, 4)).toBeCloseTo(0.75, 6);
+    });
+
+    it("accepts a decimal numerator in the Nbar+n tail", () => {
+      expect(durationToAbletonBeats("1bar+n0.5/4", 4, 4)).toBeCloseTo(4.5, 6);
+    });
+  });
+
   describe("Nbar+n<fraction> mixed form", () => {
     it("parses mixed durations", () => {
       expect(durationToAbletonBeats("1bar+n1/4", 4, 4)).toBe(5);
@@ -210,7 +234,9 @@ describe("durationToAbletonBeats", () => {
     );
   });
 
-  it("parses bare numbers as Ableton beats (off-grid round-trip form)", () => {
+  it("still parses bare numbers as Ableton beats (legacy round-trip form)", () => {
+    // abletonBeatsToDuration now emits n<beats>/4 for off-grid lengths, but bare
+    // numbers remain accepted on input for backwards compatibility.
     expect(durationToAbletonBeats("4", 4, 4)).toBe(4); // 4 quarters = 1 bar in 4/4
     expect(durationToAbletonBeats("1.5", 4, 4)).toBe(1.5);
     expect(durationToAbletonBeats("0", 4, 4)).toBe(0);
@@ -300,11 +326,11 @@ describe("duration round-trip consistency", () => {
     });
   }
 
-  it("off-grid lengths round-trip approximately via bare beats", () => {
+  it("off-grid lengths round-trip approximately via the n<beats>/4 escape", () => {
     const beats = 1.963754995004995;
     const str = abletonBeatsToDuration(beats, 4, 4);
 
-    expect(str).toBe("1.9638");
+    expect(str).toBe("n1.9638/4");
     expect(durationToAbletonBeats(str, 4, 4)).toBeCloseTo(beats, 3);
   });
 });

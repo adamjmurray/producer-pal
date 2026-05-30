@@ -71,21 +71,19 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - NOTE: clip `length` and arrangement durations use this same duration
     grammar: `Nbar` (meter-aware, e.g. `4bar`), `n<fraction>` note value (e.g.
     `n/4` quarter, `n/8` eighth, `n3/8` dotted quarter), or `Nbar+n<fraction>`
-    mixed (e.g. `1bar+n/4`). Plus, **only in length/arrangement args**, a bare
-    number = Ableton beats (quarter notes), for off-grid values that have no
-    note-value form (sample-derived audio lengths). `1` == `n/4` == one quarter
-    in any meter. This is distinct from the beat field of a `bar|beat`
-    _position_, which is meter-relative — positions and durations are different
-    types, marked by `|`. Bare beats are the canonical spelling for arbitrary
-    lengths: the serializer emits them for measured lengths and the parser
-    accepts them on input for round-trip, but they are not a general authoring
-    form. Bare _fractions_ (`1/4`) and decimals as authored durations stay
-    invalid — the `n` prefix marks a note value everywhere
+    mixed (e.g. `1bar+n/4`). Off-grid lengths with no clean note-value form
+    (sample-derived audio lengths) use a **decimal-numerator escape pinned to
+    `/4`**: `n<beats>/4` == `<beats>` Ableton beats (`n1.9638/4` = 1.9638
+    quarters, since `n<x>/4` = x quarters). This keeps the escape under the `n`
+    sigil so the duration vocabulary stays uniform. A bare number (e.g.
+    `1.9638`) is also **accepted on input** as a legacy round-trip form, but is
+    no longer emitted. Bare _fractions_ (`1/4`) and decimals (`0.5`) as authored
+    durations stay invalid — the `n` prefix marks a note value everywhere
   - NOTE (read contract): when a clip is serialized back to notation, MIDI note
     durations round to the nearest representable note value (absorbing float
     epsilon and humanized timing). A clip/arrangement `length` emits an exact
-    `n<fraction>`/`Nbar` when it lands on the grid (within ~1e-6), otherwise
-    bare beats at fixed precision (trailing zeros stripped)
+    `n<fraction>`/`Nbar` when it lands on the grid (within ~1e-6), otherwise the
+    `n<beats>/4` escape at fixed precision (trailing zeros stripped)
 
 - **Note (`C4`, `Eb2`, `F#3`, etc.)**
   - Note names follow standard pitch notation using:

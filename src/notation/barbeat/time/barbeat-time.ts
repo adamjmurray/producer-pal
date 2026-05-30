@@ -165,16 +165,18 @@ export function barBeatToAbletonBeats(
  * This function is **total**: it never throws for a length/duration value.
  * On-grid values get an exact note-value spelling; off-grid values (only ever
  * produced by *measuring* a sample-derived length, never by authoring) fall
- * back to bare beats — a plain number of Ableton beats (quarter notes). Bare
- * beats are the canonical spelling for arbitrary lengths and round-trip back
- * through `durationToAbletonBeats`.
+ * back to a decimal-numerator note value pinned to `/4` (`n<beats>/4`), where
+ * the numerator reads directly as the beat count (`n1.9638/4` == 1.9638
+ * Ableton beats). This keeps the off-grid escape under the `n` sigil and
+ * round-trips back through `durationToAbletonBeats`.
  *
  * Output shapes:
  *  - `0bar` (zero duration)
  *  - `Nbar` (multiple of one bar)
  *  - `n<fraction>` (sub-bar, e.g. `n/4`)
  *  - `Nbar+n<fraction>` (mixed, e.g. `1bar+n/4`)
- *  - bare beats (off-grid, e.g. `1.9638`) — the whole value, fixed precision
+ *  - `n<beats>/4` (off-grid, e.g. `n1.9638/4`) — the whole value as a
+ *    decimal-numerator note value, fixed precision
  * @param abletonBeats - Ableton beats (quarter notes)
  * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
@@ -204,10 +206,13 @@ export function abletonBeatsToDuration(
   const frac = abletonBeatsToWholeNoteFraction(remaining);
 
   if (frac == null) {
-    // Off-grid (sample-derived) length: no note-value form exists. Emit the
-    // whole value as bare beats rather than a `Nbar+<off-grid>` mix, since the
-    // mixed form's tail must be a note-value fraction.
-    return formatBareBeats(abletonBeats);
+    // Off-grid (sample-derived) length: no exact note-value fraction exists.
+    // Spell the whole value as a decimal-numerator note value pinned to `/4`
+    // (`n<beats>/4` == <beats> Ableton beats, since `n<x>/4` = x quarters),
+    // keeping the escape under the `n` sigil so the duration vocabulary stays
+    // uniform — never a bare number. The `/4` denominator makes the numerator
+    // read directly as the beat count.
+    return `n${formatOffGridBeats(abletonBeats)}/4`;
   }
 
   // Canonical note-value spelling: `n` prefix, numerator omitted when 1.
@@ -224,13 +229,15 @@ export function abletonBeatsToDuration(
  *
  * Accepted shapes:
  *  - `Nbar` — N bars (meter-aware; `bar` is its own type marker)
- *  - `n<fraction>` — note value (e.g. `n/4` = quarter, `n3/8` = three eighths;
- *    numerator defaults to 1, so `n/4` == `n1/4`)
- *  - `Nbar+n<fraction>` — bars plus sub-bar note value (e.g. `1bar+n/4`)
- *  - bare number — Ableton beats (quarter notes), e.g. `1.9638`. This is the
- *    off-grid form: `1` == one quarter in any meter. It exists so measured
- *    (sample-derived) lengths emitted by `abletonBeatsToDuration` round-trip
- *    back through this parser. It is NOT a general authoring form.
+ *  - `n<fraction>` — note value. The numerator may be an integer (`n3/8` = three
+ *    eighths; defaults to 1, so `n/4` == `n1/4`) or a decimal (`n1.9638/4` =
+ *    1.9638 quarters), the off-grid escape `abletonBeatsToDuration` emits.
+ *  - `Nbar+n<fraction>` — bars plus sub-bar note value (e.g. `1bar+n/4`); the
+ *    tail numerator may likewise be a decimal.
+ *  - bare number — Ableton beats (quarter notes), e.g. `1.9638`. A legacy
+ *    round-trip form (`abletonBeatsToDuration` now emits `n<beats>/4` instead),
+ *    still accepted on input. `1` == one quarter in any meter. NOT a general
+ *    authoring form.
  *
  * Bare *fractions* (`1/4`) are still rejected: in notation a bare fraction means
  * beats (transforms-as-arithmetic), never a note value. The `n` prefix keeps
@@ -245,13 +252,15 @@ export function durationToAbletonBeats(
   timeSigNumerator: number,
   timeSigDenominator: number,
 ): number {
+  // Numerator may be empty (→ 1), an integer, or a decimal (the `n<beats>/4`
+  // off-grid escape, e.g. `n1.9638/4`). Denominator is always an integer.
   const match = duration.match(
-    /^(?:(\d+)bar(?:\+n(\d*)\/(\d+))?|n(\d*)\/(\d+)|(\d+(?:\.\d+)?))$/,
+    /^(?:(\d+)bar(?:\+n(\d+\.\d+|\d*)\/(\d+))?|n(\d+\.\d+|\d*)\/(\d+)|(\d+(?:\.\d+)?))$/,
   );
 
   if (!match) {
     throw new Error(
-      `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4" or "n1/4"), or "Nbar+n<fraction>" (e.g. "1bar+n/4"). Note-value fractions require the "n" prefix; a bare fraction means beats, not a note value.`,
+      `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4", "n1/4", or off-grid "n1.9638/4"), or "Nbar+n<fraction>" (e.g. "1bar+n/4"). Note-value fractions require the "n" prefix; a bare fraction means beats, not a note value.`,
     );
   }
 
@@ -266,11 +275,11 @@ export function durationToAbletonBeats(
 
   if (match[3] != null) {
     // Nbar+n<fraction> form (numerator defaults to 1 when empty)
-    numerator = match[2] === "" ? 1 : Number.parseInt(match[2] as string);
+    numerator = match[2] === "" ? 1 : Number.parseFloat(match[2] as string);
     denominator = Number.parseInt(match[3]);
   } else if (match[5] != null) {
     // n<fraction> only (numerator defaults to 1 when empty)
-    numerator = match[4] === "" ? 1 : Number.parseInt(match[4] as string);
+    numerator = match[4] === "" ? 1 : Number.parseFloat(match[4] as string);
     denominator = Number.parseInt(match[5]);
   }
 
@@ -361,12 +370,13 @@ function abletonBeatsToWholeNoteFraction(
 }
 
 /**
- * Format an off-grid value as bare Ableton beats: fixed precision with trailing
- * zeros (and a bare trailing dot) stripped. Integers render without a decimal.
+ * Format an off-grid length as the decimal numerator of an `n<beats>/4` note
+ * value: fixed precision with trailing zeros (and a bare trailing dot)
+ * stripped. Integers render without a decimal.
  * @param beats - Ableton beats (quarter notes)
- * @returns Bare-beats string (e.g. "1.9638", "2")
+ * @returns Numerator string (e.g. "1.9638", "2")
  */
-function formatBareBeats(beats: number): string {
+function formatOffGridBeats(beats: number): string {
   if (Number.isInteger(beats)) {
     return beats.toString();
   }
