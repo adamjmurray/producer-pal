@@ -50,6 +50,7 @@ export interface ClipContext {
   clipCount: number; // total clips in operation
   arrangementStart?: number; // musical beats; undefined for session clips
   barDuration: number; // musical beats per bar (timeSigNumerator)
+  timeSigDenominator?: number; // meter denominator; resolves n<frac> waveform periods in the audio path (defaults to 4)
   scalePitchClassMask?: number; // bitmask of in-scale pitch classes (bit N = pitch class N)
 }
 

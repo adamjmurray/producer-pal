@@ -119,6 +119,7 @@ export function buildClipContext(
       ? (clip.getProperty("start_time") as number) * (timeSigDenominator / 4)
       : undefined,
     barDuration: timeSigNumerator,
+    timeSigDenominator,
     scalePitchClassMask: readScaleMask(),
   };
 }

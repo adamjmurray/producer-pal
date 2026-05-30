@@ -461,6 +461,77 @@ describe("Audio Transform Evaluator", () => {
     });
   });
 
+  describe("synced waveform meter frame", () => {
+    // Synced waveform periods authored as n<frac> must resolve in the clip's
+    // real meter so they share clip.barDuration/clip.position's musical-beats
+    // frame. A one-bar period is `n6/8` in 6/8 and `n2/2` in 2/2 — both must
+    // equal clip.barDuration. (Regression: these resolved in a hardcoded denom-4
+    // frame, so the synced LFO cycled at rate x denominator/4 in any non-x/4
+    // meter; every prior audio test ran at position 0 where it coincides.)
+    it("6/8: n6/8 sync period equals clip.barDuration", () => {
+      const ctx = {
+        clipDuration: 12,
+        clipIndex: 0,
+        clipCount: 1,
+        arrangementStart: 1.5, // musical beats; phase 1.5/6 = 0.25 -> sin = 1
+        barDuration: 6,
+        timeSigDenominator: 8,
+      };
+      const viaBar = applyAudioTransform(
+        0,
+        0,
+        "gain = sin(clip.barDuration, sync)",
+        ctx,
+      );
+      const viaN = applyAudioTransform(0, 0, "gain = sin(n6/8, sync)", ctx);
+
+      expect(viaN.gain).toBeCloseTo(viaBar.gain as number, 9);
+      expect(viaN.gain).toBeCloseTo(1, 9);
+    });
+
+    it("2/2: n2/2 sync period equals clip.barDuration", () => {
+      const ctx = {
+        clipDuration: 8,
+        clipIndex: 0,
+        clipCount: 1,
+        arrangementStart: 0.5, // musical beats; phase 0.5/2 = 0.25 -> sin = 1
+        barDuration: 2,
+        timeSigDenominator: 2,
+      };
+      const viaBar = applyAudioTransform(
+        0,
+        0,
+        "gain = sin(clip.barDuration, sync)",
+        ctx,
+      );
+      const viaN = applyAudioTransform(0, 0, "gain = sin(n2/2, sync)", ctx);
+
+      expect(viaN.gain).toBeCloseTo(viaBar.gain as number, 9);
+      expect(viaN.gain).toBeCloseTo(1, 9);
+    });
+
+    it("4/4 control: n/1 sync period equals clip.barDuration at a non-zero origin", () => {
+      const ctx = {
+        clipDuration: 8,
+        clipIndex: 0,
+        clipCount: 1,
+        arrangementStart: 1, // phase 1/4 = 0.25 -> sin = 1
+        barDuration: 4,
+        timeSigDenominator: 4,
+      };
+      const viaBar = applyAudioTransform(
+        0,
+        0,
+        "gain = sin(clip.barDuration, sync)",
+        ctx,
+      );
+      const viaN = applyAudioTransform(0, 0, "gain = sin(n/1, sync)", ctx);
+
+      expect(viaN.gain).toBeCloseTo(viaBar.gain as number, 9);
+      expect(viaN.gain).toBeCloseTo(1, 9);
+    });
+  });
+
   describe("clipseq function (audio)", () => {
     it("selects value based on clip.index", () => {
       const result0 = applyAudioTransform(0, 0, "gain = clipseq(-3, -6, -9)", {

@@ -191,11 +191,16 @@ function evaluateAudioExpression(
     return node;
   }
 
-  // Absolute duration (n/4, n/8, ...) — e.g. a waveform period. Audio function
-  // evaluation assumes 4/4 (see the hardcoded denominator passed to
-  // evaluateFunction), so resolve note values against a denominator of 4.
+  // Absolute duration (n/4, n/8, ...) — e.g. a synced waveform period. Resolve
+  // against the clip's real meter denominator so the period lands in the same
+  // musical-beats frame as clip.barDuration/clip.position (a one-bar period in
+  // 6/8 is `n6/8` = 6 musical beats, matching clip.barDuration). Falls back to
+  // 4/4 when no clip context is available (e.g. session-only callers).
   if (node.type === "nDuration") {
-    return wholeNoteFractionToMusicalBeats(node.wholeNoteFraction, 4);
+    return wholeNoteFractionToMusicalBeats(
+      node.wholeNoteFraction,
+      clipContext?.timeSigDenominator ?? 4,
+    );
   }
 
   // Bar duration (Nbar) — N bars in musical beats. Uses the clip's real
@@ -229,9 +234,14 @@ function evaluateAudioExpression(
     raw: boolean;
   };
 
-  // Use position=0 for audio context (clip-level transform)
-  // Use a default time range of 0-4 beats (one bar in 4/4)
+  // Use position=0 for audio context (clip-level transform). Pass the clip's
+  // real meter so synced waveform periods (n<frac>) and any Nbar/timeRange math
+  // resolve in the same musical-beats frame as clip.barDuration/clip.position;
+  // the default one-bar timeRange is the clip's beats-per-bar. All default to
+  // 4/4 when no clip context is available.
   const clipProps = buildClipNoteProperties(clipContext);
+  const numerator = clipContext?.barDuration ?? 4;
+  const denominator = clipContext?.timeSigDenominator ?? 4;
 
   return evaluateFunction(
     funcNode.name,
@@ -239,9 +249,9 @@ function evaluateAudioExpression(
     funcNode.sync,
     funcNode.raw,
     0, // position
-    4, // timeSigNumerator
-    4, // timeSigDenominator
-    { start: 0, end: 4 }, // timeRange
+    numerator, // timeSigNumerator (= clip beats-per-bar)
+    denominator, // timeSigDenominator
+    { start: 0, end: numerator }, // timeRange (one bar in musical beats)
     clipProps,
     (expr, pos, num, denom, range, _props) =>
       evaluateAudioExpressionWithContext(
