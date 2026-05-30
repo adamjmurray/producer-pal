@@ -409,6 +409,8 @@ export async function duplicateSceneToArrangement(
         track,
         arrangementStartBeats,
         arrangementLengthBeats,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
         name,
         ["arrangementStart"],
         context,

@@ -13,7 +13,7 @@ import {
   registerMockObject,
   registerTrackWithArrangementDup,
 } from "#src/tools/actions/duplicate/helpers/duplicate-test-helpers.ts";
-import { updateClipMock } from "./setup.ts";
+import { createShortenedClipInHoldingMock, updateClipMock } from "./setup.ts";
 
 interface LengthMocks {
   track0: ReturnType<typeof registerMockObject>;
@@ -183,55 +183,85 @@ describe("duplicate - arrangementLength functionality", () => {
     expect(result).toHaveProperty("id", livePath.track(0).arrangementClip(0));
   });
 
+  // arrangementLength resolves against the SONG time signature, consistent with
+  // every other arrangement-facing surface (create/update-clip, read-clip's
+  // read-back) — NOT the clip's own meter. read-clip reads it back via the song
+  // meter, so the write side must encode against the song meter to round-trip.
   it.each([
-    ["6/8", 6, 8, 12],
-    ["2/2", 2, 2, 8],
+    ["6/8", 6, 8],
+    ["3/4", 3, 4],
   ] as const)(
-    "should correctly handle %s time signature duration conversion",
-    async (label, numerator, denominator, clipLength) => {
+    "resolves arrangementLength bars against the song meter, not the %s clip meter (shortening)",
+    async (label, numerator, denominator) => {
       registerMockObject("clip1", {
         path: livePath.track(0).clipSlot(0).clip(),
         properties: {
-          length: clipLength,
+          length: 16, // longer than the 8-beat target → shortening path
           looping: 0,
           name: `Test Clip ${label}`,
           color: 4047616,
           signature_numerator: numerator,
           signature_denominator: denominator,
           loop_start: 0,
-          loop_end: clipLength,
+          loop_end: 16,
           is_midi_clip: 1,
         },
       });
 
-      registerMockObject("live_set/tracks/0", {
-        path: livePath.track(0),
-      });
-
-      registerMockObject("live_set", {
-        path: livePath.liveSet,
-        properties: {
-          signature_numerator: 4,
-          signature_denominator: 4,
-        },
-      });
-
+      registerMockObject("live_set/tracks/0", { path: livePath.track(0) });
+      // live_set defaults to a 4/4 song meter in the mock registry
+      registerMockObject("live_set", { path: livePath.liveSet });
       registerArrangementClip(0, 0, 0);
 
-      const result = await duplicate({
+      await duplicate({
         type: "clip",
         id: "clip1",
-
         arrangementStart: "1|1",
-        arrangementLength: "1bar",
+        arrangementLength: "2bar",
       });
 
-      expect(result).toStrictEqual({
-        id: livePath.track(0).arrangementClip(0),
-        arrangementStart: "1|1",
-      });
+      // 2 bars of the 4/4 song = 8 Ableton beats. The clip's 6/8 (or 3/4) meter
+      // would resolve "2bar" to 6 beats — the bug this fix corrects.
+      const calls = createShortenedClipInHoldingMock.mock
+        .calls as unknown as number[][];
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.[2]).toBe(8);
     },
   );
+
+  it("re-encodes the lengthen target in the song meter so a bar-aligned length round-trips through updateClip (3/4 clip, 4/4 song)", async () => {
+    registerMockObject("clip1", {
+      path: livePath.track(0).clipSlot(0).clip(),
+      properties: {
+        length: 3, // shorter than the 12-beat target → lengthening path
+        looping: 1,
+        signature_numerator: 3,
+        signature_denominator: 4,
+        loop_start: 0,
+        loop_end: 3,
+        is_midi_clip: 1,
+      },
+    });
+
+    setupLengthMocks(); // registers track0 (arrangement dup) + a 4/4 song meter
+
+    await duplicate({
+      type: "clip",
+      id: "clip1",
+      arrangementStart: "5|1",
+      arrangementLength: "3bar",
+    });
+
+    // "3bar" is 12 beats in the 4/4 song. updateClip re-parses arrangementLength
+    // against the song meter, so the re-encoded string must also be song-relative
+    // ("3bar"). A clip-meter encode would emit "4bar" (12 / 3 beats-per-3/4-bar)
+    // and updateClip would then stretch the clip to 16 beats.
+    expect(updateClipMock).toHaveBeenCalledWith(
+      expect.objectContaining({ arrangementLength: "3bar" }),
+      expect.anything(),
+    );
+  });
 
   it("should error when arrangementLength is zero or negative", async () => {
     registerMockObject("clip1", {

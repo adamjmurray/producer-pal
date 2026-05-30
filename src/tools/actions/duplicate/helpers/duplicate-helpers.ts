@@ -151,6 +151,8 @@ export function getMinimalClipInfo(
  * @param track - The track to create clips on
  * @param arrangementStartBeats - Start time in Ableton beats (quarter notes, 0-based)
  * @param arrangementLengthBeats - Total length to fill in Ableton beats (quarter notes)
+ * @param songTimeSigNumerator - Song time signature numerator (re-encodes length for updateClip)
+ * @param songTimeSigDenominator - Song time signature denominator (re-encodes length for updateClip)
  * @param name - Optional name for the clips
  * @param omitFields - Optional fields to omit from clip info
  * @param context - Context object with holdingAreaStartBeats and silenceWavPath
@@ -162,6 +164,8 @@ export async function createClipsForLength(
   track: LiveAPI,
   arrangementStartBeats: number,
   arrangementLengthBeats: number,
+  songTimeSigNumerator: number,
+  songTimeSigDenominator: number,
   name?: string,
   omitFields: string[] = [],
   context: Partial<ToolContext & TilingContext> = {},
@@ -216,10 +220,11 @@ export async function createClipsForLength(
 
     if (arrangementLengthBeats > sourceClipLength) {
       await lengthenClipAndCollectInfo(
-        sourceClip,
         track,
         newClipId,
         arrangementLengthBeats,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
         name,
         omitFields,
         context,
@@ -236,35 +241,34 @@ export async function createClipsForLength(
 
 /**
  * Lengthens a clip and collects info about resulting clips
- * @param sourceClip - Source clip for time signature
  * @param track - Track containing the clip
  * @param newClipId - ID of the new clip to lengthen
  * @param targetBeats - Target length in beats
+ * @param songTimeSigNumerator - Song time signature numerator (re-encodes length)
+ * @param songTimeSigDenominator - Song time signature denominator (re-encodes length)
  * @param name - Optional name
  * @param omitFields - Fields to omit from results
  * @param context - Context object
  * @param duplicatedClips - Array to push results to
  */
 async function lengthenClipAndCollectInfo(
-  sourceClip: LiveAPI,
   track: LiveAPI,
   newClipId: string,
   targetBeats: number,
+  songTimeSigNumerator: number,
+  songTimeSigDenominator: number,
   name: string | undefined,
   omitFields: string[],
   context: Partial<ToolContext & TilingContext>,
   duplicatedClips: MinimalClipInfo[],
 ): Promise<void> {
-  // Format the target length in the clip's time signature using the shared
-  // duration grammar (Nbar / n<fraction>) that updateClip's parser accepts.
-  const timeSigNum = sourceClip.getProperty("signature_numerator") as number;
-  const timeSigDenom = sourceClip.getProperty(
-    "signature_denominator",
-  ) as number;
+  // Re-encode the target length in the SONG time signature — the same meter
+  // updateClip's parser decodes arrangementLength with — so a bar-aligned length
+  // round-trips to the same beats even when the clip's own meter differs.
   const arrangementLength = abletonBeatsToDuration(
     targetBeats,
-    timeSigNum,
-    timeSigDenom,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
   );
 
   const updateResult = await updateClip(
@@ -356,8 +360,8 @@ export function duplicateClipSlot(
  * @param name - Optional name for the duplicated clip(s)
  * @param color - Optional color for the duplicated clip(s)
  * @param arrangementLength - Optional length (Nbar, n<fraction>, or Nbar+n<fraction>)
- * @param _songTimeSigNumerator - Song time signature numerator (unused but kept for API compat)
- * @param _songTimeSigDenominator - Song time signature denominator (unused but kept for API compat)
+ * @param songTimeSigNumerator - Song time signature numerator (resolves arrangementLength bars)
+ * @param songTimeSigDenominator - Song time signature denominator (resolves arrangementLength bars)
  * @param context - Context object with holdingAreaStartBeats and silenceWavPath
  * @returns Clip info or object with trackIndex and clips array
  */
@@ -367,8 +371,8 @@ export async function duplicateClipToArrangement(
   name?: string,
   color?: string,
   arrangementLength?: string,
-  _songTimeSigNumerator = 4,
-  _songTimeSigDenominator = 4,
+  songTimeSigNumerator = 4,
+  songTimeSigDenominator = 4,
   context: Partial<ToolContext & TilingContext> = {},
 ): Promise<MinimalClipInfo | { trackIndex: number; clips: MinimalClipInfo[] }> {
   // Support "id {id}" (such as returned by childIds()) and id values directly
@@ -390,17 +394,13 @@ export async function duplicateClipToArrangement(
   const duplicatedClips: MinimalClipInfo[] = [];
 
   if (arrangementLength != null) {
-    // Use the clip's time signature for duration calculation
-    const clipTimeSigNumerator = clip.getProperty(
-      "signature_numerator",
-    ) as number;
-    const clipTimeSigDenominator = clip.getProperty(
-      "signature_denominator",
-    ) as number;
+    // Resolve bars against the SONG meter, consistent with every other
+    // arrangement-facing surface (create/update clip, read-clip read-back). The
+    // clip's own meter governs its internal notation, not its arrangement span.
     const arrangementLengthBeats = parseArrangementLength(
       arrangementLength,
-      clipTimeSigNumerator,
-      clipTimeSigDenominator,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
     );
     // When creating multiple clips, omit trackIndex since they all share the same track
     const clipsCreated = await createClipsForLength(
@@ -408,6 +408,8 @@ export async function duplicateClipToArrangement(
       track,
       arrangementStartBeats,
       arrangementLengthBeats,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
       name,
       ["trackIndex"],
       context,
