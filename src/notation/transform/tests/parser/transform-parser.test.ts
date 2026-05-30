@@ -206,11 +206,43 @@ describe("Transform Parser", () => {
       });
     });
 
-    it("parses range with mixed numbers", () => {
-      const result = parser.parse("1|1+1/2-2|1+3/4: velocity += 10");
+    it("parses +n note-value offset bounds", () => {
+      const result = parser.parse("1|1+n/12-2|2-n/24: velocity += 10");
 
-      expect(result[0]!.timeRange!.startBeat).toBeCloseTo(1.5);
-      expect(result[0]!.timeRange!.endBeat).toBeCloseTo(1.75);
+      // 4/4 default: n/12 = 1/3 beat, n/24 = 1/6 beat
+      expect(result[0]!.timeRange!.startBeat).toBeCloseTo(1.3333);
+      expect(result[0]!.timeRange!.endBeat).toBeCloseTo(1.8333);
+    });
+
+    it("resolves n offsets meter-relative to timeSigDenominator", () => {
+      // n/12 = 1/12 whole note → 1/3 beat in 4/4, 2/3 beat in 6/8.
+      const in44 = parser.parse("1|1+n/12-2|1: velocity += 10", {
+        timeSigDenominator: 4,
+      });
+      const in68 = parser.parse("1|1+n/12-2|1: velocity += 10", {
+        timeSigDenominator: 8,
+      });
+
+      expect(in44[0]!.timeRange!.startBeat).toBeCloseTo(1.3333);
+      expect(in68[0]!.timeRange!.startBeat).toBeCloseTo(1.6667);
+    });
+
+    it("rejects bare fractions in a range bound", () => {
+      expect(() => parser.parse("1|4/3-2|1: velocity += 10")).toThrow(
+        /bare fraction/,
+      );
+    });
+
+    it("rejects mixed numbers in a range bound", () => {
+      expect(() => parser.parse("1|1+1/3-2|1: velocity += 10")).toThrow(
+        /note-value form/,
+      );
+    });
+
+    it("rejects a beat below 1 from a negative offset", () => {
+      expect(() => parser.parse("1|1-n/2-2|1: velocity += 10")).toThrow(
+        /1 or greater/,
+      );
     });
   });
 

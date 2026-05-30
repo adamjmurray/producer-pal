@@ -145,7 +145,7 @@ pitchClass
   }
 
 timeRange "time range"
-  = startBar:oneOrMoreInt "|" startBeat:oneOrMoreFloat "-" endBar:oneOrMoreInt "|" endBeat:oneOrMoreFloat {
+  = startBar:oneOrMoreInt "|" startBeat:beatValue "-" endBar:oneOrMoreInt "|" endBeat:beatValue {
     return {
       startBar,
       startBeat,
@@ -153,6 +153,52 @@ timeRange "time range"
       endBeat
     };
   }
+
+// A range-bound beat position. Same dialect as bar|beat note positions
+// (`beatValue` in barbeat-grammar.peggy): a 1-based grid beat optionally
+// displaced by an absolute note-value offset (`+n/12` = plus an eighth triplet,
+// `-n/24` = minus a 32nd triplet). The offset is a whole-note fraction
+// (meter-aware, like durations); `options.timeSigDenominator` converts it to
+// musical beats. Dyadic sub-beats may use a plain decimal (`1.5`). Bare
+// fractions (`4/3`) and mixed numbers (`1+1/3`) are intentionally rejected so a
+// beat reads the same in a range bound as in a note position (AJM-467).
+//
+// The sign branches are split (unlike barbeat's combined `("+"/"-")`) because a
+// range's `-` separator collides with a `-` offset sign: `1|1-2|1` is the
+// whole-beat range "beat 1 to bar 2 beat 1", not "beat 1 minus 2". Requiring an
+// `n` after the sign disambiguates — `-` is an offset only in `-n/...`, else it
+// falls through to the separator. The targeted bad-offset error is kept only
+// for `+` (the removed mixed-number form `1+1/3`); negative offsets never
+// existed before this reform, so a malformed `-...` simply fails to parse.
+beatValue
+  = base:oneOrMoreInt "+n" frac:unsignedFraction {
+      // base >= 1 and a positive offset, so the result is always >= 1.
+      return base + frac * (options.timeSigDenominator ?? 4);
+    }
+  / base:oneOrMoreInt "-n" frac:unsignedFraction {
+      const beat = base - frac * (options.timeSigDenominator ?? 4);
+      if (beat < 1) {
+        throw new Error(`Beat position must be 1 or greater (got ${text()})`);
+      }
+      return beat;
+    }
+  / oneOrMoreInt "+" bad:badBeatOffset {
+      throw new Error(`beat offsets use the note-value form: 1|1+n/12 = beat 1 + an eighth triplet, 1|2-n/24. Got ${text()} — note-value offsets need the n prefix (write +n/3, not +${bad}).`);
+    }
+  / bad:bareFractionBeat {
+      throw new Error(`beat positions are a grid beat with an optional note-value offset (1|1, 1|1+n/12) or a decimal (1|1.5). Got bare fraction ${bad} — write the grid+offset form instead (4/3 → 1+n/12).`);
+    }
+  / oneOrMoreDecimal
+
+// Old bare-fraction beat (`4/3`); matched only to raise a targeted error.
+bareFractionBeat
+  = [1-9] [0-9]* "/" [1-9] [0-9]* { return text(); }
+
+// Tail of an old `int+fraction` mixed beat (`1+1/3`); for targeted errors only.
+badBeatOffset
+  = unsignedMixedNumber { return text(); }
+  / unsignedFraction { return text(); }
+  / unsignedDecimal { return text(); }
 
 operator
   = "*=" { return "multiply"; }
@@ -340,24 +386,6 @@ argument
 
 number
   = signedDecimal
-
-oneOrMoreFloat
-  = oneOrMoreMixedNumber / oneOrMoreFraction / oneOrMoreDecimal
-
-oneOrMoreMixedNumber
-  = wholeNumber:oneOrMoreInt "+" fraction:unsignedFraction {
-    return wholeNumber + fraction;
-  }
-
-oneOrMoreFraction
-  = [1-9] [0-9]* "/" [1-9] [0-9]* {
-    const [num, den] = text().split('/');
-    const result = Number.parseInt(num) / Number.parseInt(den);
-    if (result < 1) {
-      throw new Error(`Value must be 1 or greater (got ${text()})`);
-    }
-    return result;
-  }
 
 oneOrMoreDecimal
   = [1-9] [0-9]* ("." [0-9]*)? {

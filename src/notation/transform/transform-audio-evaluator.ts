@@ -65,7 +65,10 @@ export function applyAudioTransform(
   let ast: TransformAssignment[];
 
   try {
-    ast = parser.parse(transformString);
+    // Audio transforms operate on whole-clip gain/pitchShift and never apply a
+    // timeRange, so the meter is irrelevant here; pass denominator 4 to satisfy
+    // the now meter-aware grammar (matches this evaluator's hardcoded-4 convention).
+    ast = parser.parse(transformString, { timeSigDenominator: 4 });
   } catch (error) {
     console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
 

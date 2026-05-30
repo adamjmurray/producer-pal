@@ -198,6 +198,53 @@ G4-G5: velocity += 20`;
 
       expect(atEnd.velocity!.value).toBe(10);
     });
+
+    // AJM-467: range bounds use the same bar|beat dialect as note positions,
+    // including ±n note-value offsets resolved meter-relative to the denominator.
+    describe("n-offset bounds (meter-relative)", () => {
+      it("includes a note at or past a +n start bound", () => {
+        // 4/4: 1|1+n/12 start bound = beat 1.333; note at beat 1.5 is inside.
+        const result = evaluateTransform("1|1+n/12-2|1: velocity += 10", {
+          ...createContext(),
+          bar: 1,
+          beat: 1.5,
+        });
+
+        expect(result.velocity!.value).toBe(10);
+      });
+
+      it("excludes a note before a +n start bound", () => {
+        // 4/4: beat 1.2 is before the 1.333 bound.
+        const result = evaluateTransform("1|1+n/12-2|1: velocity += 10", {
+          ...createContext(),
+          bar: 1,
+          beat: 1.2,
+        });
+
+        expect(result).toStrictEqual({});
+      });
+
+      it("moves the boundary with the meter (same bound, same note, flips)", () => {
+        // Identical range string and note beat 1.5; only the meter differs.
+        // n/12 = 1/3 beat in 4/4 → start 1.333 (note 1.5 inside),
+        //        but 2/3 beat in 6/8 → start 1.667 (note 1.5 outside).
+        const range = "1|1+n/12-2|1: velocity += 10";
+
+        const in44 = evaluateTransform(range, {
+          ...createContext({ denominator: 4 }),
+          bar: 1,
+          beat: 1.5,
+        });
+        const in68 = evaluateTransform(range, {
+          ...createContext({ denominator: 8 }),
+          bar: 1,
+          beat: 1.5,
+        });
+
+        expect(in44.velocity!.value).toBe(10); // inside in 4/4
+        expect(in68).toStrictEqual({}); // outside in 6/8
+      });
+    });
   });
 
   describe("combined pitch and time filtering", () => {
