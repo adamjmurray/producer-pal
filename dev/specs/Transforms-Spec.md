@@ -40,9 +40,9 @@ pow(base, exponent); // base raised to exponent
       triplet), `n3/8` (dotted quarter), `n/1` (whole note)
     - Meter-invariant in absolute time: `n/4` is one cycle per quarter note in
       any meter.
-  - **Bar-length cycle**: there is no bar period notation; use the meter-aware
-    `clip.barDuration` variable, e.g. `cos(clip.barDuration)` (1 bar) or
-    `cos(clip.barDuration * 4)` (4 bars).
+  - **Bar-length cycle** (`Nbar`): meter-aware bars, e.g. `cos(1bar)` (1 bar) or
+    `cos(4bar)` (4 bars). Equivalent to the `clip.barDuration` variable —
+    `cos(clip.barDuration)` and `cos(clip.barDuration * 4)` still work.
   - **Expressions**: Any numeric expression (including variables)
     - Examples: `note.duration`, `note.start / 4`, `2.5`
     - A bare number is treated as a period in beats
@@ -305,6 +305,30 @@ duration = note.duration + n / 16;
 The denominator is required (`n1`, `n0.5` are parse errors); same rule as in
 bar|beat notation. A bare fraction (`1/4`) is plain arithmetic (beats), not a
 note value.
+
+### Bar Durations (`Nbar`)
+
+For meter-aware durations and periods, use `Nbar` — the same token as the
+`create-clip`/`update-clip` length fields. A bar is the number of musical beats
+in one bar (the time-signature numerator), so `Nbar` evaluates to
+`N * clip.barDuration`:
+
+- `1bar` = one bar (4 musical beats in 4/4, 6 in 6/8, 3 in 3/4)
+- `4bar` = four bars
+
+`Nbar` composes in any expression and combines with `n<fraction>` exactly as in
+authoring:
+
+```javascript
+timing += 1bar; // shift every note one bar later
+duration = 1bar; // each note fills a bar
+duration = 1bar + n/4; // a bar plus a quarter
+velocity += 20 * cos(1bar, sync); // a bar-length cycle
+```
+
+`Nbar` is the meter-aware half of the duration vocabulary; `n<fraction>` is the
+meter-invariant half. They are uniform across authoring, length fields, and
+transforms.
 
 ### Note Property Units
 

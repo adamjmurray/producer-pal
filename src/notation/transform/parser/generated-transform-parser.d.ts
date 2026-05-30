@@ -46,13 +46,20 @@ export interface NDurationNode {
   wholeNoteFraction: number;
 }
 
+/** Meter-aware bar duration (e.g., 1bar). Resolves to bars * beats-per-bar musical beats. */
+export interface BarDurationNode {
+  type: "barDuration";
+  bars: number;
+}
+
 /** Expression AST node */
 export type ExpressionNode =
   | number
   | VariableNode
   | BinaryOpNode
   | FunctionNode
-  | NDurationNode;
+  | NDurationNode
+  | BarDurationNode;
 
 /** Pitch range filter */
 export interface PitchRange {

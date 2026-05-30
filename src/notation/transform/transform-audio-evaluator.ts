@@ -198,6 +198,12 @@ function evaluateAudioExpression(
     return wholeNoteFractionToMusicalBeats(node.wholeNoteFraction, 4);
   }
 
+  // Bar duration (Nbar) — N bars in musical beats. Uses the clip's real
+  // beats-per-bar when known, else assumes 4/4 (same as the nDuration fallback).
+  if (node.type === "barDuration") {
+    return node.bars * (clipContext?.barDuration ?? 4);
+  }
+
   // Variable lookup
   if (node.type === "variable") {
     return resolveAudioVariable(node, audioProperties, clipContext);

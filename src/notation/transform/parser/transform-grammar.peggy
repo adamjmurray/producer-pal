@@ -111,6 +111,9 @@ shorthand "shorthand assignment"
   / "p" value:unsignedDecimal {
       return { parameter: "probability", operator: "set", expression: value };
     }
+  / expression:barDuration {
+      return { parameter: "duration", operator: "set", expression };
+    }
   / expression:nDuration {
       return { parameter: "duration", operator: "set", expression };
     }
@@ -263,6 +266,7 @@ primary
   = functionCall
   / variable
   / nDuration
+  / barDuration
   / pitchLiteral
   / badPeriod
   / number
@@ -274,6 +278,16 @@ nDuration "absolute duration value"
   }
   / "n" bad:badAbsoluteValue {
     throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet. Got n${bad}`);
+  }
+
+// Meter-aware bar duration (`Nbar`): N bars = N * beats-per-bar musical beats
+// (the same value as `N * clip.barDuration`). Matches the authoring/length-field
+// `Nbar` token so the duration vocabulary is uniform across grammars. The mixed
+// form `Nbar+n<frac>` composes through ordinary addition (e.g. `1bar+n/4` parses
+// as `barDuration(1) + nDuration(1/4)`), so this rule matches only the bar token.
+barDuration "bar duration value"
+  = bars:oneOrMoreInt "bar" {
+    return { type: "barDuration", bars };
   }
 
 // Matches values that LOOK like a duration but lack the required denominator.

@@ -356,6 +356,12 @@ export function evaluateExpression(
     );
   }
 
+  // Bar duration (Nbar) — N bars in musical beats (beats-per-bar = numerator),
+  // identical to N * clip.barDuration
+  if (node.type === "barDuration") {
+    return node.bars * timeSigNumerator;
+  }
+
   // Variable lookup
   if (node.type === "variable") {
     // Audio variables cannot be used in MIDI note context

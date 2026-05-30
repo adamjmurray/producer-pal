@@ -435,6 +435,25 @@ describe("Audio Transform Evaluator", () => {
       // -24 + 3 * 6 = -6
       expect(result.gain).toBe(-6);
     });
+
+    it("resolves Nbar using the clip's beats-per-bar", () => {
+      const result = applyAudioTransform(0, 0, "gain = 1bar", {
+        clipDuration: 24,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 6,
+      });
+
+      // 1bar = 1 * 6 musical beats in 6/8
+      expect(result.gain).toBe(6);
+    });
+
+    it("resolves Nbar to a 4/4 bar when no clipContext is provided", () => {
+      const result = applyAudioTransform(0, 0, "gain = 1bar");
+
+      // Falls back to 4 beats per bar (same assumption as the nDuration path)
+      expect(result.gain).toBe(4);
+    });
   });
 
   describe("clipseq function (audio)", () => {
