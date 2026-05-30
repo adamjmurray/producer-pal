@@ -2,7 +2,7 @@
 
 ## Function Signatures
 
-```javascript
+```
 // Waveforms (sync is an optional trailing keyword, not an expression)
 cos(frequency, [phase], [sync]); // cosine wave
 tri(frequency, [phase], [sync]); // triangle wave
@@ -14,7 +14,7 @@ ramp(start, end); // linear ramp over clip/time range
 curve(start, end, exponent); // exponential ramp over clip/time range
 
 // Timing functions
-swing(amount, [grid], [raw]); // swing: delay off-beat notes (grid default: n/8 = 8th-note)
+swing(amount, [grid], [raw]); // swing: delay off-beat notes (grid default: half the meter's beat — 8th-note in 4/4, 16th in 6/8)
 quant(grid); // quantize: snap to nearest grid point
 
 // Math functions
@@ -88,7 +88,7 @@ across clips on the global timeline.
 - **Non-cyclical functions**: `sync` on `ramp`, `curve`, `rand`, `choose`, or
   math functions is a parse error
 
-```javascript
+```
 // Clip-relative (default) — phase resets at each clip start
 velocity += 20 * cos(clip.barDuration * 4);
 
@@ -99,7 +99,7 @@ velocity += 20 * cos(clip.barDuration * 4, sync);
 velocity += 20 * cos(clip.barDuration * 4, 0.25, sync);
 
 // square with all args and sync
-velocity += 20 * square(n / 2, 0, 0.75, sync);
+velocity += 20 * square(n/2, 0, 0.75, sync);
 ```
 
 ## Timing Functions
@@ -111,9 +111,11 @@ with `timing =`.
 
 - **amount**: Delay in beats applied to off-beat notes (0.02=subtle,
   0.05=medium, 0.1=heavy). Negative values push off-beats early.
-- **grid**: Swing subdivision grid (default `n/8` = 8th-note swing). Uses the
-  same grid notation as `quant()` (e.g., `n/16` for 16th-note swing).
-  Internally, `period = grid * 2`.
+- **grid**: Swing subdivision grid. Default is half the meter's beat — the
+  off-beat between beats: an 8th note in x/4 meters, a 16th in x/8 (the natural
+  swing subdivision per meter). It is _not_ a fixed `n/8`, which would coincide
+  only in x/4. Uses the same grid notation as `quant()` (e.g., `n/16` for
+  16th-note swing). Internally, `period = grid * 2`.
 - **raw**: Keyword that skips auto-quantize (see below).
 
 **Algorithm**: Each period (2× grid) is split into two halves. Notes in the
@@ -133,11 +135,11 @@ quantize grid. This serves two purposes:
 The `raw` keyword skips auto-quantize entirely, applying swing to whatever
 position the note is currently at.
 
-```javascript
-timing = swing(0.05); // 8th-note swing (default grid n/8)
-timing = swing(0.03, n / 16); // 16th-note swing
+```
+timing = swing(0.05); // default swing: half the meter's beat (8th notes in 4/4)
+timing = swing(0.03, n/16); // 16th-note swing
 timing = swing(0.05, raw); // no auto-quantize
-timing = swing(0.05, n / 16, raw); // 16th-note swing, no auto-quantize
+timing = swing(0.05, n/16, raw); // 16th-note swing, no auto-quantize
 ```
 
 ### quant(grid)
@@ -147,11 +149,11 @@ with `timing =`.
 
 - **grid**: Grid size as a note value or numeric beats.
 
-```javascript
-timing = quant(n / 8); // snap to 8th-note grid (0.5 beats in 4/4)
-timing = quant(n / 16); // snap to 16th-note grid (0.25 beats in 4/4)
-timing = quant(n / 4); // snap to quarter-note grid (1 beat in 4/4)
-timing = quant(n / 12); // snap to triplet grid
+```
+timing = quant(n/8); // snap to 8th-note grid (0.5 beats in 4/4)
+timing = quant(n/16); // snap to 16th-note grid (0.25 beats in 4/4)
+timing = quant(n/4); // snap to quarter-note grid (1 beat in 4/4)
+timing = quant(n/12); // snap to triplet grid
 ```
 
 ### legato([tolerance])
@@ -164,7 +166,7 @@ duration (with a warning) when no clip length is available.
 Optional tolerance in beats (default 0): notes within tolerance of the same
 start time are treated as a chord. Useful after humanizing timing.
 
-```javascript
+```
 duration = legato()              // extend notes to fill gaps
 duration = legato(0.1)           // group notes within 0.1 beats as chords
 C3-C5: duration = legato()       // legato for melody notes only
@@ -300,11 +302,11 @@ number of musical beats:
 
 `n<fraction>` evaluates to a number and composes in any expression:
 
-```javascript
-duration = n / 8; // every note → an eighth note (any meter)
-duration += n / 16; // lengthen each note by a sixteenth
-duration = n / 4 + n / 8; // a dotted quarter
-duration = note.duration + n / 16;
+```
+duration = n/8; // every note → an eighth note (any meter)
+duration += n/16; // lengthen each note by a sixteenth
+duration = n/4 + n/8; // a dotted quarter
+duration = note.duration + n/16;
 ```
 
 The denominator is required (`n1`, `n0.5` are parse errors); same rule as in
@@ -324,7 +326,7 @@ in one bar (the time-signature numerator), so `Nbar` evaluates to
 `Nbar` composes in any expression and combines with `n<fraction>` exactly as in
 authoring:
 
-```javascript
+```
 timing += 1bar; // shift every note one bar later
 duration = 1bar; // each note fills a bar
 duration = 1bar + n/4; // a bar plus a quarter
@@ -426,7 +428,7 @@ Parentheses for grouping: `(expression)`
 
 ### Basic Waveforms
 
-```javascript
+```
 // Basic envelope
 velocity += 20 * cos(clip.barDuration);
 
@@ -434,10 +436,10 @@ velocity += 20 * cos(clip.barDuration);
 velocity += 20 * cos(clip.barDuration, 0.5);
 
 // Pulse width modulation
-velocity += 20 * square(n / 2, 0, 0.25);
+velocity += 20 * square(n/2, 0, 0.25);
 
 // Dynamic PWM (pulse width modulated by another waveform)
-velocity += 20 * square(n / 2, 0, cos(clip.barDuration) * 0.25 + 0.5);
+velocity += 20 * square(n/2, 0, cos(clip.barDuration) * 0.25 + 0.5);
 
 // Combined functions
 velocity += 20 * cos(clip.barDuration * 4) + 10 * rand();
@@ -446,7 +448,7 @@ velocity += 20 * cos(clip.barDuration * 4) + 10 * rand();
 velocity += 20 + 20 * cos(clip.barDuration * 2);
 
 // Amplitude modulation
-velocity += 30 * cos(clip.barDuration * 4) * cos(n / 4);
+velocity += 30 * cos(clip.barDuration * 4) * cos(n/4);
 
 // Set absolute velocity value
 velocity = 80;
@@ -454,7 +456,7 @@ velocity = 80;
 
 ### Ramp Function
 
-```javascript
+```
 // Velocity ramp from soft to loud over entire clip
 velocity += ramp(0, 127);
 
@@ -470,7 +472,7 @@ velocity += ramp(20, 100) + 10 * rand();
 
 ### Rand Function
 
-```javascript
+```
 // Random velocity humanization (default range: -1 to 1)
 velocity += 10 * rand();
 
@@ -483,7 +485,7 @@ pitch += round(rand(-6, 6));
 
 ### Choose Function
 
-```javascript
+```
 // Random velocity from a set of values
 velocity = choose(60, 80, 100, 120);
 
@@ -496,7 +498,7 @@ velocity = choose(60, 60, 60, 100);
 
 ### Curve Function
 
-```javascript
+```
 // Exponential fade-in (slow start, fast finish)
 velocity += curve(0, 127, 2);
 
@@ -512,7 +514,7 @@ velocity += curve(0, 127, 1);
 
 ### Math Functions
 
-```javascript
+```
 // Round to nearest semitone
 pitch += round(12 * rand());
 
@@ -540,7 +542,7 @@ velocity = pow(note.velocity / 127, 2) * 127;
 
 ### Pitch Filtering
 
-```javascript
+```
 // Single pitch selector (only affects C3 notes)
 C3 velocity += 20
 
@@ -564,7 +566,7 @@ C6-C7 velocity = 100
 
 ### Note Property Variables
 
-```javascript
+```
 // Scale velocity based on pitch (higher notes louder)
 velocity = note.pitch / 127 * 100
 
@@ -586,7 +588,7 @@ velocity = (note.pitch + note.deviation) / 2
 
 ### Variable Periods
 
-```javascript
+```
 // Use note duration as waveform period
 velocity += cos(note.duration);
 
@@ -597,12 +599,12 @@ velocity += tri(note.duration * 2);
 velocity = ramp(0, note.velocity);
 
 // Phase offset from note probability
-velocity += cos(n / 4, note.probability);
+velocity += cos(n/4, note.probability);
 ```
 
 ### Multi-Parameter
 
-```javascript
+```
 transforms: `velocity += 20 * cos(clip.barDuration) + 10 * rand()
 timing += 0.03 * rand()
 probability += 0.2 * cos(n/2)`;
@@ -615,7 +617,7 @@ timing += note.start / 100`;
 
 ### Pitch Transforms (MIDI)
 
-```javascript
+```
 // Transpose up an octave
 pitch += 12;
 
@@ -634,7 +636,7 @@ pitch = floor(note.pitch / 2) * 2;
 
 ### Context Variables
 
-```javascript
+```
 // Sequential crescendo using note index
 velocity = 60 + note.index * 5;
 
@@ -642,7 +644,7 @@ velocity = 60 + note.index * 5;
 pitch += clip.index * 7;
 
 // Scale gain by arrangement position
-gain = ramp(-24, 0) * (clip.position / 32);
+gain = ramp(-24, 0) * (clip.position/32);
 
 // Use bar duration for rhythmic patterns
 velocity += (20 * (note.start % clip.barDuration)) / clip.barDuration;
@@ -650,7 +652,7 @@ velocity += (20 * (note.start % clip.barDuration)) / clip.barDuration;
 
 ### Audio Clip Transforms
 
-```javascript
+```
 // Set gain to -6 dB
 gain = -6;
 
