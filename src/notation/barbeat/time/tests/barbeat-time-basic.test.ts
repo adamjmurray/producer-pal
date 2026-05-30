@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -127,87 +128,98 @@ describe("barbeat-time utilities", () => {
       );
     });
 
-    it("handles fractional beat notation", () => {
-      // Triplets in 4/4 (beat positions are 1-indexed, so 4/3 = 1 + 1/3)
-      expect(barBeatToBeats("1|4/3", 4)).toBeCloseTo(1 / 3, 10);
-      expect(barBeatToBeats("1|5/3", 4)).toBeCloseTo(2 / 3, 10);
-      expect(barBeatToBeats("1|7/3", 4)).toBeCloseTo(4 / 3, 10);
+    it("handles ±n note-value offset and decimal beat notation", () => {
+      // Eighth triplets in 4/4: +n/12 = +1/3 beat, +n/6 = +2/3 beat
+      expect(barBeatToBeats("1|1+n/12", 4, 4)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatToBeats("1|1+n/6", 4, 4)).toBeCloseTo(2 / 3, 10);
+      expect(barBeatToBeats("1|2+n/12", 4, 4)).toBeCloseTo(4 / 3, 10);
 
-      // Dotted notes
-      expect(barBeatToBeats("1|3/2", 4)).toBe(0.5);
-      expect(barBeatToBeats("2|5/2", 4)).toBe(5.5);
+      // Dotted / dyadic positions as decimals
+      expect(barBeatToBeats("1|1.5", 4)).toBe(0.5);
+      expect(barBeatToBeats("2|2.5", 4)).toBe(5.5);
 
-      // Quintuplets
-      expect(barBeatToBeats("1|6/5", 4)).toBeCloseTo(0.2, 10);
-      expect(barBeatToBeats("1|7/5", 4)).toBeCloseTo(0.4, 10);
+      // Quintuplet offsets: +n/20 = +1/5 beat, +n/10 = +2/5 beat
+      expect(barBeatToBeats("1|1+n/20", 4, 4)).toBeCloseTo(0.2, 10);
+      expect(barBeatToBeats("1|1+n/10", 4, 4)).toBeCloseTo(0.4, 10);
     });
 
-    it("handles fractional beats in different time signatures", () => {
-      // Triplets in 3/4
-      expect(barBeatToBeats("1|4/3", 3)).toBeCloseTo(1 / 3, 10);
-      expect(barBeatToBeats("2|4/3", 3)).toBeCloseTo(3 + 1 / 3, 10);
-
-      // Triplets in 6/8
-      expect(barBeatToBeats("1|4/3", 6)).toBeCloseTo(1 / 3, 10);
-      expect(barBeatToBeats("1|7/3", 6)).toBeCloseTo(4 / 3, 10);
+    it("resolves ±n offsets meter-awarely (denominator-dependent)", () => {
+      // The same n/12 offset displaces by a meter-dependent number of beats.
+      // 4/4 (denom 4): n/12 = 1/3 beat
+      expect(barBeatToBeats("1|1+n/12", 3, 4)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatToBeats("2|1+n/12", 3, 4)).toBeCloseTo(3 + 1 / 3, 10);
+      // 6/8 (denom 8): n/12 = 2/3 beat (a real eighth triplet vs the eighth beat)
+      expect(barBeatToBeats("1|1+n/12", 6, 8)).toBeCloseTo(2 / 3, 10);
+      expect(barBeatToBeats("1|2+n/12", 6, 8)).toBeCloseTo(1 + 2 / 3, 10);
     });
 
-    it("handles beats with + operator (integer + fraction)", () => {
-      // Basic cases
-      expect(barBeatToBeats("1|2+1/3", 4)).toBeCloseTo(4 / 3, 10);
-      expect(barBeatToBeats("1|2+3/4", 4)).toBeCloseTo(1.75, 10);
-      expect(barBeatToBeats("1|3+1/2", 4)).toBeCloseTo(2.5, 10);
+    it("handles beats with + and - note-value offsets", () => {
+      // Basic cases (4/4)
+      expect(barBeatToBeats("1|2+n/12", 4, 4)).toBeCloseTo(4 / 3, 10);
+      expect(barBeatToBeats("1|2+n3/16", 4, 4)).toBeCloseTo(1.75, 10);
+      expect(barBeatToBeats("1|3+n/8", 4, 4)).toBeCloseTo(2.5, 10);
 
       // Different bars
-      expect(barBeatToBeats("2|1+1/4", 4)).toBeCloseTo(4.25, 10);
-      expect(barBeatToBeats("3|2+2/3", 4)).toBeCloseTo(8 + 5 / 3, 10);
+      expect(barBeatToBeats("2|1+n/16", 4, 4)).toBeCloseTo(4.25, 10);
+      expect(barBeatToBeats("3|2+n/6", 4, 4)).toBeCloseTo(8 + 5 / 3, 10);
 
-      // Different time signatures
-      expect(barBeatToBeats("1|2+1/3", 3)).toBeCloseTo(4 / 3, 10);
-      expect(barBeatToBeats("2|1+1/2", 6)).toBeCloseTo(6.5, 10);
+      // Negative offset (push/pull behind the beat)
+      expect(barBeatToBeats("1|3-n/12", 4, 4)).toBeCloseTo(1 + 2 / 3, 10);
+
+      // Different time signature (6/8, denom 8)
+      expect(barBeatToBeats("2|1+n/16", 6, 8)).toBeCloseTo(6.5, 10);
     });
 
-    it("throws error for fractional beats less than 1", () => {
-      expect(() => barBeatToBeats("1|1/2", 4)).toThrow(
+    it("throws error when a ±n offset falls below beat 1", () => {
+      expect(() => barBeatToBeats("1|1-n/4", 4, 4)).toThrow(
         "Beat must be 1 or greater",
+      ); // beat 0
+      expect(() => barBeatToBeats("1|1-n/8", 4, 4)).toThrow(
+        "Beat must be 1 or greater",
+      ); // beat 0.5
+      expect(() => barBeatToBeats("1|1-n/12", 4, 4)).toThrow(
+        "Beat must be 1 or greater",
+      ); // beat 2/3
+    });
+
+    it("rejects bare-fraction and mixed beat positions", () => {
+      // Bare fractions and bar-relative mixed numbers are no longer accepted —
+      // note values wear the n sigil.
+      expect(() => barBeatToBeats("1|4/3", 4)).toThrow(
+        "Invalid bar|beat format",
       );
-      expect(() => barBeatToBeats("1|2/3", 4)).toThrow(
-        "Beat must be 1 or greater",
-      );
-      expect(() => barBeatToBeats("1|3/4", 4)).toThrow(
-        "Beat must be 1 or greater",
+      expect(() => barBeatToBeats("1|2+1/3", 4)).toThrow(
+        "Invalid bar|beat format",
       );
     });
 
-    it("handles invalid fractional formats", () => {
+    it("handles invalid offset formats", () => {
       expect(() => barBeatToBeats("1|/3", 4)).toThrow(
         "Invalid bar|beat format",
       );
       expect(() => barBeatToBeats("1|4/", 4)).toThrow(
         "Invalid bar|beat format",
       );
-      expect(() => barBeatToBeats("1|4/3/2", 4)).toThrow(
+      expect(() => barBeatToBeats("1|1+n/3/2", 4)).toThrow(
         "Invalid bar|beat format",
       );
     });
 
-    it("throws error for division by zero", () => {
-      expect(() => barBeatToBeats("1|2/0", 4)).toThrow(
+    it("throws error for division by zero in an offset", () => {
+      expect(() => barBeatToBeats("1|1+n1/0", 4, 4)).toThrow(
         "Invalid bar|beat format: division by zero",
       );
-      expect(() => barBeatToBeats("1|2+1/0", 4)).toThrow(
+      expect(() => barBeatToBeats("1|1+n/0", 4, 4)).toThrow(
         "Invalid bar|beat format: division by zero",
       );
     });
 
     it("throws error for invalid numeric values (NaN)", () => {
-      expect(() => barBeatToBeats("1|a/2", 4)).toThrow(
+      expect(() => barBeatToBeats("1|a", 4)).toThrow("Invalid bar|beat format");
+      expect(() => barBeatToBeats("1|a+n1/2", 4)).toThrow(
         "Invalid bar|beat format",
       );
-      expect(() => barBeatToBeats("1|a+1/2", 4)).toThrow(
-        "Invalid bar|beat format",
-      );
-      expect(() => barBeatToBeats("1|2+a/2", 4)).toThrow(
+      expect(() => barBeatToBeats("1|2+na/2", 4)).toThrow(
         "Invalid bar|beat format",
       );
     });
@@ -332,23 +344,27 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToAbletonBeats("1|2.5", 6, 8)).toBe(0.75);
     });
 
-    it("converts fractional bar|beat notation to Ableton beats", () => {
-      // Triplets in 4/4 (1 Ableton beat = 1 musical beat)
-      expect(barBeatToAbletonBeats("1|4/3", 4, 4)).toBeCloseTo(1 / 3, 10);
-      expect(barBeatToAbletonBeats("1|5/3", 4, 4)).toBeCloseTo(2 / 3, 10);
-      expect(barBeatToAbletonBeats("1|7/3", 4, 4)).toBeCloseTo(4 / 3, 10);
+    it("converts ±n offset bar|beat notation to Ableton beats", () => {
+      // Eighth triplets in 4/4 (1 Ableton beat = 1 musical beat)
+      expect(barBeatToAbletonBeats("1|1+n/12", 4, 4)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatToAbletonBeats("1|1+n/6", 4, 4)).toBeCloseTo(2 / 3, 10);
+      expect(barBeatToAbletonBeats("1|2+n/12", 4, 4)).toBeCloseTo(4 / 3, 10);
 
-      // Triplets in 3/4
-      expect(barBeatToAbletonBeats("1|4/3", 3, 4)).toBeCloseTo(1 / 3, 10);
-      expect(barBeatToAbletonBeats("2|4/3", 3, 4)).toBeCloseTo(3 + 1 / 3, 10);
+      // Eighth triplets in 3/4
+      expect(barBeatToAbletonBeats("1|1+n/12", 3, 4)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatToAbletonBeats("2|1+n/12", 3, 4)).toBeCloseTo(
+        3 + 1 / 3,
+        10,
+      );
 
-      // Triplets in 6/8 (1 Ableton beat = 2 eighth notes)
-      expect(barBeatToAbletonBeats("1|4/3", 6, 8)).toBeCloseTo(1 / 6, 10);
-      expect(barBeatToAbletonBeats("1|7/3", 6, 8)).toBeCloseTo(2 / 3, 10);
+      // 6/8: n/12 is a real eighth triplet (1/3 of an Ableton beat) anchored to
+      // the eighth-note beat, so beat 1 + n/12 = 1/3, beat 2 + n/12 = 5/6.
+      expect(barBeatToAbletonBeats("1|1+n/12", 6, 8)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatToAbletonBeats("1|2+n/12", 6, 8)).toBeCloseTo(5 / 6, 10);
 
-      // Dotted notes
-      expect(barBeatToAbletonBeats("1|3/2", 4, 4)).toBe(0.5);
-      expect(barBeatToAbletonBeats("2|5/2", 4, 4)).toBe(5.5);
+      // Dotted / dyadic positions as decimals
+      expect(barBeatToAbletonBeats("1|1.5", 4, 4)).toBe(0.5);
+      expect(barBeatToAbletonBeats("2|2.5", 4, 4)).toBe(5.5);
     });
   });
 
@@ -371,14 +387,14 @@ describe("barbeat-time utilities", () => {
       }
     });
 
-    it("fractional notation round-trips correctly", () => {
-      // Test that fractional inputs convert correctly
+    it("note-value offset notation round-trips correctly", () => {
+      // ±n offset inputs convert correctly (denominator defaults to 4)
       const testCases = [
-        { barBeat: "1|4/3", beatsPerBar: 4, expectedBeats: 1 / 3 },
-        { barBeat: "1|5/3", beatsPerBar: 4, expectedBeats: 2 / 3 },
-        { barBeat: "1|7/3", beatsPerBar: 4, expectedBeats: 4 / 3 },
-        { barBeat: "2|4/3", beatsPerBar: 3, expectedBeats: 3 + 1 / 3 },
-        { barBeat: "1|3/2", beatsPerBar: 4, expectedBeats: 0.5 },
+        { barBeat: "1|1+n/12", beatsPerBar: 4, expectedBeats: 1 / 3 },
+        { barBeat: "1|1+n/6", beatsPerBar: 4, expectedBeats: 2 / 3 },
+        { barBeat: "1|2+n/12", beatsPerBar: 4, expectedBeats: 4 / 3 },
+        { barBeat: "2|1+n/12", beatsPerBar: 3, expectedBeats: 3 + 1 / 3 },
+        { barBeat: "1|1.5", beatsPerBar: 4, expectedBeats: 0.5 },
       ];
 
       for (const { barBeat, beatsPerBar, expectedBeats } of testCases) {

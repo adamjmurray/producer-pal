@@ -62,7 +62,9 @@ export function formatNotation(
 
     // Emit time position(s) — comma-separated beats for merged groups
     const bar = firstGroup.bar;
-    const beats = batch.groups.map((g) => formatBeatPosition(g.beat)).join(",");
+    const beats = batch.groups
+      .map((g) => formatBeatPosition(g.beat, config.timeSigDenominator))
+      .join(",");
 
     elements.push(`${bar}|${beats}`);
   }

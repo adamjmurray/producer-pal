@@ -1,9 +1,15 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
 import * as parser from "../barbeat-parser.ts";
+
+// Resolve a ±n offset beat the way the grammar does: base + (num/den)*denom.
+// Mirrors the float arithmetic so toStrictEqual matches bit-for-bit.
+const obeat = (base: number, num: number, den: number, denom = 4): number =>
+  base + (num / den) * denom;
 
 describe("BarBeatScript Parser - time declarations", () => {
   it("parses integer and floating point beats", () => {
@@ -17,41 +23,45 @@ describe("BarBeatScript Parser - time declarations", () => {
     ]);
   });
 
-  it("parses fractional beats", () => {
-    expect(parser.parse("1|4/3 C3 1|5/3 D3 1|7/3 E3")).toStrictEqual([
-      { bar: 1, beat: 4 / 3 },
+  it("parses note-value offset beats (eighth triplets)", () => {
+    // +n/12 = +1/3 beat at the default 4/4; +n/6 = +2/3 beat
+    expect(parser.parse("1|1+n/12 C3 1|1+n/6 D3 1|2+n/12 E3")).toStrictEqual([
+      { bar: 1, beat: obeat(1, 1, 12) },
       { pitch: 60 },
-      { bar: 1, beat: 5 / 3 },
+      { bar: 1, beat: obeat(1, 1, 6) },
       { pitch: 62 },
-      { bar: 1, beat: 7 / 3 },
+      { bar: 1, beat: obeat(2, 1, 12) },
       { pitch: 64 },
     ]);
   });
 
-  it("parses mixed decimal and fractional beats", () => {
-    expect(parser.parse("1|1 C3 1|4/3 D3 1|1.5 E3 1|5/3 F3")).toStrictEqual([
+  it("parses mixed decimal and offset beats", () => {
+    expect(
+      parser.parse("1|1 C3 1|1+n/12 D3 1|1.5 E3 1|1+n/6 F3"),
+    ).toStrictEqual([
       { bar: 1, beat: 1 },
       { pitch: 60 },
-      { bar: 1, beat: 4 / 3 },
+      { bar: 1, beat: obeat(1, 1, 12) },
       { pitch: 62 },
       { bar: 1, beat: 1.5 },
       { pitch: 64 },
-      { bar: 1, beat: 5 / 3 },
+      { bar: 1, beat: obeat(1, 1, 6) },
       { pitch: 65 },
     ]);
   });
 
-  it("parses beats with + operator (integer + fraction)", () => {
-    expect(parser.parse("1|2+1/3 C3 1|2+3/4 D3")).toStrictEqual([
-      { bar: 1, beat: 2 + 1 / 3 },
+  it("parses + and - note-value offsets", () => {
+    // 2+n/12 = beat 2 + 1/3; 2-n3/16 = beat 2 - 3/4
+    expect(parser.parse("1|2+n/12 C3 1|2-n3/16 D3")).toStrictEqual([
+      { bar: 1, beat: obeat(2, 1, 12) },
       { pitch: 60 },
-      { bar: 1, beat: 2 + 3 / 4 },
+      { bar: 1, beat: 2 - 3 / 4 },
       { pitch: 62 },
     ]);
   });
 
-  it("parses beat lists with + operator", () => {
-    expect(parser.parse("1|1,2+1/4,2+1/2,2+3/4")).toStrictEqual([
+  it("parses beat lists with note-value offsets", () => {
+    expect(parser.parse("1|1,2+n/16,2+n/8,2+n3/16")).toStrictEqual([
       { bar: 1, beat: 1 },
       { bar: 1, beat: 2 + 1 / 4 },
       { bar: 1, beat: 2 + 1 / 2 },
@@ -77,9 +87,9 @@ describe("BarBeatScript Parser - time declarations", () => {
     ]);
   });
 
-  it("parses repeat pattern with mixed number start (positions still meter-relative)", () => {
-    expect(parser.parse("1|2+1/3x3@n1/3")).toStrictEqual([
-      { bar: 1, beat: { start: 2 + 1 / 3, times: 3, step: 1 / 3 } },
+  it("parses repeat pattern with note-value offset start (positions still meter-relative)", () => {
+    expect(parser.parse("1|2+n/12x3@n1/3")).toStrictEqual([
+      { bar: 1, beat: { start: obeat(2, 1, 12), times: 3, step: 1 / 3 } },
     ]);
   });
 
@@ -154,15 +164,27 @@ describe("BarBeatScript Parser - time declarations", () => {
     );
   });
 
-  it("rejects fractional beats less than 1", () => {
-    expect(() => parser.parse("1|1/2 C3")).toThrow(
-      "Beat position must be 1 or greater (got 1/2)",
+  it("rejects note-value offsets that fall below beat 1", () => {
+    // 1 - n/4 = beat 0; 1 - n/8 = beat 0.5; 1 - n/12 = beat 2/3
+    expect(() => parser.parse("1|1-n/4 C3")).toThrow(
+      "Beat position must be 1 or greater (got 1-n/4)",
     );
-    expect(() => parser.parse("1|2/3 C3")).toThrow(
-      "Beat position must be 1 or greater (got 2/3)",
+    expect(() => parser.parse("1|1-n/8 C3")).toThrow(
+      "Beat position must be 1 or greater (got 1-n/8)",
     );
-    expect(() => parser.parse("1|3/4 C3")).toThrow(
-      "Beat position must be 1 or greater (got 3/4)",
+    expect(() => parser.parse("1|1-n/12 C3")).toThrow(
+      "Beat position must be 1 or greater (got 1-n/12)",
+    );
+  });
+
+  it("rejects bare-fraction beat positions with a targeted error", () => {
+    expect(() => parser.parse("1|1/2 C3")).toThrow(/Got bare fraction 1\/2/);
+    expect(() => parser.parse("1|4/3 C3")).toThrow(/Got bare fraction 4\/3/);
+  });
+
+  it("rejects bar-relative mixed-number beats (n prefix required)", () => {
+    expect(() => parser.parse("1|2+1/3 C3")).toThrow(
+      /beat offsets use the note-value form.*Got 2\+1\/3/,
     );
   });
 });

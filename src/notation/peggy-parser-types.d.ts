@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -11,6 +12,12 @@
 export interface ParseOptions {
   startRule?: string;
   grammarSource?: string;
+  /**
+   * Time signature denominator, used by the barbeat grammar to convert `±n`
+   * beat-position offsets (whole-note fractions) into musical beats during the
+   * parse. Defaults to 4 when omitted.
+   */
+  timeSigDenominator?: number;
 }
 
 /** Location information for syntax errors */

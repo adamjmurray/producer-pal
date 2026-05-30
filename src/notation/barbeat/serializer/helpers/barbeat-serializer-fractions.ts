@@ -3,30 +3,79 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-/**
- * Common denominators to check for fraction conversion.
- * Ordered by musical relevance (quarter, third, eighth, sixth, etc.)
- */
-const DENOMINATORS = [2, 3, 4, 6, 8, 12, 16];
+import { musicalBeatsToWholeNoteFraction } from "#src/notation/barbeat/barbeat-config.ts";
 
 /** Tolerance for floating-point fraction matching */
 const EPSILON = 0.0005;
 
 /**
- * Format a beat position value, preferring fractions when shorter or more exact.
- * Beat positions must be >= 1 (parser constraint: oneOrMoreFloat).
- * Uses integer, fraction (4/3), or mixed number (1+1/4) format.
- * Fractions are required when decimal representation is lossy (e.g., 1/3 → 0.333).
+ * Format a beat position value as a grid beat with an optional note-value
+ * offset. Dyadic sub-beats use a plain decimal (`1.5`); non-dyadic (tuplet)
+ * positions use a `base+n<fraction>` offset (`1+n/12` = beat 1 + an eighth
+ * triplet), where the fraction is whole-note based — the same `n` grammar as
+ * durations. Falls back to a decimal for genuinely off-grid values.
+ * Beat positions are always >= 1 (parser constraint).
  * @param value - Beat position value (must be >= 1)
+ * @param timeSigDenominator - Time signature denominator (for the offset unit)
  * @returns Formatted beat position string
  */
-export function formatBeatPosition(value: number): string {
+export function formatBeatPosition(
+  value: number,
+  timeSigDenominator: number | undefined,
+): string {
   if (value % 1 === 0) return value.toString();
 
-  // For beat positions, only use mixed number format (not whole fractions like 5/4)
-  // because "1+1/4" is more readable than "5/4" in a musical context
-  return formatMixedNumber(value) ?? formatDecimal(value);
+  const base = Math.floor(value);
+  const fracBeats = value - base;
+  const wholeNoteFraction = musicalBeatsToWholeNoteFraction(
+    fracBeats,
+    timeSigDenominator,
+  );
+  const offsetFraction = formatBeatOffsetFraction(wholeNoteFraction);
+
+  // Genuinely off-grid (no clean note-value): decimal is the only honest form.
+  if (offsetFraction == null) return formatDecimal(value);
+
+  // Dyadic sub-beats round-trip exactly as a decimal, which is always shorter
+  // than (and more readable than) the offset form — prefer it. Tuplet positions
+  // have lossy decimals, so they fall through to the note-value offset.
+  if (decimalIsLossless(value)) return formatDecimal(value);
+
+  return `${base}+n${offsetFraction}`;
 }
+
+/**
+ * Reduce a whole-note fraction to a `<num>/<den>` string for a beat offset
+ * (numerator omitted when 1, e.g. `/12`), or null when no clean note-value
+ * denominator matches (genuinely off-grid). A beat offset is a whole-note
+ * fraction, so its denominators run finer than a duration's: a 1/16-beat is a
+ * 1/64-note offset. Powers of two first, then triplet then quintuplet families.
+ * @param wholeNoteFraction - Offset as a fraction of a whole note
+ * @returns Fraction string (e.g. "/12", "3/64") or null when off-grid
+ */
+function formatBeatOffsetFraction(wholeNoteFraction: number): string | null {
+  for (const den of BEAT_OFFSET_DENOMINATORS) {
+    const num = wholeNoteFraction * den;
+
+    if (Math.abs(num - Math.round(num)) < EPSILON && Math.round(num) > 0) {
+      const numRounded = Math.round(num);
+
+      return numRounded === 1 ? `/${den}` : `${numRounded}/${den}`;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Denominators tried when reducing a beat offset to a note-value fraction.
+ * Finer than the duration set because the offset is a whole-note fraction of a
+ * sub-beat displacement (e.g. an eighth-triplet beat position is a 1/12 offset,
+ * a sixteenth-of-a-beat is a 1/64 offset).
+ */
+const BEAT_OFFSET_DENOMINATORS = [
+  2, 4, 8, 16, 32, 64, 3, 6, 12, 24, 48, 96, 5, 10, 20, 40,
+];
 
 /**
  * Format an absolute duration/step value as a `<num>/<den>` fraction of a whole note.
@@ -69,25 +118,6 @@ const ABSOLUTE_DURATION_DENOMINATORS = [
 ];
 
 /**
- * Choose between a fraction string and decimal, preferring decimal when it's
- * shorter AND lossless. Uses fraction when decimal would lose precision.
- * @param fractionStr - Pre-formatted fraction string
- * @param value - Original numeric value
- * @returns The preferred representation
- */
-function preferFractionOrDecimal(fractionStr: string, value: number): string {
-  if (!decimalIsLossless(value)) {
-    // Decimal is lossy — fraction required for correctness
-    return fractionStr;
-  }
-
-  const decimalStr = formatDecimal(value);
-
-  // Both are exact — prefer shorter, fraction wins ties
-  return decimalStr.length < fractionStr.length ? decimalStr : fractionStr;
-}
-
-/**
  * Check if a value can be represented losslessly with 3 decimal places.
  * @param value - Original numeric value
  * @returns True if toFixed(3) preserves the value exactly
@@ -96,40 +126,6 @@ function decimalIsLossless(value: number): boolean {
   const scaled = value * 1000;
 
   return Math.abs(scaled - Math.round(scaled)) < 0.01;
-}
-
-/**
- * Find a simple fraction representation for a value between 0 and 1 (exclusive).
- * @param value - Fractional value (0 < value < 1)
- * @returns Numerator and denominator, or null if no clean fraction found
- */
-function findFraction(value: number): { num: number; den: number } | null {
-  for (const den of DENOMINATORS) {
-    for (let num = 1; num < den; num++) {
-      if (Math.abs(value - num / den) < EPSILON) {
-        return { num, den };
-      }
-    }
-  }
-
-  return null;
-}
-
-/**
- * Try to format a value >= 1 as a mixed number (e.g., "1+1/4").
- * @param value - Number with integer and fractional parts
- * @returns Mixed number string, or null if no clean fraction found
- */
-function formatMixedNumber(value: number): string | null {
-  const intPart = Math.floor(value);
-  const fracPart = value - intPart;
-  const fraction = findFraction(fracPart);
-
-  if (!fraction) return null;
-
-  const mixedStr = `${intPart}+${fraction.num}/${fraction.den}`;
-
-  return preferFractionOrDecimal(mixedStr, value);
 }
 
 /**

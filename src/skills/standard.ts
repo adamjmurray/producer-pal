@@ -42,7 +42,7 @@ export const skills = `# Producer Pal Skills
 
 ## Time in Ableton Live
 
-- Positions: bar|beat (1-indexed, meter-relative). Examples: 1|1, 2|3.5, 1|2+1/3
+- Positions: bar|beat (1-indexed, meter-relative). Sub-beat: a decimal (2|3.5) or a ±n note-value offset off the grid beat — \`1|1+n/12\` = beat 1 + an eighth triplet, \`1|2-n/24\` nudges just behind beat 2. Same \`n\` grammar as durations; no bare fractions
 - Durations and \`@step\` intervals: absolute note values (denominator mandatory). \`n/4\` = quarter, \`n/8\` = eighth, \`n/16\` = sixteenth, \`n/12\` = eighth triplet (3 in a quarter), \`n3/8\` = dotted quarter (3 eighths). A quarter is a quarter in any meter
 - Clip \`length\` and arrangement durations: \`Nbar\` (meter-aware, e.g. \`4bar\`), \`n<fraction>\` note value (e.g. \`n/4\` = quarter, \`n/8\` = eighth), or \`Nbar+n<fraction>\` mixed (e.g. \`1bar+n/4\`). Same \`n\` fraction grammar everywhere. No bare fractions/integers/decimals
 
@@ -83,6 +83,7 @@ C#3 F3 G#3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1,3 2|1,2,3 // same pitch across bars (NOT 1|1,3,2|1,2,3)
 n/16 C3 1|1.75 // 16th note at beat 1.75
+n/12 C3 1|1 E3 1|1+n/12 G3 1|1+n/6 // eighth-triplet arp C-E-G on beat 1 (varying pitch → ±n offsets, not a repeat)
 n/12 C3 1|1x3 // eighth-note triplets: 3 notes filling one quarter (step = duration)
 n/16 Gb1 1|1x16 // 16 sixteenths = 4 quarters, a full bar in 4/4 (1|1x16@n/16 is the same)
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)

@@ -198,6 +198,32 @@ describe("round-trip: serialize → parse → interpret", () => {
     ] as NoteEvent[]);
   });
 
+  it("serializes triplet positions as ±n note-value offsets", () => {
+    const formatted = formatNotation([
+      createNote({ start_time: 0 }),
+      createNote({ pitch: 62, start_time: 1 / 3 }),
+      createNote({ pitch: 64, start_time: 2 / 3 }),
+    ] as NoteEvent[]);
+
+    // Non-dyadic positions use the offset form, not a lossy decimal
+    expect(formatted).toContain("1|1+n/12");
+    expect(formatted).toContain("1|1+n/6");
+    expect(formatted).not.toContain("1.333");
+  });
+
+  it("round-trips triplet positions in 6/8 (meter-aware offsets)", () => {
+    // In 6/8 a beat is an eighth (0.5 Ableton beats); an eighth triplet of the
+    // beat is 1/6 of an Ableton beat.
+    expectRoundTrip(
+      [
+        createNote({ start_time: 0 }),
+        createNote({ pitch: 62, start_time: 1 / 6 }),
+        createNote({ pitch: 64, start_time: 2 / 6 }),
+      ] as NoteEvent[],
+      { timeSigNumerator: 6, timeSigDenominator: 8 },
+    );
+  });
+
   it("round-trips sixteenth-note subdivisions", () => {
     expectRoundTrip([
       createNote({ duration: 0.25, start_time: 0 }),

@@ -14,8 +14,13 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
 - **Start Time (`bar|beat`)** Time position that emits buffered notes.
   - `bar` – 1-based bar number (integer, required)
-  - `beat` – 1-based beat number within bar, **meter-relative** (float for
-    sub-beat precision)
+  - `beat` – 1-based beat number within bar, **meter-relative**. Sub-beat
+    positions are a decimal (`2|3.5`) or a grid beat plus a `±n` **note-value
+    offset** — `1|1+n/12` = beat 1 + an eighth triplet, `1|2-n/24` nudges just
+    behind beat 2. The offset is a whole-note fraction (same `n` grammar as
+    Duration), so it is meter-aware: `n/12` displaces by 1/3 of a beat in 4/4
+    but 2/3 of an eighth-beat in 6/8. Bare fractions (`4/3`) and bar-relative
+    mixed numbers (`1+1/3`) are rejected — note values always wear the `n`.
   - **Repeat patterns**: `beat x times @ step` generates multiple positions.
     `step` uses the same note-value duration grammar as `n` (see Duration):
     `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar+n<fraction>`
@@ -295,10 +300,10 @@ operations.
 1|1x8@n/8         // eight 8ths: 1, 3/2, 2, 5/2, ..., 9/2 in 4/4
 ```
 
-**Mixed-number starts (positions stay meter-relative):**
+**Note-value offset starts (positions stay meter-relative):**
 
 ```
-1|2+1/3x3@n/12    // start at 2+1/3, three eighth-note-triplet steps
+1|2+n/12x3@n/12   // start at 2+1/3 (beat 2 + eighth triplet), three steps
 ```
 
 **Step omitted** (defaults to the current duration):
@@ -586,8 +591,8 @@ n/8 C3 1|1       // eighth note
 n/16 C3 1|1      // sixteenth note
 n3/8 C3 1|1      // dotted quarter (3 eighths)
 n3/16 C3 1|1     // dotted eighth (3 sixteenths)
-n/12 C3 1|1,4/3,5/3   // eighth-note triplets (3 per quarter)
-n/6 C3 1|1,5/3,7/3    // quarter-note triplets (3 per half)
+n/12 C3 1|1,1+n/12,1+n/6  // eighth-note triplets (3 per quarter): beats 1, 4/3, 5/3
+n/6 C3 1|1,1+n/6,2+n/12   // quarter-note triplets (3 per half): beats 1, 5/3, 7/3
 n/1 C3 1|1       // whole note (4 quarters)
 n2/1 C3 1|1      // 2 whole notes (8 quarters)
 n5/4 C3 1|1      // 5 quarter notes (e.g. fills a 5/4 bar)

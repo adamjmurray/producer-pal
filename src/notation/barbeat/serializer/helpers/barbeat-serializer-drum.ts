@@ -176,10 +176,17 @@ function formatPositions(
   );
 
   if (repeat) {
-    return [formatRepeat(repeat, currentDuration, positions[0] as Position)];
+    return [
+      formatRepeat(
+        repeat,
+        currentDuration,
+        positions[0] as Position,
+        timeSigDenominator,
+      ),
+    ];
   }
 
-  return formatBarBeatPositions(positions);
+  return formatBarBeatPositions(positions, timeSigDenominator);
 }
 
 /** Repeat pattern info */
@@ -230,8 +237,11 @@ function detectRepeatPattern(
     positions[0] as Position,
     positions.length,
     stepStr,
+    timeSigDenominator,
   );
-  const listStr = formatBarBeatPositions(positions).join(" ");
+  const listStr = formatBarBeatPositions(positions, timeSigDenominator).join(
+    " ",
+  );
 
   if (repeatStr >= listStr.length) return null;
 
@@ -243,14 +253,16 @@ function detectRepeatPattern(
  * @param start - Start position
  * @param count - Repeat count
  * @param stepStr - Pre-formatted step string
+ * @param timeSigDenominator - Time signature denominator (for the offset unit)
  * @returns Estimated string length
  */
 function formatRepeatLength(
   start: Position,
   count: number,
   stepStr: string,
+  timeSigDenominator: number | undefined,
 ): number {
-  const startStr = `${start.bar}|${formatBeatPosition(start.beat)}`;
+  const startStr = `${start.bar}|${formatBeatPosition(start.beat, timeSigDenominator)}`;
 
   // bar|beatx{count}@n{step} or bar|beatx{count} (the "@n" sigil is 2 chars)
   return startStr.length + 1 + count.toString().length + 2 + stepStr.length;
@@ -261,14 +273,16 @@ function formatRepeatLength(
  * @param repeat - Repeat info
  * @param currentDuration - Current duration in musical beats (omit @step if equal)
  * @param start - Start position
+ * @param timeSigDenominator - Time signature denominator (for the offset unit)
  * @returns Repeat pattern string like "1|1x8@n/4"
  */
 function formatRepeat(
   repeat: RepeatInfo,
   currentDuration: number,
   start: Position,
+  timeSigDenominator: number | undefined,
 ): string {
-  const startStr = `${start.bar}|${formatBeatPosition(start.beat)}`;
+  const startStr = `${start.bar}|${formatBeatPosition(start.beat, timeSigDenominator)}`;
   const stepSuffix =
     Math.abs(repeat.step - currentDuration) <= 0.001
       ? ""
@@ -280,9 +294,13 @@ function formatRepeat(
 /**
  * Format positions as bar|beat groups with comma merging within bars
  * @param positions - Bar|beat positions
+ * @param timeSigDenominator - Time signature denominator (for the offset unit)
  * @returns Formatted position strings
  */
-function formatBarBeatPositions(positions: Position[]): string[] {
+function formatBarBeatPositions(
+  positions: Position[],
+  timeSigDenominator: number | undefined,
+): string[] {
   const result: string[] = [];
   let currentBar = -1;
   let currentBeats: string[] = [];
@@ -294,9 +312,9 @@ function formatBarBeatPositions(positions: Position[]): string[] {
       }
 
       currentBar = pos.bar;
-      currentBeats = [formatBeatPosition(pos.beat)];
+      currentBeats = [formatBeatPosition(pos.beat, timeSigDenominator)];
     } else {
-      currentBeats.push(formatBeatPosition(pos.beat));
+      currentBeats.push(formatBeatPosition(pos.beat, timeSigDenominator));
     }
   }
 

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -148,15 +149,16 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     expect(result[1]!.duration).toBeCloseTo(2 / 3, 10);
   });
 
-  it("handles beat positions with + operator (NEW)", () => {
-    const result = interpretNotation("C3 1|2+1/3 D3 1|2+3/4", {
+  it("handles beat positions with ±n note-value offsets", () => {
+    // 2+n/12 = beat 2 + 1/3 (eighth triplet); 2+n3/16 = beat 2 + 3/4
+    const result = interpretNotation("C3 1|2+n/12 D3 1|2+n3/16", {
       timeSigNumerator: 4,
       timeSigDenominator: 4,
     });
 
     expect(result).toHaveLength(2);
 
-    // First note at 1|2+1/3
+    // First note at 1|2+n/12
     expect(result[0]!.pitch).toBe(60);
     expect(result[0]!.start_time).toBeCloseTo(1 + 1 / 3, 10); // bar 1, beat 2+1/3
     expect(result[0]!.duration).toBe(1);
@@ -164,7 +166,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     expect(result[0]!.probability).toBe(1.0);
     expect(result[0]!.velocity_deviation).toBe(0);
 
-    // Second note at 1|2+3/4
+    // Second note at 1|2+n3/16
     expect(result[1]!.pitch).toBe(62);
     expect(result[1]!.start_time).toBe(1.75); // bar 1, beat 2+3/4
     expect(result[1]!.duration).toBe(1);

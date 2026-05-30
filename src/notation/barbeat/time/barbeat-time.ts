@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { DEFAULT_BEATS_PER_BAR } from "#src/notation/barbeat/barbeat-config.ts";
@@ -64,25 +65,32 @@ export function beatsToBarBeat(beats: number, beatsPerBar: number): string {
 }
 
 /**
- * Convert bar|beat format to beats
- * @param barBeat - Bar|beat string like "1|2" or "2|3.5"
+ * Convert bar|beat format to beats. The beat field is a 1-based grid beat,
+ * optionally a decimal (`2|3.5`) or displaced by an absolute note-value offset
+ * (`1|1+n/12` = beat 1 + an eighth triplet, `2|2-n/24`). Bare fractions (`4/3`)
+ * and bar-relative mixed numbers (`1+1/3`) are not accepted — note values wear
+ * the `n` sigil everywhere.
+ * @param barBeat - Bar|beat string like "1|2", "2|3.5", or "1|1+n/12"
  * @param beatsPerBar - Beats per bar
+ * @param timeSigDenominator - Time signature denominator (for the `±n` offset unit)
  * @returns Number of beats
  */
-export function barBeatToBeats(barBeat: string, beatsPerBar: number): number {
-  const match = barBeat.match(
-    /^(-?\d+)\|((-?\d+)(?:\+\d+\/\d+|\.\d+|\/\d+)?)$/,
-  );
+export function barBeatToBeats(
+  barBeat: string,
+  beatsPerBar: number,
+  timeSigDenominator?: number,
+): number {
+  const match = barBeat.match(/^(-?\d+)\|((-?\d+)(?:[+-]n\d*\/\d+|\.\d+)?)$/);
 
   if (!match) {
     throw new Error(
-      `Invalid bar|beat format: "${barBeat}". Expected "{int}|{float}" like "1|2" or "2|3.5" or "{int}|{int}/{int}" like "1|4/3" or "{int}|{int}+{int}/{int}" like "1|2+1/3"`,
+      `Invalid bar|beat format: "${barBeat}". Expected "{int}|{beat}" like "1|2" or "2|3.5", or a note-value offset like "1|1+n/12" (beat 1 + an eighth triplet) or "2|2-n/24"`,
     );
   }
 
   const bar = Number.parseInt(match[1] as string);
   const beatStr = match[2] as string;
-  const beat = parseBeatValue(beatStr, barBeat);
+  const beat = parseBeatValue(beatStr, barBeat, timeSigDenominator);
 
   if (bar < 1) {
     throw new Error(`Bar number must be 1 or greater, got: ${bar}`);
@@ -139,7 +147,11 @@ export function barBeatToAbletonBeats(
   timeSigDenominator: number,
 ): number {
   const musicalBeatsPerBar = timeSigNumerator;
-  const musicalBeats = barBeatToBeats(barBeat, musicalBeatsPerBar);
+  const musicalBeats = barBeatToBeats(
+    barBeat,
+    musicalBeatsPerBar,
+    timeSigDenominator,
+  );
 
   return musicalBeats * (4 / timeSigDenominator);
 }
@@ -277,51 +289,42 @@ export function durationToAbletonBeats(
 }
 
 /**
- * Parse a beat value string (supports fractions and mixed numbers).
- * Callers pre-validate the string shape with a regex, so the numeric parts are
- * always digit sequences here — only division-by-zero needs guarding.
+ * Parse a beat value string: a plain integer/decimal grid beat, or a grid beat
+ * displaced by a `±n<fraction>` note-value offset (`1+n/12`, `2-n1/24`). The
+ * offset fraction is whole-note based; the denominator converts it to musical
+ * beats. Callers pre-validate the string shape with a regex.
  * @param beatsStr - Beat value string
  * @param context - Original string for error messages
+ * @param timeSigDenominator - Time signature denominator (for the offset unit)
  * @returns Parsed beat value
  */
-function parseBeatValue(beatsStr: string, context: string): number {
-  if (beatsStr.includes("+")) {
-    const plusParts = beatsStr.split("+");
-    const intPart = plusParts[0] as string;
-    const fracPart = plusParts[1] as string;
-    const num = Number.parseInt(intPart);
+function parseBeatValue(
+  beatsStr: string,
+  context: string,
+  timeSigDenominator: number | undefined,
+): number {
+  // Grid beat ± a note-value offset: `1+n/12`, `2-n1/24` (numerator omitted = 1).
+  const offsetMatch = beatsStr.match(/^(-?\d+)([+-])n(\d*)\/(\d+)$/);
 
-    const slashParts = fracPart.split("/");
-    const numerator = slashParts[0] as string;
-    const denominator = slashParts[1] as string;
-    const fracNum = Number.parseInt(numerator);
-    const fracDen = Number.parseInt(denominator);
+  if (offsetMatch) {
+    const base = Number.parseInt(offsetMatch[1] as string);
+    const sign = offsetMatch[2];
+    const numerator =
+      offsetMatch[3] === "" ? 1 : Number.parseInt(offsetMatch[3] as string);
+    const denominator = Number.parseInt(offsetMatch[4] as string);
 
-    if (fracDen === 0) {
+    if (denominator === 0) {
       throw new Error(
         `Invalid bar|beat format: division by zero in "${context}"`,
       );
     }
 
-    return num + fracNum / fracDen;
+    const offsetBeats = (numerator / denominator) * (timeSigDenominator ?? 4);
+
+    return sign === "+" ? base + offsetBeats : base - offsetBeats;
   }
 
-  if (beatsStr.includes("/")) {
-    const parts = beatsStr.split("/");
-    const numerator = parts[0] as string;
-    const denominator = parts[1] as string;
-    const num = Number.parseInt(numerator);
-    const den = Number.parseInt(denominator);
-
-    if (den === 0) {
-      throw new Error(
-        `Invalid bar|beat format: division by zero in "${context}"`,
-      );
-    }
-
-    return num / den;
-  }
-
+  // Plain integer or decimal grid beat.
   return Number.parseFloat(beatsStr);
 }
 

@@ -12,72 +12,59 @@ import {
 
 describe("formatBeatPosition", () => {
   it("formats integers as-is", () => {
-    expect(formatBeatPosition(1)).toBe("1");
-    expect(formatBeatPosition(4)).toBe("4");
-    expect(formatBeatPosition(10)).toBe("10");
+    expect(formatBeatPosition(1, 4)).toBe("1");
+    expect(formatBeatPosition(4, 4)).toBe("4");
+    expect(formatBeatPosition(10, 4)).toBe("10");
   });
 
-  it("prefers decimal when shorter and lossless", () => {
-    // 1.25 (4 chars) < 1+1/4 (5 chars) and lossless → decimal
-    expect(formatBeatPosition(1.25)).toBe("1.25");
-    // 1.5 (3 chars) < 1+1/2 (5 chars) and lossless → decimal
-    expect(formatBeatPosition(1.5)).toBe("1.5");
-    // 1.75 (4 chars) < 1+3/4 (5 chars) and lossless → decimal
-    expect(formatBeatPosition(1.75)).toBe("1.75");
-    // 2.5 (3 chars) < 2+1/2 (5 chars) and lossless → decimal
-    expect(formatBeatPosition(2.5)).toBe("2.5");
+  it("prefers decimal for dyadic sub-beats (shorter and lossless)", () => {
+    expect(formatBeatPosition(1.25, 4)).toBe("1.25");
+    expect(formatBeatPosition(1.5, 4)).toBe("1.5");
+    expect(formatBeatPosition(1.75, 4)).toBe("1.75");
+    expect(formatBeatPosition(2.5, 4)).toBe("2.5");
+    // Eighth-of-a-beat positions are dyadic and exact as decimals — preferred
+    // over the longer `+n/32` offset form.
+    expect(formatBeatPosition(1.125, 4)).toBe("1.125");
+    expect(formatBeatPosition(1.375, 4)).toBe("1.375");
+    expect(formatBeatPosition(1.875, 4)).toBe("1.875");
   });
 
-  it("uses fraction when decimal is lossy (repeating decimals)", () => {
-    // 1/3 cannot be represented exactly in 3 decimal places
-    expect(formatBeatPosition(1 + 1 / 3)).toBe("1+1/3");
-    expect(formatBeatPosition(1 + 2 / 3)).toBe("1+2/3");
-    expect(formatBeatPosition(2 + 1 / 3)).toBe("2+1/3");
-  });
-
-  it("uses mixed number format for fractional beat positions", () => {
-    // Mixed numbers are more readable than whole fractions for beat positions
-    expect(formatBeatPosition(4 / 3)).toBe("1+1/3");
-    expect(formatBeatPosition(8 / 3)).toBe("2+2/3");
+  it("uses a +n note-value offset for eighth-triplet positions (lossy decimals)", () => {
+    // 1/3 of a beat = a 1/12-whole-note offset (eighth triplet)
+    expect(formatBeatPosition(1 + 1 / 3, 4)).toBe("1+n/12");
+    expect(formatBeatPosition(1 + 2 / 3, 4)).toBe("1+n/6");
+    expect(formatBeatPosition(2 + 1 / 3, 4)).toBe("2+n/12");
+    expect(formatBeatPosition(4 / 3, 4)).toBe("1+n/12");
+    expect(formatBeatPosition(8 / 3, 4)).toBe("2+n/6");
     // 3/2 = 1.5 → decimal is shorter and lossless
-    expect(formatBeatPosition(3 / 2)).toBe("1.5");
+    expect(formatBeatPosition(3 / 2, 4)).toBe("1.5");
   });
 
-  it("falls back to decimal for non-fraction values", () => {
-    expect(formatBeatPosition(1.123)).toBe("1.123");
-    expect(formatBeatPosition(2.789)).toBe("2.789");
+  it("uses a +n offset for quarter-triplet (sixth) positions", () => {
+    // 1/6 of a beat = a 1/24-whole-note offset
+    expect(formatBeatPosition(1 + 1 / 6, 4)).toBe("1+n/24");
+    expect(formatBeatPosition(1 + 5 / 6, 4)).toBe("1+n5/24");
   });
 
-  it("uses fraction when decimal is lossy for sixth-based beats", () => {
-    // 1/6 = 0.1666... → lossy decimal → fraction required
-    expect(formatBeatPosition(1 + 1 / 6)).toBe("1+1/6");
-    // 5/6 = 0.8333... → lossy
-    expect(formatBeatPosition(1 + 5 / 6)).toBe("1+5/6");
+  it("uses a +n offset for fine (sixteenth/twelfth-of-a-beat) positions", () => {
+    // 1/16 of a beat = a 1/64-whole-note offset (a 64th note)
+    expect(formatBeatPosition(1 + 1 / 16, 4)).toBe("1+n/64");
+    expect(formatBeatPosition(1 + 3 / 16, 4)).toBe("1+n3/64");
+    // 1/12 of a beat = a 1/48-whole-note offset
+    expect(formatBeatPosition(1 + 1 / 12, 4)).toBe("1+n/48");
+    expect(formatBeatPosition(1 + 5 / 12, 4)).toBe("1+n5/48");
   });
 
-  it("prefers fraction for eighth-based beats when equal or shorter", () => {
-    // 1.125 (5 chars) = 1+1/8 (5 chars) → tie → fraction wins
-    expect(formatBeatPosition(1.125)).toBe("1+1/8");
-    // 1.375 (5 chars) = 1+3/8 (5 chars) → tie → fraction wins
-    expect(formatBeatPosition(1.375)).toBe("1+3/8");
-    // 1.625 (5 chars) = 1+5/8 (5 chars) → tie → fraction wins
-    expect(formatBeatPosition(1.625)).toBe("1+5/8");
-    // 1.875 (5 chars) = 1+7/8 (5 chars) → tie → fraction wins
-    expect(formatBeatPosition(1.875)).toBe("1+7/8");
+  it("falls back to decimal for genuinely off-grid values", () => {
+    expect(formatBeatPosition(1.123, 4)).toBe("1.123");
+    expect(formatBeatPosition(2.789, 4)).toBe("2.789");
   });
 
-  it("uses fraction for sixteenth-based beats (lossy decimals)", () => {
-    // 1/16 = 0.0625 → 1.063 (5 chars) is lossy → 1+1/16 (6 chars) required
-    expect(formatBeatPosition(1 + 1 / 16)).toBe("1+1/16");
-    // 3/16 = 0.1875 → 1.188 (5 chars) is lossy → 1+3/16 (6 chars) required
-    expect(formatBeatPosition(1 + 3 / 16)).toBe("1+3/16");
-  });
-
-  it("uses fraction for twelfth-based beats (lossy decimals)", () => {
-    // 1/12 = 0.08333... → 1.083 (5 chars) is lossy → 1+1/12 (6 chars) required
-    expect(formatBeatPosition(1 + 1 / 12)).toBe("1+1/12");
-    // 5/12 = 0.41666... → 1.417 (5 chars) is lossy → 1+5/12 (6 chars) required
-    expect(formatBeatPosition(1 + 5 / 12)).toBe("1+5/12");
+  it("scales the offset note value by meter (denominator-aware)", () => {
+    // In 6/8 a beat is an eighth, so 1/3 of a beat = a 1/24-whole-note offset.
+    expect(formatBeatPosition(1 + 1 / 3, 8)).toBe("1+n/24");
+    // In 2/2 a beat is a half note, so 1/3 of a beat = a 1/6-whole-note offset.
+    expect(formatBeatPosition(1 + 1 / 3, 2)).toBe("1+n/6");
   });
 });
 
@@ -121,6 +108,13 @@ describe("formatAbsoluteDuration", () => {
 
   it("formats zero", () => {
     expect(formatAbsoluteDuration(0)).toBe("0/1");
+  });
+
+  it("falls back to a /64 approximation for unusual values", () => {
+    // Values that don't reduce to a standard note-value denominator (e.g.
+    // septuplet/nonuplet fractions) approximate at 1/64 resolution.
+    expect(formatAbsoluteDuration(1 / 7)).toBe("9/64"); // numerator != 1
+    expect(formatAbsoluteDuration(1 / 64)).toBe("/64"); // numerator == 1
   });
 });
 

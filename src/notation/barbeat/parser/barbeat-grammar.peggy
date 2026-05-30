@@ -54,7 +54,7 @@ beatList "beat list"
   }
 
 beatSpec "beat specification"
-  = start:oneOrMoreFloat "x" times:oneOrMoreInt step:stepInterval? {
+  = start:beatValue "x" times:oneOrMoreInt step:stepInterval? {
       if (step != null && step.fraction === 0 && step.bars === 0) {
         throw new Error("Repeat step size must be greater than 0");
       }
@@ -66,7 +66,7 @@ beatSpec "beat specification"
         ? { start, times, step: step.fraction, stepBars: step.bars }
         : { start, times, step: step.fraction };
     }
-  / oneOrMoreFloat
+  / beatValue
 
 // Repeat step: the note-value duration grammar, prefixed by `@`.
 //   @n<fraction>  note value (@n/4 = quarter, @n/12 = eighth triplet)
@@ -156,23 +156,39 @@ pitchClass
   return { name: pc, value: PITCH_CLASS_VALUES[pc] };
 }
 
-oneOrMoreFloat
-  = oneOrMoreMixedNumber / oneOrMoreFraction / oneOrMoreDecimal
-
-oneOrMoreMixedNumber
- = wholeNumber:oneOrMoreInt "+" fraction:unsignedFraction {
-    return wholeNumber + fraction;
-  }
-
-oneOrMoreFraction
-  = [1-9] [0-9]* "/" [1-9] [0-9]* {
-    const [num, den] = text().split('/');
-    const result = Number.parseInt(num) / Number.parseInt(den);
-    if (result < 1) {
-      throw new Error(`Beat position must be 1 or greater (got ${text()})`);
+// A beat position: a 1-based grid beat, optionally displaced by an absolute
+// note-value offset (`+n/12` = plus an eighth triplet, `-n/24` = minus a
+// 32nd-note triplet). The offset is a fraction of a whole note (meter-aware,
+// like durations and `@step`); `options.timeSigDenominator` converts it to
+// musical beats. Dyadic sub-beats may use a plain decimal (`1.5`). Bare
+// fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`) are intentionally
+// rejected so note values always wear the `n` sigil — consistent with AJM-464.
+beatValue
+  = base:oneOrMoreInt sign:("+" / "-") "n" frac:unsignedFraction {
+      const offsetBeats = frac * (options.timeSigDenominator ?? 4);
+      const beat = sign === "+" ? base + offsetBeats : base - offsetBeats;
+      if (beat < 1) {
+        throw new Error(`Beat position must be 1 or greater (got ${text()})`);
+      }
+      return beat;
     }
-    return result;
-  }
+  / oneOrMoreInt sign:("+" / "-") bad:badBeatOffset {
+      throw new Error(`beat offsets use the note-value form: 1|1+n/12 = beat 1 + an eighth triplet, 1|2-n/24. Got ${text()} — note-value offsets need the n prefix (write ${sign}n/3, not ${sign}${bad}).`);
+    }
+  / bad:bareFractionBeat {
+      throw new Error(`beat positions are a grid beat with an optional note-value offset (1|1, 1|1+n/12) or a decimal (1|1.5). Got bare fraction ${bad} — write the grid+offset form instead (4/3 → 1+n/12).`);
+    }
+  / oneOrMoreDecimal
+
+// Old bare-fraction beat (`4/3`); matched only to raise a targeted error.
+bareFractionBeat
+  = [1-9] [0-9]* "/" [1-9] [0-9]* { return text(); }
+
+// Tail of an old `int+fraction` mixed beat (`1+1/3`); for targeted errors only.
+badBeatOffset
+  = unsignedMixedNumber { return text(); }
+  / unsignedFraction { return text(); }
+  / unsignedDecimal { return text(); }
 
 unsignedMixedNumber
   = wholeNumber:unsignedInt "+" fraction:unsignedFraction {

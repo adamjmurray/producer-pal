@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { applyV0Deletions } from "#src/notation/barbeat/barbeat-apply-v0-deletions.ts";
@@ -312,7 +313,9 @@ export function interpretNotation(
   const beatsPerBar = parseBeatsPerBar(options);
 
   try {
-    const ast = parser.parse(barBeatExpression);
+    // Pass the denominator so the grammar can resolve `±n` beat offsets
+    // (whole-note fractions) into musical beats during the parse.
+    const ast = parser.parse(barBeatExpression, { timeSigDenominator });
     // Bar copy tracking: Map bar number -> array of note metadata
     const notesByBar = new Map<number, BarCopyNote[]>();
     const events: NoteEvent[] = [];

@@ -66,7 +66,10 @@ export function calculateBarBeat(
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
 ): { bar: number; beat: number } {
-  let adjustedTime = Math.round(startTime * 1000) / 1000;
+  // Clean Live-API float noise (e.g. 3.9999999996 → 4) without flattening
+  // genuine tuplet positions: round to 1e-9, not 1e-3. A 1e-3 round would push
+  // 1/3 to 0.333, losing the exact note-value offset the serializer now emits.
+  let adjustedTime = Math.round(startTime * 1e9) / 1e9;
 
   if (timeSigDenominator != null) {
     adjustedTime = adjustedTime * (timeSigDenominator / 4);

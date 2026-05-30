@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -74,8 +75,8 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result.map((n) => n.start_time)).toStrictEqual([0, 5, 10]);
     });
 
-    it("expands repeat pattern with mixed-number start (positions still meter-relative)", () => {
-      const result = interpretNotation("C3 1|2+1/3x3@n/12", {
+    it("expands repeat pattern with note-value offset start (positions still meter-relative)", () => {
+      const result = interpretNotation("C3 1|2+n/12x3@n/12", {
         timeSigNumerator: 4,
         timeSigDenominator: 4,
       });
