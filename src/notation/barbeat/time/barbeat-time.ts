@@ -298,29 +298,33 @@ export function durationToAbletonBeats(
   }
 
   const bars = match[1] != null ? Number.parseInt(match[1]) : 0;
-  let numerator = 0;
-  let denominator = 1;
+  const divisionByZero = `Invalid duration: division by zero in "${duration}"`;
+  // Whole-note fraction → quarter notes (Ableton beats), so scale = 4. The tail
+  // is absent for a pure `Nbar` (fractionBeats stays 0).
+  let fractionBeats = 0;
 
   if (match[3] != null) {
-    // Nbar+n<fraction> form (numerator defaults to 1 when empty)
-    numerator = match[2] === "" ? 1 : Number.parseFloat(match[2] as string);
-    denominator = Number.parseInt(match[3]);
+    // Nbar+n<fraction> form (numerator in match[2], denominator in match[3])
+    fractionBeats = noteValueFractionToBeats(
+      match[2] as string,
+      match[3],
+      4,
+      divisionByZero,
+    );
   } else if (match[5] != null) {
-    // n<fraction> only (numerator defaults to 1 when empty)
-    numerator = match[4] === "" ? 1 : Number.parseFloat(match[4] as string);
-    denominator = Number.parseInt(match[5]);
-  }
-
-  if (denominator === 0) {
-    throw new Error(`Invalid duration: division by zero in "${duration}"`);
+    // n<fraction> only (numerator in match[4], denominator in match[5])
+    fractionBeats = noteValueFractionToBeats(
+      match[4] as string,
+      match[5],
+      4,
+      divisionByZero,
+    );
   }
 
   const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
     timeSigNumerator,
     timeSigDenominator,
   );
-  // Whole-note fraction → quarter notes (Ableton beats): (n/d) * 4
-  const fractionBeats = (numerator / denominator) * 4;
 
   return bars * abletonBeatsPerBar + fractionBeats;
 }
@@ -346,23 +350,54 @@ function parseBeatValue(
   if (offsetMatch) {
     const base = Number.parseInt(offsetMatch[1] as string);
     const sign = offsetMatch[2];
-    const numerator =
-      offsetMatch[3] === "" ? 1 : Number.parseInt(offsetMatch[3] as string);
-    const denominator = Number.parseInt(offsetMatch[4] as string);
-
-    if (denominator === 0) {
-      throw new Error(
-        `Invalid bar|beat format: division by zero in "${context}"`,
-      );
-    }
-
-    const offsetBeats = (numerator / denominator) * (timeSigDenominator ?? 4);
+    // Whole-note fraction → musical beats, so scale = timeSigDenominator.
+    const offsetBeats = noteValueFractionToBeats(
+      offsetMatch[3] as string,
+      offsetMatch[4] as string,
+      timeSigDenominator ?? 4,
+      `Invalid bar|beat format: division by zero in "${context}"`,
+    );
 
     return sign === "+" ? base + offsetBeats : base - offsetBeats;
   }
 
   // Plain integer or decimal grid beat.
   return Number.parseFloat(beatsStr);
+}
+
+/**
+ * Interpret a note-value fraction — the numerator/denominator captured by the
+ * duration (`durationToAbletonBeats`) and `±n`-offset (`parseBeatValue`) regexes
+ * — and scale it into the caller's beat unit. This is the single place the
+ * note-value-fraction arithmetic lives, shared by both regex parsers in this
+ * file. The two Peggy grammars (`barbeat`/`transform`) carry their own lexer
+ * copies — Peggy cannot import — and are pinned to this same language by the
+ * cross-site parity test (`note-value-grammar-parity.test.ts`).
+ *
+ * An empty numerator means 1 (`n/4` == `n1/4`). `parseFloat` also accepts the
+ * decimal numerator of the off-grid duration escape (`n1.9638/4`); the regexes
+ * gate which surfaces admit a decimal (duration only).
+ * @param numeratorStr - Numerator capture ("" → 1)
+ * @param denominatorStr - Denominator capture
+ * @param scale - Whole-note→beat factor: 4 for Ableton beats, or the time-sig
+ *   denominator for musical beats
+ * @param divisionByZeroError - Message to throw when the denominator is 0
+ * @returns The fraction scaled into the caller's beat unit
+ */
+function noteValueFractionToBeats(
+  numeratorStr: string,
+  denominatorStr: string,
+  scale: number,
+  divisionByZeroError: string,
+): number {
+  const numerator = numeratorStr === "" ? 1 : Number.parseFloat(numeratorStr);
+  const denominator = Number.parseInt(denominatorStr);
+
+  if (denominator === 0) {
+    throw new Error(divisionByZeroError);
+  }
+
+  return (numerator / denominator) * scale;
 }
 
 /**
