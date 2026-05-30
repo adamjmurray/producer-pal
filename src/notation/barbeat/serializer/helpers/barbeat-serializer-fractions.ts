@@ -3,7 +3,10 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { musicalBeatsToWholeNoteFraction } from "#src/notation/barbeat/barbeat-config.ts";
+import {
+  musicalBeatsToWholeNoteFraction,
+  NOTE_VALUE_DENOMINATORS,
+} from "#src/notation/barbeat/barbeat-config.ts";
 
 /** Tolerance for floating-point fraction matching */
 const EPSILON = 0.0005;
@@ -29,7 +32,13 @@ export function formatBeatPosition(
     // A beat below the downbeat (negative time, a note before the clip start)
     // can't be a bare sub-1 beat — the grammar requires a 1-based grid beat.
     // Express it as beat 1 minus a note-value offset (`1-n/12`), the authoring
-    // form the parser round-trips.
+    // form the parser round-trips. A clean tuplet/dyadic offset is exact; a
+    // genuinely off-grid sub-1 position rounds to the finest representable
+    // offset (via formatAbsoluteDuration's fallback). The value≥1 branch can
+    // fall back to a bare decimal beat (`1|2.96`, lossless), but there is no
+    // bare sub-1 decimal beat, so off-grid pre-downbeat positions keep that
+    // bounded residual until the decimal-numerator offset escape lands with the
+    // off-grid-escape decision (F2).
     const offsetBeats = 1 - value; // musical beats below the downbeat
     const wholeNoteFraction = musicalBeatsToWholeNoteFraction(
       offsetBeats,
@@ -92,7 +101,7 @@ function formatBeatOffsetFraction(wholeNoteFraction: number): string | null {
  * sub-beat displacement (e.g. an eighth-triplet beat position is a 1/12 offset,
  * a sixteenth-of-a-beat is a 1/64 offset).
  */
-const BEAT_OFFSET_DENOMINATORS = [
+export const BEAT_OFFSET_DENOMINATORS = [
   2, 4, 8, 16, 32, 64, 3, 6, 12, 24, 48, 96, 5, 10, 20, 40,
 ];
 
@@ -118,9 +127,15 @@ export function formatAbsoluteDuration(wholeNoteFraction: number): string {
     }
   }
 
-  // Fallback: any value we couldn't reduce to a clean fraction (unusual).
-  // Use a high-resolution denominator and accept slight rounding.
-  const fallbackDen = 64;
+  // Fallback: a genuinely off-grid value (no exact note-value fraction at any
+  // canonical denominator — only ever produced by *measuring* a sample-derived
+  // length, never by authoring). Round to the finest representable denominator
+  // so the residual error is bounded (≤ half of 1/256 of a whole note ≈ 0.0078
+  // Ableton beats) and the token stays grammar-valid. A lossless off-grid
+  // spelling would need the decimal-numerator escape (`n<beats>/4`), which the
+  // note/`@step` grammars currently reject — see the off-grid-escape discussion
+  // (F2) for that cross-channel decision.
+  const fallbackDen = OFF_GRID_FALLBACK_DENOMINATOR;
   const fallbackNum = Math.max(1, Math.round(wholeNoteFraction * fallbackDen));
 
   return fallbackNum === 1
@@ -129,15 +144,28 @@ export function formatAbsoluteDuration(wholeNoteFraction: number): string {
 }
 
 /**
- * Denominators tried when reducing an absolute duration to a fraction.
- * Order: powers of 2 (most common note values), triplets, then quintuplets.
+ * Denominators tried (preference order) when reducing an absolute duration to a
+ * fraction. Durations may spell every representable note value, so this is the
+ * full canonical set (single source of truth in `barbeat-config.ts`); the prior
+ * hand-maintained subset omitted 64/128/256/48/96/40/7/14, silently snapping
+ * those note values to the lossy /64 fallback on read → re-author.
  */
-const ABSOLUTE_DURATION_DENOMINATORS = [
-  1, 2, 4, 8, 16, 32, 3, 6, 12, 24, 5, 10, 20,
-];
+const ABSOLUTE_DURATION_DENOMINATORS = NOTE_VALUE_DENOMINATORS;
+
+/** Finest representable denominator — the off-grid rounding floor. */
+const OFF_GRID_FALLBACK_DENOMINATOR = Math.max(...NOTE_VALUE_DENOMINATORS);
 
 /**
  * Check if a value can be represented losslessly with 3 decimal places.
+ *
+ * Accepted limit: a genuinely off-grid position (one with no clean note-value
+ * offset) that also fails this gate is emitted via the `toFixed(3)` decimal
+ * fallback, so it can drift by up to half a milli-beat (the gate is computed on
+ * the musical-beat value, so the worst-case wall-clock drift scales with the
+ * meter: ~0.25 ms in x/4 up to ~1 ms in x/1 at 120 BPM). On-grid and dyadic
+ * positions are unaffected (they round-trip exactly); only un-snappable
+ * recorded/measured positions hit this, and the residual is sub-perceptual, so
+ * it is left as a documented bound rather than widening the decimal precision.
  * @param value - Original numeric value
  * @returns True if toFixed(3) preserves the value exactly
  */

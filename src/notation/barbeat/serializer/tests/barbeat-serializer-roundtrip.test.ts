@@ -242,4 +242,44 @@ describe("round-trip: serialize → parse → interpret", () => {
       createNote({ duration: 0.25, start_time: 0.75 }),
     ] as NoteEvent[]);
   });
+
+  // Fine and tuplet note durations used to snap to a lossy /64 because the note
+  // duration serializer's denominator list was a strict subset of its siblings
+  // (n/128 → n/64 doubled the duration on read → re-author). They now round-trip
+  // exactly. Durations are meter-invariant in Ableton beats, so the same values
+  // are exercised across meters. (Drum @step shares formatAbsoluteDuration, which
+  // is unit-tested directly in barbeat-serializer-fractions.test.ts.)
+  const FINE_DURATIONS_AB = [
+    4 / 128, // n/128
+    4 / 256, // n/256
+    4 / 48, // n/48 (triplet 32nd)
+    4 / 96, // n/96
+    4 / 40, // n/40 (quintuplet 32nd)
+    4 / 7, // n/7 (septuplet whole)
+  ];
+
+  it.each([
+    ["4/4", 4, 4],
+    ["6/8", 6, 8],
+    ["2/2", 2, 2],
+  ])("round-trips fine/tuplet note durations in %s", (_label, num, den) => {
+    expectRoundTrip(
+      FINE_DURATIONS_AB.map((duration, i) =>
+        createNote({ pitch: 60 + i, start_time: i, duration }),
+      ) as NoteEvent[],
+      { timeSigNumerator: num, timeSigDenominator: den },
+    );
+  });
+
+  it("round-trips negative (pre-downbeat) tuplet and dyadic positions", () => {
+    // A note before 1|1 serializes as `1|1-n<fraction>`; the value<1 branch must
+    // be as lossless as the value≥1 branch for clean note-value offsets (F5).
+    expectRoundTrip([
+      createNote({ pitch: 60, start_time: -1 / 3 }), // 1|1-n/12
+      createNote({ pitch: 62, start_time: -1 / 6 }), // 1|1-n/24
+      createNote({ pitch: 64, start_time: -1 / 12 }), // 1|1-n/48
+      createNote({ pitch: 65, start_time: -0.5 }), // 1|1-n/8
+      createNote({ pitch: 67, start_time: 0 }),
+    ] as NoteEvent[]);
+  });
 });

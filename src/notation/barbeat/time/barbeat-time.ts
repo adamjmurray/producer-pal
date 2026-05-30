@@ -9,10 +9,14 @@ import * as console from "#src/shared/v8-max-console.ts";
 
 const DURATION_EPSILON = 1e-9;
 const DURATION_FRACTION_TOLERANCE = 1e-6;
+
 // Denominators tried (smallest first) when converting Ableton beats back to a
-// whole-note fraction. Covers binary (4..256), triplet/sextuplet families (3,
-// 6, 12, 24, 48, 96), and quintuplet/septuplet families (5, 10, 20, 7, 14).
-const DURATION_DENOMINATOR_CANDIDATES = [
+// whole-note fraction for a LENGTH read-back. A subset of the canonical
+// NOTE_VALUE_DENOMINATORS (this surface gcd-reduces, so it omits 1/2 — reduction
+// reaches them — and 40, since a length already has the lossless n<beats>/4
+// off-grid escape, so quintuplet-sixteenths fall through to it). The
+// note-value-denominator-parity test locks this as a subset of the canonical set.
+export const DURATION_DENOMINATOR_CANDIDATES = [
   4, 8, 16, 32, 64, 128, 256, 3, 6, 12, 24, 48, 96, 5, 10, 20, 7, 14,
 ];
 

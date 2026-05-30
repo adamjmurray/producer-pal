@@ -110,11 +110,25 @@ describe("formatAbsoluteDuration", () => {
     expect(formatAbsoluteDuration(0)).toBe("0/1");
   });
 
-  it("falls back to a /64 approximation for unusual values", () => {
-    // Values that don't reduce to a standard note-value denominator (e.g.
-    // septuplet/nonuplet fractions) approximate at 1/64 resolution.
-    expect(formatAbsoluteDuration(1 / 7)).toBe("9/64"); // numerator != 1
-    expect(formatAbsoluteDuration(1 / 64)).toBe("/64"); // numerator == 1
+  it("spells fine and tuplet note values losslessly (no /64 snap)", () => {
+    // Every canonical denominator round-trips exactly — these used to snap to a
+    // lossy /64 because the duration list was a strict subset of its siblings.
+    expect(formatAbsoluteDuration(1 / 7)).toBe("/7"); // septuplet whole note
+    expect(formatAbsoluteDuration(1 / 14)).toBe("/14"); // septuplet half
+    expect(formatAbsoluteDuration(1 / 64)).toBe("/64");
+    expect(formatAbsoluteDuration(1 / 128)).toBe("/128"); // was lossy → /64 (2x)
+    expect(formatAbsoluteDuration(1 / 256)).toBe("/256"); // was lossy → /64 (4x)
+    expect(formatAbsoluteDuration(1 / 48)).toBe("/48"); // triplet 32nd
+    expect(formatAbsoluteDuration(1 / 96)).toBe("/96");
+    expect(formatAbsoluteDuration(1 / 40)).toBe("/40"); // quintuplet 32nd
+  });
+
+  it("rounds genuinely off-grid values to the finest denominator (256)", () => {
+    // A value with no exact note-value fraction at any canonical denominator
+    // (only ever produced by measuring a sample-derived length) rounds to /256,
+    // bounding the residual at half of 1/256 of a whole note. 1/9 has no clean
+    // note-value spelling, so it approximates at 1/256 resolution.
+    expect(formatAbsoluteDuration(1 / 9)).toBe("28/256");
   });
 });
 

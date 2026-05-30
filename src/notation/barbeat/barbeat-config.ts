@@ -17,6 +17,25 @@ export const DEFAULT_VELOCITY_DEVIATION = 0;
 export const DEFAULT_DURATION_WHOLE_NOTE_FRACTION = 1 / 4;
 
 /**
+ * The single canonical set of note-value denominators the serializers may emit,
+ * ordered by preference: binary (powers of two, finest first within the family),
+ * then the triplet/sextuplet family, then quintuplets, then septuplets. Every
+ * denominator here produces a grammar-valid `n<num>/<den>` token (both Peggy
+ * grammars accept any `[1-9][0-9]*` denominator).
+ *
+ * The per-surface denominator lists (`ABSOLUTE_DURATION_DENOMINATORS` for note
+ * durations / `@step`, `DURATION_DENOMINATOR_CANDIDATES` for length read-backs,
+ * `BEAT_OFFSET_DENOMINATORS` for position offsets) are all subsets of this set —
+ * they differ only in which families/fineness each surface emits, never in what
+ * is representable. `note-value-denominator-parity.test.ts` locks that invariant
+ * so the lists cannot silently drift apart again (the divergence that let note
+ * durations like `n/128` round-trip-corrupt to `n/64`).
+ */
+export const NOTE_VALUE_DENOMINATORS = [
+  1, 2, 4, 8, 16, 32, 64, 128, 256, 3, 6, 12, 24, 48, 96, 5, 10, 20, 40, 7, 14,
+];
+
+/**
  * Default duration in musical beats for a given time signature.
  * A quarter note in N/D meter is D/4 musical beats: 1 in 4/4, 2 in 6/8, 0.5 in 2/2.
  * @param timeSigDenominator - Time signature denominator (defaults to 4)
