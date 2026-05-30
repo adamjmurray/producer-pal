@@ -100,7 +100,7 @@ describe("abletonBeatsToDuration", () => {
   describe("off-grid (sample-derived) lengths", () => {
     it("emits n<beats>/4 instead of throwing for sub-bar non-grid values", () => {
       // Sample-derived length that is no clean note-value fraction (the
-      // AJM-461 regression: this used to throw). The off-grid escape wears the
+      // regression: this used to throw). The off-grid escape wears the
       // `n` sigil with a `/4` denominator, so the numerator reads as the beat
       // count.
       expect(abletonBeatsToDuration(1.963754995004995, 4, 4)).toBe("n1.9638/4");

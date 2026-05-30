@@ -199,7 +199,7 @@ G4-G5: velocity += 20`;
       expect(atEnd.velocity!.value).toBe(10);
     });
 
-    // AJM-467: range bounds use the same bar|beat dialect as note positions,
+    // range bounds use the same bar|beat dialect as note positions,
     // including ±n note-value offsets resolved meter-relative to the denominator.
     describe("n-offset bounds (meter-relative)", () => {
       it("includes a note at or past a +n start bound", () => {

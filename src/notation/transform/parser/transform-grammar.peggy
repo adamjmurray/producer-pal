@@ -161,7 +161,7 @@ timeRange "time range"
 // (meter-aware, like durations); `options.timeSigDenominator` converts it to
 // musical beats. Dyadic sub-beats may use a plain decimal (`1.5`). Bare
 // fractions (`4/3`) and mixed numbers (`1+1/3`) are intentionally rejected so a
-// beat reads the same in a range bound as in a note position (AJM-467).
+// beat reads the same in a range bound as in a note position.
 //
 // The sign branches are split (unlike barbeat's combined `("+"/"-")`) because a
 // range's `-` separator collides with a `-` offset sign: `1|1-2|1` is the

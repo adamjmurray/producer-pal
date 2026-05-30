@@ -162,7 +162,7 @@ pitchClass
 // like durations and `@step`); `options.timeSigDenominator` converts it to
 // musical beats. Dyadic sub-beats may use a plain decimal (`1.5`). Bare
 // fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`) are intentionally
-// rejected so note values always wear the `n` sigil — consistent with AJM-464.
+// rejected so note values always wear the `n` sigil.
 beatValue
   = base:oneOrMoreInt sign:("+" / "-") "n" frac:unsignedFraction {
       const offsetBeats = frac * (options.timeSigDenominator ?? 4);

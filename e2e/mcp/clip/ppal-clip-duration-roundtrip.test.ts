@@ -9,7 +9,7 @@
  * Create / read / update a MIDI clip's `length` (and `arrangementLength`) with
  * representative durations and verify the read-back string matches: `n/4`,
  * `n/8`, `n3/8`, `1bar+n/4`, and whole-bar `Nbar`. (Audio-clip lengths are
- * covered separately once AJM-461's audio path is exercised; off-grid lengths
+ * covered separately once the audio path is exercised; off-grid lengths
  * are a serializer concern unit-tested in barbeat-time-durations.test.ts.)
  *
  * Uses: e2e-test-set — t8 is the empty MIDI track.
