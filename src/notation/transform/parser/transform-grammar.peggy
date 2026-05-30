@@ -19,6 +19,21 @@
   // Maps a multiplicative operator character to its AST node type.
   const MULTIPLICATIVE_OP_TYPES = { "*": "multiply", "/": "divide", "%": "modulo" };
 
+  // Borrow across bar lines so a `-n` range-bound offset can pull a position
+  // earlier than beat 1 of its bar (e.g. `2|1-n/12` → bar 1, beat 4⅔ in 4/4).
+  // The offset already produced a sub-1 `beat`; wrap it up into the previous
+  // bar(s) using beatsPerBar. Reaching before 1|1 is an error (no bar 0).
+  function borrowBars(bar, beat, beatsPerBar) {
+    while (beat < 1) {
+      beat += beatsPerBar;
+      bar -= 1;
+    }
+    if (bar < 1) {
+      throw new Error("time range bound resolves before the start of the timeline (before 1|1)");
+    }
+    return { bar, beat };
+  }
+
   // Targeted error for the removed synced-period syntax (Nt, N:Nt).
   function oldPeriodError(matched) {
     return `Period syntax "${matched}" is no longer supported. Use a note-value period with the "sync" keyword, e.g. sin(n/4, sync) for a quarter-note cycle, or cos(clip.barDuration, sync) for a bar-length cycle.`;
@@ -146,11 +161,14 @@ pitchClass
 
 timeRange "time range"
   = startBar:oneOrMoreInt "|" startBeat:beatValue "-" endBar:oneOrMoreInt "|" endBeat:beatValue {
+    const beatsPerBar = options.beatsPerBar ?? 4;
+    const start = borrowBars(startBar, startBeat, beatsPerBar);
+    const end = borrowBars(endBar, endBeat, beatsPerBar);
     return {
-      startBar,
-      startBeat,
-      endBar,
-      endBeat
+      startBar: start.bar,
+      startBeat: start.beat,
+      endBar: end.bar,
+      endBeat: end.beat
     };
   }
 
@@ -163,7 +181,9 @@ timeRange "time range"
 // beat, a factor that cancels when musical beats convert to Ableton beats.
 // Dyadic sub-beats may use a plain decimal (`1.5`). Bare
 // fractions (`4/3`) and mixed numbers (`1+1/3`) are intentionally rejected so a
-// beat reads the same in a range bound as in a note position.
+// beat reads the same in a range bound as in a note position. A `-n` offset may
+// resolve below beat 1 ("just before the downbeat"); `timeRange` borrows across
+// the bar line to canonicalize it, rejecting only what reaches before 1|1.
 //
 // The sign branches are split (unlike barbeat's combined `("+"/"-")`) because a
 // range's `-` separator collides with a `-` offset sign: `1|1-2|1` is the
@@ -178,11 +198,10 @@ beatValue
       return base + frac * (options.timeSigDenominator ?? 4);
     }
   / base:oneOrMoreInt "-n" frac:unsignedFraction {
-      const beat = base - frac * (options.timeSigDenominator ?? 4);
-      if (beat < 1) {
-        throw new Error(`Beat position must be 1 or greater (got ${text()})`);
-      }
-      return beat;
+      // May resolve below beat 1 (e.g. `2|1-n/12`, "just before the downbeat");
+      // `timeRange` borrows across the bar line to canonicalize it (and rejects
+      // anything that reaches before 1|1). So return the raw beat even when < 1.
+      return base - frac * (options.timeSigDenominator ?? 4);
     }
   / oneOrMoreInt "+" bad:badBeatOffset {
       throw new Error(`beat offsets use the note-value form: 1|1+n/12 = beat 1 + an eighth triplet, 1|2-n/24. Got ${text()} — note-value offsets need the n prefix (write +n/3, not +${bad}).`);

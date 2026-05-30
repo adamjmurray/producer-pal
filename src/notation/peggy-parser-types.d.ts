@@ -18,6 +18,12 @@ export interface ParseOptions {
    * parse. Defaults to 4 when omitted.
    */
   timeSigDenominator?: number;
+  /**
+   * Musical beats per bar (the time signature numerator). Used to borrow across
+   * a bar line when a `-n` beat offset pulls a position earlier than beat 1
+   * (e.g. `2|1-n/12` → bar 1, beat 4⅔ in 4/4). Defaults to 4 when omitted.
+   */
+  beatsPerBar?: number;
 }
 
 /** Location information for syntax errors */

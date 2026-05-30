@@ -239,9 +239,20 @@ describe("Transform Parser", () => {
       );
     });
 
-    it("rejects a beat below 1 from a negative offset", () => {
+    it("borrows across the bar line for a -n bound before the downbeat", () => {
+      // `2|1-n/12` start bound = just before the bar-2 downbeat → bar 1, beat 4⅔
+      // in 4/4. The separator `-` before `3|1` is not consumed as an offset.
+      const result = parser.parse("2|1-n/12-3|1: velocity += 10");
+
+      expect(result[0]!.timeRange!.startBar).toBe(1);
+      expect(result[0]!.timeRange!.startBeat).toBeCloseTo(4.6667);
+      expect(result[0]!.timeRange!.endBar).toBe(3);
+      expect(result[0]!.timeRange!.endBeat).toBe(1);
+    });
+
+    it("rejects a -n bound that reaches before the start of the timeline", () => {
       expect(() => parser.parse("1|1-n/2-2|1: velocity += 10")).toThrow(
-        /1 or greater/,
+        /before the start of the timeline/,
       );
     });
   });

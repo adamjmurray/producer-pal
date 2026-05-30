@@ -175,6 +175,35 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     expect(result[1]!.velocity_deviation).toBe(0);
   });
 
+  it("places a -n offset just before a downbeat by borrowing across the bar", () => {
+    // `2|1-n/12` = an eighth triplet before the bar-2 downbeat. In 4/4 the
+    // bar-2 downbeat is Ableton beat 4, so the note lands at 4 − 1/3.
+    const in44 = interpretNotation("C3 2|1-n/12", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+
+    expect(in44).toHaveLength(1);
+    expect(in44[0]!.start_time).toBeCloseTo(4 - 1 / 3, 10);
+
+    // The eighth triplet is meter-invariant: the same 1/3-Ableton-beat
+    // displacement before the downbeat in 6/8 (whose bar is 3 Ableton beats).
+    const in68 = interpretNotation("C3 2|1-n/12", {
+      timeSigNumerator: 6,
+      timeSigDenominator: 8,
+    });
+
+    expect(in68[0]!.start_time).toBeCloseTo(3 - 1 / 3, 10);
+
+    // Reaching before 1|1 has no bar to borrow from and is rejected.
+    expect(() =>
+      interpretNotation("C3 1|1-n/12", {
+        timeSigNumerator: 4,
+        timeSigDenominator: 4,
+      }),
+    ).toThrow("before the start of the timeline");
+  });
+
   it("handles changing durations across notes", () => {
     // n2/1 = 2 whole = 8 quarters; n3/8 = dotted quarter = 1.5 quarters; n3/16 = dotted eighth = 0.75
     const result = interpretNotation("n2/1 C3 1|1 n3/8 D3 1|2 n3/16 E3 1|3", {

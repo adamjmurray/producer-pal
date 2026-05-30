@@ -36,7 +36,10 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     quarter-beat in 4/4, 2/3 of an eighth-beat in 6/8 — the same musical
     duration). The grid beat it displaces, by contrast, **is** meter-relative.
     Bare fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`) are rejected
-    — note values always wear the `n`.
+    — note values always wear the `n`. A `-n` offset may pull a position earlier
+    than its bar's downbeat — `2|1-n/12` is "an eighth triplet before the bar-2
+    downbeat" and resolves into bar 1 (beat 4⅔ in 4/4) by borrowing across the
+    bar line. Only a position that reaches before `1|1` is rejected.
   - **Repeat patterns**: `beat x times @ step` generates multiple positions.
     `step` uses the same note-value duration grammar as `n` (see Duration):
     `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar+n<fraction>`

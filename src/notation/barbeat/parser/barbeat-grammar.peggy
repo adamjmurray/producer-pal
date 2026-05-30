@@ -13,6 +13,33 @@
     "A#": 10, "Bb": 10,
     "B": 11,
   };
+
+  // Borrow across bar lines so a `-n` beat offset can pull a position earlier
+  // than beat 1 of its bar (e.g. `2|1-n/12` → bar 1, beat 4⅔ in 4/4). The
+  // offset already produced a sub-1 `beat`; wrap it up into the previous bar(s)
+  // using beatsPerBar. Reaching before 1|1 is an error (there is no bar 0).
+  function borrowBars(bar, beat, beatsPerBar) {
+    while (beat < 1) {
+      beat += beatsPerBar;
+      bar -= 1;
+    }
+    if (bar < 1) {
+      throw new Error("beat position resolves before the start of the timeline (before 1|1)");
+    }
+    return { bar, beat };
+  }
+
+  // Normalize one timePoints entry into a canonical { bar, beat }. The entry is
+  // either a plain beat number or a repeat pattern whose `start` may be sub-1;
+  // either way the sub-1 value borrows across the bar line.
+  function normalizeTimePoint(bar, beat, beatsPerBar) {
+    if (typeof beat === "object" && beat !== null) {
+      const borrowed = borrowBars(bar, beat.start, beatsPerBar);
+      return { bar: borrowed.bar, beat: { ...beat, start: borrowed.beat } };
+    }
+    const borrowed = borrowBars(bar, beat, beatsPerBar);
+    return { bar: borrowed.bar, beat: borrowed.beat };
+  }
 }}
 
 start
@@ -45,7 +72,8 @@ barOrRange
 
 timePoints "time position"
   = bar:oneOrMoreInt "|" beats:beatList {
-    return beats.map(beat => ({ bar, beat }));
+    const beatsPerBar = options.beatsPerBar ?? 4;
+    return beats.map(beat => normalizeTimePoint(bar, beat, beatsPerBar));
   }
 
 beatList "beat list"
@@ -167,14 +195,15 @@ pitchClass
 // IS meter-relative.) Dyadic sub-beats may use a plain decimal (`1.5`). Bare
 // fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`) are intentionally
 // rejected so note values always wear the `n` sigil.
+//
+// A `-n` offset may resolve below beat 1 (e.g. `2|1-n/12`, "just before the
+// downbeat"); `timePoints` borrows across the bar line to canonicalize it (and
+// rejects anything that reaches before 1|1). So this rule returns the raw beat
+// even when it is < 1.
 beatValue
   = base:oneOrMoreInt sign:("+" / "-") "n" frac:unsignedFraction {
       const offsetBeats = frac * (options.timeSigDenominator ?? 4);
-      const beat = sign === "+" ? base + offsetBeats : base - offsetBeats;
-      if (beat < 1) {
-        throw new Error(`Beat position must be 1 or greater (got ${text()})`);
-      }
-      return beat;
+      return sign === "+" ? base + offsetBeats : base - offsetBeats;
     }
   / oneOrMoreInt sign:("+" / "-") bad:badBeatOffset {
       throw new Error(`beat offsets use the note-value form: 1|1+n/12 = beat 1 + an eighth triplet, 1|2-n/24. Got ${text()} — note-value offsets need the n prefix (write ${sign}n/3, not ${sign}${bad}).`);

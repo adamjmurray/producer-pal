@@ -67,9 +67,11 @@ export function beatsToBarBeat(beats: number, beatsPerBar: number): string {
 /**
  * Convert bar|beat format to beats. The beat field is a 1-based grid beat,
  * optionally a decimal (`2|3.5`) or displaced by an absolute note-value offset
- * (`1|1+n/12` = beat 1 + an eighth triplet, `2|2-n/24`). Bare fractions (`4/3`)
- * and bar-relative mixed numbers (`1+1/3`) are not accepted — note values wear
- * the `n` sigil everywhere.
+ * (`1|1+n/12` = beat 1 + an eighth triplet, `2|2-n/24`). A `-n` offset may pull
+ * the position before its bar's downbeat (`2|1-n/12`); the bar is borrowed
+ * automatically and only a result before `1|1` is rejected. Bare fractions
+ * (`4/3`) and bar-relative mixed numbers (`1+1/3`) are not accepted — note
+ * values wear the `n` sigil everywhere.
  * @param barBeat - Bar|beat string like "1|2", "2|3.5", or "1|1+n/12"
  * @param beatsPerBar - Beats per bar
  * @param timeSigDenominator - Time signature denominator (for the `±n` offset unit)
@@ -96,11 +98,19 @@ export function barBeatToBeats(
     throw new Error(`Bar number must be 1 or greater, got: ${bar}`);
   }
 
-  if (beat < 1) {
-    throw new Error(`Beat must be 1 or greater, got: ${beat}`);
+  // A `-n` offset may pull the beat below 1 ("just before the downbeat", e.g.
+  // `2|1-n/12`); the formula borrows from the bar automatically. Validate the
+  // resolved absolute position instead of the bare beat: only a position before
+  // 1|1 (the start of the timeline) is rejected.
+  const beats = (bar - 1) * beatsPerBar + (beat - 1);
+
+  if (beats < 0) {
+    throw new Error(
+      `Position resolves before the start of the timeline (before 1|1): "${barBeat}"`,
+    );
   }
 
-  return (bar - 1) * beatsPerBar + (beat - 1);
+  return beats;
 }
 
 /**

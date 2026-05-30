@@ -49,7 +49,11 @@ export function applyTransforms(
     return undefined;
   }
 
-  const ast = tryParseTransform(transformString, timeSigDenominator);
+  const ast = tryParseTransform(
+    transformString,
+    timeSigDenominator,
+    timeSigNumerator,
+  );
 
   // Check for audio parameters and warn
   const hasAudioParams = ast.some((a) => AUDIO_PARAMETERS.has(a.parameter));
@@ -382,6 +386,7 @@ export function evaluateTransform(
   const ast = tryParseTransform(
     transformString,
     noteContext.timeSig.denominator,
+    noteContext.timeSig.numerator,
   );
 
   return evaluateTransformAST(ast, noteContext, noteProperties);
@@ -392,15 +397,21 @@ export function evaluateTransform(
  * @param transformString - Transform expression string
  * @param timeSigDenominator - Time signature denominator; converts `±n`
  *   beat-position offsets in a `timeRange` to musical beats during the parse
+ * @param timeSigNumerator - Time signature numerator (musical beats per bar);
+ *   lets a `-n` range-bound offset borrow across a bar line during the parse
  * @returns Parsed AST
  * @throws Error with formatted message if parsing fails
  */
 function tryParseTransform(
   transformString: string,
   timeSigDenominator: number,
+  timeSigNumerator: number,
 ): ReturnType<typeof parseTransform> {
   try {
-    return parseTransform(transformString, { timeSigDenominator });
+    return parseTransform(transformString, {
+      timeSigDenominator,
+      beatsPerBar: timeSigNumerator,
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "SyntaxError") {
       throw new Error(

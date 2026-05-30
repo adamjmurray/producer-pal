@@ -164,16 +164,36 @@ describe("BarBeatScript Parser - time declarations", () => {
     );
   });
 
-  it("rejects note-value offsets that fall below beat 1", () => {
-    // 1 - n/4 = beat 0; 1 - n/8 = beat 0.5; 1 - n/12 = beat 2/3
+  it("borrows across the bar line for a -n offset before the downbeat", () => {
+    // `2|1-n/12` = just before the bar-2 downbeat → bar 1, beat 4⅔ in 4/4.
+    expect(parser.parse("2|1-n/12 C3")).toStrictEqual([
+      { bar: 1, beat: 1 - (1 / 12) * 4 + 4 },
+      { pitch: 60 },
+    ]);
+    // A larger offset borrows more than a beat: `2|1-n/2` = bar 2 − a half note
+    // → bar 1, beat 3.
+    expect(parser.parse("2|1-n/2 C3")).toStrictEqual([
+      { bar: 1, beat: 3 },
+      { pitch: 60 },
+    ]);
+    // The borrow also applies to a repeat's start position.
+    expect(parser.parse("2|1-n/2x2 C3")).toStrictEqual([
+      { bar: 1, beat: { start: 3, times: 2, step: null } },
+      { pitch: 60 },
+    ]);
+  });
+
+  it("rejects a -n offset that reaches before the start of the timeline", () => {
+    // 1 - n/4 = beat 0; 1 - n/8 = beat 0.5; 1 - n/12 = beat 2/3 — all in bar 1,
+    // so there is no earlier bar to borrow from.
     expect(() => parser.parse("1|1-n/4 C3")).toThrow(
-      "Beat position must be 1 or greater (got 1-n/4)",
+      "before the start of the timeline",
     );
     expect(() => parser.parse("1|1-n/8 C3")).toThrow(
-      "Beat position must be 1 or greater (got 1-n/8)",
+      "before the start of the timeline",
     );
     expect(() => parser.parse("1|1-n/12 C3")).toThrow(
-      "Beat position must be 1 or greater (got 1-n/12)",
+      "before the start of the timeline",
     );
   });
 

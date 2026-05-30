@@ -119,12 +119,12 @@ describe("barbeat-time utilities", () => {
       );
     });
 
-    it("throws error for beat number less than 1", () => {
+    it("throws when a beat resolves before the start of the timeline", () => {
       expect(() => barBeatToBeats("1|0", 4)).toThrow(
-        "Beat must be 1 or greater",
+        "before the start of the timeline",
       );
       expect(() => barBeatToBeats("1|-1", 3)).toThrow(
-        "Beat must be 1 or greater",
+        "before the start of the timeline",
       );
     });
 
@@ -170,15 +170,28 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToBeats("2|1+n/16", 6, 8)).toBeCloseTo(6.5, 10);
     });
 
-    it("throws error when a ±n offset falls below beat 1", () => {
+    it("borrows across a bar line when a -n offset pulls before the downbeat", () => {
+      // `2|1-n/12` = "just before the bar-2 downbeat": beat 1 − ⅓ = ⅔, which
+      // borrows into bar 1 → absolute 3 + ⅔ in 4/4.
+      expect(barBeatToBeats("2|1-n/12", 4, 4)).toBeCloseTo(3 + 2 / 3, 10);
+      // The eighth triplet is meter-invariant: same ⅓-quarter displacement in
+      // 6/8 (offset (1/12)*8 = ⅔ of an eighth beat), borrowing into bar 1.
+      // bar 1 has 6 eighth beats → absolute (6 − ⅔) musical beats = 5 + ⅓.
+      expect(barBeatToBeats("2|1-n/12", 6, 8)).toBeCloseTo(5 + 1 / 3, 10);
+      // A larger offset can borrow more than one beat: `2|1-n/2` = bar 2 minus
+      // a half note (2 beats) → bar 1 beat 3 → absolute 2.
+      expect(barBeatToBeats("2|1-n/2", 4, 4)).toBeCloseTo(2, 10);
+    });
+
+    it("throws when a -n offset reaches before the start of the timeline", () => {
       expect(() => barBeatToBeats("1|1-n/4", 4, 4)).toThrow(
-        "Beat must be 1 or greater",
-      ); // beat 0
+        "before the start of the timeline",
+      ); // beat 0, no bar 0 to borrow from
       expect(() => barBeatToBeats("1|1-n/8", 4, 4)).toThrow(
-        "Beat must be 1 or greater",
+        "before the start of the timeline",
       ); // beat 0.5
       expect(() => barBeatToBeats("1|1-n/12", 4, 4)).toThrow(
-        "Beat must be 1 or greater",
+        "before the start of the timeline",
       ); // beat 2/3
     });
 

@@ -314,8 +314,13 @@ export function interpretNotation(
 
   try {
     // Pass the denominator so the grammar can resolve `±n` beat offsets
-    // (whole-note fractions) into musical beats during the parse.
-    const ast = parser.parse(barBeatExpression, { timeSigDenominator });
+    // (whole-note fractions) into musical beats during the parse, and
+    // beatsPerBar so it can borrow across a bar line when a `-n` offset pulls a
+    // position earlier than beat 1 (e.g. `2|1-n/12`).
+    const ast = parser.parse(barBeatExpression, {
+      timeSigDenominator,
+      beatsPerBar,
+    });
     // Bar copy tracking: Map bar number -> array of note metadata
     const notesByBar = new Map<number, BarCopyNote[]>();
     const events: NoteEvent[] = [];
