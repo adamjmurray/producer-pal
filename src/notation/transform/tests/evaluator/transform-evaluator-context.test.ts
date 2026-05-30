@@ -201,27 +201,33 @@ describe("Context Variables", () => {
       expect(result.velocity).toStrictEqual({ operator: "set", value: 32 });
     });
 
-    it("skips assignment when clip.position is absent (session clip)", () => {
-      // When clip.position is not in noteProperties,
-      // the evaluator throws and processAssignment skips with a warning
+    it("resolves clip.position to 0 with a warning on a session clip", () => {
+      // Session clips have no arrangement origin: clip.position resolves to 0
+      // (neutral) + warn instead of throwing, so the transform keeps running.
       const result = evaluateTransform(
         "velocity = clip.position",
         createContext(),
         {},
       );
 
-      expect(result).toStrictEqual({});
+      expect(result.velocity).toStrictEqual({ operator: "set", value: 0 });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          "clip.position is not available for session clips",
+        ),
+      );
     });
 
-    it("does not affect other assignments when clip.position is absent", () => {
+    it("keeps other assignments running when clip.position is absent", () => {
       const result = evaluateTransform(
         "velocity = clip.position\npitch += 7",
         createContext(),
         {},
       );
 
-      // First assignment skipped, second succeeds
-      expect(result.velocity).toBeUndefined();
+      // First assignment resolves clip.position to 0; second succeeds
+      expect(result.velocity).toStrictEqual({ operator: "set", value: 0 });
       expect(result.pitch).toStrictEqual({ operator: "add", value: 7 });
     });
   });

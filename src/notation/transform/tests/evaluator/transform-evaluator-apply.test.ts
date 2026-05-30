@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it, vi } from "vitest";
@@ -106,6 +107,18 @@ describe("applyTransforms", () => {
 
       applyTransforms(notes, "duration = -1", 4, 4);
       expect(notes).toHaveLength(0);
+    });
+
+    it("warns when a duration transform deletes a note", () => {
+      const warn = vi.spyOn(console, "warn");
+      const notes = createTestNote();
+
+      applyTransforms(notes, "duration = -1", 4, 4);
+
+      expect(notes).toHaveLength(0);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("transform drove duration to 0 or below"),
+      );
     });
 
     it("clamps probability to minimum 0.0 with += operator", () => {

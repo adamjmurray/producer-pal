@@ -376,6 +376,17 @@ export function evaluateExpression(
       node.namespace === "note" ? node.name : `${node.namespace}:${node.name}`;
 
     if (noteProperties[lookupKey] == null) {
+      // clip.position on a session clip: no arrangement origin. Fall back to 0
+      // (neutral) + warn instead of failing the transform — mirrors the audio
+      // evaluator so the condition is recoverable on both note and audio paths.
+      if (node.namespace === "clip" && node.name === "position") {
+        console.warn(
+          `clip.position is not available for session clips; using 0`,
+        );
+
+        return 0;
+      }
+
       throw new Error(
         `Variable "${node.namespace}.${node.name}" is not available in this context`,
       );

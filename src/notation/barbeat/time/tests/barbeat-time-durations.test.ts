@@ -126,9 +126,11 @@ describe("abletonBeatsToDuration", () => {
     });
   });
 
-  it("throws error for negative durations", () => {
-    expect(() => abletonBeatsToDuration(-1, 4, 4)).toThrow(
-      "Duration cannot be negative, got: -1",
+  it("clamps negative durations to 0 and warns instead of throwing", () => {
+    expect(abletonBeatsToDuration(-1, 4, 4)).toBe("0bar");
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("duration cannot be negative, got -1"),
     );
   });
 });

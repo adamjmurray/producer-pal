@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import * as console from "#src/shared/v8-max-console.ts";
 import { type ExpressionNode } from "../parser/transform-parser.ts";
 import {
   type EvaluateExpressionFn,
@@ -189,5 +190,13 @@ export function evaluateLegato(
     return ctx.clipEnd - noteStart;
   }
 
-  throw new Error("legato(): no next note available");
+  // No next note and no known clip end (e.g. the final note in a context that
+  // doesn't supply a clip length): keep the note's current duration rather than
+  // failing the whole transform.
+  console.warn(
+    "legato(): no next note and no clip end for the last note; keeping current duration",
+  );
+
+  // duration is always populated by buildNoteProperties for note transforms.
+  return noteProperties.duration as number;
 }

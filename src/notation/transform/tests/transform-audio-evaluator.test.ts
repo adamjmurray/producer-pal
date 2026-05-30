@@ -384,7 +384,8 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBe(8);
     });
 
-    it("skips assignment when clip.position is absent (session clip)", () => {
+    it("resolves clip.position to 0 with a warning on a session clip", () => {
+      vi.mocked(console.warn).mockClear();
       const result = applyAudioTransform(-6, 0, "gain = clip.position", {
         clipDuration: 16,
         clipIndex: 0,
@@ -392,8 +393,12 @@ describe("Audio Transform Evaluator", () => {
         barDuration: 4,
       });
 
-      // Evaluation fails, gain unchanged
-      expect(result.gain).toBeNull();
+      // Session clips have no arrangement origin: clip.position resolves to 0
+      // (neutral) + warn instead of failing the transform.
+      expect(result.gain).toBe(0);
+      expect(console.warn).toHaveBeenCalledWith(
+        "clip.position is not available for session clips; using 0",
+      );
     });
 
     it("resolves clip.barDuration with clipContext", () => {

@@ -191,7 +191,9 @@ export function barBeatToAbletonBeats(
  * prefix (`n/4` = quarter, `n/8` = eighth, `n/12` = eighth triplet; numerator
  * omitted when 1). The bar component is meter-aware and never wears an `n`.
  *
- * This function is **total**: it never throws for a length/duration value.
+ * This function is **total**: it never throws for a length/duration value. A
+ * negative value (which a transform can produce before its own clamp catches
+ * it) warns and is treated as 0 rather than throwing.
  * On-grid values get an exact note-value spelling; off-grid values (only ever
  * produced by *measuring* a sample-derived length, never by authoring) fall
  * back to a decimal-numerator note value pinned to `/4` (`n<beats>/4`), where
@@ -217,7 +219,10 @@ export function abletonBeatsToDuration(
   timeSigDenominator: number,
 ): string {
   if (abletonBeats < 0) {
-    throw new Error(`Duration cannot be negative, got: ${abletonBeats}`);
+    console.warn(
+      `duration cannot be negative, got ${abletonBeats}; clamped to 0`,
+    );
+    abletonBeats = 0;
   }
 
   const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(

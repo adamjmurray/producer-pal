@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
@@ -111,6 +112,18 @@ export function applyTransforms(
   );
 
   if (surviving.length < notes.length) {
+    // Warn when a duration transform drove a note to zero/negative length: the
+    // note is deleted (not clamped), so surface it rather than vanishing silently.
+    const droppedForDuration = notes.filter(
+      (note) => note.duration <= 0,
+    ).length;
+
+    if (droppedForDuration > 0) {
+      console.warn(
+        `${droppedForDuration} note(s) deleted: transform drove duration to 0 or below`,
+      );
+    }
+
     notes.length = 0;
     notes.push(...surviving);
   }

@@ -158,7 +158,8 @@ timing = quant(n / 12); // snap to triplet grid
 
 Sets duration to fill the gap to the next distinct start time. Skips chord tones
 (notes at the same start position) so all notes in a chord extend to the next
-rhythmic position. The last note extends to the clip end.
+rhythmic position. The last note extends to the clip end, or keeps its current
+duration (with a warning) when no clip length is available.
 
 Optional tolerance in beats (default 0): notes within tolerance of the same
 start time are treated as a chord. Useful after humanizing timing.
@@ -392,7 +393,8 @@ Access clip and bar context in expressions:
   arrangement clips, content length for session clips)
 - `clip.index` - 0-based clip order in multi-clip operations
 - `clip.position` - Arrangement position in musical beats (arrangement clips
-  only; session clips skip the assignment with a warning)
+  only; on session clips it resolves to 0 with a warning, since session clips
+  have no arrangement origin)
 - `clip.barDuration` - Beats per bar from clip time signature (e.g., 4 in 4/4, 3
   in 3/4, 6 in 6/8)
 

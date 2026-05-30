@@ -296,7 +296,11 @@ function resolveAudioVariable(
     };
 
     if (node.name === "position" && clipContext.arrangementStart == null) {
-      throw new Error(`clip.position is not available for session clips`);
+      // Session clips have no arrangement origin; 0 is the neutral position so
+      // the transform keeps running instead of failing the clip.
+      console.warn(`clip.position is not available for session clips; using 0`);
+
+      return 0;
     }
 
     const value = clipProps[node.name];
