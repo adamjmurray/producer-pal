@@ -63,6 +63,15 @@ describe("barbeat-time utilities", () => {
       expect(beatsToBarBeat(0.666667, 4)).toBe("1|1.667");
       expect(beatsToBarBeat(1.123456, 4)).toBe("1|2.123");
     });
+
+    it("pins the bar floor at 1 for positions before 1|1", () => {
+      // A note before the clip start (negative time) serializes as a sub-1
+      // beat in bar 1, never bar 0 — so it round-trips through barBeatToBeats.
+      expect(beatsToBarBeat(-0.5, 4)).toBe("1|0.5");
+      expect(beatsToBarBeat(-1, 4)).toBe("1|0");
+      expect(beatsToBarBeat(-2, 4)).toBe("1|-1");
+      expect(beatsToBarBeat(-5, 4)).toBe("1|-4");
+    });
   });
 
   describe("barBeatToBeats", () => {
@@ -103,6 +112,19 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToBeats("2|10.5", 4)).toBe(13.5);
       expect(barBeatToBeats("1|10.5", 3)).toBe(9.5);
       expect(barBeatToBeats("2|10.5", 3)).toBe(12.5);
+    });
+
+    it("parses sub-1 and negative beats to negative time", () => {
+      expect(barBeatToBeats("1|0.5", 4)).toBe(-0.5);
+      expect(barBeatToBeats("1|0", 4)).toBe(-1);
+      expect(barBeatToBeats("1|-1", 4)).toBe(-2);
+      expect(barBeatToBeats("1|-4", 4)).toBe(-5);
+    });
+
+    it("round-trips negative positions through serialize → parse", () => {
+      expect(barBeatToBeats(beatsToBarBeat(-0.5, 4), 4)).toBe(-0.5);
+      expect(barBeatToBeats(beatsToBarBeat(-2, 4), 4)).toBe(-2);
+      expect(barBeatToBeats(beatsToBarBeat(-4.25, 4), 4)).toBe(-4.25);
     });
 
     describe("out-of-range beat warning", () => {

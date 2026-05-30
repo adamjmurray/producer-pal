@@ -54,8 +54,14 @@ export function parseBeatsPerBar(options: BeatsPerBarOptions = {}): number {
  * @returns Formatted bar|beat string
  */
 export function beatsToBarBeat(beats: number, beatsPerBar: number): string {
-  const bar = Math.floor(beats / beatsPerBar) + 1;
-  const beat = (beats % beatsPerBar) + 1;
+  // Pin the bar floor at 1 so a negative position (a note before the clip
+  // start, e.g. `1|1-n/12` → -⅓ beats) serializes as a sub-1 beat in bar 1
+  // (`1|0.667`) rather than bar 0 (`0|…`, which would re-parse to a different
+  // value). This keeps negative positions round-trippable through
+  // barBeatToBeats. For beats >= 0 the result is identical to the old
+  // floor()+1 / (beats % beatsPerBar) form.
+  const bar = Math.max(1, Math.floor(beats / beatsPerBar) + 1);
+  const beat = beats - (bar - 1) * beatsPerBar + 1;
 
   // Format beat - avoid unnecessary decimals
 

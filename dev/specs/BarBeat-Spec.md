@@ -41,8 +41,8 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     downbeat" and resolves into bar 1 (beat 4⅔ in 4/4) by borrowing across the
     bar line. A pull before `1|1` is allowed too: it resolves to negative time
     (a note before the clip start, which Live accepts). Authoring warns once
-    when a note lands before the clip start, since reads start at time 0 and
-    won't show it.
+    when a note lands before the clip start. Such notes round-trip on read,
+    serialized as a sub-1 beat in bar 1 (e.g. `1|0.667`).
   - **Repeat patterns**: `beat x times @ step` generates multiple positions.
     `step` uses the same note-value duration grammar as `n` (see Duration):
     `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar+n<fraction>`

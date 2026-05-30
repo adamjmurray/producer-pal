@@ -263,7 +263,15 @@ export function expectGetNotesExtendedCall(
   handle: RegisteredMockObject,
   clipLength = 4,
 ): void {
-  const expectedArgs: unknown[] = ["get_notes_extended", 0, 128, 0, clipLength];
+  // Reads from one clip-length before the start so notes before 1|1 (negative
+  // start_time) are included; window is [-clipLength, clipLength].
+  const expectedArgs: unknown[] = [
+    "get_notes_extended",
+    0,
+    128,
+    -clipLength,
+    clipLength * 2,
+  ];
 
   expect(handle.call).toHaveBeenCalledWith(...expectedArgs);
 }
