@@ -165,5 +165,10 @@
     "vite-plugin-singlefile": "2.3.3",
     "vitepress": "1.6.4",
     "vitest": "4.1.7"
+  },
+  "overrides": {
+    "external-editor": {
+      "tmp": "0.2.6"
+    }
   }
 }
