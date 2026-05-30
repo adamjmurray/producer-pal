@@ -3,7 +3,6 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
@@ -285,19 +284,16 @@ function buildNoteContext(
   // Convert note's Ableton beats start_time to musical beats position
   const musicalBeats = note.start_time * (timeSigDenominator / 4);
 
-  // Parse bar|beat position for time range filtering
-  const barBeatStr = abletonBeatsToBarBeat(
-    note.start_time,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  const barBeatMatch = barBeatStr.match(/^(\d+)\|(\d+(?:\.\d+)?)$/);
-  const bar = barBeatMatch
-    ? Number.parseInt(barBeatMatch[1] as string)
-    : undefined;
-  const beat = barBeatMatch
-    ? Number.parseFloat(barBeatMatch[2] as string)
-    : undefined;
+  // Derive bar|beat for time-range filtering numerically from the musical-beats
+  // position. Do NOT serialize-then-reparse: the serializer emits tuplet/off-grid
+  // positions as `±n` offset forms (`1|1+n/12`) that a decimal-only regex cannot
+  // read, which would drop bar/beat to undefined and make calculateActiveTimeRange
+  // skip time-range filtering entirely (the note would match every selector). The
+  // numeric split round-trips exactly through barBeatToBeats, including negative
+  // time (a note before 1|1, where bar can be 0 and beat > beatsPerBar).
+  const musicalBeatsPerBar = timeSigNumerator;
+  const bar = Math.floor(musicalBeats / musicalBeatsPerBar) + 1;
+  const beat = musicalBeats - (bar - 1) * musicalBeatsPerBar + 1;
 
   return {
     position: musicalBeats,

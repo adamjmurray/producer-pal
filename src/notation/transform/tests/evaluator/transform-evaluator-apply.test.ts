@@ -270,6 +270,34 @@ probability += -0.2`;
       expect(notes[1]!.velocity).toBe(120); // in range
       expect(notes[2]!.velocity).toBe(100); // out of range
     });
+
+    // Regression: a tuplet/off-grid note (start_time 1/3 in 4/4 → musical beat
+    // ~1.333, which serializes to the `1|1+n/12` offset form) must still be
+    // gated by the time range. The note's bar|beat is derived numerically, not
+    // by reparsing the serialized string with a decimal-only regex — the regex
+    // failed on the `+n` form, dropped bar/beat to undefined, and made the time
+    // filter match every selector.
+    it("excludes an off-grid (tuplet) note from a range that doesn't cover it", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 1 / 3 }, // bar 1, eighth triplet — out of range
+        { pitch: 60, start_time: 4 }, // bar 2, beat 1 — in range
+      ]);
+
+      applyTransforms(notes, "2|1-3|1: velocity += 20", 4, 4);
+      expect(notes[0]!.velocity).toBe(100); // tuplet note correctly excluded
+      expect(notes[1]!.velocity).toBe(120); // in range
+    });
+
+    it("includes an off-grid (tuplet) note when the range covers it", () => {
+      const notes = createTestNotes([
+        { pitch: 60, start_time: 1 / 3 }, // bar 1, eighth triplet — in range
+        { pitch: 60, start_time: 8 }, // bar 3, beat 1 — out of range
+      ]);
+
+      applyTransforms(notes, "1|1-1|4: velocity += 20", 4, 4);
+      expect(notes[0]!.velocity).toBe(120); // tuplet note in range
+      expect(notes[1]!.velocity).toBe(100); // out of range
+    });
   });
 
   describe("edge cases", () => {
