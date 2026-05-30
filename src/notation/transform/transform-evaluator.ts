@@ -206,7 +206,6 @@ function applyAssignmentToNotes(
       noteContext.bar,
       noteContext.beat,
       timeSigNumerator,
-      timeSigDenominator,
       clipTimeRange,
       noteContext.position,
     );

@@ -186,7 +186,6 @@ function processAssignment(
       bar,
       beat,
       numerator,
-      denominator,
       clipTimeRange,
       position,
     );
@@ -219,8 +218,7 @@ function processAssignment(
  * @param assignment - Transform assignment
  * @param bar - Note bar number (optional)
  * @param beat - Note beat number (optional)
- * @param numerator - Time signature numerator
- * @param denominator - Time signature denominator
+ * @param numerator - Time signature numerator (musical beats per bar)
  * @param clipTimeRange - Clip time range (optional)
  * @param position - Note position in beats
  * @returns Time range result or skip indicator
@@ -230,29 +228,32 @@ export function calculateActiveTimeRange(
   bar: number | undefined,
   beat: number | undefined,
   numerator: number,
-  denominator: number,
   clipTimeRange: TimeRange | undefined,
   position: number,
 ): TimeRangeResult {
   if (assignment.timeRange && bar != null && beat != null) {
     const { startBar, startBeat, endBar, endBeat } = assignment.timeRange;
 
-    // Check if note is within the time range
-    const afterStart =
-      bar > startBar || (bar === startBar && beat >= startBeat);
-    const beforeEnd = bar < endBar || (bar === endBar && beat <= endBeat);
-
-    if (!(afterStart && beforeEnd)) {
-      return { skip: true }; // Skip this assignment - note outside time range
-    }
-
-    // Convert assignment timeRange to musical beats
-    const musicalBeatsPerBar = numerator * (4 / denominator);
+    // Normalize the note's bar|beat AND both range bounds to absolute musical
+    // beats through the same conversion, then compare numerically. A bound's beat
+    // field is not clamped to the bar — a `+n` offset can push it past the bar
+    // (e.g. `1|4+n/2` → beat 6 in 4/4) and a `-n` offset can borrow below beat 1
+    // — so deciding membership by a raw per-component bar/beat compare would
+    // disagree with this absolute-beats normalization (the one handed to
+    // ramp/curve). Comparing in those same absolute beats keeps the membership
+    // gate and the normalization in lockstep, and subsumes the cross-bar case.
+    // Musical beats per bar = the numerator (each beat is a denominator note).
+    const musicalBeatsPerBar = numerator;
+    const noteBeats = barBeatToBeats(`${bar}|${beat}`, musicalBeatsPerBar);
     const startBeats = barBeatToBeats(
       `${startBar}|${startBeat}`,
       musicalBeatsPerBar,
     );
     const endBeats = barBeatToBeats(`${endBar}|${endBeat}`, musicalBeatsPerBar);
+
+    if (noteBeats < startBeats || noteBeats > endBeats) {
+      return { skip: true }; // Skip this assignment - note outside time range
+    }
 
     return { timeRange: { start: startBeats, end: endBeats } };
   }

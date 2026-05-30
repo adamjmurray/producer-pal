@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -243,6 +244,42 @@ G4-G5: velocity += 20`;
 
         expect(in44.velocity!.value).toBe(10); // inside in 4/4
         expect(in68).toStrictEqual({}); // outside in 6/8
+      });
+    });
+
+    // A `+n` offset can push a bound's beat past the bar without folding into the
+    // bar number (the offset borrows down across bar lines, never up). Membership
+    // must be decided in the same absolute musical beats the bound normalizes to,
+    // not a raw per-component bar/beat compare — otherwise a note in a later bar
+    // is wrongly admitted just because its bar number exceeds the bound's, even
+    // when its absolute position is before the (overflowed) start.
+    describe("offset bound that overflows the bar (non-4/4)", () => {
+      // 6/8: a bar is 6 musical beats. `1|4+n/2` = beat 4 + a half note (4 eighth
+      // beats) = beat 8 = bar 2 beat 2 (absolute musical beat 7).
+      const range = "1|4+n/2-3|1: velocity += 10";
+
+      it("excludes a note in a later bar that is before the overflowed start", () => {
+        // Note at 2|1 (absolute beat 6) is before the real start at beat 7, even
+        // though its bar (2) is past the bound's bar (1). The old raw compare
+        // (bar 2 > bound bar 1) wrongly included it.
+        const result = evaluateTransform(range, {
+          ...createContext({ numerator: 6, denominator: 8 }),
+          bar: 2,
+          beat: 1,
+        });
+
+        expect(result).toStrictEqual({});
+      });
+
+      it("includes a note once it reaches the overflowed start beat", () => {
+        // Note at 2|2 (absolute beat 7) is exactly the normalized start.
+        const result = evaluateTransform(range, {
+          ...createContext({ numerator: 6, denominator: 8 }),
+          bar: 2,
+          beat: 2,
+        });
+
+        expect(result.velocity!.value).toBe(10);
       });
     });
   });
