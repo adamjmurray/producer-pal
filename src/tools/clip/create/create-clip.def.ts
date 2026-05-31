@@ -82,7 +82,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI in bar|beat notation: [bar|beat] [v0-127] [n<dur>] [p0-1] note(s) - MIDI clips only",
+        "MIDI in bar|beat notation: v0-127 n<dur> [p0-1] note(s) bar|beat(s) - MIDI clips only",
       ),
 
     transforms: z

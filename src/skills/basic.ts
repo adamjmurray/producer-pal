@@ -8,8 +8,9 @@ export const skills = `# Producer Pal Skills
 ## MIDI Notation
 
 Pitches: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
-Format: [v<vel>] [n<dur>] [p<prob>] pitch(es) bar|beat
-- v: velocity 0-127 (default 100). n: duration as an absolute note value (default n/4 = quarter). p: probability 0-1 (default 1). Persist until changed (a token applies to notes *after* it — set it before the note)
+Format: v<vel> n<dur> [p<prob>] pitch(es) bar|beat(s)
+- Set v/n/p *before* the pitch(es); they apply to all that follow. Omit any to reuse its last value — a shortcut: values don't reset per note, so re-state one to change it
+- v: velocity 0-127 (default 100). n: duration, an absolute note value (default n/4 = quarter). p: probability 0-1 (default 1) — opt-in; if any note uses it, set it on every note
 - Durations REQUIRE a denominator: n/4 = quarter, n/8 = eighth, n/16 = sixteenth, n/12 = eighth triplet. n3/8 = dotted quarter. Bare integers or decimals are invalid
 - **Set n explicitly and re-set it per drum/pitch** — it persists, so a hat's n/16 otherwise carries onto the next kick
 

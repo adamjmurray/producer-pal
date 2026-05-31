@@ -58,9 +58,9 @@ export const skills = `# Producer Pal Skills
 
 Create MIDI clips using the bar|beat notation syntax:
 
-\`[v0-127] [n<duration>] [p0-1] note(s) bar|beat\`
+\`v0-127 n<duration> [p0-1] note(s) bar|beat(s)\`
 
-- Parameters (v/n/p), pitches, and positions can appear in any order and be interspersed
+- v/n/p are prefixes — they apply to the pitches that follow. Vary per pitch by interspersing: \`v80 C4 v90 G4\` (C4 at 80, G4 at 90)
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start
   - the beat in bar|beat can be a comma-separated (no whitespace) list or repeat pattern
@@ -72,9 +72,9 @@ Create MIDI clips using the bar|beat notation syntax:
 - v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - n<duration>: Note length as an absolute note value. **Set it explicitly rather than relying on the \`n/4\` default** — and because it's stateful, re-set it whenever the intended length changes. It applies to notes **after** it — put the \`n\` change *before* the note it should affect (\`n/8 G3 4|2 A3\`, not \`G3 4|2 n/8 A3\`, which leaves G3 at the old length and overlaps A3). For drums, set \`n\` at the start and again for each drum/pitch (a hat's \`n/16\` otherwise carries over to the next kick). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\`. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
-- p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
+- p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always). Opt-in — if any note uses probability, set it on every note (a stray p otherwise rides along)
 - Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
-- **Stateful**: v/n/p and pitch persist until changed — set once, applies to all following notes
+- **Shortcut (stateful)**: omit any of v/n/p to reuse its last value — they don't reset per note, so re-state one whenever it should change. v/n/p and pitch persist until changed
 - copying bars (**MERGES** - use v0 to clear unwanted notes):
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
