@@ -10,15 +10,17 @@ import {
 
 /**
  * Tolerance for matching a value to a clean note-value fraction (on the scaled
- * numerator). Far looser than the float noise of a genuine note value (~1e-12 —
- * the whole-note-fraction conversions are exact ×/÷ by the denominator), so a
- * genuinely off-grid value within EPSILON of a clean note value is snapped to it
- * instead of spelled with the lossless decimal-numerator escape. The drift is
- * bounded and sub-perceptual (≤~2e-3 Ableton beats, ~1ms at 120 BPM) and the
- * escape paths themselves are exact, but this near-miss snap is the one place
- * the serializer can still silently round to a different note value.
+ * numerator). Genuine note values reach the serializer as full-precision doubles:
+ * verified against Ableton Live that an authored 1/3 eighth-triplet AND a note
+ * quantized to a 1/8T grid both read back as 0.3333333333333333 (residual ~1e-15)
+ * — Live never coarsely rounds note times. So this tolerance sits far above that
+ * float noise yet far below the ~1e-4 grid of authored note values: a genuinely
+ * off-grid value is sent to the lossless decimal-numerator escape rather than
+ * snapped to a near-by note value, while every real tuplet still matches. The
+ * residual snap drift is ≤~4e-6 Ableton beats, below the escape's own toFixed(4)
+ * precision — so the serializer no longer silently rounds to a wrong note value.
  */
-const EPSILON = 0.0005;
+const EPSILON = 1e-6;
 
 /**
  * Format a beat position value as a grid beat with an optional note-value
