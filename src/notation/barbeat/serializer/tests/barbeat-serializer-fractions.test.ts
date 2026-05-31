@@ -56,17 +56,25 @@ describe("formatBeatPosition", () => {
     expect(formatBeatPosition(1 + 5 / 12, 4)).toBe("1+n5/48");
   });
 
-  it("falls back to decimal for genuinely off-grid values", () => {
+  it("keeps the bare decimal for off-grid values that round-trip exactly", () => {
     expect(formatBeatPosition(1.123, 4)).toBe("1.123");
     expect(formatBeatPosition(2.789, 4)).toBe("2.789");
   });
 
+  it("uses the decimal-numerator escape for off-grid positions ≥ 1 that the decimal can't hold (F2)", () => {
+    // A 4-decimal off-grid position can't be held by the 3-decimal grid beat
+    // (2.9877 → "2.988" would reparse to 2.988, a silent drift). It now spells
+    // with the lossless `base+n<beats>/4` escape, matching the sub-1 branch,
+    // rather than truncating. (Off-grid positions that ARE exact at 3 decimals
+    // keep the shorter bare decimal — see the case above.)
+    expect(formatBeatPosition(2.9877, 4)).toBe("2+n0.9877/4");
+  });
+
   it("uses the decimal-numerator escape for off-grid pre-downbeat positions (F5)", () => {
     // A genuinely off-grid sub-1 (pre-downbeat) position has no clean note-value
-    // offset and no bare sub-1 decimal beat to fall back to. It now spells with
-    // the lossless `1-n<beats>/4` escape (delegated to formatAbsoluteDuration),
-    // which the widened `±n`-offset grammars parse back exactly. (Off-grid
-    // positions ≥ 1 keep the shorter bare decimal beat — see the case above.)
+    // offset and no bare sub-1 decimal beat to fall back to. It spells with the
+    // lossless `1-n<beats>/4` escape (delegated to formatAbsoluteDuration), which
+    // the widened `±n`-offset grammars parse back exactly.
     expect(formatBeatPosition(0.8766, 4)).toBe("1-n0.1234/4");
   });
 

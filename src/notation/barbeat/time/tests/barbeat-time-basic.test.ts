@@ -61,11 +61,12 @@ describe("barbeat-time utilities", () => {
     it("handles precise floating point formatting", () => {
       // A clean tuplet position serializes to its exact note-value offset
       // (0.666667 ≈ ⅔ beat = an n/6 offset), not a rounded 3-decimal that
-      // would not round-trip. Genuinely off-grid floats (not within EPSILON of
-      // any note value) still fall back to a decimal.
+      // would not round-trip. A genuinely off-grid float that IS exact at 3
+      // decimals keeps the short decimal; one that is not uses the lossless
+      // `+n<beats>/4` escape rather than truncating to a wrong position (F2).
       expect(musicalBeatsToBarBeat(0.333, 4)).toBe("1|1.333");
       expect(musicalBeatsToBarBeat(0.666667, 4)).toBe("1|1+n/6");
-      expect(musicalBeatsToBarBeat(1.123456, 4)).toBe("1|2.123");
+      expect(musicalBeatsToBarBeat(1.123456, 4)).toBe("1|2+n0.1235/4");
     });
 
     it("pins the bar floor at 1 for positions before 1|1", () => {

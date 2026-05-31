@@ -58,8 +58,20 @@ export function formatBeatPosition(
   );
   const offsetFraction = formatBeatOffsetFraction(wholeNoteFraction);
 
-  // Genuinely off-grid (no clean note-value): decimal is the only honest form.
-  if (offsetFraction == null) return formatDecimal(value);
+  // Genuinely off-grid (no clean note-value at a beat-offset denominator). A
+  // 3-decimal grid beat is shorter and readable when it round-trips exactly, so
+  // keep it for those; otherwise the decimal would silently drift (e.g. 2.9877 →
+  // "2.988" reparses to 2.988), so spell it with the lossless `base+n<beats>/4`
+  // decimal-numerator escape — the same form the sub-1 (negative) branch uses.
+  // The `+n` offset grammar accepts the decimal numerator, so it round-trips
+  // exactly. (formatAbsoluteDuration tries the full note-value denominator set
+  // before that escape, so a clean tuplet beyond the beat-offset set spells
+  // exactly too.)
+  if (offsetFraction == null) {
+    return decimalIsLossless(value)
+      ? formatDecimal(value)
+      : `${base}+n${formatAbsoluteDuration(wholeNoteFraction)}`;
+  }
 
   // Dyadic sub-beats round-trip exactly as a decimal, which is always shorter
   // than (and more readable than) the offset form — prefer it. Tuplet positions
