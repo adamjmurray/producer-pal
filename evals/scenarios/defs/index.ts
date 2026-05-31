@@ -40,6 +40,7 @@ export {
   slmPretransformsDrumRemap,
   slmPretransformsRegionClear,
 } from "./clip/notation/pretransforms-slm.ts";
+export { surgicalNoteDurationEdit } from "./clip/notation/surgical-note-duration-edit.ts";
 export { swingAndQuantize } from "./clip/swing-and-quantize.ts";
 export { syncedLfoMeterInvariance } from "./clip/notation/synced-lfo-meter-invariance.ts";
 export { memoryWorkflow } from "./workflow/memory-workflow.ts";

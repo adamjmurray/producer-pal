@@ -31,6 +31,7 @@ import {
   pretransformsSnareSwapBaseline,
   slmPretransformsDrumRemap,
   slmPretransformsRegionClear,
+  surgicalNoteDurationEdit,
   swingAndQuantize,
   syncedLfoMeterInvariance,
   memoryWorkflow,
@@ -73,6 +74,7 @@ const allScenarios: EvalScenario[] = [
   syncedLfoMeterInvariance,
   slmPretransformsRegionClear,
   slmPretransformsDrumRemap,
+  surgicalNoteDurationEdit,
 ];
 
 export interface LoadScenariosOptions {
