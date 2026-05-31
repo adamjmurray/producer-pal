@@ -32,6 +32,20 @@ export const QUANTIZE_GRID: Record<string, number> = {
   "1/32": 8,
 };
 
+/**
+ * n/N note-value aliases for quantizeGrid (AJM-481). Each maps to a native grid
+ * value that has an exact note-value spelling. The mixed grids (1/8+1/8T,
+ * 1/16+1/16T) have no single note-value form, so they stay enum-only.
+ */
+export const QUANTIZE_GRID_ALIASES: Record<string, string> = {
+  "n/4": "1/4",
+  "n/8": "1/8",
+  "n/12": "1/8T",
+  "n/16": "1/16",
+  "n/24": "1/16T",
+  "n/32": "1/32",
+};
+
 interface QuantizationOptions {
   /** Quantization strength 0-1 */
   quantize?: number;
@@ -205,7 +219,9 @@ export function handleQuantization(
     return;
   }
 
-  const gridValue = QUANTIZE_GRID[quantizeGrid];
+  // Bridge n/N note-value aliases to their native grid form before lookup
+  const grid = QUANTIZE_GRID_ALIASES[quantizeGrid] ?? quantizeGrid;
+  const gridValue = QUANTIZE_GRID[grid];
 
   if (quantizePitch != null) {
     const midiPitch = noteNameToMidi(quantizePitch);

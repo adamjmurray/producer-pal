@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   handleQuantization,
   QUANTIZE_GRID,
+  QUANTIZE_GRID_ALIASES,
 } from "#src/tools/clip/update/helpers/update-clip-notes-helpers.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- simplified mock type
@@ -43,6 +44,24 @@ describe("QUANTIZE_GRID", () => {
 
   it("should map 1/32 to grid value 8", () => {
     expect(QUANTIZE_GRID["1/32"]).toBe(8);
+  });
+});
+
+describe("QUANTIZE_GRID_ALIASES", () => {
+  it.each([
+    ["n/4", "1/4"],
+    ["n/8", "1/8"],
+    ["n/12", "1/8T"],
+    ["n/16", "1/16"],
+    ["n/24", "1/16T"],
+    ["n/32", "1/32"],
+  ])("should alias %s to native grid %s", (alias, native) => {
+    expect(QUANTIZE_GRID_ALIASES[alias]).toBe(native);
+  });
+
+  it("should not alias the mixed (enum-only) grids", () => {
+    expect(QUANTIZE_GRID_ALIASES["1/8+1/8T"]).toBeUndefined();
+    expect(QUANTIZE_GRID_ALIASES["1/16+1/16T"]).toBeUndefined();
   });
 });
 
@@ -143,6 +162,24 @@ describe("handleQuantization", () => {
     ["1/32", 8],
   ])(
     "should work with grid value %s (maps to %i)",
+    (gridString, expectedValue) => {
+      mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
+
+      handleQuantization(mockClip, { quantize: 1, quantizeGrid: gridString });
+
+      expect(mockClip.call).toHaveBeenCalledWith("quantize", expectedValue, 1);
+    },
+  );
+
+  it.each([
+    ["n/4", 1],
+    ["n/8", 2],
+    ["n/12", 3],
+    ["n/16", 5],
+    ["n/24", 6],
+    ["n/32", 8],
+  ])(
+    "should bridge n/N alias %s to grid value %i",
     (gridString, expectedValue) => {
       mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 

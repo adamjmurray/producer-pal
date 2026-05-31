@@ -136,9 +136,13 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .max(1)
       .optional()
       .describe("quantization strength 0-1 (MIDI clips only)"),
-    // NOTE: intentionally Live's native quantize-grid vocabulary (incl. "T"
-    // triplet forms), NOT the n/N note-value notation used elsewhere. These map
-    // directly to Live's quantize API constants. Do not migrate to n/N.
+
+    // NOTE: Live's native quantize-grid vocabulary (incl. "T" triplet forms),
+    // mapping directly to Live's quantize API constants — do not migrate to n/N.
+    // The mixed grids (1/8+1/8T, 1/16+1/16T) have no note-value spelling, so they
+    // stay enum-only. The single-grid values ALSO accept the n/N note-value alias
+    // used elsewhere (n/4=1/4, n/8=1/8, n/12=1/8T, n/16=1/16, n/24=1/16T,
+    // n/32=1/32), normalized to the native form in handleQuantization.
     quantizeGrid: z
       .enum([
         "1/4",
@@ -149,9 +153,18 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "1/16T",
         "1/16+1/16T",
         "1/32",
+        "n/4",
+        "n/8",
+        "n/12",
+        "n/16",
+        "n/24",
+        "n/32",
       ])
       .optional()
-      .describe("note grid (required with quantize)"),
+      .describe(
+        "note grid (required with quantize); n/N note values also accepted (n/12=1/8T, n/24=1/16T), but mixed grids 1/8+1/8T and 1/16+1/16T are enum-only",
+      ),
+
     quantizePitch: z
       .string()
       .optional()
