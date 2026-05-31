@@ -8,7 +8,16 @@ import {
   NOTE_VALUE_DENOMINATORS,
 } from "#src/notation/barbeat/barbeat-config.ts";
 
-/** Tolerance for floating-point fraction matching */
+/**
+ * Tolerance for matching a value to a clean note-value fraction (on the scaled
+ * numerator). Far looser than the float noise of a genuine note value (~1e-12 —
+ * the whole-note-fraction conversions are exact ×/÷ by the denominator), so a
+ * genuinely off-grid value within EPSILON of a clean note value is snapped to it
+ * instead of spelled with the lossless decimal-numerator escape. The drift is
+ * bounded and sub-perceptual (≤~2e-3 Ableton beats, ~1ms at 120 BPM) and the
+ * escape paths themselves are exact, but this near-miss snap is the one place
+ * the serializer can still silently round to a different note value.
+ */
 const EPSILON = 0.0005;
 
 /**
@@ -147,8 +156,9 @@ export function formatAbsoluteDuration(wholeNoteFraction: number): string {
   // denominator makes the numerator read as Ableton beats, so the value is
   // `wholeNoteFraction * 4` quarters. The note/`@step`/`±n`-offset grammars all
   // accept this escape (locked by note-value-grammar-parity.test.ts) — it is the
-  // same form abletonBeatsToDuration emits for off-grid lengths, fixed precision,
-  // never a silent round to a wrong note value.
+  // same form abletonBeatsToDuration emits for off-grid lengths, fixed precision.
+  // (The escape itself never rounds; only the EPSILON match in the loop above can
+  // snap a near-miss off-grid value to a clean note value — see EPSILON.)
   return `${formatOffGridBeats(wholeNoteFraction * 4)}/4`;
 }
 

@@ -192,7 +192,14 @@ function emitDurationChange(
       ? note.duration * (timeSigDenominator / 4)
       : note.duration;
 
-  if (Math.abs(musicalBeats - state.duration) > 0.001) {
+  // The change threshold bounds an inherited-duration error that lives in
+  // Ableton beats, so scale the musical-beat epsilon by the same denominator
+  // factor — a flat musical-beat threshold widens to ~0.004 Ableton beats in x/1
+  // meters and would drop genuine off-grid duration changes there.
+  const epsilon =
+    0.001 * (timeSigDenominator != null ? timeSigDenominator / 4 : 1);
+
+  if (Math.abs(musicalBeats - state.duration) > epsilon) {
     // Emit as an absolute note value (fraction of a whole note)
     const wholeNoteFraction = musicalBeatsToWholeNoteFraction(
       musicalBeats,
