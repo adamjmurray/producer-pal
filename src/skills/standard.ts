@@ -20,20 +20,22 @@ return notes.filter(n => n.pitch >= 60).map(n => ({
 }));
 \`\`\`
 
+All times are musical beats (the meter's beat — an eighth in 6/8), matching \`beatsPerBar\`; \`start / beatsPerBar\` is the bar offset in any meter.
+
 **Note properties (required: pitch, start):**
 - \`pitch\`: 0-127 (60 = C3)
-- \`start\`: beats from clip start
-- \`duration\`: beats (default: 1)
+- \`start\`: musical beats from clip start
+- \`duration\`: musical beats (default: 1)
 - \`velocity\`: 1-127 (default: 100)
 - \`velocityDeviation\`: 0-127 (default: 0)
 - \`probability\`: 0-1 (default: 1)
 
 **Context properties:**
 - \`track\`: { index, name, type, color }
-- \`clip\`: { id, name, length, timeSignature, looping, index, count }
+- \`clip\`: { id, name, length, timeSignature, looping, index, count } (length in musical beats)
 - \`location\`: { view, slot?, arrangementStart? }
 - \`liveSet\`: { tempo, scale?, timeSignature }
-- \`beatsPerBar\`: number
+- \`beatsPerBar\`: number (musical beats per bar)
 
 **Processing order:** notes → transforms → code. When \`notes\` and \`code\` are both provided, notes are parsed and transforms applied first. Code then receives those notes and can further transform them.
 `;

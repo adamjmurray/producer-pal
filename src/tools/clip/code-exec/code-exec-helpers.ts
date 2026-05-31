@@ -32,12 +32,15 @@ import {
  */
 export function extractNotesFromClip(clip: LiveAPI): CodeNote[] {
   const lengthBeats = clip.getProperty("length") as number;
+  const timeSigDenominator = clip.getProperty(
+    "signature_denominator",
+  ) as number;
   const notesResult = JSON.parse(
     clip.call("get_notes_extended", 0, 128, 0, lengthBeats) as string,
   ) as { notes?: NoteEvent[] } | null;
   const notes: NoteEvent[] = notesResult?.notes ?? [];
 
-  return notes.map(noteEventToCodeNote);
+  return notes.map((note) => noteEventToCodeNote(note, timeSigDenominator));
 }
 
 /**
@@ -54,8 +57,13 @@ export function applyNotesToClip(clip: LiveAPI, notes: CodeNote[]): void {
     return;
   }
 
-  // Convert to NoteEvent format and add
-  const noteEvents = notes.map(codeNoteToNoteEvent);
+  // Convert musical beats back to Ableton beats and add
+  const timeSigDenominator = clip.getProperty(
+    "signature_denominator",
+  ) as number;
+  const noteEvents = notes.map((note) =>
+    codeNoteToNoteEvent(note, timeSigDenominator),
+  );
 
   clip.call("add_new_notes", { notes: noteEvents });
 }
@@ -94,16 +102,25 @@ export function buildCodeExecutionContext(
 }
 
 /**
- * Convert internal NoteEvent to code-facing CodeNote format.
+ * Convert internal NoteEvent to code-facing CodeNote format. Live's note times
+ * are Ableton (quarter-note) beats; user code works in the clip's musical beats
+ * (an eighth in 6/8) to match `context.beatsPerBar` and the rest of Producer Pal
+ * — so scale by `denominator / 4`.
  *
  * @param event - Internal NoteEvent with snake_case properties
+ * @param timeSigDenominator - Clip time-signature denominator
  * @returns CodeNote with camelCase properties
  */
-export function noteEventToCodeNote(event: NoteEvent): CodeNote {
+export function noteEventToCodeNote(
+  event: NoteEvent,
+  timeSigDenominator: number,
+): CodeNote {
+  const toMusical = timeSigDenominator / 4;
+
   return {
     pitch: event.pitch,
-    start: event.start_time,
-    duration: event.duration,
+    start: event.start_time * toMusical,
+    duration: event.duration * toMusical,
     velocity: event.velocity,
     velocityDeviation: event.velocity_deviation ?? 0,
     probability: event.probability ?? 1,
@@ -111,16 +128,24 @@ export function noteEventToCodeNote(event: NoteEvent): CodeNote {
 }
 
 /**
- * Convert code-facing CodeNote to internal NoteEvent format.
+ * Convert code-facing CodeNote to internal NoteEvent format. Inverse of
+ * {@link noteEventToCodeNote}: musical beats back to Ableton (quarter-note)
+ * beats via `4 / denominator`.
  *
  * @param note - CodeNote with camelCase properties
+ * @param timeSigDenominator - Clip time-signature denominator
  * @returns Internal NoteEvent with snake_case properties
  */
-export function codeNoteToNoteEvent(note: CodeNote): NoteEvent {
+export function codeNoteToNoteEvent(
+  note: CodeNote,
+  timeSigDenominator: number,
+): NoteEvent {
+  const toAbleton = 4 / timeSigDenominator;
+
   return {
     pitch: note.pitch,
-    start_time: note.start,
-    duration: note.duration,
+    start_time: note.start * toAbleton,
+    duration: note.duration * toAbleton,
     velocity: note.velocity,
     velocity_deviation: note.velocityDeviation,
     probability: note.probability,
@@ -269,9 +294,11 @@ function buildClipContext(
 ): CodeClipContext {
   const id = clip.id;
   const name = clip.getProperty("name") as string | null;
-  const length = clip.getProperty("length") as number;
   const sigNum = clip.getProperty("signature_numerator") as number;
   const sigDenom = clip.getProperty("signature_denominator") as number;
+  // Live reports length in Ableton (quarter-note) beats; expose musical beats so
+  // it shares a unit with note start/duration and beatsPerBar.
+  const length = (clip.getProperty("length") as number) * (sigDenom / 4);
   const looping = (clip.getProperty("looping") as number) > 0;
 
   return {
@@ -298,7 +325,13 @@ function buildLocationContext(
   }
 
   if (view === "arrangement" && arrangementStartBeats != null) {
-    location.arrangementStart = arrangementStartBeats;
+    // Arrangement positions resolve against the song meter; expose musical beats
+    // (song denominator) so this matches the musical-beat clip fields.
+    const songDenom = LiveAPI.from(livePath.liveSet).getProperty(
+      "signature_denominator",
+    ) as number;
+
+    location.arrangementStart = arrangementStartBeats * (songDenom / 4);
   }
 
   return location;
@@ -328,6 +361,9 @@ function buildLiveSetContext(): CodeLiveSetContext {
   return context;
 }
 
+// Musical beats per bar = the time-signature numerator (6 in 6/8). Note
+// start/duration and clip length are exposed in the same musical-beat unit, so
+// `start / beatsPerBar` gives the bar offset in any meter.
 function getBeatsPerBar(clip: LiveAPI): number {
   return clip.getProperty("signature_numerator") as number;
 }
