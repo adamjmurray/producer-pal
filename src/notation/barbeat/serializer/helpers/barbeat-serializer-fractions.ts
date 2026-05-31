@@ -108,7 +108,9 @@ function formatBeatOffsetFraction(wholeNoteFraction: number): string | null {
  * Denominators tried when reducing a beat offset to a note-value fraction.
  * Finer than the duration set because the offset is a whole-note fraction of a
  * sub-beat displacement (e.g. an eighth-triplet beat position is a 1/12 offset,
- * a sixteenth-of-a-beat is a 1/64 offset).
+ * a sixteenth-of-a-beat is a 1/64 offset). A subset of the canonical
+ * `NOTE_VALUE_DENOMINATORS` (barbeat-config.ts), locked by
+ * `note-value-denominator-parity.test.ts`.
  */
 export const BEAT_OFFSET_DENOMINATORS = [
   2, 4, 8, 16, 32, 64, 3, 6, 12, 24, 48, 96, 5, 10, 20, 40,
@@ -178,16 +180,13 @@ export function formatOffGridBeats(beats: number): string {
 }
 
 /**
- * Check if a value can be represented losslessly with 3 decimal places.
- *
- * Accepted limit: a genuinely off-grid position (one with no clean note-value
- * offset) that also fails this gate is emitted via the `toFixed(3)` decimal
- * fallback, so it can drift by up to half a milli-beat (the gate is computed on
- * the musical-beat value, so the worst-case wall-clock drift scales with the
- * meter: ~0.25 ms in x/4 up to ~1 ms in x/1 at 120 BPM). On-grid and dyadic
- * positions are unaffected (they round-trip exactly); only un-snappable
- * recorded/measured positions hit this, and the residual is sub-perceptual, so
- * it is left as a documented bound rather than widening the decimal precision.
+ * Check if a value can be represented losslessly with 3 decimal places — the
+ * gate {@link formatBeatPosition} uses to prefer the shorter decimal spelling
+ * (`1.5`) over the note-value offset form. It is purely a representation choice,
+ * not a precision trade-off: when it returns false the caller falls back to an
+ * exact note-value offset (`base+n<fraction>`) or the decimal-numerator escape
+ * (`base+n<beats>/4`), so a position never drifts — the decimal is emitted only
+ * when it round-trips exactly.
  * @param value - Original numeric value
  * @returns True if toFixed(3) preserves the value exactly
  */

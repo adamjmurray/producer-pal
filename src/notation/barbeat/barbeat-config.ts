@@ -18,8 +18,9 @@ export const DEFAULT_DURATION_WHOLE_NOTE_FRACTION = 1 / 4;
 
 /**
  * The single canonical set of note-value denominators the serializers may emit,
- * ordered by preference: binary (powers of two, finest first within the family),
- * then the triplet/sextuplet family, then quintuplets, then septuplets. Every
+ * ordered by preference: binary (powers of two, smallest denominator first
+ * within the family, so the simplest matching note value wins), then the
+ * triplet/sextuplet family, then quintuplets, then septuplets. Every
  * denominator here produces a grammar-valid `n<num>/<den>` token (both Peggy
  * grammars accept any `[1-9][0-9]*` denominator).
  *

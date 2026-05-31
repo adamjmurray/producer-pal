@@ -33,7 +33,7 @@ export const QUANTIZE_GRID: Record<string, number> = {
 };
 
 /**
- * n/N note-value aliases for quantizeGrid (AJM-481). Each maps to a native grid
+ * n/N note-value aliases for quantizeGrid. Each maps to a native grid
  * value that has an exact note-value spelling. The mixed grids (1/8+1/8T,
  * 1/16+1/16T) have no single note-value form, so they stay enum-only.
  */
