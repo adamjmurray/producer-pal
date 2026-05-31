@@ -33,6 +33,10 @@ const EPS = 1e-6;
 const EIGHTH_TRIPLET_STARTS = Array.from({ length: 12 }, (_, i) => i / 3);
 /** 6 quarter-note triplets filling a 4/4 bar — a kick every 2/3 beat. */
 const QUARTER_TRIPLET_STARTS = Array.from({ length: 6 }, (_, i) => (i * 2) / 3);
+/** 6/8 compound two-feel: dotted-quarter pulse at eighth-beats 1,4 → Ableton beats 0, 1.5. */
+const COMPOUND_TWO_FEEL_STARTS = [0, 1.5];
+/** 12/8 compound four-feel: dotted-quarter pulse at eighth-beats 1,4,7,10 → Ableton beats 0, 1.5, 3, 4.5. */
+const COMPOUND_FOUR_FEEL_STARTS = [0, 1.5, 3, 4.5];
 
 /**
  * Build a `state` assertion that reads the clip in `slot` back from Live and
@@ -190,6 +194,59 @@ export const barBeatMeterFill: EvalScenario = {
 1. Created a 5/4 clip with one kick whose duration spans the full bar (would be n5/4 in absolute notation = 5 quarter notes)
 2. Created a 6/8 clip with one kick whose duration spans the full bar (would be n3/4 in absolute notation = 3 quarter notes, since 6 eighths = 3 quarters)
 3. Did NOT default the duration to a meter-relative "1 bar" assumption (e.g. n1 meaning the whole bar regardless of meter)`,
+    },
+
+    { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
+  ],
+};
+
+/**
+ * Compound-meter felt-beat pulse. In 6/8, 9/8, and 12/8 the *felt* beat is a
+ * dotted quarter (3 eighths), not the notated eighth. "A kick on every beat"
+ * therefore means the dotted-quarter pulse: 6/8 → 2 hits, 12/8 → 4 hits, at
+ * eighth-beats 1,4,(7,10) → Ableton beats 0, 1.5, (3, 4.5). This sits in the
+ * gap between the quarter-count uniformity scenario (6/8 → 3 kicks) and the
+ * triplet-subdivision scenario (6/8 → 12 kicks): the model must group eighths
+ * into dotted-quarter beats — not hit every eighth (over-subdivided), not count
+ * quarters, not miscount. Expressible today via the repeat pattern
+ * `C1 1|1x4@n3/8`.
+ */
+export const barBeatCompoundFeelPulse: EvalScenario = {
+  id: "bar-beat-compound-feel-pulse",
+  description:
+    "Compound felt pulse (dotted-quarter beat) in 6/8 and 12/8 — 2 and 4 kicks at eighths 1,4,(7,10)",
+  kind: "capability",
+  liveSet: LIVE_SET,
+
+  messages: [
+    MSG_CONNECT,
+    "On the Drums track, create a 1-bar MIDI clip in scene 1 in 6/8 time with a compound two-feel groove: put a kick (C1) on each main pulse — the dotted-quarter beat. That's 2 kicks in the bar.",
+    "Now create a separate 1-bar clip on the Drums track in scene 2 in 12/8 time with a compound four-feel: a kick (C1) on each main pulse (the dotted-quarter beat) — 4 kicks in the bar.",
+  ],
+
+  setup: (mcpClient) =>
+    clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
+
+  assertions: [
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+
+    // Read each clip back and assert the kicks fall on the dotted-quarter pulse.
+    // Count alone is weak — 2 hits in 6/8 could land anywhere — so positions are
+    // the signal: eighth-beats 1,4 (Ableton 0, 1.5) in 6/8 and 1,4,7,10
+    // (0, 1.5, 3, 4.5) in 12/8. This rejects a hit on every eighth
+    // (over-subdivided) and a quarter-count. Duration is omitted: the canonical
+    // answer `C1 1|1x4@n3/8` leaves each hit at the default quarter length, so
+    // the pulse PLACEMENT, not the note length, is what's under test.
+    assertClipNotes(`${DRUMS_TRACK}/0`, "6/8", COMPOUND_TWO_FEEL_STARTS),
+    assertClipNotes(`${DRUMS_TRACK}/1`, "12/8", COMPOUND_FOUR_FEEL_STARTS),
+
+    {
+      type: "llm_judge",
+      prompt: `Evaluate if the assistant:
+1. Created a 6/8 clip with 2 kicks on the felt dotted-quarter pulse (eighth-beats 1 and 4 — Ableton beats 0 and 1.5), NOT a kick on every eighth and NOT 3 quarter-note kicks
+2. Created a 12/8 clip with 4 kicks on the felt dotted-quarter pulse (eighth-beats 1, 4, 7, 10 — Ableton beats 0, 1.5, 3, 4.5)
+3. Grouped the eighths into dotted-quarter beats rather than placing a hit on every eighth (over-subdivided) or miscounting`,
     },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },

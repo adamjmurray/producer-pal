@@ -15,6 +15,7 @@ export { arrangementClipWorkflow } from "./clip/arrangement-clip-workflow.ts";
 export { audioSampleWorkflow } from "./clip/audio-sample-workflow.ts";
 export {
   barBeatAbsoluteDurationUniformity,
+  barBeatCompoundFeelPulse,
   barBeatMeterFill,
   barBeatTriplets,
 } from "./clip/notation/bar-beat-absolute-durations.ts";
