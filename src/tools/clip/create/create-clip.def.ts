@@ -21,7 +21,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "session clip slot(s): trackIndex/sceneIndex, comma-separated (e.g., '0/0' or '0/0,0/2,0/5')",
+        "session clip slot(s): trackIndex/sceneIndex, both 0-based (scene 1 = index 0), comma-separated (e.g., '0/0' or '0/0,0/2,0/5')",
       ),
 
     trackIndex: z.coerce

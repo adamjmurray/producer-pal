@@ -13,7 +13,7 @@ Format: v<vel> n<dur> [p<prob>] pitch(es) bar|beat(s)
 - v: velocity 0-127 (default 100). n: duration, an absolute note value (default n/4 = quarter). p: probability 0-1 (default 1) — opt-in; if any note uses it, set it on every note
 - Durations REQUIRE a denominator: n/4 = quarter, n/8 = eighth, n/16 = sixteenth, n/12 = eighth triplet. n3/8 = dotted quarter, n3/16 = dotted eighth. Bare integers or decimals are invalid
 - **Set n explicitly and re-set it per drum/pitch** — it persists, so a hat's n/16 otherwise carries onto the next kick
-- Positions: bar|beat, both 1-indexed. A decimal places a note *within* a beat — \`1|1.5\` = the "&" (halfway), \`1|1.75\` = the last 16th (in 4/4)
+- Positions: bar|beat — **bar number first, beat second** (\`3|2\` = bar 3, beat 2, NOT beat 3 of bar 2), both 1-indexed. A decimal places a note *within* a beat — \`1|1.5\` = the "&" (halfway), \`1|1.75\` = the last 16th (in 4/4)
 
 ### Melody (one quarter note per beat across 2 bars)
 \`\`\`
@@ -61,6 +61,8 @@ Example — swap bar 1's snare, keep everything else:
 ## Rules
 - Set clip lengths explicitly: \`4bar\` for 4 bars, \`n/4\` for a quarter, \`1bar+n/4\` for mixed
 - \`n\` durations, \`@step\` intervals, and clip \`length\` fractions are absolute note values (a quarter is a quarter in any meter); a bar|beat position is meter-relative
-- Other meters: the grid beat isn't a quarter (in 6/8 a beat is an eighth), and a beat decimal is a fraction of *that* beat (so \`1|1.5\` is an eighth only in 4/4). For evenly-spaced notes use \`1|1xN\` repeats (step defaults to the duration, meter-safe), not hand-listed beats
+- Other meters: the grid beat isn't a quarter (in 6/8 a beat is an eighth), and a beat decimal is a fraction of *that* beat (so \`1|1.5\` is an eighth only in 4/4). For evenly-spaced notes use a repeat \`1|1x<count>\` — put a real number where \`<count>\` is (e.g. \`n/4 C1 1|1x5\` = 5 quarters filling a 5/4 bar; \`1|1x3\` fills 6/8) — its step defaults to the duration so spacing stays right in any meter; don't hand-list beats. For a single note holding one whole bar in any meter, use the \`1bar\` duration (e.g. \`1bar C1 1|1\`)
 - If the user references a track, get its trackIndex and id - never guess
+- When asked to create or edit music, do it: read the set/track/clip to get the IDs, indices, scale, and drum map you need (don't ask the user for things you can look up), and write the notes yourself from the project's scale unless specific pitches were given
+- If a tool call errors, read the message, fix the arguments, and retry — don't claim the operation is unsupported
 `;
