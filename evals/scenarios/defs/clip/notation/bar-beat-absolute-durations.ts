@@ -16,12 +16,7 @@
  */
 
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
-import { getToolCalls } from "../../../assertions/index.ts";
-import {
-  type EvalAssertion,
-  type EvalScenario,
-  type EvalTurnResult,
-} from "../../../types.ts";
+import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
 import { clearSessionSlots } from "../clip-scenario-helpers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
@@ -32,77 +27,21 @@ const MSG_CONNECT = "Connect to Ableton Live";
 /** Drums is track 0 in basic-midi-4-track; C1 (MIDI 36) is the kick. */
 const DRUMS_TRACK = 0;
 const KICK_PITCH = 36;
-
-/**
- * Find a ppal-create-clip call in the given turn and return parsed result.
- *
- * @param turns - All turn results
- * @param turn - Turn index to inspect
- * @returns the create-clip args + parsed result JSON
- */
-function getCreateClip(
-  turns: EvalTurnResult[],
-  turn: number,
-): {
-  args: Record<string, unknown>;
-  result: Record<string, unknown>;
-  notes: string;
-} {
-  const calls = getToolCalls(turns, turn);
-  const call = calls.find((c) => c.name === TOOL_CREATE_CLIP);
-
-  if (!call) throw new Error(`${TOOL_CREATE_CLIP} not found in turn ${turn}`);
-  const result = JSON.parse(String(call.result ?? "{}")) as Record<
-    string,
-    unknown
-  >;
-  const notes = String(call.args.notes ?? "");
-
-  return { args: call.args, result, notes };
-}
-
-/**
- * Build a custom assertion that the create-clip in `turn` produced exactly
- * `expectedNoteCount` notes (or a range), regardless of how the model wrote
- * the bar|beat. Final-correctness signal.
- *
- * @param turn - Turn index to inspect
- * @param expectedNoteCount - Expected number of notes (exact)
- * @param description - Human description of the check
- * @returns Custom assertion
- */
-function assertNoteCount(
-  turn: number,
-  expectedNoteCount: number,
-  description: string,
-): EvalAssertion {
-  return {
-    type: "custom",
-    description,
-    assert: (turns) => {
-      const { result, notes } = getCreateClip(turns, turn);
-      const noteCount = result.noteCount as number | undefined;
-
-      if (noteCount == null) {
-        throw new Error(`no noteCount in create-clip result: ${notes}`);
-      }
-
-      if (noteCount !== expectedNoteCount) {
-        throw new Error(
-          `expected ${expectedNoteCount} notes, got ${noteCount}. notes param: ${notes.slice(0, 120)}`,
-        );
-      }
-
-      return true;
-    },
-  };
-}
+/** Float tolerance for note start_time / duration comparisons (in beats). */
+const EPS = 1e-6;
+/** 12 eighth-note triplets filling a 4/4 bar — a kick every 1/3 beat. */
+const EIGHTH_TRIPLET_STARTS = Array.from({ length: 12 }, (_, i) => i / 3);
+/** 6 quarter-note triplets filling a 4/4 bar — a kick every 2/3 beat. */
+const QUARTER_TRIPLET_STARTS = Array.from({ length: 6 }, (_, i) => (i * 2) / 3);
 
 /**
  * Build a `state` assertion that reads the clip in `slot` back from Live and
- * verifies its kicks land on the quarter-note grid with absolute (one-quarter)
- * durations — the only check that distinguishes correct compound-meter spacing
- * (e.g. 6/8 quarters at Ableton beats [0,1,2]) from the eighths trap ([0,0.5,1]).
+ * verifies its kicks (C1) land on `expectedStarts` — and, when
+ * `expectedDuration` is given, that each kick lasts exactly that many quarter
+ * beats. Positions are the signal that counts alone cannot see: only they
+ * distinguish correct compound-meter spacing (6/8 quarters at Ableton beats
+ * [0,1,2]) from the eighths trap ([0,0.5,1]), and correct triplet spacing
+ * (every 1/3 beat) from notes bunched onto the straight grid.
  *
  * Reading final clip state (not the create-clip transcript) makes the check
  * immune to tool-error result strings and to which of several create-clip calls
@@ -111,12 +50,15 @@ function assertNoteCount(
  * @param slot - Session clip slot to read (trackIndex/sceneIndex)
  * @param meter - Expected time signature (e.g. "6/8")
  * @param expectedStarts - Expected note start_times in Ableton quarter beats
+ * @param expectedDuration - Expected per-note duration in quarter beats; omit to
+ *   check spacing only (e.g. drum-hit triplets, where duration is not the signal)
  * @returns State assertion
  */
-function assertQuarterFill(
+function assertClipNotes(
   slot: string,
   meter: string,
   expectedStarts: number[],
+  expectedDuration?: number,
 ): EvalAssertion {
   const [numerator, denominator] = meter.split("/").map(Number);
 
@@ -145,12 +87,16 @@ function assertQuarterFill(
       if (starts.length !== expectedStarts.length) return false;
 
       const positionsMatch = starts.every(
-        (s, i) => Math.abs(s - (expectedStarts[i] as number)) < 1e-6,
+        (s, i) => Math.abs(s - (expectedStarts[i] as number)) < EPS,
       );
-      // Each kick must be C1 lasting exactly one quarter (1 Ableton beat in any
-      // meter) — pins the absolute-duration invariant `n/4` is testing.
+      // Every note must be the kick (C1). When a duration is given, pin each
+      // note's length too — that's the absolute-duration invariant `n/4` tests.
+      // When omitted, the spacing alone is the signal (e.g. triplet drum hits).
       const notesValid = events.every(
-        (e) => e.pitch === KICK_PITCH && Math.abs(e.duration - 1) < 1e-6,
+        (e) =>
+          e.pitch === KICK_PITCH &&
+          (expectedDuration == null ||
+            Math.abs(e.duration - expectedDuration) < EPS),
       );
 
       return positionsMatch && notesValid;
@@ -172,20 +118,24 @@ export const barBeatTriplets: EvalScenario = {
 
   messages: [
     MSG_CONNECT,
-    "Create a 1-bar MIDI clip on the Drums track. Fill the bar with eighth-note triplets on the kick (C1) — that's 12 evenly-spaced kicks.",
-    "Now make a separate 1-bar clip on the Drums track in the next scene with quarter-note triplets on the kick (C1) — 6 evenly-spaced kicks across the bar.",
+    "On the Drums track, create a 1-bar MIDI clip in scene 1. Fill the bar with eighth-note triplets on the kick (C1) — that's 12 evenly-spaced kicks.",
+    "Now make a separate 1-bar clip on the Drums track in scene 2 with quarter-note triplets on the kick (C1) — 6 evenly-spaced kicks across the bar.",
   ],
+
+  setup: (mcpClient) =>
+    clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-
-    // Turn 1: eighth-note triplets → 12 notes
     { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-    assertNoteCount(1, 12, "eighth-note triplets produce 12 notes in 1 bar"),
 
-    // Turn 2: quarter-note triplets → 6 notes
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 2 },
-    assertNoteCount(2, 6, "quarter-note triplets produce 6 notes in 1 bar"),
+    // Read each clip back and assert the kicks land on the triplet grid.
+    // Counts alone can't see spacing: 12 notes bunched onto straight 16ths
+    // (3 beats, beat 4 empty) would still count 12. Triplet spacing IS the
+    // signal here, so positions are asserted strictly; duration is omitted
+    // (a triplet drum hit's length is not what's under test).
+    assertClipNotes(`${DRUMS_TRACK}/0`, "4/4", EIGHTH_TRIPLET_STARTS),
+    assertClipNotes(`${DRUMS_TRACK}/1`, "4/4", QUARTER_TRIPLET_STARTS),
 
     {
       type: "llm_judge",
@@ -215,54 +165,24 @@ export const barBeatMeterFill: EvalScenario = {
 
   messages: [
     MSG_CONNECT,
-    "On the Drums track, create a 1-bar clip in 5/4 time. Put one kick (C1) at the start of the bar with a duration that fills the entire bar.",
-    "On the Drums track, also create a 1-bar clip in 6/8 time. Put one kick (C1) at the start of the bar with a duration that fills the entire bar.",
+    "On the Drums track, create a 1-bar clip in scene 1 in 5/4 time. Put one kick (C1) at the start of the bar with a duration that fills the entire bar.",
+    "On the Drums track, also create a 1-bar clip in scene 2 in 6/8 time. Put one kick (C1) at the start of the bar with a duration that fills the entire bar.",
   ],
+
+  setup: (mcpClient) =>
+    clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-
-    // Turn 1: single note filling 5/4 bar
     { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
-    assertNoteCount(1, 1, "5/4 bar fill is exactly one note"),
 
-    {
-      type: "custom",
-      description: "5/4 clip carries 5/4 timeSignature",
-      assert: (turns) => {
-        const { args, result } = getCreateClip(turns, 1);
-        const ts =
-          (args.timeSignature as string | undefined) ??
-          (result.timeSignature as string | undefined);
-
-        if (ts !== "5/4") {
-          throw new Error(`expected 5/4 timeSignature, got ${String(ts)}`);
-        }
-
-        return true;
-      },
-    },
-
-    // Turn 2: single note filling 6/8 bar
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 2 },
-    assertNoteCount(2, 1, "6/8 bar fill is exactly one note"),
-
-    {
-      type: "custom",
-      description: "6/8 clip carries 6/8 timeSignature",
-      assert: (turns) => {
-        const { args, result } = getCreateClip(turns, 2);
-        const ts =
-          (args.timeSignature as string | undefined) ??
-          (result.timeSignature as string | undefined);
-
-        if (ts !== "6/8") {
-          throw new Error(`expected 6/8 timeSignature, got ${String(ts)}`);
-        }
-
-        return true;
-      },
-    },
+    // Read each clip back and assert ONE kick at the bar start whose duration
+    // fills the bar. Count + timeSignature alone can't see that: a 1-quarter
+    // kick in a 5/4 clip would still count 1. The duration IS the point — a
+    // bar-filling note is n5/4 (5 quarters) in 5/4 and n3/4 (3 quarters) in
+    // 6/8 — so the duration is asserted, which also subsumes the meter check.
+    assertClipNotes(`${DRUMS_TRACK}/0`, "5/4", [0], 5),
+    assertClipNotes(`${DRUMS_TRACK}/1`, "6/8", [0], 3),
 
     {
       type: "llm_judge",
@@ -312,9 +232,9 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
     // quarter-note grid with one-quarter durations. Positions — not just
     // counts — are the only signal that catches the 6/8 eighths trap
     // (3 kicks at [0,0.5,1] instead of quarters at [0,1,2]).
-    assertQuarterFill(`${DRUMS_TRACK}/0`, "4/4", [0, 1, 2, 3]),
-    assertQuarterFill(`${DRUMS_TRACK}/1`, "6/8", [0, 1, 2]),
-    assertQuarterFill(`${DRUMS_TRACK}/2`, "5/4", [0, 1, 2, 3, 4]),
+    assertClipNotes(`${DRUMS_TRACK}/0`, "4/4", [0, 1, 2, 3], 1),
+    assertClipNotes(`${DRUMS_TRACK}/1`, "6/8", [0, 1, 2], 1),
+    assertClipNotes(`${DRUMS_TRACK}/2`, "5/4", [0, 1, 2, 3, 4], 1),
 
     {
       type: "llm_judge",
