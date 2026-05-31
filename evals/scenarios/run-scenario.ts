@@ -56,6 +56,7 @@ export interface RunScenarioOptions {
   judgeOverride?: JudgeOverride;
   configProfile?: ConfigProfile;
   usage?: boolean;
+  skipJudge?: boolean;
 }
 
 /**
@@ -161,6 +162,7 @@ export async function runScenario(
       session,
       provider,
       judgeOverride,
+      options.skipJudge ?? false,
     );
 
     return {
@@ -240,6 +242,7 @@ async function runAssertions(
  * @param session - Active evaluation session
  * @param provider - LLM provider being used
  * @param judgeOverride - Optional judge LLM override
+ * @param skipJudge - When true, skip the LLM-as-judge step entirely
  * @returns Combined assertion results
  */
 async function runAllAssertions(
@@ -248,6 +251,7 @@ async function runAllAssertions(
   session: EvalSession,
   provider: EvalProvider,
   judgeOverride: JudgeOverride | undefined,
+  skipJudge: boolean,
 ): Promise<EvalAssertionResult[]> {
   const checkAssertions = scenario.assertions.filter(
     (a) => a.type !== "llm_judge" && a.type !== "token_usage",
@@ -255,9 +259,9 @@ async function runAllAssertions(
   const efficiencyAssertions = scenario.assertions.filter(
     (a) => a.type === "token_usage",
   );
-  const judgeAssertions = scenario.assertions.filter(
-    (a) => a.type === "llm_judge",
-  );
+  const judgeAssertions = skipJudge
+    ? []
+    : scenario.assertions.filter((a) => a.type === "llm_judge");
 
   console.log(formatSectionHeader("EVALUATION"));
 

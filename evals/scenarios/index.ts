@@ -52,6 +52,7 @@ interface CliOptions {
   listModels?: string | boolean;
   all?: boolean;
   skipSetup?: boolean;
+  skipJudge?: boolean;
   quiet?: boolean;
   usage?: boolean;
   json?: boolean;
@@ -108,6 +109,10 @@ program
   .option(
     "-s, --skip-setup",
     "Skip Live Set setup (use existing MCP connection)",
+  )
+  .option(
+    "--skip-judge",
+    "Skip the LLM-as-judge step (rely on deterministic checks only)",
   )
   .option("-q, --quiet", "Suppress detailed AI and judge responses")
   .option("-u, --usage", "Show per-step token usage")
@@ -306,6 +311,7 @@ async function runTrials(
       judgeOverride,
       configProfile: profile,
       usage: options.usage,
+      skipJudge: options.skipJudge,
     });
 
     const trialInfo: TrialInfo | undefined =
