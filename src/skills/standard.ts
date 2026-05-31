@@ -46,9 +46,11 @@ export const skills = `# Producer Pal Skills
 
 **Dual meter per call:** \`arrangementStart\`/\`arrangementLength\` (in create-clip, update-clip, and duplicate) resolve against the **song** time signature, while a clip's own \`start\`/\`firstStart\`/\`length\` (create/update-clip) resolve against the **clip** time signature. When a clip's meter differs from the song's, the same bar|beat literal denotes different absolute times across those params.
 
-- Positions: bar|beat (1-indexed, meter-relative). Two sub-beat forms — a decimal (\`2|3.5\`, a fraction of a *musical beat*) and a \`±n\` absolute note-value offset off the grid beat (\`1|1+n/12\` = beat 1 + an eighth triplet, \`1|2-n/24\` nudges behind beat 2). They coincide only in x/4 meters; in compound/odd meters they differ (6/8: \`1|1.5\` = half an eighth, \`1|1+n/8\` = a full eighth). Serialized output uses the exact \`±n\` form for tuplet positions. Same \`n\` grammar as durations; no bare fractions
+- Positions: bar|beat (1-indexed, meter-relative grid). Sub-beat placement has two tools for two jobs: a **decimal** (\`2|3.5\`) for *partway through a beat* (a fraction of the musical beat), and a **\`±n\` offset** (\`1|1+n/12\` = beat 1 + an eighth triplet, \`1|2-n/24\`) for an *exact note value* off the grid beat (tuplets, compound-meter placement). They coincide only in x/4 — see the meter note below. Serialized output uses the exact \`±n\` form for tuplet positions. No bare fractions
 - Durations and \`@step\` intervals: absolute note values (denominator mandatory). \`n/4\` = quarter, \`n/8\` = eighth, \`n/16\` = sixteenth, \`n/12\` = eighth triplet (3 in a quarter), \`n3/8\` = dotted quarter (3 eighths). A quarter is a quarter in any meter
 - Clip \`length\` and arrangement durations: \`Nbar\` (meter-aware, e.g. \`4bar\`), \`n<fraction>\` note value (e.g. \`n/4\` = quarter, \`n/8\` = eighth), or \`Nbar+n<fraction>\` mixed (e.g. \`1bar+n/4\`). Same \`n\` fraction grammar everywhere. No bare fractions/integers/decimals
+
+**In meters other than x/4, the grid beat is NOT a quarter** (in 6/8 it's an eighth), so consecutive grid beats are not one note value apart. To place notes a fixed note value apart — e.g. fill a bar with quarter notes — use a repeat pattern \`1|1xN\` (its step defaults to the current duration, which is meter-safe), not hand-enumerated grid beats: in 6/8, \`n/4 C1 1|1x3\` lands quarters on grid beats 1, 3, 5 (filling the bar), while \`n/4 C1 1|1,2,3\` is three consecutive *eighths* (wrong). Same trap for decimals: in 6/8 \`1|1.5\` is half an eighth, \`1|1+n/8\` a full eighth.
 
 ## MIDI Syntax
 
@@ -64,9 +66,10 @@ Create MIDI clips using the bar|beat notation syntax:
     - \`@step\` uses the same note-value form as \`n\` — \`@n/4\`, \`@1bar\` (bare \`@/4\` or \`@1\` is invalid). Defaults to the current duration (legato)
     - \`1|1x4@n/4\` → 4 notes a quarter apart; \`n/8 1|1x4\` → 4 eighths (step defaults to n value)
     - \`1|1x3@n/12\` → eighth-note triplets (3 in a quarter); \`n/16 1|1x16\` → 16 sixteenths spanning 4 quarters (a full bar in 4/4)
+    - **Prefer repeats over hand-listing beats for evenly-spaced notes** — the step is a note value, so spacing stays correct in any meter (in 6/8, \`n/4 C1 1|1x3\` = quarters on beats 1, 3, 5; \`1|1,2,3\` would be eighths)
 - v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
-- n<duration>: Note length as an absolute note value. Default: \`n/4\` (quarter). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\` instead. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
+- n<duration>: Note length as an absolute note value. **Set it explicitly rather than relying on the \`n/4\` default** — and because it's stateful, re-set it whenever the intended length changes. For drums, set \`n\` at the start and again for each drum/pitch (a hat's \`n/16\` otherwise carries over to the next kick). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\`. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
 - **Stateful**: v/n/p and pitch persist until changed — set once, applies to all following notes
@@ -74,7 +77,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
   - Copies capture each note's v/n/p at the time it was written, not the current state
-- **Editing existing clip notes** (update-clip): **prefer \`preTransforms\`** to delete or change notes already in the clip — clear a region (\`1|1-2|1: v0\`), a lane (\`C1: v0\`), everything (\`v0\`), or remap a drum lane (\`C1: C4\`); see Transforms. \`notes\` still overlays existing notes (v0-in-notes deletes at matching pitch/time), but reserve v0-in-notes for sculpting notes built **within the same \`notes\` string** — e.g. trimming after a bar copy, or in create-clip where nothing pre-exists
+- **Editing notes already in the clip** (update-clip): use \`preTransforms\` (see Transforms) — *the* way to delete/change pre-existing notes. A \`v0\` here deletes earlier notes at matching pitch/time **within this \`notes\` string**; reserve it for inline sculpting (trimming after a bar copy, or create-clip where nothing pre-exists), not for editing notes already in the clip
 
 ## Audio Clips
 \`ppal-read-clip\` \`sample\` include: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). \`warp\` include: \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.
@@ -136,7 +139,7 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
 - **Expression:** arithmetic (+, -, *, /, %) with numbers, waveforms, math functions, current values, and durations: \`n<dur>\` note values (e.g. \`n/4\` = a quarter in any meter) and \`Nbar\` meter-aware bars (e.g. \`1bar\`, \`1bar+n/4\`) — same grammar as bar|beat and length fields. Both evaluate to musical beats and compose in any math expression
 - **Math functions:** round(x), floor(x), ceil(x), abs(x), clamp(val,min,max), wrap(val,min,max) (wrap to inclusive range), reflect(val,min,max) (bounce within inclusive range), min(a,b,...), max(a,b,...), pow(base,exp), snap(pitch) (snap to Live Set scale; no-op if no scale), step(pitch, offset) (move by offset scale steps; even distribution for waveforms), legato([tolerance]) (set duration to reach next note's start time; optional tolerance in beats groups nearby starts as chords, e.g. legato(0.1) after humanizing)
-- **Timing functions:** swing(amount [, grid] [, raw]) (auto-quantizes to grid then applies swing; amount=delay in musical beats — meter-relative, so these hints assume a quarter-note beat and scale up in x/8: 0.02=subtle, 0.05=medium, 0.1=heavy; grid: default = half the meter's beat (8th-note swing in x/4, 16th in x/8); override e.g. n/16; raw: skip auto-quantize), quant(grid) (snap to nearest grid point). Grid ref for both: n/4=quarter, n/8=8th, n/16=16th, n/12=triplet. Both return absolute positions — use \`timing =\`, not \`timing +=\`
+- **Timing functions:** swing(amount [, grid] [, raw]) (auto-quantizes to grid then applies swing; amount=delay in musical beats — meter-relative, so these hints assume a quarter-note beat and scale up in x/8: 0.02=subtle, 0.05=medium, 0.1=heavy; grid: default = half the meter's beat (8th-note swing in x/4, 16th in x/8); override e.g. n/16; raw: skip auto-quantize), quant(grid) (snap to nearest grid point). Grid ref for both: n/4=quarter, n/8=8th, n/16=16th, n/12=triplet. swing()/quant() return an *absolute* position, so assign them with \`timing =\` (not \`+=\`). Relative nudges use \`+=\`/\`-=\` with a note value — \`timing += n/8\` shifts every note an eighth later
 
 **Waveforms** (-1.0 to 1.0, per note position; once for audio):
 - \`cos(period)\`, \`square(period)\` - start at peak (1.0); \`sin(period)\`, \`tri(period)\`, \`saw(period)\` - start at zero, rise to peak
@@ -158,6 +161,7 @@ timing = swing(0.05)             // swing (auto-quantizes). Use swing() alone un
 timing = quant(n/8)              // snap to 8th-note grid
 timing = quant(n/16)             // snap to 16th-note grid
 timing += 0.05 * rand()          // humanize timing
+timing += n/8                    // nudge every note an eighth note later (relative)
 velocity += 20 * cos(n/2)        // cycle every half note (2 beats in 4/4)
 velocity += 20 * cos(clip.barDuration, sync) // bar-length cycle, continuous across clips
 1|1-4|4.75: velocity = ramp(40, 127) // crescendo over 4 bars (16th grid)
@@ -183,9 +187,9 @@ swing() auto-quantizes to the swing grid, so changing swing amount is always saf
 \`+=\` compounds on repeated calls; \`=\` is idempotent. \`*=\`/\`/=\` scale the current value (\`timing *=\` scales absolute note position). Use update-clip with only transforms to modify existing notes.
 Transforms modify notes in place — previous transforms are already baked in. Don't re-apply earlier transforms.
 MIDI params ignored for audio clips, vice versa.
-On update-clip and duplicate, transforms/code is one string broadcast across every clip/copy. \`clip.index\`/\`clip.count\` span the full batch — use \`clip.index\` arithmetic (e.g. \`pitch += clip.index * 12\`) or \`clipseq()\` (e.g. \`pitch += clipseq(0, 5, 7)\`) inside the string for per-clip variation. For structurally-distinct edits per clip (different operations, not just different values), make separate tool calls.
+Across a batch (update-clip \`ids\` / duplicate copies), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\` (\`pitch += clipseq(0, 5, 7)\`); see Shape above.
 
-**update-clip pipeline:** \`preTransforms → notes (merge) → transforms\`. \`transforms\` mutates the final result (after the merge). \`preTransforms\` mutates the existing notes BEFORE new \`notes\` land — use it to clear or modify a region you're about to rewrite in one call (e.g. \`preTransforms: "1|1-1|4: velocity = 0"\` with \`notes:\` to swap out bar 1). preTransforms also works on its own — no \`notes\` — to clear or edit notes in place; it's ignored only on audio clips. Same syntax as transforms. **Default to \`preTransforms\` for any delete/edit of notes already in the clip** (a region, a lane, or everything) instead of rebuilding \`notes\` or scattering \`v0\`s.
+**Editing existing notes (update-clip):** \`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. \`preTransforms\` runs on the existing notes BEFORE any new \`notes\` merge — clear a region (\`1|1-2|1: velocity = 0\`), a lane (\`C1: velocity = 0\`), everything (\`velocity = 0\`), or remap (\`C1: C4\`); works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` mutates the merged result — also the efficient way to *thin* density: generate with repeats/bar-copies in \`notes\`, then prune with a selector instead of scattering \`v0\`s. (A \`v0\` at an existing note's start also deletes it, but prefer \`preTransforms\`; reserve inline \`v0\` for notes built in the same \`notes\` string.)
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Finding Library Content
 
@@ -215,6 +219,7 @@ Use \`ppal-library\` to search Live's browser library and the user's configured 
 
 **Creating Music:**
 - For drum tracks, read the track with \`drum-map\` include for correct pitches - don't assume General MIDI
+- Drums: set \`n<dur>\` explicitly and re-set it per drum/pitch (duration is stateful — a hat's \`n/16\` leaks onto the next lane otherwise); space repeated hits with \`1|1xN\` repeats, not hand-listed beats
 - Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) for expression
 - Keep harmonic rhythm in sync across tracks
 
