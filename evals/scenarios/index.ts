@@ -56,6 +56,7 @@ interface CliOptions {
   quiet?: boolean;
   usage?: boolean;
   json?: boolean;
+  baseUrl?: string;
 }
 
 /**
@@ -118,9 +119,20 @@ program
   .option("-u, --usage", "Show per-step token usage")
   .option("--no-json", "Skip writing JSON result files to disk")
   .option("-a, --all", "Run all scenarios")
+  .option(
+    "-b, --base-url <url>",
+    "Base URL for local provider (default: http://localhost:11434/v1)",
+  )
   .action(async (options: CliOptions) => {
+    // Apply --base-url to env so the local provider picks it up
+    if (options.baseUrl) {
+      process.env.LOCAL_BASE_URL = options.baseUrl;
+    }
+
     if (options.listModels != null) {
-      process.exit(await listModels(options.listModels));
+      process.exit(
+        await listModels(options.listModels, { baseUrl: options.baseUrl }),
+      );
     }
 
     if (options.list) {

@@ -39,7 +39,7 @@ export async function writeJsonResult(result: JsonEvalResult): Promise<string> {
  * @returns Filename string
  */
 function buildResultFilename(result: JsonEvalResult): string {
-  const model = result.model.replace("/", "_");
+  const model = result.model.replaceAll("/", "_");
   const trialSuffix =
     result.totalTrials != null && result.totalTrials > 1
       ? `--trial-${result.trial}`
