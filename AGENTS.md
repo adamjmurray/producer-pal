@@ -196,6 +196,18 @@ web UI architecture.
   bar|beat notation and when changing behavior that invalidates any of its
   instructions.
 
+- **Notation grammar duplication**: The note-value lexer (durations like `n/4`,
+  `±n` beat offsets, the off-grid `n<beats>/4` escape, and `Nbar` forms) is
+  intentionally duplicated across both Peggy grammars (`barbeat-grammar.peggy`,
+  `transform-grammar.peggy`) and the regexes in
+  `src/notation/barbeat/time/barbeat-time.ts`. Peggy has no import/rule-sharing,
+  and routing the per-note hot paths through the generated parser would cost
+  performance, so do NOT extract a shared grammar fragment. The contract is
+  enforced by `note-value-grammar-parity.test.ts` (6 parse sites across multiple
+  meters) and `note-value-denominator-parity.test.ts`. When adding or changing a
+  note-value parse site, update every site AND register it in the parity test.
+  See `dev/Coding-Standards.md` for the full rationale.
+
 - **Context window usage optimization**: The Producer Pal Skills, tool and
   parameter descriptions in `.def.ts` files, and tool results need to be very
   short, clear, and focused on the most useful and relevant info.
