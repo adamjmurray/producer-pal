@@ -196,6 +196,16 @@ web UI architecture.
   bar|beat notation and when changing behavior that invalidates any of its
   instructions.
 
+- **Notation spec maintenance**: The hand-written grammar specs in `dev/specs/`
+  (`BarBeat-Spec.md`, `Transforms-Spec.md`) are the authoritative reference for
+  the bar|beat and transform DSLs. No test guards them and they do NOT feed the
+  generated docs site (that is built from the skills strings), so they drift
+  silently — update them by hand whenever you change grammar syntax: operators,
+  selectors, shorthand forms, range bounds (e.g. the `N|*`/`-<` half-open
+  selectors), note-value tokens, or units (always say "musical beats" vs the
+  internal Ableton quarter-note beat). Keep the specs focused on the
+  grammar/parser contract and defer usage examples to the skills.
+
 - **Notation grammar duplication**: The note-value lexer (durations like `n/4`,
   `±n` beat offsets, the off-grid `n<beats>/4` escape, and `Nbar` forms) is
   intentionally duplicated across both Peggy grammars (`barbeat-grammar.peggy`,
