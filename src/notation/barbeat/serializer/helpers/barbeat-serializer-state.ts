@@ -186,18 +186,14 @@ function emitDurationChange(
   elements: string[],
   timeSigDenominator: number | undefined,
 ): void {
-  // Convert Ableton beats (= quarter notes) to musical beats for state tracking
-  const musicalBeats =
-    timeSigDenominator != null
-      ? note.duration * (timeSigDenominator / 4)
-      : note.duration;
-
-  // The change threshold bounds an inherited-duration error that lives in
-  // Ableton beats, so scale the musical-beat epsilon by the same denominator
+  // Ableton beats (= quarter notes) → musical beats for state tracking (×1 when
+  // the meter is unknown, which is exact). The change threshold bounds an
+  // inherited-duration error that lives in Ableton beats, so scale it by the same
   // factor — a flat musical-beat threshold widens to ~0.004 Ableton beats in x/1
   // meters and would drop genuine off-grid duration changes there.
-  const epsilon =
-    0.001 * (timeSigDenominator != null ? timeSigDenominator / 4 : 1);
+  const denomFactor = timeSigDenominator != null ? timeSigDenominator / 4 : 1;
+  const musicalBeats = note.duration * denomFactor;
+  const epsilon = 0.001 * denomFactor;
 
   if (Math.abs(musicalBeats - state.duration) > epsilon) {
     // Emit as an absolute note value (fraction of a whole note)

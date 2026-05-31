@@ -150,6 +150,15 @@ describe("formatAbsoluteDuration", () => {
     // note/`@step`/offset grammars parse back losslessly.
     expect(formatAbsoluteDuration(1 / 9)).toBe("0.4444/4");
   });
+
+  it("routes a near-miss off-grid value to the escape instead of snapping (tight EPSILON)", () => {
+    // 0.2501 is 0.0001 whole-note off a quarter. Under the old 5e-4 match
+    // tolerance it silently snapped to "/4" (a wrong note value); at 1e-6 it
+    // takes the lossless escape (0.2501 * 4 = 1.0004 Ableton beats).
+    expect(formatAbsoluteDuration(0.2501)).toBe("1.0004/4");
+    // Genuine float noise (≤ ~1e-9, what Live actually delivers) still matches.
+    expect(formatAbsoluteDuration(0.25 + 1e-9)).toBe("/4");
+  });
 });
 
 describe("formatOffGridBeats", () => {

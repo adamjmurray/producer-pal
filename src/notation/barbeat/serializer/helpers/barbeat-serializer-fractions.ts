@@ -194,13 +194,14 @@ export function formatOffGridBeats(beats: number): string {
 /**
  * Check if a value can be represented losslessly with 3 decimal places — the
  * gate {@link formatBeatPosition} uses to prefer the shorter decimal spelling
- * (`1.5`) over the note-value offset form. It is purely a representation choice,
- * not a precision trade-off: when it returns false the caller falls back to an
- * exact note-value offset (`base+n<fraction>`) or the decimal-numerator escape
- * (`base+n<beats>/4`), so a position never drifts — the decimal is emitted only
- * when it round-trips exactly.
+ * (`1.5`) over the note-value offset form. Mostly a representation choice: when
+ * it returns false the caller falls back to an exact note-value offset
+ * (`base+n<fraction>`) or the decimal-numerator escape (`base+n<beats>/4`), both
+ * lossless. When true the value is at most ~1e-5 off a 3-decimal grid point (the
+ * fuzz below), so the emitted decimal round-trips to within ~1e-5 beats — exact
+ * for a genuine 3-decimal value, sub-perceptual otherwise.
  * @param value - Original numeric value
- * @returns True if toFixed(3) preserves the value exactly
+ * @returns True if toFixed(3) preserves the value to within ~1e-5
  */
 function decimalIsLossless(value: number): boolean {
   const scaled = value * 1000;

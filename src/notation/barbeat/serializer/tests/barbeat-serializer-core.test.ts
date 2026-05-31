@@ -312,3 +312,33 @@ describe("formatNotation() per-note state in chords", () => {
     expect(formatNotation(notes)).toBe("v80 n/2 C3 n/4 E3 1|1");
   });
 });
+
+describe("formatNotation() duration-change threshold (meter-correct)", () => {
+  it("emits a sub-0.004-beat off-grid duration change in x/1 meters", () => {
+    // The change threshold is a uniform 0.001 Ableton beats in every meter. A
+    // flat musical-beat threshold widened to 0.004 Ableton beats in x/1, silently
+    // dropping this 0.002-beat off-grid change; now it is emitted (note 1 is a
+    // whole note, note 2 is 0.002 Ableton beats longer).
+    const notes = [
+      createNote({ duration: 4 }),
+      createNote({ pitch: 62, start_time: 4, duration: 4.002 }),
+    ] as NoteEvent[];
+
+    expect(
+      formatNotation(notes, { timeSigNumerator: 4, timeSigDenominator: 1 }),
+    ).toContain("n4.002/4");
+  });
+
+  it("still suppresses sub-0.001-beat duration noise in x/1 meters", () => {
+    // 0.0005 Ableton beats is below the 0.001-Ableton-beat threshold, so the
+    // second note inherits note 1's duration with no spurious n change.
+    const notes = [
+      createNote({ duration: 4 }),
+      createNote({ pitch: 62, start_time: 4, duration: 4.0005 }),
+    ] as NoteEvent[];
+
+    expect(
+      formatNotation(notes, { timeSigNumerator: 4, timeSigDenominator: 1 }),
+    ).toBe("n/1 C3 1|1 D3 1|2");
+  });
+});
