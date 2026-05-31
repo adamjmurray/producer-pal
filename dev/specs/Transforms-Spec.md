@@ -117,7 +117,7 @@ velocity += 20 * square(n/2, 0, 0.75, sync);
 Delays off-beat notes to create a swing feel. Returns absolute position — use
 with `timing =`.
 
-- **amount**: Delay in beats applied to off-beat notes (0.02=subtle,
+- **amount**: Delay in musical beats applied to off-beat notes (0.02=subtle,
   0.05=medium, 0.1=heavy). Negative values push off-beats early.
 - **grid**: Swing subdivision grid. Default is half the meter's beat — the
   off-beat between beats: an 8th note in x/4 meters, a 16th in x/8 (the natural
@@ -155,7 +155,7 @@ timing = swing(0.05, n/16, raw); // 16th-note swing, no auto-quantize
 Snaps note timing to the nearest grid point. Returns absolute position — use
 with `timing =`.
 
-- **grid**: Grid size as a note value or numeric beats.
+- **grid**: Grid size as a note value or numeric musical beats.
 
 ```
 timing = quant(n/8); // snap to 8th-note grid (0.5 beats in 4/4)
@@ -171,8 +171,8 @@ Sets duration to fill the gap to the next distinct start time. Skips chord tones
 rhythmic position. The last note extends to the clip end, or keeps its current
 duration (with a warning) when no clip length is available.
 
-Optional tolerance in beats (default 0): notes within tolerance of the same
-start time are treated as a chord. Useful after humanizing timing.
+Optional tolerance in musical beats (default 0): notes within tolerance of the
+same start time are treated as a chord. Useful after humanizing timing.
 
 ```
 duration = legato()              // extend notes to fill gaps
@@ -234,19 +234,34 @@ C3-C5: duration = legato()       // legato for melody notes only
   - Pitch range: `C3-C5 velocity += 10` (applies to all notes from C3 to C5
     inclusive)
 - **Time range selectors** (optional): Filter by bar|beat range (e.g.,
-  `1|1-2|1 velocity += 10`). The beat field uses the same dialect as note
-  positions: a whole beat, a decimal sub-beat (`1|1.5`), or a `±n` note-value
-  offset off the grid beat (`1|1+n/12` = beat 1 + an eighth triplet, `1|2-n/24`
-  just behind beat 2). The offset is a note value (meter-invariant), so a bound
-  resolves to the same musical position as a note written that way. A `-n` bound
-  may sit just before a downbeat — `2|1-n/12` borrows across the bar line into
-  bar 1 — and a bound reaching before `1|1` resolves to negative time (before
-  the clip start) rather than being rejected. A `+n` bound may likewise run past
-  the end of its bar (`1|4+n/2` lands in the next bar); membership is decided by
-  each bound's absolute musical position, not by its bar number, so the bound
-  filters at its true position regardless of which bar it overflows into. Bare
-  fractions (`1|4/3`) and mixed numbers (`1|1+1/3`) are rejected — write the
-  grid+offset form instead.
+  `1|1-2|1 velocity += 10`). Both bounds are **inclusive** by default (matching
+  note start time). Two opt-in forms make the end **exclusive** (half-open), so
+  a selection can stop at a bar line without catching the next downbeat:
+  - **Whole-bar wildcard:** `N|*` selects all of bar N; `A|*-B|*` selects whole
+    bars A through B. Each desugars to the half-open range `[first|1, after|1)`
+    (end bar = the bar _after_ the last selected bar, end exclusive), so `3|*`
+    is exactly bar 3 with no spill onto `4|1`. This is the foolproof "measure N"
+    selector — meter-safe and off-by-one-proof. A mixed `3|*-4|1` (wildcard with
+    a beat bound) is rejected.
+  - **Exclusive-end marker:** `-<` on an ordinary range makes only its end bound
+    exclusive — `3|1-<4|1` covers up to but not including `4|1`, and `1|2-<1|4`
+    is a sub-bar half-open span (beats 2-3, excluding beat 4). Without the `<`
+    the end stays inclusive.
+
+  The beat field uses the same dialect as note positions: a whole beat, a
+  decimal sub-beat (`1|1.5`), or a `±n` note-value offset off the grid beat
+  (`1|1+n/12` = beat 1 + an eighth triplet, `1|2-n/24` just behind beat 2). The
+  offset is a note value (meter-invariant), so a bound resolves to the same
+  musical position as a note written that way. A `-n` bound may sit just before
+  a downbeat — `2|1-n/12` borrows across the bar line into bar 1 — and a bound
+  reaching before `1|1` resolves to negative time (before the clip start) rather
+  than being rejected. A `+n` bound may likewise run past the end of its bar
+  (`1|4+n/2` lands in the next bar); membership is decided by each bound's
+  absolute musical position, not by its bar number, so the bound filters at its
+  true position regardless of which bar it overflows into. Bare fractions
+  (`1|4/3`) and mixed numbers (`1|1+1/3`) are rejected — write the grid+offset
+  form instead.
+
 - **Range clamping**: Applied after modulation:
   - velocity: 1-127
   - timing: unclamped (can shift notes before/after original position)
@@ -256,6 +271,25 @@ C3-C5: duration = legato()       // legato for melody notes only
   - pitch: 0-127 (rounded to integer)
   - gain: -70 to 24 dB
   - pitchShift: -48 to 48 semitones
+
+## Shorthand Assignments
+
+In addition to the full `parameter operator expression` form, each assignment
+may be written as a single bar|beat-style **shorthand** token — convenient for
+clears and simple one-shot sets (this is the form the `preTransforms` examples
+in the skills use). One change per line; an optional pitch/time selector still
+applies.
+
+- `v0` deletes the note · `vN` sets velocity · `v+N` / `v-N` adjusts velocity
+- `pN` sets probability · `p+N` / `p-N` adjusts probability
+- `n/4` (or `Nbar`, `Nbar+n/4`) sets duration to that note value
+- `C4` (a bare pitch) moves/remaps matched notes to that pitch
+
+Each desugars to the same `{ parameter, operator, expression }` as the full
+form: `v0` ≡ `velocity = 0`, `C1: v0` ≡ `C1: velocity = 0`, and `C1: C4` remaps
+the C1 lane to C4. The shorthand expresses only set/delete/adjust of one
+property — use the full syntax for anything computed (waveforms, `*=`, ramps,
+cross-note references).
 
 ## Units and Time Signatures
 
@@ -375,7 +409,7 @@ Access note properties in expressions using the `note.` prefix:
 - `note.start` - Start time in musical beats (absolute, from clip start)
 - `note.velocity` - Current velocity value (1-127)
 - `note.deviation` - Velocity deviation (-127 to 127)
-- `note.duration` - Duration in beats
+- `note.duration` - Duration in musical beats
 - `note.probability` - Probability (0.0-1.0)
 
 ### Next Note Properties (MIDI clips)

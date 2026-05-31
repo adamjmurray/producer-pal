@@ -36,7 +36,7 @@ E3 G3 B3 3|1
 F3 A3 C4 4|1
 \`\`\`
 
-### Drums (commas for multiple beats, {beat}x{count}[@{step}] for repeats)
+### Drums (commas = beat list; {beat}x{count}[@{step}] repeats — {count} notes, {step} apart, a note value that defaults to the duration)
 \`\`\`
 n/8 C1 1|1,3 2|1,3 3|1,3 4|1,3  # kick (set duration per lane)
 n/8 D1 1|2,4 2|2,4 3|2,4 4|2,4  # snare
@@ -50,8 +50,8 @@ n/16 Gb1 1|1.5x4@n/4 2|1.5x4@n/4 3|1.5x4@n/4 4|1.5x4@n/4  # hats on the upbeats 
 \`preTransforms\` edits or clears notes already in the clip — on its own, or before adding new \`notes\` in the same call. Same v/n/p/pitch tokens as above, with an optional range:
 - \`[range]: <change>\` — omit the range to affect all notes
 - changes: \`v0\` delete · \`v1-127\` set velocity · \`n/4\` set duration · \`p0-1\` set probability · \`C4\` move notes to a pitch (drum-lane remap)
-- range: \`C1\`/\`C1-C5\` (pitch); time: \`3|*\` (whole bar 3), \`1|*-2|*\` (whole bars 1-2), or \`1|1-2|1\` (explicit span, ends inclusive)
-- clear measure 3: \`3|*: v0\` — use the \`|*\` wildcard, since \`3|1-4|1\` is inclusive and would also delete the note on 4|1 · clear everything: \`v0\`
+- range: \`C1\`/\`C1-C5\` (pitch); time: \`3|*\` (whole bar 3), \`1|*-2|*\` (whole bars 1-2), or \`1|1-2|1\` (explicit span, end inclusive)
+- clear a bar: \`3|*: v0\` (\`|*\` = exactly that bar; \`3|1-4|1\` overshoots onto 4|1) · clear all: \`v0\`
 
 Here a bar|beat range SELECTS existing notes (a filter); in \`notes\` a bar|beat PLACES a note.
 

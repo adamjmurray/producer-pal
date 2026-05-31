@@ -115,7 +115,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across ids); clear or edit notes already in the clip — a whole bar ('3|*: velocity = 0', the |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: velocity = 0'), or everything ('velocity = 0'). Works with or without notes",
+        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across ids); clear or edit notes already in the clip — a whole bar ('3|*: v0', the |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: v0'), or everything ('v0'). Works with or without notes",
       ),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
@@ -135,7 +135,9 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .min(0)
       .max(1)
       .optional()
-      .describe("quantization strength 0-1 (MIDI clips only)"),
+      .describe(
+        "MIDI quantize strength 0-1 (default 1 = full snap); snaps note starts to quantizeGrid (default 1/16). MIDI clips only",
+      ),
 
     // NOTE: Live's native quantize-grid vocabulary (incl. "T" triplet forms),
     // mapping directly to Live's quantize API constants — do not migrate to n/N.
@@ -162,7 +164,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ])
       .optional()
       .describe(
-        "note grid (required with quantize); n/N note values also accepted (n/12=1/8T, n/24=1/16T), but mixed grids 1/8+1/8T and 1/16+1/16T are enum-only",
+        "grid that note starts snap to: 1/16 (default), 1/8, 1/4, 1/8T, 1/16T, 1/32; n/N note values also accepted (n/12=1/8T, n/24=1/16T); mixed grids 1/8+1/8T and 1/16+1/16T are enum-only",
       ),
 
     quantizePitch: z
