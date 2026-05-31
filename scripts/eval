@@ -10,4 +10,4 @@
 #
 # See models.ts for other recommended models
 
-exec npx tsx --env-file=.env evals/scenarios/index.ts "$@"
+exec node --env-file=.env evals/scenarios/index.ts "$@"

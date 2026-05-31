@@ -6,6 +6,11 @@
 /**
  * Shared type declarations for peggy-generated parsers.
  * Import these in parser-specific .d.ts files.
+ *
+ * This is a real `.ts` module (not `.d.ts`) so that Node's native type
+ * stripping can resolve the side-effect import it leaves behind when the
+ * `import { type X }` inline-type form is erased. All declarations here are
+ * type-only, so the runtime module is empty.
  */
 
 /** Parser options for peggy-generated parsers */
@@ -34,7 +39,7 @@ export interface Location {
 }
 
 /** Syntax error thrown by peggy parsers */
-export class SyntaxError extends Error {
+export interface SyntaxError extends Error {
   message: string;
   expected: unknown[];
   found: string | null;

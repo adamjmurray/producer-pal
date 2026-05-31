@@ -16,7 +16,7 @@
  *
  * The variant corpus lives in ./schema-compat-variants.ts.
  *
- * Run: npx tsx --env-file=.env evals/schema-compat/probe-schema-compat.ts [models...] [flags]
+ * Run: node --env-file=.env evals/schema-compat/probe-schema-compat.ts [models...] [flags]
  *   models: provider/model or prefix-inferred (e.g. gemini-3.5-flash,
  *           mistral/mistral-small-latest, openrouter/anthropic/claude-haiku-4.5).
  *           Defaults to the supported providers (Gemini, OpenAI, Mistral,

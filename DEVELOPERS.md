@@ -83,7 +83,11 @@ documentation for details on extension types and how to choose between them.
 
 ## Building from source
 
-Requires [Node.js](https://nodejs.org) (recommended v24 or higher)
+Requires [Node.js](https://nodejs.org) **v24 or higher** (enforced by the
+`engines` field in `package.json`). Producer Pal's scripts and CLI tools run
+TypeScript directly through Node's native type stripping — there is no `tsx` or
+`ts-node` dependency — and rely on Node's built-in `--env-file` flag, both of
+which require v24+.
 
 1. Clone this repository
 2. `npm install`
