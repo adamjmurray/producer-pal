@@ -15,7 +15,7 @@ Format: [v<vel>] [n<dur>] [p<prob>] pitch(es) bar|beat
 
 ### Melody (one quarter note per beat across 2 bars)
 \`\`\`
-C3 1|1 D3 1|2 E3 1|3 F#3 1|4
+n/4 C3 1|1 D3 1|2 E3 1|3 F#3 1|4
 G3 2|1 A3 2|2 G#3 2|3 E3 2|4
 \`\`\`
 

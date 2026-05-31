@@ -95,8 +95,9 @@ n/12 C3 1|1x3 // eighth-note triplets: 3 notes filling one quarter (step = durat
 n/16 Gb1 1|1x16 // 16 sixteenths = 4 quarters, a full bar in 4/4 (1|1x16@n/16 is the same)
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
-v90-110 C1 1|1,3 D1 1|2,4 // humanized drum pattern
-p0.5 C1 1|1,2,3,4 // 50% chance each kick plays
+v90-110 n/4 C1 1|1,3 n/8 D1 1|2,4 // humanized drums — re-set n per lane
+n/16 Gb1 1|1,1.5,2,2.5 n/4 C1 1|1 // re-set n/4 for kick, else hat's n/16 leaks onto it
+p0.5 n/4 C1 1|1,2,3,4 // 50% chance each kick plays
 \`\`\`
 
 ## Techniques
