@@ -49,7 +49,7 @@ n/16 Gb1 1|1.5x4@n/4 2|1.5x4@n/4 3|1.5x4@n/4 4|1.5x4@n/4  # hats on the upbeats 
 
 \`preTransforms\` edits or clears notes already in the clip — on its own, or before adding new \`notes\` in the same call. Same v/n/p/pitch tokens as above, with an optional range:
 - \`[range]: <change>\` — omit the range to affect all notes
-- changes: \`v0\` delete · \`v1-127\` set velocity · \`n/4\` set duration · \`p0-1\` set probability · \`C4\` move notes to a pitch (drum-lane remap)
+- changes: \`v0\` delete · \`vN\` set velocity (N=1-127) · \`n/4\` set duration · \`pN\` set probability (N=0-1) · \`C4\` move notes to a pitch (drum-lane remap)
 - range: \`C1\`/\`C1-C5\` (pitch); time: \`3|*\` (whole bar 3), \`1|*-2|*\` (whole bars 1-2), or \`1|1-2|1\` (explicit span, end inclusive)
 - clear a bar: \`3|*: v0\` (\`|*\` = exactly that bar; \`3|1-4|1\` overshoots onto 4|1) · clear all: \`v0\`
 
