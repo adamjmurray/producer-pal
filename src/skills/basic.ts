@@ -9,7 +9,7 @@ export const skills = `# Producer Pal Skills
 
 Pitches: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
 Format: [v<vel>] [n<dur>] [p<prob>] pitch(es) bar|beat
-- v: velocity 0-127 (default 100). n: duration as an absolute note value (default n/4 = quarter). p: probability 0-1 (default 1). Persist until changed
+- v: velocity 0-127 (default 100). n: duration as an absolute note value (default n/4 = quarter). p: probability 0-1 (default 1). Persist until changed (a token applies to notes *after* it — set it before the note)
 - Durations REQUIRE a denominator: n/4 = quarter, n/8 = eighth, n/16 = sixteenth, n/12 = eighth triplet. n3/8 = dotted quarter. Bare integers or decimals are invalid
 - **Set n explicitly and re-set it per drum/pitch** — it persists, so a hat's n/16 otherwise carries onto the next kick
 
@@ -35,7 +35,9 @@ n/8 D1 1|2,4 2|2,4 3|2,4 4|2,4  # snare
 n/16 Gb1 1|1.5x4@n/4 2|1.5x4@n/4 3|1.5x4@n/4 4|1.5x4@n/4  # hats (4 per bar, quarter-note step)
 \`\`\`
 
-## Editing existing notes: preTransforms (update-clip)
+## Editing existing notes (update-clip)
+
+\`notes\` MERGES into the clip — a note overwrites the existing note at the *same* pitch+start (restate it to change its duration/velocity in place); other notes stay. To replace a region or rewrite a bar, clear it first with \`preTransforms\` or the old notes linger. Don't rewrite the whole clip to fix a few notes.
 
 \`preTransforms\` edits or clears notes already in the clip — on its own, or before adding new \`notes\` in the same call. Same v/n/p/pitch tokens as above, with an optional range:
 - \`[range]: <change>\` — omit the range to affect all notes

@@ -103,7 +103,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [n<dur>] [p0-1] note(s) - MIDI clips only",
+        "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [n<dur>] [p0-1] note(s) - MIDI clips only. MERGES into existing notes (overwrites at same pitch+start - restate a note to edit it in place). To delete/move existing notes or replace a region use preTransforms; don't rewrite the whole clip",
       ),
     transforms: z
       .string()
@@ -217,6 +217,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     descriptionOverrides: {
       name: "clip name",
       color: "#RRGGBB",
+      notes:
+        "MIDI notes (bar|beat). MERGES - overwrites at same pitch+start; restate to edit in place. Delete/move existing notes via preTransforms, don't rewrite the clip",
       preTransforms:
         "clear/edit notes already in the clip. Shorthand only (see Skills): `1|1-2|1: v0` clears a region, `v0` clears all, `C1: C4` remaps a drum lane",
     },

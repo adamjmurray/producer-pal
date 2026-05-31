@@ -71,7 +71,7 @@ Create MIDI clips using the bar|beat notation syntax:
     - **Prefer repeats over hand-listing beats for evenly-spaced notes** — the step is a note value, so spacing stays correct in any meter (in 6/8, \`n/4 C1 1|1x3\` = quarters on beats 1, 3, 5; \`1|1,2,3\` would be eighths)
 - v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
-- n<duration>: Note length as an absolute note value. **Set it explicitly rather than relying on the \`n/4\` default** — and because it's stateful, re-set it whenever the intended length changes. For drums, set \`n\` at the start and again for each drum/pitch (a hat's \`n/16\` otherwise carries over to the next kick). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\`. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
+- n<duration>: Note length as an absolute note value. **Set it explicitly rather than relying on the \`n/4\` default** — and because it's stateful, re-set it whenever the intended length changes. It applies to notes **after** it — put the \`n\` change *before* the note it should affect (\`n/8 G3 4|2 A3\`, not \`G3 4|2 n/8 A3\`, which leaves G3 at the old length and overlaps A3). For drums, set \`n\` at the start and again for each drum/pitch (a hat's \`n/16\` otherwise carries over to the next kick). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\`. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-G8 with # or b for sharps/flats (C#3, Bb2). C3 = middle C
 - **Stateful**: v/n/p and pitch persist until changed — set once, applies to all following notes
@@ -79,7 +79,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - @N= copies previous bar; @N=M copies bar M to N; @N-M=P copies bar P to range
   - @N-M=P-Q tiles bars P-Q across range; @clear clears copy buffer
   - Copies capture each note's v/n/p at the time it was written, not the current state
-- **Editing notes already in the clip** (update-clip): use \`preTransforms\` (see Transforms) — *the* way to delete/change pre-existing notes. A \`v0\` here deletes earlier notes at matching pitch/time **within this \`notes\` string**; reserve it for inline sculpting (trimming after a bar copy, or create-clip where nothing pre-exists), not for editing notes already in the clip
+- **Editing notes already in the clip** (update-clip): \`notes\` MERGES — a new note overwrites the existing note at the *same* pitch+start (restate \`n/8 G3 4|2\` to shorten that G3); other notes are untouched. So **don't rewrite the whole clip to change a few notes** — restate just those. To *replace* a region (not edit in place), clear it first with \`preTransforms\` (\`1|1-2|1: v0\`) or the notes you didn't restate stay behind. Use \`preTransforms\` (see Transforms) to delete, move, or shift pre-existing notes; a \`v0\` in \`notes\` only deletes notes built **within the same string** (inline sculpting after a bar copy)
 
 ## Audio Clips
 \`ppal-read-clip\` \`sample\` include: \`sampleFile\`, \`gainDb\` (dB, 0=unity), \`pitchShift\` (semitones). \`warp\` include: \`sampleLength\`, \`sampleRate\`, \`warping\`, \`warpMode\`.

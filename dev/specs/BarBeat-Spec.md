@@ -287,6 +287,14 @@ C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
 - **Creating variations**: Build on existing patterns by deleting and adding
 - **Merge editing**: In `update-clip`, new notes overlay (merge with) the clip's
   existing notes, so you can selectively delete notes from existing clips
+- **Overwrite in place**: A new (non-`v0`) note at the _same_ pitch and start
+  time as an existing note replaces it — e.g. restating a note with a shorter
+  duration shortens it. NB: this is currently emergent, not explicit in the
+  merge code: `update-clip` does not dedupe regular notes — it concatenates
+  existing-then-new notation and hands both to Live's `add_new_notes`, which
+  collapses the duplicate with the later (new) note winning. To _replace_ a
+  region rather than overwrite individual notes in place, clear it first with
+  `preTransforms` or the un-restated notes remain.
 
 ### Technical Details
 
