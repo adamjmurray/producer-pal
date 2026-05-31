@@ -15,17 +15,23 @@
  * 5/4 test sets would tighten the signal — see the eval validation tracker.
  */
 
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { getToolCalls } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
+import { clearSessionSlots } from "../clip-scenario-helpers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_CONNECT = "ppal-connect";
+const TOOL_READ_CLIP = "ppal-read-clip";
 const LIVE_SET = "basic-midi-4-track";
 const MSG_CONNECT = "Connect to Ableton Live";
+/** Drums is track 0 in basic-midi-4-track; C1 (MIDI 36) is the kick. */
+const DRUMS_TRACK = 0;
+const KICK_PITCH = 36;
 
 /**
  * Find a ppal-create-clip call in the given turn and return parsed result.
@@ -88,6 +94,66 @@ function assertNoteCount(
       }
 
       return true;
+    },
+  };
+}
+
+/**
+ * Build a `state` assertion that reads the clip in `slot` back from Live and
+ * verifies its kicks land on the quarter-note grid with absolute (one-quarter)
+ * durations — the only check that distinguishes correct compound-meter spacing
+ * (e.g. 6/8 quarters at Ableton beats [0,1,2]) from the eighths trap ([0,0.5,1]).
+ *
+ * Reading final clip state (not the create-clip transcript) makes the check
+ * immune to tool-error result strings and to which of several create-clip calls
+ * "won" — it grades the outcome, not the path.
+ *
+ * @param slot - Session clip slot to read (trackIndex/sceneIndex)
+ * @param meter - Expected time signature (e.g. "6/8")
+ * @param expectedStarts - Expected note start_times in Ableton quarter beats
+ * @returns State assertion
+ */
+function assertQuarterFill(
+  slot: string,
+  meter: string,
+  expectedStarts: number[],
+): EvalAssertion {
+  const [numerator, denominator] = meter.split("/").map(Number);
+
+  return {
+    type: "state",
+    tool: TOOL_READ_CLIP,
+    args: { slot, include: ["notes", "timing"] },
+    expect: (result: unknown): boolean => {
+      const clip = result as { notes?: string; timeSignature?: string };
+
+      if (clip.timeSignature !== meter || !clip.notes) return false;
+
+      let events;
+
+      try {
+        events = interpretNotation(clip.notes, {
+          timeSigNumerator: numerator,
+          timeSigDenominator: denominator,
+        });
+      } catch {
+        return false; // unparseable notation — treat as a failed clip
+      }
+
+      const starts = events.map((e) => e.start_time).sort((a, b) => a - b);
+
+      if (starts.length !== expectedStarts.length) return false;
+
+      const positionsMatch = starts.every(
+        (s, i) => Math.abs(s - (expectedStarts[i] as number)) < 1e-6,
+      );
+      // Each kick must be C1 lasting exactly one quarter (1 Ableton beat in any
+      // meter) — pins the absolute-duration invariant `n/4` is testing.
+      const notesValid = events.every(
+        (e) => e.pitch === KICK_PITCH && Math.abs(e.duration - 1) < 1e-6,
+      );
+
+      return positionsMatch && notesValid;
     },
   };
 }
@@ -227,84 +293,28 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
     "On the Drums track, create three 1-bar clips, one per scene: scene 1 in 4/4, scene 2 in 6/8, scene 3 in 5/4. Each clip has a kick (C1) on every quarter note that fills the bar.",
   ],
 
+  // Clear the three target slots so repeat trials (`-r N`) don't inherit clips
+  // from a previous trial (which would otherwise trigger a delete/recreate
+  // dance and mask the real per-trial behavior).
+  setup: (mcpClient) =>
+    clearSessionSlots(mcpClient, [
+      `${DRUMS_TRACK}/0`,
+      `${DRUMS_TRACK}/1`,
+      `${DRUMS_TRACK}/2`,
+    ]),
+
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
 
     { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
 
-    // Across all create-clip calls in turn 1, expect counts 4, 3, 5 (one per
-    // meter) — but allow them in any order, and allow a single batched call
-    // that returns the merged count instead.
-    {
-      type: "custom",
-      description: "quarter notes-per-bar match meters (4/4→4, 6/8→3, 5/4→5)",
-      assert: (turns) => {
-        const calls = getToolCalls(turns, 1).filter(
-          (c) => c.name === TOOL_CREATE_CLIP,
-        );
-
-        if (calls.length === 0) {
-          throw new Error("no ppal-create-clip calls in turn 1");
-        }
-
-        // Collect (timeSignature, noteCount) pairs across all create-clip
-        // calls. A single call may carry per-clip arrays; rely on the
-        // returned clips[] for the breakdown when present.
-        const pairs: Array<{ ts: string; count: number }> = [];
-
-        for (const c of calls) {
-          const result = JSON.parse(String(c.result ?? "{}")) as Record<
-            string,
-            unknown
-          >;
-          const clips = result.clips as
-            | Array<Record<string, unknown>>
-            | undefined;
-
-          if (clips && clips.length > 0) {
-            for (const clip of clips) {
-              pairs.push({
-                ts: String(clip.timeSignature ?? ""),
-                count: Number(clip.noteCount ?? 0),
-              });
-            }
-          } else {
-            pairs.push({
-              ts: String(
-                (c.args.timeSignature as string | undefined) ??
-                  result.timeSignature ??
-                  "",
-              ),
-              count: Number(result.noteCount ?? 0),
-            });
-          }
-        }
-
-        const expected = new Map([
-          ["4/4", 4],
-          ["6/8", 3],
-          ["5/4", 5],
-        ]);
-
-        for (const [ts, want] of expected) {
-          const match = pairs.find((p) => p.ts === ts);
-
-          if (!match) {
-            throw new Error(
-              `no clip with timeSignature ${ts}. got: ${JSON.stringify(pairs)}`,
-            );
-          }
-
-          if (match.count !== want) {
-            throw new Error(
-              `${ts}: expected ${want} notes, got ${match.count}`,
-            );
-          }
-        }
-
-        return true;
-      },
-    },
+    // Read each clip back from Live and assert the kicks land on the
+    // quarter-note grid with one-quarter durations. Positions — not just
+    // counts — are the only signal that catches the 6/8 eighths trap
+    // (3 kicks at [0,0.5,1] instead of quarters at [0,1,2]).
+    assertQuarterFill(`${DRUMS_TRACK}/0`, "4/4", [0, 1, 2, 3]),
+    assertQuarterFill(`${DRUMS_TRACK}/1`, "6/8", [0, 1, 2]),
+    assertQuarterFill(`${DRUMS_TRACK}/2`, "5/4", [0, 1, 2, 3, 4]),
 
     {
       type: "llm_judge",

@@ -7,6 +7,8 @@
  * Shared assertion helpers for clip evaluation scenarios.
  */
 
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { extractToolResultText } from "#evals/chat/mcp.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalTurnResult } from "../../types.ts";
 
@@ -92,4 +94,43 @@ export function getTransforms(
   }
 
   return transforms;
+}
+
+/**
+ * Delete any existing session clips in the given slots. Use as a scenario
+ * `setup` so repeat trials (`-r N`, which reuse the open Live Set) each start
+ * with empty slots instead of inheriting clips from the previous trial.
+ *
+ * @param mcpClient - MCP client for tool calls
+ * @param slots - Session clip slots to clear (e.g. ["0/0", "0/1", "0/2"])
+ */
+export async function clearSessionSlots(
+  mcpClient: Client,
+  slots: string[],
+): Promise<void> {
+  const ids: string[] = [];
+
+  for (const slot of slots) {
+    const result = await mcpClient.callTool({
+      name: "ppal-read-clip",
+      arguments: { slot, include: [] },
+    });
+
+    let id: unknown;
+
+    try {
+      id = (JSON.parse(extractToolResultText(result)) as { id?: unknown }).id;
+    } catch {
+      id = null; // empty/non-JSON slot read — nothing to delete
+    }
+
+    if (id != null) ids.push(String(id));
+  }
+
+  if (ids.length > 0) {
+    await mcpClient.callTool({
+      name: "ppal-delete",
+      arguments: { ids: ids.join(","), type: "clip" },
+    });
+  }
 }

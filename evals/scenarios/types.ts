@@ -1,11 +1,13 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Type definitions for the Producer Pal evaluation system
  */
 
+import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { type ConfigOptions } from "#evals/shared/config.ts";
 import { type TokenUsage } from "#webui/chat/sdk/types.ts";
 
@@ -74,6 +76,12 @@ export interface EvalScenario {
 
   /** Optional config to apply before running scenario */
   config?: ConfigOptions;
+
+  /** Optional async setup run after the MCP session is created but before the
+   *  first message turn. Use to reset Live Set state (e.g. clear stale clip
+   *  slots) so repeat trials (`-r N`, which reuse the already-open Live Set)
+   *  each start from a clean slate. */
+  setup?: (mcpClient: Client) => Promise<void>;
 }
 
 /**
