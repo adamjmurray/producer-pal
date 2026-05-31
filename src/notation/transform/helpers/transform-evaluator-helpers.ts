@@ -263,7 +263,13 @@ export function calculateActiveTimeRange(
       musicalBeatsPerBar,
     );
 
-    if (noteBeats < startBeats || noteBeats > endBeats) {
+    // End bound is inclusive by default; half-open (`N|*` whole-bar selectors
+    // and the `-<` marker) drops a note that lands exactly on the end downbeat.
+    const pastEnd = assignment.timeRange.endExclusive
+      ? noteBeats >= endBeats
+      : noteBeats > endBeats;
+
+    if (noteBeats < startBeats || pastEnd) {
       return { skip: true }; // Skip this assignment - note outside time range
     }
 

@@ -73,6 +73,10 @@ export interface TimeRange {
   startBeat: number;
   endBar: number;
   endBeat: number;
+  /** When true the end bound is exclusive (half-open). Set by `N|*`/`A|*-B|*`
+   * whole-bar selectors and the `-<` exclusive-end marker; absent/false keeps
+   * the legacy inclusive-both-ends behavior. */
+  endExclusive?: boolean;
 }
 
 /** Transform assignment produced by the parser */

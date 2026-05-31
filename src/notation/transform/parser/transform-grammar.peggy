@@ -160,17 +160,34 @@ pitchClass
     return { name: pc, value: PITCH_CLASS_VALUES[pc] };
   }
 
+// Whole-bar wildcard (`N|*`) and a span of whole bars (`A|*-B|*`) select every
+// note in the named bar(s). Both desugar to a half-open range [first|1, after|1)
+// — `endBar` is the bar AFTER the last selected bar and `endExclusive` drops a
+// note that lands exactly on that downbeat, so `3|*` is precisely "all of bar 3"
+// with no spill onto 4|1. The `<` marker on a normal range (`3|1-<4|1`) makes
+// only its end bound exclusive; without it ranges stay inclusive on both ends.
+// Wildcard forms come first so the `*` branches win before the beatValue branch.
 timeRange "time range"
-  = startBar:oneOrMoreInt "|" startBeat:beatValue "-" endBar:oneOrMoreInt "|" endBeat:beatValue {
+  = startBar:oneOrMoreInt "|" "*" "-" endBar:oneOrMoreInt "|" "*" {
+    return { startBar, startBeat: 1, endBar: endBar + 1, endBeat: 1, endExclusive: true };
+  }
+  / bar:oneOrMoreInt "|" "*" {
+    return { startBar: bar, startBeat: 1, endBar: bar + 1, endBeat: 1, endExclusive: true };
+  }
+  / startBar:oneOrMoreInt "|" startBeat:beatValue "-" excl:"<"? endBar:oneOrMoreInt "|" endBeat:beatValue {
     const beatsPerBar = options.beatsPerBar ?? 4;
     const start = borrowBars(startBar, startBeat, beatsPerBar);
     const end = borrowBars(endBar, endBeat, beatsPerBar);
-    return {
+    const range = {
       startBar: start.bar,
       startBeat: start.beat,
       endBar: end.bar,
       endBeat: end.beat
     };
+    // Only the `<` marker makes the end exclusive; otherwise leave the field
+    // absent so a default range serializes to the legacy inclusive shape.
+    if (excl != null) range.endExclusive = true;
+    return range;
   }
 
 // A range-bound beat position. Same dialect as bar|beat note positions

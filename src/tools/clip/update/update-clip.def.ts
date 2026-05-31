@@ -115,7 +115,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across ids); clear or edit notes already in the clip — a region (e.g. '1|1-2|1: velocity = 0') or everything ('velocity = 0'). Works with or without notes",
+        "transform expressions applied to EXISTING notes BEFORE merging any new notes (broadcast across ids); clear or edit notes already in the clip — a whole bar ('3|*: velocity = 0', the |* wildcard avoids spilling onto the next downbeat), a span ('1|1-2|1: velocity = 0'), or everything ('velocity = 0'). Works with or without notes",
       ),
     ...(process.env.ENABLE_CODE_EXEC === "true"
       ? {
@@ -220,7 +220,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       notes:
         "MIDI notes (bar|beat). MERGES - overwrites at same pitch+start; restate to edit in place. Delete/move existing notes via preTransforms, don't rewrite the clip",
       preTransforms:
-        "clear/edit notes already in the clip. Shorthand only (see Skills): `1|1-2|1: v0` clears a region, `v0` clears all, `C1: C4` remaps a drum lane",
+        "clear/edit notes already in the clip. Shorthand only (see Skills): `3|*: v0` clears all of bar 3 (|* wildcard = whole bar), `1|1-2|1: v0` clears a span, `v0` clears all, `C1: C4` remaps a drum lane",
     },
   },
 });

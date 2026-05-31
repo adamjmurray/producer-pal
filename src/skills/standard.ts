@@ -136,7 +136,9 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 **Syntax:** \`[selector:] parameter operator expression\` (one per line)
 - **Selector:** pitch and/or time filter, followed by \`:\` - e.g., \`C3:\`, \`1|1-2|4:\`, \`C3 1|1-2|4:\`, \`1|1-2|4 C3:\`
 - **Pitch filter:** \`C3\` (single) or \`C3-C5\` (range) - omit for all pitches
-- **Time filter:** \`1|1-2|4\` (bar|beat range, inclusive, matches note start time); bounds use the same beat dialect as positions (decimal or \`±n\` offset, e.g. \`1|1+n/12-2|1\`)
+- **Time filter:** \`1|1-2|4\` (bar|beat range, **ends inclusive**, matches note start time); bounds use the same beat dialect as positions (decimal or \`±n\` offset, e.g. \`1|1+n/12-2|1\`)
+  - **Whole bars:** \`3|*\` = all of bar 3, \`1|*-3|*\` = bars 1-3 — half-open, so exactly those bars with no spill onto the next downbeat. Prefer this for "measure N"; \`3|1-4|1\` would also match a note on 4|1
+  - **Exclusive end:** append \`-<\` to make only the end bound exclusive — \`3|1-<4|1\` = up to but not including 4|1 (for sub-bar half-open spans)
 - **MIDI parameters:** velocity (1-127; <=0 deletes note), pitch (0-127), timing (musical beats), duration (musical beats; <=0 deletes note), probability (0-1), deviation (-127 to 127)
 - **Audio parameters:** gain (-70 to 24 dB), pitchShift (-48 to 48 semitones)
 - **Operators:** \`+=\`, \`-=\` (add/subtract), \`*=\`, \`/=\` (scale current value), \`=\` (set)
@@ -194,7 +196,7 @@ Transforms modify notes in place — previous transforms are already baked in. D
 MIDI params ignored for audio clips, vice versa.
 Across a batch (update-clip \`ids\` / duplicate copies), \`clip.index\`/\`clip.count\` span the full batch — drive per-clip variation with \`clip.index\` arithmetic (\`pitch += clip.index * 12\`) or \`clipseq()\` (\`pitch += clipseq(0, 5, 7)\`); see Shape above.
 
-**Editing existing notes (update-clip):** \`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. \`preTransforms\` runs on the existing notes BEFORE any new \`notes\` merge — clear a region (\`1|1-2|1: velocity = 0\`), a lane (\`C1: velocity = 0\`), everything (\`velocity = 0\`), or remap (\`C1: C4\`); works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` mutates the merged result — also the efficient way to *thin* density: generate with repeats/bar-copies in \`notes\`, then prune with a selector instead of scattering \`v0\`s. (A \`v0\` at an existing note's start also deletes it, but prefer \`preTransforms\`; reserve inline \`v0\` for notes built in the same \`notes\` string.)
+**Editing existing notes (update-clip):** \`preTransforms\` is *the* way to delete or change notes already in the clip. Pipeline: \`preTransforms → notes (merge) → transforms\`. \`preTransforms\` runs on the existing notes BEFORE any new \`notes\` merge — clear a whole bar (\`3|*: velocity = 0\`), a region (\`1|1-2|1: velocity = 0\`), a lane (\`C1: velocity = 0\`), everything (\`velocity = 0\`), or remap (\`C1: C4\`); works with or without \`notes\`; ignored on audio clips. Same syntax as transforms. \`transforms\` mutates the merged result — also the efficient way to *thin* density: generate with repeats/bar-copies in \`notes\`, then prune with a selector instead of scattering \`v0\`s. (A \`v0\` at an existing note's start also deletes it, but prefer \`preTransforms\`; reserve inline \`v0\` for notes built in the same \`notes\` string.)
 ${process.env.ENABLE_CODE_EXEC === "true" ? codeTransformsSkills : ""}
 ## Finding Library Content
 

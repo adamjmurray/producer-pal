@@ -576,4 +576,98 @@ G4-G5: velocity += 20`;
       expect(result).toStrictEqual({});
     });
   });
+
+  // Whole-bar wildcard (`N|*`, `A|*-B|*`) and the `-<` exclusive-end marker all
+  // produce half-open ranges, so a note that lands exactly on the next bar's
+  // downbeat is NOT selected. This is the fix for "delete bar 3" overshooting
+  // into the first note of bar 4. The default `start-end` range stays inclusive.
+  describe("half-open range bounds", () => {
+    const inRange = (transform: string, bar: number, beat: number) =>
+      evaluateTransform(transform, { ...createContext(), bar, beat }).velocity
+        ?.value === 10;
+
+    describe("whole-bar wildcard N|*", () => {
+      const t = "3|*: velocity += 10";
+
+      it("includes the bar's downbeat and interior", () => {
+        expect(inRange(t, 3, 1)).toBe(true);
+        expect(inRange(t, 3, 4.5)).toBe(true);
+      });
+
+      it("excludes the next bar's downbeat (no spill onto 4|1)", () => {
+        expect(inRange(t, 4, 1)).toBe(false);
+      });
+
+      it("excludes notes before the bar", () => {
+        expect(inRange(t, 2, 4)).toBe(false);
+      });
+
+      it("is meter-aware: in 3/4 the bar ends at beat 3, 4|1 still excluded", () => {
+        const at33 = evaluateTransform(t, {
+          ...createContext({ numerator: 3, denominator: 4 }),
+          bar: 3,
+          beat: 3,
+        });
+        const at41 = evaluateTransform(t, {
+          ...createContext({ numerator: 3, denominator: 4 }),
+          bar: 4,
+          beat: 1,
+        });
+
+        expect(at33.velocity?.value).toBe(10);
+        expect(at41).toStrictEqual({});
+      });
+    });
+
+    describe("whole-bar span A|*-B|*", () => {
+      const t = "1|*-3|*: velocity += 10";
+
+      it("includes every bar in the span", () => {
+        expect(inRange(t, 1, 1)).toBe(true);
+        expect(inRange(t, 2, 3)).toBe(true);
+        expect(inRange(t, 3, 4.99)).toBe(true);
+      });
+
+      it("excludes the downbeat after the span", () => {
+        expect(inRange(t, 4, 1)).toBe(false);
+      });
+    });
+
+    describe("exclusive-end marker -<", () => {
+      it("excludes the end bound", () => {
+        const t = "3|1-<4|1: velocity += 10";
+
+        expect(inRange(t, 3, 2)).toBe(true);
+        expect(inRange(t, 4, 1)).toBe(false);
+      });
+
+      it("works for sub-bar half-open ranges", () => {
+        // beats 2-3 of bar 1: includes 1|2 and 1|3, excludes 1|4.
+        const t = "1|2-<1|4: velocity += 10";
+
+        expect(inRange(t, 1, 2)).toBe(true);
+        expect(inRange(t, 1, 3)).toBe(true);
+        expect(inRange(t, 1, 4)).toBe(false);
+      });
+
+      it("default range stays inclusive of the end bound", () => {
+        const t = "3|1-4|1: velocity += 10";
+
+        expect(inRange(t, 4, 1)).toBe(true);
+      });
+    });
+
+    describe("wildcard combined with a pitch lane", () => {
+      const t = "C1 3|*: velocity += 10";
+      const inRangePitched = (bar: number, beat: number, pitch: number) =>
+        evaluateTransform(t, { ...createContext(), bar, beat, pitch }).velocity
+          ?.value === 10;
+
+      it("selects the lane within the bar, excludes other lanes and the next downbeat", () => {
+        expect(inRangePitched(3, 1, 36)).toBe(true); // C1 in bar 3
+        expect(inRangePitched(3, 1, 38)).toBe(false); // D1 filtered by pitch
+        expect(inRangePitched(4, 1, 36)).toBe(false); // C1 on 4|1 filtered by time
+      });
+    });
+  });
 });
