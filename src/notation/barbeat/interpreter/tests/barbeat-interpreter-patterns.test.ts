@@ -87,6 +87,26 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result[2]!.start_time).toBeCloseTo(2, 10);
     });
 
+    it("places a repeat that starts before the clip start at the correct (negative) time", () => {
+      // `1|1-n/8` pulls the first note an eighth before the downbeat (-0.5
+      // Ableton beats in 4/4); the second repeat lands on the downbeat (0).
+      // Regression: the pre-start position was decomposed with a truncated `%`,
+      // recomposing to -4.5 instead of -0.5 (and -3.5 in 6/8).
+      const in44 = interpretNotation("C3 1|1-n/8x2@n/8", {
+        timeSigNumerator: 4,
+        timeSigDenominator: 4,
+      });
+
+      expect(in44.map((n) => n.start_time)).toStrictEqual([-0.5, 0]);
+
+      const in68 = interpretNotation("C3 1|1-n/8x2@n/8", {
+        timeSigNumerator: 6,
+        timeSigDenominator: 8,
+      });
+
+      expect(in68.map((n) => n.start_time)).toStrictEqual([-0.5, 0]);
+    });
+
     it("handles repeat pattern overflowing into next bar", () => {
       const result = interpretNotation("C1 1|3x6@n/4");
 

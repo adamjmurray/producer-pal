@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
@@ -68,7 +69,14 @@ function expandRepeatPattern(
   for (let i = 0; i < times; i++) {
     const absoluteBeats = startBeats + i * step;
     const bar = Math.floor(absoluteBeats / beatsPerBar) + 1;
-    const beat = (absoluteBeats % beatsPerBar) + 1;
+    // Floored modulo (not bare `%`): JS `%` is truncated, keeping the dividend's
+    // sign, so a negative absoluteBeats (a repeat landing before the clip start,
+    // e.g. `1|1-n/8x2`) would decompose into a {bar, beat} that no longer
+    // recomposes to the same time in emitPitchAtPosition — placing the note bars
+    // away from where it belongs. The grammar's borrowBars wraps sub-1 beats the
+    // same (floored) way; match it so the round-trip is exact.
+    const beat =
+      (((absoluteBeats % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
 
     positions.push({ bar, beat });
   }
