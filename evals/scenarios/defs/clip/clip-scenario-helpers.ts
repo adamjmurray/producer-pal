@@ -9,6 +9,8 @@
 
 import { type Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { extractToolResultText } from "#evals/chat/mcp.ts";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
+import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../assertions/index.ts";
 import { type EvalAssertion, type EvalTurnResult } from "../../types.ts";
 
@@ -17,6 +19,9 @@ export const TOOL_CONNECT = "ppal-connect";
 
 /** update-clip tool name. */
 export const TOOL_UPDATE_CLIP = "ppal-update-clip";
+
+/** read-clip tool name. */
+export const TOOL_READ_CLIP = "ppal-read-clip";
 
 /** Standard turn-0 message that opens a connection to Live. */
 export const MSG_CONNECT = "Connect to Ableton Live";
@@ -94,6 +99,48 @@ export function getTransforms(
   }
 
   return transforms;
+}
+
+/**
+ * Parse a clip's notes from the last ppal-read-clip result in a turn, back into
+ * NoteEvents (start_time in musical beats). Self-calibrating: reads the clip's
+ * own time signature so bar math works in any meter. Returns the notes plus
+ * beatsPerBar (the meter numerator) so callers can compute bar boundaries.
+ *
+ * @param turns - All turn results
+ * @param turn - Turn index containing the read
+ * @returns Parsed notes and beats-per-bar, or null if no clip read with notes
+ */
+export function readClipNotesFromTurn(
+  turns: EvalTurnResult[],
+  turn: number,
+): { notes: NoteEvent[]; beatsPerBar: number } | null {
+  const reads = getToolCalls(turns, turn).filter(
+    (c) => c.name === TOOL_READ_CLIP && c.result != null,
+  );
+
+  for (const call of reads.reverse()) {
+    try {
+      const parsed = JSON.parse(String(call.result)) as {
+        notes?: string;
+        timeSignature?: string;
+      };
+
+      if (parsed.notes == null) continue;
+
+      const [num, den] = (parsed.timeSignature ?? "4/4").split("/").map(Number);
+      const notes = interpretNotation(parsed.notes, {
+        timeSigNumerator: num ?? 4,
+        timeSigDenominator: den ?? 4,
+      });
+
+      return { notes, beatsPerBar: num ?? 4 };
+    } catch {
+      // non-JSON / unexpected shape — try the next read
+    }
+  }
+
+  return null;
 }
 
 /**

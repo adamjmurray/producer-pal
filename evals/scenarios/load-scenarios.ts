@@ -26,6 +26,8 @@ import {
   durationReachForQuarter,
   legatoTransforms,
   melodyTransforms,
+  rangeClearFirstHalf,
+  rangeClearWholeBar,
   pretransformsHatFillsBaseline,
   pretransformsMelodyReplaceBaseline,
   pretransformsSnareSwapBaseline,
@@ -75,6 +77,8 @@ const allScenarios: EvalScenario[] = [
   slmPretransformsRegionClear,
   slmPretransformsDrumRemap,
   surgicalNoteDurationEdit,
+  rangeClearWholeBar,
+  rangeClearFirstHalf,
 ];
 
 export interface LoadScenariosOptions {

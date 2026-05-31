@@ -32,6 +32,10 @@ export { durationReachForQuarter } from "./clip/notation/duration-reach-for-quar
 export { legatoTransforms } from "./clip/legato-transforms.ts";
 export { melodyTransforms } from "./clip/melody-transforms.ts";
 export {
+  rangeClearFirstHalf,
+  rangeClearWholeBar,
+} from "./clip/notation/range-bound-clears.ts";
+export {
   pretransformsHatFillsBaseline,
   pretransformsMelodyReplaceBaseline,
   pretransformsSnareSwapBaseline,

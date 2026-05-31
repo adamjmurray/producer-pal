@@ -24,63 +24,20 @@
  * Handing the whole clip back as `notes` FAILS (the full-rewrite anti-pattern).
  */
 
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { getToolCalls } from "../../../assertions/index.ts";
-import {
-  type EvalAssertion,
-  type EvalScenario,
-  type EvalTurnResult,
-} from "../../../types.ts";
+import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
 import {
   assertNotesRead,
   MSG_CONNECT,
+  readClipNotesFromTurn,
   TOOL_CONNECT,
   TOOL_UPDATE_CLIP,
 } from "../clip-scenario-helpers.ts";
 
 const LIVE_SET = "basic-with-drum-and-lead-clips";
-const TOOL_READ_CLIP = "ppal-read-clip";
 /** A note matches its pre-edit twin when pitch is equal and start within this. */
 const START_TOLERANCE = 0.01;
-
-/**
- * Parse the lead clip's notes from the last ppal-read-clip result in a turn.
- *
- * @param turns - All turn results
- * @param turn - Turn index containing the read
- * @returns Parsed note events, or null if no clip read with notes is found
- */
-function readClipNotes(
-  turns: EvalTurnResult[],
-  turn: number,
-): NoteEvent[] | null {
-  const reads = getToolCalls(turns, turn).filter(
-    (c) => c.name === TOOL_READ_CLIP && c.result != null,
-  );
-
-  for (const call of reads.reverse()) {
-    try {
-      const parsed = JSON.parse(String(call.result)) as {
-        notes?: string;
-        timeSignature?: string;
-      };
-
-      if (parsed.notes == null) continue;
-
-      const [num, den] = (parsed.timeSignature ?? "4/4").split("/").map(Number);
-
-      return interpretNotation(parsed.notes, {
-        timeSigNumerator: num ?? 4,
-        timeSigDenominator: den ?? 4,
-      });
-    } catch {
-      // non-JSON / unexpected shape — try the next read
-    }
-  }
-
-  return null;
-}
 
 /**
  * Count pitch tokens (e.g. C3, F#4, Bb2) in a bar|beat notes string. Used as a
@@ -159,7 +116,7 @@ function assertSurgicalNotRewrite(
     type: "custom",
     description: "duration edit is surgical, not a full clip rewrite",
     assert: (turns) => {
-      const original = readClipNotes(turns, readTurn);
+      const original = readClipNotesFromTurn(turns, readTurn)?.notes ?? null;
 
       if (original == null) {
         throw new Error("could not read original clip notes");
@@ -210,8 +167,8 @@ function assertShortenOutcome(
     type: "custom",
     description: "last two notes halved, all others unchanged, no duplicates",
     assert: (turns) => {
-      const before = readClipNotes(turns, readTurn);
-      const after = readClipNotes(turns, verifyTurn);
+      const before = readClipNotesFromTurn(turns, readTurn)?.notes ?? null;
+      const after = readClipNotesFromTurn(turns, verifyTurn)?.notes ?? null;
 
       if (before == null || after == null) {
         throw new Error("could not read clip notes before/after the edit");
