@@ -79,7 +79,7 @@ export function formatBeatPosition(
   // before that escape, so a clean tuplet beyond the beat-offset set spells
   // exactly too.)
   if (offsetFraction == null) {
-    return decimalIsLossless(value)
+    return decimalRoundTripsCleanly(value)
       ? formatDecimal(value)
       : `${base}+n${formatAbsoluteDuration(wholeNoteFraction)}`;
   }
@@ -87,7 +87,7 @@ export function formatBeatPosition(
   // Dyadic sub-beats round-trip exactly as a decimal, which is always shorter
   // than (and more readable than) the offset form — prefer it. Tuplet positions
   // have lossy decimals, so they fall through to the note-value offset.
-  if (decimalIsLossless(value)) return formatDecimal(value);
+  if (decimalRoundTripsCleanly(value)) return formatDecimal(value);
 
   return `${base}+n${offsetFraction}`;
 }
@@ -192,7 +192,7 @@ export function formatOffGridBeats(beats: number): string {
 }
 
 /**
- * Check if a value can be represented losslessly with 3 decimal places — the
+ * Check if a value's 3-decimal spelling round-trips cleanly — the
  * gate {@link formatBeatPosition} uses to prefer the shorter decimal spelling
  * (`1.5`) over the note-value offset form. Mostly a representation choice: when
  * it returns false the caller falls back to an exact note-value offset
@@ -203,7 +203,7 @@ export function formatOffGridBeats(beats: number): string {
  * @param value - Original numeric value
  * @returns True if toFixed(3) preserves the value to within ~1e-5
  */
-function decimalIsLossless(value: number): boolean {
+function decimalRoundTripsCleanly(value: number): boolean {
   const scaled = value * 1000;
 
   return Math.abs(scaled - Math.round(scaled)) < 0.01;
