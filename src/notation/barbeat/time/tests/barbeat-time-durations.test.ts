@@ -254,6 +254,20 @@ describe("durationToAbletonBeats", () => {
     );
   });
 
+  it("rejects n-prefixed bar forms with a targeted Nbar steer", () => {
+    // Convergent model hallucination (`n1bar` to fill a bar): the `n` sigil is
+    // only for denominator-bearing note values, bars are the bare `Nbar` form.
+    for (const bad of ["n1bar", "n/1bar", "n3/4bar"]) {
+      expect(() => durationToAbletonBeats(bad, 4, 4)).toThrow(
+        /bar durations don't use the "n" prefix/,
+      );
+    }
+
+    expect(() => durationToAbletonBeats("n2bar", 4, 4)).toThrow(
+      /write Nbar \(e\.g\. 2bar\)/,
+    );
+  });
+
   it("throws on bar:beat duration glyph (retired)", () => {
     expect(() => durationToAbletonBeats("1:0", 4, 4)).toThrow(
       "Invalid duration format",

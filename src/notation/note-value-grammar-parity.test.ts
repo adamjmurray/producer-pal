@@ -217,6 +217,23 @@ describe("note-value grammar parity across all parse sites", () => {
     }
   });
 
+  describe("an n-prefixed bar duration is rejected with a helpful error", () => {
+    // Convergent hallucination: models reach for `n1bar` to fill a bar because
+    // every other note value wears the `n` sigil. It's a category error (the `n`
+    // marks a denominator-bearing fraction; bars are the bare `Nbar` form) — every
+    // duration site rejects it with the same targeted "don't use the n prefix"
+    // steer rather than a generic format error.
+    for (const token of ["n1bar", "n/1bar", "n3/4bar"]) {
+      it(`"${token}" throws the Nbar steer on every duration site`, () => {
+        for (const site of DURATION_SITES) {
+          expect(() => site.fn(token, 4, 4)).toThrow(
+            /bar durations don't use the "n" prefix/,
+          );
+        }
+      });
+    }
+  });
+
   describe("a bare number / bare fraction is never a note-value duration", () => {
     // Regression lock: durationToAbletonBeats once accepted bare numbers.
     for (const token of ["5", "1.5", "2", "1/4"]) {

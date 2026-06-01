@@ -337,6 +337,17 @@ export function durationToAbletonBeats(
   );
 
   if (!match) {
+    // `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error
+    // models reach for. Give the targeted "did you mean Nbar" steer rather than
+    // the generic format error. Mirrors the badBarDuration rule in both grammars.
+    const barNPrefix = duration.match(/^n(?:\d*\/)?(\d+)bar$/);
+
+    if (barNPrefix) {
+      throw new Error(
+        `"${duration}" is invalid: bar durations don't use the "n" prefix — write Nbar (e.g. ${barNPrefix[1]}bar).`,
+      );
+    }
+
     throw new Error(
       `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4", "n1/4", or off-grid "n1.9638/4"), or "Nbar+n<fraction>" (e.g. "1bar+n/4"). Note values require the "n" prefix; a bare number or bare fraction is not a duration.`,
     );

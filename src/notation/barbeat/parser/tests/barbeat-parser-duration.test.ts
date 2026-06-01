@@ -82,9 +82,18 @@ describe("BarBeatScript Parser - duration", () => {
     ]);
   });
 
-  it("rejects the n-prefixed bar form (bars never wear an n)", () => {
-    expect(() => parser.parse("n1bar C3")).toThrow(
-      /durations need a denominator/,
+  it("rejects the n-prefixed bar form with a targeted Nbar steer", () => {
+    // `n1bar`/`n/1bar`/`n3/4bar` are a convergent model hallucination — bars are
+    // the bare `Nbar` form, the `n` sigil is only for note-value fractions.
+    for (const bad of ["n1bar C3", "n/1bar C3", "n3/4bar C3"]) {
+      expect(() => parser.parse(bad)).toThrow(
+        /bar durations don't use the "n" prefix/,
+      );
+    }
+
+    // The suggested correction echoes the bar count.
+    expect(() => parser.parse("n2bar C3")).toThrow(
+      /write Nbar \(e\.g\. 2bar\)/,
     );
   });
 

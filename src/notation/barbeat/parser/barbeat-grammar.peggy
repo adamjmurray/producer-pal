@@ -145,7 +145,8 @@ velocity "velocity value"
   }
 
 duration "duration value"
-  = bars:oneOrMoreInt "bar" frac:durationBarFraction? {
+  = badBarDuration
+  / bars:oneOrMoreInt "bar" frac:durationBarFraction? {
     // Nbar (e.g. 1bar) or Nbar+nA/B (e.g. 1bar+n3/4). `bar` is meter-aware and
     // never wears an `n`; the interpreter resolves it against beatsPerBar.
     return { bars, duration: frac ?? 0 };
@@ -162,6 +163,14 @@ duration "duration value"
 badAbsoluteValue
   = unsignedMixedNumber { return text(); }
   / unsignedDecimal { return text(); }
+
+// `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error —
+// the `n` sigil marks a note-value fraction (denominator required); bars are the
+// bare `Nbar` form. Matched only to raise a targeted "did you mean Nbar" error.
+badBarDuration
+  = "n" ([0-9]* "/")? last:$([0-9]+) "bar" {
+      throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write Nbar (e.g. ${last}bar).`);
+    }
 
 pitch "note pitch"
   = pitchClass:pitchClass octave:signedInt {

@@ -398,6 +398,12 @@ velocity += 20 * cos(1bar, sync); // a bar-length cycle
 meter-invariant half. They are uniform across authoring, length fields, and
 transforms.
 
+The `n` sigil marks a denominator-bearing note value, so an `n`-prefixed bar
+(`n1bar`, `n/1bar`, `n3/4bar`) is invalid on every duration surface. Because
+models reach for it by analogy with the other note values, it raises a targeted
+error ("bar durations don't use the `n` prefix — write Nbar"), not the generic
+format error.
+
 ### Note Property Units
 
 All note properties are exposed in musical beats:

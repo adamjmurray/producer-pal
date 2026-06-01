@@ -328,11 +328,20 @@ primary
   / "(" _ expr:expression _ ")" { return expr; }
 
 nDuration "absolute duration value"
-  = "n" frac:unsignedFraction {
+  = badBarDuration
+  / "n" frac:unsignedFraction {
     return { type: "nDuration", wholeNoteFraction: frac };
   }
   / "n" bad:badAbsoluteValue {
     throw new Error(`durations need a denominator: n/4 = quarter, n/8 = eighth, n/12 = eighth triplet. Got n${bad}`);
+  }
+
+// `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error —
+// the `n` sigil marks a note-value fraction (denominator required); bars are the
+// bare `Nbar` form. Matched only to raise a targeted "did you mean Nbar" error.
+badBarDuration
+  = "n" ([0-9]* "/")? last:$([0-9]+) "bar" {
+    throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write Nbar (e.g. ${last}bar).`);
   }
 
 // Meter-aware bar duration (`Nbar`): N bars = N * beats-per-bar musical beats
