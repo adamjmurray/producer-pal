@@ -194,7 +194,7 @@ function applyPreTransformsToExisting(
  * @param clip - The clip to quantize
  * @param options - Quantization options
  * @param options.quantize - Quantization strength 0-1
- * @param options.quantizeGrid - Note grid value
+ * @param options.quantizeGrid - Note grid value (defaults to 1/16)
  * @param options.quantizePitch - Limit to specific pitch (optional)
  */
 export function handleQuantization(
@@ -212,15 +212,12 @@ export function handleQuantization(
     return;
   }
 
-  // Warn and skip if grid not provided
-  if (quantizeGrid == null) {
-    console.warn("quantize parameter ignored - quantizeGrid is required");
-
-    return;
-  }
+  // Default to 1/16 when no grid given: the finest common grid, so it moves
+  // notes the least (safest when the model didn't specify one).
+  const requestedGrid = quantizeGrid ?? "1/16";
 
   // Bridge n/N note-value aliases to their native grid form before lookup
-  const grid = QUANTIZE_GRID_ALIASES[quantizeGrid] ?? quantizeGrid;
+  const grid = QUANTIZE_GRID_ALIASES[requestedGrid] ?? requestedGrid;
   const gridValue = QUANTIZE_GRID[grid];
 
   if (quantizePitch != null) {

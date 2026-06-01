@@ -103,16 +103,14 @@ describe("handleQuantization", () => {
     expect(mockClip.call).not.toHaveBeenCalled();
   });
 
-  it("should warn and skip when quantizeGrid is not provided", () => {
+  it("should default to a 1/16 grid when quantizeGrid is not provided", () => {
     mockClip.getProperty.mockReturnValue(1); // is_midi_clip = 1
 
     handleQuantization(mockClip, { quantize: 1 });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("quantizeGrid is required"),
-    );
-    expect(mockClip.call).not.toHaveBeenCalled();
+    // 1/16 maps to grid value 5
+    expect(mockClip.call).toHaveBeenCalledWith("quantize", 5, 1);
+    expect(outlet).not.toHaveBeenCalled();
   });
 
   it("should call quantize with correct grid value and amount", () => {
