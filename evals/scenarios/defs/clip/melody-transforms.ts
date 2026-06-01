@@ -90,8 +90,10 @@ export const melodyTransforms: EvalScenario = {
           );
         }
 
-        // Verify time selectors are present (bar|beat format)
-        if (!/\d\|\d/.test(transforms)) {
+        // Verify time selectors are present (bar|beat format). Accept both an
+        // explicit beat (`3|1`) and the whole-bar wildcard (`3|*`), which is the
+        // idiomatic way to select a full bar.
+        if (!/\d\|[\d*]/.test(transforms)) {
           throw new Error(
             `transforms does not have time selectors: ${transforms.slice(0, 120)}`,
           );

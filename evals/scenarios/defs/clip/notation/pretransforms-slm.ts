@@ -18,8 +18,10 @@
  * The cross-contamination failure (both directions): putting the *clear* into
  * `notes` (e.g. emitting `v0` notes alongside new content) instead of
  * `preTransforms`, or putting *new content* into `preTransforms`. Classifier
- * tags `pretransforms-shorthand` (correct), `notes-contamination` (the
- * failure), `two-call`, or `unrecognized`.
+ * tags `pretransforms-shorthand` (correct), `transforms-direct` (a model with
+ * the full schema — i.e. not actually under small-model mode — using the
+ * `transforms` param for the same remap/clear, equally valid), `two-call`,
+ * `notes-contamination` (the failure), or `unrecognized`.
  *
  * Success signal for the broader effort: if SLM reliably reaches preTransforms
  * shorthand here, the small-model skill can shed its longhand clear/remap
@@ -45,6 +47,7 @@ const SLM_CONFIG = { smallModelMode: true };
 
 type SlmPath =
   | "pretransforms-shorthand"
+  | "transforms-direct"
   | "notes-contamination"
   | "two-call"
   | "unrecognized";
@@ -78,6 +81,22 @@ function classifySlmPath(
     return {
       path: "pretransforms-shorthand",
       evidence: `preTransforms: ${String(reach.args.preTransforms).slice(0, 80)}`,
+    };
+  }
+
+  // A model that still has the full schema (the scenario run outside actual
+  // small-model mode) reaches for the `transforms` param for the same
+  // remap/clear. That is a correct, recognizable edit — just not the
+  // SLM-specific preTransforms shorthand — so it must not be tagged
+  // "unrecognized".
+  const transformsEdit = calls.find(
+    (c) => c.args.transforms != null && String(c.args.transforms).trim() !== "",
+  );
+
+  if (transformsEdit) {
+    return {
+      path: "transforms-direct",
+      evidence: `transforms: ${String(transformsEdit.args.transforms).slice(0, 80)}`,
     };
   }
 

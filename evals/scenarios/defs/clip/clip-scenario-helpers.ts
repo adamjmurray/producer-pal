@@ -32,8 +32,11 @@ export const READ_DRUM_NOTES =
 
 /**
  * Create a custom assertion that verifies clips were found and notes were read.
- * Checks that only ppal-read-* tools were called and at least one read included
- * "notes" in the include array.
+ * Checks that only ppal-read-* tools were called and at least one read pulled in
+ * notes — either explicitly ("notes" in the include array) or via the "*"
+ * wildcard, which returns every field (notes included). A capable model often
+ * reaches for `include: ["*"]` to read a clip comprehensively, and that must
+ * count as reading the notes.
  *
  * @param turn - Turn index to check
  * @returns Custom assertion for clip reading
@@ -54,7 +57,7 @@ export function assertNotesRead(turn: number): EvalAssertion {
         if (
           name !== "ppal-read-live-set" &&
           Array.isArray(args.include) &&
-          args.include.includes("notes")
+          (args.include.includes("notes") || args.include.includes("*"))
         ) {
           notesRead = true;
         }
