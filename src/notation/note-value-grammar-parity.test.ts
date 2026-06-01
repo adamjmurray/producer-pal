@@ -217,6 +217,28 @@ describe("note-value grammar parity across all parse sites", () => {
     }
   });
 
+  describe("the plural `bars` tolerance alias agrees with singular everywhere", () => {
+    // Models may pluralize a bar duration (`2bars`). It is an accepted alias of
+    // `Nbar` on every duration site, computing the identical value (output stays
+    // singular `bar` — this is input tolerance only).
+    for (const [num, den] of METERS) {
+      for (const [plural, singular] of [
+        ["1bars", "1bar"],
+        ["2bars", "2bar"],
+        ["1bars+n/4", "1bar+n/4"],
+      ] as const) {
+        it(`"${plural}" ≡ "${singular}" on every site in ${num}/${den}`, () => {
+          for (const site of DURATION_SITES) {
+            expect(site.fn(plural, num, den)).toBeCloseTo(
+              site.fn(singular, num, den),
+              9,
+            );
+          }
+        });
+      }
+    }
+  });
+
   describe("an n-prefixed bar duration is rejected with a helpful error", () => {
     // Convergent hallucination: models reach for `n1bar` to fill a bar because
     // every other note value wears the `n` sigil. It's a category error (the `n`

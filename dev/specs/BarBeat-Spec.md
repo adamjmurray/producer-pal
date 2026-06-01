@@ -117,7 +117,9 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     own `n`. So `n1bar` is invalid — write `1bar`. The `n`-prefixed bar forms
     (`n1bar`, `n/1bar`, `n3/4bar`) are a common model hallucination, so every
     duration site rejects them with a targeted error ("bar durations don't use
-    the `n` prefix — write Nbar"), not the generic format error
+    the `n` prefix — write Nbar"), not the generic format error. A plural `bars`
+    (`2bars`) is accepted as an input-tolerance alias of `Nbar` on every
+    duration site; serialized output is always singular (`2bar`)
   - Default: `n/4` (one quarter note)
   - Requires whitespace separation from following elements
   - NOTE: clip `length` and arrangement durations use this same duration

@@ -150,6 +150,14 @@ describe("durationToAbletonBeats", () => {
       expect(durationToAbletonBeats("1bar", 2, 2)).toBe(4);
       expect(durationToAbletonBeats("2bar", 6, 8)).toBe(6);
     });
+
+    it("accepts the plural `bars` tolerance alias", () => {
+      // Models may pluralize (`2bars`). Accepted as an alias, identical to `2bar`.
+      expect(durationToAbletonBeats("1bars", 4, 4)).toBe(4);
+      expect(durationToAbletonBeats("2bars", 4, 4)).toBe(8);
+      expect(durationToAbletonBeats("1bars+n/4", 4, 4)).toBe(5);
+      expect(durationToAbletonBeats("2bars", 6, 8)).toBe(6);
+    });
   });
 
   describe("n<fraction> form (whole-note based)", () => {
@@ -288,9 +296,6 @@ describe("durationToAbletonBeats", () => {
       "Invalid duration format",
     );
     expect(() => durationToAbletonBeats("bar", 4, 4)).toThrow(
-      "Invalid duration format",
-    );
-    expect(() => durationToAbletonBeats("1bars", 4, 4)).toThrow(
       "Invalid duration format",
     );
     expect(() => durationToAbletonBeats("1 bar", 4, 4)).toThrow(

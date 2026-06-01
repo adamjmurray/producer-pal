@@ -331,16 +331,17 @@ export function durationToAbletonBeats(
   // (`0|[1-9]\d*`): a lone `0` flows to the division-by-zero guard, while `08`
   // (leading zero) is rejected outright, matching the peggy grammars' denominator
   // (`[1-9][0-9]*`). Bars stay `\d+` so `0bar` parses to 0 (rejected downstream
-  // as non-positive, not as a format error).
+  // as non-positive, not as a format error). A plural `bars` (`2bars`) is an
+  // accepted tolerance alias (`bars?`), matching the grammars; output stays `bar`.
   const match = duration.match(
-    /^(?:(\d+)bar(?:\+n(\d+\.\d+|\d*)\/(0|[1-9]\d*))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*))$/,
+    /^(?:(\d+)bars?(?:\+n(\d+\.\d+|\d*)\/(0|[1-9]\d*))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*))$/,
   );
 
   if (!match) {
     // `n`-prefixed bar duration (`n1bar`, `n/1bar`, `n3/4bar`): a category error
     // models reach for. Give the targeted "did you mean Nbar" steer rather than
     // the generic format error. Mirrors the badBarDuration rule in both grammars.
-    const barNPrefix = duration.match(/^n(?:\d*\/)?(\d+)bar$/);
+    const barNPrefix = duration.match(/^n(?:\d*\/)?(\d+)bars?$/);
 
     if (barNPrefix) {
       throw new Error(

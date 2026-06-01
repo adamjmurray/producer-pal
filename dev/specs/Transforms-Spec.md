@@ -404,6 +404,9 @@ models reach for it by analogy with the other note values, it raises a targeted
 error ("bar durations don't use the `n` prefix — write Nbar"), not the generic
 format error.
 
+A plural `bars` (`2bars`, `2bars+n/4`) is accepted as an input-tolerance alias
+of `Nbar` everywhere; serialized output is always singular (`2bar`).
+
 ### Note Property Units
 
 All note properties are exposed in musical beats:

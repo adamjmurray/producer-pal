@@ -340,7 +340,7 @@ nDuration "absolute duration value"
 // the `n` sigil marks a note-value fraction (denominator required); bars are the
 // bare `Nbar` form. Matched only to raise a targeted "did you mean Nbar" error.
 badBarDuration
-  = "n" ([0-9]* "/")? last:$([0-9]+) "bar" {
+  = "n" ([0-9]* "/")? last:$([0-9]+) "bar" "s"? {
     throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write Nbar (e.g. ${last}bar).`);
   }
 
@@ -350,7 +350,8 @@ badBarDuration
 // form `Nbar+n<frac>` composes through ordinary addition (e.g. `1bar+n/4` parses
 // as `barDuration(1) + nDuration(1/4)`), so this rule matches only the bar token.
 barDuration "bar duration value"
-  = bars:oneOrMoreInt "bar" {
+  = bars:oneOrMoreInt "bar" "s"? {
+    // A plural `bars` (`2bars`) is accepted as a tolerance alias; output stays `bar`.
     return { type: "barDuration", bars };
   }
 

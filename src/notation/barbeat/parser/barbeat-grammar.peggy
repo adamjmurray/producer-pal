@@ -102,7 +102,7 @@ beatSpec "beat specification"
 // Bare beats (@1) and bare fractions (@/4) are rejected — authoring stays
 // note-value-only; off-grid bare beats are a length-field concept only.
 stepInterval
-  = "@" bars:oneOrMoreInt "bar" frac:durationBarFraction? {
+  = "@" bars:oneOrMoreInt "bar" "s"? frac:durationBarFraction? {
       return { bars, fraction: frac ?? 0 };
     }
   / "@" "n" frac:unsignedFraction {
@@ -146,9 +146,10 @@ velocity "velocity value"
 
 duration "duration value"
   = badBarDuration
-  / bars:oneOrMoreInt "bar" frac:durationBarFraction? {
+  / bars:oneOrMoreInt "bar" "s"? frac:durationBarFraction? {
     // Nbar (e.g. 1bar) or Nbar+nA/B (e.g. 1bar+n3/4). `bar` is meter-aware and
-    // never wears an `n`; the interpreter resolves it against beatsPerBar.
+    // never wears an `n`; the interpreter resolves it against beatsPerBar. A
+    // plural `bars` (`2bars`) is accepted as a tolerance alias; output stays `bar`.
     return { bars, duration: frac ?? 0 };
   }
   / "n" frac:unsignedFraction {
@@ -168,7 +169,7 @@ badAbsoluteValue
 // the `n` sigil marks a note-value fraction (denominator required); bars are the
 // bare `Nbar` form. Matched only to raise a targeted "did you mean Nbar" error.
 badBarDuration
-  = "n" ([0-9]* "/")? last:$([0-9]+) "bar" {
+  = "n" ([0-9]* "/")? last:$([0-9]+) "bar" "s"? {
       throw new Error(`"${text()}" is invalid: bar durations don't use the "n" prefix — write Nbar (e.g. ${last}bar).`);
     }
 
