@@ -135,6 +135,20 @@ shorthand "shorthand assignment"
   / "p" value:unsignedDecimal {
       return { parameter: "probability", operator: "set", expression: value };
     }
+  / left:barDuration "+" right:nDuration {
+      // Mixed `Nbar+n<frac>` shorthand (e.g. `1bar+n/4`), matching the bar|beat
+      // authoring token. Must precede the bare `barDuration` branch so the `+n`
+      // tail is consumed here, not stranded. Desugars to the same
+      // add(barDuration, nDuration) node the full `duration = 1bar+n/4` form
+      // builds via the additive rule, giving bar|beat <-> transform-shorthand
+      // parity for the combined token. The `nDuration` right operand also
+      // inherits its targeted "needs a denominator" error for `1bar+n2.5`.
+      return {
+        parameter: "duration",
+        operator: "set",
+        expression: { type: "add", left, right },
+      };
+    }
   / expression:barDuration {
       return { parameter: "duration", operator: "set", expression };
     }

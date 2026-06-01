@@ -78,5 +78,29 @@ describe("Transform Parser - barDuration (Nbar)", () => {
         parser.parse("duration = 1bar"),
       );
     });
+
+    // The mixed `Nbar+n<frac>` token works as a bare shorthand too, matching the
+    // bar|beat authoring grammar. It must desugar identically to the full form.
+    it("desugars bare 1bar+n/4 identically to the full duration assignment", () => {
+      expect(parser.parse("1bar+n/4")).toStrictEqual(
+        parser.parse("duration = 1bar+n/4"),
+      );
+    });
+
+    it("parses bare 2bar+n3/8 as add(barDuration, nDuration)", () => {
+      const result = parser.parse("2bar+n3/8");
+
+      expect(result[0]!.parameter).toBe("duration");
+      expect(result[0]!.operator).toBe("set");
+      expect(result[0]!.expression).toStrictEqual({
+        type: "add",
+        left: { type: "barDuration", bars: 2 },
+        right: { type: "nDuration", wholeNoteFraction: 0.375 },
+      });
+    });
+
+    it("inherits the denominator error for a bare 1bar+n2.5", () => {
+      expect(() => parser.parse("1bar+n2.5")).toThrow(/needs? a denominator/);
+    });
   });
 });
