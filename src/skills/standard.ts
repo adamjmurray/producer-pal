@@ -159,7 +159,7 @@ Add \`transforms\` parameter to create-clip, update-clip, or duplicate.
 - \`curve(start, end, exp)\` - exponential (exp>1: slow start, exp<1: fast start); reaches end value at time range end
 - For ramp/curve, end the time filter on the last note's beat position so it reaches its end value. In 4/4: last 8th=N|4.5, last 16th=N|4.75
 - Waveform period is a note value: \`n/4\` = quarter-note cycle, \`n/1\` = whole-note cycle, \`n/2\` = half-note cycle. For a meter-aware bar-length cycle use \`Nbar\` or \`clip.barDuration\` (e.g. \`cos(1bar)\`). Same \`n\` fraction grammar as everywhere; bare numbers are beats
-- \`sync\` keyword (last arg on periodic waves) syncs phase to arrangement timeline instead of clip start
+- \`sync\` keyword (last arg on periodic waves) anchors phase to the arrangement timeline (continuous across clips) instead of clip start — arrangement clips only; on a session clip it's skipped with a warning, so a session-clip LFO is always clip-relative (don't claim it's timeline-locked)
 
 **Variables:** \`note.pitch\`, \`note.velocity\`, \`note.start\`, \`note.duration\`, \`note.probability\`, \`note.deviation\`, \`note.index\` (time-ordered), \`note.count\` (MIDI), \`next.pitch\`, \`next.velocity\`, \`next.start\`, \`next.duration\` (next distinct-start note; skips chords; warns on last note), \`audio.gain\`, \`audio.pitchShift\` (audio), \`clip.duration\`, \`clip.index\` (order of ids), \`clip.count\`, \`clip.position\` (arrangement only), \`clip.barDuration\` (all clips)
 
