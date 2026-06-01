@@ -119,6 +119,12 @@ export const barBeatTriplets: EvalScenario = {
     "Triplet durations (n/12, n/6) — most likely failure mode for absolute notation",
   kind: "capability",
   liveSet: LIVE_SET,
+  // Deterministic state assertions re-read the clip and pin exact note
+  // positions + durations — that is the authoritative grade here. The judge
+  // stays for qualitative commentary but is advisory: LLM judges miscount
+  // bar|beat notation (and mis-flag the correct meter-aware `Nbar` token), so
+  // it must not flip a passing run to fail.
+  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,
@@ -166,6 +172,12 @@ export const barBeatMeterFill: EvalScenario = {
     "Bar-filling note duration in 5/4 and 6/8 (n5/4, n3/4) — quarter-counting test",
   kind: "capability",
   liveSet: LIVE_SET,
+  // Deterministic state assertions re-read the clip and pin exact note
+  // positions + durations — that is the authoritative grade here. The judge
+  // stays for qualitative commentary but is advisory: LLM judges miscount
+  // bar|beat notation (and mis-flag the correct meter-aware `Nbar` token), so
+  // it must not flip a passing run to fail.
+  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,
@@ -191,9 +203,9 @@ export const barBeatMeterFill: EvalScenario = {
     {
       type: "llm_judge",
       prompt: `Evaluate if the assistant:
-1. Created a 5/4 clip with one kick whose duration spans the full bar (would be n5/4 in absolute notation = 5 quarter notes)
-2. Created a 6/8 clip with one kick whose duration spans the full bar (would be n3/4 in absolute notation = 3 quarter notes, since 6 eighths = 3 quarters)
-3. Did NOT default the duration to a meter-relative "1 bar" assumption (e.g. n1 meaning the whole bar regardless of meter)`,
+1. Created a 5/4 clip with one kick whose duration spans the full bar (5 quarter notes; n5/4 and the meter-aware bar token 1bar both resolve to this)
+2. Created a 6/8 clip with one kick whose duration spans the full bar (3 quarter notes, since 6 eighths = 3 quarters; n3/4 and 1bar both resolve to this)
+3. Note: the bar duration token "1bar"/"Nbar" is CORRECT here — it is meter-aware and resolves to the right number of quarters per meter. Only flag a duration that is wrong in actual length (e.g. a bare/unitless "1" treated as one quarter, or a fixed quarter count copied across meters). Do NOT penalize 1bar/Nbar.`,
     },
 
     { type: "token_usage", metric: "inputTokens", maxTokens: 80_000 },
@@ -217,6 +229,12 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
     "Compound felt pulse (dotted-quarter beat) in 6/8 and 12/8 — 2 and 4 kicks at eighths 1,4,(7,10)",
   kind: "capability",
   liveSet: LIVE_SET,
+  // Deterministic state assertions re-read the clip and pin exact note
+  // positions + durations — that is the authoritative grade here. The judge
+  // stays for qualitative commentary but is advisory: LLM judges miscount
+  // bar|beat notation (and mis-flag the correct meter-aware `Nbar` token), so
+  // it must not flip a passing run to fail.
+  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,
@@ -264,6 +282,12 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
     "Same `n` fraction across meters — quarter notes filling 4/4, 6/8, 5/4",
   kind: "capability",
   liveSet: LIVE_SET,
+  // Deterministic state assertions re-read the clip and pin exact note
+  // positions + durations — that is the authoritative grade here. The judge
+  // stays for qualitative commentary but is advisory: LLM judges miscount
+  // bar|beat notation (and mis-flag the correct meter-aware `Nbar` token), so
+  // it must not flip a passing run to fail.
+  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,

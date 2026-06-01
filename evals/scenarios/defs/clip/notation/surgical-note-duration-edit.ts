@@ -116,18 +116,22 @@ function assertSurgicalNotRewrite(
     type: "custom",
     description: "duration edit is surgical, not a full clip rewrite",
     assert: (turns) => {
-      const original = readClipNotesFromTurn(turns, readTurn)?.notes ?? null;
-
-      if (original == null) {
-        throw new Error("could not read original clip notes");
-      }
-
       const calls = getToolCalls(turns, editTurn).filter(
         (c) => c.name === TOOL_UPDATE_CLIP,
       );
 
       if (calls.length === 0) {
         throw new Error("no ppal-update-clip call in the edit turn");
+      }
+
+      // Match the original read to the clip the model actually edited — the
+      // first read may be a scene read returning several clips with notes.
+      const editedId = String(calls[0]?.args.ids ?? "") || undefined;
+      const original =
+        readClipNotesFromTurn(turns, readTurn, editedId)?.notes ?? null;
+
+      if (original == null) {
+        throw new Error("could not read original clip notes");
       }
 
       const scoped = calls.some((c) =>
@@ -167,8 +171,13 @@ function assertShortenOutcome(
     type: "custom",
     description: "last two notes halved, all others unchanged, no duplicates",
     assert: (turns) => {
-      const before = readClipNotesFromTurn(turns, readTurn)?.notes ?? null;
-      const after = readClipNotesFromTurn(turns, verifyTurn)?.notes ?? null;
+      // The verify read pins which clip we're confirming; match the original
+      // read to the same clip id so a multi-clip scene read in turn 1 can't
+      // line the wrong clip up against the final state.
+      const afterRead = readClipNotesFromTurn(turns, verifyTurn);
+      const after = afterRead?.notes ?? null;
+      const before =
+        readClipNotesFromTurn(turns, readTurn, afterRead?.id)?.notes ?? null;
 
       if (before == null || after == null) {
         throw new Error("could not read clip notes before/after the edit");
@@ -198,6 +207,11 @@ export const surgicalNoteDurationEdit: EvalScenario = {
     "Shorten two existing notes' durations without rewriting the whole clip",
   kind: "capability",
   liveSet: LIVE_SET,
+  // The custom assertions verify the exact outcome (only the two target notes
+  // halved, all others unchanged, no duplicates) and the surgical path — that
+  // is the authoritative grade. The judge re-checks the same thing by eye and
+  // is advisory so it can't flip a passing run to fail.
+  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,

@@ -70,6 +70,13 @@ export interface EvalScenario {
   /** Assertions to run after conversation completes */
   assertions: EvalAssertion[];
 
+  /** When true, the llm_judge assertion is advisory: its issues are still run
+   * and reported, but a judge "fail" does NOT flip the overall result to fail.
+   * Use for scenarios whose deterministic (state/custom) assertions already pin
+   * the exact outcome — there the judge adds qualitative commentary but is an
+   * unreliable gate (LLM judges miscount bar|beat notation). Default: false. */
+  judgeAdvisory?: boolean;
+
   /** System instructions override. Default: SYSTEM_INSTRUCTION from webui.
    *  Set to null for no instructions. */
   instructions?: string | null;

@@ -105,45 +105,100 @@ export function getTransforms(
 }
 
 /**
- * Parse a clip's notes from the last ppal-read-clip result in a turn, back into
- * NoteEvents (start_time in musical beats). Self-calibrating: reads the clip's
- * own time signature so bar math works in any meter. Returns the notes plus
- * beatsPerBar (the meter numerator) so callers can compute bar boundaries.
+ * Parse a clip's notes from the read results in a turn, back into NoteEvents
+ * (start_time in musical beats). Scans every `ppal-read-*` result, most recent
+ * first — not just `ppal-read-clip`: the model is free to read a clip's notes
+ * via `ppal-read-scene` (clips nested in a `clips` array) or `ppal-read-track`,
+ * and a check that only understood `ppal-read-clip` would mis-grade those
+ * equally valid paths. Self-calibrating: reads the clip's own time signature so
+ * bar math works in any meter. Returns the notes plus beatsPerBar (the meter
+ * numerator) and the clip id so callers can compute bar boundaries and match a
+ * specific clip across reads.
  *
  * @param turns - All turn results
  * @param turn - Turn index containing the read
- * @returns Parsed notes and beats-per-bar, or null if no clip read with notes
+ * @param clipId - When given, only a clip whose id matches is returned (needed
+ *   when a scene read returns several clips with notes)
+ * @returns Parsed notes, beats-per-bar, and clip id, or null if none found
  */
 export function readClipNotesFromTurn(
   turns: EvalTurnResult[],
   turn: number,
-): { notes: NoteEvent[]; beatsPerBar: number } | null {
+  clipId?: string,
+): { notes: NoteEvent[]; beatsPerBar: number; id?: string } | null {
   const reads = getToolCalls(turns, turn).filter(
-    (c) => c.name === TOOL_READ_CLIP && c.result != null,
+    (c) => c.name.startsWith("ppal-read-") && c.result != null,
   );
 
   for (const call of reads.reverse()) {
+    let parsed: unknown;
+
     try {
-      const parsed = JSON.parse(String(call.result)) as {
-        notes?: string;
-        timeSignature?: string;
-      };
-
-      if (parsed.notes == null) continue;
-
-      const [num, den] = (parsed.timeSignature ?? "4/4").split("/").map(Number);
-      const notes = interpretNotation(parsed.notes, {
-        timeSigNumerator: num ?? 4,
-        timeSigDenominator: den ?? 4,
-      });
-
-      return { notes, beatsPerBar: num ?? 4 };
+      parsed = JSON.parse(String(call.result));
     } catch {
-      // non-JSON / unexpected shape — try the next read
+      continue; // non-JSON read result
+    }
+
+    for (const clip of clipObjectsFrom(parsed)) {
+      if (clip.notes == null) continue;
+
+      if (clipId != null && clip.id != null && String(clip.id) !== clipId) {
+        continue;
+      }
+
+      const [num, den] = (clip.timeSignature ?? "4/4").split("/").map(Number);
+
+      try {
+        const notes = interpretNotation(clip.notes, {
+          timeSigNumerator: num ?? 4,
+          timeSigDenominator: den ?? 4,
+        });
+
+        return { notes, beatsPerBar: num ?? 4, id: clip.id };
+      } catch {
+        // unparseable notation — keep scanning other clips/reads
+      }
     }
   }
 
   return null;
+}
+
+/** Minimal clip shape the note-reading helpers care about. */
+interface ClipShape {
+  id?: string;
+  notes?: string;
+  timeSignature?: string;
+}
+
+/**
+ * Extract clip-shaped objects from a parsed read-* result. A read-clip result
+ * IS the clip; read-scene/read-track nest clips in `clips` (and, for arrangement
+ * reads, `sessionClips`/`arrangementClips`) arrays. Returns every candidate so
+ * the caller can pick the one with notes (optionally matching a clip id).
+ *
+ * @param parsed - A parsed JSON read result
+ * @returns Candidate clip objects (the result itself plus any nested clips)
+ */
+function clipObjectsFrom(parsed: unknown): ClipShape[] {
+  if (parsed == null || typeof parsed !== "object") return [];
+
+  const obj = parsed as Record<string, unknown>;
+  const out: ClipShape[] = [obj];
+
+  for (const key of ["clips", "sessionClips", "arrangementClips"]) {
+    const arr = obj[key];
+
+    if (Array.isArray(arr)) {
+      for (const clip of arr) {
+        if (clip != null && typeof clip === "object") {
+          out.push(clip as ClipShape);
+        }
+      }
+    }
+  }
+
+  return out;
 }
 
 /**

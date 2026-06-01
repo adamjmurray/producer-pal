@@ -128,8 +128,17 @@ function formatSingleTrialLine(result: JsonEvalResult): string {
   }
 
   if (result.judge) {
-    const judgeColor = result.judge.pass ? "green" : "red";
-    const judgeText = result.judge.pass ? "pass" : "fail";
+    const advisory = result.judge.advisory === true;
+    const judgeColor = advisory
+      ? "yellow"
+      : result.judge.pass
+        ? "green"
+        : "red";
+    const judgeText = advisory
+      ? "advisory"
+      : result.judge.pass
+        ? "pass"
+        : "fail";
     const issueSuffix =
       result.judge.issues.length > 0
         ? ` (${result.judge.issues.length} issue(s))`

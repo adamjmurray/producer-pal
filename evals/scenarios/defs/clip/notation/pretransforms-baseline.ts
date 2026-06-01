@@ -165,6 +165,12 @@ export const pretransformsMelodyReplaceBaseline: EvalScenario = {
     "Baseline: how the model rewrites a melody clip without preTransforms",
   kind: "capability",
   liveSet: LIVE_SET,
+  // These scenarios grade the PATH the model takes (classifyFallback), not
+  // outcome quality — see the file header. recordFallbackPath is the
+  // authoritative gate; the judge is advisory commentary on the outcome and
+  // must not flip the result (it tends to misread the `transformed` count and
+  // misjudge pitch-scoped clears as risky).
+  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,
@@ -205,6 +211,12 @@ export const pretransformsHatFillsBaseline: EvalScenario = {
     "Baseline: clear-and-rewrite a sub-region (bar-2 hats) without preTransforms",
   kind: "capability",
   liveSet: LIVE_SET,
+  // These scenarios grade the PATH the model takes (classifyFallback), not
+  // outcome quality — see the file header. recordFallbackPath is the
+  // authoritative gate; the judge is advisory commentary on the outcome and
+  // must not flip the result (it tends to misread the `transformed` count and
+  // misjudge pitch-scoped clears as risky).
+  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,
@@ -243,6 +255,12 @@ export const pretransformsSnareSwapBaseline: EvalScenario = {
     "Baseline: swap snare pattern across whole clip without preTransforms",
   kind: "capability",
   liveSet: LIVE_SET,
+  // These scenarios grade the PATH the model takes (classifyFallback), not
+  // outcome quality — see the file header. recordFallbackPath is the
+  // authoritative gate; the judge is advisory commentary on the outcome and
+  // must not flip the result (it tends to misread the `transformed` count and
+  // misjudge pitch-scoped clears as risky).
+  judgeAdvisory: true,
 
   messages: [
     MSG_CONNECT,

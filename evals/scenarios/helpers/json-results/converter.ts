@@ -48,7 +48,8 @@ export function toJsonResult(
 ): JsonEvalResult {
   const checks = buildChecks(result.assertions);
   const efficiency = buildEfficiency(result.assertions);
-  const judge = buildJudge(result.assertions);
+  const advisory = result.scenario.judgeAdvisory ?? false;
+  const judge = buildJudge(result.assertions, advisory);
 
   return {
     version: 1,
@@ -137,24 +138,30 @@ function buildEfficiency(
  * Build judge object from llm_judge assertion
  *
  * @param assertions - All assertion results
+ * @param advisory - When true, mark the judge non-gating (see derivePassFail)
  * @returns Judge object, or undefined if no judge assertion
  */
-function buildJudge(assertions: EvalAssertionResult[]): JsonJudge | undefined {
+function buildJudge(
+  assertions: EvalAssertionResult[],
+  advisory: boolean,
+): JsonJudge | undefined {
   const judgeResult = assertions.find((a) => a.assertion.type === "llm_judge");
 
   if (!judgeResult) return undefined;
 
+  const advisoryFlag = advisory ? { advisory: true } : {};
   const details = judgeResult.details as SimpleJudgeResult | undefined;
 
   if (!details) {
-    return { pass: false, issues: [judgeResult.message] };
+    return { pass: false, issues: [judgeResult.message], ...advisoryFlag };
   }
 
-  return { pass: details.pass, issues: details.issues };
+  return { pass: details.pass, issues: details.issues, ...advisoryFlag };
 }
 
 /**
- * Derive overall pass/fail from checks and judge
+ * Derive overall pass/fail from checks and judge. An advisory judge never gates:
+ * its issues are reported but the deterministic checks alone decide pass/fail.
  *
  * @param checks - Checks result
  * @param judge - Judge result (if any)
@@ -164,7 +171,7 @@ function derivePassFail(
   checks: JsonChecks,
   judge: JsonJudge | undefined,
 ): "pass" | "fail" {
-  const judgePassed = judge == null || judge.pass;
+  const judgePassed = judge == null || judge.advisory === true || judge.pass;
 
   return checks.pass && judgePassed ? "pass" : "fail";
 }
