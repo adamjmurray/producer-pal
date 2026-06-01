@@ -183,12 +183,17 @@ export const drumTransforms: EvalScenario = {
         }
 
         // Must randomize velocity relative to its current value with rand().
-        // Both `velocity += rand(...)` and the equivalent (and MIDI-safe)
-        // `velocity = clamp(note.velocity + rand(...), 1, 127)` express this —
-        // the clamped assignment form is arguably better, so accept either.
+        // Accept `velocity += rand(...)` and the equivalent (and MIDI-safe)
+        // assignment `velocity = clamp(... note.velocity ... rand(...) ...)`.
+        // The assignment branch is order-independent: `rand(8) + note.velocity`
+        // and `note.velocity + rand(8)` are equally correct, so require only
+        // that the assignment references both note.velocity and rand, in any
+        // order (an order-sensitive regex would re-introduce this commit's bug).
         const relativeRand =
           /velocity\s*\+=\s*.*\brand\b/.test(transforms) ||
-          /velocity\s*=\s*.*note\.velocity.*\brand\b/.test(transforms);
+          (/velocity\s*=/.test(transforms) &&
+            /note\.velocity/.test(transforms) &&
+            /\brand\b/.test(transforms));
 
         if (!relativeRand) {
           throw new Error(

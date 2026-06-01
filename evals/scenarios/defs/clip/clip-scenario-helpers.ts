@@ -142,7 +142,10 @@ export function readClipNotesFromTurn(
     for (const clip of clipObjectsFrom(parsed)) {
       if (clip.notes == null) continue;
 
-      if (clipId != null && clip.id != null && String(clip.id) !== clipId) {
+      // When a clipId is requested, require an exact id match — skip candidates
+      // with a different id AND candidates with no id, so a malformed/idless
+      // nested entry can't stand in for the requested clip.
+      if (clipId != null && String(clip.id ?? "") !== clipId) {
         continue;
       }
 
@@ -176,6 +179,11 @@ interface ClipShape {
  * IS the clip; read-scene/read-track nest clips in `clips` (and, for arrangement
  * reads, `sessionClips`/`arrangementClips`) arrays. Returns every candidate so
  * the caller can pick the one with notes (optionally matching a clip id).
+ *
+ * Note: only these top-level arrays are scanned. Take-lane clips live deeper
+ * (read-track nests them under `takeLanes[].clips`) and are NOT descended into —
+ * no current scenario reads notes from a take lane. Add that traversal here if
+ * one ever does.
  *
  * @param parsed - A parsed JSON read result
  * @returns Candidate clip objects (the result itself plus any nested clips)
