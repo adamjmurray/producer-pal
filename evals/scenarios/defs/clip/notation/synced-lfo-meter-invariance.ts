@@ -22,15 +22,20 @@
  * dedicated meter live sets; see the eval validation tracker. Here the
  * invariance is carried by asserting an absolute note-value period — the
  * property that makes the expression meter-independent.
+ *
+ * Fixture: the scenario first creates the lead melody as an ARRANGEMENT clip,
+ * because `sync` is skipped (with a warning) on a session clip — it needs an
+ * arrangement position to anchor phase to the timeline. Asking for a
+ * timeline-synced LFO on a session clip would be self-contradictory.
  */
 
+import { getToolCalls } from "../../../assertions/index.ts";
 import {
   type EvalAssertion,
   type EvalScenario,
   type EvalTurnResult,
 } from "../../../types.ts";
 import {
-  assertNotesRead,
   getTransforms,
   MSG_CONNECT,
   TOOL_CONNECT,
@@ -127,9 +132,11 @@ function recordLfoReach(turn: number): EvalAssertion {
 }
 
 /**
- * Apply a timeline-synced quarter-note LFO to the lead melody's velocities and
- * check the model reaches for `sin(n/4, sync)` rather than the removed `Nt`
- * form or a meter-relative period.
+ * Create the lead melody as an arrangement clip, then apply a timeline-synced
+ * quarter-note LFO to its velocities and check the model reaches for
+ * `sin(n/4, sync)` rather than the removed `Nt` form or a meter-relative
+ * period. The clip must be in the arrangement, since `sync` is a no-op (skipped
+ * with a warning) on a session clip.
  */
 export const syncedLfoMeterInvariance: EvalScenario = {
   id: "synced-lfo-meter-invariance",
@@ -140,14 +147,34 @@ export const syncedLfoMeterInvariance: EvalScenario = {
 
   messages: [
     MSG_CONNECT,
-    "Find the lead melody in the first scene and read its notes",
+    "Create a 2-bar lead melody on the Lead track in the arrangement starting at bar 1",
     "Add a sine-wave LFO to the note velocities that completes one full cycle every quarter note and stays locked to the song timeline (so the wave is continuous across the clip, not reset per note).",
   ],
 
   assertions: [
     { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
 
-    assertNotesRead(1),
+    { type: "tool_called", tool: "ppal-create-clip", turn: 1 },
+    {
+      type: "custom",
+      description: "lead melody created as an arrangement clip (sync needs it)",
+      assert: (turns) => {
+        const createCall = getToolCalls(turns, 1).find(
+          (c) => c.name === "ppal-create-clip",
+        );
+
+        if (!createCall)
+          throw new Error("ppal-create-clip not found in turn 1");
+
+        if (!createCall.args.arrangementStart) {
+          throw new Error(
+            "clip must be created in the arrangement (arrangementStart) — sync is skipped on session clips",
+          );
+        }
+
+        return true;
+      },
+    },
 
     { type: "tool_called", tool: TOOL_UPDATE_CLIP, turn: 2 },
     recordLfoReach(2),

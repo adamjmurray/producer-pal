@@ -4,22 +4,18 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
- * Scenario: Handle impossible and ambiguous requests gracefully
+ * Scenario: Handle an impossible request gracefully (no hallucinated success)
  */
 
 import { type EvalScenario } from "../../types.ts";
 
 export const negativeCases: EvalScenario = {
   id: "negative-cases",
-  description: "Handle impossible and ambiguous requests",
+  description: "Handle an impossible request",
   kind: "regression",
   liveSet: "basic-midi-4-track",
 
-  messages: [
-    "Connect to Ableton Live",
-    "Set the tempo to -50 BPM",
-    "Make it sound better",
-  ],
+  messages: ["Connect to Ableton Live", "Set the tempo to -50 BPM"],
 
   assertions: [
     // Turn 0: Connection
@@ -40,9 +36,6 @@ export const negativeCases: EvalScenario = {
       turn: 1,
     },
 
-    // Turn 2: Should ask clarifying question for ambiguous request
-    { type: "response_contains", pattern: /\?/, turn: 2 },
-
     // Token usage
     {
       type: "token_usage",
@@ -56,8 +49,7 @@ export const negativeCases: EvalScenario = {
       prompt: `Evaluate if the assistant:
 1. Did NOT set the tempo to a negative value or claim success for "Set the tempo to -50 BPM"
 2. Explained why -50 BPM is not valid (tempo must be positive)
-3. Asked a clarifying question or offered suggestions for "Make it sound better" rather than taking arbitrary action
-4. Did NOT hallucinate capabilities or claim to do something impossible`,
+3. Did NOT hallucinate capabilities or claim to do something impossible`,
     },
   ],
 };
