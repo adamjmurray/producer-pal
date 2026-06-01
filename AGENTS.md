@@ -189,6 +189,12 @@ web UI architecture.
   - Emit a warning via `console.warn()`
   - Skip the operation and continue processing
   - This allows partial successes when updating multiple items
+  - These warnings are NOT silent: `console.warn()` output is relayed back to
+    the LLM as `WARNING:` text blocks appended to the MCP tool response (emitted
+    on outlet 1 by `src/shared/v8-max-console.ts`, collected into the response
+    by `src/mcp-server/max-api-adapter.ts`). So warn-and-skip is real,
+    actionable feedback the model can recover from — not a hidden no-op.
+    (`console.log()` and `console.error()` are NOT relayed.)
   - Example: `console.warn("quantize parameter ignored for audio clip")`
 
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
@@ -326,8 +332,11 @@ functions for clarity.
 - **Debug logging for CLI testing**:
   - `console` must be imported:
     `import * as console from "../../shared/v8-max-console.ts"`
-  - Use `console.warn()` to see output in CLI tool results (appears as WARNING)
-  - `console.log()` and `console.error()` do NOT appear in CLI output
+  - Use `console.warn()` to surface output: it is relayed as a `WARNING:` block
+    in the tool result in BOTH the CLI and the live MCP response (the LLM sees
+    it — see the Update tool error handling note above)
+  - `console.log()` and `console.error()` do NOT appear in CLI output or the MCP
+    response
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
   and linting issues), then `npm run check` (validates all checks pass), then
   `npm run check:build` (verifies production artifacts and docs site compile
