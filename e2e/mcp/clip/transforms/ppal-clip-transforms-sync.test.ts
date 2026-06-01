@@ -55,11 +55,6 @@ async function readClipNotes(clipId: string): Promise<string> {
   return readClipNotesHelper(ctx, clipId);
 }
 
-/** Extracts velocity values from formatted note string. */
-function extractVelocities(notes: string): number[] {
-  return [...notes.matchAll(/v(\d+)/g)].map((m) => Number(m[1]));
-}
-
 // =============================================================================
 // Sync Keyword Tests (arrangement clips)
 // =============================================================================
@@ -112,8 +107,18 @@ describe("ppal-clip-transforms-sync", () => {
     expect(notes).toContain("v14 C3 1|3");
   });
 
-  it("session clip with sync skips the assignment with a warning", async () => {
-    const clipId = await createSessionClip(35, "v64 C3 1|1\nv64 C3 1|2");
+  it("session clip with sync degrades to clip-relative with a warning", async () => {
+    // Session clips have no arrangement position, so sync is ignored and the
+    // wave degrades to clip-relative (same as omitting sync) with a warning —
+    // the modulation still applies. Phase uses just notePos/4:
+    //   Note at 1|1: 0/4 = 0, cos(0) = 1 → 64+50 = 114
+    //   Note at 1|2: 1/4 = 0.25, cos(0.25) = 0 → 64
+    //   Note at 1|3: 2/4 = 0.5, cos(0.5) = -1 → 64-50 = 14
+    //   Note at 1|4: 3/4 = 0.75, cos(0.75) = 0 → 64
+    const clipId = await createSessionClip(
+      35,
+      "v64 C3 1|1\nv64 C3 1|2\nv64 C3 1|3\nv64 C3 1|4",
+    );
 
     const result = await applyTransform(
       clipId,
@@ -124,13 +129,12 @@ describe("ppal-clip-transforms-sync", () => {
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings.some((w) => w.toLowerCase().includes("sync"))).toBe(true);
 
-    // Velocities should be unchanged
+    // Modulation still applied — identical to the non-synced (clip-relative) form
     const notes = await readClipNotes(clipId);
-    const velocities = extractVelocities(notes);
 
-    for (const v of velocities) {
-      expect(v).toBe(64);
-    }
+    expect(notes).toContain("v114 C3 1|1");
+    expect(notes).toContain("v64 C3 1|2,4");
+    expect(notes).toContain("v14 C3 1|3");
   });
 
   it("sync with phase offset combines both offsets", async () => {
