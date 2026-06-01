@@ -345,7 +345,11 @@ bar|{start}x{times}@{step}
   to 1, so `@n/4` == `@n1/4`), `@Nbar` meter-aware bars (`@1bar`), or
   `@Nbar+n<fraction>` mixed (`@1bar+n/4`). Bare fractions (`@/4`), bare integers
   (`@1`), decimals (`@0.5`), and mixed numbers (`@1+1/2`) are invalid and raise
-  a parser error — the `n` prefix marks a note value, bars use `Nbar`
+  a parser error — the `n` prefix marks a note value, bars use `Nbar`. Like the
+  other duration sites, an `n`-prefixed bar step (`@n1bar`, `@n/1bar`,
+  `@n3/4bar`) raises the targeted "bar steps don't use the `n` prefix — write
+  @Nbar" error, and a plural `@2bars` is accepted as a tolerance alias of
+  `@Nbar`
 
 The `@` symbol reads as "at intervals" and semantically connects to bar copy
 operations.

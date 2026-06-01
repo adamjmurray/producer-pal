@@ -19,10 +19,12 @@
 // test feeds one corpus through both end-to-end and pins them so they cannot
 // silently diverge.
 //
-// `lo == 0` cases (e.g. `v0-100`) are intentionally omitted: the transform
-// layer deletes notes whose velocity drops to 0 (the v0 delete sentinel), while
-// the notes-layer interpreter keeps them — a separate, pre-existing behavior
-// unrelated to the min/max → velocity/deviation mapping under test here.
+// `lo == 0` cases (e.g. `v0-100`) are excluded from the parametric corpus for a
+// mechanical reason, not a behavioral one: a velocity-0 base note is dropped by
+// BOTH layers (v0 is the delete sentinel in each), so each yields an empty array
+// with no surviving note[0] to read `.velocity`/`.deviation` from. The layers
+// actually AGREE at v0 — a stronger parity than divergence — and that agreement
+// is pinned by its own assertion below rather than the .each() corpus.
 
 import { describe, expect, it } from "vitest";
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
@@ -70,4 +72,18 @@ describe("velocity range cross-layer parity (vA-B)", () => {
       expect(viaTransform(token)).toStrictEqual(viaNotes(token));
     },
   );
+
+  // The v0 lower-bound edge the parametric corpus can't cover (empty result has
+  // no note to compare): both layers treat a velocity-0 base as a delete, so the
+  // note vanishes in each. Pin the agreement so it can't silently diverge.
+  it("v0-N drops the note in BOTH layers (shared v0 delete sentinel)", () => {
+    expect(interpretNotation("v0-100 C3 1|1")).toStrictEqual([]);
+
+    const notes: NoteEvent[] = [
+      { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
+    ];
+
+    applyTransforms(notes, "v0-100", 4, 4);
+    expect(notes).toStrictEqual([]);
+  });
 });

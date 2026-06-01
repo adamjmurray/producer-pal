@@ -51,7 +51,7 @@ export const skills = `# Producer Pal Skills
 - Positions: bar|beat — **bar number first, beat second**: \`3|2\` is bar 3, beat 2 (NOT beat 3 of bar 2). 1-indexed, meter-relative grid. Sub-beat placement has two tools for two jobs: a **decimal** (\`2|3.5\`) for *partway through a beat* (a fraction of the musical beat), and a **\`±n\` offset** (\`1|1+n/12\` = beat 1 + an eighth triplet, \`1|2-n/24\`) for an *exact note value* off the grid beat (tuplets, compound-meter placement). They coincide only in x/4 — see the meter note below. Serialized output uses the exact \`±n\` form for tuplet positions. No bare fractions
 - Durations and \`@step\` intervals: absolute note values (denominator mandatory). \`n/4\` = quarter, \`n/8\` = eighth, \`n/16\` = sixteenth, \`n/12\` = eighth triplet (3 in a quarter), \`n3/8\` = dotted quarter (3 eighths). A quarter is a quarter in any meter
 - Clip \`length\` and arrangement durations: \`Nbar\` (meter-aware, e.g. \`4bar\`), \`n<fraction>\` note value (e.g. \`n/4\` = quarter, \`n/8\` = eighth), or \`Nbar+n<fraction>\` mixed (e.g. \`1bar+n/4\`). Same \`n\` fraction grammar everywhere. No bare fractions/integers/decimals
-- \`Nbar\` is also valid as a **note duration** — meter-aware, so \`1bar\` holds one whole bar in any meter (3 beats in 6/8, 5 in 5/4). Use it for a single bar-length note; for several notes filling a bar, use a repeat instead (below). Bars use the bare \`Nbar\` form — never an \`n\` prefix (\`1bar\`, not \`n1bar\`; \`n\` is only for denominator-bearing note values)
+- \`Nbar\` is also valid as a **note duration** — meter-aware, so \`1bar\` holds one whole bar in any meter (6 grid beats in 6/8, 5 in 5/4). Use it for a single bar-length note; for several notes filling a bar, use a repeat instead (below). Bars use the bare \`Nbar\` form — never an \`n\` prefix (\`1bar\`, not \`n1bar\`; \`n\` is only for denominator-bearing note values)
 
 **In meters other than x/4, the grid beat is NOT a quarter** (in 6/8 it's an eighth), so consecutive grid beats are not one note value apart. To place notes a fixed note value apart — e.g. fill a bar with quarter notes — use a repeat pattern \`1|1x<count>\` with a real number for \`<count>\` (its step defaults to the current duration, which is meter-safe), not hand-enumerated grid beats: in 6/8, \`n/4 C1 1|1x3\` lands quarters on grid beats 1, 3, 5 (filling the bar), and in 5/4 \`n/4 C1 1|1x5\` fills the bar, while \`n/4 C1 1|1,2,3\` is consecutive *eighths* in 6/8 (wrong). Same trap for decimals: in 6/8 \`1|1.5\` is half an eighth, \`1|1+n/8\` a full eighth.
 
@@ -70,7 +70,7 @@ Create MIDI clips using the bar|beat notation syntax:
     - \`1|1x4@n/4\` → 4 notes a quarter apart; \`n/8 1|1x4\` → 4 eighths (step defaults to n value)
     - \`1|1x3@n/12\` → eighth-note triplets (3 in a quarter); \`n/16 1|1x16\` → 16 sixteenths spanning 4 quarters (a full bar in 4/4)
     - **Prefer repeats over hand-listing beats for evenly-spaced notes** — the step is a note value, so spacing stays correct in any meter (in 6/8, \`n/4 C1 1|1x3\` = quarters on beats 1, 3, 5; \`1|1,2,3\` would be eighths)
-- v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization
+- v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization (start the low bound ≥1: \`v0-N\` sets a base velocity of 0, which triggers the v0 delete and drops the notes)
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - n<duration>: Note length as an absolute note value. **Set it explicitly rather than relying on the \`n/4\` default** — and because it's stateful, re-set it whenever the intended length changes. It applies to notes **after** it — put the \`n\` change *before* the note it should affect (\`n/8 G3 4|2 A3\`, not \`G3 4|2 n/8 A3\`, which leaves G3 at the old length and overlaps A3). For drums, set \`n\` at the start and again for each drum/pitch (a hat's \`n/16\` otherwise carries over to the next kick). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\`. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always). Opt-in — if any note uses probability, set it on every note (a stray p otherwise rides along)
@@ -274,7 +274,7 @@ Audio effects:
 
 ### Moving Clips
 
-\`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, both 0-based — scene 1 = index 0, e.g. "2/3" = track 2, scene 3) moves session clips. Moving clips changes their IDs - re-read to get new IDs.
+\`arrangementStart\` moves arrangement clips; \`toSlot\` (trackIndex/sceneIndex, both 0-based — scene 1 = index 0) moves session clips. Moving clips changes their IDs - re-read to get new IDs.
 \`arrangementLength\` sets arrangement playback region. \`split\` divides arrangement clips at bar|beat positions.
 
 ### Take Lanes (Arrangement Variations)

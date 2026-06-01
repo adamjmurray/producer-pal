@@ -105,6 +105,12 @@ stepInterval
   = "@" bars:oneOrMoreInt "bar" "s"? frac:durationBarFraction? {
       return { bars, fraction: frac ?? 0 };
     }
+  / "@" "n" ([0-9]* "/")? last:$([0-9]+) "bar" "s"? {
+      // `n`-prefixed bar step (`@n1bar`, `@n/1bar`, `@n3/4bar`): same category
+      // error as the duration sites — bars are the bare `Nbar` form. Placed
+      // before the `@n<frac>` branch so it catches the trailing `bar` first.
+      throw new Error(`"@${text().slice(1)}" is invalid: bar steps don't use the "n" prefix — write @Nbar (e.g. @${last}bar).`);
+    }
   / "@" "n" frac:unsignedFraction {
       return { bars: 0, fraction: frac };
     }

@@ -137,6 +137,22 @@ describe("BarBeatScript Parser - time declarations", () => {
     );
   });
 
+  it("rejects n-prefixed bar steps with the targeted Nbar error (@n1bar)", () => {
+    // Same category error as the duration sites: bars are the bare `Nbar` form,
+    // never `n`-prefixed. The step interval is a duration site too (it already
+    // honors the plural `@2bars` alias), so it gets the steered error, not the
+    // generic "note-value form" one.
+    expect(() => parser.parse("1|1x3@n1bar")).toThrow(
+      /bar steps don't use the "n" prefix — write @Nbar \(e\.g\. @1bar\)/,
+    );
+    expect(() => parser.parse("1|1x3@n/1bar")).toThrow(
+      /bar steps don't use the "n" prefix — write @Nbar \(e\.g\. @1bar\)/,
+    );
+    expect(() => parser.parse("1|1x3@n3/4bar")).toThrow(
+      /bar steps don't use the "n" prefix — write @Nbar \(e\.g\. @4bar\)/,
+    );
+  });
+
   it("rejects bare-integer step intervals (bare beats not allowed)", () => {
     expect(() => parser.parse("1|1x4@1")).toThrow(
       /step intervals use the note-value form.*Got @1/,
