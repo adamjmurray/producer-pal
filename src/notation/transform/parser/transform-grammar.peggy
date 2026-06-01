@@ -62,7 +62,9 @@
 
 start
   = __ head:assignment? tail:((_ nl _)+ assignment)* __ {
-    const assignments = [head, ...tail.map(t => t[1])].filter(Boolean);
+    // A single shorthand token may desugar to multiple assignments (e.g. the
+    // `vA-B` velocity range emits velocity + deviation), so flatten one level.
+    const assignments = [head, ...tail.map(t => t[1])].filter(Boolean).flat();
     return assignments;
   }
 
@@ -74,6 +76,11 @@ assignment "parameter assignment"
   = ranges:(rangeSelector _ ":" _)? body:assignmentBody {
     const pitchRange = ranges?.[0]?.pitchRange ?? null;
     const timeRange = ranges?.[0]?.timeRange ?? null;
+    // A range shorthand (e.g. `vA-B`) yields an array of bodies; apply the same
+    // selector to each so a single token's writes share one pitch/time filter.
+    if (Array.isArray(body)) {
+      return body.map(b => ({ pitchRange, timeRange, ...b }));
+    }
     return { pitchRange, timeRange, ...body };
   }
 
@@ -95,12 +102,29 @@ assignmentBody
   / shorthand
 
 // Shorthand assignment sugar reusing bar|beat property tokens. Each desugars to
-// the same { parameter, operator, expression } shape as the full forms; single
-// change per line. velocity/probability also accept additive ops (v±N, p±N) —
-// safe because both domains are non-negative, so a leading sign is unambiguous.
+// the same { parameter, operator, expression } shape as the full forms (the
+// `vA-B` velocity range is the one exception: it emits two assignments —
+// velocity + deviation). velocity/probability also accept additive ops
+// (v±N, p±N) — safe because both domains are non-negative, so a leading sign is
+// unambiguous.
 shorthand "shorthand assignment"
   = "v" operator:shorthandAddOp value:unsignedInt {
       return shorthandAdditive("velocity", operator, value);
+    }
+  / "v" min:unsignedInt "-" max:unsignedInt {
+      // Velocity range = humanized random velocity, matching the bar|beat notes
+      // layer's `vA-B`. Desugar to two ordinary assignments (base velocity +
+      // velocity_deviation), mirroring the barbeat interpreter's mapping: clamp
+      // each bound to 0-127, order-independent, deviation = high - low. Must be
+      // tried before plain `vN` (which would match `v80` and strand `-120`).
+      // Kept in lockstep by velocity-range-parity.test.ts (Peggy cannot import
+      // the barbeat helper).
+      const lo = Math.max(0, Math.min(127, Math.min(min, max)));
+      const hi = Math.max(0, Math.min(127, Math.max(min, max)));
+      return [
+        { parameter: "velocity", operator: "set", expression: lo },
+        { parameter: "deviation", operator: "set", expression: hi - lo },
+      ];
     }
   / "v" value:unsignedInt {
       return { parameter: "velocity", operator: "set", expression: value };

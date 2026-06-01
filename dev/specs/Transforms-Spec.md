@@ -277,11 +277,13 @@ C3-C5: duration = legato()       // legato for melody notes only
 In addition to the full `parameter operator expression` form, each assignment
 may be written as a single bar|beat-style **shorthand** token — convenient for
 clears and simple one-shot sets (this is the form the `preTransforms` examples
-in the skills use). One change per line; an optional pitch/time selector still
+in the skills use). One token per line; an optional pitch/time selector still
 applies.
 
-- `v0` deletes the note · `vN` sets velocity · `v+N` / `v-N` adjusts velocity
-- `pN` sets probability · `p+N` / `p-N` adjusts probability
+- `v0` deletes the note · `vN` sets velocity · `v+N` / `v-N` adjusts velocity ·
+  `vA-B` sets a humanized random velocity range (e.g. `v80-120`)
+- `pN` sets probability · `p+N` / `p-N` adjusts probability (no range form — the
+  notes layer has none either, so `p` stays single-valued for parity)
 - `n/4` (or `Nbar`, `Nbar+n/4`) sets duration to that note value
 - `C4` (a bare pitch) moves/remaps matched notes to that pitch
 
@@ -290,6 +292,19 @@ form: `v0` ≡ `velocity = 0`, `C1: v0` ≡ `C1: velocity = 0`, and `C1: C4` rem
 the C1 lane to C4. The shorthand expresses only set/delete/adjust of one
 property — use the full syntax for anything computed (waveforms, `*=`, ramps,
 cross-note references).
+
+The one exception is the velocity range `vA-B`, which desugars to **two**
+assignments — `velocity = low` and `deviation = high - low` — matching the
+bar|beat notes layer's `vA-B` exactly. This is the **persistent base velocity +
+`velocity_deviation`** semantic Live shows as the per-note random-velocity range
+in the clip editor, **not** a one-time `rand(A,B)` baked at transform time. Each
+bound is clamped to 0-127 and the lower becomes the base, so `v120-80` ≡
+`v80-120` and out-of-range bounds clamp before the deviation is computed
+(`v200-250` ≡ velocity 127, deviation 0). A selector applies to both writes, so
+`C1: v80-120` produces two assignment rows in the parsed AST — still written as
+one token per line. (Because Peggy grammars cannot import a shared helper, this
+mapping is duplicated from the barbeat interpreter and pinned by
+`velocity-range-parity.test.ts`.)
 
 ## Units and Time Signatures
 

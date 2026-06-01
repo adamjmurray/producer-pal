@@ -116,6 +116,127 @@ describe("Transform Parser - shorthand", () => {
     });
   });
 
+  describe("velocity range shorthand (vA-B)", () => {
+    it("desugars v80-120 to velocity set + deviation set", () => {
+      expect(parser.parse("v80-120")).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "velocity",
+          operator: "set",
+          expression: 80,
+        },
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "deviation",
+          operator: "set",
+          expression: 40,
+        },
+      ]);
+    });
+
+    it("swaps reversed bounds (v120-80)", () => {
+      const result = parser.parse("v120-80");
+
+      expect(result[0]).toMatchObject({
+        parameter: "velocity",
+        expression: 80,
+      });
+      expect(result[1]).toMatchObject({
+        parameter: "deviation",
+        expression: 40,
+      });
+    });
+
+    it("clamps each bound to 0-127 before deviation (v200-250 → 127, dev 0)", () => {
+      const result = parser.parse("v200-250");
+
+      expect(result[0]).toMatchObject({
+        parameter: "velocity",
+        expression: 127,
+      });
+      expect(result[1]).toMatchObject({
+        parameter: "deviation",
+        expression: 0,
+      });
+    });
+
+    it("equal bounds give zero deviation (v100-100)", () => {
+      const result = parser.parse("v100-100");
+
+      expect(result[0]).toMatchObject({
+        parameter: "velocity",
+        expression: 100,
+      });
+      expect(result[1]).toMatchObject({
+        parameter: "deviation",
+        expression: 0,
+      });
+    });
+
+    it("does not shadow additive shorthand (v-10 stays a subtract)", () => {
+      expect(parser.parse("v-10")).toStrictEqual([
+        {
+          pitchRange: null,
+          timeRange: null,
+          parameter: "velocity",
+          operator: "add",
+          expression: { type: "subtract", left: 0, right: 10 },
+        },
+      ]);
+    });
+
+    it("applies a pitch selector to both emitted assignments (C1: v80-120)", () => {
+      const result = parser.parse("C1: v80-120");
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toStrictEqual({
+        pitchRange: { startPitch: 36, endPitch: 36 },
+        timeRange: null,
+        parameter: "velocity",
+        operator: "set",
+        expression: 80,
+      });
+      expect(result[1]).toStrictEqual({
+        pitchRange: { startPitch: 36, endPitch: 36 },
+        timeRange: null,
+        parameter: "deviation",
+        operator: "set",
+        expression: 40,
+      });
+    });
+
+    it("applies a combined pitch + time selector to both (E3 1|1-2|1: v80-120)", () => {
+      const result = parser.parse("E3 1|1-2|1: v80-120");
+
+      expect(result).toHaveLength(2);
+
+      for (const assignment of result) {
+        expect(assignment.pitchRange).toStrictEqual({
+          startPitch: 64,
+          endPitch: 64,
+        });
+        expect(assignment.timeRange).toStrictEqual({
+          startBar: 1,
+          startBeat: 1,
+          endBar: 2,
+          endBeat: 1,
+        });
+      }
+    });
+
+    it("flattens correctly alongside other lines (v80-120 then p0.5)", () => {
+      const result = parser.parse("v80-120\np0.5");
+
+      expect(result.map((a) => a.parameter)).toStrictEqual([
+        "velocity",
+        "deviation",
+        "probability",
+      ]);
+    });
+  });
+
   describe("probability shorthand", () => {
     it("desugars p0.5 to probability set", () => {
       expect(parser.parse("p0.5")).toStrictEqual([
