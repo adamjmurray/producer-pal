@@ -122,7 +122,7 @@ export async function applyTransform(
 
 /**
  * Parse a notation duration value that may be decimal, fraction, or mixed number.
- * Examples: "0.75", "11/16", "1+1/2", "/4"
+ * Examples: "0.75", "11/16", "1+1/2", "/4", "0.873/4" (off-grid escape)
  * @param value - Duration string from notation output
  * @returns Numeric duration value
  */
@@ -136,8 +136,8 @@ export function parseNotationDuration(value: string): number {
     );
   }
 
-  // Fraction: "11/16" or "/4"
-  const fracMatch = value.match(/^(\d*)\/(\d+)$/);
+  // Fraction: "11/16", "/4", or off-grid decimal numerator "0.873/4"
+  const fracMatch = value.match(/^(\d+\.\d+|\d*)\/(\d+)$/);
 
   if (fracMatch) {
     const num = fracMatch[1] === "" ? 1 : Number(fracMatch[1]);
