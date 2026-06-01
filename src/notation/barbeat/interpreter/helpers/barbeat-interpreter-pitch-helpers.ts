@@ -66,8 +66,15 @@ function expandRepeatPattern(
 
   warnIfBeforeClipStart(startBeats);
 
+  // Running-sum fold rather than the closed-form `startBeats + i * step`:
+  // `absoluteBeats` accumulates one `advance` (= `step`) per emission. For a
+  // constant advance this equals the closed form (within float epsilon), so
+  // behavior is unchanged. The fold is the shape that lets a future per-emit
+  // cycling duration vary `advance` per step (pattern brackets / streams) — see
+  // "Pattern Brackets (Streams)" in dev/specs/BarBeat-Spec.md.
+  let absoluteBeats = startBeats;
+
   for (let i = 0; i < times; i++) {
-    const absoluteBeats = startBeats + i * step;
     const bar = Math.floor(absoluteBeats / beatsPerBar) + 1;
     // Floored modulo (not bare `%`): JS `%` is truncated, keeping the dividend's
     // sign, so a negative absoluteBeats (a repeat landing before the clip start,
@@ -79,6 +86,7 @@ function expandRepeatPattern(
       (((absoluteBeats % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
 
     positions.push({ bar, beat });
+    absoluteBeats += step;
   }
 
   return positions;
@@ -149,19 +157,24 @@ function emitPitchAtPosition(
 }
 
 /**
- * Emit all pitches at multiple positions
+ * Emit a pitch stream across multiple positions, zipping value to position by a
+ * shared emit index. `pitchStream` is a stream of chords (each element is a
+ * chord = one or more simultaneous pitches); position `i` emits the chord at
+ * `pitchStream[i mod stream.length]`. A plain (unbracketed) chord is a length-1
+ * stream, so every position re-emits the same chord — the existing broadcast.
+ * Pattern brackets (streams) make the stream longer so the value cycles (see
+ * "Pattern Brackets (Streams)" in dev/specs/BarBeat-Spec.md).
  * @param positions - Array of time positions
- * @param currentPitches - Array of pitch states
- * @param element - Time element
+ * @param pitchStream - Stream of chords (length 1 for unbracketed input)
  * @param beatsPerBar - Beats per bar
  * @param timeSigDenominator - Time signature denominator
  * @param events - Output events array
  * @param notesByBar - Notes by bar cache
- * @returns Current time and bar number flag
+ * @returns Current time
  */
 function emitPitchesAtPositions(
   positions: TimePosition[],
-  currentPitches: PitchState[],
+  pitchStream: PitchState[][],
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
   events: NoteEvent[],
@@ -169,13 +182,16 @@ function emitPitchesAtPositions(
 ): { currentTime: TimePosition | null } {
   let currentTime: TimePosition | null = null;
 
-  for (const position of positions) {
+  for (const [i, position] of positions.entries()) {
     currentTime = position;
+    // Modulo keeps the index in range (stream length is always >= 1), so the
+    // chord is always defined; the cast documents the guaranteed bounds.
+    const chord = pitchStream[i % pitchStream.length] as PitchState[];
 
-    for (const pitchState of currentPitches) {
+    for (const pitchState of chord) {
       emitPitchAtPosition(
         pitchState,
-        currentTime,
+        position,
         beatsPerBar,
         timeSigDenominator,
         events,
@@ -277,7 +293,9 @@ export function handlePitchEmission(
 
   const emitResult = emitPitchesAtPositions(
     positions,
-    state.currentPitches,
+    // A plain chord is a length-1 pitch stream; pattern brackets will supply a
+    // longer stream here so the value cycles across positions.
+    [state.currentPitches],
     beatsPerBar,
     timeSigDenominator,
     events,
