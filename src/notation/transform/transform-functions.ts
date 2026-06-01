@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import * as console from "#src/shared/v8-max-console.ts";
 import {
   type TimeRange,
   type NoteProperties,
@@ -261,12 +262,14 @@ function evaluateWaveform(
     const arrangementStart = noteProperties["clip:position"];
 
     if (arrangementStart == null) {
-      throw new Error(
-        "sync requires an arrangement clip (no clip.position available)",
-      );
+      // Session clips have no arrangement origin to anchor phase. Degrade
+      // gracefully to clip-relative (phase resets at clip start) instead of
+      // skipping the whole assignment — mirrors the clip.position variable
+      // fallback. effectivePosition stays at the clip-relative position.
+      console.warn("sync ignored on session clip — LFO is clip-relative");
+    } else {
+      effectivePosition = position + arrangementStart;
     }
-
-    effectivePosition = position + arrangementStart;
   }
 
   // Calculate phase from position and period

@@ -532,6 +532,36 @@ describe("Audio Transform Evaluator", () => {
     });
   });
 
+  describe("synced waveform on session clips", () => {
+    it("degrades synced waveform to clip-relative with a warning", () => {
+      vi.mocked(console.warn).mockClear();
+      const ctx = {
+        clipDuration: 4,
+        clipIndex: 0,
+        clipCount: 1,
+        arrangementStart: undefined, // session clip: no arrangement origin
+        barDuration: 4,
+        timeSigDenominator: 4,
+      };
+      // Audio always evaluates at position 0, so offset the phase by 0.25 to get
+      // a non-trivial value (sin(0.25 cycle) = 1). This distinguishes "applied"
+      // (degraded to clip-relative) from the old "skipped" behavior.
+      const synced = applyAudioTransform(
+        0,
+        0,
+        "gain = sin(n/1, 0.25, sync)",
+        ctx,
+      );
+      const unsynced = applyAudioTransform(0, 0, "gain = sin(n/1, 0.25)", ctx);
+
+      expect(synced.gain).toBeCloseTo(1, 9);
+      expect(synced.gain).toBeCloseTo(unsynced.gain as number, 9);
+      expect(console.warn).toHaveBeenCalledWith(
+        "sync ignored on session clip — LFO is clip-relative",
+      );
+    });
+  });
+
   describe("clipseq function (audio)", () => {
     it("selects value based on clip.index", () => {
       const result0 = applyAudioTransform(0, 0, "gain = clipseq(-3, -6, -9)", {

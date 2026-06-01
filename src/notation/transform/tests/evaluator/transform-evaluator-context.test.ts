@@ -330,24 +330,34 @@ describe("Context Variables", () => {
       expect(result.velocity!.value).toBeCloseTo(0, 10);
     });
 
-    it("skips assignment when sync used on session clip", () => {
-      const result = evaluateTransform(
+    it("degrades to clip-relative when sync used on session clip", () => {
+      // Session clip (no clip:position): sync has no arrangement origin to
+      // anchor phase, so the wave degrades to clip-relative — identical to
+      // omitting sync — rather than skipping the assignment. Position 2,
+      // period 4 → phase 0.5, cos(0.5) = -1 → -100, proving the LFO applies.
+      const synced = evaluateTransform(
         "velocity += 100 * cos(n/1, sync)",
-        createContext(),
+        createContext({ position: 2 }),
+        {},
+      );
+      const unsynced = evaluateTransform(
+        "velocity += 100 * cos(n/1)",
+        createContext({ position: 2 }),
         {},
       );
 
-      expect(result).toStrictEqual({});
+      expect(synced.velocity!.value).toBeCloseTo(-100, 10);
+      expect(synced).toStrictEqual(unsynced);
     });
 
-    it("does not affect other assignments when sync fails", () => {
+    it("applies all assignments when sync degrades on a session clip", () => {
       const result = evaluateTransform(
         "velocity += 100 * cos(n/1, sync)\npitch += 7",
-        createContext(),
+        createContext({ position: 2 }),
         {},
       );
 
-      expect(result.velocity).toBeUndefined();
+      expect(result.velocity!.value).toBeCloseTo(-100, 10);
       expect(result.pitch).toStrictEqual({ operator: "add", value: 7 });
     });
 

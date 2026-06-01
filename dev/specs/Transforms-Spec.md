@@ -89,10 +89,15 @@ across clips on the global timeline.
 - **Evaluation**: When `sync` is present,
   `effectivePosition = note.start + clip.position` is used instead of
   `note.start` for phase computation
-- **Session clips**: Using `sync` on a session clip skips the assignment with a
-  warning (no arrangement position available)
-- **Audio clips**: `sync` follows the same rule; since audio evaluates at
-  position 0 with no arrangementStart, it will skip with a warning
+- **Session clips**: A session clip has no arrangement position, so `sync` is
+  ignored and the waveform degrades to clip-relative
+  (`effectivePosition = note.start`, phase resets at clip start) with a warning
+  — the modulation still applies, rather than the assignment being skipped. This
+  mirrors the `clip.position` variable fallback (resolves to 0 with a warning on
+  session clips)
+- **Audio clips**: `sync` follows the same rule; an audio session clip (no
+  `arrangementStart`) degrades to clip-relative with a warning instead of
+  skipping
 - **Non-cyclical functions**: `sync` on `ramp`, `curve`, `rand`, `choose`, or
   math functions is a parse error
 
