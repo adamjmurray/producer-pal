@@ -11,8 +11,14 @@ import {
 } from "../../rpc/node-request-protocol.ts";
 import { registerLibraryRoutes } from "../library-routes.ts";
 
-vi.mock(import("../library-search.ts"), () => ({
+vi.mock(import("../query/library-search.ts"), () => ({
   librarySearch: vi.fn(),
+}));
+vi.mock(import("../query/find-similar.ts"), () => ({
+  findSimilar: vi.fn(),
+}));
+vi.mock(import("../query/find-duplicates.ts"), () => ({
+  findDuplicates: vi.fn(),
 }));
 vi.mock(import("../list-tags.ts"), () => ({
   listTags: vi.fn(),
@@ -30,7 +36,9 @@ vi.mock(import("../../node-for-max-logger.ts"), () => ({
   error: vi.fn(),
 }));
 
-const searchMod = await import("../library-search.ts");
+const searchMod = await import("../query/library-search.ts");
+const similarMod = await import("../query/find-similar.ts");
+const duplicatesMod = await import("../query/find-duplicates.ts");
 const tagsMod = await import("../list-tags.ts");
 const categoriesMod = await import("../list-categories.ts");
 const pluginsMod = await import("../list-plugins.ts");
@@ -179,5 +187,74 @@ describe("registerLibraryRoutes", () => {
     );
 
     expect(pluginsMod.listPlugins).toHaveBeenCalledWith({});
+  });
+
+  it("registers library.findSimilar and dispatches with parsed args", async () => {
+    vi.mocked(similarMod.findSimilar).mockResolvedValue({
+      dbAvailable: true,
+      seed: { path: "/x.wav", found: true },
+      items: [],
+    });
+
+    await handleNodeRequest(
+      "req-sim",
+      JSON.stringify({
+        route: "library.findSimilar",
+        args: { similarTo: "/x.wav", tags: "Kick" },
+      }),
+    );
+
+    expect(similarMod.findSimilar).toHaveBeenCalledWith({
+      similarTo: "/x.wav",
+      tags: "Kick",
+    });
+  });
+
+  it("library.findSimilar defaults to empty args when null", async () => {
+    vi.mocked(similarMod.findSimilar).mockResolvedValue({
+      dbAvailable: false,
+      seed: { path: "", found: false },
+      items: [],
+    });
+
+    await handleNodeRequest(
+      "req-sim-null",
+      JSON.stringify({ route: "library.findSimilar", args: null }),
+    );
+
+    expect(similarMod.findSimilar).toHaveBeenCalledWith({});
+  });
+
+  it("registers library.findDuplicates and dispatches with parsed args", async () => {
+    vi.mocked(duplicatesMod.findDuplicates).mockResolvedValue({
+      dbAvailable: true,
+      groups: [],
+    });
+
+    await handleNodeRequest(
+      "req-dup",
+      JSON.stringify({
+        route: "library.findDuplicates",
+        args: { inFolder: "/Drums" },
+      }),
+    );
+
+    expect(duplicatesMod.findDuplicates).toHaveBeenCalledWith({
+      inFolder: "/Drums",
+    });
+  });
+
+  it("library.findDuplicates defaults to empty args when null", async () => {
+    vi.mocked(duplicatesMod.findDuplicates).mockResolvedValue({
+      dbAvailable: false,
+      groups: [],
+    });
+
+    await handleNodeRequest(
+      "req-dup-null",
+      JSON.stringify({ route: "library.findDuplicates", args: null }),
+    );
+
+    expect(duplicatesMod.findDuplicates).toHaveBeenCalledWith({});
   });
 });

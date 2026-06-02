@@ -10,6 +10,8 @@ import {
   type LibraryBatchQuery,
   type LibraryBatchResult,
   type LibraryDeviceKind,
+  type LibraryFindDuplicatesResult,
+  type LibraryFindSimilarResult,
   type LibraryItem,
   type LibraryItemType,
   type LibraryKind,
@@ -49,6 +51,8 @@ interface LibraryArgs {
   verifyPaths?: boolean;
   /** listCategories only: top-level category to drill into. */
   category?: string;
+  /** findSimilar only: absolute path of the seed sample to rank others against. */
+  similarTo?: string;
   /** searchBatch only: per-query filter sets (see runSearchBatch). */
   queries?: LibraryBatchQuery[];
   /** listPlugins only: vendor/manufacturer substring filter. */
@@ -64,7 +68,9 @@ type LibraryResult =
   | LibraryListTagsResult
   | LibraryListCategoriesResult
   | LibraryBatchResult
-  | ListPluginsResult;
+  | ListPluginsResult
+  | LibraryFindSimilarResult
+  | LibraryFindDuplicatesResult;
 
 /**
  * Search Live's browser library or enumerate available tags.
@@ -126,6 +132,20 @@ export async function library(
       subcategory: args.subcategory,
       limit: args.limit,
     });
+  }
+
+  if (action === "findSimilar") {
+    return await callRoute<LibraryFindSimilarResult>("library.findSimilar", {
+      similarTo: args.similarTo,
+      ...candidateFilters(args),
+    });
+  }
+
+  if (action === "findDuplicates") {
+    return await callRoute<LibraryFindDuplicatesResult>(
+      "library.findDuplicates",
+      candidateFilters(args),
+    );
   }
 
   if (action !== "search") {
@@ -372,6 +392,27 @@ function sortPartition(
   return [...items].sort(
     (a, b) => b.useCount - a.useCount || a.name.localeCompare(b.name),
   );
+}
+
+/**
+ * The search-filter subset that findSimilar and findDuplicates pass through to
+ * constrain their candidate set (everything except search-only sort/verifyPaths
+ * and the seed itself). Keeps the two dispatch branches from repeating the list.
+ *
+ * @param args - Tool arguments
+ * @returns The candidate-constraining filters
+ */
+function candidateFilters(args: LibraryArgs): object {
+  return {
+    query: args.query,
+    tags: args.tags,
+    kind: args.kind,
+    type: args.type,
+    deviceKind: args.deviceKind,
+    source: args.source,
+    inFolder: args.inFolder,
+    limit: args.limit,
+  };
 }
 
 /**

@@ -11,14 +11,18 @@
  */
 
 import { registerNodeRoute } from "../rpc/node-request-protocol.ts";
-import { librarySearch } from "./library-search.ts";
 import {
+  type FindDuplicatesArgs,
+  type FindSimilarArgs,
   type LibrarySearchArgs,
   type ListPluginsArgs,
 } from "./library-types.ts";
 import { type ListCategoriesArgs, listCategories } from "./list-categories.ts";
 import { listPlugins } from "./list-plugins.ts";
 import { type ListTagsArgs, listTags } from "./list-tags.ts";
+import { findDuplicates } from "./query/find-duplicates.ts";
+import { findSimilar } from "./query/find-similar.ts";
+import { librarySearch } from "./query/library-search.ts";
 
 /**
  * Register all library routes. Idempotency is the caller's responsibility;
@@ -44,5 +48,13 @@ export function registerLibraryRoutes(): void {
 
   registerNodeRoute("library.listPlugins", async (args) => {
     return await listPlugins((args as ListPluginsArgs | null) ?? {});
+  });
+
+  registerNodeRoute("library.findSimilar", async (args) => {
+    return await findSimilar((args as FindSimilarArgs | null) ?? {});
+  });
+
+  registerNodeRoute("library.findDuplicates", async (args) => {
+    return await findDuplicates((args as FindDuplicatesArgs | null) ?? {});
   });
 }

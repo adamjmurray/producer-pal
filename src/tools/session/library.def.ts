@@ -32,6 +32,8 @@ export const toolDefLibrary = defineTool("ppal-library", {
         "listCategories",
         "searchBatch",
         "listPlugins",
+        "findSimilar",
+        "findDuplicates",
       ])
       .optional()
       // Default required so smallModelModeConfig.excludeEnumValues.action can
@@ -39,7 +41,7 @@ export const toolDefLibrary = defineTool("ppal-library", {
       // .default(). Matches library.ts which treats a missing action as search.
       .default("search")
       .describe(
-        "search: filter library items (default) | listTags: enumerate available tags | listCategories: browse Live's category taxonomy (Sounds, Drums, Genres, …); pass category to drill into its tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query | listPlugins: list installed VST/VST3/AU plugins Live knows about (filter with query, vendor, format, deviceKind, subcategory)",
+        "search: filter library items (default) | listTags: enumerate available tags | listCategories: browse Live's category taxonomy (Sounds, Drums, Genres, …); pass category to drill into its tags | searchBatch: run many filtered searches in one call (e.g. build a drum kit), results grouped per query | listPlugins: list installed VST/VST3/AU plugins Live knows about (filter with query, vendor, format, deviceKind, subcategory) | findSimilar: rank samples by audio similarity to a seed sample (similarTo); combine with the search filters to constrain candidates | findDuplicates: group library samples with identical audio (re-shipped duplicates), scoped by the search filters",
       ),
 
     queries: queriesInputSchema.describe(
@@ -80,6 +82,13 @@ export const toolDefLibrary = defineTool("ppal-library", {
       .optional()
       .describe(
         "listCategories only: a top-level category name (from listCategories with no category) to drill into; returns its tag names, each usable as a tags filter",
+      ),
+
+    similarTo: z.coerce
+      .string()
+      .optional()
+      .describe(
+        "findSimilar only: absolute path of a seed sample (e.g. a path from a prior search) to rank other samples by audio similarity. Combine with the search filters to constrain candidates — e.g. similarTo a kick + tags=Kick for 'more kicks like this one'. Each result carries a `similarity` score (0–1).",
       ),
 
     deviceKind: z
@@ -154,9 +163,16 @@ export const toolDefLibrary = defineTool("ppal-library", {
       "format",
       "category",
       "subcategory",
+      "similarTo",
     ],
     excludeEnumValues: {
-      action: ["listCategories", "searchBatch", "listPlugins"],
+      action: [
+        "listCategories",
+        "searchBatch",
+        "listPlugins",
+        "findSimilar",
+        "findDuplicates",
+      ],
       kind: [
         "live-clip",
         "m4l-device",

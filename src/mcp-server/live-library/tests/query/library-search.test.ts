@@ -8,10 +8,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
-import { librarySearch } from "../library-search.ts";
-import { setupLibraryFixtureLifecycle } from "./fixtures/library-fixture.ts";
+import { librarySearch } from "../../query/library-search.ts";
+import { setupLibraryFixtureLifecycle } from "../fixtures/library-fixture.ts";
 
-vi.mock(import("../live-db-path.ts"), () => ({
+vi.mock(import("../../live-db-path.ts"), () => ({
   findLiveFilesDbPath: vi.fn(),
   findLivePluginsDbPath: vi.fn(),
   liveDatabaseDir: vi.fn(),
@@ -25,7 +25,7 @@ vi.mock(import("node:fs/promises"), async (importOriginal) => {
   return { ...actual, stat: vi.fn() };
 });
 
-const dbPathMod = await import("../live-db-path.ts");
+const dbPathMod = await import("../../live-db-path.ts");
 const { stat } = await import("node:fs/promises");
 
 describe("librarySearch", () => {

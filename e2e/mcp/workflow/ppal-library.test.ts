@@ -52,6 +52,23 @@ interface LibraryListTagsResult {
   reason?: string;
 }
 
+interface LibrarySimilarItem extends LibraryItem {
+  similarity: number;
+}
+
+interface LibraryFindSimilarResult {
+  seed: { path: string; found: boolean };
+  items: LibrarySimilarItem[];
+  dbAvailable?: boolean;
+  reason?: string;
+}
+
+interface LibraryFindDuplicatesResult {
+  groups: Array<{ count: number; items: LibraryItem[] }>;
+  dbAvailable?: boolean;
+  reason?: string;
+}
+
 type LibraryArgs = Record<string, string | number | undefined>;
 
 async function callLibrary(args: LibraryArgs = {}): Promise<unknown> {
@@ -67,6 +84,22 @@ async function listTags(
 ): Promise<LibraryListTagsResult> {
   return parseToolResult<LibraryListTagsResult>(
     await callLibrary({ action: "listTags", ...args }),
+  );
+}
+
+async function findSimilar(
+  args: LibraryArgs = {},
+): Promise<LibraryFindSimilarResult> {
+  return parseToolResult<LibraryFindSimilarResult>(
+    await callLibrary({ action: "findSimilar", ...args }),
+  );
+}
+
+async function findDuplicates(
+  args: LibraryArgs = {},
+): Promise<LibraryFindDuplicatesResult> {
+  return parseToolResult<LibraryFindDuplicatesResult>(
+    await callLibrary({ action: "findDuplicates", ...args }),
   );
 }
 
@@ -270,6 +303,75 @@ describe("ppal-library", () => {
       expect(a.items.map((i) => i.path)).toStrictEqual(
         b.items.map((i) => i.path),
       );
+    });
+  });
+
+  describe("findDuplicates (audio fingerprint)", () => {
+    it("returns duplicate groups of byte-identical audio, largest first", async () => {
+      const result = await findDuplicates();
+
+      expect(result.dbAvailable).toBe(true);
+      expect(Array.isArray(result.groups)).toBe(true);
+
+      for (const group of result.groups) {
+        // A group is a real duplicate set: at least two members, count matches.
+        expect(group.count).toBeGreaterThanOrEqual(2);
+        expect(group.items.length).toBe(group.count);
+      }
+
+      const counts = result.groups.map((g) => g.count);
+
+      expect(counts).toStrictEqual([...counts].sort((a, b) => b - a));
+    });
+  });
+
+  describe("findSimilar (audio similarity)", () => {
+    it("ranks candidates by similarity to a fingerprinted seed", async () => {
+      // Any file in a duplicate group is guaranteed to have a fingerprint, so
+      // it's a reliable seed regardless of which Library.db this machine has.
+      const dups = await findDuplicates();
+      const seedPath = dups.groups[0]?.items[0]?.path;
+
+      if (seedPath == null) {
+        // No duplicate samples on this machine — nothing to seed from.
+        return;
+      }
+
+      const result = await findSimilar({ similarTo: seedPath });
+
+      expect(result.dbAvailable).toBe(true);
+      expect(result.seed).toStrictEqual({ path: seedPath, found: true });
+
+      const sims = result.items.map((i) => i.similarity);
+
+      // Scores are valid cosines and returned in descending order.
+      for (const s of sims) {
+        expect(s).toBeGreaterThanOrEqual(-1.0001);
+        expect(s).toBeLessThanOrEqual(1.0001);
+      }
+
+      expect(sims).toStrictEqual([...sims].sort((a, b) => b - a));
+      // The seed itself is never in its own results.
+      expect(result.items.every((i) => i.path !== seedPath)).toBe(true);
+      // The seed's byte-identical duplicate twin is a ~1.0 top match.
+      expect(result.items[0]?.similarity).toBeGreaterThan(0.99);
+    });
+
+    it("reports a seed that isn't in the library without throwing", async () => {
+      const result = await findSimilar({
+        similarTo: "/no/such/seed/file.wav",
+      });
+
+      expect(result.seed.found).toBe(false);
+      expect(result.items).toStrictEqual([]);
+      expect(typeof result.reason).toBe("string");
+    });
+
+    it("reports a missing similarTo arg without throwing", async () => {
+      const result = await findSimilar();
+
+      expect(result.seed.found).toBe(false);
+      expect(result.reason).toContain("similarTo");
     });
   });
 
