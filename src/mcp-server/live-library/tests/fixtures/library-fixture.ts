@@ -16,8 +16,9 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { afterAll, afterEach, beforeAll, beforeEach, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, expect, vi } from "vitest";
 import { fourCC } from "../../library-filters.ts";
+import { type StalenessRisk } from "../../library-types.ts";
 
 export interface LibraryFixture {
   dir: string;
@@ -113,6 +114,44 @@ export function createBrokenLibraryDb(): {
     dbPath,
     cleanup: () => rmSync(dir, { recursive: true, force: true }),
   };
+}
+
+/**
+ * A representative staleness advisory the DB layer can surface, for asserting
+ * that a query forwards `stalenessRisk` from `detectStalenessRisk`.
+ */
+export const STALENESS_RISK: StalenessRisk = {
+  kind: "wal-pending",
+  dbMtime: 1,
+  walMtime: 2,
+  walSizeMb: 1,
+  ageSeconds: 1,
+};
+
+/**
+ * Force a DB read failure and assert the query degrades to
+ * `dbAvailable: false` rather than throwing.
+ *
+ * @param dbPathMod - The mocked `live-db-path` module
+ * @param dbPathMod.findLiveFilesDbPath - Mocked finder, pointed at a broken DB
+ * @param runQuery - Runs the library query under test and returns its result
+ */
+export async function expectQueryDegradesOnBrokenDb(
+  dbPathMod: { findLiveFilesDbPath: (...args: unknown[]) => unknown },
+  runQuery: () => Promise<{ dbAvailable?: boolean; reason?: string }>,
+): Promise<void> {
+  const broken = createBrokenLibraryDb();
+
+  try {
+    vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(broken.dbPath);
+
+    const result = await runQuery();
+
+    expect(result.dbAvailable).toBe(false);
+    expect(result.reason).toContain("Failed to read Live database");
+  } finally {
+    broken.cleanup();
+  }
 }
 
 /**

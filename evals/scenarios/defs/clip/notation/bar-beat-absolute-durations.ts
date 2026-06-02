@@ -88,6 +88,20 @@ function assertClipNotes(
 }
 
 /**
+ * Common assertion head shared by every create-clip scenario below: connect
+ * ran (turn 0) and the model issued a create-clip (turn 1). Each scenario
+ * appends its own per-clip note assertions and llm_judge.
+ *
+ * @returns The leading assertions every create-clip scenario shares
+ */
+function createClipAssertionHead(): EvalAssertion[] {
+  return [
+    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
+    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+  ];
+}
+
+/**
  * Triplet durations: eighth-note triplets (n/12) and quarter-note triplets
  * (n/6) are the model's weakest prior. This is the single scenario most
  * likely to expose meter-relative-vs-absolute confusion.
@@ -115,8 +129,7 @@ export const barBeatTriplets: EvalScenario = {
     clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+    ...createClipAssertionHead(),
 
     // Read each clip back and assert the kicks land on the triplet grid.
     // Counts alone can't see spacing: 12 notes bunched onto straight 16ths
@@ -168,8 +181,7 @@ export const barBeatMeterFill: EvalScenario = {
     clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+    ...createClipAssertionHead(),
 
     // Read each clip back and assert ONE kick at the bar start whose duration
     // fills the bar. Count + timeSignature alone can't see that: a 1-quarter
@@ -225,8 +237,7 @@ export const barBeatCompoundFeelPulse: EvalScenario = {
     clearSessionSlots(mcpClient, [`${DRUMS_TRACK}/0`, `${DRUMS_TRACK}/1`]),
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+    ...createClipAssertionHead(),
 
     // Read each clip back and assert the kicks fall on the dotted-quarter pulse.
     // Count alone is weak — 2 hits in 6/8 could land anywhere — so positions are
@@ -284,9 +295,7 @@ export const barBeatAbsoluteDurationUniformity: EvalScenario = {
     ]),
 
   assertions: [
-    { type: "tool_called", tool: TOOL_CONNECT, turn: 0 },
-
-    { type: "tool_called", tool: TOOL_CREATE_CLIP, turn: 1 },
+    ...createClipAssertionHead(),
 
     // Read each clip back from Live and assert the kicks land on the
     // quarter-note grid with one-quarter durations. Positions — not just

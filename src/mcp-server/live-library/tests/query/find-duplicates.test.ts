@@ -6,8 +6,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { findDuplicates } from "../../query/find-duplicates.ts";
 import {
-  createBrokenLibraryDb,
+  expectQueryDegradesOnBrokenDb,
   setupLibraryFixtureLifecycle,
+  STALENESS_RISK,
 } from "../fixtures/library-fixture.ts";
 
 vi.mock(import("../../live-db-path.ts"), () => ({
@@ -84,19 +85,13 @@ describe("findDuplicates", () => {
   });
 
   it("surfaces a staleness advisory from the DB layer", async () => {
-    const risk = {
-      kind: "wal-pending" as const,
-      dbMtime: 1,
-      walMtime: 2,
-      walSizeMb: 1,
-      ageSeconds: 1,
-    };
-
-    vi.mocked(stalenessMod.detectStalenessRisk).mockResolvedValue(risk);
+    vi.mocked(stalenessMod.detectStalenessRisk).mockResolvedValue(
+      STALENESS_RISK,
+    );
 
     const result = await findDuplicates({});
 
-    expect(result.stalenessRisk).toStrictEqual(risk);
+    expect(result.stalenessRisk).toStrictEqual(STALENESS_RISK);
   });
 
   it("reports an unresolvable inFolder", async () => {
@@ -116,17 +111,6 @@ describe("findDuplicates", () => {
   });
 
   it("degrades to dbAvailable:false when a query throws", async () => {
-    const broken = createBrokenLibraryDb();
-
-    try {
-      vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(broken.dbPath);
-
-      const result = await findDuplicates({});
-
-      expect(result.dbAvailable).toBe(false);
-      expect(result.reason).toContain("Failed to read Live database");
-    } finally {
-      broken.cleanup();
-    }
+    await expectQueryDegradesOnBrokenDb(dbPathMod, () => findDuplicates({}));
   });
 });
