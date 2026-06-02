@@ -605,12 +605,12 @@ describe("Audio Transform Evaluator", () => {
     });
   });
 
-  describe("seq function (audio) — de-overloaded", () => {
+  describe("seq function (audio) — clip-axis fallback", () => {
     beforeEach(() => {
       vi.mocked(console.warn).mockClear();
     });
 
-    it("warns and returns first value (use clipseq() instead)", () => {
+    it("cycles by clip.index (gain has no note axis), like clipseq()", () => {
       const result = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
         clipDuration: 8,
         clipIndex: 2,
@@ -618,12 +618,11 @@ describe("Audio Transform Evaluator", () => {
         barDuration: 4,
       });
 
-      // Old behavior would have returned -9 via the clip:index fallback.
-      // New behavior: warn + return first value; clipseq() is the audio path.
-      expect(result.gain).toBe(-3);
-      expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining("seq() needs note.index"),
-      );
+      // gain/pitchShift are clip-granular — note.index can't exist, so the clip
+      // axis is the only meaning. seq() falls back to clip:index here (== the
+      // clipseq() result) instead of warning.
+      expect(result.gain).toBe(-9);
+      expect(console.warn).not.toHaveBeenCalled();
     });
   });
 });

@@ -11,8 +11,8 @@ saw(frequency, [phase], [sync]); // sawtooth wave — phase 0 starts at zero, ri
 square(frequency, [phase], [pulseWidth], [sync]); // square wave — phase 0 starts high
 rand([min], [max]); // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
 choose(a, b, ...); // random pick from arguments (at least 1)
-seq(a, b, ...); // cycle through arguments by note.index (per note; MIDI only)
-clipseq(a, b, ...); // cycle through arguments by clip.index (per clip across a batch)
+seq(a, b, ...); // cycle by note.index; clip-granular params (gain, pitchShift) have no note axis, so cycles by clip.index there (== clipseq)
+clipseq(a, b, ...); // cycle by clip.index (per clip across a batch); forces the clip axis even on per-note params
 ramp(start, end); // linear ramp over clip/time range
 curve(start, end, exponent); // exponential ramp over clip/time range
 
