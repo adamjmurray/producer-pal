@@ -531,3 +531,64 @@ describe("updateDevice - actions arg", () => {
     );
   });
 });
+
+describe("updateDevice - path-prefixed pseudo-params", () => {
+  /**
+   * Register a Drum Rack at t0/d0 with a single empty C1 (MIDI 36) pad chain
+   * whose device slot auto-creates a Simpler on insert.
+   * @returns The C1 chain mock
+   */
+  function registerDrumRackWithEmptyC1(): RegisteredMockObject {
+    registerMockObject("drum-rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: { chains: ["id", "chain-c1"], can_have_drum_pads: 1 },
+    });
+
+    const chain = registerMockObject("chain-c1", {
+      type: "DrumChain",
+      properties: { in_note: 36, devices: [] },
+      methods: { insert_device: () => ["id", "new-simpler"] },
+    });
+
+    registerMockObject("new-simpler", {
+      type: "SimplerDevice",
+      properties: { class_display_name: "Simpler", multi_sample_mode: 0 },
+    });
+
+    return chain;
+  }
+
+  it("loads a sample into a drum pad by addressing the rack", () => {
+    const chain = registerDrumRackWithEmptyC1();
+
+    updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/d0/sample", value: "/snare.wav" }],
+    });
+
+    expect(chain.call).toHaveBeenCalledWith("insert_device", "Simpler");
+    expect(LiveAPI.from("id new-simpler").call).toHaveBeenCalledWith(
+      "replace_sample",
+      "/snare.wav",
+    );
+  });
+
+  it("warns and skips a path-prefixed param with an empty name after '/'", () => {
+    registerMockObject("drum-rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: { chains: [], can_have_drum_pads: 1 },
+    });
+
+    updateDevice({
+      path: "t0/d0",
+      params: [{ name: "pC1/d0/", value: "/snare.wav" }],
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining('empty name after "/"'),
+    );
+  });
+});

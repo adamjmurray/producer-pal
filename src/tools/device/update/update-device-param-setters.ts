@@ -11,6 +11,7 @@ import {
   isPanLabel,
   parseLabel,
 } from "#src/tools/shared/device/helpers/device-display-helpers.ts";
+import { resolveNestedParamTarget } from "#src/tools/shared/device/helpers/nested-param-target.ts";
 import { applySpecializedParamWrite } from "#src/tools/shared/device/specialized/specialized-device-registry.ts";
 import { normalizeParamValue } from "./update-device-param-parser.ts";
 
@@ -44,6 +45,13 @@ export function setParamValues(
       continue;
     }
 
+    // Path-prefixed pseudo-param (e.g. "pC1/d0/sample"): resolve the prefix
+    // relative to this device, then write the trailing param to the target.
+    if (key.includes("/")) {
+      applyNestedParam(device, key, rawValue, toolName);
+      continue;
+    }
+
     const inputValue = normalizeParamValue(rawValue);
 
     if (applySpecializedParamWrite(device, key, inputValue, toolName)) {
@@ -60,6 +68,42 @@ export function setParamValues(
     }
 
     setParamValue(param, inputValue, toolName);
+  }
+}
+
+/**
+ * Apply a path-prefixed pseudo-param. The prefix (everything before the last
+ * "/") resolves to a target device relative to `device`; the trailing segment is
+ * the param name, written via a single-entry recursion through setParamValues so
+ * all value interpretation (enum, note, numeric, specialized pseudo-params) is
+ * reused.
+ * @param device - The device the path prefix is relative to (e.g. a Drum Rack)
+ * @param key - Full path-prefixed param name (e.g. "pC1/d0/sample")
+ * @param rawValue - Trimmed value to write
+ * @param toolName - Calling tool name for warning prefix
+ */
+function applyNestedParam(
+  device: LiveAPI,
+  key: string,
+  rawValue: string,
+  toolName: string,
+): void {
+  const slashIndex = key.lastIndexOf("/");
+  const prefix = key.slice(0, slashIndex);
+  const paramName = key.slice(slashIndex + 1).trim();
+
+  if (paramName === "") {
+    console.warn(
+      `${toolName}: skipping param "${key}" with empty name after "/"`,
+    );
+
+    return;
+  }
+
+  const target = resolveNestedParamTarget(device, prefix, paramName, toolName);
+
+  if (target) {
+    setParamValues(target, [{ name: paramName, value: rawValue }], toolName);
   }
 }
 

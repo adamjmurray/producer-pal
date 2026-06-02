@@ -631,4 +631,123 @@ describe("createDevice", () => {
       );
     });
   });
+
+  describe("drum kit builder (path-prefixed params)", () => {
+    /**
+     * Set up a fresh, empty Drum Rack created on track 0. Referencing a pad note
+     * auto-creates its chain; the pad's first device slot auto-creates a Simpler
+     * that records the sample it receives. The created Simpler ships with a
+     * loaded sample child so a follow-up gainDb write has something to target.
+     * @returns A map of created Simpler ids → their mocks, plus their sample children
+     */
+    function setupDrumKitFixture(): {
+      simplers: Record<string, RegisteredMockObject>;
+      samples: Record<string, RegisteredMockObject>;
+    } {
+      const simplers: Record<string, RegisteredMockObject> = {};
+      const samples: Record<string, RegisteredMockObject> = {};
+      const chainIdArray: string[] = [];
+
+      registerMockObject("track-0", {
+        path: livePath.track(0),
+        properties: { devices: children() },
+        methods: { insert_device: () => ["id", "drum-rack"] },
+      });
+
+      registerMockObject("drum-rack", {
+        path: livePath.track(0).device(0),
+        type: "RackDevice",
+        properties: { chains: chainIdArray, can_have_drum_pads: 1 },
+        methods: {
+          insert_chain: () => {
+            const newId = `chain-${chainIdArray.length / 2}`;
+
+            chainIdArray.push("id", newId);
+            const props: Record<string, unknown> = { in_note: -1, devices: [] };
+            const chainMock = registerMockObject(newId, {
+              type: "DrumChain",
+              properties: props,
+              methods: {
+                insert_device: () => {
+                  const simplerId = `${newId}-simpler`;
+                  const sampleId = `${simplerId}-sample`;
+
+                  (props.devices as unknown[]).push("id", simplerId);
+                  simplers[simplerId] = registerMockObject(simplerId, {
+                    type: "SimplerDevice",
+                    properties: {
+                      class_display_name: "Simpler",
+                      multi_sample_mode: 0,
+                      parameters: children(),
+                      sample: ["id", sampleId],
+                    },
+                  });
+                  samples[sampleId] = registerMockObject(sampleId, {
+                    type: "Sample",
+                    properties: { file_path: "/loaded.wav", gain: 1 },
+                  });
+
+                  return ["id", simplerId];
+                },
+              },
+            });
+
+            chainMock.set.mockImplementation((prop: string, value: unknown) => {
+              props[prop] = value;
+            });
+
+            return ["id", newId];
+          },
+        },
+      });
+
+      return { simplers, samples };
+    }
+
+    it("builds a full kit in one call (chain + Simpler auto-create per pad)", () => {
+      const { simplers } = setupDrumKitFixture();
+
+      const result = createDevice({
+        deviceName: "Drum Rack",
+        path: "t0",
+        params: [
+          { name: "pC1/d0/sample", value: "/kick.wav" },
+          { name: "pC#1/d0/sample", value: "/snare.wav" },
+        ],
+      });
+
+      expect(result).toMatchObject({ id: "drum-rack" });
+      expect(simplers["chain-0-simpler"]!.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/kick.wav",
+      );
+      expect(simplers["chain-1-simpler"]!.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/snare.wav",
+      );
+    });
+
+    it("sets a pad's gainDb after its sample in the same call", () => {
+      const { simplers, samples } = setupDrumKitFixture();
+
+      createDevice({
+        deviceName: "Drum Rack",
+        path: "t0",
+        params: [
+          { name: "pC1/d0/sample", value: "/kick.wav" },
+          { name: "pC1/d0/gainDb", value: "-6" },
+        ],
+      });
+
+      expect(simplers["chain-0-simpler"]!.call).toHaveBeenCalledWith(
+        "replace_sample",
+        "/kick.wav",
+      );
+      // gainDb resolves to the now-existing Simpler and sets its sample's gain.
+      expect(samples["chain-0-simpler-sample"]!.set).toHaveBeenCalledWith(
+        "gain",
+        expect.any(Number),
+      );
+    });
+  });
 });

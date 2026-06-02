@@ -200,4 +200,10 @@ export const ALL_VALID_DEVICES: readonly string[] = [
 // Device class names for special handling
 export const DEVICE_CLASS = {
   SIMPLER: "Simpler",
+  // DrumSampler's class_display_name. Matched leniently (case- and
+  // space-insensitive) at the use site since the exact display string is
+  // confirmed against Live via e2e. DrumSampler's sample is not controllable
+  // via the current Live API, so a drum-pad sample write replaces it with a
+  // Simpler (see resolveNestedParamTarget).
+  DRUM_SAMPLER: "DrumSampler",
 } as const;

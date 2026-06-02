@@ -40,7 +40,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     // Kept for potential future use
     // collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: paramsInputSchema.describe(
-      "array of {name, value} (name = param name or read-device id; value in display units: enum string, note name, number)",
+      "array of {name, value}. name = param name or read-device id; value in display units (enum string, note name, number). For a Drum Rack target, prefix the name with a pad path, e.g. {name:'pC1/d0/sample', value:'<abs file path>'} sets pad C1's sample (auto-creates the pad's Simpler)",
     ),
     // Intentionally an array (not the usual comma-separated string): action
     // arguments themselves contain commas (e.g. setModulation('x','y',0.5)), so
