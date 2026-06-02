@@ -39,6 +39,23 @@
     const borrowed = borrowBars(bar, beat, beatsPerBar);
     return { bar: borrowed.bar, beat: borrowed.beat };
   }
+
+  // Assemble a pattern bracket from its kind-tagged values, enforcing the
+  // "one parameter kind per bracket" rule. Each value is { kind, value }; a
+  // bracket mixing kinds (`[v80 C3]`) throws. Returns the flat
+  // { stream: { param, values } } AST node — values is the bare per-kind shape
+  // (chord[] for pitch, the velocity/duration/probability objects otherwise).
+  function buildStream(values) {
+    const param = values[0].kind;
+    for (const v of values) {
+      if (v.kind !== param) {
+        throw new Error(
+          "a pattern bracket holds one parameter kind (pitch, velocity, duration, or probability), not a mix"
+        );
+      }
+    }
+    return { stream: { param, values: values.map(v => v.value) } };
+  }
 }}
 
 start
@@ -48,7 +65,7 @@ start
   }
 
 element
-  = barCopy / timePoints / pitchStream / probability / velocity / duration / pitch
+  = barCopy / timePoints / stream / probability / velocity / duration / pitch
 
 barCopy "bar copy operation"
   = '@' 'clear' {
@@ -192,31 +209,35 @@ pitchClass
   return { name: pc, value: PITCH_CLASS_VALUES[pc] };
 }
 
-// Pattern bracket holding a PITCH stream (AJM-482): an ordered list of pitch
-// values cycled across emitted note-events. The stream persists until the pitch
-// parameter is reassigned, so its cursor carries across separate time positions
-// (cross-event cursor). Each value is a chord (an array of pitch objects); a
-// bare pitch is a length-1 chord, so `values` is uniformly chord[]. The emitter
-// zips it against the positions: value at cursor i = values[i mod values.length].
-// v/n/p value streams and the duration-fold are later phases (AJM-483); see
+// Pattern bracket holding a parameter STREAM (AJM-482 pitch, AJM-483 v/n/p): an
+// ordered list of one parameter's values, cycled across emitted note-events. The
+// stream persists until that parameter is reassigned, so its cursor carries
+// across separate time positions (cross-event cursor). The emitter zips it
+// against the positions: value at cursor i = values[i mod values.length]; see
 // "Pattern Brackets (Streams)" in dev/specs/BarBeat-Spec.md.
 //
-// A stream value is a chord or a bare pitch ONLY. A parameter token (v/n/p) or a
-// nested `[` raises a parse error — that IS the "one parameter kind per bracket,
-// no nesting" contract (targeted messages are a later teach-tier phase).
-pitchStream "pitch stream"
-  = "[" _ head:streamPitchValue tail:(WS streamPitchValue)* _ "]" {
-    return {
-      stream: {
-        param: "pitch",
-        values: [head, ...tail.map(t => t[1])],
-      },
-    };
+// One bracket holds ONE parameter kind. Values are kind-tagged so buildStream
+// can reject a mix (`[v80 C3]`); homogeneous output keeps the bare per-kind
+// shape (chord[] for pitch — a bare pitch is a length-1 chord — and the
+// velocity/duration/probability objects otherwise). A nested `[` is not a valid
+// streamValue, so `[C3 [D3 E3]]` fails to parse (no rule-sharing/nesting). The
+// duration-fold is a later phase (AJM-483); targeted error messages are a later
+// teach-tier phase.
+stream "pattern bracket"
+  = "[" _ head:streamValue tail:(WS streamValue)* _ "]" {
+    return buildStream([head, ...tail.map(t => t[1])]);
   }
 
-streamPitchValue
-  = chord
-  / p:pitch { return [p]; }
+// A single stream value, tagged with its parameter kind. First characters are
+// disjoint across kinds — `(`/note-letter (pitch), `v` (velocity), `n`/digit
+// (duration), `p` (probability) — so ordered choice never mis-routes; a token
+// matching none fails the bracket.
+streamValue
+  = c:chord { return { kind: "pitch", value: c }; }
+  / v:velocity { return { kind: "velocity", value: v }; }
+  / d:duration { return { kind: "duration", value: d }; }
+  / pr:probability { return { kind: "probability", value: pr }; }
+  / p:pitch { return { kind: "pitch", value: [p] }; }
 
 chord "chord"
   = "(" _ head:pitch tail:(WS pitch)* _ ")" {

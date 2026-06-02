@@ -450,14 +450,15 @@ C1 1|1x4@n/4         // Bar 1: kick on every beat
 
 > **Status: design locked 2026-06-01 (AJM-482 / AJM-483).** This section is the
 > authoritative design contract for the bracket/stream feature. **Pitch streams
-> (`[C3 E3 G3]`, AJM-482) ship in v1.4.12, including the cross-event cursor** —
-> a pitch stream steps across separate time positions
-> (`[C3 E3 G3] 1|1 1|2 1|3`), not just within one `x<count>` expansion. Items
-> still marked **(planned)** — value streams for velocity/duration/probability
-> and the no-`@step` duration-fold (AJM-483) — describe syntax the parser does
-> not yet accept; they are documented here so the model is designed once and the
-> two tickets share one engine. Each **(planned)** marker is removed when its
-> surface ships.
+> (`[C3 E3 G3]`, AJM-482) and value streams for velocity/duration/probability
+> (`[v80 v100]`, `[n/4 n/8]`, `[p1 p0.6]`, AJM-483) ship in v1.4.12, including
+> the cross-event cursor and the zip** — streams step across separate time
+> positions and multiple sibling streams cycle independently against a shared
+> emission index. The one item still marked **(planned)** — the no-`@step`
+> duration-fold (a duration stream changing position SPACING, AJM-483) — is
+> documented here so the engine is designed once; its **(planned)** marker is
+> removed when it ships. Today a duration stream cycles each note's LENGTH but
+> position spacing still uses `@step` or the scalar duration.
 
 ### The model: a parameter's current state is a _stream_
 
@@ -475,9 +476,11 @@ Emission reads two independent things, both indexed by a per-parameter cursor
   at every `i` (today's behavior, unchanged).
 - **Position** — a running-sum fold: `pos[0] = start`,
   `pos[i] = pos[i-1] + advance[i-1]`, where `advance` is `@step` if present,
-  else the just-emitted (possibly cycled) duration. This is exactly the existing
-  "`@step` omitted ⇒ step defaults to the current duration" rule, generalized to
-  a per-emit duration.
+  else the just-emitted duration. This is exactly the existing "`@step` omitted
+  ⇒ step defaults to the current duration" rule. **(planned)** Generalizing
+  `advance` to the per-emit _cycled_ duration (so a duration stream changes
+  spacing, not just length) is the duration-fold — see the Gallop example. Today
+  the no-`@step` advance uses the scalar current duration.
 
 When every stream is length-1, the zip reduces **exactly** to today's broadcast
 (each position emits the whole pitch buffer) — full backward compatibility.
@@ -489,18 +492,18 @@ When every stream is length-1, the zip reduces **exactly** to today's broadcast
 ( pitch pitch ... )   // a chord: one element holding simultaneous pitches
 ```
 
-- A bracket holds tokens of **one parameter kind**: `[C3 E3 G3]` (pitch — ships
-  today), and **(planned)** `[v80 v100]` (velocity), `[n/4 n/8]` (duration),
-  `[p1 p0.6]` (probability). A bracket mixing kinds (`[v80 C3]`) is an error.
-  Today a non-pitch bracket is a parse error (the kind simply isn't accepted
-  yet).
+- A bracket holds tokens of **one parameter kind**: `[C3 E3 G3]` (pitch),
+  `[v80 v100]` (velocity, ranges allowed: `[v40-80 v100]`), `[n/4 n/8]`
+  (duration, bar forms allowed: `[1bar n/8]`), `[p1 p0.6]` (probability). A
+  bracket mixing kinds (`[v80 C3]`) is an error. First characters are disjoint
+  across kinds, so the bracket's kind is unambiguous.
 - **`(...)` is strictly a chord** — simultaneous pitches at one step.
   `[(C3 E3) (D3 F3)]` is a 2-element pitch stream whose elements are 2-note
   chords. A group holds pitches only.
 - Brackets **zip**: write each varying parameter as its own sibling bracket.
-  **(planned)** `[v80 v100] [C3 E3 G3] 1|1x8@n/8` cycles velocity (len 2)
-  against pitch (len 3). Sibling _pitch_ brackets already parse, but with only
-  pitch streams today a later pitch bracket simply replaces the earlier one.
+  `[v80 v100] [C3 E3 G3] 1|1x8@n/8` cycles velocity (len 2) against pitch
+  (len 3) against the shared emission index. Each stream mods by its own length,
+  so coprime lengths phase against each other.
 
 > **Supersedes the AJM-482 syntax sketch.** 482 originally sketched a group as
 > "whatever's grouped," bundling a velocity with a pitch
@@ -516,18 +519,19 @@ When every stream is length-1, the zip reduces **exactly** to today's broadcast
 - A stream **persists until its parameter is reassigned**, advancing **globally
   across separate note events**, not just within one `x<count>` expansion. A
   later scalar, or a later `[...]` for the same parameter, replaces the stream
-  with a fresh cursor (index 0). **Pitch streams implement this today** — the
-  cursor carries across separate time positions and comma-separated beat lists.
+  with a fresh cursor (index 0). All four parameters implement this — each
+  parameter's cursor carries across separate time positions and comma-separated
+  beat lists, independently.
 - **Identity is lexical, not textual.** The same bracket text written twice is
   two independent streams, each starting at index 0.
 
 ```
-// Pitch cross-event cursor — ships today (AJM-482):
+// Pitch cross-event cursor (AJM-482):
 [C3 E3 G3] 1|1 1|2 1|3   // C3@1|1, E3@1|2, G3@1|3 (cursor crosses 3 positions)
 [C3 E3] 1|1 1|2 1|3      // C3, E3, C3 (cursor wraps)
 [C3 E3] 1|1 F3 1|2 1|3   // C3, then F3 rewinds the cursor and broadcasts: F3, F3
 
-// Value stream cross-event cursor — (planned, AJM-483):
+// Value stream cross-event cursor (AJM-483):
 [v80 v100] C3 1|1 D3 1|2 E3 1|3   // C3 v80, D3 v100, E3 v80
                                   // (velocity cursor crosses 3 separate events)
 ```
@@ -543,10 +547,11 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 ### Rules and errors
 
 - **Bare token = constant (length-1) stream.** Don't bracket what doesn't vary.
-- **At most one active stream per parameter.** **(planned)** Two brackets
-  targeting the same parameter at once → parse-time error. Today, with only
-  pitch streams, a second pitch bracket simply replaces the first with a fresh
-  cursor (no error).
+- **One active stream per parameter — last wins.** A second bracket for the same
+  parameter replaces the first with a fresh cursor (no error), consistent across
+  all parameters. (The locked design floated a parse-time error here; it was
+  dropped — a hard error would abort the whole clip's notation, and last-wins is
+  unambiguous and recoverable, matching the forgiving-parser philosophy.)
 - **Flat two-level grammar; nesting is a parse-time type error.** A stream's
   element is a value (a bare token or a one-level `(...)` chord), never another
   stream. `[A [B C] D]` is rejected at parse time (`[B C]` is a schedule, not a
@@ -582,7 +587,7 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 [C3 E3 G3 C4] 1|1x4@n3/8  // four dotted-quarter steps (e.g. felt beats in 12/8)
 ```
 
-**Phase pattern (AJM-483), coprime cycling under `@step` — (planned):**
+**Phase pattern (AJM-483), coprime cycling under `@step`:**
 
 ```
 [v80 v100] [C3 E3 G3] 1|1x8@n/8
@@ -601,13 +606,17 @@ cycling+`@step`:**
 ### AST shape
 
 A bracket parses to a single element carrying its parameter kind and the ordered
-value list: `{ stream: { param: "pitch", values: { pitch: number }[][] } }`,
-where each value is a chord (a length-1 array for a bare pitch). The interpreter
-builds the captured chords into `state.currentPitchStream` (a `PitchState[][]`)
-and the emitter zips it against the positions: value at cursor `i` is
-`values[i mod values.length]`. See the **AST Schema** section for the element
-type. Value streams for v/n/p will reuse the same
-`{ stream: { param, values } }` shape with a different `param` (planned).
+value list: `{ stream: { param, values } }`, discriminated by `param`. For
+`"pitch"` each value is a chord (a length-1 array for a bare pitch);
+`"velocity"` values are `{ velocity }` or `{ velocityMin, velocityMax }`,
+`"duration"` values are `{ duration, bars? }`, and `"probability"` values are
+`{ probability }`. The interpreter holds the pitch stream as
+`state.currentPitchStream` (a `PitchState[][]`) and each value stream as
+`state.current<Param>Stream` with a per-parameter cursor; at emission `i` a
+value stream's value (`values[(cursor + i) mod length]`) OVERRIDES the per-pitch
+captured value, and the pitch chord comes from
+`pitchStream[(cursor + i) mod length]`. See the **AST Schema** section for the
+element type.
 
 ---
 
@@ -920,7 +929,10 @@ type Element =
   | { velocityMin: number, velocityMax: number }                     // Velocity range (0-127)
   | { duration: number, bars?: number }                              // Duration: whole-note fraction (e.g. 1/4 = quarter); meter-aware `bars` present for Nbar / Nbar+nA/B
   | { probability: number }                                          // Probability (0.0-1.0)
-  | { stream: { param: "pitch", values: { pitch: number }[][] } }    // Pattern bracket: a cycling pitch stream; each value is a chord (length-1 for a bare pitch)
+  | { stream: { param: "pitch", values: { pitch: number }[][] } }    // Pattern bracket (pitch): each value is a chord (length-1 for a bare pitch)
+  | { stream: { param: "velocity", values: ({ velocity: number } | { velocityMin: number, velocityMax: number })[] } } // Pattern bracket (velocity)
+  | { stream: { param: "duration", values: { duration: number, bars?: number }[] } } // Pattern bracket (duration)
+  | { stream: { param: "probability", values: { probability: number }[] } } // Pattern bracket (probability)
   | { barCopy: number, sourcePrevious: true }                        // @N= (copy previous)
   | { barCopy: number, sourceBar: number }                           // @N=M (copy bar M)
   | { barCopy: number, sourceRange: [number, number] }               // @N=M-P (copy source range)

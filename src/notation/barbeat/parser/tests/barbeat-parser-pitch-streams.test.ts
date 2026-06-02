@@ -91,14 +91,69 @@ describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
     });
   });
 
+  describe("value streams (velocity / duration / probability)", () => {
+    it("parses a velocity stream", () => {
+      expect(parser.parse("[v80 v100]")).toStrictEqual([
+        {
+          stream: {
+            param: "velocity",
+            values: [{ velocity: 80 }, { velocity: 100 }],
+          },
+        },
+      ]);
+    });
+
+    it("parses a velocity range as a stream value", () => {
+      expect(parser.parse("[v40-80 v100]")).toStrictEqual([
+        {
+          stream: {
+            param: "velocity",
+            values: [{ velocityMin: 40, velocityMax: 80 }, { velocity: 100 }],
+          },
+        },
+      ]);
+    });
+
+    it("parses a duration stream (note values and bar forms)", () => {
+      expect(parser.parse("[n/4 n/8]")).toStrictEqual([
+        {
+          stream: {
+            param: "duration",
+            values: [{ duration: 0.25 }, { duration: 0.125 }],
+          },
+        },
+      ]);
+      expect(parser.parse("[1bar n/8]")).toStrictEqual([
+        {
+          stream: {
+            param: "duration",
+            values: [{ bars: 1, duration: 0 }, { duration: 0.125 }],
+          },
+        },
+      ]);
+    });
+
+    it("parses a probability stream", () => {
+      expect(parser.parse("[p1 p0.6]")).toStrictEqual([
+        {
+          stream: {
+            param: "probability",
+            values: [{ probability: 1 }, { probability: 0.6 }],
+          },
+        },
+      ]);
+    });
+  });
+
   describe("rejected forms (one parameter kind, no nesting)", () => {
     it("rejects an empty bracket", () => {
       expect(() => parser.parse("[]")).toThrow();
     });
 
-    it("rejects a parameter token inside a pitch bracket", () => {
-      expect(() => parser.parse("[v80 v100]")).toThrow();
+    it("rejects a bracket mixing parameter kinds", () => {
       expect(() => parser.parse("[v80 C3]")).toThrow();
+      expect(() => parser.parse("[n/4 v80]")).toThrow();
+      expect(() => parser.parse("[C3 p1]")).toThrow();
     });
 
     it("rejects a nested bracket (a stream is not a value)", () => {
