@@ -263,17 +263,22 @@ function processMidiClip(
   ) as number;
   const lengthBeats = clip.getProperty("length") as number;
 
-  // Read from one clip-length before the start so notes before 1|1 (negative
-  // start_time — e.g. a pickup authored as `1|1-n/12`) are returned instead of
-  // being silently dropped at the time-0 boundary. Live accepts negative note
-  // start times (notes before the clip start). Bounded to ±lengthBeats to keep
-  // the scan finite rather than reading from an arbitrary negative floor.
+  // Read one clip-length of margin on each side of the playable region
+  // [0, lengthBeats], i.e. the window [-lengthBeats, 2*lengthBeats], so that
+  // authored notes outside the playable bounds round-trip on read instead of
+  // being silently dropped:
+  //   - before the start (negative start_time — e.g. a pickup `1|1-n/12`)
+  //   - after the end (overhang past lengthBeats)
+  // Live accepts negative note start times. The window is bounded (rather than
+  // unbounded) to keep the scan finite; notes more than a clip-length outside
+  // the region are still missed, which is the same finite-scan tradeoff made on
+  // the low end.
   const notesDictionary = clip.call(
     "get_notes_extended",
     0,
     128,
     -lengthBeats,
-    lengthBeats * 2,
+    lengthBeats * 3,
   ) as string;
   const notes = JSON.parse(notesDictionary).notes;
 

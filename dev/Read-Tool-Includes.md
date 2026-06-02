@@ -255,6 +255,14 @@ Adds formatted MIDI notes for MIDI clips. No effect on audio clips.
 The notes string uses compact bar|beat notation. This is an expensive operation
 (calls `get_notes_extended` on the Live API).
 
+All authored notes round-trip on read, including ones outside the clip's
+playable region: pickups before the start (negative time, e.g. a note authored
+as `1|1-n/12`) and overhang past the end. The read window spans one clip-length
+of margin on each side of the playable region `[0, length]` (i.e.
+`[-length, 2*length]`), so out-of-bounds notes are not silently dropped. (The
+`noteCount` reported by create/update tools is separate: it counts only notes in
+the playable region — the notes that will actually play.)
+
 ### Include: `"sample"`
 
 Adds base audio properties for audio clips. No effect on MIDI clips.
