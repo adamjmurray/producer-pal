@@ -15,10 +15,9 @@ actions.
   Stopped" (black), or "Producer Pal Error" (red) if something went wrong when
   trying to start.
 - **Docs** - Link to this documentation site
-- **Enable Chat UI** - Required to use the built-in Chat UI. When enabled, the
-  UI is also accessible from other devices on your local network (useful for
-  phone access, but consider disabling on shared networks).
-- **Open Chat UI** - Opens the Chat UI in your default browser
+- **Open Chat UI** - Opens the built-in Chat UI in your default browser. The UI
+  is also reachable from other devices on your local network (handy for phone
+  access, but be mindful on shared networks).
 
 If you see "Producer Pal Error", click the three-dot menu in the upper right of
 the device, select "Open Max Window", scroll down if needed, and look for an
