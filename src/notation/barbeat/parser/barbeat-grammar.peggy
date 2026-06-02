@@ -85,10 +85,21 @@
 }}
 
 start
-  = _ head:element? tail:(WS element)* _ {
+  = _ head:element? tail:(elementSep element)* _ {
     const elements = [head, ...tail.map(t => t[1])].filter(Boolean);
     return elements.flat();
   }
+
+// Top-level elements are whitespace-separated, EXCEPT a self-delimiting pattern
+// bracket may abut the previous element with no space (`[C3 E3][v80 v100]`): a
+// leading `[` is an unambiguous element boundary, so the separator collapses to
+// a zero-width lookahead when the NEXT element opens a bracket. The lookahead
+// only fires before `[`, so a bracket followed by a non-bracket (`[C3 E3]1|1`)
+// still needs whitespace, and genuinely ambiguous runs (`C3E3`, `v80v100`) stay
+// rejected. Mirrors the comma-space / sticky-bar input tolerances.
+elementSep
+  = WS
+  / &"["
 
 element
   = barCopy / timePoints / stream / probability / velocity / duration / pitch / badNumericToken

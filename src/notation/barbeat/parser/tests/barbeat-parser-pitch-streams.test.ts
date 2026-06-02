@@ -92,6 +92,42 @@ describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
         },
       ]);
     });
+
+    it("tolerates abutting sibling brackets with no separating space", () => {
+      // A `[` is a self-delimiting boundary, so adjacent brackets need no space.
+      // The AST is identical to the whitespace-separated form above.
+      expect(parser.parse("[C3 E3][G3 A3]")).toStrictEqual([
+        {
+          stream: {
+            param: "pitch",
+            values: [[{ pitch: 60 }], [{ pitch: 64 }]],
+          },
+        },
+        {
+          stream: {
+            param: "pitch",
+            values: [[{ pitch: 67 }], [{ pitch: 69 }]],
+          },
+        },
+      ]);
+    });
+
+    it("tolerates abutting brackets of different parameter kinds", () => {
+      expect(parser.parse("[C3 E3][v80 v100]")).toStrictEqual([
+        {
+          stream: {
+            param: "pitch",
+            values: [[{ pitch: 60 }], [{ pitch: 64 }]],
+          },
+        },
+        {
+          stream: {
+            param: "velocity",
+            values: [{ velocity: 80 }, { velocity: 100 }],
+          },
+        },
+      ]);
+    });
   });
 
   describe("value streams (velocity / duration / probability)", () => {
@@ -171,6 +207,13 @@ describe("BarBeatScript Parser - pitch streams (pattern brackets)", () => {
     it("rejects a bare chord with no surrounding stream", () => {
       // `(...)` is only a stream value, not a standalone element.
       expect(() => parser.parse("(C3 E3)")).toThrow();
+    });
+
+    it("still requires whitespace from a bracket to a non-bracket element", () => {
+      // The no-space tolerance fires only before a `[`, so a bracket followed by
+      // a time position (or any non-bracket) is NOT allowed to abut.
+      expect(() => parser.parse("[C3 E3]1|1")).toThrow();
+      expect(() => parser.parse("[v80 v100]C3 1|1")).toThrow();
     });
   });
 });

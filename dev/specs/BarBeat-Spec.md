@@ -562,6 +562,12 @@ emits one note, the length-1 == scalar invariant.
   `[v80 v100] [C3 E3 G3] 1|1x8@n/8` cycles velocity (len 2) against pitch
   (len 3) against the shared emission index. Each stream mods by its own length,
   so coprime lengths phase against each other.
+- **Sibling brackets may abut with no separating space** — a leading `[` is a
+  self-delimiting boundary, so `[C3 E3 G3][v80 v100]` parses identically to the
+  space-separated form. This is an input tolerance (like comma-space and
+  sticky-bar); the space is still **required** from a bracket to a non-bracket
+  element (`[C3 E3 G3] 1|1x3@n/4` — the time position needs its space). Other
+  adjacencies (`C3E3`, `v80v100`) remain ambiguous and are rejected.
 
 > **Supersedes the AJM-482 syntax sketch.** 482 originally sketched a group as
 > "whatever's grouped," bundling a velocity with a pitch
@@ -999,7 +1005,9 @@ C3 D3 E3 1|1  @2=1  v0 D3 2|1  // Bar 1: C3 D3 E3, Bar 2: C3 E3
 5. Multiple notes at same time are whitespace-separated
 6. No commas required between elements
 7. Whitespace required between time positions, probability, velocity, duration,
-   and notes
+   and notes — EXCEPT a pattern bracket may abut the previous element when the
+   next element opens a bracket (`[C3 E3][v80 v100]`); the leading `[` is a
+   self-delimiting boundary
 8. Velocity ranges are auto-ordered: `v120-80` becomes `v80-120`
 9. First pitch after a time position clears the pitch buffer
 10. Subsequent time positions re-emit the last buffered pitches (pitch
