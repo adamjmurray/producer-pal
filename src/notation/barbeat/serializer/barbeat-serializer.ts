@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { sortNotes } from "#src/notation/note-sort.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
 import { isValidMidi } from "#src/shared/pitch.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -12,7 +13,6 @@ import {
   type FormatOptions,
   groupNotesByTime,
   resolveFormatConfig,
-  sortNotes,
 } from "./helpers/barbeat-serializer-grouping.ts";
 import { findMergeBatches } from "./helpers/barbeat-serializer-merge.ts";
 import {

@@ -5,6 +5,7 @@
 
 import { expect } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -37,6 +38,7 @@ export function setupArrangementClipMocks(): ArrangementClipMockHandles {
 
   const clip = registerMockObject("arrangement_clip", {
     properties: { length: 4 }, // 1 bar in 4/4 = 4 beats
+    methods: createNoteTrackingMethods(),
   });
 
   return { liveSet, track, clip };
@@ -294,7 +296,10 @@ export function setupDualMocks(): DualMockHandles {
 
   const sessionClip = registerMockObject(
     "live_set/tracks/0/clip_slots/0/clip",
-    { path: livePath.track(0).clipSlot(0).clip() },
+    {
+      path: livePath.track(0).clipSlot(0).clip(),
+      methods: createNoteTrackingMethods(),
+    },
   );
 
   return { clipSlot, sessionClip, track, arrangementClip };
@@ -326,6 +331,7 @@ export function setupSessionMocks(
   const clip = registerMockObject("live_set/tracks/0/clip_slots/0/clip", {
     path: livePath.track(0).clipSlot(0).clip(),
     properties: opts.clip,
+    methods: createNoteTrackingMethods(),
   });
 
   return { clipSlot, clip };

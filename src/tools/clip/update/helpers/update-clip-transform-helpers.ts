@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { sortNotes } from "#src/notation/note-sort.ts";
 import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { type NoteEvent } from "#src/notation/types.ts";
@@ -78,7 +79,11 @@ export function applyTransformsToExistingNotes(
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
 
   if (notes.length > 0) {
-    clip.call("add_new_notes", { notes });
+    // Sort ascending by start_time before re-adding: a transform can shift a
+    // note onto an earlier same-pitch note's onset, which Live resolves by
+    // deleting the earlier note unless the write order is ascending. The merge
+    // path is already sorted (via formatNotation); this keeps parity.
+    clip.call("add_new_notes", { notes: sortNotes(notes) });
   }
 
   return {

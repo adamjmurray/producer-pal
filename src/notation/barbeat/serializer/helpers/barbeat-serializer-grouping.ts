@@ -43,21 +43,6 @@ export function resolveFormatConfig(options: FormatOptions): FormatConfig {
 }
 
 /**
- * Sort notes by start_time (stable sort with pitch as tiebreaker)
- * @param notes - Array of note events
- * @returns Sorted copy of the array
- */
-export function sortNotes(notes: NoteEvent[]): NoteEvent[] {
-  return [...notes].sort((a, b) => {
-    if (a.start_time !== b.start_time) {
-      return a.start_time - b.start_time;
-    }
-
-    return a.pitch - b.pitch;
-  });
-}
-
-/**
  * Calculate bar and beat from start time in Ableton beats
  * @param startTime - Start time in Ableton beats (quarter notes)
  * @param beatsPerBar - Beats per bar

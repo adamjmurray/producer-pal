@@ -5,6 +5,7 @@
 
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { sortNotes } from "#src/notation/note-sort.ts";
 import { applyTransforms } from "#src/notation/transform/transform-evaluator.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -208,7 +209,7 @@ export function prepareClipData(
   timeSigDenominator: number,
 ): PreparedClipData {
   // Parse notation into notes (MIDI clips only)
-  const notes: MidiNote[] =
+  const interpretedNotes: MidiNote[] =
     notationString != null
       ? interpretNotation(notationString, {
           timeSigNumerator,
@@ -216,13 +217,18 @@ export function prepareClipData(
         })
       : [];
 
-  // Apply transforms to notes if provided
+  // Apply transforms to notes if provided (mutates interpretedNotes in place)
   const transformedCount = applyTransforms(
-    notes,
+    interpretedNotes,
     transformString ?? undefined,
     timeSigNumerator,
     timeSigDenominator,
   );
+
+  // Sort ascending by start_time before the eventual add_new_notes write:
+  // out-of-order same-pitch notes whose onsets overlap get deleted by Live.
+  // Transforms (which can reposition notes) already ran, so this is the final order.
+  const notes = sortNotes(interpretedNotes);
 
   // Determine clip length
   let clipLength: number;

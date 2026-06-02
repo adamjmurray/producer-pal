@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { livePath } from "#src/shared/live-api-path-builders.ts";
+import { createNoteTrackingMethods } from "#src/test/helpers/mock-registry-test-helpers.ts";
 import { children } from "#src/test/mocks/mock-live-api.ts";
 import {
   type RegisteredMockObject,
@@ -108,6 +109,7 @@ function setupSessionClip(
     {
       path: livePath.track(trackIndex).clipSlot(sceneIndex).clip(),
       properties: opts.clipProperties,
+      methods: createNoteTrackingMethods(),
     },
   );
 
