@@ -31,7 +31,7 @@ import {
   CANDIDATE_COLUMNS,
   CANDIDATE_FROM,
   fetchTagsBulk,
-  resolveFileIdForPath,
+  resolveInFolder,
   type SearchRow,
 } from "./candidate-query.ts";
 import { decodeFeatureVector } from "./fe-values-helpers.ts";
@@ -98,19 +98,13 @@ function runFindDuplicates(
     };
   }
 
-  const inFolder =
-    args.inFolder != null && args.inFolder !== "" ? args.inFolder : null;
-  const parentId = inFolder != null ? resolveFileIdForPath(db, inFolder) : null;
+  const resolved = resolveInFolder(db, args.inFolder);
 
-  if (inFolder != null && parentId == null) {
-    return {
-      ...base,
-      groups: [],
-      reason: `inFolder path not found: ${inFolder}`,
-    };
+  if (!resolved.ok) {
+    return { ...base, groups: [], reason: resolved.reason };
   }
 
-  const { where, params } = buildCandidateWhere(args, parentId ?? undefined);
+  const { where, params } = buildCandidateWhere(args, resolved.parentId);
   // Assumes one fe_values row per file (the AJM-331 spike found this holds across
   // the library); a file with multiple rows would contribute more than once to a
   // hash group. CAST hash to TEXT so SQLite renders the full 64-bit integer;

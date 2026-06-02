@@ -102,7 +102,24 @@ export function formatBeatPosition(
  * @returns Fraction string (e.g. "/12", "3/64") or null when off-grid
  */
 function formatBeatOffsetFraction(wholeNoteFraction: number): string | null {
-  for (const den of BEAT_OFFSET_DENOMINATORS) {
+  return reduceToNoteValueFraction(wholeNoteFraction, BEAT_OFFSET_DENOMINATORS);
+}
+
+/**
+ * Reduce a whole-note fraction to the first `<num>/<den>` note-value spelling
+ * (numerator omitted when 1) whose numerator lands on a clean integer within
+ * {@link EPSILON}, scanning `denominators` in preference order. Returns null
+ * when none matches — a genuinely off-grid value. Shared by the beat-offset and
+ * absolute-duration formatters so the snap tolerance and spelling stay identical.
+ * @param wholeNoteFraction - Value as a fraction of a whole note
+ * @param denominators - Denominators to try, in preference order
+ * @returns Fraction string (e.g. "/12", "3/64") or null when off-grid
+ */
+function reduceToNoteValueFraction(
+  wholeNoteFraction: number,
+  denominators: readonly number[],
+): string | null {
+  for (const den of denominators) {
     const num = wholeNoteFraction * den;
 
     if (Math.abs(num - Math.round(num)) < EPSILON && Math.round(num) > 0) {
@@ -141,15 +158,12 @@ export function formatAbsoluteDuration(wholeNoteFraction: number): string {
 
   // Try musically clean denominators first (powers of 2), then triplet family,
   // then less common tuplets. Smallest matching denominator wins.
-  for (const den of ABSOLUTE_DURATION_DENOMINATORS) {
-    const num = wholeNoteFraction * den;
+  const fraction = reduceToNoteValueFraction(
+    wholeNoteFraction,
+    ABSOLUTE_DURATION_DENOMINATORS,
+  );
 
-    if (Math.abs(num - Math.round(num)) < EPSILON && Math.round(num) > 0) {
-      const numRounded = Math.round(num);
-
-      return numRounded === 1 ? `/${den}` : `${numRounded}/${den}`;
-    }
-  }
+  if (fraction != null) return fraction;
 
   // Fallback: a genuinely off-grid value (no exact note-value fraction at any
   // canonical denominator — only ever produced by *measuring* a sample-derived

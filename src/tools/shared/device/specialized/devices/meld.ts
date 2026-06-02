@@ -4,8 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
-  readEnumByIndex,
-  writeEnumByIndex,
+  enumParam,
   writeIntInRange,
 } from "../specialized-device-param-helpers.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
@@ -45,20 +44,7 @@ function readUnisonVoices(device: LiveAPI): number {
 export const meldSpec: SpecializedDeviceSpec = {
   displayNames: ["Meld"],
   params: [
-    {
-      name: "monoPoly",
-      options: MONO_POLY_LABELS,
-      read: (device) => readEnumByIndex(device, "mono_poly", MONO_POLY_LABELS),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "mono_poly",
-          value,
-          MONO_POLY_LABELS,
-          toolName,
-          "monoPoly",
-        ),
-    },
+    enumParam("monoPoly", "mono_poly", MONO_POLY_LABELS),
     {
       name: "polyVoices",
       options: "1-6",

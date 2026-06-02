@@ -242,6 +242,37 @@ export function resolveFileIdForPath(
   return currentId;
 }
 
+export type InFolderResolution =
+  | { ok: true; parentId: number | undefined }
+  | { ok: false; reason: string };
+
+/**
+ * Normalize an optional `inFolder` filter (treating "" as absent) and resolve
+ * it to a parent file_id. Returns `ok: false` with a ready-to-surface reason
+ * when a non-empty inFolder doesn't resolve to a known folder, otherwise
+ * `ok: true` with `parentId` (undefined when no inFolder was given — the shape
+ * buildCandidateWhere expects). Shared by find-duplicates and find-similar so
+ * the empty-string handling and not-found message stay identical.
+ *
+ * @param db - Open database handle
+ * @param inFolderArg - The caller's raw inFolder argument
+ * @returns Resolution result discriminated on `ok`
+ */
+export function resolveInFolder(
+  db: DatabaseSync,
+  inFolderArg: string | null | undefined,
+): InFolderResolution {
+  const inFolder =
+    inFolderArg != null && inFolderArg !== "" ? inFolderArg : null;
+  const parentId = inFolder != null ? resolveFileIdForPath(db, inFolder) : null;
+
+  if (inFolder != null && parentId == null) {
+    return { ok: false, reason: `inFolder path not found: ${inFolder}` };
+  }
+
+  return { ok: true, parentId: parentId ?? undefined };
+}
+
 /**
  * Build a public LibraryItem from a raw SearchRow, with both path and
  * tags pre-resolved in bulk to avoid per-row N+1 queries.

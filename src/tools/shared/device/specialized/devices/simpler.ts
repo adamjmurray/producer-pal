@@ -12,10 +12,9 @@ import {
 } from "#src/tools/shared/device/simpler-sample.ts";
 import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
 import {
+  enumParam,
   readBoolProp,
-  readEnumByIndex,
   writeBoolProp,
-  writeEnumByIndex,
   writeIntFromSet,
 } from "../specialized-device-param-helpers.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
@@ -112,40 +111,12 @@ export const simplerSpec: SpecializedDeviceSpec = {
       write: (device, value, toolName) =>
         setSimplerGain(device, Number(value), toolName),
     },
-    {
-      name: "playbackMode",
-      options: PLAYBACK_MODES,
-      read: (device) =>
-        readEnumByIndex(device, "playback_mode", PLAYBACK_MODES),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "playback_mode",
-          value,
-          PLAYBACK_MODES,
-          toolName,
-          "playbackMode",
-        ),
-    },
-    {
-      name: "slicingPlaybackMode",
-      options: SLICING_PLAYBACK_MODES,
-      read: (device) =>
-        readEnumByIndex(
-          device,
-          "slicing_playback_mode",
-          SLICING_PLAYBACK_MODES,
-        ),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "slicing_playback_mode",
-          value,
-          SLICING_PLAYBACK_MODES,
-          toolName,
-          "slicingPlaybackMode",
-        ),
-    },
+    enumParam("playbackMode", "playback_mode", PLAYBACK_MODES),
+    enumParam(
+      "slicingPlaybackMode",
+      "slicing_playback_mode",
+      SLICING_PLAYBACK_MODES,
+    ),
     {
       name: "retrigger",
       read: (device) => readBoolProp(device, "retrigger"),

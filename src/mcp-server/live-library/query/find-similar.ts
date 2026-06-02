@@ -30,6 +30,7 @@ import {
   CANDIDATE_FROM,
   fetchTagsBulk,
   resolveFileIdForPath,
+  resolveInFolder,
   type SearchRow,
 } from "./candidate-query.ts";
 import {
@@ -129,15 +130,19 @@ function runFindSimilar(
     return miss(false, "Live hasn't analyzed this sample's audio yet");
   }
 
-  const inFolder =
-    args.inFolder != null && args.inFolder !== "" ? args.inFolder : null;
-  const parentId = inFolder != null ? resolveFileIdForPath(db, inFolder) : null;
+  const resolved = resolveInFolder(db, args.inFolder);
 
-  if (inFolder != null && parentId == null) {
-    return miss(true, `inFolder path not found: ${inFolder}`);
+  if (!resolved.ok) {
+    return miss(true, resolved.reason);
   }
 
-  const ranked = rankCandidates(db, args, seedFileId, seedVector, parentId);
+  const ranked = rankCandidates(
+    db,
+    args,
+    seedFileId,
+    seedVector,
+    resolved.parentId,
+  );
 
   return { ...base, seed: { path: seedPath, found: true }, items: ranked };
 }
@@ -149,7 +154,7 @@ function runFindSimilar(
  * @param args - Candidate filters (plus limit)
  * @param seedFileId - file_id of the seed (excluded from results)
  * @param seedVector - Decoded seed feature vector
- * @param parentId - Resolved inFolder parent, or null when no inFolder
+ * @param parentId - Resolved inFolder parent, or undefined when no inFolder
  * @returns Ranked similar items (descending similarity)
  */
 function rankCandidates(
@@ -157,9 +162,9 @@ function rankCandidates(
   args: FindSimilarArgs,
   seedFileId: number,
   seedVector: Float32Array,
-  parentId: number | null,
+  parentId: number | undefined,
 ): LibrarySimilarItem[] {
-  const { where, params } = buildCandidateWhere(args, parentId ?? undefined);
+  const { where, params } = buildCandidateWhere(args, parentId);
   // Assumes one fe_values row per file (the AJM-331 spike found this holds across
   // the library); a file with multiple rows would be scored/ranked once per row.
   // The seed side guards this with LIMIT 1 (see loadVector).

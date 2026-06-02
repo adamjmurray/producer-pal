@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  enumParam,
   readEnumByIndex,
   writeEnumByIndex,
   writeIntFromSet,
@@ -49,27 +50,6 @@ const TARGETS = [
 const VOICE_MODES = ["Poly", "Mono", "Stereo", "Unison"] as const;
 
 const VOICE_COUNTS = [4, 8, 16, 24, 32] as const;
-
-/**
- * Build a pseudo-param backed by a stable string enum via an `_index` property.
- * @param name - Camel-case param name
- * @param property - Live API property name (the `_index` int)
- * @param labels - Enum labels in index order
- * @returns A PseudoParam for the slot
- */
-function enumParam(
-  name: string,
-  property: string,
-  labels: readonly string[],
-): PseudoParam {
-  return {
-    name,
-    options: labels,
-    read: (device) => readEnumByIndex(device, property, labels),
-    write: (device, value, toolName) =>
-      writeEnumByIndex(device, property, value, labels, toolName, name),
-  };
-}
 
 /**
  * Build a source pseudo-param for one of the 3 free mod-matrix slots. Reads are

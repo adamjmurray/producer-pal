@@ -4,10 +4,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import {
+  enumParam,
   readBoolProp,
-  readEnumByIndex,
   writeBoolProp,
-  writeEnumByIndex,
 } from "../specialized-device-param-helpers.ts";
 import { type SpecializedDeviceSpec } from "../specialized-device-types.ts";
 
@@ -28,20 +27,7 @@ const GLOBAL_MODES = ["stereo", "L/R", "M/S"] as const;
 export const eqEightSpec: SpecializedDeviceSpec = {
   displayNames: ["EQ Eight"],
   params: [
-    {
-      name: "globalMode",
-      options: GLOBAL_MODES,
-      read: (device) => readEnumByIndex(device, "global_mode", GLOBAL_MODES),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "global_mode",
-          value,
-          GLOBAL_MODES,
-          toolName,
-          "globalMode",
-        ),
-    },
+    enumParam("globalMode", "global_mode", GLOBAL_MODES),
     {
       name: "oversample",
       read: (device) => readBoolProp(device, "oversample"),

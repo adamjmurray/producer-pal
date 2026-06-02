@@ -22,6 +22,7 @@ import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
+  clearPitchBuffer,
   countBufferedPitches,
   extractBufferState,
   validateBufferedState,
@@ -166,20 +167,6 @@ function processPitchStreamElement(
 }
 
 /**
- * Reset pitch buffer state
- * @param state - Interpreter state to reset
- */
-function resetPitchBufferState(state: InterpreterState): void {
-  state.currentPitches = [];
-  state.currentPitchStream = null;
-  state.pitchStreamCursor = 0;
-  state.pitchGroupStarted = false;
-  state.pitchesEmitted = false;
-  state.stateChangedSinceLastPitch = false;
-  state.stateChangedAfterEmission = false;
-}
-
-/**
  * Process a time position element
  * @param element - AST element with time position
  * @param state - Interpreter state
@@ -254,7 +241,7 @@ function processElementInLoop(
       state.currentTime = result.currentTime;
     }
 
-    resetPitchBufferState(state);
+    clearPitchBuffer(state);
   } else if (element.destination?.bar !== undefined) {
     const result = handleBarCopySingleDestination(
       element as BarCopyElement,
@@ -269,11 +256,11 @@ function processElementInLoop(
       state.currentTime = result.currentTime;
     }
 
-    resetPitchBufferState(state);
+    clearPitchBuffer(state);
   } else if (element.clearBuffer) {
     validateBufferedState(extractBufferState(state), "@clear");
     handleClearBuffer(notesByBar);
-    resetPitchBufferState(state);
+    clearPitchBuffer(state);
   } else if (element.bar !== undefined && element.beat !== undefined) {
     processTimePosition(
       element,

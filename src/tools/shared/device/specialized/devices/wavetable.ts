@@ -6,8 +6,7 @@
 import * as console from "#src/shared/v8-max-console.ts";
 import { toLiveApiId } from "#src/tools/shared/utils.ts";
 import {
-  readEnumByIndex,
-  writeEnumByIndex,
+  enumParam,
   writeIntFromSet,
   writeIntInRange,
 } from "../specialized-device-param-helpers.ts";
@@ -178,35 +177,8 @@ export const wavetableSpec: SpecializedDeviceSpec = {
   displayNames: ["Wavetable"],
 
   params: [
-    {
-      name: "filterRouting",
-      options: FILTER_ROUTING,
-      read: (device) =>
-        readEnumByIndex(device, "filter_routing", FILTER_ROUTING),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "filter_routing",
-          value,
-          FILTER_ROUTING,
-          toolName,
-          "filterRouting",
-        ),
-    },
-    {
-      name: "monoPoly",
-      options: MONO_POLY,
-      read: (device) => readEnumByIndex(device, "mono_poly", MONO_POLY),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "mono_poly",
-          value,
-          MONO_POLY,
-          toolName,
-          "monoPoly",
-        ),
-    },
+    enumParam("filterRouting", "filter_routing", FILTER_ROUTING),
+    enumParam("monoPoly", "mono_poly", MONO_POLY),
     {
       name: "polyVoices",
       options: POLY_VOICES,
@@ -222,20 +194,7 @@ export const wavetableSpec: SpecializedDeviceSpec = {
           true,
         ),
     },
-    {
-      name: "unisonMode",
-      options: UNISON_MODES,
-      read: (device) => readEnumByIndex(device, "unison_mode", UNISON_MODES),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "unison_mode",
-          value,
-          UNISON_MODES,
-          toolName,
-          "unisonMode",
-        ),
-    },
+    enumParam("unisonMode", "unison_mode", UNISON_MODES),
     {
       name: "unisonVoiceCount",
       options: "2-8",
@@ -251,36 +210,8 @@ export const wavetableSpec: SpecializedDeviceSpec = {
           "unisonVoiceCount",
         ),
     },
-    {
-      name: "osc1Engine",
-      options: OSC_ENGINES,
-      read: (device) =>
-        readEnumByIndex(device, "oscillator_1_effect_mode", OSC_ENGINES),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "oscillator_1_effect_mode",
-          value,
-          OSC_ENGINES,
-          toolName,
-          "osc1Engine",
-        ),
-    },
-    {
-      name: "osc2Engine",
-      options: OSC_ENGINES,
-      read: (device) =>
-        readEnumByIndex(device, "oscillator_2_effect_mode", OSC_ENGINES),
-      write: (device, value, toolName) =>
-        writeEnumByIndex(
-          device,
-          "oscillator_2_effect_mode",
-          value,
-          OSC_ENGINES,
-          toolName,
-          "osc2Engine",
-        ),
-    },
+    enumParam("osc1Engine", "oscillator_1_effect_mode", OSC_ENGINES),
+    enumParam("osc2Engine", "oscillator_2_effect_mode", OSC_ENGINES),
     osc1CategoryParam,
     osc2CategoryParam,
     osc1WavetableParam,
