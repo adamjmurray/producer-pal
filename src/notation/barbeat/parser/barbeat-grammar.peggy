@@ -48,7 +48,7 @@ start
   }
 
 element
-  = barCopy / timePoints / probability / velocity / duration / pitch
+  = barCopy / timePoints / pitchStream / probability / velocity / duration / pitch
 
 barCopy "bar copy operation"
   = '@' 'clear' {
@@ -191,6 +191,36 @@ pitchClass
         "C" / "D" / "E" / "F" / "G" / "A" / "B") {
   return { name: pc, value: PITCH_CLASS_VALUES[pc] };
 }
+
+// Pattern bracket holding a PITCH stream (AJM-482): an ordered list of pitch
+// values cycled across emitted note-events at the next time position. Each value
+// is a chord (an array of pitch objects); a bare pitch is a length-1 chord, so
+// `values` is uniformly chord[]. The emitter zips it against the positions:
+// value at cursor i = values[i mod values.length]. v/n/p streams and the
+// cross-event cursor are later phases (AJM-483); see "Pattern Brackets
+// (Streams)" in dev/specs/BarBeat-Spec.md.
+//
+// A stream value is a chord or a bare pitch ONLY. A parameter token (v/n/p) or a
+// nested `[` raises a parse error — that IS the "one parameter kind per bracket,
+// no nesting" contract (targeted messages are a later teach-tier phase).
+pitchStream "pitch stream"
+  = "[" _ head:streamPitchValue tail:(WS streamPitchValue)* _ "]" {
+    return {
+      stream: {
+        param: "pitch",
+        values: [head, ...tail.map(t => t[1])],
+      },
+    };
+  }
+
+streamPitchValue
+  = chord
+  / p:pitch { return [p]; }
+
+chord "chord"
+  = "(" _ head:pitch tail:(WS pitch)* _ ")" {
+    return [head, ...tail.map(t => t[1])];
+  }
 
 // A beat position: a 1-based grid beat, optionally displaced by an absolute
 // note-value offset (`+n/12` = plus an eighth triplet, `-n/24` = minus a

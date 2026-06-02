@@ -25,6 +25,13 @@ export interface InterpreterState {
   currentVelocityMin?: number | null;
   currentVelocityMax?: number | null;
   currentPitches: PitchState[];
+  /**
+   * Pending pitch stream (pattern bracket): a list of chords cycled across the
+   * next time position's emitted note-events. `null`/absent ⇒ no active stream,
+   * so emission falls back to the single `currentPitches` chord. Cleared once
+   * its time position emits (mirrors the `currentPitches` group lifecycle).
+   */
+  currentPitchStream?: PitchState[][] | null;
   pitchGroupStarted: boolean;
   pitchesEmitted: boolean;
   stateChangedSinceLastPitch: boolean;
@@ -33,6 +40,7 @@ export interface InterpreterState {
 
 export interface BufferState {
   currentPitches: PitchState[];
+  currentPitchStream?: PitchState[][] | null;
   pitchesEmitted: boolean;
   stateChangedSinceLastPitch: boolean;
   pitchGroupStarted: boolean;
@@ -49,10 +57,29 @@ export interface BarCopyResult {
  */
 export function clearPitchBuffer(state: InterpreterState): void {
   state.currentPitches = [];
+  state.currentPitchStream = null;
   state.pitchGroupStarted = false;
   state.pitchesEmitted = false;
   state.stateChangedSinceLastPitch = false;
   state.stateChangedAfterEmission = false;
+}
+
+/**
+ * Count un-emitted buffered pitches across both the single `currentPitches`
+ * chord and any pending pitch stream. Used by the "buffered but not emitted"
+ * warnings so a dangling pattern bracket is reported like a dangling chord.
+ * @param state - Buffer/interpreter state to inspect
+ * @returns Total pitch count buffered (chord + stream)
+ */
+export function countBufferedPitches(
+  state: Pick<BufferState, "currentPitches" | "currentPitchStream">,
+): number {
+  const streamCount = (state.currentPitchStream ?? []).reduce(
+    (sum, chord) => sum + chord.length,
+    0,
+  );
+
+  return state.currentPitches.length + streamCount;
 }
 
 /**
@@ -64,10 +91,13 @@ export function validateBufferedState(
   state: BufferState,
   operationType: string,
 ): void {
-  // Warn if pitches or state buffered but not emitted
-  if (state.currentPitches.length > 0 && !state.pitchesEmitted) {
+  // Warn if pitches or state buffered but not emitted (a pending pitch stream
+  // counts as buffered un-emitted state, same as a dangling chord).
+  const buffered = countBufferedPitches(state);
+
+  if (buffered > 0 && !state.pitchesEmitted) {
     console.warn(
-      `${state.currentPitches.length} pitch(es) buffered but not emitted before ${operationType}`,
+      `${buffered} pitch(es) buffered but not emitted before ${operationType}`,
     );
   }
 
@@ -157,6 +187,7 @@ export function handlePropertyUpdate(
 export function extractBufferState(state: InterpreterState): BufferState {
   return {
     currentPitches: state.currentPitches,
+    currentPitchStream: state.currentPitchStream,
     pitchesEmitted: state.pitchesEmitted,
     stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
     pitchGroupStarted: state.pitchGroupStarted,

@@ -3,7 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
+import {
+  DEFAULT_VELOCITY,
+  DEFAULT_VELOCITY_DEVIATION,
+  wholeNoteFractionToMusicalBeats,
+} from "#src/notation/barbeat/barbeat-config.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
 import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
@@ -204,6 +208,39 @@ function emitPitchesAtPositions(
 }
 
 /**
+ * Build a PitchState for one pitch by snapshotting the current velocity,
+ * duration, and probability. Velocity comes from an active range (min +
+ * deviation) when set, else the single current velocity. Shared by plain pitch
+ * elements and pattern-bracket stream values so both capture state identically.
+ * @param pitch - MIDI pitch number
+ * @param state - Interpreter state to snapshot
+ * @returns Pitch state ready to emit
+ */
+export function buildPitchState(
+  pitch: number,
+  state: InterpreterState,
+): PitchState {
+  let velocity: number;
+  let velocityDeviation: number;
+
+  if (state.currentVelocityMin != null && state.currentVelocityMax != null) {
+    velocity = state.currentVelocityMin;
+    velocityDeviation = state.currentVelocityMax - state.currentVelocityMin;
+  } else {
+    velocity = state.currentVelocity ?? DEFAULT_VELOCITY;
+    velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
+  }
+
+  return {
+    pitch,
+    velocity,
+    velocityDeviation,
+    duration: state.currentDuration,
+    probability: state.currentProbability,
+  };
+}
+
+/**
  * Calculate positions from time element
  * @param element - Time element
  * @param state - Interpreter state
@@ -269,7 +306,15 @@ export function handlePitchEmission(
   events: NoteEvent[],
   notesByBar: Map<number, BarCopyNote[]>,
 ): void {
-  if (state.currentPitches.length === 0) {
+  // A pending pattern bracket is the pitch source when present; otherwise the
+  // single current chord as a length-1 stream. All-length-1 ⇒ today's broadcast.
+  const pitchStream = state.currentPitchStream ?? [state.currentPitches];
+  const totalPitches = pitchStream.reduce(
+    (sum, chord) => sum + chord.length,
+    0,
+  );
+
+  if (totalPitches === 0) {
     if (positions.length === 1) {
       const pos = assertDefined(positions[0], "single position");
 
@@ -293,9 +338,7 @@ export function handlePitchEmission(
 
   const emitResult = emitPitchesAtPositions(
     positions,
-    // A plain chord is a length-1 pitch stream; pattern brackets will supply a
-    // longer stream here so the value cycles across positions.
-    [state.currentPitches],
+    pitchStream,
     beatsPerBar,
     timeSigDenominator,
     events,

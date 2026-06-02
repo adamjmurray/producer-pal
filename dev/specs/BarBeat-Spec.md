@@ -448,12 +448,13 @@ C1 1|1x4@n/4         // Bar 1: kick on every beat
 
 ## Pattern Brackets (Streams)
 
-> **Status: design locked 2026-06-01 (AJM-482 / AJM-483) — _not yet
-> implemented_.** This section is the authoritative design contract for the
-> bracket/stream feature. Items marked **(planned)** describe syntax the parser
-> does not yet accept; they are documented here so the model is designed once
-> and the two tickets share one engine. Each **(planned)** marker is removed
-> when its surface ships.
+> **Status: design locked 2026-06-01 (AJM-482 / AJM-483).** This section is the
+> authoritative design contract for the bracket/stream feature. **Pitch streams
+> (`[C3 E3 G3]`, AJM-482) ship in v1.4.12.** Items still marked **(planned)** —
+> value streams for velocity/duration/probability and the no-`@step`
+> duration-fold (AJM-483) — describe syntax the parser does not yet accept; they
+> are documented here so the model is designed once and the two tickets share
+> one engine. Each **(planned)** marker is removed when its surface ships.
 
 ### The model: a parameter's current state is a _stream_
 
@@ -485,15 +486,18 @@ When every stream is length-1, the zip reduces **exactly** to today's broadcast
 ( pitch pitch ... )   // a chord: one element holding simultaneous pitches
 ```
 
-- A bracket holds tokens of **one parameter kind**: `[C3 E3 G3]` (pitch),
-  `[v80 v100]` (velocity), `[n/4 n/8]` (duration), `[p1 p0.6]` (probability). A
-  bracket mixing kinds (`[v80 C3]`) is an error.
+- A bracket holds tokens of **one parameter kind**: `[C3 E3 G3]` (pitch — ships
+  today), and **(planned)** `[v80 v100]` (velocity), `[n/4 n/8]` (duration),
+  `[p1 p0.6]` (probability). A bracket mixing kinds (`[v80 C3]`) is an error.
+  Today a non-pitch bracket is a parse error (the kind simply isn't accepted
+  yet).
 - **`(...)` is strictly a chord** — simultaneous pitches at one step.
   `[(C3 E3) (D3 F3)]` is a 2-element pitch stream whose elements are 2-note
   chords. A group holds pitches only.
 - Brackets **zip**: write each varying parameter as its own sibling bracket.
-  `[v80 v100] [C3 E3 G3] 1|1x8@n/8` cycles velocity (len 2) against pitch (len
-  3).
+  **(planned)** `[v80 v100] [C3 E3 G3] 1|1x8@n/8` cycles velocity (len 2)
+  against pitch (len 3). Sibling _pitch_ brackets already parse, but with only
+  pitch streams today a later pitch bracket simply replaces the earlier one.
 
 > **Supersedes the AJM-482 syntax sketch.** 482 originally sketched a group as
 > "whatever's grouped," bundling a velocity with a pitch
@@ -504,15 +508,21 @@ When every stream is length-1, the zip reduces **exactly** to today's broadcast
 ### Cursor lifetime
 
 - Each `[...]` token **instantiates one cursor** at its lexical position. The
-  cursor advances **once per emitted note-event** — a chord counts as one event
-  — and advances **globally across separate note events**, not just within one
-  `x<count>` repeat. It never rewinds.
-- A stream **persists until its parameter is reassigned**. A later scalar, or a
-  later `[...]` for the same parameter, replaces the stream with a fresh cursor.
+  cursor advances **once per emitted note-event** — a chord counts as one event.
+  It never rewinds.
+- **Today (pitch streams):** a stream is consumed by the **next time position**.
+  Its cursor advances across that position's emitted events (the `x<count>`
+  expansion and any comma-separated beat list), then the stream is cleared. A
+  later `[...]` (before that position) replaces it.
+- **(planned)** A stream **persists until its parameter is reassigned**,
+  advancing **globally across separate note events**, not just within one time
+  position. A later scalar, or a later `[...]` for the same parameter, replaces
+  the stream with a fresh cursor.
 - **Identity is lexical, not textual.** The same bracket text written twice is
   two independent streams, each starting at index 0.
 
 ```
+// (planned — cross-event cursor, AJM-483)
 [v80 v100] C3 1|1 D3 1|2 E3 1|3   // C3 v80, D3 v100, E3 v80
                                   // (velocity cursor crosses 3 separate events)
 ```
@@ -528,8 +538,10 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 ### Rules and errors
 
 - **Bare token = constant (length-1) stream.** Don't bracket what doesn't vary.
-- **At most one active stream per parameter.** Two brackets targeting the same
-  parameter at once → parse-time error.
+- **At most one active stream per parameter.** **(planned)** Two brackets
+  targeting the same parameter at once → parse-time error. Today, with only
+  pitch streams, a second pitch bracket before a time position simply replaces
+  the first (no error).
 - **Flat two-level grammar; nesting is a parse-time type error.** A stream's
   element is a value (a bare token or a one-level `(...)` chord), never another
   stream. `[A [B C] D]` is rejected at parse time (`[B C]` is a schedule, not a
@@ -546,16 +558,17 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
   active.
 - **Bar copy / `v0` / `@clear`** operate post-emission on real note events, so
   once notes are emitted they are unaffected by streams. The pre-emission buffer
-  warnings (`N pitch(es) buffered but not emitted`, dangling state) must learn
-  about a _pending stream_ as a new species of un-emitted state.
+  warnings (`N pitch(es) buffered but not emitted`, dangling state) count a
+  _pending stream_ as a new species of un-emitted state (`countBufferedPitches`
+  sums the pending chord and stream).
 - **Read-back is explicit notes, never re-bracketed.** Brackets are author-only
   sugar; the canonical serialized form is explicit positions (a melodic run
-  serializes to `C3 1|1 E3 1|2 G3 1|3`). This round-trips losslessly and is
-  locked by a serializer regression test.
+  serializes to `C3 1|1 E3 1|2 G3 1|3`). This round-trips losslessly because
+  brackets never reach the serializer — it runs over emitted `NoteEvent[]`.
 
-### Worked examples (planned)
+### Worked examples
 
-**Melodic stepping (AJM-482), `@step` grid, meter-safe:**
+**Melodic stepping (AJM-482), `@step` grid, meter-safe — ships today:**
 
 ```
 [C3 E3 G3] 1|1x3@n/4      // C3@1|1, E3@1|2, G3@1|3
@@ -563,14 +576,15 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 [C3 E3 G3 C4] 1|1x4@n3/8  // four dotted-quarter steps (e.g. felt beats in 12/8)
 ```
 
-**Phase pattern (AJM-483), coprime cycling under `@step`:**
+**Phase pattern (AJM-483), coprime cycling under `@step` — (planned):**
 
 ```
 [v80 v100] [C3 E3 G3] 1|1x8@n/8
 // C3 v80, E3 v100, G3 v80, C3 v100, E3 v80, G3 v100, C3 v80, E3 v100
 ```
 
-**Gallop (AJM-483 duration-fold, no `@step`) — _ships after cycling+`@step`_:**
+**Gallop (AJM-483 duration-fold, no `@step`) — (planned), ships after
+cycling+`@step`:**
 
 ```
 [n/4 n/8] C3 1|1x8
@@ -578,13 +592,16 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 // 1|1, 1|2, 1|2.5, 1|3.5, 1|4, 2|1, 2|1.5, 2|2.5
 ```
 
-### Intended AST shape
+### AST shape
 
 A bracket parses to a single element carrying its parameter kind and the ordered
-value list, e.g. `{ stream: { param: "pitch", values: [...] } }`, where a pitch
-value may itself be a chord (array). The interpreter holds a per-parameter
-`{ values, cursor }` in state. The exact shape is finalized when the grammar
-lands in AJM-482; the **AST Schema** section is updated then.
+value list: `{ stream: { param: "pitch", values: { pitch: number }[][] } }`,
+where each value is a chord (a length-1 array for a bare pitch). The interpreter
+builds the captured chords into `state.currentPitchStream` (a `PitchState[][]`)
+and the emitter zips it against the positions: value at cursor `i` is
+`values[i mod values.length]`. See the **AST Schema** section for the element
+type. Value streams for v/n/p will reuse the same
+`{ stream: { param, values } }` shape with a different `param` (planned).
 
 ---
 
@@ -897,6 +914,7 @@ type Element =
   | { velocityMin: number, velocityMax: number }                     // Velocity range (0-127)
   | { duration: number, bars?: number }                              // Duration: whole-note fraction (e.g. 1/4 = quarter); meter-aware `bars` present for Nbar / Nbar+nA/B
   | { probability: number }                                          // Probability (0.0-1.0)
+  | { stream: { param: "pitch", values: { pitch: number }[][] } }    // Pattern bracket: a cycling pitch stream; each value is a chord (length-1 for a bare pitch)
   | { barCopy: number, sourcePrevious: true }                        // @N= (copy previous)
   | { barCopy: number, sourceBar: number }                           // @N=M (copy bar M)
   | { barCopy: number, sourceRange: [number, number] }               // @N=M-P (copy source range)

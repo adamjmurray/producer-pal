@@ -20,6 +20,7 @@ Format: v<vel> n<dur> [p<prob>] pitch(es) bar|beat(s)
 n/4 C3 1|1 D3 1|2 E3 1|3 F#3 1|4
 G3 2|1 A3 2|2 G#3 2|3 E3 2|4
 \`\`\`
+A pitch bracket \`[...]\` on a repeat steps through the list instead of repeating one pitch: \`[C3 D3 E3 F#3] 1|1x4@n/4\` is bar 1 above. The list cycles if {count} is longer; \`(...)\` makes a chord step. Brackets hold pitches only
 
 ### Dotted rhythm (dotted-8th + 16th gallop; re-set n, the 16th lands on .75)
 \`\`\`

@@ -15,13 +15,14 @@
  * 5/4 test sets would tighten the signal — see the eval validation tracker.
  */
 
-import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.ts";
 import { type EvalAssertion, type EvalScenario } from "../../../types.ts";
-import { clearSessionSlots } from "../clip-scenario-helpers.ts";
+import {
+  clearSessionSlots,
+  clipStateAssertion,
+} from "../clip-scenario-helpers.ts";
 
 const TOOL_CREATE_CLIP = "ppal-create-clip";
 const TOOL_CONNECT = "ppal-connect";
-const TOOL_READ_CLIP = "ppal-read-clip";
 const LIVE_SET = "basic-midi-4-track";
 const MSG_CONNECT = "Connect to Ableton Live";
 /** Drums is track 0 in basic-midi-4-track; C1 (MIDI 36) is the kick. */
@@ -64,48 +65,26 @@ function assertClipNotes(
   expectedStarts: number[],
   expectedDuration?: number,
 ): EvalAssertion {
-  const [numerator, denominator] = meter.split("/").map(Number);
+  return clipStateAssertion(slot, meter, (events) => {
+    const starts = events.map((e) => e.start_time).sort((a, b) => a - b);
 
-  return {
-    type: "state",
-    tool: TOOL_READ_CLIP,
-    args: { slot, include: ["notes", "timing"] },
-    expect: (result: unknown): boolean => {
-      const clip = result as { notes?: string; timeSignature?: string };
+    if (starts.length !== expectedStarts.length) return false;
 
-      if (clip.timeSignature !== meter || !clip.notes) return false;
+    const positionsMatch = starts.every(
+      (s, i) => Math.abs(s - (expectedStarts[i] as number)) < EPS,
+    );
+    // Every note must be the kick (C1). When a duration is given, pin each
+    // note's length too — that's the absolute-duration invariant `n/4` tests.
+    // When omitted, the spacing alone is the signal (e.g. triplet drum hits).
+    const notesValid = events.every(
+      (e) =>
+        e.pitch === KICK_PITCH &&
+        (expectedDuration == null ||
+          Math.abs(e.duration - expectedDuration) < EPS),
+    );
 
-      let events;
-
-      try {
-        events = interpretNotation(clip.notes, {
-          timeSigNumerator: numerator,
-          timeSigDenominator: denominator,
-        });
-      } catch {
-        return false; // unparseable notation — treat as a failed clip
-      }
-
-      const starts = events.map((e) => e.start_time).sort((a, b) => a - b);
-
-      if (starts.length !== expectedStarts.length) return false;
-
-      const positionsMatch = starts.every(
-        (s, i) => Math.abs(s - (expectedStarts[i] as number)) < EPS,
-      );
-      // Every note must be the kick (C1). When a duration is given, pin each
-      // note's length too — that's the absolute-duration invariant `n/4` tests.
-      // When omitted, the spacing alone is the signal (e.g. triplet drum hits).
-      const notesValid = events.every(
-        (e) =>
-          e.pitch === KICK_PITCH &&
-          (expectedDuration == null ||
-            Math.abs(e.duration - expectedDuration) < EPS),
-      );
-
-      return positionsMatch && notesValid;
-    },
-  };
+    return positionsMatch && notesValid;
+  });
 }
 
 /**

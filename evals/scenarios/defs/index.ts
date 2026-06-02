@@ -19,6 +19,11 @@ export {
   barBeatMeterFill,
   barBeatTriplets,
 } from "./clip/notation/bar-beat-absolute-durations.ts";
+export {
+  barBeatMelodicCompoundStepping,
+  barBeatMelodicLegatoRun,
+  barBeatMelodicStepping,
+} from "./clip/notation/bar-beat-pitch-streams.ts";
 export { drumTransforms } from "./clip/drum-transforms.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";

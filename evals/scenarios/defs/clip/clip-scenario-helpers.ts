@@ -73,6 +73,52 @@ export function assertNotesRead(turn: number): EvalAssertion {
 }
 
 /**
+ * Build a `state` assertion that re-reads the clip in `slot` and re-interprets
+ * its notation back into NoteEvents, then defers to `check` for the verdict.
+ * Reading the final clip state (not the create/update transcript) grades the
+ * OUTCOME, not the path — immune to tool-error strings and to which of several
+ * tool calls "won". Fails closed before `check` runs: a wrong/absent time
+ * signature, missing notes, or unparseable notation all return false.
+ *
+ * @param slot - Session clip slot to read (trackIndex/sceneIndex)
+ * @param meter - Expected time signature (e.g. "6/8"); also the interpret meter
+ * @param check - Verdict over the re-interpreted notes (start_time in Ableton
+ *   quarter beats); only called once the read succeeded in `meter`
+ * @returns State assertion
+ */
+export function clipStateAssertion(
+  slot: string,
+  meter: string,
+  check: (events: NoteEvent[]) => boolean,
+): EvalAssertion {
+  const [numerator, denominator] = meter.split("/").map(Number);
+
+  return {
+    type: "state",
+    tool: TOOL_READ_CLIP,
+    args: { slot, include: ["notes", "timing"] },
+    expect: (result: unknown): boolean => {
+      const clip = result as { notes?: string; timeSignature?: string };
+
+      if (clip.timeSignature !== meter || !clip.notes) return false;
+
+      let events: NoteEvent[];
+
+      try {
+        events = interpretNotation(clip.notes, {
+          timeSigNumerator: numerator,
+          timeSigDenominator: denominator,
+        });
+      } catch {
+        return false; // unparseable notation — treat as a failed clip
+      }
+
+      return check(events);
+    },
+  };
+}
+
+/**
  * Extract the transforms expressions from a ppal-update-clip call in the given
  * turn. transforms is now a single newline-separated string; a legacy array
  * value is still tolerated and joined with newlines so selector/expression

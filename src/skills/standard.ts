@@ -70,6 +70,7 @@ Create MIDI clips using the bar|beat notation syntax:
     - \`1|1x4@n/4\` → 4 notes a quarter apart; \`n/8 1|1x4\` → 4 eighths (step defaults to n value)
     - \`1|1x3@n/12\` → eighth-note triplets (3 in a quarter); \`n/16 1|1x16\` → 16 sixteenths spanning 4 quarters (a full bar in 4/4)
     - **Prefer repeats over hand-listing beats for evenly-spaced notes** — the step is a note value, so spacing stays correct in any meter (in 6/8, \`n/4 C1 1|1x3\` = quarters on beats 1, 3, 5; \`1|1,2,3\` would be eighths)
+    - **Pitch brackets** \`[...]\`: a repeat with a *stream* of pitches steps through them instead of repeating one — \`[C3 E3 G3] 1|1x3@n/4\` plays C3, E3, G3 on successive quarters (a melodic line, not 3× one pitch). The list cycles if \`count\` exceeds its length; \`(...)\` is a chord step (\`[(C3 E3) (D3 F3)] 1|1x2@n/4\`). Brackets hold pitches only; v/n/p still apply to the whole bracket
 - v<velocity>: 0-127 (default: v100). Range v80-120 randomizes per note for humanization (start the low bound ≥1: \`v0-N\` sets a base velocity of 0, which triggers the v0 delete and drops the notes)
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - n<duration>: Note length as an absolute note value. **Set it explicitly rather than relying on the \`n/4\` default** — and because it's stateful, re-set it whenever the intended length changes. It applies to notes **after** it — put the \`n\` change *before* the note it should affect (\`n/8 G3 4|2 A3\`, not \`G3 4|2 n/8 A3\`, which leaves G3 at the old length and overlaps A3). For drums, set \`n\` at the start and again for each drum/pitch (a hat's \`n/16\` otherwise carries over to the next kick). REQUIRES denominator — \`n1\`, \`n2.5\`, \`n0.5\` are invalid; write \`n/4\`, \`n5/8\`, \`n/8\`. \`n/12\` = eighth triplet (3 in a quarter), \`n/6\` = quarter triplet (3 in a half)
@@ -96,6 +97,7 @@ n/16 C3 1|1.75 // 16th note at beat 1.75
 n/12 C3 1|1 E3 1|1+n/12 G3 1|1+n/6 // eighth-triplet arp C-E-G on beat 1 (varying pitch → ±n offsets, not a repeat)
 n/12 C3 1|1x3 // eighth-note triplets: 3 notes filling one quarter (step = duration)
 n/16 Gb1 1|1x16 // 16 sixteenths = 4 quarters, a full bar in 4/4 (1|1x16@n/16 is the same)
+[C3 E3 G3 C4] 1|1x4@n/4 // melodic line: C3,E3,G3,C4 on 4 quarters (pitch bracket steps the list, not 4× one pitch)
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
 v90-110 n/4 C1 1|1,3 n/8 D1 1|2,4 // humanized drums — re-set n per lane

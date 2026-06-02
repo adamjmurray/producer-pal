@@ -13,13 +13,17 @@ import {
   wholeNoteFractionToMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
-import { type ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
+import {
+  type ASTElement,
+  type PatternStream,
+} from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import { parseBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
+  countBufferedPitches,
   extractBufferState,
   handlePropertyUpdate,
   validateBufferedState,
@@ -33,6 +37,7 @@ import {
   type BarCopyElement,
 } from "./helpers/barbeat-interpreter-copy-helpers.ts";
 import {
+  buildPitchState,
   calculatePositions,
   handlePitchEmission,
   type TimeElement,
@@ -168,24 +173,42 @@ function processPitchElement(
     return;
   }
 
-  let velocity: number;
-  let velocityDeviation: number;
+  state.currentPitches.push(buildPitchState(element.pitch as number, state));
+  state.stateChangedSinceLastPitch = false;
+}
 
-  if (state.currentVelocityMin != null && state.currentVelocityMax != null) {
-    velocity = state.currentVelocityMin;
-    velocityDeviation = state.currentVelocityMax - state.currentVelocityMin;
-  } else {
-    velocity = state.currentVelocity ?? DEFAULT_VELOCITY;
-    velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
+/**
+ * Process a pitch-stream element (pattern bracket, e.g. `[C3 E3 G3]`).
+ * Builds a stream of chords — one per bracket value, capturing the current
+ * velocity/duration/probability — held in state and cycled across the next time
+ * position's emitted note-events. Out-of-range pitches are dropped per chord
+ * (matching plain pitches). v/n/p streams and the cross-event cursor are later
+ * phases (AJM-483).
+ * @param element - AST element carrying a pitch stream
+ * @param state - Interpreter state
+ */
+function processPitchStreamElement(
+  element: ASTElement,
+  state: InterpreterState,
+): void {
+  // Start a pitch group (mirror processPitchElement) so the post-stream
+  // "state change won't affect this group" warning still fires.
+  if (!state.pitchGroupStarted) {
+    state.currentPitches = [];
+    state.pitchGroupStarted = true;
+    state.pitchesEmitted = false;
+    state.stateChangedAfterEmission = false;
   }
 
-  state.currentPitches.push({
-    pitch: element.pitch as number,
-    velocity: velocity,
-    velocityDeviation: velocityDeviation,
-    duration: state.currentDuration,
-    probability: state.currentProbability,
-  });
+  // stream is always defined here (checked at the dispatch); the cast documents
+  // that guarantee, matching the element.pitch/element.velocity pattern.
+  const stream = element.stream as PatternStream;
+
+  state.currentPitchStream = stream.values.map((chord) =>
+    chord
+      .filter((value) => acceptPitch(value.pitch))
+      .map((value) => buildPitchState(value.pitch, state)),
+  );
   state.stateChangedSinceLastPitch = false;
 }
 
@@ -195,6 +218,7 @@ function processPitchElement(
  */
 function resetPitchBufferState(state: InterpreterState): void {
   state.currentPitches = [];
+  state.currentPitchStream = null;
   state.pitchGroupStarted = false;
   state.pitchesEmitted = false;
   state.stateChangedSinceLastPitch = false;
@@ -234,6 +258,10 @@ function processTimePosition(
     notesByBar,
   );
 
+  // A pending pitch stream is consumed by this time position; clear it so the
+  // next group starts fresh (the cross-event cursor that persists a stream
+  // across separate time positions is a later phase, AJM-483).
+  state.currentPitchStream = null;
   state.pitchGroupStarted = false;
   state.stateChangedSinceLastPitch = false;
   state.stateChangedAfterEmission = false;
@@ -300,6 +328,8 @@ function processElementInLoop(
       events,
       notesByBar,
     );
+  } else if (element.stream !== undefined) {
+    processPitchStreamElement(element, state);
   } else if (element.pitch !== undefined) {
     processPitchElement(element, state);
   } else if (element.velocity !== undefined) {
@@ -355,6 +385,7 @@ export function interpretNotation(
       currentVelocityMin: null,
       currentVelocityMax: null,
       currentPitches: [],
+      currentPitchStream: null,
       pitchGroupStarted: false,
       pitchesEmitted: false,
       stateChangedSinceLastPitch: false,
@@ -372,10 +403,13 @@ export function interpretNotation(
       );
     }
 
-    // Warn if pitches buffered but never emitted
-    if (state.currentPitches.length > 0 && !state.pitchesEmitted) {
+    // Warn if pitches buffered but never emitted (includes a dangling pattern
+    // bracket as a new species of un-emitted pitch state).
+    const buffered = countBufferedPitches(state);
+
+    if (buffered > 0 && !state.pitchesEmitted) {
       console.warn(
-        `${state.currentPitches.length} pitch(es) buffered but no time position to emit them`,
+        `${buffered} pitch(es) buffered but no time position to emit them`,
       );
     }
 
