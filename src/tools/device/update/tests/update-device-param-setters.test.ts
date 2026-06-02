@@ -591,4 +591,33 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
       expect.stringContaining('empty name after "/"'),
     );
   });
+
+  it("sets a real slash-named param (Dry/Wet) by name, not as a path", () => {
+    registerMockObject("dev1", {
+      path: livePath.track(0).device(0),
+      type: "Device",
+      properties: { parameters: children("drywet-param") },
+    });
+    // Reverb/Delay/Glue Compressor expose a parameter literally named
+    // "Dry/Wet". The "/" must NOT route this to path-prefixed pseudo-param
+    // handling (which would split it into prefix "Dry" + param "Wet" and drop
+    // the write); it has to resolve as an ordinary DeviceParameter by name.
+    const param = registerMockObject("drywet-param", {
+      properties: {
+        name: "Dry/Wet",
+        original_name: "Dry/Wet",
+        is_quantized: 0,
+        value: 0,
+        min: 0,
+        max: 1,
+      },
+      methods: {
+        str_for_value: (v: unknown) => `${Math.round(Number(v) * 100)} %`,
+      },
+    });
+
+    updateDevice({ ids: "dev1", params: [{ name: "Dry/Wet", value: "50" }] });
+
+    expect(expectValueSet(param)).toBeCloseTo(0.5, 1);
+  });
 });

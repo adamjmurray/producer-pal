@@ -45,10 +45,22 @@ export function setParamValues(
       continue;
     }
 
-    // Path-prefixed pseudo-param (e.g. "pC1/d0/sample"): resolve the prefix
-    // relative to this device, then write the trailing param to the target.
+    // A name containing "/" is normally a path-prefixed pseudo-param
+    // (e.g. "pC1/d0/sample"): resolve the prefix relative to this device, then
+    // write the trailing param to the target. But some real DeviceParameters
+    // have a "/" in their name (e.g. "Dry/Wet" on Reverb/Delay/Glue Compressor),
+    // so prefer an exact param-name match first and only fall back to
+    // path-routing when no such param exists — keeping slash-named params
+    // settable by name.
     if (key.includes("/")) {
-      applyNestedParam(device, key, rawValue, toolName);
+      const namedParam = resolveParamByName(device, key);
+
+      if (namedParam?.exists()) {
+        setParamValue(namedParam, normalizeParamValue(rawValue), toolName);
+      } else {
+        applyNestedParam(device, key, rawValue, toolName);
+      }
+
       continue;
     }
 
