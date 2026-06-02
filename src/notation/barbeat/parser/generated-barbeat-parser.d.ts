@@ -37,6 +37,21 @@ export type BarCopySource =
   | { bar?: number; range?: [number, number] }
   | "previous";
 
+/** A single pitch within a chord or stream */
+export interface StreamPitch {
+  pitch: number;
+}
+
+/**
+ * Pattern bracket (AJM-482): a stream of one parameter's values cycled across
+ * emitted note-events. Only `param: "pitch"` ships today; each value is a chord
+ * (a length-1 array for a bare pitch). v/n/p streams are a later phase.
+ */
+export interface PatternStream {
+  param: "pitch";
+  values: StreamPitch[][];
+}
+
 /** AST element produced by the parser */
 export interface ASTElement {
   velocity?: number;
@@ -52,6 +67,8 @@ export interface ASTElement {
   clearBuffer?: boolean;
   destination?: BarCopyDestination;
   source?: BarCopySource;
+  /** Pattern bracket: a cycling stream of values for one parameter (AJM-482) */
+  stream?: PatternStream;
 }
 
 /** Parse a barbeat expression string into an AST */
