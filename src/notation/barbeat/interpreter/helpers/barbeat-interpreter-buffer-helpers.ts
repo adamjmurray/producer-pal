@@ -26,12 +26,21 @@ export interface InterpreterState {
   currentVelocityMax?: number | null;
   currentPitches: PitchState[];
   /**
-   * Pending pitch stream (pattern bracket): a list of chords cycled across the
-   * next time position's emitted note-events. `null`/absent ⇒ no active stream,
-   * so emission falls back to the single `currentPitches` chord. Cleared once
-   * its time position emits (mirrors the `currentPitches` group lifecycle).
+   * Active pitch stream (pattern bracket): a list of chords cycled across
+   * emitted note-events. `null`/absent ⇒ no active stream, so emission falls
+   * back to the single `currentPitches` chord. The stream PERSISTS across
+   * separate time positions (cross-event cursor) and is replaced/cleared only on
+   * reassignment (a later pitch token or bracket), `@clear`, or bar copy.
    */
   currentPitchStream?: PitchState[][] | null;
+  /**
+   * Cursor into `currentPitchStream`, advanced once per emitted note-event and
+   * carried across separate time positions. Value at emission `i` is
+   * `stream[cursor mod stream.length]`. Reset to 0 when the pitch stream is
+   * (re)assigned. Harmless for the length-1 fallback (`cursor mod 1` is always
+   * 0), so it can advance unconditionally.
+   */
+  pitchStreamCursor: number;
   pitchGroupStarted: boolean;
   pitchesEmitted: boolean;
   stateChangedSinceLastPitch: boolean;
@@ -58,6 +67,7 @@ export interface BarCopyResult {
 export function clearPitchBuffer(state: InterpreterState): void {
   state.currentPitches = [];
   state.currentPitchStream = null;
+  state.pitchStreamCursor = 0;
   state.pitchGroupStarted = false;
   state.pitchesEmitted = false;
   state.stateChangedSinceLastPitch = false;

@@ -450,11 +450,14 @@ C1 1|1x4@n/4         // Bar 1: kick on every beat
 
 > **Status: design locked 2026-06-01 (AJM-482 / AJM-483).** This section is the
 > authoritative design contract for the bracket/stream feature. **Pitch streams
-> (`[C3 E3 G3]`, AJM-482) ship in v1.4.12.** Items still marked **(planned)** —
-> value streams for velocity/duration/probability and the no-`@step`
-> duration-fold (AJM-483) — describe syntax the parser does not yet accept; they
-> are documented here so the model is designed once and the two tickets share
-> one engine. Each **(planned)** marker is removed when its surface ships.
+> (`[C3 E3 G3]`, AJM-482) ship in v1.4.12, including the cross-event cursor** —
+> a pitch stream steps across separate time positions
+> (`[C3 E3 G3] 1|1 1|2 1|3`), not just within one `x<count>` expansion. Items
+> still marked **(planned)** — value streams for velocity/duration/probability
+> and the no-`@step` duration-fold (AJM-483) — describe syntax the parser does
+> not yet accept; they are documented here so the model is designed once and the
+> two tickets share one engine. Each **(planned)** marker is removed when its
+> surface ships.
 
 ### The model: a parameter's current state is a _stream_
 
@@ -510,19 +513,21 @@ When every stream is length-1, the zip reduces **exactly** to today's broadcast
 - Each `[...]` token **instantiates one cursor** at its lexical position. The
   cursor advances **once per emitted note-event** — a chord counts as one event.
   It never rewinds.
-- **Today (pitch streams):** a stream is consumed by the **next time position**.
-  Its cursor advances across that position's emitted events (the `x<count>`
-  expansion and any comma-separated beat list), then the stream is cleared. A
-  later `[...]` (before that position) replaces it.
-- **(planned)** A stream **persists until its parameter is reassigned**,
-  advancing **globally across separate note events**, not just within one time
-  position. A later scalar, or a later `[...]` for the same parameter, replaces
-  the stream with a fresh cursor.
+- A stream **persists until its parameter is reassigned**, advancing **globally
+  across separate note events**, not just within one `x<count>` expansion. A
+  later scalar, or a later `[...]` for the same parameter, replaces the stream
+  with a fresh cursor (index 0). **Pitch streams implement this today** — the
+  cursor carries across separate time positions and comma-separated beat lists.
 - **Identity is lexical, not textual.** The same bracket text written twice is
   two independent streams, each starting at index 0.
 
 ```
-// (planned — cross-event cursor, AJM-483)
+// Pitch cross-event cursor — ships today (AJM-482):
+[C3 E3 G3] 1|1 1|2 1|3   // C3@1|1, E3@1|2, G3@1|3 (cursor crosses 3 positions)
+[C3 E3] 1|1 1|2 1|3      // C3, E3, C3 (cursor wraps)
+[C3 E3] 1|1 F3 1|2 1|3   // C3, then F3 rewinds the cursor and broadcasts: F3, F3
+
+// Value stream cross-event cursor — (planned, AJM-483):
 [v80 v100] C3 1|1 D3 1|2 E3 1|3   // C3 v80, D3 v100, E3 v80
                                   // (velocity cursor crosses 3 separate events)
 ```
@@ -540,8 +545,8 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 - **Bare token = constant (length-1) stream.** Don't bracket what doesn't vary.
 - **At most one active stream per parameter.** **(planned)** Two brackets
   targeting the same parameter at once → parse-time error. Today, with only
-  pitch streams, a second pitch bracket before a time position simply replaces
-  the first (no error).
+  pitch streams, a second pitch bracket simply replaces the first with a fresh
+  cursor (no error).
 - **Flat two-level grammar; nesting is a parse-time type error.** A stream's
   element is a value (a bare token or a one-level `(...)` chord), never another
   stream. `[A [B C] D]` is rejected at parse time (`[B C]` is a schedule, not a
@@ -572,6 +577,7 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 
 ```
 [C3 E3 G3] 1|1x3@n/4      // C3@1|1, E3@1|2, G3@1|3
+[C3 E3 G3] 1|1 1|2 1|3    // same melody, cursor steps across separate positions
 [C3 E3 G3] 1|1x3          // no @step → advance by current duration (legato run)
 [C3 E3 G3 C4] 1|1x4@n3/8  // four dotted-quarter steps (e.g. felt beats in 12/8)
 ```

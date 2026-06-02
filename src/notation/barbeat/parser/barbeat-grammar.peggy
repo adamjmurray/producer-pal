@@ -193,12 +193,13 @@ pitchClass
 }
 
 // Pattern bracket holding a PITCH stream (AJM-482): an ordered list of pitch
-// values cycled across emitted note-events at the next time position. Each value
-// is a chord (an array of pitch objects); a bare pitch is a length-1 chord, so
-// `values` is uniformly chord[]. The emitter zips it against the positions:
-// value at cursor i = values[i mod values.length]. v/n/p streams and the
-// cross-event cursor are later phases (AJM-483); see "Pattern Brackets
-// (Streams)" in dev/specs/BarBeat-Spec.md.
+// values cycled across emitted note-events. The stream persists until the pitch
+// parameter is reassigned, so its cursor carries across separate time positions
+// (cross-event cursor). Each value is a chord (an array of pitch objects); a
+// bare pitch is a length-1 chord, so `values` is uniformly chord[]. The emitter
+// zips it against the positions: value at cursor i = values[i mod values.length].
+// v/n/p value streams and the duration-fold are later phases (AJM-483); see
+// "Pattern Brackets (Streams)" in dev/specs/BarBeat-Spec.md.
 //
 // A stream value is a chord or a bare pitch ONLY. A parameter token (v/n/p) or a
 // nested `[` raises a parse error — that IS the "one parameter kind per bracket,
