@@ -112,6 +112,20 @@ describe("Transform Parser - barDuration (Nbar)", () => {
       });
     });
 
+    // The minus tail works as a bare shorthand too — it desugars to a subtract
+    // node, identical to the full `duration = 1bar-n/16` form.
+    it("desugars bare 1bar-n/16 to subtract(barDuration, nDuration)", () => {
+      expect(parser.parse("1bar-n/16")).toStrictEqual(
+        parser.parse("duration = 1bar-n/16"),
+      );
+
+      expect(parser.parse("1bar-n/16")[0]!.expression).toStrictEqual({
+        type: "subtract",
+        left: { type: "barDuration", bars: 1 },
+        right: { type: "nDuration", wholeNoteFraction: 0.0625 },
+      });
+    });
+
     it("inherits the denominator error for a bare 1bar+n2.5", () => {
       expect(() => parser.parse("1bar+n2.5")).toThrow(/needs? a denominator/);
     });
