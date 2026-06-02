@@ -91,7 +91,7 @@ start
   }
 
 element
-  = barCopy / timePoints / stream / probability / velocity / duration / pitch
+  = barCopy / timePoints / stream / probability / velocity / duration / pitch / badNumericToken
 
 barCopy "bar copy operation"
   = '@' 'clear' {
@@ -316,12 +316,14 @@ beatValue
       const offsetBeats = frac * (options.timeSigDenominator ?? 4);
       return sign === "+" ? base + offsetBeats : base - offsetBeats;
     }
+  / rangeAsBeat
   / oneOrMoreInt sign:("+" / "-") bad:badBeatOffset {
       throw new Error(`beat offsets use the note-value form: 1|1+n/12 = beat 1 + an eighth triplet, 1|2-n/24. Got ${text()} — note-value offsets need the n prefix (write ${sign}n/3, not ${sign}${bad}).`);
     }
   / bad:bareFractionBeat {
       throw new Error(`beat positions are a grid beat with an optional note-value offset (1|1, 1|1+n/12) or a decimal (1|1.5). Got bare fraction ${bad} — write the grid+offset form instead (4/3 → 1+n/12).`);
     }
+  / badZeroBeat
   / oneOrMoreDecimal
 
 // Old bare-fraction beat (`4/3`); matched only to raise a targeted error.
@@ -333,6 +335,39 @@ badBeatOffset
   = unsignedMixedNumber { return text(); }
   / unsignedFraction { return text(); }
   / unsignedDecimal { return text(); }
+
+// A position written as a range (`1|1-2|1`): not a bar|beat concept — positions
+// are single points; a span belongs in a transform time filter. Ordered after
+// the valid `-n` offset (so a real offset wins) and before the bad-offset error
+// (which would otherwise mislabel this "beat offsets use the note-value form").
+// Matches only `beat - bar|`; raises a targeted error, never returns a value.
+rangeAsBeat
+  = oneOrMoreDecimal "-" oneOrMoreInt "|" {
+      throw new Error(`a position is a single bar|beat (e.g. 1|1). For a span, use a transform time filter (1|1-2|1: ...).`);
+    }
+
+// A 0-indexed beat (`1|0`, `1|0.5`): beats count from 1, so a leading 0 can only
+// be this mistake (every valid beat starts 1-9, or is a `-n` offset / decimal).
+// Raises a targeted error; never returns a value. The `1|0`-as-pickup reading is
+// deliberately NOT taught — a pickup before the downbeat is the offset form
+// `1|1-n/N` (see standard skills).
+badZeroBeat
+  = "0" [0-9]* ("." [0-9]*)? {
+      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text()}.`);
+    }
+
+// Last resort for a digit-led element that is neither a position (no `|`) nor a
+// duration (no `bar`): a `bar.beat`/`bar:beat` written with the wrong separator,
+// or a raw MIDI number used as a pitch. Ordered last in `element` so every real
+// element wins first; raises a fix-suggesting error in place of peggy's generic
+// "Expected …". Never returns a value.
+badNumericToken
+  = unsignedInt ("." / ":") unsignedInt {
+      throw new Error(`positions use a pipe: bar|beat (e.g. 1|1), not "." or ":". Got ${text()}.`);
+    }
+  / unsignedInt &(WS / !.) {
+      throw new Error(`use note names like C3 (middle C) for pitches, not MIDI numbers. Got ${text()}.`);
+    }
 
 unsignedMixedNumber
   = wholeNumber:unsignedInt "+" fraction:unsignedFraction {

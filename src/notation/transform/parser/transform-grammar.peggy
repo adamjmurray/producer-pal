@@ -282,7 +282,17 @@ beatValue
   / bad:bareFractionBeat {
       throw new Error(`beat positions are a grid beat with an optional note-value offset (1|1, 1|1+n/12) or a decimal (1|1.5). Got bare fraction ${bad} — write the grid+offset form instead (4/3 → 1+n/12).`);
     }
+  / badZeroBeat
   / oneOrMoreDecimal
+
+// A 0-indexed range bound (`1|0-2|1`): beats count from 1 in time ranges too, so
+// a leading 0 can only be this mistake. Raises a targeted error; never returns a
+// value. Mirrors the barbeat note grammar's `badZeroBeat` (Peggy can't share a
+// rule across grammars). The `1|0`-as-pickup reading is deliberately not taught.
+badZeroBeat
+  = "0" [0-9]* ("." [0-9]*)? {
+      throw new Error(`beats are 1-indexed: the downbeat is beat 1 (e.g. 1|1); for a pickup before it, offset from beat 1 (e.g. 1|1-n/4). Got beat ${text()}.`);
+    }
 
 // Old bare-fraction beat (`4/3`); matched only to raise a targeted error.
 bareFractionBeat

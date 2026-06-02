@@ -81,6 +81,17 @@ describe("Transform Parser - time range selectors", () => {
     );
   });
 
+  it("rejects a 0-indexed beat in a range bound (either end)", () => {
+    // Beats are 1-indexed in time ranges too; the error steers to 1|1 / the
+    // offset pickup form, never the phased-out 1|0 spelling.
+    expect(() => parser.parse("1|0-2|1: velocity += 10")).toThrow(
+      /beats are 1-indexed.*1\|1-n\/4.*Got beat 0/,
+    );
+    expect(() => parser.parse("1|1-2|0: velocity += 10")).toThrow(
+      /beats are 1-indexed.*Got beat 0/,
+    );
+  });
+
   it("borrows across the bar line for a -n bound before the downbeat", () => {
     // `2|1-n/12` start bound = just before the bar-2 downbeat → bar 1, beat 4⅔
     // in 4/4. The separator `-` before `3|1` is not consumed as an offset.
