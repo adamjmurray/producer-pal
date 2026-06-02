@@ -1,21 +1,20 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { applyV0Deletions } from "#src/notation/barbeat/barbeat-apply-v0-deletions.ts";
 import {
-  DEFAULT_DURATION,
   DEFAULT_PROBABILITY,
   DEFAULT_TIME,
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
+  defaultDurationMusicalBeats,
+  wholeNoteFractionToMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import { type ASTElement } from "#src/notation/barbeat/parser/barbeat-parser.ts";
-import {
-  barBeatDurationToMusicalBeats,
-  parseBeatsPerBar,
-} from "#src/notation/barbeat/time/barbeat-time.ts";
+import { parseBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import * as console from "#src/shared/v8-max-console.ts";
@@ -38,6 +37,11 @@ import {
   handlePitchEmission,
   type TimeElement,
 } from "./helpers/barbeat-interpreter-pitch-helpers.ts";
+import {
+  acceptPitch,
+  clampProbability,
+  clampVelocity,
+} from "./helpers/barbeat-interpreter-range-helpers.ts";
 
 interface InterpretOptions {
   beatsPerBar?: number;
@@ -54,12 +58,14 @@ function processVelocityUpdate(
   element: ASTElement,
   state: InterpreterState,
 ): void {
-  state.currentVelocity = element.velocity ?? null;
+  const velocity = clampVelocity(element.velocity as number, "velocity");
+
+  state.currentVelocity = velocity;
   state.currentVelocityMin = null;
   state.currentVelocityMax = null;
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.velocity = element.velocity as number;
+    pitchState.velocity = velocity;
     pitchState.velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
   });
 }
@@ -73,12 +79,18 @@ function processVelocityRangeUpdate(
   element: ASTElement,
   state: InterpreterState,
 ): void {
-  state.currentVelocityMin = element.velocityMin ?? null;
-  state.currentVelocityMax = element.velocityMax ?? null;
-  state.currentVelocity = null;
+  const velocityMin = clampVelocity(
+    element.velocityMin ?? 0,
+    "velocity range min",
+  );
+  const velocityMax = clampVelocity(
+    element.velocityMax ?? 0,
+    "velocity range max",
+  );
 
-  const velocityMin = element.velocityMin ?? 0;
-  const velocityMax = element.velocityMax ?? 0;
+  state.currentVelocityMin = velocityMin;
+  state.currentVelocityMax = velocityMax;
+  state.currentVelocity = null;
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
     pitchState.velocity = velocityMin;
@@ -87,24 +99,29 @@ function processVelocityRangeUpdate(
 }
 
 /**
- * Process a duration update
+ * Process a duration update.
+ * The grammar emits the sub-bar part as a fraction of a whole note (e.g., 1/4
+ * for a quarter) and an optional meter-aware `bars` count (`1bar`, `1bar+n3/4`).
+ * Convert both to musical beats: the fraction scales by the time-signature
+ * denominator, the bars by beatsPerBar.
  * @param element - AST element with duration value
  * @param state - Interpreter state
- * @param timeSigNumerator - Time signature numerator
+ * @param beatsPerBar - Beats per bar (musical beats; for the bar component)
+ * @param timeSigDenominator - Time signature denominator
  */
 function processDurationUpdate(
   element: ASTElement,
   state: InterpreterState,
-  timeSigNumerator: number | undefined,
+  beatsPerBar: number,
+  timeSigDenominator: number | undefined,
 ): void {
-  if (typeof element.duration === "string") {
-    state.currentDuration = barBeatDurationToMusicalBeats(
-      element.duration,
-      timeSigNumerator,
-    );
-  } else {
-    state.currentDuration = element.duration as number;
-  }
+  const fractionBeats = wholeNoteFractionToMusicalBeats(
+    element.duration ?? 0,
+    timeSigDenominator,
+  );
+  const barBeats = (element.bars ?? 0) * beatsPerBar;
+
+  state.currentDuration = barBeats + fractionBeats;
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
     pitchState.duration = state.currentDuration;
@@ -120,10 +137,12 @@ function processProbabilityUpdate(
   element: ASTElement,
   state: InterpreterState,
 ): void {
-  state.currentProbability = element.probability;
+  const probability = clampProbability(element.probability as number);
+
+  state.currentProbability = probability;
 
   handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.probability = element.probability;
+    pitchState.probability = probability;
   });
 }
 
@@ -141,6 +160,12 @@ function processPitchElement(
     state.pitchGroupStarted = true;
     state.pitchesEmitted = false;
     state.stateChangedAfterEmission = false;
+  }
+
+  // Out-of-range pitch is skipped (other pitches in the same chord/group still
+  // emit); range no longer aborts the parse.
+  if (!acceptPitch(element.pitch as number)) {
+    return;
   }
 
   let velocity: number;
@@ -197,6 +222,7 @@ function processTimePosition(
     element as TimeElement,
     state,
     beatsPerBar,
+    timeSigDenominator,
   );
 
   handlePitchEmission(
@@ -219,7 +245,6 @@ function processTimePosition(
  * @param element - AST element to process
  * @param state - Interpreter state
  * @param beatsPerBar - Beats per bar
- * @param timeSigNumerator - Time signature numerator
  * @param timeSigDenominator - Time signature denominator
  * @param notesByBar - Notes by bar cache
  * @param events - Output events array
@@ -228,7 +253,6 @@ function processElementInLoop(
   element: ASTElement,
   state: InterpreterState,
   beatsPerBar: number,
-  timeSigNumerator: number | undefined,
   timeSigDenominator: number | undefined,
   notesByBar: Map<number, BarCopyNote[]>,
   events: NoteEvent[],
@@ -286,7 +310,7 @@ function processElementInLoop(
   ) {
     processVelocityRangeUpdate(element, state);
   } else if (element.duration !== undefined) {
-    processDurationUpdate(element, state, timeSigNumerator);
+    processDurationUpdate(element, state, beatsPerBar, timeSigDenominator);
   } else if (element.probability !== undefined) {
     processProbabilityUpdate(element, state);
   }
@@ -306,11 +330,18 @@ export function interpretNotation(
     return [];
   }
 
-  const { timeSigNumerator, timeSigDenominator } = options;
+  const { timeSigDenominator } = options;
   const beatsPerBar = parseBeatsPerBar(options);
 
   try {
-    const ast = parser.parse(barBeatExpression);
+    // Pass the denominator so the grammar can resolve `±n` beat offsets
+    // (whole-note fractions) into musical beats during the parse, and
+    // beatsPerBar so it can borrow across a bar line when a `-n` offset pulls a
+    // position earlier than beat 1 (e.g. `2|1-n/12`).
+    const ast = parser.parse(barBeatExpression, {
+      timeSigDenominator,
+      beatsPerBar,
+    });
     // Bar copy tracking: Map bar number -> array of note metadata
     const notesByBar = new Map<number, BarCopyNote[]>();
     const events: NoteEvent[] = [];
@@ -319,7 +350,7 @@ export function interpretNotation(
     const state: InterpreterState = {
       currentTime: DEFAULT_TIME,
       currentVelocity: DEFAULT_VELOCITY,
-      currentDuration: DEFAULT_DURATION,
+      currentDuration: defaultDurationMusicalBeats(timeSigDenominator),
       currentProbability: DEFAULT_PROBABILITY,
       currentVelocityMin: null,
       currentVelocityMax: null,
@@ -335,7 +366,6 @@ export function interpretNotation(
         element,
         state,
         beatsPerBar,
-        timeSigNumerator,
         timeSigDenominator,
         notesByBar,
         events,

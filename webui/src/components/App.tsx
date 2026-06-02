@@ -141,7 +141,9 @@ export function App() {
 
   // Project context overlay (sibling to Settings). Animation timing mirrors
   // useSettingsClose; auto-save makes a confirm-on-close flow unnecessary.
-  const contextOpen = viewState.contextOpen;
+  // Transient session state, intentionally not persisted: a refresh or a fresh
+  // tab opened from the Max device lands on chat, not the context editor.
+  const [contextOpen, setContextOpen] = useState(false);
   const { shake, clearShake, handleSettingsDismiss } = useSettingsDismiss({
     showSettings,
     settingsConfigured: settings.settingsConfigured,
@@ -157,17 +159,14 @@ export function App() {
   });
 
   const [contextClosing, setContextClosing] = useState(false);
-  const openContext = useCallback(
-    () => setViewState({ contextOpen: true }),
-    [setViewState],
-  );
+  const openContext = useCallback(() => setContextOpen(true), []);
   const closeContext = useCallback(() => {
     setContextClosing(true);
     setTimeout(() => {
       setContextClosing(false);
-      setViewState({ contextOpen: false });
+      setContextOpen(false);
     }, CONTEXT_ANIMATION_MS);
-  }, [setViewState]);
+  }, []);
 
   // Escape closes the context overlay (consistent with native modal idioms).
   useEffect(() => {

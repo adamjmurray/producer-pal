@@ -110,7 +110,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
     const result = await updateClip({
       ids: "789",
-      arrangementLength: "3:0", // 3 bars = 12 beats, matches clip.length exactly
+      arrangementLength: "3bar", // 3 bars = 12 beats, matches clip.length exactly
     });
 
     // Should tile using non-destructive duplication (preserves envelopes)
@@ -177,7 +177,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
     const result = await updateClip({
       ids: "789",
-      arrangementLength: "2:0", // 8 beats > 4 beats (clip.length), tiles existing content twice
+      arrangementLength: "2bar", // 8 beats > 4 beats (clip.length), tiles existing content twice
     });
 
     // Should duplicate once (2 tiles total: existing clip + 1 duplicate)
@@ -199,7 +199,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
     const result = await updateClip({
       ids: "789",
-      arrangementLength: "1:0", // Same as clip.length (no tiling needed)
+      arrangementLength: "1bar", // Same as clip.length (no tiling needed)
     });
 
     // Should not call duplicate_clip_to_arrangement
@@ -261,7 +261,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
 
     const result = await updateClip({
       ids: "789",
-      arrangementLength: "3:0", // 12 beats total - needs 3 tiles after original
+      arrangementLength: "3bar", // 12 beats total - needs 3 tiles after original
     });
 
     // Should create 3 tiles
@@ -365,7 +365,7 @@ describe("updateClip - arrangementLength (clean tiling)", () => {
     const result = await updateClip(
       {
         ids: "789",
-        arrangementLength: "3:0", // 12 beats
+        arrangementLength: "3bar", // 12 beats
       },
       mockContext,
     );

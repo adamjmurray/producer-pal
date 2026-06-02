@@ -49,7 +49,7 @@ export function createProviderModel(
       return createOpenAI({
         apiKey: apiKey || "not-needed",
         baseURL: baseUrl ?? "http://localhost:1234/v1",
-      })(`${modelId}`);
+      }).chat(`${modelId}`);
 
     case "ollama":
       return createOpenAI({

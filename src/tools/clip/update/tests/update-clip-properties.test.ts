@@ -82,7 +82,6 @@ describe("updateClip - Properties and ID handling", () => {
     const result = await updateClip({
       ids: "123, nonexistent",
       name: "Test",
-      noteUpdateMode: "replace",
     });
 
     expect(result).toStrictEqual({ id: "123" });

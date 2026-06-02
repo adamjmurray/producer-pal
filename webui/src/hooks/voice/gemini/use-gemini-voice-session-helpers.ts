@@ -23,16 +23,13 @@ import {
 import { type GeminiVoiceCredential } from "#webui/hooks/voice/gemini/gemini-voice-token";
 import { extractErrorMessage } from "#webui/hooks/voice/use-voice-session-helpers";
 import { DEFAULT_GEMINI_REALTIME_VOICE } from "#webui/lib/constants/models";
+import {
+  buildGeminiVoiceInstructions,
+  getVoiceLanguage,
+} from "#webui/lib/constants/voice-language";
 
 /** Mic input format Gemini Live expects (raw 16-bit PCM, 16 kHz, mono, LE). */
 export const GEMINI_INPUT_MIME_TYPE = "audio/pcm;rate=16000";
-
-export const GEMINI_AGENT_INSTRUCTIONS = [
-  "You are Producer Pal, an AI music production assistant working with the user in Ableton Live.",
-  "Always speak and respond in English. Interpret all user audio as English, even if a short utterance sounds ambiguous.",
-  "Before responding to the user's first request, call the ppal-connect tool to load the latest Producer Pal skills and current project context.",
-  "Keep voice responses brief and conversational. When tool calls take a moment, you may narrate what you are doing so the user knows you are working.",
-].join(" ");
 
 /**
  * Build the Live API session config: audio-out, the system instruction, the
@@ -45,6 +42,8 @@ export const GEMINI_AGENT_INSTRUCTIONS = [
  * @param opts.voice - Prebuilt Gemini voice name (defaults to Puck)
  * @param opts.functionDeclarations - MCP tools as Gemini declarations
  * @param opts.vad - Gemini VAD settings; when omitted, Live API defaults apply
+ * @param opts.language - Locked voice language (ISO-639-1 code); defaults to
+ *   English
  * @param opts.resumeHandle - Prior session's resumption handle; omit for a fresh
  *   session (still enables resumption so the server starts issuing handles)
  * @returns The LiveConnectConfig
@@ -53,11 +52,13 @@ export function buildGeminiConfig(opts: {
   voice: string | undefined;
   functionDeclarations: FunctionDeclaration[];
   vad?: GeminiVadSettings;
+  language?: string;
   resumeHandle?: string;
 }): LiveConnectConfig {
+  const language = getVoiceLanguage(opts.language);
   const config: LiveConnectConfig = {
     responseModalities: [Modality.AUDIO],
-    systemInstruction: GEMINI_AGENT_INSTRUCTIONS,
+    systemInstruction: buildGeminiVoiceInstructions(language),
     tools: [{ functionDeclarations: opts.functionDeclarations }],
     speechConfig: {
       voiceConfig: {
@@ -66,6 +67,11 @@ export function buildGeminiConfig(opts: {
         },
       },
     },
+    // Enable transcription so the UI can render the transcript (off by default
+    // on Gemini). We send empty configs intentionally: the Developer API rejects
+    // AudioTranscriptionConfig.languageCodes (the SDK throws for it in this
+    // mode), and the native-audio model picks language automatically anyway. The
+    // spoken-output language is locked via the system instruction below.
     inputAudioTranscription: {},
     outputAudioTranscription: {},
     sessionResumption: opts.resumeHandle ? { handle: opts.resumeHandle } : {},
@@ -145,6 +151,8 @@ export interface ResumableSessionContext {
   voice: string | undefined;
   /** VAD/turn-detection settings, or undefined for Live API defaults. */
   vad: GeminiVadSettings | undefined;
+  /** Locked voice language (ISO-639-1 code), or undefined for English. */
+  language: string | undefined;
   /** MCP tools exposed to the model. */
   functionDeclarations: FunctionDeclaration[];
   /** Message-handler deps (history builder, player, tool loop, UI setters). */
@@ -229,6 +237,7 @@ export async function openResumableGeminiSession(
       voice: ctx.voice,
       functionDeclarations: ctx.functionDeclarations,
       vad: ctx.vad,
+      language: ctx.language,
       resumeHandle: ctx.resumeRef.current.handle ?? undefined,
     }),
   });

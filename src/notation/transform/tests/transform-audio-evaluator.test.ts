@@ -1,8 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/v8-max-console.ts";
 import { applyAudioTransform } from "../transform-audio-evaluator.ts";
 
 // Mock console.warn to capture warnings
@@ -218,7 +220,7 @@ describe("Audio Transform Evaluator", () => {
   describe("waveform functions", () => {
     it("evaluates cos function", () => {
       // cos at position 0 with any period returns 1.0
-      const result = applyAudioTransform(0, 0, "gain = -12 + 6 * cos(4t)");
+      const result = applyAudioTransform(0, 0, "gain = -12 + 6 * cos(n/1)");
 
       // cos(0) = 1.0, so -12 + 6 * 1 = -6
       expect(result.gain).toBe(-6);
@@ -295,6 +297,30 @@ describe("Audio Transform Evaluator", () => {
     });
   });
 
+  describe("timeRange selector handling", () => {
+    beforeEach(() => {
+      vi.mocked(console.warn).mockClear();
+    });
+
+    it("warns when a timeRange selector is used on an audio transform", () => {
+      const result = applyAudioTransform(0, 0, "1|1-2|1: gain += 3");
+
+      // Still applies to the whole clip
+      expect(result.gain).toBe(3);
+      expect(console.warn).toHaveBeenCalledWith(
+        "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+      );
+    });
+
+    it("does not warn when no timeRange selector is present", () => {
+      applyAudioTransform(0, 0, "gain += 3");
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+      );
+    });
+  });
+
   describe("error handling", () => {
     it("returns nulls for invalid syntax", () => {
       const result = applyAudioTransform(0, 0, "gain = =");
@@ -358,7 +384,8 @@ describe("Audio Transform Evaluator", () => {
       expect(result.gain).toBe(8);
     });
 
-    it("skips assignment when clip.position is absent (session clip)", () => {
+    it("resolves clip.position to 0 with a warning on a session clip", () => {
+      vi.mocked(console.warn).mockClear();
       const result = applyAudioTransform(-6, 0, "gain = clip.position", {
         clipDuration: 16,
         clipIndex: 0,
@@ -366,8 +393,12 @@ describe("Audio Transform Evaluator", () => {
         barDuration: 4,
       });
 
-      // Evaluation fails, gain unchanged
-      expect(result.gain).toBeNull();
+      // Session clips have no arrangement origin: clip.position resolves to 0
+      // (neutral) + warn instead of failing the transform.
+      expect(result.gain).toBe(0);
+      expect(console.warn).toHaveBeenCalledWith(
+        "clip.position is not available for session clips; using 0",
+      );
     });
 
     it("resolves clip.barDuration with clipContext", () => {
@@ -409,11 +440,131 @@ describe("Audio Transform Evaluator", () => {
       // -24 + 3 * 6 = -6
       expect(result.gain).toBe(-6);
     });
+
+    it("resolves Nbar using the clip's beats-per-bar", () => {
+      const result = applyAudioTransform(0, 0, "gain = 1bar", {
+        clipDuration: 24,
+        clipIndex: 0,
+        clipCount: 1,
+        barDuration: 6,
+      });
+
+      // 1bar = 1 * 6 musical beats in 6/8
+      expect(result.gain).toBe(6);
+    });
+
+    it("resolves Nbar to a 4/4 bar when no clipContext is provided", () => {
+      const result = applyAudioTransform(0, 0, "gain = 1bar");
+
+      // Falls back to 4 beats per bar (same assumption as the nDuration path)
+      expect(result.gain).toBe(4);
+    });
   });
 
-  describe("seq function", () => {
+  describe("synced waveform meter frame", () => {
+    // Synced waveform periods authored as n<frac> must resolve in the clip's
+    // real meter so they share clip.barDuration/clip.position's musical-beats
+    // frame. A one-bar period is `n6/8` in 6/8 and `n2/2` in 2/2 — both must
+    // equal clip.barDuration. (Regression: these resolved in a hardcoded denom-4
+    // frame, so the synced LFO cycled at rate x denominator/4 in any non-x/4
+    // meter; every prior audio test ran at position 0 where it coincides.)
+    it("6/8: n6/8 sync period equals clip.barDuration", () => {
+      const ctx = {
+        clipDuration: 12,
+        clipIndex: 0,
+        clipCount: 1,
+        arrangementStart: 1.5, // musical beats; phase 1.5/6 = 0.25 -> sin = 1
+        barDuration: 6,
+        timeSigDenominator: 8,
+      };
+      const viaBar = applyAudioTransform(
+        0,
+        0,
+        "gain = sin(clip.barDuration, sync)",
+        ctx,
+      );
+      const viaN = applyAudioTransform(0, 0, "gain = sin(n6/8, sync)", ctx);
+
+      expect(viaN.gain).toBeCloseTo(viaBar.gain as number, 9);
+      expect(viaN.gain).toBeCloseTo(1, 9);
+    });
+
+    it("2/2: n2/2 sync period equals clip.barDuration", () => {
+      const ctx = {
+        clipDuration: 8,
+        clipIndex: 0,
+        clipCount: 1,
+        arrangementStart: 0.5, // musical beats; phase 0.5/2 = 0.25 -> sin = 1
+        barDuration: 2,
+        timeSigDenominator: 2,
+      };
+      const viaBar = applyAudioTransform(
+        0,
+        0,
+        "gain = sin(clip.barDuration, sync)",
+        ctx,
+      );
+      const viaN = applyAudioTransform(0, 0, "gain = sin(n2/2, sync)", ctx);
+
+      expect(viaN.gain).toBeCloseTo(viaBar.gain as number, 9);
+      expect(viaN.gain).toBeCloseTo(1, 9);
+    });
+
+    it("4/4 control: n/1 sync period equals clip.barDuration at a non-zero origin", () => {
+      const ctx = {
+        clipDuration: 8,
+        clipIndex: 0,
+        clipCount: 1,
+        arrangementStart: 1, // phase 1/4 = 0.25 -> sin = 1
+        barDuration: 4,
+        timeSigDenominator: 4,
+      };
+      const viaBar = applyAudioTransform(
+        0,
+        0,
+        "gain = sin(clip.barDuration, sync)",
+        ctx,
+      );
+      const viaN = applyAudioTransform(0, 0, "gain = sin(n/1, sync)", ctx);
+
+      expect(viaN.gain).toBeCloseTo(viaBar.gain as number, 9);
+      expect(viaN.gain).toBeCloseTo(1, 9);
+    });
+  });
+
+  describe("synced waveform on session clips", () => {
+    it("degrades synced waveform to clip-relative with a warning", () => {
+      vi.mocked(console.warn).mockClear();
+      const ctx = {
+        clipDuration: 4,
+        clipIndex: 0,
+        clipCount: 1,
+        arrangementStart: undefined, // session clip: no arrangement origin
+        barDuration: 4,
+        timeSigDenominator: 4,
+      };
+      // Audio always evaluates at position 0, so offset the phase by 0.25 to get
+      // a non-trivial value (sin(0.25 cycle) = 1). This distinguishes "applied"
+      // (degraded to clip-relative) from the old "skipped" behavior.
+      const synced = applyAudioTransform(
+        0,
+        0,
+        "gain = sin(n/1, 0.25, sync)",
+        ctx,
+      );
+      const unsynced = applyAudioTransform(0, 0, "gain = sin(n/1, 0.25)", ctx);
+
+      expect(synced.gain).toBeCloseTo(1, 9);
+      expect(synced.gain).toBeCloseTo(unsynced.gain as number, 9);
+      expect(console.warn).toHaveBeenCalledWith(
+        "sync ignored on session clip — LFO is clip-relative",
+      );
+    });
+  });
+
+  describe("clipseq function (audio)", () => {
     it("selects value based on clip.index", () => {
-      const result0 = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+      const result0 = applyAudioTransform(0, 0, "gain = clipseq(-3, -6, -9)", {
         clipDuration: 8,
         clipIndex: 0,
         clipCount: 3,
@@ -422,7 +573,7 @@ describe("Audio Transform Evaluator", () => {
 
       expect(result0.gain).toBe(-3);
 
-      const result1 = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+      const result1 = applyAudioTransform(0, 0, "gain = clipseq(-3, -6, -9)", {
         clipDuration: 8,
         clipIndex: 1,
         clipCount: 3,
@@ -431,7 +582,7 @@ describe("Audio Transform Evaluator", () => {
 
       expect(result1.gain).toBe(-6);
 
-      const result2 = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+      const result2 = applyAudioTransform(0, 0, "gain = clipseq(-3, -6, -9)", {
         clipDuration: 8,
         clipIndex: 2,
         clipCount: 3,
@@ -442,7 +593,7 @@ describe("Audio Transform Evaluator", () => {
     });
 
     it("wraps around when clip.index exceeds args count", () => {
-      const result = applyAudioTransform(0, 0, "gain = seq(-3, -6)", {
+      const result = applyAudioTransform(0, 0, "gain = clipseq(-3, -6)", {
         clipDuration: 8,
         clipIndex: 3,
         clipCount: 4,
@@ -452,12 +603,27 @@ describe("Audio Transform Evaluator", () => {
       // 3 % 2 = 1 → -6
       expect(result.gain).toBe(-6);
     });
+  });
 
-    it("defaults to first value without clipContext", () => {
-      const result = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)");
+  describe("seq function (audio) — de-overloaded", () => {
+    beforeEach(() => {
+      vi.mocked(console.warn).mockClear();
+    });
 
-      // No clipContext, index defaults to 0
+    it("warns and returns first value (use clipseq() instead)", () => {
+      const result = applyAudioTransform(0, 0, "gain = seq(-3, -6, -9)", {
+        clipDuration: 8,
+        clipIndex: 2,
+        clipCount: 3,
+        barDuration: 4,
+      });
+
+      // Old behavior would have returned -9 via the clip:index fallback.
+      // New behavior: warn + return first value; clipseq() is the audio path.
       expect(result.gain).toBe(-3);
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining("seq() needs note.index"),
+      );
     });
   });
 });

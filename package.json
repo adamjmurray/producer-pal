@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "1.4.10",
+  "version": "1.4.11",
   "description": "Producer Pal — Ableton MCP server bringing AI to Ableton Live via a Max for Live device",
   "homepage": "https://producer-pal.org",
   "repository": {
@@ -98,10 +98,10 @@
     "e2e:webui": "npm run ui:test"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "3.0.78",
-    "@ai-sdk/google": "3.0.75",
+    "@ai-sdk/anthropic": "3.0.79",
+    "@ai-sdk/google": "3.0.79",
     "@ai-sdk/mistral": "3.0.37",
-    "@ai-sdk/openai": "3.0.64",
+    "@ai-sdk/openai": "3.0.65",
     "@codemirror/commands": "6.10.3",
     "@codemirror/lang-markdown": "6.5.0",
     "@codemirror/language": "6.12.3",
@@ -110,14 +110,14 @@
     "@google/genai": "2.6.0",
     "@lezer/highlight": "1.2.3",
     "@modelcontextprotocol/sdk": "1.29.0",
-    "@openai/agents": "0.11.4",
+    "@openai/agents": "0.11.5",
     "@openrouter/ai-sdk-provider": "2.9.0",
     "@tailwindcss/typography": "0.5.19",
-    "ai": "6.0.185",
+    "ai": "6.0.191",
     "dompurify": "3.4.5",
     "express": "5.2.1",
     "idb": "8.0.3",
-    "marked": "18.0.3",
+    "marked": "18.0.4",
     "preact": "10.29.2",
     "zod": "4.3.6"
   },
@@ -137,11 +137,11 @@
     "@tailwindcss/vite": "4.3.0",
     "@testing-library/preact": "3.2.4",
     "@types/express": "5.0.6",
-    "@types/node": "25.9.0",
+    "@types/node": "25.9.1",
     "@typescript-eslint/eslint-plugin": "8.59.4",
     "@typescript-eslint/parser": "8.59.4",
-    "@vitest/coverage-v8": "4.1.6",
-    "@vitest/eslint-plugin": "1.6.17",
+    "@vitest/coverage-v8": "4.1.7",
+    "@vitest/eslint-plugin": "1.6.18",
     "chokidar-cli": "3.0.0",
     "commander": "14.0.3",
     "eslint": "10.2.0",
@@ -164,6 +164,11 @@
     "vite": "8.0.9",
     "vite-plugin-singlefile": "2.3.3",
     "vitepress": "1.6.4",
-    "vitest": "4.1.6"
+    "vitest": "4.1.7"
+  },
+  "overrides": {
+    "external-editor": {
+      "tmp": "0.2.6"
+    }
   }
 }

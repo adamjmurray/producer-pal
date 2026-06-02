@@ -1,8 +1,8 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
 import { type PeggySyntaxError } from "#src/notation/peggy-parser-types.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
@@ -49,7 +49,11 @@ export function applyTransforms(
     return undefined;
   }
 
-  const ast = tryParseTransform(transformString);
+  const ast = tryParseTransform(
+    transformString,
+    timeSigDenominator,
+    timeSigNumerator,
+  );
 
   // Check for audio parameters and warn
   const hasAudioParams = ast.some((a) => AUDIO_PARAMETERS.has(a.parameter));
@@ -107,6 +111,18 @@ export function applyTransforms(
   );
 
   if (surviving.length < notes.length) {
+    // Warn when a duration transform drove a note to zero/negative length: the
+    // note is deleted (not clamped), so surface it rather than vanishing silently.
+    const droppedForDuration = notes.filter(
+      (note) => note.duration <= 0,
+    ).length;
+
+    if (droppedForDuration > 0) {
+      console.warn(
+        `${droppedForDuration} note(s) deleted: transform drove duration to 0 or below`,
+      );
+    }
+
     notes.length = 0;
     notes.push(...surviving);
   }
@@ -189,7 +205,6 @@ function applyAssignmentToNotes(
       noteContext.bar,
       noteContext.beat,
       timeSigNumerator,
-      timeSigDenominator,
       clipTimeRange,
       noteContext.position,
     );
@@ -269,19 +284,16 @@ function buildNoteContext(
   // Convert note's Ableton beats start_time to musical beats position
   const musicalBeats = note.start_time * (timeSigDenominator / 4);
 
-  // Parse bar|beat position for time range filtering
-  const barBeatStr = abletonBeatsToBarBeat(
-    note.start_time,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  const barBeatMatch = barBeatStr.match(/^(\d+)\|(\d+(?:\.\d+)?)$/);
-  const bar = barBeatMatch
-    ? Number.parseInt(barBeatMatch[1] as string)
-    : undefined;
-  const beat = barBeatMatch
-    ? Number.parseFloat(barBeatMatch[2] as string)
-    : undefined;
+  // Derive bar|beat for time-range filtering numerically from the musical-beats
+  // position. Do NOT serialize-then-reparse: the serializer emits tuplet/off-grid
+  // positions as `±n` offset forms (`1|1+n/12`) that a decimal-only regex cannot
+  // read, which would drop bar/beat to undefined and make calculateActiveTimeRange
+  // skip time-range filtering entirely (the note would match every selector). The
+  // numeric split round-trips exactly through barBeatToMusicalBeats, including negative
+  // time (a note before 1|1, where bar can be 0 and beat > beatsPerBar).
+  const musicalBeatsPerBar = timeSigNumerator;
+  const bar = Math.floor(musicalBeats / musicalBeatsPerBar) + 1;
+  const beat = musicalBeats - (bar - 1) * musicalBeatsPerBar + 1;
 
   return {
     position: musicalBeats,
@@ -379,7 +391,11 @@ export function evaluateTransform(
     return {};
   }
 
-  const ast = tryParseTransform(transformString);
+  const ast = tryParseTransform(
+    transformString,
+    noteContext.timeSig.denominator,
+    noteContext.timeSig.numerator,
+  );
 
   return evaluateTransformAST(ast, noteContext, noteProperties);
 }
@@ -387,14 +403,23 @@ export function evaluateTransform(
 /**
  * Parse a transform string, returning the AST. Throws on parse errors.
  * @param transformString - Transform expression string
+ * @param timeSigDenominator - Time signature denominator; converts `±n`
+ *   beat-position offsets in a `timeRange` to musical beats during the parse
+ * @param timeSigNumerator - Time signature numerator (musical beats per bar);
+ *   lets a `-n` range-bound offset borrow across a bar line during the parse
  * @returns Parsed AST
  * @throws Error with formatted message if parsing fails
  */
 function tryParseTransform(
   transformString: string,
+  timeSigDenominator: number,
+  timeSigNumerator: number,
 ): ReturnType<typeof parseTransform> {
   try {
-    return parseTransform(transformString);
+    return parseTransform(transformString, {
+      timeSigDenominator,
+      beatsPerBar: timeSigNumerator,
+    });
   } catch (error) {
     if (error instanceof Error && error.name === "SyntaxError") {
       throw new Error(

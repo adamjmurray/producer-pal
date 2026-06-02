@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -41,9 +42,9 @@ export const swingAndQuantize: EvalScenario = {
       turn: 2,
       args: expect.objectContaining({
         ids: expect.any(String),
-        transforms: expect.arrayContaining([
-          expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
-        ]),
+        // transforms is a single newline-separated string (de-arrayed);
+        // stringMatching does a substring search across all transform lines.
+        transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
       }) as Record<string, unknown>,
     },
 
@@ -54,9 +55,9 @@ export const swingAndQuantize: EvalScenario = {
       turn: 3,
       args: expect.objectContaining({
         ids: expect.any(String),
-        transforms: expect.arrayContaining([
-          expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
-        ]),
+        // transforms is a single newline-separated string (de-arrayed);
+        // stringMatching does a substring search across all transform lines.
+        transforms: expect.stringMatching(/Ab1: timing = swing\(0\.\d+/),
       }) as Record<string, unknown>,
     },
 
@@ -106,9 +107,11 @@ export const swingAndQuantize: EvalScenario = {
       turn: 4,
       args: expect.objectContaining({
         ids: expect.any(String),
-        transforms: expect.arrayContaining([
-          expect.stringMatching(/Ab1: timing = quant\((1\/4t|0\.25)\)/),
-        ]),
+        // 16th-note grid: n/16 (absolute note value) or 0.25 (bare beats, =
+        // a 16th in 4/4). The old synced-period form 1/4t was removed.
+        transforms: expect.stringMatching(
+          /Ab1: timing = quant\((n\/16|0\.25)\)/,
+        ),
       }) as Record<string, unknown>,
     },
   ],

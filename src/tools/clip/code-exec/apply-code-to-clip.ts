@@ -17,11 +17,15 @@ import {
  *
  * @param clipId - Live API clip ID
  * @param code - User-provided JavaScript code body
+ * @param clipIndex - 0-based position in the current batch (for clip.index in user code)
+ * @param clipCount - Total clips in the current batch (for clip.count in user code)
  * @returns Updated note count, or null if the clip doesn't exist
  */
 export async function applyCodeToSingleClip(
   clipId: string,
   code: string,
+  clipIndex: number,
+  clipCount: number,
 ): Promise<number | null> {
   const clip = LiveAPI.from(["id", clipId]);
 
@@ -34,6 +38,8 @@ export async function applyCodeToSingleClip(
     clip,
     code,
     location.view,
+    clipIndex,
+    clipCount,
     location.sceneIndex,
     location.arrangementStartBeats,
   );

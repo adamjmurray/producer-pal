@@ -17,7 +17,7 @@ and stops. For each (model × variant) it records whether the provider:
 ## Running it
 
 ```bash
-npx tsx --env-file=.env evals/schema-compat/probe-schema-compat.ts [models...] [flags]
+node --env-file=.env evals/schema-compat/probe-schema-compat.ts [models...] [flags]
 ```
 
 - **models** — `provider/model` or prefix-inferred (e.g. `gemini-3.5-flash`,

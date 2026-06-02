@@ -9,13 +9,14 @@
  */
 
 /**
- * Note format exposed to user code.
- * Uses camelCase and beats from clip start (not Ableton's quarter-note beats).
+ * Note format exposed to user code. Uses camelCase and the clip's musical beats
+ * (an eighth in 6/8) — NOT Ableton's quarter-note beats — so start/duration
+ * share a unit with `CodeExecutionContext.beatsPerBar` and `CodeClipContext.length`.
  */
 export interface CodeNote {
   pitch: number; // MIDI pitch 0-127
-  start: number; // beats from clip start
-  duration: number; // beats
+  start: number; // musical beats from clip start
+  duration: number; // musical beats
   velocity: number; // 1-127
   velocityDeviation: number; // 0-127
   probability: number; // 0.0-1.0
@@ -37,9 +38,11 @@ export interface CodeTrackContext {
 export interface CodeClipContext {
   id: string;
   name: string | null;
-  length: number; // beats
+  length: number; // musical beats
   timeSignature: string; // e.g., "4/4"
   looping: boolean;
+  index: number; // 0-based position in the batch (matches transforms' clip.index)
+  count: number; // total clips in the batch (matches transforms' clip.count)
 }
 
 /**
@@ -48,7 +51,7 @@ export interface CodeClipContext {
 export interface CodeLocationContext {
   view: "session" | "arrangement";
   slot?: string; // session only, "trackIndex/sceneIndex"
-  arrangementStart?: number; // arrangement only, in beats
+  arrangementStart?: number; // arrangement only, in song musical beats
 }
 
 /**
@@ -68,7 +71,7 @@ export interface CodeExecutionContext {
   clip: CodeClipContext;
   location: CodeLocationContext;
   liveSet: CodeLiveSetContext;
-  beatsPerBar: number; // convenience for math
+  beatsPerBar: number; // musical beats per bar (time-sig numerator); convenience for math
 }
 
 /**

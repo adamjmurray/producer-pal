@@ -171,7 +171,7 @@ describe("Behavioral splitting tests", () => {
         trackIndex: dynamicTrackIndex,
         arrangementStart: "200|1",
         notes: "C3 1|1\nD3 2|1\nE3 3|1\nF3 4|1",
-        length: "4:0.0",
+        length: "4bar",
         looping: true,
       },
     });
@@ -203,7 +203,7 @@ describe("Behavioral splitting tests", () => {
         trackIndex: dynamicTrackIndex,
         arrangementStart: "210|1",
         notes: "C3 1|1",
-        length: "2:0.0",
+        length: "2bar",
         looping: true,
       },
     });
@@ -230,7 +230,7 @@ describe("Behavioral splitting tests", () => {
       arguments: {
         slot: `${dynamicTrackIndex}/0`,
         notes: "C3 1|1",
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const clipId = parseToolResult<{ id: string }>(createResult).id;
@@ -249,7 +249,7 @@ describe("Behavioral splitting tests", () => {
         trackIndex: dynamicTrackIndex,
         arrangementStart: "220|1",
         notes: "C3 1|1",
-        length: "2:0.0",
+        length: "2bar",
         looping: true,
       },
     });
@@ -261,7 +261,7 @@ describe("Behavioral splitting tests", () => {
         trackIndex: dynamicTrackIndex,
         arrangementStart: "230|1",
         notes: "E3 1|1",
-        length: "2:0.0",
+        length: "2bar",
         looping: true,
       },
     });

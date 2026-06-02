@@ -13,6 +13,14 @@ import {
 const getModelId = (model: unknown): string =>
   (model as Record<string, unknown>).modelId as string;
 
+// @ai-sdk/openai tags the API surface on `provider`: "openai.chat" for the
+// Chat Completions API (.chat()) vs "openai.responses" for the default factory
+// (Responses API). Local OpenAI-compatible servers (LM Studio, Ollama) only
+// implement Chat Completions, so they MUST use .chat() — the Responses API
+// sends an `input` field they reject with "Invalid type for 'input'".
+const getApiProvider = (model: unknown): string =>
+  (model as Record<string, unknown>).provider as string;
+
 describe("createProviderModel", () => {
   it("creates a model for anthropic provider", () => {
     const model = createProviderModel(
@@ -113,6 +121,34 @@ describe("createProviderModel", () => {
 
     expect(model).toBeDefined();
     expect(getModelId(model)).toBe("llama3");
+  });
+
+  // Regression: LM Studio (and other local OpenAI-compatible servers) must hit
+  // the Chat Completions API, not the Responses API. The default createOpenAI
+  // factory routes to /v1/responses, which LM Studio rejects with a 400
+  // "Invalid type for 'input'". See getApiProvider comment above.
+  it("uses the Chat Completions API for lmstudio (not Responses)", () => {
+    const model = createProviderModel("lmstudio", "local-model", "");
+
+    expect(getApiProvider(model)).toBe("openai.chat");
+  });
+
+  it("uses the Chat Completions API for ollama (not Responses)", () => {
+    const model = createProviderModel("ollama", "llama3", "");
+
+    expect(getApiProvider(model)).toBe("openai.chat");
+  });
+
+  it("uses the Chat Completions API for custom (not Responses)", () => {
+    const model = createProviderModel("custom", "m", "k", "https://x/v1");
+
+    expect(getApiProvider(model)).toBe("openai.chat");
+  });
+
+  it("uses the Responses API for openai proper", () => {
+    const model = createProviderModel("openai", "gpt-5.5", "key");
+
+    expect(getApiProvider(model)).toBe("openai.responses");
   });
 });
 

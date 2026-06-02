@@ -2,20 +2,28 @@
 
 ## Function Signatures
 
-```javascript
+```
 // Waveforms (sync is an optional trailing keyword, not an expression)
-cos(frequency, [phase], [sync]); // cosine wave
-tri(frequency, [phase], [sync]); // triangle wave
-saw(frequency, [phase], [sync]); // sawtooth wave
-square(frequency, [phase], [pulseWidth], [sync]); // square wave
+cos(frequency, [phase], [sync]); // cosine wave — phase 0 starts at peak (1.0)
+sin(frequency, [phase], [sync]); // sine wave — phase 0 starts at zero, rising
+tri(frequency, [phase], [sync]); // triangle wave — phase 0 starts at zero, rising
+saw(frequency, [phase], [sync]); // sawtooth wave — phase 0 starts at zero, rising
+square(frequency, [phase], [pulseWidth], [sync]); // square wave — phase 0 starts high
 rand([min], [max]); // random value (no args: -1 to 1, 1 arg: 0 to max, 2 args: min to max)
 choose(a, b, ...); // random pick from arguments (at least 1)
+seq(a, b, ...); // cycle through arguments by note.index (per note; MIDI only)
+clipseq(a, b, ...); // cycle through arguments by clip.index (per clip across a batch)
 ramp(start, end); // linear ramp over clip/time range
 curve(start, end, exponent); // exponential ramp over clip/time range
 
 // Timing functions
-swing(amount, [grid], [raw]); // swing: delay off-beat notes (grid default: 1/2t = 8th-note)
+swing(amount, [grid], [raw]); // swing: delay off-beat notes (grid default: half the meter's beat — 8th-note in 4/4, 16th in 6/8)
 quant(grid); // quantize: snap to nearest grid point
+legato([tolerance]); // set duration to reach the next note's start time
+
+// Scale functions (use the Live Set scale; pass-through if no scale is set)
+snap(pitch); // snap pitch to the nearest in-scale pitch
+step(basePitch, offset); // move basePitch by offset scale steps
 
 // Math functions
 round(value); // round to nearest integer
@@ -32,16 +40,23 @@ pow(base, exponent); // base raised to exponent
 
 ## Parameters
 
-- **frequency**: Period for waveforms, specified as:
-  - **Period notation** (bar:beat duration with `t` suffix):
-    - Examples: `1t`, `4t`, `1:0t`, `0:1t`, `0:0.5t`
-    - `1t` = 1 beat period
-    - `1:0t` = 1 bar period (time signature dependent)
-    - `0:1t` = 1 beat period (same as `1t`)
+- **period** (called `frequency` in the signatures above): the cycle length for
+  waveforms, specified as:
+  - **Note value** (`n<fraction>`): a fraction of a whole note, the same grammar
+    used everywhere else (note durations, clip `length`).
+    - Examples: `n/4` (quarter-note cycle), `n/8` (eighth), `n/12` (eighth
+      triplet), `n3/8` (dotted quarter), `n/1` (whole note)
+    - Meter-invariant in absolute time: `n/4` is one cycle per quarter note in
+      any meter.
+  - **Bar-length cycle** (`Nbar`): meter-aware bars, e.g. `cos(1bar)` (1 bar) or
+    `cos(4bar)` (4 bars). Equivalent to the `clip.barDuration` variable —
+    `cos(clip.barDuration)` and `cos(clip.barDuration * 4)` still work.
   - **Expressions**: Any numeric expression (including variables)
     - Examples: `note.duration`, `note.start / 4`, `2.5`
-    - Treated as period in beats
+    - A bare number is treated as a period in beats
     - Must be > 0
+  - The old synced-period syntax (`1t`, `4t`, `1:0t`) is **removed** and is a
+    parse error.
 - **phase**: cycles (0.0-1.0), optional, default 0
   - 0.0 = start of cycle
   - 0.25 = quarter cycle
@@ -74,25 +89,30 @@ across clips on the global timeline.
 - **Evaluation**: When `sync` is present,
   `effectivePosition = note.start + clip.position` is used instead of
   `note.start` for phase computation
-- **Session clips**: Using `sync` on a session clip skips the assignment with a
-  warning (no arrangement position available)
-- **Audio clips**: `sync` follows the same rule; since audio evaluates at
-  position 0 with no arrangementStart, it will skip with a warning
+- **Session clips**: A session clip has no arrangement position, so `sync` is
+  ignored and the waveform degrades to clip-relative
+  (`effectivePosition = note.start`, phase resets at clip start) with a warning
+  — the modulation still applies, rather than the assignment being skipped. This
+  mirrors the `clip.position` variable fallback (resolves to 0 with a warning on
+  session clips)
+- **Audio clips**: `sync` follows the same rule; an audio session clip (no
+  `arrangementStart`) degrades to clip-relative with a warning instead of
+  skipping
 - **Non-cyclical functions**: `sync` on `ramp`, `curve`, `rand`, `choose`, or
   math functions is a parse error
 
-```javascript
+```
 // Clip-relative (default) — phase resets at each clip start
-velocity += 20 * cos(4:0t)
+velocity += 20 * cos(clip.barDuration * 4);
 
 // Timeline-synced — continuous phase from 1|1
-velocity += 20 * cos(4:0t, sync)
+velocity += 20 * cos(clip.barDuration * 4, sync);
 
 // With phase offset and sync
-velocity += 20 * cos(4:0t, 0.25, sync)
+velocity += 20 * cos(clip.barDuration * 4, 0.25, sync);
 
 // square with all args and sync
-velocity += 20 * square(2t, 0, 0.75, sync)
+velocity += 20 * square(n/2, 0, 0.75, sync);
 ```
 
 ## Timing Functions
@@ -102,11 +122,13 @@ velocity += 20 * square(2t, 0, 0.75, sync)
 Delays off-beat notes to create a swing feel. Returns absolute position — use
 with `timing =`.
 
-- **amount**: Delay in beats applied to off-beat notes (0.02=subtle,
+- **amount**: Delay in musical beats applied to off-beat notes (0.02=subtle,
   0.05=medium, 0.1=heavy). Negative values push off-beats early.
-- **grid**: Swing subdivision grid (default `1/2t` = 8th-note swing). Uses the
-  same grid notation as `quant()` (e.g., `1/4t` for 16th-note swing).
-  Internally, `period = grid * 2`.
+- **grid**: Swing subdivision grid. Default is half the meter's beat — the
+  off-beat between beats: an 8th note in x/4 meters, a 16th in x/8 (the natural
+  swing subdivision per meter). It is _not_ a fixed `n/8`, which would coincide
+  only in x/4. Uses the same grid notation as `quant()` (e.g., `n/16` for
+  16th-note swing). Internally, `period = grid * 2`.
 - **raw**: Keyword that skips auto-quantize (see below).
 
 **Algorithm**: Each period (2× grid) is split into two halves. Notes in the
@@ -126,11 +148,11 @@ quantize grid. This serves two purposes:
 The `raw` keyword skips auto-quantize entirely, applying swing to whatever
 position the note is currently at.
 
-```javascript
-timing = swing(0.05)           // 8th-note swing (default grid 1/2t)
-timing = swing(0.03, 1/4t)    // 16th-note swing
-timing = swing(0.05, raw)     // no auto-quantize
-timing = swing(0.05, 1/4t, raw) // 16th-note swing, no auto-quantize
+```
+timing = swing(0.05); // default swing: half the meter's beat (8th notes in 4/4)
+timing = swing(0.03, n/16); // 16th-note swing
+timing = swing(0.05, raw); // no auto-quantize
+timing = swing(0.05, n/16, raw); // 16th-note swing, no auto-quantize
 ```
 
 ### quant(grid)
@@ -138,25 +160,26 @@ timing = swing(0.05, 1/4t, raw) // 16th-note swing, no auto-quantize
 Snaps note timing to the nearest grid point. Returns absolute position — use
 with `timing =`.
 
-- **grid**: Grid size using period notation or numeric beats.
+- **grid**: Grid size as a note value or numeric musical beats.
 
-```javascript
-timing = quant(1/2t)   // snap to 8th-note grid (0.5 beats)
-timing = quant(1/4t)   // snap to 16th-note grid (0.25 beats)
-timing = quant(1t)     // snap to quarter-note grid (1 beat)
-timing = quant(1/3t)   // snap to triplet grid
+```
+timing = quant(n/8); // snap to 8th-note grid (0.5 beats in 4/4)
+timing = quant(n/16); // snap to 16th-note grid (0.25 beats in 4/4)
+timing = quant(n/4); // snap to quarter-note grid (1 beat in 4/4)
+timing = quant(n/12); // snap to triplet grid
 ```
 
 ### legato([tolerance])
 
 Sets duration to fill the gap to the next distinct start time. Skips chord tones
 (notes at the same start position) so all notes in a chord extend to the next
-rhythmic position. The last note extends to the clip end.
+rhythmic position. The last note extends to the clip end, or keeps its current
+duration (with a warning) when no clip length is available.
 
-Optional tolerance in beats (default 0): notes within tolerance of the same
-start time are treated as a chord. Useful after humanizing timing.
+Optional tolerance in musical beats (default 0): notes within tolerance of the
+same start time are treated as a chord. Useful after humanizing timing.
 
-```javascript
+```
 duration = legato()              // extend notes to fill gaps
 duration = legato(0.1)           // group notes within 0.1 beats as chords
 C3-C5: duration = legato()       // legato for melody notes only
@@ -164,13 +187,17 @@ C3-C5: duration = legato()       // legato for melody notes only
 
 ## Waveform Behavior
 
-**Period-based waveforms** (cos, tri, saw, square) at phase 0 start at peak
-(1.0) and descend:
+**Period-based waveforms** (cos, sin, tri, saw, square) at phase 0. `cos` and
+`square` start at peak; `sin`, `tri`, and `saw` start at zero and rise:
 
-- **cos(1t, 0)**: starts at 1.0, descends to -1.0, returns to 1.0
-- **tri(1t, 0)**: starts at 1.0, descends linearly to -1.0, returns to 1.0
-- **saw(1t, 0)**: starts at 1.0, descends linearly to -1.0, jumps back to 1.0
-- **square(1t, 0)**: starts high (1.0) for first half, low (-1.0) for second
+- **cos(n/4, 0)**: starts at 1.0, descends to -1.0, returns to 1.0
+- **sin(n/4, 0)**: starts at 0.0, rises to 1.0, back through 0.0 to -1.0,
+  returns to 0.0
+- **tri(n/4, 0)**: starts at 0.0, rises linearly to 1.0, descends to -1.0,
+  returns to 0.0
+- **saw(n/4, 0)**: starts at 0.0, rises linearly to 1.0, jumps to -1.0, rises
+  back to 0.0
+- **square(n/4, 0)**: starts high (1.0) for first half, low (-1.0) for second
   half
 - **rand()**: random value between -1.0 and 1.0 per note (or rand(max) for 0 to
   max, or rand(min, max) for min to max)
@@ -212,7 +239,34 @@ C3-C5: duration = legato()       // legato for melody notes only
   - Pitch range: `C3-C5 velocity += 10` (applies to all notes from C3 to C5
     inclusive)
 - **Time range selectors** (optional): Filter by bar|beat range (e.g.,
-  `1|1-2|1 velocity += 10`)
+  `1|1-2|1 velocity += 10`). Both bounds are **inclusive** by default (matching
+  note start time). Two opt-in forms make the end **exclusive** (half-open), so
+  a selection can stop at a bar line without catching the next downbeat:
+  - **Whole-bar wildcard:** `N|*` selects all of bar N; `A|*-B|*` selects whole
+    bars A through B. Each desugars to the half-open range `[first|1, after|1)`
+    (end bar = the bar _after_ the last selected bar, end exclusive), so `3|*`
+    is exactly bar 3 with no spill onto `4|1`. This is the foolproof "measure N"
+    selector — meter-safe and off-by-one-proof. A mixed `3|*-4|1` (wildcard with
+    a beat bound) is rejected.
+  - **Exclusive-end marker:** `-<` on an ordinary range makes only its end bound
+    exclusive — `3|1-<4|1` covers up to but not including `4|1`, and `1|2-<1|4`
+    is a sub-bar half-open span (beats 2-3, excluding beat 4). Without the `<`
+    the end stays inclusive.
+
+  The beat field uses the same dialect as note positions: a whole beat, a
+  decimal sub-beat (`1|1.5`), or a `±n` note-value offset off the grid beat
+  (`1|1+n/12` = beat 1 + an eighth triplet, `1|2-n/24` just behind beat 2). The
+  offset is a note value (meter-invariant), so a bound resolves to the same
+  musical position as a note written that way. A `-n` bound may sit just before
+  a downbeat — `2|1-n/12` borrows across the bar line into bar 1 — and a bound
+  reaching before `1|1` resolves to negative time (before the clip start) rather
+  than being rejected. A `+n` bound may likewise run past the end of its bar
+  (`1|4+n/2` lands in the next bar); membership is decided by each bound's
+  absolute musical position, not by its bar number, so the bound filters at its
+  true position regardless of which bar it overflows into. Bare fractions
+  (`1|4/3`) and mixed numbers (`1|1+1/3`) are rejected — write the grid+offset
+  form instead.
+
 - **Range clamping**: Applied after modulation:
   - velocity: 1-127
   - timing: unclamped (can shift notes before/after original position)
@@ -222,6 +276,40 @@ C3-C5: duration = legato()       // legato for melody notes only
   - pitch: 0-127 (rounded to integer)
   - gain: -70 to 24 dB
   - pitchShift: -48 to 48 semitones
+
+## Shorthand Assignments
+
+In addition to the full `parameter operator expression` form, each assignment
+may be written as a single bar|beat-style **shorthand** token — convenient for
+clears and simple one-shot sets (this is the form the `preTransforms` examples
+in the skills use). One token per line; an optional pitch/time selector still
+applies.
+
+- `v0` deletes the note · `vN` sets velocity · `v+N` / `v-N` adjusts velocity ·
+  `vA-B` sets a humanized random velocity range (e.g. `v80-120`)
+- `pN` sets probability · `p+N` / `p-N` adjusts probability (no range form — the
+  notes layer has none either, so `p` stays single-valued for parity)
+- `n/4` (or `Nbar`, `Nbar+n/4`) sets duration to that note value
+- `C4` (a bare pitch) moves/remaps matched notes to that pitch
+
+Each desugars to the same `{ parameter, operator, expression }` as the full
+form: `v0` ≡ `velocity = 0`, `C1: v0` ≡ `C1: velocity = 0`, and `C1: C4` remaps
+the C1 lane to C4. The shorthand expresses only set/delete/adjust of one
+property — use the full syntax for anything computed (waveforms, `*=`, ramps,
+cross-note references).
+
+The one exception is the velocity range `vA-B`, which desugars to **two**
+assignments — `velocity = low` and `deviation = high - low` — matching the
+bar|beat notes layer's `vA-B` exactly. This is the **persistent base velocity +
+`velocity_deviation`** semantic Live shows as the per-note random-velocity range
+in the clip editor, **not** a one-time `rand(A,B)` baked at transform time. Each
+bound is clamped to 0-127 and the lower becomes the base, so `v120-80` ≡
+`v80-120` and out-of-range bounds clamp before the deviation is computed
+(`v200-250` ≡ velocity 127, deviation 0). A selector applies to both writes, so
+`C1: v80-120` produces two assignment rows in the parsed AST — still written as
+one token per line. (Because Peggy grammars cannot import a shared helper, this
+mapping is duplicated from the barbeat interpreter and pinned by
+`velocity-range-parity.test.ts`.)
 
 ## Units and Time Signatures
 
@@ -234,8 +322,15 @@ time signature denominator note value:
 - **2/2 time**: 1 musical beat = 1 half note
 
 This ensures that `timing += 1` always adds one beat in the current time
-signature, and period notation like `1t` behaves consistently across different
-time signatures.
+signature. Note-value periods like `n/4` instead behave consistently in absolute
+time across meters (see Absolute Durations below).
+
+> **Beat unit (cross-layer note):** "musical beats" here are the _transforms
+> layer's_ unit — meter-relative, scaled by the time-signature denominator. This
+> is **not** the unit `bar|beat` notation reports: a parsed note's `duration` is
+> in **Ableton (quarter-note) beats**, where `n/4` = `1.0` in any meter. So the
+> same `n/4` reads as `1.0` in parsed-note output but as "1 in 4/4, 2 in 6/8"
+> here. Same physical duration; different unit (see `BarBeat-Spec.md`).
 
 ### Examples by Time Signature
 
@@ -243,20 +338,79 @@ time signatures.
 
 - `timing += 1` shifts by 1 quarter note
 - `duration = 2` sets to 2 quarter notes
-- `cos(1t)` completes one cycle per quarter note
+- `cos(n/4)` completes one cycle per quarter note
 
 **In 6/8 time**:
 
 - `timing += 1` shifts by 1 eighth note
 - `duration = 6` sets to 6 eighth notes (1 bar)
-- `cos(1t)` completes one cycle per eighth note
-- `cos(1:0t)` completes one cycle per bar (6 eighth notes)
+- `cos(n/4)` still completes one cycle per quarter note (= 2 eighth-note beats)
+- `cos(clip.barDuration)` completes one cycle per bar (6 eighth notes)
 
 **In 2/2 time**:
 
 - `timing += 1` shifts by 1 half note
 - `duration = 2` sets to 2 half notes (1 bar)
-- `cos(1t)` completes one cycle per half note
+- `cos(n/4)` still completes one cycle per quarter note (= 0.5 half-note beats)
+
+### Absolute Durations (`n<fraction>`)
+
+For meter-independent durations and periods, use `n<fraction>` notation — the
+same grammar as bar|beat notes — a fraction of a whole note that evaluates to a
+number of musical beats:
+
+- `n/4` = a quarter note (1 musical beat in 4/4, 2 in 6/8, 0.5 in 2/2)
+- `n/8` = an eighth note
+- `n/16` = a sixteenth note
+- `n/12` = an eighth-note triplet
+- `n3/8` = a dotted quarter
+- `n/1` = a whole note
+
+`n<fraction>` evaluates to a number and composes in any expression:
+
+```
+duration = n/8; // every note → an eighth note (any meter)
+duration += n/16; // lengthen each note by a sixteenth
+duration = n/4 + n/8; // a dotted quarter
+duration = note.duration + n/16;
+```
+
+The denominator is required (`n1`, `n0.5` are parse errors); same rule as in
+bar|beat notation. A bare fraction (`1/4`) is plain arithmetic (beats), not a
+note value.
+
+### Bar Durations (`Nbar`)
+
+For meter-aware durations and periods, use `Nbar` — the same token as the
+`create-clip`/`update-clip` length fields. A bar is the number of musical beats
+in one bar (the time-signature numerator), so `Nbar` evaluates to
+`N * clip.barDuration`:
+
+- `1bar` = one bar (4 musical beats in 4/4, 6 in 6/8, 3 in 3/4)
+- `4bar` = four bars
+
+`Nbar` composes in any expression and combines with `n<fraction>` exactly as in
+authoring:
+
+```
+timing += 1bar; // shift every note one bar later
+duration = 1bar; // each note fills a bar
+duration = 1bar + n/4; // a bar plus a quarter
+velocity += 20 * cos(1bar, sync); // a bar-length cycle
+```
+
+`Nbar` is the meter-aware half of the duration vocabulary; `n<fraction>` is the
+meter-invariant half. They are uniform across authoring, length fields, and
+transforms.
+
+The `n` sigil marks a denominator-bearing note value, so an `n`-prefixed bar
+(`n1bar`, `n/1bar`, `n3/4bar`) is invalid on every duration surface. Because
+models reach for it by analogy with the other note values, it raises a targeted
+error ("bar durations don't use the `n` prefix — write Nbar"), not the generic
+format error.
+
+A plural `bars` (`2bars`, `2bars+n/4`) is accepted as an input-tolerance alias
+of `Nbar` everywhere; serialized output is always singular (`2bar`).
 
 ### Note Property Units
 
@@ -284,7 +438,7 @@ Access note properties in expressions using the `note.` prefix:
 - `note.start` - Start time in musical beats (absolute, from clip start)
 - `note.velocity` - Current velocity value (1-127)
 - `note.deviation` - Velocity deviation (-127 to 127)
-- `note.duration` - Duration in beats
+- `note.duration` - Duration in musical beats
 - `note.probability` - Probability (0.0-1.0)
 
 ### Next Note Properties (MIDI clips)
@@ -320,7 +474,8 @@ Access clip and bar context in expressions:
   arrangement clips, content length for session clips)
 - `clip.index` - 0-based clip order in multi-clip operations
 - `clip.position` - Arrangement position in musical beats (arrangement clips
-  only; session clips skip the assignment with a warning)
+  only; on session clips it resolves to 0 with a warning, since session clips
+  have no arrangement origin)
 - `clip.barDuration` - Beats per bar from clip time signature (e.g., 4 in 4/4, 3
   in 3/4, 6 in 6/8)
 
@@ -348,35 +503,35 @@ Parentheses for grouping: `(expression)`
 
 ### Basic Waveforms
 
-```javascript
+```
 // Basic envelope
-velocity += 20 * cos(1:0t)
+velocity += 20 * cos(clip.barDuration);
 
 // Phase-shifted
-velocity += 20 * cos(1:0t, 0.5)
+velocity += 20 * cos(clip.barDuration, 0.5);
 
 // Pulse width modulation
-velocity += 20 * square(2t, 0, 0.25)
+velocity += 20 * square(n/2, 0, 0.25);
 
 // Dynamic PWM (pulse width modulated by another waveform)
-velocity += 20 * square(2t, 0, cos(1:0t) * 0.25 + 0.5)
+velocity += 20 * square(n/2, 0, cos(clip.barDuration) * 0.25 + 0.5);
 
 // Combined functions
-velocity += 20 * cos(4:0t) + 10 * rand()
+velocity += 20 * cos(clip.barDuration * 4) + 10 * rand();
 
 // Unipolar envelope (adds 0 to 40)
-velocity += 20 + 20 * cos(2:0t)
+velocity += 20 + 20 * cos(clip.barDuration * 2);
 
 // Amplitude modulation
-velocity += 30 * cos(4:0t) * cos(1t)
+velocity += 30 * cos(clip.barDuration * 4) * cos(n/4);
 
 // Set absolute velocity value
-velocity = 80
+velocity = 80;
 ```
 
 ### Ramp Function
 
-```javascript
+```
 // Velocity ramp from soft to loud over entire clip
 velocity += ramp(0, 127);
 
@@ -392,7 +547,7 @@ velocity += ramp(20, 100) + 10 * rand();
 
 ### Rand Function
 
-```javascript
+```
 // Random velocity humanization (default range: -1 to 1)
 velocity += 10 * rand();
 
@@ -405,7 +560,7 @@ pitch += round(rand(-6, 6));
 
 ### Choose Function
 
-```javascript
+```
 // Random velocity from a set of values
 velocity = choose(60, 80, 100, 120);
 
@@ -418,7 +573,7 @@ velocity = choose(60, 60, 60, 100);
 
 ### Curve Function
 
-```javascript
+```
 // Exponential fade-in (slow start, fast finish)
 velocity += curve(0, 127, 2);
 
@@ -434,7 +589,7 @@ velocity += curve(0, 127, 1);
 
 ### Math Functions
 
-```javascript
+```
 // Round to nearest semitone
 pitch += round(12 * rand());
 
@@ -462,7 +617,7 @@ velocity = pow(note.velocity / 127, 2) * 127;
 
 ### Pitch Filtering
 
-```javascript
+```
 // Single pitch selector (only affects C3 notes)
 C3 velocity += 20
 
@@ -486,7 +641,7 @@ C6-C7 velocity = 100
 
 ### Note Property Variables
 
-```javascript
+```
 // Scale velocity based on pitch (higher notes louder)
 velocity = note.pitch / 127 * 100
 
@@ -500,7 +655,7 @@ C4-C6 timing += note.pitch * 0.01
 duration = note.duration * note.probability
 
 // Combine variables with waveforms
-velocity = note.velocity * cos(1t)
+velocity = note.velocity * cos(n/4)
 
 // Use note properties in expressions
 velocity = (note.pitch + note.deviation) / 2
@@ -508,26 +663,26 @@ velocity = (note.pitch + note.deviation) / 2
 
 ### Variable Periods
 
-```javascript
+```
 // Use note duration as waveform period
-velocity += cos(note.duration)
+velocity += cos(note.duration);
 
 // Expression as period (2x note duration)
-velocity += tri(note.duration * 2)
+velocity += tri(note.duration * 2);
 
 // Ramp based on note velocity
-velocity = ramp(0, note.velocity)
+velocity = ramp(0, note.velocity);
 
 // Phase offset from note probability
-velocity += cos(1t, note.probability)
+velocity += cos(n/4, note.probability);
 ```
 
 ### Multi-Parameter
 
-```javascript
-transforms: `velocity += 20 * cos(1:0t) + 10 * rand()
+```
+transforms: `velocity += 20 * cos(clip.barDuration) + 10 * rand()
 timing += 0.03 * rand()
-probability += 0.2 * cos(0:2t)`;
+probability += 0.2 * cos(n/2)`;
 
 // Using variables
 transforms: `velocity = note.pitch
@@ -537,7 +692,7 @@ timing += note.start / 100`;
 
 ### Pitch Transforms (MIDI)
 
-```javascript
+```
 // Transpose up an octave
 pitch += 12;
 
@@ -556,7 +711,7 @@ pitch = floor(note.pitch / 2) * 2;
 
 ### Context Variables
 
-```javascript
+```
 // Sequential crescendo using note index
 velocity = 60 + note.index * 5;
 
@@ -564,7 +719,7 @@ velocity = 60 + note.index * 5;
 pitch += clip.index * 7;
 
 // Scale gain by arrangement position
-gain = ramp(-24, 0) * (clip.position / 32);
+gain = ramp(-24, 0) * (clip.position/32);
 
 // Use bar duration for rhythmic patterns
 velocity += (20 * (note.start % clip.barDuration)) / clip.barDuration;
@@ -572,7 +727,7 @@ velocity += (20 * (note.start % clip.barDuration)) / clip.barDuration;
 
 ### Audio Clip Transforms
 
-```javascript
+```
 // Set gain to -6 dB
 gain = -6;
 

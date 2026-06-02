@@ -27,13 +27,6 @@ describe("BarBeatScript Parser - edge cases", () => {
       expect(parser.parse("1|1.")).toStrictEqual([{ bar: 1, beat: 1 }]);
     });
 
-    it("handles decimal-only floats in duration", () => {
-      expect(parser.parse("t.25 C3")).toStrictEqual([
-        { duration: 0.25 },
-        { pitch: 60 },
-      ]);
-    });
-
     it("handles decimal-only floats in probability", () => {
       expect(parser.parse("p.5 C3")).toStrictEqual([
         { probability: 0.5 },
@@ -42,9 +35,9 @@ describe("BarBeatScript Parser - edge cases", () => {
     });
 
     it("handles various float formats", () => {
-      expect(parser.parse("p0.5 t1.25 v64")).toStrictEqual([
+      expect(parser.parse("p0.5 n5/16 v64")).toStrictEqual([
         { probability: 0.5 },
-        { duration: 1.25 },
+        { duration: 5 / 16 },
         { velocity: 64 },
       ]);
     });

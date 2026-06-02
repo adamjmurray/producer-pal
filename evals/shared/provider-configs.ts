@@ -10,6 +10,8 @@
  * used across chat and eval code.
  */
 
+import { type EvalProvider } from "#evals/scenarios/types.ts";
+
 /** Provider configuration interface */
 export interface ProviderConfig {
   apiKeyEnvVar: string;
@@ -72,3 +74,17 @@ export function validateApiKey(config: ProviderConfig): string {
 
   return apiKey;
 }
+
+/** All provider configs keyed by provider id (registry order) */
+export const PROVIDER_CONFIGS: Record<EvalProvider, ProviderConfig> = {
+  anthropic: ANTHROPIC_CONFIG,
+  google: GEMINI_CONFIG,
+  local: LOCAL_CONFIG,
+  openai: OPENAI_CONFIG,
+  openrouter: OPENROUTER_CONFIG,
+};
+
+/** All valid provider ids (registry order) */
+export const PROVIDERS: EvalProvider[] = Object.keys(
+  PROVIDER_CONFIGS,
+) as EvalProvider[];

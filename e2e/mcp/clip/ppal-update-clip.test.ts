@@ -35,7 +35,7 @@ describe("ppal-update-clip", () => {
         slot: `${emptyMidiTrack}/0`,
         notes: "C3 D3 1|1",
         looping: true,
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
@@ -90,7 +90,7 @@ describe("ppal-update-clip", () => {
     // Test 4: Update start and length
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, start: "1|2", length: "1:0.0" },
+      arguments: { ids: clip.id, start: "1|2", length: "1bar" },
     });
 
     await sleep(100);
@@ -101,7 +101,7 @@ describe("ppal-update-clip", () => {
     const startLengthClip = parseToolResult<ReadClipResult>(verifyStartLength);
 
     expect(startLengthClip.start).toBe("1|2");
-    expect(startLengthClip.length).toBe("1:0");
+    expect(startLengthClip.length).toBe("1bar");
   });
 
   it("updates MIDI clip notes", async () => {
@@ -111,14 +111,14 @@ describe("ppal-update-clip", () => {
       arguments: {
         slot: `${emptyMidiTrack}/1`,
         notes: "C3 D3 1|1",
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const clip = parseToolResult<{ id: string }>(createResult);
 
     await sleep(100);
 
-    // Test 1: Add notes with merge mode (verify notes increase)
+    // Test 1: Add notes (merges with existing, verify notes increase)
     const beforeMerge = await ctx.client!.callTool({
       name: "ppal-read-clip",
       arguments: { clipId: clip.id, include: ["notes"] },
@@ -129,7 +129,7 @@ describe("ppal-update-clip", () => {
 
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, notes: "G3 A3 1|3", noteUpdateMode: "merge" },
+      arguments: { ids: clip.id, notes: "G3 A3 1|3" },
     });
 
     await sleep(100);
@@ -142,10 +142,10 @@ describe("ppal-update-clip", () => {
     // After merging G3 A3 into C3 D3, notes should contain all four
     expect(mergedClip.notes).toContain("G3");
 
-    // Test 2: Replace notes with noteUpdateMode: "replace"
+    // Test 2: Clear all existing notes (preTransforms v0) then write new ones
     await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: clip.id, notes: "C4 1|1", noteUpdateMode: "replace" },
+      arguments: { ids: clip.id, preTransforms: "v0", notes: "C4 1|1" },
     });
 
     await sleep(100);
@@ -156,15 +156,17 @@ describe("ppal-update-clip", () => {
     const replacedClip = parseToolResult<ReadClipResult>(verifyReplace);
 
     expect(replacedClip.notes).toContain("C4");
+    // The cleared notes (e.g. the G3 merged in above) should be gone
+    expect(replacedClip.notes).not.toContain("G3");
 
     // Test 3: Quantize notes
-    // First add some off-grid notes
+    // First clear and add some off-grid notes
     await ctx.client!.callTool({
       name: "ppal-update-clip",
       arguments: {
         ids: clip.id,
+        preTransforms: "v0",
         notes: "1|1.25 C3\n1|2.75 D3",
-        noteUpdateMode: "replace",
       },
     });
 
@@ -194,7 +196,7 @@ describe("ppal-update-clip", () => {
         trackIndex: emptyMidiTrack,
         arrangementStart: "41|1",
         notes: "C3 1|1",
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const arrClip = parseToolResult<{ id: string }>(arrCreateResult);
@@ -223,7 +225,7 @@ describe("ppal-update-clip", () => {
     // Test 2: Update arrangement clip length
     const lengthUpdateResult = await ctx.client!.callTool({
       name: "ppal-update-clip",
-      arguments: { ids: movedClip.id, arrangementLength: "4:0.0" },
+      arguments: { ids: movedClip.id, arrangementLength: "4bar" },
     });
 
     // arrangementLength can return multiple clips if it tiles

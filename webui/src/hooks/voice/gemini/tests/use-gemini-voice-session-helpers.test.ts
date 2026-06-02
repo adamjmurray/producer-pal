@@ -44,9 +44,36 @@ describe("buildGeminiConfig", () => {
     expect(config.tools).toStrictEqual([
       { functionDeclarations: [{ name: "ppal-x" }] },
     ]);
+    // Transcription is enabled with empty configs: the Developer API rejects
+    // languageCodes, so it must never appear (regression guard for the throw).
     expect(config.inputAudioTranscription).toStrictEqual({});
     expect(config.outputAudioTranscription).toStrictEqual({});
-    expect(typeof config.systemInstruction).toBe("string");
+    expect(config.inputAudioTranscription).not.toHaveProperty("languageCodes");
+    expect(config.systemInstruction).toContain("ENGLISH");
+  });
+
+  it("locks a non-English language via the system instruction", () => {
+    const config = buildGeminiConfig({
+      voice: "Puck",
+      functionDeclarations: [],
+      language: "es",
+    });
+
+    // System instruction is the only Gemini language-control path now.
+    expect(config.systemInstruction).toContain("SPANISH");
+    expect(config.systemInstruction).toContain("Respond only in Spanish.");
+    expect(config.inputAudioTranscription).toStrictEqual({});
+    expect(config.outputAudioTranscription).toStrictEqual({});
+  });
+
+  it("falls back to English for an unknown language code", () => {
+    const config = buildGeminiConfig({
+      voice: "Puck",
+      functionDeclarations: [],
+      language: "xx",
+    });
+
+    expect(config.systemInstruction).toContain("ENGLISH");
   });
 
   it("falls back to the default voice when none is given", () => {
@@ -389,6 +416,7 @@ function makeCtx(
     model: "gemini-x",
     voice: "Puck",
     vad: undefined,
+    language: undefined,
     functionDeclarations: [],
     deps,
     resumeRef: { current: { handle: null, attempts: 0 } },

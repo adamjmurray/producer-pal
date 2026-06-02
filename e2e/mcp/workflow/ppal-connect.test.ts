@@ -71,15 +71,17 @@ describe("ppal-connect", () => {
     expect(parsed.connected).toBe(true);
     expect(parsed.producerPalVersion).toMatch(/^\d+\.\d+\.\d+$/);
 
-    // Skills documentation - small model mode has simplified skills (~1.6K chars)
+    // Skills documentation - small model mode has simplified skills (~4.2K chars)
     expect(parsed.skills).toBeDefined();
     expect(parsed.skills).toContain("Producer Pal Skills");
-    expect(parsed.skills!.length).toBeLessThan(2000);
+    expect(parsed.skills!.length).toBeLessThan(5000);
 
-    // Small model mode excludes advanced features
-    expect(parsed.skills).not.toContain("x{times}"); // No repeat patterns
-    expect(parsed.skills).not.toMatch(/v0[^-]/); // No v0 deletion
-    expect(parsed.skills).not.toMatch(/p0\./); // No probability
+    // Small model mode excludes the advanced features the standard tier asserts
+    // it contains (see standard-mode test above). The basic tier does document
+    // preTransforms `v0`/`pN`, so only standard-only markers are excluded here.
+    expect(parsed.skills).not.toContain("@N="); // No bar copying
+    expect(parsed.skills).not.toContain("v0 C3 1|1"); // No inline note deletion
+    expect(parsed.skills).not.toContain("## Techniques"); // No advanced section
     expect(parsed.skills).not.toContain("/d0"); // No device paths
 
     // Basic features are still present

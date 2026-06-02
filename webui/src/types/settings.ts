@@ -134,4 +134,14 @@ export interface UseSettingsReturn {
   /** Persisted turn-detection settings (last save). Read by useVoiceSession at
    * connect time. */
   savedTurnDetection: TurnDetectionSettings;
+
+  /** In-modal voice-chat language (ISO-639-1 code). Provider-agnostic — locks
+   * both backends to the chosen language. Mid-session edits don't affect the
+   * live session; applied on the next Stop → Talk. */
+  voiceLanguage: string;
+  setVoiceLanguage: (language: string) => void;
+
+  /** Persisted voice language (last save). Read by the voice session hooks at
+   * connect time. */
+  savedVoiceLanguage: string;
 }

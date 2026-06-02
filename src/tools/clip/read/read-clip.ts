@@ -6,7 +6,7 @@
 import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.ts";
 import {
   abletonBeatsToBarBeat,
-  abletonBeatsToBarBeatDuration,
+  abletonBeatsToDuration,
 } from "#src/notation/barbeat/time/barbeat-time.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { liveGainToDb } from "#src/tools/shared/gain-utils.ts";
@@ -229,7 +229,7 @@ function addTimingProperties(result: ReadClipResult, clip: LiveAPI): void {
     timeSigNumerator,
     timeSigDenominator,
   );
-  result.length = abletonBeatsToBarBeatDuration(
+  result.length = abletonBeatsToDuration(
     endBeats - startBeats,
     timeSigNumerator,
     timeSigDenominator,
@@ -263,12 +263,17 @@ function processMidiClip(
   ) as number;
   const lengthBeats = clip.getProperty("length") as number;
 
+  // Read from one clip-length before the start so notes before 1|1 (negative
+  // start_time — e.g. a pickup authored as `1|1-n/12`) are returned instead of
+  // being silently dropped at the time-0 boundary. Live accepts negative note
+  // start times (notes before the clip start). Bounded to ±lengthBeats to keep
+  // the scan finite rather than reading from an arbitrary negative floor.
   const notesDictionary = clip.call(
     "get_notes_extended",
     0,
     128,
-    0,
-    lengthBeats,
+    -lengthBeats,
+    lengthBeats * 2,
   ) as string;
   const notes = JSON.parse(notesDictionary).notes;
 
@@ -379,7 +384,7 @@ function addClipLocationProperties(
     if (includeTiming) {
       const endTimeBeats = clip.getProperty("end_time") as number;
 
-      result.arrangementLength = abletonBeatsToBarBeatDuration(
+      result.arrangementLength = abletonBeatsToDuration(
         endTimeBeats - startTimeBeats,
         songTimeSigNumerator,
         songTimeSigDenominator,

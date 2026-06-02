@@ -15,6 +15,7 @@
  * Run with: npm run e2e:mcp -- --testPathPattern ppal-duplicate-arrangement-crash-workaround
  */
 import { beforeAll, describe, expect, it } from "vitest";
+import { durationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import {
   KICK_FILE,
   parseToolResult,
@@ -101,14 +102,14 @@ function clipsInBarRange(
 }
 
 /**
- * Parse arrangementLength "bar:beat" string to absolute beats (assumes 4/4).
- * @param length - Arrangement length in "bar:beat" format (e.g., "0:2.200")
- * @returns Length in beats
+ * Parse an arrangementLength duration string to absolute Ableton beats (4/4).
+ * Reuses the canonical parser so it handles every output shape: "Nbar",
+ * "n<fraction>", "Nbar+n<fraction>", and off-grid bare beats.
+ * @param length - Arrangement length duration string (e.g. "1bar", "n/2")
+ * @returns Length in Ableton beats (quarter notes)
  */
 function parseLengthToBeats(length: string): number {
-  const [bars, beats] = length.split(":");
-
-  return parseInt(bars!) * 4 + parseFloat(beats!);
+  return durationToAbletonBeats(length, 4, 4);
 }
 
 /**
@@ -174,7 +175,7 @@ describe("arrangement clip duplication crash workaround", () => {
       arguments: {
         slot: `${MIDI_TRACK}/0`,
         notes: "C3 1|1",
-        length: "4:0",
+        length: "4bar",
       },
     });
 
@@ -186,7 +187,7 @@ describe("arrangement clip duplication crash workaround", () => {
       arguments: {
         slot: `${MIDI_TRACK}/1`,
         notes: "C3 1|1",
-        length: "1:0",
+        length: "1bar",
       },
     });
 

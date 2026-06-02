@@ -145,7 +145,7 @@ the global timeout, or for short polling calls that should fail fast.
 ```bash
 curl -X POST 'http://localhost:3350/api/tools/ppal-create-clip?timeoutMs=10000' \
   -H 'Content-Type: application/json' \
-  -d '{"slot": "0/0", "length": "16:0", "notes": "..."}'
+  -d '{"slot": "0/0", "length": "16bar", "notes": "..."}'
 ```
 
 `timeoutMs` must be a positive integer up to **60000** (60 seconds). Other

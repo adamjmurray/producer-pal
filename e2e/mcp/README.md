@@ -4,7 +4,7 @@ End-to-end tests that verify Producer Pal tools via the MCP protocol.
 
 ## Prerequisites
 
-1. **Build the project**: `npm run build:all`
+1. **Build the project**: `npm run build:debug`
 2. **Ableton Live installed** (the tests will open it automatically)
 3. **Terminal accessibility permissions** (System Settings → Privacy & Security
    → Accessibility → Terminal)
@@ -17,6 +17,18 @@ npm run e2e:mcp
 
 # Run in watch mode
 npm run e2e:mcp:watch
+```
+
+### Code execution tests
+
+The `clip/ppal-code-exec.test.ts` suite exercises the sandboxed `code`
+parameter, which only works against a build made with `ENABLE_CODE_EXEC=true`
+(e.g. `npm run build:debug`). To avoid spurious failures on plain builds, that
+suite is skipped unless `ENABLE_CODE_EXEC=true` is also present in the test
+environment. Run it explicitly with:
+
+```bash
+ENABLE_CODE_EXEC=true npm run e2e:mcp
 ```
 
 ## How It Works

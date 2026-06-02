@@ -178,6 +178,7 @@ export interface PersistenceStub {
   activeRecordModel: string | null;
   activeRecordProvider: string | null;
   savedItems: RealtimeItem[];
+  retainPriorHistory: ReturnType<typeof vi.fn>;
   refreshList: ReturnType<typeof vi.fn>;
   switchConversation: ReturnType<typeof vi.fn>;
   startNewConversation: ReturnType<typeof vi.fn>;
@@ -202,6 +203,7 @@ export function basePersistence(
     activeRecordModel: null,
     activeRecordProvider: null,
     savedItems: [],
+    retainPriorHistory: vi.fn(),
     refreshList: vi.fn(),
     switchConversation: vi.fn(),
     startNewConversation: vi.fn(),

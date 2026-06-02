@@ -83,7 +83,11 @@ documentation for details on extension types and how to choose between them.
 
 ## Building from source
 
-Requires [Node.js](https://nodejs.org) (recommended v24 or higher)
+Requires [Node.js](https://nodejs.org) **v24 or higher** (enforced by the
+`engines` field in `package.json`). Producer Pal's scripts and CLI tools run
+TypeScript directly through Node's native type stripping — there is no `tsx` or
+`ts-node` dependency — and rely on Node's built-in `--env-file` flag, both of
+which require v24+.
 
 1. Clone this repository
 2. `npm install`
@@ -254,7 +258,9 @@ Quick commands:
 
 - `node scripts/ppal-client.ts tools/list` - List available tools
 - `node scripts/ppal-client.ts tools/call ppal-read-live-set '{}'` - Call a tool
-- `npm run e2e:mcp` - Run MCP e2e tests (requires Ableton Live)
+- `npm run e2e:mcp` - Run MCP e2e tests (requires Ableton Live; the code-exec
+  suite is skipped unless `ENABLE_CODE_EXEC=true` is set —
+  `ENABLE_CODE_EXEC=true npm run e2e:mcp`)
 - `npx @modelcontextprotocol/inspector` - MCP protocol debugging
 
 **Important**: After changing tool descriptions in `src/tools/**/*.def.js`, you

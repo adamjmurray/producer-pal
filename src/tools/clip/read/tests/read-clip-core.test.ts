@@ -30,7 +30,7 @@ describe("readClip", () => {
       denominator: 4,
       expectedStart: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
       expectedEnd: "2|2", // end_marker (5 beats = 2|2)
-      expectedLength: "1:0", // 1 bar duration
+      expectedLength: "1bar", // 1 bar duration
       expectedNotes: "C3 1|1 D3 1|2 E3 1|3", // Real bar|beat output
     },
     {
@@ -39,8 +39,10 @@ describe("readClip", () => {
       denominator: 8,
       expectedStart: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
       expectedEnd: "2|5", // end_marker (5 beats = 2|5 in 6/8)
-      expectedLength: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
-      expectedNotes: "t2 C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8 (t2 = duration in 8th-note beats)
+      expectedLength: "1bar+n/4", // 4 Ableton beats in 6/8 = 1 bar + 1 quarter
+      // Notes default to 1 Ableton beat = a quarter note. The new notation
+      // default is also a quarter (`n/4`), so no `n` prefix is emitted.
+      expectedNotes: "C3 1|1 D3 1|3 E3 1|5",
     },
   ])(
     "returns clip information when a valid MIDI clip exists ($timeSig time)",
@@ -117,7 +119,7 @@ describe("readClip", () => {
     // In 3/4 time, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("3/4");
-    expect(result).toHaveLength("1:1"); // 4 Ableton beats = 1 bar + 1 beat in 3/4
+    expect(result).toHaveLength("1bar+n/4"); // 4 Ableton beats in 3/4 = 1 bar + 1 quarter
   });
 
   it("should format notes using clip's time signature with Ableton quarter-note conversion", () => {
@@ -150,11 +152,12 @@ describe("readClip", () => {
 
     expectGetNotesExtendedCall(clip, 3);
 
-    // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
-    // t2 emitted because 1 Ableton beat = 2 eighth-note beats (notation default is 1)
-    expect(result.notes).toBe("t2 C3 1|1 D3 2|1 E3 2|2");
+    // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1.
+    // Notes have default duration of 1 Ableton beat (= a quarter note), which
+    // matches the new notation default (`n/4`), so no `n` prefix is emitted.
+    expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("6/8");
-    expect(result).toHaveLength("1:0"); // 3 Ableton beats = 1 bar in 6/8
+    expect(result).toHaveLength("1bar"); // 3 Ableton beats = 1 bar in 6/8
   });
 
   it("returns null values and emits warning when no clip exists at valid track/scene", () => {
@@ -261,7 +264,7 @@ describe("readClip", () => {
       looping: true,
       start: "1|2", // loop_start
       end: "2|2", // loop_end (5 beats = 2|2)
-      length: "1:0", // 1 bar
+      length: "1bar", // 1 bar
       playing: true,
       gainDb: 24, // gain=1 maps to +24 dB
       sampleLength: 88200,
@@ -388,7 +391,7 @@ describe("readClip", () => {
     expect(result.id).toBe("session_clip_id");
     expect(result.slot).toBe("2/4");
     expect(result.view).toBe("session");
-    expect(result).toHaveLength("1:0");
+    expect(result).toHaveLength("1bar");
     expect(result.start).toBe("1|2");
   });
 
@@ -428,11 +431,11 @@ describe("readClip", () => {
     expect(result.slot).toBeUndefined();
     // arrangementStart uses song time signature (4/4), so 16 Ableton beats = bar 5 beat 1
     expect(result.arrangementStart).toBe("5|1");
-    // arrangementLength also uses song time signature (4/4), so 4 Ableton beats = 1:0
-    expect(result.arrangementLength).toBe("1:0");
+    // arrangementLength also uses song time signature (4/4), so 4 Ableton beats = 1bar
+    expect(result.arrangementLength).toBe("1bar");
     // But clip properties use clip time signature (6/8)
     expect(result.timeSignature).toBe("6/8");
-    expect(result).toHaveLength("1:2"); // 4 Ableton beats = 1 bar + 2 beats in 6/8
+    expect(result).toHaveLength("1bar+n/4"); // 4 Ableton beats in 6/8 = 1 bar + 1 quarter
     expect(result.start).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 

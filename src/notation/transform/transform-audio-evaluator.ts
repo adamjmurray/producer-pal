@@ -1,7 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
@@ -64,21 +66,17 @@ export function applyAudioTransform(
   let ast: TransformAssignment[];
 
   try {
-    ast = parser.parse(transformString);
+    // Audio transforms operate on whole-clip gain/pitchShift and never apply a
+    // timeRange, so the meter is irrelevant here; pass denominator 4 to satisfy
+    // the now meter-aware grammar (matches this evaluator's hardcoded-4 convention).
+    ast = parser.parse(transformString, { timeSigDenominator: 4 });
   } catch (error) {
     console.warn(`Failed to parse transform string: ${errorMessage(error)}`);
 
     return { gain: null, pitchShift: null };
   }
 
-  // Check for MIDI parameters and warn
-  const hasMidiParams = ast.some((a) => MIDI_PARAMETERS.has(a.parameter));
-
-  if (hasMidiParams) {
-    console.warn(
-      "MIDI parameters (velocity, timing, duration, probability, deviation, pitch) ignored for audio clips",
-    );
-  }
+  warnIncompatibleAudioSelectors(ast);
 
   // Filter to audio-only assignments (gain and pitchShift)
   const audioAssignments = ast.filter(
@@ -144,6 +142,32 @@ export function applyAudioTransform(
   };
 }
 
+/**
+ * Warn about transform selectors/parameters that have no effect on audio clips.
+ * MIDI-only parameters and timeRange selectors are dropped (audio transforms
+ * apply to the whole clip), so warn rather than silently ignoring them.
+ * @param ast - Parsed transform assignments
+ */
+function warnIncompatibleAudioSelectors(ast: TransformAssignment[]): void {
+  if (ast.some((a) => MIDI_PARAMETERS.has(a.parameter))) {
+    console.warn(
+      "MIDI parameters (velocity, timing, duration, probability, deviation, pitch) ignored for audio clips",
+    );
+  }
+
+  const hasAudioTimeRange = ast.some(
+    (a) =>
+      (a.parameter === "gain" || a.parameter === "pitchShift") &&
+      a.timeRange != null,
+  );
+
+  if (hasAudioTimeRange) {
+    console.warn(
+      "timeRange selector ignored for audio clip transform (audio transforms apply to the whole clip)",
+    );
+  }
+}
+
 type BinaryOpNode = {
   type: "add" | "subtract" | "multiply" | "divide" | "modulo";
   left: ExpressionNode;
@@ -165,6 +189,24 @@ function evaluateAudioExpression(
   // Base case: number literal
   if (typeof node === "number") {
     return node;
+  }
+
+  // Absolute duration (n/4, n/8, ...) — e.g. a synced waveform period. Resolve
+  // against the clip's real meter denominator so the period lands in the same
+  // musical-beats frame as clip.barDuration/clip.position (a one-bar period in
+  // 6/8 is `n6/8` = 6 musical beats, matching clip.barDuration). Falls back to
+  // 4/4 when no clip context is available (e.g. session-only callers).
+  if (node.type === "nDuration") {
+    return wholeNoteFractionToMusicalBeats(
+      node.wholeNoteFraction,
+      clipContext?.timeSigDenominator ?? 4,
+    );
+  }
+
+  // Bar duration (Nbar) — N bars in musical beats. Uses the clip's real
+  // beats-per-bar when known, else assumes 4/4 (same as the nDuration fallback).
+  if (node.type === "barDuration") {
+    return node.bars * (clipContext?.barDuration ?? 4);
   }
 
   // Variable lookup
@@ -192,9 +234,14 @@ function evaluateAudioExpression(
     raw: boolean;
   };
 
-  // Use position=0 for audio context (clip-level transform)
-  // Use a default time range of 0-4 beats (one bar in 4/4)
+  // Use position=0 for audio context (clip-level transform). Pass the clip's
+  // real meter so synced waveform periods (n<frac>) and any Nbar/timeRange math
+  // resolve in the same musical-beats frame as clip.barDuration/clip.position;
+  // the default one-bar timeRange is the clip's beats-per-bar. All default to
+  // 4/4 when no clip context is available.
   const clipProps = buildClipNoteProperties(clipContext);
+  const numerator = clipContext?.barDuration ?? 4;
+  const denominator = clipContext?.timeSigDenominator ?? 4;
 
   return evaluateFunction(
     funcNode.name,
@@ -202,9 +249,9 @@ function evaluateAudioExpression(
     funcNode.sync,
     funcNode.raw,
     0, // position
-    4, // timeSigNumerator
-    4, // timeSigDenominator
-    { start: 0, end: 4 }, // timeRange
+    numerator, // timeSigNumerator (= clip beats-per-bar)
+    denominator, // timeSigDenominator
+    { start: 0, end: numerator }, // timeRange (one bar in musical beats)
     clipProps,
     (expr, pos, num, denom, range, _props) =>
       evaluateAudioExpressionWithContext(
@@ -259,7 +306,11 @@ function resolveAudioVariable(
     };
 
     if (node.name === "position" && clipContext.arrangementStart == null) {
-      throw new Error(`clip.position is not available for session clips`);
+      // Session clips have no arrangement origin; 0 is the neutral position so
+      // the transform keeps running instead of failing the clip.
+      console.warn(`clip.position is not available for session clips; using 0`);
+
+      return 0;
     }
 
     const value = clipProps[node.name];

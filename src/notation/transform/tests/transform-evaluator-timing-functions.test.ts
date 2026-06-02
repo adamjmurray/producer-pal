@@ -62,31 +62,59 @@ describe("Transform Evaluator - swing()", () => {
     });
   });
 
+  describe("default grid is half the meter's beat (meter-aware)", () => {
+    // The default grid is half the meter's beat, not a fixed n/8. In 6/8 that
+    // is a 16th note, so the off-beat 16ths (0.5, 1.5, ...) swing while the
+    // eighth-note beats (1.0, 2.0, ...) stay on the grid. (Under a fixed-n/8
+    // default the beat itself would swing and position 0.5 would not move.)
+    it("swings the 16th off-beat in 6/8 (position 0.5)", () => {
+      const ctx = createContext({
+        position: 0.5,
+        numerator: 6,
+        denominator: 8,
+      });
+      const result = evaluateTransform("timing = swing(0.05)", ctx);
+
+      expect(result.timing!.value).toBeCloseTo(0.55, 10);
+    });
+
+    it("leaves the eighth-note beat on the grid in 6/8 (position 1.0)", () => {
+      const ctx = createContext({
+        position: 1.0,
+        numerator: 6,
+        denominator: 8,
+      });
+      const result = evaluateTransform("timing = swing(0.05)", ctx);
+
+      expect(result.timing!.value).toBeCloseTo(1.0, 10);
+    });
+  });
+
   describe("16th-note swing (custom grid)", () => {
-    it("does not offset on-beat of 1/4t grid (position 0)", () => {
+    it("does not offset on-beat of n/16 grid (position 0)", () => {
       const ctx = createContext({ position: 0 });
-      const result = evaluateTransform("timing = swing(0.03, 1/4t)", ctx);
+      const result = evaluateTransform("timing = swing(0.03, n/16)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0, 10);
     });
 
-    it("offsets off-beat of 1/4t grid (position 0.25)", () => {
+    it("offsets off-beat of n/16 grid (position 0.25)", () => {
       const ctx = createContext({ position: 0.25 });
-      const result = evaluateTransform("timing = swing(0.03, 1/4t)", ctx);
+      const result = evaluateTransform("timing = swing(0.03, n/16)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.28, 10);
     });
 
     it("does not offset next on-beat (position 0.5)", () => {
       const ctx = createContext({ position: 0.5 });
-      const result = evaluateTransform("timing = swing(0.03, 1/4t)", ctx);
+      const result = evaluateTransform("timing = swing(0.03, n/16)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.5, 10);
     });
 
     it("offsets next off-beat (position 0.75)", () => {
       const ctx = createContext({ position: 0.75 });
-      const result = evaluateTransform("timing = swing(0.03, 1/4t)", ctx);
+      const result = evaluateTransform("timing = swing(0.03, n/16)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.78, 10);
     });
@@ -111,7 +139,7 @@ describe("Transform Evaluator - swing()", () => {
 
     it("quantizes with custom grid", () => {
       const ctx = createContext({ position: 0.3 });
-      const result = evaluateTransform("timing = swing(0.03, 1/4t)", ctx);
+      const result = evaluateTransform("timing = swing(0.03, n/16)", ctx);
 
       // grid=0.25, quantGrid=0.0625. 0.3 → snap to 0.3125 (off-beat), +0.03 → 0.3425
       expect(result.timing!.value).toBeCloseTo(0.3125 + 0.03, 10);
@@ -137,7 +165,7 @@ describe("Transform Evaluator - swing()", () => {
 
     it("skips auto-quantize with custom grid", () => {
       const ctx = createContext({ position: 0.3 });
-      const result = evaluateTransform("timing = swing(0.03, 1/4t, raw)", ctx);
+      const result = evaluateTransform("timing = swing(0.03, n/16, raw)", ctx);
 
       // No quantize: grid=0.25, period=0.5. phase = (0.3/0.5) % 1.0 = 0.6, off-beat → +0.03 → 0.33
       expect(result.timing!.value).toBeCloseTo(0.33, 10);
@@ -161,7 +189,7 @@ describe("Transform Evaluator - swing()", () => {
     it("rejects three non-raw arguments (parse error)", () => {
       expect(() =>
         evaluateTransform(
-          "timing = swing(0.05, 1t, 0.5)",
+          "timing = swing(0.05, n/4, 0.5)",
           createContext({ position: 0 }),
         ),
       ).toThrow();
@@ -170,63 +198,63 @@ describe("Transform Evaluator - swing()", () => {
 });
 
 describe("Transform Evaluator - quant()", () => {
-  describe("8th-note grid (1/2t)", () => {
+  describe("8th-note grid (n/8)", () => {
     it("snaps position 0.3 to 0.5", () => {
       const ctx = createContext({ position: 0.3 });
-      const result = evaluateTransform("timing = quant(1/2t)", ctx);
+      const result = evaluateTransform("timing = quant(n/8)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.5, 10);
     });
 
     it("snaps position 0.1 to 0.0", () => {
       const ctx = createContext({ position: 0.1 });
-      const result = evaluateTransform("timing = quant(1/2t)", ctx);
+      const result = evaluateTransform("timing = quant(n/8)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0, 10);
     });
 
     it("leaves on-grid position unchanged", () => {
       const ctx = createContext({ position: 0.5 });
-      const result = evaluateTransform("timing = quant(1/2t)", ctx);
+      const result = evaluateTransform("timing = quant(n/8)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.5, 10);
     });
   });
 
-  describe("16th-note grid (1/4t)", () => {
+  describe("16th-note grid (n/16)", () => {
     it("snaps position 0.3 to 0.25", () => {
       const ctx = createContext({ position: 0.3 });
-      const result = evaluateTransform("timing = quant(1/4t)", ctx);
+      const result = evaluateTransform("timing = quant(n/16)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.25, 10);
     });
 
     it("snaps position 0.4 to 0.5", () => {
       const ctx = createContext({ position: 0.4 });
-      const result = evaluateTransform("timing = quant(1/4t)", ctx);
+      const result = evaluateTransform("timing = quant(n/16)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0.5, 10);
     });
   });
 
-  describe("quarter-note grid (1t)", () => {
+  describe("quarter-note grid (n/4)", () => {
     it("snaps position 1.3 to 1.0", () => {
       const ctx = createContext({ position: 1.3 });
-      const result = evaluateTransform("timing = quant(1t)", ctx);
+      const result = evaluateTransform("timing = quant(n/4)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(1.0, 10);
     });
 
     it("snaps position 1.7 to 2.0", () => {
       const ctx = createContext({ position: 1.7 });
-      const result = evaluateTransform("timing = quant(1t)", ctx);
+      const result = evaluateTransform("timing = quant(n/4)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(2.0, 10);
     });
   });
 
   describe("numeric grid (no period syntax)", () => {
-    it("quant(0.5) works same as quant(1/2t)", () => {
+    it("quant(0.5) works same as quant(n/8)", () => {
       const ctx = createContext({ position: 0.3 });
       const result = evaluateTransform("timing = quant(0.5)", ctx);
 
@@ -237,7 +265,7 @@ describe("Transform Evaluator - quant()", () => {
   describe("position 0", () => {
     it("stays at 0 for any grid", () => {
       const ctx = createContext({ position: 0 });
-      const result = evaluateTransform("timing = quant(1/4t)", ctx);
+      const result = evaluateTransform("timing = quant(n/16)", ctx);
 
       expect(result.timing!.value).toBeCloseTo(0, 10);
     });
@@ -249,7 +277,7 @@ describe("Transform Evaluator - quant()", () => {
     });
 
     it("throws for two arguments", () => {
-      expectTransformError("timing = quant(1/2t, 1/4t)");
+      expectTransformError("timing = quant(n/8, n/16)");
     });
 
     it("throws for grid <= 0", () => {

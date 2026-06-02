@@ -115,18 +115,26 @@ function printJudgeSection(result: JsonEvalResult): void {
 
   if (!judge) return;
 
-  console.log("\n" + formatSubsectionHeader("Judge"));
+  const advisory = judge.advisory === true;
+
+  console.log(
+    "\n" + formatSubsectionHeader(advisory ? "Judge (advisory)" : "Judge"),
+  );
 
   if (judge.issues.length > 0) {
     console.log("");
 
+    // Advisory issues don't gate the result, so show them as non-fatal notes.
+    const issueColor = advisory ? "yellow" : "red";
+    const issueIcon = advisory ? "•" : "✗";
+
     for (const issue of judge.issues) {
-      console.log("  " + styleText("red", `✗ ${issue}`));
+      console.log("  " + styleText(issueColor, `${issueIcon} ${issue}`));
     }
   }
 
-  const label = judge.pass ? "pass" : "fail";
-  const color = judge.pass ? "green" : "red";
+  const label = advisory ? "advisory" : judge.pass ? "pass" : "fail";
+  const color = advisory ? "yellow" : judge.pass ? "green" : "red";
   const issueSuffix =
     judge.issues.length > 0 ? ` — ${judge.issues.length} issue(s)` : "";
 
@@ -170,8 +178,17 @@ export function printResultBlock(result: JsonEvalResult): void {
 
   // Judge line
   if (result.judge) {
-    const judgeColor = result.judge.pass ? "green" : "red";
-    const judgeLabel = result.judge.pass ? "pass" : "fail";
+    const advisory = result.judge.advisory === true;
+    const judgeColor = advisory
+      ? "yellow"
+      : result.judge.pass
+        ? "green"
+        : "red";
+    const judgeLabel = advisory
+      ? "advisory"
+      : result.judge.pass
+        ? "pass"
+        : "fail";
     const issueSuffix =
       result.judge.issues.length > 0
         ? ` — ${result.judge.issues.length} issue(s)`

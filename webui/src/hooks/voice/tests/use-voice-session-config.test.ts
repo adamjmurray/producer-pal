@@ -100,7 +100,9 @@ afterEach(() => {
  */
 async function connectAndReadAudio(
   params: Parameters<typeof useVoiceSession>[0],
-): Promise<{ input?: { turnDetection?: unknown } }> {
+): Promise<{
+  input?: { turnDetection?: unknown; transcription?: unknown };
+}> {
   const { result } = renderHook(() => useVoiceSession(params));
 
   await act(async () => {
@@ -108,7 +110,9 @@ async function connectAndReadAudio(
   });
 
   const options = realtime.constructed[0]!.options as {
-    config: { audio: { input?: { turnDetection?: unknown } } };
+    config: {
+      audio: { input?: { turnDetection?: unknown; transcription?: unknown } };
+    };
   };
 
   return options.config.audio;
@@ -135,10 +139,43 @@ describe("useVoiceSession turn-detection config", () => {
     });
   });
 
-  it("omits audio.input when no turnDetection is provided", async () => {
+  it("omits turnDetection but keeps the transcription side-channel when no turnDetection is provided", async () => {
     const audio = await connectAndReadAudio(PARAMS);
 
-    expect(audio.input).toBeUndefined();
+    expect(audio.input?.turnDetection).toBeUndefined();
+    expect(audio.input?.transcription).toStrictEqual({
+      model: "gpt-realtime-whisper",
+      language: "en",
+    });
+  });
+
+  it("pins the ASR transcription language alongside turnDetection", async () => {
+    const turnDetection: TurnDetectionSettings = {
+      ...DEFAULT_TURN_DETECTION,
+      mode: "server_vad",
+    };
+
+    const audio = await connectAndReadAudio({ ...PARAMS, turnDetection });
+
+    expect(audio.input?.transcription).toStrictEqual({
+      model: "gpt-realtime-whisper",
+      language: "en",
+    });
+    expect(audio.input?.turnDetection).toBeDefined();
+  });
+
+  it("threads a selected language into transcription and agent instructions", async () => {
+    const audio = await connectAndReadAudio({ ...PARAMS, language: "es" });
+
+    expect(audio.input?.transcription).toStrictEqual({
+      model: "gpt-realtime-whisper",
+      language: "es",
+    });
+    const agentOptions = realtime.agents[0]!.options as {
+      instructions?: string;
+    };
+
+    expect(agentOptions.instructions).toContain("Respond only in Spanish.");
   });
 });
 

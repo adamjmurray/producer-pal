@@ -6,9 +6,11 @@
 import { useCallback, useState } from "preact/hooks";
 import {
   loadRealtimeVoice,
+  loadVoiceLanguage,
   loadVoiceSpeed,
   loadVoiceVolume,
   saveRealtimeVoice,
+  saveVoiceLanguage,
   saveVoiceSpeed,
   saveVoiceVolume,
 } from "#webui/hooks/settings/settings-helpers";
@@ -33,6 +35,12 @@ export interface UseVoiceModeSettingsReturn {
   turnDetection: TurnDetectionSettings;
   setTurnDetection: (settings: TurnDetectionSettings) => void;
   savedTurnDetection: TurnDetectionSettings;
+  /** In-modal voice-chat language (ISO-639-1 code). Provider-agnostic: applies
+   * to both the OpenAI and Gemini backends. Locked at connect — applied on the
+   * next Stop → Talk. */
+  voiceLanguage: string;
+  setVoiceLanguage: (language: string) => void;
+  savedVoiceLanguage: string;
   /** Persist current voice-mode values and update the "saved" snapshots so
    * the live session reads the new values on the next connect. */
   commit: () => void;
@@ -66,22 +74,29 @@ export function useVoiceModeSettings(): UseVoiceModeSettingsReturn {
     useState<TurnDetectionSettings>(loadTurnDetection);
   const [savedTurnDetection, setSavedTurnDetection] =
     useState<TurnDetectionSettings>(loadTurnDetection);
+  const [voiceLanguage, setVoiceLanguageState] =
+    useState<string>(loadVoiceLanguage);
+  const [savedVoiceLanguage, setSavedVoiceLanguage] =
+    useState<string>(loadVoiceLanguage);
 
   const commit = useCallback(() => {
     saveRealtimeVoice(realtimeVoice);
     saveVoiceSpeed(voiceSpeed);
     saveVoiceVolume(voiceVolume);
     saveTurnDetection(turnDetection);
+    saveVoiceLanguage(voiceLanguage);
     setSavedRealtimeVoice(realtimeVoice);
     setSavedVoiceSpeed(voiceSpeed);
     setSavedTurnDetection(turnDetection);
-  }, [realtimeVoice, voiceSpeed, voiceVolume, turnDetection]);
+    setSavedVoiceLanguage(voiceLanguage);
+  }, [realtimeVoice, voiceSpeed, voiceVolume, turnDetection, voiceLanguage]);
 
   const revert = useCallback(() => {
     setRealtimeVoiceState(loadRealtimeVoice());
     setVoiceSpeedState(loadVoiceSpeed());
     setVoiceVolumeState(loadVoiceVolume());
     setTurnDetectionState(loadTurnDetection());
+    setVoiceLanguageState(loadVoiceLanguage());
   }, []);
 
   return {
@@ -96,6 +111,9 @@ export function useVoiceModeSettings(): UseVoiceModeSettingsReturn {
     turnDetection,
     setTurnDetection: setTurnDetectionState,
     savedTurnDetection,
+    voiceLanguage,
+    setVoiceLanguage: setVoiceLanguageState,
+    savedVoiceLanguage,
     commit,
     revert,
   };

@@ -88,12 +88,31 @@ describe("bar|beat interpretNotation() - timing features", () => {
     });
 
     it("handles duration updates after time", () => {
-      const result = interpretNotation("C4 1|1 t0.5 1|2 t0.25 1|3");
+      // Default = quarter (1); n/8 = eighth (0.5); n/16 = sixteenth (0.25)
+      const result = interpretNotation("C4 1|1 n/8 1|2 n/16 1|3");
 
       expect(result).toHaveLength(3);
       expect(result[0]!.duration).toBe(1);
       expect(result[1]!.duration).toBe(0.5);
       expect(result[2]!.duration).toBe(0.25);
+    });
+
+    it("handles inline bar durations (Nbar, meter-aware)", () => {
+      // 1bar = one full bar; 4 quarters in 4/4.
+      const result = interpretNotation("1bar C4 1|1 1bar+n/4 D4 1|2");
+
+      expect(result).toHaveLength(2);
+      expect(result[0]!.duration).toBe(4); // one bar
+      expect(result[1]!.duration).toBe(5); // one bar + a quarter
+    });
+
+    it("scales inline bar durations by the meter (6/8 bar = 3 quarters)", () => {
+      const result = interpretNotation("1bar C4 1|1", {
+        timeSigNumerator: 6,
+        timeSigDenominator: 8,
+      });
+
+      expect(result[0]!.duration).toBe(3);
     });
 
     it("handles probability updates after time", () => {

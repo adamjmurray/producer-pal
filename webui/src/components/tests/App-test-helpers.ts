@@ -102,7 +102,6 @@ export function setupDefaultMocks(): void {
       historyPanelOpen: false,
       settingsOpen: false,
       settingsTab: "connection",
-      contextOpen: false,
     },
     setViewState: vi.fn(),
   });

@@ -1,22 +1,41 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
-// AI assistance: Codex (OpenAI)
+// AI assistance: Codex (OpenAI), Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
  * Scenario loader - loads and filters evaluation scenarios
  */
 
+import { styleText } from "node:util";
+import { listConfigProfileIds } from "./config-profiles.ts";
 import {
   arrangementClipWorkflow,
   audioSampleWorkflow,
+  barBeatAbsoluteDurationUniformity,
+  barBeatCompoundFeelPulse,
+  barBeatMeterFill,
+  barBeatTriplets,
   connectToAbleton,
   createAndEditClip,
   drumTransforms,
   duplicate,
+  durationArgBarLength,
+  durationArgMixedCombiner,
+  durationArgSubBar,
+  durationReachForQuarter,
   legatoTransforms,
   melodyTransforms,
+  rangeClearFirstHalf,
+  rangeClearWholeBar,
+  pretransformsHatFillsBaseline,
+  pretransformsMelodyReplaceBaseline,
+  pretransformsSnareSwapBaseline,
+  slmPretransformsDrumRemap,
+  slmPretransformsRegionClear,
+  surgicalNoteDurationEdit,
   swingAndQuantize,
+  syncedLfoMeterInvariance,
   memoryWorkflow,
   negativeCases,
   sceneAndPlayback,
@@ -43,6 +62,23 @@ const allScenarios: EvalScenario[] = [
   audioSampleWorkflow,
   sceneAndPlayback,
   updateLiveSet,
+  barBeatTriplets,
+  barBeatMeterFill,
+  barBeatAbsoluteDurationUniformity,
+  barBeatCompoundFeelPulse,
+  pretransformsMelodyReplaceBaseline,
+  pretransformsHatFillsBaseline,
+  pretransformsSnareSwapBaseline,
+  durationArgBarLength,
+  durationArgSubBar,
+  durationArgMixedCombiner,
+  durationReachForQuarter,
+  syncedLfoMeterInvariance,
+  slmPretransformsRegionClear,
+  slmPretransformsDrumRemap,
+  surgicalNoteDurationEdit,
+  rangeClearWholeBar,
+  rangeClearFirstHalf,
 ];
 
 export interface LoadScenariosOptions {
@@ -106,4 +142,23 @@ export function listScenarioSummaries(): Array<{
     id: s.id,
     kind: s.kind ?? "regression",
   }));
+}
+
+/**
+ * Print available scenarios and config profiles.
+ */
+export function printList(): void {
+  console.log("Available scenarios:");
+
+  for (const { id, kind } of listScenarioSummaries()) {
+    const kindLabel = styleText("gray", `[${kind}]`);
+
+    console.log(`  - ${id} ${kindLabel}`);
+  }
+
+  console.log("\nAvailable config profiles:");
+
+  for (const id of listConfigProfileIds()) {
+    console.log(`  - ${id}`);
+  }
 }

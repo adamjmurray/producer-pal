@@ -16,11 +16,11 @@ import {
   parseToolResult,
   type ReadClipResult,
   setupMcpTestContext,
-} from "../mcp-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
 import {
   createClipTransformHelpers,
   parseNotationDuration,
-} from "./helpers/ppal-clip-transforms-test-helpers.ts";
+} from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 const { createMidiClip, applyTransform, readClipNotes } =
@@ -51,9 +51,9 @@ function extractStartBeats(notes: string): number[] {
   return beats.sort((a, b) => a - b);
 }
 
-/** Extract duration values (t prefix) from notation. */
+/** Extract duration values (n prefix) from notation. */
 function extractDurations(notes: string): number[] {
-  return [...notes.matchAll(/t(\S+)/g)].map((m) =>
+  return [...notes.matchAll(/n(\S+)/g)].map((m) =>
     parseNotationDuration(m[1] as string),
   );
 }
@@ -89,7 +89,7 @@ describe("ppal-clip-transforms (swing)", () => {
   });
 
   it("offsets off-beat 8th notes", async () => {
-    const clipId = await createMidiClip(61, "t/2 C3 1|1x8");
+    const clipId = await createMidiClip(61, "n/8 C3 1|1x8");
 
     await applyTransform(clipId, "timing = swing(0.1)");
     const notes = await readClipNotes(clipId);
@@ -111,9 +111,9 @@ describe("ppal-clip-transforms (swing)", () => {
   });
 
   it("applies 16th-note swing with custom grid", async () => {
-    const clipId = await createMidiClip(62, "t/4 C3 1|1x16");
+    const clipId = await createMidiClip(62, "n/16 C3 1|1x16");
 
-    await applyTransform(clipId, "timing = swing(0.05, 1/4t)");
+    await applyTransform(clipId, "timing = swing(0.05, n/16)");
     const notes = await readClipNotes(clipId);
     const starts = extractStartBeats(notes);
 
@@ -129,7 +129,7 @@ describe("ppal-clip-transforms (swing)", () => {
   });
 
   it("auto-quantizes so re-applying swing is safe", async () => {
-    const clipId = await createMidiClip(63, "t/2 C3 1|1x8");
+    const clipId = await createMidiClip(63, "n/8 C3 1|1x8");
 
     // Use small swing amounts that stay within the quantize grid (grid/8=0.0625)
     await applyTransform(clipId, "timing = swing(0.04)");
@@ -145,7 +145,7 @@ describe("ppal-clip-transforms (swing)", () => {
   });
 
   it("raw keyword skips auto-quantize", async () => {
-    const clipId = await createMidiClip(64, "t/2 C3 1|1x4");
+    const clipId = await createMidiClip(64, "n/8 C3 1|1x4");
 
     await applyTransform(clipId, "timing = swing(0.1)");
     const afterFirstSwing = extractStartBeats(await readClipNotes(clipId));
@@ -161,7 +161,7 @@ describe("ppal-clip-transforms (swing)", () => {
   });
 
   it("swing(0) is a no-op", async () => {
-    const clipId = await createMidiClip(65, "t/2 C3 1|1x8");
+    const clipId = await createMidiClip(65, "n/8 C3 1|1x8");
 
     await applyTransform(clipId, "timing = swing(0)");
     const notes = await readClipNotes(clipId);
@@ -185,7 +185,7 @@ describe("ppal-clip-transforms (quant)", () => {
     // Create notes at slightly off-grid positions
     const clipId = await createMidiClip(67, "C3 1|1 C3 1|1.6 C3 1|2.4 C3 1|3");
 
-    await applyTransform(clipId, "timing = quant(1/2t)");
+    await applyTransform(clipId, "timing = quant(n/8)");
     const notes = await readClipNotes(clipId);
     const starts = extractStartBeats(notes);
 
@@ -206,7 +206,7 @@ describe("ppal-clip-transforms (quant)", () => {
       "C3 1|1 C3 1|1.3 C3 1|1.6 C3 1|2.1",
     );
 
-    await applyTransform(clipId, "timing = quant(1/4t)");
+    await applyTransform(clipId, "timing = quant(n/16)");
     const notes = await readClipNotes(clipId);
     const starts = extractStartBeats(notes);
 
@@ -219,7 +219,7 @@ describe("ppal-clip-transforms (quant)", () => {
   });
 
   it("undoes swing when applied after", async () => {
-    const clipId = await createMidiClip(69, "t/2 C3 1|1x8");
+    const clipId = await createMidiClip(69, "n/8 C3 1|1x8");
 
     // Apply swing, then quantize back to grid
     await applyTransform(clipId, "timing = swing(0.1)");
@@ -230,7 +230,7 @@ describe("ppal-clip-transforms (quant)", () => {
     expect(starts[1]).toBeCloseTo(0.6, 1); // Off-beat swung
 
     // Quantize to 8th-note grid should undo the swing
-    await applyTransform(clipId, "timing = quant(1/2t)");
+    await applyTransform(clipId, "timing = quant(n/8)");
     starts = extractStartBeats(await readClipNotes(clipId));
 
     expect(starts).toHaveLength(8);
@@ -240,7 +240,7 @@ describe("ppal-clip-transforms (quant)", () => {
     }
   });
 
-  it("works with numeric period (0.5 = 1/2t)", async () => {
+  it("works with numeric period (0.5 beats = n/8 grid)", async () => {
     const clipId = await createMidiClip(70, "C3 1|1 C3 1|1.6");
 
     await applyTransform(clipId, "timing = quant(0.5)");
@@ -257,16 +257,16 @@ describe("ppal-clip-transforms (quant)", () => {
 
 describe("ppal-clip-transforms (legato)", () => {
   it("extends note durations to next note start", async () => {
-    const clipId = await createMidiClip(71, "t/4 C3 1|1 E3 1|2 G3 1|3 C4 1|4");
+    const clipId = await createMidiClip(71, "n/4 C3 1|1 E3 1|2 G3 1|3 C4 1|4");
 
     await applyTransform(clipId, "duration = legato()");
     const notes = await readClipNotes(clipId);
 
     // Each note gets duration=1 (gap between consecutive beats).
-    // t1 is the default duration, so it may be omitted in notation.
-    // The last note (C4 at 1|4) extends to clip end (8 - 3 = 5 beats).
+    // n1 is the default duration, so it may be omitted in notation.
+    // The last note (C4 at 1|4) extends to clip end (8 - 3 = 5 beats = n5/4).
     // Verify the last note's explicit duration
-    expect(notes).toMatch(/t5\b.*C4.*1\|4/);
+    expect(notes).toMatch(/n5\/4\b.*C4.*1\|4/);
 
     // First three notes have duration=1 (default), verify they exist at positions
     expect(notes).toContain("C3");
@@ -275,55 +275,55 @@ describe("ppal-clip-transforms (legato)", () => {
   });
 
   it("extends chord tones to next distinct start time", async () => {
-    const clipId = await createMidiClip(72, "t/4 C3 E3 G3 1|1 C4 1|3");
+    const clipId = await createMidiClip(72, "n/4 C3 E3 G3 1|1 C4 1|3");
 
     await applyTransform(clipId, "duration = legato()");
     const clip = await readClipFull(clipId);
     const notes = clip.notes ?? "";
 
-    // All three chord tones at 1|1 should extend to 1|3 (2 beats)
-    expect(notes).toMatch(/t2\b/);
+    // All three chord tones at 1|1 should extend to 1|3 (2 beats = n/2)
+    expect(notes).toMatch(/n\/2\b/);
     expect(notes).toContain("C3");
     expect(notes).toContain("E3");
     expect(notes).toContain("G3");
   });
 
   it("works with pitch filter", async () => {
-    const clipId = await createMidiClip(74, "t/4 C2 1|1 C3 1|2 C2 1|3 C3 1|4");
+    const clipId = await createMidiClip(74, "n/4 C2 1|1 C3 1|2 C2 1|3 C3 1|4");
 
     // Only apply legato to bass notes (C2)
     await applyTransform(clipId, "C2: duration = legato()");
     const notes = await readClipNotes(clipId);
     const durations = extractDurations(notes);
 
-    // C2 notes should get legato (2 beat gap between 1|1 and 1|3)
-    // C3 notes should keep original 1/4 duration
-    expect(durations).toContain(2); // C2 legato duration
-    expect(durations).toContain(0.25); // C3 unchanged
+    // C2 notes should get legato (2 beat gap between 1|1 and 1|3 = n/2 = 0.5 whole-note)
+    // C3 notes should keep original 1/4 duration (0.25 whole-note)
+    expect(durations).toContain(0.5); // C2 legato duration (half note)
+    expect(durations).toContain(0.25); // C3 unchanged (quarter)
   });
 
   it("extends last note to clip end with clip context", async () => {
-    const clipId = await createMidiClip(75, "t/4 C3 1|1 E3 1|3");
+    const clipId = await createMidiClip(75, "n/4 C3 1|1 E3 1|3");
 
     // Clip is 2:0.0 = 8 beats
     await applyTransform(clipId, "duration = legato()");
     const notes = await readClipNotes(clipId);
 
-    // C3 at 1|1 → extends to 1|3 = 2 beats
-    expect(notes).toMatch(/t2\b.*C3.*1\|1/);
+    // C3 at 1|1 → extends to 1|3 = 2 beats = n/2
+    expect(notes).toMatch(/n\/2\b.*C3.*1\|1/);
 
-    // E3 at 1|3 → extends to end of 2-bar clip = 6 beats (8 - 2)
-    expect(notes).toMatch(/t6\b.*E3.*1\|3/);
+    // E3 at 1|3 → extends to end of 2-bar clip = 6 beats (8 - 2) = n3/2
+    expect(notes).toMatch(/n3\/2\b.*E3.*1\|3/);
   });
 
   it("legato(0) behaves same as legato()", async () => {
-    const clipId = await createMidiClip(76, "t/4 C3 E3 1|1 G3 1|3");
+    const clipId = await createMidiClip(76, "n/4 C3 E3 1|1 G3 1|3");
 
     await applyTransform(clipId, "duration = legato(0)");
     const notes = await readClipNotes(clipId);
 
-    // Both chord tones at 1|1 should extend to 1|3 (2 beats)
-    expect(notes).toMatch(/t2\b/);
+    // Both chord tones at 1|1 should extend to 1|3 (2 beats = n/2)
+    expect(notes).toMatch(/n\/2\b/);
     expect(notes).toContain("C3");
     expect(notes).toContain("E3");
   });

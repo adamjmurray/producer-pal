@@ -20,7 +20,10 @@ import type { ParseOptions } from "../../peggy-parser-types.ts";
 export interface RepeatPattern {
   start: number;
   end: number;
+  /** Step as a fraction of a whole note (null when `@step` is omitted) */
   step: number;
+  /** Meter-aware bar component of the step (present only for `@Nbar` forms) */
+  stepBars?: number;
 }
 
 /** Bar copy destination */
@@ -39,7 +42,9 @@ export interface ASTElement {
   velocity?: number;
   velocityMin?: number;
   velocityMax?: number;
-  duration?: number | string;
+  duration?: number;
+  /** Meter-aware bar component of an inline `Nbar` / `Nbar+nA/B` duration */
+  bars?: number;
   probability?: number;
   pitch?: number;
   bar?: number;

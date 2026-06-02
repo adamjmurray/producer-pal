@@ -16,8 +16,8 @@ import {
   getToolWarnings,
   setupMcpTestContext,
   sleep,
-} from "../mcp-test-helpers.ts";
-import { createClipTransformHelpers } from "./helpers/ppal-clip-transforms-test-helpers.ts";
+} from "../../mcp-test-helpers.ts";
+import { createClipTransformHelpers } from "../helpers/ppal-clip-transforms-test-helpers.ts";
 
 const ctx = setupMcpTestContext();
 const { createMidiClip, createArrangementClip, readClipNotes, applyTransform } =
@@ -52,7 +52,7 @@ describe("ppal-clip-transforms (context variables)", () => {
   });
 
   it("clip.duration uses content length for session clips", async () => {
-    // 2:0.0 = 8 beats in 4/4
+    // helper creates a 2bar clip = 8 beats in 4/4
     const clipId = await createMidiClip(28, "v100 C3 1|1");
 
     await applyTransform(clipId, "velocity = clip.duration * 10");
@@ -62,8 +62,8 @@ describe("ppal-clip-transforms (context variables)", () => {
   });
 
   it("clip.duration uses arrangement length for arrangement clips", async () => {
-    // Create a 3:0.0 (12 beat) arrangement clip with a single note
-    const clipId = await createArrangementClip("1|1", "v100 C3 1|1", "3:0.0");
+    // Create a 3-bar (12 beat) arrangement clip with a single note
+    const clipId = await createArrangementClip("1|1", "v100 C3 1|1", "3bar");
 
     await applyTransform(clipId, "velocity = clip.duration * 10");
     const notes = await readClipNotes(clipId);
@@ -91,7 +91,7 @@ describe("ppal-clip-transforms (context variables)", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: `${clipId1},${clipId2}`,
-        transforms: ["pitch += clip.index * 7"],
+        transforms: "pitch += clip.index * 7",
       },
     });
     await sleep(100);
@@ -131,7 +131,7 @@ describe("ppal-clip-transforms (context variables)", () => {
       name: "ppal-update-clip",
       arguments: {
         ids: `${clipId1},${clipId2}`,
-        transforms: ["velocity = clip.count * 30"],
+        transforms: "velocity = clip.count * 30",
       },
     });
     await sleep(100);

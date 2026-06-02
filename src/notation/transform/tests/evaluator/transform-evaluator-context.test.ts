@@ -201,27 +201,33 @@ describe("Context Variables", () => {
       expect(result.velocity).toStrictEqual({ operator: "set", value: 32 });
     });
 
-    it("skips assignment when clip.position is absent (session clip)", () => {
-      // When clip.position is not in noteProperties,
-      // the evaluator throws and processAssignment skips with a warning
+    it("resolves clip.position to 0 with a warning on a session clip", () => {
+      // Session clips have no arrangement origin: clip.position resolves to 0
+      // (neutral) + warn instead of throwing, so the transform keeps running.
       const result = evaluateTransform(
         "velocity = clip.position",
         createContext(),
         {},
       );
 
-      expect(result).toStrictEqual({});
+      expect(result.velocity).toStrictEqual({ operator: "set", value: 0 });
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining(
+          "clip.position is not available for session clips",
+        ),
+      );
     });
 
-    it("does not affect other assignments when clip.position is absent", () => {
+    it("keeps other assignments running when clip.position is absent", () => {
       const result = evaluateTransform(
         "velocity = clip.position\npitch += 7",
         createContext(),
         {},
       );
 
-      // First assignment skipped, second succeeds
-      expect(result.velocity).toBeUndefined();
+      // First assignment resolves clip.position to 0; second succeeds
+      expect(result.velocity).toStrictEqual({ operator: "set", value: 0 });
       expect(result.pitch).toStrictEqual({ operator: "add", value: 7 });
     });
   });
@@ -304,7 +310,7 @@ describe("Context Variables", () => {
       // With sync: effective = 2 + 6 = 8, phase = (8/4) % 1 = 0, cos(0) = 1
       // Without sync would be: phase = (2/4) % 1 = 0.5, cos(0.5) = -1
       const result = evaluateTransform(
-        "velocity += 100 * cos(4t, sync)",
+        "velocity += 100 * cos(n/1, sync)",
         createContext({ position: 2 }),
         { "clip:position": 6 },
       );
@@ -316,7 +322,7 @@ describe("Context Variables", () => {
       // Effective position = 0 + 4 = 4, period = 4, basePhase = (4/4) % 1 = 0
       // With phase offset 0.25, phase = 0.25, cos(0.25) ≈ 0
       const result = evaluateTransform(
-        "velocity += 100 * cos(4t, 0.25, sync)",
+        "velocity += 100 * cos(n/1, 0.25, sync)",
         createContext(),
         { "clip:position": 4 },
       );
@@ -324,24 +330,34 @@ describe("Context Variables", () => {
       expect(result.velocity!.value).toBeCloseTo(0, 10);
     });
 
-    it("skips assignment when sync used on session clip", () => {
-      const result = evaluateTransform(
-        "velocity += 100 * cos(4t, sync)",
-        createContext(),
+    it("degrades to clip-relative when sync used on session clip", () => {
+      // Session clip (no clip:position): sync has no arrangement origin to
+      // anchor phase, so the wave degrades to clip-relative — identical to
+      // omitting sync — rather than skipping the assignment. Position 2,
+      // period 4 → phase 0.5, cos(0.5) = -1 → -100, proving the LFO applies.
+      const synced = evaluateTransform(
+        "velocity += 100 * cos(n/1, sync)",
+        createContext({ position: 2 }),
+        {},
+      );
+      const unsynced = evaluateTransform(
+        "velocity += 100 * cos(n/1)",
+        createContext({ position: 2 }),
         {},
       );
 
-      expect(result).toStrictEqual({});
+      expect(synced.velocity!.value).toBeCloseTo(-100, 10);
+      expect(synced).toStrictEqual(unsynced);
     });
 
-    it("does not affect other assignments when sync fails", () => {
+    it("applies all assignments when sync degrades on a session clip", () => {
       const result = evaluateTransform(
-        "velocity += 100 * cos(4t, sync)\npitch += 7",
-        createContext(),
+        "velocity += 100 * cos(n/1, sync)\npitch += 7",
+        createContext({ position: 2 }),
         {},
       );
 
-      expect(result.velocity).toBeUndefined();
+      expect(result.velocity!.value).toBeCloseTo(-100, 10);
       expect(result.pitch).toStrictEqual({ operator: "add", value: 7 });
     });
 
@@ -349,7 +365,7 @@ describe("Context Variables", () => {
       // Position 2, period 4 → phase = (2/4) % 1 = 0.5, cos(0.5) = -1
       // clip.position is ignored when sync is not used
       const result = evaluateTransform(
-        "velocity += 100 * cos(4t)",
+        "velocity += 100 * cos(n/1)",
         createContext({ position: 2 }),
         { "clip:position": 8 },
       );
@@ -359,12 +375,12 @@ describe("Context Variables", () => {
 
     it("sync at position 0 with clip.position 0 matches default", () => {
       const synced = evaluateTransform(
-        "velocity += 100 * cos(4t, sync)",
+        "velocity += 100 * cos(n/1, sync)",
         createContext(),
         { "clip:position": 0 },
       );
       const unsynced = evaluateTransform(
-        "velocity += 100 * cos(4t)",
+        "velocity += 100 * cos(n/1)",
         createContext(),
         { "clip:position": 0 },
       );
@@ -376,7 +392,7 @@ describe("Context Variables", () => {
       // Effective position = 0 + 2 = 2, period = 4, phase = 0.5
       // tri(0.5) = 0.0
       const result = evaluateTransform(
-        "velocity += 100 * tri(4t, sync)",
+        "velocity += 100 * tri(n/1, sync)",
         createContext(),
         { "clip:position": 2 },
       );
@@ -401,7 +417,7 @@ describe("Context Variables", () => {
       // Note 1: pos=1, effective=5, phase=(5/4)%1=0.25, cos(0.25)≈0 → ≈100
       applyTransforms(
         notes,
-        "velocity += 50 * cos(4t, sync)",
+        "velocity += 50 * cos(n/1, sync)",
         4,
         4,
         clipContext,
@@ -409,6 +425,47 @@ describe("Context Variables", () => {
 
       expect(notes[0]!.velocity).toBe(127);
       expect(notes[1]!.velocity).toBeCloseTo(100, 0);
+    });
+  });
+
+  describe("note-value period is meter-invariant", () => {
+    // `n/4` = a quarter-note cycle. At a fixed absolute time, a synced LFO
+    // must produce the same value in any meter — the period scales with the
+    // beat unit. Position is given in each meter's musical beats.
+    it.each([
+      { num: 4, den: 4, beats: 1 }, // 1 quarter = 1 beat
+      { num: 6, den: 8, beats: 2 }, // 1 quarter = 2 eighth-note beats
+      { num: 5, den: 4, beats: 1 }, // 1 quarter = 1 beat
+    ])("cos(n/4, sync) peaks one quarter note in ($num/$den)", (tc) => {
+      const result = evaluateTransform(
+        "velocity += 100 * cos(n/4, sync)",
+        createContext({
+          position: tc.beats,
+          numerator: tc.num,
+          denominator: tc.den,
+        }),
+        { "clip:position": 0 },
+      );
+
+      expect(result.velocity!.value).toBeCloseTo(100, 10);
+    });
+
+    it.each([
+      { num: 4, den: 4, beats: 0.5 }, // half a quarter = 0.5 beat
+      { num: 6, den: 8, beats: 1 }, // half a quarter = 1 eighth-note beat
+      { num: 5, den: 4, beats: 0.5 }, // half a quarter = 0.5 beat
+    ])("cos(n/4, sync) troughs half a quarter note in ($num/$den)", (tc) => {
+      const result = evaluateTransform(
+        "velocity += 100 * cos(n/4, sync)",
+        createContext({
+          position: tc.beats,
+          numerator: tc.num,
+          denominator: tc.den,
+        }),
+        { "clip:position": 0 },
+      );
+
+      expect(result.velocity!.value).toBeCloseTo(-100, 10);
     });
   });
 

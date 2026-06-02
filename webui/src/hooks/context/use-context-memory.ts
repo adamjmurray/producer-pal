@@ -3,8 +3,11 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { getConfigUrl } from "#webui/utils/mcp-url";
+
+/** How often to re-read memory while the editor is open and the window is focused. */
+const POLL_INTERVAL_MS = 5000;
 
 /** Status of the project context memory body. */
 export type ContextMemoryStatus =
@@ -45,23 +48,43 @@ export function useContextMemory(): UseContextMemoryReturn {
   });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Coordinate refresh() reads against in-flight save() writes. A focus/poll
+  // GET can read content older than a concurrent save's POST and, if it
+  // resolves last, clobber the save's echo with pre-save content. saveCountRef
+  // counts currently-running saves; saveGenRef counts saves ever started. A
+  // refresh trusts its result only if no save overlapped its GET round-trip.
+  const saveCountRef = useRef(0);
+  const saveGenRef = useRef(0);
 
   const applyConfig = useCallback((config: ConfigResponse): void => {
     setStatus({ kind: "ready", content: config.memoryContent ?? "" });
   }, []);
 
   const refresh = useCallback(async (): Promise<void> => {
+    const saveInFlightAtStart = saveCountRef.current;
+    const saveGenAtStart = saveGenRef.current;
+    // The GET's result is only authoritative if no save overlapped its
+    // round-trip; otherwise the save's echo wins (see saveCountRef comment).
+    const supersededBySave = (): boolean =>
+      saveInFlightAtStart > 0 || saveGenRef.current !== saveGenAtStart;
+
     try {
       const config = await fetchConfig();
 
+      if (supersededBySave()) return;
+
       applyConfig(config);
     } catch (error: unknown) {
+      if (supersededBySave()) return;
+
       setStatus({ kind: "error", message: errorMessage(error) });
     }
   }, [applyConfig]);
 
   const save = useCallback(
     async (content: string): Promise<boolean> => {
+      saveCountRef.current++;
+      saveGenRef.current++;
       setSaveStatus("saving");
       setSaveError(null);
 
@@ -79,6 +102,8 @@ export function useContextMemory(): UseContextMemoryReturn {
         setSaveStatus("error");
 
         return false;
+      } finally {
+        saveCountRef.current--;
       }
     },
     [applyConfig],
@@ -104,6 +129,24 @@ export function useContextMemory(): UseContextMemoryReturn {
 
     return () => {
       window.removeEventListener("focus", handleFocus);
+    };
+  }, [refresh]);
+
+  // Poll while the editor is open and the window is focused so external writes
+  // (ppal-context tool, Max device textedit) surface within a few seconds
+  // without a manual refocus/reload. Focus-gated to avoid idle background
+  // traffic — the focus listener above catches the user up immediately on
+  // return, so the poll only needs to cover the already-focused case. refresh()
+  // defers to in-flight saves, so a tick mid-save can't clobber the echo. The
+  // hook lives only while ContextScreen is mounted, so cleanup ends polling
+  // when the editor closes.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.hasFocus()) void refresh();
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      clearInterval(id);
     };
   }, [refresh]);
 

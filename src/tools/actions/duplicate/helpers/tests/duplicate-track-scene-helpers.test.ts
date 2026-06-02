@@ -624,7 +624,7 @@ describe("duplicate-track-scene-helpers", () => {
         clipLength: 4,
         liveSetExtra: {},
         sceneName: undefined as string | undefined,
-        arrangementLength: "2:0" as string | undefined,
+        arrangementLength: "2bar" as string | undefined,
         expectedStart: expect.any(String) as string,
       },
       {

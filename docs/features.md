@@ -294,7 +294,14 @@ positions in Ableton Live clips and the arrangement timeline.
 
 - **Pitches**: Standard notation (C3 = middle C, F#4, Bb2, etc.)
 - **Time positions**: bar|beat format (1|1 = first beat, 2|3 = bar 2, beat 3)
-- **Durations**: bar:beat format (4:0 = 4 bars, 1:2 = 1 bar + 2 beats)
+- **Durations**: absolute note values (n/4 = quarter note, n/8 = eighth, n/12 =
+  eighth triplet); clip length can also use bars (4bar = 4 bars, 1bar+n/4)
+- **Time units**: a plain "beat" is your meter's beat (a quarter in 4/4, an
+  eighth in 6/8), while note values (`n/4`, `±n` offsets, durations) are
+  absolute — a quarter is a quarter in any meter. `arrangementStart` and
+  `arrangementLength` are read in the song's time signature; a clip's own
+  `start`/`length` use the clip's time signature, so when they differ the same
+  bar|beat literal means different absolute times.
 - **Velocity**: Values from 1-127 (or ranges like 80-100)
 - **Probability**: 0.0 to 1.0 (1.0 = always plays)
 - **Bar copying**: Copy bars with `@2=1` (bar 1→2), ranges with `@2-8=1` (bar
@@ -306,7 +313,8 @@ positions in Ableton Live clips and the arrangement timeline.
 Apply complex changes to clips using math expressions via
 [Create Clip](#ppal-create-clip), [Update Clip](#ppal-update-clip), and
 [Duplicate](#ppal-duplicate). When updating or duplicating multiple clips at
-once, each clip or copy can get its own transform:
+once, one transform string broadcasts across every clip/copy — use `clip.index`
+arithmetic or `clipseq()` inside the string for per-clip variation:
 
 - **Transform MIDI notes**: velocity, pitch, timing, duration, probability
 - **Transform audio clips**: gain, pitch shift

@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import preact from "@preact/preset-vite";
@@ -54,10 +55,18 @@ export default defineConfig({
           const licenseHeader = `<!--
 ${licenseText}
 This file includes bundled dependencies:
-- Preact (MIT License)
-- Marked (MIT License)
-- Tailwind CSS (MIT License)
-- @modelcontextprotocol/sdk (MIT License)
+- Preact (MIT)
+- Marked (MIT)
+- DOMPurify (Apache-2.0 OR MPL-2.0)
+- idb (ISC)
+- Tailwind CSS, incl. @tailwindcss/typography (MIT)
+- Vercel AI SDK: ai, @ai-sdk/{anthropic,google,mistral,openai,provider-utils} (Apache-2.0)
+- @openrouter/ai-sdk-provider (Apache-2.0)
+- @openai/agents (MIT)
+- @google/genai (Apache-2.0)
+- CodeMirror 6: @codemirror/{state,view,commands,language,lang-markdown} (MIT)
+- @lezer/highlight (MIT)
+- @modelcontextprotocol/sdk (MIT)
 
 See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-party licenses.
 -->

@@ -9,9 +9,11 @@
  * Uses: e2e-test-set - t8 is empty MIDI track
  * See: e2e/live-sets/e2e-test-set-spec.md
  *
- * Prerequisite: Build with `npm run build:all` (sets ENABLE_CODE_EXEC=true)
+ * Prerequisite: Build with `npm run build:debug` (sets ENABLE_CODE_EXEC=true).
+ * These tests are skipped unless ENABLE_CODE_EXEC=true is also set when running
+ * the e2e suite, since they require a code-exec-enabled build.
  *
- * Run with: npm run e2e:mcp
+ * Run with: ENABLE_CODE_EXEC=true npm run e2e:mcp
  */
 import { describe, expect, it } from "vitest";
 import { MAX_CODE_LENGTH } from "#src/tools/constants.ts";
@@ -30,283 +32,290 @@ import {
 const ctx = setupMcpTestContext();
 const emptyMidiTrack = 8;
 
-describe("ppal-code-exec", () => {
-  it("creates clip with code-generated notes and verifies defaults", async () => {
-    // Create clip with code returning 3 notes (2nd and 3rd omit duration/velocity)
-    const createResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${emptyMidiTrack}/0`,
-        code: "return [{pitch: 60, start: 0, duration: 0.5, velocity: 110}, {pitch: 64, start: 1}, {pitch: 67, start: 2}]",
-      },
-    });
-    const clip = parseToolResult<CreateClipResult>(createResult);
-
-    expect(clip.id).toBeDefined();
-    expect(getToolWarnings(createResult)).toHaveLength(0);
-
-    await sleep(100);
-
-    const readResult = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const readClip = parseToolResult<ReadClipResult>(readResult);
-
-    expect(readClip.notes).toBeDefined();
-    expect(readClip.notes).toContain("C3");
-    expect(readClip.notes).toContain("E3");
-    expect(readClip.notes).toContain("G3");
-  });
-
-  it("transforms, filters, and clears notes via update-clip code", async () => {
-    // Setup: Create a clip with 3 notes
-    const createResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${emptyMidiTrack}/1`,
-        notes: "C3 D3 E3 1|1",
-        length: "2:0.0",
-      },
-    });
-    const clip = parseToolResult<CreateClipResult>(createResult);
-
-    await sleep(100);
-
-    // Verify initial state
-    const initialRead = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const initialClip = parseToolResult<ReadClipResult>(initialRead);
-
-    expect(initialClip.notes).toContain("C3");
-
-    // Filter: remove notes with pitch < 62 (keeps D3=62 and E3=64, removes C3=60)
-    const filterResult = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: clip.id,
-        code: ["return notes.filter(n => n.pitch >= 62)"],
-      },
-    });
-
-    expect(getToolWarnings(filterResult)).toHaveLength(0);
-
-    await sleep(100);
-
-    const afterFilter = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const filteredClip = parseToolResult<ReadClipResult>(afterFilter);
-
-    expect(filteredClip.notes).toContain("D3");
-    expect(filteredClip.notes).toContain("E3");
-    expect(filteredClip.notes).not.toContain("C3");
-
-    // Transform: set all velocities to 127
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: clip.id,
-        code: ["return notes.map(n => ({...n, velocity: 127}))"],
-      },
-    });
-
-    await sleep(100);
-
-    const afterTransform = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const transformedClip = parseToolResult<ReadClipResult>(afterTransform);
-
-    expect(transformedClip.notes).toContain("v127");
-
-    // Clear: return empty array to delete all notes
-    await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: clip.id,
-        code: ["return []"],
-      },
-    });
-
-    await sleep(100);
-
-    const afterClear = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clip.id, include: ["notes"] },
-    });
-    const clearedClip = parseToolResult<ReadClipResult>(afterClear);
-
-    // After clearing, notes should be empty (no notes to format)
-    expect(clearedClip.notes).toBeUndefined();
-  });
-
-  it("handles code errors gracefully: syntax, exceptions, and bad return types", async () => {
-    const codeErrorCases = [
-      {
-        label: "syntax error",
-        code: "return [{pitch: 60, start: 0}",
-        slot: `${emptyMidiTrack}/2`,
-      },
-      {
-        label: "thrown exception",
-        code: 'throw new Error("test error")',
-        slot: `${emptyMidiTrack}/3`,
-      },
-      {
-        label: "no return (undefined)",
-        code: "const x = 1;",
-        slot: `${emptyMidiTrack}/4`,
-      },
-      {
-        label: "return null",
-        code: "return null",
-        slot: `${emptyMidiTrack}/5`,
-      },
-      {
-        label: "return primitive",
-        code: "return 42",
-        slot: `${emptyMidiTrack}/6`,
-      },
-      {
-        label: "return object (not array)",
-        code: "return {pitch: 60, start: 0}",
-        slot: `${emptyMidiTrack}/7`,
-      },
-    ];
-
-    for (const { label, code, slot } of codeErrorCases) {
+// Skip unless built and run with ENABLE_CODE_EXEC=true (requires a code-exec-enabled build).
+describe.skipIf(process.env.ENABLE_CODE_EXEC !== "true")(
+  "ppal-code-exec",
+  () => {
+    it("creates clip with code-generated notes and verifies defaults", async () => {
+      // Create clip with code returning 3 notes (2nd and 3rd omit duration/velocity)
       const createResult = await ctx.client!.callTool({
         name: "ppal-create-clip",
         arguments: {
-          slot,
-          code,
+          slot: `${emptyMidiTrack}/0`,
+          code: "return [{pitch: 60, start: 0, duration: 0.5, velocity: 110}, {pitch: 64, start: 1}, {pitch: 67, start: 2}]",
         },
       });
+      const clip = parseToolResult<CreateClipResult>(createResult);
 
-      // Clip should still be created despite code failure
-      const { data: clip, warnings } =
-        parseToolResultWithWarnings<CreateClipResult>(createResult);
+      expect(clip.id).toBeDefined();
+      expect(getToolWarnings(createResult)).toHaveLength(0);
 
-      expect(clip.id, `${label}: clip should have id`).toBeDefined();
-      expect(
-        warnings.some((w) => w.includes("Code execution failed")),
-        `${label}: should warn about code failure, got: ${JSON.stringify(warnings)}`,
-      ).toBe(true);
+      await sleep(100);
 
-      await sleep(50);
-
-      // Clip should have 0 notes (code failed, no notes applied)
       const readResult = await ctx.client!.callTool({
         name: "ppal-read-clip",
         arguments: { clipId: clip.id, include: ["notes"] },
       });
       const readClip = parseToolResult<ReadClipResult>(readResult);
 
-      expect(readClip.notes, `${label}: should have no notes`).toBeUndefined();
-    }
-  });
-
-  it("rejects code exceeding MAX_CODE_LENGTH", async () => {
-    const tooLongCode = "x".repeat(MAX_CODE_LENGTH + 1);
-
-    const createResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${emptyMidiTrack}/10`,
-        code: tooLongCode,
-      },
+      expect(readClip.notes).toBeDefined();
+      expect(readClip.notes).toContain("C3");
+      expect(readClip.notes).toContain("E3");
+      expect(readClip.notes).toContain("G3");
     });
 
-    expect(isToolError(createResult)).toBe(true);
-    expect(getToolErrorMessage(createResult)).toContain(
-      String(MAX_CODE_LENGTH),
-    );
+    it("transforms, filters, and clears notes via update-clip code", async () => {
+      // Setup: Create a clip with 3 notes
+      const createResult = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          slot: `${emptyMidiTrack}/1`,
+          notes: "C3 D3 E3 1|1",
+          length: "2bar",
+        },
+      });
+      const clip = parseToolResult<CreateClipResult>(createResult);
 
-    const updateResult = await ctx.client!.callTool({
-      name: "ppal-update-clip",
-      arguments: {
-        ids: "1",
-        code: [tooLongCode],
-      },
+      await sleep(100);
+
+      // Verify initial state
+      const initialRead = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { clipId: clip.id, include: ["notes"] },
+      });
+      const initialClip = parseToolResult<ReadClipResult>(initialRead);
+
+      expect(initialClip.notes).toContain("C3");
+
+      // Filter: remove notes with pitch < 62 (keeps D3=62 and E3=64, removes C3=60)
+      const filterResult = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          ids: clip.id,
+          code: "return notes.filter(n => n.pitch >= 62)",
+        },
+      });
+
+      expect(getToolWarnings(filterResult)).toHaveLength(0);
+
+      await sleep(100);
+
+      const afterFilter = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { clipId: clip.id, include: ["notes"] },
+      });
+      const filteredClip = parseToolResult<ReadClipResult>(afterFilter);
+
+      expect(filteredClip.notes).toContain("D3");
+      expect(filteredClip.notes).toContain("E3");
+      expect(filteredClip.notes).not.toContain("C3");
+
+      // Transform: set all velocities to 127
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          ids: clip.id,
+          code: "return notes.map(n => ({...n, velocity: 127}))",
+        },
+      });
+
+      await sleep(100);
+
+      const afterTransform = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { clipId: clip.id, include: ["notes"] },
+      });
+      const transformedClip = parseToolResult<ReadClipResult>(afterTransform);
+
+      expect(transformedClip.notes).toContain("v127");
+
+      // Clear: return empty array to delete all notes
+      await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          ids: clip.id,
+          code: "return []",
+        },
+      });
+
+      await sleep(100);
+
+      const afterClear = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { clipId: clip.id, include: ["notes"] },
+      });
+      const clearedClip = parseToolResult<ReadClipResult>(afterClear);
+
+      // After clearing, notes should be empty (no notes to format)
+      expect(clearedClip.notes).toBeUndefined();
     });
 
-    expect(isToolError(updateResult)).toBe(true);
-    expect(getToolErrorMessage(updateResult)).toContain(
-      String(MAX_CODE_LENGTH),
-    );
-  });
+    it("handles code errors gracefully: syntax, exceptions, and bad return types", async () => {
+      const codeErrorCases = [
+        {
+          label: "syntax error",
+          code: "return [{pitch: 60, start: 0}",
+          slot: `${emptyMidiTrack}/2`,
+        },
+        {
+          label: "thrown exception",
+          code: 'throw new Error("test error")',
+          slot: `${emptyMidiTrack}/3`,
+        },
+        {
+          label: "no return (undefined)",
+          code: "const x = 1;",
+          slot: `${emptyMidiTrack}/4`,
+        },
+        {
+          label: "return null",
+          code: "return null",
+          slot: `${emptyMidiTrack}/5`,
+        },
+        {
+          label: "return primitive",
+          code: "return 42",
+          slot: `${emptyMidiTrack}/6`,
+        },
+        {
+          label: "return object (not array)",
+          code: "return {pitch: 60, start: 0}",
+          slot: `${emptyMidiTrack}/7`,
+        },
+      ];
 
-  it("filters malformed notes and clamps values to valid ranges", async () => {
-    // Sub-test 1: Mixed valid and invalid notes — invalid ones silently filtered
-    const mixedResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${emptyMidiTrack}/8`,
-        code: [
-          "return [",
-          "  {pitch: 60, start: 0, duration: 1, velocity: 100},",
-          "  {start: 1},",
-          "  {pitch: 64},",
-          "  {pitch: 67, start: 2, duration: 0},",
-          "  {pitch: 'C3', start: 3},",
-          "  null,",
-          "  {pitch: 72, start: 3, duration: 1, velocity: 100}",
-          "]",
-        ].join("\n"),
-      },
+      for (const { label, code, slot } of codeErrorCases) {
+        const createResult = await ctx.client!.callTool({
+          name: "ppal-create-clip",
+          arguments: {
+            slot,
+            code,
+          },
+        });
+
+        // Clip should still be created despite code failure
+        const { data: clip, warnings } =
+          parseToolResultWithWarnings<CreateClipResult>(createResult);
+
+        expect(clip.id, `${label}: clip should have id`).toBeDefined();
+        expect(
+          warnings.some((w) => w.includes("Code execution failed")),
+          `${label}: should warn about code failure, got: ${JSON.stringify(warnings)}`,
+        ).toBe(true);
+
+        await sleep(50);
+
+        // Clip should have 0 notes (code failed, no notes applied)
+        const readResult = await ctx.client!.callTool({
+          name: "ppal-read-clip",
+          arguments: { clipId: clip.id, include: ["notes"] },
+        });
+        const readClip = parseToolResult<ReadClipResult>(readResult);
+
+        expect(
+          readClip.notes,
+          `${label}: should have no notes`,
+        ).toBeUndefined();
+      }
     });
-    const mixedClip = parseToolResult<CreateClipResult>(mixedResult);
 
-    // No warnings — filtering is silent, not a code execution failure
-    expect(getToolWarnings(mixedResult)).toHaveLength(0);
+    it("rejects code exceeding MAX_CODE_LENGTH", async () => {
+      const tooLongCode = "x".repeat(MAX_CODE_LENGTH + 1);
 
-    await sleep(100);
+      const createResult = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          slot: `${emptyMidiTrack}/10`,
+          code: tooLongCode,
+        },
+      });
 
-    const readMixed = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: mixedClip.id, include: ["notes"] },
+      expect(isToolError(createResult)).toBe(true);
+      expect(getToolErrorMessage(createResult)).toContain(
+        String(MAX_CODE_LENGTH),
+      );
+
+      const updateResult = await ctx.client!.callTool({
+        name: "ppal-update-clip",
+        arguments: {
+          ids: "1",
+          code: tooLongCode,
+        },
+      });
+
+      expect(isToolError(updateResult)).toBe(true);
+      expect(getToolErrorMessage(updateResult)).toContain(
+        String(MAX_CODE_LENGTH),
+      );
     });
-    const mixed = parseToolResult<ReadClipResult>(readMixed);
 
-    // Only the 2 valid notes should survive (pitch 60 and pitch 72)
-    expect(mixed.notes).toContain("C3");
-    expect(mixed.notes).toContain("C4");
+    it("filters malformed notes and clamps values to valid ranges", async () => {
+      // Sub-test 1: Mixed valid and invalid notes — invalid ones silently filtered
+      const mixedResult = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          slot: `${emptyMidiTrack}/8`,
+          code: [
+            "return [",
+            "  {pitch: 60, start: 0, duration: 1, velocity: 100},",
+            "  {start: 1},",
+            "  {pitch: 64},",
+            "  {pitch: 67, start: 2, duration: 0},",
+            "  {pitch: 'C3', start: 3},",
+            "  null,",
+            "  {pitch: 72, start: 3, duration: 1, velocity: 100}",
+            "]",
+          ].join("\n"),
+        },
+      });
+      const mixedClip = parseToolResult<CreateClipResult>(mixedResult);
 
-    // Sub-test 2: Value clamping
-    const clampResult = await ctx.client!.callTool({
-      name: "ppal-create-clip",
-      arguments: {
-        slot: `${emptyMidiTrack}/9`,
-        code: [
-          "return [",
-          "  {pitch: -10, start: 0, duration: 1, velocity: 100},",
-          "  {pitch: 200, start: 1, duration: 1, velocity: 100},",
-          "  {pitch: 60, start: 2, duration: 1, velocity: 0},",
-          "  {pitch: 60, start: 3, duration: 1, velocity: 200}",
-          "]",
-        ].join("\n"),
-      },
+      // No warnings — filtering is silent, not a code execution failure
+      expect(getToolWarnings(mixedResult)).toHaveLength(0);
+
+      await sleep(100);
+
+      const readMixed = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { clipId: mixedClip.id, include: ["notes"] },
+      });
+      const mixed = parseToolResult<ReadClipResult>(readMixed);
+
+      // Only the 2 valid notes should survive (pitch 60 and pitch 72)
+      expect(mixed.notes).toContain("C3");
+      expect(mixed.notes).toContain("C4");
+
+      // Sub-test 2: Value clamping
+      const clampResult = await ctx.client!.callTool({
+        name: "ppal-create-clip",
+        arguments: {
+          slot: `${emptyMidiTrack}/9`,
+          code: [
+            "return [",
+            "  {pitch: -10, start: 0, duration: 1, velocity: 100},",
+            "  {pitch: 200, start: 1, duration: 1, velocity: 100},",
+            "  {pitch: 60, start: 2, duration: 1, velocity: 0},",
+            "  {pitch: 60, start: 3, duration: 1, velocity: 200}",
+            "]",
+          ].join("\n"),
+        },
+      });
+      const clampClip = parseToolResult<CreateClipResult>(clampResult);
+
+      await sleep(100);
+
+      const readClamped = await ctx.client!.callTool({
+        name: "ppal-read-clip",
+        arguments: { clipId: clampClip.id, include: ["notes"] },
+      });
+      const clamped = parseToolResult<ReadClipResult>(readClamped);
+
+      // Pitch -10 → 0 = C-2, Pitch 200 → 127 = G8
+      expect(clamped.notes).toContain("C-2");
+      expect(clamped.notes).toContain("G8");
+      // Velocity 0 → 1, Velocity 200 → 127
+      expect(clamped.notes).toContain("v1");
+      expect(clamped.notes).toContain("v127");
     });
-    const clampClip = parseToolResult<CreateClipResult>(clampResult);
-
-    await sleep(100);
-
-    const readClamped = await ctx.client!.callTool({
-      name: "ppal-read-clip",
-      arguments: { clipId: clampClip.id, include: ["notes"] },
-    });
-    const clamped = parseToolResult<ReadClipResult>(readClamped);
-
-    // Pitch -10 → 0 = C-2, Pitch 200 → 127 = G8
-    expect(clamped.notes).toContain("C-2");
-    expect(clamped.notes).toContain("G8");
-    // Velocity 0 → 1, Velocity 200 → 127
-    expect(clamped.notes).toContain("v1");
-    expect(clamped.notes).toContain("v127");
-  });
-});
+  },
+);

@@ -1,8 +1,10 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { barBeatToBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
+import { barBeatToMusicalBeats } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { errorMessage } from "#src/shared/error-utils.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import {
@@ -48,6 +50,7 @@ export interface ClipContext {
   clipCount: number; // total clips in operation
   arrangementStart?: number; // musical beats; undefined for session clips
   barDuration: number; // musical beats per bar (timeSigNumerator)
+  timeSigDenominator?: number; // meter denominator; resolves n<frac> waveform periods in the audio path (defaults to 4)
   scalePitchClassMask?: number; // bitmask of in-scale pitch classes (bit N = pitch class N)
 }
 
@@ -184,7 +187,6 @@ function processAssignment(
       bar,
       beat,
       numerator,
-      denominator,
       clipTimeRange,
       position,
     );
@@ -217,8 +219,7 @@ function processAssignment(
  * @param assignment - Transform assignment
  * @param bar - Note bar number (optional)
  * @param beat - Note beat number (optional)
- * @param numerator - Time signature numerator
- * @param denominator - Time signature denominator
+ * @param numerator - Time signature numerator (musical beats per bar)
  * @param clipTimeRange - Clip time range (optional)
  * @param position - Note position in beats
  * @returns Time range result or skip indicator
@@ -228,29 +229,49 @@ export function calculateActiveTimeRange(
   bar: number | undefined,
   beat: number | undefined,
   numerator: number,
-  denominator: number,
   clipTimeRange: TimeRange | undefined,
   position: number,
 ): TimeRangeResult {
-  if (assignment.timeRange && bar != null && beat != null) {
+  if (assignment.timeRange) {
     const { startBar, startBeat, endBar, endBeat } = assignment.timeRange;
 
-    // Check if note is within the time range
-    const afterStart =
-      bar > startBar || (bar === startBar && beat >= startBeat);
-    const beforeEnd = bar < endBar || (bar === endBar && beat <= endBeat);
-
-    if (!(afterStart && beforeEnd)) {
-      return { skip: true }; // Skip this assignment - note outside time range
-    }
-
-    // Convert assignment timeRange to musical beats
-    const musicalBeatsPerBar = numerator * (4 / denominator);
-    const startBeats = barBeatToBeats(
+    // Normalize the note's bar|beat AND both range bounds to absolute musical
+    // beats through the same conversion, then compare numerically. A bound's beat
+    // field is not clamped to the bar — a `+n` offset can push it past the bar
+    // (e.g. `1|4+n/2` → beat 6 in 4/4) and a `-n` offset can borrow below beat 1
+    // — so deciding membership by a raw per-component bar/beat compare would
+    // disagree with this absolute-beats normalization (the one handed to
+    // ramp/curve). Comparing in those same absolute beats keeps the membership
+    // gate and the normalization in lockstep, and subsumes the cross-bar case.
+    // Musical beats per bar = the numerator (each beat is a denominator note).
+    const musicalBeatsPerBar = numerator;
+    // Note's absolute musical beats. Prefer the bar|beat fields when present
+    // (production always supplies them via buildNoteContext); otherwise fall back
+    // to `position` — the same value — so a caller that provides only `position`
+    // (e.g. the exported evaluateTransform()) still gets selectors enforced
+    // instead of silently matching the whole clip.
+    const noteBeats =
+      bar != null && beat != null
+        ? barBeatToMusicalBeats(`${bar}|${beat}`, musicalBeatsPerBar)
+        : position;
+    const startBeats = barBeatToMusicalBeats(
       `${startBar}|${startBeat}`,
       musicalBeatsPerBar,
     );
-    const endBeats = barBeatToBeats(`${endBar}|${endBeat}`, musicalBeatsPerBar);
+    const endBeats = barBeatToMusicalBeats(
+      `${endBar}|${endBeat}`,
+      musicalBeatsPerBar,
+    );
+
+    // End bound is inclusive by default; half-open (`N|*` whole-bar selectors
+    // and the `-<` marker) drops a note that lands exactly on the end downbeat.
+    const pastEnd = assignment.timeRange.endExclusive
+      ? noteBeats >= endBeats
+      : noteBeats > endBeats;
+
+    if (noteBeats < startBeats || pastEnd) {
+      return { skip: true }; // Skip this assignment - note outside time range
+    }
 
     return { timeRange: { start: startBeats, end: endBeats } };
   }
@@ -346,6 +367,20 @@ export function evaluateExpression(
     return node;
   }
 
+  // Absolute duration (n/4, n/8, etc.) — resolves to musical beats based on meter
+  if (node.type === "nDuration") {
+    return wholeNoteFractionToMusicalBeats(
+      node.wholeNoteFraction,
+      timeSigDenominator,
+    );
+  }
+
+  // Bar duration (Nbar) — N bars in musical beats (beats-per-bar = numerator),
+  // identical to N * clip.barDuration
+  if (node.type === "barDuration") {
+    return node.bars * timeSigNumerator;
+  }
+
   // Variable lookup
   if (node.type === "variable") {
     // Audio variables cannot be used in MIDI note context
@@ -360,6 +395,17 @@ export function evaluateExpression(
       node.namespace === "note" ? node.name : `${node.namespace}:${node.name}`;
 
     if (noteProperties[lookupKey] == null) {
+      // clip.position on a session clip: no arrangement origin. Fall back to 0
+      // (neutral) + warn instead of failing the transform — mirrors the audio
+      // evaluator so the condition is recoverable on both note and audio paths.
+      if (node.namespace === "clip" && node.name === "position") {
+        console.warn(
+          `clip.position is not available for session clips; using 0`,
+        );
+
+        return 0;
+      }
+
       throw new Error(
         `Variable "${node.namespace}.${node.name}" is not available in this context`,
       );

@@ -4,7 +4,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
-import { parseBeatsPerBar } from "../../time/barbeat-time.ts";
+import {
+  parseBeatsPerBar,
+  splitMusicalBeatsToBarBeat,
+} from "../../time/barbeat-time.ts";
 
 /** A group of notes occurring at the same bar|beat position */
 export interface TimeGroup {
@@ -66,16 +69,19 @@ export function calculateBarBeat(
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
 ): { bar: number; beat: number } {
-  let adjustedTime = Math.round(startTime * 1000) / 1000;
+  // Clean Live-API float noise (e.g. 3.9999999996 → 4) without flattening
+  // genuine tuplet positions: round to 1e-9, not 1e-3. A 1e-3 round would push
+  // 1/3 to 0.333, losing the exact note-value offset the serializer now emits.
+  let adjustedTime = Math.round(startTime * 1e9) / 1e9;
 
   if (timeSigDenominator != null) {
     adjustedTime = adjustedTime * (timeSigDenominator / 4);
   }
 
-  const bar = Math.floor(adjustedTime / beatsPerBar) + 1;
-  const beat = (adjustedTime % beatsPerBar) + 1;
-
-  return { bar, beat };
+  // Delegate the bar/beat split (incl. the bar-floor-at-1 rule that keeps a
+  // negative position in bar 1 rather than bar 0) to the shared helper, so this
+  // stays in lockstep with musicalBeatsToBarBeat's serialization.
+  return splitMusicalBeatsToBarBeat(adjustedTime, beatsPerBar);
 }
 
 /**

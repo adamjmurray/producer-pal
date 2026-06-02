@@ -206,11 +206,59 @@ describe("Transform Parser", () => {
       });
     });
 
-    it("parses range with mixed numbers", () => {
-      const result = parser.parse("1|1+1/2-2|1+3/4: velocity += 10");
+    it("parses +n note-value offset bounds", () => {
+      const result = parser.parse("1|1+n/12-2|2-n/24: velocity += 10");
 
-      expect(result[0]!.timeRange!.startBeat).toBeCloseTo(1.5);
-      expect(result[0]!.timeRange!.endBeat).toBeCloseTo(1.75);
+      // 4/4 default: n/12 = 1/3 beat, n/24 = 1/6 beat
+      expect(result[0]!.timeRange!.startBeat).toBeCloseTo(1.3333);
+      expect(result[0]!.timeRange!.endBeat).toBeCloseTo(1.8333);
+    });
+
+    it("resolves n offsets meter-relative to timeSigDenominator", () => {
+      // n/12 = 1/12 whole note → 1/3 beat in 4/4, 2/3 beat in 6/8.
+      const in44 = parser.parse("1|1+n/12-2|1: velocity += 10", {
+        timeSigDenominator: 4,
+      });
+      const in68 = parser.parse("1|1+n/12-2|1: velocity += 10", {
+        timeSigDenominator: 8,
+      });
+
+      expect(in44[0]!.timeRange!.startBeat).toBeCloseTo(1.3333);
+      expect(in68[0]!.timeRange!.startBeat).toBeCloseTo(1.6667);
+    });
+
+    it("rejects bare fractions in a range bound", () => {
+      expect(() => parser.parse("1|4/3-2|1: velocity += 10")).toThrow(
+        /bare fraction/,
+      );
+    });
+
+    it("rejects mixed numbers in a range bound", () => {
+      expect(() => parser.parse("1|1+1/3-2|1: velocity += 10")).toThrow(
+        /note-value form/,
+      );
+    });
+
+    it("borrows across the bar line for a -n bound before the downbeat", () => {
+      // `2|1-n/12` start bound = just before the bar-2 downbeat → bar 1, beat 4⅔
+      // in 4/4. The separator `-` before `3|1` is not consumed as an offset.
+      const result = parser.parse("2|1-n/12-3|1: velocity += 10");
+
+      expect(result[0]!.timeRange!.startBar).toBe(1);
+      expect(result[0]!.timeRange!.startBeat).toBeCloseTo(4.6667);
+      expect(result[0]!.timeRange!.endBar).toBe(3);
+      expect(result[0]!.timeRange!.endBeat).toBe(1);
+    });
+
+    it("resolves a -n bound before 1|1 to a pre-clip-start position (no throw)", () => {
+      // `1|1-n/2` = bar 1 minus a half note → bar 0, beat 3 (negative time when
+      // resolved). Allowed, not rejected.
+      const result = parser.parse("1|1-n/2-2|1: velocity += 10");
+
+      expect(result[0]!.timeRange!.startBar).toBe(0);
+      expect(result[0]!.timeRange!.startBeat).toBe(3);
+      expect(result[0]!.timeRange!.endBar).toBe(2);
+      expect(result[0]!.timeRange!.endBeat).toBe(1);
     });
   });
 
@@ -346,12 +394,12 @@ describe("Transform Parser", () => {
     });
 
     it("throws on invalid function name", () => {
-      expect(() => parser.parse("velocity += invalid(1t)")).toThrow();
+      expect(() => parser.parse("velocity += invalid(1)")).toThrow();
     });
 
     it("accepts plain number as function argument", () => {
       // Plain numbers are valid (e.g., for phase or pulseWidth)
-      const result = parser.parse("velocity += cos(1t, 0.5)");
+      const result = parser.parse("velocity += cos(n/4, 0.5)");
       const expr = result[0]!.expression as FunctionNode;
 
       expect(expr.args[1]).toBe(0.5);
@@ -378,7 +426,7 @@ describe("Transform Parser", () => {
 
   describe("real-world examples from spec", () => {
     it("parses basic envelope", () => {
-      const result = parser.parse("velocity += 20 * cos(1:0t)");
+      const result = parser.parse("velocity += 20 * cos(n/1)");
       const expr = result[0]!.expression as BinaryOpNode;
 
       expect(result[0]!.parameter).toBe("velocity");
@@ -386,7 +434,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses phase-shifted envelope", () => {
-      const result = parser.parse("velocity += 20 * cos(1:0t, 0.5)");
+      const result = parser.parse("velocity += 20 * cos(n/1, 0.5)");
       const expr = result[0]!.expression as BinaryOpNode;
       const fn = expr.right as FunctionNode;
 
@@ -395,7 +443,7 @@ describe("Transform Parser", () => {
     });
 
     it("parses pulse width transform", () => {
-      const result = parser.parse("velocity += 20 * square(2t, 0, 0.25)");
+      const result = parser.parse("velocity += 20 * square(n/2, 0, 0.25)");
       const expr = result[0]!.expression as BinaryOpNode;
       const fn = expr.right as FunctionNode;
 
@@ -406,7 +454,7 @@ describe("Transform Parser", () => {
 
     it("parses multi-parameter transform", () => {
       const result = parser.parse(
-        "velocity += 20 * cos(1:0t) + 10 * rand()\ntiming += 0.03 * rand()\nprobability += 0.2 * cos(0:2t)",
+        "velocity += 20 * cos(n/1) + 10 * rand()\ntiming += 0.03 * rand()\nprobability += 0.2 * cos(n/2)",
       );
 
       expect(result).toHaveLength(3);

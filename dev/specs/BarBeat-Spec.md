@@ -2,22 +2,80 @@
 
 A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
+> **Meter-invariant vs meter-relative.** Two kinds of time quantity run through
+> this notation. **Note values** (anything wearing the `n` sigil: `n/4`, the
+> `±n` beat offset, `@n/12` steps) are a fraction of a whole note and are
+> **meter-invariant** — `n/12` is an eighth triplet in every time signature.
+> **Bars and grid beats** (`Nbar`, `@Nbar`, the integer in `bar|beat`) are
+> **meter-relative** — they scale with the time signature. Everything resolves
+> through "musical beats" (denominator-beats); the time-signature denominator
+> only appears as a basis change to express a note value in that unit, and it
+> cancels out, so it never alters a note value's musical meaning. A bare number
+> or bare fraction is never a note value (it's beats / arithmetic) — the `n`
+> sigil is the sole marker of the meter-invariant side.
+
 ---
 
 ## Core Syntax
 
 ```
-[v<velocity>] [t<duration>] [p<probability>] note [note ...] bar|beat [bar|beat ...] [@<bar>=<source>]
+[v<velocity>] [n<duration>] [p<probability>] note [note ...] bar|beat [bar|beat ...] [@<bar>=<source>]
 ```
 
 ### Components:
 
 - **Start Time (`bar|beat`)** Time position that emits buffered notes.
   - `bar` – 1-based bar number (integer, required)
-  - `beat` – 1-based beat number within bar (float for sub-beat precision)
-  - **Repeat patterns**: `beat x times @ step` generates multiple positions
-    - Example: `1|1x4@1` → beats 1,2,3,4
-    - Example: `1|1x3@1/3` → triplets at 1, 4/3, 5/3
+  - `beat` – 1-based beat number within bar, **meter-relative**. Sub-beat
+    positions take one of two forms:
+    - a **decimal** (`2|3.5`) — a fraction of a _musical beat_, so the decimal
+      itself is **meter-relative** (`2|3.5` is "half a beat past beat 3", and a
+      beat is whatever the meter says);
+    - a grid beat plus a `±n` **note-value offset** — `1|1+n/12` = beat 1 + an
+      eighth triplet, `1|2-n/24` nudges just behind beat 2. The offset is a
+      whole-note fraction (same `n` grammar as Duration), so — like any note
+      value — it is **meter-invariant** in absolute time: `n/12` is always an
+      eighth triplet. Its size measured _in the local beat unit_ changes only
+      because the beat unit itself changes (1/3 of a quarter-beat in 4/4, 2/3 of
+      an eighth-beat in 6/8 — the same musical duration). The grid beat it
+      displaces, by contrast, **is** meter-relative.
+
+    **The two forms are NOT interchangeable.** The decimal is meter-relative and
+    the `±n` offset is absolute, so they denote the same time **only in `x/4`
+    meters**. In compound/odd meters they diverge: in 6/8, `1|1.5` is half a
+    musical (eighth) beat = 0.25 quarter, while `1|1+n/8` is a full eighth note
+    = 0.5 quarter — off by a factor of 2. Reach for the decimal when you mean "a
+    fraction of the beat" and the `±n` offset when you mean an exact note value.
+
+    Bare fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`) are rejected
+    — note values always wear the `n`. A `-n` offset may pull a position earlier
+    than its bar's downbeat — `2|1-n/12` is "an eighth triplet before the bar-2
+    downbeat" and resolves into bar 1 (beat 4⅔ in 4/4) by borrowing across the
+    bar line. A pull before `1|1` is allowed too: it resolves to negative time
+    (a note before the clip start, which Live accepts). Authoring warns once
+    when a note lands before the clip start.
+
+    **Canonical serialization.** On output a position is spelled by a single
+    canonical formatter (shared with note serialization): an integer or
+    **dyadic** sub-beat as a plain decimal (`1|2`, `1|1.5`); a **non-dyadic
+    (tuplet)** position as its exact `±n` offset (`1|1+n/12`, never the lossy
+    `1|1.333`); and a position before the clip start, within bar 1, as a
+    `1-n<fraction>` offset (e.g. `1|1-n/12`). This makes read → re-author → read
+    a fixed point for tuplet and negative positions. A genuinely off-grid
+    position ≥ 1 falls back to a bare decimal beat (`1|2.789`); a genuinely
+    off-grid position **before** the downbeat (no bare sub-1 decimal beat
+    exists) falls back to the `1-n<beats>/4` decimal-numerator escape, so it
+    round-trips losslessly too.
+
+  - **Repeat patterns**: `beat x times @ step` generates multiple positions.
+    `step` uses the same note-value duration grammar as `n` (see Duration):
+    `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar+n<fraction>`
+    mixed. A bare `@/4` (note value with no `n`) and a bare `@1` (beats) are
+    both rejected — authoring stays note-value-only.
+    - Example: `1|1x4@n/4` → 4 positions a quarter note apart: beats 1,2,3,4 in
+      4/4
+    - Example: `1|1x3@n/12` → eighth-note triplets at beats 1, 4/3, 5/3 in 4/4
+    - Example: `1|1x4@1bar` → 4 positions one bar apart
   - Notes are emitted ONLY at time positions
   - Buffered pitches persist and re-emit at subsequent time positions
   - Requires whitespace separation from following elements
@@ -38,14 +96,53 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Default: 100
   - Requires whitespace separation from following elements
 
-- **Duration (`t`)**
+- **Duration (`n`)**
   - Sets duration for following notes until changed
-  - Beat-only format: `t2.5` (2.5 beats), `t3/4` (0.75 beats), `t/4` (0.25
-    beats - numerator defaults to 1)
-  - Bar:beat format: `t2:1.5` (2 bars + 1.5 beats), `t1:3/4` (1 bar + 0.75
-    beats), `t1:/4` (1 bar + 0.25 beats)
-  - Default: 1.0
+  - **Absolute note value**: written as a fraction of a whole note,
+    `n<numerator>/<denominator>`. Numerator defaults to 1 (`n/4` == `n1/4`).
+    Denominator is **mandatory** — bare integers (`n1`), bare decimals (`n0.5`),
+    and mixed numbers (`n1+1/2`) are invalid and raise a parser error. A
+    _decimal_ numerator is valid only with a denominator present — it is the
+    off-grid escape `n<beats>/4` (see the read contract below), not something
+    you author by hand
+  - Common values: `n/1` whole, `n/2` half, `n/4` quarter, `n/8` eighth, `n/16`
+    sixteenth, `n3/8` dotted quarter, `n5/4` five quarter notes
+  - Tuplets: `n/3` half-note triplet, `n/6` quarter triplet, `n/12` eighth
+    triplet, `n/24` sixteenth triplet (denominator = how many fit in a whole
+    note)
+  - Meter-independent: `n/4` is always one quarter note, in 4/4, 6/8, 5/4, etc.
+  - **Bar durations**: `Nbar` (meter-aware, e.g. `1bar` = hold one bar in any
+    meter) and `Nbar+n<fraction>` mixed (e.g. `1bar+n3/4`) are also valid inline
+    durations. The `bar` term never wears an `n`; the note-value tail keeps its
+    own `n`. So `n1bar` is invalid — write `1bar`. The `n`-prefixed bar forms
+    (`n1bar`, `n/1bar`, `n3/4bar`) are a common model hallucination, so every
+    duration site rejects them with a targeted error ("bar durations don't use
+    the `n` prefix — write Nbar"), not the generic format error. A plural `bars`
+    (`2bars`) is accepted as an input-tolerance alias of `Nbar` on every
+    duration site; serialized output is always singular (`2bar`)
+  - Default: `n/4` (one quarter note)
   - Requires whitespace separation from following elements
+  - NOTE: clip `length` and arrangement durations use this same duration
+    grammar: `Nbar` (meter-aware, e.g. `4bar`), `n<fraction>` note value (e.g.
+    `n/4` quarter, `n/8` eighth, `n3/8` dotted quarter), or `Nbar+n<fraction>`
+    mixed (e.g. `1bar+n/4`). Off-grid lengths with no clean note-value form
+    (sample-derived audio lengths) use a **decimal-numerator escape pinned to
+    `/4`**: `n<beats>/4` == `<beats>` Ableton beats (`n1.9638/4` = 1.9638
+    quarters, since `n<x>/4` = x quarters). This keeps the escape under the `n`
+    sigil so the duration vocabulary stays uniform. Bare numbers (e.g.
+    `1.9638`), bare _fractions_ (`1/4`), and bare decimals (`0.5`) are all
+    **invalid** as durations — a duration is always a bar count or an
+    `n`-prefixed note value, never a bare scalar; the `n` prefix marks a note
+    value everywhere
+  - NOTE (read contract): when a clip is serialized back to notation, a MIDI
+    note duration that lands on a representable note value (within float
+    epsilon) emits that exact `n<fraction>`; a genuinely off-grid duration (e.g.
+    a sample-derived or computed length with no clean note value) emits the same
+    `n<beats>/4` decimal-numerator escape, so it round-trips losslessly rather
+    than snapping to a wrong note value. A clip/arrangement `length` behaves
+    identically: exact `n<fraction>`/`Nbar` on the grid (within ~1e-6),
+    otherwise the `n<beats>/4` escape at fixed precision (trailing zeros
+    stripped). `@step` intervals share the same formatter
 
 - **Note (`C4`, `Eb2`, `F#3`, etc.)**
   - Note names follow standard pitch notation using:
@@ -55,7 +152,11 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     - Invalid: `Cb`, `B#`, `Fb`, `E#` (not supported)
   - Octave is a signed integer (e.g., `C3`, `A#-1`)
   - MIDI pitch is computed as `(octave + 2) * 12 + pitchClassValue`
-  - Result must be in valid MIDI range: 0–127
+  - Valid MIDI range is 0–127. Range is **not** enforced by the parser — an
+    out-of-range pitch (e.g. `C9`, `C-3`) parses successfully and the
+    interpreter **skips the note and warns** (it does not clamp: fabricating a
+    nearby pitch for a typo would invent music). One bad note never aborts the
+    rest of the clip.
 
 - **Bar Copy (`@N=`, `@N=M`, `@N=M-P`, `@N-M=`, `@N-M=P`, `@N-M=P-Q`)**
   - Duplicates bars of notes to other positions
@@ -111,6 +212,14 @@ The parser warns about incomplete or inefficient notation:
 - Time positions with no pitches
 - State changes after pitches but before time positions (wasted state)
 
+The interpreter also warns (without throwing) on out-of-range values, matching
+the transforms and code-exec paths:
+
+- Velocity / velocity-range / probability outside their valid range are
+  **clamped + warned** (velocity to 0–127, probability to 0.0–1.0)
+- An out-of-range pitch is **skipped + warned** (the note is dropped, not
+  clamped)
+
 These are console warnings, not errors - parsing completes successfully.
 
 ---
@@ -133,8 +242,8 @@ When a `v0` note is encountered during interpretation:
 3. **Kept in output**: The `v0` note itself remains in the interpreter output so
    that tools such as update-clip can make use of the data (to delete notes in
    existing clips, a separate process from notation interpretation)
-4. **Filtered by tools**: `create-clip` filters out v0 notes; `update-clip`
-   merge mode uses them to delete existing clip notes
+4. **Filtered by tools**: `create-clip` filters out v0 notes; `update-clip` uses
+   them to delete existing clip notes
 
 ### Examples
 
@@ -181,8 +290,16 @@ C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
 
 - **Refining copied patterns**: Copy a bar, then remove specific notes
 - **Creating variations**: Build on existing patterns by deleting and adding
-- **Merge mode editing**: In `update-clip` with `noteUpdateMode` (defaults to
-  `"merge"`), selectively delete notes from existing clips
+- **Merge editing**: In `update-clip`, new notes overlay (merge with) the clip's
+  existing notes, so you can selectively delete notes from existing clips
+- **Overwrite in place**: A new (non-`v0`) note at the _same_ pitch and start
+  time as an existing note replaces it — e.g. restating a note with a shorter
+  duration shortens it. NB: this is currently emergent, not explicit in the
+  merge code: `update-clip` does not dedupe regular notes — it concatenates
+  existing-then-new notation and hands both to Live's `add_new_notes`, which
+  collapses the duplicate with the later (new) note winning. To _replace_ a
+  region rather than overwrite individual notes in place, clear it first with
+  `preTransforms` or the un-restated notes remain.
 
 ### Technical Details
 
@@ -191,8 +308,7 @@ C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
 - **Output format**: v0 notes appear in interpreter output with `velocity: 0`
 - **Tool behavior**:
   - `create-clip`: Filters out v0 notes (can't create v0 notes in Live)
-  - `update-clip` replace mode: Filters out v0 notes
-  - `update-clip` merge mode: Uses v0 notes to delete matching clip notes, then
+  - `update-clip`: Uses v0 notes to delete matching existing clip notes, then
     filters them out
 
 ---
@@ -204,7 +320,7 @@ All components are stateful:
 - **Probability**: Set with `p<value>`, applies to following notes until changed
 - **Velocity**: Set with `v<value>` or `v<min>-<max>`, applies to following
   notes until changed
-- **Duration**: Set with `t<value>`, applies to following notes until changed
+- **Duration**: Set with `n<value>`, applies to following notes until changed
 
 ---
 
@@ -219,52 +335,64 @@ Repeat patterns generate sequences of beat positions using the syntax
 bar|{start}x{times}@{step}
 ```
 
-- **start**: Starting beat position (supports decimals, fractions, and mixed
-  numbers)
+- **start**: Starting beat position — the same dialect as note positions: a
+  whole beat, a decimal sub-beat (`1.5`), or a `±n` note-value offset
+  (`1+n/12`). Bare fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`)
+  are rejected
 - **times**: Number of repetitions (positive integer)
-- **step**: Interval between repetitions (supports decimals, fractions, mixed
-  numbers, and optional numerator: `/3` = `1/3`)
+- **step**: Interval between repetitions, **same note-value duration grammar as
+  `n`** — `@n<fraction>` note value (denominator mandatory, numerator defaults
+  to 1, so `@n/4` == `@n1/4`), `@Nbar` meter-aware bars (`@1bar`), or
+  `@Nbar+n<fraction>` mixed (`@1bar+n/4`). Bare fractions (`@/4`), bare integers
+  (`@1`), decimals (`@0.5`), and mixed numbers (`@1+1/2`) are invalid and raise
+  a parser error — the `n` prefix marks a note value, bars use `Nbar`. Like the
+  other duration sites, an `n`-prefixed bar step (`@n1bar`, `@n/1bar`,
+  `@n3/4bar`) raises the targeted "bar steps don't use the `n` prefix — write
+  @Nbar" error, and a plural `@2bars` is accepted as a tolerance alias of
+  `@Nbar`
 
 The `@` symbol reads as "at intervals" and semantically connects to bar copy
 operations.
 
 ### Examples
 
-**Whole beats:**
+**Quarter notes:**
 
 ```
-1|1x4@1          // Beats 1,2,3,4
+1|1x4@n/4         // 4 positions a quarter apart: beats 1,2,3,4 in 4/4
 ```
 
 **Triplets:**
 
 ```
-1|1x3@1/3        // Beats 1, 4/3, 5/3 (every third)
-1|1x3@/3         // Same as above (numerator defaults to 1)
-1|3x3@1/3        // Beats 3, 10/3, 11/3
+1|1x3@n/12        // eighth-note triplet (3 in a quarter): beats 1, 4/3, 5/3 in 4/4
+1|1x3@n/6         // quarter-note triplet (3 in a half): beats 1, 5/3, 7/3 in 4/4
+1|3x3@n/12        // eighth-note triplet starting at beat 3
 ```
 
 **16th notes:**
 
 ```
-1|4x4@1/4        // Four 16ths on beat 4: 4, 17/4, 18/4, 19/4
-1|4x4@/4         // Same as above (numerator defaults to 1)
-1|1x16@1/4       // Full bar of 16ths
-1|1x16@/4        // Same as above (numerator defaults to 1)
+1|4x4@n/16        // four 16ths on beat 4: 4, 17/4, 18/4, 19/4
+1|1x16@n/16       // 16 sixteenths = 4 quarters (a full bar in 4/4)
 ```
 
 **Eighth notes:**
 
 ```
-1|1x8@1/2        // Eight 8ths: 1, 3/2, 2, 5/2, ..., 9/2
-1|1x8@0.5        // Same as above (decimal notation)
+1|1x8@n/8         // eight 8ths: 1, 3/2, 2, 5/2, ..., 9/2 in 4/4
 ```
 
-**Mixed numbers:**
+**Note-value offset starts (positions stay meter-relative):**
 
 ```
-1|2+1/3x3@1/3    // Start at 2+1/3: 2+1/3, 2+2/3, 3
-1|1x4@1+1/2      // Steps of 1.5: 1, 2.5, 4, 5.5
+1|2+n/12x3@n/12   // start at 2+1/3 (beat 2 + eighth triplet), three steps
+```
+
+**Step omitted** (defaults to the current duration):
+
+```
+n/8 C1 1|1x4     // 4 eighths starting at 1|1 (step defaults to n value)
 ```
 
 ### Behavior
@@ -272,19 +400,19 @@ operations.
 **Bar overflow**: Patterns naturally overflow into subsequent bars:
 
 ```
-1|3x6@1          // 3,4,5,6,7,8 → 1|3, 1|4, 2|1, 2|2, 2|3, 2|4
+1|3x6@n/4         // 3,4,5,6,7,8 → 1|3, 1|4, 2|1, 2|2, 2|3, 2|4 in 4/4
 ```
 
 **Mixing with regular beats**: Combine repeat patterns with explicit beats:
 
 ```
-C1 1|1x4@1,3.5   // Beats 1,2,3,4,3.5 (beat 3.5 listed explicitly)
+C1 1|1x4@n/4,3.5  // Beats 1,2,3,4,3.5 (beat 3.5 listed explicitly)
 ```
 
 **Multiple patterns**: Use multiple repeat patterns in one beat list:
 
 ```
-C1 1|1x2@1,3x2@0.5  // Beats 1,2,3,3.5
+C1 1|1x2@n/4,3x2@n/8  // Beats 1,2,3,3.5 in 4/4
 ```
 
 ### Interaction with Other Features
@@ -292,19 +420,19 @@ C1 1|1x2@1,3x2@0.5  // Beats 1,2,3,3.5
 **Pitch buffering**: All buffered pitches emit at each expanded position:
 
 ```
-C3 D3 E3 1|1x4@1    // C3, D3, E3 at each of beats 1,2,3,4
+C3 D3 E3 1|1x4@n/4   // C3, D3, E3 at each of beats 1,2,3,4
 ```
 
 **State parameters**: Velocity, duration, probability apply to all positions:
 
 ```
-v80 t0.5 C1 1|1x4@1 // All four notes have v80 and t0.5
+v80 n/8 C1 1|1x4@n/4 // All four notes have v80 and an eighth-note duration
 ```
 
 **Bar copy**: Repeat patterns work with bar copy operations:
 
 ```
-C1 1|1x4@1          // Bar 1: kick on every beat
+C1 1|1x4@n/4         // Bar 1: kick on every beat
 @2=1                // Bar 2: copy of bar 1
 ```
 
@@ -533,47 +661,45 @@ C1 1|1 1|2 1|3 1|4
 C1 1|1 1|3  D1 1|2 1|4
 
 // Simple melody with state changes
-v100 t1.0 C3 1|1 D3 1|2 E3 1|3 F3 1|4
-v80 t2.0 G3 2|1
+v100 n/4 C3 1|1 D3 1|2 E3 1|3 F3 1|4   // quarter notes
+v80 n/2 G3 2|1                          // half note
 
-// Sub-beat timing with floating points
-v100 t0.25 C3 1|1 D3 1|1.5 E3 1|2.25 F3 1|3.75
+// Sub-beat timing with floating points (positions stay decimal)
+v100 n/16 C3 1|1 D3 1|1.5 E3 1|2.25 F3 1|3.75
 
-// Duration examples - beat-only format
-t2.5 C3 1|1    // 2.5 beats duration (decimal)
-t3/4 C3 1|1    // 0.75 beats duration (fraction)
-t/4 C3 1|1     // 0.25 beats duration (numerator defaults to 1)
-t1/3 C3 1|1,4/3,5/3  // Triplet eighth notes
-t/3 C3 1|1,4/3,5/3   // Same as above (numerator defaults to 1)
+// Duration examples — absolute note values
+n/2 C3 1|1       // half note (2 quarters)
+n/4 C3 1|1       // quarter note (default)
+n/8 C3 1|1       // eighth note
+n/16 C3 1|1      // sixteenth note
+n3/8 C3 1|1      // dotted quarter (3 eighths)
+n3/16 C3 1|1     // dotted eighth (3 sixteenths)
+n/12 C3 1|1,1+n/12,1+n/6  // eighth-note triplets (3 per quarter): beats 1, 4/3, 5/3
+n/6 C3 1|1,1+n/6,2+n/12   // quarter-note triplets (3 per half): beats 1, 5/3, 7/3
+n/1 C3 1|1       // whole note (4 quarters)
+n2/1 C3 1|1      // 2 whole notes (8 quarters)
+n5/4 C3 1|1      // 5 quarter notes (e.g. fills a 5/4 bar)
 
-// Duration examples - bar:beat format
-t2:0 C3 1|1    // 2 bar duration (whole note in 4/4)
-t1:0 C3 1|1    // 1 bar duration (half note in 4/4)
-t2:1.5 C3 1|1  // 2 bars + 1.5 beats
-t1:3/4 C3 1|1  // 1 bar + 0.75 beats
-t1:/4 C3 1|1   // 1 bar + 0.25 beats (numerator defaults to 1)
-
-// Repeat patterns - whole beats
-C1 1|1x4@1     // Kick on every beat (repeat syntax)
+// Repeat patterns - quarter-note step
+C1 1|1x4@n/4    // Kick on every beat (repeat syntax)
 C1 1|1,2,3,4   // Same as above (comma-separated beats still supported)
 
 // Repeat patterns - triplets
-t1/3 C3 1|1x3@1/3           // Triplet eighth notes
-t/3 C3 1|1x3@/3             // Same as above (numerator defaults to 1)
-t1/3 C3 1|1x3@1/3 1|2x3@1/3  // Two sets of triplets
+n/12 C3 1|1x3@n/12            // eighth-note triplets (3 per quarter)
+n/12 C3 1|1x3 1|2x3          // step defaults to n, two sets of triplets
 
 // Repeat patterns - 16th notes
-t1/4 Gb1 1|1x16@1/4  // Full bar of hi-hat 16ths
-t/4 Gb1 1|1x16@/4    // Same as above (numerator defaults to 1)
+n/16 Gb1 1|1x16@n/16    // 16 sixteenths = 4 quarters (a full bar in 4/4)
+n/16 Gb1 1|1x16        // same — step defaults to n value
 
 // Repeat patterns - mixed with regular beats
-C1 1|1x4@1 D1 1|2,4  // Kick on all beats, snare on 2 & 4
+C1 1|1x4@n/4 D1 1|2,4   // Kick on all beats, snare on 2 & 4
 
 // Repeat patterns - bar overflow
-C3 1|3x6@1  // Starts beat 3, overflows into bar 2
+C3 1|3x6@n/4  // Starts beat 3, overflows into bar 2 in 4/4
 
 // Drum pattern with probability and velocity variation
-v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1
+v100 n/16 p1.0 C1 v80-100 p0.8 Gb1 1|1
 p0.6 Gb1 1|1.5
 v90 p1.0 D1 v100 p0.9 Gb1 1|2
 
@@ -601,7 +727,7 @@ C3 D3 E3 1|1  @2=1  v0 D3 2|1  // Bar 1: C3 D3 E3, Bar 2: C3 E3
    encountered
 2. State is maintained throughout parsing - probability, velocity, and duration
    settings persist
-3. Probability (`p`), velocity (`v`), and duration (`t`) capture their values
+3. Probability (`p`), velocity (`v`), and duration (`n`) capture their values
    with each pitch
 4. State changes after time positions update all buffered pitches
 5. Multiple notes at same time are whitespace-separated
@@ -627,7 +753,7 @@ type Element =
   | { bar: number, beat: number | RepeatPattern }                    // Time position
   | { velocity: number }                                             // Single velocity (0-127)
   | { velocityMin: number, velocityMax: number }                     // Velocity range (0-127)
-  | { duration: number }                                             // Duration in beats
+  | { duration: number, bars?: number }                              // Duration: whole-note fraction (e.g. 1/4 = quarter); meter-aware `bars` present for Nbar / Nbar+nA/B
   | { probability: number }                                          // Probability (0.0-1.0)
   | { barCopy: number, sourcePrevious: true }                        // @N= (copy previous)
   | { barCopy: number, sourceBar: number }                           // @N=M (copy bar M)
@@ -638,16 +764,18 @@ type Element =
   | { clearBuffer: true }                                            // @clear (clear copy buffer)
 
 type RepeatPattern = {
-  start: number,   // Starting beat position
-  times: number,   // Number of repetitions (integer)
-  step: number     // Step size (supports fractions)
+  start: number,      // Starting beat position (meter-relative)
+  times: number,      // Number of repetitions (integer)
+  step: number | null, // Step size as a fraction of a whole note (null when @step omitted)
+  stepBars?: number   // Meter-aware bar component of the step (present only for @Nbar forms)
 }
 ```
 
 ### Notes
 
-- The grammar computes a `name` variable (e.g., "C3") but only uses it for error
-  messages - it's not included in the AST
+- The grammar emits raw values without range enforcement (an out-of-range
+  velocity/probability/pitch parses fine); the interpreter clamps or skips them.
+  Pitch is computed as a number and the note name is not retained in the AST
 - Each element is a simple object with one or two properties
 - The AST is stateless - no context about what came before
 
@@ -678,8 +806,17 @@ grammar AST to return an array of note events:
   for time signature)
   - Example: In 4/4, bar 2 beat 3 = `(2-1) * 4 + (3-1) = 6.0` beats
   - Example: In 3/4, bar 2 beat 3 = `((2-1) * 3 + (3-1)) * (4/4) = 5.0` beats
-- **duration**: Converted from beat duration to Ableton beats (accounts for time
-  signature)
+- **duration**: The grammar emits durations as a fraction of a whole note
+  (meter-independent); the interpreter then converts to Ableton beats (= quarter
+  notes). A `n/4` becomes `1.0` in any meter; `n/8` becomes `0.5`; a `n3/8`
+  (dotted quarter) becomes `1.5`
+  - **Beat unit (cross-layer note)**: these numbers are **Ableton beats**
+    (quarter-note beats — the unit of parsed-note output). The transforms layer
+    instead measures in meter-relative **musical beats** (scaled by the
+    time-signature denominator), so the same `n/4` evaluates to a different
+    number there (1 in 4/4, 2 in 6/8). Both describe the identical physical
+    quarter note — only the measuring unit differs. See `Transforms-Spec.md` →
+    "Units and Time Signatures".
 - **velocity**: Base velocity (0-127)
   - `v0` notes appear in output with `velocity: 0` for deletion purposes
   - Tools filter v0 notes before sending to Live API (see Note Deletion section)

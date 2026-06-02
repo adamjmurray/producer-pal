@@ -4,6 +4,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { type NoteEvent } from "#src/notation/types.ts";
+import { isValidMidi } from "#src/shared/pitch.ts";
+import * as console from "#src/shared/v8-max-console.ts";
 import { formatDrumNotation } from "./helpers/barbeat-serializer-drum.ts";
 import { formatBeatPosition } from "./helpers/barbeat-serializer-fractions.ts";
 import {
@@ -36,8 +38,16 @@ export function formatNotation(
     return "";
   }
 
+  // A read path must never throw: drop any note whose pitch can't be named
+  // (out of 0-127) and warn, rather than aborting serialization.
+  const notes = dropUnnameablePitches(clipNotes);
+
+  if (notes.length === 0) {
+    return "";
+  }
+
   const config = resolveFormatConfig(options);
-  const sortedNotes = sortNotes(clipNotes);
+  const sortedNotes = sortNotes(notes);
 
   if (options.drumMode) {
     return formatDrumNotation(sortedNotes, config);
@@ -45,7 +55,7 @@ export function formatNotation(
 
   const timeGroups = groupNotesByTime(sortedNotes, config);
   const batches = findMergeBatches(timeGroups);
-  const state = createInitialState();
+  const state = createInitialState(config.timeSigDenominator);
   const elements: string[] = [];
 
   for (const batch of batches) {
@@ -62,10 +72,31 @@ export function formatNotation(
 
     // Emit time position(s) — comma-separated beats for merged groups
     const bar = firstGroup.bar;
-    const beats = batch.groups.map((g) => formatBeatPosition(g.beat)).join(",");
+    const beats = batch.groups
+      .map((g) => formatBeatPosition(g.beat, config.timeSigDenominator))
+      .join(",");
 
     elements.push(`${bar}|${beats}`);
   }
 
   return elements.join(" ");
+}
+
+/**
+ * Drop notes whose MIDI pitch is out of range (can't be named), warning once if
+ * any were dropped. Keeps the read path total — an out-of-range pitch is
+ * skipped, never thrown.
+ * @param clipNotes - Notes to filter
+ * @returns Notes with nameable pitches only
+ */
+function dropUnnameablePitches(clipNotes: NoteEvent[]): NoteEvent[] {
+  const notes = clipNotes.filter((note) => isValidMidi(note.pitch));
+
+  if (notes.length < clipNotes.length) {
+    console.warn(
+      `${clipNotes.length - notes.length} note(s) skipped: MIDI pitch outside valid range 0-127`,
+    );
+  }
+
+  return notes;
 }

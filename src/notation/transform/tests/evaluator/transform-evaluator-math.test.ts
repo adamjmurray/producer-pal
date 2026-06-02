@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -209,6 +210,42 @@ describe("Transform Evaluator - Math Functions", () => {
     });
   });
 
+  describe("left-associative chained operators", () => {
+    it.each([
+      ["8 / 4 / 2", 1, "division chain quarters down to 1, not 4"],
+      ["8 - 4 - 2", 2, "subtraction chain yields 2, not 6"],
+      ["23 % 7 % 5", 2, "modulo chain: (23%7)%5 = 2, not 23%(7%5) = 1"],
+    ])("evaluates %s = %d (%s)", (expr, expected) => {
+      expectVelocityEquals(expr, expected);
+    });
+
+    it("quarters note.duration with /2/2", () => {
+      const result = evaluateTransform(
+        "duration = note.duration / 2 / 2",
+        CTX,
+        {
+          duration: 4,
+        },
+      );
+
+      expect(result.duration!.value).toBe(1);
+    });
+  });
+
+  describe("negative literals and unary minus", () => {
+    it("subtracting a negative literal adds (note.velocity - -1)", () => {
+      const result = evaluateTransform("velocity = note.velocity - -1", CTX, {
+        velocity: 10,
+      });
+
+      expect(result.velocity!.value).toBe(11);
+    });
+
+    it("leading negative literal in a subtraction chain (-1 - 1 = -2)", () => {
+      expectVelocityEquals("-1 - 1", -2);
+    });
+  });
+
   describe("nested functions", () => {
     it("round(12 * rand()) returns integer in range", () => {
       for (let i = 0; i < 10; i++) {
@@ -245,5 +282,199 @@ describe("Transform Evaluator - Modulo Operator", () => {
     // Add 0 to convert -0 to 0 for strict equality
     expect(result0.gain!.value + 0).toBe(0);
     expect(result1.gain!.value).toBe(-6);
+  });
+});
+
+const CTX_6_8 = { position: 0, timeSig: { numerator: 6, denominator: 8 } };
+const CTX_3_2 = { position: 0, timeSig: { numerator: 3, denominator: 2 } };
+const CTX_3_4 = { position: 0, timeSig: { numerator: 3, denominator: 4 } };
+
+describe("Transform Evaluator - nDuration", () => {
+  describe("in 4/4 (musical beats = quarter beats)", () => {
+    it.each([
+      ["n/4", 1, "quarter = 1 beat"],
+      ["n/8", 0.5, "eighth = 0.5 beats"],
+      ["n/16", 0.25, "sixteenth = 0.25 beats"],
+      ["n/2", 2, "half = 2 beats"],
+      ["n/1", 4, "whole = 4 beats"],
+      ["n3/8", 1.5, "dotted quarter = 1.5 beats"],
+    ])("duration = %s → %d (%s)", (expr, expected) => {
+      const result = evaluateTransform(`duration = ${expr}`, CTX);
+
+      expect(result.duration!.value).toBe(expected);
+    });
+
+    it("triplet n/12 evaluates to 1/3", () => {
+      const result = evaluateTransform("duration = n/12", CTX);
+
+      expect(result.duration!.value).toBeCloseTo(1 / 3, 10);
+    });
+  });
+
+  describe("in 6/8 (musical beats = eighth notes)", () => {
+    it.each([
+      ["n/4", 2, "quarter = 2 eighths"],
+      ["n/8", 1, "eighth = 1 musical beat"],
+      ["n/16", 0.5, "sixteenth = 0.5 musical beats"],
+      ["n/2", 4, "half = 4 eighths"],
+      ["n3/8", 3, "dotted quarter = 3 eighths"],
+    ])("duration = %s → %d (%s)", (expr, expected) => {
+      const result = evaluateTransform(`duration = ${expr}`, CTX_6_8);
+
+      expect(result.duration!.value).toBe(expected);
+    });
+  });
+
+  describe("in 3/2 (musical beats = half notes)", () => {
+    it.each([
+      ["n/4", 0.5, "quarter = 0.5 half-notes"],
+      ["n/2", 1, "half = 1 musical beat"],
+      ["n/1", 2, "whole = 2 half-notes"],
+      ["n/8", 0.25, "eighth = 0.25 half-notes"],
+    ])("duration = %s → %d (%s)", (expr, expected) => {
+      const result = evaluateTransform(`duration = ${expr}`, CTX_3_2);
+
+      expect(result.duration!.value).toBe(expected);
+    });
+  });
+
+  describe("in 3/4 (musical beats = quarter notes)", () => {
+    it("n/4 = 1 musical beat", () => {
+      const result = evaluateTransform("duration = n/4", CTX_3_4);
+
+      expect(result.duration!.value).toBe(1);
+    });
+  });
+
+  describe("composes with arithmetic", () => {
+    it("n/4 + n/8 in 4/4 → 1.5", () => {
+      const result = evaluateTransform("duration = n/4 + n/8", CTX);
+
+      expect(result.duration!.value).toBe(1.5);
+    });
+
+    it("2 * n/8 in 4/4 → 1", () => {
+      const result = evaluateTransform("duration = 2 * n/8", CTX);
+
+      expect(result.duration!.value).toBe(1);
+    });
+
+    it("n/4 - n/16 in 4/4 → 0.75", () => {
+      const result = evaluateTransform("duration = n/4 - n/16", CTX);
+
+      expect(result.duration!.value).toBe(0.75);
+    });
+
+    it("(n/4 + n/8) * 2 in 4/4 → 3", () => {
+      const result = evaluateTransform("duration = (n/4 + n/8) * 2", CTX);
+
+      expect(result.duration!.value).toBe(3);
+    });
+  });
+
+  describe("composes with variables (musical-beat semantics)", () => {
+    it("duration = note.duration + n/8 in 4/4: 1 + 0.5 = 1.5", () => {
+      const result = evaluateTransform("duration = note.duration + n/8", CTX, {
+        duration: 1,
+      });
+
+      expect(result.duration!.value).toBe(1.5);
+    });
+
+    it("duration += n/16 in 4/4 adds 0.25 musical beats", () => {
+      const result = evaluateTransform("duration += n/16", CTX);
+
+      expect(result.duration!.value).toBe(0.25);
+    });
+  });
+
+  // The load-bearing distinction: n<fraction> is an absolute note value, a bare
+  // fraction is plain beats. "make it a quarter" → n/4 (correct), not 1/4.
+  describe("n-fraction vs bare fraction", () => {
+    it("n/4 is a quarter note (1 beat in 4/4); bare 1/4 is a quarter of a beat", () => {
+      const noteValue = evaluateTransform("duration = n/4", CTX);
+      const bareFraction = evaluateTransform("duration = 1/4", CTX);
+
+      expect(noteValue.duration!.value).toBe(1); // quarter note = 1 beat in 4/4
+      expect(bareFraction.duration!.value).toBe(0.25); // 1/4 beat = a 16th in 4/4
+      expect(noteValue.duration!.value).not.toBe(bareFraction.duration!.value);
+    });
+  });
+
+  describe("works with timing parameter", () => {
+    it("timing = n/16 in 4/4 → 0.25", () => {
+      const result = evaluateTransform("timing = n/16", CTX);
+
+      expect(result.timing!.value).toBe(0.25);
+    });
+  });
+});
+
+describe("Transform Evaluator - barDuration (Nbar)", () => {
+  // A bar is beats-per-bar (= numerator) musical beats, so Nbar is meter-aware:
+  // it tracks the numerator and is independent of the denominator.
+  describe("Nbar = N * numerator musical beats across meters", () => {
+    it.each([
+      ["1bar", CTX, 4, "4/4 → 4"],
+      ["1bar", CTX_6_8, 6, "6/8 → 6"],
+      ["1bar", CTX_3_2, 3, "3/2 → 3"],
+      ["1bar", CTX_3_4, 3, "3/4 → 3"],
+      ["4bar", CTX, 16, "4 bars in 4/4 → 16"],
+      ["2bar", CTX_6_8, 12, "2 bars in 6/8 → 12"],
+    ])("duration = %s in %s → %d (%s)", (expr, ctx, expected) => {
+      const result = evaluateTransform(`duration = ${expr}`, ctx);
+
+      expect(result.duration!.value).toBe(expected);
+    });
+  });
+
+  describe("equals N * clip.barDuration", () => {
+    it("1bar matches clip.barDuration in 6/8", () => {
+      const bar = evaluateTransform("duration = 1bar", CTX_6_8);
+      const variable = evaluateTransform(
+        "duration = clip.barDuration",
+        CTX_6_8,
+        {
+          "clip:barDuration": 6,
+        },
+      );
+
+      expect(bar.duration!.value).toBe(variable.duration!.value);
+    });
+  });
+
+  describe("composes with the n-fraction vocabulary", () => {
+    it("1bar+n/4 in 4/4 → 5 (a bar plus a quarter)", () => {
+      const result = evaluateTransform("duration = 1bar+n/4", CTX);
+
+      expect(result.duration!.value).toBe(5);
+    });
+
+    it("1bar+n/4 in 6/8 → 8 (6 eighths + a quarter = 2 eighths)", () => {
+      const result = evaluateTransform("duration = 1bar+n/4", CTX_6_8);
+
+      expect(result.duration!.value).toBe(8);
+    });
+
+    it("2 * 1bar in 4/4 → 8", () => {
+      const result = evaluateTransform("duration = 2 * 1bar", CTX);
+
+      expect(result.duration!.value).toBe(8);
+    });
+  });
+
+  describe("works with timing and bare shorthand", () => {
+    it("timing += 1bar in 4/4 adds 4 musical beats", () => {
+      const result = evaluateTransform("timing += 1bar", CTX);
+
+      expect(result.timing!.value).toBe(4);
+    });
+
+    it("bare 1bar sets duration (shorthand)", () => {
+      const result = evaluateTransform("1bar", CTX);
+
+      expect(result.duration!.operator).toBe("set");
+      expect(result.duration!.value).toBe(4);
+    });
   });
 });

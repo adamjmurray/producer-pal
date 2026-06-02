@@ -72,8 +72,9 @@ multi-line comment */ D3 1|1`);
   });
 
   it("handles comments between state changes", () => {
+    // n/8 = eighth = 0.5 quarter
     const result = interpretNotation(
-      "v100 // set velocity\nt0.5 // set duration\nC3 1|1 // play note",
+      "v100 // set velocity\nn/8 // set duration\nC3 1|1 // play note",
     );
 
     expect(result).toStrictEqual([createNote({ duration: 0.5 })]);
@@ -87,7 +88,7 @@ multi-line comment */ D3 1|1`);
 
   it("handles drum pattern with comments", () => {
     const result = interpretNotation(`
-        v100 t0.25 p1.0 C1 // kick drum
+        v100 n/16 p1.0 C1 // kick drum
         v80-100 p0.8 Gb1 1|1 // hi-hat with variation
         p0.6 Gb1 1|1.5 // ghost hi-hat
         v90 p1.0 D1 // snare

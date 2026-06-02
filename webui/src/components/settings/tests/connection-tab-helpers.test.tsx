@@ -83,6 +83,8 @@ describe("VoiceSettings", () => {
     model: OPENAI_REALTIME_MODEL,
     realtimeVoice: "marin",
     setRealtimeVoice: vi.fn(),
+    voiceLanguage: "en",
+    setVoiceLanguage: vi.fn(),
     voiceVolume: 1.0,
     setVoiceVolume: vi.fn(),
     voiceSpeed: 1.0,
@@ -104,12 +106,49 @@ describe("VoiceSettings", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("keeps the voice selector outside the 'Voice Settings' disclosure", () => {
+  it("keeps the voice and language selectors outside the 'Voice Settings' disclosure", () => {
     render(<VoiceSettings {...realtimeProps} />);
 
     expect(screen.getByText("Voice Settings")).toBeTruthy();
     expect(screen.queryByText("Advanced")).toBeNull();
     expect(screen.getByTestId("voice-select").closest("details")).toBeNull();
+    expect(
+      screen.getByTestId("voice-language-select").closest("details"),
+    ).toBeNull();
+  });
+
+  it("renders the language selector for both providers", () => {
+    const { unmount } = render(<VoiceSettings {...realtimeProps} />);
+
+    expect(
+      (screen.getByTestId("voice-language-select") as HTMLSelectElement).value,
+    ).toBe("en");
+    unmount();
+
+    render(
+      <VoiceSettings
+        {...realtimeProps}
+        provider="gemini"
+        model={GEMINI_REALTIME_MODEL}
+        realtimeVoice="Puck"
+      />,
+    );
+
+    expect(screen.getByTestId("voice-language-select")).toBeTruthy();
+  });
+
+  it("calls setVoiceLanguage when a language is picked", () => {
+    const setVoiceLanguage = vi.fn();
+
+    render(
+      <VoiceSettings {...realtimeProps} setVoiceLanguage={setVoiceLanguage} />,
+    );
+
+    fireEvent.change(screen.getByTestId("voice-language-select"), {
+      target: { value: "es" },
+    });
+
+    expect(setVoiceLanguage).toHaveBeenCalledWith("es");
   });
 
   it("tucks the volume, speed, and turn detection inside the disclosure", () => {

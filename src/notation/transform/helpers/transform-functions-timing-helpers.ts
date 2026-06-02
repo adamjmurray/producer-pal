@@ -3,8 +3,8 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import * as console from "#src/shared/v8-max-console.ts";
 import { type ExpressionNode } from "../parser/transform-parser.ts";
-import { type PeriodObject } from "../transform-frequency.ts";
 import {
   type EvaluateExpressionFn,
   parsePeriod,
@@ -52,12 +52,15 @@ export function evaluateSwing(
     noteProperties,
   );
 
-  // Default grid is 0.5 beats (8th-note swing, same as quant(1/2t))
+  // Default grid is half a musical beat — the off-beat between the meter's
+  // beats: an 8th note in x/4, a 16th in x/8, etc. (the natural swing
+  // subdivision per meter). NOT a fixed n/8 — that coincides only in x/4.
+  // Pass an explicit grid arg to override.
   let grid = 0.5;
 
   if (args.length === 2) {
     grid = parsePeriod(
-      args[1] as ExpressionNode | PeriodObject,
+      args[1] as ExpressionNode,
       position,
       timeSigNumerator,
       timeSigDenominator,
@@ -118,7 +121,7 @@ export function evaluateQuant(
   }
 
   const grid = parsePeriod(
-    args[0] as ExpressionNode | PeriodObject,
+    args[0] as ExpressionNode,
     position,
     timeSigNumerator,
     timeSigDenominator,
@@ -190,5 +193,13 @@ export function evaluateLegato(
     return ctx.clipEnd - noteStart;
   }
 
-  throw new Error("legato(): no next note available");
+  // No next note and no known clip end (e.g. the final note in a context that
+  // doesn't supply a clip length): keep the note's current duration rather than
+  // failing the whole transform.
+  console.warn(
+    "legato(): no next note and no clip end for the last note; keeping current duration",
+  );
+
+  // duration is always populated by buildNoteProperties for note transforms.
+  return noteProperties.duration as number;
 }

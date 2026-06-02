@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Adam Murray
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
+import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { type MidiNote } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
@@ -158,7 +158,7 @@ export function buildClipResult(
     if (length == null) {
       const actualClipLength = clip.getProperty("length") as number;
 
-      clipResult.length = abletonBeatsToBarBeatDuration(
+      clipResult.length = abletonBeatsToDuration(
         actualClipLength,
         timeSigNumerator,
         timeSigDenominator,
@@ -170,7 +170,7 @@ export function buildClipResult(
   if (sampleFile) {
     const actualClipLength = clip.getProperty("length") as number;
 
-    clipResult.length = abletonBeatsToBarBeatDuration(
+    clipResult.length = abletonBeatsToDuration(
       actualClipLength,
       timeSigNumerator,
       timeSigDenominator,

@@ -189,12 +189,40 @@ web UI architecture.
   - Emit a warning via `console.warn()`
   - Skip the operation and continue processing
   - This allows partial successes when updating multiple items
+  - These warnings are NOT silent: `console.warn()` output is relayed back to
+    the LLM as `WARNING:` text blocks appended to the MCP tool response (emitted
+    on outlet 1 by `src/shared/v8-max-console.ts`, collected into the response
+    by `src/mcp-server/max-api-adapter.ts`). So warn-and-skip is real,
+    actionable feedback the model can recover from — not a hidden no-op.
+    (`console.log()` and `console.error()` are NOT relayed.)
   - Example: `console.warn("quantize parameter ignored for audio clip")`
 
 - **Producer Pal Skills maintenance**: This is returned in the ppal-connect tool
   in `src/tools/core/connect.ts`. It needs to be adjusted after changes to
   bar|beat notation and when changing behavior that invalidates any of its
   instructions.
+
+- **Notation spec maintenance**: The hand-written grammar specs in `dev/specs/`
+  (`BarBeat-Spec.md`, `Transforms-Spec.md`) are the authoritative reference for
+  the bar|beat and transform DSLs. No test guards them and they do NOT feed the
+  generated docs site (that is built from the skills strings), so they drift
+  silently — update them by hand whenever you change grammar syntax: operators,
+  selectors, shorthand forms, range bounds (e.g. the `N|*`/`-<` half-open
+  selectors), note-value tokens, or units (always say "musical beats" vs the
+  internal Ableton quarter-note beat). Keep the specs focused on the
+  grammar/parser contract and defer usage examples to the skills.
+
+- **Notation grammar duplication**: The note-value lexer (durations like `n/4`,
+  `±n` beat offsets, the off-grid `n<beats>/4` escape, and `Nbar` forms) is
+  intentionally duplicated across both Peggy grammars (`barbeat-grammar.peggy`,
+  `transform-grammar.peggy`) and the regexes in
+  `src/notation/barbeat/time/barbeat-time.ts`. Peggy has no import/rule-sharing,
+  and routing the per-note hot paths through the generated parser would cost
+  performance, so do NOT extract a shared grammar fragment. The contract is
+  enforced by `note-value-grammar-parity.test.ts` (6 parse sites across multiple
+  meters) and `note-value-denominator-parity.test.ts`. When adding or changing a
+  note-value parse site, update every site AND register it in the parity test.
+  See `dev/Coding-Standards.md` for the full rationale.
 
 - **Context window usage optimization**: The Producer Pal Skills, tool and
   parameter descriptions in `.def.ts` files, and tool results need to be very
@@ -304,8 +332,11 @@ functions for clarity.
 - **Debug logging for CLI testing**:
   - `console` must be imported:
     `import * as console from "../../shared/v8-max-console.ts"`
-  - Use `console.warn()` to see output in CLI tool results (appears as WARNING)
-  - `console.log()` and `console.error()` do NOT appear in CLI output
+  - Use `console.warn()` to surface output: it is relayed as a `WARNING:` block
+    in the tool result in BOTH the CLI and the live MCP response (the LLM sees
+    it — see the Update tool error handling note above)
+  - `console.log()` and `console.error()` do NOT appear in CLI output or the MCP
+    response
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
   and linting issues), then `npm run check` (validates all checks pass), then
   `npm run check:build` (verifies production artifacts and docs site compile

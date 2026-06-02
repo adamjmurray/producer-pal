@@ -5,7 +5,10 @@
 
 import { type RealtimeItem } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { mergeVoiceHistory } from "#webui/hooks/voice/use-voice-persistence-helpers";
+import {
+  deriveVoiceTitle,
+  mergeVoiceHistory,
+} from "#webui/hooks/voice/use-voice-persistence-helpers";
 import {
   isGeminiRealtimeModelId,
   OPENAI_REALTIME_MODEL,
@@ -60,6 +63,13 @@ export interface UseVoicePersistenceReturn {
   activeRecordProvider: string | null;
   /** Items to render when no live session is producing transcript (saved record). */
   savedItems: RealtimeItem[];
+  /** Promote the given items (typically the full displayed transcript) into the
+   * prior-history snapshot used by the autosave merge and the read-only view.
+   * Called at the Stop → Talk boundary: the realtime reseed drops function_call
+   * items, so without this a same-sitting reconnect would merge against an empty
+   * prior and overwrite the saved record's historical tool calls (and drop them
+   * from the transcript on screen). */
+  retainPriorHistory: (items: RealtimeItem[]) => void;
   refreshList: () => Promise<void>;
   switchConversation: (id: string) => Promise<void>;
   startNewConversation: () => void;
@@ -277,6 +287,14 @@ export function useVoicePersistence(
     setActiveId(null);
   }, [setActiveId]);
 
+  const retainPriorHistory = useCallback((items: RealtimeItem[]) => {
+    // The ref protects the next autosave merge (read synchronously, so it's in
+    // place before the post-reconnect save fires); the state keeps the items on
+    // screen via the savedItems → displayItems merge.
+    priorItemsRef.current = items;
+    setSavedItems(items);
+  }, []);
+
   const deleteConversation = useCallback(
     async (id: string) => {
       canceledIdsRef.current.add(id);
@@ -371,6 +389,7 @@ export function useVoicePersistence(
     activeRecordModel,
     activeRecordProvider,
     savedItems,
+    retainPriorHistory,
     refreshList,
     switchConversation,
     startNewConversation,
@@ -470,24 +489,4 @@ async function saveVoiceRecord(
   await saveConversation(record);
 
   return record;
-}
-
-/**
- * Derive a title from the first user transcript item.
- * @param items - Live RealtimeItem history
- * @returns First user utterance (truncated), or null if none yet
- */
-function deriveVoiceTitle(items: RealtimeItem[]): string | null {
-  for (const item of items) {
-    if (item.type !== "message" || item.role !== "user") continue;
-    const text = item.content
-      .map((c) => (c.type === "input_text" ? c.text : (c.transcript ?? "")))
-      .filter(Boolean)
-      .join(" ")
-      .trim();
-
-    if (text) return text.slice(0, 80);
-  }
-
-  return null;
 }

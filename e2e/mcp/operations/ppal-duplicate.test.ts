@@ -205,7 +205,7 @@ describe("ppal-duplicate", () => {
       arguments: {
         slot: `${emptyMidiTrack}/0`,
         notes: "C3 D3 E3 F3 1|1",
-        length: "1:0.0",
+        length: "1bar",
       },
     });
     const createdClip = parseToolResult<{ id: string }>(createClipResult);
@@ -272,7 +272,7 @@ describe("ppal-duplicate", () => {
         trackIndex: emptyMidiTrack,
         arrangementStart: "41|1",
         notes: "C3 D3 E3 1|1",
-        length: "2:0.0",
+        length: "2bar",
       },
     });
     const arrangementClip = parseToolResult<{ id: string }>(

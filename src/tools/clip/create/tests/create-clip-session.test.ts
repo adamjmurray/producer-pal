@@ -153,7 +153,7 @@ describe("createClip - session view", () => {
       id: "clip_0_0",
       slot: "0/0",
       noteCount: 3,
-      length: "1:0",
+      length: "1bar",
     });
   });
 
@@ -178,7 +178,7 @@ describe("createClip - session view", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       slot: "0/0",
       noteCount: 1,
-      length: "1:0",
+      length: "1bar",
     });
   });
 

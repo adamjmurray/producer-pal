@@ -34,7 +34,7 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
       .string()
       .optional()
       .describe(
-        "Bar|beat position (required for create, alt ID for delete/rename)",
+        "Bar|beat position, song meter (required for create, alt ID for delete/rename)",
       ),
     locatorName: z
       .string()

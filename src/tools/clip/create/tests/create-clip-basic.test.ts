@@ -51,7 +51,7 @@ describe("createClip - basic validation and time signatures", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       slot: "0/0",
       noteCount: 2,
-      length: "2:0",
+      length: "2bar",
     });
 
     // Verify the parsed notes were correctly added to the clip
@@ -82,8 +82,9 @@ describe("createClip - basic validation and time signatures", () => {
       notes: "C3 1|1 D3 2|1",
     });
 
-    // In 6/8, beat 2|1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
-    expectNotesAdded(clip, [note(60, 0, 0.5), note(62, 3, 0.5)]);
+    // In 6/8, beat 2|1 = 3 Ableton beats (6 musical beats * 4/8). Default duration
+    // is a quarter note (meter-independent), so 1 Ableton beat.
+    expectNotesAdded(clip, [note(60, 0, 1), note(62, 3, 1)]);
   });
 
   it("should create clip with specified length", async () => {
@@ -93,7 +94,7 @@ describe("createClip - basic validation and time signatures", () => {
 
     await createClip({
       slot: "0/0",
-      length: "1:3",
+      length: "1bar+n3/4",
       looping: false,
     });
 
@@ -107,7 +108,7 @@ describe("createClip - basic validation and time signatures", () => {
 
     await createClip({
       slot: "0/0",
-      length: "2:0",
+      length: "2bar",
       looping: true,
     });
 
@@ -121,7 +122,7 @@ describe("createClip - basic validation and time signatures", () => {
 
     await createClip({
       slot: "0/0",
-      notes: "t2 C3 1|1 t1.5 D3 1|4", // Last note starts at beat 3 (0-based), rounds up to 1 bar = 4 beats
+      notes: "n/2 C3 1|1 n3/8 D3 1|4", // Last note starts at beat 3 (0-based), rounds up to 1 bar = 4 beats
     });
 
     expectClipCreated(clipSlot, 4);
@@ -132,14 +133,16 @@ describe("createClip - basic validation and time signatures", () => {
       liveSet: { signature_numerator: 6, signature_denominator: 8 },
     });
 
+    // n/2 = half note = 2 quarters; n3/8 = dotted quarter = 1.5 quarters.
+    // Durations are absolute (meter-independent) under new semantics.
     await createClip({
       slot: "0/0",
-      notes: "t2 C3 1|1 t1.5 D3 1|2", // Last note starts at beat 1 (0.5 Ableton beats), rounds up to 1 bar
+      notes: "n/2 C3 1|1 n3/8 D3 1|2", // Last note starts at beat 1 (0.5 Ableton beats), rounds up to 1 bar
     });
 
     expectClipCreated(clipSlot, 3); // 1 bar in 6/8 = 3 Ableton beats
-    // LiveAPI durations are in quarter notes, so halved from the notation string
-    expectNotesAdded(clip, [note(60, 0, 1), note(62, 0.5, 0.75)]);
+    // Live durations are in quarter notes; absolute durations don't change with meter
+    expectNotesAdded(clip, [note(60, 0, 2), note(62, 0.5, 1.5)]);
   });
 
   it("should create 1-bar clip when empty in 4/4 time", async () => {

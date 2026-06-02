@@ -699,6 +699,68 @@ describe("useVoicePersistence", () => {
     ).toStrictEqual(["u1", "fc1", "u2"]);
   });
 
+  it("retainPriorHistory keeps tool calls across a same-sitting Stop → Talk", async () => {
+    // A conversation started AND continued in one sitting (Stop → Talk, no
+    // sidebar reload) never loads a record, so savedItems / priorItemsRef start
+    // empty and the autosave merge has no prior to protect the tool call. On
+    // reconnect the realtime SDK reseeds messages only (function_call items are
+    // dropped), so without retainPriorHistory the next autosave would overwrite
+    // the saved record's tool call — and it would vanish from the transcript.
+    const userMsg = {
+      itemId: "u1",
+      type: "message",
+      role: "user",
+      status: "completed",
+      content: [{ type: "input_audio", transcript: "earlier" }],
+    } as unknown as RealtimeItem;
+    const functionCall = {
+      itemId: "fc1",
+      type: "function_call",
+      status: "completed",
+      name: "ppal-read-track",
+      arguments: "{}",
+      output: '{"result":"ok"}',
+    } as unknown as RealtimeItem;
+
+    const { result, rerender } = renderVoicePersistenceWithHistory();
+
+    await waitForEffects();
+    // Sub-session 1: a transcript with a tool call is autosaved to a fresh record.
+    rerender([userMsg, functionCall]);
+    await waitForEffects(800);
+
+    const id = result.current.activeConversationId as string;
+    const initial = await loadConversation(id);
+
+    expect(initial?.voiceHistory).toHaveLength(2);
+
+    // Stop → Talk: the controls promote the full displayed transcript (still
+    // holding the tool call) into the prior snapshot before reconnecting.
+    await act(() => result.current.retainPriorHistory([userMsg, functionCall]));
+
+    // Reseeded session echoes back the message only (fc1 dropped), then a new
+    // turn arrives. The autosave must not clobber the saved tool call.
+    rerender([
+      userMsg,
+      {
+        itemId: "u2",
+        type: "message",
+        role: "user",
+        status: "completed",
+        content: [{ type: "input_audio", transcript: "follow-up" }],
+      } as unknown as RealtimeItem,
+    ]);
+    await waitForEffects(800);
+
+    const loaded = await loadConversation(id);
+
+    expect(
+      loaded?.voiceHistory?.map((i) => (i as RealtimeItem).itemId),
+    ).toStrictEqual(["u1", "fc1", "u2"]);
+    // ...and the tool call stays in the read-only/display source.
+    expect(result.current.savedItems.map((i) => i.itemId)).toContain("fc1");
+  });
+
   it("renames and toggles bookmark on a saved conversation", async () => {
     const record = await saveVoiceRecord({ voiceHistory: [] });
 

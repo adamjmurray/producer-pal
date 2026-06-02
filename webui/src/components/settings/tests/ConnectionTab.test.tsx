@@ -46,6 +46,8 @@ describe("ConnectionTab", () => {
     setSmallModelMode: vi.fn(),
     realtimeVoice: "marin",
     setRealtimeVoice: vi.fn(),
+    voiceLanguage: "en",
+    setVoiceLanguage: vi.fn(),
     voiceVolume: 1.0,
     setVoiceVolume: vi.fn(),
     voiceSpeed: 1.0,

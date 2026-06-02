@@ -56,6 +56,7 @@ export interface RunScenarioOptions {
   judgeOverride?: JudgeOverride;
   configProfile?: ConfigProfile;
   usage?: boolean;
+  skipJudge?: boolean;
 }
 
 /**
@@ -103,34 +104,9 @@ export async function runScenario(
 
     // 3. Create evaluation session
     const effectiveModel = model ?? getDefaultModel(provider);
-
-    console.log(
-      formatScenarioHeader(
-        scenario.id,
-        scenario.description,
-        provider,
-        effectiveModel,
-      ),
-    );
-
     const profileId = options.configProfile?.id;
 
-    if (profileId && profileId !== "default") {
-      console.log(
-        `${orange("|")} ${styleText("gray", "Config:")} ${profileId}`,
-      );
-    }
-
-    const instructionsLabel =
-      scenario.instructions !== undefined
-        ? scenario.instructions == null
-          ? "none"
-          : "custom"
-        : "default";
-
-    console.log(
-      `${orange("|")} ${styleText("gray", "Instructions:")} ${instructionsLabel}`,
-    );
+    logScenarioHeader(scenario, provider, effectiveModel, profileId);
 
     session = await createEvalSession({
       provider,
@@ -138,6 +114,10 @@ export async function runScenario(
       instructions,
       usage: options.usage,
     });
+
+    // 3b. Scenario-specific setup (e.g. clear stale clip slots so repeat
+    // trials, which reuse the open Live Set, each start clean)
+    await scenario.setup?.(session.mcpClient);
 
     // 4. Run each message turn
     for (const [i, message] of scenario.messages.entries()) {
@@ -161,6 +141,7 @@ export async function runScenario(
       session,
       provider,
       judgeOverride,
+      options.skipJudge ?? false,
     );
 
     return {
@@ -194,6 +175,45 @@ export async function runScenario(
       // Ignore reset errors - scenario result is already determined
     }
   }
+}
+
+/**
+ * Print the scenario header, plus optional config/instructions context lines.
+ *
+ * @param scenario - The scenario being run
+ * @param provider - LLM provider being used
+ * @param effectiveModel - Resolved model id
+ * @param profileId - Active config profile id (undefined/"default" is hidden)
+ */
+function logScenarioHeader(
+  scenario: EvalScenario,
+  provider: EvalProvider,
+  effectiveModel: string,
+  profileId: string | undefined,
+): void {
+  console.log(
+    formatScenarioHeader(
+      scenario.id,
+      scenario.description,
+      provider,
+      effectiveModel,
+    ),
+  );
+
+  if (profileId && profileId !== "default") {
+    console.log(`${orange("|")} ${styleText("gray", "Config:")} ${profileId}`);
+  }
+
+  const instructionsLabel =
+    scenario.instructions !== undefined
+      ? scenario.instructions == null
+        ? "none"
+        : "custom"
+      : "default";
+
+  console.log(
+    `${orange("|")} ${styleText("gray", "Instructions:")} ${instructionsLabel}`,
+  );
 }
 
 /**
@@ -240,6 +260,7 @@ async function runAssertions(
  * @param session - Active evaluation session
  * @param provider - LLM provider being used
  * @param judgeOverride - Optional judge LLM override
+ * @param skipJudge - When true, skip the LLM-as-judge step entirely
  * @returns Combined assertion results
  */
 async function runAllAssertions(
@@ -248,6 +269,7 @@ async function runAllAssertions(
   session: EvalSession,
   provider: EvalProvider,
   judgeOverride: JudgeOverride | undefined,
+  skipJudge: boolean,
 ): Promise<EvalAssertionResult[]> {
   const checkAssertions = scenario.assertions.filter(
     (a) => a.type !== "llm_judge" && a.type !== "token_usage",
@@ -255,9 +277,9 @@ async function runAllAssertions(
   const efficiencyAssertions = scenario.assertions.filter(
     (a) => a.type === "token_usage",
   );
-  const judgeAssertions = scenario.assertions.filter(
-    (a) => a.type === "llm_judge",
-  );
+  const judgeAssertions = skipJudge
+    ? []
+    : scenario.assertions.filter((a) => a.type === "llm_judge");
 
   console.log(formatSectionHeader("EVALUATION"));
 

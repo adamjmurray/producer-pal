@@ -1,5 +1,6 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
@@ -198,6 +199,110 @@ G4-G5: velocity += 20`;
 
       expect(atEnd.velocity!.value).toBe(10);
     });
+
+    // Regression: when a caller supplies only `position` (no bar/beat) — as the
+    // exported evaluateTransform() permits — a time-range selector must still be
+    // enforced from `position`, not silently fall through to the whole clip.
+    describe("enforces selectors from position when bar/beat absent", () => {
+      it("skips a note whose position is outside the range", () => {
+        const result = evaluateTransform("2|1-3|1: velocity += 20", {
+          ...createContext({ position: 0 }), // bar 1 — before the 2|1-3|1 range
+        });
+
+        expect(result).toStrictEqual({});
+      });
+
+      it("applies to a note whose position is inside the range", () => {
+        const result = evaluateTransform("2|1-3|1: velocity += 20", {
+          ...createContext({ position: 5 }), // bar 2, beat 2 — inside the range
+        });
+
+        expect(result.velocity!.value).toBe(20);
+      });
+    });
+
+    // range bounds use the same bar|beat dialect as note positions,
+    // including ±n note-value offsets resolved meter-relative to the denominator.
+    describe("n-offset bounds (meter-relative)", () => {
+      it("includes a note at or past a +n start bound", () => {
+        // 4/4: 1|1+n/12 start bound = beat 1.333; note at beat 1.5 is inside.
+        const result = evaluateTransform("1|1+n/12-2|1: velocity += 10", {
+          ...createContext(),
+          bar: 1,
+          beat: 1.5,
+        });
+
+        expect(result.velocity!.value).toBe(10);
+      });
+
+      it("excludes a note before a +n start bound", () => {
+        // 4/4: beat 1.2 is before the 1.333 bound.
+        const result = evaluateTransform("1|1+n/12-2|1: velocity += 10", {
+          ...createContext(),
+          bar: 1,
+          beat: 1.2,
+        });
+
+        expect(result).toStrictEqual({});
+      });
+
+      it("moves the boundary with the meter (same bound, same note, flips)", () => {
+        // Identical range string and note beat 1.5; only the meter differs.
+        // n/12 = 1/3 beat in 4/4 → start 1.333 (note 1.5 inside),
+        //        but 2/3 beat in 6/8 → start 1.667 (note 1.5 outside).
+        const range = "1|1+n/12-2|1: velocity += 10";
+
+        const in44 = evaluateTransform(range, {
+          ...createContext({ denominator: 4 }),
+          bar: 1,
+          beat: 1.5,
+        });
+        const in68 = evaluateTransform(range, {
+          ...createContext({ denominator: 8 }),
+          bar: 1,
+          beat: 1.5,
+        });
+
+        expect(in44.velocity!.value).toBe(10); // inside in 4/4
+        expect(in68).toStrictEqual({}); // outside in 6/8
+      });
+    });
+
+    // A `+n` offset can push a bound's beat past the bar without folding into the
+    // bar number (the offset borrows down across bar lines, never up). Membership
+    // must be decided in the same absolute musical beats the bound normalizes to,
+    // not a raw per-component bar/beat compare — otherwise a note in a later bar
+    // is wrongly admitted just because its bar number exceeds the bound's, even
+    // when its absolute position is before the (overflowed) start.
+    describe("offset bound that overflows the bar (non-4/4)", () => {
+      // 6/8: a bar is 6 musical beats. `1|4+n/2` = beat 4 + a half note (4 eighth
+      // beats) = beat 8 = bar 2 beat 2 (absolute musical beat 7).
+      const range = "1|4+n/2-3|1: velocity += 10";
+
+      it("excludes a note in a later bar that is before the overflowed start", () => {
+        // Note at 2|1 (absolute beat 6) is before the real start at beat 7, even
+        // though its bar (2) is past the bound's bar (1). The old raw compare
+        // (bar 2 > bound bar 1) wrongly included it.
+        const result = evaluateTransform(range, {
+          ...createContext({ numerator: 6, denominator: 8 }),
+          bar: 2,
+          beat: 1,
+        });
+
+        expect(result).toStrictEqual({});
+      });
+
+      it("includes a note once it reaches the overflowed start beat", () => {
+        // Note at 2|2 (absolute beat 7) is exactly the normalized start.
+        const result = evaluateTransform(range, {
+          ...createContext({ numerator: 6, denominator: 8 }),
+          bar: 2,
+          beat: 2,
+        });
+
+        expect(result.velocity!.value).toBe(10);
+      });
+    });
   });
 
   describe("combined pitch and time filtering", () => {
@@ -341,7 +446,7 @@ G4-G5: velocity += 20`;
 
     it("uses variables with functions", () => {
       const result = evaluateTransform(
-        "velocity += note.velocity * cos(1t)",
+        "velocity += note.velocity * cos(n/4)",
         createContext(),
         noteProps,
       );
@@ -424,7 +529,7 @@ G4-G5: velocity += 20`;
 
     it("handles variables in waveform phase offset", () => {
       const result = evaluateTransform(
-        "velocity += cos(1t, note.probability)",
+        "velocity += cos(n/4, note.probability)",
         createContext(),
         noteProps,
       );
@@ -469,6 +574,100 @@ G4-G5: velocity += 20`;
 
       // noteProps.duration - 0.5 = 0.5 - 0.5 = 0, should error
       expect(result).toStrictEqual({});
+    });
+  });
+
+  // Whole-bar wildcard (`N|*`, `A|*-B|*`) and the `-<` exclusive-end marker all
+  // produce half-open ranges, so a note that lands exactly on the next bar's
+  // downbeat is NOT selected. This is the fix for "delete bar 3" overshooting
+  // into the first note of bar 4. The default `start-end` range stays inclusive.
+  describe("half-open range bounds", () => {
+    const inRange = (transform: string, bar: number, beat: number) =>
+      evaluateTransform(transform, { ...createContext(), bar, beat }).velocity
+        ?.value === 10;
+
+    describe("whole-bar wildcard N|*", () => {
+      const t = "3|*: velocity += 10";
+
+      it("includes the bar's downbeat and interior", () => {
+        expect(inRange(t, 3, 1)).toBe(true);
+        expect(inRange(t, 3, 4.5)).toBe(true);
+      });
+
+      it("excludes the next bar's downbeat (no spill onto 4|1)", () => {
+        expect(inRange(t, 4, 1)).toBe(false);
+      });
+
+      it("excludes notes before the bar", () => {
+        expect(inRange(t, 2, 4)).toBe(false);
+      });
+
+      it("is meter-aware: in 3/4 the bar ends at beat 3, 4|1 still excluded", () => {
+        const at33 = evaluateTransform(t, {
+          ...createContext({ numerator: 3, denominator: 4 }),
+          bar: 3,
+          beat: 3,
+        });
+        const at41 = evaluateTransform(t, {
+          ...createContext({ numerator: 3, denominator: 4 }),
+          bar: 4,
+          beat: 1,
+        });
+
+        expect(at33.velocity?.value).toBe(10);
+        expect(at41).toStrictEqual({});
+      });
+    });
+
+    describe("whole-bar span A|*-B|*", () => {
+      const t = "1|*-3|*: velocity += 10";
+
+      it("includes every bar in the span", () => {
+        expect(inRange(t, 1, 1)).toBe(true);
+        expect(inRange(t, 2, 3)).toBe(true);
+        expect(inRange(t, 3, 4.99)).toBe(true);
+      });
+
+      it("excludes the downbeat after the span", () => {
+        expect(inRange(t, 4, 1)).toBe(false);
+      });
+    });
+
+    describe("exclusive-end marker -<", () => {
+      it("excludes the end bound", () => {
+        const t = "3|1-<4|1: velocity += 10";
+
+        expect(inRange(t, 3, 2)).toBe(true);
+        expect(inRange(t, 4, 1)).toBe(false);
+      });
+
+      it("works for sub-bar half-open ranges", () => {
+        // beats 2-3 of bar 1: includes 1|2 and 1|3, excludes 1|4.
+        const t = "1|2-<1|4: velocity += 10";
+
+        expect(inRange(t, 1, 2)).toBe(true);
+        expect(inRange(t, 1, 3)).toBe(true);
+        expect(inRange(t, 1, 4)).toBe(false);
+      });
+
+      it("default range stays inclusive of the end bound", () => {
+        const t = "3|1-4|1: velocity += 10";
+
+        expect(inRange(t, 4, 1)).toBe(true);
+      });
+    });
+
+    describe("wildcard combined with a pitch lane", () => {
+      const t = "C1 3|*: velocity += 10";
+      const inRangePitched = (bar: number, beat: number, pitch: number) =>
+        evaluateTransform(t, { ...createContext(), bar, beat, pitch }).velocity
+          ?.value === 10;
+
+      it("selects the lane within the bar, excludes other lanes and the next downbeat", () => {
+        expect(inRangePitched(3, 1, 36)).toBe(true); // C1 in bar 3
+        expect(inRangePitched(3, 1, 38)).toBe(false); // D1 filtered by pitch
+        expect(inRangePitched(4, 1, 36)).toBe(false); // C1 on 4|1 filtered by time
+      });
     });
   });
 });

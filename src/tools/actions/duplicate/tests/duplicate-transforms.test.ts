@@ -48,7 +48,7 @@ describe("duplicate - transforms/code", () => {
   });
 
   describe("duplicate() integration", () => {
-    it("applies transforms to a duplicated session clip", async () => {
+    it("applies a transform string to a duplicated session clip", async () => {
       registerSessionClipDuplication({ destClipProperties: {} });
       const destId = "live_set/tracks/0/clip_slots/1/clip";
 
@@ -60,12 +60,12 @@ describe("duplicate - transforms/code", () => {
         type: "clip",
         id: "clip1",
         toSlot: "0/1",
-        transforms: ["velocity *= 0.5"],
+        transforms: "velocity *= 0.5",
       });
 
       expect(updateClipMock).toHaveBeenCalledTimes(1);
       expect(updateClipMock).toHaveBeenCalledWith(
-        { ids: destId, transforms: ["velocity *= 0.5"], code: undefined },
+        { ids: destId, transforms: "velocity *= 0.5", code: undefined },
         expect.anything(),
       );
       expect(result).toStrictEqual({
@@ -76,7 +76,7 @@ describe("duplicate - transforms/code", () => {
       });
     });
 
-    it("cycles a single-entry transform array across multiple duplicated clips", async () => {
+    it("broadcasts one transform string across multiple duplicated clips", async () => {
       setupTwoSlotDuplication();
 
       const dest1 = "live_set/tracks/0/clip_slots/1/clip";
@@ -91,15 +91,15 @@ describe("duplicate - transforms/code", () => {
         type: "clip",
         id: "clip1",
         toSlot: "0/1, 0/2",
-        transforms: ["velocity = seq(100, 60)"],
+        transforms: "pitch += clipseq(0, 12)",
       });
 
-      // One entry cycles to both ids, keeping a single batched updateClip call
-      // so clip.index/clip.count span both copies (seq() stays correct).
+      // Single string flows through to updateClip; one batched call keeps
+      // clip.index/clip.count spanning both copies so clipseq() works.
       expect(updateClipMock).toHaveBeenCalledWith(
         {
           ids: `${dest1},${dest2}`,
-          transforms: ["velocity = seq(100, 60)", "velocity = seq(100, 60)"],
+          transforms: "pitch += clipseq(0, 12)",
           code: undefined,
         },
         expect.anything(),
@@ -110,52 +110,7 @@ describe("duplicate - transforms/code", () => {
       ]);
     });
 
-    it("applies distinct per-copy transforms when the array matches the copies", async () => {
-      setupTwoSlotDuplication();
-
-      const dest1 = "live_set/tracks/0/clip_slots/1/clip";
-      const dest2 = "live_set/tracks/0/clip_slots/2/clip";
-
-      updateClipMock.mockReturnValueOnce([{ id: dest1 }, { id: dest2 }]);
-
-      await duplicate({
-        type: "clip",
-        id: "clip1",
-        toSlot: "0/1, 0/2",
-        transforms: ["pitch += 0", "pitch += 12"],
-      });
-
-      expect(updateClipMock).toHaveBeenCalledWith(
-        {
-          ids: `${dest1},${dest2}`,
-          transforms: ["pitch += 0", "pitch += 12"],
-          code: undefined,
-        },
-        expect.anything(),
-      );
-    });
-
-    it("warns when more transform entries are given than copies", async () => {
-      registerSessionClipDuplication({ destClipProperties: {} });
-      const destId = "live_set/tracks/0/clip_slots/1/clip";
-
-      updateClipMock.mockReturnValueOnce([{ id: destId }]);
-
-      await duplicate({
-        type: "clip",
-        id: "clip1",
-        toSlot: "0/1",
-        transforms: ["pitch += 0", "pitch += 12"],
-      });
-
-      expect(consoleMock.warn).toHaveBeenCalledWith(
-        expect.stringContaining(
-          "2 transforms provided but only 1 clips — ignoring extra",
-        ),
-      );
-    });
-
-    it("passes the code array through to updateClip", async () => {
+    it("passes the code string through to updateClip", async () => {
       registerSessionClipDuplication({ destClipProperties: {} });
       const destId = "live_set/tracks/0/clip_slots/1/clip";
 
@@ -165,11 +120,11 @@ describe("duplicate - transforms/code", () => {
         type: "clip",
         id: "clip1",
         toSlot: "0/1",
-        code: ["return notes;"],
+        code: "return notes;",
       });
 
       expect(updateClipMock).toHaveBeenCalledWith(
-        { ids: destId, transforms: undefined, code: ["return notes;"] },
+        { ids: destId, transforms: undefined, code: "return notes;" },
         expect.anything(),
       );
       expect(result).toStrictEqual({
@@ -198,7 +153,7 @@ describe("duplicate - transforms/code", () => {
       await duplicate({
         type: "track",
         id: "track1",
-        transforms: ["velocity *= 0.5"],
+        transforms: "velocity *= 0.5",
       });
 
       expect(updateClipMock).not.toHaveBeenCalled();
@@ -209,7 +164,7 @@ describe("duplicate - transforms/code", () => {
   });
 
   describe("applyTransformsToDuplicatedClips", () => {
-    it("shares one transform entry across clips nested in one logical duplicate", async () => {
+    it("flattens nested arrangement-tiled clips into one updateClip call", async () => {
       const createdObjects: object[] = [
         { trackIndex: 0, clips: [{ id: "a" }, { id: "b" }] },
       ];
@@ -221,17 +176,16 @@ describe("duplicate - transforms/code", () => {
 
       await applyTransformsToDuplicatedClips(
         createdObjects,
-        ["velocity *= 2"],
+        "velocity *= 2",
         undefined,
         {},
       );
 
-      // The two tiled clips belong to one logical duplicate, so they receive the
-      // same transform entry (built per-id, aligned with the flattened ids).
+      // Tiled clips flatten into a single id batch; transforms broadcasts.
       expect(updateClipMock).toHaveBeenCalledWith(
         {
           ids: "a,b",
-          transforms: ["velocity *= 2", "velocity *= 2"],
+          transforms: "velocity *= 2",
           code: undefined,
         },
         {},
@@ -247,7 +201,7 @@ describe("duplicate - transforms/code", () => {
       ]);
     });
 
-    it("cycles per-duplicate entries across multiple logical duplicates", async () => {
+    it("broadcasts the same transform string across multiple logical duplicates", async () => {
       const createdObjects: object[] = [{ id: "a" }, { id: "b" }, { id: "c" }];
 
       updateClipMock.mockReturnValueOnce([
@@ -258,14 +212,17 @@ describe("duplicate - transforms/code", () => {
 
       await applyTransformsToDuplicatedClips(
         createdObjects,
-        ["t0", "t1"],
+        "pitch += clip.index * 2",
         undefined,
         {},
       );
 
-      // 3 duplicates, 2 entries → cycle: a→t0, b→t1, c→t0 (modulo)
       expect(updateClipMock).toHaveBeenCalledWith(
-        { ids: "a,b,c", transforms: ["t0", "t1", "t0"], code: undefined },
+        {
+          ids: "a,b,c",
+          transforms: "pitch += clip.index * 2",
+          code: undefined,
+        },
         {},
       );
     });
@@ -273,7 +230,7 @@ describe("duplicate - transforms/code", () => {
     it("is a no-op when there are no clips to transform", async () => {
       await applyTransformsToDuplicatedClips(
         [],
-        ["velocity *= 2"],
+        "velocity *= 2",
         undefined,
         {},
       );
@@ -292,7 +249,7 @@ describe("duplicate - transforms/code", () => {
 
       await applyTransformsToDuplicatedClips(
         createdObjects,
-        ["velocity *= 2"],
+        "velocity *= 2",
         undefined,
         {},
       );
@@ -302,7 +259,7 @@ describe("duplicate - transforms/code", () => {
       ]);
     });
 
-    it("does not pass an undefined transforms/code array down", async () => {
+    it("forwards code with undefined transforms when only code is given", async () => {
       const createdObjects: object[] = [{ id: "a" }];
 
       updateClipMock.mockReturnValueOnce([{ id: "a" }]);
@@ -310,12 +267,12 @@ describe("duplicate - transforms/code", () => {
       await applyTransformsToDuplicatedClips(
         createdObjects,
         undefined,
-        ["return notes;"],
+        "return notes;",
         {},
       );
 
       expect(updateClipMock).toHaveBeenCalledWith(
-        { ids: "a", transforms: undefined, code: ["return notes;"] },
+        { ids: "a", transforms: undefined, code: "return notes;" },
         {},
       );
     });

@@ -183,6 +183,41 @@ describe("toJsonResult", () => {
     expect(result.result).toBe("fail");
   });
 
+  it("does not let an advisory judge gate the overall result", () => {
+    const result = toJsonResult(
+      makeResult({
+        scenario: {
+          id: "advisory-scenario",
+          description: "Judge is advisory",
+          liveSet: "test",
+          messages: ["Connect to Ableton"],
+          assertions: [],
+          judgeAdvisory: true,
+        },
+        assertions: [
+          makeAssertion(), // passing deterministic check
+          makeAssertion({
+            assertion: { type: "llm_judge", prompt: "Evaluate" },
+            earned: 0,
+            maxScore: 0,
+            message: "LLM judge: fail (2 issue(s))",
+            details: FAILING_JUDGE,
+          }),
+        ],
+      }),
+      "run-1",
+      "google/gemini",
+      "default",
+    );
+
+    // The judge still records its verdict + issues...
+    expect(result.judge?.pass).toBe(false);
+    expect(result.judge?.advisory).toBe(true);
+    expect(result.judge?.issues).toHaveLength(2);
+    // ...but an advisory fail must NOT flip the overall result.
+    expect(result.result).toBe("pass");
+  });
+
   it("marks result as fail when a check fails", () => {
     const result = toJsonResult(
       makeResult({

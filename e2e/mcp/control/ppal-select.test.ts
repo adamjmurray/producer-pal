@@ -115,7 +115,7 @@ describe("ppal-select", () => {
       arguments: {
         slot: `${emptyMidiTrack}/0`,
         notes: "C3 1|1",
-        length: "1:0.0",
+        length: "1bar",
       },
     });
     const createdClip = parseToolResult<{ id: string }>(createClipResult);

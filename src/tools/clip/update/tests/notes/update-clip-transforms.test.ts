@@ -3,7 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
   mockMergeNoteTracking,
   setupMidiClipMock,
@@ -35,7 +35,7 @@ function addedVelocity(clip: UpdateClipMocks["clip123"]): number {
   return last[1].notes[0]?.velocity as number;
 }
 
-describe("updateClip - transforms array (per-clip cycling)", () => {
+describe("updateClip - transforms (single string, broadcast across ids)", () => {
   let mocks: UpdateClipMocks;
 
   beforeEach(() => {
@@ -48,69 +48,42 @@ describe("updateClip - transforms array (per-clip cycling)", () => {
     mockMergeNoteTracking(mocks.clip789, [{ ...C3 }]);
   });
 
-  it("applies a single-element transform array to one clip", async () => {
+  it("applies a transform string to one clip", async () => {
     const result = await updateClip({
       ids: "123",
-      transforms: ["velocity = 50"],
+      transforms: "velocity = 50",
     });
 
     expect(result).toStrictEqual({ id: "123", noteCount: 1, transformed: 1 });
     expect(addedVelocity(mocks.clip123)).toBe(50);
   });
 
-  it("cycles a single-element array across multiple clips (modulo)", async () => {
+  it("broadcasts one transform string across multiple clips", async () => {
     await updateClip({
       ids: "123, 456",
-      transforms: ["velocity = 42"],
+      transforms: "velocity = 42",
     });
 
     expect(addedVelocity(mocks.clip123)).toBe(42);
     expect(addedVelocity(mocks.clip456)).toBe(42);
   });
 
-  it("applies distinct per-clip entries when the array matches ids", async () => {
-    await updateClip({
-      ids: "123, 456",
-      transforms: ["velocity = 10", "velocity = 20"],
-    });
-
-    expect(addedVelocity(mocks.clip123)).toBe(10);
-    expect(addedVelocity(mocks.clip456)).toBe(20);
-  });
-
-  it("cycles via modulo when there are more clips than entries", async () => {
-    await updateClip({
-      ids: "123, 456, 789",
-      transforms: ["velocity = 11", "velocity = 22"],
-    });
-
-    // 3 clips, 2 entries → 11, 22, 11 (clip index 2 % 2 = 0)
-    expect(addedVelocity(mocks.clip123)).toBe(11);
-    expect(addedVelocity(mocks.clip456)).toBe(22);
-    expect(addedVelocity(mocks.clip789)).toBe(11);
-  });
-
-  it("warns when more transform entries are given than clips", async () => {
+  it("supports multiple expressions via newline separation", async () => {
     await updateClip({
       ids: "123",
-      transforms: ["velocity = 1", "velocity = 2"],
+      transforms: "velocity = 60\nvelocity += 10",
     });
 
-    expect(outlet).toHaveBeenCalledWith(
-      1,
-      expect.stringContaining(
-        "updateClip: 2 transforms provided but only 1 clips — ignoring extra",
-      ),
-    );
+    expect(addedVelocity(mocks.clip123)).toBe(70);
   });
 
-  it("keeps clip.index/clip.count correct across the full set (seq trap)", async () => {
+  it("exposes clip.index/clip.count across the full set (clipseq trap)", async () => {
     // velocity = clip.index*20 + clip.count. With 3 clips, clip.count MUST be 3
     // for every clip (a naive per-clip updateClip call would see count = 1).
     // Values stay <=127 so velocity clamping doesn't mask the assertion.
     await updateClip({
       ids: "123, 456, 789",
-      transforms: ["velocity = clip.index * 20 + clip.count"],
+      transforms: "velocity = clip.index * 20 + clip.count",
     });
 
     expect(addedVelocity(mocks.clip123)).toBe(3); // 0*20 + 3
@@ -118,31 +91,15 @@ describe("updateClip - transforms array (per-clip cycling)", () => {
     expect(addedVelocity(mocks.clip789)).toBe(43); // 2*20 + 3
   });
 
-  it("does not transform when transforms array is empty", async () => {
-    await updateClip({ ids: "123", transforms: [] });
-
-    expect(mocks.clip123.call).not.toHaveBeenCalledWith(
-      "add_new_notes",
-      expect.anything(),
-    );
-    expect(vi.mocked(outlet)).not.toHaveBeenCalledWith(
-      1,
-      expect.stringContaining("transforms provided but only"),
-    );
-  });
-
-  it("warns and continues when a single transform entry is malformed", async () => {
-    // Middle transform has invalid syntax; first and third must still apply.
+  it("warns and continues when a transform string is malformed", async () => {
     await updateClip({
       ids: "123, 456, 789",
-      transforms: ["velocity = 10", "velocity = !!!bad!!!", "velocity = 30"],
+      transforms: "!!!bad!!!",
     });
 
-    expect(addedVelocity(mocks.clip123)).toBe(10);
-    expect(addedVelocity(mocks.clip789)).toBe(30);
     expect(outlet).toHaveBeenCalledWith(
       1,
-      expect.stringContaining("Failed to update clip 456"),
+      expect.stringContaining("Failed to update clip 123"),
     );
   });
 });

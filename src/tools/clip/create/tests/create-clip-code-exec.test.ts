@@ -141,6 +141,8 @@ describe("createClip - code execution", () => {
       "return [{ pitch: 60, start: 0, duration: 1, velocity: 100 }]",
       "session",
       0,
+      1,
+      0,
       undefined,
     );
 

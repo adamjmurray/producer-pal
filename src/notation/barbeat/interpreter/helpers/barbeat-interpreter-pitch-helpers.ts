@@ -1,7 +1,9 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { wholeNoteFractionToMusicalBeats } from "#src/notation/barbeat/barbeat-config.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { assertDefined } from "#src/tools/shared/utils.ts";
 import { type NoteEvent, type BarCopyNote } from "../../../types.ts";
@@ -15,6 +17,7 @@ export interface RepeatPattern {
   start: number;
   times: number;
   step?: number | null;
+  stepBars?: number;
 }
 
 export interface TimeElement {
@@ -23,11 +26,14 @@ export interface TimeElement {
 }
 
 /**
- * Expand a repeat pattern into multiple beat positions
+ * Expand a repeat pattern into multiple beat positions.
+ * The parser emits `pattern.step` as a fraction of a whole note; convert to
+ * musical beats here so it can be added to positions (also in musical beats).
  * @param pattern - Repeat pattern to expand
  * @param currentBar - Current bar number
- * @param beatsPerBar - Beats per bar
- * @param currentDuration - Current note duration
+ * @param beatsPerBar - Beats per bar (musical beats)
+ * @param currentDuration - Current note duration in musical beats (used when @step is omitted)
+ * @param timeSigDenominator - Time signature denominator (for step unit conversion)
  * @returns Array of time positions
  */
 function expandRepeatPattern(
@@ -35,9 +41,17 @@ function expandRepeatPattern(
   currentBar: number,
   beatsPerBar: number,
   currentDuration: number,
+  timeSigDenominator: number | undefined,
 ): TimePosition[] {
-  const { start, times, step: stepValue } = pattern;
-  const step = stepValue ?? currentDuration;
+  const { start, times, step: stepValue, stepBars } = pattern;
+  // @step omitted (null) defaults to the current duration (legato). Otherwise
+  // combine the whole-note fraction (scaled by the denominator) with the
+  // meter-aware bar component (@1bar) scaled by beatsPerBar.
+  const step =
+    stepValue == null
+      ? currentDuration
+      : wholeNoteFractionToMusicalBeats(stepValue, timeSigDenominator) +
+        (stepBars ?? 0) * beatsPerBar;
 
   if (times > 100) {
     console.warn(
@@ -50,10 +64,19 @@ function expandRepeatPattern(
   // Convert starting position to absolute beats (0-based)
   const startBeats = (currentBar - 1) * beatsPerBar + (start - 1);
 
+  warnIfBeforeClipStart(startBeats);
+
   for (let i = 0; i < times; i++) {
     const absoluteBeats = startBeats + i * step;
     const bar = Math.floor(absoluteBeats / beatsPerBar) + 1;
-    const beat = (absoluteBeats % beatsPerBar) + 1;
+    // Floored modulo (not bare `%`): JS `%` is truncated, keeping the dividend's
+    // sign, so a negative absoluteBeats (a repeat landing before the clip start,
+    // e.g. `1|1-n/8x2`) would decompose into a {bar, beat} that no longer
+    // recomposes to the same time in emitPitchAtPosition — placing the note bars
+    // away from where it belongs. The grammar's borrowBars wraps sub-1 beats the
+    // same (floored) way; match it so the round-trip is exact.
+    const beat =
+      (((absoluteBeats % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
 
     positions.push({ bar, beat });
   }
@@ -168,13 +191,15 @@ function emitPitchesAtPositions(
  * Calculate positions from time element
  * @param element - Time element
  * @param state - Interpreter state
- * @param beatsPerBar - Beats per bar
+ * @param beatsPerBar - Beats per bar (musical beats)
+ * @param timeSigDenominator - Time signature denominator
  * @returns Array of time positions
  */
 export function calculatePositions(
   element: TimeElement,
   state: InterpreterState,
   beatsPerBar: number,
+  timeSigDenominator: number | undefined,
 ): TimePosition[] {
   // bar is always defined when this function is called (checked at barbeat-interpreter.ts dispatch)
   const bar = element.bar as number;
@@ -185,12 +210,30 @@ export function calculatePositions(
       bar,
       beatsPerBar,
       state.currentDuration,
+      timeSigDenominator,
     );
   }
 
   const beat = element.beat as number;
 
+  warnIfBeforeClipStart((bar - 1) * beatsPerBar + (beat - 1));
+
   return [{ bar, beat }];
+}
+
+/**
+ * Warn (once per position) when a resolved position lands before the clip start
+ * (negative absolute beats). A `-n` offset can pull a note before 1|1; Live
+ * accepts notes at negative time, but they won't appear when reading the clip
+ * back (reads start at time 0), so flag it without throwing.
+ * @param absoluteBeats - Resolved position in absolute musical beats (0-based)
+ */
+function warnIfBeforeClipStart(absoluteBeats: number): void {
+  if (absoluteBeats < 0) {
+    console.warn(
+      "Note position resolves before the clip start (negative time): it sits before 1|1.",
+    );
+  }
 }
 
 /**

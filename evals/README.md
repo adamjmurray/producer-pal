@@ -26,6 +26,7 @@ scripts/eval [options]
 | `-c, --config <profile>`     | Config profile (repeatable, default: `default`) |
 | `-j, --judge <model>`        | Judge model (default: `gemini-3-flash-preview`) |
 | `-s, --skip-setup`           | Skip Live Set setup (reuse existing connection) |
+| `--skip-judge`               | Skip the LLM-as-judge step (checks only)        |
 | `-q, --quiet`                | Suppress detailed AI and judge responses        |
 | `-r, --repeat <N>`           | Run each scenario N times (for flakiness)       |
 | `-u, --usage`                | Show token usage per turn                       |

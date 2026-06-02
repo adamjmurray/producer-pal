@@ -371,7 +371,7 @@ describe("take lanes", () => {
           id: source.id,
           arrangementStart: "9|1",
           takeLane: "new",
-          arrangementLength: "2:0",
+          arrangementLength: "2bar",
         },
       }),
     );

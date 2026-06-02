@@ -1,26 +1,33 @@
 // Producer Pal
 // Copyright (C) 2026 Adam Murray
+// AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { describe, expect, it } from "vitest";
 import * as parser from "../barbeat-parser.ts";
 
+// Resolve a ±n offset beat the way the grammar does: base + (num/den)*denom.
+// Mirrors the float arithmetic so toStrictEqual matches bit-for-bit.
+const obeat = (base: number, num: number, den: number, denom = 4): number =>
+  base + (num / den) * denom;
+
 describe("BarBeatScript Parser - beat lists", () => {
   describe("comma-separated beat lists", () => {
-    it("parses fractional beats in comma-separated lists", () => {
-      expect(parser.parse("1|4/3,5/3,7/3")).toStrictEqual([
-        { bar: 1, beat: 4 / 3 },
-        { bar: 1, beat: 5 / 3 },
-        { bar: 1, beat: 7 / 3 },
+    it("parses note-value offset beats in comma-separated lists", () => {
+      // ±n offsets are whole-note fractions; at the default 4/4, +n/12 = +1/3 beat
+      expect(parser.parse("1|1+n/12,1+n/6,2+n/12")).toStrictEqual([
+        { bar: 1, beat: obeat(1, 1, 12) },
+        { bar: 1, beat: obeat(1, 1, 6) },
+        { bar: 1, beat: obeat(2, 1, 12) },
       ]);
     });
 
-    it("parses mixed decimal and fractional in comma-separated lists", () => {
-      expect(parser.parse("1|1,4/3,1.5,5/3")).toStrictEqual([
+    it("parses mixed decimal and offset beats in comma-separated lists", () => {
+      expect(parser.parse("1|1,1+n/12,1.5,1+n/6")).toStrictEqual([
         { bar: 1, beat: 1 },
-        { bar: 1, beat: 4 / 3 },
+        { bar: 1, beat: obeat(1, 1, 12) },
         { bar: 1, beat: 1.5 },
-        { bar: 1, beat: 5 / 3 },
+        { bar: 1, beat: obeat(1, 1, 6) },
       ]);
     });
 
@@ -82,37 +89,37 @@ describe("BarBeatScript Parser - beat lists", () => {
       expect(() => parser.parse("1|1 ,2 ,3")).toThrow();
     });
 
-    it("parses fractional durations with fractional beat positions", () => {
-      expect(parser.parse("t1/3 C3 1|1,4/3,5/3")).toStrictEqual([
+    it("parses note-value durations with note-value offset positions", () => {
+      expect(parser.parse("n1/3 C3 1|1,1+n/12,1+n/6")).toStrictEqual([
         { duration: 1 / 3 },
         { pitch: 60 },
         { bar: 1, beat: 1 },
-        { bar: 1, beat: 4 / 3 },
-        { bar: 1, beat: 5 / 3 },
+        { bar: 1, beat: obeat(1, 1, 12) },
+        { bar: 1, beat: obeat(1, 1, 6) },
       ]);
     });
   });
 
-  describe("integration - fractional notation", () => {
-    it("parses triplet pattern with fractional durations and positions", () => {
+  describe("integration - note-value offset notation", () => {
+    it("parses triplet pattern with note-value durations and offset positions", () => {
       expect(
-        parser.parse("t1/3 C3 1|1 1|4/3 1|5/3 D3 1|2 1|7/3 1|8/3"),
+        parser.parse("n1/3 C3 1|1 1|1+n/12 1|1+n/6 D3 1|2 1|2+n/12 1|2+n/6"),
       ).toStrictEqual([
         { duration: 1 / 3 },
         { pitch: 60 },
         { bar: 1, beat: 1 },
-        { bar: 1, beat: 4 / 3 },
-        { bar: 1, beat: 5 / 3 },
+        { bar: 1, beat: obeat(1, 1, 12) },
+        { bar: 1, beat: obeat(1, 1, 6) },
         { pitch: 62 },
         { bar: 1, beat: 2 },
-        { bar: 1, beat: 7 / 3 },
-        { bar: 1, beat: 8 / 3 },
+        { bar: 1, beat: obeat(2, 1, 12) },
+        { bar: 1, beat: obeat(2, 1, 6) },
       ]);
     });
 
-    it("parses mixed fractional and decimal notation throughout", () => {
+    it("parses a mix of offset and decimal beat positions", () => {
       expect(
-        parser.parse("t1/4 C3 1|1,5/4,3/2,7/4 t0.5 D3 1|2,2.5,3,3.5"),
+        parser.parse("n1/4 C3 1|1,1+n/16,1.5,1.75 n/2 D3 1|2,2.5,3,3.5"),
       ).toStrictEqual([
         { duration: 1 / 4 },
         { pitch: 60 },
@@ -120,7 +127,7 @@ describe("BarBeatScript Parser - beat lists", () => {
         { bar: 1, beat: 5 / 4 },
         { bar: 1, beat: 3 / 2 },
         { bar: 1, beat: 7 / 4 },
-        { duration: 0.5 },
+        { duration: 1 / 2 },
         { pitch: 62 },
         { bar: 1, beat: 2 },
         { bar: 1, beat: 2.5 },

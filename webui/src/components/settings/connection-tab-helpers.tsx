@@ -11,6 +11,7 @@ import {
   isRealtimeSelection,
   REALTIME_VOICES,
 } from "#webui/lib/constants/models";
+import { VOICE_LANGUAGES } from "#webui/lib/constants/voice-language";
 import { type Provider } from "#webui/types/settings";
 import { GeminiTurnDetectionControls } from "./controls/GeminiTurnDetectionControls";
 import { THINKING_LEVELS } from "./controls/thinking-levels";
@@ -149,11 +150,53 @@ export function SmallModelToggle({
   );
 }
 
+interface VoiceLanguageSelectorProps {
+  language: string;
+  setLanguage: (language: string) => void;
+}
+
+/**
+ * Voice-chat language dropdown. Provider-agnostic — locks both the OpenAI and
+ * Gemini backends to the chosen language (response language plus the ASR
+ * transcription hint). Applied on the next session (Stop → Talk).
+ * @param props - Component props
+ * @param props.language - Currently selected language code (ISO-639-1)
+ * @param props.setLanguage - Language setter callback
+ * @returns Language selector element
+ */
+export function VoiceLanguageSelector({
+  language,
+  setLanguage,
+}: VoiceLanguageSelectorProps) {
+  return (
+    <div>
+      <label htmlFor="voice-language-select" className="block text-sm mb-2">
+        Language
+      </label>
+      <select
+        id="voice-language-select"
+        value={language}
+        onChange={(e) => setLanguage((e.target as HTMLSelectElement).value)}
+        className="w-full px-3 py-2 bg-white dark:bg-zinc-700 border border-zinc-300 dark:border-zinc-600 rounded"
+        data-testid="voice-language-select"
+      >
+        {VOICE_LANGUAGES.map(({ code, label }) => (
+          <option key={code} value={code}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 interface VoiceSettingsProps {
   provider: Provider;
   model: string;
   realtimeVoice: string;
   setRealtimeVoice: (voice: string) => void;
+  voiceLanguage: string;
+  setVoiceLanguage: (language: string) => void;
   voiceVolume: number;
   setVoiceVolume: (volume: number) => void;
   voiceSpeed: number;
@@ -173,6 +216,8 @@ interface VoiceSettingsProps {
  * @param props.model - Current model id
  * @param props.realtimeVoice - In-modal voice id
  * @param props.setRealtimeVoice - Voice setter callback
+ * @param props.voiceLanguage - In-modal language code (ISO-639-1)
+ * @param props.setVoiceLanguage - Language setter callback
  * @param props.voiceVolume - In-modal output volume (0.0–1.25)
  * @param props.setVoiceVolume - Volume setter callback
  * @param props.voiceSpeed - In-modal playback speed
@@ -187,6 +232,8 @@ export function VoiceSettings({
   model,
   realtimeVoice,
   setRealtimeVoice,
+  voiceLanguage,
+  setVoiceLanguage,
   voiceVolume,
   setVoiceVolume,
   voiceSpeed,
@@ -209,6 +256,10 @@ export function VoiceSettings({
         setVoice={setRealtimeVoice}
         activeVoice={activeVoice}
         voices={voices}
+      />
+      <VoiceLanguageSelector
+        language={voiceLanguage}
+        setLanguage={setVoiceLanguage}
       />
       <details className="disclosure open:rounded-lg open:border open:border-zinc-300 dark:open:border-zinc-700 open:bg-zinc-200 dark:open:bg-zinc-900 open:p-3">
         <summary className="text-sm cursor-pointer select-none flex items-center gap-1 list-none [&::-webkit-details-marker]:hidden">

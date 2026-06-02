@@ -50,7 +50,7 @@ describe("createClip - advanced features", () => {
 
     await createClip({
       slot: "0/0",
-      notes: "t2 C3 1|1 t3 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
+      notes: "n/2 C3 1|1 n3/4 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
     });
 
     expectClipCreated(clipSlot, 4);
@@ -119,7 +119,7 @@ describe("createClip - advanced features", () => {
       id: "live_set/tracks/0/clip_slots/0/clip",
       slot: "0/0",
       noteCount: 2,
-      length: "1:0",
+      length: "1bar",
     }); // C3 and E3, D3 filtered out
   });
 

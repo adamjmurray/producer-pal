@@ -31,7 +31,7 @@ export interface ClipTimingContext {
  * @param timeSignature - Custom clip time signature (e.g. "4/4"), or null
  * @param start - Loop start position in bar|beat format, or null
  * @param firstStart - First playback start in bar|beat format, or null
- * @param length - Clip length in bar:beat duration format, or null
+ * @param length - Clip length (Nbar, n<fraction>, or Nbar+n<fraction>), or null
  * @param looping - Whether the clip is looping
  * @returns Resolved time signatures and converted timing in beats
  */

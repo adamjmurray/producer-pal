@@ -37,7 +37,7 @@ stop: session and arrangement`,
     startTime: z
       .string()
       .optional()
-      .describe("bar|beat position in arrangement"),
+      .describe("bar|beat position in arrangement (song meter)"),
     startLocator: z
       .string()
       .optional()
@@ -45,12 +45,12 @@ stop: session and arrangement`,
         "locator ID or name for start position (e.g., locator-0 or Verse)",
       ),
     loop: z.boolean().optional().describe("arrangement loop?"),
-    loopStart: z.string().optional().describe("bar|beat position"),
+    loopStart: z.string().optional().describe("bar|beat position (song meter)"),
     loopStartLocator: z
       .string()
       .optional()
       .describe("locator ID or name for loop start"),
-    loopEnd: z.string().optional().describe("bar|beat position"),
+    loopEnd: z.string().optional().describe("bar|beat position (song meter)"),
     loopEndLocator: z
       .string()
       .optional()

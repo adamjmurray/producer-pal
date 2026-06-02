@@ -3,6 +3,7 @@
 // AI assistance: Claude (Anthropic)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import { type ClipContext } from "#src/notation/transform/helpers/transform-evaluator-helpers.ts";
 import * as console from "#src/shared/v8-max-console.ts";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.ts";
 import {
@@ -48,7 +49,7 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
   clipCount: number;
   notationString?: string;
   transformString?: string;
-  noteUpdateMode: string;
+  preTransformString?: string;
   name?: string;
   color?: string;
   timeSignature?: string;
@@ -70,8 +71,8 @@ export interface ProcessSingleClipUpdateParams extends ClipAudioWarpQuantizePara
  * @param params - Parameters object containing all update parameters
  * @param params.clip - The clip to update
  * @param params.notationString - Musical notation string
- * @param params.transformString - Transform expressions to apply
- * @param params.noteUpdateMode - Note update mode (merge or replace)
+ * @param params.transformString - Transform expressions to apply after merge
+ * @param params.preTransformString - Transform expressions to apply to existing notes before merge
  * @param params.name - Clip name
  * @param params.color - Clip color
  * @param params.timeSignature - Time signature
@@ -105,7 +106,7 @@ export function processSingleClipUpdate(
     clipCount,
     notationString,
     transformString,
-    noteUpdateMode,
+    preTransformString,
     name,
     color,
     timeSignature,
@@ -113,10 +114,6 @@ export function processSingleClipUpdate(
     length,
     firstStart,
     looping,
-    gainDb,
-    pitchShift,
-    warpMode,
-    warping,
     warpOp,
     warpBeatTime,
     warpSampleTime,
@@ -184,8 +181,7 @@ export function processSingleClipUpdate(
   const clipContext = buildClipContext(clip, clipIndex, clipCount, timeSigNumerator, timeSigDenominator);
 
   if (isAudioClip) {
-    setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
-    applyAudioTransforms(clip, transformString, clipContext);
+    handleAudioClipUpdate(clip, clipContext, params);
   }
 
   // Handle note updates (transforms already applied for audio clips above)
@@ -193,7 +189,7 @@ export function processSingleClipUpdate(
     clip,
     notationString,
     isAudioClip ? undefined : transformString,
-    noteUpdateMode,
+    isAudioClip ? undefined : preTransformString,
     timeSigNumerator,
     timeSigDenominator,
     clipContext,
@@ -230,4 +226,26 @@ export function processSingleClipUpdate(
     noteResult,
     isNonSurvivor: params.nonSurvivorClipIds?.has(clip.id) ?? false,
   });
+}
+
+/**
+ * Apply audio-clip-only updates: params, transforms, and the preTransforms warn.
+ * Audio clips have no MIDI notes, so preTransforms is unconditionally ignored.
+ * @param clip - The audio clip to update
+ * @param clipContext - Clip-level context for transform variables
+ * @param params - The full update params (audio fields are consumed)
+ */
+function handleAudioClipUpdate(
+  clip: LiveAPI,
+  clipContext: ClipContext,
+  params: ProcessSingleClipUpdateParams,
+): void {
+  const { gainDb, pitchShift, warpMode, warping, transformString } = params;
+
+  setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
+  applyAudioTransforms(clip, transformString, clipContext);
+
+  if (params.preTransformString != null) {
+    console.warn("preTransforms parameter ignored for audio clips");
+  }
 }

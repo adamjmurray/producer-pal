@@ -15,9 +15,11 @@ import {
   loadEnabledTools,
   loadProviderSettings,
   loadProviderSettingsAsync,
+  loadVoiceLanguage,
   loadVoiceSpeed,
   loadVoiceVolume,
   saveProviderSettings,
+  saveVoiceLanguage,
   saveVoiceSpeed,
   saveVoiceVolume,
   VOICE_SPEED_DEFAULT,
@@ -299,6 +301,22 @@ describe("settings-helpers", () => {
     it("falls back to default on unparseable values", () => {
       localStorage.setItem("producer_pal_voice_volume", "not-a-number");
       expect(loadVoiceVolume()).toBe(VOICE_VOLUME_DEFAULT);
+    });
+  });
+
+  describe("voice language persistence", () => {
+    it("returns English when no value is stored", () => {
+      expect(loadVoiceLanguage()).toBe("en");
+    });
+
+    it("round-trips a valid language through localStorage", () => {
+      saveVoiceLanguage("es");
+      expect(loadVoiceLanguage()).toBe("es");
+    });
+
+    it("falls back to English for an unknown stored code", () => {
+      localStorage.setItem("producer_pal_voice_language", "xx");
+      expect(loadVoiceLanguage()).toBe("en");
     });
   });
 });

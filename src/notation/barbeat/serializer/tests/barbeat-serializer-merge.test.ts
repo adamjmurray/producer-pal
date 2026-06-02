@@ -64,7 +64,8 @@ describe("comma merging", () => {
       createNote({ duration: 1, start_time: 1 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("t/2 C3 1|1 t1 C3 1|2");
+    // 0.5 quarter = /8 whole; 1 quarter = /4 whole
+    expect(formatNotation(notes)).toBe("n/8 C3 1|1 n/4 C3 1|2");
   });
 
   it("does not merge notes with different probabilities", () => {
@@ -139,7 +140,8 @@ describe("comma merging", () => {
       createNote({ velocity: 80, duration: 0.5, start_time: 2 }),
     ] as NoteEvent[];
 
-    expect(formatNotation(notes)).toBe("v80 t/2 C3 1|1,2,3");
+    // 0.5 quarter = /8 whole
+    expect(formatNotation(notes)).toBe("v80 n/8 C3 1|1,2,3");
   });
 
   it("merges repeated chord progression pattern", () => {

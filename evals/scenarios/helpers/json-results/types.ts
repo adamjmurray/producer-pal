@@ -75,6 +75,10 @@ export interface JsonJudge {
   pass: boolean;
   /** Issues flagged by the judge (empty when passing) */
   issues: string[];
+  /** When true, the judge is non-gating: issues are surfaced but do not flip
+   * the overall result to fail (the scenario's deterministic checks are
+   * authoritative). Set per-scenario via `judgeAdvisory`. */
+  advisory?: boolean;
 }
 
 export interface JsonTurnRecord {

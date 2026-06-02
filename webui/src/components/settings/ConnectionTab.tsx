@@ -32,6 +32,8 @@ interface ConnectionTabProps {
   setSmallModelMode: (enabled: boolean) => void;
   realtimeVoice: string;
   setRealtimeVoice: (voice: string) => void;
+  voiceLanguage: string;
+  setVoiceLanguage: (language: string) => void;
   voiceVolume: number;
   setVoiceVolume: (volume: number) => void;
   voiceSpeed: number;
@@ -77,6 +79,8 @@ export function ConnectionTab({
   setSmallModelMode,
   realtimeVoice,
   setRealtimeVoice,
+  voiceLanguage,
+  setVoiceLanguage,
   voiceVolume,
   setVoiceVolume,
   voiceSpeed,
@@ -158,6 +162,8 @@ export function ConnectionTab({
         model={model}
         realtimeVoice={realtimeVoice}
         setRealtimeVoice={setRealtimeVoice}
+        voiceLanguage={voiceLanguage}
+        setVoiceLanguage={setVoiceLanguage}
         voiceVolume={voiceVolume}
         setVoiceVolume={setVoiceVolume}
         voiceSpeed={voiceSpeed}

@@ -21,10 +21,10 @@ describe("BarBeatScript Parser - basic tests", () => {
     });
 
     it("parses mixed elements (state + notes)", () => {
-      expect(parser.parse("1|1 v100 t0.5 p0.8 C3 D3")).toStrictEqual([
+      expect(parser.parse("1|1 v100 n/2 p0.8 C3 D3")).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 100 },
-        { duration: 0.5 },
+        { duration: 1 / 2 },
         { probability: 0.8 },
         { pitch: 60 },
         { pitch: 62 },
@@ -32,19 +32,19 @@ describe("BarBeatScript Parser - basic tests", () => {
     });
 
     it("parses state-only input", () => {
-      expect(parser.parse("2|3 v80 t0.25 p0.9")).toStrictEqual([
+      expect(parser.parse("2|3 v80 n/16 p0.9")).toStrictEqual([
         { bar: 2, beat: 3 },
         { velocity: 80 },
-        { duration: 0.25 },
+        { duration: 1 / 16 },
         { probability: 0.9 },
       ]);
     });
   });
 
   describe("pitch", () => {
-    it("rejects out-of-range MIDI pitch", () => {
-      expect(() => parser.parse("C-3")).toThrow(/outside valid range/);
-      expect(() => parser.parse("C9")).toThrow(/outside valid range/);
+    it("parses out-of-range MIDI pitch (range enforced in interpreter)", () => {
+      expect(parser.parse("C-3")).toStrictEqual([{ pitch: -12 }]);
+      expect(parser.parse("C9")).toStrictEqual([{ pitch: 132 }]);
     });
 
     it("handles enharmonic spellings", () => {
@@ -77,10 +77,11 @@ describe("BarBeatScript Parser - basic tests", () => {
       ]);
     });
 
-    it("rejects out-of-range probability", () => {
-      expect(() => parser.parse("p1.5 C3")).toThrow(
-        "Note probability 1.5 outside valid range 0.0-1.0",
-      );
+    it("parses out-of-range probability (range enforced in interpreter)", () => {
+      expect(parser.parse("p1.5 C3")).toStrictEqual([
+        { probability: 1.5 },
+        { pitch: 60 },
+      ]);
     });
   });
 
@@ -103,22 +104,25 @@ describe("BarBeatScript Parser - basic tests", () => {
       ]);
     });
 
-    it("rejects out-of-range velocity", () => {
-      expect(() => parser.parse("v128 C3")).toThrow(
-        "MIDI velocity 128 outside valid range 0-127",
-      );
+    it("parses out-of-range velocity (range enforced in interpreter)", () => {
+      expect(parser.parse("v128 C3")).toStrictEqual([
+        { velocity: 128 },
+        { pitch: 60 },
+      ]);
     });
 
-    it("rejects invalid velocity ranges", () => {
-      expect(() => parser.parse("v128-130 C3")).toThrow(
-        "Invalid velocity range 128-130",
-      );
-      expect(() => parser.parse("v0-128 C3")).toThrow(
-        "Invalid velocity range 0-128",
-      );
+    it("parses out-of-range velocity ranges (range enforced in interpreter)", () => {
+      expect(parser.parse("v128-130 C3")).toStrictEqual([
+        { velocityMin: 128, velocityMax: 130 },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("v0-128 C3")).toStrictEqual([
+        { velocityMin: 0, velocityMax: 128 },
+        { pitch: 60 },
+      ]);
     });
 
-    it("rejects negative velocity", () => {
+    it("rejects negative velocity (malformed syntax)", () => {
       expect(() => parser.parse("v-1 C3")).toThrow();
     });
   });
