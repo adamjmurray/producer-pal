@@ -260,7 +260,10 @@ chord "chord"
 // pull before `1|1` is allowed and resolves to negative time (a note before the
 // clip start). So this rule returns the raw beat even when it is < 1.
 beatValue
-  = base:oneOrMoreInt sign:("+" / "-") "n" frac:unsignedFraction {
+  = base:oneOrMoreDecimal sign:("+" / "-") "n" frac:unsignedFraction {
+      // The offset base is a decimal beat (`1|1.5+n/4`), not just an integer:
+      // `oneOrMoreDecimal` subsumes integers, so this is a superset of the old
+      // integer-only form. Additive — no existing parse changes.
       const offsetBeats = frac * (options.timeSigDenominator ?? 4);
       return sign === "+" ? base + offsetBeats : base - offsetBeats;
     }

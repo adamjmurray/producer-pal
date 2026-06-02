@@ -38,7 +38,9 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
       eighth triplet. Its size measured _in the local beat unit_ changes only
       because the beat unit itself changes (1/3 of a quarter-beat in 4/4, 2/3 of
       an eighth-beat in 6/8 — the same musical duration). The grid beat it
-      displaces, by contrast, **is** meter-relative.
+      displaces, by contrast, **is** meter-relative. The displaced beat may be
+      an **integer or a decimal** — `1|1.5+n/4` is "beat 1.5 plus a quarter
+      note" — so a decimal sub-beat and a note-value offset compose freely.
 
     **The two forms are NOT interchangeable.** The decimal is meter-relative and
     the `±n` offset is absolute, so they denote the same time **only in `x/4`
@@ -336,9 +338,9 @@ bar|{start}x{times}@{step}
 ```
 
 - **start**: Starting beat position — the same dialect as note positions: a
-  whole beat, a decimal sub-beat (`1.5`), or a `±n` note-value offset
-  (`1+n/12`). Bare fractions (`4/3`) and bar-relative mixed numbers (`1+1/3`)
-  are rejected
+  whole beat, a decimal sub-beat (`1.5`), or an integer-or-decimal grid beat
+  plus a `±n` note-value offset (`1+n/12`, `1.5+n/12`). Bare fractions (`4/3`)
+  and bar-relative mixed numbers (`1+1/3`) are rejected
 - **times**: Number of repetitions (positive integer)
 - **step**: Interval between repetitions, **same note-value duration grammar as
   `n`** — `@n<fraction>` note value (denominator mandatory, numerator defaults

@@ -322,7 +322,9 @@ describe("note-value grammar parity across all parse sites", () => {
 
   describe("±n beat offsets agree across all offset sites", () => {
     // Plain grid beats, dyadic decimals, and `±n` note-value offsets — including
-    // a `-n` that borrows below beat 1 into negative time (a note before 1|1).
+    // a `-n` that borrows below beat 1 into negative time (a note before 1|1),
+    // and a DECIMAL base carrying an offset (`1.5+n/12`): the offset base is an
+    // integer-or-decimal grid beat on every site.
     const TOKENS = [
       "1",
       "1.5",
@@ -333,6 +335,9 @@ describe("note-value grammar parity across all parse sites", () => {
       "1-n/12",
       "2-n3/16",
       "1+n5/12",
+      "1.5+n/12",
+      "2.25-n/24",
+      "1.5+n/8",
     ];
 
     for (const [num, den] of METERS) {

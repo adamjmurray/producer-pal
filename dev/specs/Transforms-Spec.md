@@ -254,8 +254,9 @@ C3-C5: duration = legato()       // legato for melody notes only
     the end stays inclusive.
 
   The beat field uses the same dialect as note positions: a whole beat, a
-  decimal sub-beat (`1|1.5`), or a `±n` note-value offset off the grid beat
-  (`1|1+n/12` = beat 1 + an eighth triplet, `1|2-n/24` just behind beat 2). The
+  decimal sub-beat (`1|1.5`), or a `±n` note-value offset off an
+  integer-or-decimal grid beat (`1|1+n/12` = beat 1 + an eighth triplet,
+  `1|2-n/24` just behind beat 2, `1|1.5+n/4` = beat 1.5 + a quarter note). The
   offset is a note value (meter-invariant), so a bound resolves to the same
   musical position as a note written that way. A `-n` bound may sit just before
   a downbeat — `2|1-n/12` borrows across the bar line into bar 1 — and a bound

@@ -123,7 +123,7 @@ export function musicalBeatsToBarBeat(
  * before the clip start) — allowed, never throws. Bare fractions (`4/3`) and
  * bar-relative mixed numbers (`1+1/3`) are not accepted — note values wear the
  * `n` sigil everywhere.
- * @param barBeat - Bar|beat string like "1|2", "2|3.5", or "1|1+n/12"
+ * @param barBeat - Bar|beat string like "1|2", "2|3.5", "1|1+n/12", or "1|1.5+n/4"
  * @param beatsPerBar - Beats per bar
  * @param timeSigDenominator - Time signature denominator (for the `±n` offset unit)
  * @returns Number of beats
@@ -133,8 +133,12 @@ export function barBeatToMusicalBeats(
   beatsPerBar: number,
   timeSigDenominator?: number,
 ): number {
+  // Beat base is an integer or decimal grid beat, optionally displaced by a
+  // `±n<frac>` note-value offset. The base group carries the optional `.\d+` so
+  // a decimal beat can also take an offset (`1|1.5+n/4`); the offset suffix is
+  // its own optional group. Kept in parity with parseBeatValue below.
   const match = barBeat.match(
-    /^(-?\d+)\|((-?\d+)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*)|\.\d+)?)$/,
+    /^(-?\d+)\|((-?\d+(?:\.\d+)?)(?:[+-]n(?:\d+\.\d+|\d*)\/(?:0|[1-9]\d*))?)$/,
   );
 
   if (!match) {
@@ -387,10 +391,11 @@ export function durationToAbletonBeats(
 }
 
 /**
- * Parse a beat value string: a plain integer/decimal grid beat, or a grid beat
- * displaced by a `±n<fraction>` note-value offset (`1+n/12`, `2-n1/24`). The
- * offset fraction is whole-note based; the denominator converts it to musical
- * beats. Callers pre-validate the string shape with a regex.
+ * Parse a beat value string: a plain integer/decimal grid beat, or an
+ * integer-or-decimal grid beat displaced by a `±n<fraction>` note-value offset
+ * (`1+n/12`, `2-n1/24`, `1.5+n/4`). The offset fraction is whole-note based; the
+ * denominator converts it to musical beats. Callers pre-validate the string
+ * shape with a regex.
  * @param beatsStr - Beat value string
  * @param context - Original string for error messages
  * @param timeSigDenominator - Time signature denominator (for the offset unit)
@@ -402,16 +407,17 @@ function parseBeatValue(
   timeSigDenominator: number | undefined,
 ): number {
   // Grid beat ± a note-value offset: `1+n/12`, `2-n1/24` (numerator omitted = 1),
-  // or the off-grid escape `1-n0.7/4` (decimal numerator). Denominator is a
+  // `1.5+n/4` (decimal base), or the off-grid escape `1-n0.7/4` (decimal
+  // numerator). The base carries an optional `.\d+`; the denominator is a
   // no-leading-zero integer (`0|[1-9]\d*`); a lone `0` reaches the division-by-
   // zero guard. Kept consistent with the outer barBeatToMusicalBeats regex so a denom
   // the outer accepts never silently mis-parses here.
   const offsetMatch = beatsStr.match(
-    /^(-?\d+)([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)$/,
+    /^(-?\d+(?:\.\d+)?)([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*)$/,
   );
 
   if (offsetMatch) {
-    const base = Number.parseInt(offsetMatch[1] as string);
+    const base = Number.parseFloat(offsetMatch[1] as string);
     const sign = offsetMatch[2];
     // Whole-note fraction → musical beats, so scale = timeSigDenominator.
     const offsetBeats = noteValueFractionToBeats(

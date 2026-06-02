@@ -250,11 +250,13 @@ timeRange "time range"
 // for `+` (the removed mixed-number form `1+1/3`); negative offsets never
 // existed before this reform, so a malformed `-...` simply fails to parse.
 beatValue
-  = base:oneOrMoreInt "+n" frac:unsignedFraction {
-      // base >= 1 and a positive offset, so the result is always >= 1.
+  = base:oneOrMoreDecimal "+n" frac:unsignedFraction {
+      // The offset base is a decimal beat (`1|1.5+n/4`), not just an integer:
+      // `oneOrMoreDecimal` subsumes integers (and stays >= 1), so the result is
+      // always >= 1. Additive — no existing parse changes.
       return base + frac * (options.timeSigDenominator ?? 4);
     }
-  / base:oneOrMoreInt "-n" frac:unsignedFraction {
+  / base:oneOrMoreDecimal "-n" frac:unsignedFraction {
       // May resolve below beat 1 (e.g. `2|1-n/12`, "just before the downbeat");
       // `timeRange` borrows across the bar line to canonicalize it. A pull
       // before 1|1 resolves to negative time. So return the raw beat even < 1.
