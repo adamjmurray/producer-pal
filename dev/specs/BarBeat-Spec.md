@@ -577,7 +577,7 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 
 ### Worked examples
 
-**Melodic stepping (AJM-482), `@step` grid, meter-safe — ships today:**
+**Melodic stepping (AJM-482), `@step` grid, meter-safe:**
 
 ```
 [C3 E3 G3] 1|1x3@n/4      // C3@1|1, E3@1|2, G3@1|3
