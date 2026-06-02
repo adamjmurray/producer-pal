@@ -20,7 +20,6 @@ Format: v<vel> n<dur> [p<prob>] pitch(es) bar|beat(s)
 n/4 C3 1|1 D3 1|2 E3 1|3 F#3 1|4
 G3 2|1 A3 2|2 G#3 2|3 E3 2|4
 \`\`\`
-A pattern bracket \`[...]\` steps through a list instead of repeating: \`[C3 D3 E3 F#3] 1|1x4@n/4\` is bar 1 above. The list cycles if {count} is longer; \`(...)\` makes a chord step. Velocity/duration/probability cycle too — \`[v100 v60] [C3 E3 G3] 1|1x6@n/8\` — one parameter kind per bracket
 
 ### Dotted rhythm (dotted-8th + 16th gallop; re-set n, the 16th lands on .75)
 \`\`\`
