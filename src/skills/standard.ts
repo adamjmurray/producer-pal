@@ -64,7 +64,7 @@ Create MIDI clips using the bar|beat notation syntax:
 - v/n/p are prefixes — they apply to the pitches that follow. Vary per pitch by interspersing: \`v80 C4 v90 G4\` (C4 at 80, G4 at 90)
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start
-  - the beat in bar|beat can be a comma-separated (no whitespace) list or repeat pattern
+  - the beat in bar|beat can be a comma-separated list or repeat pattern. Spaces after commas are fine, and a list item may restate its own \`bar|\` — that bar then sticks for the following bare items (\`1|1,2|1,3\` = \`1|1 2|1 2|3\`)
   - **Repeat patterns**: \`{bar|beat}x{count}[@{step}]\` generates sequences. count = how many notes
     - \`@step\` uses the same note-value form as \`n\` — \`@n/4\`, \`@1bar\` (bare \`@/4\` or \`@1\` is invalid). Defaults to the current duration (legato)
     - \`1|1x4@n/4\` → 4 notes a quarter apart; \`n/8 1|1x4\` → 4 eighths (step defaults to n value)
@@ -93,7 +93,7 @@ Audio params ignored when updating MIDI clips.
 \`\`\`
 C#3 F3 G#3 1|1 // chord at bar 1 beat 1
 C3 E3 G3 1|1,2,3,4 // same chord on every beat
-C1 1|1,3 2|1,2,3 // same pitch across bars (NOT 1|1,3,2|1,2,3)
+C1 1|1,3 2|1,2,3 // same pitch across bars (1|1,3,2|1,2,3 also works — the bar| sticks)
 n/16 C3 1|1.75 // 16th note at beat 1.75
 n/12 C3 1|1 E3 1|1+n/12 G3 1|1+n/6 // eighth-triplet arp C-E-G on beat 1 (varying pitch → ±n offsets, not a repeat)
 n/12 C3 1|1x3 // eighth-note triplets: 3 notes filling one quarter (step = duration)

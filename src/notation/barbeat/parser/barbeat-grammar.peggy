@@ -40,6 +40,19 @@
     return { bar: borrowed.bar, beat: borrowed.beat };
   }
 
+  // Fold a comma beat-list with "sticky bars". Each item is { bar, beat }: an
+  // explicit `bar|` (item.bar != null) updates the running bar; a bare item
+  // inherits the most-recent bar. `firstBar` seeds the running bar from the
+  // leading `bar|` that every list opens with, so a plain list (`1|1,2,3`) is
+  // unchanged and `1|1,2|3` / sticky `1|1,2|1,3` (→ 1|1 2|1 2|3) just work.
+  function resolveStickyBars(firstBar, items, beatsPerBar) {
+    let curBar = firstBar;
+    return items.map(item => {
+      if (item.bar != null) curBar = item.bar;
+      return normalizeTimePoint(curBar, item.beat, beatsPerBar);
+    });
+  }
+
   // Assemble a pattern bracket from its kind-tagged values, enforcing the
   // "one parameter kind per bracket" rule. Each value is { kind, value }; a
   // bracket mixing kinds (`[v80 C3]`) throws. Returns the flat
@@ -89,13 +102,26 @@ barOrRange
 timePoints "time position"
   = bar:oneOrMoreInt "|" beats:beatList {
     const beatsPerBar = options.beatsPerBar ?? 4;
-    return beats.map(beat => normalizeTimePoint(bar, beat, beatsPerBar));
+    return resolveStickyBars(bar, beats, beatsPerBar);
   }
 
+// A comma list of beat positions sharing the leading bar. Items after the first
+// may restate their own `bar|` (sticky-bar: `8|2,8|2.5`, cross-bar `1|1,2|3`);
+// bare items inherit the running bar. Horizontal space is tolerated around the
+// commas (`1|1, 2, 3`) and a single trailing comma is ignored (`1|1,2,`) — both
+// forgiving-parser niceties. The head has no bar of its own (the `bar|` prefix
+// in `timePoints` supplies it), so it is tagged `{ bar: null }`.
 beatList "beat list"
-  = head:beatSpec tail:("," beatSpec)* {
-    return [head, ...tail.map(t => t[1])];
+  = head:beatSpec tail:(hs "," hs beatItem)* (hs ",")? {
+    return [{ bar: null, beat: head }, ...tail.map(t => t[3])];
   }
+
+// One comma-list item: an explicit `bar|beatSpec` (updates the sticky bar) or a
+// bare `beatSpec` (inherits it). Explicit-bar branch is ordered first so a
+// digit run followed by `|` is read as a new bar, not a bare beat.
+beatItem
+  = bar:oneOrMoreInt "|" beat:beatSpec { return { bar, beat }; }
+  / beat:beatSpec { return { bar: null, beat }; }
 
 beatSpec "beat specification"
   = start:beatValue "x" times:oneOrMoreInt step:stepInterval? {
@@ -356,3 +382,7 @@ comment
 // Whitespace
 WS = ([ \t\r\n] / comment)+ // required
 _ = ([ \t\r\n] / comment)*  // optional
+// Horizontal whitespace only (no newlines): spacing inside a comma beat-list,
+// where a newline must stay a top-level element separator, not get absorbed
+// into the list (so `1|1,\n2|3` stays two elements, not one spaced list).
+hs = [ \t]*

@@ -424,6 +424,25 @@ C1 1|1x4@n/4,3.5  // Beats 1,2,3,4,3.5 (beat 3.5 listed explicitly)
 C1 1|1x2@n/4,3x2@n/8  // Beats 1,2,3,3.5 in 4/4
 ```
 
+**Sticky per-item `bar|`**: A comma beat-list opens with `bar|`, and any later
+item may **restate its own `bar|`**. An explicit bar updates a running "current
+bar"; bare items inherit the most recent one. This lets a single list span bars
+without splitting it across whitespace:
+
+```
+8|2,8|2.5          // both in bar 8 (the item restates the bar)
+1|1,2|3            // bar 1 beat 1, then bar 2 beat 3
+1|1,2|1,3          // 1|1, 2|1, 2|3  (the bare 3 inherits bar 2)
+1|1,2,2|1,2        // bar 1 beats 1,2 then bar 2 beats 1,2
+```
+
+This is purely input tolerance — the bar-grouped form (`1|1,2 2|1,2`,
+whitespace-separated) still works and serialization is unchanged. **Whitespace
+after a comma is allowed** (`1|1, 2, 3`), and a **single trailing comma** is
+ignored (`1|1,2,`). The comma separator stays on one logical line: a newline is
+not absorbed into the list, so `1|1,2` then a newline then `2|3` remains two
+separate time positions.
+
 ### Interaction with Other Features
 
 **Pitch buffering**: All buffered pitches emit at each expanded position:
