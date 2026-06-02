@@ -113,9 +113,9 @@ beatSpec "beat specification"
   / beatValue
 
 // Repeat step: the note-value duration grammar, prefixed by `@`.
-//   @n<fraction>  note value (@n/4 = quarter, @n/12 = eighth triplet)
-//   @Nbar         meter-aware bars (@1bar = one bar)
-//   @Nbar+n<frac> mixed
+//   @n<fraction>   note value (@n/4 = quarter, @n/12 = eighth triplet)
+//   @Nbar          meter-aware bars (@1bar = one bar)
+//   @Nbar±n<frac>  mixed (@1bar-n/16 = almost a full bar)
 // Bare beats (@1) and bare fractions (@/4) are rejected — authoring stays
 // note-value-only; off-grid bare beats are a length-field concept only.
 stepInterval
@@ -135,9 +135,15 @@ stepInterval
       throw new Error(`step intervals use the note-value form: @n/4 = quarter, @n/8 = eighth, @n/12 = eighth triplet, @1bar = one bar. Got @${bad} — note values need the n prefix (@n/4, not @/4); bars use Nbar (@1bar).`);
     }
 
-// Tail of a mixed duration: "+nA/B" (the note-value fraction wears its own `n`).
+// Tail of a mixed duration: "±nA/B" (the note-value fraction wears its own `n`).
+// The sign is part of the tail so `1bar-n/16` reads as "a bar minus a 16th"
+// (meter-aware "almost a full bar"); the fraction is returned SIGNED and the
+// callers (`duration`, `stepInterval`) add it to the bar component, so a minus
+// tail simply subtracts. Shared by both sites — `@1bar-n/4` rides along for free.
 durationBarFraction
-  = "+" "n" frac:unsignedFraction { return frac; }
+  = sign:("+" / "-") "n" frac:unsignedFraction {
+      return sign === "-" ? -frac : frac;
+    }
 
 // Values that look like a step/duration but use a now-invalid bare form.
 // Used only to raise a targeted error — never returns a usable value.
@@ -170,9 +176,11 @@ velocity "velocity value"
 duration "duration value"
   = badBarDuration
   / bars:oneOrMoreInt "bar" "s"? frac:durationBarFraction? {
-    // Nbar (e.g. 1bar) or Nbar+nA/B (e.g. 1bar+n3/4). `bar` is meter-aware and
-    // never wears an `n`; the interpreter resolves it against beatsPerBar. A
-    // plural `bars` (`2bars`) is accepted as a tolerance alias; output stays `bar`.
+    // Nbar (e.g. 1bar) or Nbar±nA/B (e.g. 1bar+n3/4, 1bar-n/16). `bar` is
+    // meter-aware and never wears an `n`; the interpreter resolves it against
+    // beatsPerBar. `frac` is signed (the minus tail subtracts), so `1bar-n/16`
+    // is "almost a full bar". A plural `bars` (`2bars`) is an accepted tolerance
+    // alias; output stays `bar`.
     return { bars, duration: frac ?? 0 };
   }
   / "n" frac:unsignedFraction {

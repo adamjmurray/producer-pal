@@ -75,6 +75,26 @@ describe("bar|beat interpretNotation() - pattern features", () => {
       expect(result.map((n) => n.start_time)).toStrictEqual([0, 5, 10]);
     });
 
+    it("expands a minus-tail bar step (@Nbar-nA/B, almost a full bar)", () => {
+      // @1bar-n/4 = one bar minus a quarter = 3 quarters in 4/4.
+      const result = interpretNotation("C1 1|1x3@1bar-n/4");
+
+      expect(result.map((n) => n.start_time)).toStrictEqual([0, 3, 6]);
+    });
+
+    it("rejects a minus tail that cancels the step to zero or below", () => {
+      // The grammar's positive-step guard checks the raw fraction/bars before
+      // the meter is applied, so a meter-cancelling minus tail (`@1bar-n4/4` = 0
+      // in 4/4, `@1bar-n5/4` < 0) slips past it. The interpreter re-checks the
+      // resolved advance and rejects a non-positive step with the same message.
+      expect(() => interpretNotation("C1 1|1x3@1bar-n4/4")).toThrow(
+        "Repeat step size must be greater than 0",
+      );
+      expect(() => interpretNotation("C1 1|1x3@1bar-n5/4")).toThrow(
+        "Repeat step size must be greater than 0",
+      );
+    });
+
     it("expands repeat pattern with note-value offset start (positions still meter-relative)", () => {
       const result = interpretNotation("C3 1|2+n/12x3@n/12", {
         timeSigNumerator: 4,

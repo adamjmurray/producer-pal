@@ -115,6 +115,16 @@ describe("bar|beat interpretNotation() - timing features", () => {
       expect(result[0]!.duration).toBe(3);
     });
 
+    it("handles minus-tail bar durations (Nbar-nA/B, almost a full bar)", () => {
+      // 1bar-n/16 = a bar minus a 16th = 3.75 quarters in 4/4; 2bar-n3/8 = two
+      // bars minus three 16ths = 6.5 quarters.
+      const result = interpretNotation("1bar-n/16 C4 1|1 2bar-n3/8 D4 1|2");
+
+      expect(result).toHaveLength(2);
+      expect(result[0]!.duration).toBe(3.75);
+      expect(result[1]!.duration).toBe(6.5);
+    });
+
     it("handles probability updates after time", () => {
       const result = interpretNotation("C4 1|1 p0.8 1|2 p0.5 1|3");
 

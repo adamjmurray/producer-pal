@@ -178,7 +178,9 @@ const OFFSET_SITES = [
 
 describe("note-value grammar parity across all parse sites", () => {
   describe("canonical note-value durations agree across all duration sites", () => {
-    // n<frac> (numerator omitted → 1), Nbar, and the mixed Nbar+n<frac> form.
+    // n<frac> (numerator omitted → 1), Nbar, and the mixed Nbar±n<frac> form
+    // (the minus tail subtracts a sub-bar note value: `1bar-n/16` = almost a
+    // full bar). Tokens stay positive in every meter so the `ref > 0` guard holds.
     const TOKENS = [
       "n/4",
       "n/8",
@@ -190,6 +192,8 @@ describe("note-value grammar parity across all parse sites", () => {
       "2bar",
       "1bar+n/4",
       "3bar+n3/8",
+      "1bar-n/16",
+      "2bar-n3/8",
     ];
 
     for (const [num, den] of METERS) {
@@ -208,8 +212,11 @@ describe("note-value grammar parity across all parse sites", () => {
   });
 
   describe("Nbar is a note value on every duration surface", () => {
-    // Regression lock: the transform grammar once lacked Nbar entirely.
-    for (const token of ["1bar", "4bar", "1bar+n/4"]) {
+    // Regression lock: the transform grammar once lacked Nbar entirely. The
+    // minus tail (`1bar-n/16`) composes as barDuration - nDuration in the
+    // transform grammar, so it must still register as a note value, not bare
+    // arithmetic.
+    for (const token of ["1bar", "4bar", "1bar+n/4", "1bar-n/16"]) {
       it(`transform accepts "${token}" as a note value`, () => {
         expect(transformIsNoteValueDuration(token, 4, 4)).toBe(true);
         expect(() => durationViaTransform(token, 4, 4)).not.toThrow();

@@ -63,6 +63,15 @@ function expandRepeatPattern(
       : wholeNoteFractionToMusicalBeats(stepValue, timeSigDenominator) +
         (stepBars ?? 0) * beatsPerBar;
 
+  // The grammar enforces a positive @step, but it checks the raw fraction/bars
+  // BEFORE the meter is applied, so a minus tail that cancels the bar component
+  // (`@1bar-n4/4` → 0 in 4/4, `@1bar-n5/4` → negative) slips past it. Re-check
+  // the resolved value here: a non-positive advance would stack or reverse the
+  // repeats. Same contract and message as the parse-time guard.
+  if (fixedStep != null && fixedStep <= 0) {
+    throw new Error("Repeat step size must be greater than 0");
+  }
+
   if (times > 100) {
     console.warn(
       `Repeat pattern generates ${times} notes, which may be excessive`,

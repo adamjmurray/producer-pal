@@ -311,8 +311,9 @@ export function abletonBeatsToDuration(
  *  - `n<fraction>` — note value. The numerator may be an integer (`n3/8` = three
  *    eighths; defaults to 1, so `n/4` == `n1/4`) or a decimal (`n1.9638/4` =
  *    1.9638 quarters), the off-grid escape `abletonBeatsToDuration` emits.
- *  - `Nbar+n<fraction>` — bars plus sub-bar note value (e.g. `1bar+n/4`); the
- *    tail numerator may likewise be a decimal.
+ *  - `Nbar±n<fraction>` — bars plus or minus a sub-bar note value (e.g.
+ *    `1bar+n/4`, or `1bar-n/16` = "almost a full bar"); the tail numerator may
+ *    likewise be a decimal.
  *
  * Bare numbers (`5`, `1.9638`) and bare *fractions* (`1/4`) are both rejected: a
  * duration is always a bar count or an `n`-prefixed note value, never a bare
@@ -337,8 +338,10 @@ export function durationToAbletonBeats(
   // (`[1-9][0-9]*`). Bars stay `\d+` so `0bar` parses to 0 (rejected downstream
   // as non-positive, not as a format error). A plural `bars` (`2bars`) is an
   // accepted tolerance alias (`bars?`), matching the grammars; output stays `bar`.
+  // The mixed tail carries a SIGN (`([+-])n…`): `1bar-n/16` is "almost a full
+  // bar". A leading sign group shifts the capture indices read below.
   const match = duration.match(
-    /^(?:(\d+)bars?(?:\+n(\d+\.\d+|\d*)\/(0|[1-9]\d*))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*))$/,
+    /^(?:(\d+)bars?(?:([+-])n(\d+\.\d+|\d*)\/(0|[1-9]\d*))?|n(\d+\.\d+|\d*)\/(0|[1-9]\d*))$/,
   );
 
   if (!match) {
@@ -354,7 +357,7 @@ export function durationToAbletonBeats(
     }
 
     throw new Error(
-      `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4", "n1/4", or off-grid "n1.9638/4"), or "Nbar+n<fraction>" (e.g. "1bar+n/4"). Note values require the "n" prefix; a bare number or bare fraction is not a duration.`,
+      `Invalid duration format: "${duration}". Expected "Nbar" (e.g. "4bar"), "n<fraction>" (e.g. "n/4", "n1/4", or off-grid "n1.9638/4"), or "Nbar±n<fraction>" (e.g. "1bar+n/4", "1bar-n/16"). Note values require the "n" prefix; a bare number or bare fraction is not a duration.`,
     );
   }
 
@@ -364,19 +367,25 @@ export function durationToAbletonBeats(
   // is absent for a pure `Nbar` (fractionBeats stays 0).
   let fractionBeats = 0;
 
-  if (match[3] != null) {
-    // Nbar+n<fraction> form (numerator in match[2], denominator in match[3])
+  if (match[4] != null) {
+    // Nbar±n<fraction> mixed form (sign in match[2], numerator in match[3],
+    // denominator in match[4]). A minus tail subtracts the note value from the
+    // bar component, so `1bar-n/16` resolves to "almost a full bar".
     fractionBeats = noteValueFractionToBeats(
-      match[2] as string,
-      match[3],
+      match[3] as string,
+      match[4],
       4,
       divisionByZero,
     );
-  } else if (match[5] != null) {
-    // n<fraction> only (numerator in match[4], denominator in match[5])
+
+    if (match[2] === "-") {
+      fractionBeats = -fractionBeats;
+    }
+  } else if (match[6] != null) {
+    // n<fraction> only (numerator in match[5], denominator in match[6])
     fractionBeats = noteValueFractionToBeats(
-      match[4] as string,
-      match[5],
+      match[5] as string,
+      match[6],
       4,
       divisionByZero,
     );

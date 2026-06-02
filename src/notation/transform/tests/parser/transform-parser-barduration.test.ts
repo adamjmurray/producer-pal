@@ -48,6 +48,19 @@ describe("Transform Parser - barDuration (Nbar)", () => {
     });
   });
 
+  it("parses 1bar-n/16 as subtract(barDuration, nDuration)", () => {
+    // The minus tail needs no dedicated rule here: `additive` already folds
+    // `-`, so a near-bar duration composes as barDuration - nDuration. This
+    // locks parity with the barbeat grammar's minus-tail support.
+    const result = parser.parse("duration = 1bar-n/16");
+
+    expect(result[0]!.expression).toStrictEqual({
+      type: "subtract",
+      left: { type: "barDuration", bars: 1 },
+      right: { type: "nDuration", wholeNoteFraction: 0.0625 },
+    });
+  });
+
   it("composes in a multiplicative expression", () => {
     const result = parser.parse("duration = 2 * 1bar");
 

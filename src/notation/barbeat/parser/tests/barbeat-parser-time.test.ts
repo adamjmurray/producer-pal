@@ -149,6 +149,15 @@ describe("BarBeatScript Parser - time declarations", () => {
     ]);
   });
 
+  it("parses minus-tail bar steps (@Nbar-nA/B)", () => {
+    // The tail sign rides the shared duration grammar: `@1bar-n/4` stores a
+    // negative note-value fraction; the interpreter resolves it to a near-bar
+    // advance (one bar minus a quarter = 3 beats in 4/4).
+    expect(parser.parse("1|1x2@1bar-n/4")).toStrictEqual([
+      { bar: 1, beat: { start: 1, times: 2, step: -1 / 4, stepBars: 1 } },
+    ]);
+  });
+
   it("rejects bare-fraction step intervals (n prefix required)", () => {
     expect(() => parser.parse("1|1x4@/4")).toThrow(
       /step intervals use the note-value form.*Got @\/4/,

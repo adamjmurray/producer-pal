@@ -71,13 +71,17 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
   - **Repeat patterns**: `beat x times @ step` generates multiple positions.
     `step` uses the same note-value duration grammar as `n` (see Duration):
-    `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar+n<fraction>`
-    mixed. A bare `@/4` (note value with no `n`) and a bare `@1` (beats) are
-    both rejected — authoring stays note-value-only.
+    `@n<fraction>` note value, `@Nbar` meter-aware bars, or `@Nbar±n<fraction>`
+    mixed (the tail may add or subtract, e.g. `@1bar-n/4` = a near-bar advance).
+    A bare `@/4` (note value with no `n`) and a bare `@1` (beats) are both
+    rejected — authoring stays note-value-only. A step that resolves to zero or
+    less (e.g. `@1bar-n4/4` in 4/4) is rejected.
     - Example: `1|1x4@n/4` → 4 positions a quarter note apart: beats 1,2,3,4 in
       4/4
     - Example: `1|1x3@n/12` → eighth-note triplets at beats 1, 4/3, 5/3 in 4/4
     - Example: `1|1x4@1bar` → 4 positions one bar apart
+    - Example: `1|1x3@1bar-n/4` → 3 positions a near-bar apart: beats 1, 4, 7 in
+      4/4
   - Notes are emitted ONLY at time positions
   - Buffered pitches persist and re-emit at subsequent time positions
   - Requires whitespace separation from following elements
@@ -114,26 +118,29 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
     note)
   - Meter-independent: `n/4` is always one quarter note, in 4/4, 6/8, 5/4, etc.
   - **Bar durations**: `Nbar` (meter-aware, e.g. `1bar` = hold one bar in any
-    meter) and `Nbar+n<fraction>` mixed (e.g. `1bar+n3/4`) are also valid inline
-    durations. The `bar` term never wears an `n`; the note-value tail keeps its
-    own `n`. So `n1bar` is invalid — write `1bar`. The `n`-prefixed bar forms
-    (`n1bar`, `n/1bar`, `n3/4bar`) are a common model hallucination, so every
-    duration site rejects them with a targeted error ("bar durations don't use
-    the `n` prefix — write Nbar"), not the generic format error. A plural `bars`
-    (`2bars`) is accepted as an input-tolerance alias of `Nbar` on every
-    duration site; serialized output is always singular (`2bar`)
+    meter) and `Nbar±n<fraction>` mixed (e.g. `1bar+n3/4`, or `1bar-n/16` =
+    "almost a full bar") are also valid inline durations. The tail may add or
+    subtract the note value; the `bar` term never wears an `n`, and the
+    note-value tail keeps its own `n`. So `n1bar` is invalid — write `1bar`. The
+    `n`-prefixed bar forms (`n1bar`, `n/1bar`, `n3/4bar`) are a common model
+    hallucination, so every duration site rejects them with a targeted error
+    ("bar durations don't use the `n` prefix — write Nbar"), not the generic
+    format error. A plural `bars` (`2bars`) is accepted as an input-tolerance
+    alias of `Nbar` on every duration site; serialized output is always singular
+    (`2bar`). The minus form is input-tolerance only — the serializer emits the
+    canonical on-grid `n<fraction>`/`Nbar`, never a `-n` tail
   - Default: `n/4` (one quarter note)
   - Requires whitespace separation from following elements
   - NOTE: clip `length` and arrangement durations use this same duration
     grammar: `Nbar` (meter-aware, e.g. `4bar`), `n<fraction>` note value (e.g.
-    `n/4` quarter, `n/8` eighth, `n3/8` dotted quarter), or `Nbar+n<fraction>`
-    mixed (e.g. `1bar+n/4`). Off-grid lengths with no clean note-value form
-    (sample-derived audio lengths) use a **decimal-numerator escape pinned to
-    `/4`**: `n<beats>/4` == `<beats>` Ableton beats (`n1.9638/4` = 1.9638
-    quarters, since `n<x>/4` = x quarters). This keeps the escape under the `n`
-    sigil so the duration vocabulary stays uniform. Bare numbers (e.g.
-    `1.9638`), bare _fractions_ (`1/4`), and bare decimals (`0.5`) are all
-    **invalid** as durations — a duration is always a bar count or an
+    `n/4` quarter, `n/8` eighth, `n3/8` dotted quarter), or `Nbar±n<fraction>`
+    mixed (e.g. `1bar+n/4`, `1bar-n/16`). Off-grid lengths with no clean
+    note-value form (sample-derived audio lengths) use a **decimal-numerator
+    escape pinned to `/4`**: `n<beats>/4` == `<beats>` Ableton beats
+    (`n1.9638/4` = 1.9638 quarters, since `n<x>/4` = x quarters). This keeps the
+    escape under the `n` sigil so the duration vocabulary stays uniform. Bare
+    numbers (e.g. `1.9638`), bare _fractions_ (`1/4`), and bare decimals (`0.5`)
+    are all **invalid** as durations — a duration is always a bar count or an
     `n`-prefixed note value, never a bare scalar; the `n` prefix marks a note
     value everywhere
   - NOTE (read contract): when a clip is serialized back to notation, a MIDI
