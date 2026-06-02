@@ -4,7 +4,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { abletonBeatsToDuration } from "#src/notation/barbeat/time/barbeat-time.ts";
-import { getPlayableNoteCount } from "#src/tools/shared/clip-notes.ts";
+import { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
 import { formatSlot } from "#src/tools/shared/validation/position-parsing.ts";
 
 export interface ClipPropertiesToSet {
@@ -149,7 +149,7 @@ export function buildClipResult(
   // interpreted-input count. Live can drop/merge overlapping same-pitch notes
   // during add_new_notes, so input length can over-report. Mirrors update-clip.
   if (notationString != null) {
-    clipResult.noteCount = getPlayableNoteCount(clip);
+    clipResult.noteCount = getClipNoteCount(clip);
 
     if (transformedCount != null) {
       clipResult.transformed = transformedCount;

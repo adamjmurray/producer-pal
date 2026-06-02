@@ -15,7 +15,7 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import {
-  getPlayableNoteCount,
+  getClipNoteCount,
   rawNotesToNoteEvents,
 } from "#src/tools/shared/clip-notes.ts";
 
@@ -87,7 +87,7 @@ export function applyTransformsToExistingNotes(
   }
 
   return {
-    noteCount: getPlayableNoteCount(clip),
+    noteCount: getClipNoteCount(clip),
     transformed: postCount ?? preCount,
   };
 }

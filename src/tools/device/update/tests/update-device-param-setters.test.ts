@@ -620,4 +620,44 @@ describe("updateDevice - path-prefixed pseudo-params", () => {
 
     expect(expectValueSet(param)).toBeCloseTo(0.5, 1);
   });
+
+  it("warn-skips a param whose resolution throws and still applies later params", () => {
+    // Drum rack with no chains. Addressing a far-out chain index (c20) forces
+    // auto-creating past the cap, which throws. Each param is try-isolated, so
+    // the bad one must not abort the following (good) param in the same call.
+    registerMockObject("drum-rack", {
+      path: livePath.track(0).device(0),
+      type: "RackDevice",
+      properties: {
+        chains: [],
+        can_have_drum_pads: 1,
+        parameters: children("macro-param"),
+      },
+    });
+    const macro = registerMockObject("macro-param", {
+      properties: {
+        name: "Macro 1",
+        original_name: "Macro 1",
+        is_quantized: 0,
+        value: 0,
+        min: 0,
+        max: 1,
+      },
+      methods: { str_for_value: (v: unknown) => `${Number(v)} %` },
+    });
+
+    updateDevice({
+      path: "t0/d0",
+      params: [
+        { name: "pC1/c20/sample", value: "/x.wav" }, // throws (exceeds chain cap)
+        { name: "Macro 1", value: "0.5" }, // must still be applied
+      ],
+    });
+
+    expect(outlet).toHaveBeenCalledWith(
+      1,
+      expect.stringContaining("failed to set param"),
+    );
+    expect(expectValueSet(macro)).toBeCloseTo(0.5, 1);
+  });
 });

@@ -192,6 +192,13 @@ function resolveDrumPadSampleTarget(
   if (isDrumSampler(className)) {
     // Stop-gap: DrumSampler's sample is not controllable via the current Live
     // API, so swap in a Simpler. Revisit when the API exposes its sample.
+    // The replacement Simpler is appended at the chain end (createSimplerInChain
+    // uses insert_device, which has no position arg). That's correct here: a drum
+    // pad chain holds a single instrument, so deleting the DrumSampler and
+    // appending the Simpler lands it in the same (first) slot. If a pad ever held
+    // an instrument plus trailing effects, the Simpler would land after them —
+    // acceptable for this stop-gap since the sample write targets the returned
+    // device directly, not a fixed index.
     chain.call("delete_device", deviceIndex);
     console.warn(
       `${toolName}: replaced DrumSampler on pad ${padNote} with a Simpler to load the sample (DrumSampler's sample is not controllable via the Live API)`,

@@ -14,7 +14,7 @@ import * as console from "#src/shared/v8-max-console.ts";
 import { type NoteUpdateResult } from "#src/tools/clip/helpers/clip-result-helpers.ts";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.ts";
 import {
-  getPlayableNoteCount,
+  getClipNoteCount,
   rawNotesToNoteEvents,
 } from "#src/tools/shared/clip-notes.ts";
 import { applyTransformsToExistingNotes } from "./update-clip-transform-helpers.ts";
@@ -157,7 +157,7 @@ export function handleNoteUpdates(
   // Fall back to the preTransform match count when there's no transforms string,
   // so a notes + preTransforms update still reports a count (not undefined).
   return {
-    noteCount: getPlayableNoteCount(clip),
+    noteCount: getClipNoteCount(clip),
     transformed: transformed ?? preTransformCount,
   };
 }

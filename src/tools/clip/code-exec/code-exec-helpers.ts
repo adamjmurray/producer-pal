@@ -152,8 +152,8 @@ export function codeNoteToNoteEvent(
   };
 }
 
-/** @see getPlayableNoteCount - re-exported for code-exec API compatibility */
-export { getPlayableNoteCount as getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
+/** @see getClipNoteCount - re-exported for code-exec API compatibility */
+export { getClipNoteCount } from "#src/tools/shared/clip-notes.ts";
 
 /**
  * Validate a raw sandbox result as a notes array.

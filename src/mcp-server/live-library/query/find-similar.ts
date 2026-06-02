@@ -107,6 +107,16 @@ function runFindSimilar(
     return miss(false, "similarTo is required (pass the seed sample's path)");
   }
 
+  // sampleFolder files aren't in Live's fe_values index, so the candidate query
+  // can only ever match nothing (buildCandidateWhere emits an impossible
+  // predicate). Explain it rather than returning a silent empty set.
+  if (args.source === "sampleFolder") {
+    return miss(
+      false,
+      "audio similarity uses Live's analyzed library; sampleFolder samples aren't indexed there — remove source:sampleFolder",
+    );
+  }
+
   const seedFileId = resolveFileIdForPath(db, seedPath);
 
   if (seedFileId == null) {
@@ -150,6 +160,9 @@ function rankCandidates(
   parentId: number | null,
 ): LibrarySimilarItem[] {
   const { where, params } = buildCandidateWhere(args, parentId ?? undefined);
+  // Assumes one fe_values row per file (the AJM-331 spike found this holds across
+  // the library); a file with multiple rows would be scored/ranked once per row.
+  // The seed side guards this with LIMIT 1 (see loadVector).
   const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data
                FROM ${CANDIDATE_FROM}
                JOIN fe_values fv ON fv.file_id = f.file_id

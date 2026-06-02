@@ -55,6 +55,10 @@ export function decodeFeatureVector(data: Uint8Array): Float32Array | null {
   // ArrayBuffer.slice copies the 256 payload bytes into a fresh 0-offset
   // (4-aligned) buffer, so the Float32Array view is always valid regardless
   // of the source BLOB's byteOffset.
+  // Float32Array reads in the platform's native byte order; the BLOB stores the
+  // floats little-endian (the header above is decoded LE). Every platform Live
+  // and Node run on is little-endian, so this matches. On a big-endian host the
+  // payload would need a per-float DataView.getFloat32(.., true) read instead.
   const payload = data.buffer.slice(
     data.byteOffset + HEADER_BYTES,
     data.byteOffset + EXPECTED_BYTES,

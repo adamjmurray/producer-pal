@@ -68,9 +68,9 @@ describe("ppal-create-device drum kit (path-prefixed sample params)", () => {
 
     await sleep(150);
 
-    // Reads use the explicit chain form (pC1/c0/d0): read-device addresses a
-    // pad's device through its chain index, vs the write side's pad-property
-    // pC1/d0 form (the accepted read/write asymmetry).
+    // These reads spell out the chain (pC1/c0/d0), but the implicit-chain form
+    // (pC1/d0 == pC1/c0/d0) works for reads too — read-device and the write side
+    // accept the same drum-pad paths (see readDrumPadNestedTarget). No asymmetry.
 
     // C1 pad: kick sample loaded into an auto-created Simpler.
     const kickPad = parseToolResult<ReadDeviceResult>(

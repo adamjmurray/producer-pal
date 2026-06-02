@@ -59,7 +59,7 @@ describe("note write ordering (create + update transforms)", () => {
     });
     const sorted = parseToolResult<CreateClipResult>(sortResult);
 
-    // create's noteCount is read back from the clip (getPlayableNoteCount), so
+    // create's noteCount is read back from the clip (getClipNoteCount), so
     // a value of 2 proves both notes survived the write.
     expect(sorted.noteCount).toBe(2);
 

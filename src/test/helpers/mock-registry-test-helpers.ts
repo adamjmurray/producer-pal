@@ -43,7 +43,7 @@ export function requireMockTrack(trackIndex: number): RegisteredMockObject {
 /**
  * Create note-tracking call method implementations for a clip mock.
  * Tracks notes added via add_new_notes and returns them for get_notes_extended,
- * so getPlayableNoteCount() reads back the notes that were actually written.
+ * so getClipNoteCount() reads back the notes that were actually written.
  * @returns Method implementations for registerMockObject's `methods` option
  */
 export function createNoteTrackingMethods(): Record<

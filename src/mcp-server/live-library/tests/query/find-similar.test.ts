@@ -142,6 +142,18 @@ describe("findSimilar", () => {
     expect(result.reason).toContain("inFolder path not found");
   });
 
+  it("reports source:sampleFolder rather than a silent empty set", async () => {
+    // sampleFolder files aren't in Live's fe_values index, so this can only ever
+    // match nothing — explain it instead of returning an unexplained empty set.
+    const result = await findSimilar({
+      similarTo: SEED_KICK,
+      source: "sampleFolder",
+    });
+
+    expect(result.items).toStrictEqual([]);
+    expect(result.reason).toContain("sampleFolder");
+  });
+
   it("degrades to dbAvailable:false when the Live DB is missing", async () => {
     vi.mocked(dbPathMod.findLiveFilesDbPath).mockResolvedValue(null);
 

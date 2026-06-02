@@ -86,6 +86,18 @@ function runFindDuplicates(
     ...(stalenessRisk && { stalenessRisk }),
   };
 
+  // sampleFolder files aren't in Live's fe_values index, so the candidate query
+  // can only ever match nothing (buildCandidateWhere emits an impossible
+  // predicate). Explain it rather than returning a silent empty set.
+  if (args.source === "sampleFolder") {
+    return {
+      ...base,
+      groups: [],
+      reason:
+        "duplicate detection uses Live's analyzed library; sampleFolder samples aren't indexed there — remove source:sampleFolder",
+    };
+  }
+
   const inFolder =
     args.inFolder != null && args.inFolder !== "" ? args.inFolder : null;
   const parentId = inFolder != null ? resolveFileIdForPath(db, inFolder) : null;
@@ -99,9 +111,11 @@ function runFindDuplicates(
   }
 
   const { where, params } = buildCandidateWhere(args, parentId ?? undefined);
-  // CAST hash to TEXT so SQLite renders the full 64-bit integer; reading it as a
-  // JS number would lose precision past 2^53 and could falsely merge or split
-  // groups. The hash is an opaque equality key — never used for arithmetic.
+  // Assumes one fe_values row per file (the AJM-331 spike found this holds across
+  // the library); a file with multiple rows would contribute more than once to a
+  // hash group. CAST hash to TEXT so SQLite renders the full 64-bit integer;
+  // reading it as a JS number would lose precision past 2^53 and could falsely
+  // merge or split groups. The hash is an opaque equality key — never arithmetic.
   const sql = `SELECT ${CANDIDATE_COLUMNS}, fv.data AS data,
                       CAST(fv.hash AS TEXT) AS hash
                FROM ${CANDIDATE_FROM}

@@ -125,6 +125,26 @@ describe("bar|beat interpretNotation() - timing features", () => {
       expect(result[1]!.duration).toBe(6.5);
     });
 
+    it("warn-skips a non-positive resolved duration (bar-minus over-subtraction)", () => {
+      // 1bar-n5/4 = a bar minus five quarters = -1 quarter in 4/4; 1bar-n4/4 = 0.
+      // The grammar can't apply the meter, so a non-positive duration only
+      // surfaces in the interpreter: warn and keep the previous (default)
+      // duration rather than emit a degenerate note. (The @step guard throws;
+      // a per-note duration is recoverable, so it warn-skips instead.)
+      const negative = interpretNotation("1bar-n5/4 C4 1|1");
+
+      expect(negative).toHaveLength(1);
+      expect(negative[0]!.duration).toBe(1); // default quarter, unchanged
+
+      const zero = interpretNotation("1bar-n4/4 C4 1|1");
+
+      expect(zero[0]!.duration).toBe(1);
+      expect(outlet).toHaveBeenCalledWith(
+        1,
+        expect.stringContaining("non-positive"),
+      );
+    });
+
     it("handles probability updates after time", () => {
       const result = interpretNotation("C4 1|1 p0.8 1|2 p0.5 1|3");
 

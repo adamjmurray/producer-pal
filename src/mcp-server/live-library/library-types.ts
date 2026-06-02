@@ -200,7 +200,8 @@ export type FindDuplicatesArgs = LibrarySearchArgs;
 
 /** findSimilar result item: a normal library item plus its similarity score. */
 export interface LibrarySimilarItem extends LibraryItem {
-  /** Cosine similarity to the seed (0–1, higher = more alike; 3 decimals). */
+  /** Cosine similarity to the seed (−1..1, higher = more alike; typically near 1
+   * for audio that resembles the seed; 3 decimals). */
   similarity: number;
 }
 
