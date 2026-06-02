@@ -59,10 +59,15 @@ export async function runSearchBatch(
   // the first non-null reading; subsequent queries within the same batch
   // would re-observe the same WAL state.
   let stalenessRisk: StalenessRisk | undefined;
+  // Labels group results in the response, so duplicates (two queries both
+  // labeled "Kicks", or a provided label colliding with an index fallback)
+  // would make entries indistinguishable. Suffix collisions with #2, #3, … so
+  // every entry stays addressable; the first occurrence keeps the bare label.
+  const usedLabels = new Set<string>();
 
   for (const [index, q] of capped.entries()) {
     const { label, ...filters } = q;
-    const resolvedLabel = label ?? String(index);
+    const resolvedLabel = dedupeLabel(label ?? String(index), usedLabels);
     // Guard each query independently: a thrown error in one query (envelope
     // failure, a runSearch impl that doesn't honor the graceful dbAvailable:false
     // contract, etc.) must not discard the entries that already succeeded. The
@@ -109,4 +114,27 @@ export async function runSearchBatch(
   return stalenessRisk == null
     ? { dbAvailable, results }
     : { dbAvailable, stalenessRisk, results };
+}
+
+/**
+ * Resolve a unique label, suffixing `#2`, `#3`, … on collision. The set is
+ * mutated to record the chosen label so later queries see it as taken (this
+ * also guards against a `#N` suffix colliding with a later bare label).
+ *
+ * @param base - The query's provided label, or its index as a string
+ * @param used - Labels already assigned in this batch (mutated)
+ * @returns A label not yet present in `used`
+ */
+function dedupeLabel(base: string, used: Set<string>): string {
+  let candidate = base;
+  let suffix = 2;
+
+  while (used.has(candidate)) {
+    candidate = `${base}#${suffix}`;
+    suffix += 1;
+  }
+
+  used.add(candidate);
+
+  return candidate;
 }
