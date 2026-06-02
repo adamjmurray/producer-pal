@@ -4,7 +4,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import { expect, it } from "vitest";
-import { mockMax } from "../../tests/express-app-test-helpers.ts";
 
 /** Options for posting to a voice-token endpoint in tests. */
 export interface PostTokenOptions {
@@ -56,9 +55,9 @@ type AuthTestPoster = (
 ) => Promise<Response>;
 
 /**
- * Register the three auth/preflight tests shared by the OpenAI and Gemini
- * voice-token routes: missing key header (400), chat UI disabled (403),
- * cross-origin Origin (403). Call inside a `describe` block.
+ * Register the auth/preflight tests shared by the OpenAI and Gemini
+ * voice-token routes: missing key header (400) and cross-origin Origin (403).
+ * Call inside a `describe` block.
  *
  * @param opts - Shared-test configuration
  * @param opts.post - Bound poster for the route under test (e.g. postVoiceToken)
@@ -77,25 +76,6 @@ export function registerSharedTokenAuthTests(opts: {
     expect(json.error.toLowerCase()).toContain(
       opts.keyHeaderName.toLowerCase(),
     );
-  });
-
-  it("returns 403 when the chat UI is disabled", async () => {
-    const setChatUIEnabled = mockMax.handlers.get("chatUIEnabled") as (
-      input: unknown,
-    ) => void;
-
-    setChatUIEnabled(0);
-
-    try {
-      const res = await opts.post();
-
-      expect(res.status).toBe(403);
-      const json = (await res.json()) as { error: string };
-
-      expect(json.error).toBe("Chat UI is disabled");
-    } finally {
-      setChatUIEnabled(1);
-    }
   });
 
   it("blocks cross-origin requests with 403", async () => {

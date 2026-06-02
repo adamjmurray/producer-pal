@@ -27,25 +27,12 @@ interface OpenAIClientSecretResponse {
  * endpoint server-to-server and returns just the short-lived `ek_...` token.
  * The long-lived key is never logged or stored.
  *
- * Gated by the same chatUIEnabled toggle as /chat and /voice, since voice mode
- * shares the chat UI's settings and OpenAI key.
- *
  * @param app - Express application
- * @param isChatUIEnabled - Returns whether the chat UI is currently enabled
  */
-export function registerVoiceTokenRoute(
-  app: Express,
-  isChatUIEnabled: () => boolean,
-): void {
+export function registerVoiceTokenRoute(app: Express): void {
   app.post(
     "/voice-token",
     async (req: Request, res: Response): Promise<void> => {
-      if (!isChatUIEnabled()) {
-        res.status(403).json({ error: "Chat UI is disabled" });
-
-        return;
-      }
-
       const origin = req.get("Origin");
 
       if (origin && !isLocalOrigin(origin)) {

@@ -58,13 +58,6 @@ const config: ProducerPalConfig = {
     : [...TOOL_NAMES],
 };
 
-let chatUIEnabled = true; // default
-
-Max.addHandler(
-  "chatUIEnabled",
-  (enabled: unknown) => (chatUIEnabled = Boolean(enabled)),
-);
-
 Max.addHandler("smallModelMode", (enabled: unknown) => {
   config.smallModelMode = Boolean(enabled);
 });
@@ -232,20 +225,6 @@ export function createExpressApp(): Express {
     res.status(405).json(methodNotAllowed);
   });
 
-  // Allow chat UI to be disabled for security
-  app.use(
-    ["/chat", "/context"],
-    (_req: Request, res: Response, next: NextFunction): void => {
-      if (!chatUIEnabled) {
-        res.status(403).send("Chat UI is disabled");
-
-        return;
-      }
-
-      next();
-    },
-  );
-
   // Serve the chat UI (inlined for frozen .amxd builds).
   // The same bundle handles both /chat and /context — main.tsx reads
   // location.pathname to decide which view to render.
@@ -267,15 +246,8 @@ export function createExpressApp(): Express {
 
   // /voice is an alias that serves the same single-page bundle as /chat. The
   // app picks chat vs. voice from the saved model (App.tsx), not the URL path,
-  // so this just lets users open/bookmark /voice. Honor the chatUIEnabled
-  // toggle since the voice view shares the same settings and OpenAI key.
+  // so this just lets users open/bookmark /voice.
   app.get("/voice", (_req: Request, res: Response): void => {
-    if (!chatUIEnabled) {
-      res.status(403).send("Chat UI is disabled");
-
-      return;
-    }
-
     // See /chat handler: never cache the UI bundle.
     setNoStore(res);
     res.type("html").send(chatUiHtml);
@@ -293,8 +265,8 @@ export function createExpressApp(): Express {
 
   registerRestApiRoutes(app, () => config, callLiveApi);
 
-  registerVoiceTokenRoute(app, () => chatUIEnabled);
-  registerGeminiVoiceTokenRoute(app, () => chatUIEnabled);
+  registerVoiceTokenRoute(app);
+  registerGeminiVoiceTokenRoute(app);
 
   return app;
 }

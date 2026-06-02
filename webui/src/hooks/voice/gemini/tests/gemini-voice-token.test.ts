@@ -59,14 +59,19 @@ describe("fetchGeminiToken", () => {
 
   it("throws with detail on a non-ok response", async () => {
     stubFetch(
-      new Response(JSON.stringify({ error: "Chat UI is disabled" }), {
-        status: 403,
-        statusText: "Forbidden",
-      }),
+      new Response(
+        JSON.stringify({
+          error: "cross-origin /gemini-voice-token is not allowed",
+        }),
+        {
+          status: 403,
+          statusText: "Forbidden",
+        },
+      ),
     );
 
     await expect(fetchGeminiToken(TOKEN_URL, "k", "m")).rejects.toThrow(
-      /403.*Chat UI is disabled/,
+      /403.*cross-origin/,
     );
   });
 
