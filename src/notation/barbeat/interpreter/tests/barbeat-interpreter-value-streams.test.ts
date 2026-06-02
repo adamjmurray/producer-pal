@@ -359,5 +359,27 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
         [64, 80],
       ]);
     });
+
+    it("updates every voice of a carried LAYERED group when a later scalar follows", () => {
+      // Combines layered-voice carry with a retroactive scalar: a layered group
+      // (bare C4 + bracket [E4 G4]) persists across the first comma list into
+      // bar 2, the shared pitch cursor carries (so bar 2 keeps phasing), and the
+      // `v100` between the two lists retroactively updates ALL carried voices —
+      // bar 1 is v80, bar 2 the same layered shape at v100. Asserted against the
+      // fully written-out equivalent.
+      const result = interpretNotation(
+        "n/4 v80 C4 [E4 G4] 1|1,2,3,4 v100 2|1,2,3,4",
+      );
+
+      expect(result.map((n) => n.velocity)).toStrictEqual([
+        80, 80, 80, 80, 80, 80, 80, 80, 100, 100, 100, 100, 100, 100, 100, 100,
+      ]);
+      expect(result).toStrictEqual(
+        interpretNotation(
+          "n/4 v80 C4 E4 1|1 C4 G4 1|2 C4 E4 1|3 C4 G4 1|4 " +
+            "v100 C4 E4 2|1 C4 G4 2|2 C4 E4 2|3 C4 G4 2|4",
+        ),
+      );
+    });
   });
 });

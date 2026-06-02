@@ -219,6 +219,20 @@ describe("bar|beat interpretNotation() - pitch streams (pattern brackets)", () =
       ]);
     });
 
+    it("layers the same regardless of bare-pitch / bracket order", () => {
+      // `[E4 G4] C4` and `C4 [E4 G4]` describe the same two voices. The constant
+      // chord is always the implicit first voice (so output order is by voice,
+      // not text), making the two writings fully interchangeable — both equal the
+      // written-out layered run.
+      const bracketFirst = interpretNotation("n/4 [E4 G4] C4 1|1,2,3,4");
+      const pitchFirst = interpretNotation("n/4 C4 [E4 G4] 1|1,2,3,4");
+
+      expect(bracketFirst).toStrictEqual(pitchFirst);
+      expect(pitchFirst).toStrictEqual(
+        interpretNotation("n/4 C4 E4 1|1 C4 G4 1|2 C4 E4 1|3 C4 G4 1|4"),
+      );
+    });
+
     it("layers a multi-pitch constant chord under a bracket", () => {
       const result = interpretNotation("C3 E3 [G3 A3] 1|1,2");
 
