@@ -61,9 +61,10 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
   });
 
   describe("duration streams", () => {
-    it("cycles note length without changing position spacing", () => {
-      // @step = n/4 keeps positions a quarter apart; the duration stream only
-      // varies each note's LENGTH (the duration-fold is a later phase).
+    it("cycles note length without changing position spacing under @step", () => {
+      // @step = n/4 pins positions a quarter apart; the duration stream only
+      // varies each note's LENGTH (the duration-fold below applies only when
+      // @step is omitted).
       const result = interpretNotation("[n/4 n/8] C3 1|1x4@n/4");
 
       expect(result.map((n) => [n.start_time, n.duration])).toStrictEqual([
@@ -71,6 +72,52 @@ describe("bar|beat interpretNotation() - value streams (v/n/p pattern brackets)"
         [1, 0.5],
         [2, 1],
         [3, 0.5],
+      ]);
+    });
+  });
+
+  describe("duration-fold (no @step, gallop)", () => {
+    it("folds the cycled duration into position spacing", () => {
+      // No @step → each note's spacing to the next is its own cycled duration,
+      // so length and spacing track together (the spec's Gallop example).
+      const result = interpretNotation("[n/4 n/8] C3 1|1x8");
+
+      expect(result.map((n) => [n.start_time, n.duration])).toStrictEqual([
+        [0, 1],
+        [1, 0.5],
+        [1.5, 1],
+        [2.5, 0.5],
+        [3, 1],
+        [4, 0.5],
+        [4.5, 1],
+        [5.5, 0.5],
+      ]);
+    });
+
+    it("zips a pitch stream against the duration-fold (independent cursors)", () => {
+      const result = interpretNotation("[n/4 n/8] [C3 E3 G3] 1|1x6");
+
+      expect(
+        result.map((n) => [n.pitch, n.start_time, n.duration]),
+      ).toStrictEqual([
+        [60, 0, 1],
+        [64, 1, 0.5],
+        [67, 1.5, 1],
+        [60, 2.5, 0.5],
+        [64, 3, 1],
+        [67, 4, 0.5],
+      ]);
+    });
+
+    it("falls back to the scalar duration when no duration stream is active", () => {
+      // [C3 E3 G3] with no @step and no duration stream advances by the scalar
+      // current duration — the legato run (unchanged by the fold).
+      const result = interpretNotation("n/4 [C3 E3 G3] 1|1x3");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 1],
+        [67, 2],
       ]);
     });
   });

@@ -24,7 +24,10 @@ export {
   barBeatMelodicLegatoRun,
   barBeatMelodicStepping,
 } from "./clip/notation/bar-beat-pitch-streams.ts";
-export { barBeatVelocityAccent } from "./clip/notation/bar-beat-value-streams.ts";
+export {
+  barBeatGallop,
+  barBeatVelocityAccent,
+} from "./clip/notation/bar-beat-value-streams.ts";
 export { drumTransforms } from "./clip/drum-transforms.ts";
 export { connectToAbleton } from "./workflow/connect-to-ableton.ts";
 export { createAndEditClip } from "./clip/create-and-edit-clip.ts";
