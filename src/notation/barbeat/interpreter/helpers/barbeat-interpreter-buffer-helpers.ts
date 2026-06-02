@@ -12,6 +12,12 @@ export interface PitchState {
   probability?: number;
 }
 
+/** One resolved velocity stream value (a single velocity or a range). */
+export interface StreamVelocityValue {
+  velocity: number;
+  velocityDeviation: number;
+}
+
 export interface TimePosition {
   bar: number;
   beat: number;
@@ -41,6 +47,20 @@ export interface InterpreterState {
    * 0), so it can advance unconditionally.
    */
   pitchStreamCursor: number;
+  /**
+   * Active value streams for velocity/duration/probability (pattern brackets,
+   * AJM-483). When non-null, the stream OVERRIDES the captured per-pitch value
+   * at emission, cycled by its own cursor; when null, emission uses the value
+   * captured into each PitchState (the legacy per-pitch scalar). Durations are
+   * stored in musical beats. Each persists until its parameter is reassigned (a
+   * later scalar or bracket), independent of the pitch stream.
+   */
+  currentVelocityStream?: StreamVelocityValue[] | null;
+  velocityStreamCursor: number;
+  currentDurationStream?: number[] | null;
+  durationStreamCursor: number;
+  currentProbabilityStream?: number[] | null;
+  probabilityStreamCursor: number;
   pitchGroupStarted: boolean;
   pitchesEmitted: boolean;
   stateChangedSinceLastPitch: boolean;

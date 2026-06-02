@@ -8,14 +8,13 @@ import {
   DEFAULT_PROBABILITY,
   DEFAULT_TIME,
   DEFAULT_VELOCITY,
-  DEFAULT_VELOCITY_DEVIATION,
   defaultDurationMusicalBeats,
-  wholeNoteFractionToMusicalBeats,
 } from "#src/notation/barbeat/barbeat-config.ts";
 import * as parser from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import {
   type ASTElement,
   type PatternStream,
+  type StreamPitch,
 } from "#src/notation/barbeat/parser/barbeat-parser.ts";
 import { parseBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.ts";
 import { formatParserError } from "#src/notation/peggy-error-formatter.ts";
@@ -25,10 +24,8 @@ import { type NoteEvent, type BarCopyNote } from "../../types.ts";
 import {
   countBufferedPitches,
   extractBufferState,
-  handlePropertyUpdate,
   validateBufferedState,
   type InterpreterState,
-  type PitchState,
 } from "./helpers/barbeat-interpreter-buffer-helpers.ts";
 import {
   handleBarCopyRangeDestination,
@@ -43,112 +40,22 @@ import {
   type TimeElement,
 } from "./helpers/barbeat-interpreter-pitch-helpers.ts";
 import {
-  acceptPitch,
-  clampProbability,
-  clampVelocity,
-} from "./helpers/barbeat-interpreter-range-helpers.ts";
+  processDurationUpdate,
+  processProbabilityUpdate,
+  processVelocityRangeUpdate,
+  processVelocityUpdate,
+} from "./helpers/barbeat-interpreter-property-helpers.ts";
+import { acceptPitch } from "./helpers/barbeat-interpreter-range-helpers.ts";
+import {
+  buildDurationStream,
+  buildProbabilityStream,
+  buildVelocityStream,
+} from "./helpers/barbeat-interpreter-stream-helpers.ts";
 
 interface InterpretOptions {
   beatsPerBar?: number;
   timeSigNumerator?: number;
   timeSigDenominator?: number;
-}
-
-/**
- * Process a velocity update (single value)
- * @param element - AST element with velocity value
- * @param state - Interpreter state
- */
-function processVelocityUpdate(
-  element: ASTElement,
-  state: InterpreterState,
-): void {
-  const velocity = clampVelocity(element.velocity as number, "velocity");
-
-  state.currentVelocity = velocity;
-  state.currentVelocityMin = null;
-  state.currentVelocityMax = null;
-
-  handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.velocity = velocity;
-    pitchState.velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
-  });
-}
-
-/**
- * Process a velocity range update
- * @param element - AST element with velocity range
- * @param state - Interpreter state
- */
-function processVelocityRangeUpdate(
-  element: ASTElement,
-  state: InterpreterState,
-): void {
-  const velocityMin = clampVelocity(
-    element.velocityMin ?? 0,
-    "velocity range min",
-  );
-  const velocityMax = clampVelocity(
-    element.velocityMax ?? 0,
-    "velocity range max",
-  );
-
-  state.currentVelocityMin = velocityMin;
-  state.currentVelocityMax = velocityMax;
-  state.currentVelocity = null;
-
-  handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.velocity = velocityMin;
-    pitchState.velocityDeviation = velocityMax - velocityMin;
-  });
-}
-
-/**
- * Process a duration update.
- * The grammar emits the sub-bar part as a fraction of a whole note (e.g., 1/4
- * for a quarter) and an optional meter-aware `bars` count (`1bar`, `1bar+n3/4`).
- * Convert both to musical beats: the fraction scales by the time-signature
- * denominator, the bars by beatsPerBar.
- * @param element - AST element with duration value
- * @param state - Interpreter state
- * @param beatsPerBar - Beats per bar (musical beats; for the bar component)
- * @param timeSigDenominator - Time signature denominator
- */
-function processDurationUpdate(
-  element: ASTElement,
-  state: InterpreterState,
-  beatsPerBar: number,
-  timeSigDenominator: number | undefined,
-): void {
-  const fractionBeats = wholeNoteFractionToMusicalBeats(
-    element.duration ?? 0,
-    timeSigDenominator,
-  );
-  const barBeats = (element.bars ?? 0) * beatsPerBar;
-
-  state.currentDuration = barBeats + fractionBeats;
-
-  handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.duration = state.currentDuration;
-  });
-}
-
-/**
- * Process a probability update
- * @param element - AST element with probability value
- * @param state - Interpreter state
- */
-function processProbabilityUpdate(
-  element: ASTElement,
-  state: InterpreterState,
-): void {
-  const probability = clampProbability(element.probability as number);
-
-  state.currentProbability = probability;
-
-  handlePropertyUpdate(state, (pitchState: PitchState) => {
-    pitchState.probability = probability;
-  });
 }
 
 /**
@@ -182,23 +89,64 @@ function processPitchElement(
 }
 
 /**
- * Process a pitch-stream element (pattern bracket, e.g. `[C3 E3 G3]`).
- * Builds a stream of chords — one per bracket value, capturing the current
- * velocity/duration/probability — held in state and cycled across emitted
- * note-events. The stream persists across separate time positions (cross-event
- * cursor) until the pitch parameter is reassigned, so a new bracket rewinds the
- * cursor to 0. Out-of-range pitches are dropped per chord (matching plain
- * pitches). v/n/p value streams and the duration-fold are later phases
- * (AJM-483).
- * @param element - AST element carrying a pitch stream
+ * Process a pattern bracket (`[...]`), dispatching on its parameter kind. A
+ * pitch stream feeds the pitch buffer; a velocity/duration/probability stream
+ * becomes an active value stream that OVERRIDES the captured per-pitch value at
+ * emission, cycled by its own cursor. Each stream rewinds its cursor (a new
+ * bracket reassigns the parameter) and persists across separate time positions
+ * until reassigned. The duration-fold (a duration stream changing position
+ * spacing) is a later phase (AJM-483).
+ * @param element - AST element carrying a stream
+ * @param state - Interpreter state
+ * @param beatsPerBar - Beats per bar (for duration-stream bar components)
+ * @param timeSigDenominator - Time signature denominator (for duration units)
+ */
+function processStreamElement(
+  element: ASTElement,
+  state: InterpreterState,
+  beatsPerBar: number,
+  timeSigDenominator: number | undefined,
+): void {
+  // stream is always defined here (checked at the dispatch); the cast documents
+  // that guarantee, matching the element.pitch/element.velocity pattern.
+  const stream = element.stream as PatternStream;
+
+  switch (stream.param) {
+    case "pitch":
+      processPitchStreamElement(stream.values, state);
+      break;
+    case "velocity":
+      state.currentVelocityStream = buildVelocityStream(stream.values);
+      state.velocityStreamCursor = 0;
+      break;
+    case "duration":
+      state.currentDurationStream = buildDurationStream(
+        stream.values,
+        beatsPerBar,
+        timeSigDenominator,
+      );
+      state.durationStreamCursor = 0;
+      break;
+    case "probability":
+      state.currentProbabilityStream = buildProbabilityStream(stream.values);
+      state.probabilityStreamCursor = 0;
+      break;
+  }
+}
+
+/**
+ * Build the pitch buffer from a pitch stream's chords. Starts a pitch group
+ * (mirror processPitchElement) so the post-stream "state change won't affect
+ * this group" warning still fires, captures the current velocity/duration/
+ * probability into each chord, and rewinds the cursor. Out-of-range pitches are
+ * dropped per chord (matching plain pitches).
+ * @param values - Pitch stream chords (each a list of pitches)
  * @param state - Interpreter state
  */
 function processPitchStreamElement(
-  element: ASTElement,
+  values: StreamPitch[][],
   state: InterpreterState,
 ): void {
-  // Start a pitch group (mirror processPitchElement) so the post-stream
-  // "state change won't affect this group" warning still fires.
   if (!state.pitchGroupStarted) {
     state.currentPitches = [];
     state.pitchGroupStarted = true;
@@ -206,11 +154,7 @@ function processPitchStreamElement(
     state.stateChangedAfterEmission = false;
   }
 
-  // stream is always defined here (checked at the dispatch); the cast documents
-  // that guarantee, matching the element.pitch/element.velocity pattern.
-  const stream = element.stream as PatternStream;
-
-  state.currentPitchStream = stream.values.map((chord) =>
+  state.currentPitchStream = values.map((chord) =>
     chord
       .filter((value) => acceptPitch(value.pitch))
       .map((value) => buildPitchState(value.pitch, state)),
@@ -339,7 +283,7 @@ function processElementInLoop(
       notesByBar,
     );
   } else if (element.stream !== undefined) {
-    processPitchStreamElement(element, state);
+    processStreamElement(element, state, beatsPerBar, timeSigDenominator);
   } else if (element.pitch !== undefined) {
     processPitchElement(element, state);
   } else if (element.velocity !== undefined) {
@@ -397,6 +341,12 @@ export function interpretNotation(
       currentPitches: [],
       currentPitchStream: null,
       pitchStreamCursor: 0,
+      currentVelocityStream: null,
+      velocityStreamCursor: 0,
+      currentDurationStream: null,
+      durationStreamCursor: 0,
+      currentProbabilityStream: null,
+      probabilityStreamCursor: 0,
       pitchGroupStarted: false,
       pitchesEmitted: false,
       stateChangedSinceLastPitch: false,

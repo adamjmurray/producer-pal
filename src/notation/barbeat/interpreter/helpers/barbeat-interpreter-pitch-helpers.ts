@@ -16,6 +16,11 @@ import {
   type InterpreterState,
   type TimePosition,
 } from "./barbeat-interpreter-buffer-helpers.ts";
+import {
+  advanceStreamCursors,
+  applyStreamOverrides,
+  streamValueAt,
+} from "./barbeat-interpreter-stream-helpers.ts";
 
 export interface RepeatPattern {
   start: number;
@@ -170,9 +175,11 @@ function emitPitchAtPosition(
  * stream longer so the value cycles, and `startCursor` lets a bracket continue
  * cycling across multiple position tokens (cross-event cursor; see "Pattern
  * Brackets (Streams)" in dev/specs/BarBeat-Spec.md).
+ * Any active velocity/duration/probability value stream OVERRIDES the captured
+ * per-pitch value at each emission, cycled by its own carried cursor (the zip).
  * @param positions - Array of time positions
  * @param pitchStream - Stream of chords (length 1 for unbracketed input)
- * @param startCursor - Cursor offset carried in from prior emissions
+ * @param state - Interpreter state (carries the per-parameter cursors + streams)
  * @param beatsPerBar - Beats per bar
  * @param timeSigDenominator - Time signature denominator
  * @param events - Output events array
@@ -182,7 +189,7 @@ function emitPitchAtPosition(
 function emitPitchesAtPositions(
   positions: TimePosition[],
   pitchStream: PitchState[][],
-  startCursor: number,
+  state: InterpreterState,
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
   events: NoteEvent[],
@@ -195,12 +202,27 @@ function emitPitchesAtPositions(
     // Modulo keeps the index in range (stream length is always >= 1), so the
     // chord is always defined; the cast documents the guaranteed bounds.
     const chord = pitchStream[
-      (startCursor + i) % pitchStream.length
+      (state.pitchStreamCursor + i) % pitchStream.length
     ] as PitchState[];
+    const velocity = streamValueAt(
+      state.currentVelocityStream,
+      state.velocityStreamCursor,
+      i,
+    );
+    const duration = streamValueAt(
+      state.currentDurationStream,
+      state.durationStreamCursor,
+      i,
+    );
+    const probability = streamValueAt(
+      state.currentProbabilityStream,
+      state.probabilityStreamCursor,
+      i,
+    );
 
     for (const pitchState of chord) {
       emitPitchAtPosition(
-        pitchState,
+        applyStreamOverrides(pitchState, velocity, duration, probability),
         position,
         beatsPerBar,
         timeSigDenominator,
@@ -345,7 +367,7 @@ export function handlePitchEmission(
   const emitResult = emitPitchesAtPositions(
     positions,
     pitchStream,
-    state.pitchStreamCursor,
+    state,
     beatsPerBar,
     timeSigDenominator,
     events,
@@ -356,9 +378,10 @@ export function handlePitchEmission(
     state.currentTime = emitResult.currentTime;
   }
 
-  // Advance the cursor once per emitted note-event so the stream continues
-  // cycling at the next time position (cross-event cursor). Harmless for the
-  // length-1 fallback, where `cursor mod 1` is always 0.
-  state.pitchStreamCursor += positions.length;
+  // Advance every parameter cursor once per emitted note-event so each stream
+  // continues cycling at the next time position (cross-event cursor). Harmless
+  // for length-1 / inactive streams (`cursor mod 1` is 0; inactive cursors reset
+  // on reassignment).
+  advanceStreamCursors(state, positions.length);
   state.pitchesEmitted = true;
 }
