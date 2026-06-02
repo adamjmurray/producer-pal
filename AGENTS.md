@@ -19,7 +19,10 @@ npm run format
 npm test
 
 # Chat UI development
-npm run ui:build # Production build
+npm run ui:build   # Production build
+npm run ui:test    # Stubbed, CI-runnable webui Playwright suite (no Ableton/keys)
+npm run ui:test:dev # Same suite in the Playwright UI for debugging
+# The live webui suite (real device + LLM, needs Ableton + .env) is `npm run e2e:webui`
 
 # Documentation site (VitePress at https://producer-pal.org)
 npm run docs:dev     # Development server with hot reload
@@ -342,6 +345,10 @@ functions for clarity.
   `npm run check:build` (verifies production artifacts and docs site compile
   successfully). This saves time and tokens by pre-emptively fixing likely
   errors before validation.
+  - **If you touched the chat UI** (`webui/**` or its build): ALSO run
+    `npm run ui:test` (the stubbed Playwright suite — `npm run check` does not
+    run it, since it is slower than the unit tests). It needs no Ableton or API
+    keys. The live `e2e:webui` suite stays manual.
 - **Diagnosing coverage gaps**: If coverage thresholds fail, check
   `coverage/coverage-summary.txt` for per-file breakdown (console only shows
   totals). Look for files with low coverage percentages to identify what needs

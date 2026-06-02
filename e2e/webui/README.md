@@ -1,12 +1,14 @@
-# Chat UI Playwright Tests
+# Chat UI Playwright Tests (live)
 
-End-to-end tests for the built-in Producer Pal chat UI.
+Live end-to-end tests for the built-in Producer Pal chat UI: they drive the real
+device and a real LLM. For the stubbed, CI-runnable suite (no Ableton, no keys),
+see [`../ui`](../ui) (`npm run ui:test`).
 
 ## Prerequisites
 
 These tests require a fully running Producer Pal setup:
 
-1. **Build the project**: `npm run build:all`
+1. **Build the project**: `npm run build:debug`
 2. **Ableton Live running** with the Producer Pal device active
 3. **API keys** in `.env` file (e.g., `GEMINI_KEY`, `OPENAI_KEY` or
    `OPENAI_API_KEY`)
@@ -15,13 +17,10 @@ These tests require a fully running Producer Pal setup:
 
 ```bash
 # Run tests in headless mode
-npm run ui:test
+npm run e2e:webui
 
 # Run tests with UI mode (for debugging)
-npm run ui:test:dev
-
-# Run tests with visible browser
-npm run ui:test:headed
+npm run e2e:webui:dev
 ```
 
 ## Why These Tests Don't Run in CI
