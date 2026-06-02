@@ -94,8 +94,9 @@ function processPitchElement(
  * becomes an active value stream that OVERRIDES the captured per-pitch value at
  * emission, cycled by its own cursor. Each stream rewinds its cursor (a new
  * bracket reassigns the parameter) and persists across separate time positions
- * until reassigned. The duration-fold (a duration stream changing position
- * spacing) is a later phase (AJM-483).
+ * until reassigned. With `@step` omitted, a duration stream also folds its
+ * cycled values into the position spacing (the duration-fold; see
+ * `expandRepeatPattern`).
  * @param element - AST element carrying a stream
  * @param state - Interpreter state
  * @param beatsPerBar - Beats per bar (for duration-stream bar components)

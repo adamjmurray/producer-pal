@@ -52,9 +52,9 @@ export function buildVelocityStream(
 /**
  * Resolve a duration stream's raw AST values into musical beats. Mirrors
  * `processDurationUpdate`: the whole-note fraction scales by the time-signature
- * denominator and the bar component by beatsPerBar. The stream cycles the note
- * LENGTH only; it does not change position spacing (the no-`@step` duration-fold
- * is a later phase, AJM-483).
+ * denominator and the bar component by beatsPerBar. The stream cycles each
+ * note's LENGTH; with `@step` omitted those same cycled values also advance the
+ * position (the duration-fold — see `expandRepeatPattern`).
  * @param values - Raw duration stream values from the parser
  * @param beatsPerBar - Beats per bar (musical beats)
  * @param timeSigDenominator - Time signature denominator

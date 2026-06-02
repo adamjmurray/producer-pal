@@ -41,7 +41,7 @@ export interface TimeElement {
  * @param pattern - Repeat pattern to expand
  * @param currentBar - Current bar number
  * @param beatsPerBar - Beats per bar (musical beats)
- * @param currentDuration - Current note duration in musical beats (used when @step is omitted)
+ * @param state - Interpreter state (current duration + duration stream/cursor)
  * @param timeSigDenominator - Time signature denominator (for step unit conversion)
  * @returns Array of time positions
  */
@@ -49,16 +49,17 @@ function expandRepeatPattern(
   pattern: RepeatPattern,
   currentBar: number,
   beatsPerBar: number,
-  currentDuration: number,
+  state: InterpreterState,
   timeSigDenominator: number | undefined,
 ): TimePosition[] {
   const { start, times, step: stepValue, stepBars } = pattern;
-  // @step omitted (null) defaults to the current duration (legato). Otherwise
-  // combine the whole-note fraction (scaled by the denominator) with the
-  // meter-aware bar component (@1bar) scaled by beatsPerBar.
-  const step =
+  // @step present → a fixed advance: the whole-note fraction (scaled by the
+  // denominator) plus the meter-aware bar component (@1bar) scaled by
+  // beatsPerBar. @step omitted → null, so the per-emission advance below falls
+  // back to the note duration (cycled stream value, else the scalar).
+  const fixedStep =
     stepValue == null
-      ? currentDuration
+      ? null
       : wholeNoteFractionToMusicalBeats(stepValue, timeSigDenominator) +
         (stepBars ?? 0) * beatsPerBar;
 
@@ -76,11 +77,14 @@ function expandRepeatPattern(
   warnIfBeforeClipStart(startBeats);
 
   // Running-sum fold rather than the closed-form `startBeats + i * step`:
-  // `absoluteBeats` accumulates one `advance` (= `step`) per emission. For a
-  // constant advance this equals the closed form (within float epsilon), so
-  // behavior is unchanged. The fold is the shape that lets a future per-emit
-  // cycling duration vary `advance` per step (pattern brackets / streams) — see
-  // "Pattern Brackets (Streams)" in dev/specs/BarBeat-Spec.md.
+  // `absoluteBeats` accumulates one `advance` per emission. With a fixed @step
+  // this equals the closed form (within float epsilon). With @step omitted and
+  // a duration stream active, the advance is the just-emitted note's CYCLED
+  // duration (`durStream[(cursor + i) mod len]`) — the duration-fold ("gallop"),
+  // where each note's length and the spacing to the next note track together.
+  // The cursor base is `state.durationStreamCursor` (advanced only after
+  // emission), so this position computation and the length emission read the
+  // same values. See "Pattern Brackets (Streams)" in dev/specs/BarBeat-Spec.md.
   let absoluteBeats = startBeats;
 
   for (let i = 0; i < times; i++) {
@@ -95,7 +99,14 @@ function expandRepeatPattern(
       (((absoluteBeats % beatsPerBar) + beatsPerBar) % beatsPerBar) + 1;
 
     positions.push({ bar, beat });
-    absoluteBeats += step;
+    absoluteBeats +=
+      fixedStep ??
+      streamValueAt(
+        state.currentDurationStream,
+        state.durationStreamCursor,
+        i,
+      ) ??
+      state.currentDuration;
   }
 
   return positions;
@@ -290,7 +301,7 @@ export function calculatePositions(
       element.beat,
       bar,
       beatsPerBar,
-      state.currentDuration,
+      state,
       timeSigDenominator,
     );
   }

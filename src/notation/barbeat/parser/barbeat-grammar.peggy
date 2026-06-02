@@ -220,9 +220,8 @@ pitchClass
 // can reject a mix (`[v80 C3]`); homogeneous output keeps the bare per-kind
 // shape (chord[] for pitch — a bare pitch is a length-1 chord — and the
 // velocity/duration/probability objects otherwise). A nested `[` is not a valid
-// streamValue, so `[C3 [D3 E3]]` fails to parse (no rule-sharing/nesting). The
-// duration-fold is a later phase (AJM-483); targeted error messages are a later
-// teach-tier phase.
+// streamValue, so `[C3 [D3 E3]]` fails to parse (no rule-sharing/nesting).
+// Targeted error messages are a later teach-tier phase.
 stream "pattern bracket"
   = "[" _ head:streamValue tail:(WS streamValue)* _ "]" {
     return buildStream([head, ...tail.map(t => t[1])]);

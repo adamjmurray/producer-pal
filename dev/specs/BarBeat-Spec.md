@@ -448,17 +448,15 @@ C1 1|1x4@n/4         // Bar 1: kick on every beat
 
 ## Pattern Brackets (Streams)
 
-> **Status: design locked 2026-06-01 (AJM-482 / AJM-483).** This section is the
-> authoritative design contract for the bracket/stream feature. **Pitch streams
-> (`[C3 E3 G3]`, AJM-482) and value streams for velocity/duration/probability
-> (`[v80 v100]`, `[n/4 n/8]`, `[p1 p0.6]`, AJM-483) ship in v1.4.12, including
-> the cross-event cursor and the zip** — streams step across separate time
-> positions and multiple sibling streams cycle independently against a shared
-> emission index. The one item still marked **(planned)** — the no-`@step`
-> duration-fold (a duration stream changing position SPACING, AJM-483) — is
-> documented here so the engine is designed once; its **(planned)** marker is
-> removed when it ships. Today a duration stream cycles each note's LENGTH but
-> position spacing still uses `@step` or the scalar duration.
+> **Status: design locked 2026-06-01, fully implemented (AJM-482 / AJM-483).**
+> This section is the authoritative design contract for the bracket/stream
+> feature. **Pitch streams (`[C3 E3 G3]`, AJM-482) and value streams for
+> velocity/duration/probability (`[v80 v100]`, `[n/4 n/8]`, `[p1 p0.6]`,
+> AJM-483) ship in v1.4.12, including the cross-event cursor, the zip, and the
+> no-`@step` duration-fold** — streams step across separate time positions,
+> multiple sibling streams cycle independently against a shared emission index,
+> and (with `@step` omitted) a duration stream folds its cycled values into the
+> position spacing as well as each note's length.
 
 ### The model: a parameter's current state is a _stream_
 
@@ -476,11 +474,12 @@ Emission reads two independent things, both indexed by a per-parameter cursor
   at every `i` (today's behavior, unchanged).
 - **Position** — a running-sum fold: `pos[0] = start`,
   `pos[i] = pos[i-1] + advance[i-1]`, where `advance` is `@step` if present,
-  else the just-emitted duration. This is exactly the existing "`@step` omitted
-  ⇒ step defaults to the current duration" rule. **(planned)** Generalizing
-  `advance` to the per-emit _cycled_ duration (so a duration stream changes
-  spacing, not just length) is the duration-fold — see the Gallop example. Today
-  the no-`@step` advance uses the scalar current duration.
+  else the just-emitted note's duration. This generalizes the existing "`@step`
+  omitted ⇒ step defaults to the current duration" rule: when `@step` is omitted
+  and a duration stream is active, `advance[i]` is the _cycled_ duration
+  `durStream[(cursor + i) mod len]`, so the duration stream changes spacing as
+  well as length — the duration-fold (see the Gallop example). With no duration
+  stream the no-`@step` advance is the scalar current duration, as before.
 
 When every stream is length-1, the zip reduces **exactly** to today's broadcast
 (each position emits the whole pitch buffer) — full backward compatibility.
@@ -594,13 +593,12 @@ stream's cycles, the stream simply ends mid-cycle — **silent**, not an error.
 // C3 v80, E3 v100, G3 v80, C3 v100, E3 v80, G3 v100, C3 v80, E3 v100
 ```
 
-**Gallop (AJM-483 duration-fold, no `@step`) — (planned), ships after
-cycling+`@step`:**
+**Gallop (AJM-483 duration-fold, no `@step`):**
 
 ```
 [n/4 n/8] C3 1|1x8
-// durations cycle [1, 0.5] beats; cursor folds to
-// 1|1, 1|2, 1|2.5, 1|3.5, 1|4, 2|1, 2|1.5, 2|2.5
+// durations cycle [1, 0.5] beats; each note's length also advances the cursor,
+// folding to 1|1, 1|2, 1|2.5, 1|3.5, 1|4, 2|1, 2|1.5, 2|2.5
 ```
 
 ### AST shape
