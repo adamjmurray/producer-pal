@@ -46,6 +46,94 @@ describe("bar|beat interpretNotation() - pitch streams (pattern brackets)", () =
     });
   });
 
+  describe("cross-event cursor (carries across separate positions)", () => {
+    it("steps the stream across separate time positions", () => {
+      const result = interpretNotation("[C3 E3 G3] 1|1 1|2 1|3");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 1],
+        [67, 2],
+      ]);
+    });
+
+    it("wraps the cursor across separate positions", () => {
+      const result = interpretNotation("[C3 E3] 1|1 1|2 1|3");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 1],
+        [60, 2],
+      ]);
+    });
+
+    it("treats a comma beat list as separate stepping positions", () => {
+      // `1|1,2,3` flattens to three time positions — the cursor steps across
+      // them exactly like three separate tokens.
+      const result = interpretNotation("[C3 E3 G3] 1|1,2,3");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 1],
+        [67, 2],
+      ]);
+    });
+
+    it("carries the cursor from an x-expansion into a following position", () => {
+      const result = interpretNotation("[C3 E3] 1|1x2@n/4 1|3");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 1],
+        [60, 2],
+      ]);
+    });
+
+    it("advances the cursor once per chord, not per pitch", () => {
+      const result = interpretNotation("[(C3 E3) (D3 F3)] 1|1 1|2");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 0],
+        [62, 1],
+        [65, 1],
+      ]);
+    });
+
+    it("rewinds the cursor when a bare pitch reassigns the parameter", () => {
+      // F3 replaces the stream with a length-1 (constant) stream and resets the
+      // cursor, so it broadcasts at every following position.
+      const result = interpretNotation("[C3 E3] 1|1 1|2 F3 1|3 1|4");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [64, 1],
+        [65, 2],
+        [65, 3],
+      ]);
+    });
+
+    it("rewinds the cursor when a new bracket reassigns the parameter", () => {
+      const result = interpretNotation("[C3 E3 G3] 1|1 [A3 B3] 1|2 1|3");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [69, 1],
+        [71, 2],
+      ]);
+    });
+
+    it("keeps a bare chord broadcasting across positions (length-1 stream)", () => {
+      // Regression: no bracket ⇒ the chord repeats at every position unchanged.
+      const result = interpretNotation("C3 1|1 1|2");
+
+      expect(result.map((n) => [n.pitch, n.start_time])).toStrictEqual([
+        [60, 0],
+        [60, 1],
+      ]);
+    });
+  });
+
   describe("chords within a stream", () => {
     it("emits each parenthesized chord simultaneously at its step", () => {
       const result = interpretNotation("[(C3 E3) (D3 F3)] 1|1x2@n/4");

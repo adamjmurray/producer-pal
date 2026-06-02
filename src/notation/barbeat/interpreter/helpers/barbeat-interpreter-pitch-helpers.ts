@@ -162,14 +162,17 @@ function emitPitchAtPosition(
 
 /**
  * Emit a pitch stream across multiple positions, zipping value to position by a
- * shared emit index. `pitchStream` is a stream of chords (each element is a
- * chord = one or more simultaneous pitches); position `i` emits the chord at
- * `pitchStream[i mod stream.length]`. A plain (unbracketed) chord is a length-1
- * stream, so every position re-emits the same chord — the existing broadcast.
- * Pattern brackets (streams) make the stream longer so the value cycles (see
- * "Pattern Brackets (Streams)" in dev/specs/BarBeat-Spec.md).
+ * cursor that carries across separate time positions. `pitchStream` is a stream
+ * of chords (each element is a chord = one or more simultaneous pitches); the
+ * `i`-th position emits the chord at `pitchStream[(startCursor + i) mod length]`.
+ * A plain (unbracketed) chord is a length-1 stream, so every position re-emits
+ * the same chord — the existing broadcast. Pattern brackets (streams) make the
+ * stream longer so the value cycles, and `startCursor` lets a bracket continue
+ * cycling across multiple position tokens (cross-event cursor; see "Pattern
+ * Brackets (Streams)" in dev/specs/BarBeat-Spec.md).
  * @param positions - Array of time positions
  * @param pitchStream - Stream of chords (length 1 for unbracketed input)
+ * @param startCursor - Cursor offset carried in from prior emissions
  * @param beatsPerBar - Beats per bar
  * @param timeSigDenominator - Time signature denominator
  * @param events - Output events array
@@ -179,6 +182,7 @@ function emitPitchAtPosition(
 function emitPitchesAtPositions(
   positions: TimePosition[],
   pitchStream: PitchState[][],
+  startCursor: number,
   beatsPerBar: number,
   timeSigDenominator: number | undefined,
   events: NoteEvent[],
@@ -190,7 +194,9 @@ function emitPitchesAtPositions(
     currentTime = position;
     // Modulo keeps the index in range (stream length is always >= 1), so the
     // chord is always defined; the cast documents the guaranteed bounds.
-    const chord = pitchStream[i % pitchStream.length] as PitchState[];
+    const chord = pitchStream[
+      (startCursor + i) % pitchStream.length
+    ] as PitchState[];
 
     for (const pitchState of chord) {
       emitPitchAtPosition(
@@ -339,6 +345,7 @@ export function handlePitchEmission(
   const emitResult = emitPitchesAtPositions(
     positions,
     pitchStream,
+    state.pitchStreamCursor,
     beatsPerBar,
     timeSigDenominator,
     events,
@@ -349,5 +356,9 @@ export function handlePitchEmission(
     state.currentTime = emitResult.currentTime;
   }
 
+  // Advance the cursor once per emitted note-event so the stream continues
+  // cycling at the next time position (cross-event cursor). Harmless for the
+  // length-1 fallback, where `cursor mod 1` is always 0.
+  state.pitchStreamCursor += positions.length;
   state.pitchesEmitted = true;
 }

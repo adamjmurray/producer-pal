@@ -162,6 +162,10 @@ function processPitchElement(
 ): void {
   if (!state.pitchGroupStarted) {
     state.currentPitches = [];
+    // A bare pitch reassigns the pitch parameter to a length-1 stream, so it
+    // replaces any active pattern bracket and rewinds the cursor.
+    state.currentPitchStream = null;
+    state.pitchStreamCursor = 0;
     state.pitchGroupStarted = true;
     state.pitchesEmitted = false;
     state.stateChangedAfterEmission = false;
@@ -180,10 +184,12 @@ function processPitchElement(
 /**
  * Process a pitch-stream element (pattern bracket, e.g. `[C3 E3 G3]`).
  * Builds a stream of chords — one per bracket value, capturing the current
- * velocity/duration/probability — held in state and cycled across the next time
- * position's emitted note-events. Out-of-range pitches are dropped per chord
- * (matching plain pitches). v/n/p streams and the cross-event cursor are later
- * phases (AJM-483).
+ * velocity/duration/probability — held in state and cycled across emitted
+ * note-events. The stream persists across separate time positions (cross-event
+ * cursor) until the pitch parameter is reassigned, so a new bracket rewinds the
+ * cursor to 0. Out-of-range pitches are dropped per chord (matching plain
+ * pitches). v/n/p value streams and the duration-fold are later phases
+ * (AJM-483).
  * @param element - AST element carrying a pitch stream
  * @param state - Interpreter state
  */
@@ -209,6 +215,8 @@ function processPitchStreamElement(
       .filter((value) => acceptPitch(value.pitch))
       .map((value) => buildPitchState(value.pitch, state)),
   );
+  // A new bracket reassigns the pitch parameter, so its cursor starts fresh.
+  state.pitchStreamCursor = 0;
   state.stateChangedSinceLastPitch = false;
 }
 
@@ -219,6 +227,7 @@ function processPitchStreamElement(
 function resetPitchBufferState(state: InterpreterState): void {
   state.currentPitches = [];
   state.currentPitchStream = null;
+  state.pitchStreamCursor = 0;
   state.pitchGroupStarted = false;
   state.pitchesEmitted = false;
   state.stateChangedSinceLastPitch = false;
@@ -258,10 +267,11 @@ function processTimePosition(
     notesByBar,
   );
 
-  // A pending pitch stream is consumed by this time position; clear it so the
-  // next group starts fresh (the cross-event cursor that persists a stream
-  // across separate time positions is a later phase, AJM-483).
-  state.currentPitchStream = null;
+  // The pitch stream PERSISTS across time positions (cross-event cursor):
+  // handlePitchEmission already advanced state.pitchStreamCursor by the number
+  // of emitted events, so the next position picks up where this one left off.
+  // The group flags reset (a following pitch token starts a fresh group and
+  // reassigns the stream); the stream itself clears only on reassignment.
   state.pitchGroupStarted = false;
   state.stateChangedSinceLastPitch = false;
   state.stateChangedAfterEmission = false;
@@ -386,6 +396,7 @@ export function interpretNotation(
       currentVelocityMax: null,
       currentPitches: [],
       currentPitchStream: null,
+      pitchStreamCursor: 0,
       pitchGroupStarted: false,
       pitchesEmitted: false,
       stateChangedSinceLastPitch: false,
