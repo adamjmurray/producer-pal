@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  mockMergeNoteTracking,
   note,
   setupAudioClipMock,
   setupMidiClipMock,
@@ -336,5 +337,58 @@ describe("updateClip - Advanced note operations", () => {
     );
 
     expect(result).toStrictEqual({ id: "123" });
+  });
+
+  // AJM-485: the merge path concatenates existing + new notes, so the combined
+  // array is unsorted (existing sorted, new appended in authored order). Before
+  // add_new_notes we dedupe same-pitch+start collisions (new wins) then sort
+  // ascending, so Live can't silently drop notes via onset-overlap deletion.
+  describe("merge: dedupe + sort before add_new_notes", () => {
+    it("sorts merged notes ascending so a new onset-overlapping same-pitch note can't delete the existing one", async () => {
+      setupMidiClipMock(mocks.clip123);
+
+      // Existing C1 at 1|3 (beat 2), a quarter note spanning [2,3].
+      const tracking = mockMergeNoteTracking(mocks.clip123, [
+        note(36, 2, { duration: 1 }),
+      ]);
+
+      const result = await updateClip({
+        ids: "123",
+        // New C1 half note at 1|2 (beat 1) spanning [1,3] — its onset precedes
+        // the existing note's. Unsorted (existing@2 then new@1), Live would
+        // delete the existing note; sorted ascending it becomes a tail overlap.
+        notes: "n/2 C1 1|2",
+      });
+
+      const added = tracking.getAddedNotes() as { start_time: number }[];
+
+      expect(added.map((n) => n.start_time)).toStrictEqual([1, 2]);
+      expect(result).toStrictEqual({ id: "123", noteCount: 2 });
+    });
+
+    it("dedupes a same-pitch+start restatement, keeping the new (shorter) note", async () => {
+      setupMidiClipMock(mocks.clip123);
+
+      // Existing C1 at 1|1 spanning two beats [0,2].
+      const tracking = mockMergeNoteTracking(mocks.clip123, [
+        note(36, 0, { duration: 2 }),
+      ]);
+
+      const result = await updateClip({
+        ids: "123",
+        // Restate C1 at 1|1 as a quarter note — overwrites, not doubles up.
+        notes: "n/4 C1 1|1",
+      });
+
+      const added = tracking.getAddedNotes() as {
+        start_time: number;
+        duration: number;
+      }[];
+
+      expect(added).toHaveLength(1);
+      expect(added[0]?.start_time).toBe(0);
+      expect(added[0]?.duration).toBe(1);
+      expect(result).toStrictEqual({ id: "123", noteCount: 1 });
+    });
   });
 });

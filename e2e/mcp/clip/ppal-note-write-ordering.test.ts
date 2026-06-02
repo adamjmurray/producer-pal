@@ -9,8 +9,10 @@
  * Live deletes an earlier same-pitch note when a later-written note overlaps its
  * onset, so notes must be written in ascending start_time order or they can be
  * silently dropped. Both write paths sort before the write:
- * - create-clip (interpreted notes), and
- * - update-clip's transform-only path (re-adding mutated notes).
+ * - create-clip (interpreted notes),
+ * - update-clip's transform-only path (re-adding mutated notes), and
+ * - update-clip's merge path (existing + new notes), which also dedupes
+ *   same-pitch+start collisions so the new note wins deterministically.
  *
  * Also covers create-clip's noteCount reporting the count Live actually stored
  * (read back) rather than the interpreted-input count.
@@ -136,5 +138,80 @@ describe("note write ordering (create + update transforms)", () => {
     // update-clip's noteCount is the actual read-back: 2 confirms the sort kept
     // both notes (without it, Live would delete the onset-overlapped one → 1).
     expect(updated.noteCount).toBe(2);
+  });
+
+  it("update-clip merge sorts + dedupes the combined existing+new notes before re-adding", async () => {
+    const trackResult = await ctx.client!.callTool({
+      name: "ppal-create-track",
+      arguments: { type: "midi", name: "Merge Ordering Track" },
+    });
+    const track = parseToolResult<CreateTrackResult>(trackResult);
+
+    expect(track.trackIndex).toBeDefined();
+    await sleep(100);
+
+    // Overlap-survival: existing C1 quarter at 1|3 (start 2, spans [2,3]).
+    const createResult = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        slot: `${track.trackIndex}/0`,
+        notes: "n/4 C1 1|3",
+      },
+    });
+    const created = parseToolResult<CreateClipResult>(createResult);
+
+    expect(created.noteCount).toBe(1);
+    await sleep(100);
+
+    // Merge a new C1 half note at 1|2 (start 1, spans [1,3]). The combined array
+    // is existing@2 then new@1 — unsorted, Live would delete the existing onset.
+    // Sorting before the re-add makes it a tail overlap, so both survive.
+    const mergeResult = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        ids: created.id,
+        notes: "n/2 C1 1|2",
+      },
+    });
+    const merged = parseToolResult<UpdateClipResult>(mergeResult);
+
+    expect(merged.noteCount).toBe(2);
+    await sleep(100);
+
+    const verifyMerge = await ctx.client!.callTool({
+      name: "ppal-read-clip",
+      arguments: { clipId: created.id, include: ["notes"] },
+    });
+    const mergedClip = parseToolResult<ReadClipResult>(verifyMerge);
+
+    // Both onsets survived: the earlier note is truncated to a quarter at 1|3
+    // (not deleted), so both are quarter C1s and serialize as the canonical
+    // same-pitch comma-list "C1 1|2,3" (C1 at beats 1|2 AND 1|3).
+    expect(mergedClip.notes).toContain("C1 1|2,3");
+
+    // Overwrite/dedupe: restating a note at the same pitch+start must not double
+    // it up — the new note replaces the existing one (count stays 1).
+    const dupCreate = await ctx.client!.callTool({
+      name: "ppal-create-clip",
+      arguments: {
+        slot: `${track.trackIndex}/1`,
+        notes: "n/2 C1 1|1",
+      },
+    });
+    const dupCreated = parseToolResult<CreateClipResult>(dupCreate);
+
+    expect(dupCreated.noteCount).toBe(1);
+    await sleep(100);
+
+    const overwrite = await ctx.client!.callTool({
+      name: "ppal-update-clip",
+      arguments: {
+        ids: dupCreated.id,
+        notes: "n/4 C1 1|1",
+      },
+    });
+    const overwritten = parseToolResult<UpdateClipResult>(overwrite);
+
+    expect(overwritten.noteCount).toBe(1);
   });
 });
